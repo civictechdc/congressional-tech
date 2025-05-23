@@ -93,7 +93,7 @@ def process_block_to_html(block):
     title = block[0]
     focus = block[1]
 
-    headers = ['Name', 'Problem', 'Solution', 'Value']#, 'Level of Effort (1-5)', 'Potential Impact', 'Existing Resources']
+    headers = ['Name', 'Problem', 'Solution', 'Value', 'Level of Effort (1-5)', 'Potential Impact', 'Notes']
     output = f"{title.strip()}\n{focus.strip()}\n\n"
     output += "<table>\n<thead><tr>" + "".join(f"<th>{h}</th>" for h in headers) + "</tr></thead>\n<tbody>\n"
 
@@ -126,6 +126,17 @@ def process_block_to_html(block):
             elif found and header in ['Problem']:
                 content = f"<details open><summary>{header}</summary>{content}</details>"
             output += f"<td>{content}</td>"
+        output += (
+            "\n"
+            "<td> <!-- TODO: Level of Effort (1-5) --> </td>\n"
+            "<td> <!-- TODO: Potential Impact --></td>\n"
+            "<td>\n"
+            "  <details>\n"
+            "    <summary>Notes</summary>\n"
+            "    <!-- TODO: Add notes here -->\n"
+            "  </details>\n"
+            "</td>\n"
+        )
         output += "</tr>\n"
     output += "</tbody>\n</table>\n\n"
     return output
