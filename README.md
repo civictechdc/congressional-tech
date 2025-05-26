@@ -38,23 +38,23 @@ We're establishing a relationship with key technical personel in and around cong
 </tr>
 <tr><td>Statements of Disbursements as Structured Data
 </td><td><details open><summary>Problem</summary>The House's Statements of Disbursements (spending reports) are primarily available as scanned PDF documents, making data analysis and historical trend identification extremely difficult.</details></td><td><details><summary>Solution</summary>Digitize and structure historic Statements of Disbursements data, going back to approximately 1980, into machine-readable spreadsheets.<br> 🔹  <b>Data Source:</b> Utilize existing scrapers developed by the Sunlight Foundation and ProPublica, supplemented by Optical Character Recognition (OCR) and data cleaning techniques. Source historical documents from the Boston Public Library (and other potential archives).<br> 🔹  <b>Data Structure:</b> Create a consistent schema for the extracted data, allowing for easy querying and analysis across different years and reporting periods.</details></td><td><details><summary>Value</summary><br> 🔹  <b>Congressional-Tech:</b> Provides readily analyzable historical data for financial oversight, enabling staff to identify spending trends, anomalies, and potential areas of concern.<br> 🔹  <b>Civic-Tech:</b> Enables researchers, watchdog groups, and journalists to conduct data-driven analyses of congressional spending, promoting accountability and transparency.</details></td>
-<td> <!-- TODO: Level of Effort (1-5) --> </td>
+<td> 4 </td>
 <td> <!-- TODO: Potential Impact --></td>
 <td>
   <details>
     <summary>Notes</summary>
-    <!-- TODO: Add notes here -->
+    ABG: Existing tools = +; finding historical data from the library = - :( 
   </details>
 </td>
 </tr>
 <tr><td>Appropriations Data Pipeline & Historical Analysis
 </td><td><details open><summary>Problem</summary>Information related to the appropriations process (bill text, committee reports, amendments, press releases) is distributed across multiple sources and often experiences delays in being updated on official platforms like Congress.gov.  Analyzing historical line-item spending data and tracking changes in report language over time is also challenging.</details></td><td><details><summary>Solution</summary>Develop a comprehensive system encompassing:<br> 🔹  <b>Real-time Appropriations Tracker:</b> A spreadsheet-based system to track the progress of appropriations bills through each stage of the legislative process (subcommittee, full committee, House/Senate floor, conference committee, joint explanatory statements).  Include:<br>&nbsp;&nbsp; 🔹🔹  Bill text versions at each stage.<br>&nbsp;&nbsp; 🔹🔹  Committee report language versions at each stage.<br>&nbsp;&nbsp; 🔹🔹  Links to press releases summarizing committee actions.<br>&nbsp;&nbsp; 🔹🔹  Details of amendments offered and adopted (or rejected) at each stage.<br>&nbsp;&nbsp; 🔹🔹  <i>Leverage an existing spreadsheet example as a starting point.</i><br> 🔹  <b>Line-Item Data Extraction & Visualization:</b> Extract line-item spending data from appropriations committee reports and transform it into structured data tables.  Develop visualizations to track spending trends over time and across different accounts.<br> 🔹  <b>Report Language Analysis:</b> Implement a system to:<br>&nbsp;&nbsp; 🔹🔹  Identify changes in bill and report language as measures move through the legislative process.<br>&nbsp;&nbsp; 🔹🔹  Compare House and Senate versions of bill and report language to highlight differences.<br>&nbsp;&nbsp; 🔹🔹  Flag deadlines and directives to agencies contained within report language.<br>&nbsp;&nbsp; 🔹🔹  <i>Advanced Feature Suggestion:</i> Perform trend analysis on recurring report language sections across multiple Congresses to illustrate the evolution of policy and funding priorities.</details></td><td><details><summary>Value</summary><br> 🔹  <b>Congressional-Tech:</b> Streamlines the appropriations tracking process for staff, facilitating detailed analysis of spending changes, legislative intent embedded in report language, and mandated agency actions. Historical data analysis tools offer deeper insights into long-term spending patterns.<br> 🔹  <b>Civic-Tech:</b>  Increases transparency surrounding the appropriations process, making it easier for the public, researchers, and advocacy groups to track spending priorities and hold Congress accountable.</details></td>
-<td> <!-- TODO: Level of Effort (1-5) --> </td>
+<td> 5+ </td>
 <td> <!-- TODO: Potential Impact --></td>
 <td>
   <details>
     <summary>Notes</summary>
-    <!-- TODO: Add notes here -->
+        Steps: make appropriations database, identify all events, link to assets (bills & bill actions), interpret assets as steps in appropriations process, match to appropriations database, make web UI for live tracking
   </details>
 </td>
 </tr>
