@@ -1,0 +1,33 @@
+name: Download and Convert CPI XLSX
+
+on:
+  schedule:
+    - cron: '0 6 3 * *' # 6am UTC on the 1st of each month
+  workflow_dispatch:
+
+jobs:
+  update-cpi:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pip install pandas openpyxl requests
+
+      - name: Download XLSX from BLS and convert to CSV
+        run: python projects/5.1-inflation-gsheets/fetch-cpi-convert-csv.py
+
+      - name: Commit and push CSV
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add projects/5.1-inflation-gsheets/data/historical-cpi.csv
+          git commit -m "Auto-updated CPI CSV from BLS" || echo "No changes"
+          git push
