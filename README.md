@@ -259,14 +259,15 @@ Focus: N/A
 <table>
 <thead><tr><th>Name</th><th>Problem</th><th>Solution</th><th>Value</th><th>Level of Effort (1-5)</th><th>Potential Impact</th><th>Notes</th></tr></thead>
 <tbody>
-<tr><td>Inflation Calculator for Google Sheets
+<tr><td>
+  <s> <a href="https://github.com/agurvich/congressional-tech/tree/main/projects/5.1-inflation-gsheets" target="_blank"> Inflation Calculator for Google Sheets </a> </s>
 </td><td><details open><summary>Problem</summary>Manually calculating inflation across different years in spreadsheets is inefficient and prone to errors.</details></td><td><details><summary>Solution</summary>Create a custom formula for Google Sheets that leverages inflation data from the Bureau of Labor Statistics (BLS) or another reliable source to automatically calculate the inflation-adjusted value of a monetary amount.<br> 🔹  <b>Formula Structure:</b> The formula should take three inputs:<br>&nbsp;&nbsp; 🔹🔹  `source_cell`: The cell containing the original monetary amount.<br>&nbsp;&nbsp; 🔹🔹  `start_year_cell`: The cell containing the year of the original amount.<br>&nbsp;&nbsp; 🔹🔹  `end_year_cell`: The cell containing the year to which the amount should be adjusted.<br> 🔹  <b>Example Formula:</b> `=INFLATION(A2, B2, C2)` (where A2 contains the amount, B2 the start year, and C2 the end year).<br> 🔹  The formula should also be "drag-able" to automatically update references for a range of data, allowing the inflation calculations to be easily expanded down a column.</details></td><td><details><summary>Value</summary><br> 🔹  <b>Congressional-Tech:</b> A useful tool for staff performing economic analysis, cost adjustments, and budget projections in spreadsheets.<br> 🔹  <b>Civic-Tech:</b> A widely applicable utility for general users who need to perform inflation calculations in their spreadsheets, enhancing the functionality of Google Sheets.</details></td>
-<td> <!-- TODO: Level of Effort (1-5) --> </td>
-<td> <!-- TODO: Potential Impact --></td>
+<td> 2 </td>
+<td> <!-- TODO: Potential Impact --> </td>
 <td>
   <details>
     <summary>Notes</summary>
-    <!-- TODO: Add notes here -->
+    The current solution relies on a <a href="https://github.com/agurvich/congressional-tech/blob/main/.github/workflows/bls-cpi-update.yml" target="_blank"> Github Action </a> that updates a CSV to mirror the data from the Bureau of Labor Statistics.
   </details>
 </td>
 </tr>
