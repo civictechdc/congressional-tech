@@ -2,7 +2,7 @@ name: Download and Convert CPI XLSX
 
 on:
   schedule:
-    - cron: '0 6 3 * *' # 6am UTC on the 1st of each month
+    - cron: '0 6 3 * *' # 6am UTC on the 3rd of each month
   workflow_dispatch:
 
 jobs:
