@@ -27,7 +27,9 @@ def get_recent_cpi_data():
 # Load existing CPI baseline and drop index column
 baseline_path = output_dir / "historical-cpi.csv"
 df_baseline = pd.read_csv(baseline_path)
-df_baseline.index = df_baseline.index.astype(int)
+df_baseline.index = df_baseline.year
+df_baseline.pop('year')
+print(df_baseline.head())
 
 # Fetch and process recent CPI data
 raw_data = get_recent_cpi_data()
