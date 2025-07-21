@@ -73,11 +73,17 @@ def generic_request(url: str, **params) -> dict:
         return return_value
 
 
+## load the
+API_KEY_PATH = os.path.join(pathlib.Path.home(), ".data.gov.key")
 try:
-    with open(os.path.join(pathlib.Path.home(), ".data.gov.key")) as handle:
+    with open(API_KEY_PATH) as handle:
         DATA_GOV_API_KEY = handle.read().strip()
 except Exception as e:
-    print("API KEY NOT FOUND, EXITING")
+    ## TODO: allow api key as an argparse parameter (for e.g. automation on github actions...)
+    print(
+        f"API KEY NOT FOUND, GET ONE AT https://api.congress.gov/sign-up/ AND SAVE TO {API_KEY_PATH}"
+    )
+    print("EXITING")
     print(e.message)
     quit(1)
 
