@@ -4,6 +4,7 @@ import requests
 from typing import Literal
 import json
 import pickle
+import time
 
 
 CONGRESS_API_BASE_URL = "https://api.congress.gov/v3/"
@@ -57,12 +58,9 @@ def congress_api_get(endpoint: str, pagination=True, **kwargs):
 
 
 def generic_request(url: str, **params) -> dict:
-    try:
-        response = requests.get(url, params=params)
-        response.raise_for_status()
-        return response.json()
-    except requests.RequestException as e:
-        raise RuntimeError(f"Error fetching from Congress API: {e}")
+    response = requests.get(url, params=params)
+    response.raise_for_status()
+    return response.json()
 
 
 try:
@@ -125,12 +123,20 @@ class CongressionalEventFetcher(object):
 
     def process_events(self):
         total = len(self.events.keys())
-        for i, (eventId, value) in enumerate(self.events.items()):
+
+        i = 0
+        event_ids = list(self.events.items())
+        retried = False
+        while i < total:
+            eventId, value = event_ids[i]
             ## if the value is a placeholder url, let's expand it
             if isinstance(value, str) and value.startswith("https://api.congress.gov"):
                 message = f"Processing {i + 1}/{total} -> {eventId}"
-                print(f"\r{message.ljust(80)}", end="", flush=True)
+                print(f"\r{message.ljust(40)}", end="", flush=True)
                 try:
+                    if retried:
+                        ## apparently some entries are broken and can't be json serialized...
+                        value = value.replace("json", "xml")
                     self.events[eventId] = generic_request(
                         value, api_key=DATA_GOV_API_KEY
                     )
@@ -140,12 +146,21 @@ class CongressionalEventFetcher(object):
                             f"\nRate limit hit while fetching {eventId}. Skipping remaining fetches."
                         )
                         return
+                    elif (
+                        e.response is not None
+                        and e.response.status_code == 500
+                        and not retried
+                    ):
+                        retried = True
+                        time.sleep(1)
+                        continue
                     else:
                         raise RuntimeError(f"Failed to fetch {eventId}: {e}")
                 except Exception as e:
-                    raise RuntimeError(
-                        f"Unexpected error while fetching {eventId}: {e}"
-                    )
+                    message = f"Unexpected error while fetching {eventId}: {e}"
+                    print(message)
+            i += 1
+            retried = False
         print("\nDone processing all events.")
 
     def committee_meetings(
