@@ -9,6 +9,24 @@ import pickle
 CONGRESS_API_BASE_URL = "https://api.congress.gov/v3/"
 
 
+def validate_paginated_response(response_json: dict) -> list:
+    """Validate that response_json contains aggregatable list keys and return them."""
+    if "pagination" not in response_json:
+        return []
+
+    response_keys = [
+        key for key in response_json if key not in {"pagination", "request"}
+    ]
+
+    for key in response_keys:
+        if not isinstance(response_json[key], list):
+            raise TypeError(
+                f"Type of {key} ({type(response_json[key])}) cannot be aggregated."
+            )
+
+    return response_keys
+
+
 def congress_api_get(endpoint: str, pagination=True, **kwargs):
     url = f"{CONGRESS_API_BASE_URL}{endpoint}"
 
@@ -19,15 +37,7 @@ def congress_api_get(endpoint: str, pagination=True, **kwargs):
 
     if pagination and "pagination" in response_json:
         ## determine the key to aggregate
-        response_keys = [
-            key for key in response_json.keys() if key not in {"pagination", "request"}
-        ]
-        ## validate the type of the aggregate values
-        for key in response_keys:
-            if type(response_json[key]) is not list:
-                raise TypeError(
-                    f"Type of {key} ({type(response_json[key])}) cannot be aggregated."
-                )
+        response_keys = validate_paginated_response(response_json)
         ## find the total count
         count = response_json.get("pagination", {}).get("count")
         retrieved = len(response_json[response_keys[0]])
@@ -37,6 +47,7 @@ def congress_api_get(endpoint: str, pagination=True, **kwargs):
             message = f"retrieved {retrieved: >5} out of {count: >5} ({(count - retrieved) // params['limit'] + 1: >3} fetches remaining)"
             print(message)
             next_response_json = generic_request(next_url, api_key=DATA_GOV_API_KEY)
+            validate_paginated_response(next_response_json)
             for key in response_keys:
                 response_json[key].extend(next_response_json[key])
             next_url = next_response_json.get("pagination", {}).get("next")
