@@ -5,6 +5,7 @@ from typing import Literal
 import json
 import pickle
 import time
+from xml_to_dict import parse_xml_string
 
 
 CONGRESS_API_BASE_URL = "https://api.congress.gov/v3/"
@@ -63,7 +64,13 @@ def generic_request(url: str, **params) -> dict:
     try:
         return response.json()
     except ValueError:
-        return response.text
+        try:
+            return_value = parse_xml_string(response.text)
+            if "api-root" not in return_value.keys():
+                raise ValueError(f"Invalid XML with keys: {return_value.keys()}")
+        except Exception as e:
+            raise ValueError(f"Failed to parse XML {e.message}")
+        return return_value
 
 
 try:
@@ -162,6 +169,14 @@ class CongressionalEventFetcher(object):
                 except Exception as e:
                     message = f"Unexpected error while fetching {eventId}: {e}, try: {value}&api_key={DATA_GOV_API_KEY}"
                     print(message)
+            ## if xml was dumped straight to the file, let's parse it
+            elif isinstance(value, str) and value.startswith(
+                '<?xml version="1.0" encoding="utf-8"?>'
+            ):
+                value = parse_xml_string(value)["api-root"]
+                self.events[eventId] = value
+                message = f"Converted {eventId} from xml."
+                print(message)
             i += 1
             retried = False
         print("\nDone processing all events.")
