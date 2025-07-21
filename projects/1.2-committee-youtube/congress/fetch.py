@@ -60,7 +60,10 @@ def congress_api_get(endpoint: str, pagination=True, **kwargs):
 def generic_request(url: str, **params) -> dict:
     response = requests.get(url, params=params)
     response.raise_for_status()
-    return response.json()
+    try:
+        return response.json()
+    except ValueError:
+        return response.text
 
 
 try:
@@ -157,7 +160,7 @@ class CongressionalEventFetcher(object):
                     else:
                         raise RuntimeError(f"Failed to fetch {eventId}: {e}")
                 except Exception as e:
-                    message = f"Unexpected error while fetching {eventId}: {e}"
+                    message = f"Unexpected error while fetching {eventId}: {e}, try: {value}&api_key={DATA_GOV_API_KEY}"
                     print(message)
             i += 1
             retried = False
