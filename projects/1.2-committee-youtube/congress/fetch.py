@@ -2,6 +2,8 @@ import os
 import pathlib
 import requests
 from typing import Literal
+import json
+import pickle
 
 
 CONGRESS_API_BASE_URL = "https://api.congress.gov/v3/"
@@ -36,7 +38,7 @@ def congress_api_get(endpoint: str, pagination=True, **kwargs):
             print(message)
             next_response_json = generic_request(next_url, api_key=DATA_GOV_API_KEY)
             for key in response_keys:
-                response_json[key].append(next_response_json[key])
+                response_json[key].extend(next_response_json[key])
             next_url = next_response_json.get("pagination", {}).get("next")
             retrieved += len(next_response_json[response_keys[0]])
 
@@ -62,9 +64,45 @@ except Exception as e:
 
 
 class CongressionalEventFetcher(object):
-    def __init__(self):
+    def __init__(self, record_path: str = "events_output"):
         ## initialize a dictionary to store the events in; keyed by their ids
-        self.events: dict = {}
+        self.record_path = record_path
+
+        ## read in any events that we might have already processed
+        try:
+            self.read()
+        except FileNotFoundError:
+            self.events = {}
+
+    def read(self) -> None:
+        """
+        Load the contents of the output file back into self.events.
+        Tries both JSON and Pickle formats based on file presence.
+        """
+        if os.path.isfile(f"{self.record_path}.json"):
+            with open(f"{self.record_path}.json", "r") as f:
+                self.events = json.load(f)
+        elif os.path.isfile(f"{self.record_path}.pkl"):
+            with open(f"{self.record_path}.pkl", "rb") as f:
+                self.events = pickle.load(f)
+        else:
+            raise FileNotFoundError("No output file found to load events.")
+
+    def dump(self, format: str = "json") -> None:
+        """
+        Dump the contents of self.events to a file.
+        Args:
+            output_path (str): The base path to write the output file (no extension).
+            format (str): Either "json" or "pickle".
+        """
+        if format == "json":
+            with open(f"{self.record_path}.json", "w") as f:
+                json.dump(self.events, f, indent=2)
+        elif format == "pickle":
+            with open(f"{self.record_path}.pkl", "wb") as f:
+                pickle.dump(self.events, f)
+        else:
+            raise ValueError("Unsupported format. Use 'json' or 'pickle'.")
 
     def get_all_events(
         self,
@@ -73,10 +111,29 @@ class CongressionalEventFetcher(object):
         events = self.committee_meetings(chamber=chamber, pagination=False)[
             "committeeMeetings"
         ]
-        print(events.keys())
-        import pdb
+        for event in events:
+            self.events[event["eventId"]] = event["url"]
 
-        pdb.set_trace()
+    def process_events(self):
+        for eventId, value in self.events.items():
+            ## if the value is a placeholder url, let's expand it
+            if isinstance(value, str):
+                try:
+                    self.events[eventId] = generic_request(
+                        value, api_key=DATA_GOV_API_KEY
+                    )
+                except requests.HTTPError as e:
+                    if e.response is not None and e.response.status_code == 429:
+                        print(
+                            f"Rate limit hit while fetching {eventId}. Skipping remaining fetches."
+                        )
+                        return
+                    else:
+                        raise RuntimeError(f"Failed to fetch {eventId}: {e}")
+                except Exception as e:
+                    raise RuntimeError(
+                        f"Unexpected error while fetching {eventId}: {e}"
+                    )
 
     def committee_meetings(
         self,
@@ -106,8 +163,16 @@ class CongressionalEventFetcher(object):
 def main():
     fetcher = CongressionalEventFetcher()
 
-    fetcher.get_all_events("house")
+    ## if we haven't recorded any events, let's go ahead and do that
+    ##  first
+    if len(fetcher.events.keys()) == 0:
+        fetcher.get_all_events("house")
+        fetcher.dump()
+        return fetcher
 
+    fetcher.process_events()
+
+    ## overwrite whatever is on disk with wherever we got
     fetcher.dump()
 
 
