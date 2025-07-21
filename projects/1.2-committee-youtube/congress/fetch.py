@@ -119,16 +119,17 @@ class CongressionalEventFetcher(object):
         self,
         chamber: Literal["house", "senate", "nochamber"] = "house",
     ):
-        events = self.committee_meetings(chamber=chamber, pagination=False)[
-            "committeeMeetings"
-        ]
+        events = self.committee_meetings(chamber=chamber)["committeeMeetings"]
         for event in events:
             self.events[event["eventId"]] = event["url"]
 
     def process_events(self):
-        for eventId, value in self.events.items():
+        total = len(self.events.keys())
+        for i, (eventId, value) in enumerate(self.events.items()):
             ## if the value is a placeholder url, let's expand it
-            if isinstance(value, str):
+            if isinstance(value, str) and value.startswith("https://api.congress.gov"):
+                message = f"Processing {i + 1}/{total} -> {eventId}"
+                print(f"\r{message.ljust(80)}", end="", flush=True)
                 try:
                     self.events[eventId] = generic_request(
                         value, api_key=DATA_GOV_API_KEY
@@ -136,7 +137,7 @@ class CongressionalEventFetcher(object):
                 except requests.HTTPError as e:
                     if e.response is not None and e.response.status_code == 429:
                         print(
-                            f"Rate limit hit while fetching {eventId}. Skipping remaining fetches."
+                            f"\nRate limit hit while fetching {eventId}. Skipping remaining fetches."
                         )
                         return
                     else:
@@ -145,6 +146,7 @@ class CongressionalEventFetcher(object):
                     raise RuntimeError(
                         f"Unexpected error while fetching {eventId}: {e}"
                     )
+        print("\nDone processing all events.")
 
     def committee_meetings(
         self,
@@ -179,12 +181,14 @@ def main():
     if len(fetcher.events.keys()) == 0:
         fetcher.get_all_events("house")
         fetcher.dump()
-        return fetcher
 
-    fetcher.process_events()
-
-    ## overwrite whatever is on disk with wherever we got
-    fetcher.dump()
+    try:
+        fetcher.process_events()
+    except Exception as e:
+        raise e
+    finally:
+        ## overwrite whatever is on disk with wherever we got
+        fetcher.dump()
 
 
 if __name__ == "__main__":
