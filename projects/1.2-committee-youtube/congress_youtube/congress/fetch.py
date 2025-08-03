@@ -4,9 +4,9 @@ from typing import Literal
 import json
 import pickle
 import time
-from xml_to_dict import parse_xml_string
-from auth import load_api_key
-from api import congress_api_get, generic_request
+from .xml_to_dict import parse_xml_string
+from .auth import load_api_key
+from .api import congress_api_get, generic_request
 
 
 class CongressionalEventFetcher(object):
