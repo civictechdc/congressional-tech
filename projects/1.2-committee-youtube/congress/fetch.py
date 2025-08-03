@@ -6,9 +6,44 @@ import json
 import pickle
 import time
 from xml_to_dict import parse_xml_string
+import argparse
 
 
 CONGRESS_API_BASE_URL = "https://api.congress.gov/v3/"
+
+
+def load_api_key() -> str:
+    """
+    Load the DATA.GOV API key, in order of precedence:
+    1. Command-line argument (--api-key)
+    2. Environment variable DATA_GOV_API_KEY
+    3. File at ~/.data.gov.key
+
+    Returns:
+        str: The API key string.
+
+    Raises:
+        RuntimeError: If no API key is found.
+    """
+    parser = argparse.ArgumentParser(description="Congress.gov API data fetcher.")
+    parser.add_argument("--api-key", help="DATA.GOV API key")
+    args, _ = parser.parse_known_args()
+
+    if args.api_key:
+        return args.api_key
+
+    api_key = os.environ.get("DATA_GOV_API_KEY")
+    if api_key:
+        return api_key
+
+    key_path = os.path.join(pathlib.Path.home(), ".data.gov.key")
+    try:
+        with open(key_path) as handle:
+            return handle.read().strip()
+    except Exception:
+        raise RuntimeError(
+            f"API key not found. Provide it via --api-key, DATA_GOV_API_KEY env var, or save it to {key_path}"
+        )
 
 
 def validate_paginated_response(response_json: dict) -> list:
@@ -33,7 +68,12 @@ def congress_api_get(endpoint: str, pagination=True, **kwargs):
     url = f"{CONGRESS_API_BASE_URL}{endpoint}"
 
     # apply default parameters but overwrite w/ kwargs
-    params = {"format": "json", "limit": 250, **kwargs, "api_key": DATA_GOV_API_KEY}
+    params = {
+        "format": "json",
+        "limit": 250,
+        **kwargs,
+        "api_key": kwargs.get("api_key"),
+    }
 
     response_json = generic_request(url, **params)
 
@@ -48,7 +88,9 @@ def congress_api_get(endpoint: str, pagination=True, **kwargs):
         while next_url:
             message = f"retrieved {retrieved: >5} out of {count: >5} ({(count - retrieved) // params['limit'] + 1: >3} fetches remaining)"
             print(message)
-            next_response_json = generic_request(next_url, api_key=DATA_GOV_API_KEY)
+            next_response_json = generic_request(
+                next_url, api_key=kwargs.get("api_key")
+            )
             validate_paginated_response(next_response_json)
             for key in response_keys:
                 response_json[key].extend(next_response_json[key])
@@ -73,23 +115,25 @@ def generic_request(url: str, **params) -> dict:
         return return_value
 
 
-## load the
-API_KEY_PATH = os.path.join(pathlib.Path.home(), ".data.gov.key")
-try:
-    with open(API_KEY_PATH) as handle:
-        DATA_GOV_API_KEY = handle.read().strip()
-except Exception as e:
-    ## TODO: allow api key as an argparse parameter (for e.g. automation on github actions...)
-    print(
-        f"API KEY NOT FOUND, GET ONE AT https://api.congress.gov/sign-up/ AND SAVE TO {API_KEY_PATH}"
-    )
-    print("EXITING")
-    print(e.message)
-    quit(1)
-
-
 class CongressionalEventFetcher(object):
-    def __init__(self, record_path: str = "events_output"):
+    """
+    A utility class for retrieving and processing congressional committee meeting data
+    from the Congress.gov API.
+
+    Attributes:
+        record_path (str): The base path used to read/write cached event data.
+        events (dict): A dictionary of committee events, keyed by event ID.
+
+    Methods:
+        read(): Load previously cached events from disk.
+        dump(): Persist events to disk in JSON or pickle format.
+        get_all_events(): Populate the event dictionary with committee meeting URLs.
+        process_events(): Expand and hydrate stored event URLs into full metadata.
+        committee_meetings(): Fetch committee meeting metadata by chamber and congress.
+        committee_meeting_details(): Fetch full metadata for a specific committee event.
+    """
+
+    def __init__(self, record_path: str = "events_output") -> None:
         ## initialize a dictionary to store the events in; keyed by their ids
         self.record_path = record_path
 
@@ -137,7 +181,7 @@ class CongressionalEventFetcher(object):
         for event in events:
             self.events[event["eventId"]] = event["url"]
 
-    def process_events(self):
+    def process_events(self, api_key: str) -> None:
         total = len(self.events.keys())
 
         i = 0
@@ -153,9 +197,7 @@ class CongressionalEventFetcher(object):
                     if retried:
                         ## apparently some entries are broken and can't be json serialized...
                         value = value.replace("json", "xml")
-                    self.events[eventId] = generic_request(
-                        value, api_key=DATA_GOV_API_KEY
-                    )
+                    self.events[eventId] = generic_request(value, api_key=api_key)
                 except requests.HTTPError as e:
                     if e.response is not None and e.response.status_code == 429:
                         print(
@@ -173,7 +215,7 @@ class CongressionalEventFetcher(object):
                     else:
                         raise RuntimeError(f"Failed to fetch {eventId}: {e}")
                 except Exception as e:
-                    message = f"Unexpected error while fetching {eventId}: {e}, try: {value}&api_key={DATA_GOV_API_KEY}"
+                    message = f"Unexpected error while fetching {eventId}: {e}, try: {value}&api_key={api_key}"
                     print(message)
             ## if xml was dumped straight to the file, let's parse it
             elif isinstance(value, str) and value.startswith(
@@ -213,6 +255,7 @@ class CongressionalEventFetcher(object):
 
 
 def main():
+    api_key = load_api_key()
     fetcher = CongressionalEventFetcher()
 
     ## if we haven't recorded any events, let's go ahead and do that
@@ -222,7 +265,7 @@ def main():
         fetcher.dump()
 
     try:
-        fetcher.process_events()
+        fetcher.process_events(api_key=api_key)
     except Exception as e:
         raise e
     finally:
