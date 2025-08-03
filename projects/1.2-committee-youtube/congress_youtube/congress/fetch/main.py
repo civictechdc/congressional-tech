@@ -1,9 +1,9 @@
-from ..auth import load_api_key
+from ...auth import load_congress_api_key
 from .congress_event_fetcher import CongressEventFetcher
 
 
 def main():
-    api_key = load_api_key()
+    api_key = load_congress_api_key()
     fetcher = CongressEventFetcher()
 
     ## if we haven't recorded any events, let's go ahead and do that

@@ -21,4 +21,5 @@ dependencies = [
 Homepage = "https://github.com/civictechdc/congressional-tech"
 
 [project.scripts]
-congress-youtube-congress = "congress_youtube.congress.main:main"
+congress-fetch= "congress_youtube.congress.fetch.main:main"
+youtube-fetch= "congress_youtube.youtube.fetch.main:main"

@@ -26,7 +26,7 @@ class CongressEventFetcher(object):
         committee_meeting_details(): Fetch full metadata for a specific committee event.
     """
 
-    def __init__(self, record_path: str = "events_output") -> None:
+    def __init__(self, record_path: str = "congress_events_output") -> None:
         ## initialize a dictionary to store the events in; keyed by their ids
         self.record_path = record_path
 
