@@ -1,5 +1,5 @@
 import requests
-from xml_to_dict import parse_xml_string
+from .xml_to_dict import parse_xml_string
 
 CONGRESS_API_BASE_URL = "https://api.congress.gov/v3/"
 
