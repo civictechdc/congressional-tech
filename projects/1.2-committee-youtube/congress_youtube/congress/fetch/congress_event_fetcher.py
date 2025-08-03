@@ -44,9 +44,11 @@ class CongressEventFetcher(object):
         if os.path.isfile(f"{self.record_path}.json"):
             with open(f"{self.record_path}.json", "r") as f:
                 self.events = json.load(f)
+            print(f"Loaded events from {os.path.abspath(self.record_path + '.json')}")
         elif os.path.isfile(f"{self.record_path}.pkl"):
             with open(f"{self.record_path}.pkl", "rb") as f:
                 self.events = pickle.load(f)
+            print(f"Loaded events from {os.path.abspath(self.record_path + '.pkl')}")
         else:
             raise FileNotFoundError("No output file found to load events.")
 
@@ -60,11 +62,11 @@ class CongressEventFetcher(object):
         if format == "json":
             with open(f"{self.record_path}.json", "w") as f:
                 json.dump(self.events, f, indent=2)
-            print(f"Events dumped to {os.path.abspath(self.record_path + '.json')}")
+            print(f"Dumped events to {os.path.abspath(self.record_path + '.json')}")
         elif format == "pickle":
             with open(f"{self.record_path}.pkl", "wb") as f:
                 pickle.dump(self.events, f)
-            print(f"Events dumped to {os.path.abspath(self.record_path + '.pkl')}")
+            print(f"Dumped events to {os.path.abspath(self.record_path + '.pkl')}")
         else:
             raise ValueError("Unsupported format. Use 'json' or 'pickle'.")
 
@@ -125,7 +127,7 @@ class CongressEventFetcher(object):
                 print(message)
             i += 1
             retried = False
-        print("\nDone processing all events.")
+        print("\nDone with all events.")
 
     def committee_meetings(
         self,
