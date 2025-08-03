@@ -61,9 +61,11 @@ class CongressionalEventFetcher(object):
         if format == "json":
             with open(f"{self.record_path}.json", "w") as f:
                 json.dump(self.events, f, indent=2)
+            print(f"Events dumped to {os.path.abspath(self.record_path + '.json')}")
         elif format == "pickle":
             with open(f"{self.record_path}.pkl", "wb") as f:
                 pickle.dump(self.events, f)
+            print(f"Events dumped to {os.path.abspath(self.record_path + '.pkl')}")
         else:
             raise ValueError("Unsupported format. Use 'json' or 'pickle'.")
 
@@ -88,7 +90,7 @@ class CongressionalEventFetcher(object):
             eventId, value = event_ids[i]
             ## if the value is a placeholder url, let's expand it
             if isinstance(value, str) and value.startswith("https://api.congress.gov"):
-                message = f"Processing {i + 1}/{total} -> {eventId}"
+                message = f"Fetching details for {i + 1}/{total} -> {eventId}"
                 print(f"\r{message.ljust(40)}", end="", flush=True)
                 try:
                     if retried:

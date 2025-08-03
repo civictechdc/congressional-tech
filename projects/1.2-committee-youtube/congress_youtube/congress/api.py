@@ -44,7 +44,10 @@ def congress_api_get(endpoint: str, pagination=True, **kwargs):
 
         next_url = response_json.get("pagination", {}).get("next")
         while next_url:
-            message = f"retrieved {retrieved: >5} out of {count: >5} ({(count - retrieved) // params['limit'] + 1: >3} fetches remaining)"
+            message = (
+                f"Fetched {retrieved: >5} summaries out of {count: >5} "
+                f"({(count - retrieved) // params['limit'] + 1: >3} fetches remaining)"
+            )
             print(message)
             next_response_json = generic_request(
                 next_url, api_key=kwargs.get("api_key")
