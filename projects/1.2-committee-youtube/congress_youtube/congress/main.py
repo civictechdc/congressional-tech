@@ -69,9 +69,12 @@ class CongressionalEventFetcher(object):
 
     def get_all_events(
         self,
+        api_key: str,
         chamber: Literal["house", "senate", "nochamber"] = "house",
     ):
-        events = self.committee_meetings(chamber=chamber)["committeeMeetings"]
+        events = self.committee_meetings(chamber=chamber, api_key=api_key)[
+            "committeeMeetings"
+        ]
         for event in events:
             self.events[event["eventId"]] = event["url"]
 
@@ -155,11 +158,11 @@ def main():
     ## if we haven't recorded any events, let's go ahead and do that
     ##  first
     if len(fetcher.events.keys()) == 0:
-        fetcher.get_all_events("house")
+        fetcher.get_all_events(api_key, "house")
         fetcher.dump()
 
     try:
-        fetcher.process_events(api_key=api_key)
+        fetcher.process_events(api_key)
     except Exception as e:
         raise e
     finally:
