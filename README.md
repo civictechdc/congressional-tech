@@ -6,6 +6,8 @@ We're establishing a relationship with key technical personel in and around cong
 
 **Overarching Goal:** Enhance congressional operations, transparency, and public access to information through targeted civic technology projects.
 
+This is based on the this [wiki](https://github.com/DanielSchuman/Policy/wiki/Leg-Tech) by [DanielSchuman](https://github.com/DanielSchuman)
+
 ---
 
 ## I. Enhancing Congressional Data Accessibility & Usability
