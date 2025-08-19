@@ -1,19 +1,19 @@
-Committee Name, href, secondary
-Agriculture, https://www.youtube.com/@AgRepublicans, https://www.youtube.com/@HouseAgDems
-Appropriations, https://www.youtube.com/@HouseAppropriationsCommittee, 
-Armed Services, https://www.youtube.com/@HouseArmedServices,
-Budget, https://www.youtube.com/@HouseBudgetGOP, https://www.youtube.com/@HouseBudgetDems
-Education & Workforce, https://www.youtube.com/@EdWorkforceCmte,
-Energy & Commerce, https://www.youtube.com/@energyandcommerce,
-Financial Services, https://www.youtube.com/@GOPFinancialServices, https://www.youtube.com/@USHouseFSC
-Foreign Affairs, https://www.youtube.com/@HouseForeignGOP, https://www.youtube.com/@houseforeign,
-Homeland Security, https://www.youtube.com/@HouseHomeland,
-House Administration, https://www.youtube.com/@CommitteeonHouseAdministration,
-Judiciary, https://www.youtube.com/@USHouseJudiciaryGOP, https://www.youtube.com/@JudiciaryDems
-Natural Resources, https://www.youtube.com/@NaturalResourcesGOP, https://www.youtube.com/@NaturalResourcesDems
-Oversight and Government Reform, https://www.youtube.com/@OversightandGovernmentReform,
-Rules, https://www.youtube.com/@HouseRulesCommittee,
-"Science, Space, and Technology", https://www.youtube.com/@housescience,
-Small Business, https://www.youtube.com/@HouseSmallBiz,
-Veterans' Affairs, https://www.youtube.com/@HouseVeteransAffairs,
-Ways and Means, https://www.youtube.com/@WaysandMeansCommittee,
+Committee Name,handle,secondary
+Agriculture,@AgRepublicans,@HouseAgDems
+Appropriations,@HouseAppropriationsCommittee,
+Armed Services,@HouseArmedServices,
+Budget,@HouseBudgetGOP,@HouseBudgetDems
+Education & Workforce,@EdWorkforceCmte,
+Energy & Commerce,@energyandcommerce,
+Financial Services,@USHouseFSC,@GOPFinancialServices
+Foreign Affairs,@houseforeign,@HouseForeignGOP
+Homeland Security,@HouseHomeland,
+House Administration,@CommitteeonHouseAdministration,
+Judiciary,@USHouseJudiciaryGOP,@JudiciaryDems
+Natural Resources,@NaturalResourcesGOP,@NaturalResourcesDems
+Oversight and Government Reform,@OversightandGovernmentReform,
+Rules,@HouseRulesCommittee,
+"Science, Space, and Technology",@housescience,
+Small Business,@HouseSmallBiz,
+Veterans' Affairs,@HouseVeteransAffairs,
+Ways and Means,@WaysandMeansCommittee,
