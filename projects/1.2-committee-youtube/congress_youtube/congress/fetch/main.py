@@ -5,20 +5,8 @@ from .congress_event_fetcher import CongressEventFetcher
 def main():
     api_key = load_congress_api_key()
     fetcher = CongressEventFetcher()
-
-    ## if we haven't recorded any events, let's go ahead and do that
-    ##  first
-    if len(fetcher.events.keys()) == 0:
-        fetcher.get_all_events(api_key, "house")
-        fetcher.dump()
-
-    try:
-        fetcher.process_events(api_key)
-    except Exception as e:
-        raise e
-    finally:
-        ## overwrite whatever is on disk with wherever we got
-        fetcher.dump()
+    fetcher.fetch_event_list(api_key, "house")
+    fetcher.process_events(api_key)
 
 
 if __name__ == "__main__":

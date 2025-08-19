@@ -17,6 +17,7 @@ dependencies = [
   "lxml>=4.9.0",
   "google-api-python-client>=2.179.0",
   "polars>=1.8.2",
+  "tinydb"
 ]
 
 [project.urls]
