@@ -15,6 +15,7 @@ license = { text = "MIT" }
 dependencies = [
   "requests>=2.25.0",
   "lxml>=4.9.0",
+  "google-api-python-client>=2.179.0",
   "tinydb"
 ]
 
