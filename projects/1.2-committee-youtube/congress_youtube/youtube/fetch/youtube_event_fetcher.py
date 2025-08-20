@@ -15,8 +15,8 @@ class YoutubeEventFetcher:
         get_channel(): Retrieve channel information by handle.
     """
 
-    API_SERVICE_NAME = 'youtube'
-    API_VERSION = 'v3'
+    API_SERVICE_NAME = "youtube"
+    API_VERSION = "v3"
 
     def __init__(self, youtube_api_key: str):
         """
@@ -25,7 +25,9 @@ class YoutubeEventFetcher:
         Args:
             youtube_api_key (str): The YouTube Data API key for authentication.
         """
-        self.youtube = build(self.API_SERVICE_NAME, self.API_VERSION, developerKey=youtube_api_key)
+        self.youtube = build(
+            self.API_SERVICE_NAME, self.API_VERSION, developerKey=youtube_api_key
+        )
 
     def get_event(self, title: str, channel_id: str | None = None) -> dict | None:
         """
@@ -40,12 +42,11 @@ class YoutubeEventFetcher:
         """
 
         try:
-            search_response = self.youtube.search().list(
-                q=title,
-                part="snippet",
-                channelId=channel_id,
-                maxResults=1
-            ).execute()
+            search_response = (
+                self.youtube.search()
+                .list(q=title, part="snippet", channelId=channel_id, maxResults=1)
+                .execute()
+            )
 
             return search_response["items"][0]
         except (HttpError, IndexError) as ex:
@@ -64,10 +65,9 @@ class YoutubeEventFetcher:
         """
 
         try:
-            channel_response = self.youtube.channels().list(
-                part="snippet",
-                forHandle=handle
-            ).execute()
+            channel_response = (
+                self.youtube.channels().list(part="snippet", forHandle=handle).execute()
+            )
 
             return channel_response["items"][0]
         except (HttpError, IndexError) as ex:
