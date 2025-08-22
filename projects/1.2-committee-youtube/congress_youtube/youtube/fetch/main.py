@@ -28,11 +28,12 @@ def main():
         test_committee, Path(__file__).parent.parent / "youtube-accounts.csv"
     )
     test_channel = fetcher.get_channel(test_handle)
+    fetcher.get_all_channel_videos(test_handle)
 
-    video = fetcher.get_event(title=test_title, channel_id=test_channel["id"])
+    # video = fetcher.get_event(title=test_title, channel_id=test_channel["id"])
 
-    print(video)
-    print(f"Recording URL: https://youtu.be/{video['id']['videoId']}")
+    # print(video)
+    # print(f"Recording URL: https://youtu.be/{video['id']['videoId']}")
 
 
 if __name__ == "__main__":
