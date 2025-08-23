@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { NavBar } from "@/components/navigation-bar";
 import Link from "next/link";
+import favicon from "@/../public/favicon.ico";
+import Image from "next/image";
 
 // Fonts (server-safe; no client runtime needed)
 const geistSans = Geist({
@@ -35,11 +37,7 @@ export default function RootLayout({
             >
                 <div className="fixed z-10 flex max-h-min flex-row items-center p-2">
                     <Link href="/">
-                        <img
-                            src="/favicon.ico"
-                            alt="Favicon"
-                            className="h-8 w-auto cursor-pointer"
-                        />
+                        <Image src={favicon} alt="Favicon" className="h-8 w-auto cursor-pointer" />
                     </Link>
                     <NavBar />
                 </div>
