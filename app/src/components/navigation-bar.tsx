@@ -3,6 +3,8 @@
 import * as React from "react";
 import Link from "next/link";
 import { CircleCheckIcon, CircleHelpIcon, CircleIcon } from "lucide-react";
+import projectThemes from "@/data/project-themes.json";
+import activeProjects from "@/data/active-projects.json";
 
 import {
     NavigationMenu,
@@ -63,40 +65,80 @@ export function NavBar() {
                                 <NavigationMenuLink asChild>
                                     <a
                                         className="from-muted/50 to-muted flex h-full w-full flex-col justify-end rounded-md bg-linear-to-b p-6 no-underline outline-hidden select-none focus:shadow-md"
-                                        href="/"
+                                        href="https://civictechdc.org"
+                                        target="_blank"
                                     >
                                         <div className="mt-4 mb-2 text-lg font-medium">
-                                            shadcn/ui
+                                            Civic Tech DC homepage
                                         </div>
                                         <p className="text-muted-foreground text-sm leading-tight">
-                                            Beautifully designed components built with Tailwind CSS.
+                                            civictechdc.org
                                         </p>
                                     </a>
                                 </NavigationMenuLink>
                             </li>
-                            <ListItem href="/docs" title="Introduction">
-                                Re-usable components built using Radix UI and Tailwind CSS.
-                            </ListItem>
-                            <ListItem href="/docs/installation" title="Installation">
-                                How to install dependencies and structure your app.
-                            </ListItem>
-                            <ListItem href="/docs/primitives/typography" title="Typography">
-                                Styles for headings, paragraphs, lists...etc
-                            </ListItem>
+                            <li>
+                                <NavigationMenuLink asChild>
+                                    <a
+                                        href="https://www.civictechdc.org/projects/congressional-modernization.html"
+                                        target="_blank"
+                                    >
+                                        <div className="text-sm leading-none font-medium">
+                                            Project Page
+                                        </div>
+                                        <p className="text-muted-foreground line-clamp-2 text-sm leading-snug">
+                                            The official Civic Tech DC page for this project
+                                        </p>
+                                    </a>
+                                </NavigationMenuLink>
+                            </li>
+                            <li>
+                                <NavigationMenuLink asChild>
+                                    <a
+                                        href="https://www.github.com/civictechdc/congressional-tech"
+                                        target="_blank"
+                                    >
+                                        <div className="text-sm leading-none font-medium">
+                                            Github Repo
+                                        </div>
+                                        <p className="text-muted-foreground line-clamp-2 text-sm leading-snug">
+                                            Github repository for this project
+                                        </p>
+                                    </a>
+                                </NavigationMenuLink>
+                            </li>
                         </ul>
                     </NavigationMenuContent>
                 </NavigationMenuItem>
                 <NavigationMenuItem>
-                    <NavigationMenuTrigger>Components</NavigationMenuTrigger>
+                    <NavigationMenuTrigger>Active Projects</NavigationMenuTrigger>
                     <NavigationMenuContent>
                         <ul className="grid w-[400px] gap-2 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
-                            {components.map((component) => (
+                            {activeProjects.map((project) => (
                                 <ListItem
-                                    key={component.title}
-                                    title={component.title}
-                                    href={component.href}
+                                    key={project.title}
+                                    title={`${project.title}`}
+                                    href={`projects/project-${project.id}`}
                                 >
-                                    {component.description}
+                                    {project.description}
+                                </ListItem>
+                            ))}
+                        </ul>
+                    </NavigationMenuContent>
+                </NavigationMenuItem>
+                <NavigationMenuItem>
+                    <NavigationMenuTrigger>
+                        <Link href="proposals">Project Proposals</Link>
+                    </NavigationMenuTrigger>
+                    <NavigationMenuContent>
+                        <ul className="grid w-[400px] gap-2 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
+                            {projectThemes.map((project) => (
+                                <ListItem
+                                    key={project.title}
+                                    title={`${project.title}`}
+                                    href={`proposals/projects-${project.id}`}
+                                >
+                                    {project.focus}
                                 </ListItem>
                             ))}
                         </ul>
@@ -104,86 +146,8 @@ export function NavBar() {
                 </NavigationMenuItem>
                 <NavigationMenuItem>
                     <NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
-                        <Link href="/docs">Docs</Link>
+                        <Link href="/dashboard">Dashboard</Link>
                     </NavigationMenuLink>
-                </NavigationMenuItem>
-                <NavigationMenuItem>
-                    <NavigationMenuTrigger>List</NavigationMenuTrigger>
-                    <NavigationMenuContent>
-                        <ul className="grid w-[300px] gap-4">
-                            <li>
-                                <NavigationMenuLink asChild>
-                                    <Link href="#">
-                                        <div className="font-medium">Components</div>
-                                        <div className="text-muted-foreground">
-                                            Browse all components in the library.
-                                        </div>
-                                    </Link>
-                                </NavigationMenuLink>
-                                <NavigationMenuLink asChild>
-                                    <Link href="#">
-                                        <div className="font-medium">Documentation</div>
-                                        <div className="text-muted-foreground">
-                                            Learn how to use the library.
-                                        </div>
-                                    </Link>
-                                </NavigationMenuLink>
-                                <NavigationMenuLink asChild>
-                                    <Link href="#">
-                                        <div className="font-medium">Blog</div>
-                                        <div className="text-muted-foreground">
-                                            Read our latest blog posts.
-                                        </div>
-                                    </Link>
-                                </NavigationMenuLink>
-                            </li>
-                        </ul>
-                    </NavigationMenuContent>
-                </NavigationMenuItem>
-                <NavigationMenuItem>
-                    <NavigationMenuTrigger>Simple</NavigationMenuTrigger>
-                    <NavigationMenuContent>
-                        <ul className="grid w-[200px] gap-4">
-                            <li>
-                                <NavigationMenuLink asChild>
-                                    <Link href="#">Components</Link>
-                                </NavigationMenuLink>
-                                <NavigationMenuLink asChild>
-                                    <Link href="#">Documentation</Link>
-                                </NavigationMenuLink>
-                                <NavigationMenuLink asChild>
-                                    <Link href="#">Blocks</Link>
-                                </NavigationMenuLink>
-                            </li>
-                        </ul>
-                    </NavigationMenuContent>
-                </NavigationMenuItem>
-                <NavigationMenuItem>
-                    <NavigationMenuTrigger>With Icon</NavigationMenuTrigger>
-                    <NavigationMenuContent>
-                        <ul className="grid w-[200px] gap-4">
-                            <li>
-                                <NavigationMenuLink asChild>
-                                    <Link href="#" className="flex-row items-center gap-2">
-                                        <CircleHelpIcon />
-                                        Backlog
-                                    </Link>
-                                </NavigationMenuLink>
-                                <NavigationMenuLink asChild>
-                                    <Link href="#" className="flex-row items-center gap-2">
-                                        <CircleIcon />
-                                        To Do
-                                    </Link>
-                                </NavigationMenuLink>
-                                <NavigationMenuLink asChild>
-                                    <Link href="#" className="flex-row items-center gap-2">
-                                        <CircleCheckIcon />
-                                        Done
-                                    </Link>
-                                </NavigationMenuLink>
-                            </li>
-                        </ul>
-                    </NavigationMenuContent>
                 </NavigationMenuItem>
             </NavigationMenuList>
         </NavigationMenu>
