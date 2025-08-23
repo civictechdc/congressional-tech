@@ -118,7 +118,7 @@ export function NavBar() {
                                 <ListItem
                                     key={project.title}
                                     title={`${project.title}`}
-                                    href={`projects/project-${project.id}`}
+                                    href={`/projects/${project.id}`}
                                 >
                                     {project.description}
                                 </ListItem>
@@ -132,13 +132,13 @@ export function NavBar() {
                     </NavigationMenuTrigger>
                     <NavigationMenuContent>
                         <ul className="grid w-[400px] gap-2 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
-                            {projectThemes.map((project) => (
+                            {projectThemes.map((theme) => (
                                 <ListItem
-                                    key={project.title}
-                                    title={`${project.title}`}
-                                    href={`proposals/projects-${project.id}`}
+                                    key={theme.title}
+                                    title={`${theme.title}`}
+                                    href={`/proposals/${theme.id}`}
                                 >
-                                    {project.focus}
+                                    {theme.focus}
                                 </ListItem>
                             ))}
                         </ul>
