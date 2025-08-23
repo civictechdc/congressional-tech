@@ -5,6 +5,8 @@ from tinydb.table import Table
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
+from ...globals import default_records_path
+
 
 class YoutubeEventFetcher:
     """
@@ -25,9 +27,7 @@ class YoutubeEventFetcher:
     channels_tb: Table = None
     force = False
 
-    def __init__(
-        self, youtube_api_key: str, record_path: str = "congress_youtube_db.json"
-    ):
+    def __init__(self, youtube_api_key: str, record_path: str = default_records_path):
         """
         Initialize the YouTube API client with the provided API key.
 
