@@ -1,1 +1,1 @@
-*_db.json filter=lfs diff=lfs merge=lfs -text required
+**/data/*.json filter=lfs diff=lfs merge=lfs -text required
