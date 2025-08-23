@@ -1,0 +1,11 @@
+[
+    {
+    "title": "Unified Congressional Hearing & Markup Data Platform",
+    "description": "Information about congressional hearings and markups is scattered across multiple websites (Congress.gov, Docs.house.gov, committee pages, YouTube), making it difficult for staff and the public to get a comprehensive view of legislative activity.",
+    "value-hsd": "Enables staff to efficiently track committee proceedings across different sources, ensuring comprehensive oversight and saving time.",
+    "value-ctdc": "Provides researchers, journalists, and the public with easier access to information, promoting transparency and accountability.",
+    "level_of_effort": "3",
+    "impact": "",
+    "notes": "Steps: Identify all events, link to assets (youtube video), display aggregate in dashboard"
+  }
+]
