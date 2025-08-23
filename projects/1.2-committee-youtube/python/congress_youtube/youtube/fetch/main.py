@@ -3,7 +3,7 @@ import csv
 from pathlib import Path
 
 from ...auth import load_youtube_api_key
-from ...globals import add_global_args
+from ...globals import add_global_args, DEFAULT_CHANNELS_CSV
 from .youtube_event_fetcher import YoutubeEventFetcher
 
 
@@ -20,7 +20,7 @@ def get_committee_handles(committee_name_or_index: str | int, csv_path: Path) ->
         elif isinstance(committee_name_or_index, int):
             rows = list(reader)
             if 0 <= committee_name_or_index < len(rows):
-                return rows[committee_name_or_index].values()[1:]
+                return list(rows[committee_name_or_index].values())[1:]
             else:
                 raise IndexError(
                     f"Index out of bounds for committee list {csv_path} (length {len(rows)})."
@@ -28,22 +28,25 @@ def get_committee_handles(committee_name_or_index: str | int, csv_path: Path) ->
 
 
 def main(
-    record_path: str, committee_name: str, committee_index: int, channels_csv: str
+    tinydb_path: str, committee_name: str, committee_index: int, channels_csv_path: str
 ) -> None:
     api_key = load_youtube_api_key()
-    fetcher = YoutubeEventFetcher(api_key, record_path)
+    fetcher = YoutubeEventFetcher(api_key, tinydb_path)
 
     ## read the mapping from the committee name -> youtube handle (thanks Ezra!)
     handles = get_committee_handles(
-        committee_name if not committee_index else committee_index, channels_csv
+        committee_name if committee_index is None else committee_index,
+        channels_csv_path,
     )
 
     for handle in handles:
-        ## save channel metadata to the fetcher & the DB
-        fetcher.get_channel(handle)
-        ## read the "uploaded" playlist from the previously fetched metadata
-        ##  and then store details about each video to the DB
-        fetcher.get_all_channel_videos(handle)
+        print("Working on:", handle)
+        if len(handle) > 0:
+            ## save channel metadata to the fetcher & the DB
+            fetcher.get_channel(handle)
+            ## read the "uploaded" playlist from the previously fetched metadata
+            ##  and then store details about each video to the DB
+            fetcher.get_all_channel_videos(handle)
 
 
 def parse_args_and_run():
@@ -55,8 +58,9 @@ def parse_args_and_run():
     add_global_args(parser)
 
     parser.add_argument(
-        "--csv_path",
+        "--channels_csv_path",
         type=str,
+        default=DEFAULT_CHANNELS_CSV,
         help="Path to the CSV file mapping committee names to their YouTube handles",
     )
 
