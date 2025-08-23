@@ -1,8 +1,11 @@
+import Image from "next/image";
+import banner from "@/../public/congress-1800w.png";
+
 export default function Home() {
     return (
         <main className="flex min-h-screen flex-1 flex-col items-center justify-center bg-gray-50">
-            <img
-                src="/congress-1800w.png"
+            <Image
+                src={banner}
                 alt="Header Image"
                 className="z-0 h-full max-h-screen w-auto flex-1 object-cover"
             />
