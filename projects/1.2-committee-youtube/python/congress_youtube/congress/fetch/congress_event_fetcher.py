@@ -1,9 +1,11 @@
 import os
 import requests
-from typing import Literal
+import time
 from tinydb import TinyDB
 from tinydb.table import Document
-import time
+from typing import Literal
+
+from ...globals import default_records_path
 from ..api import congress_api_get, generic_request
 
 
@@ -24,28 +26,30 @@ class CongressEventFetcher(object):
         committee_meeting_details(): Fetch full metadata for a specific committee event.
     """
 
-    def __init__(self, record_path: str = "congress_youtube_db.json") -> None:
-        ## initialize a dictionary to store the events in; keyed by their ids
+    ## initialize a dictionary to store the events in; keyed by their ids
+    event_urls = {}
+
+    def __init__(self, api_key: str, record_path: str = default_records_path) -> None:
+        self.api_key = api_key
         self.record_path = record_path
 
         self.events_tb = TinyDB(self.record_path).table("committee_meetings")
         print(
             f"Loaded {len(self.events_tb):d} events from {os.path.abspath(self.record_path)}"
         )
-        self.event_urls = {}
 
     def fetch_event_list(
         self,
-        api_key: str,
+        congress_number: int,
         chamber: Literal["house", "senate", "nochamber"] = "house",
     ):
-        events = self.committee_meetings(chamber=chamber, api_key=api_key)[
-            "committeeMeetings"
-        ]
+        events = self.committee_meetings(
+            congress_number=congress_number, chamber=chamber
+        )["committeeMeetings"]
         for event in events:
             self.event_urls[event["eventId"]] = event["url"]
 
-    def process_events(self, api_key: str) -> None:
+    def process_events(self) -> None:
         total = len(self.event_urls.keys())
 
         i = 0
@@ -68,10 +72,10 @@ class CongressEventFetcher(object):
                         ##  so we'll try the xml endpoint instead
                         url = url.replace("json", "xml")
                         print("Trying XML instead...")
-                        event = generic_request(url, api_key=api_key)
+                        event = generic_request(url, api_key=self.api_key)
                         event = event["api-root"]
                     else:
-                        event = generic_request(url, api_key=api_key)
+                        event = generic_request(url, api_key=self.api_key)
 
                     self.events_tb.insert(
                         Document(event["committeeMeeting"], doc_id=eventId)
@@ -93,7 +97,7 @@ class CongressEventFetcher(object):
                     else:
                         raise RuntimeError(f"Failed to fetch {eventId}: {e}")
                 except Exception as e:
-                    message = f"Unexpected error while fetching {eventId}: {e}, try: {url}&api_key={api_key}"
+                    message = f"Unexpected error while fetching {eventId}: {e}, try: {url}&api_key={self.api_key}"
                     print(message)
             i += 1
             retried = False
@@ -105,6 +109,11 @@ class CongressEventFetcher(object):
         chamber: Literal["house", "senate", "nochamber"] = "house",
         **kwargs,
     ) -> dict:
+        ## validate chamber input
+        if chamber not in {"house", "senate", "nochamber"}:
+            raise ValueError(
+                f"Invalid chamber: {chamber}, must be one of: 'house', 'senate', 'nochamber'"
+            )
         return congress_api_get(f"committee-meeting/{congress}/{chamber}", **kwargs)
 
     def committee_meeting_details(
