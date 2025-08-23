@@ -76,7 +76,8 @@ def parse_args_and_run():
         help="Index of the committee in the CSV file",
     )
 
-    args = parser.parse_known_args()
+    ## ignore the unknown args
+    args = parser.parse_known_args()[0]
 
     main(**vars(args))
 

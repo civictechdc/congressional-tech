@@ -5,10 +5,10 @@ from ...globals import add_global_args
 from .congress_event_fetcher import CongressEventFetcher
 
 
-def main(record_path: str, chamber: str = "house"):
+def main(tinydb_path: str, chamber: str = "house", congress_number: int = 119):
     api_key = load_congress_api_key()
-    fetcher = CongressEventFetcher(api_key, record_path)
-    fetcher.fetch_event_list(chamber)
+    fetcher = CongressEventFetcher(api_key, tinydb_path)
+    fetcher.fetch_event_list(congress_number, chamber)
     fetcher.process_events()
 
 
@@ -28,9 +28,19 @@ def parse_args_and_run():
         help="The chamber of Congress whose calendar to pull from.",
     )
 
-    args = parser.parse_known_args()
+    parser.add_argument(
+        "--congress_number",
+        type=int,
+        choices=range(100, 120),
+        default=119,
+        help="The session of Congress to pull data from (NOTE: only tried 119, not sure how early you can go back).",
+    )
 
-    main(vars(args))
+    ## ignore the unknown args
+    args = parser.parse_known_args()[0]
+
+    print(args)
+    main(**vars(args))
 
 
 if __name__ == "__main__":
