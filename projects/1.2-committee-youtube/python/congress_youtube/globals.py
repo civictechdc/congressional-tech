@@ -1,10 +1,10 @@
 from pathlib import Path
 from argparse import ArgumentParser
 
-default_records_path = (
+DEFAULT_RECORDS_PATH = (
     Path(__file__).resolve().parent.parent / "data" / "congress_youtube_db.json"
 )
-default_channels_csv = Path(__file__) / "youtube" / "youtube-accounts.csv"
+DEFAULT_CHANNELS_CSV = Path(__file__) / "youtube" / "youtube-accounts.csv"
 
 
 def add_global_args(parser: ArgumentParser) -> None:
@@ -13,6 +13,6 @@ def add_global_args(parser: ArgumentParser) -> None:
     parser.add_argument(
         "--records_path",
         type=str,
-        default=default_records_path,
+        default=DEFAULT_RECORDS_PATH,
         help="Path to the TinyDB database json file.",
     )
