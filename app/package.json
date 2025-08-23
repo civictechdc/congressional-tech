@@ -4,7 +4,7 @@
     "private": true,
     "scripts": {
         "dev": "next dev --turbopack",
-        "build": "rm -r ../docs && next build --turbopack",
+        "build": "rm -r ../docs && distDir=../docs prefix=/congressional-tech next build --turbopack",
         "start": "next start",
         "lint": "eslint"
     },
