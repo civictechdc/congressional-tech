@@ -30,8 +30,10 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="en">
-            <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-                <div className="flex max-h-min flex-row items-center p-2">
+            <body
+                className={`flex flex-col ${geistSans.variable} ${geistMono.variable} antialiased`}
+            >
+                <div className="fixed z-10 flex max-h-min flex-row items-center p-2">
                     <Link href="/">
                         <img
                             src="/favicon.ico"
@@ -41,7 +43,7 @@ export default function RootLayout({
                     </Link>
                     <NavBar />
                 </div>
-                {children}
+                <div className="pt-10">{children}</div>
             </body>
         </html>
     );
