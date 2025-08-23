@@ -5,6 +5,8 @@ from tinydb.table import Table
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
+from ...globals import DEFAULT_TINYDB_PATH
+
 
 class YoutubeEventFetcher:
     """
@@ -25,9 +27,7 @@ class YoutubeEventFetcher:
     channels_tb: Table = None
     force = False
 
-    def __init__(
-        self, youtube_api_key: str, record_path: str = "congress_youtube_db.json"
-    ):
+    def __init__(self, youtube_api_key: str, tinydb_path: str = DEFAULT_TINYDB_PATH):
         """
         Initialize the YouTube API client with the provided API key.
 
@@ -38,10 +38,10 @@ class YoutubeEventFetcher:
             self.API_SERVICE_NAME, self.API_VERSION, developerKey=youtube_api_key
         )
 
-        self.record_path = record_path
+        self.tinydb_path = tinydb_path
 
         self.videos_tbs = {}
-        self.channels_tb = TinyDB(self.record_path).table("youtube_channels")
+        self.channels_tb = TinyDB(self.tinydb_path).table("youtube_channels")
 
     def get_channel(self, channel_handle: str) -> dict | None:
         """
@@ -89,9 +89,12 @@ class YoutubeEventFetcher:
             if len(search_results) == 1:
                 return search_results[0]
             elif len(search_results) > 1:
-                raise ValueError(
-                    f"{len(search_results)} entries with same channel handle in {self.channels_tb}."
-                )
+                if self.force:
+                    self.channels_tb.truncate()
+                else:
+                    raise ValueError(
+                        f"{len(search_results)} entries with same channel handle in {self.channels_tb}."
+                    )
 
             ## hit the API if our channel isn't in the store
             channel_response = (
@@ -148,7 +151,7 @@ class YoutubeEventFetcher:
         ]
 
         ## create a videos table for this channel
-        videos_tb = TinyDB(self.record_path).table(f"youtube_videos_{channel_handle}")
+        videos_tb = TinyDB(self.tinydb_path).table(f"youtube_videos_{channel_handle}")
 
         ## clear the table if we want to force download
         if self.force:
