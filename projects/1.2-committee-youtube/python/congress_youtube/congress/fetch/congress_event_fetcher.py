@@ -5,7 +5,7 @@ from tinydb import TinyDB
 from tinydb.table import Document
 from typing import Literal
 
-from ...globals import DEFAULT_RECORDS_PATH
+from ...globals import DEFAULT_TINYDB_PATH
 from ..api import congress_api_get, generic_request
 
 
@@ -29,13 +29,13 @@ class CongressEventFetcher(object):
     ## initialize a dictionary to store the events in; keyed by their ids
     event_urls = {}
 
-    def __init__(self, api_key: str, record_path: str = DEFAULT_RECORDS_PATH) -> None:
+    def __init__(self, api_key: str, tinydb_path: str = DEFAULT_TINYDB_PATH) -> None:
         self.api_key = api_key
-        self.record_path = record_path
+        self.tinydb_path = tinydb_path
 
-        self.events_tb = TinyDB(self.record_path).table("committee_meetings")
+        self.events_tb = TinyDB(self.tinydb_path).table("committee_meetings")
         print(
-            f"Loaded {len(self.events_tb):d} events from {os.path.abspath(self.record_path)}"
+            f"Loaded {len(self.events_tb):d} events from {os.path.abspath(self.tinydb_path)}"
         )
 
     def fetch_event_list(
@@ -43,9 +43,9 @@ class CongressEventFetcher(object):
         congress_number: int,
         chamber: Literal["house", "senate", "nochamber"] = "house",
     ):
-        events = self.committee_meetings(
-            congress_number=congress_number, chamber=chamber
-        )["committeeMeetings"]
+        events = self.committee_meetings(congress=congress_number, chamber=chamber)[
+            "committeeMeetings"
+        ]
         for event in events:
             self.event_urls[event["eventId"]] = event["url"]
 
@@ -114,7 +114,9 @@ class CongressEventFetcher(object):
             raise ValueError(
                 f"Invalid chamber: {chamber}, must be one of: 'house', 'senate', 'nochamber'"
             )
-        return congress_api_get(f"committee-meeting/{congress}/{chamber}", **kwargs)
+        return congress_api_get(
+            f"committee-meeting/{congress}/{chamber}", api_key=self.api_key, **kwargs
+        )
 
     def committee_meeting_details(
         self,
@@ -129,5 +131,7 @@ class CongressEventFetcher(object):
                 f"Invalid chamber: {chamber}, must be one of: 'house', 'senate', 'nochamber'"
             )
         return congress_api_get(
-            f"committee-meeting/{congress}/{chamber}/{eventId}", **kwargs
+            f"committee-meeting/{congress}/{chamber}/{eventId}",
+            api_key=self.api_key,
+            **kwargs,
         )
