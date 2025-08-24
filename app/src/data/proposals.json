@@ -1,13 +1,46 @@
 [
-  {
-    "title": "Unified Congressional Hearing & Markup Data Platform",
-    "description": "A centralized, regularly updated platform (sheet → website/wiki) that aggregates and links key committee proceeding data.",
-    "problem": "Information about congressional hearings and markups is scattered across multiple websites (Congress.gov, Docs.house.gov, committee pages, YouTube), making it difficult for staff and the public to get a comprehensive view of legislative activity.",
-    "solution": "Create a centralized, regularly updated platform (initially a spreadsheet, then a public-facing website/wiki) that aggregates key data points:\nDate of the hearing or markup.\nEvent Type (Hearing or Markup).\nTitle of the Proceeding (and separate column for Event ID).\nCommittee of Jurisdiction (and separate column for unique Committee ID).\nIndication of Full Committee or Subcommittee proceeding.\nDirect Links to:\n\t- The committee's webpage for the proceeding.\n\tThe Docs.house.gov page for the proceeding (if it's a House event).\n\tThe video of the proceeding (YouTube or Akami).\n\tThe transcript of the proceeding (when available).\nPhases:\n\tData Aggregation (Spreadsheet): Build the initial spreadsheet, populating it with data from the various sources. Implement automated data scraping where possible.\n\tPublic-Facing Platform (Wiki/Website): Publish the aggregated data on a user-friendly website or wiki, with clear navigation and search capabilities. Manage hyperlinks appropriately.\n\tAlert System: Develop an alert system (e.g., email notifications) to notify users when new information is added for committees they are tracking. Priority: House Administration and Senate Rules Committees.",
-    "value-hsd": "Enables staff to efficiently track committee proceedings across different sources, ensuring comprehensive oversight and saving time.",
-    "value-ctdc": "Provides researchers, journalists, and the public with easier access to information, promoting transparency and accountability.",
-    "level_of_effort": "3",
-    "impact": "",
-    "notes": "Steps: Identify all events, link to assets (YouTube video), display aggregate in dashboard"
-  }
+    {
+        "title": "Unified Congressional Hearing & Markup Data Platform",
+        "description": "A centralized, regularly updated platform (sheet → website/wiki) that aggregates and links key committee proceeding data.",
+        "problem": "Information about congressional hearings and markups is scattered across multiple websites (Congress.gov, Docs.house.gov, committee pages, YouTube), making it difficult for staff and the public to get a comprehensive view of legislative activity.",
+        "solution": "Create a centralized, regularly updated platform (initially a spreadsheet, then a public-facing website/wiki) that aggregates key data points:\nDate of the hearing or markup.\nEvent Type (Hearing or Markup).\nTitle of the Proceeding (and separate column for Event ID).\nCommittee of Jurisdiction (and separate column for unique Committee ID).\nIndication of Full Committee or Subcommittee proceeding.\nDirect Links to:\n\tThe committee's webpage for the proceeding.\n\tThe Docs.house.gov page for the proceeding (if it's a House event).\n\tThe video of the proceeding (YouTube or Akami).\n\tThe transcript of the proceeding (when available).\nPhases:\n\tData Aggregation (Spreadsheet): Build the initial spreadsheet, populating it with data from the various sources. Implement automated data scraping where possible.\n\tPublic-Facing Platform (Wiki/Website): Publish the aggregated data on a user-friendly website or wiki, with clear navigation and search capabilities. Manage hyperlinks appropriately.\n\tAlert System: Develop an alert system (e.g., email notifications) to notify users when new information is added for committees they are tracking. Priority: House Administration and Senate Rules Committees.",
+        "value-hsd": "Enables staff to efficiently track committee proceedings across different sources, ensuring comprehensive oversight and saving time.",
+        "value-ctdc": "Provides researchers, journalists, and the public with easier access to information, promoting transparency and accountability.",
+        "level_of_effort": "3",
+        "impact": "",
+        "notes": "Steps: Identify all events, link to assets (YouTube video), display aggregate in dashboard"
+    },
+    {
+        "title": "Congressional Committee YouTube Video Dashboard & Event ID Tracking",
+        "description": "Dashboard that monitors committee YouTube uploads, cross-references with Congress.gov/Docs.house.gov to link official Event IDs, and surfaces metrics and alerts.",
+        "problem": "Committees often fail to include official Event IDs in YouTube video descriptions, making it hard to link videos to Congress.gov records and hurting public discoverability.",
+        "solution": "Develop a dashboard that:\nTracks all House and Senate committee YouTube channels and their uploaded videos.\nCross-references video metadata (title, date, description) with official hearing/markup data via Congress.gov and Docs.house.gov APIs, using fuzzy matching when Event IDs are missing.\nDisplays consistency metrics and ranks committees by inclusion of Event IDs in descriptions.\nAlerts & reporting:\n\tPotential feature: Send automated weekly emails to committee staff listing videos missing Event IDs and the correct ID for easy updating.\n\tProvide a UI to view each committee’s video metadata and Event ID compliance details.",
+        "value-hsd": "Empowers staff to monitor metadata consistency, identify gaps, and ensure proper indexing on Congress.gov.",
+        "value-ctdc": "Improves public discoverability of congressional proceedings on YouTube, making relevant videos easier to find and access.",
+        "level_of_effort": "2",
+        "impact": "",
+        "notes": "Steps: Identify all events, link to assets (YouTube video)."
+    },
+    {
+        "title": "Statements of Disbursements as Structured Data",
+        "description": "Make historic House Statements of Disbursements (~1980–present) machine-readable by extracting, cleaning, and normalizing PDFs into a consistent, analyzable dataset.",
+        "problem": "The House's Statements of Disbursements are mostly scanned PDFs, which makes analysis and historical trend identification extremely difficult.",
+        "solution": "Digitize and structure historic Statements of Disbursements data (approximately 1980 onward) into machine-readable spreadsheets.\nData Source: Utilize existing scrapers developed by the Sunlight Foundation and ProPublica, supplemented by OCR and data cleaning techniques. Source historical documents from the Boston Public Library and other relevant archives.\nData Structure: Create a consistent schema for the extracted data to allow easy querying and cross-period analysis across years and reporting cycles.",
+        "value-hsd": "Provides readily analyzable historical data for financial oversight, enabling staff to identify spending trends, anomalies, and potential areas of concern.",
+        "value-ctdc": "Enables researchers, watchdog groups, and journalists to conduct data-driven analyses of congressional spending, promoting accountability and transparency.",
+        "level_of_effort": "4",
+        "impact": "",
+        "notes": "ABG: Existing tools = +; finding historical data from the library = - :("
+    },
+    {
+        "title": "Appropriations Data Pipeline & Historical Analysis",
+        "description": "Comprehensive pipeline to track appropriations in real time, extract line-item data, and analyze report language historically across House/Senate stages.",
+        "problem": "Appropriations information (bill text, committee reports, amendments, press releases) is fragmented across sources and often delayed on official platforms like Congress.gov, making historical line-item analysis and language tracking difficult.",
+        "solution": "Develop a comprehensive system encompassing:\nReal-time Appropriations Tracker: A spreadsheet-based system to track the progress of appropriations bills through each stage of the legislative process (subcommittee, full committee, House/Senate floor, conference committee, joint explanatory statements). Include:\n\tBill text versions at each stage.\n\tCommittee report language versions at each stage.\n\tLinks to press releases summarizing committee actions.\n\tDetails of amendments offered and adopted (or rejected) at each stage.\n\tLeverage an existing spreadsheet example as a starting point.\nLine-Item Data Extraction & Visualization: Extract line-item spending data from appropriations committee reports and transform it into structured data tables. Develop visualizations to track spending trends over time and across different accounts.\nReport Language Analysis: Implement a system to:\n\tIdentify changes in bill and report language as measures move through the process.\n\tCompare House and Senate versions to highlight differences.\n\tFlag deadlines and directives to agencies contained within report language.\n\tAdvanced Feature Suggestion: Perform trend analysis on recurring report language across multiple Congresses to show evolving policy and funding priorities.",
+        "value-hsd": "Streamlines appropriations tracking for staff and enables detailed analysis of spending changes, legislative intent in report language, and mandated agency actions; historical tools reveal long-term patterns.",
+        "value-ctdc": "Increases transparency of the appropriations process, helping the public, researchers, and advocacy groups track priorities and hold Congress accountable.",
+        "level_of_effort": "5+",
+        "impact": "",
+        "notes": "Steps: make appropriations database, identify all events, link to assets (bills & bill actions), interpret assets as steps in appropriations process, match to appropriations database, make web UI for live tracking"
+    }
 ]
