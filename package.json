@@ -1,0 +1,16 @@
+{
+  "name": "congressional-tech",
+  "private": true,
+  "version": "0.1.0",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "workspaces": [
+    "app",
+    "1.2-committee-youtube/web"
+  ],
+  "dependencies": {
+    "react": "19.1.0"
+  }
+}

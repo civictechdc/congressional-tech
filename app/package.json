@@ -2,6 +2,11 @@
     "name": "congressional-youtube-dashboard",
     "version": "0.1.0",
     "private": true,
+    "description": "This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).",
+    "license": "ISC",
+    "author": "",
+    "type": "module",
+    "main": "index.js",
     "scripts": {
         "dev": "next dev --turbopack",
         "build": "rm -r ../docs && distDir=../docs prefix=/congressional-tech next build --turbopack && touch ../docs/.nojekyll",
@@ -16,7 +21,8 @@
         "next": "15.5.0",
         "react": "19.1.0",
         "react-dom": "19.1.0",
-        "tailwind-merge": "^3.3.1"
+        "tailwind-merge": "^3.3.1",
+        "youtube-committee-dashboard": "file:../1.2-committee-youtube/web"
     },
     "devDependencies": {
         "@eslint/eslintrc": "^3",
