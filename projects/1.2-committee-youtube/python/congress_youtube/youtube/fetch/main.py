@@ -3,28 +3,9 @@ import csv
 from pathlib import Path
 
 from ...auth import load_youtube_api_key
+from ..tables import get_committee_handles
 from ...globals import add_global_args, DEFAULT_CHANNELS_CSV
 from .youtube_event_fetcher import YoutubeEventFetcher
-
-
-def get_committee_handles(committee_name_or_index: str | int, csv_path: Path) -> str:
-    with open(csv_path, newline="", encoding="utf-8") as csvfile:
-        reader = csv.DictReader(csvfile)
-        if isinstance(committee_name_or_index, str):
-            for row in reader:
-                if row["committee"].lower() == committee_name_or_index.lower():
-                    return [value for value in list(row.values())[1:]]
-            raise ValueError(
-                f"No handle found for committee: {committee_name_or_index}"
-            )
-        elif isinstance(committee_name_or_index, int):
-            rows = list(reader)
-            if 0 <= committee_name_or_index < len(rows):
-                return list(rows[committee_name_or_index].values())[1:]
-            else:
-                raise IndexError(
-                    f"Index out of bounds for committee list {csv_path} (length {len(rows)})."
-                )
 
 
 def main(
