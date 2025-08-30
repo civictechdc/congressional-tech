@@ -21,6 +21,7 @@ DEFAULT_OUTPUT_FILE = (
 
 EVENT_ID_REGEX = ".*(\\d{6}|eventid).*"
 
+## define columns in row of final report
 @dataclass
 class EventIdReport:
     committee_name: str
@@ -36,22 +37,28 @@ def main(output_path:Path=DEFAULT_OUTPUT_FILE) -> None:
         try:
             db = open_tinydb_for_committee(committee[1])
             handles = get_committee_handles(committee[0])
+            ## skip when we're in a row that has fewer handles than the max # (-> empty column)
             for handle in handles:
                 if handle == "":
                     continue
+                ## load the tinydb table
                 all_videos = db.table(f"youtube_videos_{handle}")
-                video = Query()
+                ## metric #1: total number of videos
                 total_videos = len(all_videos)
+                ##query the table to apply regex matching
+                video = Query()
                 has_event_id_count = all_videos.count(
+                    ## look for event ID in both the desription OR the title
                     (video.description.matches(EVENT_ID_REGEX, flags=re.IGNORECASE))
                     | video.title.matches(EVENT_ID_REGEX, flags=re.IGNORECASE)
                 )
+                ## add the row
                 report.append(
                     EventIdReport(
-                        committee[0],
-                        handle,
-                        total_videos,
-                        total_videos - has_event_id_count,
+                        committee[0], ## committee name, repeats for multiple handles
+                        handle, ## this handle
+                        total_videos, ## all videos
+                        total_videos - has_event_id_count, ## bad videos
                     )
                 )
         except ValueError as e:
@@ -70,7 +77,7 @@ def write_to_csv(report: list[EventIdReport], output_path: Path):
         writer.writeheader()
         for row in report:
             writer.writerow(asdict(row))
-
+            
 
 def parse_args_and_run():
     parser = argparse.ArgumentParser(
