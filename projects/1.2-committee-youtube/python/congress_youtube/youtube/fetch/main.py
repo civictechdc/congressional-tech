@@ -3,8 +3,8 @@ import csv
 from pathlib import Path
 
 from ...auth import load_youtube_api_key
-from ..tables import get_committee_handles
 from ...globals import add_global_args, DEFAULT_CHANNELS_CSV
+from ..tables import get_committee_handles
 from .youtube_event_fetcher import YoutubeEventFetcher
 
 
