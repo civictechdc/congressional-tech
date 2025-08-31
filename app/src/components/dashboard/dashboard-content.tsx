@@ -7,11 +7,12 @@ export function DashboardContent({}) {
 
     if (isError || isLoading || !data) return null;
 
-    const subsetData = data.filter((eventIdRow) => eventIdRow.congress_number === 119);
+    const data119 = data.filter((eventIdRow) => eventIdRow.congress_number === 119);
+    const data118 = data.filter((eventIdRow) => eventIdRow.congress_number === 118);
     return (
-        <div className="grid grid-cols-4 gap-4 p-4">
-            <StackedBarChart className="col-span-2" data={subsetData} />
-            <StackedBarChart className="col-span-2" data={subsetData} />
+        <div className="grid w-screen grid-cols-2 gap-4 p-4 md:grid-cols-4">
+            <StackedBarChart className="col-span-2" data={data119} />
+            <StackedBarChart className="col-span-2" data={data118} />
         </div>
     );
 }

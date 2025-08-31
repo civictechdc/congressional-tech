@@ -1,7 +1,8 @@
 "use client";
 
 import { TrendingUp } from "lucide-react";
-import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis } from "recharts";
+import colors from "tailwindcss/colors";
 
 import {
     Card,
@@ -24,23 +25,14 @@ import { cn } from "@/lib/utils";
 
 export const description = "A stacked bar chart with a legend";
 
-const chartData = [
-    { month: "January", desktop: 186, mobile: 80 },
-    { month: "February", desktop: 305, mobile: 200 },
-    { month: "March", desktop: 237, mobile: 120 },
-    { month: "April", desktop: 73, mobile: 190 },
-    { month: "May", desktop: 209, mobile: 130 },
-    { month: "June", desktop: 214, mobile: 140 },
-];
-
 const chartConfig = {
-    desktop: {
-        label: "Desktop",
-        color: "var(--chart-1)",
+    hasEventId: {
+        color: colors.green[600],
+        label: "has",
     },
-    mobile: {
-        label: "Mobile",
-        color: "var(--chart-2)",
+    missingEventId: {
+        color: colors.red[600],
+        label: "missing",
     },
 } satisfies ChartConfig;
 
@@ -53,38 +45,52 @@ export function StackedBarChart({
 }) {
     console.log(data);
     return (
-        <Card className={cn(className, "")}>
+        <Card className={cn(className, "flex")} style={{ height: data.length * 30 }}>
             <CardHeader>
                 <CardTitle>Bar Chart - Stacked + Legend</CardTitle>
                 <CardDescription>January - June 2024</CardDescription>
             </CardHeader>
-            <CardContent>
-                <ChartContainer config={chartConfig}>
-                    <BarChart accessibilityLayer data={data}>
+            <CardContent className="flex-1">
+                <ChartContainer config={chartConfig} className="h-full w-full">
+                    <BarChart accessibilityLayer data={data} layout="vertical" barSize={50}>
                         <CartesianGrid vertical={false} />
-                        <XAxis
+                        <XAxis type="number" />
+                        <YAxis
+                            type="category"
                             dataKey="handle"
                             tickLine={false}
                             tickMargin={10}
                             axisLine={false}
+                            hide
                             //tickFormatter={(value) => value.slice(0, 3)}
                         />
-                        <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-                        <ChartLegend content={<ChartLegendContent />} />
+                        <ChartTooltip content={<ChartTooltipContent hideLabel={false} />} />
+                        <ChartLegend content={<ChartLegendContent />} verticalAlign="top" />
                         <Bar
                             dataKey={(d) => Math.max(1, d.total_videos - d.missing_event_id)}
                             name="Has EventID"
+                            label="Has EventID"
                             stackId="a"
-                            fill="var(--color-mobile)"
-                            radius={[0, 0, 4, 4]}
-                        />
+                            fill="var(--color-hasEventId)"
+                            radius={[4, 0, 0, 4]}
+                        ></Bar>
                         <Bar
                             dataKey="missing_event_id"
                             name="Missing EventID"
+                            label="Missing EventID"
                             stackId="a"
-                            fill="var(--color-desktop)"
-                            radius={[4, 4, 0, 0]}
-                        />
+                            fill="var(--color-missingEventId)"
+                            radius={[0, 4, 4, 0]}
+                        >
+                            <LabelList
+                                dataKey="handle"
+                                position="insideRight"
+                                offset={8}
+                                fill="white"
+                                // keep your working workaround; some versions need stringly props
+                                clip={"false"}
+                            />
+                        </Bar>
                     </BarChart>
                 </ChartContainer>
             </CardContent>
