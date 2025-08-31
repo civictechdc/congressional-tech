@@ -1,74 +1,66 @@
-from pathlib import Path
-import os
 import csv
+import logging
+import os
+
+from pathlib import Path
 from tinydb import TinyDB
-from tinydb.table import Table
 
-from ..globals import DEFAULT_CHANNELS_CSV
+from ..globals import DEFAULT_CHANNELS_CSV, DEFAULT_TINYDB_DIR
 
 
-def get_committee_handles(
-    committee_name_or_index: str | int, csv_path: Path = DEFAULT_CHANNELS_CSV
-) -> str:
+def get_all_committee_handless(
+    csv_path: Path = DEFAULT_CHANNELS_CSV,
+) -> list[list[str]]:
     with open(csv_path, newline="", encoding="utf-8") as csvfile:
         reader = csv.DictReader(csvfile)
-        if isinstance(committee_name_or_index, str):
-            for row in reader:
-                if row["committee"].lower() == committee_name_or_index.lower():
-                    return [value for value in list(row.values())[1:]]
-            raise ValueError(
-                f"No handle found for committee: {committee_name_or_index}"
-            )
-        elif isinstance(committee_name_or_index, int):
-            rows = list(reader)
-            if 0 <= committee_name_or_index < len(rows):
-                return list(rows[committee_name_or_index].values())[1:]
-            else:
-                raise IndexError(
-                    f"Index out of bounds for committee list {csv_path} (length {len(rows)})."
-                )
+        rows = list(reader)
+        ## return all the handles for all the committees, ignore the committee name
+        return [list(rows[this_index].values())[1:] for this_index in range(len(rows))]
 
 
-def open_tinydb_for_committee(
-    committee_name_or_index: str | int, csv_path: Path = DEFAULT_CHANNELS_CSV
-) -> TinyDB:
-    if isinstance(committee_name_or_index, int):
-        path = (
-            Path(__file__).resolve().parent.parent.parent.parent
-            / "data"
-            / "youtube{index}.json".format(index=committee_name_or_index)
-        )
-        if os.path.exists(path=path):
-            return TinyDB(path)
-        else:
-            raise ValueError(f"No tinydb file at index {committee_name_or_index}")
-    elif isinstance(committee_name_or_index, str):
-        with open(csv_path, newline="", encoding="utf-8") as csvfile:
-            reader = csv.DictReader(csvfile)
-            for index, row in enumerate(reader):
-                if row["committee"].lower() == committee_name_or_index.lower():
-                    path = (
-                        Path(__file__).resolve().parent.parent.parent.parent
-                        / "data"
-                        / "youtube{index}.json".format(index=index)
-                    )
-                    if os.path.exists(path=path):
-                        return TinyDB(path)
-                    else:
-                        raise ValueError(
-                            f"No tinydb file for committee {committee_name_or_index}"
-                        )
+def get_committee_index(
+    committee_name: str, csv_path: Path = DEFAULT_CHANNELS_CSV
+) -> int:
+    committee_names = get_all_commitee_names(with_index=True)
+    for this_committee_name in committee_names:
+        if this_committee_name[0] == committee_name:
+            return this_committee_name[1]
+    raise IndexError(f"No committee name matched {committee_name} in {csv_path}")
 
 
 def get_all_commitee_names(
-    csv_path: Path = DEFAULT_CHANNELS_CSV, with_index: bool = False
+    with_index: bool = False, csv_path: Path = DEFAULT_CHANNELS_CSV
 ) -> list[str] | list[(str, int)]:
     with open(csv_path, newline="", encoding="utf-8") as csvfile:
         reader = csv.DictReader(csvfile)
-        committe_names = []
-        for index, row in enumerate(reader):
-            if with_index:
-                committe_names.append((row["committee"], index))
-            else:
-                committe_names.append(row["committee"])
-        return committe_names
+        rows = list(reader)
+        if not with_index:
+            ## return the entry in the first column alone
+            return [list(this_row.values())[0] for this_row in rows]
+        else:
+            ## return the entry in the first column along with its index
+            return [(list(this_row.values())[0], i) for i, this_row in enumerate(rows)]
+
+
+def open_tinydb_for_committee(
+    committee_name_or_index: str | int,
+    csv_path: Path = DEFAULT_CHANNELS_CSV,
+    tinydb_dir: Path = DEFAULT_TINYDB_DIR,
+    assert_exists: bool = False,
+) -> TinyDB:
+    ## convert the name to an index
+    if isinstance(committee_name_or_index, str):
+        committee_name_or_index = get_committee_index(committee_name_or_index, csv_path)
+
+    ## format the path
+    path = tinydb_dir / "youtube_{index:02d}.json".format(index=committee_name_or_index)
+
+    ## check for existence, when analyzing we want to break on
+    ##  non-existent DBs, when fetching we want to create them
+    if os.path.exists(path=path):
+        logging.info(f"Using existing tinydb at {path}")
+    elif assert_exists:
+        raise ValueError(
+            f"No existing tinydb file for index {committee_name_or_index} at {path}"
+        )
+    return TinyDB(path)
