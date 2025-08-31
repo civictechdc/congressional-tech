@@ -39,7 +39,7 @@ def main(
         ## specify the tinydb for this committee
         ## create a fetcher for this committee
         fetcher = YoutubeEventFetcher(
-            api_key=api_key,
+            youtube_api_key=api_key,
             committee_index=committee_index,
             csv_path=channels_csv_path,
             tinydb_dir=tinydb_dir,
@@ -47,7 +47,7 @@ def main(
 
         handles = all_committee_handless[committee_index]
         for handle in handles:
-            logging.log("Working on:", handle)
+            logging.info(f"Working on: {handle}")
             if len(handle) > 0:
                 ## save channel metadata to the fetcher & the DB
                 fetcher.get_channel(handle)
@@ -68,7 +68,7 @@ def parse_args_and_run():
     add_youtube_args(parser)
 
     # Create a mutually exclusive group
-    group = parser.add_mutually_exclusive_group(required=True)
+    group = parser.add_mutually_exclusive_group()
     group.add_argument(
         "-n",
         "--committee-name",  ## dashes are automatically converted to underscores

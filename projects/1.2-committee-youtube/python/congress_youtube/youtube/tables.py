@@ -36,10 +36,10 @@ def get_all_commitee_names(
         rows = list(reader)
         if not with_index:
             ## return the entry in the first column alone
-            return [list(this_row).values()[0] for this_row in rows]
+            return [list(this_row.values())[0] for this_row in rows]
         else:
             ## return the entry in the first column along with its index
-            return [(list(this_row).values()[0], i) for i, this_row in enumerate(rows)]
+            return [(list(this_row.values())[0], i) for i, this_row in enumerate(rows)]
 
 
 def open_tinydb_for_committee(
@@ -58,7 +58,7 @@ def open_tinydb_for_committee(
     ## check for existence, when analyzing we want to break on
     ##  non-existent DBs, when fetching we want to create them
     if os.path.exists(path=path):
-        logging.log(f"Using existing tinydb at {path}")
+        logging.info(f"Using existing tinydb at {path}")
     elif assert_exists:
         raise ValueError(
             f"No existing tinydb file for index {committee_name_or_index} at {path}"

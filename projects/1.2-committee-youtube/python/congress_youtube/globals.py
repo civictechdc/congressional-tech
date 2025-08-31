@@ -1,5 +1,15 @@
+import logging
+import sys
+
 from pathlib import Path
 from argparse import ArgumentParser
+
+## setup the logging config
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(levelname)s %(asctime)s : [%(name)s.%(funcName)s] %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
+)
 
 DEFAULT_TINYDB_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 DEFAULT_CHANNELS_CSV = (

@@ -190,7 +190,7 @@ class YoutubeEventFetcher:
             )
             fetches += 1
             total_results = playlistItemsResponse["pageInfo"]["totalResults"]
-            logging.log(f"Fetch {fetches} of {int(total_results // 50 + 1)}.")
+            logging.info(f"Fetch {fetches} of {int(total_results // 50 + 1)}.")
 
             break_flag, this_added = insert_videos_into_tb(
                 playlistItemsResponse["items"], videos_tb
@@ -208,7 +208,7 @@ class YoutubeEventFetcher:
             ## exit the loop, we're done!
             if break_flag:
                 break
-        logging.log(f"All done! Fetched {fetches * 50} videos, added {added}.")
+        logging.info(f"All done! Fetched {fetches * 50} videos, added {added}.")
 
 
 def parse_channel_details(channel_details: dict) -> dict:
@@ -234,7 +234,7 @@ def insert_videos_into_tb(items: list[dict], videos_tb: Table) -> bool:
         search_results = videos_tb.search(where("videoId") == doc["videoId"])
         ## break if we've already processed up until this point
         if len(search_results) > 0:
-            logging.log(f"{doc['videoId']} already exists in {videos_tb}.")
+            logging.info(f"{doc['videoId']} already exists in {videos_tb}.")
             break_flag = True
             break
         videos_tb.insert(doc)
