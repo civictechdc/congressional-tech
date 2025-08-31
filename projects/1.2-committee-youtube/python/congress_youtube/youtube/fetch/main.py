@@ -1,33 +1,59 @@
 import argparse
-import csv
+import logging
+
 from pathlib import Path
 
 from ...auth import load_youtube_api_key
 from ...globals import add_global_args, DEFAULT_CHANNELS_CSV
-from ..tables import get_committee_handles
+from ..tables import (
+    get_all_committee_handless,
+    get_all_commitee_names,
+    get_committee_index,
+)
 from .youtube_event_fetcher import YoutubeEventFetcher
 
 
 def main(
-    tinydb_path: str, committee_name: str, committee_index: int, channels_csv_path: str
+    tinydb_dir: Path, committee_name: str, committee_index: int, channels_csv_path: str
 ) -> None:
     api_key = load_youtube_api_key()
-    fetcher = YoutubeEventFetcher(api_key, tinydb_path)
 
-    ## read the mapping from the committee name -> youtube handle (thanks Ezra!)
-    handles = get_committee_handles(
-        committee_name if committee_index is None else committee_index,
-        channels_csv_path,
+    ## read the names of each committee from the CSV file, include their row
+    ##  indices so we can name their json files programmatically
+    committee_names = get_all_commitee_names(
+        with_index=True, csv_path=channels_csv_path
     )
 
-    for handle in handles:
-        print("Working on:", handle)
-        if len(handle) > 0:
-            ## save channel metadata to the fetcher & the DB
-            fetcher.get_channel(handle)
-            ## read the "uploaded" playlist from the previously fetched metadata
-            ##  and then store details about each video to the DB
-            fetcher.get_all_channel_videos(handle)
+    ## read all the handles for all the committees
+    all_committee_handless = get_all_committee_handless()
+
+    ## if we were passed a selection, determine both the committee name and index
+    if committee_name is not None:
+        committee_index = get_committee_index(channels_csv_path, committee_name)
+        committee_names = [(committee_names[committee_index][0], committee_index)]
+    elif committee_index is not None:
+        committee_names = [(committee_names[committee_index][0], committee_index)]
+
+    ## loop through the selected committees (defaults to all of them)
+    for committee_name, committee_index in committee_names:
+        ## specify the tinydb for this committee
+        ## create a fetcher for this committee
+        fetcher = YoutubeEventFetcher(
+            api_key=api_key,
+            committee_index=committee_index,
+            csv_path=channels_csv_path,
+            tinydb_dir=tinydb_dir,
+        )
+
+        handles = all_committee_handless[committee_index]
+        for handle in handles:
+            logging.log("Working on:", handle)
+            if len(handle) > 0:
+                ## save channel metadata to the fetcher & the DB
+                fetcher.get_channel(handle)
+                ## read the "uploaded" playlist from the previously fetched metadata
+                ##  and then store details about each video to the DB
+                fetcher.get_all_channel_videos(handle)
 
 
 def parse_args_and_run():

@@ -1,11 +1,12 @@
 import logging
-from typing import List
-from tinydb import TinyDB, where
-from tinydb.table import Table
+
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from pathlib import Path
+from tinydb import where
+from tinydb.table import Table
 
-from ...globals import DEFAULT_TINYDB_PATH
+from ..tables import open_tinydb_for_committee
 
 
 class YoutubeEventFetcher:
@@ -27,7 +28,13 @@ class YoutubeEventFetcher:
     channels_tb: Table = None
     force = False
 
-    def __init__(self, youtube_api_key: str, tinydb_path: str = DEFAULT_TINYDB_PATH):
+    def __init__(
+        self,
+        youtube_api_key: str,
+        committee_index: int,
+        csv_path: Path,
+        tinydb_dir: Path,
+    ):
         """
         Initialize the YouTube API client with the provided API key.
 
@@ -38,10 +45,14 @@ class YoutubeEventFetcher:
             self.API_SERVICE_NAME, self.API_VERSION, developerKey=youtube_api_key
         )
 
-        self.tinydb_path = tinydb_path
+        self.tinydb = open_tinydb_for_committee(
+            committee_name_or_index=committee_index,
+            csv_path=csv_path,
+            tinydb_dir=tinydb_dir,
+        )
 
         self.videos_tbs = {}
-        self.channels_tb = TinyDB(self.tinydb_path).table("youtube_channels")
+        self.channels_tb = self.tinydb.table("youtube_channels")
 
     def get_channel(self, channel_handle: str) -> dict | None:
         """
@@ -151,7 +162,7 @@ class YoutubeEventFetcher:
         ]
 
         ## create a videos table for this channel
-        videos_tb = TinyDB(self.tinydb_path).table(f"youtube_videos_{channel_handle}")
+        videos_tb = self.tinydb.table(f"youtube_videos_{channel_handle}")
 
         ## clear the table if we want to force download
         if self.force:
@@ -179,7 +190,7 @@ class YoutubeEventFetcher:
             )
             fetches += 1
             total_results = playlistItemsResponse["pageInfo"]["totalResults"]
-            print(f"Fetch {fetches} of {int(total_results // 50 + 1)}.")
+            logging.log(f"Fetch {fetches} of {int(total_results // 50 + 1)}.")
 
             break_flag, this_added = insert_videos_into_tb(
                 playlistItemsResponse["items"], videos_tb
@@ -197,7 +208,7 @@ class YoutubeEventFetcher:
             ## exit the loop, we're done!
             if break_flag:
                 break
-        print(f"All done! Fetched {fetches * 50} videos, added {added}.")
+        logging.log(f"All done! Fetched {fetches * 50} videos, added {added}.")
 
 
 def parse_channel_details(channel_details: dict) -> dict:
@@ -213,7 +224,7 @@ def parse_channel_details(channel_details: dict) -> dict:
     return channel_data
 
 
-def insert_videos_into_tb(items: List[dict], videos_tb: Table) -> bool:
+def insert_videos_into_tb(items: list[dict], videos_tb: Table) -> bool:
     break_flag = False
     added = 0
 
@@ -223,7 +234,7 @@ def insert_videos_into_tb(items: List[dict], videos_tb: Table) -> bool:
         search_results = videos_tb.search(where("videoId") == doc["videoId"])
         ## break if we've already processed up until this point
         if len(search_results) > 0:
-            print(f"{doc['videoId']} already exists in {videos_tb}.")
+            logging.log(f"{doc['videoId']} already exists in {videos_tb}.")
             break_flag = True
             break
         videos_tb.insert(doc)
