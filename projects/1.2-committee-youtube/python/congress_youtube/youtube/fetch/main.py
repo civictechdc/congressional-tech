@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 
 from ...auth import load_youtube_api_key
-from ...globals import add_global_args, DEFAULT_CHANNELS_CSV
+from ...globals import add_global_args, add_youtube_args
 from ..tables import (
     get_all_committee_handless,
     get_all_commitee_names,
@@ -64,26 +64,22 @@ def parse_args_and_run():
     ## add shared args to the parser
     add_global_args(parser)
 
-    parser.add_argument(
-        "--channels_csv_path",
-        type=str,
-        default=DEFAULT_CHANNELS_CSV,
-        help="Path to the CSV file mapping committee names to their YouTube handles",
-    )
+    ## add youtube specific args
+    add_youtube_args(parser)
 
     # Create a mutually exclusive group
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
         "-n",
-        "--committee_name",
+        "--committee-name",  ## dashes are automatically converted to underscores
         type=str,
         help="Name of the committee to match against in the CSV file",
     )
     group.add_argument(
         "-i",
-        "--committee_index",
+        "--committee-index",  ## dashes are automatically converted to underscores
         type=int,
-        choices=range(13),
+        choices=range(len(get_all_commitee_names())),
         help="Index of the committee in the CSV file",
     )
 
