@@ -36,19 +36,27 @@ const chartConfig = {
     },
 } satisfies ChartConfig;
 
+type ChartMetadata = {
+    title: string;
+    subtitle: string;
+    footer: string;
+};
+
 export function StackedBarChart({
     data,
-    className,
+    chartMeta = {} as ChartMetadata,
+    className = "",
 }: {
     data: YoutubeEventIdRow[];
+    chartMeta: ChartMetadata;
     className: string;
 }) {
     console.log(data);
     return (
         <Card className={cn(className, "flex")} style={{ height: data.length * 30 }}>
             <CardHeader>
-                <CardTitle>Bar Chart - Stacked + Legend</CardTitle>
-                <CardDescription>January - June 2024</CardDescription>
+                <CardTitle>{chartMeta.title}</CardTitle>
+                <CardDescription>{chartMeta.subtitle}</CardDescription>
             </CardHeader>
             <CardContent className="flex-1">
                 <ChartContainer config={chartConfig} className="h-full w-full">
@@ -95,12 +103,7 @@ export function StackedBarChart({
                 </ChartContainer>
             </CardContent>
             <CardFooter className="flex-col items-start gap-2 text-sm">
-                <div className="flex gap-2 leading-none font-medium">
-                    Trending up by 5.2% this month <TrendingUp className="h-4 w-4" />
-                </div>
-                <div className="text-muted-foreground leading-none">
-                    Showing total visitors for the last 6 months
-                </div>
+                {chartMeta.footer}
             </CardFooter>
         </Card>
     );
