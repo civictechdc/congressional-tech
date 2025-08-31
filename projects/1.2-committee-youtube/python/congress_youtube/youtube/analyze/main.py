@@ -8,11 +8,9 @@ import re
 
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from tinydb import Query
-from tinydb.table import Table
+from tinydb import Query, TinyDB
 
 from ...globals import add_global_args, add_youtube_args, CONGRESS_METADATA
-
 
 from ..tables import (
     get_all_commitee_names,
@@ -26,6 +24,9 @@ from ...globals import (
 )
 
 EVENT_ID_REGEX = ".*(\\d{6}|eventid).*"
+
+
+_TINYDB: TinyDB = None
 
 
 ## define columns in row of final report
@@ -64,7 +65,8 @@ def main(
                 tinydb_dir=tinydb_dir,
                 assert_exists=True,
             )
-            db = open_tinydb_for_committee(**tinydb_args)
+            global _TINYDB
+            _TINYDB = open_tinydb_for_committee(**tinydb_args)
             handles = committee_handless[committee_name[1]]
             ## TODO: this needs to be automatically set by handle once we add senate handles
             ##  to the CSV
@@ -74,12 +76,11 @@ def main(
                 if handle == "":
                     continue
                 ## load the tinydb table
-                tinydb_table_args = (f"youtube_videos_{handle}",)
-                all_videos = db.table(*tinydb_table_args)
+                all_videos = _TINYDB.table(f"youtube_videos_{handle}")
                 ## keep track of # of videos for validation at the end
                 total_count = len(all_videos)
                 running_count = 0
-                shared_argss = zip(
+                argss = zip(
                     itertools.repeat(committee_name[0]),
                     itertools.repeat(handle),
                     CONGRESS_METADATA.keys(),
@@ -89,22 +90,15 @@ def main(
                 ## loop through each congress to split metrics by congress #
                 if nthreads > 1:
                     ## have to open tinydb separately in each process
-                    argss = zip(
-                        itertools.repeat(tinydb_args),
-                        itertools.repeat(tinydb_table_args),
-                        *shared_argss,
-                    )
                     ## in parallel...
-                    with multiprocessing.Pool(nthreads) as pool:
+                    with multiprocessing.Pool(
+                        nthreads, initializer=set_global_tinydb, initargs=[tinydb_args]
+                    ) as pool:
                         reports = pool.starmap(
-                            generate_report_for_congress_number_wrapper, argss
+                            generate_report_for_congress_number, argss
                         )
                 else:
                     ## can share the existing tinydb in single process
-                    argss = zip(
-                        itertools.repeat(all_videos),
-                        *shared_argss,
-                    )
                     ## in series...
                     reports = [
                         generate_report_for_congress_number(*args) for args in argss
@@ -124,23 +118,12 @@ def main(
     write_to_csv(reports, output_path)
 
 
-def generate_report_for_congress_number_wrapper(
-    tinydb_args: dict[str, any],
-    tinydb_table_args: tuple,
-    committee_name: str,
-    handle: str,
-    congress_number: int,
-    meta: dict[str, any],
-    chamber: str,
-):
-    all_videos = open_tinydb_for_committee(**tinydb_args).table(*tinydb_table_args)
-    return generate_report_for_congress_number(
-        all_videos, committee_name, handle, congress_number, meta, chamber
-    )
+def set_global_tinydb(tinydb_args: dict[str, any]):
+    global _TINYDB
+    _TINYDB = open_tinydb_for_committee(**tinydb_args)
 
 
 def generate_report_for_congress_number(
-    all_videos: Table,
     committee_name: str,
     handle: str,
     congress_number: int,
@@ -155,6 +138,7 @@ def generate_report_for_congress_number(
     ## videos have:
     ##  "publishedAt": "2025-07-23T23:26:16Z",
 
+    all_videos = _TINYDB.table(f"youtube_videos_{handle}")
     ## First filter videos by date range
     video = Query()
     videos_in_date_range = all_videos.search(
