@@ -67,16 +67,16 @@ def main(
                     (video.description.matches(EVENT_ID_REGEX, flags=re.IGNORECASE))
                     | video.title.matches(EVENT_ID_REGEX, flags=re.IGNORECASE)
                 )
-                ## add the row
-                report.append(
-                    EventIdReport(
-                        ## committee name, repeats for multiple handles
-                        committee_name[0],
-                        handle,  ## this handle
-                        total_videos,  ## all videos
-                        total_videos - has_event_id_count,  ## bad videos
-                    )
+                row = EventIdReport(
+                    ## committee name, repeats for multiple handles
+                    committee_name[0],
+                    handle,  ## this handle
+                    total_videos,  ## all videos
+                    total_videos - has_event_id_count,  ## bad videos
                 )
+                logging.info(f"Reporting {row}")
+                ## add the row
+                report.append(row)
         except ValueError as e:
             logging.error(e)
 
