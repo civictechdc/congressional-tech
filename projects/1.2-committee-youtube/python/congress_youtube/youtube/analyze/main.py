@@ -4,7 +4,7 @@ import csv
 from tinydb import Query
 import logging
 from dataclasses import asdict, dataclass
-from ...globals import add_global_args, add_youtube_args
+from ...globals import add_global_args, add_youtube_args, CONGRESS_METADATA
 
 import argparse
 
@@ -29,6 +29,9 @@ class EventIdReport:
     handle: str
     total_videos: int
     missing_event_id: int
+    congress_number: int
+    control: str
+    chamber: str = "house"
 
 
 def main(
@@ -52,31 +55,66 @@ def main(
                 assert_exists=True,
             )
             handles = committee_handless[committee_name[1]]
+            ## TODO: this needs to be automatically set by handle once we add senate handles
+            ##  to the CSV
+            chamber = "house"
             ## skip when we're in a row that has fewer handles than the max # (-> empty column)
             for handle in handles:
                 if handle == "":
                     continue
                 ## load the tinydb table
                 all_videos = db.table(f"youtube_videos_{handle}")
-                ## metric #1: total number of videos
-                total_videos = len(all_videos)
-                ##query the table to apply regex matching
-                video = Query()
-                has_event_id_count = all_videos.count(
-                    ## look for event ID in both the desription OR the title
-                    (video.description.matches(EVENT_ID_REGEX, flags=re.IGNORECASE))
-                    | video.title.matches(EVENT_ID_REGEX, flags=re.IGNORECASE)
-                )
-                row = EventIdReport(
-                    ## committee name, repeats for multiple handles
-                    committee_name[0],
-                    handle,  ## this handle
-                    total_videos,  ## all videos
-                    total_videos - has_event_id_count,  ## bad videos
-                )
-                logging.info(f"Reporting {row}")
-                ## add the row
-                report.append(row)
+                ## keep track of # of videos for validation at the end
+                total_count = len(all_videos)
+                running_count = 0
+                ## loop through each congress to split metrics by congress #
+                for congress_number, meta in CONGRESS_METADATA.items():
+                    start_date = meta["start"]
+                    end_date = meta["end"]
+
+                    ## videos have:
+                    ##  "publishedAt": "2025-07-23T23:26:16Z",
+
+                    ## First filter videos by date range
+                    video = Query()
+                    videos_in_date_range = all_videos.search(
+                        (video.publishedAt >= start_date)
+                        & (video.publishedAt <= end_date)
+                    )
+
+                    ## metric #1: total number of videos
+                    congress_count = len(videos_in_date_range)
+
+                    ## keep track of count for validation
+                    running_count += congress_count
+
+                    ## apply the RE to filter videos & count
+                    has_event_id_count = sum(
+                        1
+                        for video in videos_in_date_range
+                        if re.search(
+                            EVENT_ID_REGEX, video["description"], re.IGNORECASE
+                        )
+                        or re.search(EVENT_ID_REGEX, video["title"], re.IGNORECASE)
+                    )
+
+                    row = EventIdReport(
+                        ## committee name, repeats for multiple handles
+                        committee_name[0],
+                        handle,  ## this handle
+                        congress_count,  ## all videos in this congress #
+                        congress_count - has_event_id_count,  ## bad videos
+                        congress_number,
+                        meta[chamber],  ## party in control of this chamber
+                        chamber,
+                    )
+                    logging.info(f"Reporting {row}")
+                    ## add the row
+                    report.append(row)
+                if total_count != running_count:
+                    raise ValueError(
+                        f"{total_count - running_count} videos are outside the applied date ranges and were excluded from reporting."
+                    )
         except ValueError as e:
             logging.error(e)
 

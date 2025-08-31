@@ -43,11 +43,11 @@ def add_youtube_args(parser: ArgumentParser) -> None:
 
 
 CONGRESS_METADATA = {
-    "106": {
-        "congress_began": "1999-01-03",
-        "congress_ended": "2001-01-03",
-        "senate_control": "Republican",
-        "house_control": "Republican",
+    106: {
+        "start": "1999-01-03",
+        "end": "2001-01-03",
+        "senate": "Republican",
+        "house": "Republican",
         "sessions": [
             {
                 "name": "1st session",
@@ -61,31 +61,31 @@ CONGRESS_METADATA = {
             },
         ],
     },
-    "107": {
-        "congress_began": "2001-01-03",
-        "congress_ended": "2003-01-03",
-        "senate_control": "Democratic / Republican / Democratic",
-        "house_control": "Republican",
+    107: {
+        "start": "2001-01-03",
+        "end": "2003-01-03",
+        "senate": "Democratic / Republican / Democratic",
+        "house": "Republican",
         "sessions": [
             {
                 "name": "1st session",
                 "start": "2001-01-03",
                 "end": "2001-12-20",
-                "senate_control": "Democratic / Republican",
+                "senate": "Democratic / Republican",
             },
             {
                 "name": "2nd session",
                 "start": "2002-01-23",
                 "end": "2002-11-22",
-                "senate_control": "Republican",
+                "senate": "Republican",
             },
         ],
     },
-    "108": {
-        "congress_began": "2003-01-03",
-        "congress_ended": "2005-01-03",
-        "senate_control": "Republican",
-        "house_control": "Republican",
+    108: {
+        "start": "2003-01-03",
+        "end": "2005-01-03",
+        "senate": "Republican",
+        "house": "Republican",
         "sessions": [
             {
                 "name": "1st session",
@@ -99,11 +99,11 @@ CONGRESS_METADATA = {
             },
         ],
     },
-    "109": {
-        "congress_began": "2005-01-03",
-        "congress_ended": "2007-01-03",
-        "senate_control": "Republican",
-        "house_control": "Republican",
+    109: {
+        "start": "2005-01-03",
+        "end": "2007-01-03",
+        "senate": "Republican",
+        "house": "Republican",
         "sessions": [
             {
                 "name": "1st session",
@@ -117,11 +117,11 @@ CONGRESS_METADATA = {
             },
         ],
     },
-    "110": {
-        "congress_began": "2007-01-03",
-        "congress_ended": "2009-01-03",
-        "senate_control": "Democratic",
-        "house_control": "Democratic",
+    110: {
+        "start": "2007-01-03",
+        "end": "2009-01-03",
+        "senate": "Democratic",
+        "house": "Democratic",
         "sessions": [
             {
                 "name": "1st session",
@@ -135,11 +135,11 @@ CONGRESS_METADATA = {
             },
         ],
     },
-    "111": {
-        "congress_began": "2009-01-03",
-        "congress_ended": "2011-01-03",
-        "senate_control": "Democratic",
-        "house_control": "Democratic",
+    111: {
+        "start": "2009-01-03",
+        "end": "2011-01-03",
+        "senate": "Democratic",
+        "house": "Democratic",
         "sessions": [
             {
                 "name": "1st session",
@@ -153,11 +153,11 @@ CONGRESS_METADATA = {
             },
         ],
     },
-    "112": {
-        "congress_began": "2011-01-03",
-        "congress_ended": "2013-01-03",
-        "senate_control": "Democratic",
-        "house_control": "Republican",
+    112: {
+        "start": "2011-01-03",
+        "end": "2013-01-03",
+        "senate": "Democratic",
+        "house": "Republican",
         "sessions": [
             {
                 "name": "1st session",
@@ -171,11 +171,11 @@ CONGRESS_METADATA = {
             },
         ],
     },
-    "113": {
-        "congress_began": "2013-01-03",
-        "congress_ended": "2015-01-03",
-        "senate_control": "Democratic",
-        "house_control": "Republican",
+    113: {
+        "start": "2013-01-03",
+        "end": "2015-01-03",
+        "senate": "Democratic",
+        "house": "Republican",
         "sessions": [
             {
                 "name": "1st session",
@@ -189,11 +189,11 @@ CONGRESS_METADATA = {
             },
         ],
     },
-    "114": {
-        "congress_began": "2015-01-03",
-        "congress_ended": "2017-01-03",
-        "senate_control": "Republican",
-        "house_control": "Republican",
+    114: {
+        "start": "2015-01-03",
+        "end": "2017-01-03",
+        "senate": "Republican",
+        "house": "Republican",
         "sessions": [
             {
                 "name": "1st session",
@@ -207,11 +207,11 @@ CONGRESS_METADATA = {
             },
         ],
     },
-    "115": {
-        "congress_began": "2017-01-03",
-        "congress_ended": "2019-01-03",
-        "senate_control": "Republican",
-        "house_control": "Republican",
+    115: {
+        "start": "2017-01-03",
+        "end": "2019-01-03",
+        "senate": "Republican",
+        "house": "Republican",
         "sessions": [
             {
                 "name": "1st session",
@@ -225,11 +225,11 @@ CONGRESS_METADATA = {
             },
         ],
     },
-    "116": {
-        "congress_began": "2019-01-03",
-        "congress_ended": "2021-01-03",
-        "senate_control": "Republican",
-        "house_control": "Democratic",
+    116: {
+        "start": "2019-01-03",
+        "end": "2021-01-03",
+        "senate": "Republican",
+        "house": "Democratic",
         "sessions": [
             {
                 "name": "1st session",
@@ -243,11 +243,11 @@ CONGRESS_METADATA = {
             },
         ],
     },
-    "117": {
-        "congress_began": "2021-01-03",
-        "congress_ended": "2023-01-03",
-        "senate_control": "Democratic",
-        "house_control": "Democratic",
+    117: {
+        "start": "2021-01-03",
+        "end": "2023-01-03",
+        "senate": "Democratic",
+        "house": "Democratic",
         "sessions": [
             {
                 "name": "1st session",
@@ -261,11 +261,11 @@ CONGRESS_METADATA = {
             },
         ],
     },
-    "118": {
-        "congress_began": "2023-01-03",
-        "congress_ended": "2025-01-03",
-        "senate_control": "Democratic",
-        "house_control": "Republican",
+    118: {
+        "start": "2023-01-03",
+        "end": "2025-01-03",
+        "senate": "Democratic",
+        "house": "Republican",
         "sessions": [
             {
                 "name": "1st session",
@@ -279,11 +279,11 @@ CONGRESS_METADATA = {
             },
         ],
     },
-    "119": {
-        "congress_began": "2025-01-03",
-        "congress_ended": "2027-01-03",
-        "senate_control": "Republican",
-        "house_control": "Republican",
+    119: {
+        "start": "2025-01-03",
+        "end": "2027-01-03",
+        "senate": "Republican",
+        "house": "Republican",
         "sessions": [{"name": "1st session", "start": "2025-01-03", "end": "present"}],
     },
 }
