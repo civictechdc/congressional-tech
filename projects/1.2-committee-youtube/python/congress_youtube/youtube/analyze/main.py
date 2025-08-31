@@ -5,6 +5,7 @@ import itertools
 import logging
 import multiprocessing
 import re
+import time
 
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -47,6 +48,7 @@ def main(
     channels_csv_path: Path = DEFAULT_CHANNELS_CSV,
     nthreads=None,
 ) -> None:
+    init_time = time.time()
     if nthreads is None:
         nthreads = multiprocessing.cpu_count()
 
@@ -55,6 +57,7 @@ def main(
         with_index=True, csv_path=channels_csv_path
     )
 
+    final_reports = []
     ## load all the corresponding handles
     committee_handless = get_all_committee_handless(channels_csv_path)
     for committee_name in committee_names:
@@ -111,11 +114,12 @@ def main(
                     raise ValueError(
                         f"{total_count - running_count} videos are outside the applied date ranges and were excluded from reporting."
                     )
-
+            final_reports.extend(reports)
         except ValueError as e:
             logging.error(e)
 
-    write_to_csv(reports, output_path)
+    write_to_csv(final_reports, output_path)
+    logging.info(f"{time.time() - init_time} s elapsed")
 
 
 def set_global_tinydb(tinydb_args: dict[str, any]):
