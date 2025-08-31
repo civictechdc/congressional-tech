@@ -49,6 +49,8 @@ def main(
     nthreads=None,
 ) -> None:
     init_time = time.time()
+    final_reports = []
+
     if nthreads is None:
         nthreads = multiprocessing.cpu_count()
 
@@ -57,32 +59,41 @@ def main(
         with_index=True, csv_path=channels_csv_path
     )
 
-    final_reports = []
     ## load all the corresponding handles
     committee_handless = get_all_committee_handless(channels_csv_path)
     for committee_name in committee_names:
         try:
+            ## define args required for opening the correct tinydb
             tinydb_args = dict(
                 committee_name_or_index=committee_name[1],
                 csv_path=channels_csv_path,
                 tinydb_dir=tinydb_dir,
                 assert_exists=True,
             )
+            ## set the global _TINYDB for this process
             global _TINYDB
             _TINYDB = open_tinydb_for_committee(**tinydb_args)
-            handles = committee_handless[committee_name[1]]
+
             ## TODO: this needs to be automatically set by handle once we add senate handles
             ##  to the CSV
             chamber = "house"
-            ## skip when we're in a row that has fewer handles than the max # (-> empty column)
+
+            handles = committee_handless[committee_name[1]]
             for handle in handles:
                 if handle == "":
+                    ## skip when we're in a row that has fewer
+                    ##  handles than the max # (-> empty column)
                     continue
+
                 ## load the tinydb table
                 all_videos = _TINYDB.table(f"youtube_videos_{handle}")
+
                 ## keep track of # of videos for validation at the end
                 total_count = len(all_videos)
                 running_count = 0
+
+                ## loop through each congress to split metrics by congress #
+                ##  define the args for generating each row of the report
                 argss = zip(
                     itertools.repeat(committee_name[0]),
                     itertools.repeat(handle),
@@ -90,10 +101,10 @@ def main(
                     CONGRESS_METADATA.values(),
                     itertools.repeat(chamber),
                 )
-                ## loop through each congress to split metrics by congress #
+
                 if nthreads > 1:
-                    ## have to open tinydb separately in each process
                     ## in parallel...
+                    ## have to open tinydb separately in each process
                     with multiprocessing.Pool(
                         nthreads, initializer=set_global_tinydb, initargs=[tinydb_args]
                     ) as pool:
@@ -101,8 +112,8 @@ def main(
                             generate_report_for_congress_number, argss
                         )
                 else:
-                    ## can share the existing tinydb in single process
                     ## in series...
+                    ## can share the existing tinydb in single process
                     reports = [
                         generate_report_for_congress_number(*args) for args in argss
                     ]
@@ -110,9 +121,11 @@ def main(
                 ## concatenate the rows
                 running_count = sum([report.total_videos for report in reports])
 
+                ## validate that we didn't accidentally exclude any videos
                 if total_count != running_count:
                     raise ValueError(
-                        f"{total_count - running_count} videos are outside the applied date ranges and were excluded from reporting."
+                        f"{total_count - running_count} videos are outside"
+                        " the applied date ranges and were excluded from reporting."
                     )
             final_reports.extend(reports)
         except ValueError as e:
@@ -208,7 +221,8 @@ def parse_args_and_run():
         "--nthreads",
         type=lambda x: None if x.lower() == "none" else int(x),
         default=None,
-        help="Number of threads to use (default: all available threads). Should be an integer or 'None'.",
+        help="Number of threads to use (default: all available threads)."
+        " Should be an integer or 'None'.",
     )
 
     ## ignore the unknown args
