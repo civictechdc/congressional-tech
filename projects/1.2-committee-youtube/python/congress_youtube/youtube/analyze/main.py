@@ -1,12 +1,14 @@
-from pathlib import Path
-import re
+import argparse
 import csv
-from tinydb import Query
 import logging
+import re
+
 from dataclasses import asdict, dataclass
+from pathlib import Path
+from tinydb import Query
+
 from ...globals import add_global_args, add_youtube_args, CONGRESS_METADATA
 
-import argparse
 
 from ..tables import (
     get_all_commitee_names,
