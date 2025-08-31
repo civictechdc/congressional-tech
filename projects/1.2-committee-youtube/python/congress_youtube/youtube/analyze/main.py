@@ -1,11 +1,15 @@
 import argparse
 import csv
+import datetime
+import itertools
 import logging
+import multiprocessing
 import re
 
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from tinydb import Query
+from tinydb.table import Table
 
 from ...globals import add_global_args, add_youtube_args, CONGRESS_METADATA
 
@@ -40,22 +44,27 @@ def main(
     output_path: Path = DEFAULT_YOUTUBE_REPORT_FILE,
     tinydb_dir: Path = DEFAULT_TINYDB_DIR,
     channels_csv_path: Path = DEFAULT_CHANNELS_CSV,
+    nthreads=None,
 ) -> None:
-    report: list[EventIdReport] = []
+    if nthreads is None:
+        nthreads = multiprocessing.cpu_count()
+
     ## load all the names & their indices
     committee_names = get_all_commitee_names(
         with_index=True, csv_path=channels_csv_path
     )
+
     ## load all the corresponding handles
     committee_handless = get_all_committee_handless(channels_csv_path)
     for committee_name in committee_names:
         try:
-            db = open_tinydb_for_committee(
+            tinydb_args = dict(
                 committee_name_or_index=committee_name[1],
                 csv_path=channels_csv_path,
                 tinydb_dir=tinydb_dir,
                 assert_exists=True,
             )
+            db = open_tinydb_for_committee(**tinydb_args)
             handles = committee_handless[committee_name[1]]
             ## TODO: this needs to be automatically set by handle once we add senate handles
             ##  to the CSV
@@ -65,62 +74,116 @@ def main(
                 if handle == "":
                     continue
                 ## load the tinydb table
-                all_videos = db.table(f"youtube_videos_{handle}")
+                tinydb_table_args = (f"youtube_videos_{handle}",)
+                all_videos = db.table(*tinydb_table_args)
                 ## keep track of # of videos for validation at the end
                 total_count = len(all_videos)
                 running_count = 0
+                shared_argss = zip(
+                    itertools.repeat(committee_name[0]),
+                    itertools.repeat(handle),
+                    CONGRESS_METADATA.keys(),
+                    CONGRESS_METADATA.values(),
+                    itertools.repeat(chamber),
+                )
                 ## loop through each congress to split metrics by congress #
-                for congress_number, meta in CONGRESS_METADATA.items():
-                    start_date = meta["start"]
-                    end_date = meta["end"]
-
-                    ## videos have:
-                    ##  "publishedAt": "2025-07-23T23:26:16Z",
-
-                    ## First filter videos by date range
-                    video = Query()
-                    videos_in_date_range = all_videos.search(
-                        (video.publishedAt >= start_date)
-                        & (video.publishedAt <= end_date)
+                if nthreads > 1:
+                    ## have to open tinydb separately in each process
+                    argss = zip(
+                        itertools.repeat(tinydb_args),
+                        itertools.repeat(tinydb_table_args),
+                        *shared_argss,
                     )
-
-                    ## metric #1: total number of videos
-                    congress_count = len(videos_in_date_range)
-
-                    ## keep track of count for validation
-                    running_count += congress_count
-
-                    ## apply the RE to filter videos & count
-                    has_event_id_count = sum(
-                        1
-                        for video in videos_in_date_range
-                        if re.search(
-                            EVENT_ID_REGEX, video["description"], re.IGNORECASE
+                    ## in parallel...
+                    with multiprocessing.Pool(nthreads) as pool:
+                        reports = pool.starmap(
+                            generate_report_for_congress_number_wrapper, argss
                         )
-                        or re.search(EVENT_ID_REGEX, video["title"], re.IGNORECASE)
+                else:
+                    ## can share the existing tinydb in single process
+                    argss = zip(
+                        itertools.repeat(all_videos),
+                        *shared_argss,
                     )
+                    ## in series...
+                    reports = [
+                        generate_report_for_congress_number(*args) for args in argss
+                    ]
 
-                    row = EventIdReport(
-                        ## committee name, repeats for multiple handles
-                        committee_name[0],
-                        handle,  ## this handle
-                        congress_count,  ## all videos in this congress #
-                        congress_count - has_event_id_count,  ## bad videos
-                        congress_number,
-                        meta[chamber],  ## party in control of this chamber
-                        chamber,
-                    )
-                    logging.info(f"Reporting {row}")
-                    ## add the row
-                    report.append(row)
+                ## concatenate the rows
+                running_count = sum([report.total_videos for report in reports])
+
                 if total_count != running_count:
                     raise ValueError(
                         f"{total_count - running_count} videos are outside the applied date ranges and were excluded from reporting."
                     )
+
         except ValueError as e:
             logging.error(e)
 
-    write_to_csv(report, output_path)
+    write_to_csv(reports, output_path)
+
+
+def generate_report_for_congress_number_wrapper(
+    tinydb_args: dict[str, any],
+    tinydb_table_args: tuple,
+    committee_name: str,
+    handle: str,
+    congress_number: int,
+    meta: dict[str, any],
+    chamber: str,
+):
+    all_videos = open_tinydb_for_committee(**tinydb_args).table(*tinydb_table_args)
+    return generate_report_for_congress_number(
+        all_videos, committee_name, handle, congress_number, meta, chamber
+    )
+
+
+def generate_report_for_congress_number(
+    all_videos: Table,
+    committee_name: str,
+    handle: str,
+    congress_number: int,
+    meta: dict[str, any],
+    chamber: str,
+):
+    start_date = meta["start"]
+    end_date = meta["end"]
+    if end_date == "present":
+        end_date = datetime.date.today().isoformat()
+
+    ## videos have:
+    ##  "publishedAt": "2025-07-23T23:26:16Z",
+
+    ## First filter videos by date range
+    video = Query()
+    videos_in_date_range = all_videos.search(
+        (video.publishedAt >= start_date) & (video.publishedAt <= end_date)
+    )
+
+    ## metric #1: total number of videos
+    congress_count = len(videos_in_date_range)
+
+    ## apply the RE to filter videos & count
+    has_event_id_count = sum(
+        1
+        for video in videos_in_date_range
+        if re.search(EVENT_ID_REGEX, video["description"], re.IGNORECASE)
+        or re.search(EVENT_ID_REGEX, video["title"], re.IGNORECASE)
+    )
+
+    row = EventIdReport(
+        ## committee name, repeats for multiple handles
+        committee_name,
+        handle,  ## this handle
+        congress_count,  ## all videos in this congress #
+        congress_count - has_event_id_count,  ## bad videos
+        congress_number,
+        meta[chamber],  ## party in control of this chamber
+        chamber,
+    )
+    logging.info(f"Reporting {row}")
+    return row
 
 
 def write_to_csv(report: list[EventIdReport], output_path: Path):
@@ -151,6 +214,13 @@ def parse_args_and_run():
         type=Path,
         default=DEFAULT_YOUTUBE_REPORT_FILE,
         help="Path to the output CSV file.",
+    )
+
+    parser.add_argument(
+        "--nthreads",
+        type=lambda x: None if x.lower() == "none" else int(x),
+        default=None,
+        help="Number of threads to use (default: all available threads). Should be an integer or 'None'.",
     )
 
     ## ignore the unknown args
