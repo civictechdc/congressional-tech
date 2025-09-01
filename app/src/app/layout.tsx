@@ -5,6 +5,7 @@ import { NavBar } from "@/components/navigation-bar";
 import Link from "next/link";
 import favicon from "@/../public/favicon.ico";
 import Image from "next/image";
+import { ReactQueryProvider } from "./providers";
 
 // Fonts (server-safe; no client runtime needed)
 const geistSans = Geist({
@@ -35,13 +36,19 @@ export default function RootLayout({
             <body
                 className={`flex flex-col ${geistSans.variable} ${geistMono.variable} antialiased`}
             >
-                <div className="fixed z-10 flex max-h-min flex-row items-center p-2">
-                    <Link href="/">
-                        <Image src={favicon} alt="Favicon" className="h-8 w-auto cursor-pointer" />
-                    </Link>
-                    <NavBar />
-                </div>
-                <div className="pt-10">{children}</div>
+                <ReactQueryProvider>
+                    <div className="fixed z-10 flex max-h-min flex-row items-center p-2">
+                        <Link href="/">
+                            <Image
+                                src={favicon}
+                                alt="Favicon"
+                                className="h-8 w-auto cursor-pointer"
+                            />
+                        </Link>
+                        <NavBar />
+                    </div>
+                    <div className="pt-10">{children}</div>
+                </ReactQueryProvider>
             </body>
         </html>
     );
