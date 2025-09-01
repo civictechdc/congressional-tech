@@ -4,9 +4,10 @@
     "private": true,
     "scripts": {
         "dev": "next dev --turbopack",
-        "build": "rm -rf ../docs && distDir=../docs prefix=/congressional-tech next build --turbopack && cp -r dist ../docs && touch ../docs/.nojekyll",
-        "start": "next start",
-        "lint": "eslint"
+        "clean": "rm -rf ../docs congressional-tech",
+        "static": "echo 'test at ----> http://localhost:8000/congressional-tech <----' && python -m http.server",
+        "build": "npm run clean && distDir=congressional-tech prefix=/congressional-tech next build --turbopack",
+        "export": "npm run build && cp -r congressional-tech ../docs && touch ../docs/.nojekyll && npm run static"
     },
     "dependencies": {
         "@radix-ui/react-navigation-menu": "^1.2.14",
