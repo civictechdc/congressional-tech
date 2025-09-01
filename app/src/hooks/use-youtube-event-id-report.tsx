@@ -27,7 +27,8 @@ function parseRow(d: Record<string, string>): YoutubeEventIdRow {
 }
 
 export async function fetchYoutubeEventIdReport(): Promise<YoutubeEventIdRow[]> {
-    const res = await fetch("/data/youtube/youtube_event_id_report.csv");
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+    const res = await fetch(basePath + "/data/youtube/youtube_event_id_report.csv");
     if (!res.ok) {
         throw new Error(`Failed to fetch CSV: ${res.status} ${res.statusText}`);
     }
