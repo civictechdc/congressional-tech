@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 3, "column": 0}, "map": {"version":3,"sources":[],"names":[],"mappings":"","debugId":null}},
-    {"offset": {"line": 14, "column": 0}, "map": {"version":3,"sources":["file:///Users/agurvich/projects/civic-tech-dc/congressional-tech/app/src/app/proposals/%5Btheme%5D/page.tsx"],"sourcesContent":["import { type FC } from \"react\";\n\nimport projectThemes from \"@/data/project-themes.json\";\n\nexport async function generateStaticParams() {\n    return projectThemes.map((theme) => ({\n        theme: theme.id,\n    }));\n}\n\ninterface ThemePageProps {\n    params: {\n        theme: string;\n    };\n}\n\nconst ThemePage: FC<ThemePageProps> = ({ params }) => {\n    return (\n        <main className=\"flex min-h-screen items-center justify-center bg-gray-50\">\n            <h1 className=\"text-2xl font-bold text-gray-900\">Theme: {params.theme}</h1>\n        </main>\n    );\n};\n\nexport default ThemePage;\n"],"names":[],"mappings":";;;;;;;AAEA;;;AAEO,eAAe;IAClB,OAAO,mHAAa,CAAC,GAAG,CAAC,CAAC,QAAU,CAAC;YACjC,OAAO,MAAM,EAAE;QACnB,CAAC;AACL;AAQA,MAAM,YAAgC,CAAC,EAAE,MAAM,EAAE;IAC7C,qBACI,8OAAC;QAAK,WAAU;kBACZ,cAAA,8OAAC;YAAG,WAAU;;gBAAmC;gBAAQ,OAAO,KAAK;;;;;;;;;;;;AAGjF;uCAEe","debugId":null}}]
-}
