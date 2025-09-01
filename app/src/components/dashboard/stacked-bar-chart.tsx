@@ -1,6 +1,5 @@
 "use client";
 
-import { TrendingUp } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis } from "recharts";
 import colors from "tailwindcss/colors";
 
@@ -22,6 +21,7 @@ import {
 } from "@/components/ui/chart";
 import { YoutubeEventIdRow } from "@/hooks/use-youtube-event-id-report";
 import { cn } from "@/lib/utils";
+import { ReactNode } from "react";
 
 export const description = "A stacked bar chart with a legend";
 
@@ -37,9 +37,9 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 type ChartMetadata = {
-    title: string;
-    subtitle: string;
-    footer: string;
+    title: string | ReactNode;
+    subtitle: string | ReactNode;
+    footer: string | ReactNode;
 };
 
 export function StackedBarChart({
