@@ -1,10 +1,15 @@
 self.__BUILD_MANIFEST = {
   "/_error": [
-    "./static/chunks/ed0d70f77d436207.js"
+    "./static/chunks/48e9362babaaa731.js"
   ],
   "__rewrites": {
     "afterFiles": [],
-    "beforeFiles": [],
+    "beforeFiles": [
+      {
+        "source": "/congressional-tech//_next/:path+",
+        "destination": "/congressional-tech/_next/:path+"
+      }
+    ],
     "fallback": []
   },
   "sortedPages": [
