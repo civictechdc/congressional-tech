@@ -1,13 +1,21 @@
 "use client";
+import { LucideArrowRight } from "lucide-react";
+
+import { CongressMetadata, CongressNumber } from "@/types/congress-metadata";
+import congressMetadataJson from "@/data/congress_metadata.json";
+
 import useYoutubeEventIdReport from "@/hooks/use-youtube-event-id-report";
+
 import { StackedBarChart } from "./stacked-bar-chart";
-import congressMetadata from "@/data/congress_metadata.json";
-import { LucideArrowBigRight, LucideArrowRight } from "lucide-react";
+
+const congressMetadata: CongressMetadata = congressMetadataJson;
 
 export function DashboardContent({}) {
     const { data, error, isError, isLoading } = useYoutubeEventIdReport();
 
-    if (isError || isLoading || !data) return null;
+    if (isLoading) return null;
+    if (isError) throw error;
+    if (!data) return null;
 
     const congressNumbers = Array.from(
         new Set(
@@ -21,8 +29,8 @@ export function DashboardContent({}) {
     return (
         <div className="grid w-screen grid-cols-2 gap-4 p-4 md:grid-cols-4">
             {congressNumbers.map((congressNumber) => {
-                const startString = `${congressMetadata[congressNumber.toString()].start}`;
-                const endString = `${congressMetadata[congressNumber.toString()].end}`;
+                const startString = `${congressMetadata[congressNumber.toString() as CongressNumber].start}`;
+                const endString = `${congressMetadata[congressNumber.toString() as CongressNumber].end}`;
                 const subtitle = (
                     <p className="flex flex-row items-center gap-1">
                         {startString} <LucideArrowRight size={16} /> {endString}
@@ -30,9 +38,11 @@ export function DashboardContent({}) {
                 );
                 return (
                     <StackedBarChart
+                        key={`${congressNumber}-stacked-chart`}
                         chartMeta={{
                             title: `${congressNumber}th Congress`,
                             subtitle,
+                            footer: `${congressMetadata?.[congressNumber.toString() as CongressNumber].house} majority`,
                         }}
                         className="col-span-2"
                         data={data.filter(
