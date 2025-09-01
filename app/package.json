@@ -4,18 +4,21 @@
     "private": true,
     "scripts": {
         "dev": "next dev --turbopack",
-        "build": "rm -r ../docs && distDir=../docs prefix=/congressional-tech next build --turbopack && touch ../docs/.nojekyll",
-        "start": "next start",
-        "lint": "eslint"
+        "clean": "rm -rf ../docs congressional-tech",
+        "static": "echo 'test at ----> http://localhost:8000/congressional-tech <----' && python -m http.server",
+        "build": "npm run clean && distDir=congressional-tech prefix=/congressional-tech next build --turbopack",
+        "export": "npm run build && cp -r congressional-tech ../docs && touch ../docs/.nojekyll && npm run static"
     },
     "dependencies": {
         "@radix-ui/react-navigation-menu": "^1.2.14",
+        "@tanstack/react-query": "^5.85.6",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "lucide-react": "^0.541.0",
         "next": "15.5.0",
         "react": "19.1.0",
         "react-dom": "19.1.0",
+        "recharts": "^2.15.4",
         "tailwind-merge": "^3.3.1"
     },
     "devDependencies": {
