@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 3, "column": 0}, "map": {"version":3,"sources":[],"names":[],"mappings":"","debugId":null}},
-    {"offset": {"line": 11, "column": 0}, "map": {"version":3,"sources":["file:///Users/agurvich/projects/civic-tech-dc/congressional-tech/app/src/app/dashboard/page.tsx"],"sourcesContent":["export default function DashboardPage() {\n    return (\n        <main className=\"flex min-h-screen items-center justify-center bg-gray-50\">\n            <h1 className=\"text-3xl font-bold text-gray-900\">\n                This is a Congressional YouTube Dashboard\n            </h1>\n        </main>\n    );\n}\n"],"names":[],"mappings":";;;;;;AAAe,SAAS;IACpB,qBACI,8OAAC;QAAK,WAAU;kBACZ,cAAA,8OAAC;YAAG,WAAU;sBAAmC;;;;;;;;;;;AAK7D","debugId":null}}]
-}
