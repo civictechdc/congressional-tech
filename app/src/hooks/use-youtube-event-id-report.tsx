@@ -1,5 +1,7 @@
-import { parseCSV } from "@/lib/parse-csv";
 import { useQuery, UseQueryResult } from "@tanstack/react-query";
+
+import { parseCSV } from "@/lib/parse-csv";
+import { CongressNumber } from "@/types/congress-metadata";
 
 export type Chamber = "house" | "senate";
 export type Control = "Republican" | "Democratic";
@@ -9,7 +11,7 @@ export interface YoutubeEventIdRow {
     handle: string;
     total_videos: number;
     missing_event_id: number;
-    congress_number: number;
+    congress_number: CongressNumber;
     control: Control;
     chamber: Chamber;
 }
@@ -20,7 +22,7 @@ function parseRow(d: Record<string, string>): YoutubeEventIdRow {
         handle: d.handle,
         total_videos: Number(d.total_videos),
         missing_event_id: Number(d.missing_event_id),
-        congress_number: Number(d.congress_number),
+        congress_number: d.congress_number as CongressNumber,
         control: d.control as Control,
         chamber: d.chamber as Chamber,
     };
