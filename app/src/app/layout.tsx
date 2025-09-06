@@ -47,7 +47,7 @@ export default function RootLayout({
                         </Link>
                         <NavBar />
                     </div>
-                    <div className="overflow-y-auto">{children}</div>
+                    <div className="overflow-y-scroll">{children}</div>
                 </ReactQueryProvider>
             </body>
         </html>
