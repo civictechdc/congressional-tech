@@ -40,20 +40,20 @@ function TreemapNodeWithGap({
     const y0 = (y ?? 0) + gap;
     const w = Math.max(0, (width ?? 0) - gap * 2);
     const h = Math.max(0, (height ?? 0) - gap * 2);
+    const fontSizePx = 12;
 
     return (
         <g>
-            {depth > 1 && (
+            {depth > 0 && (
                 <>
                     <rect
                         x={x0}
                         y={y0}
-                        width={w}
-                        height={h}
+                        width={depth > 1 ? w - 2 * (depth == 1 ? 0 : 2) : w}
+                        height={depth > 1 ? h - 2 * (depth == 1 ? 0 : 2) : h}
                         fill={fill ?? RED}
-                        stroke={depth == 1 ? "#fff" : "#fff"}
-                        strokeWidth={depth == 1 ? 0 : 2}
-                        radius={5}
+                        stroke={depth == 1 ? "black" : "transparent"}
+                        strokeWidth={depth == 1 ? 0 : 0}
                     />
                     {w > 40 && h > 12 && rest?.name && (
                         <g>
@@ -62,10 +62,10 @@ function TreemapNodeWithGap({
                             </clipPath>
                             <text
                                 x={x0 + 2}
-                                y={y0 + h / 2}
+                                y={y0 + fontSizePx / 2 + h / 4}
                                 textAnchor="start"
                                 dominantBaseline="middle"
-                                fontSize={12}
+                                fontSize={`${fontSizePx}px`}
                                 fill="#000"
                                 clipPath={`url(#clip-${rest.name})`}
                                 style={{
@@ -106,19 +106,31 @@ export function TreeMap({
     }, {});
 
     const treemapData: TreeNode[] = Object.entries(committeesMap).map(([committeeName, rows]) => ({
-        name: "",
+        name: "foo bar",
+        fill: "blue",
+        size: 5000,
         children: rows.map((row) => {
             const missingFraction = row.missing_event_id / row.total_videos;
+            const tooltipContent = {
+                committeeName: row.committee_name,
+                handle: row.handle,
+                totalVideos: row.total_videos,
+                missingFraction: (100 * missingFraction).toFixed(2),
+            };
             return {
-                name: "",
+                name: row.handle,
+                tooltip: tooltipContent,
+                size: row.total_videos,
                 children: [
                     {
-                        name: row.handle,
+                        name: null,
+                        tooltip: tooltipContent,
                         size: row.total_videos * missingFraction,
-                        fill: RED,
+                        fill: "transparent",
                     },
                     {
-                        name: `has`,
+                        name: null,
+                        tooltip: tooltipContent,
                         size: row.total_videos * (1 - missingFraction),
                         fill: GREEN,
                     },
@@ -139,7 +151,23 @@ export function TreeMap({
                         content={<TreemapNodeWithGap />}
                         animationDuration={750}
                     >
-                        <Tooltip />
+                        <Tooltip
+                            defaultIndex={1}
+                            active={true}
+                            trigger={"click"}
+                            filterNull={false}
+                            content={({ active, payload, ...rest }) => {
+                                console.log(active, payload?.[0], rest);
+                                return (
+                                    <div className="rounded border border-gray-200 bg-white p-3 shadow-md">
+                                        <div className="font-semibold">{`Committee: ${payload?.[0]?.payload?.tooltip?.committeeName}`}</div>
+                                        <div>{`Handle: ${payload?.[0]?.payload?.tooltip?.handle}`}</div>
+                                        <div>{`Total Videos: ${payload?.[0]?.payload?.tooltip?.totalVideos}`}</div>
+                                        <div>{`Missing Fraction: ${payload?.[0]?.payload?.tooltip?.missingFraction}%`}</div>
+                                    </div>
+                                );
+                            }}
+                        />
                     </Treemap>
                 </ChartContainer>
             </CardContent>
