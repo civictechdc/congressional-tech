@@ -23,7 +23,7 @@ interface TreemapNodeProps {
     name?: string;
     value?: number;
     fill?: string;
-    depth: number;
+    depth?: number;
 }
 
 function TreemapNodeWithGap({
@@ -32,7 +32,7 @@ function TreemapNodeWithGap({
     width,
     height,
     fill,
-    depth,
+    depth = 1,
     ...rest
 }: TreemapNodeProps): React.ReactElement {
     const gap = 0; // px inset on each side
