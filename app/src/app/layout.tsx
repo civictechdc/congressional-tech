@@ -34,10 +34,10 @@ export default function RootLayout({
     return (
         <html lang="en">
             <body
-                className={`flex flex-col ${geistSans.variable} ${geistMono.variable} antialiased`}
+                className={`flex flex-col ${geistSans.variable} ${geistMono.variable} overflow-hidden antialiased`}
             >
                 <ReactQueryProvider>
-                    <div className="fixed z-10 flex max-h-min flex-row items-center p-2">
+                    <div className="z-10 flex flex-1 flex-row items-center p-2">
                         <Link href="/">
                             <Image
                                 src={favicon}
@@ -47,7 +47,7 @@ export default function RootLayout({
                         </Link>
                         <NavBar />
                     </div>
-                    <div className="pt-10">{children}</div>
+                    <div className="overflow-y-scroll">{children}</div>
                 </ReactQueryProvider>
             </body>
         </html>
