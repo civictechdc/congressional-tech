@@ -56,15 +56,14 @@ export function StackedBarChart({
                 <ChartContainer config={chartConfig} className="h-full w-full">
                     <BarChart accessibilityLayer data={congressData} barSize={50}>
                         <CartesianGrid vertical={false} />
-                        <YAxis type="number" />
+                        <YAxis type="number" tickCount={5} />
                         <XAxis
                             type="category"
                             dataKey="handle"
                             tickLine={false}
                             tickMargin={10}
                             axisLine={false}
-                            hide
-                            //tickFormatter={(value) => value.slice(0, 3)}
+                            tickFormatter={(value) => ""}
                         />
                         <ChartTooltip content={<ChartTooltipContent hideLabel={false} />} />
                         <ChartLegend content={<ChartLegendContent />} verticalAlign="top" />
