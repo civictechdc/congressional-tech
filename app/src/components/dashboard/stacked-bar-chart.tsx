@@ -2,6 +2,7 @@
 
 import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis } from "recharts";
 import colors from "tailwindcss/colors";
+import { CongressMetadata, CongressNumber } from "@/types/congress-metadata";
 
 import {
     Card,
@@ -23,7 +24,8 @@ import { YoutubeEventIdRow } from "@/hooks/use-youtube-event-id-report";
 import { cn } from "@/lib/utils";
 import { ReactNode } from "react";
 
-export const description = "A stacked bar chart with a legend";
+import congressMetadataJson from "@/data/congress_metadata.json";
+const congressMetadata: CongressMetadata = congressMetadataJson;
 
 const chartConfig = {
     hasEventId: {
@@ -44,23 +46,19 @@ type ChartMetadata = {
 
 export function StackedBarChart({
     data,
-    chartMeta = {} as ChartMetadata,
+    congressNumber,
     className = "",
 }: {
     data: YoutubeEventIdRow[];
-    chartMeta: ChartMetadata;
+    congressNumber: CongressNumber;
     className: string;
 }) {
-    console.log(data);
+    const thisData = data.filter((eventIdRow) => eventIdRow.congress_number === congressNumber);
     return (
-        <Card className={cn(className, "flex")} style={{ height: data.length * 30 }}>
-            <CardHeader>
-                <CardTitle>{chartMeta.title}</CardTitle>
-                <CardDescription>{chartMeta.subtitle}</CardDescription>
-            </CardHeader>
+        <Card className={cn(className, "flex")} style={{ height: thisData.length * 30 }}>
             <CardContent className="flex-1">
                 <ChartContainer config={chartConfig} className="h-full w-full">
-                    <BarChart accessibilityLayer data={data} layout="vertical" barSize={50}>
+                    <BarChart accessibilityLayer data={thisData} layout="vertical" barSize={50}>
                         <CartesianGrid vertical={false} />
                         <XAxis type="number" />
                         <YAxis
@@ -102,9 +100,6 @@ export function StackedBarChart({
                     </BarChart>
                 </ChartContainer>
             </CardContent>
-            <CardFooter className="flex-col items-start gap-2 text-sm">
-                {chartMeta.footer}
-            </CardFooter>
         </Card>
     );
 }
