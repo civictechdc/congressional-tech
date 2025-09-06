@@ -1,6 +1,11 @@
 import React from "react";
 import { Tooltip, Treemap } from "recharts";
 
+import colors from "tailwindcss/colors";
+
+const GREEN = colors.green[600];
+const RED = colors.red[600];
+
 type TreeNode = {
     name: string;
     children?: TreeNode[];
@@ -18,6 +23,7 @@ interface TreemapNodeProps {
     name?: string;
     value?: number;
     fill?: string;
+    depth: number;
 }
 
 function TreemapNodeWithGap({
@@ -26,6 +32,7 @@ function TreemapNodeWithGap({
     width,
     height,
     fill,
+    depth,
     ...rest
 }: TreemapNodeProps): React.ReactElement {
     const gap = 0; // px inset on each side
@@ -33,31 +40,44 @@ function TreemapNodeWithGap({
     const y0 = (y ?? 0) + gap;
     const w = Math.max(0, (width ?? 0) - gap * 2);
     const h = Math.max(0, (height ?? 0) - gap * 2);
+
     return (
         <g>
-            {rest?.depth > 1 && (
+            {depth > 1 && (
                 <>
                     <rect
                         x={x0}
                         y={y0}
                         width={w}
                         height={h}
-                        fill={fill ?? "#FFF"}
-                        stroke={rest?.depth == 1 ? "#000" : "#fff"}
-                        strokeWidth={rest?.depth == 1 ? 0 : 2}
+                        fill={fill ?? RED}
+                        stroke={depth == 1 ? "#fff" : "#fff"}
+                        strokeWidth={depth == 1 ? 0 : 2}
                         radius={5}
                     />
                     {w > 40 && h > 12 && rest?.name && (
-                        <text
-                            x={x0}
-                            y={y0 + h / 2}
-                            textAnchor="start"
-                            dominantBaseline="middle"
-                            fontSize={12}
-                            fill="#000"
-                        >
-                            {rest.name}
-                        </text>
+                        <g>
+                            <clipPath id={`clip-${rest.name}`}>
+                                <rect x={x0} y={y0} width={w - 4} height={h} />
+                            </clipPath>
+                            <text
+                                x={x0 + 2}
+                                y={y0 + h / 2}
+                                textAnchor="start"
+                                dominantBaseline="middle"
+                                fontSize={12}
+                                fill="#000"
+                                clipPath={`url(#clip-${rest.name})`}
+                                style={{
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
+                                    wordBreak: "break-all",
+                                }}
+                            >
+                                {rest.name}
+                            </text>
+                        </g>
                     )}
                 </>
             )}
@@ -77,24 +97,36 @@ export function TreeMap({
     congressData: YoutubeEventIdRow[];
     className?: string;
 }) {
-    const treemapData: TreeNode[] = congressData.map((row) => {
-        const missingFraction = row.missing_event_id / row.total_videos;
-        return {
-            name: row.handle,
-            children: [
-                {
-                    name: `${row.handle}-missing`,
-                    size: row.total_videos * missingFraction,
-                    fill: "red",
-                },
-                {
-                    name: `${row.handle}-has`,
-                    size: row.total_videos * (1 - missingFraction),
-                    fill: "green",
-                },
-            ],
-        };
-    });
+    const committeesMap = congressData.reduce<Record<string, YoutubeEventIdRow[]>>((acc, row) => {
+        if (!acc[row.committee_name]) {
+            acc[row.committee_name] = [];
+        }
+        acc[row.committee_name].push(row);
+        return acc;
+    }, {});
+
+    const treemapData: TreeNode[] = Object.entries(committeesMap).map(([committeeName, rows]) => ({
+        name: "",
+        children: rows.map((row) => {
+            const missingFraction = row.missing_event_id / row.total_videos;
+            return {
+                name: "",
+                children: [
+                    {
+                        name: row.handle,
+                        size: row.total_videos * missingFraction,
+                        fill: RED,
+                    },
+                    {
+                        name: `has`,
+                        size: row.total_videos * (1 - missingFraction),
+                        fill: GREEN,
+                    },
+                ],
+            };
+        }),
+    }));
+
     return (
         <Card className={cn(className)}>
             <CardContent className="flex-1">
@@ -105,6 +137,7 @@ export function TreeMap({
                         data={treemapData}
                         dataKey="size"
                         content={<TreemapNodeWithGap />}
+                        animationDuration={750}
                     >
                         <Tooltip />
                     </Treemap>
