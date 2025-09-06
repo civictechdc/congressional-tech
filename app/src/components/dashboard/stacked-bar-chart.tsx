@@ -1,8 +1,10 @@
 "use client";
+import { cn } from "@/lib/utils";
+import { ReactNode } from "react";
+
+import colors from "tailwindcss/colors";
 
 import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis } from "recharts";
-import colors from "tailwindcss/colors";
-import { CongressMetadata, CongressNumber } from "@/types/congress-metadata";
 
 import {
     Card,
@@ -20,12 +22,9 @@ import {
     ChartTooltip,
     ChartTooltipContent,
 } from "@/components/ui/chart";
-import { YoutubeEventIdRow } from "@/hooks/use-youtube-event-id-report";
-import { cn } from "@/lib/utils";
-import { ReactNode } from "react";
 
-import congressMetadataJson from "@/data/congress_metadata.json";
-const congressMetadata: CongressMetadata = congressMetadataJson;
+import { YoutubeEventIdRow } from "@/hooks/use-youtube-event-id-report";
+import { CongressNumber } from "@/types/congress-metadata";
 
 const chartConfig = {
     hasEventId: {
@@ -45,20 +44,17 @@ type ChartMetadata = {
 };
 
 export function StackedBarChart({
-    data,
-    congressNumber,
+    congressData,
     className = "",
 }: {
-    data: YoutubeEventIdRow[];
-    congressNumber: CongressNumber;
+    congressData: YoutubeEventIdRow[];
     className: string;
 }) {
-    const thisData = data.filter((eventIdRow) => eventIdRow.congress_number === congressNumber);
     return (
-        <Card className={cn(className, "flex")} style={{ height: thisData.length * 30 }}>
+        <Card className={cn(className, "flex")} style={{ height: congressData.length * 30 }}>
             <CardContent className="flex-1">
                 <ChartContainer config={chartConfig} className="h-full w-full">
-                    <BarChart accessibilityLayer data={thisData} layout="vertical" barSize={50}>
+                    <BarChart accessibilityLayer data={congressData} layout="vertical" barSize={50}>
                         <CartesianGrid vertical={false} />
                         <XAxis type="number" />
                         <YAxis
