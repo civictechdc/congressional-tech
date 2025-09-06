@@ -10,6 +10,7 @@ import { TitleHeader } from "./title-header";
 import { PieChart } from "recharts";
 import { ChartPieDonutText } from "./donut-text";
 import { TreeMap } from "./tree-map";
+import { Leaderboard } from "./leaderboard";
 
 export function DashboardContent({}) {
     const { data, error, isError, isLoading } = useYoutubeEventIdReport();
@@ -25,7 +26,8 @@ export function DashboardContent({}) {
     const congressData = data.filter((eventIdRow) => eventIdRow.congress_number === congressNumber);
     return (
         <div className="grid w-screen grid-cols-2 gap-4 p-4 md:grid-cols-4">
-            <TitleHeader {...{ congressNumber }} className="col-span-2 md:col-span-3" />
+            <TitleHeader {...{ congressNumber }} className="col-span-2 md:col-span-1" />
+            <Leaderboard {...{ congressData }} className="col-span-2" />
             <ChartPieDonutText {...{ congressData }} />
             <StackedBarChart {...{ congressData }} className="col-span-2" />
             <TreeMap {...{ congressData }} className="col-span-2" />
