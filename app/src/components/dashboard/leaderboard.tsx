@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { cn } from "@/lib/utils";
 import { Switch } from "../ui/switch";
 import { Label } from "../ui/label";
+import { CircleCheck, CircleX } from "lucide-react";
 
 // Derived row type with helpful fields
 type Row = {
@@ -55,44 +56,40 @@ function sortRows(rows: Row[], variant: Variant, mode: Mode): Row[] {
     return copy;
 }
 
-function MetricBlock({ row, mode }: { row: Row; mode: Mode }) {
-    return (
-        <div className="text-right">
-            {mode === "percent" ? (
-                <>
-                    <div className="font-medium">{formatPercent(row.frac)}</div>
-                    <div className="text-muted-foreground text-xs">
-                        {row.have}/{row.total}
-                    </div>
-                </>
-            ) : (
-                <>
-                    <div className="font-medium">{row.have.toLocaleString()}</div>
-                    <div className="text-muted-foreground text-xs">
-                        with IDs of {row.total.toLocaleString()}
-                    </div>
-                </>
-            )}
-        </div>
-    );
-}
+function Metric({ row, variant, mode }: { row: Row; variant: Variant; mode: Mode }) {
+    const isBest = variant === "best";
 
-function MetricBlockWorst({ row, mode }: { row: Row; mode: Mode }) {
+    // Values
+    const pctHave = row.frac; // have / total
+    const pctMissing = 1 - row.frac; // missing / total
+    const haveFrac = `${row.have}/${row.total}`;
+    const missFrac = `${row.missing}/${row.total}`;
+
+    // Choose which numbers to display for this variant
+    const pct = isBest ? pctHave : pctMissing;
+    const frac = isBest ? haveFrac : missFrac;
+
+    // When mode === 'count', show fraction as primary; otherwise percent primary.
+    const primary = mode === "count" ? frac : `${formatPercent(pct)}`;
+    const secondary = mode === "count" ? `${formatPercent(pct)}` : frac;
+
     return (
         <div className="text-right">
-            {mode === "percent" ? (
-                <>
-                    <div className="font-medium">{formatPercent(1 - row.frac)}</div>
-                    <div className="text-muted-foreground text-xs">missing fraction</div>
-                </>
-            ) : (
-                <>
-                    <div className="font-medium">{row.missing.toLocaleString()}</div>
-                    <div className="text-muted-foreground text-xs">
-                        missing of {row.total.toLocaleString()}
-                    </div>
-                </>
-            )}
+            {/* Primary row with fixed-width number and icon to the right */}
+            <div className="flex items-center justify-end gap-2">
+                <span className="min-w-[10ch] text-right leading-none font-semibold tabular-nums">
+                    {primary}
+                </span>
+                {isBest ? (
+                    <CircleCheck className="text-success h-4 w-4 shrink-0" />
+                ) : (
+                    <CircleX className="text-destructive h-4 w-4 shrink-0" />
+                )}
+            </div>
+            {/* Secondary row */}
+            <div className="text-muted-foreground text-xs leading-tight tabular-nums">
+                {secondary}
+            </div>
         </div>
     );
 }
@@ -112,8 +109,13 @@ function LeaderboardSection({
     const top = useMemo(() => sortRows(rows, variant, mode), [rows, variant, mode]);
 
     return (
-        <section className={cn(className)}>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 p-0 pb-2">
+        <section
+            className={cn(
+                "flex h-full max-h-full min-h-0 flex-1 flex-col overflow-hidden",
+                className
+            )}
+        >
+            <CardHeader className="flex shrink-0 flex-row items-center justify-between gap-2 p-0">
                 <CardTitle>{title}</CardTitle>
                 <div className="flex items-center gap-2">
                     <Label
@@ -130,8 +132,8 @@ function LeaderboardSection({
                     />
                 </div>
             </CardHeader>
-            <hr className="mb-2" />
-            <div className="max-h-96 overflow-y-auto">
+            <hr className="my-2 shrink-0" />
+            <div className="min-h-0 flex-1 overflow-y-auto">
                 <ol className="space-y-2">
                     {top.map((r, i) => (
                         <Card
@@ -147,11 +149,7 @@ function LeaderboardSection({
                                         {r.committee}
                                     </div>
                                 </div>
-                                {variant === "best" ? (
-                                    <MetricBlock row={r} mode={mode} />
-                                ) : (
-                                    <MetricBlockWorst row={r} mode={mode} />
-                                )}
+                                <Metric row={r} variant={variant} mode={mode} />
                             </CardContent>
                         </Card>
                     ))}
@@ -171,9 +169,14 @@ export function Leaderboard({
     const rows = useMemo(() => buildRows(congressData), [congressData]);
 
     return (
-        <Card className={cn(className)}>
-            <CardContent className="flex-1">
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <Card
+            className={cn(
+                "flex h-full max-h-full min-h-0 flex-1 flex-col overflow-hidden",
+                className
+            )}
+        >
+            <CardContent className="flex h-full max-h-full min-h-0 flex-1 overflow-hidden">
+                <div className="grid h-full max-h-full min-h-0 flex-1 grid-cols-1 gap-6 overflow-hidden md:grid-cols-2">
                     <LeaderboardSection title="Best Performers" rows={rows} variant="best" />
                     <LeaderboardSection title="Worst Performers" rows={rows} variant="worst" />
                 </div>

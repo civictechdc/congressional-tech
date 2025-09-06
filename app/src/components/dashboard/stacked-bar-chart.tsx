@@ -2,8 +2,6 @@
 import { cn } from "@/lib/utils";
 import { ReactNode } from "react";
 
-import colors from "tailwindcss/colors";
-
 import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis } from "recharts";
 
 import {
@@ -28,11 +26,11 @@ import { CongressNumber } from "@/types/congress-metadata";
 
 const chartConfig = {
     hasEventId: {
-        color: colors.green[600],
+        color: "var(--success)",
         label: "has",
     },
     missingEventId: {
-        color: colors.red[600],
+        color: "var(--destructive)",
         label: "missing",
     },
 } satisfies ChartConfig;
@@ -51,7 +49,7 @@ export function StackedBarChart({
     className: string;
 }) {
     return (
-        <Card className={cn(className, "flex")}>
+        <Card className={cn("flex", className)}>
             <CardContent className="flex-1">
                 <ChartContainer config={chartConfig} className="h-full w-full">
                     <BarChart accessibilityLayer data={congressData} barSize={50}>

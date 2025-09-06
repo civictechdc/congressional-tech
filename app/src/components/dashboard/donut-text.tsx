@@ -21,34 +21,9 @@ import {
     ChartTooltip,
     ChartTooltipContent,
 } from "@/components/ui/chart";
+import { cn } from "@/lib/utils";
 
 export const description = "A donut chart with text";
-
-const chartConfig = {
-    visitors: {
-        label: "Visitors",
-    },
-    chrome: {
-        label: "Chrome",
-        color: "var(--chart-1)",
-    },
-    safari: {
-        label: "Safari",
-        color: "var(--chart-2)",
-    },
-    firefox: {
-        label: "Firefox",
-        color: "var(--chart-3)",
-    },
-    edge: {
-        label: "Edge",
-        color: "var(--chart-4)",
-    },
-    other: {
-        label: "Other",
-        color: "var(--chart-5)",
-    },
-} satisfies ChartConfig;
 
 export function ChartPieDonutText({
     congressData,
@@ -70,21 +45,18 @@ export function ChartPieDonutText({
         {
             name: "has event id",
             fraction: 1 - missingFraction,
-            fill: colors.green[600],
+            fill: "var(--success)",
         },
         {
             name: "missing event id",
             fraction: missingFraction,
-            fill: colors.red[600],
+            fill: "var(--destructive)",
         },
     ];
     return (
-        <Card className="flex flex-col">
-            <CardContent className="flex-1 pb-0">
-                <ChartContainer
-                    config={chartConfig}
-                    className="mx-auto aspect-square max-h-[250px]"
-                >
+        <Card className={cn("max-h-[300px]", className)}>
+            <CardContent className="max-h-[250px] pb-0">
+                <ChartContainer config={{}} className="mx-auto aspect-square max-h-[250px]">
                     <PieChart>
                         <Pie
                             data={chartData}
