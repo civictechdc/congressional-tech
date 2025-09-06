@@ -48,6 +48,11 @@ export function TitleHeader({
                         <Button
                             onClick={() => {
                                 if (congressNum > minCongress) {
+                                    window.history.pushState(
+                                        {},
+                                        "",
+                                        `?congress=${congressNum - 1}`
+                                    );
                                     setCongressNumber(
                                         (congressNum - 1).toString() as CongressNumber
                                     );
@@ -61,6 +66,11 @@ export function TitleHeader({
                         <Button
                             onClick={() => {
                                 if (congressNum < maxCongress) {
+                                    window.history.pushState(
+                                        {},
+                                        "",
+                                        `?congress=${congressNum + 1}`
+                                    );
                                     setCongressNumber(
                                         (congressNum + 1).toString() as CongressNumber
                                     );
