@@ -21,7 +21,7 @@ export function TitleHeader({
     className = "",
 }: {
     congressNumber: CongressNumber;
-    setCongressNumber: (num: string) => {};
+    setCongressNumber: React.Dispatch<React.SetStateAction<CongressNumber>>;
     className?: string;
 }) {
     /*
