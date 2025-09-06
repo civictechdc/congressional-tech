@@ -1,5 +1,5 @@
 import React from "react";
-import { Treemap } from "recharts";
+import { Tooltip, Treemap } from "recharts";
 
 type TreeNode = {
     name: string;
@@ -20,15 +20,47 @@ interface TreemapNodeProps {
     fill?: string;
 }
 
-function TreemapNodeWithGap({ x, y, width, height, fill }: TreemapNodeProps): React.ReactElement {
-    const gap = 4; // px inset on each side
+function TreemapNodeWithGap({
+    x,
+    y,
+    width,
+    height,
+    fill,
+    ...rest
+}: TreemapNodeProps): React.ReactElement {
+    const gap = 0; // px inset on each side
     const x0 = (x ?? 0) + gap;
     const y0 = (y ?? 0) + gap;
     const w = Math.max(0, (width ?? 0) - gap * 2);
     const h = Math.max(0, (height ?? 0) - gap * 2);
     return (
         <g>
-            <rect x={x0} y={y0} width={w} height={h} fill={fill ?? "#FFF"} stroke="none" />
+            {rest?.depth > 1 && (
+                <>
+                    <rect
+                        x={x0}
+                        y={y0}
+                        width={w}
+                        height={h}
+                        fill={fill ?? "#FFF"}
+                        stroke={rest?.depth == 1 ? "#000" : "#fff"}
+                        strokeWidth={rest?.depth == 1 ? 0 : 2}
+                        radius={5}
+                    />
+                    {w > 40 && h > 12 && rest?.name && (
+                        <text
+                            x={x0}
+                            y={y0 + h / 2}
+                            textAnchor="start"
+                            dominantBaseline="middle"
+                            fontSize={12}
+                            fill="#000"
+                        >
+                            {rest.name}
+                        </text>
+                    )}
+                </>
+            )}
         </g>
     );
 }
@@ -72,10 +104,9 @@ export function TreeMap({
                         nameKey="name"
                         data={treemapData}
                         dataKey="size"
-                        stroke="#fff"
                         content={<TreemapNodeWithGap />}
                     >
-                        <ChartTooltip />
+                        <Tooltip />
                     </Treemap>
                 </ChartContainer>
             </CardContent>
