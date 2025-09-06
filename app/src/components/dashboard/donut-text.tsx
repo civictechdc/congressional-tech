@@ -55,8 +55,8 @@ export function ChartPieDonutText({
     ];
     return (
         <Card className={cn("max-h-[300px]", className)}>
-            <CardContent className="max-h-[250px] pb-0">
-                <ChartContainer config={{}} className="mx-auto aspect-square max-h-[250px]">
+            <CardContent className="pb-0">
+                <ChartContainer config={{}} className="mx-auto aspect-square">
                     <PieChart>
                         <Pie
                             data={chartData}

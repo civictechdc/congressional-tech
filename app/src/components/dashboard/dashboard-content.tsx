@@ -34,11 +34,11 @@ export function DashboardContent({ className = "" }: { className?: string }) {
                     {...{ congressNumber, setCongressNumber }}
                     className="col-span-2 md:col-span-1"
                 />
-                <Leaderboard {...{ congressData }} className="col-span-2 h-full" />
-                <ChartPieDonutText {...{ congressData }} className="" />
+                <Leaderboard {...{ congressData }} className="col-span-2" />
+                <ChartPieDonutText {...{ congressData }} className="py-0" />
             </div>
-            <StackedBarChart {...{ congressData }} className="col-span-2 h-full" />
-            <TreeMap {...{ congressData }} className="col-span-2 h-full" />
+            <StackedBarChart {...{ congressData }} className="col-span-2" />
+            <TreeMap {...{ congressData }} className="col-span-2" />
         </div>
     );
 }
