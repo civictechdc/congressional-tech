@@ -41,7 +41,7 @@ export function TitleHeader({
     const congressNum = Number(congressNumber);
 
     return (
-        <Card className={cn(className)}>
+        <Card className={cn("", className)}>
             <CardHeader>
                 <CardTitle>
                     <div className="mb-4 flex items-center justify-center space-x-4">

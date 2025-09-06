@@ -1,11 +1,6 @@
 import React from "react";
 import { Tooltip, Treemap } from "recharts";
 
-import colors from "tailwindcss/colors";
-
-const GREEN = colors.green[600];
-const RED = colors.red[600];
-
 type TooltipContent = {
     committeeName: string;
     handle: string;
@@ -125,7 +120,7 @@ export function TreeMap({
             } as TooltipContent;
             return {
                 name: row.handle, // text that is rendered inside the node
-                fill: RED,
+                fill: "var(--destructive)",
                 children: [
                     {
                         tooltip: tooltipContent,
@@ -134,7 +129,7 @@ export function TreeMap({
                     {
                         tooltip: tooltipContent,
                         size: row.total_videos * (1 - missingFraction),
-                        fill: GREEN,
+                        fill: "var(--success)",
                     },
                 ],
             } as TreeNode;
