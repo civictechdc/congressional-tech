@@ -51,13 +51,13 @@ export function StackedBarChart({
     className: string;
 }) {
     return (
-        <Card className={cn(className, "flex")} style={{ height: congressData.length * 30 }}>
+        <Card className={cn(className, "flex")}>
             <CardContent className="flex-1">
                 <ChartContainer config={chartConfig} className="h-full w-full">
-                    <BarChart accessibilityLayer data={congressData} layout="vertical" barSize={50}>
+                    <BarChart accessibilityLayer data={congressData} barSize={50}>
                         <CartesianGrid vertical={false} />
-                        <XAxis type="number" />
-                        <YAxis
+                        <YAxis type="number" />
+                        <XAxis
                             type="category"
                             dataKey="handle"
                             tickLine={false}
@@ -74,7 +74,7 @@ export function StackedBarChart({
                             label="Has EventID"
                             stackId="a"
                             fill="var(--color-hasEventId)"
-                            radius={[4, 0, 0, 4]}
+                            radius={[0, 0, 4, 4]}
                         ></Bar>
                         <Bar
                             dataKey="missing_event_id"
@@ -82,17 +82,8 @@ export function StackedBarChart({
                             label="Missing EventID"
                             stackId="a"
                             fill="var(--color-missingEventId)"
-                            radius={[0, 4, 4, 0]}
-                        >
-                            <LabelList
-                                dataKey="handle"
-                                position="insideRight"
-                                offset={8}
-                                fill="white"
-                                // keep your working workaround; some versions need stringly props
-                                clip={"false"}
-                            />
-                        </Bar>
+                            radius={[4, 4, 0, 0]}
+                        ></Bar>
                     </BarChart>
                 </ChartContainer>
             </CardContent>
