@@ -28,7 +28,7 @@ export function DashboardContent({}) {
             <TitleHeader {...{ congressNumber }} className="col-span-2 md:col-span-3" />
             <ChartPieDonutText {...{ congressData }} />
             <StackedBarChart {...{ congressData }} className="col-span-2" />
-            <TreeMap {...{ congressData }} />
+            <TreeMap {...{ congressData }} className="col-span-2" />
         </div>
     );
 }
