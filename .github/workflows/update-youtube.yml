@@ -1,0 +1,41 @@
+name: Update Events from YouTube
+
+on:
+  schedule:
+    - cron: "0 0 * * 0"
+  push:
+    branches:
+      - "*"
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  update-youtube:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.x"
+
+      - name: Install Dependencies
+        run: pip install projects/1.2-committee-youtube/python/
+
+      - name: YouTube Fetch
+        run: youtube-fetch --youtube-api-key ${{ secrets.YOUTUBE_DATA_API_KEY }}
+
+      - name: YouTube Analyze
+        run: youtube-analyze
+
+      - name: Upload to GitHub
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add projects/1.2-committee-youtube/data/*
+          git commit -m "Updated Events from YouTube" || echo "No changes"
+          git push
