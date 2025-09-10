@@ -3,9 +3,6 @@ name: Update Events from YouTube
 on:
   schedule:
     - cron: "0 0 * * 0" # 12:00 AM Sunday each week
-  push:
-    branches:
-      - "*"
   pull_request:
     branches:
       - main
@@ -25,7 +22,9 @@ jobs:
           python-version: "3.x"
 
       - name: Install Dependencies
-        run: pip install projects/1.2-committee-youtube/python/
+        run: |
+          cd projects/1.2-committee-youtube/python/
+          pip install .
 
       - name: YouTube Fetch
         run: youtube-fetch --youtube-api-key ${{ secrets.YOUTUBE_DATA_API_KEY }}
