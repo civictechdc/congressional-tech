@@ -27,10 +27,10 @@ jobs:
           pip install .
 
       - name: YouTube Fetch
-        run: python projects/1.2-committee-youtube/python/congress_youtube/youtube/fetch/main.py --youtube-api-key ${{ secrets.YOUTUBE_DATA_API_KEY }}
+        run: python -m youtube-fetch --youtube-api-key ${{ secrets.YOUTUBE_DATA_API_KEY }}
 
       - name: YouTube Analyze
-        run: python projects/1.2-committee-youtube/python/congress_youtube/youtube/analyze/main.py
+        run: python -m youtube-analyze
 
       - name: Upload to GitHub
         run: |
