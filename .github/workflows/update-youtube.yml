@@ -27,10 +27,10 @@ jobs:
           pip install .
 
       - name: YouTube Fetch
-        run: python -m youtube-fetch --youtube-api-key ${{ secrets.YOUTUBE_DATA_API_KEY }}
+        run: youtube-fetch --youtube-api-key ${{ secrets.YOUTUBE_DATA_API_KEY }} --channels-csv-path ./congress_youtube/youtube/youtube-accounts.csv
 
       - name: YouTube Analyze
-        run: python -m youtube-analyze
+        run: youtube-analyze
 
       - name: Upload to GitHub
         run: |
