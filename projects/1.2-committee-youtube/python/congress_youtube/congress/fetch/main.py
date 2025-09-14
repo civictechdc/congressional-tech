@@ -54,7 +54,6 @@ def parse_args_and_run():
     ## ignore the unknown args
     args = parser.parse_known_args()[0]
 
-    print(args)
     main(**vars(args))
 
 

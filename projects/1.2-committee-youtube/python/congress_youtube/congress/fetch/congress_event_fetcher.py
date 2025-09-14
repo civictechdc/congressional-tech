@@ -39,7 +39,9 @@ class CongressEventFetcher(object):
             f"Loaded {len(self.events_tb):d} events from {os.path.abspath(self.events_tinydb_path)}"
         )
 
-        self.committees_tinydb_path = os.path.join(tinydb_dir, "committees.json")
+        self.committees_tinydb_path = os.path.join(
+            tinydb_dir, "committee-summaries.json"
+        )
         self.committees_tb = TinyDB(self.committees_tinydb_path).table("committees")
         print(
             f"Loaded {len(self.committees_tb):d} committees from {os.path.abspath(self.committees_tinydb_path)}"

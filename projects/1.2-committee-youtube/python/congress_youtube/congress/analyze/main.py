@@ -21,6 +21,10 @@ def main(tinydb_dir: str, chamber: str = "house", congress_number: int = 119):
     for committee in committees:
         committee.get_details("")  ## use dummy api key
 
+    committee_map = {
+        committee.summary.systemCode: committee for committee in committees
+    }
+
     top_level = [
         c for c in committees if (c.summary.parent is None and c.details.isCurrent)
     ]
@@ -29,15 +33,13 @@ def main(tinydb_dir: str, chamber: str = "house", congress_number: int = 119):
         print("-" * 80)
         print(c)
         print("-" * 40)
-        print("Sub-committees:", len(c.summary.children))
+        subcommittees = [
+            committee_map[child.systemCode] for child in c.summary.children
+        ]
+        print("Sub-committees:", len(subcommittees))
         print(
-            "Sub-sub-committees",
-            sum(
-                [
-                    len([child for child in sc_summary.children])
-                    for sc_summary in c.summary.children
-                ]
-            ),
+            "Active sub-committees",
+            len([sc for sc in subcommittees if sc.details.isCurrent]),
         )
         print("Type:", c.summary.committeeTypeCode)
 
@@ -69,7 +71,6 @@ def parse_args_and_run():
     ## ignore the unknown args
     args = parser.parse_known_args()[0]
 
-    print(args)
     main(**vars(args))
 
 
