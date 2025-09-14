@@ -9,7 +9,7 @@ ISO_FMT = "%Y-%m-%dT%H:%M:%SZ"
 
 
 @dataclass
-class Committee:
+class CommitteeSummary:
     chamber: str
     committeeTypeCode: str
     name: str
@@ -18,11 +18,11 @@ class Committee:
     updateDate: datetime
 
     # Relations (not included in dataclass-generated __repr__ to avoid cycles)
-    parent: Optional[Committee] = field(default=None, repr=False)
-    children: List[Committee] = field(default_factory=list, repr=False)
+    parent: Optional[CommitteeSummary] = field(default=None, repr=False)
+    children: List[CommitteeSummary] = field(default_factory=list, repr=False)
 
     # -------------------- Relationship helpers --------------------
-    def set_parent(self, parent: Optional[Committee]) -> None:
+    def set_parent(self, parent: Optional[CommitteeSummary]) -> None:
         """Assign a parent and keep bidirectional links consistent.
         If parent is None, the committee becomes a root.
         """
@@ -45,7 +45,7 @@ class Committee:
         if parent is not None and self not in parent.children:
             parent.children.append(self)
 
-    def add_child(self, child: Committee) -> None:
+    def add_child(self, child: CommitteeSummary) -> None:
         """Add a child and keep bidirectional links consistent."""
         if child is self:
             raise ValueError("A committee cannot be its own child")
@@ -56,16 +56,16 @@ class Committee:
             child.set_parent(self)
 
     # -------------------- Navigation helpers --------------------
-    def ancestors(self) -> List[Committee]:
+    def ancestors(self) -> List[CommitteeSummary]:
         cur = self.parent
-        out: List[Committee] = []
+        out: List[CommitteeSummary] = []
         while cur is not None:
             out.append(cur)
             cur = cur.parent
         return out
 
-    def descendants(self) -> List[Committee]:
-        out: List[Committee] = []
+    def descendants(self) -> List[CommitteeSummary]:
+        out: List[CommitteeSummary] = []
         stack = list(self.children)
         while stack:
             node = stack.pop()
@@ -73,7 +73,7 @@ class Committee:
             stack.extend(node.children)
         return out
 
-    def root(self) -> Committee:
+    def root(self) -> CommitteeSummary:
         cur = self
         while cur.parent is not None:
             cur = cur.parent
@@ -88,8 +88,10 @@ class Committee:
         return datetime.strptime(value, ISO_FMT)
 
     @classmethod
-    def from_dict(cls, data: Dict, index: Optional[CommitteeIndex] = None) -> Committee:
-        """Create (or fetch+update) a Committee from a JSON-like dict.
+    def from_dict(
+        cls, data: Dict, index: Optional[CommitteeSummaryIndex] = None
+    ) -> CommitteeSummary:
+        """Create (or fetch+update) a CommitteeSummary from a JSON-like dict.
         If an `index` is provided, instances are deduped by systemCode and
         parent/child links are established bidirectionally.
         """
@@ -200,24 +202,24 @@ class Committee:
         return d
 
 
-class CommitteeIndex:
-    """Registry for deduping/linking Committees by systemCode."""
+class CommitteeSummaryIndex:
+    """Registry for deduping/linking CommitteeSummarys by systemCode."""
 
     def __init__(self) -> None:
-        self._by_code: Dict[str, Committee] = {}
+        self._by_code: Dict[str, CommitteeSummary] = {}
 
-    def get(self, system_code: str) -> Optional[Committee]:
+    def get(self, system_code: str) -> Optional[CommitteeSummary]:
         return self._by_code.get(system_code)
 
-    def get_or_create(self, system_code: str, default) -> Committee:
+    def get_or_create(self, system_code: str, default) -> CommitteeSummary:
         inst = self._by_code.get(system_code)
         if inst is None:
             inst = default()
             self._by_code[system_code] = inst
         return inst
 
-    def upsert_from_dict(self, data: Dict) -> Committee:
-        return Committee.from_dict(data, index=self)
+    def upsert_from_dict(self, data: Dict) -> CommitteeSummary:
+        return CommitteeSummary.from_dict(data, index=self)
 
     def link_parent(self, child_code: str, parent_code: Optional[str]) -> None:
         child = self._by_code.get(child_code)
@@ -226,8 +228,8 @@ class CommitteeIndex:
             raise KeyError(f"Unknown committee: {child_code}")
         child.set_parent(parent)
 
-    def roots(self) -> List[Committee]:
+    def roots(self) -> List[CommitteeSummary]:
         return [c for c in self._by_code.values() if c.parent is None]
 
-    def all(self) -> List[Committee]:
+    def all(self) -> List[CommitteeSummary]:
         return list(self._by_code.values())
