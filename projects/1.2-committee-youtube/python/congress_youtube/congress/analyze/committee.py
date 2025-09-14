@@ -23,7 +23,7 @@ class Committee:
 
         ## will load from the tinydb before fetching
         self.details = CommitteeDetails.from_spec(
-            self.chamber, self.summary.systemCode, api_key, force_fetch
+            self.summary.chamber, self.summary.systemCode, api_key, force_fetch
         )
 
         return self.details
