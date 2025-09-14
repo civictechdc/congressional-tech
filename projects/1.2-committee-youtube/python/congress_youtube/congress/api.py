@@ -23,6 +23,8 @@ def validate_paginated_response(response_json: dict) -> list:
 
 
 def congress_api_get(endpoint: str, pagination=True, **kwargs):
+    if "api_key" not in kwargs.keys():
+        raise KeyError("Missing api key, provided:", kwargs.keys())
     url = f"{CONGRESS_API_BASE_URL}{endpoint}"
 
     # apply default parameters but overwrite w/ kwargs

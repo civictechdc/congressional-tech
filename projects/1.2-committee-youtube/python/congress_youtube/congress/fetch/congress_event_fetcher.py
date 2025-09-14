@@ -29,23 +29,38 @@ class CongressEventFetcher(object):
     ## initialize a dictionary to store the events in; keyed by their ids
     event_urls = {}
 
-    def __init__(self, api_key: str, tinydb_path: str = DEFAULT_TINYDB_DIR) -> None:
+    def __init__(self, api_key: str, tinydb_dir: str = DEFAULT_TINYDB_DIR) -> None:
         self.api_key = api_key
-        self.tinydb_path = tinydb_path
+        self.tinydb_dir = tinydb_dir
 
-        self.events_tb = TinyDB(self.tinydb_path).table("committee_meetings")
+        self.events_tinydb_path = os.path.join(tinydb_dir, "events.json")
+        self.events_tb = TinyDB(self.events_tinydb_path).table("committee_meetings")
         print(
-            f"Loaded {len(self.events_tb):d} events from {os.path.abspath(self.tinydb_path)}"
+            f"Loaded {len(self.events_tb):d} events from {os.path.abspath(self.events_tinydb_path)}"
         )
+
+        self.committees_tinydb_path = os.path.join(tinydb_dir, "committees.json")
+        self.committees_tb = TinyDB(self.committees_tinydb_path).table("committees")
+        print(
+            f"Loaded {len(self.committees_tb):d} committees from {os.path.abspath(self.committees_tinydb_path)}"
+        )
+
+    def fetch_all_committees(
+        self,
+        chamber: Literal["house", "senate", "nochamber"] = "house",
+    ):
+        committees = get_committees(chamber, api_key=self.api_key)["committees"]
+        return_value = self.committees_tb.insert_multiple(committees)
+        return return_value
 
     def fetch_event_list(
         self,
         congress_number: int,
         chamber: Literal["house", "senate", "nochamber"] = "house",
     ):
-        events = self.committee_meetings(congress=congress_number, chamber=chamber)[
-            "committeeMeetings"
-        ]
+        events = get_committee_meetings(
+            congress=congress_number, chamber=chamber, api_key=self.api_key
+        )["committeeMeetings"]
         for event in events:
             self.event_urls[event["eventId"]] = event["url"]
 
@@ -103,35 +118,29 @@ class CongressEventFetcher(object):
             retried = False
         print("\nDone with all events.")
 
-    def committee_meetings(
-        self,
-        congress: int = 119,
-        chamber: Literal["house", "senate", "nochamber"] = "house",
-        **kwargs,
-    ) -> dict:
-        ## validate chamber input
-        if chamber not in {"house", "senate", "nochamber"}:
-            raise ValueError(
-                f"Invalid chamber: {chamber}, must be one of: 'house', 'senate', 'nochamber'"
-            )
-        return congress_api_get(
-            f"committee-meeting/{congress}/{chamber}", api_key=self.api_key, **kwargs
-        )
 
-    def committee_meeting_details(
-        self,
-        eventId: int,
-        congress: int = 119,
-        chamber: Literal["house", "senate", "nochamber"] = "house",
-        **kwargs,
-    ):
-        ## validate chamber input
-        if chamber not in {"house", "senate", "nochamber"}:
-            raise ValueError(
-                f"Invalid chamber: {chamber}, must be one of: 'house', 'senate', 'nochamber'"
-            )
-        return congress_api_get(
-            f"committee-meeting/{congress}/{chamber}/{eventId}",
-            api_key=self.api_key,
-            **kwargs,
+def get_committees(
+    chamber: Literal["house", "senate"] = "house",
+    **kwargs,
+):
+    ## validate chamber input
+    if chamber not in {"house", "senate"}:
+        raise ValueError(
+            f"Invalid chamber: {chamber}, must be one of: 'house', 'senate'"
         )
+    return congress_api_get(f"committee/{chamber}", **kwargs)
+
+
+def get_committee_meetings(
+    congress: int = 119,
+    chamber: Literal["house", "senate", "nochamber"] = "house",
+    **kwargs,
+) -> dict:
+    ## validate chamber input
+    if not (100 <= congress <= 120):
+        raise ValueError(f"Invalid congress: {congress}, must be between 100 and 120")
+    if chamber not in {"house", "senate", "nochamber"}:
+        raise ValueError(
+            f"Invalid chamber: {chamber}, must be one of: 'house', 'senate', 'nochamber'"
+        )
+    return congress_api_get(f"committee-meeting/{congress}/{chamber}", **kwargs)
