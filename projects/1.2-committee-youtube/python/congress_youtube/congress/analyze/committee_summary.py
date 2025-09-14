@@ -6,6 +6,8 @@ from typing import Dict, List, Optional
 
 
 ISO_FMT = "%Y-%m-%dT%H:%M:%SZ"
+## redefined below after index is defined
+INDEX = None
 
 
 @dataclass
@@ -88,9 +90,7 @@ class CommitteeSummary:
         return datetime.strptime(value, ISO_FMT)
 
     @classmethod
-    def from_dict(
-        cls, data: Dict, index: Optional[CommitteeSummaryIndex] = None
-    ) -> CommitteeSummary:
+    def from_dict(cls, data: Dict) -> CommitteeSummary:
         """Create (or fetch+update) a CommitteeSummary from a JSON-like dict.
         If an `index` is provided, instances are deduped by systemCode and
         parent/child links are established bidirectionally.
@@ -104,8 +104,9 @@ class CommitteeSummary:
         update = (
             cls.parse_date(data.get("updateDate")) if data.get("updateDate") else None
         )
+        global INDEX
 
-        if index is None:
+        if INDEX is None:
             inst = cls(
                 chamber=chamber,
                 committeeTypeCode=ctype,
@@ -115,7 +116,7 @@ class CommitteeSummary:
                 updateDate=update or datetime.min,
             )
         else:
-            inst = index.get_or_create(
+            inst = INDEX.get_or_create(
                 system_code,
                 default=lambda: cls(
                     chamber=chamber,
@@ -142,10 +143,10 @@ class CommitteeSummary:
         parent_data = data.get("parent")
         if parent_data:
             parent_code = parent_data.get("systemCode")
-            if index is None:
+            if INDEX is None:
                 parent = cls.from_dict(parent_data)  # standalone mode
             else:
-                parent = index.get_or_create(
+                parent = INDEX.get_or_create(
                     parent_code,
                     default=lambda: cls(
                         chamber=parent_data.get("chamber", chamber),
@@ -169,10 +170,17 @@ class CommitteeSummary:
                     parent.chamber = parent_data["chamber"]
                 if parent_data.get("updateDate"):
                     parent.updateDate = cls.parse_date(parent_data["updateDate"])  # type: ignore[arg-type]
+        else:
+            parent = None
 
-            inst.set_parent(parent)
+        inst.set_parent(parent)
 
         return inst
+
+    @classmethod
+    def from_dicts(cls, data_list: List[Dict]) -> List["CommitteeSummary"]:
+        """Create a list of CommitteeSummary objects from a list of dicts."""
+        return [cls.from_dict(data) for data in data_list]
 
     def to_dict(self, include_tree: bool = False) -> Dict:
         d = {
@@ -202,7 +210,7 @@ class CommitteeSummary:
         return d
 
 
-class CommitteeSummaryIndex:
+class _CommitteeSummaryIndex:
     """Registry for deduping/linking CommitteeSummarys by systemCode."""
 
     def __init__(self) -> None:
@@ -233,3 +241,7 @@ class CommitteeSummaryIndex:
 
     def all(self) -> List[CommitteeSummary]:
         return list(self._by_code.values())
+
+
+## initialize the global index
+INDEX = _CommitteeSummaryIndex()
