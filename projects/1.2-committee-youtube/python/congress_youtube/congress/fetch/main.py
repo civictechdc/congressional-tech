@@ -5,11 +5,19 @@ from ...globals import add_global_args
 from .congress_event_fetcher import CongressEventFetcher
 
 
-def main(tinydb_path: str, chamber: str = "house", congress_number: int = 119):
+def main(tinydb_dir: str, chamber: str = "house", congress_number: int = 119):
     api_key = load_congress_api_key()
-    fetcher = CongressEventFetcher(api_key, tinydb_path)
-    fetcher.fetch_event_list(congress_number, chamber)
-    fetcher.process_events()
+    fetcher = CongressEventFetcher(api_key, tinydb_dir)
+    fetcher.fetch_all_committees(chamber)
+
+    committees = fetcher.committees_tb.all()
+    system_codes = [
+        committee.get("systemCode", list(committee.keys())) for committee in committees
+    ]
+
+    print(len(system_codes), len(set(system_codes)))
+    # fetcher.fetch_event_list(congress_number, chamber)
+    # fetcher.process_events()
 
 
 def parse_args_and_run():
