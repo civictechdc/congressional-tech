@@ -2,22 +2,29 @@ import argparse
 
 from ...auth import load_congress_api_key
 from ...globals import add_global_args
+from ..analyze.committee import Committee
+from ..analyze.committee_summary import CommitteeSummary
 from .congress_event_fetcher import CongressEventFetcher
 
 
 def main(tinydb_dir: str, chamber: str = "house", congress_number: int = 119):
     api_key = load_congress_api_key()
     fetcher = CongressEventFetcher(api_key, tinydb_dir)
+
+    ## fetch the summaries
     fetcher.fetch_all_committees(chamber)
+    dicts = fetcher.committees_tb.all()
 
-    committees = fetcher.committees_tb.all()
-    system_codes = [
-        committee.get("systemCode", list(committee.keys())) for committee in committees
-    ]
+    ## map the summaries to their class instances
+    summaries = CommitteeSummary.from_dicts(dicts)
 
-    print(len(system_codes), len(set(system_codes)))
-    # fetcher.fetch_event_list(congress_number, chamber)
-    # fetcher.process_events()
+    ## initialize Committee instances in order to fetch the details
+    committees = [Committee.from_summary(summary, chamber) for summary in summaries]
+    num_committees = len(committees)
+    for i, committee in enumerate(committees):
+        if not i % 25:
+            print(f"Working on {i}/{num_committees}")
+        committee.get_details(api_key)
 
 
 def parse_args_and_run():
