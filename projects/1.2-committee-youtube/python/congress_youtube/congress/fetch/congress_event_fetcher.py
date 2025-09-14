@@ -1,7 +1,7 @@
 import os
 import requests
 import time
-from tinydb import TinyDB
+from tinydb import TinyDB, Query
 from tinydb.table import Document
 from typing import Literal
 
@@ -48,10 +48,19 @@ class CongressEventFetcher(object):
     def fetch_all_committees(
         self,
         chamber: Literal["house", "senate", "nochamber"] = "house",
-    ):
+    ) -> tuple[list[Document], list[Document]]:
         committees = get_committees(chamber, api_key=self.api_key)["committees"]
-        return_value = self.committees_tb.insert_multiple(committees)
-        return return_value
+        committee_q = Query()
+        new_committees = []
+        for committee in committees:
+            system_code = committee.get("systemCode")
+            if not self.committees_tb.contains(committee_q.systemCode == system_code):
+                id = self.committees_tb.insert(committee)
+                doc = Document(committee, doc_id=id)
+                new_committees.append(doc)
+        if len(new_committees) > 0:
+            print(f"Added {len(new_committees)} new committees.")
+        return [self.committees_tb.all(), new_committees]
 
     def fetch_event_list(
         self,
