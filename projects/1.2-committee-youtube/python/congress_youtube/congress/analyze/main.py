@@ -17,10 +17,29 @@ def main(tinydb_dir: str, chamber: str = "house", congress_number: int = 119):
         Committee.from_summary(summary) for summary in summaries
     ]
 
+    ## load details for each committee
+    for committee in committees:
+        committee.get_details("")  ## use dummy api key
+
     top_level = [
         c for c in committees if (c.summary.parent is None and c.details.isCurrent)
     ]
-    print(top_level)
+
+    for c in top_level:
+        print("-" * 80)
+        print(c)
+        print("-" * 40)
+        print("Sub-committees:", len(c.summary.children))
+        print(
+            "Sub-sub-committees",
+            sum(
+                [
+                    len([child for child in sc_summary.children])
+                    for sc_summary in c.summary.children
+                ]
+            ),
+        )
+        print("Type:", c.summary.committeeTypeCode)
 
 
 def parse_args_and_run():
