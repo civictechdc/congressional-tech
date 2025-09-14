@@ -1,20 +1,27 @@
 import argparse
+from tinydb import Query
 
 from ...globals import add_global_args
 from ..fetch.congress_event_fetcher import CongressEventFetcher
+from .committee_summary import CommitteeSummary
 
 
 def main(tinydb_dir: str, chamber: str = "house", congress_number: int = 119):
     ## pass a dummy api_key so we can access tinydb tables
     fetcher = CongressEventFetcher("", tinydb_dir)
     committees = fetcher.committees_tb.all()
-    for committee in committees:
-        parent = committee.get("parent", None)
-        if parent is None:
-            msg = f"Self is: {committee.get('systemCode')}"
-        else:
-            msg = f"Parent is: {parent['systemCode']}"
-        print(msg)
+    committee_q = Query()
+    summaries = CommitteeSummary.from_dicts(committees)
+    top_level = [summary for summary in summaries if summary.parent is None]
+    types = {c.committeeTypeCode: 0 for c in top_level}
+    for ctype in types.keys():
+        types[ctype] = fetcher.committees_tb.count(
+            committee_q.committeeTypeCode == ctype
+        )
+    print(types)
+    has_children = [summary for summary in summaries if summary.children]
+    for c in has_children:
+        print(c, end="----\n" * 4)
 
     # fetcher.fetch_event_list(congress_number, chamber)
     # fetcher.process_events()
