@@ -5,7 +5,7 @@ from tinydb import TinyDB
 from tinydb.table import Document
 from typing import Literal
 
-from ...globals import DEFAULT_TINYDB_PATH
+from ...globals import DEFAULT_TINYDB_DIR
 from ..api import congress_api_get, generic_request
 
 
@@ -29,7 +29,7 @@ class CongressEventFetcher(object):
     ## initialize a dictionary to store the events in; keyed by their ids
     event_urls = {}
 
-    def __init__(self, api_key: str, tinydb_path: str = DEFAULT_TINYDB_PATH) -> None:
+    def __init__(self, api_key: str, tinydb_path: str = DEFAULT_TINYDB_DIR) -> None:
         self.api_key = api_key
         self.tinydb_path = tinydb_path
 
