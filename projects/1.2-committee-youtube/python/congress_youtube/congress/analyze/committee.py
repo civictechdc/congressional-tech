@@ -6,13 +6,13 @@ class Committee:
     summary: CommitteeSummary = None
     details: CommitteeDetails = None
 
-    def __init__(self, chamber):
-        self.chamber = chamber
+    def __repr__(self):
+        return f"Committee({self.summary.name}, {self.summary.systemCode}, details={self.details is not None})"
 
     @classmethod
-    def from_summary(cls, summary: CommitteeSummary, chamber: str):
+    def from_summary(cls, summary: CommitteeSummary):
         ## TODO: replace chamber with validation and Literal; should extract that...
-        inst = cls(chamber)
+        inst = cls()
         ## bind the summary
         inst.summary = summary
         return inst
