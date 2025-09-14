@@ -19,7 +19,7 @@ def main(tinydb_dir: str, chamber: str = "house", congress_number: int = 119):
     summaries = CommitteeSummary.from_dicts(dicts)
 
     ## initialize Committee instances in order to fetch the details
-    committees = [Committee.from_summary(summary, chamber) for summary in summaries]
+    committees = [Committee.from_summary(summary) for summary in summaries]
     num_committees = len(committees)
     for i, committee in enumerate(committees):
         if not i % 25:
