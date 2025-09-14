@@ -15,7 +15,7 @@ class DocCount(TypedDict):
     url: str
 
 
-class ParentInfo(TypedDict, total=False):
+class CommitteeEntry(TypedDict, total=False):
     name: str
     systemCode: str
     url: str
@@ -62,7 +62,8 @@ class CommitteeDetails:
     reports: Optional[DocCount] = field(default_factory=lambda: {"count": 0, "url": ""})
     history: List[HistoryEntry] = field(default_factory=list)
     isCurrent: bool = False
-    parent: Optional[ParentInfo] = None
+    parent: Optional[CommitteeEntry] = None
+    subcommittees: Optional[List[CommitteeEntry]] = None
     systemCode: str = ""
     ctype: str = ""
     # store as datetime in memory; serialize to string on write
