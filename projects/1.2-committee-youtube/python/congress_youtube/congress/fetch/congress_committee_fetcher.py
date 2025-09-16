@@ -4,6 +4,8 @@ from tinydb.table import Document
 from typing import Literal
 from ...globals import DEFAULT_TINYDB_DIR
 from ..api import congress_api_get
+from ..analyze.committee_summary import CommitteeSummary
+from ..analyze.committee import Committee
 
 
 class CongressCommitteeFetcher:
@@ -46,6 +48,26 @@ class CongressCommitteeFetcher:
         if len(new_committees) > 0:
             print(f"Added {len(new_committees)} new committees.")
         return [self.committees_tb.all(), new_committees]
+
+    def return_system_code_committees_mapping(self):
+        ## generate a list of committees from the summary endpoint
+        dicts = self.committees_tb.all()
+        summaries = CommitteeSummary.from_dicts(dicts)
+        committees: list[Committee] = [
+            Committee.from_summary(summary) for summary in summaries
+        ]
+
+        ## load details for each committee
+        for committee in committees:
+            ## use dummy api key to ensure we load from cache and don't hit api
+            committee.get_details("")
+
+        ## bind the committee object to corresponding system code
+        committee_map = {
+            committee.summary.systemCode: committee for committee in committees
+        }
+
+        return committee_map
 
 
 def get_committees(

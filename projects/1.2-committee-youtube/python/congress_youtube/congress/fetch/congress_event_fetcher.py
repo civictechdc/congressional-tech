@@ -104,6 +104,11 @@ class CongressEventFetcher(object):
             retried = False
         print("\nDone with all events.")
 
+    def return_eventid_event_mapping(self):
+        dicts = self.events_tb.all()
+        event_ids = [this_dict["eventId"] for this_dict in dicts]
+        return dict(zip(event_ids, dicts))
+
 
 def get_committee_meetings(
     congress: int = 119,
