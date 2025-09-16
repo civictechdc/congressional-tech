@@ -1,47 +1,32 @@
 import argparse
-from tinydb import Query
+from collections import defaultdict
+
 
 from ...globals import add_global_args
 from ..fetch.congress_committee_fetcher import CongressCommitteeFetcher
-from .committee_summary import CommitteeSummary
-from .committee import Committee
+from ..fetch.congress_event_fetcher import CongressEventFetcher
 
 
 def main(tinydb_dir: str, chamber: str = "house", congress_number: int = 119):
     ## pass a dummy api_key so we can access tinydb tables
-    fetcher = CongressCommitteeFetcher("", tinydb_dir)
-    dicts = fetcher.committees_tb.all()
-    committee_q = Query()
-    summaries = CommitteeSummary.from_dicts(dicts)
-    committees: list[Committee] = [
-        Committee.from_summary(summary) for summary in summaries
-    ]
-
-    ## load details for each committee
-    for committee in committees:
-        committee.get_details("")  ## use dummy api key
-
-    committee_map = {
-        committee.summary.systemCode: committee for committee in committees
-    }
-
-    top_level = [
-        c for c in committees if (c.summary.parent is None and c.details.isCurrent)
-    ]
-
-    for c in top_level:
-        print("-" * 80)
-        print(c)
-        print("-" * 40)
-        subcommittees = [
-            committee_map[child.systemCode] for child in c.summary.children
-        ]
-        print("Sub-committees:", len(subcommittees))
-        print(
-            "Active sub-committees",
-            len([sc for sc in subcommittees if sc.details.isCurrent]),
-        )
-        print("Type:", c.summary.committeeTypeCode)
+    committee_fetcher = CongressCommitteeFetcher("", tinydb_dir)
+    committee_mapping = committee_fetcher.return_system_code_committees_mapping()
+    event_fetcher = CongressEventFetcher("", tinydb_dir)
+    event_mapping = event_fetcher.return_eventid_event_mapping()
+    lens = defaultdict(int)
+    for event in event_mapping.values():
+        committees: list | dict = event["committees"]
+        if isinstance(committees, list):
+            for committee in committees:
+                committee_mapping[committee["systemCode"]].events.append(event)
+        elif isinstance(committee, dict):
+            if "item" not in committees.keys():
+                raise KeyError(
+                    f"Expected 'item', got: {committees.keys()} for event {event['eventId']}"
+                )
+    for committee in committee_mapping.values():
+        if len(committee.events) > 0:
+            print(committee.summary.parent)
 
 
 def parse_args_and_run():
