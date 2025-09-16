@@ -2,14 +2,14 @@ import argparse
 from tinydb import Query
 
 from ...globals import add_global_args
-from ..fetch.congress_event_fetcher import CongressEventFetcher
+from ..fetch.congress_committee_fetcher import CongressCommitteeFetcher
 from .committee_summary import CommitteeSummary
 from .committee import Committee
 
 
 def main(tinydb_dir: str, chamber: str = "house", congress_number: int = 119):
     ## pass a dummy api_key so we can access tinydb tables
-    fetcher = CongressEventFetcher("", tinydb_dir)
+    fetcher = CongressCommitteeFetcher("", tinydb_dir)
     dicts = fetcher.committees_tb.all()
     committee_q = Query()
     summaries = CommitteeSummary.from_dicts(dicts)
