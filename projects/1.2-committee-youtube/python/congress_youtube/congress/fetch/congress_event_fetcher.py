@@ -1,7 +1,7 @@
 import os
 import requests
 import time
-from tinydb import TinyDB, Query
+from tinydb import TinyDB
 from tinydb.table import Document
 from typing import Literal
 
@@ -39,35 +39,10 @@ class CongressEventFetcher(object):
             f"Loaded {len(self.events_tb):d} events from {os.path.abspath(self.events_tinydb_path)}"
         )
 
-        self.committees_tinydb_path = os.path.join(
-            tinydb_dir, "committee-summaries.json"
-        )
-        self.committees_tb = TinyDB(self.committees_tinydb_path).table("committees")
-        print(
-            f"Loaded {len(self.committees_tb):d} committees from {os.path.abspath(self.committees_tinydb_path)}"
-        )
-
-    def fetch_all_committees(
-        self,
-        chamber: Literal["house", "senate", "nochamber"] = "house",
-    ) -> tuple[list[Document], list[Document]]:
-        committees = get_committees(chamber, api_key=self.api_key)["committees"]
-        committee_q = Query()
-        new_committees = []
-        for committee in committees:
-            system_code = committee.get("systemCode")
-            if not self.committees_tb.contains(committee_q.systemCode == system_code):
-                id = self.committees_tb.insert(committee)
-                doc = Document(committee, doc_id=id)
-                new_committees.append(doc)
-        if len(new_committees) > 0:
-            print(f"Added {len(new_committees)} new committees.")
-        return [self.committees_tb.all(), new_committees]
-
     def fetch_event_list(
         self,
-        congress_number: int,
         chamber: Literal["house", "senate", "nochamber"] = "house",
+        congress_number: int = 119,
     ):
         events = get_committee_meetings(
             congress=congress_number, chamber=chamber, api_key=self.api_key
@@ -128,18 +103,6 @@ class CongressEventFetcher(object):
             i += 1
             retried = False
         print("\nDone with all events.")
-
-
-def get_committees(
-    chamber: Literal["house", "senate"] = "house",
-    **kwargs,
-):
-    ## validate chamber input
-    if chamber not in {"house", "senate"}:
-        raise ValueError(
-            f"Invalid chamber: {chamber}, must be one of: 'house', 'senate'"
-        )
-    return congress_api_get(f"committee/{chamber}", **kwargs)
 
 
 def get_committee_meetings(
