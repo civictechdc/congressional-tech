@@ -5,9 +5,14 @@ from .committee_summary import CommitteeSummary
 class Committee:
     summary: CommitteeSummary = None
     details: CommitteeDetails = None
+    events: list
+
+    def __init__(self):
+        ## initialize an empty list for events to be bound to this committee
+        self.events = []
 
     def __repr__(self):
-        return f"Committee({self.summary.name}, {self.summary.systemCode}, details={self.details is not None})"
+        return f"Committee({self.summary.name}, {self.summary.systemCode}, details={self.details is not None}, events={len(self.events)})"
 
     @classmethod
     def from_summary(cls, summary: CommitteeSummary):
