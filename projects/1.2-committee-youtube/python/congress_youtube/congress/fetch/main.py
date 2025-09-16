@@ -1,19 +1,20 @@
 import argparse
+from pathlib import Path
 
 from ...auth import load_congress_api_key
 from ...globals import add_global_args
 from ..analyze.committee import Committee
 from ..analyze.committee_summary import CommitteeSummary
 from .congress_event_fetcher import CongressEventFetcher
+from .congress_committee_fetcher import CongressCommitteeFetcher
 
 
-def main(tinydb_dir: str, chamber: str = "house", congress_number: int = 119):
-    api_key = load_congress_api_key()
-    fetcher = CongressEventFetcher(api_key, tinydb_dir)
+def fetch_committees(api_key: str, tinydb_dir: Path, chamber):
+    committee_fetcher = CongressCommitteeFetcher(api_key, tinydb_dir)
 
     ## fetch the summaries
-    fetcher.fetch_all_committees(chamber)
-    dicts = fetcher.committees_tb.all()
+    committee_fetcher.fetch_all_committees(chamber)
+    dicts = committee_fetcher.committees_tb.all()
 
     ## map the summaries to their class instances
     summaries = CommitteeSummary.from_dicts(dicts)
@@ -25,6 +26,18 @@ def main(tinydb_dir: str, chamber: str = "house", congress_number: int = 119):
         if not i % 25:
             print(f"Working on {i}/{num_committees}")
         committee.get_details(api_key)
+
+
+## TODO import chamber + congress_number typing and validation
+def fetch_events(api_key: str, tinydb_dir: Path, chamber, congress_number: int):
+    event_fetcher = CongressEventFetcher(api_key, tinydb_dir)
+    event_fetcher.fetch_event_list(chamber, congress_number)
+
+
+def main(tinydb_dir: Path, chamber: str = "house", congress_number: int = 119):
+    api_key = load_congress_api_key()
+    fetch_committees(api_key, tinydb_dir, chamber)
+    fetch_events(tinydb_dir, chamber, congress_number)
 
 
 def parse_args_and_run():
