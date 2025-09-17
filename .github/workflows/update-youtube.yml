@@ -16,21 +16,16 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v5
 
-      - name: Setup Python
-        uses: actions/setup-python@v6
+      - name: Run in Dev Container
+        uses: devcontainers/ci@v0.3
         with:
-          python-version: "3.x"
-
-      - name: Install Dependencies
-        run: |
-          cd projects/1.2-committee-youtube/python/
-          pip install .
-
-      - name: YouTube Fetch
-        run: youtube-fetch --youtube-api-key ${{ secrets.YOUTUBE_DATA_API_KEY }} --channels-csv-path ./congress_youtube/youtube/youtube-accounts.csv
-
-      - name: YouTube Analyze
-        run: youtube-analyze
+          runCmd: |
+            # YouTube Fetch
+            cd projects/1.2-committee-youtube/python/
+            youtube-fetch --youtube-api-key ${{ secrets.YOUTUBE_DATA_API_KEY }} --channels-csv-path congress_youtube/youtube/youtube-accounts.csv
+            
+            # YouTube Analyze  
+            youtube-analyze --channels-csv-path congress_youtube/youtube/youtube-accounts.csv
 
       - name: Upload to GitHub
         run: |
