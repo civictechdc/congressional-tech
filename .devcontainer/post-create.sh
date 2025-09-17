@@ -32,6 +32,10 @@ if [ -z "$(git config --get user.name)" ]; then
     echo "    git config --global user.email 'your.email@example.com'"
 fi
 
+# Initialize Git LFS
+echo "🗃️  Initializing Git LFS..."
+git lfs install
+
 echo "✅ Development environment setup complete!"
 echo ""
 echo "🔗 Available services:"

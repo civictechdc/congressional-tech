@@ -61,6 +61,53 @@ and retry with 'git restore --source=HEAD :/'
 ```
 in which case you must delete the directory, install Git LFS following the instructions above, and try again.
 
+## Development Containers
+
+🐳 This repository includes [Development Container](https://containers.dev/) configuration for a consistent development environment.
+
+### Quick Start with Devcontainers
+
+**Prerequisites:**
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) or [Docker Engine](https://docs.docker.com/engine/install/)
+- [VS Code](https://code.visualstudio.com/) with the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+
+**Getting Started:**
+1. Clone this repository (Git LFS will be automatically configured)
+2. Open the repository in VS Code
+3. When prompted, click **"Reopen in Container"** or press `Ctrl+Shift+P` and select **"Dev Containers: Reopen in Container"**
+4. Wait for the container to build and initialize (~3-5 minutes first time)
+
+**What's Included:**
+- **Ubuntu 22.04** base environment
+- **Python 3.11** with all project dependencies pre-installed
+- **Node.js 20** for the Next.js web application
+- **Git LFS** pre-configured and initialized
+- **VS Code extensions** for Python, TypeScript, and web development
+- **Helpful shell aliases** for quick navigation between projects
+
+**Available Commands:**
+```bash
+# Quick navigation
+ct-root      # Navigate to project root
+ct-app       # Navigate to Next.js app
+ct-youtube   # Navigate to YouTube data project
+ct-inflation # Navigate to inflation data project
+
+# YouTube data processing
+youtube-fetch --help      # Fetch committee YouTube videos  
+youtube-analyze --help    # Analyze videos for missing event IDs
+congress-fetch --help     # Fetch congressional meeting data
+
+# Web application
+cd app && npm run dev     # Start Next.js development server
+```
+
+**Benefits:**
+- ✅ **No local setup required** - everything works out of the box
+- ✅ **Consistent environment** - same setup for all developers and CI/CD
+- ✅ **Isolated dependencies** - won't interfere with your host system
+- ✅ **Pre-configured tools** - linting, formatting, and debugging ready to go
+
 ## Project List
 
 See the full project list & details at

@@ -8,7 +8,7 @@ This directory contains the configuration for a Development Container (devcontai
 - **Ubuntu 22.04** base image
 - **Python 3.11** with pip and common development tools
 - **Node.js 20** with npm for the Next.js application
-- **Git** and **GitHub CLI** for version control and GitHub integration
+- **Git** with **Git LFS** support and **GitHub CLI** for version control and GitHub integration
 
 ### Python Environment
 - Congressional YouTube package installed in development mode
@@ -33,6 +33,7 @@ This directory contains the configuration for a Development Container (devcontai
 3. **First Time Setup**: The container will automatically run the setup script that:
    - Installs Node.js dependencies for the Next.js app
    - Installs Python packages in development mode
+   - Initializes Git LFS for the repository
    - Sets up helpful shell aliases
 
 ## Available Commands
