@@ -26,7 +26,7 @@ def main(tinydb_dir: str, chamber: str = "house", congress_number: int = 119):
                 )
     for committee in committee_mapping.values():
         if len(committee.events) > 0:
-            print(committee.summary.parent)
+            print(committee.youtube)
 
 
 def parse_args_and_run():
