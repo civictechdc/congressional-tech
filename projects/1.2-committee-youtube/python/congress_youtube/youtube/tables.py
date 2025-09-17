@@ -4,42 +4,62 @@ import os
 
 from pathlib import Path
 from tinydb import TinyDB
+from typing import TypedDict
 
 from ..globals import DEFAULT_CHANNELS_CSV, DEFAULT_TINYDB_DIR
+
+
+class YoutubeChannelMetadata(TypedDict):
+    name: str
+    handles: list[str]
+
+
+def map_system_code_committee_handles(
+    csv_path: Path = DEFAULT_CHANNELS_CSV,
+) -> dict[str, YoutubeChannelMetadata]:
+    system_code_mapper = {}
+    with open(csv_path, newline="", encoding="utf-8") as csvfile:
+        reader = csv.DictReader(csvfile)
+        rows = list(reader)
+
+        for row in rows:
+            ## unpack the row
+            name = row["committee"]
+            systemCode = row["systemCode"]
+            handle = row["handle"]
+            secondary = row["secondary"]
+
+            handles = [handle] + [secondary] * (secondary != " ")
+            system_code_mapper[systemCode] = {
+                "name": name,
+                "handles": handles,
+            }
+    return system_code_mapper
 
 
 def get_all_committee_handless(
     csv_path: Path = DEFAULT_CHANNELS_CSV,
 ) -> list[list[str]]:
-    with open(csv_path, newline="", encoding="utf-8") as csvfile:
-        reader = csv.DictReader(csvfile)
-        rows = list(reader)
-        ## return all the handles for all the committees, ignore the committee name
-        return [list(rows[this_index].values())[1:] for this_index in range(len(rows))]
+    system_code_mapper = map_system_code_committee_handles(csv_path)
+    return [meta["handles"] for meta in system_code_mapper.values()]
+
+
+def get_all_commitee_names(
+    csv_path: Path = DEFAULT_CHANNELS_CSV,
+) -> list[str]:
+    system_code_mapper = map_system_code_committee_handles(csv_path)
+    return [meta["name"] for meta in system_code_mapper.values()]
 
 
 def get_committee_index(
     committee_name: str, csv_path: Path = DEFAULT_CHANNELS_CSV
 ) -> int:
-    committee_names = get_all_commitee_names(with_index=True)
-    for this_committee_name in committee_names:
-        if this_committee_name[0] == committee_name:
-            return this_committee_name[1]
-    raise IndexError(f"No committee name matched {committee_name} in {csv_path}")
-
-
-def get_all_commitee_names(
-    with_index: bool = False, csv_path: Path = DEFAULT_CHANNELS_CSV
-) -> list[str] | list[(str, int)]:
-    with open(csv_path, newline="", encoding="utf-8") as csvfile:
-        reader = csv.DictReader(csvfile)
-        rows = list(reader)
-        if not with_index:
-            ## return the entry in the first column alone
-            return [list(this_row.values())[0] for this_row in rows]
-        else:
-            ## return the entry in the first column along with its index
-            return [(list(this_row.values())[0], i) for i, this_row in enumerate(rows)]
+    committee_names: list[str] = get_all_commitee_names()
+    index = committee_names.index(committee_name)
+    if index == -1:
+        raise IndexError(f"No committee name matched {committee_name} in {csv_path}")
+    else:
+        return index
 
 
 def open_tinydb_for_committee(
