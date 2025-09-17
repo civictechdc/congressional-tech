@@ -9,6 +9,7 @@ RUN apt-get update \
     && apt-get -y install \
         curl \
         git \
+        git-lfs \
         vim \
         build-essential \
         ca-certificates \
