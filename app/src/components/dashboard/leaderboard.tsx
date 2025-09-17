@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { cn } from "@/lib/utils";
 import { Switch } from "../ui/switch";
 import { Label } from "../ui/label";
-import { CircleCheck, CircleX } from "lucide-react";
+import { CircleCheck, CircleX, ExternalLink } from "lucide-react";
 
 // Derived row type with helpful fields
 type Row = {
@@ -54,6 +54,17 @@ function sortRows(rows: Row[], variant: Variant, mode: Mode): Row[] {
         copy.sort((a, b) => b.missing - a.missing || b.total - a.total);
     }
     return copy;
+}
+
+function getYouTubeUrl(handle: string): string {
+    // Remove @ symbol if present at the beginning
+    const cleanHandle = handle.startsWith('@') ? handle.slice(1) : handle;
+    return `https://www.youtube.com/@${cleanHandle}`;
+}
+
+function openYouTubeChannel(handle: string): void {
+    const url = getYouTubeUrl(handle);
+    window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 function Metric({ row, variant, mode }: { row: Row; variant: Variant; mode: Mode }) {
@@ -138,12 +149,23 @@ function LeaderboardSection({
                     {top.map((r, i) => (
                         <Card
                             key={`${variant}-${mode}-${r.handle}`}
-                            className="transition-translate p-2 duration-300 hover:-translate-y-2"
+                            className="transition-all cursor-pointer p-2 duration-300 hover:-translate-y-2 hover:shadow-md group"
+                            onClick={() => openYouTubeChannel(r.handle)}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault();
+                                    openYouTubeChannel(r.handle);
+                                }
+                            }}
+                            title={`Open ${r.handle} YouTube channel`}
                         >
                             <CardContent className="flex items-center justify-between rounded-md">
-                                <div className="min-w-0">
-                                    <div className="truncate font-medium">
-                                        {i + 1}. {r.handle}
+                                <div className="min-w-0 flex-1">
+                                    <div className="truncate font-medium flex items-center gap-2">
+                                        <span>{i + 1}. {r.handle}</span>
+                                        <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                                     </div>
                                     <div className="text-muted-foreground truncate text-xs">
                                         {r.committee}
