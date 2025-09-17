@@ -25,13 +25,16 @@ def main(
     )
 
     ## read all the handles for all the committees
-    all_committee_handless = get_all_committee_handless()
+    all_committee_handless = get_all_committee_handless(csv_path=channels_csv_path)
 
     ## if we were passed a selection, determine both the committee name and index
     if committee_name is not None:
-        committee_index = get_committee_index(channels_csv_path, committee_name)
+        committee_index = get_committee_index(committee_name, channels_csv_path)
         committee_names = [(committee_names[committee_index][0], committee_index)]
     elif committee_index is not None:
+        # Validate the committee index
+        if committee_index < 0 or committee_index >= len(committee_names):
+            raise ValueError(f"Committee index {committee_index} is out of range (0-{len(committee_names)-1})")
         committee_names = [(committee_names[committee_index][0], committee_index)]
 
     ## loop through the selected committees (defaults to all of them)
@@ -79,7 +82,6 @@ def parse_args_and_run():
         "-i",
         "--committee-index",  ## dashes are automatically converted to underscores
         type=int,
-        choices=range(len(get_all_commitee_names())),
         help="Index of the committee in the CSV file",
     )
 
