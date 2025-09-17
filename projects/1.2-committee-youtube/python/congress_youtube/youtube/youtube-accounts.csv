@@ -1,19 +1,19 @@
-committee,handle,secondary
-Agriculture,@AgRepublicans,@HouseAgDems
-Appropriations,@HouseAppropriationsCommittee,
-Armed Services,@HouseArmedServices,
-Budget,@HouseBudgetGOP,@HouseBudgetDems
-Education & Workforce,@EdWorkforceCmte,
-Energy & Commerce,@energyandcommerce,
-Financial Services,@USHouseFSC,@GOPFinancialServices
-Foreign Affairs,@houseforeign,@HouseForeignGOP
-Homeland Security,@HouseHomeland,
-House Administration,@CommitteeonHouseAdministration,
-Judiciary,@USHouseJudiciaryGOP,@JudiciaryDems
-Natural Resources,@NaturalResourcesGOP,@NaturalResourcesDems
-Oversight and Government Reform,@OversightandGovernmentReform,
-Rules,@HouseRulesCommittee,
-"Science, Space, and Technology",@housescience,
-Small Business,@HouseSmallBiz,
-Veterans' Affairs,@HouseVeteransAffairs,
-Ways and Means,@WaysandMeansCommittee,
+committee,systemCode,handle,secondary
+Agriculture,hsag00,@AgRepublicans,@HouseAgDems
+Appropriations,hsap00,@HouseAppropriationsCommittee,
+Armed Services,hsas00,@HouseArmedServices,
+Budget,hsbu00,@HouseBudgetGOP,@HouseBudgetDems
+Education & Workforce,hsed00a,@EdWorkforceCmte,
+Energy & Commerce,hsif00,@energyandcommerce,
+Financial Services,hsba00,@USHouseFSC,@GOPFinancialServices
+Foreign Affairs,hsfa00,@houseforeign,@HouseForeignGOP
+Homeland Security,hshm00,@HouseHomeland,
+House Administration,hsha00,@CommitteeonHouseAdministration,
+Judiciary,hsju00,@USHouseJudiciaryGOP,@JudiciaryDems
+Natural Resources,hsii00,@NaturalResourcesGOP,@NaturalResourcesDems
+Oversight and Government Reform,hsgo00,@OversightandGovernmentReform,
+Rules,hsru00,@HouseRulesCommittee,
+"Science,Space,and Technology",hssy00,@housescience,
+Small Business,hssm00,@HouseSmallBiz,
+Veterans' Affairs,hsvr00,@HouseVeteransAffairs,
+Ways and Means,hswm00,@WaysandMeansCommittee,
