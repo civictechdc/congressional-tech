@@ -108,48 +108,15 @@ cd app && npm run dev     # Start Next.js development server
 - ✅ **Isolated dependencies** - won't interfere with your host system
 - ✅ **Pre-configured tools** - linting, formatting, and debugging ready to go
 
-### Working with Git LFS Data Files
+### Development Environment Details
 
-⚠️ **Important**: This repository uses Git LFS for large data files. JSON files in project `data/` directories may appear as Git LFS pointer files rather than actual data.
+For detailed development workflows, Git LFS data handling, and troubleshooting common issues, see the **[Development Container README](.devcontainer/README.md)**.
 
-**To access actual data files:**
-```bash
-# Pull all Git LFS files (requires repository access and authentication)
-git lfs pull
-```
-
-**If `git lfs pull` fails:**
-- You may see `JSONDecodeError: Expecting value` when running data processing commands
-- Solution: Use API commands to fetch fresh data instead of relying on cached files
-- Commands will still work but may process empty datasets initially
-
-### Development Workflow
-
-**For YouTube Committee Data Project:**
-```bash
-# Navigate to project
-ct-youtube
-
-# With API credentials, fetch fresh data:
-congress-fetch --congress-api-key YOUR_DATA_GOV_KEY
-youtube-fetch --youtube-api-key YOUR_YOUTUBE_KEY --channels-csv-path congress_youtube/youtube/youtube-accounts.csv
-
-# Analyze existing data (may require Git LFS files or fresh fetch first):
-youtube-analyze --channels-csv-path congress_youtube/youtube/youtube-accounts.csv
-```
-
-**Alternative: Run modules directly with Python:**
-```bash
-cd projects/1.2-committee-youtube/python
-python -m congress_youtube.youtube.analyze.main --channels-csv-path congress_youtube/youtube/youtube-accounts.csv
-```
-
-**Troubleshooting Common Issues:**
-
-- **"JSONDecodeError: Expecting value"**: Git LFS pointer files being read as JSON
-  - Try: `git lfs pull` or fetch new data with API commands
-- **"youtube-analyze: command not found"**: Use Python module syntax as alternative
-- **Empty analysis results**: Data files may be Git LFS pointers; fetch fresh data or use `git lfs pull`
+Key development features:
+- Pre-configured Python and Node.js environments
+- Git LFS support with automatic data file handling
+- CLI commands for data processing and analysis
+- Comprehensive troubleshooting guidance
 
 ## Project List
 
