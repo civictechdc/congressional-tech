@@ -147,33 +147,29 @@ function LeaderboardSection({
             <div className="min-h-0 flex-1 overflow-y-auto">
                 <ol className="space-y-2">
                     {top.map((r, i) => (
-                        <Card
+                        <a
                             key={`${variant}-${mode}-${r.handle}`}
-                            className="transition-all cursor-pointer p-2 duration-300 hover:-translate-y-2 hover:shadow-md group"
-                            onClick={() => openYouTubeChannel(r.handle)}
-                            role="button"
-                            tabIndex={0}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                    e.preventDefault();
-                                    openYouTubeChannel(r.handle);
-                                }
-                            }}
+                            href={getYouTubeUrl(r.handle)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block no-underline"
                             title={`Open ${r.handle} YouTube channel`}
                         >
-                            <CardContent className="flex items-center justify-between rounded-md">
-                                <div className="min-w-0 flex-1">
-                                    <div className="truncate font-medium flex items-center gap-2">
-                                        <span>{i + 1}. {r.handle}</span>
-                                        <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <Card className="transition-all p-2 duration-300 hover:-translate-y-2 hover:shadow-md group">
+                                <CardContent className="flex items-center justify-between rounded-md">
+                                    <div className="min-w-0 flex-1">
+                                        <div className="truncate font-medium flex items-center gap-2">
+                                            <span>{i + 1}. {r.handle}</span>
+                                            <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        </div>
+                                        <div className="text-muted-foreground truncate text-xs">
+                                            {r.committee}
+                                        </div>
                                     </div>
-                                    <div className="text-muted-foreground truncate text-xs">
-                                        {r.committee}
-                                    </div>
-                                </div>
-                                <Metric row={r} variant={variant} mode={mode} />
-                            </CardContent>
-                        </Card>
+                                    <Metric row={r} variant={variant} mode={mode} />
+                                </CardContent>
+                            </Card>
+                        </a>
                     ))}
                 </ol>
             </div>
