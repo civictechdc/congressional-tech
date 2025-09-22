@@ -64,7 +64,7 @@ def congress_api_get(endpoint: str, pagination=True, **kwargs):
 
 
 def generic_request(url: str, **params) -> dict:
-    response = requests.get(url, params=params)
+    response = requests.get(url.lower(), params=params)
     response.raise_for_status()
     try:
         return response.json()

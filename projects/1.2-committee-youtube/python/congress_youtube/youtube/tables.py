@@ -46,8 +46,11 @@ def get_all_committee_handless(
 
 def get_all_commitee_names(
     csv_path: Path = DEFAULT_CHANNELS_CSV,
+    with_index = False
 ) -> list[str]:
     system_code_mapper = map_system_code_committee_handles(csv_path)
+    if (with_index):
+        return [(meta["name"], idx) for idx, meta in enumerate(system_code_mapper.values())]
     return [meta["name"] for meta in system_code_mapper.values()]
 
 
