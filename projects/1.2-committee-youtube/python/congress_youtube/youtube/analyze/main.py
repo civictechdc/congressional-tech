@@ -56,16 +56,16 @@ def main(
 
     ## load all the names & their indices
     committee_names = get_all_commitee_names(
-        with_index=True, csv_path=channels_csv_path
+        csv_path=channels_csv_path
     )
 
     ## load all the corresponding handles
     committee_handless = get_all_committee_handless(channels_csv_path)
-    for committee_name in committee_names:
+    for committee_index, committee_name in enumerate(committee_names):
         try:
             ## define args required for opening the correct tinydb
             tinydb_args = dict(
-                committee_name_or_index=committee_name[1],
+                committee_name_or_index=committee_index,
                 csv_path=channels_csv_path,
                 tinydb_dir=tinydb_dir,
                 assert_exists=True,
@@ -78,7 +78,7 @@ def main(
             ##  to the CSV
             chamber = "house"
 
-            handles = committee_handless[committee_name[1]]
+            handles = committee_handless[committee_index]
             for handle in handles:
                 if handle == "":
                     ## skip when we're in a row that has fewer
@@ -95,7 +95,7 @@ def main(
                 ## loop through each congress to split metrics by congress #
                 ##  define the args for generating each row of the report
                 argss = zip(
-                    itertools.repeat(committee_name[0]),
+                    itertools.repeat(committee_name),
                     itertools.repeat(handle),
                     CONGRESS_METADATA.keys(),
                     CONGRESS_METADATA.values(),
