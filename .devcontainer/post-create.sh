@@ -32,9 +32,14 @@ if [ -z "$(git config --get user.name)" ]; then
     echo "    git config --global user.email 'your.email@example.com'"
 fi
 
-# Initialize Git LFS
-echo "🗃️  Initializing Git LFS..."
-git lfs install
+# Verify Git LFS is installed
+echo "🔎 Verifying Git LFS installation..."
+if git lfs version; then
+    echo "✅ Git LFS is installed."
+else
+    echo "❌ Git LFS is not installed or not in PATH. Please check the devcontainer setup." >&2
+    exit 1
+fi
 
 echo "✅ Development environment setup complete!"
 echo ""
