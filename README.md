@@ -1,13 +1,12 @@
 # congressional-tech
 
-## Contributors
-| Fork | Branch Name  | Description                   |
-|-----------------|--------------|-------------------------------|
-| [agurvich](https://github.com/agurvich/congressional-tech)        | feature/tinydb  | adding TinyDB support  |
-| mikewolfd        | N/A  | N/A  |
-| [ezrajohnmitchell](https://github.com/ezrajohnmitchell/congressional-tech)        | N/A  | N/A  |
-| dragonejt        | 3-congress_youtube-scrapes-congressional-committee-youtube-channels-for-all-videos  | Scraping YouTube metadata  |
-| [fwliu1](https://github.com/fwliu1/congressional-tech-youtube)        | N/A  | N/A  |
+This Repository represents the work on a collection of projects undertaken by [Civic Tech DC](https://civictechdc.org). Founded in 2012, Civic Tech DC is a non-partisan 501(c)(3) nonprofit community of volunteers using open-source technology to support civic engagement, strengthen democracy, and empower public-interest initiatives. 
+Information about this project can be found on its [Civic Tech DC homepage](https://www.civictechdc.org/projects/congressional-modernization.html). 
+A user-friendly representation of this repository [is also available](https://civictechdc.github.io/congressional-tech/).
+
+If you'd like to contribute, you can find a [project board of tickets](https://github.com/orgs/civictechdc/projects/18). 
+
+
 
 ## Git LFS Setup
 
