@@ -56,9 +56,22 @@ if ! shopt -oq posix; then
   fi
 fi
 
+function parse_git_branch(){
+  git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/ (\1)/'
+}
+
+
+export PS1="vscode@\h:\W 🏛 \u🏛\[\033[32m\]\$(parse_git_branch)\[\033[00m\]$ "
+
+
 echo "🏛️  Welcome to Congressional Tech development environment!"
 echo "📁 Quick navigation aliases:"
 echo "   ct-root    - Navigate to project root"
 echo "   ct-app     - Navigate to Next.js app"
 echo "   ct-youtube - Navigate to YouTube data project"
 echo "   ct-inflation - Navigate to inflation data project"
+echo "📜 Python CLI scripts (pyproject.toml):"
+echo "   congress-fetch    - Fetch congressional committee metadata"
+echo "   congress-analyze  - Analyze stored committee data"
+echo "   youtube-fetch     - Collect metadata for committee YouTube videos"
+echo "   youtube-analyze   - Analyze downloaded YouTube metadata"
