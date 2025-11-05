@@ -1,0 +1,38 @@
+name: Update Events from YouTube
+
+on:
+  schedule:
+    - cron: "0 0 * * 0" # 12:00 AM Sunday each week
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  update-youtube:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v5
+        with:
+          lfs: true
+
+      - name: Run in Dev Container
+        uses: devcontainers/ci@v0.3
+        with:
+          runCmd: |
+            # YouTube Fetch
+            cd projects/1.2-committee-youtube/python/
+            youtube-fetch --youtube-api-key ${{ secrets.YOUTUBE_DATA_API_KEY }} --channels-csv-path congress_youtube/youtube/youtube-accounts.csv
+            
+            # YouTube Analyze  
+            youtube-analyze --channels-csv-path congress_youtube/youtube/youtube-accounts.csv
+
+      - name: Upload to GitHub
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add projects/1.2-committee-youtube/data/*
+          git commit -m "Updated Events from YouTube" || echo "No changes"
+          git push
