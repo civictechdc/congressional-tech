@@ -33,23 +33,28 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="en">
-            <body
-                className={`flex flex-col ${geistSans.variable} ${geistMono.variable} overflow-hidden antialiased`}
-            >
+            <body className={`flex min-h-screen flex-col ${geistSans.variable} ${geistMono.variable} antialiased`}>
                 <ReactQueryProvider>
-                    <div className="z-10 flex flex-1 flex-row items-center p-2">
-                        <Link href="/">
-                            <Image
-                                src={favicon}
-                                alt="Favicon"
-                                className="h-8 w-auto cursor-pointer"
-                            />
-                        </Link>
-                        <NavBar />
-                    </div>
-                    <div className="overflow-y-scroll">{children}</div>
+                {/* Top Navigation */}
+                <div className="z-10 flex flex-row items-center p-2 shrink-0">
+                    <Link href="/">
+                    <Image
+                        src={favicon}
+                        alt="Favicon"
+                        className="h-8 w-auto cursor-pointer"
+                    />
+                    </Link>
+                    <NavBar />
+                </div>
+
+                {/* Main Content */}
+                <main className="flex-1 overflow-y-auto p-2">
+                    {children}
+                </main>
                 </ReactQueryProvider>
             </body>
         </html>
     );
 }
+
+
