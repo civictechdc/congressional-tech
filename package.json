@@ -1,0 +1,17 @@
+{
+  "name": "congressional-tech",
+  "version": "0.1.0",
+  "homepage": "https://github.com/civictechdc/congressional-tech#readme",
+  "bugs": {
+    "url": "https://github.com/civictechdc/congressional-tech/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/civictechdc/congressional-tech.git"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "packageManager": "npm@11.6.4"
+}

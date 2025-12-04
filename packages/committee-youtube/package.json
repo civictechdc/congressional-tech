@@ -1,0 +1,12 @@
+{
+  "name": "committee-youtube",
+  "version": "0.1.0",
+  "description": "This tool fetches and processes Congressional committee meeting metadata from Congress.gov and links it to YouTube recordings.",
+  "scripts": {
+    "sync": "uv sync",
+    "congress-fetch": "uv run congress-fetch",
+    "congress-analyze": "uv run congress-analyze",
+    "youtube-fetch": "uv run youtube-fetch",
+    "youtube-analyze": "uv run youtube-analyze"
+  }
+}

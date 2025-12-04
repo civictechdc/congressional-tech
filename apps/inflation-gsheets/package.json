@@ -1,0 +1,9 @@
+{
+  "name": "inflation-gsheets",
+  "version": "0.1.0",
+  "scripts": {
+    "start": "uv run start",
+    "clean": "rm -rf .venv",
+    "sync": "uv sync"
+  }
+}
