@@ -1,0 +1,10 @@
+[project]
+name = "congress-api"
+version = "0.1.0"
+description = "API Client for Congress.gov API"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "lxml",
+    "requests",
+]

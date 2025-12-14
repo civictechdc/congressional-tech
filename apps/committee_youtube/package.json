@@ -1,0 +1,12 @@
+{
+  "name": "@ct/committee-youtube",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "sync": "uv sync"
+  },
+  "dependencies": {
+    "@ct/youtube-api": "*",
+    "@ct/congress-api": "*"
+  }
+}

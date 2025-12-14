@@ -1,0 +1,35 @@
+[project]
+name = "congress-youtube"
+version = "0.1.0"
+description = "A tool to fetch and process Congressional committee meeting metadata to link to YouTube recordings."
+authors = [
+  { name="Alex Gurvich", email="alex.b.gurvich@gmail.com" }
+]
+requires-python = ">=3.12"
+readme = "README.md"
+dependencies = [
+  "congress-api",
+  "tinydb",
+  "youtube-api",
+]
+
+[project.urls]
+Homepage = "https://github.com/civictechdc/congressional-tech"
+
+[project.scripts]
+congress-fetch= "congress_youtube.congress.fetch.main:parse_args_and_run"
+congress-analyze= "congress_youtube.congress.analyze.main:parse_args_and_run"
+youtube-fetch= "congress_youtube.youtube.fetch.main:parse_args_and_run"
+youtube-analyze= "congress_youtube.youtube.analyze.main:parse_args_and_run"
+
+[build-system]
+requires = ["uv_build"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "src"
+module-root = "."
+
+[tool.uv.sources]
+youtube-api = { path = "../../packages/youtube_api" }
+congress-api = { path = "../../packages/congress_api" }
