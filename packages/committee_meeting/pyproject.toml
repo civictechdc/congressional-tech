@@ -1,0 +1,11 @@
+[project]
+name = "committee-meeting"
+version = "0.1.0"
+description = "Committee Meeting Data Platform"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[build-system]
+requires = ["uv_build"]
+build-backend = "uv_build"
