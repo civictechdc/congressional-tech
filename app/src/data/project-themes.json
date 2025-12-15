@@ -1,0 +1,27 @@
+[
+    {
+        "id": "I",
+        "title": "Enhancing Congressional Data Accessibility & Usability",
+        "focus": "Projects improving the discoverability, structure, and utility of legislative data for both congressional staff and the public."
+    },
+    {
+        "id": "II",
+        "title": "Workflow Efficiency Tools for Congressional Operations",
+        "focus": "Streamlining workflows to improve efficiency for congressional staff."
+    },
+    {
+        "id": "III",
+        "title": "Leveraging AI for Content Enhancement & Analysis",
+        "focus": "Explore AI applications to improve congressional information quality and analysis."
+    },
+    {
+        "id": "IV",
+        "title": "Predictive & Analytical Tools for Legislative Insight",
+        "focus": "Projects using data to generate predictive insights and facilitate analysis of legislative processes."
+    },
+    {
+        "id": "V",
+        "title": "Basic Utility Tools",
+        "focus": null
+    }
+]
