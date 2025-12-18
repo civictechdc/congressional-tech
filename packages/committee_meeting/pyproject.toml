@@ -4,8 +4,30 @@ version = "0.1.0"
 description = "Committee Meeting Data Platform"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "sqlmodel",
+]
+
+[dependency-groups]
+dev = [
+    "ruff",
+    "ty",
+]
 
 [build-system]
 requires = ["uv_build"]
 build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "PL",  # pylint
+    "I",   # isort
+    "C90", # mccabe
+]
