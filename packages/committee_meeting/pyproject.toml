@@ -22,6 +22,9 @@ build-backend = "uv_build"
 [tool.ruff]
 line-length = 120
 target-version = "py312"
+exclude = [
+    "src/committee_meeting/migrations/versions"
+]
 
 [tool.ruff.lint]
 select = [
@@ -31,4 +34,9 @@ select = [
     "PL",  # pylint
     "I",   # isort
     "C90", # mccabe
+]
+
+[tool.ty.src]
+exclude = [
+    "src/committee_meeting/migrations/versions"
 ]

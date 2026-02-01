@@ -4,11 +4,12 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 from sqlmodel import SQLModel
 
+from committee_meeting import get_database_url
+
 # Import all models so they register with SQLModel.metadata
 # This is required for autogenerate to detect your tables
 from committee_meeting.committee import Committee  # noqa: F401
 from committee_meeting.committee_meeting import CommitteeMeeting  # noqa: F401
-from committee_meeting.connection import get_database_url
 from committee_meeting.recording import Recording  # noqa: F401
 from committee_meeting.transcript import Transcript  # noqa: F401
 

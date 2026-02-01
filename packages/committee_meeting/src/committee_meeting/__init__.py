@@ -1,5 +1,6 @@
 from committee_meeting.committee import Chamber, Committee
 from committee_meeting.committee_meeting import CommitteeMeeting
+from committee_meeting.connection import get_database_url, initialize_connection
 from committee_meeting.recording import Recording, RecordingType
 from committee_meeting.transcript import Transcript, TranscriptSource
 
@@ -11,4 +12,6 @@ __all__ = [
     "RecordingType",
     "Transcript",
     "TranscriptSource",
+    "get_database_url",
+    "initialize_connection",
 ]
