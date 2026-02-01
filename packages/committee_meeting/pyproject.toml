@@ -5,6 +5,7 @@ description = "Committee Meeting Data Platform"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "alembic",
     "sqlmodel",
 ]
 
