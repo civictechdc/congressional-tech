@@ -3,6 +3,13 @@
   "tasks": {
     "sync": {
       "outputs": [".venv/**"]
+    },
+    "migrate": {
+      "dependsOn": ["^sync", "^makemigrations"],
+    },
+    "makemigrations": {
+      "dependsOn": ["^sync"],
+      "outputs": ["src/committee_meeting/migrations/versions/**"]
     }
   },
   "extends": ["//"]
