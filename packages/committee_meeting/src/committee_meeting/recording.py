@@ -31,11 +31,11 @@ class Recording(SQLModel, table=True):
         transcripts: List of transcripts generated from this recording.
     """
 
-    recording_id: str = Field(default=None, primary_key=True)
+    recording_id: str = Field(primary_key=True)
     type: RecordingType = Field(default=RecordingType.youtube)
-    video_id: str = Field(default=None)
-    video_title: str = Field(default=None)
-    upload_date: datetime = Field(default=None)
+    video_id: str = Field()
+    video_title: str = Field()
+    upload_date: Optional[datetime] = Field(default=None)
     meeting_id: Optional[str] = Field(default=None, foreign_key="committeemeeting.event_id")
     meeting: Optional["CommitteeMeeting"] = Relationship(back_populates="recordings")
     transcripts: list["Transcript"] = Relationship(back_populates="recording")
