@@ -369,3 +369,6 @@ vite.config.ts.timestamp-*
 
 ## ignore lock file modifications
 **/package-lock.json
+
+# Local SQLite Databases
+*.db

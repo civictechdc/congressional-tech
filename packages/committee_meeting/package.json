@@ -4,6 +4,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "sync": "uv sync"
+    "sync": "uv sync",
+    "migrate": "uv run alembic -c src/committee_meeting/alembic.ini upgrade head",
+    "makemigrations": "uv run alembic -c src/committee_meeting/alembic.ini revision --autogenerate"
   }
 }
