@@ -7,6 +7,7 @@ from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
     from committee_meeting.committee import Committee
+    from committee_meeting.recording import Recording
 
 
 class CommitteeMeeting(SQLModel, table=True):
@@ -19,12 +20,13 @@ class CommitteeMeeting(SQLModel, table=True):
         end_time: Scheduled or actual end time of the meeting.
         committee_id: Foreign key reference to the parent committee.
         committee: The committee that held this meeting.
+        recordings: List of recordings of this meeting.
     """
 
-    event_id: str = Field(default=None, primary_key=True)
-    event_title: str = Field(default=None)
-    start_time: datetime = Field(default=None)
-    end_time: datetime = Field(default=None)
-
+    event_id: str = Field(primary_key=True)
+    event_title: str = Field()
+    start_time: Optional[datetime] = Field(default=None)
+    end_time: Optional[datetime] = Field(default=None)
     committee_id: Optional[str] = Field(default=None, foreign_key="committee.committee_id")
     committee: Optional["Committee"] = Relationship(back_populates="meetings")
+    recordings: list["Recording"] = Relationship(back_populates="meeting")

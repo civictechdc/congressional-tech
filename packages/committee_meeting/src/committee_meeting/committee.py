@@ -12,8 +12,8 @@ if TYPE_CHECKING:
 class Chamber(StrEnum):
     """Congressional chamber designation."""
 
-    senate = "Senate"
-    house = "House"
+    senate = "senate"
+    house = "house"
 
 
 class Committee(SQLModel, table=True):
@@ -26,7 +26,7 @@ class Committee(SQLModel, table=True):
         meetings: List of meetings held by this committee.
     """
 
-    committee_id: str = Field(default=None, primary_key=True)
-    committee_name: str = Field(default=None)
-    chamber: Chamber = Field(default=None)
+    committee_id: str = Field(primary_key=True)
+    committee_name: str = Field()
+    chamber: Chamber = Field()
     meetings: list["CommitteeMeeting"] = Relationship(back_populates="committee")

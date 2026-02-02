@@ -36,10 +36,9 @@ class Transcript(SQLModel, table=True):
         recording: The recording this transcript was generated from.
     """
 
-    transcript_id: str = Field(default=None, primary_key=True)
-    transcript_url: str = Field(default=None)
-    created_date: datetime = Field(default=None)
-    source: TranscriptSource = Field(default=None)
-
+    transcript_id: str = Field(primary_key=True)
+    transcript_url: str = Field()
+    created_date: Optional[datetime] = Field(default=None)
+    source: TranscriptSource = Field()
     recording_id: Optional[str] = Field(default=None, foreign_key="recording.recording_id")
     recording: Optional["Recording"] = Relationship(back_populates="transcripts")

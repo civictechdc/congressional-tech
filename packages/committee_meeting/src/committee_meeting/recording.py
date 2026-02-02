@@ -2,18 +2,19 @@
 
 from datetime import datetime
 from enum import StrEnum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
+    from committee_meeting.committee_meeting import CommitteeMeeting
     from committee_meeting.transcript import Transcript
 
 
 class RecordingType(StrEnum):
     """Source platform for a meeting recording."""
 
-    youtube = "YouTube"
+    youtube = "youtube"
 
 
 class Recording(SQLModel, table=True):
@@ -25,6 +26,8 @@ class Recording(SQLModel, table=True):
         video_id: Platform-specific video identifier.
         video_title: Title of the video as displayed on the platform.
         upload_date: Date the recording was uploaded to the platform.
+        meeting_id: Foreign key reference to the associated committee meeting.
+        meeting: The committee meeting this recording captures.
         transcripts: List of transcripts generated from this recording.
     """
 
@@ -33,4 +36,6 @@ class Recording(SQLModel, table=True):
     video_id: str = Field(default=None)
     video_title: str = Field(default=None)
     upload_date: datetime = Field(default=None)
+    meeting_id: Optional[str] = Field(default=None, foreign_key="committeemeeting.event_id")
+    meeting: Optional["CommitteeMeeting"] = Relationship(back_populates="recordings")
     transcripts: list["Transcript"] = Relationship(back_populates="recording")
