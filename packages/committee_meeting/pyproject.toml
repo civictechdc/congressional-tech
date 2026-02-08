@@ -11,8 +11,8 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "pyrefly",
     "ruff",
-    "ty",
 ]
 
 [build-system]
@@ -36,7 +36,11 @@ select = [
     "C90", # mccabe
 ]
 
-[tool.ty.src]
-exclude = [
+[tool.pyrefly]
+project-includes = [
+    "**/*.py*",
+    "**/*.ipynb",
+]
+project-excludes = [
     "src/committee_meeting/migrations/versions"
 ]

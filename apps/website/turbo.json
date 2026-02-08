@@ -6,11 +6,11 @@
     "sync": {},
     "static": {},
     "build": {
-      "dependsOn": ["^clean"],
+      "dependsOn": ["clean"],
       "outputs": ["dist/**"]
     },
     "export": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["build"],
       "outputs": ["../docs/**"]
     }
   },
