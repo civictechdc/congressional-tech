@@ -1,19 +1,11 @@
 name: Update Events from YouTube
 
 on:
-  # TODO: the `congress_youtube` console-script package (youtube-fetch /
-  # youtube-analyze) that this job depends on is not resolvable in the repo
-  # today - see the note above the `runCmd` step below for the full
-  # explanation. Schedule is disabled until that's fixed, so this job stops
-  # failing every week. Re-enable once `youtube-fetch --help` actually works.
-  # schedule:
-  #   - cron: "0 0 * * 0" # 12:00 AM Sunday each week
-  # pull_request also disabled until the tooling is restored: it can't pass
-  # today, so it only adds a failing check to every PR. Re-enable alongside the
-  # schedule once `youtube-fetch --help` works.
-  # pull_request:
-  #   branches:
-  #     - main
+  schedule:
+    - cron: "0 0 * * 0" # 12:00 AM Sunday each week
+  # pull_request intentionally omitted: this job does a real YouTube API fetch
+  # (burns quota, ~10min devcontainer build, and fails on fork PRs with no
+  # secret). Smoke-test tooling changes with workflow_dispatch instead.
   workflow_dispatch:
 
 jobs:
@@ -29,42 +21,39 @@ jobs:
       - name: Run in Dev Container
         uses: devcontainers/ci@v0.3
         with:
-          # TODO: `youtube-fetch` / `youtube-analyze` are console_scripts
-          # defined in apps/committee_youtube/pyproject.toml, pointing at
-          # `congress_youtube.youtube.fetch.main:parse_args_and_run` etc.
-          # That `congress_youtube` package does not exist anywhere in the
-          # repo in importable form:
-          #   - apps/committee_youtube/src/ only has auth.py + globals.py
-          #     (no congress_youtube/, no congress/ or youtube/ subpackages,
-          #     no youtube-accounts.csv).
-          #   - The pre-migration code (git history, e.g. commit 4c02ae3~1
-          #     at projects/1.2-committee-youtube/python/congress_youtube/)
-          #     was NOT cleanly moved - it was superseded by a different,
-          #     partial refactor into packages/congress_api and
-          #     packages/youtube_api, which are themselves broken: every
-          #     file in both packages does
-          #     `from apps.congress_youtube.auth import ...` /
-          #     `from apps.congress_youtube.globals import ...` /
-          #     `from packages.youtube_api.tables import ...`, none of
-          #     which resolve (verified: `pip install -e` those packages,
-          #     `import congress_api.fetch.main` raises
-          #     `ModuleNotFoundError: No module named 'apps'`; the
-          #     installed `youtube-fetch` console script raises
-          #     `ModuleNotFoundError: No module named 'congress_youtube'`).
-          # This needs a real decision (finish wiring committee_youtube as
-          # a thin wrapper around congress_api/youtube_api with correct
-          # imports, or reconstitute congress_youtube wholesale) before the
-          # schedule above can come back. Paths below are updated to the
-          # current apps/ layout on a best-effort basis only.
+          # post-create.sh installs the Python package graph editable
+          # (congress_shared -> youtube_api/congress_api -> committee_youtube),
+          # which registers the youtube-fetch / youtube-analyze console scripts
+          # into ~/.local/bin. We put that on PATH before invoking them.
+          #
+          # The committee->handle CSV and congress metadata now ship inside the
+          # shared package, so the tools find their data by default. We still
+          # pass --channels-csv-path explicitly (finished layout) and write the
+          # TinyDBs + report into apps/committee_youtube/data so the "Upload to
+          # GitHub" step below can commit them.
           runCmd: |
+            export PATH="$HOME/.local/bin:$PATH"
+
+            CSV="packages/congress_shared/src/congress_shared/youtube/youtube-accounts.csv"
+            DATA_DIR="apps/committee_youtube/data"
+            mkdir -p "$DATA_DIR"
+
             # YouTube Fetch
-            cd apps/committee_youtube
-            youtube-fetch --youtube-api-key ${{ secrets.YOUTUBE_DATA_API_KEY }} --channels-csv-path src/congress_youtube/youtube/youtube-accounts.csv
+            youtube-fetch \
+              --youtube-api-key ${{ secrets.YOUTUBE_DATA_API_KEY }} \
+              --channels-csv-path "$CSV" \
+              --tinydb_dir "$DATA_DIR"
 
             # YouTube Analyze
-            youtube-analyze --channels-csv-path src/congress_youtube/youtube/youtube-accounts.csv
+            youtube-analyze \
+              --channels-csv-path "$CSV" \
+              --tinydb_dir "$DATA_DIR" \
+              --output-path "$DATA_DIR/youtube_event_id_report.csv"
 
       - name: Upload to GitHub
+        # On pull_request we run fetch/analyze as a smoke check but do not
+        # commit/push (PRs, especially from forks, can't push).
+        if: github.event_name != 'pull_request'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

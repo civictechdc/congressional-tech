@@ -4,23 +4,31 @@ set -e
 
 echo "🚀 Setting up Congressional Tech development environment..."
 
-# Install npm dependencies for the Next.js app
-echo "📦 Installing Node.js dependencies..."
-cd /workspaces/congressional-tech/app
-npm install
+# Resolve the repo root so this works no matter where the script is invoked
+# from (devcontainers/ci runs it from the workspace root).
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO_ROOT"
 
-# Install Python dependencies for the YouTube project
-echo "🐍 Installing Python dependencies..."
-cd /workspaces/congressional-tech/projects/1.2-committee-youtube/python
-pip install --user -e .
+# Install the Python package graph editable. Order is leaf-first so the
+# cross-package deps resolve from the local tree instead of an index:
+#   congress_shared  (auth + globals + bundled CSV/metadata)
+#     -> youtube_api  (youtube-fetch / youtube-analyze console scripts)
+#     -> congress_api (congress-fetch / congress-analyze console scripts)
+#     -> committee_youtube (aggregator app; pulls both packages)
+# Installing all four registers the four console scripts into ~/.local/bin.
+echo "🐍 Installing Python package graph (editable)..."
+pip install --user \
+  -e packages/congress_shared \
+  -e packages/youtube_api \
+  -e packages/congress_api \
+  -e apps/committee_youtube
 
-# Install dependencies for the inflation project
-echo "📈 Installing inflation project dependencies..."
-cd /workspaces/congressional-tech/projects/5.1-inflation-gsheets
-pip install --user pandas openpyxl requests
-
-# Go back to root
-cd /workspaces/congressional-tech
+# Node workspaces (Astro site, etc.) - best effort. The Python CLI jobs don't
+# need it, so a hiccup here must not fail container setup.
+if command -v npm >/dev/null 2>&1; then
+    echo "📦 Installing Node workspace dependencies (best effort)..."
+    npm install --no-audit --no-fund || echo "⚠️  npm install skipped/failed (non-fatal)"
+fi
 
 # Set up git configuration if not already set
 if [ -z "$(git config --get user.name)" ]; then
@@ -34,9 +42,9 @@ fi
 
 echo "✅ Development environment setup complete!"
 echo ""
-echo "🔗 Available services:"
-echo "  - Next.js app: http://localhost:3000 (run: cd app && npm run dev)"
-echo "  - YouTube data fetcher: youtube-fetch --help"
-echo "  - YouTube analyzer: youtube-analyze --help"
-echo "  - Congress data fetcher: congress-fetch --help"
+echo "🔗 Available console scripts (ensure ~/.local/bin is on PATH):"
+echo "  - youtube-fetch --help"
+echo "  - youtube-analyze --help"
+echo "  - congress-fetch --help"
+echo "  - congress-analyze --help"
 echo ""

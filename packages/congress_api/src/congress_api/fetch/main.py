@@ -1,8 +1,8 @@
 import argparse
 from pathlib import Path
 
-from apps.congress_youtube.auth import load_congress_api_key
-from apps.congress_youtube.globals import add_global_args
+from congress_shared.auth import load_congress_api_key
+from congress_shared.globals import add_global_args
 from ..analyze.committee import Committee
 from ..analyze.committee_summary import CommitteeSummary
 from .congress_event_fetcher import CongressEventFetcher

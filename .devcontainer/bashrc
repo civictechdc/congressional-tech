@@ -37,9 +37,9 @@ alias la='ls -A'
 alias l='ls -CF'
 
 # Congressional Tech specific aliases
-alias ct-app='cd /workspaces/congressional-tech/app'
-alias ct-youtube='cd /workspaces/congressional-tech/projects/1.2-committee-youtube/python'
-alias ct-inflation='cd /workspaces/congressional-tech/projects/5.1-inflation-gsheets'
+alias ct-site='cd /workspaces/congressional-tech/apps/site'
+alias ct-youtube='cd /workspaces/congressional-tech/apps/committee_youtube'
+alias ct-inflation='cd /workspaces/congressional-tech/apps/inflation_gsheets'
 alias ct-root='cd /workspaces/congressional-tech'
 
 # Add user Python bin to PATH if it exists
@@ -59,6 +59,6 @@ fi
 echo "🏛️  Welcome to Congressional Tech development environment!"
 echo "📁 Quick navigation aliases:"
 echo "   ct-root    - Navigate to project root"
-echo "   ct-app     - Navigate to Next.js app"
-echo "   ct-youtube - Navigate to YouTube data project"
-echo "   ct-inflation - Navigate to inflation data project"
+echo "   ct-site    - Navigate to the Astro site (apps/site)"
+echo "   ct-youtube - Navigate to the YouTube tooling app (apps/committee_youtube)"
+echo "   ct-inflation - Navigate to inflation data project (apps/inflation_gsheets)"

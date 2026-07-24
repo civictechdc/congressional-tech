@@ -11,14 +11,14 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from tinydb import Query, TinyDB
 
-from apps.congress_youtube.globals import add_global_args, add_youtube_args, CONGRESS_METADATA
+from congress_shared.globals import add_global_args, add_youtube_args, CONGRESS_METADATA
 
-from packages.youtube_api.tables import (
+from youtube_api.tables import (
     get_all_commitee_names,
     get_all_committee_handless,
     open_tinydb_for_committee,
 )
-from apps.congress_youtube.globals import (
+from congress_shared.globals import (
     DEFAULT_YOUTUBE_REPORT_FILE,
     DEFAULT_TINYDB_DIR,
     DEFAULT_CHANNELS_CSV,

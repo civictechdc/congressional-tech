@@ -5,6 +5,26 @@ description = "API Client for Congress.gov API"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "congress-shared",
+    "youtube-api",
     "lxml",
     "requests",
+    "tinydb",
 ]
+
+[project.scripts]
+congress-fetch = "congress_api.fetch.main:parse_args_and_run"
+congress-analyze = "congress_api.analyze.main:parse_args_and_run"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# uv-native path sources (ignored by pip). Lets `uv pip install -e .`
+# resolve the sibling packages from the local tree instead of an index.
+[tool.uv.sources]
+congress-shared = { path = "../congress_shared", editable = true }
+youtube-api = { path = "../youtube_api", editable = true }

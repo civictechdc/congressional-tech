@@ -6,7 +6,7 @@ from pathlib import Path
 from tinydb import where
 from tinydb.table import Table
 
-from packages.youtube_api.tables import open_tinydb_for_committee
+from youtube_api.tables import open_tinydb_for_committee
 
 
 class YoutubeEventFetcher:
