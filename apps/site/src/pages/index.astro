@@ -19,7 +19,7 @@ const builtCount = (themeId: string) =>
 const themeBlurb = (focus: string | null) =>
   focus ?? 'Small, immediately useful utilities for congressional work.';
 
-const relatedRepos = [
+const subProjects = [
   {
     title: 'DeltaTrack',
     href: 'https://github.com/civictechdc/DeltaTrack',
@@ -45,9 +45,11 @@ const relatedRepos = [
           Open-source tools for a more transparent Congress
         </h1>
         <p class="hero-lead lead">
-          Congressional Tech is a volunteer effort to make legislative
-          information easier to find, track, and understand — for congressional
-          staff and for the public. Nineteen project proposals across five
+          Congressional Tech is a volunteer effort, in partnership with the
+          <a href="https://americalabs.org/">American Governance Institute</a>,
+          to make legislative information easier to find, track, and
+          understand. Every proposal here answers a real-world request from
+          people working in and around Congress — nineteen of them across five
           themes, with working tools already shipping.
         </p>
         <div class="hero-actions">
@@ -99,8 +101,8 @@ const relatedRepos = [
     <div class="container">
       <h2 class="section-heading">Built and shipping</h2>
       <p class="section-intro">
-        Two proposals are working tools today, alongside two sister repos in
-        the civictechdc org.
+        Two proposals are working tools today, alongside DeltaTrack and
+        BillTrax — Congressional Tech sub-projects with their own repos.
       </p>
       <div class="project-grid">
         {
@@ -123,9 +125,9 @@ const relatedRepos = [
           ))
         }
         {
-          relatedRepos.map((repo) => (
-            <article class="card project-card">
-              <p class="eyebrow project-eyebrow">Related repo</p>
+          subProjects.map((repo) => (
+            <article class="card card--gold project-card">
+              <p class="eyebrow project-eyebrow">Sub-project</p>
               <h3 class="card-title">{repo.title}</h3>
               <p>{repo.blurb}</p>
               <div class="project-links">

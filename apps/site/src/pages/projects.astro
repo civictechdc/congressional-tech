@@ -13,7 +13,7 @@ const rendered = await Promise.all(
   })),
 );
 
-const sisterRepos = [
+const subProjects = [
   {
     title: 'DeltaTrack',
     href: 'https://github.com/civictechdc/DeltaTrack',
@@ -38,15 +38,15 @@ const sisterRepos = [
 <Base
   title="Projects"
   active="projects"
-  description="Congressional-tech proposals that are built and shipping, plus the DeltaTrack and BillTrax sister repos."
+  description="Congressional-tech proposals that are built and shipping, plus the DeltaTrack and BillTrax sub-projects."
 >
   <section class="page-hero anchor-dark">
     <div class="container">
       <p class="eyebrow page-eyebrow">Shipping</p>
       <h1 class="page-title">Active projects</h1>
       <p class="page-lead lead">
-        Proposals that graduated into working tools, plus two sister repos
-        maintained in the civictechdc org.
+        Proposals that graduated into working tools, plus two Congressional
+        Tech sub-projects maintained in their own repos.
       </p>
     </div>
   </section>
@@ -86,20 +86,21 @@ const sisterRepos = [
 
   <section class="section section--repos">
     <div class="container">
-      <h2 class="section-heading">Related repositories</h2>
+      <h2 class="section-heading">Sub-projects</h2>
       <p class="section-intro">
-        Standalone tools contributed by
-        <a href="https://github.com/AgoraDMV">AgoraDMV</a>, forked into the org
-        and kept in sync with their upstreams daily. Deliberate sister
-        projects: DeltaTrack is the local, zero-dependency diff engine for
-        Hill staffers; BillTrax is the server-backed public platform layering
-        AI, tracking, and cross-bill analysis on top of the same
-        structured-bill approach.
+        Congressional Tech sub-projects that live in their own repositories,
+        contributed by
+        <a href="https://github.com/AgoraDMV">AgoraDMV</a> and kept in sync
+        with their upstreams daily. They are deliberate complements:
+        DeltaTrack is the local, zero-dependency diff engine for Hill
+        staffers; BillTrax is the server-backed public platform layering AI,
+        tracking, and cross-bill analysis on top of the same structured-bill
+        approach.
       </p>
       <div class="repo-grid">
         {
-          sisterRepos.map((repo) => (
-            <article class="card repo-card">
+          subProjects.map((repo) => (
+            <article class="card card--gold repo-card">
               <h3 class="card-title">{repo.title}</h3>
               <p class="repo-blurb">{repo.blurb}</p>
               <ul class="repo-links">
