@@ -369,3 +369,6 @@ vite.config.ts.timestamp-*
 
 ## ignore lock file modifications
 **/package-lock.json
+
+# The generic `lib/` rule above is a Python rule; keep the website app source lib dir.
+!apps/website/src/lib/
