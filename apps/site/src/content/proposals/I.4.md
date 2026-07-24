@@ -2,7 +2,7 @@
 id: "I.4"
 title: "Appropriations Data Pipeline & Historical Analysis"
 theme: "I"
-status: "active"
+status: "in-progress"
 effort: "5+"
 related:
   - label: "DeltaTrack"

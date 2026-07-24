@@ -269,7 +269,7 @@ a:hover {
   color: var(--ctdc-primary);
 }
 
-.badge--active {
+.badge--in-progress {
   background: var(--ctdc-gold);
   color: var(--ctdc-midnight);
 }
@@ -290,7 +290,7 @@ a:hover {
   color: var(--ctdc-on-dark-strong);
 }
 
-.anchor-dark .badge--active {
+.anchor-dark .badge--in-progress {
   background: var(--ctdc-gold);
   color: var(--ctdc-midnight);
 }

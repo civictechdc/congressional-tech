@@ -15,9 +15,9 @@ const proposalCount = (themeId: string) =>
   proposals.filter((p) => p.data.theme === themeId).length;
 const builtCount = (themeId: string) =>
   projects.filter((p) => p.data.theme === themeId).length;
-const activeCount = (themeId: string) =>
+const inProgressCount = (themeId: string) =>
   proposals.filter(
-    (p) => p.data.theme === themeId && p.data.status === 'active',
+    (p) => p.data.theme === themeId && p.data.status === 'in-progress',
   ).length;
 
 const themeBlurb = (focus: string | null) =>
@@ -92,8 +92,8 @@ const subProjects = [
                 }
                 {builtCount(theme.data.id) > 0 &&
                   ` · ${builtCount(theme.data.id)} built`}
-                {activeCount(theme.data.id) > 0 &&
-                  ` · ${activeCount(theme.data.id)} active`}
+                {inProgressCount(theme.data.id) > 0 &&
+                  ` · ${inProgressCount(theme.data.id)} in progress`}
               </p>
             </a>
           ))
@@ -102,7 +102,7 @@ const subProjects = [
     </div>
   </section>
 
-  <!-- Active projects + related repos strip -->
+  <!-- Built projects + sub-projects strip -->
   <section class="section section--tint">
     <div class="container">
       <h2 class="section-heading">Built and shipping</h2>
@@ -115,7 +115,7 @@ const subProjects = [
         {
           projects.map((project) => (
             <article class="card card--gold project-card">
-              <p class="eyebrow project-eyebrow">Active project · {project.data.id}</p>
+              <p class="eyebrow project-eyebrow">Built · Project {project.data.id}</p>
               <h3 class="card-title">{project.data.title}</h3>
               <p>{project.data.description}</p>
               <div class="project-links">

@@ -23,7 +23,7 @@ const proposals = defineCollection({
     id: z.string(),
     title: z.string(),
     theme: themeId,
-    status: z.enum(['idea', 'active', 'built']),
+    status: z.enum(['idea', 'in-progress', 'built']),
     effort: z.string().optional(),
     repo: z.string().url().optional(),
     related: z

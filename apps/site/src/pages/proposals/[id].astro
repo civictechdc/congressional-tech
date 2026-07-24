@@ -16,7 +16,11 @@ if (!proposal) throw new Error(`Unknown proposal: ${id}`);
 const theme = await getEntry('themes', proposal.data.theme);
 const { Content } = await render(proposal);
 
-const statusLabel = { built: 'Built', active: 'Active', idea: 'Idea' } as const;
+const statusLabel = {
+  built: 'Built',
+  'in-progress': 'In progress',
+  idea: 'Idea',
+} as const;
 const status = proposal.data.status;
 ---
 
@@ -90,7 +94,7 @@ const status = proposal.data.status;
         status === 'built' && (
           <p class="built-note">
             This proposal is built — see it on the
-            <a href={withBase('/projects/')}>active projects page</a>
+            <a href={withBase('/projects/')}>projects page</a>
             {proposal.data.id === 'I.2' && (
               <>
                 {' '}or open the{' '}

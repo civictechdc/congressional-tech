@@ -18,7 +18,11 @@ const byTheme = themes
   }))
   .filter((group) => group.proposals.length > 0);
 
-const statusLabel = { built: 'Built', active: 'Active', idea: 'Idea' } as const;
+const statusLabel = {
+  built: 'Built',
+  'in-progress': 'In progress',
+  idea: 'Idea',
+} as const;
 ---
 
 <Base
@@ -73,8 +77,8 @@ const statusLabel = { built: 'Built', active: 'Active', idea: 'Idea' } as const;
               <span>Built</span>
             </label>
             <label class="chip">
-              <input type="radio" name="status" value="active" />
-              <span>Active</span>
+              <input type="radio" name="status" value="in-progress" />
+              <span>In progress</span>
             </label>
             <label class="chip">
               <input type="radio" name="status" value="idea" />

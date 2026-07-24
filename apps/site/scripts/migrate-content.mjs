@@ -52,8 +52,9 @@ const THEME_TAGS = {
 /**
  * Sub-projects that advance parts of a proposal. DeltaTrack covers I.4's
  * report-language change analysis and line-item money tracking; BillTrax
- * covers its pipeline/structured-data and version-tracking side. Neither
- * implements the full proposal, so I.4 is "active", not "built".
+ * covers its pipeline/structured-data and version-tracking side. The
+ * sub-projects are shipped software, but the full proposal isn't realized
+ * yet, so I.4 is "in-progress" rather than "built".
  */
 const PROPOSAL_RELATED = {
   'I.4': [
@@ -72,7 +73,7 @@ const PROPOSAL_RELATED = {
 
 /** Status overrides beyond the built/idea derivation from active-projects. */
 const STATUS_OVERRIDES = {
-  'I.4': 'active',
+  'I.4': 'in-progress',
 };
 
 async function readJson(name) {
