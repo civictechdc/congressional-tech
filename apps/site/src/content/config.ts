@@ -26,6 +26,15 @@ const proposals = defineCollection({
     status: z.enum(['idea', 'active', 'built']),
     effort: z.string().optional(),
     repo: z.string().url().optional(),
+    related: z
+      .array(
+        z.object({
+          label: z.string(),
+          href: z.string().url(),
+          note: z.string(),
+        }),
+      )
+      .optional(),
   }),
 });
 

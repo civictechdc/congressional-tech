@@ -15,6 +15,10 @@ const proposalCount = (themeId: string) =>
   proposals.filter((p) => p.data.theme === themeId).length;
 const builtCount = (themeId: string) =>
   projects.filter((p) => p.data.theme === themeId).length;
+const activeCount = (themeId: string) =>
+  proposals.filter(
+    (p) => p.data.theme === themeId && p.data.status === 'active',
+  ).length;
 
 const themeBlurb = (focus: string | null) =>
   focus ?? 'Small, immediately useful utilities for congressional work.';
@@ -88,6 +92,8 @@ const subProjects = [
                 }
                 {builtCount(theme.data.id) > 0 &&
                   ` · ${builtCount(theme.data.id)} built`}
+                {activeCount(theme.data.id) > 0 &&
+                  ` · ${activeCount(theme.data.id)} active`}
               </p>
             </a>
           ))
@@ -102,7 +108,8 @@ const subProjects = [
       <h2 class="section-heading">Built and shipping</h2>
       <p class="section-intro">
         Two proposals are working tools today, alongside DeltaTrack and
-        BillTrax — Congressional Tech sub-projects with their own repos.
+        BillTrax — Congressional Tech sub-projects with their own repos, both
+        advancing the appropriations data pipeline proposal (I.4).
       </p>
       <div class="project-grid">
         {

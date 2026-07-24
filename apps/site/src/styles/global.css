@@ -269,6 +269,11 @@ a:hover {
   color: var(--ctdc-primary);
 }
 
+.badge--active {
+  background: var(--ctdc-gold);
+  color: var(--ctdc-midnight);
+}
+
 .badge--effort {
   background: rgba(238, 192, 94, 0.18);
   color: #6b4e0e;
@@ -283,6 +288,11 @@ a:hover {
 .anchor-dark .badge--idea {
   background: rgba(255, 255, 255, 0.12);
   color: var(--ctdc-on-dark-strong);
+}
+
+.anchor-dark .badge--active {
+  background: var(--ctdc-gold);
+  color: var(--ctdc-midnight);
 }
 
 .anchor-dark .badge--effort {

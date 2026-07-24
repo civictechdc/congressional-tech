@@ -2,8 +2,15 @@
 id: "I.4"
 title: "Appropriations Data Pipeline & Historical Analysis"
 theme: "I"
-status: "idea"
+status: "active"
 effort: "5+"
+related:
+  - label: "DeltaTrack"
+    href: "https://github.com/civictechdc/DeltaTrack"
+    note: "structural bill diffs + appropriations money table"
+  - label: "BillTrax"
+    href: "https://github.com/civictechdc/BillTrax"
+    note: "structured bill pipeline + funding-change tracking"
 ---
 
 Comprehensive pipeline to track appropriations in real time, extract line-item data, and analyze report language historically across House/Senate stages.

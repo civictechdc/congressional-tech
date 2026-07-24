@@ -49,6 +49,32 @@ const THEME_TAGS = {
   V: 'Utilities',
 };
 
+/**
+ * Sub-projects that advance parts of a proposal. DeltaTrack covers I.4's
+ * report-language change analysis and line-item money tracking; BillTrax
+ * covers its pipeline/structured-data and version-tracking side. Neither
+ * implements the full proposal, so I.4 is "active", not "built".
+ */
+const PROPOSAL_RELATED = {
+  'I.4': [
+    {
+      label: 'DeltaTrack',
+      href: 'https://github.com/civictechdc/DeltaTrack',
+      note: 'structural bill diffs + appropriations money table',
+    },
+    {
+      label: 'BillTrax',
+      href: 'https://github.com/civictechdc/BillTrax',
+      note: 'structured bill pipeline + funding-change tracking',
+    },
+  ],
+};
+
+/** Status overrides beyond the built/idea derivation from active-projects. */
+const STATUS_OVERRIDES = {
+  'I.4': 'active',
+};
+
 async function readJson(name) {
   return JSON.parse(await readFile(join(dataDir, name), 'utf8'));
 }
@@ -63,7 +89,20 @@ function yaml(value) {
 function frontmatter(fields) {
   const lines = Object.entries(fields)
     .filter(([, v]) => v !== undefined)
-    .map(([k, v]) => `${k}: ${yaml(v)}`);
+    .flatMap(([k, v]) => {
+      if (Array.isArray(v)) {
+        return [
+          `${k}:`,
+          ...v.flatMap((item) =>
+            Object.entries(item).map(
+              ([ik, iv], idx) =>
+                `  ${idx === 0 ? '- ' : '  '}${ik}: ${yaml(iv)}`,
+            ),
+          ),
+        ];
+      }
+      return [`${k}: ${yaml(v)}`];
+    });
   return `---\n${lines.join('\n')}\n---`;
 }
 
@@ -153,9 +192,11 @@ for (const [index, proposal] of proposalsJson.entries()) {
       id,
       title: proposal.title,
       theme,
-      status: builtIds.has(id) ? 'built' : 'idea',
+      status:
+        STATUS_OVERRIDES[id] ?? (builtIds.has(id) ? 'built' : 'idea'),
       effort: effort || undefined,
       repo: PROPOSAL_REPOS[id],
+      related: PROPOSAL_RELATED[id],
     }),
     '',
     proposal.description.trim(),

@@ -57,6 +57,27 @@ const status = proposal.data.status;
         <Content />
       </article>
       {
+        proposal.data.related && (
+          <aside class="related-panel card card--gold" aria-label="Sub-project work">
+            <h2 class="related-title">Sub-project work underway</h2>
+            <p class="related-blurb">
+              These Congressional Tech sub-projects advance parts of this
+              proposal:
+            </p>
+            <ul class="related-list">
+              {proposal.data.related.map((item) => (
+                <li>
+                  <a class="slide-link" href={item.href}>
+                    {item.label} →
+                  </a>
+                  <span class="related-note">{item.note}</span>
+                </li>
+              ))}
+            </ul>
+          </aside>
+        )
+      }
+      {
         proposal.data.repo && (
           <p class="repo-cta">
             <a class="btn btn--primary" href={proposal.data.repo}>
@@ -128,6 +149,48 @@ const status = proposal.data.status;
     font-family: var(--ctdc-font-mono);
     font-size: var(--ctdc-text-xs);
     color: var(--ctdc-on-dark-caption);
+  }
+
+  .related-panel {
+    margin-top: var(--ctdc-space-xl);
+    max-width: 46rem;
+  }
+
+  .related-panel:hover {
+    transform: none;
+    box-shadow: var(--ctdc-shadow-card);
+  }
+
+  .related-title {
+    font-size: var(--ctdc-text-lg);
+    color: var(--ctdc-primary);
+    margin-bottom: var(--ctdc-space-2xs);
+  }
+
+  .related-blurb {
+    font-size: var(--ctdc-text-sm);
+    color: var(--ctdc-ink-muted);
+    margin-bottom: var(--ctdc-space-sm);
+  }
+
+  .related-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--ctdc-space-2xs);
+  }
+
+  .related-list li {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: var(--ctdc-space-2xs) var(--ctdc-space-sm);
+  }
+
+  .related-note {
+    font-size: var(--ctdc-text-xs);
+    color: var(--ctdc-ink-muted);
   }
 
   .repo-cta {
