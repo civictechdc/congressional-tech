@@ -154,3 +154,14 @@ Line Up CBJs and Appropriations Committee Report Language | (not set)
 ||
 | **V. Basic Utility Tools** |
 [Inflation Calculator for Google Sheets](https://github.com/civictechdc/congressional-tech/tree/main/projects/5.1-inflation-gsheets) | 1
+
+## Related repositories
+
+Standalone tools that are part of the congressional-tech initiative. Both were contributed by [AgoraDMV](https://github.com/AgoraDMV), forked into this org, and kept in sync with their upstreams daily via a GitHub Action (`.github/workflows/upstream-sync.yml` on each fork's `develop` branch).
+
+| Project | Repo (fork ← upstream) | What it does |
+|---|---|---|
+| **DeltaTrack** | [civictechdc/DeltaTrack](https://github.com/civictechdc/DeltaTrack) ← [AgoraDMV/DeltaTrack](https://github.com/AgoraDMV/DeltaTrack) | Structurally diffs U.S. bill versions pulled from GPO govinfo — surfaces added / removed / modified / moved sections instead of formatting noise, with an account-level old→new money table for appropriations. Zero-dependency and fully local; built for Hill staffers. [Live example (HR 4366)](https://agoradmv.github.io/DeltaTrack/hr4366_committee_vs_floor.html). |
+| **BillTrax** | [civictechdc/BillTrax](https://github.com/civictechdc/BillTrax) ← [AgoraDMV/BillTrax](https://github.com/AgoraDMV/BillTrax) | Public-facing legislative-intelligence platform: ingests Congress.gov data, parses bill text into structured sections, tracks funding changes across versions, and adds AI-generated summaries and topic tags for researchers, advocates, and planning teams. |
+
+DeltaTrack and BillTrax are deliberate sister projects: DeltaTrack is the local, zero-dependency diff engine for Hill staffers; BillTrax is the server-backed public platform layering AI, tracking, and cross-bill analysis on top of the same structured-bill approach.
