@@ -1,13 +1,11 @@
 name: Deploy website to Pages
 
-# Builds apps/website (Next.js static export) and deploys it to GitHub Pages.
-# Replaces the old manual "commit the build output into docs/" flow.
+# Builds apps/site (Astro static export) and deploys it to GitHub Pages.
 on:
   push:
     branches: [main]
     paths:
-      - "apps/website/**"
-      - "packages/**"
+      - "apps/site/**"
       - ".github/workflows/deploy-pages.yml"
   workflow_dispatch: {}
 
@@ -29,14 +27,15 @@ jobs:
         with:
           node-version: "20"
       - name: Install dependencies
+        working-directory: apps/site
         run: npm install --no-audit --no-fund
-      - name: Build static export
-        working-directory: apps/website
+      - name: Build Astro site
+        working-directory: apps/site
         run: npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: apps/website/congressional-tech
+          path: apps/site/dist
 
   deploy:
     needs: build
