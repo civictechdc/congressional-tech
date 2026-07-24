@@ -1,6 +1,7 @@
 ---
 import { getCollection } from 'astro:content';
 import Base from '../layouts/Base.astro';
+import CapitolArt from '../components/CapitolArt.astro';
 import { withBase } from '../lib/paths';
 
 const themes = (await getCollection('themes')).sort(
@@ -42,7 +43,10 @@ const subProjects = [
 <Base title="Home" active="home">
   <!-- Dark glass hero anchor -->
   <section class="hero anchor-dark">
-    <div class="container">
+    <div class="hero-art" aria-hidden="true">
+      <CapitolArt />
+    </div>
+    <div class="container hero-content">
       <div class="hero-panel glass-panel">
         <p class="eyebrow hero-eyebrow">A Civic Tech DC initiative</p>
         <h1 class="hero-title">
@@ -170,7 +174,22 @@ const subProjects = [
 
 <style>
   .hero {
+    position: relative;
+    overflow: hidden;
     padding-block: var(--ctdc-space-4xl);
+  }
+
+  /* Gold-line Capitol elevation, anchored to the hero's right edge */
+  .hero-art {
+    position: absolute;
+    right: max(-4rem, calc((100% - 78rem) / 2));
+    bottom: calc(-1 * var(--ctdc-space-xl));
+    width: min(46rem, 62%);
+    pointer-events: none;
+  }
+
+  .hero-content {
+    position: relative;
   }
 
   .hero-panel {
