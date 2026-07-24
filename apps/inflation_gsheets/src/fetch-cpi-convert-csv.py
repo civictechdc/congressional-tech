@@ -34,7 +34,11 @@ print(df_baseline.head())
 # Fetch and process recent CPI data
 raw_data = get_recent_cpi_data()
 df_recent = pd.DataFrame(raw_data)
-df_recent["value"] = df_recent["value"].astype(float)
+# BLS uses non-numeric placeholders (e.g. "-") for periods with no published
+# value yet (unreleased months, or gaps like the 2025 appropriations lapse).
+# Coerce those to NaN and drop them instead of crashing the whole pipeline.
+df_recent["value"] = pd.to_numeric(df_recent["value"], errors="coerce")
+df_recent = df_recent.dropna(subset=["value"])
 df_recent["year"] = df_recent["year"].astype(int)
 
 # Pivot to wide format
