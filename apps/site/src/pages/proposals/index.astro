@@ -1,5 +1,5 @@
 ---
-import { getCollection } from 'astro:content';
+import { getCollection, getEntry } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import { withBase } from '../../lib/paths';
 
@@ -9,6 +9,7 @@ const themes = (await getCollection('themes')).sort(
 const proposals = (await getCollection('proposals')).sort((a, b) =>
   a.data.id.localeCompare(b.data.id, undefined, { numeric: true }),
 );
+const inflation = await getEntry('projects', 'V.1');
 
 const byTheme = themes
   .map((theme) => ({
@@ -51,7 +52,7 @@ const statusLabel = { built: 'Built', active: 'Active', idea: 'Idea' } as const;
               themes.map((theme) => (
                 <label class="chip">
                   <input type="radio" name="theme" value={theme.data.id} />
-                  <span>{theme.data.id}</span>
+                  <span>{theme.data.tag}</span>
                 </label>
               ))
             }
@@ -123,16 +124,35 @@ const statusLabel = { built: 'Built', active: 'Active', idea: 'Idea' } as const;
         ))
       }
 
-      <aside class="theme-section theme-v-note" data-theme-section="V">
+      <section class="theme-section" id="theme-V" data-theme-section="V">
         <h2 class="section-heading">
           <span class="theme-roman">V.</span> Basic Utility Tools
         </h2>
         <p class="theme-focus">
-          This theme has no open proposals — its one project, the
-          <a href={withBase('/projects/')}>Google Sheets Inflation Calculator</a>,
-          is already built.
+          No open proposals here — this theme's one project is already built.
         </p>
-      </aside>
+        {
+          inflation && (
+            <div class="proposal-grid">
+              <a
+                class="card card--gold proposal-card"
+                href={withBase('/projects/')}
+                data-proposal
+                data-theme="V"
+                data-status="built"
+              >
+                <div class="proposal-meta">
+                  <span class="proposal-id">{inflation.data.id}</span>
+                  <span class="badge badge--built">Built</span>
+                </div>
+                <h3 class="card-title">{inflation.data.title}</h3>
+                <p class="proposal-blurb">{inflation.data.description}</p>
+                <span class="slide-link proposal-more">See the project →</span>
+              </a>
+            </div>
+          )
+        }
+      </section>
     </div>
   </section>
 </Base>
@@ -160,15 +180,12 @@ const statusLabel = { built: 'Built', active: 'Active', idea: 'Idea' } as const;
       if (show) visible += 1;
     }
     for (const section of sections) {
-      const hasVisible = [...section.querySelectorAll<HTMLElement>('[data-proposal]')]
-        .some((card) => !card.hidden);
-      // Theme V has no proposal cards; show it only when its theme is chosen.
-      const isEmptyTheme = !section.querySelector('[data-proposal]');
-      section.hidden = isEmptyTheme
-        ? !(theme === 'all' || theme === section.dataset.themeSection)
-        : !hasVisible;
+      const hasVisible = [
+        ...section.querySelectorAll<HTMLElement>('[data-proposal]'),
+      ].some((card) => !card.hidden);
+      section.hidden = !hasVisible;
     }
-    if (empty) empty.hidden = visible > 0 || theme === 'V';
+    if (empty) empty.hidden = visible > 0;
   }
 
   form?.addEventListener('change', applyFilters);
@@ -320,9 +337,5 @@ const statusLabel = { built: 'Built', active: 'Active', idea: 'Idea' } as const;
 
   .proposal-more {
     font-size: var(--ctdc-text-sm);
-  }
-
-  .theme-v-note .theme-focus {
-    margin-bottom: 0;
   }
 </style>

@@ -11,6 +11,7 @@ const themes = defineCollection({
   schema: z.object({
     id: themeId,
     title: z.string(),
+    tag: z.string(),
     order: z.number().int(),
     focus: z.string().nullable(),
   }),

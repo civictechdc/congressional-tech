@@ -81,17 +81,26 @@ export default function Dashboard() {
     [allRows],
   );
 
+  const matches = (r: ReportRow, f: Filters) =>
+    (f.congress === 'all' || String(r.congress) === f.congress) &&
+    (f.chamber === 'all' || r.chamber === f.chamber) &&
+    (f.control === 'all' || r.control === f.control);
+
   const rows = useMemo(
-    () =>
-      allRows.filter(
-        (r) =>
-          (filters.congress === 'all' ||
-            String(r.congress) === filters.congress) &&
-          (filters.chamber === 'all' || r.chamber === filters.chamber) &&
-          (filters.control === 'all' || r.control === filters.control),
-      ),
+    () => allRows.filter((r) => matches(r, filters)),
     [allRows, filters],
   );
+
+  /**
+   * Cooperative filters: an option is disabled when combining it with the
+   * other current selections would yield zero videos (e.g. a Republican-
+   * control congress while "Democratic" is selected, or a pre-YouTube
+   * congress). Prevents dead-end combinations instead of failing silently.
+   */
+  const isDead = (patch: Partial<Filters>) => {
+    const candidate = { ...filters, ...patch };
+    return !allRows.some((r) => r.totalVideos > 0 && matches(r, candidate));
+  };
 
   if (state.status === 'loading') {
     return <p className="dash-status">Loading the coverage report…</p>;
@@ -127,7 +136,11 @@ export default function Dashboard() {
                 ? ` (${meta.start.slice(0, 4)}–${meta.end.slice(0, 4)})`
                 : '';
               return (
-                <option key={congress} value={String(congress)}>
+                <option
+                  key={congress}
+                  value={String(congress)}
+                  disabled={isDead({ congress: String(congress) })}
+                >
                   {ordinal(congress)}
                   {years}
                 </option>
@@ -143,7 +156,11 @@ export default function Dashboard() {
           >
             <option value="all">All chambers</option>
             {options.chambers.map((chamber) => (
-              <option key={chamber} value={chamber}>
+              <option
+                key={chamber}
+                value={chamber}
+                disabled={isDead({ chamber })}
+              >
                 {titleCase(chamber)}
               </option>
             ))}
@@ -157,7 +174,11 @@ export default function Dashboard() {
           >
             <option value="all">All parties</option>
             {options.controls.map((control) => (
-              <option key={control} value={control}>
+              <option
+                key={control}
+                value={control}
+                disabled={isDead({ control })}
+              >
                 {control}
               </option>
             ))}
@@ -173,7 +194,20 @@ export default function Dashboard() {
       </div>
 
       {rows.length === 0 ? (
-        <p className="dash-status">No rows match those filters.</p>
+        <div className="dash-empty">
+          <p className="dash-status">
+            No videos match that combination of filters.
+          </p>
+          <button
+            type="button"
+            className="dash-reset"
+            onClick={() =>
+              setFilters({ congress: 'all', chamber: 'all', control: 'all' })
+            }
+          >
+            Reset filters
+          </button>
+        </div>
       ) : (
         <>
           <div className="dash-grid">

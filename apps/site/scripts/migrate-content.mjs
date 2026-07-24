@@ -40,6 +40,15 @@ const PROPOSAL_REPOS = {
   'I.2': `${REPO_BASE}/apps/committee_youtube`,
 };
 
+/** Short human tags per theme (used for filter chips instead of numerals). */
+const THEME_TAGS = {
+  I: 'Data Access',
+  II: 'Workflow',
+  III: 'AI & Analysis',
+  IV: 'Insights',
+  V: 'Utilities',
+};
+
 async function readJson(name) {
   return JSON.parse(await readFile(join(dataDir, name), 'utf8'));
 }
@@ -112,6 +121,7 @@ for (const [index, theme] of themesJson.entries()) {
     frontmatter({
       id: theme.id,
       title: theme.title,
+      tag: THEME_TAGS[theme.id],
       order: index + 1,
       focus: theme.focus ?? null,
     }),

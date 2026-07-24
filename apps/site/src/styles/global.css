@@ -18,6 +18,15 @@ body {
   color: var(--ctdc-ink);
   background: var(--ctdc-canvas);
   -webkit-font-smoothing: antialiased;
+  /* Sticky footer: short pages never leave a strip below the footer */
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  flex: 1 0 auto;
 }
 
 h1,
