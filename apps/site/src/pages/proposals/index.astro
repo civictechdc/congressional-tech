@@ -1,0 +1,328 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import { withBase } from '../../lib/paths';
+
+const themes = (await getCollection('themes')).sort(
+  (a, b) => a.data.order - b.data.order,
+);
+const proposals = (await getCollection('proposals')).sort((a, b) =>
+  a.data.id.localeCompare(b.data.id, undefined, { numeric: true }),
+);
+
+const byTheme = themes
+  .map((theme) => ({
+    theme,
+    proposals: proposals.filter((p) => p.data.theme === theme.data.id),
+  }))
+  .filter((group) => group.proposals.length > 0);
+
+const statusLabel = { built: 'Built', active: 'Active', idea: 'Idea' } as const;
+---
+
+<Base
+  title="Proposals"
+  active="proposals"
+  description="All 19 congressional-tech project proposals, grouped by theme — from data accessibility to AI-assisted analysis."
+>
+  <section class="page-hero anchor-dark">
+    <div class="container">
+      <p class="eyebrow page-eyebrow">The backlog</p>
+      <h1 class="page-title">Project proposals</h1>
+      <p class="page-lead lead">
+        {proposals.length} proposals across {themes.length} themes. Each one
+        names a real problem in how Congress publishes or processes
+        information, and a concrete tool to fix it.
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <form class="filters" aria-label="Filter proposals" data-filter-form>
+        <fieldset class="filter-group">
+          <legend class="filter-legend eyebrow">Theme</legend>
+          <div class="chip-row">
+            <label class="chip">
+              <input type="radio" name="theme" value="all" checked />
+              <span>All</span>
+            </label>
+            {
+              themes.map((theme) => (
+                <label class="chip">
+                  <input type="radio" name="theme" value={theme.data.id} />
+                  <span>{theme.data.id}</span>
+                </label>
+              ))
+            }
+          </div>
+        </fieldset>
+        <fieldset class="filter-group">
+          <legend class="filter-legend eyebrow">Status</legend>
+          <div class="chip-row">
+            <label class="chip">
+              <input type="radio" name="status" value="all" checked />
+              <span>All</span>
+            </label>
+            <label class="chip">
+              <input type="radio" name="status" value="built" />
+              <span>Built</span>
+            </label>
+            <label class="chip">
+              <input type="radio" name="status" value="idea" />
+              <span>Idea</span>
+            </label>
+          </div>
+        </fieldset>
+        <p class="filter-empty" data-filter-empty hidden>
+          No proposals match those filters.
+        </p>
+      </form>
+
+      {
+        byTheme.map(({ theme, proposals: themeProposals }) => (
+          <section
+            class="theme-section"
+            id={`theme-${theme.data.id}`}
+            data-theme-section={theme.data.id}
+          >
+            <h2 class="section-heading">
+              <span class="theme-roman">{theme.data.id}.</span>
+              {theme.data.title}
+            </h2>
+            {theme.data.focus && (
+              <p class="theme-focus">{theme.data.focus}</p>
+            )}
+            <div class="proposal-grid">
+              {themeProposals.map((proposal) => (
+                <a
+                  class="card card--gold proposal-card"
+                  href={withBase(`/proposals/${proposal.data.id}/`)}
+                  data-proposal
+                  data-theme={proposal.data.theme}
+                  data-status={proposal.data.status}
+                >
+                  <div class="proposal-meta">
+                    <span class="proposal-id">{proposal.data.id}</span>
+                    <span class={`badge badge--${proposal.data.status}`}>
+                      {statusLabel[proposal.data.status]}
+                    </span>
+                    {proposal.data.effort && (
+                      <span class="badge badge--effort">
+                        Effort {proposal.data.effort}
+                      </span>
+                    )}
+                  </div>
+                  <h3 class="card-title">{proposal.data.title}</h3>
+                  <p class="proposal-blurb">{proposal.body?.trim().split('\n')[0]}</p>
+                  <span class="slide-link proposal-more">Read the proposal →</span>
+                </a>
+              ))}
+            </div>
+          </section>
+        ))
+      }
+
+      <aside class="theme-section theme-v-note" data-theme-section="V">
+        <h2 class="section-heading">
+          <span class="theme-roman">V.</span> Basic Utility Tools
+        </h2>
+        <p class="theme-focus">
+          This theme has no open proposals — its one project, the
+          <a href={withBase('/projects/')}>Google Sheets Inflation Calculator</a>,
+          is already built.
+        </p>
+      </aside>
+    </div>
+  </section>
+</Base>
+
+<script>
+  // Tiny vanilla filter: two radio groups toggle card visibility.
+  const form = document.querySelector<HTMLFormElement>('[data-filter-form]');
+  const cards = [...document.querySelectorAll<HTMLElement>('[data-proposal]')];
+  const sections = [
+    ...document.querySelectorAll<HTMLElement>('[data-theme-section]'),
+  ];
+  const empty = document.querySelector<HTMLElement>('[data-filter-empty]');
+
+  function applyFilters() {
+    if (!form) return;
+    const data = new FormData(form);
+    const theme = String(data.get('theme') ?? 'all');
+    const status = String(data.get('status') ?? 'all');
+    let visible = 0;
+    for (const card of cards) {
+      const show =
+        (theme === 'all' || card.dataset.theme === theme) &&
+        (status === 'all' || card.dataset.status === status);
+      card.hidden = !show;
+      if (show) visible += 1;
+    }
+    for (const section of sections) {
+      const hasVisible = [...section.querySelectorAll<HTMLElement>('[data-proposal]')]
+        .some((card) => !card.hidden);
+      // Theme V has no proposal cards; show it only when its theme is chosen.
+      const isEmptyTheme = !section.querySelector('[data-proposal]');
+      section.hidden = isEmptyTheme
+        ? !(theme === 'all' || theme === section.dataset.themeSection)
+        : !hasVisible;
+    }
+    if (empty) empty.hidden = visible > 0 || theme === 'V';
+  }
+
+  form?.addEventListener('change', applyFilters);
+  applyFilters();
+</script>
+
+<style>
+  .page-hero {
+    padding-block: var(--ctdc-space-3xl);
+  }
+
+  .page-eyebrow {
+    color: var(--ctdc-gold);
+    margin-bottom: var(--ctdc-space-2xs);
+  }
+
+  .page-title {
+    font-size: var(--ctdc-text-3xl);
+    margin-bottom: var(--ctdc-space-xs);
+  }
+
+  .page-lead {
+    color: var(--ctdc-on-dark);
+    max-width: 44rem;
+    margin: 0;
+  }
+
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ctdc-space-lg);
+    margin-bottom: var(--ctdc-space-xl);
+  }
+
+  .filter-group {
+    border: 0;
+    margin: 0;
+    padding: 0;
+  }
+
+  .filter-legend {
+    color: var(--ctdc-ink-muted);
+    margin-bottom: var(--ctdc-space-2xs);
+    padding: 0;
+  }
+
+  .chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ctdc-space-2xs);
+  }
+
+  /* Pill chips: radio inputs styled as nav chips */
+  .chip {
+    position: relative;
+  }
+
+  .chip input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .chip span {
+    display: inline-block;
+    padding: var(--ctdc-space-3xs) var(--ctdc-space-sm);
+    border-radius: var(--ctdc-radius-pill);
+    border: 1px solid var(--ctdc-hairline-on-light);
+    background: var(--ctdc-surface);
+    font-size: var(--ctdc-text-sm);
+    font-weight: var(--ctdc-weight-semibold);
+    color: var(--ctdc-ink-muted);
+    cursor: pointer;
+    transition: all var(--ctdc-duration-fast) var(--ctdc-ease);
+  }
+
+  .chip:hover span {
+    transform: translateY(-3px);
+    color: var(--ctdc-primary);
+    box-shadow: var(--ctdc-shadow-sm);
+  }
+
+  .chip input:checked + span {
+    background: var(--ctdc-primary);
+    border-color: var(--ctdc-primary);
+    color: #fff;
+  }
+
+  .chip input:focus-visible + span {
+    outline: var(--ctdc-focus-ring);
+    outline-offset: 2px;
+  }
+
+  .filter-empty {
+    align-self: center;
+    color: var(--ctdc-ink-muted);
+    font-size: var(--ctdc-text-sm);
+    margin: 0;
+  }
+
+  .theme-section {
+    margin-bottom: var(--ctdc-space-2xl);
+    scroll-margin-top: var(--ctdc-space-4xl);
+  }
+
+  .theme-roman {
+    color: var(--ctdc-ink-muted);
+    font-weight: var(--ctdc-weight-normal);
+  }
+
+  .theme-focus {
+    color: var(--ctdc-ink-muted);
+    max-width: 44rem;
+    margin-bottom: var(--ctdc-space-lg);
+  }
+
+  .proposal-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
+    gap: var(--ctdc-space-md);
+  }
+
+  .proposal-card {
+    display: flex;
+    flex-direction: column;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .proposal-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--ctdc-space-2xs);
+    margin-bottom: var(--ctdc-space-2xs);
+  }
+
+  .proposal-id {
+    font-family: var(--ctdc-font-mono);
+    font-size: var(--ctdc-text-xs);
+    color: var(--ctdc-ink-muted);
+  }
+
+  .proposal-blurb {
+    font-size: var(--ctdc-text-sm);
+    color: var(--ctdc-ink-muted);
+    flex-grow: 1;
+  }
+
+  .proposal-more {
+    font-size: var(--ctdc-text-sm);
+  }
+
+  .theme-v-note .theme-focus {
+    margin-bottom: 0;
+  }
+</style>

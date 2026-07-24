@@ -1,0 +1,180 @@
+---
+import Base from '../layouts/Base.astro';
+import { withBase } from '../lib/paths';
+---
+
+<Base
+  title="Contribute"
+  active="contribute"
+  description="How to get involved with the congressional-tech initiative: GitHub, Slack, and a one-command devcontainer setup."
+>
+  <section class="page-hero anchor-dark">
+    <div class="container">
+      <p class="eyebrow page-eyebrow">Get involved</p>
+      <h1 class="page-title">Contribute</h1>
+      <p class="page-lead lead">
+        Everything in this initiative is open source and volunteer-built. If
+        you can write code, wrangle data, or just know how Congress actually
+        works, there is a proposal here with your name on it.
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="steps-grid">
+        <article class="card card--gold step-card">
+          <p class="eyebrow step-number">01</p>
+          <h2 class="card-title">Find a project</h2>
+          <p>
+            Browse the <a href={withBase('/proposals/')}>19 proposals</a> and
+            pick one that matches your skills — efforts range from a weekend
+            bookmarklet to a full data pipeline. Or jump into an
+            <a href={withBase('/projects/')}>active project</a> that is already
+            shipping.
+          </p>
+        </article>
+
+        <article class="card card--gold step-card">
+          <p class="eyebrow step-number">02</p>
+          <h2 class="card-title">Join the conversation</h2>
+          <p>
+            Coordination happens on the Civic Tech DC Slack and in GitHub
+            issues. Introduce yourself, say what you want to work on, and
+            someone will point you at the right thread.
+          </p>
+          <ul class="step-links">
+            <li>
+              <a class="slide-link" href="https://www.civictechdc.org/slack.html">
+                Join the Civic Tech DC Slack →
+              </a>
+            </li>
+            <li>
+              <a
+                class="slide-link"
+                href="https://github.com/civictechdc/congressional-tech/issues"
+              >
+                Open GitHub issues →
+              </a>
+            </li>
+          </ul>
+        </article>
+
+        <article class="card card--gold step-card">
+          <p class="eyebrow step-number">03</p>
+          <h2 class="card-title">Clone and build</h2>
+          <p>
+            The repo ships a
+            <a href="https://containers.dev/">devcontainer</a> with Python,
+            Node, and Git LFS preconfigured — open it in VS Code and you are
+            ready in one step, no local setup.
+          </p>
+          <pre
+            class="quickstart"><code>git lfs install
+git clone https://github.com/civictechdc/congressional-tech.git
+code congressional-tech
+# then: "Dev Containers: Reopen in Container"</code></pre>
+        </article>
+      </div>
+
+      <div class="repo-band anchor-dark">
+        <div>
+          <h2 class="repo-band-title">civictechdc/congressional-tech</h2>
+          <p class="repo-band-blurb">
+            Proposals, data pipelines, the YouTube dashboard, and this site —
+            all in one monorepo.
+          </p>
+        </div>
+        <a
+          class="btn btn--gold"
+          href="https://github.com/civictechdc/congressional-tech"
+        >
+          View on GitHub
+        </a>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .page-hero {
+    padding-block: var(--ctdc-space-3xl);
+  }
+
+  .page-eyebrow {
+    color: var(--ctdc-gold);
+    margin-bottom: var(--ctdc-space-2xs);
+  }
+
+  .page-title {
+    font-size: var(--ctdc-text-3xl);
+    margin-bottom: var(--ctdc-space-xs);
+  }
+
+  .page-lead {
+    color: var(--ctdc-on-dark);
+    max-width: 44rem;
+    margin: 0;
+  }
+
+  .steps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+    gap: var(--ctdc-space-md);
+    margin-bottom: var(--ctdc-space-xl);
+  }
+
+  .step-card {
+    min-width: 0;
+  }
+
+  .step-card p {
+    font-size: var(--ctdc-text-sm);
+    color: var(--ctdc-ink-muted);
+  }
+
+  .step-number {
+    color: var(--ctdc-gold);
+    margin-bottom: var(--ctdc-space-2xs);
+  }
+
+  .step-links {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--ctdc-space-3xs);
+  }
+
+  .step-links .slide-link {
+    font-size: var(--ctdc-text-sm);
+  }
+
+  .quickstart {
+    font-size: var(--ctdc-text-xs);
+    margin: 0;
+  }
+
+  .repo-band {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--ctdc-space-lg);
+    padding: var(--ctdc-space-xl) var(--ctdc-space-2xl);
+    border-radius: var(--ctdc-radius-lg);
+    box-shadow: var(--ctdc-shadow-xl);
+  }
+
+  .repo-band-title {
+    font-family: var(--ctdc-font-mono);
+    font-size: var(--ctdc-text-lg);
+    margin-bottom: var(--ctdc-space-3xs);
+  }
+
+  .repo-band-blurb {
+    color: var(--ctdc-on-dark);
+    margin: 0;
+    max-width: 34rem;
+  }
+</style>

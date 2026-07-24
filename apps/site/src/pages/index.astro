@@ -1,0 +1,300 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import { withBase } from '../lib/paths';
+
+const themes = (await getCollection('themes')).sort(
+  (a, b) => a.data.order - b.data.order,
+);
+const proposals = await getCollection('proposals');
+const projects = (await getCollection('projects')).sort((a, b) =>
+  a.data.id.localeCompare(b.data.id),
+);
+
+const proposalCount = (themeId: string) =>
+  proposals.filter((p) => p.data.theme === themeId).length;
+const builtCount = (themeId: string) =>
+  projects.filter((p) => p.data.theme === themeId).length;
+
+const themeBlurb = (focus: string | null) =>
+  focus ?? 'Small, immediately useful utilities for congressional work.';
+
+const relatedRepos = [
+  {
+    title: 'DeltaTrack',
+    href: 'https://github.com/civictechdc/DeltaTrack',
+    blurb:
+      'Structurally diffs U.S. bill versions from GPO govinfo — added, removed, and moved sections instead of formatting noise. Zero-dependency and fully local, built for Hill staffers.',
+  },
+  {
+    title: 'BillTrax',
+    href: 'https://github.com/civictechdc/BillTrax',
+    blurb:
+      'Public-facing legislative-intelligence platform: parses bill text into structured sections, tracks funding changes across versions, and layers on AI summaries and topic tags.',
+  },
+];
+---
+
+<Base title="Home" active="home">
+  <!-- Dark glass hero anchor -->
+  <section class="hero anchor-dark">
+    <div class="container">
+      <div class="hero-panel glass-panel">
+        <p class="eyebrow hero-eyebrow">A Civic Tech DC initiative</p>
+        <h1 class="hero-title">
+          Open-source tools for a more transparent Congress
+        </h1>
+        <p class="hero-lead lead">
+          Congressional Tech is a volunteer effort to make legislative
+          information easier to find, track, and understand — for congressional
+          staff and for the public. Nineteen project proposals across five
+          themes, with working tools already shipping.
+        </p>
+        <div class="hero-actions">
+          <a class="btn btn--gold" href={withBase('/proposals/')}>
+            Browse the proposals
+          </a>
+          <a class="btn btn--ghost-dark" href={withBase('/contribute/')}>
+            Get involved
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- The five themes as gold-thread cards -->
+  <section class="section" id="themes">
+    <div class="container">
+      <h2 class="section-heading">Five project themes</h2>
+      <p class="section-intro">
+        Every proposal fits one of five themes, from raw data accessibility to
+        small utilities that pay off immediately.
+      </p>
+      <div class="theme-grid">
+        {
+          themes.map((theme) => (
+            <a
+              class="card card--gold theme-card"
+              href={withBase(`/proposals/#theme-${theme.data.id}`)}
+            >
+              <p class="eyebrow theme-number">Theme {theme.data.id}</p>
+              <h3 class="card-title">{theme.data.title}</h3>
+              <p class="theme-focus">{themeBlurb(theme.data.focus)}</p>
+              <p class="card-meta">
+                {proposalCount(theme.data.id)} proposal{
+                  proposalCount(theme.data.id) === 1 ? '' : 's'
+                }
+                {builtCount(theme.data.id) > 0 &&
+                  ` · ${builtCount(theme.data.id)} built`}
+              </p>
+            </a>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Active projects + related repos strip -->
+  <section class="section section--tint">
+    <div class="container">
+      <h2 class="section-heading">Built and shipping</h2>
+      <p class="section-intro">
+        Two proposals are working tools today, alongside two sister repos in
+        the civictechdc org.
+      </p>
+      <div class="project-grid">
+        {
+          projects.map((project) => (
+            <article class="card card--gold project-card">
+              <p class="eyebrow project-eyebrow">Active project · {project.data.id}</p>
+              <h3 class="card-title">{project.data.title}</h3>
+              <p>{project.data.description}</p>
+              <div class="project-links">
+                {project.data.id === 'I.2' && (
+                  <a class="slide-link" href={withBase('/dashboard/')}>
+                    Open the dashboard →
+                  </a>
+                )}
+                <a class="slide-link" href={project.data.repo}>
+                  Source on GitHub →
+                </a>
+              </div>
+            </article>
+          ))
+        }
+        {
+          relatedRepos.map((repo) => (
+            <article class="card project-card">
+              <p class="eyebrow project-eyebrow">Related repo</p>
+              <h3 class="card-title">{repo.title}</h3>
+              <p>{repo.blurb}</p>
+              <div class="project-links">
+                <a class="slide-link" href={repo.href}>
+                  View on GitHub →
+                </a>
+              </div>
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Contribute CTA band -->
+  <section class="section">
+    <div class="container">
+      <div class="cta anchor-dark">
+        <div>
+          <h2 class="cta-title">Pick a proposal. Build it with us.</h2>
+          <p class="cta-blurb">
+            Everything here is open source and volunteer-built. Grab an idea,
+            open an issue, or join us on Slack.
+          </p>
+        </div>
+        <a class="btn btn--gold" href={withBase('/contribute/')}>
+          Start contributing
+        </a>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .hero {
+    padding-block: var(--ctdc-space-4xl);
+  }
+
+  .hero-panel {
+    padding: var(--ctdc-space-2xl);
+    max-width: 46rem;
+  }
+
+  .hero-eyebrow {
+    color: var(--ctdc-gold);
+    margin-bottom: var(--ctdc-space-2xs);
+  }
+
+  .hero-title {
+    font-size: var(--ctdc-text-4xl);
+    margin-bottom: var(--ctdc-space-sm);
+  }
+
+  .hero-lead {
+    color: var(--ctdc-on-dark);
+    margin-bottom: var(--ctdc-space-lg);
+  }
+
+  .hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ctdc-space-sm);
+  }
+
+  .section-intro {
+    color: var(--ctdc-ink-muted);
+    max-width: 40rem;
+    margin-bottom: var(--ctdc-space-lg);
+  }
+
+  .section--tint {
+    background: var(--ctdc-surface);
+    border-top: 1px solid var(--ctdc-hairline-on-light);
+    border-bottom: 1px solid var(--ctdc-hairline-on-light);
+  }
+
+  .theme-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+    gap: var(--ctdc-space-md);
+  }
+
+  .theme-card {
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .theme-number {
+    color: var(--ctdc-ink-muted);
+    margin-bottom: var(--ctdc-space-2xs);
+  }
+
+  .theme-focus {
+    font-size: var(--ctdc-text-sm);
+    color: var(--ctdc-ink-muted);
+    flex-grow: 1;
+  }
+
+  .theme-card .card-meta {
+    margin: 0;
+  }
+
+  .project-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+    gap: var(--ctdc-space-md);
+  }
+
+  .project-card {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .project-card > p:not(.eyebrow) {
+    font-size: var(--ctdc-text-sm);
+    color: var(--ctdc-ink-muted);
+    flex-grow: 1;
+  }
+
+  .project-eyebrow {
+    color: var(--ctdc-ink-muted);
+    margin-bottom: var(--ctdc-space-2xs);
+  }
+
+  .project-links {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ctdc-space-3xs);
+  }
+
+  .project-links .slide-link {
+    font-size: var(--ctdc-text-sm);
+  }
+
+  .cta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--ctdc-space-lg);
+    padding: var(--ctdc-space-2xl);
+    border-radius: var(--ctdc-radius-lg);
+    box-shadow: var(--ctdc-shadow-xl);
+  }
+
+  .cta-title {
+    font-size: var(--ctdc-text-2xl);
+    margin-bottom: var(--ctdc-space-2xs);
+  }
+
+  .cta-blurb {
+    color: var(--ctdc-on-dark);
+    max-width: 32rem;
+    margin: 0;
+  }
+
+  @media (max-width: 640px) {
+    .hero {
+      padding-block: var(--ctdc-space-3xl);
+    }
+
+    .hero-panel {
+      padding: var(--ctdc-space-lg);
+    }
+
+    .hero-title {
+      font-size: var(--ctdc-text-3xl);
+    }
+  }
+</style>

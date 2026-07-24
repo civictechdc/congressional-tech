@@ -1,0 +1,142 @@
+---
+import { getCollection, getEntry, render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import { withBase } from '../../lib/paths';
+
+export async function getStaticPaths() {
+  const proposals = await getCollection('proposals');
+  return proposals.map((proposal) => ({
+    params: { id: proposal.data.id },
+  }));
+}
+
+const { id } = Astro.params;
+const proposal = await getEntry('proposals', id);
+if (!proposal) throw new Error(`Unknown proposal: ${id}`);
+const theme = await getEntry('themes', proposal.data.theme);
+const { Content } = await render(proposal);
+
+const statusLabel = { built: 'Built', active: 'Active', idea: 'Idea' } as const;
+const status = proposal.data.status;
+---
+
+<Base
+  title={proposal.data.title}
+  active="proposals"
+  description={proposal.body?.trim().split('\n')[0]}
+>
+  <section class="page-hero anchor-dark">
+    <div class="container">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a class="breadcrumb-link" href={withBase('/proposals/')}>
+          ← All proposals
+        </a>
+      </nav>
+      <p class="eyebrow page-eyebrow">
+        Theme {proposal.data.theme}
+        {theme && ` · ${theme.data.title}`}
+      </p>
+      <h1 class="page-title">{proposal.data.title}</h1>
+      <div class="meta-row">
+        <span class={`badge badge--${status}`}>{statusLabel[status]}</span>
+        {
+          proposal.data.effort && (
+            <span class="badge badge--effort">
+              Level of effort {proposal.data.effort}
+            </span>
+          )
+        }
+        <span class="proposal-id">{proposal.data.id}</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <article class="prose">
+        <Content />
+      </article>
+      {
+        proposal.data.repo && (
+          <p class="repo-cta">
+            <a class="btn btn--primary" href={proposal.data.repo}>
+              View the code on GitHub
+            </a>
+          </p>
+        )
+      }
+      {
+        status === 'built' && (
+          <p class="built-note">
+            This proposal is built — see it on the
+            <a href={withBase('/projects/')}>active projects page</a>
+            {proposal.data.id === 'I.2' && (
+              <>
+                {' '}or open the{' '}
+                <a href={withBase('/dashboard/')}>live dashboard</a>
+              </>
+            )}.
+          </p>
+        )
+      }
+    </div>
+  </section>
+</Base>
+
+<style>
+  .page-hero {
+    padding-block: var(--ctdc-space-2xl) var(--ctdc-space-3xl);
+  }
+
+  .breadcrumb {
+    margin-bottom: var(--ctdc-space-lg);
+  }
+
+  .breadcrumb-link {
+    display: inline-block;
+    font-size: var(--ctdc-text-sm);
+    font-weight: var(--ctdc-weight-semibold);
+    text-decoration: none;
+    transition:
+      transform var(--ctdc-duration-fast) var(--ctdc-ease),
+      color var(--ctdc-duration-fast) var(--ctdc-ease);
+  }
+
+  .breadcrumb-link:hover {
+    transform: translateX(-4px);
+  }
+
+  .page-eyebrow {
+    color: var(--ctdc-gold);
+    margin-bottom: var(--ctdc-space-2xs);
+  }
+
+  .page-title {
+    font-size: var(--ctdc-text-3xl);
+    max-width: 46rem;
+    margin-bottom: var(--ctdc-space-sm);
+  }
+
+  .meta-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--ctdc-space-2xs);
+  }
+
+  .proposal-id {
+    font-family: var(--ctdc-font-mono);
+    font-size: var(--ctdc-text-xs);
+    color: var(--ctdc-on-dark-caption);
+  }
+
+  .repo-cta {
+    margin-top: var(--ctdc-space-xl);
+  }
+
+  .built-note {
+    margin-top: var(--ctdc-space-lg);
+    color: var(--ctdc-ink-muted);
+    font-size: var(--ctdc-text-sm);
+  }
+</style>
