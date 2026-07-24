@@ -37,7 +37,7 @@ def fetch_events(api_key: str, tinydb_dir: Path, chamber, congress_number: int):
 def main(tinydb_dir: Path, chamber: str = "house", congress_number: int = 119):
     api_key = load_congress_api_key()
     fetch_committees(api_key, tinydb_dir, chamber)
-    fetch_events(tinydb_dir, chamber, congress_number)
+    fetch_events(api_key, tinydb_dir, chamber, congress_number)
 
 
 def parse_args_and_run():
