@@ -24,10 +24,19 @@ jobs:
       - name: Download XLSX from BLS and convert to CSV
         run: python apps/inflation_gsheets/src/fetch-cpi-convert-csv.py
 
-      - name: Commit and push CSV
+      # Runs AFTER the BLS step so the multi-source table reads the freshly
+      # refreshed historical-cpi.csv (BLS YoY is derived from it). Tolerates
+      # unavailable sources: BLS and FRED (keyless) must succeed; Adobe /
+      # PriceStats skip gracefully unless a manual drop-file is present.
+      # --aggregate emits the derived, opt-in composite column (see README).
+      - name: Build multi-source inflation table
+        run: python apps/inflation_gsheets/src/fetch-inflation-sources.py --aggregate
+
+      - name: Commit and push CSVs
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add apps/inflation_gsheets/src/data/historical-cpi.csv
-          git commit -m "Auto-updated CPI CSV from BLS" || echo "No changes"
+          git add apps/inflation_gsheets/src/data/inflation-sources.csv
+          git commit -m "Auto-updated CPI + multi-source inflation CSVs" || echo "No changes"
           git push
