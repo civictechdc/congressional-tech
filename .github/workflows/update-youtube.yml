@@ -3,9 +3,9 @@ name: Update Events from YouTube
 on:
   schedule:
     - cron: "0 0 * * 0" # 12:00 AM Sunday each week
-  pull_request:
-    branches:
-      - main
+  # pull_request intentionally omitted: this job does a real YouTube API fetch
+  # (burns quota, ~10min devcontainer build, and fails on fork PRs with no
+  # secret). Smoke-test tooling changes with workflow_dispatch instead.
   workflow_dispatch:
 
 jobs:
