@@ -1,0 +1,107 @@
+/*
+ * Civic Tech DC design tokens — "Civic Premium Dark".
+ * Extracted from the org design system (design-system/foundations.md,
+ * colors.md, typography.md, vision.md). Every visual value on the site
+ * derives from these custom properties; if a value isn't in the scale,
+ * it shouldn't be on the page.
+ */
+:root {
+  /* ---- Color: brand ---- */
+  --ctdc-primary: #104378; /* trust, institution — structural blocks, buttons */
+  --ctdc-gold: #eec05e; /* community accent — borders, active nav, hovers */
+
+  /* ---- Color: dark anchors (header / hero / footer) ---- */
+  --ctdc-midnight: #0b1a30; /* Deep Midnight Blue */
+  --ctdc-vessel: #061121; /* Vessel Black */
+  --ctdc-anchor-gradient: linear-gradient(
+    180deg,
+    var(--ctdc-midnight) 0%,
+    var(--ctdc-vessel) 100%
+  );
+
+  /* ---- Color: light canvas ---- */
+  --ctdc-canvas: #f8f9fa;
+  --ctdc-surface: #ffffff;
+
+  /* ---- Color: text ---- */
+  --ctdc-ink: #1b1b1b; /* body text on light canvas */
+  --ctdc-ink-muted: #565c65; /* secondary text on light canvas */
+  --ctdc-on-dark-strong: rgba(255, 255, 255, 0.92); /* headings on dark */
+  --ctdc-on-dark: rgba(255, 255, 255, 0.7); /* links & body on dark */
+  --ctdc-on-dark-caption: rgba(255, 255, 255, 0.45); /* captions, metadata */
+
+  /* ---- Color: glass & hairlines (dark anchors) ---- */
+  --ctdc-glass: rgba(255, 255, 255, 0.05);
+  --ctdc-glass-primary: rgba(16, 67, 120, 0.65);
+  --ctdc-hairline-on-dark: rgba(255, 255, 255, 0.1);
+  --ctdc-pill-backing: rgba(255, 255, 255, 0.03);
+  --ctdc-pill-border: rgba(255, 255, 255, 0.2);
+  --ctdc-hairline-on-light: rgba(11, 26, 48, 0.08);
+
+  /* ---- Type: families ---- */
+  --ctdc-font-sans: 'Source Sans 3', 'Source Sans Pro', -apple-system,
+    BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --ctdc-font-mono: 'Source Code Pro', ui-monospace, SFMono-Regular, Menlo,
+    Consolas, monospace;
+
+  /* ---- Type: scale ---- */
+  --ctdc-text-2xs: 0.75rem; /* 12px — badges, eyebrows, tags */
+  --ctdc-text-xs: 0.8125rem; /* 13px — captions, fine print */
+  --ctdc-text-sm: 0.875rem; /* 14px — secondary & meta UI text */
+  --ctdc-text-base: 1rem; /* 16px — body default */
+  --ctdc-text-md: 1.125rem; /* 18px — large body */
+  --ctdc-text-lg: 1.25rem; /* 20px — lead paragraphs, card titles */
+  --ctdc-text-xl: 1.5rem; /* 24px — sub-headings */
+  --ctdc-text-2xl: 1.75rem; /* 28px — section headings */
+  --ctdc-text-3xl: 2rem; /* 32px — hero / page titles */
+  --ctdc-text-4xl: 2.5rem; /* 40px — large hero titles */
+
+  /* ---- Type: supporting ---- */
+  --ctdc-leading-tight: 1.2;
+  --ctdc-leading-snug: 1.35;
+  --ctdc-leading-normal: 1.5;
+  --ctdc-leading-relaxed: 1.65;
+  --ctdc-tracking-tight: -0.02em;
+  --ctdc-tracking-normal: 0;
+  --ctdc-tracking-wide: 0.06em;
+  --ctdc-tracking-wider: 0.12em;
+  --ctdc-weight-normal: 400;
+  --ctdc-weight-semibold: 600;
+  --ctdc-weight-bold: 700;
+
+  /* ---- Space: 4px base grid ---- */
+  --ctdc-space-3xs: 0.25rem; /* 4px */
+  --ctdc-space-2xs: 0.5rem; /* 8px */
+  --ctdc-space-xs: 0.75rem; /* 12px */
+  --ctdc-space-sm: 1rem; /* 16px */
+  --ctdc-space-md: 1.25rem; /* 20px */
+  --ctdc-space-lg: 1.5rem; /* 24px */
+  --ctdc-space-xl: 2rem; /* 32px */
+  --ctdc-space-2xl: 2.5rem; /* 40px */
+  --ctdc-space-3xl: 3rem; /* 48px */
+  --ctdc-space-4xl: 4rem; /* 64px */
+
+  /* ---- Radius ---- */
+  --ctdc-radius-xs: 4px; /* tags, small chips */
+  --ctdc-radius-sm: 6px; /* code blocks, inputs */
+  --ctdc-radius-md: 8px; /* media, panels */
+  --ctdc-radius-lg: 12px; /* cards, CTA bands */
+  --ctdc-radius-pill: 20px; /* buttons, pills, nav chips */
+  --ctdc-radius-full: 50%; /* avatars, icon bubbles */
+
+  /* ---- Elevation: ambient, low-contrast ---- */
+  --ctdc-shadow-xs: 0 1px 4px rgba(0, 0, 0, 0.04);
+  --ctdc-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --ctdc-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --ctdc-shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.09);
+  --ctdc-shadow-xl: 0 12px 28px rgba(0, 0, 0, 0.08);
+  --ctdc-shadow-card: 0 4px 12px rgba(0, 0, 0, 0.03); /* card base (vision.md) */
+
+  /* ---- Motion: one easing curve everywhere ---- */
+  --ctdc-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --ctdc-duration-fast: 0.2s; /* hovers and taps */
+  --ctdc-duration-base: 0.3s; /* larger state changes */
+
+  /* ---- Focus: gold ring = active-nav accent ---- */
+  --ctdc-focus-ring: 2px solid var(--ctdc-gold);
+}

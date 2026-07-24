@@ -1,0 +1,229 @@
+---
+import { getCollection, render } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import { withBase } from '../lib/paths';
+
+const projects = (await getCollection('projects')).sort((a, b) =>
+  a.data.id.localeCompare(b.data.id),
+);
+const rendered = await Promise.all(
+  projects.map(async (project) => ({
+    project,
+    Content: (await render(project)).Content,
+  })),
+);
+
+const subProjects = [
+  {
+    title: 'DeltaTrack',
+    href: 'https://github.com/civictechdc/DeltaTrack',
+    upstream: 'https://github.com/AgoraDMV/DeltaTrack',
+    blurb:
+      'Structurally diffs U.S. bill versions pulled from GPO govinfo — surfaces added, removed, modified, and moved sections instead of formatting noise, with an account-level old→new money table for appropriations. Zero-dependency and fully local; built for Hill staffers.',
+    example: {
+      label: 'Live example (HR 4366)',
+      href: 'https://agoradmv.github.io/DeltaTrack/hr4366_committee_vs_floor.html',
+    },
+  },
+  {
+    title: 'BillTrax',
+    href: 'https://github.com/civictechdc/BillTrax',
+    upstream: 'https://github.com/AgoraDMV/BillTrax',
+    blurb:
+      'Public-facing legislative-intelligence platform: ingests Congress.gov data, parses bill text into structured sections, tracks funding changes across versions, and adds AI-generated summaries and topic tags for researchers, advocates, and planning teams.',
+  },
+];
+---
+
+<Base
+  title="Projects"
+  active="projects"
+  description="Congressional-tech proposals that are built and shipping, plus the DeltaTrack and BillTrax sub-projects."
+>
+  <section class="page-hero anchor-dark">
+    <div class="container">
+      <p class="eyebrow page-eyebrow">Shipping</p>
+      <h1 class="page-title">Projects</h1>
+      <p class="page-lead lead">
+        Proposals that graduated into working tools, plus two Congressional
+        Tech sub-projects maintained in their own repos.
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <h2 class="section-heading">Built from the proposal list</h2>
+      <div class="project-list">
+        {
+          rendered.map(({ project, Content }) => (
+            <article class="card card--gold project-entry">
+              <div class="project-head">
+                <p class="eyebrow project-eyebrow">
+                  Project {project.data.id} · Theme {project.data.theme}
+                </p>
+                <h3 class="project-title">{project.data.title}</h3>
+              </div>
+              <div class="prose project-body">
+                <Content />
+              </div>
+              <div class="project-actions">
+                <a class="btn btn--primary" href={project.data.repo}>
+                  Source on GitHub
+                </a>
+                {project.data.id === 'I.2' && (
+                  <a class="btn btn--gold" href={withBase('/dashboard/')}>
+                    Open the live dashboard
+                  </a>
+                )}
+              </div>
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--repos">
+    <div class="container">
+      <h2 class="section-heading">Sub-projects</h2>
+      <p class="section-intro">
+        Congressional Tech sub-projects that live in their own repositories,
+        contributed by
+        <a href="https://github.com/AgoraDMV">AgoraDMV</a> and kept in sync
+        with their upstreams daily. They are deliberate complements:
+        DeltaTrack is the local, zero-dependency diff engine for Hill
+        staffers; BillTrax is the server-backed public platform layering AI,
+        tracking, and cross-bill analysis on top of the same structured-bill
+        approach.
+      </p>
+      <div class="repo-grid">
+        {
+          subProjects.map((repo) => (
+            <article class="card card--gold repo-card">
+              <h3 class="card-title">{repo.title}</h3>
+              <p class="repo-blurb">{repo.blurb}</p>
+              <ul class="repo-links">
+                <li>
+                  <a class="slide-link" href={withBase('/proposals/I.4/')}>
+                    Advances proposal I.4 →
+                  </a>
+                </li>
+                <li>
+                  <a class="slide-link" href={repo.href}>
+                    civictechdc fork →
+                  </a>
+                </li>
+                <li>
+                  <a class="slide-link" href={repo.upstream}>
+                    AgoraDMV upstream →
+                  </a>
+                </li>
+                {repo.example && (
+                  <li>
+                    <a class="slide-link" href={repo.example.href}>
+                      {repo.example.label} →
+                    </a>
+                  </li>
+                )}
+              </ul>
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .page-hero {
+    padding-block: var(--ctdc-space-3xl);
+  }
+
+  .page-eyebrow {
+    color: var(--ctdc-gold);
+    margin-bottom: var(--ctdc-space-2xs);
+  }
+
+  .page-title {
+    font-size: var(--ctdc-text-3xl);
+    margin-bottom: var(--ctdc-space-xs);
+  }
+
+  .page-lead {
+    color: var(--ctdc-on-dark);
+    max-width: 44rem;
+    margin: 0;
+  }
+
+  .project-list {
+    display: grid;
+    gap: var(--ctdc-space-lg);
+  }
+
+  .project-entry {
+    padding: var(--ctdc-space-xl);
+  }
+
+  .project-eyebrow {
+    color: var(--ctdc-ink-muted);
+    margin-bottom: var(--ctdc-space-2xs);
+  }
+
+  .project-title {
+    font-size: var(--ctdc-text-xl);
+    color: var(--ctdc-primary);
+    margin-bottom: var(--ctdc-space-sm);
+  }
+
+  .project-body {
+    color: var(--ctdc-ink);
+  }
+
+  .project-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ctdc-space-sm);
+    margin-top: var(--ctdc-space-md);
+  }
+
+  .section--repos {
+    background: var(--ctdc-surface);
+    border-top: 1px solid var(--ctdc-hairline-on-light);
+  }
+
+  .section-intro {
+    color: var(--ctdc-ink-muted);
+    max-width: 46rem;
+    margin-bottom: var(--ctdc-space-lg);
+  }
+
+  .repo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
+    gap: var(--ctdc-space-md);
+  }
+
+  .repo-card {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .repo-blurb {
+    font-size: var(--ctdc-text-sm);
+    color: var(--ctdc-ink-muted);
+    flex-grow: 1;
+  }
+
+  .repo-links {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--ctdc-space-3xs);
+  }
+
+  .repo-links .slide-link {
+    font-size: var(--ctdc-text-sm);
+  }
+</style>
