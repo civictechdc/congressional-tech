@@ -19,11 +19,151 @@ Appropriations,@HouseAppropriationsCommittee,0,0,108,Republican,house
 Appropriations,@HouseAppropriationsCommittee,0,0,109,Republican,house
 Appropriations,@HouseAppropriationsCommittee,0,0,110,Democratic,house
 Appropriations,@HouseAppropriationsCommittee,0,0,111,Democratic,house
-Appropriations,@HouseAppropriationsCommittee,0,0,112,Republican,house
-Appropriations,@HouseAppropriationsCommittee,0,0,113,Republican,house
-Appropriations,@HouseAppropriationsCommittee,0,0,114,Republican,house
-Appropriations,@HouseAppropriationsCommittee,0,0,115,Republican,house
-Appropriations,@HouseAppropriationsCommittee,0,0,116,Democratic,house
-Appropriations,@HouseAppropriationsCommittee,0,0,117,Democratic,house
-Appropriations,@HouseAppropriationsCommittee,0,0,118,Republican,house
-Appropriations,@HouseAppropriationsCommittee,0,0,119,Republican,house
+Appropriations,@HouseAppropriationsCommittee,24,24,112,Republican,house
+Appropriations,@HouseAppropriationsCommittee,119,30,113,Republican,house
+Appropriations,@HouseAppropriationsCommittee,327,43,114,Republican,house
+Appropriations,@HouseAppropriationsCommittee,206,8,115,Republican,house
+Appropriations,@HouseAppropriationsCommittee,273,12,116,Democratic,house
+Appropriations,@HouseAppropriationsCommittee,230,2,117,Democratic,house
+Appropriations,@HouseAppropriationsCommittee,218,32,118,Republican,house
+Appropriations,@HouseAppropriationsCommittee,224,46,119,Republican,house
+Armed Services,@HouseArmedServices,0,0,106,Republican,house
+Armed Services,@HouseArmedServices,0,0,107,Republican,house
+Armed Services,@HouseArmedServices,0,0,108,Republican,house
+Armed Services,@HouseArmedServices,0,0,109,Republican,house
+Armed Services,@HouseArmedServices,0,0,110,Democratic,house
+Armed Services,@HouseArmedServices,0,0,111,Democratic,house
+Armed Services,@HouseArmedServices,0,0,112,Republican,house
+Armed Services,@HouseArmedServices,0,0,113,Republican,house
+Armed Services,@HouseArmedServices,192,2,114,Republican,house
+Armed Services,@HouseArmedServices,139,2,115,Republican,house
+Armed Services,@HouseArmedServices,112,4,116,Democratic,house
+Armed Services,@HouseArmedServices,120,0,117,Democratic,house
+Armed Services,@HouseArmedServices,102,1,118,Republican,house
+Armed Services,@HouseArmedServices,75,3,119,Republican,house
+Budget,@HouseBudgetDems,0,0,106,Republican,house
+Budget,@HouseBudgetDems,0,0,107,Republican,house
+Budget,@HouseBudgetDems,0,0,108,Republican,house
+Budget,@HouseBudgetDems,0,0,109,Republican,house
+Budget,@HouseBudgetDems,0,0,110,Democratic,house
+Budget,@HouseBudgetDems,71,71,111,Democratic,house
+Budget,@HouseBudgetDems,128,128,112,Republican,house
+Budget,@HouseBudgetDems,5,5,113,Republican,house
+Budget,@HouseBudgetDems,0,0,114,Republican,house
+Budget,@HouseBudgetDems,50,50,115,Republican,house
+Budget,@HouseBudgetDems,122,91,116,Democratic,house
+Budget,@HouseBudgetDems,76,66,117,Democratic,house
+Budget,@HouseBudgetDems,56,36,118,Republican,house
+Budget,@HouseBudgetDems,32,32,119,Republican,house
+Education & Workforce,@EdWorkforceCmte,0,0,106,Republican,house
+Education & Workforce,@EdWorkforceCmte,0,0,107,Republican,house
+Education & Workforce,@EdWorkforceCmte,0,0,108,Republican,house
+Education & Workforce,@EdWorkforceCmte,0,0,109,Republican,house
+Education & Workforce,@EdWorkforceCmte,68,68,110,Democratic,house
+Education & Workforce,@EdWorkforceCmte,120,120,111,Democratic,house
+Education & Workforce,@EdWorkforceCmte,158,135,112,Republican,house
+Education & Workforce,@EdWorkforceCmte,89,88,113,Republican,house
+Education & Workforce,@EdWorkforceCmte,104,104,114,Republican,house
+Education & Workforce,@EdWorkforceCmte,118,118,115,Republican,house
+Education & Workforce,@EdWorkforceCmte,82,82,116,Democratic,house
+Education & Workforce,@EdWorkforceCmte,90,90,117,Democratic,house
+Education & Workforce,@EdWorkforceCmte,152,151,118,Republican,house
+Education & Workforce,@EdWorkforceCmte,126,126,119,Republican,house
+Energy & Commerce,@energyandcommerce,0,0,106,Republican,house
+Energy & Commerce,@energyandcommerce,0,0,107,Republican,house
+Energy & Commerce,@energyandcommerce,0,0,108,Republican,house
+Energy & Commerce,@energyandcommerce,0,0,109,Republican,house
+Energy & Commerce,@energyandcommerce,0,0,110,Democratic,house
+Energy & Commerce,@energyandcommerce,78,78,111,Democratic,house
+Energy & Commerce,@energyandcommerce,504,503,112,Republican,house
+Energy & Commerce,@energyandcommerce,528,528,113,Republican,house
+Energy & Commerce,@energyandcommerce,433,432,114,Republican,house
+Energy & Commerce,@energyandcommerce,283,282,115,Republican,house
+Energy & Commerce,@energyandcommerce,224,224,116,Democratic,house
+Energy & Commerce,@energyandcommerce,146,146,117,Democratic,house
+Energy & Commerce,@energyandcommerce,574,574,118,Republican,house
+Energy & Commerce,@energyandcommerce,331,331,119,Republican,house
+Financial Services,@GOPFinancialServices,0,0,106,Republican,house
+Financial Services,@GOPFinancialServices,0,0,107,Republican,house
+Financial Services,@GOPFinancialServices,0,0,108,Republican,house
+Financial Services,@GOPFinancialServices,0,0,109,Republican,house
+Financial Services,@GOPFinancialServices,0,0,110,Democratic,house
+Financial Services,@GOPFinancialServices,346,346,111,Democratic,house
+Financial Services,@GOPFinancialServices,340,282,112,Republican,house
+Financial Services,@GOPFinancialServices,121,120,113,Republican,house
+Financial Services,@GOPFinancialServices,380,111,114,Republican,house
+Financial Services,@GOPFinancialServices,259,94,115,Republican,house
+Financial Services,@GOPFinancialServices,189,189,116,Democratic,house
+Financial Services,@GOPFinancialServices,96,96,117,Democratic,house
+Financial Services,@GOPFinancialServices,490,490,118,Republican,house
+Financial Services,@GOPFinancialServices,180,180,119,Republican,house
+Foreign Affairs,@HouseForeignGOP,0,0,106,Republican,house
+Foreign Affairs,@HouseForeignGOP,0,0,107,Republican,house
+Foreign Affairs,@HouseForeignGOP,0,0,108,Republican,house
+Foreign Affairs,@HouseForeignGOP,0,0,109,Republican,house
+Foreign Affairs,@HouseForeignGOP,0,0,110,Democratic,house
+Foreign Affairs,@HouseForeignGOP,134,134,111,Democratic,house
+Foreign Affairs,@HouseForeignGOP,179,179,112,Republican,house
+Foreign Affairs,@HouseForeignGOP,735,734,113,Republican,house
+Foreign Affairs,@HouseForeignGOP,882,496,114,Republican,house
+Foreign Affairs,@HouseForeignGOP,183,1,115,Republican,house
+Foreign Affairs,@HouseForeignGOP,272,272,116,Democratic,house
+Foreign Affairs,@HouseForeignGOP,255,255,117,Democratic,house
+Foreign Affairs,@HouseForeignGOP,432,432,118,Republican,house
+Foreign Affairs,@HouseForeignGOP,452,451,119,Republican,house
+Homeland Security,@HouseHomeland,0,0,106,Republican,house
+Homeland Security,@HouseHomeland,0,0,107,Republican,house
+Homeland Security,@HouseHomeland,0,0,108,Republican,house
+Homeland Security,@HouseHomeland,0,0,109,Republican,house
+Homeland Security,@HouseHomeland,0,0,110,Democratic,house
+Homeland Security,@HouseHomeland,0,0,111,Democratic,house
+Homeland Security,@HouseHomeland,0,0,112,Republican,house
+Homeland Security,@HouseHomeland,0,0,113,Republican,house
+Homeland Security,@HouseHomeland,68,68,114,Republican,house
+Homeland Security,@HouseHomeland,94,94,115,Republican,house
+Homeland Security,@HouseHomeland,99,28,116,Democratic,house
+Homeland Security,@HouseHomeland,87,0,117,Democratic,house
+Homeland Security,@HouseHomeland,101,43,118,Republican,house
+Homeland Security,@HouseHomeland,67,8,119,Republican,house
+House Administration,@CommitteeonHouseAdministration,0,0,106,Republican,house
+House Administration,@CommitteeonHouseAdministration,0,0,107,Republican,house
+House Administration,@CommitteeonHouseAdministration,0,0,108,Republican,house
+House Administration,@CommitteeonHouseAdministration,0,0,109,Republican,house
+House Administration,@CommitteeonHouseAdministration,0,0,110,Democratic,house
+House Administration,@CommitteeonHouseAdministration,0,0,111,Democratic,house
+House Administration,@CommitteeonHouseAdministration,0,0,112,Republican,house
+House Administration,@CommitteeonHouseAdministration,0,0,113,Republican,house
+House Administration,@CommitteeonHouseAdministration,0,0,114,Republican,house
+House Administration,@CommitteeonHouseAdministration,0,0,115,Republican,house
+House Administration,@CommitteeonHouseAdministration,45,42,116,Democratic,house
+House Administration,@CommitteeonHouseAdministration,69,69,117,Democratic,house
+House Administration,@CommitteeonHouseAdministration,455,455,118,Republican,house
+House Administration,@CommitteeonHouseAdministration,261,261,119,Republican,house
+Judiciary,@JudiciaryDems,0,0,106,Republican,house
+Judiciary,@JudiciaryDems,0,0,107,Republican,house
+Judiciary,@JudiciaryDems,0,0,108,Republican,house
+Judiciary,@JudiciaryDems,0,0,109,Republican,house
+Judiciary,@JudiciaryDems,0,0,110,Democratic,house
+Judiciary,@JudiciaryDems,0,0,111,Democratic,house
+Judiciary,@JudiciaryDems,0,0,112,Republican,house
+Judiciary,@JudiciaryDems,0,0,113,Republican,house
+Judiciary,@JudiciaryDems,357,115,114,Republican,house
+Judiciary,@JudiciaryDems,156,127,115,Republican,house
+Judiciary,@JudiciaryDems,138,20,116,Democratic,house
+Judiciary,@JudiciaryDems,131,27,117,Democratic,house
+Judiciary,@JudiciaryDems,215,92,118,Republican,house
+Judiciary,@JudiciaryDems,295,214,119,Republican,house
+Natural Resources,@NaturalResourcesDems,0,0,106,Republican,house
+Natural Resources,@NaturalResourcesDems,0,0,107,Republican,house
+Natural Resources,@NaturalResourcesDems,0,0,108,Republican,house
+Natural Resources,@NaturalResourcesDems,0,0,109,Republican,house
+Natural Resources,@NaturalResourcesDems,0,0,110,Democratic,house
+Natural Resources,@NaturalResourcesDems,0,0,111,Democratic,house
+Natural Resources,@NaturalResourcesDems,0,0,112,Republican,house
+Natural Resources,@NaturalResourcesDems,0,0,113,Republican,house
+Natural Resources,@NaturalResourcesDems,0,0,114,Republican,house
+Natural Resources,@NaturalResourcesDems,0,0,115,Republican,house
+Natural Resources,@NaturalResourcesDems,0,0,116,Democratic,house
+Natural Resources,@NaturalResourcesDems,0,0,117,Democratic,house
+Natural Resources,@NaturalResourcesDems,0,0,118,Republican,house
+Natural Resources,@NaturalResourcesDems,0,0,119,Republican,house
