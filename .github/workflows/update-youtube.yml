@@ -59,4 +59,10 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add apps/committee_youtube/data/*
           git commit -m "Updated Events from YouTube" || echo "No changes"
-          git push
+          # Resilient push: another scheduled workflow may push to main
+          # between checkout and now (non-fast-forward). Rebase and retry.
+          for attempt in 1 2 3; do
+            git push && break
+            echo "push rejected (attempt $attempt) -- rebasing on origin/main"
+            git pull --rebase --autostash origin main
+          done
