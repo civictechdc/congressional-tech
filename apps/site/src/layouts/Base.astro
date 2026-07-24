@@ -1,0 +1,45 @@
+---
+import '@fontsource/source-sans-3/400.css';
+import '@fontsource/source-sans-3/600.css';
+import '@fontsource/source-sans-3/700.css';
+import '@fontsource/source-code-pro/400.css';
+import '@fontsource/source-code-pro/600.css';
+import '../styles/tokens.css';
+import '../styles/global.css';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import { withBase } from '../lib/paths';
+
+interface Props {
+  title: string;
+  description?: string;
+  /** Which top-level nav item is active, e.g. "proposals". */
+  active?: string;
+}
+
+const {
+  title,
+  description = 'Open-source tools and proposals that make Congress more transparent, efficient, and accountable. A Civic Tech DC initiative.',
+  active,
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta name="generator" content={Astro.generator} />
+    <link rel="icon" type="image/svg+xml" href={withBase('/favicon.svg')} />
+    <title>{title} · Congressional Tech · Civic Tech DC</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <Header active={active} />
+    <main id="main">
+      <slot />
+    </main>
+    <Footer />
+  </body>
+</html>

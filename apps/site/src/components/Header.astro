@@ -1,0 +1,127 @@
+---
+import { withBase } from '../lib/paths';
+
+interface Props {
+  active?: string;
+}
+
+const { active } = Astro.props;
+
+const links = [
+  { key: 'home', label: 'Home', href: withBase('/') },
+  { key: 'proposals', label: 'Proposals', href: withBase('/proposals/') },
+  { key: 'projects', label: 'Projects', href: withBase('/projects/') },
+  { key: 'dashboard', label: 'Dashboard', href: withBase('/dashboard/') },
+  { key: 'contribute', label: 'Contribute', href: withBase('/contribute/') },
+];
+---
+
+<header class="site-header">
+  <div class="container header-inner">
+    <a class="brand" href={withBase('/')}>
+      <span class="brand-eyebrow eyebrow">Civic Tech DC</span>
+      <span class="brand-name">Congressional Tech</span>
+    </a>
+    <nav aria-label="Main">
+      <ul class="nav-list">
+        {
+          links.map((link) => (
+            <li>
+              <a
+                class:list={['nav-link', { 'is-active': active === link.key }]}
+                href={link.href}
+                aria-current={active === link.key ? 'page' : undefined}
+              >
+                {link.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<style>
+  /* Dark glass anchor: midnight backing + blur + hairline bottom border */
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: rgba(11, 26, 48, 0.88);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--ctdc-hairline-on-dark);
+  }
+
+  .header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--ctdc-space-2xs) var(--ctdc-space-lg);
+    padding-block: var(--ctdc-space-xs);
+  }
+
+  .brand {
+    display: flex;
+    flex-direction: column;
+    text-decoration: none;
+  }
+
+  .brand-eyebrow {
+    color: var(--ctdc-gold);
+  }
+
+  .brand-name {
+    font-size: var(--ctdc-text-lg);
+    font-weight: var(--ctdc-weight-bold);
+    letter-spacing: var(--ctdc-tracking-tight);
+    color: var(--ctdc-on-dark-strong);
+    transition: color var(--ctdc-duration-fast) var(--ctdc-ease);
+  }
+
+  .brand:hover .brand-name {
+    color: var(--ctdc-gold);
+  }
+
+  .nav-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ctdc-space-3xs) var(--ctdc-space-md);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .nav-link {
+    display: inline-block;
+    padding: var(--ctdc-space-2xs) var(--ctdc-space-3xs);
+    font-size: var(--ctdc-text-sm);
+    font-weight: var(--ctdc-weight-semibold);
+    text-decoration: none;
+    color: var(--ctdc-on-dark);
+    /* Thin gold underline reserved for the active page (vision.md) */
+    border-bottom: 2px solid transparent;
+    transition:
+      color var(--ctdc-duration-fast) var(--ctdc-ease),
+      transform var(--ctdc-duration-fast) var(--ctdc-ease);
+  }
+
+  .nav-link:hover {
+    color: var(--ctdc-gold);
+    transform: translateY(-3px);
+  }
+
+  .nav-link.is-active {
+    color: var(--ctdc-on-dark-strong);
+    border-bottom-color: var(--ctdc-gold);
+  }
+
+  @media (max-width: 640px) {
+    .header-inner {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+</style>

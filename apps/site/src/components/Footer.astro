@@ -1,0 +1,191 @@
+---
+import { withBase } from '../lib/paths';
+
+const year = new Date().getFullYear();
+
+const columns = [
+  {
+    heading: 'Initiative',
+    links: [
+      { label: 'Project themes', href: withBase('/#themes') },
+      { label: 'Proposals', href: withBase('/proposals/') },
+      { label: 'Active projects', href: withBase('/projects/') },
+      { label: 'YouTube dashboard', href: withBase('/dashboard/') },
+    ],
+  },
+  {
+    heading: 'Get involved',
+    links: [
+      { label: 'Contribute', href: withBase('/contribute/') },
+      {
+        label: 'GitHub repo',
+        href: 'https://github.com/civictechdc/congressional-tech',
+      },
+      {
+        label: 'Join our Slack',
+        href: 'https://www.civictechdc.org/slack.html',
+      },
+    ],
+  },
+  {
+    heading: 'Related repos',
+    links: [
+      { label: 'DeltaTrack', href: 'https://github.com/civictechdc/DeltaTrack' },
+      { label: 'BillTrax', href: 'https://github.com/civictechdc/BillTrax' },
+      { label: 'Civic Tech DC', href: 'https://www.civictechdc.org/' },
+    ],
+  },
+];
+---
+
+<footer class="site-footer anchor-dark">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <p class="eyebrow brand-eyebrow">Civic Tech DC</p>
+        <p class="brand-name">Congressional Tech</p>
+        <p class="brand-blurb">
+          A volunteer initiative building open-source tools that make Congress
+          more transparent, efficient, and accountable.
+        </p>
+      </div>
+      <nav class="footer-nav" aria-label="Footer">
+        {
+          columns.map((col) => (
+            <div class="footer-col">
+              <h2 class="footer-heading eyebrow">{col.heading}</h2>
+              <ul>
+                {col.links.map((link) => (
+                  <li>
+                    <a class="footer-link" href={link.href}>
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
+        }
+      </nav>
+    </div>
+    <div class="footer-bottom">
+      <p class="copyright">
+        © {year} Civic Tech DC. Open source under the repository license.
+      </p>
+      <a class="btn btn--ghost-dark back-to-top" href="#top">
+        <span class="back-to-top-arrow" aria-hidden="true">↑</span>
+        Back to top
+      </a>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    margin-top: var(--ctdc-space-4xl);
+    padding-block: var(--ctdc-space-3xl) var(--ctdc-space-lg);
+  }
+
+  /* Balanced asymmetry: 1/3 brand column + 2/3 nav grid (vision.md) */
+  .footer-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: var(--ctdc-space-2xl);
+    padding-bottom: var(--ctdc-space-xl);
+  }
+
+  .brand-eyebrow {
+    color: var(--ctdc-gold);
+    margin-bottom: var(--ctdc-space-3xs);
+  }
+
+  .brand-name {
+    font-size: var(--ctdc-text-lg);
+    font-weight: var(--ctdc-weight-bold);
+    color: var(--ctdc-on-dark-strong);
+    margin-bottom: var(--ctdc-space-2xs);
+  }
+
+  .brand-blurb {
+    font-size: var(--ctdc-text-sm);
+    color: var(--ctdc-on-dark-caption);
+    max-width: 26rem;
+  }
+
+  .footer-nav {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--ctdc-space-lg);
+  }
+
+  .footer-heading {
+    color: var(--ctdc-on-dark-caption);
+    font-size: var(--ctdc-text-2xs);
+    margin-bottom: var(--ctdc-space-xs);
+  }
+
+  .footer-col ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--ctdc-space-2xs);
+  }
+
+  /* Text links slide right and fade to gold on hover (vision.md) */
+  .footer-link {
+    display: inline-block;
+    font-size: var(--ctdc-text-sm);
+    text-decoration: none;
+    transition:
+      transform var(--ctdc-duration-fast) var(--ctdc-ease),
+      color var(--ctdc-duration-fast) var(--ctdc-ease);
+  }
+
+  .footer-link:hover {
+    transform: translateX(4px);
+  }
+
+  /* Subtle boundary: semi-transparent hairline, not a solid border */
+  .footer-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--ctdc-space-sm);
+    padding-top: var(--ctdc-space-md);
+    border-top: 1px solid var(--ctdc-hairline-on-dark);
+  }
+
+  .copyright {
+    font-size: var(--ctdc-text-xs);
+    color: var(--ctdc-on-dark-caption);
+    margin: 0;
+  }
+
+  .back-to-top {
+    font-size: var(--ctdc-text-sm);
+    padding: var(--ctdc-space-2xs) var(--ctdc-space-md);
+  }
+
+  .back-to-top-arrow {
+    display: inline-block;
+    margin-right: var(--ctdc-space-3xs);
+    transition: transform var(--ctdc-duration-fast) var(--ctdc-ease);
+  }
+
+  .back-to-top:hover .back-to-top-arrow {
+    transform: translateY(-2px);
+  }
+
+  @media (max-width: 800px) {
+    .footer-grid {
+      grid-template-columns: 1fr;
+      gap: var(--ctdc-space-xl);
+    }
+
+    .footer-nav {
+      grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    }
+  }
+</style>

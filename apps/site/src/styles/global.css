@@ -1,0 +1,361 @@
+/* Global styles — everything derives from the --ctdc-* tokens. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: var(--ctdc-font-sans);
+  font-size: var(--ctdc-text-base);
+  line-height: var(--ctdc-leading-relaxed);
+  color: var(--ctdc-ink);
+  background: var(--ctdc-canvas);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  line-height: var(--ctdc-leading-tight);
+  letter-spacing: var(--ctdc-tracking-tight);
+  font-weight: var(--ctdc-weight-bold);
+  margin: 0 0 var(--ctdc-space-sm);
+}
+
+p {
+  margin: 0 0 var(--ctdc-space-sm);
+}
+
+img,
+svg {
+  max-width: 100%;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+code,
+pre {
+  font-family: var(--ctdc-font-mono);
+  font-size: var(--ctdc-text-sm);
+}
+
+pre {
+  background: var(--ctdc-vessel);
+  color: var(--ctdc-on-dark);
+  padding: var(--ctdc-space-sm) var(--ctdc-space-md);
+  border-radius: var(--ctdc-radius-sm);
+  overflow-x: auto;
+}
+
+code:not(pre code) {
+  background: rgba(16, 67, 120, 0.08);
+  color: var(--ctdc-primary);
+  padding: 0.1em 0.35em;
+  border-radius: var(--ctdc-radius-xs);
+}
+
+/* ---- Links ---- */
+a {
+  color: var(--ctdc-primary);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  transition: color var(--ctdc-duration-fast) var(--ctdc-ease);
+}
+
+a:hover {
+  color: var(--ctdc-gold);
+}
+
+/* One focus indicator for every interactive element (gold = "you are here") */
+:focus-visible {
+  outline: var(--ctdc-focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--ctdc-radius-xs);
+}
+
+.skip-link {
+  position: absolute;
+  left: var(--ctdc-space-sm);
+  top: calc(-1 * var(--ctdc-space-4xl));
+  z-index: 100;
+  background: var(--ctdc-primary);
+  color: #fff;
+  padding: var(--ctdc-space-2xs) var(--ctdc-space-sm);
+  border-radius: var(--ctdc-radius-pill);
+  transition: top var(--ctdc-duration-fast) var(--ctdc-ease);
+}
+
+.skip-link:focus {
+  top: var(--ctdc-space-sm);
+  color: #fff;
+}
+
+/* ---- Layout ---- */
+.container {
+  width: min(100% - 2 * var(--ctdc-space-md), 72rem);
+  margin-inline: auto;
+}
+
+.section {
+  padding-block: var(--ctdc-space-3xl);
+}
+
+.section-heading {
+  font-size: var(--ctdc-text-2xl);
+  color: var(--ctdc-primary);
+}
+
+.section-heading::after {
+  content: '';
+  display: block;
+  width: var(--ctdc-space-2xl);
+  height: 3px;
+  margin-top: var(--ctdc-space-2xs);
+  border-radius: var(--ctdc-radius-xs);
+  background: var(--ctdc-gold);
+}
+
+.eyebrow {
+  font-size: var(--ctdc-text-2xs);
+  font-weight: var(--ctdc-weight-semibold);
+  letter-spacing: var(--ctdc-tracking-wider);
+  text-transform: uppercase;
+}
+
+.lead {
+  font-size: var(--ctdc-text-lg);
+  line-height: var(--ctdc-leading-normal);
+}
+
+/* ---- Pill buttons ---- */
+.btn {
+  display: inline-block;
+  padding: var(--ctdc-space-xs) var(--ctdc-space-lg);
+  border-radius: var(--ctdc-radius-pill);
+  border: 1px solid transparent;
+  font-family: var(--ctdc-font-sans);
+  font-size: var(--ctdc-text-base);
+  font-weight: var(--ctdc-weight-semibold);
+  line-height: var(--ctdc-leading-tight);
+  text-decoration: none;
+  cursor: pointer;
+  transition: all var(--ctdc-duration-fast) var(--ctdc-ease);
+}
+
+.btn:hover {
+  transform: translateY(-3px);
+}
+
+.btn--primary {
+  background: var(--ctdc-primary);
+  color: #fff;
+}
+
+.btn--primary:hover {
+  color: #fff;
+  box-shadow: var(--ctdc-shadow-md);
+}
+
+.btn--gold {
+  background: var(--ctdc-gold);
+  color: var(--ctdc-midnight);
+}
+
+.btn--gold:hover {
+  color: var(--ctdc-midnight);
+  box-shadow: var(--ctdc-shadow-md);
+}
+
+/* Ghost pill for dark anchors (footer back-to-top spec) */
+.btn--ghost-dark {
+  background: var(--ctdc-pill-backing);
+  border-color: var(--ctdc-pill-border);
+  color: var(--ctdc-on-dark);
+}
+
+.btn--ghost-dark:hover {
+  color: var(--ctdc-gold);
+  border-color: var(--ctdc-gold);
+}
+
+/* ---- Cards ---- */
+.card {
+  display: block;
+  background: var(--ctdc-surface);
+  border-radius: var(--ctdc-radius-lg);
+  box-shadow: var(--ctdc-shadow-card);
+  padding: var(--ctdc-space-lg);
+  transition:
+    transform var(--ctdc-duration-base) var(--ctdc-ease),
+    box-shadow var(--ctdc-duration-base) var(--ctdc-ease);
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--ctdc-shadow-lg);
+}
+
+/* Gold thread: vertical gold line on high-importance cards */
+.card--gold {
+  border-left: 2px solid var(--ctdc-gold);
+}
+
+.card-title {
+  font-size: var(--ctdc-text-lg);
+  color: var(--ctdc-primary);
+  margin-bottom: var(--ctdc-space-2xs);
+}
+
+.card-meta {
+  font-size: var(--ctdc-text-xs);
+  color: var(--ctdc-ink-muted);
+}
+
+/* Text links that slide right and fade to gold (vision.md) */
+.slide-link {
+  display: inline-block;
+  font-weight: var(--ctdc-weight-semibold);
+  text-decoration: none;
+  transition:
+    transform var(--ctdc-duration-fast) var(--ctdc-ease),
+    color var(--ctdc-duration-fast) var(--ctdc-ease);
+}
+
+.slide-link:hover {
+  transform: translateX(4px);
+  color: var(--ctdc-gold);
+}
+
+/* ---- Badges & tags ---- */
+.badge {
+  display: inline-block;
+  padding: 0.1rem var(--ctdc-space-2xs);
+  border-radius: var(--ctdc-radius-xs);
+  font-size: var(--ctdc-text-2xs);
+  font-weight: var(--ctdc-weight-semibold);
+  letter-spacing: var(--ctdc-tracking-wide);
+  text-transform: uppercase;
+  line-height: 1.6;
+}
+
+.badge--built {
+  background: var(--ctdc-primary);
+  color: #fff;
+}
+
+.badge--idea {
+  background: rgba(16, 67, 120, 0.08);
+  color: var(--ctdc-primary);
+}
+
+.badge--effort {
+  background: rgba(238, 192, 94, 0.18);
+  color: #6b4e0e;
+}
+
+/* Badge variants for dark anchors (hero meta rows) */
+.anchor-dark .badge--built {
+  background: var(--ctdc-gold);
+  color: var(--ctdc-midnight);
+}
+
+.anchor-dark .badge--idea {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--ctdc-on-dark-strong);
+}
+
+.anchor-dark .badge--effort {
+  background: rgba(238, 192, 94, 0.16);
+  color: var(--ctdc-gold);
+}
+
+/* ---- Dark anchor sections (hero / CTA bands) ---- */
+.anchor-dark {
+  background: var(--ctdc-anchor-gradient);
+  color: var(--ctdc-on-dark);
+}
+
+.anchor-dark h1,
+.anchor-dark h2,
+.anchor-dark h3 {
+  color: var(--ctdc-on-dark-strong);
+}
+
+.anchor-dark a:not(.btn) {
+  color: var(--ctdc-on-dark);
+}
+
+.anchor-dark a:not(.btn):hover {
+  color: var(--ctdc-gold);
+}
+
+.glass-panel {
+  background: var(--ctdc-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--ctdc-hairline-on-dark);
+  border-radius: var(--ctdc-radius-lg);
+}
+
+/* ---- Prose (rendered markdown on the light canvas) ---- */
+.prose {
+  max-width: 46rem;
+}
+
+.prose h2 {
+  font-size: var(--ctdc-text-xl);
+  color: var(--ctdc-primary);
+  margin-top: var(--ctdc-space-xl);
+  padding-bottom: var(--ctdc-space-3xs);
+  border-bottom: 2px solid var(--ctdc-gold);
+  display: inline-block;
+}
+
+.prose h2 + * {
+  margin-top: var(--ctdc-space-sm);
+}
+
+.prose h3 {
+  font-size: var(--ctdc-text-lg);
+  margin-top: var(--ctdc-space-lg);
+}
+
+.prose ul {
+  padding-left: var(--ctdc-space-md);
+  margin: 0 0 var(--ctdc-space-sm);
+}
+
+.prose li {
+  margin-bottom: var(--ctdc-space-3xs);
+}
+
+.prose li::marker {
+  color: var(--ctdc-gold);
+}
+
+/* ---- Reduced motion: one global guard ---- */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

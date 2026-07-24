@@ -372,3 +372,4 @@ vite.config.ts.timestamp-*
 
 # The generic `lib/` rule above is a Python rule; keep the website app source lib dir.
 !apps/website/src/lib/
+!apps/site/src/lib/

@@ -1,0 +1,26 @@
+{
+  "name": "site",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "migrate": "node scripts/migrate-content.mjs"
+  },
+  "dependencies": {
+    "@astrojs/react": "^4.4.0",
+    "@fontsource/source-code-pro": "^5.2.5",
+    "@fontsource/source-sans-3": "^5.2.5",
+    "astro": "^5.13.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.9",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "typescript": "^5.8.0"
+  }
+}
