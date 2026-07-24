@@ -4,23 +4,29 @@ set -e
 
 echo "🚀 Setting up Congressional Tech development environment..."
 
-# Install npm dependencies for the Next.js app
-echo "📦 Installing Node.js dependencies..."
-cd /workspaces/congressional-tech/app
-npm install
+# Resolve the repo root (this script lives in .devcontainer/) so the setup
+# works regardless of the caller's current directory.
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO_ROOT"
 
-# Install Python dependencies for the YouTube project
-echo "🐍 Installing Python dependencies..."
-cd /workspaces/congressional-tech/projects/1.2-committee-youtube/python
-pip install --user -e .
+# --- Python: committee_youtube (congress_youtube) package ---
+# Provides the console scripts used by the update-youtube workflow:
+#   youtube-fetch / youtube-analyze / congress-fetch / congress-analyze
+# Installed editable (-e) so the __file__-relative data paths in
+# globals.py resolve into apps/committee_youtube/data inside the repo
+# (which is exactly what the workflow commits back). Installed with
+# --user, so the console scripts land in ~/.local/bin; the workflow's
+# runCmd prepends that directory to PATH for the non-interactive shell.
+echo "🐍 Installing committee_youtube Python package (editable)..."
+pip install --user -e apps/committee_youtube
 
-# Install dependencies for the inflation project
-echo "📈 Installing inflation project dependencies..."
-cd /workspaces/congressional-tech/projects/5.1-inflation-gsheets
-pip install --user pandas openpyxl requests
-
-# Go back to root
-cd /workspaces/congressional-tech
+# --- Node: workspace dependencies (best-effort, for local web dev) ---
+# The YouTube CI job does not need Node, so this must never fail the
+# container setup. Local developers still get their dependencies.
+if command -v npm >/dev/null 2>&1; then
+    echo "📦 Installing Node.js workspace dependencies (best-effort)..."
+    npm install || echo "⚠️  npm install skipped/failed (non-fatal for Python tooling)"
+fi
 
 # Set up git configuration if not already set
 if [ -z "$(git config --get user.name)" ]; then
@@ -34,9 +40,9 @@ fi
 
 echo "✅ Development environment setup complete!"
 echo ""
-echo "🔗 Available services:"
-echo "  - Next.js app: http://localhost:3000 (run: cd app && npm run dev)"
-echo "  - YouTube data fetcher: youtube-fetch --help"
-echo "  - YouTube analyzer: youtube-analyze --help"
-echo "  - Congress data fetcher: congress-fetch --help"
+echo "🔗 Console scripts (installed to ~/.local/bin):"
+echo "  - youtube-fetch --help    (fetch committee YouTube video metadata)"
+echo "  - youtube-analyze --help  (report videos missing event IDs)"
+echo "  - congress-fetch --help   (fetch congressional committee events)"
+echo "  - congress-analyze --help (build congress metadata)"
 echo ""

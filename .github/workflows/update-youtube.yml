@@ -1,19 +1,11 @@
 name: Update Events from YouTube
 
 on:
-  # TODO: the `congress_youtube` console-script package (youtube-fetch /
-  # youtube-analyze) that this job depends on is not resolvable in the repo
-  # today - see the note above the `runCmd` step below for the full
-  # explanation. Schedule is disabled until that's fixed, so this job stops
-  # failing every week. Re-enable once `youtube-fetch --help` actually works.
-  # schedule:
-  #   - cron: "0 0 * * 0" # 12:00 AM Sunday each week
-  # pull_request also disabled until the tooling is restored: it can't pass
-  # today, so it only adds a failing check to every PR. Re-enable alongside the
-  # schedule once `youtube-fetch --help` works.
-  # pull_request:
-  #   branches:
-  #     - main
+  schedule:
+    - cron: "0 0 * * 0" # 12:00 AM Sunday each week
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -29,34 +21,15 @@ jobs:
       - name: Run in Dev Container
         uses: devcontainers/ci@v0.3
         with:
-          # TODO: `youtube-fetch` / `youtube-analyze` are console_scripts
-          # defined in apps/committee_youtube/pyproject.toml, pointing at
-          # `congress_youtube.youtube.fetch.main:parse_args_and_run` etc.
-          # That `congress_youtube` package does not exist anywhere in the
-          # repo in importable form:
-          #   - apps/committee_youtube/src/ only has auth.py + globals.py
-          #     (no congress_youtube/, no congress/ or youtube/ subpackages,
-          #     no youtube-accounts.csv).
-          #   - The pre-migration code (git history, e.g. commit 4c02ae3~1
-          #     at projects/1.2-committee-youtube/python/congress_youtube/)
-          #     was NOT cleanly moved - it was superseded by a different,
-          #     partial refactor into packages/congress_api and
-          #     packages/youtube_api, which are themselves broken: every
-          #     file in both packages does
-          #     `from apps.congress_youtube.auth import ...` /
-          #     `from apps.congress_youtube.globals import ...` /
-          #     `from packages.youtube_api.tables import ...`, none of
-          #     which resolve (verified: `pip install -e` those packages,
-          #     `import congress_api.fetch.main` raises
-          #     `ModuleNotFoundError: No module named 'apps'`; the
-          #     installed `youtube-fetch` console script raises
-          #     `ModuleNotFoundError: No module named 'congress_youtube'`).
-          # This needs a real decision (finish wiring committee_youtube as
-          # a thin wrapper around congress_api/youtube_api with correct
-          # imports, or reconstitute congress_youtube wholesale) before the
-          # schedule above can come back. Paths below are updated to the
-          # current apps/ layout on a best-effort basis only.
+          # The console scripts (youtube-fetch / youtube-analyze) are provided
+          # by the committee_youtube package (apps/committee_youtube), which the
+          # devcontainer's post-create.sh installs editable with `pip install
+          # --user -e`. That puts the scripts in ~/.local/bin, so the runCmd
+          # below prepends it to PATH (the non-interactive CI shell does not
+          # source the interactive .bashrc that normally adds it).
           runCmd: |
+            export PATH="$HOME/.local/bin:$PATH"
+
             # YouTube Fetch
             cd apps/committee_youtube
             youtube-fetch --youtube-api-key ${{ secrets.YOUTUBE_DATA_API_KEY }} --channels-csv-path src/congress_youtube/youtube/youtube-accounts.csv

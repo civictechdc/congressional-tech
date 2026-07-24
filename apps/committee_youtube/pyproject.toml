@@ -7,29 +7,29 @@ authors = [
 ]
 requires-python = ">=3.12"
 readme = "README.md"
+license = { text = "MIT" }
 dependencies = [
-  "congress-api",
+  "requests>=2.25.0",
+  "lxml>=4.9.0",
+  "google-api-python-client>=2.179.0",
   "tinydb",
-  "youtube-api",
 ]
 
 [project.urls]
 Homepage = "https://github.com/civictechdc/congressional-tech"
 
 [project.scripts]
-congress-fetch= "congress_youtube.congress.fetch.main:parse_args_and_run"
-congress-analyze= "congress_youtube.congress.analyze.main:parse_args_and_run"
-youtube-fetch= "congress_youtube.youtube.fetch.main:parse_args_and_run"
-youtube-analyze= "congress_youtube.youtube.analyze.main:parse_args_and_run"
+congress-fetch = "congress_youtube.congress.fetch.main:parse_args_and_run"
+congress-analyze = "congress_youtube.congress.analyze.main:parse_args_and_run"
+youtube-fetch = "congress_youtube.youtube.fetch.main:parse_args_and_run"
+youtube-analyze = "congress_youtube.youtube.analyze.main:parse_args_and_run"
 
 [build-system]
-requires = ["uv_build"]
-build-backend = "uv_build"
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
 
-[tool.uv.build-backend]
-module-name = "src"
-module-root = "."
+[tool.setuptools.packages.find]
+where = ["src"]
 
-[tool.uv.sources]
-youtube-api = { path = "../../packages/youtube_api" }
-congress-api = { path = "../../packages/congress_api" }
+[tool.setuptools.package-data]
+congress_youtube = ["youtube/youtube-accounts.csv"]
