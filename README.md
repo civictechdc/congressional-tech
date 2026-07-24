@@ -120,14 +120,13 @@ Key development features:
 
 ## Project List
 
-See the full project list & details at
-https://github.com/civictechdc/congressional-tech/tree/main/docs/README.md
+The categorized project list is below. Detailed proposals and the interactive dashboard are built from the website app ([`apps/website`](https://github.com/civictechdc/congressional-tech/tree/main/apps/website)), with the underlying data in [`apps/website/src/data`](https://github.com/civictechdc/congressional-tech/tree/main/apps/website/src/data).
 
 | Project name |  Level of Effort
 |-----------------|--------------
 | **I. Enhancing Congressional Data Accessibility & Usability** |
 Unified Congressional Hearing & Markup Data Platform | 3
-[Congressional Committee YouTube Video Dashboard & Event ID Tracking](https://github.com/civictechdc/congressional-tech/tree/main/projects/1.2-committee-youtube) | 2
+[Congressional Committee YouTube Video Dashboard & Event ID Tracking](https://github.com/civictechdc/congressional-tech/tree/main/apps/committee_youtube) | 2
 Statements of Disbursements as Structured Data | 4
 Appropriations Data Pipeline & Historical Analysis | 5+
 ||
@@ -153,7 +152,7 @@ Committee Funding Tracker & Visualization | (not set)
 Line Up CBJs and Appropriations Committee Report Language | (not set)
 ||
 | **V. Basic Utility Tools** |
-[Inflation Calculator for Google Sheets](https://github.com/civictechdc/congressional-tech/tree/main/projects/5.1-inflation-gsheets) | 1
+[Inflation Calculator for Google Sheets](https://github.com/civictechdc/congressional-tech/tree/main/apps/inflation_gsheets) | 1
 
 ## Related repositories
 
