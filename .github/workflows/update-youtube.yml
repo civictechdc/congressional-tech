@@ -8,9 +8,12 @@ on:
   # failing every week. Re-enable once `youtube-fetch --help` actually works.
   # schedule:
   #   - cron: "0 0 * * 0" # 12:00 AM Sunday each week
-  pull_request:
-    branches:
-      - main
+  # pull_request also disabled until the tooling is restored: it can't pass
+  # today, so it only adds a failing check to every PR. Re-enable alongside the
+  # schedule once `youtube-fetch --help` works.
+  # pull_request:
+  #   branches:
+  #     - main
   workflow_dispatch:
 
 jobs:
