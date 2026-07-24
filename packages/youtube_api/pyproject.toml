@@ -4,9 +4,23 @@ version = "0.1.0"
 description = "YouTube API Client for Congressional Tech"
 requires-python = ">=3.12"
 dependencies = [
+    "congress-shared",
     "google-api-python-client",
+    "tinydb",
 ]
 
+[project.scripts]
+youtube-fetch = "youtube_api.fetch.main:parse_args_and_run"
+youtube-analyze = "youtube_api.analyze.main:parse_args_and_run"
+
 [build-system]
-requires = ["uv_build"]
-build-backend = "uv_build"
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# uv-native path source (ignored by pip). Lets `uv pip install -e .`
+# resolve the sibling package from the local tree instead of an index.
+[tool.uv.sources]
+congress-shared = { path = "../congress_shared", editable = true }

@@ -3,9 +3,9 @@ import logging
 
 from pathlib import Path
 
-from apps.congress_youtube.auth import load_youtube_api_key
-from apps.congress_youtube.globals import add_global_args, add_youtube_args
-from packages.youtube_api.tables import (
+from congress_shared.auth import load_youtube_api_key
+from congress_shared.globals import add_global_args, add_youtube_args
+from youtube_api.tables import (
     get_all_committee_handless,
     get_all_commitee_names,
     get_committee_index,

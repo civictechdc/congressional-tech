@@ -12,15 +12,15 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stdout)],
 )
 
-DEFAULT_TINYDB_DIR = Path(__file__).resolve().parent.parent.parent / "data"
-DEFAULT_CHANNELS_CSV = (
-    Path(__file__).resolve().parent / "youtube" / "youtube-accounts.csv"
-)
-DEFAULT_YOUTUBE_REPORT_FILE = (
-    Path(__file__).resolve().parent.parent.parent
-    / "data"
-    / "youtube_event_id_report.csv"
-)
+## All paths are resolved relative to this shared package so the tooling finds
+## its bundled config (committee CSV + congress metadata) no matter which
+## package the console script lives in, and no matter the current directory.
+PACKAGE_DIR = Path(__file__).resolve().parent
+DATA_DIR = PACKAGE_DIR / "data"
+
+DEFAULT_TINYDB_DIR = DATA_DIR
+DEFAULT_CHANNELS_CSV = PACKAGE_DIR / "youtube" / "youtube-accounts.csv"
+DEFAULT_YOUTUBE_REPORT_FILE = DATA_DIR / "youtube_event_id_report.csv"
 
 
 def add_global_args(parser: ArgumentParser) -> None:
@@ -43,8 +43,5 @@ def add_youtube_args(parser: ArgumentParser) -> None:
     )
 
 
-with open(
-    Path(__file__).resolve().parent.parent.parent / "data" / "congress_metadata.json",
-    "r",
-) as handle:
+with open(DATA_DIR / "congress_metadata.json", "r") as handle:
     CONGRESS_METADATA = json.load(handle)

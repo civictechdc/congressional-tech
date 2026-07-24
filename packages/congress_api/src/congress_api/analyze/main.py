@@ -2,7 +2,7 @@ import argparse
 from collections import defaultdict
 
 
-from apps.congress_youtube.globals import add_global_args
+from congress_shared.globals import add_global_args
 from ..fetch.congress_committee_fetcher import CongressCommitteeFetcher
 from ..fetch.congress_event_fetcher import CongressEventFetcher
 

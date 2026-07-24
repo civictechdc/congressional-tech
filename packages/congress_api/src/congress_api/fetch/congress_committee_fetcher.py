@@ -2,7 +2,7 @@ import os
 from tinydb import TinyDB, Query
 from tinydb.table import Document
 from typing import Literal
-from apps.congress_youtube.globals import DEFAULT_TINYDB_DIR
+from congress_shared.globals import DEFAULT_TINYDB_DIR
 from ..api import congress_api_get
 from ..analyze.committee_summary import CommitteeSummary
 from ..analyze.committee import Committee

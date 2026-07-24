@@ -1,0 +1,16 @@
+[project]
+name = "congress-shared"
+version = "0.1.0"
+description = "Shared auth, globals, and bundled config data (committee CSV + congress metadata) for the Congressional Tech YouTube/Congress tooling."
+requires-python = ">=3.12"
+dependencies = []
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+congress_shared = ["data/*.json", "youtube/*.csv"]

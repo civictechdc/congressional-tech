@@ -6,7 +6,7 @@ from pathlib import Path
 from tinydb import TinyDB
 from typing import TypedDict
 
-from apps.congress_youtube.globals import DEFAULT_CHANNELS_CSV, DEFAULT_TINYDB_DIR
+from congress_shared.globals import DEFAULT_CHANNELS_CSV, DEFAULT_TINYDB_DIR
 
 
 class YoutubeChannelMetadata(TypedDict):
@@ -46,20 +46,25 @@ def get_all_committee_handless(
 
 def get_all_commitee_names(
     csv_path: Path = DEFAULT_CHANNELS_CSV,
-) -> list[str]:
+    with_index: bool = False,
+) -> list[str] | list[tuple[str, int]]:
     system_code_mapper = map_system_code_committee_handles(csv_path)
-    return [meta["name"] for meta in system_code_mapper.values()]
+    names = [meta["name"] for meta in system_code_mapper.values()]
+    if with_index:
+        ## pair each name with its row index so callers can build the
+        ## programmatic ``youtube_{index:02d}.json`` filenames.
+        return [(name, index) for index, name in enumerate(names)]
+    return names
 
 
 def get_committee_index(
     committee_name: str, csv_path: Path = DEFAULT_CHANNELS_CSV
 ) -> int:
-    committee_names: list[str] = get_all_commitee_names()
-    index = committee_names.index(committee_name)
-    if index == -1:
+    committee_names: list[str] = get_all_commitee_names(csv_path=csv_path)
+    try:
+        return committee_names.index(committee_name)
+    except ValueError:
         raise IndexError(f"No committee name matched {committee_name} in {csv_path}")
-    else:
-        return index
 
 
 def open_tinydb_for_committee(

@@ -5,7 +5,7 @@ from tinydb import TinyDB
 from tinydb.table import Document
 from typing import Literal
 
-from apps.congress_youtube.globals import DEFAULT_TINYDB_DIR
+from congress_shared.globals import DEFAULT_TINYDB_DIR
 from ..api import congress_api_get, generic_request
 
 

@@ -2,7 +2,7 @@ from tinydb import TinyDB
 
 from .committee_details import CommitteeDetails
 from .committee_summary import CommitteeSummary
-from packages.youtube_api.tables import (
+from youtube_api.tables import (
     map_system_code_committee_handles,
     open_tinydb_for_committee,
 )

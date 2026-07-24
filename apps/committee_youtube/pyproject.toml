@@ -7,29 +7,30 @@ authors = [
 ]
 requires-python = ">=3.12"
 readme = "README.md"
+# This app is a thin aggregator: it pulls in the real implementation packages.
+# The console scripts (youtube-fetch/-analyze, congress-fetch/-analyze) are
+# defined by those packages, so installing this app puts all four on PATH.
 dependencies = [
   "congress-api",
-  "tinydb",
   "youtube-api",
+  "tinydb",
 ]
 
 [project.urls]
 Homepage = "https://github.com/civictechdc/congressional-tech"
 
-[project.scripts]
-congress-fetch= "congress_youtube.congress.fetch.main:parse_args_and_run"
-congress-analyze= "congress_youtube.congress.analyze.main:parse_args_and_run"
-youtube-fetch= "congress_youtube.youtube.fetch.main:parse_args_and_run"
-youtube-analyze= "congress_youtube.youtube.analyze.main:parse_args_and_run"
-
 [build-system]
-requires = ["uv_build"]
-build-backend = "uv_build"
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
 
-[tool.uv.build-backend]
-module-name = "src"
-module-root = "."
+# Metadata-only distribution: no importable modules of its own, just the
+# dependency graph + (via its deps) the console scripts.
+[tool.setuptools]
+packages = []
+py-modules = []
 
+# uv-native path sources (ignored by pip). Lets `uv pip install -e .`
+# resolve the sibling packages from the local tree instead of an index.
 [tool.uv.sources]
-youtube-api = { path = "../../packages/youtube_api" }
-congress-api = { path = "../../packages/congress_api" }
+congress-api = { path = "../../packages/congress_api", editable = true }
+youtube-api = { path = "../../packages/youtube_api", editable = true }

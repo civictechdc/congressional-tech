@@ -5,7 +5,7 @@ from tinydb import TinyDB, Query
 from typing import TypedDict, Literal, Dict, List, Optional
 
 from ..api import congress_api_get
-from apps.congress_youtube.globals import DEFAULT_TINYDB_DIR
+from congress_shared.globals import DEFAULT_TINYDB_DIR
 
 DETAILS_TB = None
 
