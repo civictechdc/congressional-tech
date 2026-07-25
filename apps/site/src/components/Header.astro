@@ -20,7 +20,9 @@ const links = [
 <header class="site-header">
   <div class="container header-inner">
     <div class="brand">
-      <a class="brand-parent eyebrow" href="https://www.civictechdc.org">Civic Tech DC</a>
+      <a class="brand-parent" href="https://www.civictechdc.org" aria-label="Civic Tech DC home">
+        <img class="brand-logo" src={withBase('/civic-tech-dc.svg')} alt="Civic Tech DC" width="30" height="30" />
+      </a>
       <span class="brand-sep" aria-hidden="true">→</span>
       <a class="brand-current" href={withBase('/')}>Congressional Tech</a>
     </div>
@@ -87,18 +89,24 @@ const links = [
 
   .brand {
     display: flex;
-    align-items: baseline;
-    gap: var(--ctdc-space-2xs);
+    align-items: center;
+    gap: var(--ctdc-space-xs);
   }
 
   .brand-parent {
-    color: var(--ctdc-gold);
+    display: flex;
     text-decoration: none;
     transition: opacity var(--ctdc-duration-fast) var(--ctdc-ease);
   }
 
   .brand-parent:hover {
     opacity: 0.72;
+  }
+
+  .brand-logo {
+    height: 1.9rem;
+    width: auto;
+    display: block;
   }
 
   .brand-sep {
