@@ -19,10 +19,11 @@ const links = [
 
 <header class="site-header">
   <div class="container header-inner">
-    <a class="brand" href={withBase('/')}>
-      <span class="brand-eyebrow eyebrow">Civic Tech DC</span>
-      <span class="brand-name">Congressional Tech</span>
-    </a>
+    <div class="brand">
+      <a class="brand-parent eyebrow" href="https://www.civictechdc.org">Civic Tech DC</a>
+      <span class="brand-sep" aria-hidden="true">→</span>
+      <a class="brand-current" href={withBase('/')}>Congressional Tech</a>
+    </div>
     <nav aria-label="Main">
       <ul class="nav-list">
         {
@@ -38,11 +39,6 @@ const links = [
             </li>
           ))
         }
-        <li>
-          <a class="nav-link" href="https://www.civictechdc.org">
-            civictechdc.org
-          </a>
-        </li>
         <li>
           <a
             class="nav-link nav-link--github"
@@ -91,23 +87,35 @@ const links = [
 
   .brand {
     display: flex;
-    flex-direction: column;
-    text-decoration: none;
+    align-items: baseline;
+    gap: var(--ctdc-space-2xs);
   }
 
-  .brand-eyebrow {
+  .brand-parent {
     color: var(--ctdc-gold);
+    text-decoration: none;
+    transition: opacity var(--ctdc-duration-fast) var(--ctdc-ease);
   }
 
-  .brand-name {
+  .brand-parent:hover {
+    opacity: 0.72;
+  }
+
+  .brand-sep {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: var(--ctdc-text-sm);
+  }
+
+  .brand-current {
     font-size: var(--ctdc-text-lg);
     font-weight: var(--ctdc-weight-bold);
     letter-spacing: var(--ctdc-tracking-tight);
     color: var(--ctdc-on-dark-strong);
+    text-decoration: none;
     transition: color var(--ctdc-duration-fast) var(--ctdc-ease);
   }
 
-  .brand:hover .brand-name {
+  .brand-current:hover {
     color: var(--ctdc-gold);
   }
 
