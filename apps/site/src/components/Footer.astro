@@ -1,7 +1,14 @@
 ---
+import { getCollection } from 'astro:content';
 import { withBase } from '../lib/paths';
 
 const year = new Date().getFullYear();
+
+// Sub-project links come from the collection (single source of truth) and
+// point at each sub-project's own page rather than raw GitHub.
+const subprojects = (await getCollection('subprojects')).sort(
+  (a, b) => a.data.order - b.data.order,
+);
 
 const columns = [
   {
@@ -10,6 +17,7 @@ const columns = [
       { label: 'Project themes', href: withBase('/#themes') },
       { label: 'Proposals', href: withBase('/proposals/') },
       { label: 'Projects', href: withBase('/projects/') },
+      { label: 'Sub-projects', href: withBase('/subprojects/') },
       { label: 'YouTube coverage', href: withBase('/dashboard/') },
     ],
   },
@@ -30,8 +38,10 @@ const columns = [
   {
     heading: 'Sub-projects & partners',
     links: [
-      { label: 'DeltaTrack', href: 'https://github.com/civictechdc/DeltaTrack' },
-      { label: 'BillTrax', href: 'https://github.com/civictechdc/BillTrax' },
+      ...subprojects.map((sp) => ({
+        label: sp.data.title,
+        href: withBase(`/subprojects/${sp.data.id}/`),
+      })),
       { label: 'Civic Tech DC', href: 'https://www.civictechdc.org/' },
       {
         label: 'American Governance Institute',

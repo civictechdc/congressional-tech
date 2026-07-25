@@ -16,6 +16,11 @@ if (!proposal) throw new Error(`Unknown proposal: ${id}`);
 const theme = await getEntry('themes', proposal.data.theme);
 const { Content } = await render(proposal);
 
+// Sub-projects that advance this proposal (single source of truth).
+const relatedSubprojects = (await getCollection('subprojects'))
+  .filter((sp) => sp.data.proposal === proposal.data.id)
+  .sort((a, b) => a.data.order - b.data.order);
+
 const statusLabel = {
   built: 'Built',
   'in-progress': 'In progress',
@@ -61,7 +66,7 @@ const status = proposal.data.status;
         <Content />
       </article>
       {
-        proposal.data.related && (
+        relatedSubprojects.length > 0 && (
           <aside class="related-panel card card--gold" aria-label="Sub-project work">
             <h2 class="related-title">Sub-project work underway</h2>
             <p class="related-blurb">
@@ -69,12 +74,15 @@ const status = proposal.data.status;
               proposal:
             </p>
             <ul class="related-list">
-              {proposal.data.related.map((item) => (
+              {relatedSubprojects.map((sp) => (
                 <li>
-                  <a class="slide-link" href={item.href}>
-                    {item.label} →
+                  <a
+                    class="slide-link"
+                    href={withBase(`/subprojects/${sp.data.id}/`)}
+                  >
+                    {sp.data.title} →
                   </a>
-                  <span class="related-note">{item.note}</span>
+                  <span class="related-note">{sp.data.tagline}</span>
                 </li>
               ))}
             </ul>
