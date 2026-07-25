@@ -320,10 +320,11 @@ a:hover {
   color: var(--ctdc-gold);
 }
 
+/* Semi-opaque dark panel. Was a frosted backdrop-filter blur, but that
+   re-samples the hero SVG behind it every scroll frame and janks scrolling;
+   a solid-ish backing reads the same over the art and keeps text readable. */
 .glass-panel {
-  background: var(--ctdc-glass);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(9, 20, 38, 0.72);
   border: 1px solid var(--ctdc-hairline-on-dark);
   border-radius: var(--ctdc-radius-lg);
 }

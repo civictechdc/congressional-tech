@@ -64,14 +64,14 @@ const links = [
 </header>
 
 <style>
-  /* Dark glass anchor: midnight backing + blur + hairline bottom border */
+  /* Dark anchor: near-solid midnight backing + hairline bottom border.
+     No backdrop-filter — blur on a sticky header re-samples the backdrop on
+     every scroll frame and janks scrolling. */
   .site-header {
     position: sticky;
     top: 0;
     z-index: 50;
-    background: rgba(11, 26, 48, 0.88);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: rgba(11, 26, 48, 0.95);
     border-bottom: 1px solid var(--ctdc-hairline-on-dark);
   }
 

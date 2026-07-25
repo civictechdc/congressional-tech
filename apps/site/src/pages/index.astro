@@ -208,6 +208,9 @@ const summary = (body?: string) => body?.trim().split('\n')[0] ?? '';
     bottom: calc(-1 * var(--ctdc-space-xl));
     width: min(46rem, 62%);
     pointer-events: none;
+    /* Own compositor layer so the static SVG just translates on scroll
+       instead of repainting. */
+    transform: translateZ(0);
   }
 
   .hero-content {
