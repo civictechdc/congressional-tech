@@ -1,0 +1,3 @@
+[submodule "submodules/congress_meeting_map"]
+	path = submodules/congress_meeting_map
+	url = https://github.com/civictechdc/congress_meeting_map
