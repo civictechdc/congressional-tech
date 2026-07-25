@@ -79,10 +79,9 @@ const summary = (body?: string) => body?.trim().split('\n')[0] ?? '';
         </a>
       </div>
       <p class="section-intro">
-        Congressional Tech sub-projects that live in their own repositories,
-        forked from
-        <a href="https://github.com/AgoraDMV">AgoraDMV</a> and kept in sync
-        with their upstreams daily. They are deliberate complements:
+        Congressional Tech tools that live in their own repositories instead of
+        this monorepo — some are forks kept in sync with an upstream daily,
+        others built here directly. The two so far are deliberate complements:
         DeltaTrack is the local, zero-dependency diff engine for Hill
         staffers; BillTrax is the server-backed public platform layering AI,
         tracking, and cross-bill analysis on top of the same structured-bill
@@ -118,11 +117,13 @@ const summary = (body?: string) => body?.trim().split('\n')[0] ?? '';
                     civictechdc fork →
                   </a>
                 </li>
-                <li>
-                  <a class="slide-link" href={sp.data.upstream}>
-                    AgoraDMV upstream →
-                  </a>
-                </li>
+                {sp.data.upstream && (
+                  <li>
+                    <a class="slide-link" href={sp.data.upstream}>
+                      {new URL(sp.data.upstream).pathname.split('/').filter(Boolean)[0]} upstream →
+                    </a>
+                  </li>
+                )}
                 {sp.data.liveUrl && (
                   <li>
                     <a class="slide-link" href={sp.data.liveUrl}>

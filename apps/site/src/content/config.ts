@@ -42,8 +42,9 @@ const projects = defineCollection({
 });
 
 /**
- * Sub-projects: standalone repos (DeltaTrack, BillTrax) forked from AgoraDMV
- * and maintained in the civictechdc org. First-class alongside proposals and
+ * Sub-projects: Congressional Tech tools in their own repositories instead of
+ * this monorepo. Some are forks kept in sync with an upstream (e.g. DeltaTrack,
+ * BillTrax from AgoraDMV); others are built here. First-class alongside proposals and
  * projects — this collection is the single source of truth for their data.
  */
 const subprojects = defineCollection({
@@ -53,7 +54,7 @@ const subprojects = defineCollection({
     title: z.string(),
     tagline: z.string(),
     repo: z.string().url(),
-    upstream: z.string().url(),
+    upstream: z.string().url().optional(),
     liveUrl: z.string().url().optional(),
     liveLabel: z.string().optional(),
     status: z.enum(['live', 'soft-launch', 'in-development']),
