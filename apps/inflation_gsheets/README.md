@@ -22,13 +22,16 @@ Create a custom formula for Google Sheets that leverages inflation data from the
 ## Technical Solution: 
 contributors: [agurvich](https://github.com/agurvich)
 
-[A template Google Sheet](https://docs.google.com/spreadsheets/d/1mhBVKwUEV-J53n7Jrwzc1BldqS5mWqIW5k0CxsDffHc/edit?usp=sharing), containing the function `INFLATION(source_cell, start_year_cell, end_year_cell)`. To use the function, the template sheet should be duplicated and any existing data should be imported. 
+[A template Google Sheet](https://docs.google.com/spreadsheets/d/1Rims_eUSdLdm5I2QTXc-3MoRaXmH2oFxHsvSNoDD-SQ/edit?usp=sharing), containing the function `INFLATION(source_cell, start_year_cell, end_year_cell)`. To use the function, the template sheet should be duplicated and any existing data should be imported. 
 
 Within the Template Google Sheet there is
-### 1 named range:
+### 2 named ranges:
 
 `BLS_CPI = CPIData!A1:M1000`
-Which provides access to the hidden sheet `CPIData`, which loads the latest CPI data by reading a [csv file](https://raw.githubusercontent.com/agurvich/congressional-tech/refs/heads/main/projects/5.1-inflation-gsheets/data/historical-cpi.csv) that is automatically kept up-to-date by a Github Action.
+Which provides access to the hidden sheet `CPIData`, which loads the latest CPI data by reading a [csv file](https://raw.githubusercontent.com/civictechdc/congressional-tech/main/apps/inflation_gsheets/src/data/historical-cpi.csv) that is automatically kept up-to-date by a Github Action.
+
+`INFLATION_SOURCES = InflationSources!A1:I2000`
+Which provides the year-over-year inflation comparison table (BLS vs. the FRED alternative measures — median, trimmed-mean, sticky-price — plus the optional blended `aggregate`) by importing [`inflation-sources.csv`](https://raw.githubusercontent.com/civictechdc/congressional-tech/main/apps/inflation_gsheets/src/data/inflation-sources.csv), also kept up-to-date by the GitHub Action. See the multi-source section below for the caveat on the aggregate.
 
 On the 3rd of every month, the workflow will: 
 1. Open the current .csv
