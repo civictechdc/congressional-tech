@@ -1,0 +1,153 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import { withBase } from '../../lib/paths';
+
+const subprojects = (await getCollection('subprojects')).sort(
+  (a, b) => a.data.order - b.data.order,
+);
+
+const statusLabel = {
+  live: 'Live',
+  'soft-launch': 'Soft launch',
+  'in-development': 'In development',
+} as const;
+const statusBadge = {
+  live: 'built',
+  'soft-launch': 'in-progress',
+  'in-development': 'idea',
+} as const;
+
+const summary = (body?: string) => body?.trim().split('\n')[0] ?? '';
+---
+
+<Base
+  title="Sub-projects"
+  active="subprojects"
+  description="DeltaTrack and BillTrax — Congressional Tech sub-projects maintained in their own repositories, both advancing proposal I.4."
+>
+  <section class="page-hero anchor-dark">
+    <div class="container">
+      <p class="eyebrow page-eyebrow">Standalone repos</p>
+      <h1 class="page-title">Sub-projects</h1>
+      <p class="page-lead lead">
+        Congressional Tech sub-projects that live in their own repositories,
+        forked from <a href="https://github.com/AgoraDMV">AgoraDMV</a> into the
+        civictechdc org and kept in sync with their upstreams daily. They are
+        deliberate complements: DeltaTrack is the local, zero-dependency diff
+        engine for Hill staffers; BillTrax is the server-backed public platform
+        layering AI, tracking, and cross-bill analysis on the same
+        structured-bill approach. Both advance the appropriations data pipeline
+        proposal, I.4.
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="subproject-grid">
+        {
+          subprojects.map((sp) => (
+            <article class="card card--gold subproject-card">
+              <div class="subproject-meta">
+                <span class={`badge badge--${statusBadge[sp.data.status]}`}>
+                  {statusLabel[sp.data.status]}
+                </span>
+              </div>
+              <h2 class="card-title">{sp.data.title}</h2>
+              <p class="subproject-tagline">{sp.data.tagline}</p>
+              <p class="subproject-blurb">{summary(sp.body)}</p>
+              <div class="subproject-links">
+                <a
+                  class="slide-link subproject-detail"
+                  href={withBase(`/subprojects/${sp.data.id}/`)}
+                >
+                  View sub-project →
+                </a>
+                <a class="slide-link" href={withBase(`/proposals/${sp.data.proposal}/`)}>
+                  Advances proposal {sp.data.proposal} →
+                </a>
+                <a class="slide-link" href={sp.data.repo}>
+                  civictechdc fork →
+                </a>
+                <a class="slide-link" href={sp.data.upstream}>
+                  AgoraDMV upstream →
+                </a>
+                {sp.data.liveUrl && (
+                  <a class="slide-link" href={sp.data.liveUrl}>
+                    {sp.data.liveLabel ?? 'View live'} →
+                  </a>
+                )}
+              </div>
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .page-hero {
+    padding-block: var(--ctdc-space-3xl);
+  }
+
+  .page-eyebrow {
+    color: var(--ctdc-gold);
+    margin-bottom: var(--ctdc-space-2xs);
+  }
+
+  .page-title {
+    font-size: var(--ctdc-text-3xl);
+    margin-bottom: var(--ctdc-space-xs);
+  }
+
+  .page-lead {
+    color: var(--ctdc-on-dark);
+    max-width: 48rem;
+    margin: 0;
+  }
+
+  .subproject-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+    gap: var(--ctdc-space-md);
+  }
+
+  .subproject-card {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .subproject-meta {
+    margin-bottom: var(--ctdc-space-2xs);
+  }
+
+  .subproject-tagline {
+    font-size: var(--ctdc-text-sm);
+    font-weight: var(--ctdc-weight-semibold);
+    color: var(--ctdc-ink);
+    margin-bottom: var(--ctdc-space-2xs);
+  }
+
+  .subproject-blurb {
+    font-size: var(--ctdc-text-sm);
+    color: var(--ctdc-ink-muted);
+    flex-grow: 1;
+  }
+
+  .subproject-links {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--ctdc-space-3xs);
+  }
+
+  .subproject-links .slide-link {
+    font-size: var(--ctdc-text-sm);
+  }
+
+  .subproject-detail {
+    color: var(--ctdc-primary);
+  }
+</style>

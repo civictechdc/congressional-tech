@@ -1,0 +1,187 @@
+---
+import { getCollection, getEntry, render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import { withBase } from '../../lib/paths';
+
+export async function getStaticPaths() {
+  const subprojects = await getCollection('subprojects');
+  return subprojects.map((subproject) => ({
+    params: { id: subproject.data.id },
+  }));
+}
+
+const { id } = Astro.params;
+const subproject = await getEntry('subprojects', id);
+if (!subproject) throw new Error(`Unknown sub-project: ${id}`);
+const { Content } = await render(subproject);
+
+const proposal = await getEntry('proposals', subproject.data.proposal);
+
+const statusLabel = {
+  live: 'Live',
+  'soft-launch': 'Soft launch',
+  'in-development': 'In development',
+} as const;
+const statusBadge = {
+  live: 'built',
+  'soft-launch': 'in-progress',
+  'in-development': 'idea',
+} as const;
+const status = subproject.data.status;
+---
+
+<Base
+  title={subproject.data.title}
+  active="subprojects"
+  description={subproject.data.tagline}
+>
+  <section class="page-hero anchor-dark">
+    <div class="container">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a class="breadcrumb-link" href={withBase('/subprojects/')}>
+          ← All sub-projects
+        </a>
+      </nav>
+      <p class="eyebrow page-eyebrow">Sub-project</p>
+      <h1 class="page-title">{subproject.data.title}</h1>
+      <p class="page-lead lead">{subproject.data.tagline}</p>
+      <div class="meta-row">
+        <span class={`badge badge--${statusBadge[status]}`}>
+          {statusLabel[status]}
+        </span>
+        {
+          proposal && (
+            <span class="meta-note">
+              Advances proposal {proposal.data.id}
+            </span>
+          )
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <article class="prose">
+        <Content />
+      </article>
+
+      <div class="subproject-actions">
+        <a class="btn btn--primary" href={subproject.data.repo}>
+          Source on GitHub
+        </a>
+        {
+          subproject.data.liveUrl && (
+            <a class="btn btn--gold" href={subproject.data.liveUrl}>
+              {subproject.data.liveLabel ?? 'View live'}
+            </a>
+          )
+        }
+      </div>
+
+      {
+        proposal && (
+          <aside
+            class="related-panel card card--gold"
+            aria-label="Related proposal"
+          >
+            <h2 class="related-title">Part of proposal {proposal.data.id}</h2>
+            <p class="related-blurb">
+              {subproject.data.title} advances the {proposal.data.title}{' '}
+              proposal.
+            </p>
+            <a
+              class="slide-link"
+              href={withBase(`/proposals/${proposal.data.id}/`)}
+            >
+              Read proposal {proposal.data.id} →
+            </a>
+          </aside>
+        )
+      }
+    </div>
+  </section>
+</Base>
+
+<style>
+  .page-hero {
+    padding-block: var(--ctdc-space-2xl) var(--ctdc-space-3xl);
+  }
+
+  .breadcrumb {
+    margin-bottom: var(--ctdc-space-lg);
+  }
+
+  .breadcrumb-link {
+    display: inline-block;
+    font-size: var(--ctdc-text-sm);
+    font-weight: var(--ctdc-weight-semibold);
+    text-decoration: none;
+    transition:
+      transform var(--ctdc-duration-fast) var(--ctdc-ease),
+      color var(--ctdc-duration-fast) var(--ctdc-ease);
+  }
+
+  .breadcrumb-link:hover {
+    transform: translateX(-4px);
+  }
+
+  .page-eyebrow {
+    color: var(--ctdc-gold);
+    margin-bottom: var(--ctdc-space-2xs);
+  }
+
+  .page-title {
+    font-size: var(--ctdc-text-3xl);
+    max-width: 46rem;
+    margin-bottom: var(--ctdc-space-xs);
+  }
+
+  .page-lead {
+    color: var(--ctdc-on-dark);
+    max-width: 44rem;
+    margin-bottom: var(--ctdc-space-sm);
+  }
+
+  .meta-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--ctdc-space-2xs) var(--ctdc-space-sm);
+  }
+
+  .meta-note {
+    font-family: var(--ctdc-font-mono);
+    font-size: var(--ctdc-text-xs);
+    color: var(--ctdc-on-dark-caption);
+  }
+
+  .subproject-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ctdc-space-sm);
+    margin-top: var(--ctdc-space-xl);
+  }
+
+  .related-panel {
+    margin-top: var(--ctdc-space-xl);
+    max-width: 46rem;
+  }
+
+  .related-panel:hover {
+    transform: none;
+    box-shadow: var(--ctdc-shadow-card);
+  }
+
+  .related-title {
+    font-size: var(--ctdc-text-lg);
+    color: var(--ctdc-primary);
+    margin-bottom: var(--ctdc-space-2xs);
+  }
+
+  .related-blurb {
+    font-size: var(--ctdc-text-sm);
+    color: var(--ctdc-ink-muted);
+    margin-bottom: var(--ctdc-space-sm);
+  }
+</style>

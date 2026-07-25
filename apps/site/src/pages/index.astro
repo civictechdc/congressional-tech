@@ -24,20 +24,16 @@ const inProgressCount = (themeId: string) =>
 const themeBlurb = (focus: string | null) =>
   focus ?? 'Small, immediately useful utilities for congressional work.';
 
-const subProjects = [
-  {
-    title: 'DeltaTrack',
-    href: 'https://github.com/civictechdc/DeltaTrack',
-    blurb:
-      'Structurally diffs U.S. bill versions from GPO govinfo — added, removed, and moved sections instead of formatting noise. Zero-dependency and fully local, built for Hill staffers.',
-  },
-  {
-    title: 'BillTrax',
-    href: 'https://github.com/civictechdc/BillTrax',
-    blurb:
-      'Public-facing legislative-intelligence platform: parses bill text into structured sections, tracks funding changes across versions, and layers on AI summaries and topic tags.',
-  },
-];
+const subprojects = (await getCollection('subprojects')).sort(
+  (a, b) => a.data.order - b.data.order,
+);
+
+const subStatusLabel = {
+  live: 'Live',
+  'soft-launch': 'Soft launch',
+  'in-development': 'In development',
+} as const;
+const summary = (body?: string) => body?.trim().split('\n')[0] ?? '';
 ---
 
 <Base title="Home" active="home">
@@ -106,14 +102,13 @@ const subProjects = [
     </div>
   </section>
 
-  <!-- Built projects + sub-projects strip -->
+  <!-- Built projects strip -->
   <section class="section section--tint">
     <div class="container">
       <h2 class="section-heading">Built and shipping</h2>
       <p class="section-intro">
-        Two proposals are working tools today, alongside DeltaTrack and
-        BillTrax — Congressional Tech sub-projects with their own repos, both
-        advancing the appropriations data pipeline proposal (I.4).
+        Two proposals are working tools today, with more in progress across the
+        five themes.
       </p>
       <div class="project-grid">
         {
@@ -135,15 +130,42 @@ const subProjects = [
             </article>
           ))
         }
+      </div>
+    </div>
+  </section>
+
+  <!-- Sub-projects: first-class alongside proposals and projects -->
+  <section class="section" id="subprojects">
+    <div class="container">
+      <div class="section-head">
+        <h2 class="section-heading">Sub-projects</h2>
+        <a class="slide-link" href={withBase('/subprojects/')}>
+          All sub-projects →
+        </a>
+      </div>
+      <p class="section-intro">
+        DeltaTrack and BillTrax are Congressional Tech sub-projects with their
+        own repositories, forked from AgoraDMV and kept in sync daily. Both
+        advance the appropriations data pipeline proposal, I.4.
+      </p>
+      <div class="project-grid">
         {
-          subProjects.map((repo) => (
+          subprojects.map((sp) => (
             <article class="card card--gold project-card">
-              <p class="eyebrow project-eyebrow">Sub-project</p>
-              <h3 class="card-title">{repo.title}</h3>
-              <p>{repo.blurb}</p>
+              <p class="eyebrow project-eyebrow">
+                Sub-project · {subStatusLabel[sp.data.status]}
+              </p>
+              <h3 class="card-title">{sp.data.title}</h3>
+              <p>{summary(sp.body)}</p>
               <div class="project-links">
-                <a class="slide-link" href={repo.href}>
-                  View on GitHub →
+                <a
+                  class="slide-link"
+                  href={withBase(`/subprojects/${sp.data.id}/`)}
+                >
+                  View sub-project →
+                </a>
+                <a class="slide-link" href={sp.data.repo}>
+                  Source on GitHub →
                 </a>
               </div>
             </article>
@@ -222,6 +244,19 @@ const subProjects = [
     color: var(--ctdc-ink-muted);
     max-width: 40rem;
     margin-bottom: var(--ctdc-space-lg);
+  }
+
+  /* Section heading with an inline "see all" link on the baseline */
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--ctdc-space-2xs) var(--ctdc-space-md);
+  }
+
+  .section-head .slide-link {
+    font-size: var(--ctdc-text-sm);
   }
 
   .section--tint {

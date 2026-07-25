@@ -26,15 +26,6 @@ const proposals = defineCollection({
     status: z.enum(['idea', 'in-progress', 'built']),
     effort: z.string().optional(),
     repo: z.string().url().optional(),
-    related: z
-      .array(
-        z.object({
-          label: z.string(),
-          href: z.string().url(),
-          note: z.string(),
-        }),
-      )
-      .optional(),
   }),
 });
 
@@ -50,4 +41,26 @@ const projects = defineCollection({
   }),
 });
 
-export const collections = { themes, proposals, projects };
+/**
+ * Sub-projects: standalone repos (DeltaTrack, BillTrax) forked from AgoraDMV
+ * and maintained in the civictechdc org. First-class alongside proposals and
+ * projects — this collection is the single source of truth for their data.
+ */
+const subprojects = defineCollection({
+  loader: glob({ pattern: '*.md', base: './src/content/subprojects', generateId }),
+  schema: z.object({
+    id: z.string(),
+    title: z.string(),
+    tagline: z.string(),
+    repo: z.string().url(),
+    upstream: z.string().url(),
+    liveUrl: z.string().url().optional(),
+    liveLabel: z.string().optional(),
+    status: z.enum(['live', 'soft-launch', 'in-development']),
+    /** id of the proposal this sub-project advances (e.g. "I.4"). */
+    proposal: z.string(),
+    order: z.number().int(),
+  }),
+});
+
+export const collections = { themes, proposals, projects, subprojects };
