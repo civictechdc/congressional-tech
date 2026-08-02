@@ -12,7 +12,7 @@ Agriculture,@HouseAgDems,0,0,115,Republican,house
 Agriculture,@HouseAgDems,43,8,116,Democratic,house
 Agriculture,@HouseAgDems,77,71,117,Democratic,house
 Agriculture,@HouseAgDems,30,30,118,Republican,house
-Agriculture,@HouseAgDems,42,42,119,Republican,house
+Agriculture,@HouseAgDems,44,44,119,Republican,house
 Appropriations,@HouseAppropriationsCommittee,0,0,106,Republican,house
 Appropriations,@HouseAppropriationsCommittee,0,0,107,Republican,house
 Appropriations,@HouseAppropriationsCommittee,0,0,108,Republican,house
@@ -152,7 +152,7 @@ Judiciary,@JudiciaryDems,156,127,115,Republican,house
 Judiciary,@JudiciaryDems,138,20,116,Democratic,house
 Judiciary,@JudiciaryDems,131,27,117,Democratic,house
 Judiciary,@JudiciaryDems,215,92,118,Republican,house
-Judiciary,@JudiciaryDems,295,214,119,Republican,house
+Judiciary,@JudiciaryDems,297,216,119,Republican,house
 Natural Resources,@NaturalResourcesDems,0,0,106,Republican,house
 Natural Resources,@NaturalResourcesDems,0,0,107,Republican,house
 Natural Resources,@NaturalResourcesDems,0,0,108,Republican,house
