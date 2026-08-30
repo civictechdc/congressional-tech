@@ -26,7 +26,7 @@ Appropriations,@HouseAppropriationsCommittee,206,8,115,Republican,house
 Appropriations,@HouseAppropriationsCommittee,273,12,116,Democratic,house
 Appropriations,@HouseAppropriationsCommittee,230,2,117,Democratic,house
 Appropriations,@HouseAppropriationsCommittee,218,32,118,Republican,house
-Appropriations,@HouseAppropriationsCommittee,224,46,119,Republican,house
+Appropriations,@HouseAppropriationsCommittee,225,46,119,Republican,house
 Armed Services,@HouseArmedServices,0,0,106,Republican,house
 Armed Services,@HouseArmedServices,0,0,107,Republican,house
 Armed Services,@HouseArmedServices,0,0,108,Republican,house
@@ -82,7 +82,7 @@ Energy & Commerce,@energyandcommerce,283,282,115,Republican,house
 Energy & Commerce,@energyandcommerce,224,224,116,Democratic,house
 Energy & Commerce,@energyandcommerce,146,146,117,Democratic,house
 Energy & Commerce,@energyandcommerce,574,574,118,Republican,house
-Energy & Commerce,@energyandcommerce,331,331,119,Republican,house
+Energy & Commerce,@energyandcommerce,334,334,119,Republican,house
 Financial Services,@GOPFinancialServices,0,0,106,Republican,house
 Financial Services,@GOPFinancialServices,0,0,107,Republican,house
 Financial Services,@GOPFinancialServices,0,0,108,Republican,house
@@ -96,7 +96,7 @@ Financial Services,@GOPFinancialServices,259,94,115,Republican,house
 Financial Services,@GOPFinancialServices,189,189,116,Democratic,house
 Financial Services,@GOPFinancialServices,96,96,117,Democratic,house
 Financial Services,@GOPFinancialServices,490,490,118,Republican,house
-Financial Services,@GOPFinancialServices,180,180,119,Republican,house
+Financial Services,@GOPFinancialServices,187,187,119,Republican,house
 Foreign Affairs,@HouseForeignGOP,0,0,106,Republican,house
 Foreign Affairs,@HouseForeignGOP,0,0,107,Republican,house
 Foreign Affairs,@HouseForeignGOP,0,0,108,Republican,house
@@ -110,7 +110,7 @@ Foreign Affairs,@HouseForeignGOP,183,1,115,Republican,house
 Foreign Affairs,@HouseForeignGOP,272,272,116,Democratic,house
 Foreign Affairs,@HouseForeignGOP,255,255,117,Democratic,house
 Foreign Affairs,@HouseForeignGOP,432,432,118,Republican,house
-Foreign Affairs,@HouseForeignGOP,453,452,119,Republican,house
+Foreign Affairs,@HouseForeignGOP,455,454,119,Republican,house
 Homeland Security,@HouseHomeland,0,0,106,Republican,house
 Homeland Security,@HouseHomeland,0,0,107,Republican,house
 Homeland Security,@HouseHomeland,0,0,108,Republican,house
