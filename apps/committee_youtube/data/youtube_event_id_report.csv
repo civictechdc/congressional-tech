@@ -12,7 +12,7 @@ Agriculture,@HouseAgDems,0,0,115,Republican,house
 Agriculture,@HouseAgDems,43,8,116,Democratic,house
 Agriculture,@HouseAgDems,77,71,117,Democratic,house
 Agriculture,@HouseAgDems,30,30,118,Republican,house
-Agriculture,@HouseAgDems,47,47,119,Republican,house
+Agriculture,@HouseAgDems,48,48,119,Republican,house
 Appropriations,@HouseAppropriationsCommittee,0,0,106,Republican,house
 Appropriations,@HouseAppropriationsCommittee,0,0,107,Republican,house
 Appropriations,@HouseAppropriationsCommittee,0,0,108,Republican,house
@@ -68,7 +68,7 @@ Education & Workforce,@EdWorkforceCmte,118,118,115,Republican,house
 Education & Workforce,@EdWorkforceCmte,82,82,116,Democratic,house
 Education & Workforce,@EdWorkforceCmte,90,90,117,Democratic,house
 Education & Workforce,@EdWorkforceCmte,152,151,118,Republican,house
-Education & Workforce,@EdWorkforceCmte,127,127,119,Republican,house
+Education & Workforce,@EdWorkforceCmte,129,129,119,Republican,house
 Energy & Commerce,@energyandcommerce,0,0,106,Republican,house
 Energy & Commerce,@energyandcommerce,0,0,107,Republican,house
 Energy & Commerce,@energyandcommerce,0,0,108,Republican,house
@@ -96,7 +96,7 @@ Financial Services,@GOPFinancialServices,259,94,115,Republican,house
 Financial Services,@GOPFinancialServices,189,189,116,Democratic,house
 Financial Services,@GOPFinancialServices,96,96,117,Democratic,house
 Financial Services,@GOPFinancialServices,490,490,118,Republican,house
-Financial Services,@GOPFinancialServices,187,187,119,Republican,house
+Financial Services,@GOPFinancialServices,188,188,119,Republican,house
 Foreign Affairs,@HouseForeignGOP,0,0,106,Republican,house
 Foreign Affairs,@HouseForeignGOP,0,0,107,Republican,house
 Foreign Affairs,@HouseForeignGOP,0,0,108,Republican,house
@@ -110,7 +110,7 @@ Foreign Affairs,@HouseForeignGOP,183,1,115,Republican,house
 Foreign Affairs,@HouseForeignGOP,272,272,116,Democratic,house
 Foreign Affairs,@HouseForeignGOP,255,255,117,Democratic,house
 Foreign Affairs,@HouseForeignGOP,432,432,118,Republican,house
-Foreign Affairs,@HouseForeignGOP,455,454,119,Republican,house
+Foreign Affairs,@HouseForeignGOP,456,455,119,Republican,house
 Homeland Security,@HouseHomeland,0,0,106,Republican,house
 Homeland Security,@HouseHomeland,0,0,107,Republican,house
 Homeland Security,@HouseHomeland,0,0,108,Republican,house
@@ -138,7 +138,7 @@ House Administration,@CommitteeonHouseAdministration,0,0,115,Republican,house
 House Administration,@CommitteeonHouseAdministration,45,42,116,Democratic,house
 House Administration,@CommitteeonHouseAdministration,69,69,117,Democratic,house
 House Administration,@CommitteeonHouseAdministration,455,455,118,Republican,house
-House Administration,@CommitteeonHouseAdministration,261,261,119,Republican,house
+House Administration,@CommitteeonHouseAdministration,262,262,119,Republican,house
 Judiciary,@JudiciaryDems,0,0,106,Republican,house
 Judiciary,@JudiciaryDems,0,0,107,Republican,house
 Judiciary,@JudiciaryDems,0,0,108,Republican,house
@@ -152,7 +152,7 @@ Judiciary,@JudiciaryDems,156,127,115,Republican,house
 Judiciary,@JudiciaryDems,138,20,116,Democratic,house
 Judiciary,@JudiciaryDems,131,27,117,Democratic,house
 Judiciary,@JudiciaryDems,215,92,118,Republican,house
-Judiciary,@JudiciaryDems,302,221,119,Republican,house
+Judiciary,@JudiciaryDems,314,230,119,Republican,house
 Natural Resources,@NaturalResourcesDems,0,0,106,Republican,house
 Natural Resources,@NaturalResourcesDems,0,0,107,Republican,house
 Natural Resources,@NaturalResourcesDems,0,0,108,Republican,house
