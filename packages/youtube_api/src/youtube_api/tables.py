@@ -29,7 +29,8 @@ def map_system_code_committee_handles(
             handle = row["handle"]
             secondary = row["secondary"]
 
-            handles = [handle] + [secondary] * (secondary != " ")
+            ## "secondary" holds any other channels, separated by semicolons
+            handles = [handle] + [h.strip() for h in secondary.split(";") if h.strip()]
             system_code_mapper[systemCode] = {
                 "name": name,
                 "handles": handles,

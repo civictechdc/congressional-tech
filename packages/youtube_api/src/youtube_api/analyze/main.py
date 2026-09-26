@@ -129,7 +129,8 @@ def main(
                         f"{total_count - running_count} videos are outside"
                         " the applied date ranges and were excluded from reporting."
                     )
-            final_reports.extend(reports)
+                ## add this handle's rows (committees can have several handles)
+                final_reports.extend(reports)
         except ValueError as e:
             logging.error(e)
 
