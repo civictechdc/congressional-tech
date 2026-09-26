@@ -52,6 +52,7 @@ One JSON line per hearing, as each agent wrote it. Where an agent rewrote a hear
 - `verify_pos_1…4.jsonl`: refuters' outcomes on the 176 riskiest "found" claims. Fields: `outcome` (upheld, revised or refuted), `corrected_verdict`, `video_ids`, `channel`, `evidence`.
 - `verify_neg_1…2.jsonl`: challengers' outcomes on a random 90 negative verdicts. Same fields as the refuters.
 - `new_channels.jsonl`: official channels the agents found that weren't tracked. All three have since been added to the channel list.
+- `news_search_confirmed.csv` and `news_search_review.csv`: the news-channel search's candidates after the Data API check (see below). `confirmed` rows passed the date gate; `review` rows matched on title only and are almost all other hearings on the same subject.
 
 ### `data/`
 
@@ -61,6 +62,8 @@ One JSON line per hearing, as each agent wrote it. Where an agent rewrote a hear
 - `untracked_claim_video_channels.json`: the channel behind each video in a "found elsewhere" claim. `aggregate.py` uses it offline.
 - `channel_search_broad.json`, `channel_search_targeted.json` and `channel_search_2007_2012.json`: raw YouTube channel-search results from the channel sweep (about 250 queries).
 - `channel_handles_resolved.json`: every handle in the channel list, resolved to its channel ID, title and subscriber count. This is the check that each handle points to the intended channel.
+- `senate_channels.csv`: the Senate channel discovery notes, one row per Senate committee, caucus or select committee with GPO hearings (23), with the evidence for each channel found and for the seven with none.
+- `news_search_candidates.json` and `news_search_video_details.json`: the news-channel search's raw candidates (441 hearings, 984 videos) and each video's upload date, length and description from the YouTube Data API.
 
 ### `scripts/`
 
@@ -73,6 +76,11 @@ One JSON line per hearing, as each agent wrote it. Where an agent rewrote a hear
   - `resolve.py`, `ytsearch.py`, `sites.py`: channel discovery by handle resolution, YouTube search and committee-website scraping.
   - `yt.py`: the shared, rate-limited, cached YouTube client the agents used.
   - `audit.py`: the automatic check of the agents' output.
+  - `newssearch.py` and `verify_news.py`: the news-channel search (below).
+
+## News-channel search (September 2026)
+
+The adversarial check's one refuted negative was a Roll Call livestream under a generic title, so every House and joint hearing since 2013 still without a full recording (825 after the weekly matcher's first run) was searched again on YouTube: a general search on the hearing title and year, plus in-channel searches of Roll Call, the Washington Post and PBS NewsHour. Candidates of 30 minutes or more on untracked channels with some title overlap were kept (441 hearings, 984 videos), then checked with the YouTube Data API. A candidate counted only when it was uploaded the day of the hearing to three days after, or its text carried the hearing's date or event ID, and its title matched. That left 26 hearings, reviewed by hand: 14 were real recordings on news, witness-organization or member channels and are now `found_untracked` rows in `hearing_video_overrides.csv`; the rest were other hearings on the same subject, a report launch, or a member's question round. The same review found nine volumes of the 2019 impeachment markup blocked from their committee's own livestreams by a wrong GPO date on a sibling volume; they are `found_tracked` rows.
 
 ## Not saved
 
