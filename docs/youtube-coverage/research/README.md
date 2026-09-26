@@ -4,8 +4,14 @@ These are the inputs, agent outputs and scripts behind `../findings.md` and `../
 
 ## Rebuild the CSV
 
+The raw YouTube data has since moved to the `pipeline-data` branch, and `gpo_hearings.csv` gained cleaned codes, so rebuild from a checkout of the commit the research used:
+
 ```bash
-python docs/youtube-coverage/research/scripts/aggregate.py --out /tmp/verdicts.csv
+git worktree add /tmp/research-snapshot 8247617
+S=/tmp/research-snapshot
+python docs/youtube-coverage/research/scripts/aggregate.py --out /tmp/verdicts.csv \
+  --data-dir $S/apps/committee_youtube/data \
+  --channels-csv $S/packages/congress_shared/src/congress_shared/youtube/youtube-accounts.csv
 cmp /tmp/verdicts.csv docs/youtube-coverage/hearing_video_verdicts.csv   # identical
 ```
 
@@ -22,7 +28,8 @@ To rebuild the research agents' evidence packets (their inputs):
 
 ```bash
 git show 7f71208:packages/congress_shared/src/congress_shared/youtube/youtube-accounts.csv > /tmp/channels.csv
-python docs/youtube-coverage/research/scripts/build_packets.py --out-dir /tmp/packets --channels-csv /tmp/channels.csv
+python docs/youtube-coverage/research/scripts/build_packets.py --out-dir /tmp/packets --channels-csv /tmp/channels.csv \
+  --data-dir /tmp/research-snapshot/apps/committee_youtube/data
 ```
 
 With the channel list from commit `7f71208` (the list at the time), this reproduces the 16 original batches exactly.

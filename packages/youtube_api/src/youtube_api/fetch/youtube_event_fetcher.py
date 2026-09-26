@@ -1,4 +1,5 @@
 import logging
+import re
 
 from datetime import datetime, timedelta, timezone
 from googleapiclient.discovery import build
@@ -215,15 +216,18 @@ class YoutubeEventFetcher:
                 break
         logging.info(f"All done! Fetched {fetches * 50} videos, added {added}.")
 
-    def update_caption_flags(self, channel_handle: str) -> bool:
+    def update_video_details(self, channel_handle: str) -> bool:
         """
-        Record whether each video has captions published, using the
-        contentDetails.caption flag from videos.list (1 quota unit per 50 videos).
+        Record each video's caption flag and duration from videos.list
+        (part=contentDetails, 1 quota unit per 50 videos):
 
-        Checks videos we've never checked, plus recent videos that had no captions
+        - `caption`: True/False from contentDetails.caption (captions the channel
+          uploaded), or None if the API no longer returns the video (deleted/private).
+        - `duration`: length in seconds, or None if unavailable. Separates full
+          hearings from clips, and flags truncated uploads.
+
+        Checks videos missing either field, plus recent videos that had no captions
         last time, since captions are often added a few days after a hearing.
-        Videos the API doesn't return (deleted/private) are stored as None so they
-        aren't re-checked every week.
 
         Returns False if an API call failed partway (the rest are checked next run).
 
@@ -241,13 +245,13 @@ class YoutubeEventFetcher:
         ).strftime("%Y-%m-%dT%H:%M:%SZ")
         to_check = videos_tb.search(
             ~where("caption").exists()
+            | ~where("duration").exists()
             | ((where("caption") == False) & (where("publishedAt") >= recheck_after))  # noqa: E712
         )
         if not to_check:
             return True
 
-        ## group doc ids by the caption value so each value is one DB write
-        doc_ids_by_caption = {True: [], False: [], None: []}
+        details = {}
         ok = True
         for i in range(0, len(to_check), 50):
             batch = to_check[i : i + 50]
@@ -263,24 +267,27 @@ class YoutubeEventFetcher:
                 )
             except HttpError as ex:
                 ## leave the rest unchecked; next run will pick them up
-                logging.error(f"Caption check failed for {channel_handle}: {ex!r}")
+                logging.error(f"Video details check failed for {channel_handle}: {ex!r}")
                 ok = False
                 break
-            captions = {
-                item["id"]: item["contentDetails"].get("caption") == "true"
-                for item in response.get("items", [])
-            }
+            returned = {item["id"]: item["contentDetails"] for item in response.get("items", [])}
             for doc in batch:
-                doc_ids_by_caption[captions.get(doc["videoId"])].append(doc.doc_id)
+                cd = returned.get(doc["videoId"])
+                details[doc["videoId"]] = {
+                    "caption": (cd.get("caption") == "true") if cd else None,
+                    "duration": parse_iso8601_duration(cd.get("duration")) if cd else None,
+                }
 
-        for caption, doc_ids in doc_ids_by_caption.items():
-            if doc_ids:
-                videos_tb.update({"caption": caption}, doc_ids=doc_ids)
+        ## one DB write for the whole channel
+        checked_ids = [doc.doc_id for doc in to_check if doc["videoId"] in details]
+        if checked_ids:
+            videos_tb.update(lambda doc: doc.update(details[doc["videoId"]]), doc_ids=checked_ids)
+        values = list(details.values())
         logging.info(
-            f"Checked captions for {len(to_check)} videos on {channel_handle}:"
-            f" {len(doc_ids_by_caption[True])} with captions,"
-            f" {len(doc_ids_by_caption[False])} without,"
-            f" {len(doc_ids_by_caption[None])} unavailable."
+            f"Checked {len(values)} videos on {channel_handle}:"
+            f" {sum(v['caption'] is True for v in values)} with captions,"
+            f" {sum(v['caption'] is False for v in values)} without,"
+            f" {sum(v['caption'] is None for v in values)} unavailable."
         )
         return ok
 
@@ -328,3 +335,14 @@ def parse_video_details(video_details: dict) -> dict:
     video_data["videoId"] = video_id
 
     return video_data
+
+
+def parse_iso8601_duration(value: str | None) -> int | None:
+    """'PT2H3M1S' -> 7381 seconds. Upcoming livestreams report 'P0D' -> 0."""
+    if not value:
+        return None
+    m = re.fullmatch(r"P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?", value)
+    if not m:
+        return None
+    days, hours, minutes, seconds = (int(g or 0) for g in m.groups())
+    return ((days * 24 + hours) * 60 + minutes) * 60 + seconds

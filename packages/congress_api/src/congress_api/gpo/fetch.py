@@ -21,6 +21,7 @@ modified since the newest lastModified in it are re-fetched.
 """
 
 import argparse
+import collections
 import csv
 import logging
 import re
@@ -73,11 +74,19 @@ class GpoHearing:
     html_url: str
     pdf_url: str
     last_modified: str
+    ## committee code exactly as GPO published it; `committee_code` is cleaned
+    ##  (typos fixed, blanks filled from the committee name)
+    committee_code_gpo: str = ""
+    ## "hearing", or "errata" for errata cover sheets GPO files as separate packages
+    record_type: str = "hearing"
+    ## every hearing day in a multi-hearing volume (Appropriations "Part N" volumes),
+    ##  read from the transcript; ";"-separated. Blank for single hearings.
+    hearing_dates: str = ""
 
 
 def main(
     output_path: Path = DEFAULT_GPO_HEARINGS_FILE,
-    chambers: str = "hj",
+    chambers: str = "hsj",
     min_congress: int | None = None,
     nthreads: int = 4,
     full_relist: bool = False,
@@ -118,7 +127,10 @@ def main(
             mods = get_with_retry(
                 session, f"{GOVINFO_CONTENT}/metadata/pkg/{package_id}/mods.xml"
             ).content
-            return parse_mods(package_id, mods, last_modified)
+            hearing = parse_mods(package_id, mods, last_modified)
+            if is_multi_hearing_volume(hearing.title):
+                hearing.hearing_dates = volume_hearing_dates(session, hearing)
+            return hearing
         except Exception as ex:
             failures.append(f"{package_id}: {ex!r}")
             return None
@@ -129,6 +141,24 @@ def main(
                 existing[hearing.package_id] = asdict(hearing)
             if i % 500 == 0:
                 logging.info(f"Fetched {i}/{len(to_fetch)}")
+
+    ## one-time backfill: hearing days for multi-hearing volumes fetched before
+    ##  this column existed
+    backfill = [r for r in existing.values()
+                if is_multi_hearing_volume(r["title"]) and "hearing_dates" not in r]
+    if backfill:
+        logging.info(f"Reading hearing days for {len(backfill)} multi-hearing volumes")
+
+        def fill(row):
+            try:
+                row["hearing_dates"] = volume_hearing_dates(session, row)
+            except Exception as ex:
+                failures.append(f"{row['package_id']} hearing days: {ex!r}")
+
+        with ThreadPoolExecutor(nthreads) as pool:
+            list(pool.map(fill, backfill))
+
+    clean_rows(existing)
 
     ## write what we have even on failure, so a local run keeps its progress
     write_csv(existing, output_path)
@@ -215,6 +245,8 @@ def parse_mods(package_id: str, mods: bytes, last_modified: str) -> GpoHearing:
         chamber=CHAMBERS[chamber],
         event_id=ext_text("eventId"),
         committee_code=committee_code,
+        committee_code_gpo=committee_code,
+        record_type="errata" if "[ERRATA]" in title.upper() else "hearing",
         committee_name=committee_name,
         subcommittees="; ".join(dict.fromkeys(subcommittees)),
         title=" ".join(title.split()),
@@ -227,6 +259,61 @@ def parse_mods(package_id: str, mods: bytes, last_modified: str) -> GpoHearing:
         pdf_url=f"{GOVINFO_CONTENT}/content/pkg/{package_id}/pdf/{package_id}.pdf",
         last_modified=last_modified,
     )
+
+
+VALID_CODE = re.compile(r"^[hsj][a-z]{3}\d\d$")
+MONTHS = "January|February|March|April|May|June|July|August|September|October|November|December"
+DAY_HEADER = re.compile(
+    rf"(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),\s+({MONTHS})\s+(\d{{1,2}}),\s+(\d{{4}})"
+)
+
+
+def is_multi_hearing_volume(title: str) -> bool:
+    """Appropriations prints several hearings per volume ("... APPROPRIATIONS FOR 2016")."""
+    return bool(re.search(r"APPROPRIATIONS FOR \d{4}", title.upper()))
+
+
+def volume_hearing_dates(session, row) -> str:
+    """Every "Wednesday, February 25, 2015"-style day header in the transcript, within the Congress's years."""
+    row = row if isinstance(row, dict) else asdict(row)
+    text = get_with_retry(session, row["html_url"]).text
+    congress = int(row["congress"])
+    first_year = 1789 + 2 * (congress - 1)
+    dates = set()
+    for month, day, year in DAY_HEADER.findall(text):
+        if first_year - 1 <= int(year) <= first_year + 2:
+            try:
+                dates.add(datetime.strptime(f"{month} {day} {year}", "%B %d %Y").date().isoformat())
+            except ValueError:
+                pass
+    return ";".join(sorted(dates))
+
+
+def clean_rows(rows: dict[str, dict]) -> None:
+    """Fix committee codes and flag errata, in place. Idempotent: always starts from GPO's own code."""
+    for row in rows.values():
+        if not row.get("committee_code_gpo") and "committee_code_gpo" not in row:
+            row["committee_code_gpo"] = row["committee_code"]  # rows written before this column existed
+        row.setdefault("record_type", "errata" if "[ERRATA]" in row["title"].upper() else "hearing")
+        row.setdefault("hearing_dates", "")
+
+    def fix(code):
+        code = (code or "").strip().lower()
+        if len(code) == 6 and not VALID_CODE.match(code):
+            code = code[:4] + code[4:].replace("o", "0")  # e.g. "hssmoo" -> "hssm00"
+        return code if VALID_CODE.match(code) else ""
+
+    ## for blank or unusable codes, use the code GPO most often gives that committee name
+    by_name = collections.defaultdict(collections.Counter)
+    for row in rows.values():
+        code = fix(row["committee_code_gpo"])
+        if code and row["committee_name"]:
+            by_name[row["committee_name"]][code] += 1
+    for row in rows.values():
+        code = fix(row["committee_code_gpo"])
+        if not code and by_name.get(row["committee_name"]):
+            code = by_name[row["committee_name"]].most_common(1)[0][0]
+        row["committee_code"] = code
 
 
 def parse_timestamp(value: str) -> datetime:
@@ -263,7 +350,7 @@ def parse_args_and_run():
     )
     parser.add_argument(
         "--chambers",
-        default="hj",
+        default="hsj",
         help="Which chambers to include: any of h (house), s (senate), j (joint).",
     )
     parser.add_argument(

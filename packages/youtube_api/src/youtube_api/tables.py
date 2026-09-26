@@ -31,18 +31,27 @@ def map_system_code_committee_handles(
 
             ## "secondary" holds any other channels, separated by semicolons
             handles = [handle] + [h.strip() for h in secondary.split(";") if h.strip()]
+            ## "member_channels": personal channels of chairs that hold a committee's
+            ##  hearings (e.g. a select committee's chair). They're fetched and used for
+            ##  matching hearings, but not counted as committee videos in the report.
+            members = [h.strip() for h in (row.get("member_channels") or "").split(";") if h.strip()]
             system_code_mapper[systemCode] = {
                 "name": name,
                 "handles": handles,
+                "member_handles": members,
             }
     return system_code_mapper
 
 
 def get_all_committee_handless(
     csv_path: Path = DEFAULT_CHANNELS_CSV,
+    include_member_channels: bool = False,
 ) -> list[list[str]]:
     system_code_mapper = map_system_code_committee_handles(csv_path)
-    return [meta["handles"] for meta in system_code_mapper.values()]
+    return [
+        meta["handles"] + (meta["member_handles"] if include_member_channels else [])
+        for meta in system_code_mapper.values()
+    ]
 
 
 def get_all_commitee_names(

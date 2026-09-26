@@ -5,6 +5,7 @@ import itertools
 import logging
 import multiprocessing
 import re
+import sys
 import time
 
 from dataclasses import asdict, dataclass
@@ -56,6 +57,9 @@ def main(
 ) -> None:
     init_time = time.time()
     final_reports = []
+    ## problems are collected so the report still covers every committee it can,
+    ##  then the run exits non-zero so the workflow fails visibly
+    errors = []
 
     if nthreads is None:
         nthreads = multiprocessing.cpu_count()
@@ -128,16 +132,19 @@ def main(
 
                 ## validate that we didn't accidentally exclude any videos
                 if total_count != running_count:
-                    raise ValueError(
-                        f"{total_count - running_count} videos are outside"
-                        " the applied date ranges and were excluded from reporting."
+                    errors.append(
+                        f"{handle} ({committee_name}): {total_count - running_count} videos are"
+                        " outside the congress date ranges and were excluded from reporting."
                     )
                 ## add this handle's rows (committees can have several handles)
                 final_reports.extend(reports)
         except ValueError as e:
-            logging.error(e)
+            errors.append(f"{committee_name}: {e}")
 
     write_to_csv(final_reports, output_path)
+    if errors:
+        logging.error(f"{len(errors)} problem(s):\n  " + "\n  ".join(errors))
+        sys.exit(1)
     logging.info(f"{time.time() - init_time} s elapsed")
 
 
@@ -156,7 +163,9 @@ def generate_report_for_congress_number(
     start_date = meta["start"]
     end_date = meta["end"]
     if end_date == "present":
-        end_date = datetime.date.today().isoformat()
+        ## publishedAt is a full timestamp, so "today" as a bare date would
+        ##  exclude videos published today; use an open end instead
+        end_date = "9999-12-31"
 
     ## videos have:
     ##  "publishedAt": "2025-07-23T23:26:16Z",

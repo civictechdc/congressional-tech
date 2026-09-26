@@ -179,7 +179,7 @@ export default function Dashboard() {
                 value={control}
                 disabled={isDead({ control })}
               >
-                {control}
+                {control || 'No party control (joint)'}
               </option>
             ))}
           </select>
@@ -518,7 +518,11 @@ function CongressColumns({ rows }: { rows: ReportRow[] }) {
                 className="dash-axis-sub"
               >
                 {entry.controls
-                  .map((control) => (control === 'Democratic' ? 'D' : 'R'))
+                  // joint committees have no party control ('')
+                  .map((control) =>
+                    control === 'Democratic' ? 'D' : control === 'Republican' ? 'R' : '',
+                  )
+                  .filter(Boolean)
                   .join('/')}
               </text>
             </g>

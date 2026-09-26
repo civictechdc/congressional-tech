@@ -24,8 +24,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 RESEARCH = os.path.dirname(HERE)
 REPO = os.path.abspath(os.path.join(RESEARCH, "..", "..", ".."))
 CHANNELS_CSV = f"{REPO}/packages/congress_shared/src/congress_shared/youtube/youtube-accounts.csv"
+## YouTube TinyDBs and GPO CSV as they were when the research ran (commit 8247617);
+##  override with --data-dir, e.g. a `git worktree add /tmp/r 8247617` checkout
 YT_DIR = f"{REPO}/apps/committee_youtube/data"
-GPO_CSV = f"{REPO}/apps/committee_youtube/data/gpo_hearings.csv"
+GPO_CSV = f"{YT_DIR}/gpo_hearings.csv"
 
 STOP = set("the a an of and to in on for with from at by is are be as or its it this that hearing hearings "
            "subcommittee committee house u.s. us part examining examine review oversight".split())
@@ -100,7 +102,12 @@ def read_jsonl(*patterns):
     return out
 
 
-def main(out_path):
+def main(out_path, data_dir=None, channels_csv=None):
+    global YT_DIR, GPO_CSV, CHANNELS_CSV
+    if data_dir:
+        YT_DIR, GPO_CSV = data_dir, f"{data_dir}/gpo_hearings.csv"
+    if channels_csv:
+        CHANNELS_CSV = channels_csv
     channels = list(csv.DictReader(open(CHANNELS_CSV)))
     gpo = list(csv.DictReader(open(GPO_CSV)))
     vids, by_event, first_copy = load_youtube(channels)
@@ -195,4 +202,7 @@ def main(out_path):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--out", default=os.path.join(RESEARCH, "..", "hearing_video_verdicts.csv"))
-    main(ap.parse_args().out)
+    ap.add_argument("--data-dir", help="Folder with gpo_hearings.csv and youtube_NN.json as of commit 8247617.")
+    ap.add_argument("--channels-csv", help="Channel list as of commit 8247617.")
+    a = ap.parse_args()
+    main(a.out, a.data_dir, a.channels_csv)

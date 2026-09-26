@@ -20,12 +20,17 @@ import argparse, collections, csv, datetime as dt, gzip, json, os
 HERE = os.path.dirname(os.path.abspath(__file__))
 RESEARCH = os.path.dirname(HERE)
 REPO = os.path.abspath(os.path.join(RESEARCH, "..", "..", ".."))
+## YouTube TinyDBs and GPO CSV as they were when the research ran (commit 8247617);
+##  override with --data-dir, e.g. a `git worktree add /tmp/r 8247617` checkout
 YT_DIR = f"{REPO}/apps/committee_youtube/data"
 ## meeting records filed under select subcommittees whose videos live on the parent's channels
 ALIAS = {"jjec00": "jsec00", "hlvc00": "hsgo00", "hlfd00": "hsju00", "hlqj00": "hsju00"}
 
 
-def main(out_dir, channels_csv):
+def main(out_dir, channels_csv, data_dir=None):
+    global YT_DIR
+    if data_dir:
+        YT_DIR = data_dir
     chan = list(csv.DictReader(open(channels_csv)))
     handles = {r["systemCode"]: [r["handle"]] + [h for h in r["secondary"].split(";") if h.strip()] for r in chan}
     names = {r["systemCode"]: r["committee"] for r in chan}
@@ -93,5 +98,6 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--out-dir", required=True)
     ap.add_argument("--channels-csv", default=f"{REPO}/packages/congress_shared/src/congress_shared/youtube/youtube-accounts.csv")
+    ap.add_argument("--data-dir", help="Folder with gpo_hearings.csv and youtube_NN.json as of commit 8247617.")
     a = ap.parse_args()
-    main(a.out_dir, a.channels_csv)
+    main(a.out_dir, a.channels_csv, a.data_dir)

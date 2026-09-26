@@ -1,0 +1,113 @@
+name: Update committee data
+
+# Weekly pipeline. Raw caches (YouTube TinyDBs, Congress.gov meeting records)
+# live on the bot-owned `pipeline-data` branch, replaced by a single snapshot
+# commit each run so history doesn't grow. main only gets the small derived
+# CSVs. Every tool exits non-zero on any failure, which fails the job and skips
+# its commits; fetching is incremental, so the next run catches up.
+on:
+  schedule:
+    - cron: "0 0 * * 0" # 12:00 AM UTC Sunday
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write # to start the site deploy after the dashboard data changes
+
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
+env:
+  CHANNELS_CSV: packages/congress_shared/src/congress_shared/youtube/youtube-accounts.csv
+  DATA_DIR: apps/committee_youtube/data
+
+jobs:
+  youtube:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.ref_name }}
+      - name: Check out pipeline data
+        uses: actions/checkout@v5
+        with:
+          ref: pipeline-data
+          path: pipeline-data
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install packages
+        run: pip install -e packages/congress_shared -e packages/youtube_api -e packages/congress_api
+
+      - name: Fetch YouTube channels
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_DATA_API_KEY }}
+        run: youtube-fetch --channels-csv-path "$CHANNELS_CSV" --tinydb_dir pipeline-data/youtube
+
+      - name: Report per channel and congress
+        run: |
+          youtube-analyze --channels-csv-path "$CHANNELS_CSV" --tinydb_dir pipeline-data/youtube \
+            --output-path "$DATA_DIR/youtube_event_id_report.csv" --nthreads 1
+          # the dashboard reads its own copy
+          cp "$DATA_DIR/youtube_event_id_report.csv" apps/site/public/data/youtube/youtube_event_id_report.csv
+
+      - name: Save pipeline data snapshot
+        run: .github/scripts/save-pipeline-data.sh "YouTube fetch"
+
+      - name: Commit outputs to ${{ github.ref_name }}
+        run: |
+          .github/scripts/commit-and-push.sh "Updated YouTube report" \
+            "$DATA_DIR/youtube_event_id_report.csv" apps/site/public/data/youtube/youtube_event_id_report.csv
+
+      - name: Redeploy the site
+        # pushes made with GITHUB_TOKEN don't trigger other workflows
+        if: github.ref_name == 'main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy-pages.yml --ref main
+
+  congress:
+    needs: youtube
+    # still refresh GPO data and matches if the YouTube job failed
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.ref_name }} # latest, including the youtube job's commit
+      - name: Check out pipeline data
+        uses: actions/checkout@v5
+        with:
+          ref: pipeline-data
+          path: pipeline-data
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install packages
+        run: pip install -e packages/congress_shared -e packages/youtube_api -e packages/congress_api
+
+      - name: Fetch GPO hearing transcripts
+        env:
+          DATA_GOV_API_KEY: ${{ secrets.DATA_GOV_API_KEY }}
+        run: gpo-fetch --output-path "$DATA_DIR/gpo_hearings.csv"
+
+      - name: Fetch Congress.gov meeting records
+        env:
+          DATA_GOV_API_KEY: ${{ secrets.DATA_GOV_API_KEY }}
+        run: congress-meetings --output-path pipeline-data/congress_meetings.jsonl.gz
+
+      - name: Match hearings to videos
+        run: |
+          gpo-match --tinydb_dir pipeline-data/youtube --channels-csv-path "$CHANNELS_CSV" \
+            --gpo-path "$DATA_DIR/gpo_hearings.csv" --meetings pipeline-data/congress_meetings.jsonl.gz \
+            --overrides "$DATA_DIR/hearing_video_overrides.csv" \
+            --output-path "$DATA_DIR/gpo_hearing_videos.csv"
+
+      - name: Save pipeline data snapshot
+        run: .github/scripts/save-pipeline-data.sh "Congress.gov meetings"
+
+      - name: Commit outputs to ${{ github.ref_name }}
+        run: |
+          .github/scripts/commit-and-push.sh "Updated GPO hearings and video matches" \
+            "$DATA_DIR/gpo_hearings.csv" "$DATA_DIR/gpo_hearing_videos.csv" "$DATA_DIR/gpo_hearing_video_coverage.csv"
