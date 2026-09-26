@@ -78,6 +78,23 @@ youtube-fetch
 - Cached event data will be stored in either JSON or Pickle format in the directory you ran the command from.
 - Log messages will show what was fetched and where files were written
 
+## Official GPO Hearing Transcripts
+
+`gpo-fetch` lists the official printed hearing transcripts on GovInfo (the "Congressional Hearings" collection, `CHRG`) and writes one row per House hearing since the 106th Congress to `data/gpo_hearings.csv`. It uses the same `DATA_GOV_API_KEY` as `congress-fetch`.
+
+```bash
+gpo-fetch --output-path data/gpo_hearings.csv            # House only (default)
+gpo-fetch --output-path data/gpo_hearings.csv --chambers hsj   # plus Senate and joint
+```
+
+The transcripts themselves aren't downloaded: `html_url` (plain text) and `pdf_url` link to them on govinfo.gov. The CSV is also the cache, so later runs only fetch hearings GovInfo added or changed. `.github/workflows/update-gpo-hearings.yml` runs it weekly.
+
+Columns worth knowing:
+
+- `committee_code`: the committee's system code (e.g. `hsvr00`), the same codes as `youtube-accounts.csv`.
+- `event_id`: the Congress.gov event ID, the same ID committees put in YouTube descriptions. GPO only started recording it around the 114th Congress, and not for every hearing since.
+- `days_to_govinfo`: days from the hearing to when GovInfo added the transcript. Before about the 111th Congress this reflects when GPO digitized old records, not when the transcript first came out.
+
 ## Useful Reference Links
 
 - [Congress.gov event search](https://www.congress.gov/search?q=%7B%22source%22%3A%5B%22committee-meetings%22%5D%2C%22congress%22%3A%22119%22%7D&pageSize=250#) — downloadable event list

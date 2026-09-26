@@ -21,6 +21,7 @@ DATA_DIR = PACKAGE_DIR / "data"
 DEFAULT_TINYDB_DIR = DATA_DIR
 DEFAULT_CHANNELS_CSV = PACKAGE_DIR / "youtube" / "youtube-accounts.csv"
 DEFAULT_YOUTUBE_REPORT_FILE = DATA_DIR / "youtube_event_id_report.csv"
+DEFAULT_GPO_HEARINGS_FILE = DATA_DIR / "gpo_hearings.csv"
 
 
 def add_global_args(parser: ArgumentParser) -> None:

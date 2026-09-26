@@ -1,0 +1,44 @@
+name: Update GPO Hearing Transcripts
+
+on:
+  schedule:
+    - cron: "0 2 * * 0" # 2:00 AM Sunday each week, after the YouTube update
+  workflow_dispatch:
+
+jobs:
+  update-gpo-hearings:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install packages
+        run: pip install -e packages/congress_shared -e packages/youtube_api -e packages/congress_api
+
+      # Incremental: gpo_hearings.csv is also the cache, so this only fetches
+      # hearings GovInfo added or changed since the last run. Exits non-zero
+      # (failing the job and skipping the commit) if any hearing fails.
+      - name: Fetch GPO hearings
+        env:
+          DATA_GOV_API_KEY: ${{ secrets.DATA_GOV_API_KEY }}
+        run: gpo-fetch --output-path apps/committee_youtube/data/gpo_hearings.csv
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add apps/committee_youtube/data/gpo_hearings.csv
+          git commit -m "Updated GPO hearing transcripts" || echo "No changes"
+          # Resilient push: another scheduled workflow may push to main
+          # between checkout and now (non-fast-forward). Rebase and retry.
+          for attempt in 1 2 3; do
+            git push && break
+            echo "push rejected (attempt $attempt) -- rebasing on origin/main"
+            git pull --rebase --autostash origin main
+          done

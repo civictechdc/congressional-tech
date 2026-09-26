@@ -15,6 +15,7 @@ dependencies = [
 [project.scripts]
 congress-fetch = "congress_api.fetch.main:parse_args_and_run"
 congress-analyze = "congress_api.analyze.main:parse_args_and_run"
+gpo-fetch = "congress_api.gpo.fetch:parse_args_and_run"
 
 [build-system]
 requires = ["setuptools>=61"]
