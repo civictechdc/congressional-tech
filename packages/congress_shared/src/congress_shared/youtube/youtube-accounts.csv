@@ -1,7 +1,7 @@
 committee,systemCode,handle,secondary
 Agriculture,hsag00,@AgRepublicans,@HouseAgDems;@houseagriculturecommittee2800
 Appropriations,hsap00,@HouseAppropriationsCommittee,
-Armed Services,hsas00,@HouseArmedServices,@HASCDems;@armedservices8789;@armedservicesGOP
+Armed Services,hsas00,@HouseArmedServices,@HASCDems;@armedservices8789;@armedservicesGOP;@HASCRepublicans
 Budget,hsbu00,@HouseBudgetGOP,@HouseBudgetDems
 Education & Workforce,hsed00,@EdWorkforceCmte,@EdWorkforceDemocrats
 Energy & Commerce,hsif00,@energyandcommerce,@EnergyCommerce
@@ -9,7 +9,7 @@ Financial Services,hsba00,@USHouseFSC,@GOPFinancialServices;@fscdems9522;@fscdem
 Foreign Affairs,hsfa00,@houseforeign,@HouseForeignGOP
 Homeland Security,hshm00,@HouseHomeland,@HomelandDems;@HomelandSecurityCommitteeGOP
 House Administration,hsha00,@CommitteeonHouseAdministration,@CHADemsVideos;@committeeonhouseadministra952;@CHADemocrats
-Judiciary,hsju00,@USHouseJudiciaryGOP,@JudiciaryDems;@housejudiciarydemocrats8939;@housejudiciarycommittee5448
+Judiciary,hsju00,@USHouseJudiciaryGOP,@JudiciaryDems;@housejudiciarydemocrats8939;@housejudiciarycommittee5448;@HouseJudDems
 Natural Resources,hsii00,@NaturalResourcesGOP,@NRDems
 Oversight and Government Reform,hsgo00,@OversightandGovernmentReform,@OversightDems;@COVIDOversight;@covidselectdems-ru2bf;@CommitteeonOversight;@OversightMaj;@OversightRepublicans
 Rules,hsru00,@HouseRulesCommittee,@RulesCommitteeDemocrats
@@ -33,3 +33,4 @@ Joint Economic Committee,jsec00,@JointEconomicCommittee,@TheJECRepublicans;@join
 Helsinki Commission,jcse00,@HelsinkiCommission,
 Congressional-Executive Commission on China,jcpk00,@ChinaCommission,
 Joint Committee on Taxation,jstx00,@jctgov,
+Congressional Oversight Commission,jcov00,@congressionaloversightcomm6808,
