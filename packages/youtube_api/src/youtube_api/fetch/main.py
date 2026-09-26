@@ -1,5 +1,6 @@
 import argparse
 import logging
+import sys
 
 from pathlib import Path
 
@@ -37,6 +38,8 @@ def main(
             raise ValueError(f"Committee index {committee_index} is out of range (0-{len(committee_names)-1})")
         committee_names = [(committee_names[committee_index][0], committee_index)]
 
+    failures = []
+
     ## loop through the selected committees (defaults to all of them)
     for committee_name, committee_index in committee_names:
         ## specify the tinydb for this committee
@@ -52,16 +55,28 @@ def main(
         for handle in handles:
             logging.info(f"Working on: {handle}")
             if len(handle) > 0:
-                ## save channel metadata to the fetcher & the DB
-                if fetcher.get_channel(handle) is None:
-                    ## skip this channel rather than aborting every committee after it
-                    logging.error(f"Skipping {handle}: channel not found.")
-                    continue
-                ## read the "uploaded" playlist from the previously fetched metadata
-                ##  and then store details about each video to the DB
-                fetcher.get_all_channel_videos(handle)
-                ## record whether each video has captions published
-                fetcher.update_caption_flags(handle)
+                ## keep going on failure so one run reports every broken channel,
+                ##  then exit non-zero below so the workflow fails
+                try:
+                    ## save channel metadata to the fetcher & the DB
+                    if fetcher.get_channel(handle) is None:
+                        failures.append(f"{handle} ({committee_name}): channel not found")
+                        continue
+                    ## read the "uploaded" playlist from the previously fetched metadata
+                    ##  and then store details about each video to the DB
+                    fetcher.get_all_channel_videos(handle)
+                    ## record whether each video has captions published
+                    if not fetcher.update_caption_flags(handle):
+                        failures.append(f"{handle} ({committee_name}): caption check failed")
+                except Exception as ex:
+                    logging.exception(f"Failed on {handle}")
+                    failures.append(f"{handle} ({committee_name}): {ex!r}")
+
+    if failures:
+        logging.error(
+            f"{len(failures)} channel(s) failed:\n  " + "\n  ".join(failures)
+        )
+        sys.exit(1)
 
 
 def parse_args_and_run():

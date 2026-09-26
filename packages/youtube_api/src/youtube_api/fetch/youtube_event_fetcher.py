@@ -215,7 +215,7 @@ class YoutubeEventFetcher:
                 break
         logging.info(f"All done! Fetched {fetches * 50} videos, added {added}.")
 
-    def update_caption_flags(self, channel_handle: str) -> None:
+    def update_caption_flags(self, channel_handle: str) -> bool:
         """
         Record whether each video has captions published, using the
         contentDetails.caption flag from videos.list (1 quota unit per 50 videos).
@@ -224,6 +224,8 @@ class YoutubeEventFetcher:
         last time, since captions are often added a few days after a hearing.
         Videos the API doesn't return (deleted/private) are stored as None so they
         aren't re-checked every week.
+
+        Returns False if an API call failed partway (the rest are checked next run).
 
         videos.list contentDetails item (abridged):
         ------------
@@ -242,10 +244,11 @@ class YoutubeEventFetcher:
             | ((where("caption") == False) & (where("publishedAt") >= recheck_after))  # noqa: E712
         )
         if not to_check:
-            return
+            return True
 
         ## group doc ids by the caption value so each value is one DB write
         doc_ids_by_caption = {True: [], False: [], None: []}
+        ok = True
         for i in range(0, len(to_check), 50):
             batch = to_check[i : i + 50]
             try:
@@ -260,7 +263,8 @@ class YoutubeEventFetcher:
                 )
             except HttpError as ex:
                 ## leave the rest unchecked; next run will pick them up
-                logging.error(ex)
+                logging.error(f"Caption check failed for {channel_handle}: {ex!r}")
+                ok = False
                 break
             captions = {
                 item["id"]: item["contentDetails"].get("caption") == "true"
@@ -278,6 +282,7 @@ class YoutubeEventFetcher:
             f" {len(doc_ids_by_caption[False])} without,"
             f" {len(doc_ids_by_caption[None])} unavailable."
         )
+        return ok
 
 
 def parse_channel_details(channel_details: dict) -> dict:
