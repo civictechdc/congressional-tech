@@ -29,6 +29,7 @@ CHRG-113shrg79588,2013-02-14,ssap00,approps,https://www.senate.gov/isvp/?comm=ap
 CHRG-113shrg80387,2013-02-14,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking021413
 CHRG-113shrg87563,2013-02-14,ssaf00,ag,https://www.senate.gov/isvp/?comm=ag&filename=ag021413
 CHRG-113shrg87945,2013-02-14,ssfi00,finance,https://www.senate.gov/isvp/?comm=finance&filename=finance021413
+CHRG-113jhrg79940,2013-02-26,hsvr00,,
 CHRG-113shrg79736,2013-02-26,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help022613
 CHRG-113shrg80509,2013-02-26,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking022613
 CHRG-113shrg87610,2013-02-26,ssfi00,finance,https://www.senate.gov/isvp/?comm=finance&filename=finance022613
@@ -41,6 +42,7 @@ CHRG-113shrg80629,2013-02-28,ssbk00,banking,https://www.senate.gov/isvp/?comm=ba
 CHRG-113shrg85451,2013-02-28,ssfi00,finance,https://www.senate.gov/isvp/?comm=finance&filename=finance022813
 CHRG-113shrg80071,2013-03-01,ssap00,approps,
 CHRG-113shrg85626,2013-03-05,ssas00,armed,https://www.senate.gov/isvp/?comm=armed&filename=armed030513
+CHRG-113jhrg79942,2013-03-06,hsvr00,,
 CHRG-113shrg26145,2013-03-06,ssju00,judiciary,https://www.senate.gov/isvp/?comm=judiciary&filename=judiciary030613
 CHRG-113shrg80175,2013-03-07,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy030713
 CHRG-113shrg80662,2013-03-07,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking030713
@@ -118,6 +120,7 @@ CHRG-113shrg85634,2013-04-17,ssas00,armed,https://www.senate.gov/isvp/?comm=arme
 CHRG-113shrg86152,2013-04-17,sssb00,smbiz,https://www.senate.gov/isvp/?comm=smbiz&filename=smbiz041713
 CHRG-113shrg87459,2013-04-17,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce041713
 CHRG-113shrg87928,2013-04-17,ssfi00,finance,https://www.senate.gov/isvp/?comm=finance&filename=finance041713
+CHRG-113jhrg80774,2013-04-18,jsec00,jec,https://www.senate.gov/isvp/?comm=jec&filename=jec041813
 CHRG-113shrg29104509,2013-04-18,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA041813 https://www.senate.gov/isvp/?comm=approps&filename=appropsB041813
 CHRG-113shrg39104556,2013-04-18,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA041813 https://www.senate.gov/isvp/?comm=approps&filename=appropsB041813
 CHRG-113shrg39104568,2013-04-18,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA041813 https://www.senate.gov/isvp/?comm=approps&filename=appropsB041813
@@ -163,6 +166,8 @@ CHRG-113shrg39104572,2013-04-25,ssap00,approps,https://www.senate.gov/isvp/?comm
 CHRG-113shrg81302,2013-04-25,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy042513
 CHRG-113shrg85288,2013-04-25,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy042513
 CHRG-113shrg86149,2013-04-25,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign042513
+CHRG-113jhrg95505,2013-05-06,jcse00,csce,https://www.senate.gov/isvp/?comm=csce&filename=csce050613
+CHRG-113jhrg81372,2013-05-07,jsec00,jec,https://www.senate.gov/isvp/?comm=jec&filename=jec050713
 CHRG-113shrg39104534,2013-05-07,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA050713 https://www.senate.gov/isvp/?comm=approps&filename=appropsB050713
 CHRG-113shrg39104536,2013-05-07,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA050713 https://www.senate.gov/isvp/?comm=approps&filename=appropsB050713
 CHRG-113shrg49104566,2013-05-07,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA050713 https://www.senate.gov/isvp/?comm=approps&filename=appropsB050713
@@ -170,6 +175,8 @@ CHRG-113shrg81242,2013-05-07,ssbk00,banking,https://www.senate.gov/isvp/?comm=ba
 CHRG-113shrg81959,2013-05-07,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy050713
 CHRG-113shrg82373,2013-05-07,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce050713
 CHRG-113shrg88305,2013-05-07,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign050713
+CHRG-113jhrg81373,2013-05-08,jsec00,jec,https://www.senate.gov/isvp/?comm=jec&filename=jec050813
+CHRG-113jhrg95504,2013-05-08,jcse00,csce,https://www.senate.gov/isvp/?comm=csce&filename=csce050813
 CHRG-113shrg39104554,2013-05-08,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA050813 https://www.senate.gov/isvp/?comm=approps&filename=appropsB050813
 CHRG-113shrg39104565,2013-05-08,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA050813 https://www.senate.gov/isvp/?comm=approps&filename=appropsB050813
 CHRG-113shrg59104633,2013-05-08,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA050813 https://www.senate.gov/isvp/?comm=approps&filename=appropsB050813
@@ -180,6 +187,7 @@ CHRG-113shrg85627,2013-05-08,ssas00,armed,https://www.senate.gov/isvp/?comm=arme
 CHRG-113shrg85692,2013-05-08,slia00,indian,https://www.senate.gov/isvp/?comm=indian&filename=indian050813
 CHRG-113shrg87582,2013-05-08,sssb00,smbiz,https://www.senate.gov/isvp/?comm=smbiz&filename=smbiz050813
 CHRG-113shrg98755,2013-05-08,ssju00,judiciary,https://www.senate.gov/isvp/?comm=judiciary&filename=judiciary050813
+CHRG-113jhrg81853,2013-05-09,jcpk00,cecc,https://www.senate.gov/isvp/?comm=cecc&filename=cecc050913
 CHRG-113shrg39104569,2013-05-09,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA050913
 CHRG-113shrg49104574,2013-05-09,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA050913
 CHRG-113shrg81626,2013-05-09,ssva00,vetaff,https://www.senate.gov/isvp/?comm=vetaff&filename=vetaff050913
@@ -190,6 +198,7 @@ CHRG-113shrg81438,2013-05-14,ssbk00,banking,https://www.senate.gov/isvp/?comm=ba
 CHRG-113shrg87885,2013-05-14,ssfi00,finance,https://www.senate.gov/isvp/?comm=finance&filename=finance051413
 CHRG-113shrg92870,2013-05-14,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce051413
 CHRG-113shrg99635,2013-05-14,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help051413
+CHRG-113jhrg81443,2013-05-15,jsec00,jec,https://www.senate.gov/isvp/?comm=jec&filename=jec051513
 CHRG-113shrg39104540,2013-05-15,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA051513 https://www.senate.gov/isvp/?comm=approps&filename=appropsB051513
 CHRG-113shrg49104575,2013-05-15,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA051513 https://www.senate.gov/isvp/?comm=approps&filename=appropsB051513
 CHRG-113shrg59104642,2013-05-15,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA051513 https://www.senate.gov/isvp/?comm=approps&filename=appropsB051513
@@ -205,6 +214,7 @@ CHRG-113shrg86554,2013-05-16,sssb00,smbiz,https://www.senate.gov/isvp/?comm=smbi
 CHRG-113shrg87972,2013-05-16,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce051613
 CHRG-113shrg88026,2013-05-16,ssas00,armed,https://www.senate.gov/isvp/?comm=armed&filename=armed051613
 CHRG-113shrg99788,2013-05-16,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help051613
+CHRG-113jhrg95503,2013-05-21,jcse00,csce,https://www.senate.gov/isvp/?comm=csce&filename=csce052113
 CHRG-113shrg39104537,2013-05-21,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA052113 https://www.senate.gov/isvp/?comm=approps&filename=appropsB052113
 CHRG-113shrg49104567,2013-05-21,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA052113 https://www.senate.gov/isvp/?comm=approps&filename=appropsB052113
 CHRG-113shrg56109,2013-05-21,ssbu00,budget,https://www.senate.gov/isvp/?comm=budget&filename=budget052113
@@ -213,6 +223,8 @@ CHRG-113shrg81795,2013-05-21,ssbk00,banking,https://www.senate.gov/isvp/?comm=ba
 CHRG-113shrg82549,2013-05-21,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce052113
 CHRG-113shrg86150,2013-05-21,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign052113
 CHRG-113shrg87413,2013-05-21,ssfi00,finance,https://www.senate.gov/isvp/?comm=finance&filename=finance052113
+CHRG-113jhrg81472,2013-05-22,jsec00,jec,https://www.senate.gov/isvp/?comm=jec&filename=jec052213
+CHRG-113jhrg81854,2013-05-22,jcpk00,cecc,https://www.senate.gov/isvp/?comm=cecc&filename=cecc052213
 CHRG-113shrg39104532,2013-05-22,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA052213 https://www.senate.gov/isvp/?comm=approps&filename=appropsB052213
 CHRG-113shrg39104543,2013-05-22,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA052213 https://www.senate.gov/isvp/?comm=approps&filename=appropsB052213
 CHRG-113shrg81658,2013-05-22,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff052213
@@ -251,6 +263,7 @@ CHRG-113shrg81611,2013-06-12,ssap00,approps,https://www.senate.gov/isvp/?comm=ap
 CHRG-113shrg82452,2013-06-12,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff061213
 CHRG-113shrg82714,2013-06-12,ssva00,vetaff,https://www.senate.gov/isvp/?comm=vetaff&filename=vetaff061213
 CHRG-113shrg85220,2013-06-12,slia00,indian,https://www.senate.gov/isvp/?comm=indian&filename=indian061213
+CHRG-113jhrg95502,2013-06-13,jcse00,csce,https://www.senate.gov/isvp/?comm=csce&filename=csce061313
 CHRG-113shrg82333,2013-06-13,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking061313
 CHRG-113shrg86776,2013-06-13,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign061313
 CHRG-113shrg88752,2013-06-13,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA061313
@@ -271,11 +284,13 @@ CHRG-113shrg82570,2013-06-20,ssga00,govtaff,https://www.senate.gov/isvp/?comm=go
 CHRG-113shrg82613,2013-06-20,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy062013
 CHRG-113shrg87988,2013-06-20,sssb00,smbiz,https://www.senate.gov/isvp/?comm=smbiz&filename=smbiz062013
 CHRG-113shrg82571,2013-06-24,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff062413
+CHRG-113jhrg81855,2013-06-25,jcpk00,cecc,https://www.senate.gov/isvp/?comm=cecc&filename=cecc062513
 CHRG-113shrg20296,2013-06-25,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help062513
 CHRG-113shrg39104528,2013-06-25,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA062513 https://www.senate.gov/isvp/?comm=approps&filename=appropsB062513
 CHRG-113shrg82364,2013-06-25,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking062513
 CHRG-113shrg82572,2013-06-25,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff062513
 CHRG-113shrg87944,2013-06-25,ssfi00,finance,https://www.senate.gov/isvp/?comm=finance&filename=finance062513
+CHRG-113jhrg82371,2013-06-26,jsec00,jec,https://www.senate.gov/isvp/?comm=jec&filename=jec062613
 CHRG-113shrg87577,2013-06-26,ssfi00,finance,https://www.senate.gov/isvp/?comm=finance&filename=finance062613
 CHRG-113shrg87927,2013-06-26,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce062613
 CHRG-113shrg93290,2013-06-26,spag00,aging,https://www.senate.gov/isvp/?comm=aging&filename=aging062613
@@ -284,6 +299,7 @@ CHRG-113shrg82573,2013-06-27,ssga00,govtaff,https://www.senate.gov/isvp/?comm=go
 CHRG-113shrg95874,2013-06-27,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw062713
 CHRG-113shrg23750,2013-07-09,ssju00,judiciary,https://www.senate.gov/isvp/?comm=judiciary&filename=judiciary070913
 CHRG-113shrg82574,2013-07-09,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff070913
+CHRG-113jhrg82370,2013-07-10,jsec00,jec,https://www.senate.gov/isvp/?comm=jec&filename=jec071013
 CHRG-113shrg82575,2013-07-10,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff071013
 CHRG-113shrg85765,2013-07-10,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce071013
 CHRG-113shrg87565,2013-07-10,ssaf00,ag,https://www.senate.gov/isvp/?comm=ag&filename=ag071013
@@ -295,6 +311,7 @@ CHRG-113shrg86348,2013-07-11,ssfr00,foreign,https://www.senate.gov/isvp/?comm=fo
 CHRG-113shrg86710,2013-07-11,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy071113
 CHRG-113shrg82576,2013-07-12,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff071213
 CHRG-113shrg82577,2013-07-15,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff071513
+CHRG-113jhrg95489,2013-07-16,jcse00,csce,https://www.senate.gov/isvp/?comm=csce&filename=csce071613
 CHRG-113shrg20421,2013-07-16,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help071613
 CHRG-113shrg82567,2013-07-16,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking071613
 CHRG-113shrg82578,2013-07-16,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff071613
@@ -315,6 +332,7 @@ CHRG-113shrg82760,2013-07-18,sseg00,energy,https://www.senate.gov/isvp/?comm=ene
 CHRG-113shrg89658,2013-07-18,ssfi00,finance,https://www.senate.gov/isvp/?comm=finance&filename=finance071813
 CHRG-113shrg95976,2013-07-18,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw071813
 CHRG-113shrg95876,2013-07-22,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw072213
+CHRG-113jhrg95488,2013-07-23,jcse00,csce,
 CHRG-113shrg20524,2013-07-23,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help072313
 CHRG-113shrg82568,2013-07-23,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking072313
 CHRG-113shrg82744,2013-07-23,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff072313
@@ -325,6 +343,7 @@ CHRG-113shrg87567,2013-07-23,ssaf00,ag,https://www.senate.gov/isvp/?comm=ag&file
 CHRG-113shrg87797,2013-07-23,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce072313
 CHRG-113shrg87818,2013-07-23,ssju00,judiciary,https://www.senate.gov/isvp/?comm=judiciary&filename=judiciary072313
 CHRG-113shrg95877,2013-07-23,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw072313
+CHRG-113jhrg82357,2013-07-24,jsec00,jec,https://www.senate.gov/isvp/?comm=jec&filename=jec072413
 CHRG-113shrg26148,2013-07-24,ssju00,judiciary,https://www.senate.gov/isvp/?comm=judiciary&filename=judiciary072413
 CHRG-113shrg82782,2013-07-24,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking072413
 CHRG-113shrg86260,2013-07-24,sssb00,smbiz,https://www.senate.gov/isvp/?comm=smbiz&filename=smbiz072413
@@ -345,6 +364,7 @@ CHRG-113shrg82823,2013-07-30,ssbk00,banking,https://www.senate.gov/isvp/?comm=ba
 CHRG-113shrg82863,2013-07-30,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy073013
 CHRG-113shrg85875,2013-07-30,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy073013
 CHRG-113shrg88369,2013-07-30,ssju00,judiciary,https://www.senate.gov/isvp/?comm=judiciary&filename=judiciary073013
+CHRG-113jhrg95487,2013-07-31,jcse00,csce,
 CHRG-113shrg82715,2013-07-31,ssva00,vetaff,https://www.senate.gov/isvp/?comm=vetaff&filename=vetaff073113
 CHRG-113shrg82746,2013-07-31,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff073113
 CHRG-113shrg85179,2013-07-31,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy073113
@@ -371,6 +391,8 @@ CHRG-113shrg20708,2013-09-12,sshr00,help,https://www.senate.gov/isvp/?comm=help&
 CHRG-113shrg85236,2013-09-12,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking091213
 CHRG-113shrg85508,2013-09-13,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff091313
 CHRG-113shrg85348,2013-09-17,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy091713
+CHRG-114jhrg97748,2013-09-17,jcse00,csce,https://www.senate.gov/isvp/?comm=csce&filename=csce091713
+CHRG-113jhrg85219,2013-09-18,jsec00,jec,https://www.senate.gov/isvp/?comm=jec&filename=jec091813
 CHRG-113shrg25450,2013-09-18,spag00,aging,https://www.senate.gov/isvp/?comm=aging&filename=aging091813
 CHRG-113shrg26660,2013-09-18,spag00,aging,https://www.senate.gov/isvp/?comm=aging&filename=aging091813
 CHRG-113shrg85390,2013-09-18,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking091813
@@ -408,6 +430,7 @@ CHRG-113shrg86352,2013-10-08,ssfr00,foreign,https://www.senate.gov/isvp/?comm=fo
 CHRG-113shrg86401,2013-10-09,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking100913
 CHRG-113shrg86878,2013-10-10,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking101013
 CHRG-113shrg88306,2013-10-10,ssfi00,finance,https://www.senate.gov/isvp/?comm=finance&filename=finance101013
+CHRG-113jhrg85408,2013-10-11,jsec00,jec,https://www.senate.gov/isvp/?comm=jec&filename=jec101113
 CHRG-113shrg93946,2013-10-11,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce101113
 CHRG-113shrg87989,2013-10-15,sssb00,smbiz,https://www.senate.gov/isvp/?comm=smbiz&filename=smbiz101513
 CHRG-113shrg29104522,2013-10-21,ssap00,approps,
@@ -444,6 +467,7 @@ CHRG-113shrg86305,2013-11-08,sssb00,smbiz,
 CHRG-113shrg22265,2013-11-12,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help111213
 CHRG-113shrg86879,2013-11-12,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking111213
 CHRG-113shrg90879,2013-11-12,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking111213
+CHRG-113jhrg85691,2013-11-13,jsec00,jec,https://www.senate.gov/isvp/?comm=jec&filename=jec111313
 CHRG-113shrg24007,2013-11-13,ssju00,judiciary,https://www.senate.gov/isvp/?comm=judiciary&filename=judiciary111313
 CHRG-113shrg86306,2013-11-13,sssb00,smbiz,https://www.senate.gov/isvp/?comm=smbiz&filename=smbiz111313
 CHRG-113shrg86634,2013-11-13,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff111313
@@ -458,6 +482,7 @@ CHRG-113shrg89367,2013-11-14,slia00,indian,https://www.senate.gov/isvp/?comm=ind
 CHRG-113shrg89503,2013-11-14,ssju00,judiciary,https://www.senate.gov/isvp/?comm=judiciary&filename=judiciary111413
 CHRG-113shrg95418,2013-11-14,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce111413
 CHRG-113shrg86636,2013-11-18,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff111813
+CHRG-113jhrg95485,2013-11-19,jcse00,csce,https://www.senate.gov/isvp/?comm=csce&filename=csce111913
 CHRG-113shrg86354,2013-11-19,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign111913
 CHRG-113shrg86637,2013-11-19,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff111913
 CHRG-113shrg87095,2013-11-19,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking111913
@@ -468,6 +493,7 @@ CHRG-113shrg88463,2013-11-20,sssb00,smbiz,https://www.senate.gov/isvp/?comm=smbi
 CHRG-113shrg88886,2013-11-20,sseg00,energy,
 CHRG-113shrg89464,2013-11-20,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce112013
 CHRG-113shrg89659,2013-11-20,ssfi00,finance,https://www.senate.gov/isvp/?comm=finance&filename=finance112013
+CHRG-113jhrg86657,2013-11-21,jcpk00,cecc,https://www.senate.gov/isvp/?comm=cecc&filename=cecc112113
 CHRG-113shrg86355,2013-11-21,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign112113
 CHRG-113shrg86803,2013-11-21,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking112113
 CHRG-113shrg89822,2013-11-21,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce112113
@@ -479,6 +505,8 @@ CHRG-113shrg87318,2013-12-10,ssbk00,banking,https://www.senate.gov/isvp/?comm=ba
 CHRG-113shrg88868,2013-12-10,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce121013
 CHRG-113shrg89660,2013-12-10,ssfi00,finance,https://www.senate.gov/isvp/?comm=finance&filename=finance121013
 CHRG-113shrg90799,2013-12-10,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign121013
+CHRG-113jhrg86658,2013-12-11,jcpk00,cecc,https://www.senate.gov/isvp/?comm=cecc&filename=cecc121113
+CHRG-113jhrg95402,2013-12-11,jcse00,csce,https://www.senate.gov/isvp/?comm=csce&filename=csce121113
 CHRG-113shrg25452,2013-12-11,spag00,aging,https://www.senate.gov/isvp/?comm=aging&filename=aging121113
 CHRG-113shrg28113,2013-12-11,ssju00,judiciary,https://www.senate.gov/isvp/?comm=judiciary&filename=judiciary121113
 CHRG-113shrg86132,2013-12-11,ssva00,vetaff,https://www.senate.gov/isvp/?comm=vetaff&filename=vetaff121113
@@ -506,14 +534,17 @@ CHRG-113shrg24284,2014-01-08,ssju00,judiciary,https://www.senate.gov/isvp/?comm=
 CHRG-113shrg88269,2014-01-08,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff010814
 CHRG-113shrg89479,2014-01-08,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking010814
 CHRG-113shrg93484,2014-01-09,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign010914
+CHRG-113jhrg86840,2014-01-10,jsec00,jec,https://www.senate.gov/isvp/?comm=jec&filename=jec011014
 CHRG-113shrg88270,2014-01-14,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff011414
 CHRG-113shrg88271,2014-01-14,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff011414
 CHRG-113shrg94477,2014-01-14,ssju00,judiciary,https://www.senate.gov/isvp/?comm=judiciary&filename=judiciary011414
+CHRG-113jhrg86659,2014-01-15,jcpk00,cecc,https://www.senate.gov/isvp/?comm=cecc&filename=cecc011514
 CHRG-113shrg26050,2014-01-15,spag00,aging,https://www.senate.gov/isvp/?comm=aging&filename=aging011514
 CHRG-113shrg89605,2014-01-15,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking011514
 CHRG-113shrg89640,2014-01-15,ssfi00,finance,https://www.senate.gov/isvp/?comm=finance&filename=finance011514
 CHRG-113shrg91859,2014-01-15,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign011514
 CHRG-113shrg95865,2014-01-15,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce011514
+CHRG-113jhrg86524,2014-01-16,jsec00,jec,https://www.senate.gov/isvp/?comm=jec&filename=jec011614
 CHRG-113shrg49104586,2014-01-16,ssap00,approps,
 CHRG-113shrg86400,2014-01-16,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help011614
 CHRG-113shrg89425,2014-01-16,ssfi00,finance,https://www.senate.gov/isvp/?comm=finance&filename=finance011614
@@ -560,6 +591,8 @@ CHRG-113shrg90933,2014-02-12,slia00,indian,https://www.senate.gov/isvp/?comm=ind
 CHRG-113shrg91389,2014-02-12,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign021214
 CHRG-113shrg95461,2014-02-12,ssju00,judiciary,https://www.senate.gov/isvp/?comm=judiciary&filename=judiciary021214
 CHRG-113shrg97584,2014-02-12,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw021214
+CHRG-113jhrg95597,2014-02-20,jcse00,csce,
+CHRG-113jhrg95596,2014-02-25,jcse00,csce,https://www.senate.gov/isvp/?comm=csce&filename=csce022514
 CHRG-113shrg28394,2014-02-25,ssju00,judiciary,https://www.senate.gov/isvp/?comm=judiciary&filename=judiciary022514
 CHRG-113shrg86957,2014-02-25,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help022514
 CHRG-113shrg88745,2014-02-25,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking022514
@@ -583,6 +616,7 @@ CHRG-113shrg91186,2014-02-27,ssas00,armed,https://www.senate.gov/isvp/?comm=arme
 CHRG-113shrg93424,2014-02-27,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign022714
 CHRG-113shrg93687,2014-02-27,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce022714
 CHRG-113shrg91296,2014-03-04,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign030414
+CHRG-113jhrg92427,2014-03-05,jcse00,csce,https://www.senate.gov/isvp/?comm=csce&filename=csce030514
 CHRG-113shrg46911,2014-03-05,spag00,aging,https://www.senate.gov/isvp/?comm=aging&filename=aging030514
 CHRG-113shrg49104594,2014-03-05,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA030514
 CHRG-113shrg88278,2014-03-05,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff030514
@@ -611,6 +645,7 @@ CHRG-113shrg88404,2014-03-12,ssva00,vetaff,https://www.senate.gov/isvp/?comm=vet
 CHRG-113shrg89352,2014-03-12,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking031214
 CHRG-113shrg89649,2014-03-12,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking031214
 CHRG-113shrg93176,2014-03-12,ssas00,armed,https://www.senate.gov/isvp/?comm=armed&filename=armedA031214
+CHRG-113jhrg87344,2014-03-13,jsec00,jec,https://www.senate.gov/isvp/?comm=jec&filename=jec031314
 CHRG-113shrg39104551,2014-03-13,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA031314 https://www.senate.gov/isvp/?comm=approps&filename=appropsB031314
 CHRG-113shrg49104609,2014-03-13,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA031314 https://www.senate.gov/isvp/?comm=approps&filename=appropsB031314
 CHRG-113shrg69104685,2014-03-13,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA031314 https://www.senate.gov/isvp/?comm=approps&filename=appropsB031314
@@ -628,6 +663,7 @@ CHRG-113shrg22606,2014-03-25,sshr00,help,https://www.senate.gov/isvp/?comm=help&
 CHRG-113shrg69104695,2014-03-25,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA032514
 CHRG-113shrg87803,2014-03-25,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy032514
 CHRG-113shrg88285,2014-03-25,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff032514
+CHRG-113jhrg87583,2014-03-26,jsec00,jec,https://www.senate.gov/isvp/?comm=jec&filename=jec032614
 CHRG-113shrg24504,2014-03-26,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA032614 https://www.senate.gov/isvp/?comm=approps&filename=appropsB032614
 CHRG-113shrg49104577,2014-03-26,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA032614 https://www.senate.gov/isvp/?comm=approps&filename=appropsB032614
 CHRG-113shrg50294,2014-03-26,spag00,aging,https://www.senate.gov/isvp/?comm=aging&filename=aging032614
@@ -642,6 +678,7 @@ CHRG-113shrg92594,2014-03-26,sscm00,commerce,https://www.senate.gov/isvp/?comm=c
 CHRG-113shrg94280,2014-03-26,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign032614
 CHRG-113shrg95760,2014-03-26,ssju00,judiciary,https://www.senate.gov/isvp/?comm=judiciary&filename=judiciary032614
 CHRG-113shrg97797,2014-03-26,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw032614
+CHRG-113jhrg95595,2014-03-27,jcse00,csce,
 CHRG-113shrg22607,2014-03-27,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help032714
 CHRG-113shrg28396,2014-03-27,ssju00,judiciary,https://www.senate.gov/isvp/?comm=judiciary&filename=judiciary032714
 CHRG-113shrg49104585,2014-03-27,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA032714 https://www.senate.gov/isvp/?comm=approps&filename=appropsB032714
@@ -666,10 +703,13 @@ CHRG-113shrg87251,2014-04-02,ssap00,approps,https://www.senate.gov/isvp/?comm=ap
 CHRG-113shrg88668,2014-04-02,slia00,indian,https://www.senate.gov/isvp/?comm=indian&filename=indian040214
 CHRG-113shrg91187,2014-04-02,ssas00,armed,https://www.senate.gov/isvp/?comm=armed&filename=armedA040214
 CHRG-113shrg95155,2014-04-02,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce040214
+CHRG-113jhrg87704,2014-04-03,jcpk00,cecc,https://www.senate.gov/isvp/?comm=cecc&filename=cecc040314
 CHRG-113shrg49104602,2014-04-03,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA040314 https://www.senate.gov/isvp/?comm=approps&filename=appropsB040314
 CHRG-113shrg69104726,2014-04-03,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA040314 https://www.senate.gov/isvp/?comm=approps&filename=appropsB040314
 CHRG-113shrg91138,2014-04-03,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign040314
+CHRG-113jhrg88243,2014-04-04,jsec00,jec,https://www.senate.gov/isvp/?comm=jec&filename=jec040414
 CHRG-113shrg89525,2014-04-04,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff040414
+CHRG-113jhrg87705,2014-04-08,jcpk00,cecc,https://www.senate.gov/isvp/?comm=cecc&filename=cecc040814
 CHRG-113shrg49104578,2014-04-08,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA040814 https://www.senate.gov/isvp/?comm=approps&filename=appropsB040814
 CHRG-113shrg59104616,2014-04-08,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA040814 https://www.senate.gov/isvp/?comm=approps&filename=appropsB040814
 CHRG-113shrg90922,2014-04-08,ssfi00,finance,https://www.senate.gov/isvp/?comm=finance&filename=finance040814
@@ -679,6 +719,7 @@ CHRG-113shrg93027,2014-04-08,ssaf00,ag,https://www.senate.gov/isvp/?comm=ag&file
 CHRG-113shrg93615,2014-04-08,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign040814
 CHRG-113shrg94057,2014-04-08,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce040814
 CHRG-113shrg97799,2014-04-08,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw040814
+CHRG-113jhrg95594,2014-04-09,jcse00,csce,https://www.senate.gov/isvp/?comm=csce&filename=csce040914
 CHRG-113shrg22609,2014-04-09,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help040914
 CHRG-113shrg49104589,2014-04-09,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA040914 https://www.senate.gov/isvp/?comm=approps&filename=appropsB040914
 CHRG-113shrg49104593,2014-04-09,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA040914 https://www.senate.gov/isvp/?comm=approps&filename=appropsB040914
@@ -705,6 +746,7 @@ CHRG-113shrg89442,2014-04-24,sssb00,smbiz,
 CHRG-113shrg22611,2014-04-29,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help042914
 CHRG-113shrg28397,2014-04-29,ssju00,judiciary,https://www.senate.gov/isvp/?comm=judiciary&filename=judiciary042914
 CHRG-113shrg89527,2014-04-29,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff042914
+CHRG-113jhrg88291,2014-04-30,jsec00,jec,https://www.senate.gov/isvp/?comm=jec&filename=jec043014
 CHRG-113shrg28398,2014-04-30,ssju00,judiciary,https://www.senate.gov/isvp/?comm=judiciary&filename=judiciary043014
 CHRG-113shrg46912,2014-04-30,spag00,aging,https://www.senate.gov/isvp/?comm=aging&filename=aging043014
 CHRG-113shrg49104576,2014-04-30,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA043014 https://www.senate.gov/isvp/?comm=approps&filename=appropsB043014
@@ -722,10 +764,12 @@ CHRG-113shrg90949,2014-05-01,ssfi00,finance,https://www.senate.gov/isvp/?comm=fi
 CHRG-113shrg91556,2014-05-01,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy050114
 CHRG-113shrg93028,2014-05-01,ssaf00,ag,https://www.senate.gov/isvp/?comm=ag&filename=ag050114
 CHRG-113shrg97800,2014-05-05,ssev00,epw,
+CHRG-113jhrg95593,2014-05-06,jcse00,csce,
 CHRG-113shrg89529,2014-05-06,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff050614
 CHRG-113shrg93413,2014-05-06,ssas00,armed,https://www.senate.gov/isvp/?comm=armed&filename=armedA050614
 CHRG-113shrg93657,2014-05-06,ssfi00,finance,https://www.senate.gov/isvp/?comm=finance&filename=finance050614
 CHRG-113shrg93841,2014-05-06,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign050614
+CHRG-113jhrg88497,2014-05-07,jsec00,jec,https://www.senate.gov/isvp/?comm=jec&filename=jec050714
 CHRG-113shrg46913,2014-05-07,spag00,aging,https://www.senate.gov/isvp/?comm=aging&filename=aging050714
 CHRG-113shrg49104588,2014-05-07,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA050714 https://www.senate.gov/isvp/?comm=approps&filename=appropsB050714
 CHRG-113shrg59104639,2014-05-07,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA050714 https://www.senate.gov/isvp/?comm=approps&filename=appropsB050714
@@ -761,8 +805,10 @@ CHRG-113shrg89805,2014-05-15,sscm00,commerce,https://www.senate.gov/isvp/?comm=c
 CHRG-113shrg94293,2014-05-15,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign051514
 CHRG-113shrg88122,2014-05-17,sseg00,energy,
 CHRG-113shrg49104599,2014-05-19,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA051914
+CHRG-113jhrg88495,2014-05-20,jcpk00,cecc,https://www.senate.gov/isvp/?comm=cecc&filename=cecc052014
 CHRG-113shrg22615,2014-05-20,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help052014
 CHRG-113shrg88084,2014-05-20,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy052014
+CHRG-113jhrg88948,2014-05-21,jsec00,jec,https://www.senate.gov/isvp/?comm=jec&filename=jec052114
 CHRG-113shrg28400,2014-05-21,ssju00,judiciary,https://www.senate.gov/isvp/?comm=judiciary&filename=judiciary052114
 CHRG-113shrg49104592,2014-05-21,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA052114 https://www.senate.gov/isvp/?comm=approps&filename=appropsB052114
 CHRG-113shrg49104606,2014-05-21,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA052114 https://www.senate.gov/isvp/?comm=approps&filename=appropsB052114
@@ -791,6 +837,7 @@ CHRG-113shrg98756,2014-06-09,ssju00,judiciary,
 CHRG-113shrg90918,2014-06-10,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff061014
 CHRG-113shrg90951,2014-06-10,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking061014
 CHRG-113shrg98180,2014-06-10,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw061014
+CHRG-113jhrg95592,2014-06-11,jcse00,csce,https://www.senate.gov/isvp/?comm=csce&filename=csce061114
 CHRG-113shrg28402,2014-06-11,ssju00,judiciary,https://www.senate.gov/isvp/?comm=judiciary&filename=judiciary061114
 CHRG-113shrg59104623,2014-06-11,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA061114
 CHRG-113shrg90919,2014-06-11,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff061114
@@ -800,10 +847,12 @@ CHRG-113shrg95185,2014-06-11,ssbu00,budget,https://www.senate.gov/isvp/?comm=bud
 CHRG-113shrg90920,2014-06-12,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff061214
 CHRG-113shrg93031,2014-06-12,ssaf00,ag,https://www.senate.gov/isvp/?comm=ag&filename=ag061214
 CHRG-113shrg94340,2014-06-12,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign061214
+CHRG-113jhrg88496,2014-06-17,jcpk00,cecc,https://www.senate.gov/isvp/?comm=cecc&filename=cecc061714
 CHRG-113shrg89752,2014-06-17,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff061714
 CHRG-113shrg91243,2014-06-17,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking061714
 CHRG-113shrg92998,2014-06-17,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce061714
 CHRG-113shrg93032,2014-06-17,ssaf00,ag,https://www.senate.gov/isvp/?comm=ag&filename=ag061714
+CHRG-113jhrg88592,2014-06-18,jsec00,jec,https://www.senate.gov/isvp/?comm=jec&filename=jec061814
 CHRG-113shrg46914,2014-06-18,spag00,aging,https://www.senate.gov/isvp/?comm=aging&filename=aging061814
 CHRG-113shrg49104605,2014-06-18,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA061814
 CHRG-113shrg90921,2014-06-18,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff061814
@@ -813,6 +862,7 @@ CHRG-113shrg94350,2014-06-18,ssfr00,foreign,https://www.senate.gov/isvp/?comm=fo
 CHRG-113shrg97626,2014-06-18,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce061814
 CHRG-113shrg98181,2014-06-18,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw061814
 CHRG-113shrg90894,2014-06-19,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy061914
+CHRG-113jhrg89677,2014-06-24,jsec00,jec,https://www.senate.gov/isvp/?comm=jec&filename=jec062414
 CHRG-113shrg22617,2014-06-24,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help062414
 CHRG-113shrg92909,2014-06-24,ssfi00,finance,https://www.senate.gov/isvp/?comm=finance&filename=finance062414
 CHRG-113shrg93138,2014-06-24,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign062414
@@ -842,12 +892,15 @@ CHRG-113shrg93035,2014-07-09,ssfr00,foreign,https://www.senate.gov/isvp/?comm=fo
 CHRG-113shrg96246,2014-07-09,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce070914
 CHRG-113shrg24808,2014-07-10,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA071014
 CHRG-113shrg91172,2014-07-14,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff071414
+CHRG-113jhrg22136,2014-07-15,jsec00,jec,https://www.senate.gov/isvp/?comm=jec&filename=jec071514
+CHRG-113jhrg89403,2014-07-15,jsec00,jec,https://www.senate.gov/isvp/?comm=jec&filename=jec071514
 CHRG-113shrg28403,2014-07-15,ssju00,judiciary,https://www.senate.gov/isvp/?comm=judiciary&filename=judiciary071514
 CHRG-113shrg91275,2014-07-15,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking071514
 CHRG-113shrg91554,2014-07-15,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy071514
 CHRG-113shrg92256,2014-07-15,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking071514
 CHRG-113shrg94614,2014-07-15,ssfi00,finance,https://www.senate.gov/isvp/?comm=finance&filename=finance071514
 CHRG-113shrg99962,2014-07-15,ssju00,judiciary,https://www.senate.gov/isvp/?comm=judiciary&filename=judiciary071514
+CHRG-113jhrg95576,2014-07-16,jcse00,csce,
 CHRG-113shrg46916,2014-07-16,spag00,aging,https://www.senate.gov/isvp/?comm=aging&filename=aging071614
 CHRG-113shrg69104720,2014-07-16,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA071614
 CHRG-113shrg88888,2014-07-16,ssva00,vetaff,https://www.senate.gov/isvp/?comm=vetaff&filename=vetaff071614
@@ -863,6 +916,7 @@ CHRG-113shrg93516,2014-07-17,ssfi00,finance,https://www.senate.gov/isvp/?comm=fi
 CHRG-113shrg94466,2014-07-17,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign071714
 CHRG-113shrg95795,2014-07-17,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce071714
 CHRG-113shrg95995,2014-07-17,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce071714
+CHRG-113jhrg95575,2014-07-22,jcse00,csce,https://www.senate.gov/isvp/?comm=csce&filename=csce072214
 CHRG-113shrg24452,2014-07-22,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help072214
 CHRG-113shrg89711,2014-07-22,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy072214
 CHRG-113shrg89882,2014-07-22,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff072214
@@ -885,6 +939,7 @@ CHRG-113shrg91178,2014-07-24,ssga00,govtaff,https://www.senate.gov/isvp/?comm=go
 CHRG-113shrg91180,2014-07-24,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff072414
 CHRG-113shrg92646,2014-07-24,ssfi00,finance,https://www.senate.gov/isvp/?comm=finance&filename=finance072414
 CHRG-113shrg94805,2014-07-24,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign072414
+CHRG-113jhrg89574,2014-07-29,jsec00,jec,https://www.senate.gov/isvp/?comm=jec&filename=jec072914
 CHRG-113shrg91553,2014-07-29,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy072914
 CHRG-113shrg93521,2014-07-29,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign072914
 CHRG-113shrg94044,2014-07-29,ssfi00,finance,https://www.senate.gov/isvp/?comm=finance&filename=finance072914
@@ -936,17 +991,21 @@ CHRG-113shrg93420,2014-09-18,ssbk00,banking,https://www.senate.gov/isvp/?comm=ba
 CHRG-113shrg92906,2014-09-26,ssga00,govtaff,
 CHRG-114shrg20948,2014-10-15,ssbk00,banking,
 CHRG-113shrg21222,2014-10-16,ssju00,judiciary,
+CHRG-113jhrg95574,2014-10-28,jcse00,csce,
 CHRG-113shrg92196,2014-11-12,slia00,indian,https://www.senate.gov/isvp/?comm=indian&filename=indian111214
 CHRG-113shrg24458,2014-11-13,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help111314
 CHRG-113shrg91486,2014-11-13,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking111314
 CHRG-113shrg98200,2014-11-13,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw111314
+CHRG-113jhrg95573,2014-11-14,jcse00,csce,https://www.senate.gov/isvp/?comm=csce&filename=csce111414
 CHRG-113shrg92907,2014-11-18,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff111814
 CHRG-113shrg94658,2014-11-18,ssfi00,finance,https://www.senate.gov/isvp/?comm=finance&filename=finance111814
+CHRG-113jhrg95572,2014-11-19,jcse00,csce,https://www.senate.gov/isvp/?comm=csce&filename=csce111914
 CHRG-113shrg46919,2014-11-19,spag00,aging,https://www.senate.gov/isvp/?comm=aging&filename=aging111914
 CHRG-113shrg91819,2014-11-19,ssva00,vetaff,https://www.senate.gov/isvp/?comm=vetaff&filename=vetaff111914
 CHRG-113shrg92529,2014-11-19,slia00,indian,https://www.senate.gov/isvp/?comm=indian&filename=indian111914
 CHRG-113shrg92908,2014-11-19,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff111914
 CHRG-113shrg93421,2014-11-19,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking111914
+CHRG-113jhrg92631,2014-11-20,jcpk00,cecc,https://www.senate.gov/isvp/?comm=cecc&filename=cecc112014
 CHRG-113shrg24459,2014-11-20,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help112014
 CHRG-113shrg24460,2014-11-20,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help112014
 CHRG-113shrg29497,2014-11-20,slin00,intel,https://www.senate.gov/isvp/?comm=intel&filename=intel112014
@@ -976,7 +1035,9 @@ CHRG-113shrg93566,2014-12-10,ssbk00,banking,https://www.senate.gov/isvp/?comm=ba
 CHRG-113shrg94193,2014-12-10,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign121014
 CHRG-113shrg94366,2014-12-10,ssaf00,ag,https://www.senate.gov/isvp/?comm=ag&filename=ag121014
 CHRG-113shrg94570,2014-12-10,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce121014
+CHRG-113jhrg92632,2014-12-11,jcpk00,cecc,https://www.senate.gov/isvp/?comm=cecc&filename=cecc121114
 CHRG-113shrg20361,2014-12-11,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw121114
+CHRG-113jhrg95571,2014-12-17,jcse00,csce,
 CHRG-113shrg20362,2014-12-17,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw121714
 CHRG-113shrg49104584,2014-12-24,ssap00,approps,
 CHRG-114shrg97433,2015-01-15,sssb00,smbiz,
@@ -1047,6 +1108,7 @@ CHRG-114shrg96173,2015-02-24,ssaf00,ag,https://www.senate.gov/isvp/?comm=ag&file
 CHRG-114shrg97233,2015-02-24,ssfi00,finance,https://www.senate.gov/isvp/?comm=finance&filename=finance022415
 CHRG-114shrg97531,2015-02-24,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce022415
 CHRG-114shrg97627,2015-02-24,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign022415
+CHRG-114jhrg94130,2015-02-25,jcse00,csce,https://www.senate.gov/isvp/?comm=csce&filename=csce022515
 CHRG-114shrg22491,2015-02-25,ssas00,armed,https://www.senate.gov/isvp/?comm=armed&filename=armedA022515
 CHRG-114shrg59104640,2015-02-25,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA022515
 CHRG-114shrg94276,2015-02-25,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff022515
@@ -1121,6 +1183,7 @@ CHRG-114shrg94984,2015-03-17,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&fi
 CHRG-114shrg96257,2015-03-17,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign031715
 CHRG-114shrg96893,2015-03-17,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce031715
 CHRG-114shrg99718,2015-03-17,ssfi00,finance,https://www.senate.gov/isvp/?comm=finance&filename=finance031715
+CHRG-114jhrg94241,2015-03-18,jcse00,csce,https://www.senate.gov/isvp/?comm=csce&filename=csce031815
 CHRG-114shrg47422,2015-03-18,ssju00,judiciary,https://www.senate.gov/isvp/?comm=judiciary&filename=judiciary031815
 CHRG-114shrg59104611,2015-03-18,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA031815
 CHRG-114shrg59104637,2015-03-18,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA031815
@@ -1234,6 +1297,7 @@ CHRG-114shrg95736,2015-04-29,ssbk00,banking,https://www.senate.gov/isvp/?comm=ba
 CHRG-114shrg97405,2015-04-29,slia00,indian,https://www.senate.gov/isvp/?comm=indian&filename=indian042915
 CHRG-114shrg97534,2015-04-29,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce042915
 CHRG-114shrg98667,2015-04-29,sssb00,smbiz,https://www.senate.gov/isvp/?comm=smbiz&filename=smbiz042915
+CHRG-114jhrg94474,2015-04-30,jcpk00,cecc,
 CHRG-114shrg59104662,2015-04-30,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA043015
 CHRG-114shrg95273,2015-04-30,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy043015
 CHRG-114shrg95274,2015-04-30,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy043015
@@ -1305,6 +1369,7 @@ CHRG-114shrg95280,2015-06-02,sseg00,energy,https://www.senate.gov/isvp/?comm=ene
 CHRG-114shrg95655,2015-06-02,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff060215
 CHRG-114shrg97415,2015-06-02,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking060215
 CHRG-114shrg98163,2015-06-02,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce060215
+CHRG-114jhrg95041,2015-06-03,jcpk00,cecc,
 CHRG-114shrg94970,2015-06-03,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help060315
 CHRG-114shrg95001,2015-06-03,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw060315
 CHRG-114shrg95656,2015-06-03,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff060315
@@ -1315,6 +1380,7 @@ CHRG-114shrg97305,2015-06-04,ssbk00,banking,https://www.senate.gov/isvp/?comm=ba
 CHRG-114shrg97729,2015-06-08,ssbu00,budget,
 CHRG-114shrg95281,2015-06-09,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy060915
 CHRG-114shrg97353,2015-06-09,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff060915
+CHRG-114jhrg95333,2015-06-10,jcse00,csce,https://www.senate.gov/isvp/?comm=csce&filename=csce061015
 CHRG-114shrg25971,2015-06-10,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help061015
 CHRG-114shrg49416,2015-06-10,spag00,aging,https://www.senate.gov/isvp/?comm=aging&filename=aging061015
 CHRG-114shrg52980,2015-06-10,ssju00,judiciary,https://www.senate.gov/isvp/?comm=judiciary&filename=judiciary061015
@@ -1484,6 +1550,8 @@ CHRG-114shrg48680,2015-10-07,spag00,aging,https://www.senate.gov/isvp/?comm=agin
 CHRG-114shrg53824,2015-10-07,ssju00,judiciary,https://www.senate.gov/isvp/?comm=judiciary&filename=judiciary100715
 CHRG-114shrg59104663,2015-10-07,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA100715
 CHRG-114shrg98268,2015-10-07,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw100715
+CHRG-114jhrg98306,2015-10-08,jcpk00,cecc,
+CHRG-114jhrg98307,2015-10-08,jcpk00,cecc,
 CHRG-114shrg20922,2015-10-08,ssas00,armed,https://www.senate.gov/isvp/?comm=armed&filename=armedA100815
 CHRG-114shrg22380,2015-10-08,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff100815
 CHRG-114shrg35960,2015-10-08,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign100815
@@ -1524,9 +1592,11 @@ CHRG-114shrg99538,2015-10-29,ssas00,armed,https://www.senate.gov/isvp/?comm=arme
 CHRG-114shrg21968,2015-11-03,sseg00,energy,
 CHRG-114shrg35995,2015-11-03,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign110315
 CHRG-114shrg99570,2015-11-03,ssas00,armed,https://www.senate.gov/isvp/?comm=armed&filename=armedA110315
+CHRG-114jhrg97902,2015-11-04,jsec00,jec,https://www.senate.gov/isvp/?comm=jec&filename=jec110415
 CHRG-114shrg20128,2015-11-04,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce110415
 CHRG-114shrg22473,2015-11-04,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff110415
 CHRG-114shrg38542,2015-11-04,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign110415
+CHRG-114jhrg98259,2015-11-05,jcse00,csce,
 CHRG-114shrg23252,2015-11-05,ssas00,armed,https://www.senate.gov/isvp/?comm=armed&filename=armedA110515
 CHRG-114shrg98996,2015-11-05,ssaf00,ag,https://www.senate.gov/isvp/?comm=ag&filename=ag110515
 CHRG-114shrg99688,2015-11-05,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff110515
@@ -1576,6 +1646,7 @@ CHRG-114shrg21183,2015-12-10,ssfr00,foreign,https://www.senate.gov/isvp/?comm=fo
 CHRG-114shrg23251,2015-12-10,sseg00,energy,
 CHRG-114shrg23575,2015-12-10,ssas00,armed,https://www.senate.gov/isvp/?comm=armed&filename=armedA121015
 CHRG-114shrg99903,2015-12-10,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff121015
+CHRG-114jhrg98261,2015-12-11,jcse00,csce,
 CHRG-114shrg23617,2015-12-14,ssva00,vetaff,
 CHRG-114shrg26537,2015-12-15,ssva00,vetaff,
 CHRG-114shrg20949,2015-12-16,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign121615
@@ -1673,6 +1744,7 @@ CHRG-114shrg69104744,2016-03-02,ssap00,approps,https://www.senate.gov/isvp/?comm
 CHRG-114shrg79104796,2016-03-02,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA030216 https://www.senate.gov/isvp/?comm=approps&filename=appropsB030216
 CHRG-114shrg98759,2016-03-02,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA030216 https://www.senate.gov/isvp/?comm=approps&filename=appropsB030216
 CHRG-114shrg98989,2016-03-02,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff030216
+CHRG-114jhrg99387,2016-03-03,jcse00,csce,
 CHRG-114shrg21966,2016-03-03,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy030316
 CHRG-114shrg22766,2016-03-03,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff030316
 CHRG-114shrg23976,2016-03-03,ssfi00,finance,https://www.senate.gov/isvp/?comm=finance&filename=finance030316
@@ -1880,6 +1952,7 @@ CHRG-114shrg26819,2016-06-21,ssva00,vetaff,https://www.senate.gov/isvp/?comm=vet
 CHRG-114shrg21264,2016-06-22,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw062216
 CHRG-114shrg24131,2016-06-22,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff062216
 CHRG-114shrg25363,2016-06-22,ssva00,vetaff,https://www.senate.gov/isvp/?comm=vetaff&filename=vetaff062216
+CHRG-114jhrg20596,2016-06-23,jcse00,csce,
 CHRG-114shrg21423,2016-06-23,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff062316
 CHRG-114shrg21604,2016-06-23,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking062316
 CHRG-114shrg21993,2016-06-23,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy062316
@@ -1952,6 +2025,7 @@ CHRG-114shrg23439,2016-09-21,ssbk00,banking,https://www.senate.gov/isvp/?comm=ba
 CHRG-114shrg23594,2016-09-21,ssaf00,ag,https://www.senate.gov/isvp/?comm=ag&filename=ag092116
 CHRG-114shrg69104717,2016-09-21,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA092116 https://www.senate.gov/isvp/?comm=approps&filename=appropsB092116
 CHRG-114shrg69104747,2016-09-21,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA092116 https://www.senate.gov/isvp/?comm=approps&filename=appropsB092116
+CHRG-114jhrg21917,2016-09-22,jcse00,csce,https://www.senate.gov/isvp/?comm=csce&filename=csce092216
 CHRG-114shrg21905,2016-09-22,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help092216
 CHRG-114shrg22000,2016-09-22,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy092216
 CHRG-114shrg23011,2016-09-22,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking092216
@@ -1969,6 +2043,8 @@ CHRG-114shrg69104667,2016-10-12,ssap00,approps,
 CHRG-114shrg22849,2016-10-18,sseg00,energy,
 CHRG-114shrg23535,2016-10-18,slia00,indian,
 CHRG-114shrg22605,2016-10-20,ssev00,epw,
+CHRG-114jhrg22555,2016-11-10,jcse00,csce,
+CHRG-114jhrg22860,2016-11-15,jcse00,csce,
 CHRG-114shrg24801,2016-11-15,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff111516
 CHRG-114shrg25407,2016-11-16,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce111616
 CHRG-114shrg69104719,2016-11-16,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA111616
@@ -1980,9 +2056,11 @@ CHRG-114shrg23956,2016-12-01,ssga00,govtaff,https://www.senate.gov/isvp/?comm=go
 CHRG-114shrg26727,2016-12-01,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign120116
 CHRG-114shrg28323,2016-12-01,ssas00,armed,https://www.senate.gov/isvp/?comm=armed&filename=armedA120116
 CHRG-114shrg69104673,2016-12-02,ssap00,approps,
+CHRG-114jhrg22942,2016-12-07,jcse00,csce,
 CHRG-114shrg23536,2016-12-07,slia00,indian,https://www.senate.gov/isvp/?comm=indian&filename=indian120716
 CHRG-114shrg24732,2016-12-07,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce120716
 CHRG-114shrg26844,2016-12-08,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign120816
+CHRG-114jhrg23374,2016-12-09,jcse00,csce,
 CHRG-115shrg33623,2017-01-03,ssfr00,foreign,
 CHRG-115shrg33940,2017-01-05,ssas00,armed,https://www.senate.gov/isvp/?comm=armed&filename=armedA010517
 CHRG-115shrg24401,2017-01-10,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff011017
@@ -2010,6 +2088,7 @@ CHRG-115shrg26767,2017-01-24,ssga00,govtaff,https://www.senate.gov/isvp/?comm=go
 CHRG-115shrg26935,2017-01-24,ssbu00,budget,https://www.senate.gov/isvp/?comm=budget&filename=budget012417
 CHRG-115shrg28837,2017-01-24,ssas00,armed,https://www.senate.gov/isvp/?comm=armed&filename=armedA012417
 CHRG-115shrg30005,2017-01-24,ssfi00,finance,https://www.senate.gov/isvp/?comm=finance&filename=finance012417
+CHRG-115jhrg28316,2017-01-31,jcse00,csce,
 CHRG-115shrg39600,2017-01-31,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign013117
 CHRG-115shrg24145,2017-02-01,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help020117
 CHRG-115shrg24586,2017-02-01,ssva00,vetaff,https://www.senate.gov/isvp/?comm=vetaff&filename=vetaff020117
@@ -2134,11 +2213,13 @@ CHRG-115shrg26600,2017-04-26,sscm00,commerce,https://www.senate.gov/isvp/?comm=c
 CHRG-115shrg27016,2017-04-26,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff042617
 CHRG-115shrg63351,2017-04-26,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw042617
 CHRG-115shrg89104801,2017-04-26,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA042617
+CHRG-115jhrg26681,2017-04-27,jcse00,csce,
 CHRG-115shrg26070,2017-04-27,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy042717
 CHRG-115shrg26520,2017-04-27,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking042717
 CHRG-115shrg28602,2017-04-27,spag00,aging,https://www.senate.gov/isvp/?comm=aging&filename=aging042717
 CHRG-115shrg34175,2017-04-27,ssas00,armed,https://www.senate.gov/isvp/?comm=armed&filename=armedA042717
 CHRG-115shrg89104830,2017-04-27,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA042717
+CHRG-115jhrg25604,2017-05-02,jcse00,csce,
 CHRG-115shrg25593,2017-05-02,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking050217
 CHRG-115shrg26071,2017-05-02,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy050217
 CHRG-115shrg69104741,2017-05-02,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA050217
@@ -2195,6 +2276,7 @@ CHRG-115shrg28500,2017-05-25,ssaf00,ag,https://www.senate.gov/isvp/?comm=ag&file
 CHRG-115shrg30208,2017-05-25,ssfi00,finance,https://www.senate.gov/isvp/?comm=finance&filename=finance052517
 CHRG-115shrg39978,2017-05-25,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign052517
 CHRG-115shrg79104794,2017-05-25,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA052517
+CHRG-115jhrg25791,2017-06-01,jcse00,csce,
 CHRG-115shrg26198,2017-06-06,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking060617
 CHRG-115shrg27392,2017-06-06,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff060617
 CHRG-115shrg37503,2017-06-06,ssas00,armed,https://www.senate.gov/isvp/?comm=armed&filename=armedA060617
@@ -2292,6 +2374,7 @@ CHRG-115shrg28536,2017-07-12,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&fi
 CHRG-115shrg30786,2017-07-12,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce071217
 CHRG-115shrg38138,2017-07-12,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign071217
 CHRG-115shrg79104791,2017-07-12,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA071217
+CHRG-115jhrg26485,2017-07-13,jcse00,csce,
 CHRG-115shrg26334,2017-07-13,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help071317
 CHRG-115shrg27427,2017-07-13,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking071317
 CHRG-115shrg29639,2017-07-13,ssaf00,ag,https://www.senate.gov/isvp/?comm=ag&filename=ag071317
@@ -2314,14 +2397,18 @@ CHRG-115shrg29442,2017-07-19,ssga00,govtaff,https://www.senate.gov/isvp/?comm=go
 CHRG-115shrg32986,2017-07-19,ssva00,vetaff,https://www.senate.gov/isvp/?comm=vetaff&filename=vetaff071917
 CHRG-115shrg35161,2017-07-19,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce071917
 CHRG-115shrg37908,2017-07-19,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign071917
+CHRG-115jhrg26489,2017-07-20,jcse00,csce,
 CHRG-115shrg26869,2017-07-20,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy072017
 CHRG-115shrg27094,2017-07-20,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw072017
 CHRG-115shrg27428,2017-07-20,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking072017
 CHRG-115shrg35165,2017-07-20,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce072017
+CHRG-115jhrg26490,2017-07-21,jcse00,csce,
 CHRG-115shrg27301,2017-07-25,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw072517
 CHRG-115shrg29640,2017-07-25,ssaf00,ag,https://www.senate.gov/isvp/?comm=ag&filename=ag072517
 CHRG-115shrg29978,2017-07-25,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce072517
 CHRG-115shrg40415,2017-07-25,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign072517
+CHRG-115jhrg26491,2017-07-26,jcse00,csce,
+CHRG-115jhrg26492,2017-07-26,jcse00,csce,
 CHRG-115shrg26870,2017-07-26,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy072617
 CHRG-115shrg27315,2017-07-26,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw072617
 CHRG-115shrg31485,2017-07-26,spag00,aging,https://www.senate.gov/isvp/?comm=aging&filename=aging072617
@@ -2380,6 +2467,7 @@ CHRG-115shrg38896,2017-09-19,ssas00,armed,https://www.senate.gov/isvp/?comm=arme
 CHRG-115shrg29444,2017-09-20,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff092017
 CHRG-115shrg30022,2017-09-20,spag00,aging,https://www.senate.gov/isvp/?comm=aging&filename=aging092017
 CHRG-115shrg32664,2017-09-25,ssfi00,finance,https://www.senate.gov/isvp/?comm=finance&filename=finance092517
+CHRG-115jhrg27342,2017-09-26,jcse00,csce,
 CHRG-115shrg27429,2017-09-26,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy092617
 CHRG-115shrg28283,2017-09-26,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking092617
 CHRG-115shrg35459,2017-09-26,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce092617
@@ -2391,32 +2479,39 @@ CHRG-115shrg29657,2017-09-27,ssga00,govtaff,https://www.senate.gov/isvp/?comm=go
 CHRG-115shrg31534,2017-09-27,slia00,indian,https://www.senate.gov/isvp/?comm=indian&filename=indian092717
 CHRG-115shrg31567,2017-09-27,ssva00,vetaff,https://www.senate.gov/isvp/?comm=vetaff&filename=vetaff092717
 CHRG-115shrg37225,2017-09-27,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce092717
+CHRG-115jhrg27343,2017-09-28,jcse00,csce,
 CHRG-115shrg28660,2017-09-28,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking092817
 CHRG-115shrg32301,2017-09-28,ssaf00,ag,https://www.senate.gov/isvp/?comm=ag&filename=ag092817
 CHRG-115shrg34309,2017-09-28,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce092817
 CHRG-115shrg69104748,2017-09-28,ssap00,approps,
+CHRG-115jhrg27348,2017-10-01,jcse00,csce,
 CHRG-115shrg27106,2017-10-03,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help100317
 CHRG-115shrg27431,2017-10-03,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy100317
 CHRG-115shrg27432,2017-10-03,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy100317
 CHRG-115shrg28111,2017-10-03,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking100317
 CHRG-115shrg28203,2017-10-03,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff100317
 CHRG-115shrg32785,2017-10-03,ssfi00,finance,https://www.senate.gov/isvp/?comm=finance&filename=finance100317
+CHRG-115jhrg27156,2017-10-04,jcse00,csce,
 CHRG-115shrg27120,2017-10-04,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help100417
 CHRG-115shrg27172,2017-10-04,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw100417
 CHRG-115shrg28123,2017-10-04,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking100417
 CHRG-115shrg28581,2017-10-04,slia00,indian,https://www.senate.gov/isvp/?comm=indian&filename=indian100417
 CHRG-115shrg31486,2017-10-04,spag00,aging,https://www.senate.gov/isvp/?comm=aging&filename=aging100417
 CHRG-115shrg37486,2017-10-04,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign100417
+CHRG-115jhrg27154,2017-10-05,jcse00,csce,
 CHRG-115shrg27121,2017-10-05,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help100517
 CHRG-115shrg27320,2017-10-05,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw100517
 CHRG-115shrg32624,2017-10-05,ssaf00,ag,https://www.senate.gov/isvp/?comm=ag&filename=ag100517
 CHRG-115shrg32958,2017-10-05,ssfi00,finance,https://www.senate.gov/isvp/?comm=finance&filename=finance100517
 CHRG-115shrg27433,2017-10-06,sseg00,energy,
 CHRG-115shrg79104752,2017-10-07,ssap00,approps,
+CHRG-115jhrg27155,2017-10-10,jcse00,csce,
+CHRG-115jhrg27344,2017-10-13,jcse00,csce,
 CHRG-115shrg35751,2017-10-13,sscm00,commerce,
 CHRG-115shrg27277,2017-10-17,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help101717
 CHRG-115shrg27396,2017-10-17,slin00,intel,https://www.senate.gov/isvp/?comm=intel&filename=intel101717
 CHRG-115shrg28249,2017-10-17,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking101717
+CHRG-115jhrg27345,2017-10-18,jcse00,csce,
 CHRG-115shrg29445,2017-10-18,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff101817
 CHRG-115shrg30097,2017-10-18,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff101817
 CHRG-115shrg35072,2017-10-18,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff101817
@@ -2431,6 +2526,7 @@ CHRG-115shrg29804,2017-10-25,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&fi
 CHRG-115shrg29916,2017-10-25,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw102517
 CHRG-115shrg31535,2017-10-25,slia00,indian,https://www.senate.gov/isvp/?comm=indian&filename=indian102517
 CHRG-115shrg35753,2017-10-25,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce102517
+CHRG-115jhrg27346,2017-10-26,jcse00,csce,
 CHRG-115shrg27434,2017-10-26,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy102617
 CHRG-115shrg27450,2017-10-26,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help102617
 CHRG-115shrg27794,2017-10-26,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking102617
@@ -2444,6 +2540,7 @@ CHRG-115shrg29658,2017-10-31,ssga00,govtaff,https://www.senate.gov/isvp/?comm=go
 CHRG-115shrg29659,2017-10-31,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff103117
 CHRG-115shrg35754,2017-10-31,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce103117
 CHRG-115shrg36042,2017-10-31,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce103117
+CHRG-115jhrg27637,2017-11-01,jcse00,csce,
 CHRG-115shrg27398,2017-11-01,slin00,intel,https://www.senate.gov/isvp/?comm=intel&filename=intel110117
 CHRG-115shrg28519,2017-11-01,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking110117
 CHRG-115shrg30362,2017-11-01,slia00,indian,https://www.senate.gov/isvp/?comm=indian&filename=indian110117
@@ -2451,6 +2548,7 @@ CHRG-115shrg37105,2017-11-01,ssfr00,foreign,https://www.senate.gov/isvp/?comm=fo
 CHRG-115shrg37226,2017-11-01,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce110117
 CHRG-115shrg27436,2017-11-02,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy110217
 CHRG-115shrg62950,2017-11-02,ssas00,armed,https://www.senate.gov/isvp/?comm=armed&filename=armed110217
+CHRG-115jhrg27642,2017-11-07,jcse00,csce,
 CHRG-115shrg30098,2017-11-07,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff110717
 CHRG-115shrg37227,2017-11-07,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce110717
 CHRG-115shrg27600,2017-11-08,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw110817
@@ -2458,11 +2556,13 @@ CHRG-115shrg30099,2017-11-08,ssga00,govtaff,https://www.senate.gov/isvp/?comm=go
 CHRG-115shrg30106,2017-11-08,slia00,indian,https://www.senate.gov/isvp/?comm=indian&filename=indian110817
 CHRG-115shrg33395,2017-11-08,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce110817
 CHRG-115shrg32647,2017-11-09,ssaf00,ag,https://www.senate.gov/isvp/?comm=ag&filename=ag110917
+CHRG-115jhrg27641,2017-11-14,jcse00,csce,
 CHRG-115shrg27682,2017-11-14,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help111417
 CHRG-115shrg27895,2017-11-14,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw111417
 CHRG-115shrg28093,2017-11-14,sseg00,energy,
 CHRG-115shrg34311,2017-11-14,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign111417
 CHRG-115shrg37228,2017-11-14,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce111417
+CHRG-115jhrg27638,2017-11-15,jcse00,csce,https://www.senate.gov/isvp/?comm=csce&filename=csce111517
 CHRG-115shrg27683,2017-11-15,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help111517
 CHRG-115shrg27684,2017-11-15,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help111517
 CHRG-115shrg28078,2017-11-15,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw111517
@@ -2477,6 +2577,7 @@ CHRG-115shrg28661,2017-11-28,ssbk00,banking,https://www.senate.gov/isvp/?comm=ba
 CHRG-115shrg27767,2017-11-29,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help112917
 CHRG-115shrg29855,2017-11-29,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw112917
 CHRG-115shrg37230,2017-11-29,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce112917
+CHRG-115jhrg28315,2017-11-30,jcse00,csce,
 CHRG-115shrg30020,2017-11-30,ssas00,armed,https://www.senate.gov/isvp/?comm=armed&filename=armedA113017
 CHRG-115shrg48380,2017-11-30,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help113017
 CHRG-115shrg27829,2017-12-05,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help120517
@@ -2492,12 +2593,14 @@ CHRG-115shrg31487,2017-12-06,spag00,aging,https://www.senate.gov/isvp/?comm=agin
 CHRG-115shrg36687,2017-12-06,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign120617
 CHRG-115shrg27828,2017-12-07,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help120717
 CHRG-115shrg30987,2017-12-07,ssas00,armed,https://www.senate.gov/isvp/?comm=armed&filename=armed120717
+CHRG-115jhrg28317,2017-12-12,jcse00,csce,
 CHRG-115shrg28096,2017-12-12,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy121217
 CHRG-115shrg36644,2017-12-12,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign121217
 CHRG-115shrg36646,2017-12-12,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign121217
 CHRG-115shrg37295,2017-12-12,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce121217
 CHRG-115shrg37296,2017-12-12,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce121217
 CHRG-115shrg48379,2017-12-12,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help121217
+CHRG-115jhrg28318,2017-12-13,jcse00,csce,
 CHRG-115shrg27981,2017-12-13,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help121317
 CHRG-115shrg28623,2017-12-13,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw121317
 CHRG-115shrg32792,2017-12-13,ssaf00,ag,https://www.senate.gov/isvp/?comm=ag&filename=ag121317
@@ -2529,10 +2632,12 @@ CHRG-115shrg34875,2018-01-17,ssfi00,finance,https://www.senate.gov/isvp/?comm=fi
 CHRG-115shrg28424,2018-01-18,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help011818
 CHRG-115shrg28694,2018-01-18,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy011818
 CHRG-115shrg29914,2018-01-18,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking011818
+CHRG-115jhrg29385,2018-01-23,jcse00,csce,
 CHRG-115shrg28514,2018-01-23,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help012318
 CHRG-115shrg28695,2018-01-23,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy012318
 CHRG-115shrg30196,2018-01-23,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking012318
 CHRG-115shrg37297,2018-01-23,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce012318
+CHRG-115jhrg29386,2018-01-24,jcse00,csce,
 CHRG-115shrg32636,2018-01-24,spag00,aging,https://www.senate.gov/isvp/?comm=aging&filename=aging012418
 CHRG-115shrg35700,2018-01-24,ssbu00,budget,https://www.senate.gov/isvp/?comm=budget&filename=budget012418
 CHRG-115shrg37298,2018-01-24,sscm00,commerce,
@@ -2544,6 +2649,7 @@ CHRG-115shrg28767,2018-01-25,ssbk00,banking,https://www.senate.gov/isvp/?comm=ba
 CHRG-115shrg30696,2018-01-25,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff012518
 CHRG-115shrg37299,2018-01-25,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce012518
 CHRG-115shrg39552,2018-01-25,ssas00,armed,https://www.senate.gov/isvp/?comm=armed&filename=armedA012518
+CHRG-115jhrg29391,2018-01-30,jcse00,csce,
 CHRG-115shrg28548,2018-01-30,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help013018
 CHRG-115shrg28549,2018-01-30,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help013018
 CHRG-115shrg28697,2018-01-30,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy013018
@@ -2584,6 +2690,8 @@ CHRG-115shrg35794,2018-02-15,ssfi00,finance,https://www.senate.gov/isvp/?comm=fi
 CHRG-115shrg36550,2018-02-15,ssaf00,ag,https://www.senate.gov/isvp/?comm=ag&filename=ag021518
 CHRG-115shrg42143,2018-02-15,ssas00,armed,https://www.senate.gov/isvp/?comm=armed&filename=armedA021518
 CHRG-115shrg35941,2018-02-16,ssfi00,finance,
+CHRG-115jhrg29392,2018-02-20,jcse00,csce,
+CHRG-115jhrg29393,2018-02-22,jcse00,csce,
 CHRG-115shrg28855,2018-02-27,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help022718
 CHRG-115shrg29766,2018-02-28,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy022818
 CHRG-115shrg30663,2018-02-28,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw022818
@@ -2603,6 +2711,7 @@ CHRG-115shrg28946,2018-03-08,sshr00,help,https://www.senate.gov/isvp/?comm=help&
 CHRG-115shrg30052,2018-03-08,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw030818
 CHRG-115shrg43314,2018-03-08,ssas00,armed,https://www.senate.gov/isvp/?comm=armed&filename=armedA030818
 CHRG-115shrg89104817,2018-03-08,ssap00,approps,
+CHRG-115jhrg29394,2018-03-13,jcse00,csce,
 CHRG-115shrg29769,2018-03-13,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy031318
 CHRG-115shrg39808,2018-03-13,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign031318
 CHRG-115shrg39879,2018-03-13,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce031318
@@ -2629,6 +2738,7 @@ CHRG-115shrg39832,2018-03-21,ssfr00,foreign,https://www.senate.gov/isvp/?comm=fo
 CHRG-115shrg29552,2018-03-22,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking032218
 CHRG-115shrg29772,2018-03-22,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy032218
 CHRG-115shrg36528,2018-03-22,ssfi00,finance,https://www.senate.gov/isvp/?comm=finance&filename=finance032218
+CHRG-115jhrg30031,2018-03-28,jcse00,csce,
 CHRG-115shrg57801,2018-04-05,sscm00,commerce,
 CHRG-115shrg89104850,2018-04-06,ssap00,approps,
 CHRG-115shrg29807,2018-04-10,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help041018
@@ -2688,15 +2798,20 @@ CHRG-115shrg57576,2018-04-25,sscm00,commerce,https://www.senate.gov/isvp/?comm=c
 CHRG-115shrg89104822,2018-04-25,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA042518 https://www.senate.gov/isvp/?comm=approps&filename=appropsB042518
 CHRG-115shrg89104843,2018-04-25,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA042518 https://www.senate.gov/isvp/?comm=approps&filename=appropsB042518
 CHRG-115shrg99104877,2018-04-25,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA042518 https://www.senate.gov/isvp/?comm=approps&filename=appropsB042518
+CHRG-115jhrg30030,2018-04-26,jcse00,csce,
 CHRG-115shrg19104887,2018-04-26,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA042618 https://www.senate.gov/isvp/?comm=approps&filename=appropsB042618
 CHRG-115shrg36157,2018-04-26,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff042618
 CHRG-115shrg89104839,2018-04-26,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA042618 https://www.senate.gov/isvp/?comm=approps&filename=appropsB042618
 CHRG-115shrg79104782,2018-05-02,ssap00,approps,
 CHRG-115shrg30631,2018-05-03,sssb00,smbiz,
+CHRG-115jhrg30029,2018-05-07,jcse00,csce,
+CHRG-115jhrg30028,2018-05-08,jcse00,csce,
 CHRG-115shrg30282,2018-05-08,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy050818
 CHRG-115shrg35281,2018-05-08,spag00,aging,https://www.senate.gov/isvp/?comm=aging&filename=aging050818
 CHRG-115shrg39952,2018-05-08,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce050818
 CHRG-115shrg89104823,2018-05-08,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA050818
+CHRG-115jhrg30026,2018-05-09,jcse00,csce,
+CHRG-115jhrg30027,2018-05-09,jcse00,csce,
 CHRG-115shrg19104888,2018-05-09,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA050918 https://www.senate.gov/isvp/?comm=approps&filename=appropsB050918
 CHRG-115shrg30119,2018-05-09,slin00,intel,https://www.senate.gov/isvp/?comm=intel&filename=intel050918
 CHRG-115shrg30283,2018-05-09,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy050918
@@ -2762,6 +2877,7 @@ CHRG-115shrg31407,2018-06-13,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&fi
 CHRG-115shrg38499,2018-06-13,jspp00,,
 CHRG-115shrg57490,2018-06-13,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce061318
 CHRG-115shrg31583,2018-06-14,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking061418
+CHRG-115jhrg30593,2018-06-18,jcse00,csce,
 CHRG-115shrg30644,2018-06-19,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help061918
 CHRG-115shrg35283,2018-06-19,spag00,aging,https://www.senate.gov/isvp/?comm=aging&filename=aging061918
 CHRG-115shrg58439,2018-06-19,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce061918
@@ -2773,6 +2889,7 @@ CHRG-115shrg35266,2018-06-20,ssra00,rules,https://www.senate.gov/isvp/?comm=rule
 CHRG-115shrg38578,2018-06-20,ssfi00,finance,https://www.senate.gov/isvp/?comm=finance&filename=finance062018
 CHRG-115shrg40341,2018-06-20,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign062018
 CHRG-115shrg58440,2018-06-20,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce062018
+CHRG-115jhrg30592,2018-06-21,jcse00,csce,
 CHRG-115shrg30617,2018-06-26,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy062618
 CHRG-115shrg32415,2018-06-26,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking062618
 CHRG-115shrg38796,2018-06-26,ssfi00,finance,https://www.senate.gov/isvp/?comm=finance&filename=finance062618
@@ -2798,6 +2915,7 @@ CHRG-115shrg30887,2018-07-17,sshr00,help,https://www.senate.gov/isvp/?comm=help&
 CHRG-115shrg30983,2018-07-17,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy071718
 CHRG-115shrg31426,2018-07-17,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw071718
 CHRG-115shrg32517,2018-07-17,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking071718
+CHRG-115jhrg30829,2018-07-18,jcse00,csce,https://www.senate.gov/isvp/?comm=csce&filename=csce071818
 CHRG-115shrg31611,2018-07-18,slia00,indian,https://www.senate.gov/isvp/?comm=indian&filename=indian071818
 CHRG-115shrg34573,2018-07-18,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff071818
 CHRG-115shrg35284,2018-07-18,spag00,aging,https://www.senate.gov/isvp/?comm=aging&filename=aging071818
@@ -2860,6 +2978,8 @@ CHRG-115shrg57581,2018-09-05,sscm00,commerce,https://www.senate.gov/isvp/?comm=c
 CHRG-115shrg32635,2018-09-06,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking090618
 CHRG-115shrg32678,2018-09-06,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw090618
 CHRG-115shrg99104862,2018-09-06,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA090618
+CHRG-115jhrg32260,2018-09-12,jcse00,csce,
+CHRG-115jhrg32261,2018-09-12,jcse00,csce,
 CHRG-115shrg32665,2018-09-12,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking091218
 CHRG-115shrg32265,2018-09-13,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy091318
 CHRG-115shrg32793,2018-09-13,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw091318
@@ -2873,6 +2993,7 @@ CHRG-115shrg34944,2018-09-18,ssga00,govtaff,https://www.senate.gov/isvp/?comm=go
 CHRG-115shrg36421,2018-09-18,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw091818
 CHRG-115shrg40370,2018-09-18,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign091818
 CHRG-115shrg57577,2018-09-18,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce091818
+CHRG-115jhrg32259,2018-09-24,jcse00,csce,
 CHRG-115shrg32266,2018-09-25,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy092518
 CHRG-115shrg32295,2018-09-25,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help092518
 CHRG-115shrg32296,2018-09-25,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help092518
@@ -2908,6 +3029,8 @@ CHRG-115shrg34525,2018-10-11,ssbk00,banking,https://www.senate.gov/isvp/?comm=ba
 CHRG-115shrg57575,2018-10-11,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce101118
 CHRG-115shrg32538,2018-10-19,sseg00,energy,
 CHRG-115shrg55981,2018-10-20,sscm00,commerce,
+CHRG-115jhrg33109,2018-10-29,jcse00,csce,
+CHRG-115jhrg33110,2018-11-01,jcse00,csce,
 CHRG-115shrg34340,2018-11-14,slia00,indian,https://www.senate.gov/isvp/?comm=indian&filename=indian111418
 CHRG-115shrg33484,2018-11-15,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking111518
 CHRG-115shrg33660,2018-11-15,sseg00,energy,
@@ -2925,10 +3048,13 @@ CHRG-115shrg37221,2018-11-28,ssaf00,ag,https://www.senate.gov/isvp/?comm=ag&file
 CHRG-115shrg37591,2018-11-28,spag00,aging,https://www.senate.gov/isvp/?comm=aging&filename=aging112818
 CHRG-115shrg40475,2018-11-28,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign112818
 CHRG-115shrg48440,2018-11-28,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help112818
+CHRG-115jhrg33111,2018-11-29,jcse00,csce,
 CHRG-115shrg33661,2018-11-29,sseg00,energy,
 CHRG-115shrg34526,2018-11-29,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking112918
 CHRG-115shrg35667,2018-11-29,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw112918
 CHRG-115shrg37823,2018-11-30,spag00,aging,https://www.senate.gov/isvp/?comm=aging&filename=aging113018
+CHRG-115jhrg34538,2018-12-04,jcse00,csce,
+CHRG-115jhrg34539,2018-12-04,jcse00,csce,
 CHRG-115shrg34527,2018-12-06,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking120618
 CHRG-115shrg35239,2018-12-06,ssra00,rules,https://www.senate.gov/isvp/?comm=rules&filename=rules120618
 CHRG-115shrg36433,2018-12-06,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign120618
@@ -2939,6 +3065,8 @@ CHRG-115shrg33662,2018-12-12,sseg00,energy,https://www.senate.gov/isvp/?comm=ene
 CHRG-115shrg35460,2018-12-12,ssas00,armed,https://www.senate.gov/isvp/?comm=armed&filename=armedA121218 https://www.senate.gov/isvp/?comm=armed&filename=armedB121218
 CHRG-115shrg36338,2018-12-12,slia00,indian,https://www.senate.gov/isvp/?comm=indian&filename=indian121218
 CHRG-115shrg42873,2018-12-12,ssas00,armed,https://www.senate.gov/isvp/?comm=armed&filename=armedA121218 https://www.senate.gov/isvp/?comm=armed&filename=armedB121218
+CHRG-115jhrg34540,2018-12-14,jcse00,csce,
+CHRG-115jhrg34541,2018-12-17,jcse00,csce,
 CHRG-115shrg35950,2018-12-19,ssva00,vetaff,https://www.senate.gov/isvp/?comm=vetaff&filename=vetaff121918
 CHRG-115shrg89104818,2018-12-31,ssap00,approps,
 CHRG-116shrg48219,2019-01-03,ssap00,approps,
@@ -2963,6 +3091,7 @@ CHRG-116shrg42443,2019-02-06,sscm00,commerce,https://www.senate.gov/isvp/?comm=c
 CHRG-116shrg47615,2019-02-06,spag00,aging,https://www.senate.gov/isvp/?comm=aging&filename=aging020619
 CHRG-116shrg35554,2019-02-07,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy020719
 CHRG-116shrg41390,2019-02-12,sshr00,help,https://www.senate.gov/isvp/?comm=help&filename=help021219
+CHRG-116jhrg35483,2019-02-13,jcse00,csce,https://www.senate.gov/isvp/?comm=csce&filename=csce021319
 CHRG-116shrg35698,2019-02-13,sssb00,smbiz,https://www.senate.gov/isvp/?comm=smbiz&filename=smbiz021319
 CHRG-116shrg35945,2019-02-13,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw021319
 CHRG-116shrg52565,2019-02-13,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce021319
@@ -3075,6 +3204,7 @@ CHRG-116shrg37003,2019-04-04,ssga00,govtaff,https://www.senate.gov/isvp/?comm=go
 CHRG-116shrg52569,2019-04-04,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce040419
 CHRG-116shrg99104880,2019-04-04,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA040419
 CHRG-116shrg36840,2019-04-05,sssb00,smbiz,
+CHRG-116jhrg36090,2019-04-09,jcse00,csce,
 CHRG-116shrg19104898,2019-04-09,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA040919 https://www.senate.gov/isvp/?comm=approps&filename=appropsB040919
 CHRG-116shrg29104929,2019-04-09,ssap00,approps,https://www.senate.gov/isvp/?comm=approps&filename=appropsA040919 https://www.senate.gov/isvp/?comm=approps&filename=appropsB040919
 CHRG-116shrg36263,2019-04-09,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy040919
@@ -3162,6 +3292,8 @@ CHRG-116shrg39916,2019-05-22,ssva00,vetaff,https://www.senate.gov/isvp/?comm=vet
 CHRG-116shrg40363,2019-05-22,ssva00,vetaff,https://www.senate.gov/isvp/?comm=vetaff&filename=vetaff052219
 CHRG-116shrg47419,2019-05-22,spag00,aging,https://www.senate.gov/isvp/?comm=aging&filename=aging052219
 CHRG-116shrg36698,2019-05-23,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff052319
+CHRG-116jhrg36950,2019-05-24,jcse00,csce,
+CHRG-116jhrg36949,2019-06-04,jcse00,csce,
 CHRG-116shrg36699,2019-06-04,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff060419
 CHRG-116shrg36933,2019-06-04,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw060419
 CHRG-116shrg36934,2019-06-04,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw060419
@@ -3183,6 +3315,7 @@ CHRG-116shrg52606,2019-06-12,sscm00,commerce,https://www.senate.gov/isvp/?comm=c
 CHRG-116shrg37802,2019-06-13,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy061319
 CHRG-116shrg38312,2019-06-13,ssaf00,ag,https://www.senate.gov/isvp/?comm=ag&filename=ag061319
 CHRG-116shrg40484,2019-06-13,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign061319
+CHRG-116jhrg36952,2019-06-14,jcse00,csce,
 CHRG-116shrg37803,2019-06-18,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy061819
 CHRG-116shrg39540,2019-06-18,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking061819
 CHRG-116shrg40550,2019-06-18,ssfr00,foreign,https://www.senate.gov/isvp/?comm=foreign&filename=foreign061819
@@ -3229,10 +3362,12 @@ CHRG-116shrg37496,2019-07-17,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&fi
 CHRG-116shrg39541,2019-07-17,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking071719
 CHRG-116shrg47365,2019-07-17,spag00,aging,https://www.senate.gov/isvp/?comm=aging&filename=aging071719
 CHRG-116shrg60883,2019-07-17,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce071719
+CHRG-116jhrg37214,2019-07-18,jcse00,csce,
 CHRG-116shrg37841,2019-07-18,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy071819
 CHRG-116shrg39542,2019-07-18,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking071819
 CHRG-116shrg39842,2019-07-18,ssaf00,ag,https://www.senate.gov/isvp/?comm=ag&filename=ag071819
 CHRG-116shrg38871,2019-07-19,sssb00,smbiz,
+CHRG-116jhrg37215,2019-07-23,jcse00,csce,
 CHRG-116shrg37812,2019-07-23,sseg00,energy,https://www.senate.gov/isvp/?comm=energy&filename=energy072319
 CHRG-116shrg38310,2019-07-23,ssbk00,banking,https://www.senate.gov/isvp/?comm=banking&filename=banking072319
 CHRG-116shrg44378,2019-07-23,ssfi00,finance,https://www.senate.gov/isvp/?comm=finance&filename=finance072319
@@ -3388,6 +3523,7 @@ CHRG-116shrg39944,2020-01-08,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&fi
 CHRG-116shrg40834,2020-01-14,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw011420
 CHRG-116shrg40225,2020-01-15,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw011520
 CHRG-116shrg52611,2020-01-15,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce011520
+CHRG-116jhrg39690,2020-01-22,jcse00,csce,
 CHRG-116shrg40975,2020-01-22,ssev00,epw,https://www.senate.gov/isvp/?comm=epw&filename=epw012220
 CHRG-116shrg52612,2020-01-22,sscm00,commerce,https://www.senate.gov/isvp/?comm=commerce&filename=commerce012220
 CHRG-116shrg39977,2020-01-28,ssga00,govtaff,https://www.senate.gov/isvp/?comm=govtaff&filename=govtaff012820

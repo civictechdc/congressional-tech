@@ -10,7 +10,7 @@ on the manifest says whether the recording exists.
 
     python senate_isvp_probe.py <out.csv>     # resumable: hearings already found are skipped, misses retried
 
-Probes every Senate GPO hearing since the 113th Congress whose status isn't a full recording.
+Probes every Senate and joint GPO hearing since the 113th Congress whose status isn't a full recording.
 Writes one row per hearing: package_id, held_date, committee_code, comm, urls (player links,
 space-separated; empty when nothing was found).
 """
@@ -22,15 +22,17 @@ import requests
 COMM = {"ssaf00": "ag", "ssap00": "approps", "ssas00": "armed", "ssbk00": "banking", "ssbu00": "budget", "sscm00": "commerce",
         "sseg00": "energy", "ssev00": "epw", "ssfi00": "finance", "ssfr00": "foreign", "ssga00": "govtaff", "sshr00": "help",
         "ssju00": "judiciary", "ssra00": "rules", "sssb00": "smbiz", "ssva00": "vetaff", "slia00": "indian", "slin00": "intel",
-        "spag00": "aging", "slet00": "ethics", "jcse00": "csce", "jsec00": "jec", "jjec00": "jec"}
+        "spag00": "aging", "slet00": "ethics",
+        ## joint bodies the Senate studio records: Helsinki Commission, Joint Economic Committee, China commissions
+        "jcse00": "csce", "jsec00": "jec", "jjec00": "jec", "jcpk00": "cecc", "jcuc00": "uscc"}
 ## `comm` -> archive stream name, from the player page's streamInfo table (September 2026)
 STREAM = {"ag": "agriculture", "aging": "aging", "approps": "appropriations", "armed": "armedservices", "banking": "banking",
           "budget": "budget", "commerce": "commerce", "csce": "srs_srs", "energy": "energy", "epw": "environment", "ethics": "ethics",
           "finance": "finance_finance", "foreign": "foreignrelations", "govtaff": "hsgac", "help": "help", "indian": "indianaffairs",
           "intel": "intelligence", "jec": "jointeconomic", "judiciary": "judiciary", "rules": "rules", "smbiz": "smallbusiness",
-          "vetaff": "veteransaffairs"}
+          "vetaff": "veteransaffairs", "cecc": "srs_cecc", "uscc": "srs_uscc"}
 ## `comm` -> live-stream ID, same table; recordings since about mid-2023 sit on this path instead of the archive
-LIVE_ID = {"ag": "2036803", "aging": "2036801", "approps": "2036802", "armed": "2036800", "banking": "2036799", "budget": "2036798", "commerce": "2036779", "csce": "2036777", "energy": "2036797", "epw": "2036783", "ethics": "2036796", "finance": "2036795", "foreign": "2036794", "govtaff": "2036792", "help": "2036793", "indian": "2036791", "intel": "2036790", "jec": "2036789", "judiciary": "2036788", "rules": "2036787", "smbiz": "2036786", "vetaff": "2036785"}
+LIVE_ID = {"cecc": "2036782", "uscc": "2036781", "ag": "2036803", "aging": "2036801", "approps": "2036802", "armed": "2036800", "banking": "2036799", "budget": "2036798", "commerce": "2036779", "csce": "2036777", "energy": "2036797", "epw": "2036783", "ethics": "2036796", "finance": "2036795", "foreign": "2036794", "govtaff": "2036792", "help": "2036793", "indian": "2036791", "intel": "2036790", "jec": "2036789", "judiciary": "2036788", "rules": "2036787", "smbiz": "2036786", "vetaff": "2036785"}
 ARCHIVE = "https://www-senate-gov-msl3archive.akamaized.net/{stream}/{fn}_1/master.m3u8"
 LIVE = "https://www-senate-gov-media-srs.akamaized.net/hls/live/{sid}/{comm}/{fn}/master.m3u8"
 PLAYER = "https://www.senate.gov/isvp/?comm={comm}&filename={fn}"
@@ -78,7 +80,7 @@ def probe_day(comm, d, several):
 def main(out_path):
     videos = {r["package_id"]: r for r in csv.DictReader(open("apps/committee_youtube/data/gpo_hearing_videos.csv"))}
     targets = [r for r in csv.DictReader(open("apps/committee_youtube/data/gpo_hearings.csv"))
-               if r["chamber"] == "senate" and int(r["congress"]) >= 113 and r["held_date"]
+               if r["chamber"] in ("senate", "joint") and int(r["congress"]) >= 113 and r["held_date"]
                and videos.get(r["package_id"], {}).get("status") not in ("full_recording", "full_recording_offsite")]
     per_day = collections.Counter((r["committee_code"], r["held_date"]) for r in targets)
     ## rows with a recording are final; misses are probed again (a later row for the same hearing wins)

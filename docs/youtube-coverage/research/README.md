@@ -42,6 +42,7 @@ The instructions given to the agents, verbatim. File paths in them point to the 
 
 - `research_brief.md`: the 16 research agents, one batch each.
 - `verification_brief.md`: the 6 adversarial verifiers.
+- `archive_brief.md`: the 8 archive-investigation agents (C-SPAN, Wayback Machine, committee archives).
 
 ### `agent_results/`
 
@@ -53,6 +54,8 @@ One JSON line per hearing, as each agent wrote it. Where an agent rewrote a hear
 - `verify_neg_1…2.jsonl`: challengers' outcomes on a random 90 negative verdicts. Same fields as the refuters.
 - `new_channels.jsonl`: official channels the agents found that weren't tracked. All three have since been added to the channel list.
 - `news_search_confirmed.csv` and `news_search_review.csv`: the news-channel search's candidates after the Data API check (see below). `confirmed` rows passed the date gate; `review` rows matched on title only and are almost all other hearings on the same subject.
+
+- `archive_01…08.jsonl`: the archive investigation's verdicts (below), one line per hearing: `package_id`, `verdict` (`found_youtube`, `found_cspan`, `found_archived`, `found_other_site`, `clips_only`, `not_public`, `not_found`), `urls`, `video_ids`, `channel`, `confidence`, `evidence`. `archive_review_decisions.json` records which low-confidence finds were kept and why.
 
 ### `data/`
 
@@ -79,6 +82,11 @@ One JSON line per hearing, as each agent wrote it. Where an agent rewrote a hear
   - `audit.py`: the automatic check of the agents' output.
   - `newssearch.py` and `verify_news.py`: the news-channel search (below).
   - `senate_isvp_probe.py`: the senate.gov archive probe (below).
+  - `web.py`: the shared, cached, rate-limited web client the archive agents used (C-SPAN through Zyte, Wayback CDX and page fetches, video-link extraction). `aggregate_agents.py` turns their verdicts into override rows after a Data API check of every claimed YouTube video; `apply_overrides.py` merges those rows into `hearing_video_overrides.csv`.
+
+## Archive investigation (September 2026)
+
+After the news-channel search, eight agents took the 840 House and joint hearings still without a full recording, grouped by committee, and looked off YouTube: C-SPAN's video library listed by hearing date, the Wayback Machine's copies of each committee's hearing pages and every video reference on them, and the archives those pointed to (DVIDS, the Senate's video archive, csce.gov, host organizations). They found recordings for about a third. Every claimed YouTube video was checked with the Data API; finds under 20 minutes were reviewed by hand (`archive_review_decisions.json`). C-SPAN bot-blocks direct clients, so those requests went through the Zyte API.
 
 ## Senate archive probe (September 2026)
 

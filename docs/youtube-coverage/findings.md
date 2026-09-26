@@ -11,15 +11,16 @@ We compared every official hearing transcript that GPO has published since 2013 
 <!-- table:house_summary -->
 | Outcome | Hearings | Share |
 |---|---|---|
-| Full recording on a tracked committee channel | 8,687 | 90.1% |
-| Full recording only on another YouTube channel (member, news, third party) | 67 | 0.7% |
-| Only clips or opening statements on YouTube | 374 | 3.9% |
-| Never public video (closed session, written-only volume, errata) | 55 | 0.6% |
-| No video found | 443 | 4.6% |
-| Held before the committee's earliest tracked video | 17 | 0.2% |
+| Full recording on a tracked committee channel | 8,768 | 90.9% |
+| Full recording only on another YouTube channel (member, news, third party) | 64 | 0.7% |
+| Full recording off YouTube (senate.gov, C-SPAN, an archive) | 217 | 2.3% |
+| Only clips or opening statements on YouTube | 226 | 2.3% |
+| Never public video (closed session, written-only volume, errata) | 65 | 0.7% |
+| No video found | 298 | 3.1% |
+| Held before the committee's earliest tracked video | 5 | 0.1% |
 <!-- /table:house_summary -->
 
-The gaps are almost entirely historical. **Since the 116th Congress (2019), 98.6% of House and joint hearings have a full recording on YouTube.** Only 42 hearings since 2019 have no video found; among them are field hearings and Appropriations placeholder records.
+The gaps are almost entirely historical. **Since the 116th Congress (2019), 99.1% of House and joint hearings have a full recording.** Only 18 hearings since 2019 have no video found; among them are field hearings and Appropriations placeholder records.
 
 **Senate committees (5,835 hearings):**
 
@@ -44,6 +45,8 @@ Where older House hearings are missing, the main causes are:
 
 Most of what looked missing wasn't. Committees bulk-uploaded their archives months or years after the hearings, under titles like "7/23/2013. EMR. 10:00 AM", "Markup: H.R. 2848", "W&M Hearing: Feb 26, 2014", or a date code plus an EventID. The research pass found 1,278 of these; the matcher's event-ID and date rules now find them automatically, and found a further 134 that the research pass had marked as clips only or no video, almost all of them Ways and Means hearings.
 
+What was still missing was then searched off YouTube. Eight agents took the 840 House and joint hearings without a full recording and checked C-SPAN's video library day by day, the Wayback Machine's copies of each committee's hearing pages, and whatever archive those pages pointed to. They found recordings for about a third of them: on C-SPAN, in the Senate's video archive (which records the Helsinki Commission and the Joint Economic Committee), on the Helsinki Commission's Facebook page, on DVIDS, and on the committees' own YouTube channels as unlisted or untitled uploads that no search returns. What they could not find is gone: every committee's own 2013–2015 stream (Ustream, Windows Media, Granicus) is dead, and the Wayback Machine kept the player pages but never the video.
+
 ## House and joint coverage by Congress
 
 "Found" is the share with a full recording, on a tracked channel or elsewhere.
@@ -51,16 +54,16 @@ Most of what looked missing wasn't. Committees bulk-uploaded their archives mont
 <!-- table:house_congress -->
 | Congress | Years | Hearings | Full recording | Clips only | Not public | None found | Found |
 |---|---|---|---|---|---|---|---|
-| 113th | 2013–14 | 1,791 | 1,229 | 276 | 17 | 256 | 68.6% |
-| 114th | 2015–16 | 1,716 | 1,539 | 76 | 23 | 76 | 89.7% |
-| 115th | 2017–18 | 1,482 | 1,395 | 15 | 2 | 69 | 94.1% |
-| 116th | 2019–20 | 1,404 | 1,370 | 4 | 4 | 25 | 97.6% |
-| 117th | 2021–22 | 1,163 | 1,150 | 1 | 5 | 7 | 98.9% |
-| 118th | 2023–24 | 1,439 | 1,428 | 1 | 2 | 8 | 99.2% |
-| 119th | 2025– | 648 | 643 | 1 | 2 | 2 | 99.2% |
+| 113th | 2013–14 | 1,791 | 1,389 | 168 | 17 | 216 | 77.6% |
+| 114th | 2015–16 | 1,716 | 1,587 | 54 | 23 | 50 | 92.5% |
+| 115th | 2017–18 | 1,482 | 1,462 | 3 | 2 | 14 | 98.7% |
+| 116th | 2019–20 | 1,404 | 1,373 | 1 | 14 | 15 | 97.8% |
+| 117th | 2021–22 | 1,163 | 1,158 | 0 | 5 | 0 | 99.6% |
+| 118th | 2023–24 | 1,439 | 1,434 | 0 | 2 | 3 | 99.7% |
+| 119th | 2025– | 648 | 646 | 0 | 2 | 0 | 99.7% |
 <!-- /table:house_congress -->
 
-The 17 hearings held before a committee's earliest tracked video (14 of them the Congressional-Executive Commission on China's) are counted in the totals but not in the other columns.
+The 5 hearings held before a committee's earliest tracked video are counted in the totals but not in the other columns.
 
 ## House and joint coverage by committee
 
@@ -70,33 +73,33 @@ Sorted from least to most complete. Committees with fewer than 5 GPO hearings ar
 | Committee | Hearings | Full recording | Clips only | Not public | None found | Found | Found since 2019 |
 |---|---|---|---|---|---|---|---|
 | Select Committee on Benghazi | 15 | 4 | 0 | 11 | 0 | 27% | — |
-| Helsinki Commission | 202 | 109 | 8 | 1 | 84 | 54% | 91% of 90 |
-| Joint Economic Committee | 96 | 71 | 25 | 0 | 0 | 74% | 100% of 32 |
-| Homeland Security | 533 | 403 | 111 | 1 | 18 | 76% | 100% of 284 |
-| Congressional-Executive Commission on China | 71 | 55 | 0 | 2 | 0 | 77% | 100% of 40 |
-| Education & Workforce | 388 | 315 | 23 | 10 | 40 | 81% | 99% of 223 |
 | (no committee code in GPO data) | 17 | 14 | 0 | 2 | 1 | 82% | 83% of 12 |
-| Senate Veterans' Affairs (House hearings, miscoded) | 6 | 5 | 1 | 0 | 0 | 83% | 100% of 1 |
-| Armed Services | 678 | 567 | 28 | 0 | 83 | 84% | 99% of 284 |
-| Veterans' Affairs | 456 | 382 | 29 | 2 | 43 | 84% | 100% of 206 |
-| Appropriations | 308 | 263 | 2 | 24 | 19 | 85% | 91% of 140 |
-| Ways and Means | 269 | 238 | 14 | 0 | 17 | 88% | 100% of 83 |
-| Transportation and Infrastructure | 428 | 381 | 15 | 0 | 32 | 89% | 100% of 238 |
-| Foreign Affairs | 1,000 | 915 | 64 | 0 | 20 | 92% | 99% of 348 |
-| Small Business | 503 | 467 | 4 | 0 | 32 | 93% | 94% of 261 |
-| Judiciary | 651 | 605 | 23 | 0 | 23 | 93% | 100% of 366 |
-| Select Committee on the Climate Crisis | 43 | 41 | 0 | 0 | 1 | 95% | 95% of 43 |
-| Natural Resources | 449 | 431 | 9 | 1 | 8 | 96% | 98% of 253 |
-| House Administration | 190 | 183 | 2 | 0 | 5 | 96% | 98% of 129 |
-| Budget | 85 | 83 | 2 | 0 | 0 | 98% | 98% of 60 |
-| Financial Services | 731 | 719 | 3 | 0 | 9 | 98% | 98% of 394 |
-| Oversight and Government Reform | 910 | 896 | 7 | 0 | 7 | 98% | 100% of 466 |
-| Agriculture | 220 | 217 | 1 | 1 | 1 | 99% | 100% of 119 |
-| Energy & Commerce | 868 | 866 | 2 | 0 | 0 | 100% | 100% of 324 |
+| Homeland Security | 533 | 442 | 79 | 1 | 11 | 83% | 100% of 284 |
+| Education & Workforce | 388 | 328 | 18 | 10 | 32 | 85% | 100% of 223 |
+| Armed Services | 678 | 585 | 22 | 0 | 71 | 86% | 100% of 284 |
+| Veterans' Affairs | 456 | 400 | 19 | 2 | 35 | 88% | 100% of 206 |
+| Appropriations | 308 | 272 | 0 | 24 | 12 | 88% | 93% of 140 |
+| Helsinki Commission | 202 | 180 | 0 | 1 | 21 | 89% | 98% of 90 |
+| Transportation and Infrastructure | 428 | 384 | 14 | 0 | 30 | 90% | 100% of 238 |
+| Judiciary | 651 | 609 | 12 | 10 | 20 | 94% | 97% of 366 |
+| Foreign Affairs | 1,000 | 937 | 50 | 0 | 12 | 94% | 100% of 348 |
+| Small Business | 503 | 473 | 1 | 0 | 29 | 94% | 95% of 261 |
+| Congressional-Executive Commission on China | 71 | 67 | 0 | 2 | 0 | 94% | 100% of 40 |
+| Select Committee on the Climate Crisis | 43 | 42 | 0 | 0 | 0 | 98% | 98% of 43 |
+| Natural Resources | 449 | 439 | 2 | 1 | 7 | 98% | 99% of 253 |
+| House Administration | 190 | 186 | 0 | 0 | 4 | 98% | 99% of 129 |
+| Ways and Means | 269 | 264 | 2 | 0 | 3 | 98% | 100% of 83 |
+| Budget | 85 | 84 | 1 | 0 | 0 | 99% | 100% of 60 |
+| Oversight and Government Reform | 910 | 900 | 4 | 0 | 6 | 99% | 100% of 466 |
+| Agriculture | 220 | 218 | 0 | 1 | 1 | 99% | 100% of 119 |
+| Financial Services | 731 | 727 | 1 | 0 | 3 | 99% | 100% of 394 |
 | Science,Space,and Technology | 474 | 473 | 1 | 0 | 0 | 100% | 100% of 210 |
+| Energy & Commerce | 868 | 868 | 0 | 0 | 0 | 100% | 100% of 324 |
+| Joint Economic Committee | 96 | 96 | 0 | 0 | 0 | 100% | 100% of 32 |
 | Rules | 18 | 18 | 0 | 0 | 0 | 100% | 100% of 16 |
 | Select Committee on the January 6th Attack | 10 | 10 | 0 | 0 | 0 | 100% | 100% of 10 |
 | Select Committee on the Modernization of Congress | 21 | 21 | 0 | 0 | 0 | 100% | 100% of 21 |
+| Senate Veterans' Affairs (House hearings, miscoded) | 6 | 6 | 0 | 0 | 0 | 100% | 100% of 1 |
 <!-- /table:house_committee -->
 
 Notes:
@@ -161,39 +164,43 @@ What the Senate table means:
 
 **Ways and Means.**
 - **Found, late:** the committee's 2013–2018 hearings are on `@waysmeanscmte`, uploaded in March–July 2019 under titles like "W&M Hearing: Feb 26, 2014" with a date code in the description. The research pass missed them because they carry no topic words and were uploaded years after the hearings. The matcher's date rule now finds 138 of them, and coverage rose from 39% to 88%.
-- **Still missing:** 17 hearings, mostly 2015–16 field hearings and subcommittee hearings the 2019 upload skipped. The WordPress site's 2016–18 hearing pages embed YouTube IDs that are now private or deleted.
+- **Found by file name:** each 2019 re-upload's description is the House's raw recording file name, such as `10W M1100 130717 1000` (room 1100 Longworth, July 17, 2013, 10:00). Matching room and start time against the transcript told apart the untitled "W&M Hearing: <date>" and "<date> PM" videos for 27 more hearings, including days with a markup and a hearing.
+- **Still missing:** a handful of 2015–16 field hearings and subcommittee hearings the 2019 upload skipped. The WordPress site's 2016–18 hearing pages embed YouTube IDs that are now private or deleted.
 - **Elsewhere:** a few 2014 trade subcommittee hearings survive only on Devin Nunes's channel, 2016 tax hearings on the Tax Revolution Institute's, and one each on the Foster Youth Caucus, the City of Auburn and news channels.
 
 **Education & Workforce (2013–14).** Every hearing page on edworkforce.house.gov links an "Archived Webcast" YouTube video, but all of those videos are now private. Only member clips (mostly Rep. Rokita's) remain public.
 
 **Veterans' Affairs.**
 - **Late uploads (found):** `@HouseVetsAffairs` bulk-uploaded 2013 to April 2014 hearings in July 2014, and early-2015 hearings in 2016, under titles like "4/9/14 FC".
-- **Lost:** about 30 of the committee's original uploads from mid-2014 through 2015 are now private or deleted. Mid-2015 hearings were streamed on Ustream only.
-- **Field hearings:** where they exist at all, they are on local community TV channels.
+- **Lost:** about 30 of the committee's original uploads from mid-2014 through 2015 are now private or deleted. Mid-2015 hearings were streamed on Ustream only. C-SPAN is the only public record for 20 hearings from May–November 2014 and April–July 2015, usually split into panels.
+- **Field hearings:** none from 2013–2017 has video anywhere. Where later ones exist at all, they are on local community TV channels.
 
-**Armed Services (2013–14).** Hearings were streamed live but never archived publicly. The channel's public uploads start in January 2015, apart from about 11 hearings back-uploaded later. Some full recordings survive on DARPA's channel, a third-party DoD video archive (`@Galactic007A`), and a witness's channel. The 2009–2012 Republican channel `@HASCRepublicans` has earlier hearings.
+**Armed Services (2013–14).** The committee hosted its own hearing video on Granicus, linked as "Watch Live" from every hearing page. The Wayback Machine has the player pages, but the media files are gone (the archive's playlists point to a dead Windows Media server). The channel's public uploads start in January 2015, apart from about 11 hearings back-uploaded later. C-SPAN has 14 of the missing hearings, DVIDS has two full recordings and many short news packages, and a few more survive on DARPA's channel, a third-party DoD video archive (`@Galactic007A`), and a witness's channel. The 2009–2012 Republican channel `@HASCRepublicans` has earlier hearings.
 
-**Homeland Security (2013 to mid-2015).** The majority channel only began posting full hearings in September 2015. Before then, the Democrats' channel posted only the ranking member's opening statements, so 108 hearings from the 113th and 114th Congresses are clips-only.
+**Homeland Security (2013 to mid-2015).** The majority channel only began posting full hearings in September 2015. Before then, the Democrats' channel posted only the ranking member's opening statements. C-SPAN carried 32 of the missing hearings, mostly full-committee ones; the committee's own archived-video links of the era point to Windows Media and Ustream streams that are gone. Six later hearings turned out to be unlisted uploads on `@HouseHomeland`, found only through the hearing pages that embed them.
 
 **Foreign Affairs.**
-- **Late uploads (found):** `@HouseForeignGOP` re-uploaded many 2012–2015 hearings in 2016 with "(EventID=…)" in the titles.
-- **Clips only:** from April 2014 to August 2015 it posted only chair clips. Where the 2016 archive skipped an event, only clips remain.
-- **Markups:** these are titled by bill number only ("Markup: H.R. 2848").
+- **Late uploads (found):** `@HouseForeignGOP` re-uploaded many 2012–2015 hearings in 2016 with "(EventID=…)" in the titles. Two more are unlisted, so no search finds them; the hearing pages embed them.
+- **Clips only:** from April 2014 to August 2015 it posted only chair clips. The full hearings of that period were Ustream recordings embedded on the hearing pages, and all of those are dead. C-SPAN covered about a third of the 2014–15 hearings.
+- **Markups:** these are titled by bill number only ("Markup: H.R. 2848"). The 2019 and 2023 markups are embedded on the minority's site.
 
 **Transportation and Infrastructure (2013–2015).** Hearings streamed on Ustream, and the recordings embedded on the committee site no longer play. `@transport` posted member clips and a few hand-picked full hearings until it started livestreaming in March 2014.
 
 **Natural Resources.**
-- **2013–14 back catalogue:** the Republican channel uploaded it in 2015–16, titled only with a date and subcommittee code ("7/23/2013. EMR. 10:00 AM"). The real title is in the description.
+- **2013–14 back catalogue:** the Republican channel uploaded it in 2015–16, titled only with a date and subcommittee code ("7/23/2013. EMR. 10:00 AM"). The real title is in the description. Four more of these were found by reading the archived hearing pages, where the matcher had settled for a clip.
+- **Dead streams:** the 2013–15 hearing pages otherwise link Ustream, Windows Media playlists on edgeboss.net, or an Akamai Flash stream for field hearings; the Wayback Machine kept 99 playlists and no video.
 - **Since 2019:** titles are generic ("Oversight Hearing | Full Committee"). The EventID in the description settles them.
 - **Missing:** six 2013–14 hearings were never uploaded.
 
-**Judiciary.** `@JudiciaryDems` uploaded its 2012–2015 archive in September–November 2015 with "(EventID=…)" titles. That covers about 60% of the period. The rest have only member clips.
+**Judiciary.** `@JudiciaryDems` uploaded its 2012–2015 archive in September–November 2015 with "(EventID=…)" titles. That covers about 60% of the period. The rest were Ustream recordings on the hearing pages, all dead; C-SPAN has 13 of them, including both days of the 2014 music licensing hearings. The 2019 impeachment markup is one proceeding printed as eleven volumes; volume I holds the markup and its recordings, and volumes II–XI are documents submitted for the record, so they count as not public.
 
 **Financial Services, Science, Budget, House Administration, Agriculture, Appropriations.** Each bulk-uploaded its 2011–2015 archive in 2015–2018, with EventIDs or date codes in titles and descriptions. Almost everything is there; it was just posted outside the original matcher's date window.
 
-**Small Business.** Field hearings were almost never posted by the committee. When they exist at all, they are on local community TV or news channels.
+**Small Business.** Field hearings were almost never posted by the committee; none from 2013–2019 has video anywhere. Several "clips" of 8–14 minutes turned out to be whole markups and organizational meetings: the transcripts show the meetings lasted that long.
 
-**Joint Economic Committee (2013–14).** Only 4–10 minute member clips were posted. Two hearings were uploaded years later, one of them seven years after it was held.
+**Joint Economic Committee (2013–14).** Only 4–10 minute member clips were posted to YouTube. The Senate Recording Studio recorded the hearings, though: 25 of them are in the Senate's archive under the committee's own stream name, and the committee's site links more.
+
+**Helsinki Commission.** Its events in Senate rooms in 2013–2015 are in the Senate's archive (22 found by probing it), and its 2017–2019 briefings are on the Commission's Facebook page, which its website embeds (43 found through archived pages). Briefings held in House rooms in 2014–2016 had no webcast at all. The Facebook finds can't be checked while logged out, so they carry medium confidence.
 
 ## YouTube channels
 
@@ -333,17 +340,27 @@ Every House and joint hearing since 2013 still without a full recording (825) wa
 
 The rate confirms the earlier estimate: about 1% of negatives hid a full recording somewhere on YouTube. The remaining negatives were then investigated off YouTube (next).
 
+### The archive investigation
+
+Eight agents took the 840 House and joint hearings still without a full recording, about 100 each grouped by committee, with the earlier research evidence for each hearing. For each one they listed C-SPAN's programs for the hearing date (and the next day), found the committee's own hearing page for the event in the Wayback Machine and followed every video reference on it, and checked archives the evidence pointed to (DVIDS, the Senate's video archive, the Helsinki Commission's site, host organizations). The brief is `research/agent_briefs/archive_brief.md`; the verdicts, one line per hearing with the evidence, are `research/agent_results/archive_01…08.jsonl`.
+
+- **Finds:** recordings for about a third of the hearings. C-SPAN has 120; the Senate's archive has 52 (Joint Economic Committee and Helsinki Commission events, found by probing the archive by date); the Helsinki Commission's Facebook page has 43; DVIDS has 2; and 96 are on YouTube after all, almost all on the committees' own channels, as unlisted uploads, untitled archive uploads, or videos filed under the wrong hearing.
+- **Checks:** every claimed YouTube video was looked up in the Data API. Seventeen finds under 20 minutes, or with no length on record, were reviewed by hand: ten are whole proceedings that ran only minutes (organizational meetings, markups, a two-minute Member Day hearing, a hearing that went into closed session after five minutes) or unlisted uploads the API lists without a length, and were kept; two Ways and Means re-uploads whose file-name room didn't match the transcript and five Facebook embeds that can't be verified were dropped. C-SPAN finds were checked against the program page's date and length and the transcript's gavel times; where C-SPAN has only one session of a two-session print, or a session runs short, the find is marked medium.
+- **What's gone:** the committees' own 2013–2015 streams. Ustream recordings (Judiciary, Foreign Affairs, Transportation, Veterans' Affairs, Appropriations, Natural Resources), Windows Media playlists on edgeboss.net (Homeland Security, Education & Workforce, Natural Resources), Granicus (Armed Services) and an Akamai Flash stream (Natural Resources field hearings) are all dead, and the Wayback Machine holds the player pages and playlists but never the video. Field hearings of every committee came up empty.
+- **What was learned about the data:** committees tag videos with the wrong event ID more often than expected (Financial Services, Small Business, Ways and Means), which is why the matcher now discounts a late, mismatched tag. Several GPO held dates are wrong by days or months. C-SPAN's listings include placeholder entries with a committee's name and no video.
+
 ### The weekly matcher
 
-- **One video per hearing.** Each video is assigned to its best-evidenced hearing; hearings on different days can't share one. This retires the research snapshot's 74 "unconfirmed" automatic matches, where the old matcher had given one video to consecutive-day hearings with similar titles. Thirty-nine hearings share a video with another hearing on the same day (joint hearings, or several GPO packages for one proceeding) and are flagged.
+- **One video per hearing.** Each video is assigned to its best-evidenced hearing; hearings on different days can't share one. This retires the research snapshot's 74 "unconfirmed" automatic matches, where the old matcher had given one video to consecutive-day hearings with similar titles. 32 hearings share a video with another hearing on the same day (joint hearings, or several GPO packages for one proceeding) and are flagged.
 - **Research verdicts are kept unless outweighed.** A reviewed "found" verdict always stands. A reviewed "no video" or "clips only" verdict gives way only to strong evidence (a Congress.gov link or event ID) or to a dated recording of 30 minutes or more, and rows the verifiers rejected are locked.
 - **Spot check of the overturned verdicts.** A random sample of the Ways and Means re-uploads was checked by hand: each is a 90–200 minute video titled with the hearing's date, and the description carries a `YYMMDD` code that confirms the date where the title has a typo.
 
 **Known limitations:**
 - **Multi-hearing volumes count as found if any hearing day in them has video.** The `volume_days_with_video` flag says how many days were covered.
 - **Some archive uploads are audio only.** A few of Appropriations' 2015 archive uploads say "This is an audio recording" and are flagged `audio_only`.
-- **Automatic matches weren't individually re-verified.** The 7,399 automatic matches got the one-video-per-hearing check and spot checks during development.
+- **Automatic matches weren't individually re-verified.** The 7,400 automatic matches got the one-video-per-hearing check and spot checks during development.
 - **Senate recordings are confirmed by name, not content.** The senate.gov probe checks that a recording exists for the committee and day; it doesn't tell same-day hearings apart or check length.
+- **Off-YouTube finds are only as durable as their hosts.** The C-SPAN, DVIDS and senate.gov recordings were confirmed live in September 2026; the 43 Facebook videos were confirmed only through archived copies of their pages.
 
 ## Method
 
