@@ -15,6 +15,9 @@ Evidence, strongest first (score in brackets):
   [ 75] Congress.gov links the video from the committee's only meeting that day.
   [ 70] The video names the hearing's date, and it's the committee's only hearing that day.
   [ 60] Posted 1 day before to 3 days after, with a similar title.
+  [ 55] Event ID or Congress.gov evidence for a video posted more than a week after the hearing
+        whose title doesn't match it, or matches a hearing held the week it was posted
+        (committees mistag videos; see `stale`).
   [ 50] Posted 1 day before to 3 days after, naming the hearing's subcommittee.
 
 Rules:
@@ -167,10 +170,29 @@ def load_meetings(path):
     return out
 
 
-def candidates(h, videos, meetings, hearings_on_day):
+def stale(score, v, last_day, title_w, week_titles):
+    """Committees mistag videos with another hearing's event ID, and Congress.gov links follow the
+    tag. A video uploaded more than a week after this hearing ranks below a same-week title match
+    (60) when its title doesn't match this hearing, or matches a hearing held the week it was
+    uploaded; the hearing it was really posted for then keeps it. Back-catalogue uploads keep
+    their strength: their titles name the hearing and no other hearing claims that week."""
+    if not v.get("published") or (dt.date.fromisoformat(v["published"]) - last_day).days <= 7:
+        return score
+    vw = v.get("words") or words(v.get("title"))
+    if similarity(title_w, vw) < 0.5 or any(similarity(t, vw) >= 0.5 for t in week_titles(v["published"])):
+        return 55
+    return score
+
+
+def candidates(h, videos, meetings, hearings_on_day, titles_on_day):
     """(score, method, video) evidence for one hearing."""
     code, dates = h["committee_code"], h["_dates"]
     title_w = words(h["title"])
+
+    def week_titles(published):
+        """Titles of this committee's other hearings held in the week a video was uploaded (1 day after to 3 days before)."""
+        pub = dt.date.fromisoformat(published)
+        return [t for k in range(-1, 4) for d in [(pub - dt.timedelta(days=k)).isoformat()] if d not in dates for t in titles_on_day.get((code, d), [])]
     sub_w = [words(re.sub(r"^.*?Subcommittee on ", "", s)) for s in h["subcommittees"].split(";") if s.strip()]
     volume = bool(h["hearing_dates"])
     by_id = {v["videoId"]: v for v in videos}
@@ -199,16 +221,18 @@ def candidates(h, videos, meetings, hearings_on_day):
                 if score >= 90:
                     event_ids.add(m["eventId"])
                 for vid in m["videos"]:
-                    out.append((score, "congress.gov link", by_id.get(vid) or {"videoId": vid, "channel": "", "published": day, "duration": None, "audio_only": False}))
+                    v = by_id.get(vid) or {"videoId": vid, "channel": "", "published": day, "duration": None, "audio_only": False}
+                    out.append((stale(score, v, dt.date.fromisoformat(max(dates)), title_w, week_titles), "congress.gov link", v))
                 for url in m["offsite"]:
                     out.append((score, "congress.gov link (senate.gov)", {"videoId": url, "channel": "senate.gov", "published": day, "duration": None, "audio_only": False, "offsite": True}))
 
     first_day = min(dates)
+    last_day = dt.date.fromisoformat(max(dates))
     for v in videos:
         if v["published"] < (dt.date.fromisoformat(first_day) - dt.timedelta(days=1)).isoformat():
             continue  # uploaded before the hearing
         if event_ids & v["event_ids"]:
-            out.append((95, "event ID in video", v))
+            out.append((stale(95, v, last_day, title_w, week_titles), "event ID in video", v))
             continue
         for day in dates:
             if day in v["dates"]:
@@ -243,6 +267,10 @@ def main(output_path, tinydb_dir, channels_csv_path, gpo_path, meetings_path, ov
         h["committee_code"] = ALIAS.get(h["committee_code"], h["committee_code"])
         h["_dates"] = sorted(set(filter(None, (h.get("hearing_dates") or "").split(";")))) or [d for d in [h["held_date"]] if d]
     hearings_on_day = collections.Counter((h["committee_code"], d) for h in hearings for d in h["_dates"])
+    titles_on_day = collections.defaultdict(list)
+    for h in hearings:
+        for d in h["_dates"]:
+            titles_on_day[(h["committee_code"], d)].append(words(h["title"]))
 
     overrides = {}
     if not no_overrides and Path(overrides_path).exists():
@@ -255,7 +283,7 @@ def main(output_path, tinydb_dir, channels_csv_path, gpo_path, meetings_path, ov
     for h in hearings:
         if not h["_dates"]:
             continue  # GPO gave no hearing date; nothing to match on
-        for score, method, v in candidates(h, videos.get(h["committee_code"], []), meetings, hearings_on_day):
+        for score, method, v in candidates(h, videos.get(h["committee_code"], []), meetings, hearings_on_day, titles_on_day):
             if v.get("offsite"):
                 offsite[h["package_id"]][v["videoId"]] = max(score, offsite[h["package_id"]].get(v["videoId"], 0))
                 continue

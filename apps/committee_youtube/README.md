@@ -48,6 +48,7 @@ Each GPO hearing is matched to a recording using this evidence, strongest first:
 4. title or subcommittee similarity within a few days.
 
 Rules:
+- **Mistagged videos:** committees sometimes tag a video with another hearing's event ID, and Congress.gov's link follows the tag. Event-ID or Congress.gov evidence for a video posted more than a week after the hearing ranks below a same-week title match when the video's title doesn't match the hearing, or matches a hearing held the week it was posted.
 - **One video per hearing:** each video goes to its best-matching hearing. Hearings on the same day may share one.
 - **Clips:** a video found by weaker evidence (no Congress.gov link or event ID) counts as a clip when it's under 20 minutes, or under 30 minutes with a member-clip title ("Wyden Q&A …", "Chairman Smith Questions Witnesses …", "Opening Statement …"). Senate party channels post question rounds of that length for most hearings.
 - **Multi-hearing Appropriations volumes:** these are matched on each hearing day, read from the transcript (the `hearing_dates` column). About a quarter of them are scanned PDFs with no text, so only their GPO date is used.
