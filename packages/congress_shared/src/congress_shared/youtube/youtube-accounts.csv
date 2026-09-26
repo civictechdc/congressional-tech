@@ -1,23 +1,30 @@
 committee,systemCode,handle,secondary
-Agriculture,hsag00,@AgRepublicans,@HouseAgDems
+Agriculture,hsag00,@AgRepublicans,@HouseAgDems;@houseagriculturecommittee2800
 Appropriations,hsap00,@HouseAppropriationsCommittee,
-Armed Services,hsas00,@HouseArmedServices,@HASCDems
+Armed Services,hsas00,@HouseArmedServices,@HASCDems;@armedservices8789;@armedservicesGOP
 Budget,hsbu00,@HouseBudgetGOP,@HouseBudgetDems
 Education & Workforce,hsed00,@EdWorkforceCmte,@EdWorkforceDemocrats
 Energy & Commerce,hsif00,@energyandcommerce,@EnergyCommerce
-Financial Services,hsba00,@USHouseFSC,@GOPFinancialServices
+Financial Services,hsba00,@USHouseFSC,@GOPFinancialServices;@fscdems9522;@fscdems484;@u.s.housecommitteeonfinanc8492
 Foreign Affairs,hsfa00,@houseforeign,@HouseForeignGOP
-Homeland Security,hshm00,@HouseHomeland,@HomelandDems
-House Administration,hsha00,@CommitteeonHouseAdministration,@CHADemsVideos
-Judiciary,hsju00,@USHouseJudiciaryGOP,@JudiciaryDems
+Homeland Security,hshm00,@HouseHomeland,@HomelandDems;@HomelandSecurityCommitteeGOP
+House Administration,hsha00,@CommitteeonHouseAdministration,@CHADemsVideos;@committeeonhouseadministra952;@CHADemocrats
+Judiciary,hsju00,@USHouseJudiciaryGOP,@JudiciaryDems;@housejudiciarydemocrats8939;@housejudiciarycommittee5448
 Natural Resources,hsii00,@NaturalResourcesGOP,@NRDems
-Oversight and Government Reform,hsgo00,@OversightandGovernmentReform,@OversightDems
+Oversight and Government Reform,hsgo00,@OversightandGovernmentReform,@OversightDems;@COVIDOversight;@covidselectdems-ru2bf;@CommitteeonOversight;@OversightMaj;@OversightRepublicans
 Rules,hsru00,@HouseRulesCommittee,@RulesCommitteeDemocrats
-"Science,Space,and Technology",hssy00,@housescience,@HouseScienceGOP
-Small Business,hssm00,@HouseSmallBiz,@HouseSmallBizCommitteeDems
+"Science,Space,and Technology",hssy00,@housescience,@HouseScienceGOP;@HouseScienceCommitteeDemocrats
+Small Business,hssm00,@HouseSmallBiz,@HouseSmallBizCommitteeDems;@HouseSmallBizDems
 Veterans' Affairs,hsvr00,@HouseVeteransAffairs,@HouseVetsAffairs;@VetAffairsDems
 Ways and Means,hswm00,@WaysandMeansCommittee,@waysmeanscmte;@waysandmeansdems
 Transportation and Infrastructure,hspw00,@transport,@transportdems
-Intelligence,hlig00,@HouseIntel,
-Ethics,hsso00,@HouseEthics,
+Intelligence,hlig00,@HouseIntel,@gophouseintelligencecommit715;@selectcommitteeonintellige289
+Ethics,hsso00,@HouseEthics,@ushrselectedcommitteeheari1213
 Select Committee on the CCP,hlzs00,@ChinaSelect,@SelectCommitteeontheCCPDems
+Select Committee on the Climate Crisis,hlcn00,@HouseClimateCrisis,
+Select Committee on the Modernization of Congress,hlmh00,@selectcommitteeonthemodern9383,
+Select Committee on Benghazi,hlzi00,@theu.s.houseselectcommitte1053,@selectcommitteeonbenghazid1588
+Select Committee on the January 6th Attack,hlij00,@January6thCmte,
+Select Committee on Economic Disparity and Fairness in Growth,hlef00,@FairGrowthCmte,@houseselectcommitteeonthee5480
+Select Committee on Energy Independence and Global Warming,hlgw00,@GlobalwarmingGOP,
+Tom Lantos Human Rights Commission,hotl00,@TomLantosHumanRights,
