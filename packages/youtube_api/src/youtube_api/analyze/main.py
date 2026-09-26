@@ -40,6 +40,8 @@ class EventIdReport:
     congress_number: int
     control: str
     chamber: str = "house"
+    ## videos with captions published (YouTube's contentDetails.caption flag)
+    with_captions: int = 0
 
 
 def main(
@@ -173,6 +175,11 @@ def generate_report_for_congress_number(
         or re.search(EVENT_ID_REGEX, video["title"], re.IGNORECASE)
     )
 
+    ## metric #3: videos with captions published
+    with_captions_count = sum(
+        1 for video in videos_in_date_range if video.get("caption") is True
+    )
+
     row = EventIdReport(
         ## committee name, repeats for multiple handles
         committee_name,
@@ -182,6 +189,7 @@ def generate_report_for_congress_number(
         congress_number,
         meta[chamber],  ## party in control of this chamber
         chamber,
+        with_captions_count,
     )
     logging.info(f"Reporting {row}")
     return row

@@ -31,7 +31,13 @@ jobs:
           # pass --channels-csv-path explicitly (finished layout) and write the
           # TinyDBs + report into apps/committee_youtube/data so the "Upload to
           # GitHub" step below can commit them.
+          #
+          # set -e: if youtube-fetch exits non-zero (e.g. a channel handle in the
+          # CSV no longer resolves), fail the job and skip the commit so the
+          # breakage is visible. Fetching is incremental, so the next run after
+          # the fix picks up everything that was missed.
           runCmd: |
+            set -eu
             export PATH="$HOME/.local/bin:$PATH"
 
             CSV="packages/congress_shared/src/congress_shared/youtube/youtube-accounts.csv"
