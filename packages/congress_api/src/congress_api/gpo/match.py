@@ -317,7 +317,7 @@ def main(output_path, tinydb_dir, channels_csv_path, gpo_path, meetings_path, ov
                 note = f"research verdict was {o['verdict']}; newer evidence found a recording"
             if any(a[1] == "research" for a in got):
                 source, note = "research", o.get("note", "")
-        elif o:
+        elif o and o["verdict"] != "found_offsite":  # an offsite verdict is applied below, after the automatic statuses
             status = {"partial_only": "clips_only", "no_video_found": "no_video_found", "not_public": "not_public"}.get(o["verdict"], o["verdict"])
             source, note = "research", o.get("note", "")
         elif clips.get(pid):

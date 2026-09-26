@@ -33,7 +33,7 @@ def summary(rows, tracked, member):
             c[r["status"]] += 1
     lines = [("Full recording on a tracked committee channel", c["tracked"]),
              ("Full recording only on another YouTube channel (member, news, third party)", c["member"] + c["other"]),
-             ("Full recording off YouTube (C-SPAN, an archive, another site)", c["full_recording_offsite"]),
+             ("Full recording off YouTube (senate.gov, C-SPAN, an archive)", c["full_recording_offsite"]),
              ("Only clips or opening statements on YouTube", c["clips_only"]),
              ("Never public video (closed session, written-only volume, errata)", c["not_public"]),
              ("No video found", c["no_video_found"]),

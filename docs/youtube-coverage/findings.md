@@ -4,7 +4,7 @@
 
 ## Summary
 
-We compared every official hearing transcript that GPO has published since 2013 against the videos on every official committee YouTube channel we could find: 119 channels for 52 committees and commissions, holding 67,244 videos. The matching combines automatic evidence (Congress.gov video links, event IDs and dates in video text, upload-window title similarity) with the reviewed verdicts of a 16-agent research pass and a 6-agent adversarial verification. It runs every week, so these numbers move as committees upload.
+We compared every official hearing transcript that GPO has published since 2013 against the videos on every official committee YouTube channel we could find: 119 channels for 52 committees and commissions, holding 67,244 videos. The matching combines automatic evidence (Congress.gov video links, event IDs and dates in video text, upload-window title similarity) with the reviewed verdicts of a 16-agent research pass and a 6-agent adversarial verification. For the Senate, which hosts its own video, it also checks the Senate's player. It runs every week, so these numbers move as committees upload.
 
 **House and joint committees (9,643 hearings):**
 
@@ -27,14 +27,15 @@ The gaps are almost entirely historical. **Since the 116th Congress (2019), 98.6
 | Outcome | Hearings | Share |
 |---|---|---|
 | Full recording on a tracked committee channel | 345 | 5.9% |
-| Only clips or opening statements on YouTube | 466 | 8.0% |
+| Full recording off YouTube (senate.gov, C-SPAN, an archive) | 5,119 | 87.7% |
+| Only clips or opening statements on YouTube | 13 | 0.2% |
 | Never public video (closed session, written-only volume, errata) | 49 | 0.8% |
-| No video found | 3,465 | 59.4% |
-| Held before the committee's earliest tracked video | 826 | 14.2% |
-| Committee has no YouTube channel | 684 | 11.7% |
+| No video found | 211 | 3.6% |
+| Held before the committee's earliest tracked video | 23 | 0.4% |
+| Committee has no YouTube channel | 75 | 1.3% |
 <!-- /table:senate_summary -->
 
-**Senate hearings are not on YouTube, by design.** The Senate hosts committee video on its own player at senate.gov. Every one of the 1,381 video links in Congress.gov's Senate meeting records points there, while all 7,538 House links point to YouTube. Senate committees' YouTube channels are party channels that carry members' statements and a selection of hearings. The one exception is Environment and Public Works, whose Democrats' channel has livestreamed hearings since 2011.
+**Senate hearings are on the Senate's own player, not YouTube.** The Senate Recording Studio hosts committee video at senate.gov and names each recording after the committee and date. Congress.gov links those recordings from Senate meeting records since late 2023 (1,381 links, none to YouTube, while all 7,538 House links go to YouTube). For everything earlier or unlinked, a probe of the player by committee and date found recordings for 4,786 of 5,115 hearings. Senate committees' YouTube channels are party channels carrying members' statements and a selection of hearings; only Environment and Public Works' Democrats have livestreamed hearings there since 2011.
 
 Where older House hearings are missing, the main causes are:
 - **They were never uploaded to YouTube.** Before 2015 many committees streamed on Ustream, Windows Media or Facebook, and those recordings are gone or not on YouTube.
@@ -106,55 +107,55 @@ Notes:
 
 ## Senate coverage
 
-The Senate numbers cover 16 committees with 32 YouTube channels, found by checking each committee's website and searching YouTube for the committee, its party caucuses and its chairs since 2007. The discovery notes are in `research/data/senate_channels.csv`.
+The Senate numbers cover 16 committees with 32 YouTube channels, found by checking each committee's website and searching YouTube for the committee, its party caucuses and its chairs since 2007 (notes in `research/data/senate_channels.csv`), plus the Senate's own player. "On senate.gov" counts recordings found there, through Congress.gov's links or the archive probe (`research/scripts/as_run/senate_isvp_probe.py`); "Full recording" includes them.
 
 <!-- table:senate_congress -->
-| Congress | Years | Hearings | Full recording | Clips only | Not public | None found | Before channel | No channel | Found |
-|---|---|---|---|---|---|---|---|---|---|
-| 113th | 2013–14 | 987 | 7 | 88 | 2 | 557 | 278 | 55 | 0.7% |
-| 114th | 2015–16 | 1,010 | 4 | 60 | 16 | 688 | 136 | 106 | 0.4% |
-| 115th | 2017–18 | 960 | 2 | 73 | 6 | 673 | 83 | 123 | 0.2% |
-| 116th | 2019–20 | 696 | 12 | 69 | 5 | 489 | 49 | 72 | 1.7% |
-| 117th | 2021–22 | 1,051 | 88 | 79 | 17 | 599 | 137 | 131 | 8.4% |
-| 118th | 2023–24 | 794 | 161 | 67 | 1 | 331 | 128 | 106 | 20.3% |
-| 119th | 2025– | 337 | 71 | 30 | 2 | 128 | 15 | 91 | 21.1% |
+| Congress | Years | Hearings | Full recording | Clips only | Not public | None found | On senate.gov | Before channel | No channel | Found |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 113th | 2013–14 | 987 | 935 | 3 | 2 | 30 | 928 | 17 | 0 | 94.7% |
+| 114th | 2015–16 | 1,010 | 913 | 4 | 16 | 69 | 909 | 0 | 8 | 90.4% |
+| 115th | 2017–18 | 960 | 903 | 3 | 6 | 41 | 901 | 2 | 5 | 94.1% |
+| 116th | 2019–20 | 696 | 659 | 3 | 5 | 26 | 647 | 0 | 3 | 94.7% |
+| 117th | 2021–22 | 1,051 | 1,004 | 0 | 17 | 23 | 916 | 0 | 7 | 95.5% |
+| 118th | 2023–24 | 794 | 753 | 0 | 1 | 18 | 592 | 4 | 18 | 94.8% |
+| 119th | 2025– | 337 | 297 | 0 | 2 | 4 | 226 | 0 | 34 | 88.1% |
 <!-- /table:senate_congress -->
 
 By committee, sorted from least to most complete. "Veterans' Affairs" at the bottom is seven joint House–Senate veterans' service organization hearings printed by the Senate under the House committee's code.
 
 <!-- table:senate_committee -->
-| Committee | Hearings | Full recording | Clips only | Not public | None found | Before channel | No channel | Found | Found since 2019 |
-|---|---|---|---|---|---|---|---|---|---|
-| (no committee code in GPO data) | 66 | 0 | 0 | 0 | 0 | 0 | 66 | 0% | 0% of 60 |
-| Agriculture, Nutrition, and Forestry | 151 | 0 | 0 | 1 | 0 | 0 | 150 | 0% | 0% of 93 |
-| Appropriations | 625 | 0 | 1 | 2 | 561 | 61 | 0 | 0% | 0% of 260 |
-| Finance | 307 | 0 | 20 | 0 | 287 | 0 | 0 | 0% | 0% of 138 |
-| Foreign Relations | 436 | 0 | 0 | 3 | 0 | 433 | 0 | 0% | 0% of 182 |
-| Joint Select Solvency of Multiemployer Pension Plans | 5 | 0 | 0 | 0 | 0 | 0 | 5 | 0% | — |
-| Judiciary | 277 | 0 | 0 | 0 | 2 | 275 | 0 | 0% | 0% of 152 |
-| Rules and Administration | 46 | 0 | 0 | 1 | 0 | 0 | 45 | 0% | 0% of 37 |
-| Select Intelligence | 77 | 0 | 0 | 0 | 0 | 0 | 77 | 0% | 0% of 37 |
-| Veterans' Affairs (Senate) | 184 | 0 | 0 | 2 | 175 | 7 | 0 | 0% | 0% of 114 |
-| Homeland Security and Governmental Affairs | 491 | 1 | 42 | 13 | 435 | 0 | 0 | 0% | 0% of 211 |
-| Armed Services | 346 | 1 | 0 | 4 | 0 | 0 | 341 | 0% | 1% of 177 |
-| Indian Affairs | 185 | 6 | 75 | 0 | 89 | 15 | 0 | 3% | 7% of 74 |
-| Small Business and Entrepreneurship | 146 | 6 | 0 | 1 | 121 | 18 | 0 | 4% | 2% of 80 |
-| Energy and Natural Resources | 434 | 23 | 143 | 5 | 263 | 0 | 0 | 5% | 9% of 212 |
-| Health, Education, Labor, and Pensions | 322 | 21 | 17 | 1 | 283 | 0 | 0 | 7% | 16% of 134 |
-| Aging | 196 | 13 | 9 | 9 | 148 | 17 | 0 | 7% | 13% of 103 |
-| Commerce, Science, and Transportation | 570 | 66 | 59 | 1 | 444 | 0 | 0 | 12% | 23% of 270 |
-| Budget | 87 | 11 | 6 | 2 | 68 | 0 | 0 | 13% | 16% of 69 |
-| Banking, Housing, and Urban Affairs | 444 | 79 | 29 | 1 | 335 | 0 | 0 | 18% | 34% of 234 |
-| Environment and Public Works | 426 | 105 | 65 | 3 | 253 | 0 | 0 | 25% | 46% of 227 |
-| Veterans' Affairs (joint hearings, House code) | 7 | 6 | 0 | 0 | 1 | 0 | 0 | 86% | 86% of 7 |
+| Committee | Hearings | Full recording | Clips only | Not public | None found | On senate.gov | Before channel | No channel | Found | Found since 2019 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| (no committee code in GPO data) | 66 | 0 | 0 | 0 | 0 | 0 | 0 | 66 | 0% | 0% of 60 |
+| Joint Select Solvency of Multiemployer Pension Plans | 5 | 0 | 0 | 0 | 0 | 0 | 0 | 5 | 0% | — |
+| Small Business and Entrepreneurship | 146 | 108 | 0 | 1 | 32 | 102 | 5 | 0 | 74% | 81% of 80 |
+| Veterans' Affairs (joint hearings, House code) | 7 | 6 | 0 | 0 | 1 | 0 | 0 | 0 | 86% | 86% of 7 |
+| Aging | 196 | 174 | 0 | 9 | 12 | 161 | 1 | 0 | 89% | 96% of 103 |
+| Energy and Natural Resources | 434 | 388 | 11 | 5 | 30 | 365 | 0 | 0 | 89% | 95% of 212 |
+| Veterans' Affairs (Senate) | 184 | 165 | 0 | 2 | 17 | 165 | 0 | 0 | 90% | 93% of 114 |
+| Appropriations | 625 | 565 | 0 | 2 | 52 | 565 | 6 | 0 | 90% | 89% of 260 |
+| Environment and Public Works | 426 | 404 | 0 | 3 | 19 | 299 | 0 | 0 | 95% | 99% of 227 |
+| Homeland Security and Governmental Affairs | 491 | 469 | 1 | 13 | 8 | 468 | 0 | 0 | 96% | 95% of 211 |
+| Rules and Administration | 46 | 44 | 0 | 1 | 0 | 44 | 0 | 1 | 96% | 97% of 37 |
+| Indian Affairs | 185 | 178 | 0 | 0 | 7 | 172 | 0 | 0 | 96% | 99% of 74 |
+| Commerce, Science, and Transportation | 570 | 550 | 1 | 1 | 18 | 484 | 0 | 0 | 96% | 99% of 270 |
+| Budget | 87 | 84 | 0 | 2 | 1 | 73 | 0 | 0 | 97% | 99% of 69 |
+| Foreign Relations | 436 | 426 | 0 | 3 | 0 | 426 | 7 | 0 | 98% | 96% of 182 |
+| Health, Education, Labor, and Pensions | 322 | 316 | 0 | 1 | 5 | 295 | 0 | 0 | 98% | 99% of 134 |
+| Armed Services | 346 | 340 | 0 | 4 | 0 | 339 | 0 | 2 | 98% | 99% of 177 |
+| Judiciary | 277 | 273 | 0 | 0 | 0 | 273 | 4 | 0 | 99% | 100% of 152 |
+| Banking, Housing, and Urban Affairs | 444 | 438 | 0 | 1 | 5 | 359 | 0 | 0 | 99% | 98% of 234 |
+| Finance | 307 | 303 | 0 | 0 | 4 | 303 | 0 | 0 | 99% | 99% of 138 |
+| Select Intelligence | 77 | 76 | 0 | 0 | 0 | 76 | 0 | 1 | 99% | 97% of 37 |
+| Agriculture, Nutrition, and Forestry | 151 | 150 | 0 | 1 | 0 | 150 | 0 | 0 | 99% | 99% of 93 |
 <!-- /table:senate_committee -->
 
 What the Senate table means:
-- **No channel at all:** Agriculture, Armed Services, Rules and Intelligence have no official YouTube presence. Their websites link only senators' personal channels, or nothing.
-- **Channels that start late:** Foreign Relations' only channel (the Democrats') began uploading in April 2026, and Senate Judiciary Democrats' in April 2025. Everything earlier is "before channel".
-- **Dormant channels:** Appropriations' one channel stopped in 2016 and holds mostly the vice chair's statements. Finance's two channels ended in 2018. Veterans' Affairs has five videos in total.
-- **Party channels with a selection of hearings:** the rest. Banking, Commerce, Energy, EPW and HELP post hearings from the majority or minority side, so coverage rises where the party that runs the channel holds the gavel.
-- **Senate video is elsewhere.** Since 2023, Congress.gov links a senate.gov recording for Senate hearings; 147 of the Senate hearings here already have one. Earlier hearings are archived on the committees' own websites. Tracking those recordings would turn most of the "none found" rows into found ones, and is the next step for Senate coverage (see Recommendations).
+- **Almost everything is on senate.gov.** 5,119 of the 5,835 hearings have a recording there, and 345 more are on YouTube. Coverage is 90–96% in every Congress since 2013, and 88% so far in the 119th, where the newest hearings' recordings were not yet posted when probed.
+- **Committees with no YouTube channel are covered anyway.** Agriculture, Armed Services, Rules and Intelligence have no official YouTube presence, and 96–99% of their hearings are on senate.gov.
+- **What's still missing (211 hearings):** mostly Appropriations (52), Small Business (32) and Energy (30) hearings whose recording, if it exists, carries a name the probe didn't try (a subcommittee's own stream, or a third hearing that day); field hearings; and the 66 Senate records GPO filed with no committee code, which the probe can't place.
+- **The YouTube channels matter little.** Foreign Relations' only channel began uploading in April 2026, Senate Judiciary Democrats' in April 2025, and Appropriations' stopped in 2016; their hearings are on senate.gov regardless.
+- **How the probe works, and its limits.** The player loads `<committee><MMDDYY>_1/master.m3u8` from the Senate's archive (or a live path for recordings since mid-2023), with `A` and `B` inserted for a second and third hearing that day. The probe asks whether that manifest exists for each hearing's committee and date. It confirms a recording exists, not which hearing a same-day recording is (several hearings on one day share it, on 420 days) or how long it runs.
 
 ## What happened to the missing House video, committee by committee
 
@@ -291,10 +292,10 @@ Done since the research pass:
 2. **Match on date codes in titles.** "031815 -", "7/23/2013. EMR.", "YYYYMMDD Title", "W&M Hearing: Feb 26, 2014" and descriptions saying "Hearing Date: …" all count.
 3. **Use Congress.gov's video links.** The weekly run keeps every Congress.gov committee meeting record, and a video linked from a hearing's meeting record is the strongest evidence, including for unlisted videos.
 4. **Make the matching a weekly report with a one-video-per-hearing rule.** `gpo-match` writes `apps/committee_youtube/data/gpo_hearing_videos.csv` and its per-committee summary every week.
+5. **Track Senate video where it lives.** A senate.gov link in a hearing's Congress.gov record now counts as a recording (`full_recording_offsite`), and the archive probe covered the back catalogue to 2013. New Senate hearings get their Congress.gov link within days, so the weekly run keeps up without re-probing.
 
 Still open:
-5. **Ask committees to restore private or deleted archives.** Education & Workforce (2013–14) and Veterans' Affairs (2014–15) made public hearing recordings private, and Ways and Means' 2016–18 hearing pages embed dead videos even though the 2019 re-uploads exist. The dead video IDs are listed in the research verdicts.
-6. **Track Senate video where it lives.** Add the senate.gov recordings that Congress.gov links (147 hearings so far, all since 2023) as a "found off YouTube" status, then look at the committees' own video archives for earlier years. Without this, Senate YouTube coverage will stay near 10% and say little about whether the hearings are actually available.
+6. **Ask committees to restore private or deleted archives.** Education & Workforce (2013–14) and Veterans' Affairs (2014–15) made public hearing recordings private, and Ways and Means' 2016–18 hearing pages embed dead videos even though the 2019 re-uploads exist. The dead video IDs are listed in the research verdicts.
 7. **Report the GPO metadata problems above** to GPO, starting with the wrong dates and blank codes, since they hide hearings from every date-based search.
 
 ## Verification
@@ -342,7 +343,7 @@ The rate confirms the earlier estimate: about 1% of negatives hid a full recordi
 - **Multi-hearing volumes count as found if any hearing day in them has video.** The `volume_days_with_video` flag says how many days were covered.
 - **Some archive uploads are audio only.** A few of Appropriations' 2015 archive uploads say "This is an audio recording" and are flagged `audio_only`.
 - **Automatic matches weren't individually re-verified.** The 7,399 automatic matches got the one-video-per-hearing check and spot checks during development.
-- **Senate coverage is of YouTube only.** See the Senate section: most Senate hearing video is on senate.gov, which this pipeline doesn't yet read.
+- **Senate recordings are confirmed by name, not content.** The senate.gov probe checks that a recording exists for the committee and day; it doesn't tell same-day hearings apart or check length.
 
 ## Method
 
@@ -350,6 +351,7 @@ The rate confirms the earlier estimate: about 1% of negatives hid a full recordi
   - GPO transcripts: `apps/committee_youtube/data/gpo_hearings.csv`, 34,559 House, Senate and joint hearings since the 106th Congress, fetched weekly with `gpo-fetch`.
   - YouTube data: the weekly fetch of all 119 channels (67,244 videos), on the `pipeline-data` branch.
   - Congress.gov: all 18,139 House, Senate and joint committee meeting records from the 112th Congress on, fetched weekly with `congress-meetings`.
+  - senate.gov: the Senate player's archive, probed once by committee and date for every Senate hearing since 2013 without a recording (`research/scripts/as_run/senate_isvp_probe.py`, results in `research/data/senate_isvp_probe.csv`).
 - **Automatic matching (`gpo-match`):** evidence for each hearing, strongest first:
   1. a Congress.gov video link from the meeting record with the hearing's event ID;
   2. the hearing's event ID in a video's title or description, whenever it was uploaded;
@@ -371,7 +373,7 @@ The rate confirms the earlier estimate: about 1% of negatives hid a full recordi
 ## Files
 
 - **`apps/committee_youtube/data/gpo_hearing_videos.csv`:** the live result, one row per GPO hearing (34,559 rows), rewritten weekly. Columns: hearing (package ID, Congress, chamber, committee code, dates, record type), `status`, `video_ids`, `channels`, `method`, `score`, `video_minutes`, `flags`, `source` (automatic or research) and `note`. `gpo_hearing_video_coverage.csv` next to it counts hearings per Congress, committee and status.
-- **`apps/committee_youtube/data/hearing_video_overrides.csv`:** the reviewed verdicts the matcher applies, seeded from the research pass. To correct a match by hand, add or edit a row.
+- **`apps/committee_youtube/data/hearing_video_overrides.csv`:** the verdicts the matcher applies: the research pass's reviewed verdicts, the news-channel search's finds, and the senate.gov probe's finds (`found_offsite`). To correct a match by hand, add or edit a row.
 - **`hearing_video_verdicts.csv` (this folder):** the research-pass snapshot, one row per House and joint hearing since 2013 (9,643 rows). Columns:
   - hearing: date, Congress, chamber, committee, subcommittees, title, transcript URL;
   - `source`: automatic or swarm;

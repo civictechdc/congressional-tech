@@ -473,42 +473,47 @@ congress,committee_code,committee_name,status,hearings
 113,jcse00,Helsinki Commission,no_video_found,16
 113,jsec00,Joint Economic Committee,clips_only,24
 113,jsec00,Joint Economic Committee,full_recording,4
-113,slia00,Senate Indian Affairs,before_channel,15
-113,slia00,Senate Indian Affairs,no_video_found,20
-113,slin00,,committee_not_tracked,5
-113,spag00,Senate Aging,before_channel,17
-113,spag00,Senate Aging,no_video_found,14
+113,slia00,Senate Indian Affairs,full_recording_offsite,34
+113,slia00,Senate Indian Affairs,no_video_found,1
+113,slin00,,full_recording_offsite,5
+113,spag00,Senate Aging,before_channel,1
+113,spag00,Senate Aging,full_recording_offsite,27
+113,spag00,Senate Aging,no_video_found,3
 113,spag00,Senate Aging,not_public,1
-113,ssaf00,,committee_not_tracked,17
-113,ssap00,Senate Appropriations,before_channel,61
-113,ssap00,Senate Appropriations,clips_only,1
-113,ssap00,Senate Appropriations,no_video_found,61
+113,ssaf00,,full_recording_offsite,17
+113,ssap00,Senate Appropriations,before_channel,6
+113,ssap00,Senate Appropriations,full_recording_offsite,112
+113,ssap00,Senate Appropriations,no_video_found,5
 113,ssap00,Senate Appropriations,not_public,1
-113,ssas00,,committee_not_tracked,32
-113,ssbk00,"Senate Banking, Housing, and Urban Affairs",clips_only,23
-113,ssbk00,"Senate Banking, Housing, and Urban Affairs",no_video_found,71
-113,ssbu00,Senate Budget,clips_only,1
-113,ssbu00,Senate Budget,no_video_found,7
-113,sscm00,"Senate Commerce, Science, and Transportation",clips_only,20
-113,sscm00,"Senate Commerce, Science, and Transportation",no_video_found,75
-113,sseg00,Senate Energy and Natural Resources,clips_only,32
+113,ssas00,,full_recording_offsite,32
+113,ssbk00,"Senate Banking, Housing, and Urban Affairs",full_recording_offsite,93
+113,ssbk00,"Senate Banking, Housing, and Urban Affairs",no_video_found,1
+113,ssbu00,Senate Budget,full_recording_offsite,8
+113,sscm00,"Senate Commerce, Science, and Transportation",full_recording_offsite,90
+113,sscm00,"Senate Commerce, Science, and Transportation",no_video_found,5
+113,sseg00,Senate Energy and Natural Resources,clips_only,3
 113,sseg00,Senate Energy and Natural Resources,full_recording,2
-113,sseg00,Senate Energy and Natural Resources,no_video_found,26
+113,sseg00,Senate Energy and Natural Resources,full_recording_offsite,49
+113,sseg00,Senate Energy and Natural Resources,no_video_found,6
 113,ssev00,Senate Environment and Public Works,full_recording,1
-113,ssev00,Senate Environment and Public Works,no_video_found,46
-113,ssfi00,Senate Finance,clips_only,9
-113,ssfi00,Senate Finance,no_video_found,54
-113,ssfr00,Senate Foreign Relations,before_channel,78
-113,ssga00,Senate Homeland Security and Governmental Affairs,no_video_found,107
-113,sshr00,"Senate Health, Education, Labor, and Pensions",clips_only,2
-113,sshr00,"Senate Health, Education, Labor, and Pensions",no_video_found,65
-113,ssju00,Senate Judiciary,before_channel,82
-113,ssra00,,committee_not_tracked,1
-113,sssb00,Senate Small Business and Entrepreneurship,before_channel,18
+113,ssev00,Senate Environment and Public Works,full_recording_offsite,42
+113,ssev00,Senate Environment and Public Works,no_video_found,4
+113,ssfi00,Senate Finance,full_recording_offsite,63
+113,ssfr00,Senate Foreign Relations,before_channel,1
+113,ssfr00,Senate Foreign Relations,full_recording_offsite,77
+113,ssga00,Senate Homeland Security and Governmental Affairs,full_recording_offsite,105
+113,ssga00,Senate Homeland Security and Governmental Affairs,no_video_found,2
+113,sshr00,"Senate Health, Education, Labor, and Pensions",full_recording_offsite,65
+113,sshr00,"Senate Health, Education, Labor, and Pensions",no_video_found,2
+113,ssju00,Senate Judiciary,before_channel,4
+113,ssju00,Senate Judiciary,full_recording_offsite,78
+113,ssra00,,full_recording_offsite,1
+113,sssb00,Senate Small Business and Entrepreneurship,before_channel,5
 113,sssb00,Senate Small Business and Entrepreneurship,full_recording,4
-113,ssva00,Senate Veterans' Affairs,before_channel,7
+113,sssb00,Senate Small Business and Entrepreneurship,full_recording_offsite,13
 113,ssva00,Senate Veterans' Affairs,clips_only,1
-113,ssva00,Senate Veterans' Affairs,no_video_found,11
+113,ssva00,Senate Veterans' Affairs,full_recording_offsite,17
+113,ssva00,Senate Veterans' Affairs,no_video_found,1
 114,,,committee_not_tracked,6
 114,,,full_recording,1
 114,hhah00,,full_recording,1
@@ -562,40 +567,50 @@ congress,committee_code,committee_name,status,hearings
 114,jcse00,Helsinki Commission,no_video_found,13
 114,jsec00,Joint Economic Committee,clips_only,1
 114,jsec00,Joint Economic Committee,full_recording,15
-114,slia00,Senate Indian Affairs,clips_only,19
 114,slia00,Senate Indian Affairs,full_recording,1
-114,slia00,Senate Indian Affairs,no_video_found,23
-114,slin00,,committee_not_tracked,7
-114,spag00,Senate Aging,no_video_found,30
+114,slia00,Senate Indian Affairs,full_recording_offsite,39
+114,slia00,Senate Indian Affairs,no_video_found,3
+114,slin00,,full_recording_offsite,7
+114,spag00,Senate Aging,full_recording_offsite,25
+114,spag00,Senate Aging,no_video_found,5
 114,spag00,Senate Aging,not_public,8
-114,ssaf00,,committee_not_tracked,18
-114,ssap00,Senate Appropriations,no_video_found,135
-114,ssas00,,committee_not_tracked,72
+114,ssaf00,,full_recording_offsite,18
+114,ssap00,Senate Appropriations,full_recording_offsite,126
+114,ssap00,Senate Appropriations,no_video_found,9
+114,ssas00,,committee_not_tracked,1
+114,ssas00,,full_recording_offsite,71
 114,ssas00,,not_public,2
-114,ssbk00,"Senate Banking, Housing, and Urban Affairs",no_video_found,49
-114,ssbu00,Senate Budget,no_video_found,5
+114,ssbk00,"Senate Banking, Housing, and Urban Affairs",full_recording_offsite,48
+114,ssbk00,"Senate Banking, Housing, and Urban Affairs",no_video_found,1
+114,ssbu00,Senate Budget,full_recording_offsite,4
+114,ssbu00,Senate Budget,no_video_found,1
 114,sscm00,"Senate Commerce, Science, and Transportation",full_recording,2
-114,sscm00,"Senate Commerce, Science, and Transportation",no_video_found,78
-114,sseg00,Senate Energy and Natural Resources,clips_only,26
+114,sscm00,"Senate Commerce, Science, and Transportation",full_recording_offsite,75
+114,sscm00,"Senate Commerce, Science, and Transportation",no_video_found,3
+114,sseg00,Senate Energy and Natural Resources,clips_only,4
 114,sseg00,Senate Energy and Natural Resources,full_recording,1
-114,sseg00,Senate Energy and Natural Resources,no_video_found,48
+114,sseg00,Senate Energy and Natural Resources,full_recording_offsite,59
+114,sseg00,Senate Energy and Natural Resources,no_video_found,11
 114,sseg00,Senate Energy and Natural Resources,not_public,2
-114,ssev00,Senate Environment and Public Works,clips_only,1
-114,ssev00,Senate Environment and Public Works,no_video_found,68
+114,ssev00,Senate Environment and Public Works,full_recording_offsite,58
+114,ssev00,Senate Environment and Public Works,no_video_found,11
 114,ssev00,Senate Environment and Public Works,not_public,2
-114,ssfi00,Senate Finance,clips_only,2
-114,ssfi00,Senate Finance,no_video_found,53
-114,ssfr00,Senate Foreign Relations,before_channel,97
+114,ssfi00,Senate Finance,full_recording_offsite,55
+114,ssfr00,Senate Foreign Relations,full_recording_offsite,97
 114,ssga00,Senate Homeland Security and Governmental Affairs,full_recording,1
-114,ssga00,Senate Homeland Security and Governmental Affairs,no_video_found,95
+114,ssga00,Senate Homeland Security and Governmental Affairs,full_recording_offsite,90
+114,ssga00,Senate Homeland Security and Governmental Affairs,no_video_found,5
 114,ssga00,Senate Homeland Security and Governmental Affairs,not_public,1
-114,sshr00,"Senate Health, Education, Labor, and Pensions",clips_only,12
-114,sshr00,"Senate Health, Education, Labor, and Pensions",no_video_found,43
-114,ssju00,Senate Judiciary,before_channel,39
-114,ssra00,,committee_not_tracked,3
-114,sssb00,Senate Small Business and Entrepreneurship,no_video_found,27
+114,sshr00,"Senate Health, Education, Labor, and Pensions",full_recording_offsite,53
+114,sshr00,"Senate Health, Education, Labor, and Pensions",no_video_found,2
+114,ssju00,Senate Judiciary,full_recording_offsite,39
+114,ssra00,,committee_not_tracked,1
+114,ssra00,,full_recording_offsite,2
+114,sssb00,Senate Small Business and Entrepreneurship,full_recording_offsite,16
+114,sssb00,Senate Small Business and Entrepreneurship,no_video_found,11
 114,ssva00,Senate Veterans' Affairs,full_recording,1
-114,ssva00,Senate Veterans' Affairs,no_video_found,34
+114,ssva00,Senate Veterans' Affairs,full_recording_offsite,27
+114,ssva00,Senate Veterans' Affairs,no_video_found,7
 114,ssva00,Senate Veterans' Affairs,not_public,1
 115,,,full_recording,1
 115,hsag00,Agriculture,full_recording,14
@@ -640,39 +655,42 @@ congress,committee_code,committee_name,status,hearings
 115,jcse00,Helsinki Commission,not_public,1
 115,jsec00,Joint Economic Committee,full_recording,20
 115,jspp00,,committee_not_tracked,5
-115,slia00,Senate Indian Affairs,clips_only,12
-115,slia00,Senate Indian Affairs,no_video_found,21
-115,slin00,,committee_not_tracked,28
-115,spag00,Senate Aging,clips_only,1
-115,spag00,Senate Aging,no_video_found,22
-115,ssaf00,,committee_not_tracked,23
-115,ssap00,Senate Appropriations,no_video_found,106
-115,ssas00,,committee_not_tracked,62
+115,slia00,Senate Indian Affairs,full_recording_offsite,31
+115,slia00,Senate Indian Affairs,no_video_found,2
+115,slin00,,full_recording_offsite,28
+115,spag00,Senate Aging,full_recording_offsite,23
+115,ssaf00,,full_recording_offsite,23
+115,ssap00,Senate Appropriations,full_recording_offsite,96
+115,ssap00,Senate Appropriations,no_video_found,10
+115,ssas00,,full_recording_offsite,62
 115,ssas00,,not_public,1
-115,ssbk00,"Senate Banking, Housing, and Urban Affairs",no_video_found,67
-115,ssbu00,Senate Budget,no_video_found,4
+115,ssbk00,"Senate Banking, Housing, and Urban Affairs",full_recording_offsite,67
+115,ssbu00,Senate Budget,full_recording_offsite,4
 115,ssbu00,Senate Budget,not_public,1
-115,sscm00,"Senate Commerce, Science, and Transportation",clips_only,2
+115,sscm00,"Senate Commerce, Science, and Transportation",clips_only,1
 115,sscm00,"Senate Commerce, Science, and Transportation",full_recording,2
-115,sscm00,"Senate Commerce, Science, and Transportation",no_video_found,120
+115,sscm00,"Senate Commerce, Science, and Transportation",full_recording_offsite,114
+115,sscm00,"Senate Commerce, Science, and Transportation",no_video_found,7
 115,sscm00,"Senate Commerce, Science, and Transportation",not_public,1
-115,sseg00,Senate Energy and Natural Resources,clips_only,17
-115,sseg00,Senate Energy and Natural Resources,no_video_found,68
-115,ssev00,Senate Environment and Public Works,clips_only,27
-115,ssev00,Senate Environment and Public Works,no_video_found,54
-115,ssfi00,Senate Finance,clips_only,9
-115,ssfi00,Senate Finance,no_video_found,42
-115,ssfr00,Senate Foreign Relations,before_channel,79
-115,ssga00,Senate Homeland Security and Governmental Affairs,clips_only,3
-115,ssga00,Senate Homeland Security and Governmental Affairs,no_video_found,71
+115,sseg00,Senate Energy and Natural Resources,clips_only,2
+115,sseg00,Senate Energy and Natural Resources,full_recording_offsite,75
+115,sseg00,Senate Energy and Natural Resources,no_video_found,8
+115,ssev00,Senate Environment and Public Works,full_recording_offsite,79
+115,ssev00,Senate Environment and Public Works,no_video_found,2
+115,ssfi00,Senate Finance,full_recording_offsite,48
+115,ssfi00,Senate Finance,no_video_found,3
+115,ssfr00,Senate Foreign Relations,before_channel,2
+115,ssfr00,Senate Foreign Relations,full_recording_offsite,77
+115,ssga00,Senate Homeland Security and Governmental Affairs,full_recording_offsite,74
 115,ssga00,Senate Homeland Security and Governmental Affairs,not_public,3
-115,sshr00,"Senate Health, Education, Labor, and Pensions",clips_only,2
-115,sshr00,"Senate Health, Education, Labor, and Pensions",no_video_found,64
-115,ssju00,Senate Judiciary,before_channel,4
-115,ssra00,,committee_not_tracked,5
-115,sssb00,Senate Small Business and Entrepreneurship,no_video_found,17
+115,sshr00,"Senate Health, Education, Labor, and Pensions",full_recording_offsite,66
+115,ssju00,Senate Judiciary,full_recording_offsite,4
+115,ssra00,,full_recording_offsite,5
+115,sssb00,Senate Small Business and Entrepreneurship,full_recording_offsite,10
+115,sssb00,Senate Small Business and Entrepreneurship,no_video_found,7
 115,ssva00,Senate Veterans' Affairs,full_recording,3
-115,ssva00,Senate Veterans' Affairs,no_video_found,17
+115,ssva00,Senate Veterans' Affairs,full_recording_offsite,15
+115,ssva00,Senate Veterans' Affairs,no_video_found,2
 116,,,committee_not_tracked,3
 116,,,not_public,1
 116,hlcn00,Select Committee on the Climate Crisis,before_channel,1
@@ -715,38 +733,43 @@ congress,committee_code,committee_name,status,hearings
 116,jcse00,Helsinki Commission,no_video_found,7
 116,jsec00,Joint Economic Committee,full_recording,11
 116,scnc00,Senate Caucus on International Narcotics Control,full_recording,1
-116,slia00,Senate Indian Affairs,clips_only,13
-116,slia00,Senate Indian Affairs,no_video_found,9
-116,slin00,,committee_not_tracked,6
-116,spag00,Senate Aging,no_video_found,22
-116,ssaf00,,committee_not_tracked,16
-116,ssap00,Senate Appropriations,no_video_found,71
+116,slia00,Senate Indian Affairs,full_recording_offsite,21
+116,slia00,Senate Indian Affairs,no_video_found,1
+116,slin00,,full_recording_offsite,6
+116,spag00,Senate Aging,full_recording_offsite,20
+116,spag00,Senate Aging,no_video_found,2
+116,ssaf00,,full_recording_offsite,16
+116,ssap00,Senate Appropriations,full_recording_offsite,69
+116,ssap00,Senate Appropriations,no_video_found,2
 116,ssap00,Senate Appropriations,not_public,1
-116,ssas00,,committee_not_tracked,35
-116,ssbk00,"Senate Banking, Housing, and Urban Affairs",no_video_found,57
+116,ssas00,,full_recording_offsite,35
+116,ssbk00,"Senate Banking, Housing, and Urban Affairs",full_recording_offsite,57
 116,ssbu00,Senate Budget,full_recording,1
-116,ssbu00,Senate Budget,no_video_found,5
-116,sscm00,"Senate Commerce, Science, and Transportation",clips_only,8
+116,ssbu00,Senate Budget,full_recording_offsite,5
 116,sscm00,"Senate Commerce, Science, and Transportation",full_recording,2
-116,sscm00,"Senate Commerce, Science, and Transportation",no_video_found,77
-116,sseg00,Senate Energy and Natural Resources,clips_only,26
+116,sscm00,"Senate Commerce, Science, and Transportation",full_recording_offsite,84
+116,sscm00,"Senate Commerce, Science, and Transportation",no_video_found,1
+116,sseg00,Senate Energy and Natural Resources,clips_only,2
 116,sseg00,Senate Energy and Natural Resources,full_recording,2
-116,sseg00,Senate Energy and Natural Resources,no_video_found,41
+116,sseg00,Senate Energy and Natural Resources,full_recording_offsite,60
+116,sseg00,Senate Energy and Natural Resources,no_video_found,5
 116,sseg00,Senate Energy and Natural Resources,not_public,2
-116,ssev00,Senate Environment and Public Works,clips_only,20
 116,ssev00,Senate Environment and Public Works,full_recording,1
-116,ssev00,Senate Environment and Public Works,no_video_found,42
-116,ssfi00,Senate Finance,no_video_found,35
-116,ssfr00,Senate Foreign Relations,before_channel,45
-116,ssga00,Senate Homeland Security and Governmental Affairs,clips_only,2
-116,ssga00,Senate Homeland Security and Governmental Affairs,no_video_found,53
+116,ssev00,Senate Environment and Public Works,full_recording_offsite,60
+116,ssev00,Senate Environment and Public Works,no_video_found,2
+116,ssfi00,Senate Finance,full_recording_offsite,35
+116,ssfr00,Senate Foreign Relations,full_recording_offsite,45
+116,ssga00,Senate Homeland Security and Governmental Affairs,clips_only,1
+116,ssga00,Senate Homeland Security and Governmental Affairs,full_recording_offsite,54
 116,ssga00,Senate Homeland Security and Governmental Affairs,not_public,2
-116,sshr00,"Senate Health, Education, Labor, and Pensions",no_video_found,25
-116,ssju00,Senate Judiciary,before_channel,4
-116,ssra00,,committee_not_tracked,12
-116,sssb00,Senate Small Business and Entrepreneurship,no_video_found,28
+116,sshr00,"Senate Health, Education, Labor, and Pensions",full_recording_offsite,25
+116,ssju00,Senate Judiciary,full_recording_offsite,4
+116,ssra00,,full_recording_offsite,12
+116,sssb00,Senate Small Business and Entrepreneurship,full_recording_offsite,17
+116,sssb00,Senate Small Business and Entrepreneurship,no_video_found,11
 116,ssva00,Senate Veterans' Affairs,full_recording,1
-116,ssva00,Senate Veterans' Affairs,no_video_found,24
+116,ssva00,Senate Veterans' Affairs,full_recording_offsite,22
+116,ssva00,Senate Veterans' Affairs,no_video_found,2
 117,,,committee_not_tracked,5
 117,,,full_recording,4
 117,hlcn00,Select Committee on the Climate Crisis,full_recording,23
@@ -780,43 +803,46 @@ congress,committee_code,committee_name,status,hearings
 117,jcpk00,Congressional-Executive Commission on China,full_recording,15
 117,jcse00,Helsinki Commission,full_recording,29
 117,jsec00,Joint Economic Committee,full_recording,12
-117,slia00,Senate Indian Affairs,clips_only,15
 117,slia00,Senate Indian Affairs,full_recording,4
-117,slia00,Senate Indian Affairs,no_video_found,7
-117,slin00,,committee_not_tracked,15
-117,spag00,Senate Aging,no_video_found,25
-117,ssaf00,,committee_not_tracked,30
+117,slia00,Senate Indian Affairs,full_recording_offsite,22
+117,slin00,,committee_not_tracked,1
+117,slin00,,full_recording_offsite,14
+117,spag00,Senate Aging,full_recording_offsite,25
+117,ssaf00,,full_recording_offsite,30
 117,ssaf00,,not_public,1
-117,ssap00,Senate Appropriations,no_video_found,120
-117,ssas00,,committee_not_tracked,68
+117,ssap00,Senate Appropriations,full_recording_offsite,107
+117,ssap00,Senate Appropriations,no_video_found,13
+117,ssas00,,committee_not_tracked,1
+117,ssas00,,full_recording_offsite,67
 117,ssas00,,not_public,1
-117,ssbk00,"Senate Banking, Housing, and Urban Affairs",clips_only,6
 117,ssbk00,"Senate Banking, Housing, and Urban Affairs",full_recording,35
-117,ssbk00,"Senate Banking, Housing, and Urban Affairs",no_video_found,70
+117,ssbk00,"Senate Banking, Housing, and Urban Affairs",full_recording_offsite,74
+117,ssbk00,"Senate Banking, Housing, and Urban Affairs",no_video_found,2
 117,ssbk00,"Senate Banking, Housing, and Urban Affairs",not_public,1
-117,ssbu00,Senate Budget,no_video_found,16
-117,sscm00,"Senate Commerce, Science, and Transportation",clips_only,11
+117,ssbu00,Senate Budget,full_recording_offsite,16
 117,sscm00,"Senate Commerce, Science, and Transportation",full_recording,1
-117,sscm00,"Senate Commerce, Science, and Transportation",no_video_found,66
-117,sseg00,Senate Energy and Natural Resources,clips_only,25
-117,sseg00,Senate Energy and Natural Resources,no_video_found,45
+117,sscm00,"Senate Commerce, Science, and Transportation",full_recording_offsite,75
+117,sscm00,"Senate Commerce, Science, and Transportation",no_video_found,2
+117,sseg00,Senate Energy and Natural Resources,full_recording_offsite,70
 117,sseg00,Senate Energy and Natural Resources,not_public,1
-117,ssev00,Senate Environment and Public Works,clips_only,8
 117,ssev00,Senate Environment and Public Works,full_recording,47
-117,ssev00,Senate Environment and Public Works,no_video_found,17
-117,ssfi00,Senate Finance,no_video_found,58
-117,ssfr00,Senate Foreign Relations,before_channel,65
+117,ssev00,Senate Environment and Public Works,full_recording_offsite,25
+117,ssfi00,Senate Finance,full_recording_offsite,58
+117,ssfr00,Senate Foreign Relations,full_recording_offsite,65
 117,ssfr00,Senate Foreign Relations,not_public,3
-117,ssga00,Senate Homeland Security and Governmental Affairs,clips_only,14
-117,ssga00,Senate Homeland Security and Governmental Affairs,no_video_found,63
+117,ssga00,Senate Homeland Security and Governmental Affairs,full_recording_offsite,76
+117,ssga00,Senate Homeland Security and Governmental Affairs,no_video_found,1
 117,ssga00,Senate Homeland Security and Governmental Affairs,not_public,7
-117,sshr00,"Senate Health, Education, Labor, and Pensions",no_video_found,56
+117,sshr00,"Senate Health, Education, Labor, and Pensions",full_recording_offsite,55
+117,sshr00,"Senate Health, Education, Labor, and Pensions",no_video_found,1
 117,sshr00,"Senate Health, Education, Labor, and Pensions",not_public,1
-117,ssju00,Senate Judiciary,before_channel,72
-117,ssra00,,committee_not_tracked,13
+117,ssju00,Senate Judiciary,full_recording_offsite,72
+117,ssra00,,full_recording_offsite,13
 117,ssra00,,not_public,1
-117,sssb00,Senate Small Business and Entrepreneurship,no_video_found,18
-117,ssva00,Senate Veterans' Affairs,no_video_found,37
+117,sssb00,Senate Small Business and Entrepreneurship,full_recording_offsite,17
+117,sssb00,Senate Small Business and Entrepreneurship,no_video_found,1
+117,ssva00,Senate Veterans' Affairs,full_recording_offsite,35
+117,ssva00,Senate Veterans' Affairs,no_video_found,2
 117,ssva00,Senate Veterans' Affairs,not_public,1
 118,,,committee_not_tracked,18
 118,,,full_recording,5
@@ -849,39 +875,40 @@ congress,committee_code,committee_name,status,hearings
 118,jcpk00,Congressional-Executive Commission on China,full_recording,14
 118,jcse00,Helsinki Commission,full_recording,26
 118,jsec00,Joint Economic Committee,full_recording,11
-118,slia00,Senate Indian Affairs,clips_only,14
 118,slia00,Senate Indian Affairs,full_recording,1
-118,slia00,Senate Indian Affairs,no_video_found,3
-118,slin00,,committee_not_tracked,10
-118,spag00,Senate Aging,no_video_found,25
-118,ssaf00,,committee_not_tracked,24
-118,ssap00,Senate Appropriations,no_video_found,60
-118,ssas00,,committee_not_tracked,43
+118,slia00,Senate Indian Affairs,full_recording_offsite,17
+118,slin00,,full_recording_offsite,10
+118,spag00,Senate Aging,full_recording_offsite,23
+118,spag00,Senate Aging,no_video_found,2
+118,ssaf00,,full_recording_offsite,24
+118,ssap00,Senate Appropriations,full_recording_offsite,49
+118,ssap00,Senate Appropriations,no_video_found,11
+118,ssas00,,full_recording_offsite,43
 118,ssbk00,"Senate Banking, Housing, and Urban Affairs",full_recording,41
-118,ssbk00,"Senate Banking, Housing, and Urban Affairs",no_video_found,21
-118,ssbu00,Senate Budget,clips_only,5
+118,ssbk00,"Senate Banking, Housing, and Urban Affairs",full_recording_offsite,20
+118,ssbk00,"Senate Banking, Housing, and Urban Affairs",no_video_found,1
 118,ssbu00,Senate Budget,full_recording,9
-118,ssbu00,Senate Budget,no_video_found,29
+118,ssbu00,Senate Budget,full_recording_offsite,34
 118,ssbu00,Senate Budget,not_public,1
-118,sscm00,"Senate Commerce, Science, and Transportation",clips_only,8
 118,sscm00,"Senate Commerce, Science, and Transportation",full_recording,29
-118,sscm00,"Senate Commerce, Science, and Transportation",no_video_found,13
-118,sseg00,Senate Energy and Natural Resources,clips_only,17
+118,sscm00,"Senate Commerce, Science, and Transportation",full_recording_offsite,21
 118,sseg00,Senate Energy and Natural Resources,full_recording,9
-118,sseg00,Senate Energy and Natural Resources,no_video_found,19
-118,ssev00,Senate Environment and Public Works,clips_only,3
+118,sseg00,Senate Energy and Natural Resources,full_recording_offsite,36
 118,ssev00,Senate Environment and Public Works,full_recording,52
-118,ssev00,Senate Environment and Public Works,no_video_found,13
-118,ssfi00,Senate Finance,no_video_found,45
-118,ssfr00,Senate Foreign Relations,before_channel,54
-118,ssga00,Senate Homeland Security and Governmental Affairs,clips_only,20
-118,ssga00,Senate Homeland Security and Governmental Affairs,no_video_found,34
+118,ssev00,Senate Environment and Public Works,full_recording_offsite,16
+118,ssfi00,Senate Finance,full_recording_offsite,44
+118,ssfi00,Senate Finance,no_video_found,1
+118,ssfr00,Senate Foreign Relations,before_channel,4
+118,ssfr00,Senate Foreign Relations,full_recording_offsite,50
+118,ssga00,Senate Homeland Security and Governmental Affairs,full_recording_offsite,54
 118,sshr00,"Senate Health, Education, Labor, and Pensions",full_recording,13
-118,sshr00,"Senate Health, Education, Labor, and Pensions",no_video_found,27
-118,ssju00,Senate Judiciary,before_channel,74
-118,ssra00,,committee_not_tracked,11
-118,sssb00,Senate Small Business and Entrepreneurship,no_video_found,17
-118,ssva00,Senate Veterans' Affairs,no_video_found,25
+118,sshr00,"Senate Health, Education, Labor, and Pensions",full_recording_offsite,27
+118,ssju00,Senate Judiciary,full_recording_offsite,74
+118,ssra00,,full_recording_offsite,11
+118,sssb00,Senate Small Business and Entrepreneurship,full_recording_offsite,15
+118,sssb00,Senate Small Business and Entrepreneurship,no_video_found,2
+118,ssva00,Senate Veterans' Affairs,full_recording_offsite,24
+118,ssva00,Senate Veterans' Affairs,no_video_found,1
 119,,,committee_not_tracked,34
 119,hsag00,Agriculture,full_recording,16
 119,hsap00,Appropriations,clips_only,1
@@ -908,37 +935,33 @@ congress,committee_code,committee_name,status,hearings
 119,jcpk00,Congressional-Executive Commission on China,full_recording,5
 119,jcse00,Helsinki Commission,full_recording,16
 119,jsec00,Joint Economic Committee,full_recording,2
-119,slia00,Senate Indian Affairs,clips_only,2
-119,slia00,Senate Indian Affairs,no_video_found,6
-119,slin00,,committee_not_tracked,6
-119,spag00,Senate Aging,clips_only,8
+119,slia00,Senate Indian Affairs,full_recording_offsite,8
+119,slin00,,full_recording_offsite,6
 119,spag00,Senate Aging,full_recording,13
-119,spag00,Senate Aging,no_video_found,10
-119,ssaf00,,committee_not_tracked,22
-119,ssap00,Senate Appropriations,no_video_found,8
-119,ssas00,,committee_not_tracked,29
+119,spag00,Senate Aging,full_recording_offsite,18
+119,ssaf00,,full_recording_offsite,22
+119,ssap00,Senate Appropriations,full_recording_offsite,6
+119,ssap00,Senate Appropriations,no_video_found,2
 119,ssas00,,full_recording,1
+119,ssas00,,full_recording_offsite,29
 119,ssbk00,"Senate Banking, Housing, and Urban Affairs",full_recording,3
 119,ssbu00,Senate Budget,full_recording,1
-119,ssbu00,Senate Budget,no_video_found,2
-119,sscm00,"Senate Commerce, Science, and Transportation",clips_only,10
+119,ssbu00,Senate Budget,full_recording_offsite,2
 119,sscm00,"Senate Commerce, Science, and Transportation",full_recording,30
-119,sscm00,"Senate Commerce, Science, and Transportation",no_video_found,15
+119,sscm00,"Senate Commerce, Science, and Transportation",full_recording_offsite,25
 119,sseg00,Senate Energy and Natural Resources,full_recording,9
-119,sseg00,Senate Energy and Natural Resources,no_video_found,16
-119,ssev00,Senate Environment and Public Works,clips_only,6
+119,sseg00,Senate Energy and Natural Resources,full_recording_offsite,16
 119,ssev00,Senate Environment and Public Works,full_recording,4
-119,ssev00,Senate Environment and Public Works,no_video_found,13
+119,ssev00,Senate Environment and Public Works,full_recording_offsite,19
 119,ssev00,Senate Environment and Public Works,not_public,1
-119,ssfr00,Senate Foreign Relations,before_channel,15
-119,ssga00,Senate Homeland Security and Governmental Affairs,clips_only,3
+119,ssfr00,Senate Foreign Relations,full_recording_offsite,15
 119,ssga00,Senate Homeland Security and Governmental Affairs,full_recording,1
-119,ssga00,Senate Homeland Security and Governmental Affairs,no_video_found,12
-119,sshr00,"Senate Health, Education, Labor, and Pensions",clips_only,1
+119,ssga00,Senate Homeland Security and Governmental Affairs,full_recording_offsite,15
 119,sshr00,"Senate Health, Education, Labor, and Pensions",full_recording,8
-119,sshr00,"Senate Health, Education, Labor, and Pensions",no_video_found,3
-119,ssju00,Senate Judiciary,no_video_found,2
+119,sshr00,"Senate Health, Education, Labor, and Pensions",full_recording_offsite,4
+119,ssju00,Senate Judiciary,full_recording_offsite,2
 119,sssb00,Senate Small Business and Entrepreneurship,full_recording,2
-119,sssb00,Senate Small Business and Entrepreneurship,no_video_found,14
+119,sssb00,Senate Small Business and Entrepreneurship,full_recording_offsite,14
 119,sssb00,Senate Small Business and Entrepreneurship,not_public,1
-119,ssva00,Senate Veterans' Affairs,no_video_found,27
+119,ssva00,Senate Veterans' Affairs,full_recording_offsite,25
+119,ssva00,Senate Veterans' Affairs,no_video_found,2

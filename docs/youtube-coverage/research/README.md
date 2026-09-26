@@ -63,6 +63,7 @@ One JSON line per hearing, as each agent wrote it. Where an agent rewrote a hear
 - `channel_search_broad.json`, `channel_search_targeted.json` and `channel_search_2007_2012.json`: raw YouTube channel-search results from the channel sweep (about 250 queries).
 - `channel_handles_resolved.json`: every handle in the channel list, resolved to its channel ID, title and subscriber count. This is the check that each handle points to the intended channel.
 - `senate_channels.csv`: the Senate channel discovery notes, one row per Senate committee, caucus or select committee with GPO hearings (23), with the evidence for each channel found and for the seven with none.
+- `senate_isvp_probe.csv`: the senate.gov archive probe's result for every Senate hearing since 2013 that had no recording (5,115 rows; 4,786 with the player URL of the recording found).
 - `news_search_candidates.json` and `news_search_video_details.json`: the news-channel search's raw candidates (441 hearings, 984 videos) and each video's upload date, length and description from the YouTube Data API.
 
 ### `scripts/`
@@ -77,6 +78,11 @@ One JSON line per hearing, as each agent wrote it. Where an agent rewrote a hear
   - `yt.py`: the shared, rate-limited, cached YouTube client the agents used.
   - `audit.py`: the automatic check of the agents' output.
   - `newssearch.py` and `verify_news.py`: the news-channel search (below).
+  - `senate_isvp_probe.py`: the senate.gov archive probe (below).
+
+## Senate archive probe (September 2026)
+
+The Senate hosts hearing video on its own player (`senate.gov/isvp/?comm=<committee>&filename=<committee><MMDDYY>`), and Congress.gov only started linking it in late 2023. The player's page names the archive path for each committee, so the probe builds the recording name from each hearing's committee and date (with `A` and `B` for a second and third hearing that day), sends a HEAD to the archive manifest and to the newer live path, and records the player URL when either exists. Run over the 5,115 Senate hearings since 2013 without a recording, it found 4,786. Its hits are `found_offsite` rows in `hearing_video_overrides.csv`.
 
 ## News-channel search (September 2026)
 
