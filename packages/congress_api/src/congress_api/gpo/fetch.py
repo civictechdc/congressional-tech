@@ -77,9 +77,10 @@ class GpoHearing:
 
 def main(
     output_path: Path = DEFAULT_GPO_HEARINGS_FILE,
-    chambers: str = "h",
+    chambers: str = "hj",
     min_congress: int | None = None,
     nthreads: int = 4,
+    full_relist: bool = False,
 ) -> None:
     api_key = load_congress_api_key()
     if min_congress is None:
@@ -88,7 +89,9 @@ def main(
 
     existing = read_csv(output_path)
     since = FULL_HISTORY_START
-    if existing:
+    ## a full relist still only fetches hearings that are new or changed; use
+    ##  it after widening --chambers or --min-congress
+    if existing and not full_relist:
         newest = max(row["last_modified"] for row in existing.values())
         since = (parse_timestamp(newest) - RELIST_OVERLAP).strftime("%Y-%m-%dT%H:%M:%SZ")
     logging.info(f"{len(existing)} hearings on file; listing changes since {since}")
@@ -260,8 +263,13 @@ def parse_args_and_run():
     )
     parser.add_argument(
         "--chambers",
-        default="h",
+        default="hj",
         help="Which chambers to include: any of h (house), s (senate), j (joint).",
+    )
+    parser.add_argument(
+        "--full-relist",
+        action="store_true",
+        help="List the whole collection instead of only recent changes (after widening filters).",
     )
     parser.add_argument(
         "--min-congress",

@@ -16,6 +16,7 @@ from congress_shared.globals import add_global_args, add_youtube_args, CONGRESS_
 from youtube_api.tables import (
     get_all_commitee_names,
     get_all_committee_handless,
+    map_system_code_committee_handles,
     open_tinydb_for_committee,
 )
 from congress_shared.globals import (
@@ -25,6 +26,9 @@ from congress_shared.globals import (
 )
 
 EVENT_ID_REGEX = ".*(\\d{6}|eventid).*"
+
+## system codes start with the chamber: hsag00 (house), jsec00 (joint), ssfr00 (senate)
+CHAMBER_BY_CODE_PREFIX = {"h": "house", "j": "joint", "s": "senate"}
 
 
 _TINYDB: TinyDB = None
@@ -61,8 +65,9 @@ def main(
         csv_path=channels_csv_path
     )
 
-    ## load all the corresponding handles
+    ## load all the corresponding handles and system codes
     committee_handless = get_all_committee_handless(channels_csv_path)
+    committee_codes = list(map_system_code_committee_handles(channels_csv_path))
     for committee_index, committee_name in enumerate(committee_names):
         try:
             ## define args required for opening the correct tinydb
@@ -76,9 +81,7 @@ def main(
             global _TINYDB
             _TINYDB = open_tinydb_for_committee(**tinydb_args)
 
-            ## TODO: this needs to be automatically set by handle once we add senate handles
-            ##  to the CSV
-            chamber = "house"
+            chamber = CHAMBER_BY_CODE_PREFIX[committee_codes[committee_index][0]]
 
             handles = committee_handless[committee_index]
             for handle in handles:
@@ -188,7 +191,7 @@ def generate_report_for_congress_number(
         congress_count,  ## all videos in this congress #
         congress_count - has_event_id_count,  ## bad videos
         congress_number,
-        meta[chamber],  ## party in control of this chamber
+        meta.get(chamber, ""),  ## party in control of this chamber (none for joint)
         chamber,
         with_captions_count,
     )

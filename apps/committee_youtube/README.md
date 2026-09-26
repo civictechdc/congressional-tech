@@ -80,14 +80,14 @@ youtube-fetch
 
 ## Official GPO Hearing Transcripts
 
-`gpo-fetch` lists the official printed hearing transcripts on GovInfo (the "Congressional Hearings" collection, `CHRG`) and writes one row per House hearing since the 106th Congress to `data/gpo_hearings.csv`. It uses the same `DATA_GOV_API_KEY` as `congress-fetch`.
+`gpo-fetch` lists the official printed hearing transcripts on GovInfo (the "Congressional Hearings" collection, `CHRG`) and writes one row per House and joint hearing since the 106th Congress to `data/gpo_hearings.csv`. It uses the same `DATA_GOV_API_KEY` as `congress-fetch`.
 
 ```bash
-gpo-fetch --output-path data/gpo_hearings.csv            # House only (default)
-gpo-fetch --output-path data/gpo_hearings.csv --chambers hsj   # plus Senate and joint
+gpo-fetch --output-path data/gpo_hearings.csv                  # House and joint (default)
+gpo-fetch --output-path data/gpo_hearings.csv --chambers hsj --full-relist   # add Senate
 ```
 
-The transcripts themselves aren't downloaded: `html_url` (plain text) and `pdf_url` link to them on govinfo.gov. The CSV is also the cache, so later runs only fetch hearings GovInfo added or changed. `.github/workflows/update-gpo-hearings.yml` runs it weekly.
+The transcripts themselves aren't downloaded: `html_url` (plain text) and `pdf_url` link to them on govinfo.gov. The CSV is also the cache, so later runs only fetch hearings GovInfo added or changed. After widening `--chambers` or `--min-congress`, pass `--full-relist` once so older hearings get picked up. `.github/workflows/update-gpo-hearings.yml` runs it weekly.
 
 Columns worth knowing:
 
