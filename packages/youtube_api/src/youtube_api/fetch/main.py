@@ -53,7 +53,10 @@ def main(
             logging.info(f"Working on: {handle}")
             if len(handle) > 0:
                 ## save channel metadata to the fetcher & the DB
-                fetcher.get_channel(handle)
+                if fetcher.get_channel(handle) is None:
+                    ## skip this channel rather than aborting every committee after it
+                    logging.error(f"Skipping {handle}: channel not found.")
+                    continue
                 ## read the "uploaded" playlist from the previously fetched metadata
                 ##  and then store details about each video to the DB
                 fetcher.get_all_channel_videos(handle)

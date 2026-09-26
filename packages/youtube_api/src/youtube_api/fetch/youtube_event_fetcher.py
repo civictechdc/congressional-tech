@@ -118,7 +118,8 @@ class YoutubeEventFetcher:
                 .execute()
             )
 
-            channel_details = channel_response["items"][0]
+            ## a handle that doesn't exist returns no "items" key at all
+            channel_details = channel_response.get("items", [])[0]
 
             ## store the channel details
             self.store_channel(channel_handle, channel_details)
@@ -126,7 +127,7 @@ class YoutubeEventFetcher:
             return channel_details
 
         except (HttpError, IndexError) as ex:
-            logging.error(ex)
+            logging.error(f"Could not fetch channel {channel_handle}: {ex!r}")
 
     def store_channel(self, channel_handle: str, channel_details: dict) -> None:
         doc = parse_channel_details(channel_details)
