@@ -4,74 +4,76 @@
 
 ## Summary
 
-We compared every official House and joint hearing transcript that GPO has published since 2013 (9,643 hearings) against the videos on 81 official committee YouTube channels (57,214 videos). Three more channels, found at the end, are in the channel list but not yet fetched. Automatic matching and a 16-agent research pass together classified all 9,643 hearings:
+We compared every official House and joint hearing transcript that GPO has published since 2013 (9,643 hearings) against the videos on 81 official committee YouTube channels (57,214 videos). Three more channels, found at the end, are in the channel list but not yet fetched. Automatic matching, a 16-agent research pass and a 6-agent adversarial verification together classified all 9,643 hearings:
 
 | Outcome | Hearings | Share |
 |---|---|---|
-| Full recording on a tracked committee channel | 8,701 | 90.2% |
-| Full recording only on another channel (member, news, third party) | 62 | 0.6% |
-| Only clips or opening statements on YouTube | 330 | 3.4% |
-| Never public video (closed session, written-only volume, errata) | 54 | 0.6% |
-| No video found anywhere on YouTube | 479 | 5.0% |
+| Full recording on a tracked committee channel | 8,632 | 89.5% |
+| Full recording only on another channel (member, news, third party) | 53 | 0.5% |
+| Only clips or opening statements on YouTube | 334 | 3.5% |
+| Never public video (closed session, written-only volume, errata) | 55 | 0.6% |
+| No video found anywhere on YouTube | 478 | 5.0% |
+| Unconfirmed (automatic match whose video was also matched to a hearing on another date) | 74 | 0.8% |
 | Held before the committee's earliest tracked video | 17 | 0.2% |
 
-The gaps are almost entirely historical. **Since the 116th Congress (2019), 99.2% of hearings have a full recording on YouTube.** Only 23 hearings since 2019 have no video found; among them are field hearings and Appropriations placeholder records.
+The gaps are almost entirely historical. **Since the 116th Congress (2019), 98.2% of hearings have a confirmed full recording on YouTube.** Only 23 hearings since 2019 have no video found; among them are field hearings and Appropriations placeholder records. Another 48 have an unconfirmed automatic match.
 
 Where older hearings are missing, the main causes are:
 - **They were never uploaded to YouTube.** Before 2015 many committees streamed on Ustream, Windows Media or Facebook, and those recordings are gone or not on YouTube.
 - **Committees later made the videos private or deleted them.** This hit Ways and Means (2014–2018), Education & Workforce (2013–14) and Veterans' Affairs (mid-2014 to 2015).
 - **Only clips were posted.** Homeland Security (2013–15) and Foreign Affairs (April 2014 to August 2015) posted opening statements rather than full hearings.
 
-Most of what looked missing wasn't. 1,273 hearings the automatic matcher missed were already on our tracked channels. They had been bulk-uploaded to archives months or years after the hearing, under titles like "7/23/2013. EMR. 10:00 AM", "Markup: H.R. 2848", or a date code plus an EventID.
+Most of what looked missing wasn't. 1,278 hearings the automatic matcher missed were already on our tracked channels. They had been bulk-uploaded to archives months or years after the hearing, under titles like "7/23/2013. EMR. 10:00 AM", "Markup: H.R. 2848", or a date code plus an EventID.
 
 ## Coverage by Congress
 
 "Found" includes automatic matches and swarm finds, on tracked and other channels.
 
-| Congress | Years | Hearings | Full recording | Clips only | Not public | None found | Found |
-|---|---|---|---|---|---|---|---|
-| 113th | 2013–14 | 1,791 | 1,251 | 236 | 17 | 274 | 69.8% |
-| 114th | 2015–16 | 1,716 | 1,529 | 66 | 22 | 96 | 89.1% |
-| 115th | 2017–18 | 1,482 | 1,367 | 26 | 2 | 86 | 92.2% |
-| 116th | 2019–20 | 1,404 | 1,379 | 2 | 4 | 19 | 98.2% |
-| 117th | 2021–22 | 1,163 | 1,157 | 0 | 5 | 1 | 99.5% |
-| 118th | 2023–24 | 1,439 | 1,434 | 0 | 2 | 3 | 99.7% |
-| 119th | 2025– | 648 | 646 | 0 | 2 | 0 | 99.7% |
+| Congress | Years | Hearings | Full recording | Clips only | Not public | None found | Unconfirmed | Found |
+|---|---|---|---|---|---|---|---|---|
+| 113th | 2013–14 | 1,791 | 1,245 | 240 | 17 | 271 | 5 | 69.5% |
+| 114th | 2015–16 | 1,716 | 1,509 | 66 | 23 | 97 | 18 | 87.9% |
+| 115th | 2017–18 | 1,482 | 1,363 | 26 | 2 | 87 | 3 | 92.0% |
+| 116th | 2019–20 | 1,404 | 1,365 | 2 | 4 | 19 | 14 | 97.2% |
+| 117th | 2021–22 | 1,163 | 1,144 | 0 | 5 | 1 | 13 | 98.4% |
+| 118th | 2023–24 | 1,439 | 1,417 | 0 | 2 | 3 | 17 | 98.5% |
+| 119th | 2025– | 648 | 642 | 0 | 2 | 0 | 4 | 99.1% |
 
 A small number of rows (17 in total) were held before the committee's earliest tracked video; they are counted in the Congress totals but not in the other columns.
 
 ## Coverage by committee (113th Congress onward)
 
-Sorted from least to most complete. Committees with fewer than 5 GPO hearings are omitted (Intelligence prints few hearings, for example). Rows GPO filed without a committee code are counted under the right committee where the swarm identified it.
+Sorted from least to most complete. Committees with fewer than 5 GPO hearings are omitted (Intelligence prints few hearings, for example). Rows GPO filed without a committee code, or under a Senate code for a joint hearing, are counted under the right committee where it could be identified.
 
-| Committee | Hearings | Full recording | Clips only | Not public | None found | Found | Found since 2019 |
-|---|---|---|---|---|---|---|---|
-| Select Committee on Benghazi | 11 | 2 | 0 | 9 | 0 | 18% | — |
-| Ways and Means | 269 | 106 | 83 | 0 | 80 | 39% | 100% of 83 |
-| Helsinki Commission | 202 | 109 | 8 | 1 | 84 | 54% | 91% of 90 |
-| Congressional-Executive Commission on China | 71 | 54 | 0 | 2 | 0 | 76% | 100% of 40 |
-| Education & Workforce | 388 | 316 | 24 | 10 | 38 | 81% | 100% of 223 |
-| Homeland Security | 533 | 437 | 78 | 1 | 17 | 82% | 100% of 284 |
-| Armed Services | 679 | 571 | 25 | 0 | 83 | 84% | 100% of 285 |
-| Veterans' Affairs | 462 | 389 | 29 | 2 | 42 | 84% | 100% of 207 |
-| Appropriations | 308 | 271 | 0 | 23 | 14 | 88% | 93% of 140 |
-| Joint Economic Committee | 96 | 85 | 11 | 0 | 0 | 89% | 100% of 32 |
-| Transportation and Infrastructure | 428 | 387 | 9 | 0 | 32 | 90% | 100% of 238 |
-| Judiciary | 651 | 606 | 23 | 0 | 22 | 93% | 100% of 366 |
-| Small Business | 501 | 471 | 1 | 0 | 29 | 94% | 95% of 260 |
-| Foreign Affairs | 997 | 953 | 28 | 0 | 15 | 96% | 100% of 345 |
-| Natural Resources | 449 | 437 | 4 | 1 | 7 | 97% | 99% of 253 |
-| Select Committee on the Climate Crisis | 43 | 42 | 0 | 0 | 1 | 98% | 98% of 43 |
-| House Administration | 190 | 186 | 0 | 0 | 4 | 98% | 99% of 129 |
-| Agriculture | 220 | 217 | 1 | 1 | 1 | 99% | 100% of 119 |
-| Budget | 85 | 84 | 1 | 0 | 0 | 99% | 100% of 60 |
-| Oversight and Government Reform | 910 | 901 | 3 | 0 | 6 | 99% | 100% of 466 |
-| Financial Services | 731 | 727 | 1 | 0 | 3 | 99% | 100% of 394 |
-| Science, Space, and Technology | 474 | 473 | 1 | 0 | 0 | 100% | 100% of 210 |
-| Energy & Commerce | 868 | 868 | 0 | 0 | 0 | 100% | 100% of 324 |
-| Select Committee on the Modernization of Congress | 21 | 21 | 0 | 0 | 0 | 100% | 100% of 21 |
-| Select Committee on the January 6th Attack | 10 | 10 | 0 | 0 | 0 | 100% | 100% of 10 |
-| Rules | 18 | 18 | 0 | 0 | 0 | 100% | 100% of 16 |
+| Committee | Hearings | Full recording | Clips only | Not public | None found | Unconfirmed | Found | Found since 2019 |
+|---|---|---|---|---|---|---|---|---|
+| Select Committee on Benghazi | 11 | 2 | 0 | 9 | 0 | 0 | 18% | — |
+| Ways and Means | 269 | 105 | 83 | 0 | 81 | 0 | 39% | 100% of 83 |
+| Helsinki Commission | 202 | 108 | 8 | 1 | 85 | 0 | 53% | 91% of 90 |
+| Congressional-Executive Commission on China | 71 | 54 | 0 | 2 | 0 | 0 | 76% | 100% of 40 |
+| (no committee code in GPO data) | 15 | 12 | 0 | 2 | 1 | 0 | 80% | 82% of 11 |
+| Education & Workforce | 388 | 316 | 24 | 10 | 38 | 0 | 81% | 100% of 223 |
+| Homeland Security | 533 | 438 | 77 | 1 | 17 | 0 | 82% | 100% of 284 |
+| Armed Services | 675 | 555 | 28 | 0 | 80 | 12 | 82% | 99% of 284 |
+| Veterans' Affairs | 462 | 382 | 30 | 2 | 42 | 6 | 83% | 98% of 207 |
+| Appropriations | 308 | 259 | 0 | 24 | 14 | 11 | 84% | 87% of 140 |
+| Joint Economic Committee | 96 | 85 | 11 | 0 | 0 | 0 | 89% | 100% of 32 |
+| Transportation and Infrastructure | 428 | 387 | 9 | 0 | 32 | 0 | 90% | 100% of 238 |
+| Judiciary | 651 | 597 | 23 | 0 | 22 | 9 | 92% | 97% of 366 |
+| Small Business | 502 | 468 | 1 | 0 | 29 | 4 | 93% | 95% of 261 |
+| Natural Resources | 449 | 427 | 4 | 1 | 7 | 10 | 95% | 95% of 253 |
+| Foreign Affairs | 997 | 951 | 28 | 0 | 15 | 2 | 95% | 100% of 345 |
+| House Administration | 190 | 182 | 0 | 0 | 4 | 4 | 96% | 96% of 129 |
+| Select Committee on the Climate Crisis | 43 | 42 | 0 | 0 | 1 | 0 | 98% | 98% of 43 |
+| Oversight and Government Reform | 910 | 892 | 4 | 0 | 6 | 8 | 98% | 99% of 466 |
+| Agriculture | 220 | 217 | 1 | 1 | 1 | 0 | 99% | 100% of 119 |
+| Budget | 85 | 84 | 1 | 0 | 0 | 0 | 99% | 100% of 60 |
+| Financial Services | 731 | 723 | 1 | 0 | 3 | 4 | 99% | 99% of 394 |
+| Science, Space, and Technology | 474 | 470 | 1 | 0 | 0 | 3 | 99% | 100% of 210 |
+| Energy & Commerce | 868 | 867 | 0 | 0 | 0 | 1 | 100% | 100% of 324 |
+| Rules | 18 | 18 | 0 | 0 | 0 | 0 | 100% | 100% of 16 |
+| Select Committee on the January 6th Attack | 10 | 10 | 0 | 0 | 0 | 0 | 100% | 100% of 10 |
+| Select Committee on the Modernization of Congress | 21 | 21 | 0 | 0 | 0 | 0 | 100% | 100% of 21 |
 
 Notes:
 - **Benghazi:** 9 of its 11 GPO volumes are closed-door transcribed witness interviews, so there is no public video to find.
@@ -186,22 +188,41 @@ The research pass turned up many GPO records whose metadata doesn't match the tr
 
 ## Recommendations
 
-1. **Match on EventIDs with no date window.** Most committees put "EventID=NNNNNN" or "(ID: NNNNNN)" in back-catalogue video titles or descriptions. Matching those against Congress.gov event IDs, whatever the upload date, would automatically recover most of the 1,273 hearings the swarm found on tracked channels.
+1. **Match on EventIDs with no date window.** Most committees put "EventID=NNNNNN" or "(ID: NNNNNN)" in back-catalogue video titles or descriptions. Matching those against Congress.gov event IDs, whatever the upload date, would automatically recover most of the 1,278 hearings the swarm found on tracked channels.
 2. **Match on date codes in titles.** For example "031815 - …", "7/23/2013. EMR.", "YYYYMMDD Title", and descriptions saying "Hearing Date: …".
 3. **Add Congress.gov-linked videos to the weekly fetch.** Congress.gov's meeting records link official videos, including unlisted ones that never appear in a channel's upload list.
-4. **Make the matching a weekly report in the repo.** The GPO-to-video matching is currently scratch analysis. It should become a committed step that writes a `matched_video_id` column next to `gpo_hearings.csv`.
+4. **Make the matching a weekly report in the repo, with a one-video-per-hearing rule.** The GPO-to-video matching is currently scratch analysis. It should become a committed step that writes a `matched_video_id` column next to `gpo_hearings.csv`.
 5. **Ask committees to restore private or deleted archives.** Ways and Means (2014–2018), Education & Workforce (2013–14) and Veterans' Affairs (2014–15) made public hearing recordings private. The dead video IDs are listed in the per-hearing file.
 
 ## Verification
 
-After the research pass, two further checks ran:
+After the research pass, two checks ran.
 
-- **Automatic check (complete).** Every hearing got exactly one verdict. Of 2,496 claimed videos, 2,400 resolve to the claimed channel. 42 more exist but block embedding. The remaining 54 are on a different tracked committee's channel than the one listed (joint hearings, miscoded rows). Of the 1,335 "found" claims, 510 have videos whose own title or description carries the hearing's event ID, 636 match its title and 89 give its date. The other 100 had no such signal; most are multi-hearing Appropriations volumes, bill-number markups and third-party uploads.
-- **Adversarial check (in progress).**
-  - **Refuters:** four agents are trying to disprove the 176 riskiest "found" claims: every off-channel find, every medium- or low-confidence match, and every claim with no signal in the video text.
-  - **Challengers:** two agents are trying to find full recordings for a random sample of 90 "no video" and "clips only" verdicts.
+**Automatic check.** This covers every hearing and every claimed video:
+- **Coverage:** every hearing got exactly one verdict.
+- **Videos resolve:** of 2,496 claimed videos, 2,400 resolve to the claimed channel and 42 more exist but block embedding. The remaining 54 are on a different tracked committee's channel than the one listed (joint hearings, miscoded rows). Eight "found elsewhere" claims turned out to be on another committee's tracked channel and were reclassified.
+- **Evidence strength:** of the 1,335 "found" claims, 510 have videos whose own title or description carries the hearing's event ID, 636 match its title and 89 give its date. The other 100 had no such signal; most are multi-hearing Appropriations volumes, bill-number markups and third-party uploads.
 
-  *Results will be added here when they finish.*
+**Adversarial check.** Six more agents re-examined verdicts independently:
+- **Refuters (4 agents):** they tried to disprove the 176 riskiest "found" claims: every off-channel find, every medium- or low-confidence match, and every claim with no signal in the video text.
+  - 166 held up. 7 were revised: 3 added a missed video, 2 swapped in a fuller copy, and 2 were downgraded to clips only because the only upload covered half the hearing.
+  - 3 were refuted: a third-party upload that was a different hearing under the wrong title, a video already belonging to an adjacent hearing, and a volume of written testimony only.
+- **Challengers (2 agents):** they tried to find a full recording for a random sample of 90 "no video" and "clips only" verdicts.
+  - 85 held up and 4 were revised: 3 "no video" rows had member clips, so they became "clips only", and 1 "clips only" row gained a missing segment.
+  - 1 was refuted: a 2014 Homeland Security hearing livestreamed by Roll Call under a generic news title.
+
+**What this implies for the rest:**
+- **"Found" claims are reliable.** Even among the riskiest claims, about 3% were wrong outright and about 6% needed a partial correction.
+- **"No video" verdicts may hide a few recordings.** About 1% of negatives may have a full recording somewhere, typically a news livestream with a generic title. That's roughly 8 hearings across all 812 negatives. About 3% more have member clips that weren't found, so they are clips only rather than no video.
+
+**Cross-hearing check.** 152 videos are assigned to more than one hearing:
+- **Same date (90):** most are legitimate: joint hearings with two GPO packages, or several packages covering one day.
+- **Different dates (62):** these are mostly errors by the original automatic matcher, which gave one video to consecutive-day hearings with similar titles (e.g. FY2015 EPA and DOE budget hearings on April 2 and 3, 2014). The closest-dated hearing keeps each video. The other 74 automatic matches are marked **unconfirmed** in the tables. The 14 swarm matches involved keep their verdict with a note in `verdict_note`.
+
+**Known limitations:**
+- **Multi-hearing packages count as found if any hearing in them has video.** This applies to Appropriations volumes and two-part field hearings. The hearing on GPO's held date is sometimes the one without video.
+- **Some archive uploads are audio only.** A few of Appropriations' 2015 archive uploads say "This is an audio recording" and are still counted as found.
+- **Automatic matches weren't individually re-verified.** The 7,354 remaining automatic matches got only the cross-hearing check. Spot checks during development looked right.
 
 ## Method
 
@@ -213,6 +234,7 @@ After the research pass, two further checks ran:
   - carries its event ID;
   - was posted within one day before to three days after the hearing with a similar title;
   - names its subcommittee on the right day.
+- **Verification:** 6 more agents, described under Verification above.
 - **Research pass:** 16 agents, one per batch of 113–162 hearings grouped by committee. They worked from prepared evidence packets:
   - the hearing metadata;
   - every video from that committee within a few days;
@@ -232,5 +254,7 @@ After the research pass, two further checks ran:
   - verdict: verdict, confidence, video IDs, channel;
   - `evidence`: the agent's one- or two-sentence reasoning;
   - `prior_status`: status before the research pass.
+  - `verification`: the adversarial outcome (upheld, revised or refuted) where the row was checked;
+  - `verdict_note` and `shared_video`: flags for videos matched to more than one hearing.
 - **`packages/congress_shared/src/congress_shared/youtube/youtube-accounts.csv`:** the channel list.
 - **`apps/committee_youtube/data/youtube_event_id_report.csv`:** the weekly per-channel report (videos, event-ID coverage, captions).
