@@ -219,7 +219,7 @@ def main(output_path, tinydb_dir, channels_csv_path, gpo_path, meetings_path, ov
     hearings = [h for h in csv.DictReader(open(gpo_path))]
     for h in hearings:
         h["committee_code"] = ALIAS.get(h["committee_code"], h["committee_code"])
-        h["_dates"] = sorted(set(filter(None, (h.get("hearing_dates") or "").split(";")))) or [h["held_date"]]
+        h["_dates"] = sorted(set(filter(None, (h.get("hearing_dates") or "").split(";")))) or [d for d in [h["held_date"]] if d]
     hearings_on_day = collections.Counter((h["committee_code"], d) for h in hearings for d in h["_dates"])
 
     overrides = {}
@@ -230,6 +230,8 @@ def main(output_path, tinydb_dir, channels_csv_path, gpo_path, meetings_path, ov
     pairs, clips = [], collections.defaultdict(list)
     by_pid = {h["package_id"]: h for h in hearings}
     for h in hearings:
+        if not h["_dates"]:
+            continue  # GPO gave no hearing date; nothing to match on
         for score, method, v in candidates(h, videos.get(h["committee_code"], []), meetings, hearings_on_day):
             if score < 90 and v.get("duration") is not None and v["duration"] < CLIP_SECONDS:
                 clips[h["package_id"]].append(v)
@@ -295,6 +297,9 @@ def main(output_path, tinydb_dir, channels_csv_path, gpo_path, meetings_path, ov
             note = "errata cover sheet, not a proceeding"
         elif code not in tracked_codes:
             status = "committee_not_tracked"
+        elif not h["_dates"]:
+            status = "no_video_found"
+            note = "GPO record has no hearing date to match on"
         elif code not in first_video or max(h["_dates"]) < first_video[code]:
             status = "before_channel"
         else:

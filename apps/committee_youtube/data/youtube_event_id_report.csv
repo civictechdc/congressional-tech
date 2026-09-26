@@ -111,6 +111,20 @@ Armed Services,@armedservicesGOP,0,0,116,Democratic,house,0
 Armed Services,@armedservicesGOP,0,0,117,Democratic,house,0
 Armed Services,@armedservicesGOP,0,0,118,Republican,house,0
 Armed Services,@armedservicesGOP,10,10,119,Republican,house,10
+Armed Services,@HASCRepublicans,0,0,106,Republican,house,0
+Armed Services,@HASCRepublicans,0,0,107,Republican,house,0
+Armed Services,@HASCRepublicans,0,0,108,Republican,house,0
+Armed Services,@HASCRepublicans,0,0,109,Republican,house,0
+Armed Services,@HASCRepublicans,0,0,110,Democratic,house,0
+Armed Services,@HASCRepublicans,123,123,111,Democratic,house,0
+Armed Services,@HASCRepublicans,179,179,112,Republican,house,0
+Armed Services,@HASCRepublicans,32,32,113,Republican,house,0
+Armed Services,@HASCRepublicans,64,13,114,Republican,house,3
+Armed Services,@HASCRepublicans,43,1,115,Republican,house,0
+Armed Services,@HASCRepublicans,0,0,116,Democratic,house,0
+Armed Services,@HASCRepublicans,0,0,117,Democratic,house,0
+Armed Services,@HASCRepublicans,1,1,118,Republican,house,0
+Armed Services,@HASCRepublicans,0,0,119,Republican,house,0
 Budget,@HouseBudgetGOP,0,0,106,Republican,house,0
 Budget,@HouseBudgetGOP,0,0,107,Republican,house,0
 Budget,@HouseBudgetGOP,0,0,108,Republican,house,0
@@ -447,6 +461,20 @@ Judiciary,@housejudiciarycommittee5448,2,2,116,Democratic,house,0
 Judiciary,@housejudiciarycommittee5448,8,8,117,Democratic,house,0
 Judiciary,@housejudiciarycommittee5448,1,1,118,Republican,house,0
 Judiciary,@housejudiciarycommittee5448,0,0,119,Republican,house,0
+Judiciary,@HouseJudDems,0,0,106,Republican,house,0
+Judiciary,@HouseJudDems,0,0,107,Republican,house,0
+Judiciary,@HouseJudDems,0,0,108,Republican,house,0
+Judiciary,@HouseJudDems,0,0,109,Republican,house,0
+Judiciary,@HouseJudDems,0,0,110,Democratic,house,0
+Judiciary,@HouseJudDems,0,0,111,Democratic,house,0
+Judiciary,@HouseJudDems,2,2,112,Republican,house,0
+Judiciary,@HouseJudDems,13,12,113,Republican,house,0
+Judiciary,@HouseJudDems,1,1,114,Republican,house,0
+Judiciary,@HouseJudDems,0,0,115,Republican,house,0
+Judiciary,@HouseJudDems,0,0,116,Democratic,house,0
+Judiciary,@HouseJudDems,0,0,117,Democratic,house,0
+Judiciary,@HouseJudDems,0,0,118,Republican,house,0
+Judiciary,@HouseJudDems,0,0,119,Republican,house,0
 Natural Resources,@NaturalResourcesGOP,0,0,106,Republican,house,0
 Natural Resources,@NaturalResourcesGOP,0,0,107,Republican,house,0
 Natural Resources,@NaturalResourcesGOP,0,0,108,Republican,house,0
@@ -1133,3 +1161,479 @@ Joint Committee on Taxation,@jctgov,0,0,116,,joint,0
 Joint Committee on Taxation,@jctgov,0,0,117,,joint,0
 Joint Committee on Taxation,@jctgov,0,0,118,,joint,0
 Joint Committee on Taxation,@jctgov,2,2,119,,joint,1
+Congressional Oversight Commission,@congressionaloversightcomm6808,0,0,106,,joint,0
+Congressional Oversight Commission,@congressionaloversightcomm6808,0,0,107,,joint,0
+Congressional Oversight Commission,@congressionaloversightcomm6808,0,0,108,,joint,0
+Congressional Oversight Commission,@congressionaloversightcomm6808,0,0,109,,joint,0
+Congressional Oversight Commission,@congressionaloversightcomm6808,0,0,110,,joint,0
+Congressional Oversight Commission,@congressionaloversightcomm6808,0,0,111,,joint,0
+Congressional Oversight Commission,@congressionaloversightcomm6808,0,0,112,,joint,0
+Congressional Oversight Commission,@congressionaloversightcomm6808,0,0,113,,joint,0
+Congressional Oversight Commission,@congressionaloversightcomm6808,0,0,114,,joint,0
+Congressional Oversight Commission,@congressionaloversightcomm6808,0,0,115,,joint,0
+Congressional Oversight Commission,@congressionaloversightcomm6808,5,5,116,,joint,0
+Congressional Oversight Commission,@congressionaloversightcomm6808,0,0,117,,joint,0
+Congressional Oversight Commission,@congressionaloversightcomm6808,0,0,118,,joint,0
+Congressional Oversight Commission,@congressionaloversightcomm6808,0,0,119,,joint,0
+Joint Select Committee on Budget and Appropriations Process Reform,@JSCBAPR,0,0,106,,joint,0
+Joint Select Committee on Budget and Appropriations Process Reform,@JSCBAPR,0,0,107,,joint,0
+Joint Select Committee on Budget and Appropriations Process Reform,@JSCBAPR,0,0,108,,joint,0
+Joint Select Committee on Budget and Appropriations Process Reform,@JSCBAPR,0,0,109,,joint,0
+Joint Select Committee on Budget and Appropriations Process Reform,@JSCBAPR,0,0,110,,joint,0
+Joint Select Committee on Budget and Appropriations Process Reform,@JSCBAPR,0,0,111,,joint,0
+Joint Select Committee on Budget and Appropriations Process Reform,@JSCBAPR,0,0,112,,joint,0
+Joint Select Committee on Budget and Appropriations Process Reform,@JSCBAPR,0,0,113,,joint,0
+Joint Select Committee on Budget and Appropriations Process Reform,@JSCBAPR,0,0,114,,joint,0
+Joint Select Committee on Budget and Appropriations Process Reform,@JSCBAPR,9,9,115,,joint,0
+Joint Select Committee on Budget and Appropriations Process Reform,@JSCBAPR,0,0,116,,joint,0
+Joint Select Committee on Budget and Appropriations Process Reform,@JSCBAPR,0,0,117,,joint,0
+Joint Select Committee on Budget and Appropriations Process Reform,@JSCBAPR,0,0,118,,joint,0
+Joint Select Committee on Budget and Appropriations Process Reform,@JSCBAPR,0,0,119,,joint,0
+Senate Appropriations,@SenateApprops,0,0,106,Republican,senate,0
+Senate Appropriations,@SenateApprops,0,0,107,Democratic / Republican / Democratic,senate,0
+Senate Appropriations,@SenateApprops,0,0,108,Republican,senate,0
+Senate Appropriations,@SenateApprops,0,0,109,Republican,senate,0
+Senate Appropriations,@SenateApprops,0,0,110,Democratic,senate,0
+Senate Appropriations,@SenateApprops,0,0,111,Democratic,senate,0
+Senate Appropriations,@SenateApprops,0,0,112,Democratic,senate,0
+Senate Appropriations,@SenateApprops,47,47,113,Democratic,senate,0
+Senate Appropriations,@SenateApprops,27,27,114,Republican,senate,0
+Senate Appropriations,@SenateApprops,0,0,115,Republican,senate,0
+Senate Appropriations,@SenateApprops,0,0,116,Republican,senate,0
+Senate Appropriations,@SenateApprops,0,0,117,Democratic,senate,0
+Senate Appropriations,@SenateApprops,0,0,118,Democratic,senate,0
+Senate Appropriations,@SenateApprops,0,0,119,Republican,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenBankingGOP,0,0,106,Republican,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenBankingGOP,0,0,107,Democratic / Republican / Democratic,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenBankingGOP,0,0,108,Republican,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenBankingGOP,0,0,109,Republican,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenBankingGOP,0,0,110,Democratic,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenBankingGOP,0,0,111,Democratic,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenBankingGOP,0,0,112,Democratic,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenBankingGOP,0,0,113,Democratic,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenBankingGOP,0,0,114,Republican,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenBankingGOP,0,0,115,Republican,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenBankingGOP,0,0,116,Republican,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenBankingGOP,200,200,117,Democratic,senate,1
+"Senate Banking, Housing, and Urban Affairs",@SenBankingGOP,89,89,118,Democratic,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenBankingGOP,157,157,119,Republican,senate,8
+"Senate Banking, Housing, and Urban Affairs",@senatebankinghousingandurbdems,0,0,106,Republican,senate,0
+"Senate Banking, Housing, and Urban Affairs",@senatebankinghousingandurbdems,0,0,107,Democratic / Republican / Democratic,senate,0
+"Senate Banking, Housing, and Urban Affairs",@senatebankinghousingandurbdems,0,0,108,Republican,senate,0
+"Senate Banking, Housing, and Urban Affairs",@senatebankinghousingandurbdems,0,0,109,Republican,senate,0
+"Senate Banking, Housing, and Urban Affairs",@senatebankinghousingandurbdems,0,0,110,Democratic,senate,0
+"Senate Banking, Housing, and Urban Affairs",@senatebankinghousingandurbdems,0,0,111,Democratic,senate,0
+"Senate Banking, Housing, and Urban Affairs",@senatebankinghousingandurbdems,0,0,112,Democratic,senate,0
+"Senate Banking, Housing, and Urban Affairs",@senatebankinghousingandurbdems,0,0,113,Democratic,senate,0
+"Senate Banking, Housing, and Urban Affairs",@senatebankinghousingandurbdems,0,0,114,Republican,senate,0
+"Senate Banking, Housing, and Urban Affairs",@senatebankinghousingandurbdems,0,0,115,Republican,senate,0
+"Senate Banking, Housing, and Urban Affairs",@senatebankinghousingandurbdems,0,0,116,Republican,senate,0
+"Senate Banking, Housing, and Urban Affairs",@senatebankinghousingandurbdems,45,45,117,Democratic,senate,1
+"Senate Banking, Housing, and Urban Affairs",@senatebankinghousingandurbdems,50,50,118,Democratic,senate,0
+"Senate Banking, Housing, and Urban Affairs",@senatebankinghousingandurbdems,80,80,119,Republican,senate,69
+"Senate Banking, Housing, and Urban Affairs",@SenateBankingGOP,0,0,106,Republican,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenateBankingGOP,0,0,107,Democratic / Republican / Democratic,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenateBankingGOP,0,0,108,Republican,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenateBankingGOP,0,0,109,Republican,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenateBankingGOP,0,0,110,Democratic,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenateBankingGOP,0,0,111,Democratic,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenateBankingGOP,0,0,112,Democratic,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenateBankingGOP,124,124,113,Democratic,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenateBankingGOP,0,0,114,Republican,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenateBankingGOP,19,19,115,Republican,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenateBankingGOP,0,0,116,Republican,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenateBankingGOP,0,0,117,Democratic,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenateBankingGOP,0,0,118,Democratic,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenateBankingGOP,0,0,119,Republican,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenateBanking,0,0,106,Republican,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenateBanking,0,0,107,Democratic / Republican / Democratic,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenateBanking,0,0,108,Republican,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenateBanking,0,0,109,Republican,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenateBanking,0,0,110,Democratic,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenateBanking,0,0,111,Democratic,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenateBanking,16,16,112,Democratic,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenateBanking,2,2,113,Democratic,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenateBanking,0,0,114,Republican,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenateBanking,0,0,115,Republican,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenateBanking,0,0,116,Republican,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenateBanking,0,0,117,Democratic,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenateBanking,0,0,118,Democratic,senate,0
+"Senate Banking, Housing, and Urban Affairs",@SenateBanking,0,0,119,Republican,senate,0
+Senate Budget,@BudgetGOP,0,0,106,Republican,senate,0
+Senate Budget,@BudgetGOP,0,0,107,Democratic / Republican / Democratic,senate,0
+Senate Budget,@BudgetGOP,0,0,108,Republican,senate,0
+Senate Budget,@BudgetGOP,0,0,109,Republican,senate,0
+Senate Budget,@BudgetGOP,0,0,110,Democratic,senate,0
+Senate Budget,@BudgetGOP,0,0,111,Democratic,senate,0
+Senate Budget,@BudgetGOP,375,375,112,Democratic,senate,0
+Senate Budget,@BudgetGOP,16,16,113,Democratic,senate,0
+Senate Budget,@BudgetGOP,11,11,114,Republican,senate,0
+Senate Budget,@BudgetGOP,2,2,115,Republican,senate,0
+Senate Budget,@BudgetGOP,15,15,116,Republican,senate,0
+Senate Budget,@BudgetGOP,19,19,117,Democratic,senate,0
+Senate Budget,@BudgetGOP,0,0,118,Democratic,senate,0
+Senate Budget,@BudgetGOP,0,0,119,Republican,senate,0
+Senate Budget,@SenateBudget,0,0,106,Republican,senate,0
+Senate Budget,@SenateBudget,0,0,107,Democratic / Republican / Democratic,senate,0
+Senate Budget,@SenateBudget,0,0,108,Republican,senate,0
+Senate Budget,@SenateBudget,0,0,109,Republican,senate,0
+Senate Budget,@SenateBudget,0,0,110,Democratic,senate,0
+Senate Budget,@SenateBudget,24,24,111,Democratic,senate,0
+Senate Budget,@SenateBudget,170,170,112,Democratic,senate,0
+Senate Budget,@SenateBudget,52,52,113,Democratic,senate,0
+Senate Budget,@SenateBudget,0,0,114,Republican,senate,0
+Senate Budget,@SenateBudget,0,0,115,Republican,senate,0
+Senate Budget,@SenateBudget,0,0,116,Republican,senate,0
+Senate Budget,@SenateBudget,0,0,117,Democratic,senate,0
+Senate Budget,@SenateBudget,94,94,118,Democratic,senate,2
+Senate Budget,@SenateBudget,198,198,119,Republican,senate,18
+"Senate Commerce, Science, and Transportation",@CommerceRepublicans,0,0,106,Republican,senate,0
+"Senate Commerce, Science, and Transportation",@CommerceRepublicans,0,0,107,Democratic / Republican / Democratic,senate,0
+"Senate Commerce, Science, and Transportation",@CommerceRepublicans,0,0,108,Republican,senate,0
+"Senate Commerce, Science, and Transportation",@CommerceRepublicans,0,0,109,Republican,senate,0
+"Senate Commerce, Science, and Transportation",@CommerceRepublicans,0,0,110,Democratic,senate,0
+"Senate Commerce, Science, and Transportation",@CommerceRepublicans,32,32,111,Democratic,senate,0
+"Senate Commerce, Science, and Transportation",@CommerceRepublicans,55,55,112,Democratic,senate,12
+"Senate Commerce, Science, and Transportation",@CommerceRepublicans,53,53,113,Democratic,senate,0
+"Senate Commerce, Science, and Transportation",@CommerceRepublicans,0,0,114,Republican,senate,0
+"Senate Commerce, Science, and Transportation",@CommerceRepublicans,15,15,115,Republican,senate,0
+"Senate Commerce, Science, and Transportation",@CommerceRepublicans,29,29,116,Republican,senate,0
+"Senate Commerce, Science, and Transportation",@CommerceRepublicans,21,21,117,Democratic,senate,0
+"Senate Commerce, Science, and Transportation",@CommerceRepublicans,21,21,118,Democratic,senate,0
+"Senate Commerce, Science, and Transportation",@CommerceRepublicans,73,73,119,Republican,senate,2
+"Senate Commerce, Science, and Transportation",@commercedems,0,0,106,Republican,senate,0
+"Senate Commerce, Science, and Transportation",@commercedems,0,0,107,Democratic / Republican / Democratic,senate,0
+"Senate Commerce, Science, and Transportation",@commercedems,0,0,108,Republican,senate,0
+"Senate Commerce, Science, and Transportation",@commercedems,0,0,109,Republican,senate,0
+"Senate Commerce, Science, and Transportation",@commercedems,0,0,110,Democratic,senate,0
+"Senate Commerce, Science, and Transportation",@commercedems,0,0,111,Democratic,senate,0
+"Senate Commerce, Science, and Transportation",@commercedems,0,0,112,Democratic,senate,0
+"Senate Commerce, Science, and Transportation",@commercedems,0,0,113,Democratic,senate,0
+"Senate Commerce, Science, and Transportation",@commercedems,0,0,114,Republican,senate,0
+"Senate Commerce, Science, and Transportation",@commercedems,0,0,115,Republican,senate,0
+"Senate Commerce, Science, and Transportation",@commercedems,0,0,116,Republican,senate,0
+"Senate Commerce, Science, and Transportation",@commercedems,66,66,117,Democratic,senate,17
+"Senate Commerce, Science, and Transportation",@commercedems,137,137,118,Democratic,senate,59
+"Senate Commerce, Science, and Transportation",@commercedems,195,195,119,Republican,senate,167
+"Senate Commerce, Science, and Transportation",@senatecommercecommitteedem873,0,0,106,Republican,senate,0
+"Senate Commerce, Science, and Transportation",@senatecommercecommitteedem873,0,0,107,Democratic / Republican / Democratic,senate,0
+"Senate Commerce, Science, and Transportation",@senatecommercecommitteedem873,0,0,108,Republican,senate,0
+"Senate Commerce, Science, and Transportation",@senatecommercecommitteedem873,0,0,109,Republican,senate,0
+"Senate Commerce, Science, and Transportation",@senatecommercecommitteedem873,0,0,110,Democratic,senate,0
+"Senate Commerce, Science, and Transportation",@senatecommercecommitteedem873,0,0,111,Democratic,senate,0
+"Senate Commerce, Science, and Transportation",@senatecommercecommitteedem873,0,0,112,Democratic,senate,0
+"Senate Commerce, Science, and Transportation",@senatecommercecommitteedem873,0,0,113,Democratic,senate,0
+"Senate Commerce, Science, and Transportation",@senatecommercecommitteedem873,0,0,114,Republican,senate,0
+"Senate Commerce, Science, and Transportation",@senatecommercecommitteedem873,19,19,115,Republican,senate,0
+"Senate Commerce, Science, and Transportation",@senatecommercecommitteedem873,0,0,116,Republican,senate,0
+"Senate Commerce, Science, and Transportation",@senatecommercecommitteedem873,0,0,117,Democratic,senate,0
+"Senate Commerce, Science, and Transportation",@senatecommercecommitteedem873,0,0,118,Democratic,senate,0
+"Senate Commerce, Science, and Transportation",@senatecommercecommitteedem873,0,0,119,Republican,senate,0
+"Senate Commerce, Science, and Transportation",@SenateCommercePress,0,0,106,Republican,senate,0
+"Senate Commerce, Science, and Transportation",@SenateCommercePress,0,0,107,Democratic / Republican / Democratic,senate,0
+"Senate Commerce, Science, and Transportation",@SenateCommercePress,0,0,108,Republican,senate,0
+"Senate Commerce, Science, and Transportation",@SenateCommercePress,0,0,109,Republican,senate,0
+"Senate Commerce, Science, and Transportation",@SenateCommercePress,0,0,110,Democratic,senate,0
+"Senate Commerce, Science, and Transportation",@SenateCommercePress,22,22,111,Democratic,senate,0
+"Senate Commerce, Science, and Transportation",@SenateCommercePress,20,20,112,Democratic,senate,0
+"Senate Commerce, Science, and Transportation",@SenateCommercePress,12,12,113,Democratic,senate,0
+"Senate Commerce, Science, and Transportation",@SenateCommercePress,21,21,114,Republican,senate,0
+"Senate Commerce, Science, and Transportation",@SenateCommercePress,0,0,115,Republican,senate,0
+"Senate Commerce, Science, and Transportation",@SenateCommercePress,0,0,116,Republican,senate,0
+"Senate Commerce, Science, and Transportation",@SenateCommercePress,0,0,117,Democratic,senate,0
+"Senate Commerce, Science, and Transportation",@SenateCommercePress,0,0,118,Democratic,senate,0
+"Senate Commerce, Science, and Transportation",@SenateCommercePress,0,0,119,Republican,senate,0
+Senate Energy and Natural Resources,@ENRGOP,0,0,106,Republican,senate,0
+Senate Energy and Natural Resources,@ENRGOP,0,0,107,Democratic / Republican / Democratic,senate,0
+Senate Energy and Natural Resources,@ENRGOP,0,0,108,Republican,senate,0
+Senate Energy and Natural Resources,@ENRGOP,0,0,109,Republican,senate,0
+Senate Energy and Natural Resources,@ENRGOP,0,0,110,Democratic,senate,0
+Senate Energy and Natural Resources,@ENRGOP,0,0,111,Democratic,senate,0
+Senate Energy and Natural Resources,@ENRGOP,25,24,112,Democratic,senate,2
+Senate Energy and Natural Resources,@ENRGOP,175,174,113,Democratic,senate,1
+Senate Energy and Natural Resources,@ENRGOP,320,320,114,Republican,senate,0
+Senate Energy and Natural Resources,@ENRGOP,201,201,115,Republican,senate,2
+Senate Energy and Natural Resources,@ENRGOP,152,152,116,Republican,senate,0
+Senate Energy and Natural Resources,@ENRGOP,142,142,117,Democratic,senate,0
+Senate Energy and Natural Resources,@ENRGOP,54,54,118,Democratic,senate,0
+Senate Energy and Natural Resources,@ENRGOP,6,6,119,Republican,senate,0
+Senate Energy and Natural Resources,@SenateEnergy,0,0,106,Republican,senate,0
+Senate Energy and Natural Resources,@SenateEnergy,0,0,107,Democratic / Republican / Democratic,senate,0
+Senate Energy and Natural Resources,@SenateEnergy,0,0,108,Republican,senate,0
+Senate Energy and Natural Resources,@SenateEnergy,0,0,109,Republican,senate,0
+Senate Energy and Natural Resources,@SenateEnergy,0,0,110,Democratic,senate,0
+Senate Energy and Natural Resources,@SenateEnergy,0,0,111,Democratic,senate,0
+Senate Energy and Natural Resources,@SenateEnergy,4,4,112,Democratic,senate,0
+Senate Energy and Natural Resources,@SenateEnergy,70,69,113,Democratic,senate,0
+Senate Energy and Natural Resources,@SenateEnergy,52,52,114,Republican,senate,0
+Senate Energy and Natural Resources,@SenateEnergy,75,75,115,Republican,senate,0
+Senate Energy and Natural Resources,@SenateEnergy,136,136,116,Republican,senate,0
+Senate Energy and Natural Resources,@SenateEnergy,130,130,117,Democratic,senate,5
+Senate Energy and Natural Resources,@SenateEnergy,108,108,118,Democratic,senate,56
+Senate Energy and Natural Resources,@SenateEnergy,209,209,119,Republican,senate,45
+Senate Environment and Public Works,@EPWGOP,0,0,106,Republican,senate,0
+Senate Environment and Public Works,@EPWGOP,0,0,107,Democratic / Republican / Democratic,senate,0
+Senate Environment and Public Works,@EPWGOP,0,0,108,Republican,senate,0
+Senate Environment and Public Works,@EPWGOP,0,0,109,Republican,senate,0
+Senate Environment and Public Works,@EPWGOP,0,0,110,Democratic,senate,0
+Senate Environment and Public Works,@EPWGOP,0,0,111,Democratic,senate,0
+Senate Environment and Public Works,@EPWGOP,0,0,112,Democratic,senate,0
+Senate Environment and Public Works,@EPWGOP,0,0,113,Democratic,senate,0
+Senate Environment and Public Works,@EPWGOP,0,0,114,Republican,senate,0
+Senate Environment and Public Works,@EPWGOP,160,160,115,Republican,senate,0
+Senate Environment and Public Works,@EPWGOP,124,124,116,Republican,senate,0
+Senate Environment and Public Works,@EPWGOP,147,147,117,Democratic,senate,0
+Senate Environment and Public Works,@EPWGOP,116,116,118,Democratic,senate,0
+Senate Environment and Public Works,@EPWGOP,92,92,119,Republican,senate,0
+Senate Environment and Public Works,@EPWCmte,0,0,106,Republican,senate,0
+Senate Environment and Public Works,@EPWCmte,0,0,107,Democratic / Republican / Democratic,senate,0
+Senate Environment and Public Works,@EPWCmte,0,0,108,Republican,senate,0
+Senate Environment and Public Works,@EPWCmte,0,0,109,Republican,senate,0
+Senate Environment and Public Works,@EPWCmte,0,0,110,Democratic,senate,0
+Senate Environment and Public Works,@EPWCmte,0,0,111,Democratic,senate,0
+Senate Environment and Public Works,@EPWCmte,41,41,112,Democratic,senate,0
+Senate Environment and Public Works,@EPWCmte,30,27,113,Democratic,senate,0
+Senate Environment and Public Works,@EPWCmte,30,30,114,Republican,senate,0
+Senate Environment and Public Works,@EPWCmte,11,11,115,Republican,senate,0
+Senate Environment and Public Works,@EPWCmte,3,3,116,Republican,senate,0
+Senate Environment and Public Works,@EPWCmte,77,77,117,Democratic,senate,0
+Senate Environment and Public Works,@EPWCmte,164,164,118,Democratic,senate,16
+Senate Environment and Public Works,@EPWCmte,144,144,119,Republican,senate,9
+Senate Finance,@GOPSenateFinance,0,0,106,Republican,senate,0
+Senate Finance,@GOPSenateFinance,0,0,107,Democratic / Republican / Democratic,senate,0
+Senate Finance,@GOPSenateFinance,0,0,108,Republican,senate,0
+Senate Finance,@GOPSenateFinance,0,0,109,Republican,senate,0
+Senate Finance,@GOPSenateFinance,0,0,110,Democratic,senate,0
+Senate Finance,@GOPSenateFinance,0,0,111,Democratic,senate,0
+Senate Finance,@GOPSenateFinance,3,3,112,Democratic,senate,0
+Senate Finance,@GOPSenateFinance,63,63,113,Democratic,senate,0
+Senate Finance,@GOPSenateFinance,44,44,114,Republican,senate,0
+Senate Finance,@GOPSenateFinance,100,100,115,Republican,senate,2
+Senate Finance,@GOPSenateFinance,0,0,116,Republican,senate,0
+Senate Finance,@GOPSenateFinance,0,0,117,Democratic,senate,0
+Senate Finance,@GOPSenateFinance,0,0,118,Democratic,senate,0
+Senate Finance,@GOPSenateFinance,0,0,119,Republican,senate,0
+Senate Finance,@SenFinanceMajority,0,0,106,Republican,senate,0
+Senate Finance,@SenFinanceMajority,0,0,107,Democratic / Republican / Democratic,senate,0
+Senate Finance,@SenFinanceMajority,0,0,108,Republican,senate,0
+Senate Finance,@SenFinanceMajority,0,0,109,Republican,senate,0
+Senate Finance,@SenFinanceMajority,0,0,110,Democratic,senate,0
+Senate Finance,@SenFinanceMajority,0,0,111,Democratic,senate,0
+Senate Finance,@SenFinanceMajority,12,12,112,Democratic,senate,0
+Senate Finance,@SenFinanceMajority,25,25,113,Democratic,senate,0
+Senate Finance,@SenFinanceMajority,4,4,114,Republican,senate,0
+Senate Finance,@SenFinanceMajority,0,0,115,Republican,senate,0
+Senate Finance,@SenFinanceMajority,0,0,116,Republican,senate,0
+Senate Finance,@SenFinanceMajority,0,0,117,Democratic,senate,0
+Senate Finance,@SenFinanceMajority,0,0,118,Democratic,senate,0
+Senate Finance,@SenFinanceMajority,0,0,119,Republican,senate,0
+Senate Finance,@SenateFinance,0,0,106,Republican,senate,0
+Senate Finance,@SenateFinance,0,0,107,Democratic / Republican / Democratic,senate,0
+Senate Finance,@SenateFinance,0,0,108,Republican,senate,0
+Senate Finance,@SenateFinance,0,0,109,Republican,senate,0
+Senate Finance,@SenateFinance,0,0,110,Democratic,senate,0
+Senate Finance,@SenateFinance,0,0,111,Democratic,senate,0
+Senate Finance,@SenateFinance,0,0,112,Democratic,senate,0
+Senate Finance,@SenateFinance,0,0,113,Democratic,senate,0
+Senate Finance,@SenateFinance,0,0,114,Republican,senate,0
+Senate Finance,@SenateFinance,0,0,115,Republican,senate,0
+Senate Finance,@SenateFinance,0,0,116,Republican,senate,0
+Senate Finance,@SenateFinance,0,0,117,Democratic,senate,0
+Senate Finance,@SenateFinance,0,0,118,Democratic,senate,0
+Senate Finance,@SenateFinance,0,0,119,Republican,senate,0
+Senate Foreign Relations,@SFRCDems,0,0,106,Republican,senate,0
+Senate Foreign Relations,@SFRCDems,0,0,107,Democratic / Republican / Democratic,senate,0
+Senate Foreign Relations,@SFRCDems,0,0,108,Republican,senate,0
+Senate Foreign Relations,@SFRCDems,0,0,109,Republican,senate,0
+Senate Foreign Relations,@SFRCDems,0,0,110,Democratic,senate,0
+Senate Foreign Relations,@SFRCDems,0,0,111,Democratic,senate,0
+Senate Foreign Relations,@SFRCDems,0,0,112,Democratic,senate,0
+Senate Foreign Relations,@SFRCDems,0,0,113,Democratic,senate,0
+Senate Foreign Relations,@SFRCDems,0,0,114,Republican,senate,0
+Senate Foreign Relations,@SFRCDems,0,0,115,Republican,senate,0
+Senate Foreign Relations,@SFRCDems,0,0,116,Republican,senate,0
+Senate Foreign Relations,@SFRCDems,0,0,117,Democratic,senate,0
+Senate Foreign Relations,@SFRCDems,0,0,118,Democratic,senate,0
+Senate Foreign Relations,@SFRCDems,41,41,119,Republican,senate,11
+Senate Homeland Security and Governmental Affairs,@HSGACDems,0,0,106,Republican,senate,0
+Senate Homeland Security and Governmental Affairs,@HSGACDems,0,0,107,Democratic / Republican / Democratic,senate,0
+Senate Homeland Security and Governmental Affairs,@HSGACDems,0,0,108,Republican,senate,0
+Senate Homeland Security and Governmental Affairs,@HSGACDems,0,0,109,Republican,senate,0
+Senate Homeland Security and Governmental Affairs,@HSGACDems,0,0,110,Democratic,senate,0
+Senate Homeland Security and Governmental Affairs,@HSGACDems,0,0,111,Democratic,senate,0
+Senate Homeland Security and Governmental Affairs,@HSGACDems,1,1,112,Democratic,senate,0
+Senate Homeland Security and Governmental Affairs,@HSGACDems,7,7,113,Democratic,senate,1
+Senate Homeland Security and Governmental Affairs,@HSGACDems,1,1,114,Republican,senate,0
+Senate Homeland Security and Governmental Affairs,@HSGACDems,35,35,115,Republican,senate,17
+Senate Homeland Security and Governmental Affairs,@HSGACDems,37,37,116,Republican,senate,20
+Senate Homeland Security and Governmental Affairs,@HSGACDems,119,119,117,Democratic,senate,9
+Senate Homeland Security and Governmental Affairs,@HSGACDems,78,78,118,Democratic,senate,30
+Senate Homeland Security and Governmental Affairs,@HSGACDems,90,90,119,Republican,senate,11
+"Senate Health, Education, Labor, and Pensions",@gophelp,0,0,106,Republican,senate,0
+"Senate Health, Education, Labor, and Pensions",@gophelp,0,0,107,Democratic / Republican / Democratic,senate,0
+"Senate Health, Education, Labor, and Pensions",@gophelp,0,0,108,Republican,senate,0
+"Senate Health, Education, Labor, and Pensions",@gophelp,0,0,109,Republican,senate,0
+"Senate Health, Education, Labor, and Pensions",@gophelp,0,0,110,Democratic,senate,0
+"Senate Health, Education, Labor, and Pensions",@gophelp,0,0,111,Democratic,senate,0
+"Senate Health, Education, Labor, and Pensions",@gophelp,0,0,112,Democratic,senate,0
+"Senate Health, Education, Labor, and Pensions",@gophelp,0,0,113,Democratic,senate,0
+"Senate Health, Education, Labor, and Pensions",@gophelp,0,0,114,Republican,senate,0
+"Senate Health, Education, Labor, and Pensions",@gophelp,0,0,115,Republican,senate,0
+"Senate Health, Education, Labor, and Pensions",@gophelp,0,0,116,Republican,senate,0
+"Senate Health, Education, Labor, and Pensions",@gophelp,0,0,117,Democratic,senate,0
+"Senate Health, Education, Labor, and Pensions",@gophelp,121,121,118,Democratic,senate,2
+"Senate Health, Education, Labor, and Pensions",@gophelp,159,159,119,Republican,senate,0
+"Senate Health, Education, Labor, and Pensions",@HELPCommitteeGOP,0,0,106,Republican,senate,0
+"Senate Health, Education, Labor, and Pensions",@HELPCommitteeGOP,0,0,107,Democratic / Republican / Democratic,senate,0
+"Senate Health, Education, Labor, and Pensions",@HELPCommitteeGOP,0,0,108,Republican,senate,0
+"Senate Health, Education, Labor, and Pensions",@HELPCommitteeGOP,0,0,109,Republican,senate,0
+"Senate Health, Education, Labor, and Pensions",@HELPCommitteeGOP,0,0,110,Democratic,senate,0
+"Senate Health, Education, Labor, and Pensions",@HELPCommitteeGOP,0,0,111,Democratic,senate,0
+"Senate Health, Education, Labor, and Pensions",@HELPCommitteeGOP,37,37,112,Democratic,senate,0
+"Senate Health, Education, Labor, and Pensions",@HELPCommitteeGOP,79,78,113,Democratic,senate,0
+"Senate Health, Education, Labor, and Pensions",@HELPCommitteeGOP,137,137,114,Republican,senate,1
+"Senate Health, Education, Labor, and Pensions",@HELPCommitteeGOP,20,20,115,Republican,senate,0
+"Senate Health, Education, Labor, and Pensions",@HELPCommitteeGOP,0,0,116,Republican,senate,0
+"Senate Health, Education, Labor, and Pensions",@HELPCommitteeGOP,0,0,117,Democratic,senate,0
+"Senate Health, Education, Labor, and Pensions",@HELPCommitteeGOP,0,0,118,Democratic,senate,0
+"Senate Health, Education, Labor, and Pensions",@HELPCommitteeGOP,0,0,119,Republican,senate,0
+Senate Judiciary,@SenateJudiciaryDemocrats,0,0,106,Republican,senate,0
+Senate Judiciary,@SenateJudiciaryDemocrats,0,0,107,Democratic / Republican / Democratic,senate,0
+Senate Judiciary,@SenateJudiciaryDemocrats,0,0,108,Republican,senate,0
+Senate Judiciary,@SenateJudiciaryDemocrats,0,0,109,Republican,senate,0
+Senate Judiciary,@SenateJudiciaryDemocrats,0,0,110,Democratic,senate,0
+Senate Judiciary,@SenateJudiciaryDemocrats,0,0,111,Democratic,senate,0
+Senate Judiciary,@SenateJudiciaryDemocrats,0,0,112,Democratic,senate,0
+Senate Judiciary,@SenateJudiciaryDemocrats,0,0,113,Democratic,senate,0
+Senate Judiciary,@SenateJudiciaryDemocrats,0,0,114,Republican,senate,0
+Senate Judiciary,@SenateJudiciaryDemocrats,0,0,115,Republican,senate,0
+Senate Judiciary,@SenateJudiciaryDemocrats,0,0,116,Republican,senate,0
+Senate Judiciary,@SenateJudiciaryDemocrats,0,0,117,Democratic,senate,0
+Senate Judiciary,@SenateJudiciaryDemocrats,0,0,118,Democratic,senate,0
+Senate Judiciary,@SenateJudiciaryDemocrats,252,252,119,Republican,senate,4
+Senate Small Business and Entrepreneurship,@SenateSmallBusiness,0,0,106,Republican,senate,0
+Senate Small Business and Entrepreneurship,@SenateSmallBusiness,0,0,107,Democratic / Republican / Democratic,senate,0
+Senate Small Business and Entrepreneurship,@SenateSmallBusiness,0,0,108,Republican,senate,0
+Senate Small Business and Entrepreneurship,@SenateSmallBusiness,0,0,109,Republican,senate,0
+Senate Small Business and Entrepreneurship,@SenateSmallBusiness,0,0,110,Democratic,senate,0
+Senate Small Business and Entrepreneurship,@SenateSmallBusiness,0,0,111,Democratic,senate,0
+Senate Small Business and Entrepreneurship,@SenateSmallBusiness,0,0,112,Democratic,senate,0
+Senate Small Business and Entrepreneurship,@SenateSmallBusiness,0,0,113,Democratic,senate,0
+Senate Small Business and Entrepreneurship,@SenateSmallBusiness,0,0,114,Republican,senate,0
+Senate Small Business and Entrepreneurship,@SenateSmallBusiness,0,0,115,Republican,senate,0
+Senate Small Business and Entrepreneurship,@SenateSmallBusiness,0,0,116,Republican,senate,0
+Senate Small Business and Entrepreneurship,@SenateSmallBusiness,0,0,117,Democratic,senate,0
+Senate Small Business and Entrepreneurship,@SenateSmallBusiness,0,0,118,Democratic,senate,0
+Senate Small Business and Entrepreneurship,@SenateSmallBusiness,12,12,119,Republican,senate,1
+Senate Small Business and Entrepreneurship,@SenateSmallBiz,0,0,106,Republican,senate,0
+Senate Small Business and Entrepreneurship,@SenateSmallBiz,0,0,107,Democratic / Republican / Democratic,senate,0
+Senate Small Business and Entrepreneurship,@SenateSmallBiz,0,0,108,Republican,senate,0
+Senate Small Business and Entrepreneurship,@SenateSmallBiz,0,0,109,Republican,senate,0
+Senate Small Business and Entrepreneurship,@SenateSmallBiz,0,0,110,Democratic,senate,0
+Senate Small Business and Entrepreneurship,@SenateSmallBiz,0,0,111,Democratic,senate,0
+Senate Small Business and Entrepreneurship,@SenateSmallBiz,0,0,112,Democratic,senate,0
+Senate Small Business and Entrepreneurship,@SenateSmallBiz,5,5,113,Democratic,senate,0
+Senate Small Business and Entrepreneurship,@SenateSmallBiz,0,0,114,Republican,senate,0
+Senate Small Business and Entrepreneurship,@SenateSmallBiz,0,0,115,Republican,senate,0
+Senate Small Business and Entrepreneurship,@SenateSmallBiz,0,0,116,Republican,senate,0
+Senate Small Business and Entrepreneurship,@SenateSmallBiz,0,0,117,Democratic,senate,0
+Senate Small Business and Entrepreneurship,@SenateSmallBiz,0,0,118,Democratic,senate,0
+Senate Small Business and Entrepreneurship,@SenateSmallBiz,0,0,119,Republican,senate,0
+Senate Veterans' Affairs,@senateveterans6644,0,0,106,Republican,senate,0
+Senate Veterans' Affairs,@senateveterans6644,0,0,107,Democratic / Republican / Democratic,senate,0
+Senate Veterans' Affairs,@senateveterans6644,0,0,108,Republican,senate,0
+Senate Veterans' Affairs,@senateveterans6644,0,0,109,Republican,senate,0
+Senate Veterans' Affairs,@senateveterans6644,0,0,110,Democratic,senate,0
+Senate Veterans' Affairs,@senateveterans6644,0,0,111,Democratic,senate,0
+Senate Veterans' Affairs,@senateveterans6644,0,0,112,Democratic,senate,0
+Senate Veterans' Affairs,@senateveterans6644,4,4,113,Democratic,senate,0
+Senate Veterans' Affairs,@senateveterans6644,0,0,114,Republican,senate,0
+Senate Veterans' Affairs,@senateveterans6644,0,0,115,Republican,senate,0
+Senate Veterans' Affairs,@senateveterans6644,0,0,116,Republican,senate,0
+Senate Veterans' Affairs,@senateveterans6644,0,0,117,Democratic,senate,0
+Senate Veterans' Affairs,@senateveterans6644,0,0,118,Democratic,senate,0
+Senate Veterans' Affairs,@senateveterans6644,0,0,119,Republican,senate,0
+Senate Veterans' Affairs,@ussenateveteransaffairsdem9792,0,0,106,Republican,senate,0
+Senate Veterans' Affairs,@ussenateveteransaffairsdem9792,0,0,107,Democratic / Republican / Democratic,senate,0
+Senate Veterans' Affairs,@ussenateveteransaffairsdem9792,0,0,108,Republican,senate,0
+Senate Veterans' Affairs,@ussenateveteransaffairsdem9792,0,0,109,Republican,senate,0
+Senate Veterans' Affairs,@ussenateveteransaffairsdem9792,0,0,110,Democratic,senate,0
+Senate Veterans' Affairs,@ussenateveteransaffairsdem9792,0,0,111,Democratic,senate,0
+Senate Veterans' Affairs,@ussenateveteransaffairsdem9792,0,0,112,Democratic,senate,0
+Senate Veterans' Affairs,@ussenateveteransaffairsdem9792,0,0,113,Democratic,senate,0
+Senate Veterans' Affairs,@ussenateveteransaffairsdem9792,0,0,114,Republican,senate,0
+Senate Veterans' Affairs,@ussenateveteransaffairsdem9792,0,0,115,Republican,senate,0
+Senate Veterans' Affairs,@ussenateveteransaffairsdem9792,0,0,116,Republican,senate,0
+Senate Veterans' Affairs,@ussenateveteransaffairsdem9792,1,1,117,Democratic,senate,1
+Senate Veterans' Affairs,@ussenateveteransaffairsdem9792,0,0,118,Democratic,senate,0
+Senate Veterans' Affairs,@ussenateveteransaffairsdem9792,0,0,119,Republican,senate,0
+Senate Caucus on International Narcotics Control,@senatecaucusoninternationa2031,0,0,106,Republican,senate,0
+Senate Caucus on International Narcotics Control,@senatecaucusoninternationa2031,0,0,107,Democratic / Republican / Democratic,senate,0
+Senate Caucus on International Narcotics Control,@senatecaucusoninternationa2031,0,0,108,Republican,senate,0
+Senate Caucus on International Narcotics Control,@senatecaucusoninternationa2031,0,0,109,Republican,senate,0
+Senate Caucus on International Narcotics Control,@senatecaucusoninternationa2031,0,0,110,Democratic,senate,0
+Senate Caucus on International Narcotics Control,@senatecaucusoninternationa2031,0,0,111,Democratic,senate,0
+Senate Caucus on International Narcotics Control,@senatecaucusoninternationa2031,0,0,112,Democratic,senate,0
+Senate Caucus on International Narcotics Control,@senatecaucusoninternationa2031,0,0,113,Democratic,senate,0
+Senate Caucus on International Narcotics Control,@senatecaucusoninternationa2031,4,4,114,Republican,senate,0
+Senate Caucus on International Narcotics Control,@senatecaucusoninternationa2031,2,2,115,Republican,senate,0
+Senate Caucus on International Narcotics Control,@senatecaucusoninternationa2031,3,3,116,Republican,senate,0
+Senate Caucus on International Narcotics Control,@senatecaucusoninternationa2031,8,8,117,Democratic,senate,0
+Senate Caucus on International Narcotics Control,@senatecaucusoninternationa2031,4,4,118,Democratic,senate,0
+Senate Caucus on International Narcotics Control,@senatecaucusoninternationa2031,4,4,119,Republican,senate,1
+Senate Indian Affairs,@SenateIndianAffairs,0,0,106,Republican,senate,0
+Senate Indian Affairs,@SenateIndianAffairs,0,0,107,Democratic / Republican / Democratic,senate,0
+Senate Indian Affairs,@SenateIndianAffairs,0,0,108,Republican,senate,0
+Senate Indian Affairs,@SenateIndianAffairs,0,0,109,Republican,senate,0
+Senate Indian Affairs,@SenateIndianAffairs,0,0,110,Democratic,senate,0
+Senate Indian Affairs,@SenateIndianAffairs,0,0,111,Democratic,senate,0
+Senate Indian Affairs,@SenateIndianAffairs,0,0,112,Democratic,senate,0
+Senate Indian Affairs,@SenateIndianAffairs,12,12,113,Democratic,senate,0
+Senate Indian Affairs,@SenateIndianAffairs,57,57,114,Republican,senate,0
+Senate Indian Affairs,@SenateIndianAffairs,27,27,115,Republican,senate,0
+Senate Indian Affairs,@SenateIndianAffairs,28,28,116,Republican,senate,0
+Senate Indian Affairs,@SenateIndianAffairs,37,37,117,Democratic,senate,0
+Senate Indian Affairs,@SenateIndianAffairs,28,28,118,Democratic,senate,0
+Senate Indian Affairs,@SenateIndianAffairs,14,14,119,Republican,senate,1
+Senate Aging,@SenateAging,0,0,106,Republican,senate,0
+Senate Aging,@SenateAging,0,0,107,Democratic / Republican / Democratic,senate,0
+Senate Aging,@SenateAging,0,0,108,Republican,senate,0
+Senate Aging,@SenateAging,0,0,109,Republican,senate,0
+Senate Aging,@SenateAging,0,0,110,Democratic,senate,0
+Senate Aging,@SenateAging,0,0,111,Democratic,senate,0
+Senate Aging,@SenateAging,0,0,112,Democratic,senate,0
+Senate Aging,@SenateAging,0,0,113,Democratic,senate,0
+Senate Aging,@SenateAging,0,0,114,Republican,senate,0
+Senate Aging,@SenateAging,0,0,115,Republican,senate,0
+Senate Aging,@SenateAging,0,0,116,Republican,senate,0
+Senate Aging,@SenateAging,0,0,117,Democratic,senate,0
+Senate Aging,@SenateAging,0,0,118,Democratic,senate,0
+Senate Aging,@SenateAging,33,33,119,Republican,senate,18
+Senate Aging,@u.s.senatespecialcommittee3047,0,0,106,Republican,senate,0
+Senate Aging,@u.s.senatespecialcommittee3047,0,0,107,Democratic / Republican / Democratic,senate,0
+Senate Aging,@u.s.senatespecialcommittee3047,0,0,108,Republican,senate,0
+Senate Aging,@u.s.senatespecialcommittee3047,0,0,109,Republican,senate,0
+Senate Aging,@u.s.senatespecialcommittee3047,0,0,110,Democratic,senate,0
+Senate Aging,@u.s.senatespecialcommittee3047,0,0,111,Democratic,senate,0
+Senate Aging,@u.s.senatespecialcommittee3047,0,0,112,Democratic,senate,0
+Senate Aging,@u.s.senatespecialcommittee3047,3,3,113,Democratic,senate,0
+Senate Aging,@u.s.senatespecialcommittee3047,0,0,114,Republican,senate,0
+Senate Aging,@u.s.senatespecialcommittee3047,0,0,115,Republican,senate,0
+Senate Aging,@u.s.senatespecialcommittee3047,0,0,116,Republican,senate,0
+Senate Aging,@u.s.senatespecialcommittee3047,0,0,117,Democratic,senate,0
+Senate Aging,@u.s.senatespecialcommittee3047,0,0,118,Democratic,senate,0
+Senate Aging,@u.s.senatespecialcommittee3047,0,0,119,Republican,senate,0
+Senate Aging,@demsonaging7345,0,0,106,Republican,senate,0
+Senate Aging,@demsonaging7345,0,0,107,Democratic / Republican / Democratic,senate,0
+Senate Aging,@demsonaging7345,0,0,108,Republican,senate,0
+Senate Aging,@demsonaging7345,0,0,109,Republican,senate,0
+Senate Aging,@demsonaging7345,0,0,110,Democratic,senate,0
+Senate Aging,@demsonaging7345,0,0,111,Democratic,senate,0
+Senate Aging,@demsonaging7345,0,0,112,Democratic,senate,0
+Senate Aging,@demsonaging7345,0,0,113,Democratic,senate,0
+Senate Aging,@demsonaging7345,0,0,114,Republican,senate,0
+Senate Aging,@demsonaging7345,14,13,115,Republican,senate,0
+Senate Aging,@demsonaging7345,0,0,116,Republican,senate,0
+Senate Aging,@demsonaging7345,0,0,117,Democratic,senate,0
+Senate Aging,@demsonaging7345,0,0,118,Democratic,senate,0
+Senate Aging,@demsonaging7345,0,0,119,Republican,senate,0

@@ -184,16 +184,23 @@ class YoutubeEventFetcher:
         added = 0
         while True:
             ## get this page's videos
-            playlistItemsResponse = (
-                self.youtube.playlistItems()
-                .list(
-                    part="snippet",
-                    playlistId=playlistId,
-                    maxResults=50,
-                    pageToken=pageToken,
+            try:
+                playlistItemsResponse = (
+                    self.youtube.playlistItems()
+                    .list(
+                        part="snippet",
+                        playlistId=playlistId,
+                        maxResults=50,
+                        pageToken=pageToken,
+                    )
+                    .execute()
                 )
-                .execute()
-            )
+            except HttpError as ex:
+                ## a channel with no public uploads has no uploads playlist at all
+                if ex.resp.status == 404 and pageToken is None:
+                    logging.warning(f"{channel_handle} has no public uploads.")
+                    return
+                raise
             fetches += 1
             total_results = playlistItemsResponse["pageInfo"]["totalResults"]
             logging.info(f"Fetch {fetches} of {int(total_results // 50 + 1)}.")
