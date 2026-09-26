@@ -89,7 +89,7 @@ def main():
     house_name = lambda r: {"ssva00": "Senate Veterans' Affairs (House hearings, miscoded)"}.get(r["committee_code"]) or names.get(r["committee_code"]) or "(no committee code in GPO data)"
     senate_name = lambda r: {"hsvr00": "Veterans' Affairs (joint hearings, House code)", "ssva00": "Veterans' Affairs (Senate)"}.get(r["committee_code"]) or (
         names.get(r["committee_code"], "").replace("Senate ", "") or gpo_names.get(r["package_id"], "").replace("Committee on ", "") or "(no committee code in GPO data)")
-    senate_cols = [("Before channel", "before_channel"), ("No channel", "committee_not_tracked")]
+    senate_cols = [("On senate.gov", "full_recording_offsite"), ("Before channel", "before_channel"), ("No channel", "committee_not_tracked")]
     tables = {
         "house_summary": summary(hj, tracked, member),
         "senate_summary": summary(sen, tracked, member),

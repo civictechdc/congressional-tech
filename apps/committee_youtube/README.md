@@ -42,7 +42,7 @@ The workflow needs two repository secrets:
 ## Matching: `gpo-match`
 
 Each GPO hearing is matched to a recording using this evidence, strongest first:
-1. a Congress.gov video link from the hearing's meeting record;
+1. a Congress.gov video link from the hearing's meeting record (a YouTube video, or for the Senate a link to the Senate's own player at senate.gov, which gives `full_recording_offsite`);
 2. the hearing's event ID in the video's title or description, whenever it was uploaded;
 3. the hearing date in the title or description ("031815 -", "7/23/2013. EMR.");
 4. title or subcommittee similarity within a few days.
@@ -52,7 +52,7 @@ Rules:
 - **Clips:** a video found by weaker evidence (no Congress.gov link or event ID) counts as a clip when it's under 20 minutes, or under 30 minutes with a member-clip title ("Wyden Q&A …", "Chairman Smith Questions Witnesses …", "Opening Statement …"). Senate party channels post question rounds of that length for most hearings.
 - **Multi-hearing Appropriations volumes:** these are matched on each hearing day, read from the transcript (the `hearing_dates` column). About a quarter of them are scanned PDFs with no text, so only their GPO date is used.
 
-`data/hearing_video_overrides.csv` holds reviewed verdicts from the September 2026 research. They're used where they exist, with these exceptions:
+`data/hearing_video_overrides.csv` holds reviewed verdicts from the September 2026 research, plus `found_offsite` rows for Senate hearings whose recording the senate.gov archive probe found (`research/scripts/as_run/senate_isvp_probe.py` in the docs folder). They're used where they exist, with these exceptions:
 - a "no video"/"clips only" verdict gives way to strong new evidence, or to a dated recording of 30+ minutes;
 - rows marked `lock=yes` never change.
 

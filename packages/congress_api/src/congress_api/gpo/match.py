@@ -32,9 +32,10 @@ Rules:
   pass) apply where they exist. A "no video"/"clips only" verdict gives way to strong
   new evidence (score 90+) or a dated recording of 30+ minutes, unless the row is
   locked (`lock=yes`, for matches that were reviewed and rejected).
-- A `found_offsite` verdict (C-SPAN, an archived file, another site; `video_ids` holds
-  the URLs and `channel` the host) is a fallback: it gives status `full_recording_offsite`
-  only when YouTube has no full recording.
+- Recordings off YouTube give status `full_recording_offsite` when YouTube has no full
+  recording: a senate.gov player link in the hearing's Congress.gov meeting record (the
+  Senate hosts its own video), or a `found_offsite` override (C-SPAN, an archived file,
+  another site; `video_ids` holds the URLs and `channel` the host).
 """
 import argparse
 import collections
@@ -67,6 +68,7 @@ CLIP_TITLE_SECONDS = 1800
 CLIP_TITLE = re.compile(r"\b(q&a|questions?|opening statement|opening remarks|statement|remarks|round of questions|closing)\b"
                         r"|^(sen\.|senator|rep\.|chairman|chair|ranking member|subcommittee chairman|vice chair)\s", re.I)
 EVENT_ID = re.compile(r"(?:event\s*id|\bid)\s*[:=#]?\s*(1\d{5})(?!\d)|house-event/(1\d{5})(?!\d)", re.I)
+SENATE_VIDEO = re.compile(r"https?://www\.senate\.gov/isvp/")
 VIDEO_ID = re.compile(r"(?:youtube\.com/(?:watch\?(?:.*&)?v=|live/|embed/|shorts/|v/)|youtu\.be/)([\w-]{11})")
 MONTHS = {m: i + 1 for i, m in enumerate("jan feb mar apr may jun jul aug sep oct nov dec".split())}
 COLUMNS = ["package_id", "congress", "chamber", "committee_code", "held_date", "hearing_dates", "record_type",
@@ -154,9 +156,12 @@ def load_meetings(path):
             m = json.loads(line)
             if m.get("meetingStatus") not in ("Scheduled", "Rescheduled"):
                 continue
+            urls = [v.get("url", "") for v in (m.get("videos") or [])]
             rec = {"eventId": m["eventId"], "title": m.get("title") or "", "words": words(m.get("title")),
                    "subcommittees": [c.get("name", "") for c in m.get("committees", []) if not c["systemCode"].endswith("00")],
-                   "videos": [VIDEO_ID.search(v.get("url", "")).group(1) for v in (m.get("videos") or []) if VIDEO_ID.search(v.get("url", ""))]}
+                   "videos": [VIDEO_ID.search(u).group(1) for u in urls if VIDEO_ID.search(u)],
+                   ## the Senate hosts hearing video on its own player, not YouTube
+                   "offsite": [u for u in urls if SENATE_VIDEO.match(u)]}
             for code in {ALIAS.get(c["systemCode"][:4] + "00", c["systemCode"][:4] + "00") for c in m.get("committees", [])}:
                 out[code][m["date"][:10]].append(rec)
     return out
@@ -195,6 +200,8 @@ def candidates(h, videos, meetings, hearings_on_day):
                     event_ids.add(m["eventId"])
                 for vid in m["videos"]:
                     out.append((score, "congress.gov link", by_id.get(vid) or {"videoId": vid, "channel": "", "published": day, "duration": None, "audio_only": False}))
+                for url in m["offsite"]:
+                    out.append((score, "congress.gov link (senate.gov)", {"videoId": url, "channel": "senate.gov", "published": day, "duration": None, "audio_only": False, "offsite": True}))
 
     first_day = min(dates)
     for v in videos:
@@ -244,10 +251,14 @@ def main(output_path, tinydb_dir, channels_csv_path, gpo_path, meetings_path, ov
     ## gather evidence
     pairs, clips = [], collections.defaultdict(list)
     by_pid = {h["package_id"]: h for h in hearings}
+    offsite = collections.defaultdict(dict)  # pid -> {url: score}
     for h in hearings:
         if not h["_dates"]:
             continue  # GPO gave no hearing date; nothing to match on
         for score, method, v in candidates(h, videos.get(h["committee_code"], []), meetings, hearings_on_day):
+            if v.get("offsite"):
+                offsite[h["package_id"]][v["videoId"]] = max(score, offsite[h["package_id"]].get(v["videoId"], 0))
+                continue
             if score < 90 and is_clip(v):
                 clips[h["package_id"]].append(v)
                 continue
@@ -323,8 +334,14 @@ def main(output_path, tinydb_dir, channels_csv_path, gpo_path, meetings_path, ov
             status = "before_channel"
         else:
             status = "no_video_found"
-        if o and o["verdict"] == "found_offsite" and status != "full_recording":
-            status, source, note = "full_recording_offsite", "research", o.get("note", "")
+        offsite_urls, offsite_method = "", ""
+        if status in ("no_video_found", "clips_only", "before_channel", "committee_not_tracked"):
+            if o and o["verdict"] == "found_offsite":
+                status, source, note, offsite_urls, offsite_method = "full_recording_offsite", "research", o.get("note", ""), o["video_ids"], "research"
+                offsite_host = o["channel"]
+            elif offsite.get(pid):
+                status, offsite_method = "full_recording_offsite", "congress.gov link (senate.gov)"
+                offsite_urls, offsite_host, best = " ".join(sorted(offsite[pid])), "senate.gov", max(offsite[pid].values())
         vids = [a[2] for a in got] if status == "full_recording" else []
         if any(v.get("audio_only") for v in vids):
             flags.append("audio_only")
@@ -339,10 +356,10 @@ def main(output_path, tinydb_dir, channels_csv_path, gpo_path, meetings_path, ov
             "package_id": pid, "congress": h["congress"], "chamber": h["chamber"], "committee_code": code,
             "held_date": h["held_date"], "hearing_dates": h["hearing_dates"], "record_type": h.get("record_type", "hearing"),
             "status": status,
-            "video_ids": o["video_ids"] if status == "full_recording_offsite" else " ".join(v["videoId"] for v in vids),
-            "channels": o["channel"] if status == "full_recording_offsite" else " ".join(sorted({v["channel"] for v in vids if v.get("channel")})),
-            "method": "research" if status == "full_recording_offsite" else "; ".join(sorted({a[1] for a in got})) if vids else "",
-            "score": best if vids else "",
+            "video_ids": offsite_urls if status == "full_recording_offsite" else " ".join(v["videoId"] for v in vids),
+            "channels": offsite_host if status == "full_recording_offsite" else " ".join(sorted({v["channel"] for v in vids if v.get("channel")})),
+            "method": offsite_method if status == "full_recording_offsite" else "; ".join(sorted({a[1] for a in got})) if vids else "",
+            "score": best if vids or status == "full_recording_offsite" else "",
             "video_minutes": minutes, "flags": " ".join(flags), "source": source, "note": note,
         })
 
