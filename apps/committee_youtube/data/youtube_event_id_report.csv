@@ -27,6 +27,20 @@ Agriculture,@HouseAgDems,43,8,116,Democratic,house,0
 Agriculture,@HouseAgDems,77,71,117,Democratic,house,0
 Agriculture,@HouseAgDems,30,30,118,Republican,house,0
 Agriculture,@HouseAgDems,53,53,119,Republican,house,1
+Agriculture,@houseagriculturecommittee2800,0,0,106,Republican,house,0
+Agriculture,@houseagriculturecommittee2800,0,0,107,Republican,house,0
+Agriculture,@houseagriculturecommittee2800,0,0,108,Republican,house,0
+Agriculture,@houseagriculturecommittee2800,0,0,109,Republican,house,0
+Agriculture,@houseagriculturecommittee2800,0,0,110,Democratic,house,0
+Agriculture,@houseagriculturecommittee2800,0,0,111,Democratic,house,0
+Agriculture,@houseagriculturecommittee2800,0,0,112,Republican,house,0
+Agriculture,@houseagriculturecommittee2800,0,0,113,Republican,house,0
+Agriculture,@houseagriculturecommittee2800,0,0,114,Republican,house,0
+Agriculture,@houseagriculturecommittee2800,0,0,115,Republican,house,0
+Agriculture,@houseagriculturecommittee2800,1,1,116,Democratic,house,0
+Agriculture,@houseagriculturecommittee2800,0,0,117,Democratic,house,0
+Agriculture,@houseagriculturecommittee2800,0,0,118,Republican,house,0
+Agriculture,@houseagriculturecommittee2800,0,0,119,Republican,house,0
 Appropriations,@HouseAppropriationsCommittee,0,0,106,Republican,house,0
 Appropriations,@HouseAppropriationsCommittee,0,0,107,Republican,house,0
 Appropriations,@HouseAppropriationsCommittee,0,0,108,Republican,house,0
@@ -69,6 +83,34 @@ Armed Services,@HASCDems,0,0,116,Democratic,house,0
 Armed Services,@HASCDems,0,0,117,Democratic,house,0
 Armed Services,@HASCDems,0,0,118,Republican,house,0
 Armed Services,@HASCDems,0,0,119,Republican,house,0
+Armed Services,@armedservices8789,0,0,106,Republican,house,0
+Armed Services,@armedservices8789,0,0,107,Republican,house,0
+Armed Services,@armedservices8789,0,0,108,Republican,house,0
+Armed Services,@armedservices8789,0,0,109,Republican,house,0
+Armed Services,@armedservices8789,0,0,110,Democratic,house,0
+Armed Services,@armedservices8789,0,0,111,Democratic,house,0
+Armed Services,@armedservices8789,0,0,112,Republican,house,0
+Armed Services,@armedservices8789,0,0,113,Republican,house,0
+Armed Services,@armedservices8789,0,0,114,Republican,house,0
+Armed Services,@armedservices8789,0,0,115,Republican,house,0
+Armed Services,@armedservices8789,0,0,116,Democratic,house,0
+Armed Services,@armedservices8789,0,0,117,Democratic,house,0
+Armed Services,@armedservices8789,2,0,118,Republican,house,1
+Armed Services,@armedservices8789,359,354,119,Republican,house,201
+Armed Services,@armedservicesGOP,0,0,106,Republican,house,0
+Armed Services,@armedservicesGOP,0,0,107,Republican,house,0
+Armed Services,@armedservicesGOP,0,0,108,Republican,house,0
+Armed Services,@armedservicesGOP,0,0,109,Republican,house,0
+Armed Services,@armedservicesGOP,0,0,110,Democratic,house,0
+Armed Services,@armedservicesGOP,0,0,111,Democratic,house,0
+Armed Services,@armedservicesGOP,0,0,112,Republican,house,0
+Armed Services,@armedservicesGOP,0,0,113,Republican,house,0
+Armed Services,@armedservicesGOP,0,0,114,Republican,house,0
+Armed Services,@armedservicesGOP,0,0,115,Republican,house,0
+Armed Services,@armedservicesGOP,0,0,116,Democratic,house,0
+Armed Services,@armedservicesGOP,0,0,117,Democratic,house,0
+Armed Services,@armedservicesGOP,0,0,118,Republican,house,0
+Armed Services,@armedservicesGOP,10,10,119,Republican,house,10
 Budget,@HouseBudgetGOP,0,0,106,Republican,house,0
 Budget,@HouseBudgetGOP,0,0,107,Republican,house,0
 Budget,@HouseBudgetGOP,0,0,108,Republican,house,0
@@ -181,6 +223,48 @@ Financial Services,@GOPFinancialServices,189,189,116,Democratic,house,14
 Financial Services,@GOPFinancialServices,96,96,117,Democratic,house,0
 Financial Services,@GOPFinancialServices,490,490,118,Republican,house,1
 Financial Services,@GOPFinancialServices,192,192,119,Republican,house,17
+Financial Services,@fscdems9522,0,0,106,Republican,house,0
+Financial Services,@fscdems9522,0,0,107,Republican,house,0
+Financial Services,@fscdems9522,0,0,108,Republican,house,0
+Financial Services,@fscdems9522,0,0,109,Republican,house,0
+Financial Services,@fscdems9522,0,0,110,Democratic,house,0
+Financial Services,@fscdems9522,0,0,111,Democratic,house,0
+Financial Services,@fscdems9522,0,0,112,Republican,house,0
+Financial Services,@fscdems9522,146,145,113,Republican,house,0
+Financial Services,@fscdems9522,506,506,114,Republican,house,1
+Financial Services,@fscdems9522,1,1,115,Republican,house,0
+Financial Services,@fscdems9522,0,0,116,Democratic,house,0
+Financial Services,@fscdems9522,0,0,117,Democratic,house,0
+Financial Services,@fscdems9522,0,0,118,Republican,house,0
+Financial Services,@fscdems9522,0,0,119,Republican,house,0
+Financial Services,@fscdems484,0,0,106,Republican,house,0
+Financial Services,@fscdems484,0,0,107,Republican,house,0
+Financial Services,@fscdems484,0,0,108,Republican,house,0
+Financial Services,@fscdems484,0,0,109,Republican,house,0
+Financial Services,@fscdems484,0,0,110,Democratic,house,0
+Financial Services,@fscdems484,0,0,111,Democratic,house,0
+Financial Services,@fscdems484,0,0,112,Republican,house,0
+Financial Services,@fscdems484,30,30,113,Republican,house,0
+Financial Services,@fscdems484,9,9,114,Republican,house,0
+Financial Services,@fscdems484,29,29,115,Republican,house,0
+Financial Services,@fscdems484,0,0,116,Democratic,house,0
+Financial Services,@fscdems484,0,0,117,Democratic,house,0
+Financial Services,@fscdems484,0,0,118,Republican,house,0
+Financial Services,@fscdems484,0,0,119,Republican,house,0
+Financial Services,@u.s.housecommitteeonfinanc8492,0,0,106,Republican,house,0
+Financial Services,@u.s.housecommitteeonfinanc8492,0,0,107,Republican,house,0
+Financial Services,@u.s.housecommitteeonfinanc8492,0,0,108,Republican,house,0
+Financial Services,@u.s.housecommitteeonfinanc8492,0,0,109,Republican,house,0
+Financial Services,@u.s.housecommitteeonfinanc8492,0,0,110,Democratic,house,0
+Financial Services,@u.s.housecommitteeonfinanc8492,0,0,111,Democratic,house,0
+Financial Services,@u.s.housecommitteeonfinanc8492,0,0,112,Republican,house,0
+Financial Services,@u.s.housecommitteeonfinanc8492,0,0,113,Republican,house,0
+Financial Services,@u.s.housecommitteeonfinanc8492,1,1,114,Republican,house,0
+Financial Services,@u.s.housecommitteeonfinanc8492,0,0,115,Republican,house,0
+Financial Services,@u.s.housecommitteeonfinanc8492,0,0,116,Democratic,house,0
+Financial Services,@u.s.housecommitteeonfinanc8492,0,0,117,Democratic,house,0
+Financial Services,@u.s.housecommitteeonfinanc8492,0,0,118,Republican,house,0
+Financial Services,@u.s.housecommitteeonfinanc8492,0,0,119,Republican,house,0
 Foreign Affairs,@houseforeign,0,0,106,Republican,house,0
 Foreign Affairs,@houseforeign,0,0,107,Republican,house,0
 Foreign Affairs,@houseforeign,0,0,108,Republican,house,0
@@ -237,6 +321,20 @@ Homeland Security,@HomelandDems,49,49,116,Democratic,house,1
 Homeland Security,@HomelandDems,15,15,117,Democratic,house,5
 Homeland Security,@HomelandDems,4,4,118,Republican,house,1
 Homeland Security,@HomelandDems,45,45,119,Republican,house,0
+Homeland Security,@HomelandSecurityCommitteeGOP,0,0,106,Republican,house,0
+Homeland Security,@HomelandSecurityCommitteeGOP,0,0,107,Republican,house,0
+Homeland Security,@HomelandSecurityCommitteeGOP,0,0,108,Republican,house,0
+Homeland Security,@HomelandSecurityCommitteeGOP,0,0,109,Republican,house,0
+Homeland Security,@HomelandSecurityCommitteeGOP,0,0,110,Democratic,house,0
+Homeland Security,@HomelandSecurityCommitteeGOP,0,0,111,Democratic,house,0
+Homeland Security,@HomelandSecurityCommitteeGOP,0,0,112,Republican,house,0
+Homeland Security,@HomelandSecurityCommitteeGOP,0,0,113,Republican,house,0
+Homeland Security,@HomelandSecurityCommitteeGOP,0,0,114,Republican,house,0
+Homeland Security,@HomelandSecurityCommitteeGOP,0,0,115,Republican,house,0
+Homeland Security,@HomelandSecurityCommitteeGOP,41,41,116,Democratic,house,1
+Homeland Security,@HomelandSecurityCommitteeGOP,100,100,117,Democratic,house,5
+Homeland Security,@HomelandSecurityCommitteeGOP,262,262,118,Republican,house,3
+Homeland Security,@HomelandSecurityCommitteeGOP,115,115,119,Republican,house,11
 House Administration,@CommitteeonHouseAdministration,0,0,106,Republican,house,0
 House Administration,@CommitteeonHouseAdministration,0,0,107,Republican,house,0
 House Administration,@CommitteeonHouseAdministration,0,0,108,Republican,house,0
@@ -265,6 +363,34 @@ House Administration,@CHADemsVideos,40,7,116,Democratic,house,1
 House Administration,@CHADemsVideos,56,20,117,Democratic,house,2
 House Administration,@CHADemsVideos,46,46,118,Republican,house,0
 House Administration,@CHADemsVideos,65,65,119,Republican,house,11
+House Administration,@committeeonhouseadministra952,0,0,106,Republican,house,0
+House Administration,@committeeonhouseadministra952,0,0,107,Republican,house,0
+House Administration,@committeeonhouseadministra952,0,0,108,Republican,house,0
+House Administration,@committeeonhouseadministra952,0,0,109,Republican,house,0
+House Administration,@committeeonhouseadministra952,0,0,110,Democratic,house,0
+House Administration,@committeeonhouseadministra952,0,0,111,Democratic,house,0
+House Administration,@committeeonhouseadministra952,0,0,112,Republican,house,0
+House Administration,@committeeonhouseadministra952,0,0,113,Republican,house,0
+House Administration,@committeeonhouseadministra952,0,0,114,Republican,house,0
+House Administration,@committeeonhouseadministra952,0,0,115,Republican,house,0
+House Administration,@committeeonhouseadministra952,1,1,116,Democratic,house,0
+House Administration,@committeeonhouseadministra952,1,1,117,Democratic,house,0
+House Administration,@committeeonhouseadministra952,0,0,118,Republican,house,0
+House Administration,@committeeonhouseadministra952,0,0,119,Republican,house,0
+House Administration,@CHADemocrats,0,0,106,Republican,house,0
+House Administration,@CHADemocrats,0,0,107,Republican,house,0
+House Administration,@CHADemocrats,0,0,108,Republican,house,0
+House Administration,@CHADemocrats,0,0,109,Republican,house,0
+House Administration,@CHADemocrats,0,0,110,Democratic,house,0
+House Administration,@CHADemocrats,0,0,111,Democratic,house,0
+House Administration,@CHADemocrats,1,1,112,Republican,house,0
+House Administration,@CHADemocrats,1,1,113,Republican,house,0
+House Administration,@CHADemocrats,0,0,114,Republican,house,0
+House Administration,@CHADemocrats,0,0,115,Republican,house,0
+House Administration,@CHADemocrats,0,0,116,Democratic,house,0
+House Administration,@CHADemocrats,0,0,117,Democratic,house,0
+House Administration,@CHADemocrats,0,0,118,Republican,house,0
+House Administration,@CHADemocrats,0,0,119,Republican,house,0
 Judiciary,@USHouseJudiciaryGOP,0,0,106,Republican,house,0
 Judiciary,@USHouseJudiciaryGOP,0,0,107,Republican,house,0
 Judiciary,@USHouseJudiciaryGOP,0,0,108,Republican,house,0
@@ -293,6 +419,34 @@ Judiciary,@JudiciaryDems,138,20,116,Democratic,house,0
 Judiciary,@JudiciaryDems,131,27,117,Democratic,house,1
 Judiciary,@JudiciaryDems,215,92,118,Republican,house,28
 Judiciary,@JudiciaryDems,328,240,119,Republican,house,92
+Judiciary,@housejudiciarydemocrats8939,0,0,106,Republican,house,0
+Judiciary,@housejudiciarydemocrats8939,0,0,107,Republican,house,0
+Judiciary,@housejudiciarydemocrats8939,0,0,108,Republican,house,0
+Judiciary,@housejudiciarydemocrats8939,0,0,109,Republican,house,0
+Judiciary,@housejudiciarydemocrats8939,0,0,110,Democratic,house,0
+Judiciary,@housejudiciarydemocrats8939,0,0,111,Democratic,house,0
+Judiciary,@housejudiciarydemocrats8939,0,0,112,Republican,house,0
+Judiciary,@housejudiciarydemocrats8939,4,4,113,Republican,house,0
+Judiciary,@housejudiciarydemocrats8939,5,5,114,Republican,house,0
+Judiciary,@housejudiciarydemocrats8939,2,2,115,Republican,house,0
+Judiciary,@housejudiciarydemocrats8939,0,0,116,Democratic,house,0
+Judiciary,@housejudiciarydemocrats8939,0,0,117,Democratic,house,0
+Judiciary,@housejudiciarydemocrats8939,0,0,118,Republican,house,0
+Judiciary,@housejudiciarydemocrats8939,0,0,119,Republican,house,0
+Judiciary,@housejudiciarycommittee5448,0,0,106,Republican,house,0
+Judiciary,@housejudiciarycommittee5448,0,0,107,Republican,house,0
+Judiciary,@housejudiciarycommittee5448,0,0,108,Republican,house,0
+Judiciary,@housejudiciarycommittee5448,0,0,109,Republican,house,0
+Judiciary,@housejudiciarycommittee5448,0,0,110,Democratic,house,0
+Judiciary,@housejudiciarycommittee5448,0,0,111,Democratic,house,0
+Judiciary,@housejudiciarycommittee5448,0,0,112,Republican,house,0
+Judiciary,@housejudiciarycommittee5448,0,0,113,Republican,house,0
+Judiciary,@housejudiciarycommittee5448,0,0,114,Republican,house,0
+Judiciary,@housejudiciarycommittee5448,0,0,115,Republican,house,0
+Judiciary,@housejudiciarycommittee5448,2,2,116,Democratic,house,0
+Judiciary,@housejudiciarycommittee5448,8,8,117,Democratic,house,0
+Judiciary,@housejudiciarycommittee5448,1,1,118,Republican,house,0
+Judiciary,@housejudiciarycommittee5448,0,0,119,Republican,house,0
 Natural Resources,@NaturalResourcesGOP,0,0,106,Republican,house,0
 Natural Resources,@NaturalResourcesGOP,0,0,107,Republican,house,0
 Natural Resources,@NaturalResourcesGOP,0,0,108,Republican,house,0
@@ -348,7 +502,77 @@ Oversight and Government Reform,@OversightDems,54,54,115,Republican,house,0
 Oversight and Government Reform,@OversightDems,673,673,116,Democratic,house,1
 Oversight and Government Reform,@OversightDems,369,369,117,Democratic,house,0
 Oversight and Government Reform,@OversightDems,142,142,118,Republican,house,1
-Oversight and Government Reform,@OversightDems,389,389,119,Republican,house,5
+Oversight and Government Reform,@OversightDems,390,390,119,Republican,house,5
+Oversight and Government Reform,@COVIDOversight,0,0,106,Republican,house,0
+Oversight and Government Reform,@COVIDOversight,0,0,107,Republican,house,0
+Oversight and Government Reform,@COVIDOversight,0,0,108,Republican,house,0
+Oversight and Government Reform,@COVIDOversight,0,0,109,Republican,house,0
+Oversight and Government Reform,@COVIDOversight,0,0,110,Democratic,house,0
+Oversight and Government Reform,@COVIDOversight,0,0,111,Democratic,house,0
+Oversight and Government Reform,@COVIDOversight,0,0,112,Republican,house,0
+Oversight and Government Reform,@COVIDOversight,0,0,113,Republican,house,0
+Oversight and Government Reform,@COVIDOversight,0,0,114,Republican,house,0
+Oversight and Government Reform,@COVIDOversight,0,0,115,Republican,house,0
+Oversight and Government Reform,@COVIDOversight,0,0,116,Democratic,house,0
+Oversight and Government Reform,@COVIDOversight,29,29,117,Democratic,house,0
+Oversight and Government Reform,@COVIDOversight,0,0,118,Republican,house,0
+Oversight and Government Reform,@COVIDOversight,0,0,119,Republican,house,0
+Oversight and Government Reform,@covidselectdems-ru2bf,0,0,106,Republican,house,0
+Oversight and Government Reform,@covidselectdems-ru2bf,0,0,107,Republican,house,0
+Oversight and Government Reform,@covidselectdems-ru2bf,0,0,108,Republican,house,0
+Oversight and Government Reform,@covidselectdems-ru2bf,0,0,109,Republican,house,0
+Oversight and Government Reform,@covidselectdems-ru2bf,0,0,110,Democratic,house,0
+Oversight and Government Reform,@covidselectdems-ru2bf,0,0,111,Democratic,house,0
+Oversight and Government Reform,@covidselectdems-ru2bf,0,0,112,Republican,house,0
+Oversight and Government Reform,@covidselectdems-ru2bf,0,0,113,Republican,house,0
+Oversight and Government Reform,@covidselectdems-ru2bf,0,0,114,Republican,house,0
+Oversight and Government Reform,@covidselectdems-ru2bf,0,0,115,Republican,house,0
+Oversight and Government Reform,@covidselectdems-ru2bf,0,0,116,Democratic,house,0
+Oversight and Government Reform,@covidselectdems-ru2bf,0,0,117,Democratic,house,0
+Oversight and Government Reform,@covidselectdems-ru2bf,25,25,118,Republican,house,0
+Oversight and Government Reform,@covidselectdems-ru2bf,0,0,119,Republican,house,0
+Oversight and Government Reform,@CommitteeonOversight,0,0,106,Republican,house,0
+Oversight and Government Reform,@CommitteeonOversight,0,0,107,Republican,house,0
+Oversight and Government Reform,@CommitteeonOversight,0,0,108,Republican,house,0
+Oversight and Government Reform,@CommitteeonOversight,0,0,109,Republican,house,0
+Oversight and Government Reform,@CommitteeonOversight,0,0,110,Democratic,house,0
+Oversight and Government Reform,@CommitteeonOversight,0,0,111,Democratic,house,0
+Oversight and Government Reform,@CommitteeonOversight,0,0,112,Republican,house,0
+Oversight and Government Reform,@CommitteeonOversight,1,1,113,Republican,house,0
+Oversight and Government Reform,@CommitteeonOversight,0,0,114,Republican,house,0
+Oversight and Government Reform,@CommitteeonOversight,0,0,115,Republican,house,0
+Oversight and Government Reform,@CommitteeonOversight,4,4,116,Democratic,house,0
+Oversight and Government Reform,@CommitteeonOversight,1,1,117,Democratic,house,0
+Oversight and Government Reform,@CommitteeonOversight,3,3,118,Republican,house,0
+Oversight and Government Reform,@CommitteeonOversight,0,0,119,Republican,house,0
+Oversight and Government Reform,@OversightMaj,0,0,106,Republican,house,0
+Oversight and Government Reform,@OversightMaj,0,0,107,Republican,house,0
+Oversight and Government Reform,@OversightMaj,0,0,108,Republican,house,0
+Oversight and Government Reform,@OversightMaj,0,0,109,Republican,house,0
+Oversight and Government Reform,@OversightMaj,0,0,110,Democratic,house,0
+Oversight and Government Reform,@OversightMaj,49,49,111,Democratic,house,0
+Oversight and Government Reform,@OversightMaj,14,14,112,Republican,house,0
+Oversight and Government Reform,@OversightMaj,0,0,113,Republican,house,0
+Oversight and Government Reform,@OversightMaj,0,0,114,Republican,house,0
+Oversight and Government Reform,@OversightMaj,0,0,115,Republican,house,0
+Oversight and Government Reform,@OversightMaj,0,0,116,Democratic,house,0
+Oversight and Government Reform,@OversightMaj,0,0,117,Democratic,house,0
+Oversight and Government Reform,@OversightMaj,0,0,118,Republican,house,0
+Oversight and Government Reform,@OversightMaj,0,0,119,Republican,house,0
+Oversight and Government Reform,@OversightRepublicans,0,0,106,Republican,house,0
+Oversight and Government Reform,@OversightRepublicans,0,0,107,Republican,house,0
+Oversight and Government Reform,@OversightRepublicans,0,0,108,Republican,house,0
+Oversight and Government Reform,@OversightRepublicans,0,0,109,Republican,house,0
+Oversight and Government Reform,@OversightRepublicans,5,5,110,Democratic,house,0
+Oversight and Government Reform,@OversightRepublicans,0,0,111,Democratic,house,0
+Oversight and Government Reform,@OversightRepublicans,0,0,112,Republican,house,0
+Oversight and Government Reform,@OversightRepublicans,0,0,113,Republican,house,0
+Oversight and Government Reform,@OversightRepublicans,0,0,114,Republican,house,0
+Oversight and Government Reform,@OversightRepublicans,0,0,115,Republican,house,0
+Oversight and Government Reform,@OversightRepublicans,0,0,116,Democratic,house,0
+Oversight and Government Reform,@OversightRepublicans,0,0,117,Democratic,house,0
+Oversight and Government Reform,@OversightRepublicans,0,0,118,Republican,house,0
+Oversight and Government Reform,@OversightRepublicans,0,0,119,Republican,house,0
 Rules,@HouseRulesCommittee,0,0,106,Republican,house,0
 Rules,@HouseRulesCommittee,0,0,107,Republican,house,0
 Rules,@HouseRulesCommittee,0,0,108,Republican,house,0
@@ -405,6 +629,20 @@ Rules,@RulesCommitteeDemocrats,2,2,119,Republican,house,0
 "Science,Space,and Technology",@HouseScienceGOP,68,68,117,Democratic,house,1
 "Science,Space,and Technology",@HouseScienceGOP,89,87,118,Republican,house,0
 "Science,Space,and Technology",@HouseScienceGOP,6,6,119,Republican,house,0
+"Science,Space,and Technology",@HouseScienceCommitteeDemocrats,0,0,106,Republican,house,0
+"Science,Space,and Technology",@HouseScienceCommitteeDemocrats,0,0,107,Republican,house,0
+"Science,Space,and Technology",@HouseScienceCommitteeDemocrats,0,0,108,Republican,house,0
+"Science,Space,and Technology",@HouseScienceCommitteeDemocrats,0,0,109,Republican,house,0
+"Science,Space,and Technology",@HouseScienceCommitteeDemocrats,0,0,110,Democratic,house,0
+"Science,Space,and Technology",@HouseScienceCommitteeDemocrats,0,0,111,Democratic,house,0
+"Science,Space,and Technology",@HouseScienceCommitteeDemocrats,51,51,112,Republican,house,0
+"Science,Space,and Technology",@HouseScienceCommitteeDemocrats,620,608,113,Republican,house,0
+"Science,Space,and Technology",@HouseScienceCommitteeDemocrats,21,21,114,Republican,house,0
+"Science,Space,and Technology",@HouseScienceCommitteeDemocrats,5,5,115,Republican,house,0
+"Science,Space,and Technology",@HouseScienceCommitteeDemocrats,5,4,116,Democratic,house,0
+"Science,Space,and Technology",@HouseScienceCommitteeDemocrats,7,6,117,Democratic,house,0
+"Science,Space,and Technology",@HouseScienceCommitteeDemocrats,7,7,118,Republican,house,0
+"Science,Space,and Technology",@HouseScienceCommitteeDemocrats,2,2,119,Republican,house,0
 Small Business,@HouseSmallBiz,0,0,106,Republican,house,0
 Small Business,@HouseSmallBiz,0,0,107,Republican,house,0
 Small Business,@HouseSmallBiz,0,0,108,Republican,house,0
@@ -433,6 +671,20 @@ Small Business,@HouseSmallBizCommitteeDems,113,113,116,Democratic,house,0
 Small Business,@HouseSmallBizCommitteeDems,70,13,117,Democratic,house,0
 Small Business,@HouseSmallBizCommitteeDems,0,0,118,Republican,house,0
 Small Business,@HouseSmallBizCommitteeDems,0,0,119,Republican,house,0
+Small Business,@HouseSmallBizDems,0,0,106,Republican,house,0
+Small Business,@HouseSmallBizDems,0,0,107,Republican,house,0
+Small Business,@HouseSmallBizDems,0,0,108,Republican,house,0
+Small Business,@HouseSmallBizDems,0,0,109,Republican,house,0
+Small Business,@HouseSmallBizDems,857,857,110,Democratic,house,0
+Small Business,@HouseSmallBizDems,1077,1008,111,Democratic,house,0
+Small Business,@HouseSmallBizDems,0,0,112,Republican,house,0
+Small Business,@HouseSmallBizDems,0,0,113,Republican,house,0
+Small Business,@HouseSmallBizDems,0,0,114,Republican,house,0
+Small Business,@HouseSmallBizDems,0,0,115,Republican,house,0
+Small Business,@HouseSmallBizDems,0,0,116,Democratic,house,0
+Small Business,@HouseSmallBizDems,0,0,117,Democratic,house,0
+Small Business,@HouseSmallBizDems,0,0,118,Republican,house,0
+Small Business,@HouseSmallBizDems,0,0,119,Republican,house,0
 Veterans' Affairs,@HouseVeteransAffairs,0,0,106,Republican,house,0
 Veterans' Affairs,@HouseVeteransAffairs,0,0,107,Republican,house,0
 Veterans' Affairs,@HouseVeteransAffairs,0,0,108,Republican,house,0
@@ -559,6 +811,34 @@ Intelligence,@HouseIntel,25,9,116,Democratic,house,0
 Intelligence,@HouseIntel,9,9,117,Democratic,house,0
 Intelligence,@HouseIntel,0,0,118,Republican,house,0
 Intelligence,@HouseIntel,0,0,119,Republican,house,0
+Intelligence,@gophouseintelligencecommit715,0,0,106,Republican,house,0
+Intelligence,@gophouseintelligencecommit715,0,0,107,Republican,house,0
+Intelligence,@gophouseintelligencecommit715,0,0,108,Republican,house,0
+Intelligence,@gophouseintelligencecommit715,0,0,109,Republican,house,0
+Intelligence,@gophouseintelligencecommit715,0,0,110,Democratic,house,0
+Intelligence,@gophouseintelligencecommit715,0,0,111,Democratic,house,0
+Intelligence,@gophouseintelligencecommit715,0,0,112,Republican,house,0
+Intelligence,@gophouseintelligencecommit715,0,0,113,Republican,house,0
+Intelligence,@gophouseintelligencecommit715,0,0,114,Republican,house,0
+Intelligence,@gophouseintelligencecommit715,0,0,115,Republican,house,0
+Intelligence,@gophouseintelligencecommit715,0,0,116,Democratic,house,0
+Intelligence,@gophouseintelligencecommit715,23,23,117,Democratic,house,0
+Intelligence,@gophouseintelligencecommit715,36,36,118,Republican,house,4
+Intelligence,@gophouseintelligencecommit715,107,107,119,Republican,house,47
+Intelligence,@selectcommitteeonintellige289,0,0,106,Republican,house,0
+Intelligence,@selectcommitteeonintellige289,0,0,107,Republican,house,0
+Intelligence,@selectcommitteeonintellige289,0,0,108,Republican,house,0
+Intelligence,@selectcommitteeonintellige289,0,0,109,Republican,house,0
+Intelligence,@selectcommitteeonintellige289,0,0,110,Democratic,house,0
+Intelligence,@selectcommitteeonintellige289,0,0,111,Democratic,house,0
+Intelligence,@selectcommitteeonintellige289,0,0,112,Republican,house,0
+Intelligence,@selectcommitteeonintellige289,0,0,113,Republican,house,0
+Intelligence,@selectcommitteeonintellige289,21,21,114,Republican,house,0
+Intelligence,@selectcommitteeonintellige289,114,114,115,Republican,house,0
+Intelligence,@selectcommitteeonintellige289,224,224,116,Democratic,house,0
+Intelligence,@selectcommitteeonintellige289,15,15,117,Democratic,house,0
+Intelligence,@selectcommitteeonintellige289,0,0,118,Republican,house,0
+Intelligence,@selectcommitteeonintellige289,0,0,119,Republican,house,0
 Ethics,@HouseEthics,0,0,106,Republican,house,0
 Ethics,@HouseEthics,0,0,107,Republican,house,0
 Ethics,@HouseEthics,0,0,108,Republican,house,0
@@ -573,6 +853,20 @@ Ethics,@HouseEthics,2,2,116,Democratic,house,0
 Ethics,@HouseEthics,1,1,117,Democratic,house,0
 Ethics,@HouseEthics,0,0,118,Republican,house,0
 Ethics,@HouseEthics,3,3,119,Republican,house,2
+Ethics,@ushrselectedcommitteeheari1213,0,0,106,Republican,house,0
+Ethics,@ushrselectedcommitteeheari1213,0,0,107,Republican,house,0
+Ethics,@ushrselectedcommitteeheari1213,0,0,108,Republican,house,0
+Ethics,@ushrselectedcommitteeheari1213,0,0,109,Republican,house,0
+Ethics,@ushrselectedcommitteeheari1213,0,0,110,Democratic,house,0
+Ethics,@ushrselectedcommitteeheari1213,0,0,111,Democratic,house,0
+Ethics,@ushrselectedcommitteeheari1213,0,0,112,Republican,house,0
+Ethics,@ushrselectedcommitteeheari1213,0,0,113,Republican,house,0
+Ethics,@ushrselectedcommitteeheari1213,1,1,114,Republican,house,0
+Ethics,@ushrselectedcommitteeheari1213,1,1,115,Republican,house,0
+Ethics,@ushrselectedcommitteeheari1213,2,2,116,Democratic,house,0
+Ethics,@ushrselectedcommitteeheari1213,1,1,117,Democratic,house,0
+Ethics,@ushrselectedcommitteeheari1213,1,1,118,Republican,house,0
+Ethics,@ushrselectedcommitteeheari1213,3,2,119,Republican,house,0
 Select Committee on the CCP,@ChinaSelect,0,0,106,Republican,house,0
 Select Committee on the CCP,@ChinaSelect,0,0,107,Republican,house,0
 Select Committee on the CCP,@ChinaSelect,0,0,108,Republican,house,0
@@ -601,3 +895,241 @@ Select Committee on the CCP,@SelectCommitteeontheCCPDems,0,0,116,Democratic,hous
 Select Committee on the CCP,@SelectCommitteeontheCCPDems,0,0,117,Democratic,house,0
 Select Committee on the CCP,@SelectCommitteeontheCCPDems,33,33,118,Republican,house,5
 Select Committee on the CCP,@SelectCommitteeontheCCPDems,69,69,119,Republican,house,38
+Select Committee on the Climate Crisis,@HouseClimateCrisis,0,0,106,Republican,house,0
+Select Committee on the Climate Crisis,@HouseClimateCrisis,0,0,107,Republican,house,0
+Select Committee on the Climate Crisis,@HouseClimateCrisis,0,0,108,Republican,house,0
+Select Committee on the Climate Crisis,@HouseClimateCrisis,0,0,109,Republican,house,0
+Select Committee on the Climate Crisis,@HouseClimateCrisis,0,0,110,Democratic,house,0
+Select Committee on the Climate Crisis,@HouseClimateCrisis,0,0,111,Democratic,house,0
+Select Committee on the Climate Crisis,@HouseClimateCrisis,0,0,112,Republican,house,0
+Select Committee on the Climate Crisis,@HouseClimateCrisis,0,0,113,Republican,house,0
+Select Committee on the Climate Crisis,@HouseClimateCrisis,0,0,114,Republican,house,0
+Select Committee on the Climate Crisis,@HouseClimateCrisis,0,0,115,Republican,house,0
+Select Committee on the Climate Crisis,@HouseClimateCrisis,25,25,116,Democratic,house,0
+Select Committee on the Climate Crisis,@HouseClimateCrisis,27,27,117,Democratic,house,1
+Select Committee on the Climate Crisis,@HouseClimateCrisis,0,0,118,Republican,house,0
+Select Committee on the Climate Crisis,@HouseClimateCrisis,0,0,119,Republican,house,0
+Select Committee on the Modernization of Congress,@selectcommitteeonthemodern9383,0,0,106,Republican,house,0
+Select Committee on the Modernization of Congress,@selectcommitteeonthemodern9383,0,0,107,Republican,house,0
+Select Committee on the Modernization of Congress,@selectcommitteeonthemodern9383,0,0,108,Republican,house,0
+Select Committee on the Modernization of Congress,@selectcommitteeonthemodern9383,0,0,109,Republican,house,0
+Select Committee on the Modernization of Congress,@selectcommitteeonthemodern9383,0,0,110,Democratic,house,0
+Select Committee on the Modernization of Congress,@selectcommitteeonthemodern9383,0,0,111,Democratic,house,0
+Select Committee on the Modernization of Congress,@selectcommitteeonthemodern9383,0,0,112,Republican,house,0
+Select Committee on the Modernization of Congress,@selectcommitteeonthemodern9383,0,0,113,Republican,house,0
+Select Committee on the Modernization of Congress,@selectcommitteeonthemodern9383,0,0,114,Republican,house,0
+Select Committee on the Modernization of Congress,@selectcommitteeonthemodern9383,0,0,115,Republican,house,0
+Select Committee on the Modernization of Congress,@selectcommitteeonthemodern9383,39,39,116,Democratic,house,0
+Select Committee on the Modernization of Congress,@selectcommitteeonthemodern9383,32,32,117,Democratic,house,0
+Select Committee on the Modernization of Congress,@selectcommitteeonthemodern9383,0,0,118,Republican,house,0
+Select Committee on the Modernization of Congress,@selectcommitteeonthemodern9383,0,0,119,Republican,house,0
+Select Committee on Benghazi,@theu.s.houseselectcommitte1053,0,0,106,Republican,house,0
+Select Committee on Benghazi,@theu.s.houseselectcommitte1053,0,0,107,Republican,house,0
+Select Committee on Benghazi,@theu.s.houseselectcommitte1053,0,0,108,Republican,house,0
+Select Committee on Benghazi,@theu.s.houseselectcommitte1053,0,0,109,Republican,house,0
+Select Committee on Benghazi,@theu.s.houseselectcommitte1053,0,0,110,Democratic,house,0
+Select Committee on Benghazi,@theu.s.houseselectcommitte1053,0,0,111,Democratic,house,0
+Select Committee on Benghazi,@theu.s.houseselectcommitte1053,0,0,112,Republican,house,0
+Select Committee on Benghazi,@theu.s.houseselectcommitte1053,0,0,113,Republican,house,0
+Select Committee on Benghazi,@theu.s.houseselectcommitte1053,5,0,114,Republican,house,0
+Select Committee on Benghazi,@theu.s.houseselectcommitte1053,0,0,115,Republican,house,0
+Select Committee on Benghazi,@theu.s.houseselectcommitte1053,1,1,116,Democratic,house,0
+Select Committee on Benghazi,@theu.s.houseselectcommitte1053,0,0,117,Democratic,house,0
+Select Committee on Benghazi,@theu.s.houseselectcommitte1053,0,0,118,Republican,house,0
+Select Committee on Benghazi,@theu.s.houseselectcommitte1053,0,0,119,Republican,house,0
+Select Committee on Benghazi,@selectcommitteeonbenghazid1588,0,0,106,Republican,house,0
+Select Committee on Benghazi,@selectcommitteeonbenghazid1588,0,0,107,Republican,house,0
+Select Committee on Benghazi,@selectcommitteeonbenghazid1588,0,0,108,Republican,house,0
+Select Committee on Benghazi,@selectcommitteeonbenghazid1588,0,0,109,Republican,house,0
+Select Committee on Benghazi,@selectcommitteeonbenghazid1588,0,0,110,Democratic,house,0
+Select Committee on Benghazi,@selectcommitteeonbenghazid1588,0,0,111,Democratic,house,0
+Select Committee on Benghazi,@selectcommitteeonbenghazid1588,0,0,112,Republican,house,0
+Select Committee on Benghazi,@selectcommitteeonbenghazid1588,4,4,113,Republican,house,0
+Select Committee on Benghazi,@selectcommitteeonbenghazid1588,5,5,114,Republican,house,0
+Select Committee on Benghazi,@selectcommitteeonbenghazid1588,0,0,115,Republican,house,0
+Select Committee on Benghazi,@selectcommitteeonbenghazid1588,0,0,116,Democratic,house,0
+Select Committee on Benghazi,@selectcommitteeonbenghazid1588,0,0,117,Democratic,house,0
+Select Committee on Benghazi,@selectcommitteeonbenghazid1588,0,0,118,Republican,house,0
+Select Committee on Benghazi,@selectcommitteeonbenghazid1588,0,0,119,Republican,house,0
+Select Committee on the January 6th Attack,@January6thCmte,0,0,106,Republican,house,0
+Select Committee on the January 6th Attack,@January6thCmte,0,0,107,Republican,house,0
+Select Committee on the January 6th Attack,@January6thCmte,0,0,108,Republican,house,0
+Select Committee on the January 6th Attack,@January6thCmte,0,0,109,Republican,house,0
+Select Committee on the January 6th Attack,@January6thCmte,0,0,110,Democratic,house,0
+Select Committee on the January 6th Attack,@January6thCmte,0,0,111,Democratic,house,0
+Select Committee on the January 6th Attack,@January6thCmte,0,0,112,Republican,house,0
+Select Committee on the January 6th Attack,@January6thCmte,0,0,113,Republican,house,0
+Select Committee on the January 6th Attack,@January6thCmte,0,0,114,Republican,house,0
+Select Committee on the January 6th Attack,@January6thCmte,0,0,115,Republican,house,0
+Select Committee on the January 6th Attack,@January6thCmte,0,0,116,Democratic,house,0
+Select Committee on the January 6th Attack,@January6thCmte,41,41,117,Democratic,house,5
+Select Committee on the January 6th Attack,@January6thCmte,0,0,118,Republican,house,0
+Select Committee on the January 6th Attack,@January6thCmte,0,0,119,Republican,house,0
+Select Committee on Economic Disparity and Fairness in Growth,@FairGrowthCmte,0,0,106,Republican,house,0
+Select Committee on Economic Disparity and Fairness in Growth,@FairGrowthCmte,0,0,107,Republican,house,0
+Select Committee on Economic Disparity and Fairness in Growth,@FairGrowthCmte,0,0,108,Republican,house,0
+Select Committee on Economic Disparity and Fairness in Growth,@FairGrowthCmte,0,0,109,Republican,house,0
+Select Committee on Economic Disparity and Fairness in Growth,@FairGrowthCmte,0,0,110,Democratic,house,0
+Select Committee on Economic Disparity and Fairness in Growth,@FairGrowthCmte,0,0,111,Democratic,house,0
+Select Committee on Economic Disparity and Fairness in Growth,@FairGrowthCmte,0,0,112,Republican,house,0
+Select Committee on Economic Disparity and Fairness in Growth,@FairGrowthCmte,0,0,113,Republican,house,0
+Select Committee on Economic Disparity and Fairness in Growth,@FairGrowthCmte,0,0,114,Republican,house,0
+Select Committee on Economic Disparity and Fairness in Growth,@FairGrowthCmte,0,0,115,Republican,house,0
+Select Committee on Economic Disparity and Fairness in Growth,@FairGrowthCmte,0,0,116,Democratic,house,0
+Select Committee on Economic Disparity and Fairness in Growth,@FairGrowthCmte,126,126,117,Democratic,house,20
+Select Committee on Economic Disparity and Fairness in Growth,@FairGrowthCmte,0,0,118,Republican,house,0
+Select Committee on Economic Disparity and Fairness in Growth,@FairGrowthCmte,0,0,119,Republican,house,0
+Select Committee on Economic Disparity and Fairness in Growth,@houseselectcommitteeonthee5480,0,0,106,Republican,house,0
+Select Committee on Economic Disparity and Fairness in Growth,@houseselectcommitteeonthee5480,0,0,107,Republican,house,0
+Select Committee on Economic Disparity and Fairness in Growth,@houseselectcommitteeonthee5480,0,0,108,Republican,house,0
+Select Committee on Economic Disparity and Fairness in Growth,@houseselectcommitteeonthee5480,0,0,109,Republican,house,0
+Select Committee on Economic Disparity and Fairness in Growth,@houseselectcommitteeonthee5480,0,0,110,Democratic,house,0
+Select Committee on Economic Disparity and Fairness in Growth,@houseselectcommitteeonthee5480,0,0,111,Democratic,house,0
+Select Committee on Economic Disparity and Fairness in Growth,@houseselectcommitteeonthee5480,0,0,112,Republican,house,0
+Select Committee on Economic Disparity and Fairness in Growth,@houseselectcommitteeonthee5480,0,0,113,Republican,house,0
+Select Committee on Economic Disparity and Fairness in Growth,@houseselectcommitteeonthee5480,0,0,114,Republican,house,0
+Select Committee on Economic Disparity and Fairness in Growth,@houseselectcommitteeonthee5480,0,0,115,Republican,house,0
+Select Committee on Economic Disparity and Fairness in Growth,@houseselectcommitteeonthee5480,0,0,116,Democratic,house,0
+Select Committee on Economic Disparity and Fairness in Growth,@houseselectcommitteeonthee5480,22,22,117,Democratic,house,0
+Select Committee on Economic Disparity and Fairness in Growth,@houseselectcommitteeonthee5480,0,0,118,Republican,house,0
+Select Committee on Economic Disparity and Fairness in Growth,@houseselectcommitteeonthee5480,0,0,119,Republican,house,0
+Select Committee on Energy Independence and Global Warming,@GlobalwarmingGOP,0,0,106,Republican,house,0
+Select Committee on Energy Independence and Global Warming,@GlobalwarmingGOP,0,0,107,Republican,house,0
+Select Committee on Energy Independence and Global Warming,@GlobalwarmingGOP,0,0,108,Republican,house,0
+Select Committee on Energy Independence and Global Warming,@GlobalwarmingGOP,0,0,109,Republican,house,0
+Select Committee on Energy Independence and Global Warming,@GlobalwarmingGOP,0,0,110,Democratic,house,0
+Select Committee on Energy Independence and Global Warming,@GlobalwarmingGOP,74,74,111,Democratic,house,0
+Select Committee on Energy Independence and Global Warming,@GlobalwarmingGOP,0,0,112,Republican,house,0
+Select Committee on Energy Independence and Global Warming,@GlobalwarmingGOP,0,0,113,Republican,house,0
+Select Committee on Energy Independence and Global Warming,@GlobalwarmingGOP,0,0,114,Republican,house,0
+Select Committee on Energy Independence and Global Warming,@GlobalwarmingGOP,0,0,115,Republican,house,0
+Select Committee on Energy Independence and Global Warming,@GlobalwarmingGOP,0,0,116,Democratic,house,0
+Select Committee on Energy Independence and Global Warming,@GlobalwarmingGOP,0,0,117,Democratic,house,0
+Select Committee on Energy Independence and Global Warming,@GlobalwarmingGOP,0,0,118,Republican,house,0
+Select Committee on Energy Independence and Global Warming,@GlobalwarmingGOP,0,0,119,Republican,house,0
+Tom Lantos Human Rights Commission,@TomLantosHumanRights,0,0,106,Republican,house,0
+Tom Lantos Human Rights Commission,@TomLantosHumanRights,0,0,107,Republican,house,0
+Tom Lantos Human Rights Commission,@TomLantosHumanRights,0,0,108,Republican,house,0
+Tom Lantos Human Rights Commission,@TomLantosHumanRights,0,0,109,Republican,house,0
+Tom Lantos Human Rights Commission,@TomLantosHumanRights,0,0,110,Democratic,house,0
+Tom Lantos Human Rights Commission,@TomLantosHumanRights,16,16,111,Democratic,house,0
+Tom Lantos Human Rights Commission,@TomLantosHumanRights,88,88,112,Republican,house,0
+Tom Lantos Human Rights Commission,@TomLantosHumanRights,16,16,113,Republican,house,0
+Tom Lantos Human Rights Commission,@TomLantosHumanRights,29,29,114,Republican,house,0
+Tom Lantos Human Rights Commission,@TomLantosHumanRights,39,39,115,Republican,house,0
+Tom Lantos Human Rights Commission,@TomLantosHumanRights,21,21,116,Democratic,house,0
+Tom Lantos Human Rights Commission,@TomLantosHumanRights,40,40,117,Democratic,house,0
+Tom Lantos Human Rights Commission,@TomLantosHumanRights,16,16,118,Republican,house,0
+Tom Lantos Human Rights Commission,@TomLantosHumanRights,22,22,119,Republican,house,0
+Task Force on the Attempted Assassination of Donald J. Trump,@TFAADJT,0,0,106,Republican,house,0
+Task Force on the Attempted Assassination of Donald J. Trump,@TFAADJT,0,0,107,Republican,house,0
+Task Force on the Attempted Assassination of Donald J. Trump,@TFAADJT,0,0,108,Republican,house,0
+Task Force on the Attempted Assassination of Donald J. Trump,@TFAADJT,0,0,109,Republican,house,0
+Task Force on the Attempted Assassination of Donald J. Trump,@TFAADJT,0,0,110,Democratic,house,0
+Task Force on the Attempted Assassination of Donald J. Trump,@TFAADJT,0,0,111,Democratic,house,0
+Task Force on the Attempted Assassination of Donald J. Trump,@TFAADJT,0,0,112,Republican,house,0
+Task Force on the Attempted Assassination of Donald J. Trump,@TFAADJT,0,0,113,Republican,house,0
+Task Force on the Attempted Assassination of Donald J. Trump,@TFAADJT,0,0,114,Republican,house,0
+Task Force on the Attempted Assassination of Donald J. Trump,@TFAADJT,0,0,115,Republican,house,0
+Task Force on the Attempted Assassination of Donald J. Trump,@TFAADJT,0,0,116,Democratic,house,0
+Task Force on the Attempted Assassination of Donald J. Trump,@TFAADJT,0,0,117,Democratic,house,0
+Task Force on the Attempted Assassination of Donald J. Trump,@TFAADJT,6,6,118,Republican,house,0
+Task Force on the Attempted Assassination of Donald J. Trump,@TFAADJT,0,0,119,Republican,house,0
+Joint Economic Committee,@JointEconomicCommittee,0,0,106,,joint,0
+Joint Economic Committee,@JointEconomicCommittee,0,0,107,,joint,0
+Joint Economic Committee,@JointEconomicCommittee,0,0,108,,joint,0
+Joint Economic Committee,@JointEconomicCommittee,0,0,109,,joint,0
+Joint Economic Committee,@JointEconomicCommittee,0,0,110,,joint,0
+Joint Economic Committee,@JointEconomicCommittee,0,0,111,,joint,0
+Joint Economic Committee,@JointEconomicCommittee,0,0,112,,joint,0
+Joint Economic Committee,@JointEconomicCommittee,0,0,113,,joint,0
+Joint Economic Committee,@JointEconomicCommittee,15,15,114,,joint,0
+Joint Economic Committee,@JointEconomicCommittee,20,18,115,,joint,0
+Joint Economic Committee,@JointEconomicCommittee,15,15,116,,joint,0
+Joint Economic Committee,@JointEconomicCommittee,17,17,117,,joint,0
+Joint Economic Committee,@JointEconomicCommittee,18,18,118,,joint,1
+Joint Economic Committee,@JointEconomicCommittee,39,39,119,,joint,15
+Joint Economic Committee,@TheJECRepublicans,0,0,106,,joint,0
+Joint Economic Committee,@TheJECRepublicans,0,0,107,,joint,0
+Joint Economic Committee,@TheJECRepublicans,0,0,108,,joint,0
+Joint Economic Committee,@TheJECRepublicans,0,0,109,,joint,0
+Joint Economic Committee,@TheJECRepublicans,0,0,110,,joint,0
+Joint Economic Committee,@TheJECRepublicans,43,43,111,,joint,0
+Joint Economic Committee,@TheJECRepublicans,200,200,112,,joint,8
+Joint Economic Committee,@TheJECRepublicans,135,135,113,,joint,1
+Joint Economic Committee,@TheJECRepublicans,14,14,114,,joint,0
+Joint Economic Committee,@TheJECRepublicans,14,13,115,,joint,0
+Joint Economic Committee,@TheJECRepublicans,56,56,116,,joint,21
+Joint Economic Committee,@TheJECRepublicans,5,5,117,,joint,1
+Joint Economic Committee,@TheJECRepublicans,0,0,118,,joint,0
+Joint Economic Committee,@TheJECRepublicans,0,0,119,,joint,0
+Joint Economic Committee,@jointeconomiccommitteedemo115,0,0,106,,joint,0
+Joint Economic Committee,@jointeconomiccommitteedemo115,0,0,107,,joint,0
+Joint Economic Committee,@jointeconomiccommitteedemo115,0,0,108,,joint,0
+Joint Economic Committee,@jointeconomiccommitteedemo115,0,0,109,,joint,0
+Joint Economic Committee,@jointeconomiccommitteedemo115,0,0,110,,joint,0
+Joint Economic Committee,@jointeconomiccommitteedemo115,0,0,111,,joint,0
+Joint Economic Committee,@jointeconomiccommitteedemo115,0,0,112,,joint,0
+Joint Economic Committee,@jointeconomiccommitteedemo115,0,0,113,,joint,0
+Joint Economic Committee,@jointeconomiccommitteedemo115,24,24,114,,joint,0
+Joint Economic Committee,@jointeconomiccommitteedemo115,64,64,115,,joint,0
+Joint Economic Committee,@jointeconomiccommitteedemo115,1,1,116,,joint,0
+Joint Economic Committee,@jointeconomiccommitteedemo115,0,0,117,,joint,0
+Joint Economic Committee,@jointeconomiccommitteedemo115,1,1,118,,joint,0
+Joint Economic Committee,@jointeconomiccommitteedemo115,0,0,119,,joint,0
+Joint Economic Committee,@JointEconCommittee,0,0,106,,joint,0
+Joint Economic Committee,@JointEconCommittee,0,0,107,,joint,0
+Joint Economic Committee,@JointEconCommittee,0,0,108,,joint,0
+Joint Economic Committee,@JointEconCommittee,0,0,109,,joint,0
+Joint Economic Committee,@JointEconCommittee,0,0,110,,joint,0
+Joint Economic Committee,@JointEconCommittee,17,17,111,,joint,0
+Joint Economic Committee,@JointEconCommittee,6,6,112,,joint,0
+Joint Economic Committee,@JointEconCommittee,0,0,113,,joint,0
+Joint Economic Committee,@JointEconCommittee,0,0,114,,joint,0
+Joint Economic Committee,@JointEconCommittee,0,0,115,,joint,0
+Joint Economic Committee,@JointEconCommittee,0,0,116,,joint,0
+Joint Economic Committee,@JointEconCommittee,0,0,117,,joint,0
+Joint Economic Committee,@JointEconCommittee,0,0,118,,joint,0
+Joint Economic Committee,@JointEconCommittee,0,0,119,,joint,0
+Helsinki Commission,@HelsinkiCommission,0,0,106,,joint,0
+Helsinki Commission,@HelsinkiCommission,0,0,107,,joint,0
+Helsinki Commission,@HelsinkiCommission,0,0,108,,joint,0
+Helsinki Commission,@HelsinkiCommission,0,0,109,,joint,0
+Helsinki Commission,@HelsinkiCommission,0,0,110,,joint,0
+Helsinki Commission,@HelsinkiCommission,43,43,111,,joint,3
+Helsinki Commission,@HelsinkiCommission,42,41,112,,joint,0
+Helsinki Commission,@HelsinkiCommission,1,1,113,,joint,0
+Helsinki Commission,@HelsinkiCommission,13,13,114,,joint,0
+Helsinki Commission,@HelsinkiCommission,19,19,115,,joint,0
+Helsinki Commission,@HelsinkiCommission,29,29,116,,joint,0
+Helsinki Commission,@HelsinkiCommission,62,62,117,,joint,3
+Helsinki Commission,@HelsinkiCommission,522,521,118,,joint,0
+Helsinki Commission,@HelsinkiCommission,129,128,119,,joint,19
+Congressional-Executive Commission on China,@ChinaCommission,0,0,106,,joint,0
+Congressional-Executive Commission on China,@ChinaCommission,0,0,107,,joint,0
+Congressional-Executive Commission on China,@ChinaCommission,0,0,108,,joint,0
+Congressional-Executive Commission on China,@ChinaCommission,0,0,109,,joint,0
+Congressional-Executive Commission on China,@ChinaCommission,0,0,110,,joint,0
+Congressional-Executive Commission on China,@ChinaCommission,0,0,111,,joint,0
+Congressional-Executive Commission on China,@ChinaCommission,0,0,112,,joint,0
+Congressional-Executive Commission on China,@ChinaCommission,0,0,113,,joint,0
+Congressional-Executive Commission on China,@ChinaCommission,6,6,114,,joint,0
+Congressional-Executive Commission on China,@ChinaCommission,9,9,115,,joint,0
+Congressional-Executive Commission on China,@ChinaCommission,7,7,116,,joint,0
+Congressional-Executive Commission on China,@ChinaCommission,18,18,117,,joint,0
+Congressional-Executive Commission on China,@ChinaCommission,16,16,118,,joint,0
+Congressional-Executive Commission on China,@ChinaCommission,7,7,119,,joint,5
+Joint Committee on Taxation,@jctgov,0,0,106,,joint,0
+Joint Committee on Taxation,@jctgov,0,0,107,,joint,0
+Joint Committee on Taxation,@jctgov,0,0,108,,joint,0
+Joint Committee on Taxation,@jctgov,0,0,109,,joint,0
+Joint Committee on Taxation,@jctgov,0,0,110,,joint,0
+Joint Committee on Taxation,@jctgov,0,0,111,,joint,0
+Joint Committee on Taxation,@jctgov,0,0,112,,joint,0
+Joint Committee on Taxation,@jctgov,0,0,113,,joint,0
+Joint Committee on Taxation,@jctgov,0,0,114,,joint,0
+Joint Committee on Taxation,@jctgov,0,0,115,,joint,0
+Joint Committee on Taxation,@jctgov,0,0,116,,joint,0
+Joint Committee on Taxation,@jctgov,0,0,117,,joint,0
+Joint Committee on Taxation,@jctgov,0,0,118,,joint,0
+Joint Committee on Taxation,@jctgov,2,2,119,,joint,1
