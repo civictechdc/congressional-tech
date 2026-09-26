@@ -21,14 +21,20 @@ Rules:
 - Each video goes to its best-scoring hearing. Hearings on the same day may share a
   video (joint hearings, or several GPO packages for one proceeding); hearings on
   different days may not.
-- A video under 10 minutes found by weaker evidence (score under 90) counts as a clip, not a
-  full recording.
+- A video found by weaker evidence (score under 90) counts as a clip, not a full recording,
+  when it's under 20 minutes, or under 30 minutes with a member-clip title ("Wyden Q&A ...",
+  "Chairman Smith Questions Witnesses ...", "Opening Statement ..."). Senate party channels
+  post 10-25 minute question rounds for most hearings; measured on the September 2026 data,
+  nearly every weak match under 20 minutes was one.
 - Multi-hearing volumes (Appropriations "Part N") are matched on every hearing day
   listed in `hearing_dates`.
 - Curated verdicts in the overrides file (seeded from the September 2026 research
   pass) apply where they exist. A "no video"/"clips only" verdict gives way to strong
   new evidence (score 90+) or a dated recording of 30+ minutes, unless the row is
   locked (`lock=yes`, for matches that were reviewed and rejected).
+- A `found_offsite` verdict (C-SPAN, an archived file, another site; `video_ids` holds
+  the URLs and `channel` the host) is a fallback: it gives status `full_recording_offsite`
+  only when YouTube has no full recording.
 """
 import argparse
 import collections
@@ -56,7 +62,10 @@ STOP = set("the a an of and to in on for with from at by is are be as or its it 
            "subcommittee committee house u.s. us part examining examine review oversight markup meeting full".split())
 ## meeting records filed under select subcommittees whose videos live on the parent's channels
 ALIAS = {"jjec00": "jsec00", "hlvc00": "hsgo00", "hlfd00": "hsju00", "hlqj00": "hsju00"}
-CLIP_SECONDS = 600
+CLIP_SECONDS = 1200
+CLIP_TITLE_SECONDS = 1800
+CLIP_TITLE = re.compile(r"\b(q&a|questions?|opening statement|opening remarks|statement|remarks|round of questions|closing)\b"
+                        r"|^(sen\.|senator|rep\.|chairman|chair|ranking member|subcommittee chairman|vice chair)\s", re.I)
 EVENT_ID = re.compile(r"(?:event\s*id|\bid)\s*[:=#]?\s*(1\d{5})(?!\d)|house-event/(1\d{5})(?!\d)", re.I)
 VIDEO_ID = re.compile(r"(?:youtube\.com/(?:watch\?(?:.*&)?v=|live/|embed/|shorts/|v/)|youtu\.be/)([\w-]{11})")
 MONTHS = {m: i + 1 for i, m in enumerate("jan feb mar apr may jun jul aug sep oct nov dec".split())}
@@ -105,6 +114,12 @@ def dates_in_text(text):
         found.add(valid_date(2000 + int(code[:2]), int(code[2:4]), int(code[4:])))
     found.discard(None)
     return {d for d in found if "2005" <= d <= "2100"}
+
+
+def is_clip(v):
+    """A short video, or a short-ish one titled as a member's questions or statement."""
+    d = v.get("duration")
+    return d is not None and (d < CLIP_SECONDS or (d < CLIP_TITLE_SECONDS and bool(CLIP_TITLE.search(v.get("title", "")))))
 
 
 def load_videos(tinydb_dir, channels):
@@ -233,18 +248,22 @@ def main(output_path, tinydb_dir, channels_csv_path, gpo_path, meetings_path, ov
         if not h["_dates"]:
             continue  # GPO gave no hearing date; nothing to match on
         for score, method, v in candidates(h, videos.get(h["committee_code"], []), meetings, hearings_on_day):
-            if score < 90 and v.get("duration") is not None and v["duration"] < CLIP_SECONDS:
+            if score < 90 and is_clip(v):
                 clips[h["package_id"]].append(v)
                 continue
             pairs.append((score, method, h["package_id"], v))
 
-    ## curated overrides first: their videos are reserved for their hearings
+    ## curated overrides first: their videos are reserved for their hearings. A video
+    ##  on a tracked channel takes its length, date and channel from the fetch, so
+    ##  the flags and minutes are as good as for automatic matches.
     assigned = collections.defaultdict(list)   # pid -> [(score, method, video)]
     video_days = {}                            # videoId -> set of hearing days it's assigned to
+    fetched = {v["videoId"]: v for vs in videos.values() for v in vs}
     for pid, o in overrides.items():
         if pid in by_pid and o["verdict"] in ("found_tracked", "found_untracked"):
             for vid in o["video_ids"].split():
-                assigned[pid].append((99, "research", {"videoId": vid, "channel": o["channel"], "duration": None, "audio_only": False}))
+                v = fetched.get(vid) or {"videoId": vid, "channel": o["channel"], "duration": None, "audio_only": False}
+                assigned[pid].append((99, "research", v))
                 video_days.setdefault(vid, set()).update(by_pid[pid]["_dates"])
 
     ## greedy, best evidence first; ties go to the hearing closest to the upload date
@@ -304,6 +323,8 @@ def main(output_path, tinydb_dir, channels_csv_path, gpo_path, meetings_path, ov
             status = "before_channel"
         else:
             status = "no_video_found"
+        if o and o["verdict"] == "found_offsite" and status != "full_recording":
+            status, source, note = "full_recording_offsite", "research", o.get("note", "")
         vids = [a[2] for a in got] if status == "full_recording" else []
         if any(v.get("audio_only") for v in vids):
             flags.append("audio_only")
@@ -317,9 +338,11 @@ def main(output_path, tinydb_dir, channels_csv_path, gpo_path, meetings_path, ov
         rows.append({
             "package_id": pid, "congress": h["congress"], "chamber": h["chamber"], "committee_code": code,
             "held_date": h["held_date"], "hearing_dates": h["hearing_dates"], "record_type": h.get("record_type", "hearing"),
-            "status": status, "video_ids": " ".join(v["videoId"] for v in vids),
-            "channels": " ".join(sorted({v["channel"] for v in vids if v.get("channel")})),
-            "method": "; ".join(sorted({a[1] for a in got})) if vids else "", "score": best if vids else "",
+            "status": status,
+            "video_ids": o["video_ids"] if status == "full_recording_offsite" else " ".join(v["videoId"] for v in vids),
+            "channels": o["channel"] if status == "full_recording_offsite" else " ".join(sorted({v["channel"] for v in vids if v.get("channel")})),
+            "method": "research" if status == "full_recording_offsite" else "; ".join(sorted({a[1] for a in got})) if vids else "",
+            "score": best if vids else "",
             "video_minutes": minutes, "flags": " ".join(flags), "source": source, "note": note,
         })
 

@@ -49,7 +49,7 @@ Each GPO hearing is matched to a recording using this evidence, strongest first:
 
 Rules:
 - **One video per hearing:** each video goes to its best-matching hearing. Hearings on the same day may share one.
-- **Clips:** a video under 10 minutes found by weaker evidence counts as a clip.
+- **Clips:** a video found by weaker evidence (no Congress.gov link or event ID) counts as a clip when it's under 20 minutes, or under 30 minutes with a member-clip title ("Wyden Q&A …", "Chairman Smith Questions Witnesses …", "Opening Statement …"). Senate party channels post question rounds of that length for most hearings.
 - **Multi-hearing Appropriations volumes:** these are matched on each hearing day, read from the transcript (the `hearing_dates` column). About a quarter of them are scanned PDFs with no text, so only their GPO date is used.
 
 `data/hearing_video_overrides.csv` holds reviewed verdicts from the September 2026 research. They're used where they exist, with these exceptions:
@@ -62,7 +62,8 @@ To correct a match by hand, add or edit a row there.
 
 | Status | Meaning |
 |---|---|
-| `full_recording` | A recording of the proceeding. |
+| `full_recording` | A recording of the proceeding on YouTube. |
+| `full_recording_offsite` | No full recording on YouTube, but one on C-SPAN, in the Wayback Machine or on another site (`video_ids` holds the URLs, `channels` the host). |
 | `clips_only` | Only clips or statements. |
 | `not_public` | A closed session, written-only volume or errata sheet. |
 | `no_video_found` | Nothing found. |
