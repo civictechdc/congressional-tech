@@ -1,0 +1,520 @@
+{
+ "@AgRepublicans": {
+  "id": "UCWtWf-QUTnJ-UMP5ZNWVB5Q",
+  "handle": "@AgRepublicans",
+  "title": "House Committee on Agriculture",
+  "subs": "2.99K",
+  "videos": "10"
+ },
+ "@HouseAgDems": {
+  "id": "UCOWh2WJxPywHIaccDWb8Mvg",
+  "handle": "@HouseAgDems",
+  "title": "House Ag Democrats",
+  "subs": "1.78K",
+  "videos": "3"
+ },
+ "@houseagriculturecommittee2800": {
+  "id": "UCf2PUyencSXvlVIwsKK6v3w",
+  "handle": "@houseagriculturecommittee2800",
+  "title": "House Agriculture Committee 200th Anniversary",
+  "subs": "",
+  "videos": ""
+ },
+ "@HouseAppropriationsCommittee": {
+  "id": "UCMaSlF09S0fpoRshS2t_7XA",
+  "handle": "@HouseAppropriationsCommittee",
+  "title": "House Appropriations Committee",
+  "subs": "12.6K",
+  "videos": ""
+ },
+ "@HouseArmedServices": {
+  "id": "UCD506yORW2voSanqEgLOUIQ",
+  "handle": "@HouseArmedServices",
+  "title": "U.S. House Armed Services Committee",
+  "subs": "13.4K",
+  "videos": "740"
+ },
+ "@HASCDems": {
+  "id": "UCEvhm8f6cuMi5SgrJlmAdig",
+  "handle": "@HASCDems",
+  "title": "HASCDems",
+  "subs": "4",
+  "videos": "21"
+ },
+ "@armedservices8789": {
+  "id": "UCmR-5kCpUbTO6n2-Fbc9LrQ",
+  "handle": "@armedservices8789",
+  "title": "Armed Services",
+  "subs": "865",
+  "videos": "361"
+ },
+ "@armedservicesGOP": {
+  "id": "UCfmaqiiwvogOYverCjxeTCw",
+  "handle": "@armedservicesGOP",
+  "title": "Armed Services GOP",
+  "subs": "2",
+  "videos": "10"
+ },
+ "@HouseBudgetGOP": {
+  "id": "UCHPaSWprI94UTePSMv0tqnw",
+  "handle": "@HouseBudgetGOP",
+  "title": "House Budget Committee GOP",
+  "subs": "3.82K",
+  "videos": "9"
+ },
+ "@HouseBudgetDems": {
+  "id": "UCwzia2rpHJkowAXK-IF9E0w",
+  "handle": "@HouseBudgetDems",
+  "title": "House Budget Committee Democrats",
+  "subs": "1.24K",
+  "videos": "539"
+ },
+ "@EdWorkforceCmte": {
+  "id": "UC8Ewe7WqGg01KRNjJCO5cjg",
+  "handle": "@EdWorkforceCmte",
+  "title": "House Committee on Education & Workforce",
+  "subs": "6.5K",
+  "videos": ""
+ },
+ "@EdWorkforceDemocrats": {
+  "id": "UCqAHNOSUqn0OByR-4vF81FQ",
+  "handle": "@EdWorkforceDemocrats",
+  "title": "Committee on Education & Workforce Democrats",
+  "subs": "4.59K",
+  "videos": ""
+ },
+ "@energyandcommerce": {
+  "id": "UC5s1kIfkfWbap31d5ef-VtQ",
+  "handle": "@energyandcommerce",
+  "title": "House Committee on Energy and Commerce",
+  "subs": "7.41K",
+  "videos": ""
+ },
+ "@EnergyCommerce": {
+  "id": "UCCbD3bkHRcwiBsaL1lWE_QQ",
+  "handle": "@EnergyCommerce",
+  "title": "Energy & Commerce Democrats",
+  "subs": "4.03K",
+  "videos": ""
+ },
+ "@USHouseFSC": {
+  "id": "UCiGw0gRK-daU7Xv4oDMr9Hg",
+  "handle": "@USHouseFSC",
+  "title": "U.S. House Committee on Financial Services",
+  "subs": "26.5K",
+  "videos": "758"
+ },
+ "@GOPFinancialServices": {
+  "id": "UCDQFSLK68yQLJPb8E9ZWmQQ",
+  "handle": "@GOPFinancialServices",
+  "title": "GOPFinancialServices",
+  "subs": "16.7K",
+  "videos": ""
+ },
+ "@fscdems9522": {
+  "id": "UCf8W8A_NL1igNxLrJucXEmQ",
+  "handle": "@fscdems9522",
+  "title": "FSC Dems",
+  "subs": "37",
+  "videos": "652"
+ },
+ "@fscdems484": {
+  "id": "UCEhvLp5t6pOwhLStgmT7z4w",
+  "handle": "@fscdems484",
+  "title": "FSC Dems",
+  "subs": "14",
+  "videos": "68"
+ },
+ "@u.s.housecommitteeonfinanc8492": {
+  "id": "UCrmpgcd8gfDba26PvdstMYA",
+  "handle": "@u.s.housecommitteeonfinanc8492",
+  "title": "U.S. House Committee on Financial Services",
+  "subs": "6",
+  "videos": ""
+ },
+ "@houseforeign": {
+  "id": "UCXCjgHrMgPEqDvCmPc9BbJA",
+  "handle": "@houseforeign",
+  "title": "House Foreign Affairs Committee Democrats",
+  "subs": "17K",
+  "videos": ""
+ },
+ "@HouseForeignGOP": {
+  "id": "UCtxAmeCl0xtSuo7tHZpgcQA",
+  "handle": "@HouseForeignGOP",
+  "title": "House Foreign Affairs Committee Republicans",
+  "subs": "23K",
+  "videos": ""
+ },
+ "@HouseHomeland": {
+  "id": "UChdT2snPVxfp2m8n4VDdMag",
+  "handle": "@HouseHomeland",
+  "title": "Homeland Security Committee Events",
+  "subs": "17.5K",
+  "videos": "516"
+ },
+ "@HomelandDems": {
+  "id": "UC6Vg3_8RRaIVLJFyo7WZfzA",
+  "handle": "@HomelandDems",
+  "title": "Homeland Security Committee Democrats",
+  "subs": "701",
+  "videos": "582"
+ },
+ "@HomelandSecurityCommitteeGOP": {
+  "id": "UCgmYwMNLJaRPj7TPgCdOllg",
+  "handle": "@HomelandSecurityCommitteeGOP",
+  "title": "Homeland Security Committee Republicans",
+  "subs": "1.05K",
+  "videos": "518"
+ },
+ "@HomelandSecurityCmte": {
+  "id": "UChdT2snPVxfp2m8n4VDdMag",
+  "handle": "@HouseHomeland",
+  "title": "Homeland Security Committee Events",
+  "subs": "17.5K",
+  "videos": "516"
+ },
+ "@CommitteeonHouseAdministration": {
+  "id": "UC8dXTgFnWF8NraBKhF040Qg",
+  "handle": "@CommitteeonHouseAdministration",
+  "title": "Committee on House Administration",
+  "subs": "3.89K",
+  "videos": "13"
+ },
+ "@CHADemsVideos": {
+  "id": "UCTO94zQwJNB_gmud-4IyZXA",
+  "handle": "@CHADemsVideos",
+  "title": "Committee on House Administration, Democrats",
+  "subs": "994",
+  "videos": "272"
+ },
+ "@committeeonhouseadministra952": {
+  "id": "UC2q3B9yLawQ3Y_77ekh9Kfg",
+  "handle": "@committeeonhouseadministra952",
+  "title": "Committee on House \u201cCHAVideos\u201d Administration Republicans",
+  "subs": "2",
+  "videos": ""
+ },
+ "@CHADemocrats": {
+  "id": "UCF_PRO0e7F63_F-GI_aO30Q",
+  "handle": "@CHADemocrats",
+  "title": "CHADemocrats",
+  "subs": "",
+  "videos": "2"
+ },
+ "@USHouseJudiciaryGOP": {
+  "id": "UCdvbanLNRlC0Af1QWeJ9foA",
+  "handle": "@USHouseJudiciaryGOP",
+  "title": "House Judiciary GOP",
+  "subs": "52.8K",
+  "videos": ""
+ },
+ "@JudiciaryDems": {
+  "id": "UCVvv3JRCVQAl6ovogDum4hA",
+  "handle": "@JudiciaryDems",
+  "title": "House Committee on the Judiciary",
+  "subs": "106K",
+  "videos": "24"
+ },
+ "@housejudiciarydemocrats8939": {
+  "id": "UCQLnvFqs5-rrsUFYO8KZsdg",
+  "handle": "@housejudiciarydemocrats8939",
+  "title": "House Judiciary Democrats",
+  "subs": "25",
+  "videos": "11"
+ },
+ "@housejudiciarycommittee5448": {
+  "id": "UC_oXZ1FAAwguM6Zutg72Zow",
+  "handle": "@housejudiciarycommittee5448",
+  "title": "House Judiciary Committee",
+  "subs": "51",
+  "videos": "10"
+ },
+ "@NaturalResourcesGOP": {
+  "id": "UCY08wEbJ8fztRofQ9eZs0-g",
+  "handle": "@NaturalResourcesGOP",
+  "title": "House Committee on Natural Resources GOP",
+  "subs": "19.4K",
+  "videos": ""
+ },
+ "@NRDems": {
+  "id": "UCB6LGE5-_i-xxtZxk1_SeTg",
+  "handle": "@NRDems",
+  "title": "House Natural Resources Committee Democrats",
+  "subs": "5.69K",
+  "videos": ""
+ },
+ "@OversightandGovernmentReform": {
+  "id": "UCn8TJ6Tyq2aGvhybME_itDQ",
+  "handle": "@OversightandGovernmentReform",
+  "title": "GOP Oversight",
+  "subs": "86.5K",
+  "videos": ""
+ },
+ "@OversightDems": {
+  "id": "UCXSlyao4qkUFiPqghptHtZA",
+  "handle": "@OversightDems",
+  "title": "Oversight Dems",
+  "subs": "2.39K",
+  "videos": ""
+ },
+ "@COVIDOversight": {
+  "id": "UCr2eGXGVYHx0f5ZTXmamFpw",
+  "handle": "@COVIDOversight",
+  "title": "Select Subcommittee on the Coronavirus Crisis",
+  "subs": "63.8K",
+  "videos": "28"
+ },
+ "@covidselectdems-ru2bf": {
+  "id": "UCDSEDQMer9XB32845BkIfJg",
+  "handle": "@covidselectdems-ru2bf",
+  "title": "COVIDSelectDems",
+  "subs": "6",
+  "videos": "25"
+ },
+ "@CommitteeonOversight": {
+  "id": "UCZyzqPsQPqql-7D-faBxh-Q",
+  "handle": "@CommitteeonOversight",
+  "title": "Oversight Committee",
+  "subs": "106",
+  "videos": "6"
+ },
+ "@OversightMaj": {
+  "id": "UCP22oIGBiyeysYWbPy6ofHg",
+  "handle": "@OversightMaj",
+  "title": "OversightMaj",
+  "subs": "41",
+  "videos": "63"
+ },
+ "@OversightRepublicans": {
+  "id": "UC4rq_85nqFSgmK9vCWfoaXA",
+  "handle": "@OversightRepublicans",
+  "title": "OversightRepublicans",
+  "subs": "3",
+  "videos": "5"
+ },
+ "@HouseRulesCommittee": {
+  "id": "UCDNcorctkmOpBfr4sgu6t3w",
+  "handle": "@HouseRulesCommittee",
+  "title": "HouseRules",
+  "subs": "7.61K",
+  "videos": "823"
+ },
+ "@RulesCommitteeDemocrats": {
+  "id": "UC3LTS2HRaURCmt_kkWorvFw",
+  "handle": "@RulesCommitteeDemocrats",
+  "title": "House Rules Committee Democrats",
+  "subs": "353",
+  "videos": "87"
+ },
+ "@housescience": {
+  "id": "UCtoUE3dJ-mLUo5dwGs7hXOw",
+  "handle": "@housescience",
+  "title": "House Science, Space, and Technology Committee",
+  "subs": "6.22K",
+  "videos": ""
+ },
+ "@HouseScienceGOP": {
+  "id": "UCaYdb96bylkWGJgkij-Sk3Q",
+  "handle": "@HouseScienceGOP",
+  "title": "House Science Committee GOP",
+  "subs": "6.22K",
+  "videos": ""
+ },
+ "@HouseScienceCommitteeDemocrats": {
+  "id": "UCRFTSnk5PA9k2KI3cPpJ4qQ",
+  "handle": "@HouseScienceCommitteeDemocrats",
+  "title": "House Science Committee - Democrats",
+  "subs": "262",
+  "videos": "4"
+ },
+ "@HouseSmallBiz": {
+  "id": "UCoXvuW2IhFawuNyk4yL3EkQ",
+  "handle": "@HouseSmallBiz",
+  "title": "House Committee on Small Business",
+  "subs": "5.79K",
+  "videos": ""
+ },
+ "@HouseSmallBizCommitteeDems": {
+  "id": "UCnYcuO2JQhVbnCR8ltmSacQ",
+  "handle": "@HouseSmallBizCommitteeDems",
+  "title": "House Small Business Committee Democrats",
+  "subs": "1.85K",
+  "videos": "181"
+ },
+ "@HouseSmallBizDems": {
+  "id": "UCyqqVWNE_WYWL3o-34f5WMg",
+  "handle": "@HouseSmallBizDems",
+  "title": "HouseSmallBizDems",
+  "subs": "289",
+  "videos": ""
+ },
+ "@HouseVeteransAffairs": {
+  "id": "UCvI8xjyh45-XAJbfPcjUdbQ",
+  "handle": "@HouseVeteransAffairs",
+  "title": "House Committee On Veterans' Affairs",
+  "subs": "7.23K",
+  "videos": "402"
+ },
+ "@HouseVetsAffairs": {
+  "id": "UCOQgnjFDCT6kbC-b-Hy6cqg",
+  "handle": "@HouseVetsAffairs",
+  "title": "House Committee on Veterans' Affairs GOP",
+  "subs": "2.06K",
+  "videos": "516"
+ },
+ "@VetAffairsDems": {
+  "id": "UC0ADPBDC8KdU52IxuW-_X5g",
+  "handle": "@VetAffairsDems",
+  "title": "Committee on Veterans Affairs' Democrats",
+  "subs": "1.35K",
+  "videos": "2"
+ },
+ "@WaysandMeansCommittee": {
+  "id": "UC8FSgDMEzdK7j3lsQ4G4L0A",
+  "handle": "@WaysandMeansCommittee",
+  "title": "Ways and Means Committee Republicans",
+  "subs": "7.4K",
+  "videos": "99"
+ },
+ "@waysmeanscmte": {
+  "id": "UCfGqG11uB0JKgDxnF-GWQZg",
+  "handle": "@waysmeanscmte",
+  "title": "Ways and Means Committee",
+  "subs": "13K",
+  "videos": "976"
+ },
+ "@waysandmeansdems": {
+  "id": "UCrz_XV52yquSiXvyjdh03Fw",
+  "handle": "@waysandmeansdems",
+  "title": "Ways and Means Committee",
+  "subs": "7.62K",
+  "videos": "6"
+ },
+ "@transport": {
+  "id": "UCP4BbluxW-H6i0VreCszbFA",
+  "handle": "@transport",
+  "title": "T&I Committee Republicans",
+  "subs": "1.84K",
+  "videos": "33"
+ },
+ "@transportdems": {
+  "id": "UChc8bTPtZgTZDDLJ6UWJgxA",
+  "handle": "@transportdems",
+  "title": "House Transportation & Infrastructure Committee",
+  "subs": "3.56K",
+  "videos": ""
+ },
+ "@HouseIntel": {
+  "id": "UCMF5z6BIrwwQTtcj2cacBPw",
+  "handle": "@HouseIntel",
+  "title": "House Intelligence",
+  "subs": "649K",
+  "videos": "31"
+ },
+ "@gophouseintelligencecommit715": {
+  "id": "UCFjD5ojAdBaMT7gDJXaN7rg",
+  "handle": "@gophouseintelligencecommit715",
+  "title": "GOP House Intelligence Committee",
+  "subs": "1.37K",
+  "videos": "166"
+ },
+ "@selectcommitteeonintellige289": {
+  "id": "UCPMZUzj4YFHuSmXNrkKAHeg",
+  "handle": "@selectcommitteeonintellige289",
+  "title": "Select Committee on Intelligence\u2014Republicans",
+  "subs": "1.64K",
+  "videos": "378"
+ },
+ "@HouseEthics": {
+  "id": "UCxZOzbhWkBPEimMti0NBvQQ",
+  "handle": "@HouseEthics",
+  "title": "House Committee on Ethics",
+  "subs": "65",
+  "videos": "5"
+ },
+ "@ushrselectedcommitteeheari1213": {
+  "id": "UC3xO_fAZZR7paXD2ZhUvApQ",
+  "handle": "@ushrselectedcommitteeheari1213",
+  "title": "USHR Selected Committee Hearings",
+  "subs": "5.39K",
+  "videos": "7"
+ },
+ "@ChinaSelect": {
+  "id": "UCpXe-EZd7pE7QM1daNAk0mA",
+  "handle": "@ChinaSelect",
+  "title": "The Select Committee on China",
+  "subs": "4.54K",
+  "videos": "520"
+ },
+ "@SelectCommitteeontheCCPDems": {
+  "id": "UCELPbdSl0iq5Vc9sM1lNgnw",
+  "handle": "@SelectCommitteeontheCCPDems",
+  "title": "Select Committee on the CCP Democrats",
+  "subs": "46",
+  "videos": "102"
+ },
+ "@HouseClimateCrisis": {
+  "id": "UCqTxfzU6vYZ2-DW-y5jYvdQ",
+  "handle": "@HouseClimateCrisis",
+  "title": "ClimateCrisis",
+  "subs": "449",
+  "videos": "52"
+ },
+ "@selectcommitteeonthemodern9383": {
+  "id": "UCECZaLBqABxBqN7VdtZ5sCA",
+  "handle": "@selectcommitteeonthemodern9383",
+  "title": "Select Committee on the Modernization of Congress",
+  "subs": "498",
+  "videos": "69"
+ },
+ "@theu.s.houseselectcommitte1053": {
+  "id": "UCiKI7qlQqr3GfFlIzOdT_Yg",
+  "handle": "@theu.s.houseselectcommitte1053",
+  "title": "The U.S. House Select Committee on Benghazi",
+  "subs": "1.58K",
+  "videos": "5"
+ },
+ "@selectcommitteeonbenghazid1588": {
+  "id": "UCtwfhDsDjY6wsddXrt6Mfgw",
+  "handle": "@selectcommitteeonbenghazid1588",
+  "title": "Select Committee on Benghazi Democrats",
+  "subs": "38",
+  "videos": "10"
+ },
+ "@January6thCmte": {
+  "id": "UCqSRsknSiyLARtzmop9dvhw",
+  "handle": "@January6thCmte",
+  "title": "January 6th Committee",
+  "subs": "37.1K",
+  "videos": "40"
+ },
+ "@FairGrowthCmte": {
+  "id": "UCZzW07fYS_ODEE_9gHGnCCQ",
+  "handle": "@FairGrowthCmte",
+  "title": "Economic Disparity & Fairness in Growth Committee ",
+  "subs": "678",
+  "videos": "4"
+ },
+ "@houseselectcommitteeonthee5480": {
+  "id": "UCBaB4nRwfFfLxXxJin-5_uQ",
+  "handle": "@houseselectcommitteeonthee5480",
+  "title": "House Select Committee on the Economy",
+  "subs": "22",
+  "videos": "21"
+ },
+ "@GlobalwarmingGOP": {
+  "id": "UCbDrlavogs4ywQH6c9vy5kw",
+  "handle": "@GlobalwarmingGOP",
+  "title": "GlobalwarmingGOP",
+  "subs": "27",
+  "videos": "74"
+ },
+ "@TomLantosHumanRights": {
+  "id": "UCWaeAlm47P3JQkZAauAyeDA",
+  "handle": "@TomLantosHumanRights",
+  "title": "Tom Lantos Human Rights Commission",
+  "subs": "5.28K",
+  "videos": "287"
+ }
+}

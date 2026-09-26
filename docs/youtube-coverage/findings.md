@@ -256,5 +256,6 @@ After the research pass, two checks ran.
   - `prior_status`: status before the research pass.
   - `verification`: the adversarial outcome (upheld, revised or refuted) where the row was checked;
   - `verdict_note` and `shared_video`: flags for videos matched to more than one hearing.
+- **`research/`:** the agents' briefs and raw results, the Congress.gov meeting records, the channel-search evidence, and scripts. `research/scripts/aggregate.py` rebuilds `hearing_video_verdicts.csv` offline, byte for byte. See `research/README.md`.
 - **`packages/congress_shared/src/congress_shared/youtube/youtube-accounts.csv`:** the channel list.
 - **`apps/committee_youtube/data/youtube_event_id_report.csv`:** the weekly per-channel report (videos, event-ID coverage, captions).
