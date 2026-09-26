@@ -57,6 +57,8 @@ def main(
                 ## read the "uploaded" playlist from the previously fetched metadata
                 ##  and then store details about each video to the DB
                 fetcher.get_all_channel_videos(handle)
+                ## record whether each video has captions published
+                fetcher.update_caption_flags(handle)
 
 
 def parse_args_and_run():

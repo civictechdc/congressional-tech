@@ -1,5 +1,6 @@
 import logging
 
+from datetime import datetime, timedelta, timezone
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from pathlib import Path
@@ -7,6 +8,9 @@ from tinydb import where
 from tinydb.table import Table
 
 from youtube_api.tables import open_tinydb_for_committee
+
+## re-check videos without captions for this long after publishing
+CAPTION_RECHECK_DAYS = 30
 
 
 class YoutubeEventFetcher:
@@ -209,6 +213,70 @@ class YoutubeEventFetcher:
             if break_flag:
                 break
         logging.info(f"All done! Fetched {fetches * 50} videos, added {added}.")
+
+    def update_caption_flags(self, channel_handle: str) -> None:
+        """
+        Record whether each video has captions published, using the
+        contentDetails.caption flag from videos.list (1 quota unit per 50 videos).
+
+        Checks videos we've never checked, plus recent videos that had no captions
+        last time, since captions are often added a few days after a hearing.
+        Videos the API doesn't return (deleted/private) are stored as None so they
+        aren't re-checked every week.
+
+        videos.list contentDetails item (abridged):
+        ------------
+        {
+            "id": "lQnpl1K8dVY",
+            "contentDetails": { "duration": "PT2H3M1S", "caption": "true", ... }
+        }
+        """
+        videos_tb = self.tinydb.table(f"youtube_videos_{channel_handle}")
+
+        recheck_after = (
+            datetime.now(timezone.utc) - timedelta(days=CAPTION_RECHECK_DAYS)
+        ).strftime("%Y-%m-%dT%H:%M:%SZ")
+        to_check = videos_tb.search(
+            ~where("caption").exists()
+            | ((where("caption") == False) & (where("publishedAt") >= recheck_after))  # noqa: E712
+        )
+        if not to_check:
+            return
+
+        ## group doc ids by the caption value so each value is one DB write
+        doc_ids_by_caption = {True: [], False: [], None: []}
+        for i in range(0, len(to_check), 50):
+            batch = to_check[i : i + 50]
+            try:
+                response = (
+                    self.youtube.videos()
+                    .list(
+                        part="contentDetails",
+                        id=",".join(doc["videoId"] for doc in batch),
+                        maxResults=50,
+                    )
+                    .execute()
+                )
+            except HttpError as ex:
+                ## leave the rest unchecked; next run will pick them up
+                logging.error(ex)
+                break
+            captions = {
+                item["id"]: item["contentDetails"].get("caption") == "true"
+                for item in response.get("items", [])
+            }
+            for doc in batch:
+                doc_ids_by_caption[captions.get(doc["videoId"])].append(doc.doc_id)
+
+        for caption, doc_ids in doc_ids_by_caption.items():
+            if doc_ids:
+                videos_tb.update({"caption": caption}, doc_ids=doc_ids)
+        logging.info(
+            f"Checked captions for {len(to_check)} videos on {channel_handle}:"
+            f" {len(doc_ids_by_caption[True])} with captions,"
+            f" {len(doc_ids_by_caption[False])} without,"
+            f" {len(doc_ids_by_caption[None])} unavailable."
+        )
 
 
 def parse_channel_details(channel_details: dict) -> dict:
