@@ -32,7 +32,6 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from house_event_pages import FAILED, documents, witnesses  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[4]
 OUT = ROOT / "docs/youtube-coverage/research/data/house_xml_fields.csv"
@@ -42,9 +41,14 @@ NOT_FIELDS = set("""and or not position last count string-length substring conca
     dateStringFormat timeFrame meetingSTime meetingETime meetingDate pubDate addDate types doctypes key file-type at m d e lt""".split())
 
 
+def parse_xml(data):
+    """The repository serves UTF-8 XML, sometimes with a BOM before its stylesheet instruction."""
+    return ET.fromstring(data.removeprefix(b"\xef\xbb\xbf"))
+
+
 def fields(path):
     """(path, attribute or "", value) for every element and attribute of a file; "" as the value of an element with no text of its own."""
-    root = ET.fromstring(path.read_bytes().lstrip(b"\xef\xbb\xbf"))
+    root = parse_xml(path.read_bytes())
     walk = [(root.tag, root)]
     while walk:
         at, element = walk.pop()
@@ -75,6 +79,8 @@ def written(value):
 
 def against_pages(cache):
     """The XML and the page, each checked for what the other lacks."""
+    from house_event_pages import FAILED, documents, witnesses
+
     xml_dir, page_dir = cache / "docs_house_xml", cache / "docs_house"
     file = lambda u: html.unescape(u).rsplit("/", 1)[-1].lower()
     totals, lines_left, shown, held, example = collections.Counter(), collections.Counter(), collections.Counter(), collections.Counter(), {}
