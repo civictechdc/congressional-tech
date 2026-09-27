@@ -307,15 +307,17 @@ Still open:
 
 ## Transcripts and captions
 
-GPO's printed transcript is the record, but it arrives 6–8 months after a House hearing (12–18 months for the Senate) and only for what committees send to print: no markups, and 10–30% of hearings never. `research/data/hearing_text_sources.csv` lists, for every Congress.gov meeting since 2013, where its text can be found:
+GPO's printed transcript is the record, but it arrives 6–8 months after a House hearing (12–18 months for the Senate) and only for what committees send to print: no markups, and 10–30% of hearings never. `research/data/hearing_text_sources.csv` lists, for every Congress.gov meeting since 2013 (hearings, markups and business meetings), where its text can be found. A recording counts when Congress.gov links it, a tracked video carries the meeting's event ID, a tracked video of the committee was posted within a day before to three days after with a matching title (the matcher's rules for printed hearings, applied to unprinted meetings too), or the Senate archive has one for the committee and day:
 
 | | House meetings | Senate meetings |
 |---|---|---|
 | GPO print | 9,040 (70%) | 2,567 (56%) |
-| YouTube caption track (uploader's or automatic) | 1,430 (11%) | — |
-| Senate player caption track (recordings since mid-2023) | — | 629 (14%) |
-| Video with no caption track | 999 (8%) | 140 (3%) |
-| No video linked | 1,396 (11%) | 1,239 (27%) |
+| YouTube caption track (uploader's or automatic) | 1,721 (13%) | — |
+| Senate player caption track (recordings since mid-2023) | — | 645 (14%) |
+| Video with no caption track | 1,355 (11%) | 842 (18%) |
+| No recording found | 749 (6%) | 520 (11%) |
+
+**Meetings with nothing** (`research/data/meetings_without_records.csv`): 1,291 since 2013 have no print, no recording found and no captions. They are a different population from the printed hearings this document is mostly about; only 9 of them have a print that failed to link. Of the 749 House meetings, 383 are markups and business meetings, which GPO never prints, and 366 are hearings, led by Intelligence (164, closed by design) and Natural Resources (158, whose archive uploads are titled with dates and subcommittee codes the title rule can't match, so many of these likely exist). 548 have witness or meeting documents on docs.house.gov. Of the 520 Senate meetings (records begin with the 116th Congress), 292 are Intelligence's and 30 more are marked closed; the rest are mostly Armed Services and Foreign Relations business meetings. 413 are bare calendar entries.
 
 The captions were fetched with `youtube-captions` and `senate-captions` (see the app README); they are search-grade text, unpunctuated for YouTube's automatic ones, with no speaker attribution. C-SPAN no longer publishes transcripts.
 
