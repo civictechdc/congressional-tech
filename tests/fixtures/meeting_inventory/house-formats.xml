@@ -1,0 +1,64 @@
+<?xml version='1.0' encoding='utf-8'?>
+<committee-meeting congress-num="115" session-num="1" meeting-id="HHRG106245" meeting-type="HHRG" create-date="2017-07-07T11:54:16.580" orig-publish-date="2017-07-07T11:59:00.303" update-date="2017-07-14T08:55:19.043">
+  <meeting-details>
+    <committees>
+      <committee-name id="RU00">Committee on Rules</committee-name>
+    </committees>
+    <meeting-date>
+      <calendar-date>2017-07-12</calendar-date>
+      <start-time>15:00:00</start-time>
+    </meeting-date>
+    <meeting-location>
+      <capitol-complex>
+        <room>H-313</room>
+        <building>CAPITOL</building>
+      </capitol-complex>
+    </meeting-location>
+    <meeting-title>H.R. 2810—National Defense Authorization Act for Fiscal Year 2018 (Rules Committee Print 115-23, showing the text as ordered reported by the Committee on Armed Services)</meeting-title>
+  </meeting-details>
+  <meeting-documents>
+    <meeting-document type="BR" add-date="2017-07-07T11:57:02.233" remove-date="" publish-date="2017-07-07T11:59:00.303">
+      <description>Rules Committee Print 115-23—Showing the text as ordered reported by the Committee on Armed Services</description>
+      <legis-num>RCP 115-23</legis-num>
+      <filename-metadata>
+        <legis-num>RCP 115-23</legis-num>
+        <legis-stage>ih</legis-stage>
+        <doc-type>BR</doc-type>
+      </filename-metadata>
+      <files>
+        <file doc-url="http://docs.house.gov/billsthisweek/20170710/BILLS%20-115HR2810-RCP115-23.pdf" doc-type="PDF" add-date="2017-07-07T11:57:02.243" publish-date="2017-07-07T11:59:00.303" />
+        <file doc-url="http://docs.house.gov/billsthisweek/20170710/BILLS%20-115HR2810-RCP115-23.xml" doc-type="XML" add-date="2017-07-07T11:57:02.253" publish-date="2017-07-07T11:59:00.303" />
+      </files>
+    </meeting-document>
+    <meeting-document type="BR" add-date="2017-07-07T16:30:36.807" remove-date="" publish-date="2017-07-07T16:30:47.773">
+      <description>H.R. 2810—National Defense Authorization Act for Fiscal Year 2018</description>
+      <legis-num>H.R. 2810</legis-num>
+      <filename-metadata>
+        <legis-num>H.R. 2810</legis-num>
+        <legis-stage>rh</legis-stage>
+        <doc-type>BR</doc-type>
+      </filename-metadata>
+      <files>
+        <file doc-url="https://www.gpo.gov/fdsys/pkg/BILLS-115hr2810rh/pdf/BILLS-115hr2810rh.pdf" doc-type="PDF" add-date="2017-07-07T16:30:36.817" publish-date="2017-07-07T16:30:47.773" />
+        <file doc-url="https://www.gpo.gov/fdsys/pkg/BILLS-115hr2810rh/xml/BILLS-115hr2810rh.xml" doc-type="XML" add-date="2017-07-07T16:30:36.827" publish-date="2017-07-07T16:30:47.773" />
+      </files>
+    </meeting-document>
+    <meeting-document type="SD" add-date="2017-07-13T13:09:17.910" remove-date="" publish-date="2017-07-13T13:11:14.643">
+      <description>H. Res. 440</description>
+      <updates>
+        <update-date date="2017-07-13T13:10:42.237" publish-date="2017-07-13T13:11:14.643">
+          <explanatory-notes doc-modified="False" />
+        </update-date>
+      </updates>
+      <filename-metadata>
+        <legis-stage>ih</legis-stage>
+        <doc-type>SD</doc-type>
+        <version-num>1</version-num>
+      </filename-metadata>
+      <files>
+        <file doc-url="https://www.gpo.gov/fdsys/pkg/BILLS-115hres440rh/pdf/BILLS-115hres440rh.pdf" doc-type="PDF" add-date="2017-07-13T13:09:17.930" publish-date="2017-07-13T13:11:14.643" />
+        <file doc-url="https://www.gpo.gov/fdsys/pkg/BILLS-115hres440rh/xml/BILLS-115hres440rh.xml" doc-type="XML" add-date="2017-07-13T13:09:17.937" publish-date="2017-07-13T13:11:14.643" />
+      </files>
+    </meeting-document>
+    </meeting-documents>
+</committee-meeting>

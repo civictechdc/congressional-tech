@@ -1,0 +1,127 @@
+[
+  {
+    "fixture": "house-amendments.xml",
+    "cache_file": "docs_house_xml/meeting/106292.xml",
+    "documents": [
+      [
+        "bill or amendment",
+        "FY 2018 SFOPS - Adopted Amendments - Rogers",
+        "https://docs.house.gov/meetings/AP/AP00/20170719/106292/BILLS-115-HR-FC-AP-FY2018-AP00-Amdt-1.pdf",
+        [
+          "BILLS-115-HR-FC-AP-FY2018-AP00-Amdt-1.pdf"
+        ]
+      ],
+      [
+        "bill or amendment",
+        "FY 2018 SFOPS - Adopted Amendments - Dent",
+        "https://docs.house.gov/meetings/AP/AP00/20170719/106292/BILLS-115-HR-FC-AP-FY2018-AP00-Amdt-2.pdf",
+        [
+          "BILLS-115-HR-FC-AP-FY2018-AP00-Amdt-2.pdf"
+        ]
+      ],
+      [
+        "bill or amendment",
+        "FY 2018 SFOPS - Adopted Amendments - Calvert",
+        "https://docs.house.gov/meetings/AP/AP00/20170719/106292/BILLS-115-HR-FC-AP-FY2018-AP00-Amdt-3.pdf",
+        [
+          "BILLS-115-HR-FC-AP-FY2018-AP00-Amdt-3.pdf"
+        ]
+      ]
+    ],
+    "amendments": [
+      {
+        "kind": "amendment",
+        "bill": "H.R.",
+        "number": "1",
+        "sponsor_bioguide": "R000395",
+        "amendment_type": "",
+        "enbloc": "",
+        "description": "FY 2018 SFOPS - Adopted Amendments - Rogers",
+        "url": "https://docs.house.gov/meetings/AP/AP00/20170719/106292/BILLS-115-HR-FC-AP-FY2018-AP00-Amdt-1.pdf"
+      },
+      {
+        "kind": "amendment",
+        "bill": "H.R.",
+        "number": "2",
+        "sponsor_bioguide": "D000604",
+        "amendment_type": "",
+        "enbloc": "",
+        "description": "FY 2018 SFOPS - Adopted Amendments - Dent",
+        "url": "https://docs.house.gov/meetings/AP/AP00/20170719/106292/BILLS-115-HR-FC-AP-FY2018-AP00-Amdt-2.pdf"
+      },
+      {
+        "kind": "amendment",
+        "bill": "H.R.",
+        "number": "3",
+        "sponsor_bioguide": "C000059",
+        "amendment_type": "",
+        "enbloc": "",
+        "description": "FY 2018 SFOPS - Adopted Amendments - Calvert",
+        "url": "https://docs.house.gov/meetings/AP/AP00/20170719/106292/BILLS-115-HR-FC-AP-FY2018-AP00-Amdt-3.pdf"
+      }
+    ]
+  },
+  {
+    "fixture": "house-formats.xml",
+    "cache_file": "docs_house_xml/meeting/106245.xml",
+    "documents": [
+      [
+        "bill or amendment",
+        "Rules Committee Print 115-23\u2014Showing the text as ordered reported by the Committee on Armed Services",
+        "https://docs.house.gov/billsthisweek/20170710/BILLS%20-115HR2810-RCP115-23.pdf",
+        [
+          "BILLS%20-115HR2810-RCP115-23.pdf",
+          "BILLS%20-115HR2810-RCP115-23.xml"
+        ]
+      ],
+      [
+        "bill or amendment",
+        "H.R. 2810\u2014National Defense Authorization Act for Fiscal Year 2018",
+        "https://www.gpo.gov/fdsys/pkg/BILLS-115hr2810rh/pdf/BILLS-115hr2810rh.pdf",
+        [
+          "BILLS-115hr2810rh.pdf",
+          "BILLS-115hr2810rh.xml"
+        ]
+      ],
+      [
+        "bill or amendment",
+        "H. Res. 440",
+        "https://www.gpo.gov/fdsys/pkg/BILLS-115hres440rh/pdf/BILLS-115hres440rh.pdf",
+        [
+          "BILLS-115hres440rh.pdf",
+          "BILLS-115hres440rh.xml"
+        ]
+      ]
+    ],
+    "amendments": []
+  },
+  {
+    "fixture": "house-removed.xml",
+    "cache_file": "docs_house_xml/meeting/118618.xml",
+    "documents": [],
+    "amendments": []
+  },
+  {
+    "fixture": "house-witnesses.xml",
+    "cache_file": "docs_house_xml/wlist/115588.xml",
+    "witnesses": [
+      {
+        "name": "The Honorable Robert M. Califf M.D., MACC",
+        "position": "Commissioner of Food and Drugs for the Food and Drug Administration",
+        "organization": "",
+        "panel": "1",
+        "honorific": "The Honorable",
+        "first": "Robert",
+        "middle": "M.",
+        "last": "Califf",
+        "suffix": "M.D., MACC",
+        "retired": "",
+        "location": "",
+        "behalf_of": "",
+        "witness_type": "Government - Federal",
+        "testified": "Yes",
+        "bioguide_id": ""
+      }
+    ]
+  }
+]

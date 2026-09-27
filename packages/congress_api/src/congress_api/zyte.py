@@ -5,7 +5,7 @@ requests in quick succession (measured: 389 in 17 seconds, then 137 at five a se
 
     status, body = zyte.get(url)      # the site's own status and bytes; Zyte's failure as (its status, b"")
 
-The token is ZYTE_TOKEN, from the environment or a sibling repository's .env. Never print it or copy it
+The token is ZYTE_TOKEN from the environment. Never print it or copy it
 anywhere. Zyte charges per request.
 """
 import base64, os
@@ -13,15 +13,10 @@ import base64, os
 import requests
 
 API = "https://api.zyte.com/v1/extract"
-ENV = os.path.expanduser("~/Work/spicy-stack/RefSpec/.env")
 
 
 def token():
     tok = os.environ.get("ZYTE_TOKEN")
-    if not tok and os.path.exists(ENV):
-        for line in open(ENV):
-            if line.startswith("ZYTE_TOKEN="):
-                tok = line.split("=", 1)[1].strip().strip("'\"")
     if not tok:
         raise RuntimeError("ZYTE_TOKEN not found")
     return tok

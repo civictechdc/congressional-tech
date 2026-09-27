@@ -1,0 +1,83 @@
+<?xml version='1.0' encoding='utf-8'?>
+<committee-meeting congress-num="115" session-num="1" meeting-id="HMKP106292" meeting-type="HMKP" create-date="2017-07-14T09:58:29.197" orig-publish-date="2017-07-14T12:05:37.987" update-date="2017-07-24T12:49:46.080">
+  <meeting-details>
+    <updates>
+      <update-date date="2017-07-14T12:06:57.230" publish-date="2017-07-14T12:07:08.953">
+        <explanatory-notes doc-modified="False" />
+      </update-date>
+      <update-date date="2017-07-14T12:07:18.757" publish-date="2017-07-18T09:26:58.343">
+        <explanatory-notes doc-modified="False" />
+      </update-date>
+      <update-date date="2017-07-18T10:44:17.383" publish-date="2017-07-18T10:44:27.490">
+        <explanatory-notes doc-modified="False" />
+      </update-date>
+      <update-date date="2017-07-18T10:45:59.280" publish-date="2017-07-18T10:46:08.370">
+        <explanatory-notes doc-modified="False" />
+      </update-date>
+    </updates>
+    <committees>
+      <committee-name id="AP00">Committee on Appropriations</committee-name>
+    </committees>
+    <meeting-date>
+      <calendar-date>2017-07-19</calendar-date>
+      <start-time>09:30:00</start-time>
+    </meeting-date>
+    <meeting-location>
+      <capitol-complex>
+        <room>2359</room>
+        <building>RHOB</building>
+      </capitol-complex>
+    </meeting-location>
+    <meeting-title>FY2018 State and Foreign Operations Appropriations Bill, FY2018 Labor, Health and Human Services, and Education Appropriations Bill; and Interim Suballocation of Budget Allocations for FY2018</meeting-title>
+  </meeting-details>
+  <meeting-documents>
+    <meeting-document type="CA" add-date="2017-07-21T10:22:44.400" remove-date="" publish-date="2017-07-21T14:35:30.927">
+      <description>FY 2018 SFOPS - Adopted Amendments - Rogers</description>
+      <legis-num>H.R.</legis-num>
+      <filename-metadata>
+        <legis-num>H.R.</legis-num>
+        <legis-stage>ih</legis-stage>
+        <doc-type>CA</doc-type>
+        <considered>FC</considered>
+        <timeFrame>FY2018</timeFrame>
+        <bioguideID>R000395</bioguideID>
+        <amdt-num>1</amdt-num>
+      </filename-metadata>
+      <files>
+        <file doc-url="http://docs.house.gov/meetings/AP/AP00/20170719/106292/BILLS-115-HR-FC-AP-FY2018-AP00-Amdt-1.pdf" doc-type="PDF" add-date="2017-07-21T10:22:44.413" publish-date="2017-07-21T14:35:30.927" />
+      </files>
+    </meeting-document>
+    <meeting-document type="CA" add-date="2017-07-21T10:24:08.543" remove-date="" publish-date="2017-07-21T14:35:30.927">
+      <description>FY 2018 SFOPS - Adopted Amendments - Dent</description>
+      <legis-num>H.R.</legis-num>
+      <filename-metadata>
+        <legis-num>H.R.</legis-num>
+        <legis-stage>ih</legis-stage>
+        <doc-type>CA</doc-type>
+        <considered>FC</considered>
+        <timeFrame>FY2018</timeFrame>
+        <bioguideID>D000604</bioguideID>
+        <amdt-num>2</amdt-num>
+      </filename-metadata>
+      <files>
+        <file doc-url="http://docs.house.gov/meetings/AP/AP00/20170719/106292/BILLS-115-HR-FC-AP-FY2018-AP00-Amdt-2.pdf" doc-type="PDF" add-date="2017-07-21T10:24:08.553" publish-date="2017-07-21T14:35:30.927" />
+      </files>
+    </meeting-document>
+    <meeting-document type="CA" add-date="2017-07-21T10:25:58.183" remove-date="" publish-date="2017-07-21T14:35:30.927">
+      <description>FY 2018 SFOPS - Adopted Amendments - Calvert</description>
+      <legis-num>H.R.</legis-num>
+      <filename-metadata>
+        <legis-num>H.R.</legis-num>
+        <legis-stage>ih</legis-stage>
+        <doc-type>CA</doc-type>
+        <considered>FC</considered>
+        <timeFrame>FY2018</timeFrame>
+        <bioguideID>C000059</bioguideID>
+        <amdt-num>3</amdt-num>
+      </filename-metadata>
+      <files>
+        <file doc-url="http://docs.house.gov/meetings/AP/AP00/20170719/106292/BILLS-115-HR-FC-AP-FY2018-AP00-Amdt-3.pdf" doc-type="PDF" add-date="2017-07-21T10:25:58.197" publish-date="2017-07-21T14:35:30.927" />
+      </files>
+    </meeting-document>
+    </meeting-documents>
+</committee-meeting>

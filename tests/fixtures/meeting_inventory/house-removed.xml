@@ -1,0 +1,94 @@
+<?xml version='1.0' encoding='utf-8'?>
+<committee-meeting congress-num="119" session-num="1" meeting-id="HMKP118618" meeting-type="HMKP" create-date="2025-09-10T14:01:52.350" orig-publish-date="2025-09-10T17:45:56.063" update-date="2025-09-29T14:56:11.370" floor-creator="megwagner">
+  <meeting-details>
+    <updates>
+      <update-date date="2025-09-11T15:04:35.210" user="megwagner" publish-date="2025-09-11T15:04:41.433">
+        <explanatory-notes doc-modified="False" />
+      </update-date>
+    </updates>
+    <committees>
+      <committee-name id="FA00">Committee on Foreign Affairs</committee-name>
+    </committees>
+    <meeting-date>
+      <calendar-date>2025-09-17</calendar-date>
+      <start-time>09:00:00</start-time>
+      <end-time>23:00:00</end-time>
+    </meeting-date>
+    <meeting-location>
+      <capitol-complex>
+        <room>2172</room>
+        <building>RHOB</building>
+      </capitol-complex>
+    </meeting-location>
+    <meeting-title>Various Measures</meeting-title>
+  </meeting-details>
+  <meeting-documents>
+    <meeting-document type="CA" add-date="2025-09-12T15:00:41.407" user="megwagner" remove-date="2025-09-16T00:00:00" publish-date="2025-09-12T15:01:48.717">
+      <description>Self Amendment #79 to H.R. 5300 (Self, Keith -AMDT-2)</description>
+      <legis-num>5300</legis-num>
+      <updates>
+        <update-date date="2025-09-14T14:47:50.200" user="megwagner" publish-date="2025-09-14T15:15:52.247">
+          <explanatory-notes doc-modified="False" />
+        </update-date>
+        <update-date date="2025-09-16T00:00:00" user="megwagner" publish-date="2025-09-16T11:14:02.463">
+          <explanatory-notes doc-modified="False" />
+        </update-date>
+        <update-date date="2025-09-16T23:52:39.637" user="megwagner" publish-date="2025-09-17T00:37:03.480">
+          <explanatory-notes doc-modified="False" />
+        </update-date>
+      </updates>
+      <filename-metadata>
+        <legis-num>5300</legis-num>
+        <legis-stage>ih</legis-stage>
+        <doc-type>CA</doc-type>
+        <bioguideID>S001224</bioguideID>
+        <amdt-num>79</amdt-num>
+        <update-num>1</update-num>
+      </filename-metadata>
+      <files>
+        <file doc-url="http://docs.house.gov/meetings/FA/FA00/20250917/118618/BILLS-119-5300-S001224-Amdt-79-U1.pdf" doc-type="PDF" add-date="2025-09-16T23:52:39.670" user="megwagner" publish-date="2025-09-12T15:01:48.717" />
+      </files>
+    </meeting-document>
+    <meeting-document type="CA" add-date="2025-09-13T15:51:57.940" user="megwagner" remove-date="2025-09-16T00:00:00" publish-date="2025-09-13T15:52:09.750">
+      <description>Smith Amendment #65 to H.R. 5300 (70313)</description>
+      <legis-num>5300</legis-num>
+      <updates>
+        <update-date date="2025-09-14T14:39:48.437" user="megwagner" publish-date="2025-09-14T15:15:52.247">
+          <explanatory-notes doc-modified="False" />
+        </update-date>
+        <update-date date="2025-09-16T00:00:00" user="megwagner" publish-date="2025-09-16T11:14:02.463">
+          <explanatory-notes doc-modified="False" />
+        </update-date>
+      </updates>
+      <filename-metadata>
+        <legis-num>5300</legis-num>
+        <legis-stage>ih</legis-stage>
+        <doc-type>CA</doc-type>
+        <bioguideID>S000522</bioguideID>
+        <amdt-num>65</amdt-num>
+      </filename-metadata>
+      <files>
+        <file doc-url="http://docs.house.gov/meetings/FA/FA00/20250917/118618/BILLS-119-5300-S000522-Amdt-65.pdf" doc-type="PDF" add-date="2025-09-13T15:51:57.973" user="megwagner" publish-date="2025-09-13T15:52:09.750" />
+      </files>
+    </meeting-document>
+    <meeting-document type="CA" add-date="2025-09-14T19:12:47.553" user="megwagner" remove-date="2025-09-16T00:00:00" publish-date="2025-09-14T19:13:30.860">
+      <description>Issa  Amendment #77 to H.R. 5300 (Issa, Darrell -AMDT-1)</description>
+      <legis-num>5300</legis-num>
+      <updates>
+        <update-date date="2025-09-16T00:00:00" user="megwagner" publish-date="2025-09-16T11:14:02.463">
+          <explanatory-notes doc-modified="False" />
+        </update-date>
+      </updates>
+      <filename-metadata>
+        <legis-num>5300</legis-num>
+        <legis-stage>ih</legis-stage>
+        <doc-type>CA</doc-type>
+        <bioguideID>I000056</bioguideID>
+        <amdt-num>77</amdt-num>
+      </filename-metadata>
+      <files>
+        <file doc-url="http://docs.house.gov/meetings/FA/FA00/20250917/118618/BILLS-119-5300-I000056-Amdt-77.pdf" doc-type="PDF" add-date="2025-09-14T19:12:47.587" user="megwagner" publish-date="2025-09-14T19:13:30.860" />
+      </files>
+    </meeting-document>
+    </meeting-documents>
+</committee-meeting>

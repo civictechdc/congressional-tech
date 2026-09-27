@@ -9,12 +9,19 @@ dependencies = [
     "youtube-api",
     "lxml",
     "requests",
+    "pypdf[fonts]>=6,<7",
     "tinydb",
   "google-genai",
   "yt-dlp",
 ]
 
+[project.optional-dependencies]
+test = ["pytest>=9,<10"]
+
 [project.scripts]
+house-meeting-records = "congress_api.house.records:parse_args_and_run"
+senate-meeting-records = "congress_api.senate.records:parse_args_and_run"
+meeting-inventory = "congress_api.inventory.main:parse_args_and_run"
 congress-fetch = "congress_api.fetch.main:parse_args_and_run"
 congress-analyze = "congress_api.analyze.main:parse_args_and_run"
 gpo-fetch = "congress_api.gpo.fetch:parse_args_and_run"

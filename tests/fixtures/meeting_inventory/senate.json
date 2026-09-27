@@ -1,0 +1,171 @@
+[
+  {
+    "fixture": "senate-1.html",
+    "cache_file": "https_www_foreign_senate_gov_hearings_update_on_the_iran_nuclear_negotiations_032322.html",
+    "layout": "witness-content",
+    "expected": [
+      {
+        "name": "Brett McGurk",
+        "position": "Deputy Assistant to the President and Middle East and North Africa Coordinator",
+        "organization": "National Security Council",
+        "page": "https://example.org/hearing"
+      },
+      {
+        "name": "Rob Malley",
+        "position": "Special Envoy for Iran",
+        "organization": "U.S. Department of State",
+        "page": "https://example.org/hearing"
+      },
+      {
+        "name": "Official Briefer",
+        "position": "Office of the Director of National Intelligence",
+        "organization": "",
+        "page": "https://example.org/hearing"
+      }
+    ]
+  },
+  {
+    "fixture": "senate-2.html",
+    "cache_file": "https_www_appropriations_senate_gov_hearings_a_review_of_the_presidents_fiscal_year_2024_budget_request_for_the_department_of_interior.html",
+    "layout": "class=\"vcard",
+    "expected": [
+      {
+        "name": "Deb Haaland",
+        "position": "Secretary",
+        "organization": "U.S. Department of Interior",
+        "page": "https://example.org/hearing"
+      }
+    ]
+  },
+  {
+    "fixture": "senate-3.html",
+    "cache_file": "https_www_csce_gov_hearings_ai_uavs_hypersonics_and_autonomous_systems.html",
+    "layout": "paragraph--witness",
+    "expected": [
+      {
+        "name": "William Inboden",
+        "position": "Executive Director at the Clements Center for National Security",
+        "organization": "Associate Professor at the LBJ School, University of Texas-Austin",
+        "page": "https://example.org/hearing"
+      },
+      {
+        "name": "Kelley M. Sayler",
+        "position": "Analyst in Advanced Technology and Global Security",
+        "organization": "U.S. Congressional Research Service",
+        "page": "https://example.org/hearing"
+      },
+      {
+        "name": "Chris Jenks",
+        "position": "Director of the Criminal Clinic and Associate Professor of Law",
+        "organization": "Southern Methodist University",
+        "page": "https://example.org/hearing"
+      }
+    ]
+  },
+  {
+    "fixture": "senate-4.html",
+    "cache_file": "https_www_energy_senate_gov_hearings_hearings_2022_1_national_parks_subcommittee_hearing_on_the_great_american_outdoors_act_.html",
+    "layout": "capigacr-widget-card",
+    "expected": [
+      {
+        "name": "Shannon Estenoz",
+        "position": "Assistant Secretary for Fish and Wildlife and Parks",
+        "organization": "U.S. Department of the Interior",
+        "page": "https://example.org/hearing"
+      },
+      {
+        "name": "Chris French",
+        "position": "Deputy Chief, National Forest System",
+        "organization": "USDA Forest Service",
+        "page": "https://example.org/hearing"
+      }
+    ]
+  },
+  {
+    "fixture": "senate-5.html",
+    "cache_file": "https_www_hsgac_senate_gov_hearings_whistleblower_testimony_on_the_covid_coverup_.html",
+    "layout": "jet-listing-grid__item ",
+    "expected": [
+      {
+        "name": "JAMES E. ERDMAN III",
+        "position": "Senior Operations Officer",
+        "organization": "Central Intelligence Agency",
+        "page": "https://example.org/hearing"
+      }
+    ]
+  },
+  {
+    "fixture": "senate-6.html",
+    "cache_file": "https_www_veterans_senate_gov_2025_8_breaking_barriers_improving_veterans_mental_health_in_louisiana.html",
+    "layout": "class=\"full-name\"",
+    "expected": [
+      {
+        "name": "Fernando O. Rivera",
+        "position": "Director, Southeast Louisiana Healthcare System & Network Director, VISN16 (Interim)",
+        "organization": "Veterans Health Administration, U.S. Department of Veterans Affairs",
+        "page": "https://example.org/hearing"
+      },
+      {
+        "name": "Charlton Meginley",
+        "position": "Secretary",
+        "organization": "Louisiana Department of Veterans Affairs",
+        "page": "https://example.org/hearing"
+      },
+      {
+        "name": "Cheryl Magee-Baker",
+        "position": "Director",
+        "organization": "Hope Center, Inc.",
+        "page": "https://example.org/hearing"
+      },
+      {
+        "name": "Emily Meyers",
+        "position": "Chief Executive Officer",
+        "organization": "Longbranch Recovery and Wellness",
+        "page": "https://example.org/hearing"
+      },
+      {
+        "name": "Jackson Smith",
+        "position": "Executive Director",
+        "organization": "Bastion Community of Resilience",
+        "page": "https://example.org/hearing"
+      },
+      {
+        "name": "Kirk Long",
+        "position": "Former Chief Executive Officer",
+        "organization": "Crescent City Surgical Centre",
+        "page": "https://example.org/hearing"
+      },
+      {
+        "name": "Paul Hermann",
+        "position": "Executive Director, Disabled American Veterans",
+        "organization": "Department of Louisiana",
+        "page": "https://example.org/hearing"
+      }
+    ]
+  },
+  {
+    "fixture": "senate-7.html",
+    "cache_file": "https_www_indian_senate_gov_hearings_legislative_hearing_receive_testimony_s_648_s_1911_.html",
+    "layout": "field-hearing-new-witness",
+    "expected": [
+      {
+        "name": "Bryan Todd Newland",
+        "position": "Assistant Secretary",
+        "organization": "Indian Affairs, Department of the Interior, Washington, DC",
+        "page": "https://example.org/hearing"
+      },
+      {
+        "name": "Brian Thomas",
+        "position": "Chairman",
+        "organization": "Shoshone-Paiute of the Duck Valley Reservation, Owyhee, NV",
+        "page": "https://example.org/hearing"
+      },
+      {
+        "name": "Andrew Werk",
+        "position": "President",
+        "organization": "Fort Belknap Indian Community, Harlem, MT",
+        "page": "https://example.org/hearing"
+      }
+    ]
+  }
+]

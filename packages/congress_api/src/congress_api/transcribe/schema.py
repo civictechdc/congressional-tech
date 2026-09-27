@@ -18,6 +18,8 @@ import textwrap
 from dataclasses import dataclass, field
 from typing import Optional
 
+from congress_api.witnesses import person_key
+
 SCHEMA_VERSION = "1.0"
 
 
@@ -104,15 +106,6 @@ class Transcript:
         return cls(header=Header(**d["header"]), participants={k: Person(**v) for k, v in d["participants"].items()},
                    turns=[Turn(**t) for t in d["turns"]], inserts=[Insert(**i) for i in d.get("inserts", [])],
                    source=Source(**d.get("source", {"kind": "unknown"})), schema_version=d.get("schema_version", SCHEMA_VERSION))
-
-
-def person_key(name: str) -> str:
-    """'Hon. Ben Cline' -> 'cline-ben'; 'Mr. Dunham' -> 'dunham'."""
-    import re
-    parts = [p for p in re.sub(r"[^\w\s-]", "", name).lower().split() if p not in ("hon", "the", "mr", "ms", "mrs", "dr", "senator", "representative", "chairman", "chairwoman", "chair", "jr", "sr", "ii", "iii")]
-    if not parts:
-        return "unknown"
-    return parts[-1] if len(parts) == 1 else f"{parts[-1]}-{parts[0]}"
 
 
 def attribution(p: Person) -> str:

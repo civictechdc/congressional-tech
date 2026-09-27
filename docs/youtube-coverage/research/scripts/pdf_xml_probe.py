@@ -29,7 +29,7 @@ from lxml import etree
 import requests
 
 ROOT = Path(__file__).resolve().parents[4]
-DEFAULT_INPUT = ROOT / "docs/youtube-coverage/research/data/house_documents_found.csv"
+DEFAULT_INPUT = ROOT / "apps/committee_youtube/data/house_documents_found.csv"
 RETRYABLE = {"blocked", "network_error", "http_error", "too_large"}
 MAX_BYTES = 20 * 1024 * 1024
 
