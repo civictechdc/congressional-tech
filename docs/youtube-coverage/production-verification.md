@@ -1,6 +1,6 @@
 # Meeting inventory production verification
 
-Verified locally on 2026-09-27 in `congressional-tech-production`, branch `claude/production-pipeline`, against baseline `a1705b6f26f91fa1b57c3e7fa36b27ac6fdc120a`. The real `../pipeline-data` and research caches were read only. The main checkout was read only for the explicitly supplied API credentials. No push, merge, tag, branch switch, SerpAPI search or transcription was performed.
+Initial local verification on 2026-09-27 in `congressional-tech-production`, branch `claude/production-pipeline`, against baseline `a1705b6f26f91fa1b57c3e7fa36b27ac6fdc120a`. During that verification, the real `../pipeline-data` and research caches were read only. The main checkout was read only for the explicitly supplied API credentials. No push, merge, tag, branch switch, SerpAPI search or transcription was performed during that phase. Subsequent state migration is documented in [meeting-state setup and recovery](meeting-state.md).
 
 ## Result and ownership
 
@@ -73,9 +73,9 @@ The workflow's eight commands ran locally in order against a copy of `pipeline-d
 
 Two settled passes produced **byte-identical results for all 19 checked CSV/gzip files**, including all ten promoted tables and all three parsed-state files. The measured complete pass took **140.42 seconds**: YouTube fetch 0.99, analyze 42.15, GPO fetch 0.35, meetings 1.24, GPO match 57.19, House reader 2.18, Senate reader 32.68, inventory 3.64 seconds. The YouTube acquisition stage replayed 168 API responses.
 
-The copied snapshot that `save-pipeline-data.sh` would stage is **52,781,646 bytes (50.34 MiB)**: the original inputs total 38,953,588 bytes, and new compact state adds **13,828,058 bytes (13.19 MiB)**. This replaces dependence on roughly 1.2 GB of research source caches. The three frozen bootstrap files supply that state on first CI use, then only `pipeline-data` is updated. No snapshot was pushed and neither publication script was executed.
+The copied snapshot that `save-pipeline-data.sh` would stage is **52,781,646 bytes (50.34 MiB)**: the original inputs total 38,953,588 bytes, and new compact state adds **13,828,058 bytes (13.19 MiB)**. This replaces dependence on roughly 1.2 GB of research source caches. The three initial state files are seeded directly on `pipeline-data`; no seed blobs are retained in the PR's commit history. No snapshot was pushed and neither publication script was executed during the initial local verification.
 
-The workflow gains a third job, `meetings`, after the Congress job (moved there in review from inside the Congress job, so that a failure at docs.house.gov or a committee site cannot hold back the GPO and video outputs). It installs the pytest extra, tests, bootstraps absent state, runs the three new steps, saves the snapshot with the existing helper and commits the ten derived tables with the existing helper. The Congress job is as before. No new weekly secret is required. README and findings paths now point to the production commands and app data directory.
+The workflow gains a third job, `meetings`, after the Congress job (moved there in review from inside the Congress job, so that a failure at docs.house.gov or a committee site cannot hold back the GPO and video outputs). It installs the pytest extra, tests, reads state from the checked-out `pipeline-data` snapshot, runs the three new steps, saves the snapshot with the existing helper and commits the ten derived tables with the existing helper. The Congress job is as before. No new weekly secret is required. README and findings paths now point to the production commands and app data directory.
 
 ## Replay commands
 
@@ -92,7 +92,23 @@ Run from the worktree using its environment. `STATE` and `OUT` below must be dis
 .venv/bin/python tests/replay_weekly_pipeline.py "$REHEARSAL"
 ```
 
-`$REHEARSAL` contains `pipeline-data/` and `outputs/` copies; the first includes the bootstrap state. The app README gives the three standalone production commands, including a full backfill with empty state and an optional read-only research import.
+`$REHEARSAL` contains `pipeline-data/` and `outputs/` copies; the first includes the parsed meeting state. The app README gives the three standalone production commands, including a full backfill with empty state and an optional read-only research import.
+
+## State migration verification
+
+On 2026-09-27, the three validated gzip JSON files were published directly to
+`pipeline-data` in snapshot `5b23ff54d7274c66045db52c8e57487b003fec50`.
+The update workflow was idle. The snapshot preserves every existing file from
+remote snapshot `55fa0d791ec0c43c215483acb649ffb7b37deb02` and adds only the
+three `meeting-inventory/*.json.gz` files. The push used an explicit lease
+against that remote commit; the resulting remote tip was verified.
+
+The unpublished PR commits were rewritten to exclude the seed blobs, and the
+workflow's bootstrap copy step was removed. All 43 tests passed. An offline
+run of the three production commands against a copy of the seeded snapshot
+produced all ten output CSVs byte-identically to the branch's tables. The
+separate local `pipeline-data` worktree and its divergent history were not
+changed. The first GitHub Actions run remains to be verified.
 
 ## Limits and work left outside this branch
 

@@ -137,15 +137,6 @@ jobs:
       - name: Test source parsing and refresh decisions
         run: python -m pytest -q
 
-      - name: Bootstrap compact meeting state if missing
-        # One-time parsed seed; subsequent snapshots supply all three files.
-        run: |
-          mkdir -p pipeline-data/meeting-inventory
-          for seed in apps/committee_youtube/bootstrap/*.json.gz; do
-            target="pipeline-data/meeting-inventory/$(basename "$seed")"
-            if [ ! -f "$target" ]; then cp "$seed" "$target"; fi
-          done
-
       - name: Read House repository records
         run: |
           house-meeting-records --meetings pipeline-data/congress_meetings.jsonl.gz \
