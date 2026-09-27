@@ -60,14 +60,32 @@ Static files, plain GET, no cookies.
 ## Canonical EventID list
 
 - **Congress.gov API** `/v3/committee-meeting/{congress}/house` lists every
-  event with its `eventId` (House only; the Senate has no equivalent). The API
-  also serves `format=xml` if XML serialization is wanted.
-- The repo already mirrors all of it: `pipeline-data/congress_meetings.jsonl.gz`
-  = 18,139 records, 112th–119th, including `witnesses` (8,293 records) and
-  `witnessDocuments` (7,831).
+  event with its `eventId`. The same endpoint serves the Senate
+  (`/committee-meeting/{congress}/senate`, separate ID space, e.g. 336461 in
+  the 118th = 1,135 events). The API also serves `format=xml` if XML
+  serialization is wanted.
+- The repo already mirrors both: `pipeline-data/congress_meetings.jsonl.gz`
+  = 18,139 records, 112th–119th — 13,398 House (8,292 with `witnesses`),
+  4,575 Senate (1,674 with `meetingDocuments`, **zero** with witnesses — the
+  API never carries Senate witnesses), 166 NoChamber.
 - Fallback: `ByDay.aspx?DayID=MMDDYYYY` works for any date back to 2011; a
-  date walk re-derives all IDs. (The month view ignores query params — it is
-  postback-only.)
+  date walk re-derives all House IDs. (The month view ignores query params —
+  it is postback-only.)
+
+## The Senate has no docs.house.gov equivalent
+
+- No central Senate event repository or per-event XML exists. senate.gov has
+  no hearings XML feed (candidate URLs are Akamai-walled soft-404s), and
+  event-time documents live on ~20 committee sites in six layouts — which is
+  what `senate_hearing_pages.py` scrapes. That scraper is the only route to
+  Senate witnesses at event time.
+- The only structured Senate witness XML is post-hoc: GPO govinfo's CHRG
+  collection (published S.Hrg. prints). MODS per package carries
+  `<name type="witness">Name, position, organization</name>` plus committee
+  and dateIssued, at `www.govinfo.gov/metadata/pkg/{id}/mods.xml` (no key
+  needed). `meeting_completeness.py`'s `gpo_witnesses()` already parses it.
+  Publication lags the hearing by 1–3 years and many hearings are never
+  printed.
 
 ## At-scale comparison (739 meetings, stratified sample across 112th–116th+)
 
