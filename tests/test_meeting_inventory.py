@@ -106,11 +106,20 @@ def test_incremental_refresh_and_deterministic_state(tmp_path):
     assert due(saved, "2026-09-10", "v1", today)
     assert not due(saved, "2025-09-10", "v1", today)
     assert due(saved, "2014-09-10", "v2", today)
+    assert due({**saved, "xml_update": "2026-09-10T12:00:00"}, "2014-09-10", "v1", today)
     path = tmp_path / "state.json.gz"
     write_state(path, {"record": saved})
     first = path.read_bytes()
     write_state(path, read_state(path))
     assert path.read_bytes() == first
+
+
+def test_senate_budget_prioritizes_oldest_check_across_sites():
+    def site(url, checked):
+        return {"versions": {"1": "v"}, "listings": {url: ["2019-01-01", "Hearing"]}, "pages": {url: {"checked": checked, "version": "", "events": []}}}
+    state = {"a": site("https://a/page", "2025-01-01"), "z": site("https://z/page", "2024-01-01")}
+    versions = {host: {"1": "v"} for host in state}
+    assert records.refresh_urls(state, versions, dt.date(2026, 9, 27), 1) == {"https://z/page"}
 
 
 def test_listing_date_is_not_hearing_evidence():

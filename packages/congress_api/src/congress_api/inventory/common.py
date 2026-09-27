@@ -5,7 +5,7 @@ Congress.gov update is due immediately. Otherwise check recent meetings weekly,
 meetings up to two years old every 28 days, and older meetings annually. Among
 6,155 cached House XML records the 95th-percentile update lag was 330 days;
 62 changed after two years and 19 were newer than Congress.gov's updateDate.
-The seeded age groups imply 355 House and 404 Senate checks/week; source-reader
+The seeded age groups imply 364 House and 404 Senate checks/week; source-reader
 budgets of 400 and 450 cover that mean. These are due dates, with oldest checks
 first when a synchronized backfill creates a larger queue.
 """
@@ -75,7 +75,9 @@ def kind(m):
 def due(previous, day, version, today):
     if not previous or previous.get("version") != version:
         return True
-    age = (today - dt.date.fromisoformat(day[:10])).days
+    ## A late XML revision puts even an old House meeting back on the faster schedule.
+    day = max(day[:10], previous.get("xml_update", "")[:10])
+    age = (today - dt.date.fromisoformat(day)).days
     interval = 7 if age <= 30 else 28 if age <= 730 else 365
     return (today - dt.date.fromisoformat(previous["checked"])).days >= interval
 

@@ -206,6 +206,19 @@ def seed_fetch(cache, url):
     return path.read_text() if path.exists() else ""
 
 
+def refresh_urls(state, versions, today, limit, sites=None):
+    """Spend the maintenance budget on the oldest due checks across all sites."""
+    aged = []
+    for host, saved in state.items():
+        if host not in versions or (sites and host not in sites):
+            continue
+        changed = {e for e, v in versions[host].items() if saved.get("versions", {}).get(e) != v}
+        for url, page in saved["pages"].items():
+            if url in saved["listings"] and not changed.intersection(page.get("events", [])) and due(page, saved["listings"][url][0], page.get("version"), today):
+                aged.append((page["checked"], url))
+    return {url for _, url in sorted(aged)[:limit]}
+
+
 def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=None, refresh_limit=450, site=None, limit=None):
     ms, path = read_meetings(meetings), state_dir / "senate.json.gz"
     state, totals = read_state(path), collections.Counter()
@@ -214,7 +227,8 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
         codes = codes_of(m)
         if m.get("chamber") != "House" and codes and codes[0] in SITE:
             versions[SITE[codes[0]]][m["eventId"]] = m.get("updateDate", "")
-    errors, live_pages, refreshed = [], 0, 0
+    maintenance = refresh_urls(state, versions, as_of, refresh_limit, site)
+    errors, live_pages = [], 0
     for host in sorted(versions):
         if site and host not in site:
             continue
@@ -244,10 +258,10 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
                 previous = pages.get(url)
                 if not previous or changed.intersection(previous.get("events", [])):
                     urgent.append(url)
-                elif due(previous, day, previous.get("version"), as_of):
+                elif url in maintenance:
                     aged.append(url)
             aged.sort(key=lambda u: (pages[u]["checked"], u))
-            for url in urgent + aged[:max(0, refresh_limit - refreshed)]:
+            for url in urgent + aged:
                 if limit is not None and live_pages >= limit and not importing:
                     break
                 if importing:
@@ -266,7 +280,6 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
                 totals["pages seeded" if importing else "pages fetched"] += 1
                 if not importing:
                     live_pages += 1
-                    refreshed += url in aged
             if limit is None or live_pages < limit:
                 saved["versions"] = versions[host]
             state[host] = saved
