@@ -374,3 +374,5 @@ vite.config.ts.timestamp-*
 !apps/website/src/lib/
 !apps/site/src/lib/
 .playwright-mcp/
+docs/youtube-coverage/research/scripts/as_run/cache/
+docs/youtube-coverage/research/scripts/as_run/.ratelimit.*
