@@ -77,13 +77,13 @@ Static files, plain GET, no cookies.
 - No central Senate event repository or per-event XML exists. senate.gov has
   no hearings XML feed (candidate URLs are Akamai-walled soft-404s), and
   event-time documents live on ~20 committee sites in six layouts — which is
-  what `senate_hearing_pages.py` scrapes. That scraper is the only route to
+  what `senate-meeting-records` scrapes. That scraper is the only route to
   Senate witnesses at event time.
 - The only structured Senate witness XML is post-hoc: GPO govinfo's CHRG
   collection (published S.Hrg. prints). MODS per package carries
   `<name type="witness">Name, position, organization</name>` plus committee
   and dateIssued, at `www.govinfo.gov/metadata/pkg/{id}/mods.xml` (no key
-  needed). `meeting_completeness.py`'s `gpo_witnesses()` already parses it.
+  needed). `congress_api.gpo.fetch.mods_witnesses()` already parses it.
   Publication lags the hearing by 1–3 years and many hearings are never
   printed.
 
@@ -151,25 +151,15 @@ Files the API's `meetingDocuments` omits, by category:
   workers, ~0.4s spacing, pause 45s on a 403. Full 18k corpus ≈ 3–4 hours at
   that pace.
 - The DEMO_KEY rate limit on api.congress.gov is per-IP; routing through Zyte
-  (token in `~/Work/spicy-stack/RefSpec/.env`, same pattern as
-  `as_run/web.py`) sidesteps it.
+  (token supplied as `ZYTE_TOKEN`, shared with `as_run/web.py`) sidesteps it.
 - Congress.gov API detail adds `videos[]` and `relatedItems.bills[]` that the
   XML does not have.
 
-## Implications for this pipeline
+## Production follow-up
 
-- `house_event_pages.py` scrapes the ByEvent HTML for document links and
-  witness panels. The XML route would replace the document-link half of that
-  (witness lists, member statements, rosters, votes — the classes it
-  regex-hunts) with structured data, but the witness-panel structure
-  (`witPanelHeader`) remains HTML-only.
-- ~9k meetings had witness info in HTML that the API record lacked; that gap
-  is only partially closed by the XML (witness-list PDFs yes, panel structure
-  no) — verify against the jsonl before retiring the HTML scraper.
-- The XML's other unique value is provenance (version/update history, publish
-  dates) and amendment attribution (`bioguideID`, `amdt-num`, `enbloc-num`),
-  which is rare (2/739 meetings here) because most amendments flow through
-  `BILLS-*` files instead of `CA` documents.
+`house-meeting-records` now reads both the meeting XML and the separate witness-list XML, with a page fallback. The later 5,594-page audit found the same 15,012 witnesses in XML and HTML, including panel structure. This early probe examined the meeting XML alone; its former claim that witness panels were HTML-only was superseded by that audit. See [the current findings](../findings.md#what-each-meeting-has-on-the-record).
+
+The XML also supplies amendment attribution (`bioguideID`, `amdt-num`, `enbloc-num`) and update markers. Those parsed results are now retained in compact pipeline state, while the original probe artifacts below remain research evidence.
 
 ## Artifacts
 

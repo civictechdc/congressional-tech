@@ -20,13 +20,51 @@ This pipeline tracks every official House, Senate and joint committee YouTube ch
 | List GPO's official hearing transcripts | `gpo-fetch` | `data/gpo_hearings.csv` |
 | Keep Congress.gov committee meeting records | `congress-meetings` | raw cache, `pipeline-data` branch |
 | Match each hearing to its recording(s) | `gpo-match` | `data/gpo_hearing_videos.csv`, `data/gpo_hearing_video_coverage.csv` |
+| Fill House repository gaps | `house-meeting-records` | `data/house_documents_found.csv`, `data/house_witnesses_found.csv`, `data/house_amendments_found.csv` |
+| Read Senate and joint committee pages | `senate-meeting-records` | `data/senate_hearing_pages_found.csv`, `data/senate_witnesses_found.csv`, `data/senate_documents_found.csv` |
+| Join meeting records, text, recordings and witnesses | `meeting-inventory` | `data/hearing_text_sources.csv`, `data/meetings_without_records.csv`, `data/meeting_completeness.csv`, `data/meeting_witnesses.csv` |
 
-- **Raw caches:** the YouTube caches (`youtube/youtube_NN.json`) and meeting records (`congress_meetings.jsonl.gz`) live on the bot-owned `pipeline-data` branch. It's replaced by one snapshot commit each run, so the weekly data doesn't pile up in `main`'s history.
+- **Raw caches:** the YouTube caches (`youtube/youtube_NN.json`), meeting records (`congress_meetings.jsonl.gz`) and parsed meeting-source state (`meeting-inventory/*.json.gz`) live on the bot-owned `pipeline-data` branch. It's replaced by one snapshot commit each run, so the weekly data doesn't pile up in `main`'s history.
+- **Initial state:** `bootstrap/*.json.gz` seeds missing state files once. Weekly updates go only to `pipeline-data`; the bootstrap files remain frozen. They contain parsed records and availability observations, not source HTML, XML, PDFs or captions.
 - **Failures:** every command exits non-zero on any failure. That fails the job and skips its commits, and because fetching is incremental, the next run catches up.
 
 The workflow needs two repository secrets:
+
 - `YOUTUBE_DATA_API_KEY`;
 - `DATA_GOV_API_KEY`, which serves both GovInfo and Congress.gov.
+
+## Meeting inventory
+
+The source readers run after `gpo-match`, then the inventory joins them once. Neither reader reads the inventory. Every path is explicit, so a rehearsal can use a copy of `pipeline-data` and a separate output directory.
+
+```bash
+.venv/bin/house-meeting-records --meetings ../pipeline-data/congress_meetings.jsonl.gz \
+  --gpo-path apps/committee_youtube/data/gpo_hearings.csv \
+  --state-dir ../pipeline-data/meeting-inventory --output-dir apps/committee_youtube/data
+.venv/bin/senate-meeting-records --meetings ../pipeline-data/congress_meetings.jsonl.gz \
+  --state-dir ../pipeline-data/meeting-inventory --output-dir apps/committee_youtube/data
+.venv/bin/meeting-inventory --meetings ../pipeline-data/congress_meetings.jsonl.gz \
+  --gpo-path apps/committee_youtube/data/gpo_hearings.csv \
+  --videos-path apps/committee_youtube/data/gpo_hearing_videos.csv --tinydb_dir ../pipeline-data/youtube \
+  --recordings apps/committee_youtube/data/meeting_recordings_found.csv \
+  --state-dir ../pipeline-data/meeting-inventory --output-dir apps/committee_youtube/data
+```
+
+New or changed Congress.gov records are fetched immediately. Unchanged meetings become due weekly through 30 days, every 28 days through two years, and annually after that; a newer House XML update restarts the faster schedule. The House XML's `update-date` is retained: among 6,155 cached files, the 95th-percentile lag was 330 days, 62 updates came after two years and 19 were newer than Congress.gov's update. Consequently, Congress.gov's marker alone cannot settle freshness. Unchanged refreshes are capped at 400 House meetings and 450 Senate pages per run, oldest checks first; a synchronized backfill can leave a queue. The seed's age groups imply means of 364 and 404 checks per week. New and changed records are outside those maintenance caps.
+
+Senate listing discovery repeats weekly and when meeting records change. Paged listings stop after two pages overlapping the saved list; WordPress listings use their hearing-date fields. Matching still rejects dates and files shared by more than five pages, uses the hearing page's own date, and requires at least half its distinctive subject. House XML is authoritative, with a fetched page fallback when no candidate XML address exists. Direct House requests stay at least 1.2 seconds apart, with a 60-second pause after a 403. Failures remain retryable; only confirmed 404s become absences.
+
+The 114-meeting, 30-day replay required 125 House requests and 92 Senate requests, without revisiting the full 4,925-page Senate corpus. The House pacing floor for that batch is 150 seconds. The full copied snapshot was 52.8 MB, including 13.8 MB of parsed source state. See [the verification report](../../docs/youtube-coverage/production-verification.md) for timings, live limits and exact differences from the research snapshot.
+
+The ten output filenames and column names are retained. `meeting_recordings_found.csv` is the curated input, now in `data/`. `witness_list_document=unparsed` distinguishes a text PDF with no usable names from a scan; one old row that treated another member's name as a witness affiliation was removed.
+
+Caption observations are imported into compact state. YouTube's `caption=false` does not rule out automatic captions: 2,433 sampled false-flag videos had them, while 1,649 had none. Saved positive and negative observations take precedence; an unobserved video with `caption=true` supplies caption evidence. For recognized Senate studio committees, unobserved filenames since August 2023 are treated as captioned; live master playlists confirmed all 29 additional meetings this identifies in the baseline. Placeholder committee codes are excluded. `video_no_captions` means no confirmed text, including unprobed automatic-caption availability. These are availability rules, not downloaded transcripts.
+
+The Senate recording probe saves each committee-day's positive or negative answer. It waits seven days after a new meeting before probing at most eight archive/live manifests, so future calendar entries do not become permanent absences. Transient errors fail the command. Manual `youtube-captions` and `senate-captions` downloads can later update the inventory with `--youtube-caption-index PATH` and `--senate-caption-index PATH`. Caption downloading and `hearing-transcribe` remain manual.
+
+For an offline rebuild, copy `bootstrap/*.json.gz` into your chosen state directory and pass `--offline` to the three commands. A new backfill uses the same commands with an empty state directory. `--seed-cache ~/hearing-text` imports the old research caches read-only, when available; it is never needed in CI. `house-meeting-records --zyte --threads 16` is an optional metered backfill and requires `ZYTE_TOKEN` in the environment. **No additional weekly secret is needed.** `--limit N` bounds live House meetings or Senate hearing pages; it does not include Senate listing requests. An incomplete initial backfill exits non-zero instead of publishing partial outputs. `--site` restricts live Senate fetching for a bounded check while retaining other saved sites.
+
+The pure parser and refresh tests run in the Congress job. Locally install `packages/congress_api[test]` into the worktree environment and run `.venv/bin/python -m pytest`.
 
 ## Channels: `youtube-accounts.csv`
 
@@ -112,7 +150,7 @@ senate-captions  --out-dir ~/hearing-text/senate  --urls-file links.txt   # sena
 
 Each writes one text file per recording and a `captions_index.csv` (what was fetched and what had no track), and skips what's already there. YouTube starts asking for a sign-in after a few hundred requests from one address. A JavaScript runtime on the machine (`brew install deno`) makes that rarer, `youtube-captions --proxy http://<zyte-api-key>:@api.zyte.com:8011` routes the fetch through Zyte's proxy mode, which passes, and failed videos are left out of the index so the next run retries them. Like `gpo-transcripts`, they fill a local folder rather than the repository. Older Senate recordings (the archive path, before mid-2023) carry captions only inside the video stream, which `senate-captions` doesn't decode. C-SPAN no longer publishes transcripts of its programs.
 
-`packages/congress_api/src/congress_api/senate/isvp.py` holds the Senate player's committee table and URL patterns, shared by `senate-captions` and the archive probe in the docs folder.
+`packages/congress_api/src/congress_api/senate/isvp.py` holds the Senate player's committee table and URL patterns, shared by `senate-captions`, `meeting-inventory` and the retained research probe.
 
 ### Machine transcripts in the print's shape: `hearing-transcribe`
 

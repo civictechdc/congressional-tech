@@ -1,0 +1,303 @@
+{
+  "baseline": "a1705b6f26f91fa1b57c3e7fa36b27ac6fdc120a",
+  "as_of": "2026-09-27",
+  "tests": 43,
+  "console_help": 14,
+  "incremental": {
+    "older_meetings": 17492,
+    "added_meetings": 114,
+    "removed_senate_pages": 22,
+    "requests_replayed": {
+      "docs.house.gov": 125,
+      "www.aging.senate.gov": 4,
+      "www.agriculture.senate.gov": 2,
+      "www.armed-services.senate.gov": 3,
+      "www.banking.senate.gov": 3,
+      "www.commerce.senate.gov": 2,
+      "www.csce.gov": 2,
+      "www.energy.senate.gov": 3,
+      "www.epw.senate.gov": 3,
+      "www.finance.senate.gov": 3,
+      "www.foreign.senate.gov": 6,
+      "www.help.senate.gov": 4,
+      "www.hsgac.senate.gov": 35,
+      "www.indian.senate.gov": 9,
+      "www.intelligence.senate.gov": 2,
+      "www.judiciary.senate.gov": 8,
+      "www.veterans.senate.gov": 3
+    },
+    "http_total": 217,
+    "external_requests": 0,
+    "incremental_seconds": 36.4,
+    "total_seconds": 88.56
+  },
+  "workflow": {
+    "step_seconds": {
+      "youtube-fetch": 0.99,
+      "youtube-analyze": 42.15,
+      "gpo-fetch": 0.35,
+      "congress-meetings": 1.24,
+      "gpo-match": 57.19,
+      "house-meeting-records": 2.18,
+      "senate-meeting-records": 32.68,
+      "meeting-inventory": 3.64
+    },
+    "youtube_api_responses_replayed": 168,
+    "external_requests": 0,
+    "snapshot_bytes": 52781646
+  },
+  "repeat_identical_files": 19,
+  "snapshot_base_bytes": 38953588,
+  "source_state_bytes": 13828058,
+  "live": {
+    "direct_house_unique_meetings": 5,
+    "direct_house_requests": 20,
+    "senate_sites": 5,
+    "senate_requests": 47,
+    "zyte_requests": 1,
+    "data_api_requests": 3,
+    "archive_committee_days": 2,
+    "gpo_print_checks": 9
+  },
+  "senate_caption_manifests": {
+    "334987": [
+      {
+        "filename": "commerce101823",
+        "status": 200,
+        "subtitle_manifest": true
+      },
+      {
+        "filename": "commerce101823p",
+        "status": 200,
+        "subtitle_manifest": true
+      }
+    ],
+    "335011": [
+      {
+        "filename": "foreign102523",
+        "status": 200,
+        "subtitle_manifest": true
+      }
+    ],
+    "335061": [
+      {
+        "filename": "finance110223",
+        "status": 200,
+        "subtitle_manifest": true
+      }
+    ],
+    "335320": [
+      {
+        "filename": "govtaff011724",
+        "status": 200,
+        "subtitle_manifest": true
+      }
+    ],
+    "335353": [
+      {
+        "filename": "intel031124",
+        "status": 200,
+        "subtitle_manifest": true
+      }
+    ],
+    "335561": [
+      {
+        "filename": "foreign032124",
+        "status": 200,
+        "subtitle_manifest": true
+      }
+    ],
+    "335630": [
+      {
+        "filename": "govtaff041024",
+        "status": 200,
+        "subtitle_manifest": true
+      }
+    ],
+    "335668": [
+      {
+        "filename": "govtaff041724",
+        "status": 200,
+        "subtitle_manifest": true
+      }
+    ],
+    "335783": [
+      {
+        "filename": "govtaff051524",
+        "status": 200,
+        "subtitle_manifest": true
+      }
+    ],
+    "335900": [
+      {
+        "filename": "judiciary061224",
+        "status": 200,
+        "subtitle_manifest": true
+      }
+    ],
+    "335928": [
+      {
+        "filename": "govtaff061824",
+        "status": 200,
+        "subtitle_manifest": true
+      }
+    ],
+    "336283": [
+      {
+        "filename": "judiciary111324",
+        "status": 200,
+        "subtitle_manifest": true
+      }
+    ],
+    "336556": [
+      {
+        "filename": "xxxx012125",
+        "status": "unknown committee",
+        "subtitle_manifest": false
+      }
+    ],
+    "336570": [
+      {
+        "filename": "foreign013025",
+        "status": 200,
+        "subtitle_manifest": true
+      }
+    ],
+    "336626": [
+      {
+        "filename": "commerce021925",
+        "status": 200,
+        "subtitle_manifest": true
+      }
+    ],
+    "336641": [
+      {
+        "filename": "armedA022525",
+        "status": 200,
+        "subtitle_manifest": true
+      }
+    ],
+    "336648": [
+      {
+        "filename": "armed022725",
+        "status": 200,
+        "subtitle_manifest": true
+      },
+      {
+        "filename": "armedA022725",
+        "status": 200,
+        "subtitle_manifest": true
+      }
+    ],
+    "336661": [
+      {
+        "filename": "commerce022725",
+        "status": 200,
+        "subtitle_manifest": true
+      }
+    ],
+    "336690": [
+      {
+        "filename": "help030625",
+        "status": 200,
+        "subtitle_manifest": true
+      }
+    ],
+    "336748": [
+      {
+        "filename": "armedA032525",
+        "status": 200,
+        "subtitle_manifest": true
+      },
+      {
+        "filename": "armedB032525",
+        "status": 200,
+        "subtitle_manifest": true
+      }
+    ],
+    "336820": [
+      {
+        "filename": "commerce040925",
+        "status": 200,
+        "subtitle_manifest": true
+      }
+    ],
+    "336962": [
+      {
+        "filename": "commerce051425",
+        "status": 200,
+        "subtitle_manifest": true
+      }
+    ],
+    "336990": [
+      {
+        "filename": "armedA052125",
+        "status": 200,
+        "subtitle_manifest": true
+      }
+    ],
+    "337002": [
+      {
+        "filename": "ag052125",
+        "status": 200,
+        "subtitle_manifest": true
+      }
+    ],
+    "337266": [
+      {
+        "filename": "epw072325",
+        "status": 200,
+        "subtitle_manifest": true
+      }
+    ],
+    "337445": [
+      {
+        "filename": "judiciary093025",
+        "status": 200,
+        "subtitle_manifest": true
+      }
+    ],
+    "337647": [
+      {
+        "filename": "judiciary111925",
+        "status": 200,
+        "subtitle_manifest": true
+      }
+    ],
+    "337655": [
+      {
+        "filename": "commerce111925",
+        "status": 200,
+        "subtitle_manifest": true
+      }
+    ],
+    "337734": [
+      {
+        "filename": "foreign121025",
+        "status": 200,
+        "subtitle_manifest": true
+      }
+    ],
+    "337870": [
+      {
+        "filename": "xxxx011426",
+        "status": "unknown committee",
+        "subtitle_manifest": false
+      }
+    ],
+    "338080": [
+      {
+        "filename": "armedA032426",
+        "status": 200,
+        "subtitle_manifest": true
+      }
+    ],
+    "338700": [
+      {
+        "filename": "xxxx080526",
+        "status": "unknown committee",
+        "subtitle_manifest": false
+      }
+    ]
+  }
+}

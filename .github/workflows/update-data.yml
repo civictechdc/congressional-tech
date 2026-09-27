@@ -1,6 +1,7 @@
 name: Update committee data
 
 # Weekly pipeline. Raw caches (YouTube TinyDBs, Congress.gov meeting records)
+# and compact parsed committee-source state
 # live on the bot-owned `pipeline-data` branch, replaced by a single snapshot
 # commit each run so history doesn't grow. main only gets the small derived
 # CSVs. Every tool exits non-zero on any failure, which fails the job and skips
@@ -85,7 +86,19 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install packages
-        run: pip install -e packages/congress_shared -e packages/youtube_api -e packages/congress_api
+        run: pip install -e packages/congress_shared -e packages/youtube_api -e 'packages/congress_api[test]'
+
+      - name: Test source parsing and refresh decisions
+        run: python -m pytest -q
+
+      - name: Bootstrap compact meeting state if missing
+        # One-time parsed seed; subsequent snapshots supply all three files.
+        run: |
+          mkdir -p pipeline-data/meeting-inventory
+          for seed in apps/committee_youtube/bootstrap/*.json.gz; do
+            target="pipeline-data/meeting-inventory/$(basename "$seed")"
+            if [ ! -f "$target" ]; then cp "$seed" "$target"; fi
+          done
 
       - name: Fetch GPO hearing transcripts
         env:
@@ -104,10 +117,33 @@ jobs:
             --overrides "$DATA_DIR/hearing_video_overrides.csv" \
             --output-path "$DATA_DIR/gpo_hearing_videos.csv"
 
+      - name: Read House repository records
+        run: |
+          house-meeting-records --meetings pipeline-data/congress_meetings.jsonl.gz \
+            --gpo-path "$DATA_DIR/gpo_hearings.csv" --state-dir pipeline-data/meeting-inventory \
+            --output-dir "$DATA_DIR" --refresh-limit 400
+
+      - name: Read Senate committee pages
+        run: |
+          senate-meeting-records --meetings pipeline-data/congress_meetings.jsonl.gz \
+            --state-dir pipeline-data/meeting-inventory --output-dir "$DATA_DIR" --refresh-limit 450
+
+      - name: Build meeting inventory
+        run: |
+          meeting-inventory --meetings pipeline-data/congress_meetings.jsonl.gz \
+            --gpo-path "$DATA_DIR/gpo_hearings.csv" --videos-path "$DATA_DIR/gpo_hearing_videos.csv" \
+            --tinydb_dir pipeline-data/youtube --channels-csv-path "$CHANNELS_CSV" \
+            --recordings "$DATA_DIR/meeting_recordings_found.csv" \
+            --state-dir pipeline-data/meeting-inventory --output-dir "$DATA_DIR"
+
       - name: Save pipeline data snapshot
-        run: .github/scripts/save-pipeline-data.sh "Congress.gov meetings"
+        run: .github/scripts/save-pipeline-data.sh "Congress.gov meetings and parsed committee records"
 
       - name: Commit outputs to ${{ github.ref_name }}
         run: |
-          .github/scripts/commit-and-push.sh "Updated GPO hearings and video matches" \
-            "$DATA_DIR/gpo_hearings.csv" "$DATA_DIR/gpo_hearing_videos.csv" "$DATA_DIR/gpo_hearing_video_coverage.csv"
+          .github/scripts/commit-and-push.sh "Updated hearings, recordings and meeting inventory" \
+            "$DATA_DIR/gpo_hearings.csv" "$DATA_DIR/gpo_hearing_videos.csv" "$DATA_DIR/gpo_hearing_video_coverage.csv" \
+            "$DATA_DIR/hearing_text_sources.csv" "$DATA_DIR/meetings_without_records.csv" \
+            "$DATA_DIR/house_documents_found.csv" "$DATA_DIR/house_witnesses_found.csv" "$DATA_DIR/house_amendments_found.csv" \
+            "$DATA_DIR/senate_hearing_pages_found.csv" "$DATA_DIR/senate_witnesses_found.csv" "$DATA_DIR/senate_documents_found.csv" \
+            "$DATA_DIR/meeting_completeness.csv" "$DATA_DIR/meeting_witnesses.csv"
