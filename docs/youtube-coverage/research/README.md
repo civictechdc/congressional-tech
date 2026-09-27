@@ -87,7 +87,7 @@ One JSON line per hearing, as each agent wrote it. Where an agent rewrote a hear
 ## Transcripts and captions (September 2026)
 
 - `data/hearing_text_sources.csv`: every Congress.gov meeting since the 113th Congress with the GPO print(s) matched to it, its recordings, and which has text (`research/scripts/hearing_text_sources.py`).
-- `data/meetings_without_records.csv`: the 2,675 Congress.gov meetings since the 113th Congress with no GPO print, no linked recording and no captions, with whether witness or meeting documents exist and, for Senate meetings, the senate.gov recording the archive probe found by committee and date (712 of 1,227).
+- `data/meetings_without_records.csv`: the Congress.gov meetings since the 113th Congress with no GPO print, no recording found (by Congress.gov link, event ID, the matcher's date-and-title rules, or the Senate archive probe) and no captions, with whether witness or meeting documents exist. Written by `scripts/hearing_text_sources.py` alongside the index.
 - `data/transcribe_compare/`: the comparison of machine transcription routes against a GPO print (`scripts/transcribe_compare.py`): `gpo.json` (the print parsed into the shared schema), `routeA_*.json` (Gemini 3.5 Transcribe plus a speaker resolver, with and without the video), `routeB.json` (Gemini 3.8 Flash on the video), `compare.json` (word error rate and speaker accuracy), and rendered samples.
 
 ## Archive investigation (September 2026)
