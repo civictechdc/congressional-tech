@@ -5,6 +5,7 @@ import itertools
 import logging
 import multiprocessing
 import re
+import sys
 import time
 
 from dataclasses import asdict, dataclass
@@ -16,6 +17,7 @@ from congress_shared.globals import add_global_args, add_youtube_args, CONGRESS_
 from youtube_api.tables import (
     get_all_commitee_names,
     get_all_committee_handless,
+    map_system_code_committee_handles,
     open_tinydb_for_committee,
 )
 from congress_shared.globals import (
@@ -25,6 +27,9 @@ from congress_shared.globals import (
 )
 
 EVENT_ID_REGEX = ".*(\\d{6}|eventid).*"
+
+## system codes start with the chamber: hsag00 (house), jsec00 (joint), ssfr00 (senate)
+CHAMBER_BY_CODE_PREFIX = {"h": "house", "j": "joint", "s": "senate"}
 
 
 _TINYDB: TinyDB = None
@@ -52,6 +57,9 @@ def main(
 ) -> None:
     init_time = time.time()
     final_reports = []
+    ## problems are collected so the report still covers every committee it can,
+    ##  then the run exits non-zero so the workflow fails visibly
+    errors = []
 
     if nthreads is None:
         nthreads = multiprocessing.cpu_count()
@@ -61,8 +69,9 @@ def main(
         csv_path=channels_csv_path
     )
 
-    ## load all the corresponding handles
+    ## load all the corresponding handles and system codes
     committee_handless = get_all_committee_handless(channels_csv_path)
+    committee_codes = list(map_system_code_committee_handles(channels_csv_path))
     for committee_index, committee_name in enumerate(committee_names):
         try:
             ## define args required for opening the correct tinydb
@@ -76,9 +85,7 @@ def main(
             global _TINYDB
             _TINYDB = open_tinydb_for_committee(**tinydb_args)
 
-            ## TODO: this needs to be automatically set by handle once we add senate handles
-            ##  to the CSV
-            chamber = "house"
+            chamber = CHAMBER_BY_CODE_PREFIX[committee_codes[committee_index][0]]
 
             handles = committee_handless[committee_index]
             for handle in handles:
@@ -125,15 +132,19 @@ def main(
 
                 ## validate that we didn't accidentally exclude any videos
                 if total_count != running_count:
-                    raise ValueError(
-                        f"{total_count - running_count} videos are outside"
-                        " the applied date ranges and were excluded from reporting."
+                    errors.append(
+                        f"{handle} ({committee_name}): {total_count - running_count} videos are"
+                        " outside the congress date ranges and were excluded from reporting."
                     )
-            final_reports.extend(reports)
+                ## add this handle's rows (committees can have several handles)
+                final_reports.extend(reports)
         except ValueError as e:
-            logging.error(e)
+            errors.append(f"{committee_name}: {e}")
 
     write_to_csv(final_reports, output_path)
+    if errors:
+        logging.error(f"{len(errors)} problem(s):\n  " + "\n  ".join(errors))
+        sys.exit(1)
     logging.info(f"{time.time() - init_time} s elapsed")
 
 
@@ -152,7 +163,9 @@ def generate_report_for_congress_number(
     start_date = meta["start"]
     end_date = meta["end"]
     if end_date == "present":
-        end_date = datetime.date.today().isoformat()
+        ## publishedAt is a full timestamp, so "today" as a bare date would
+        ##  exclude videos published today; use an open end instead
+        end_date = "9999-12-31"
 
     ## videos have:
     ##  "publishedAt": "2025-07-23T23:26:16Z",
@@ -187,7 +200,7 @@ def generate_report_for_congress_number(
         congress_count,  ## all videos in this congress #
         congress_count - has_event_id_count,  ## bad videos
         congress_number,
-        meta[chamber],  ## party in control of this chamber
+        meta.get(chamber, ""),  ## party in control of this chamber (none for joint)
         chamber,
         with_captions_count,
     )

@@ -26,7 +26,9 @@ def main(
     )
 
     ## read all the handles for all the committees
-    all_committee_handless = get_all_committee_handless(csv_path=channels_csv_path)
+    all_committee_handless = get_all_committee_handless(
+        csv_path=channels_csv_path, include_member_channels=True
+    )
 
     ## if we were passed a selection, determine both the committee name and index
     if committee_name is not None:
@@ -65,9 +67,9 @@ def main(
                     ## read the "uploaded" playlist from the previously fetched metadata
                     ##  and then store details about each video to the DB
                     fetcher.get_all_channel_videos(handle)
-                    ## record whether each video has captions published
-                    if not fetcher.update_caption_flags(handle):
-                        failures.append(f"{handle} ({committee_name}): caption check failed")
+                    ## record each video's caption flag and duration
+                    if not fetcher.update_video_details(handle):
+                        failures.append(f"{handle} ({committee_name}): video details check failed")
                 except Exception as ex:
                     logging.exception(f"Failed on {handle}")
                     failures.append(f"{handle} ({committee_name}): {ex!r}")

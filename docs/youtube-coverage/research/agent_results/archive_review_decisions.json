@@ -1,0 +1,30 @@
+{
+ "accept_low": [
+  "CHRG-113hhrg78456",
+  "CHRG-113hhrg79621",
+  "CHRG-113hhrg87500",
+  "CHRG-113hhrg88997",
+  "CHRG-114hhrg24709",
+  "CHRG-115hhrg35126",
+  "CHRG-116hhrg40464",
+  "CHRG-118hhrg55720",
+  "CHRG-119hhrg60805",
+  "CHRG-113hhrg89535"
+ ],
+ "accept_low_why": "whole proceedings that ran only minutes: organizational meetings, markups, a Member Day hearing, and a hearing that went into closed session after five minutes; each agent cited the transcript's gavel times; plus an unlisted field-hearing upload the Data API lists without a duration",
+ "reject": [
+  "CHRG-114hhrg21377",
+  "CHRG-115hhrg33615",
+  "CHRG-115jhrg27641",
+  "CHRG-115jhrg28318",
+  "CHRG-115jhrg30593",
+  "CHRG-115jhrg32261",
+  "CHRG-116hhrg36076"
+ ],
+ "reject_why": "two Ways and Means re-uploads whose file-name room doesn't match the transcript, and five Facebook embeds that can't be verified logged out",
+ "not_public_extra": [
+  "CHRG-116hhrg39405",
+  "CHRG-116hhrg39410"
+ ],
+ "not_public_extra_why": "volumes V and X of the H. Res. 755 markup record; agent 07 read volumes II-XI as document productions submitted for the record, with the markup itself in volume I"
+}
