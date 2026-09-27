@@ -108,10 +108,25 @@ workflow's bootstrap copy step was removed. All 43 tests passed. An offline
 run of the three production commands against a copy of the seeded snapshot
 produced all ten output CSVs byte-identically to the branch's tables. The
 separate local `pipeline-data` worktree and its divergent history were not
-changed. The first GitHub Actions run remains to be verified.
+changed.
+
+The first [GitHub Actions run](https://github.com/civictechdc/congressional-tech/actions/runs/36347685310)
+passed on `claude/production-pipeline` on 2026-09-27, from 20:20:47 to 20:29:04
+UTC. All three jobs succeeded. The `meetings` job passed all 43 tests, read the
+seeded state, rebuilt the ten tables without changes, and saved data snapshot
+`8af810258ef5bb6522622bded696a5e2c40d0cb8`. Each of its three state files decodes
+to exactly the initial JSON; only the gzip operating-system header byte differs
+between the local seed and Linux runner output.
+
+The upstream YouTube job committed its two report copies as `46e854d`; the
+Congress and meeting output commit steps had no changes. The meeting readers
+reported no source HTTP requests in this settled run. This verifies state
+restoration, command execution and snapshot publication on GitHub Actions; it
+does not expand the earlier live page-layout checks. The branch remains an
+open PR and has not been merged into `main`.
 
 ## Limits and work left outside this branch
 
-All requested local implementation, output migration and checks are complete. GitHub Actions has not run this branch, and no branch or snapshot has been published. A full uncached live backfill was not attempted because it would exceed the requested live bounds. The replay's timings and request counts are not a whole-corpus live benchmark.
+The implementation, output migration, state publication and first GitHub Actions run are complete. A full uncached live backfill was not attempted because it would exceed the requested live bounds. The replay's timings and request counts are not a whole-corpus live benchmark.
 
 Only five of 21 committee sites were checked live; all 21 were parsed and compared from retained source pages. Future site layout changes remain a maintenance risk. JEC running-text witnesses and newer Indian Affairs lists populated in a browser remain unread, as in the research. Unobserved automatic YouTube captions remain unknown until a manual caption run supplies evidence. The Senate date rule is supported by the observed transition and 29 live checks, but is still an availability inference for new filenames. Confirmed archive negatives deliberately do not retry, so a recording posted more than seven days late requires an explicit state refresh. No unsupported recording or witness matching rule was broadened.
