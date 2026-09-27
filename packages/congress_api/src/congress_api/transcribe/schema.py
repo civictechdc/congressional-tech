@@ -145,7 +145,7 @@ def render_gpo(t: Transcript, width: int = 70) -> str:
     out.append("")
     body = h.subcommittee and "Subcommittee" or "Committee"
     pres = P.get(h.presiding)
-    convened = f"The {body} met, pursuant to notice, at {h.time_convened or '[time]'}," + (f" in {h.location}," if h.location else "") + (f" Hon. {pres.name} [{'Chair' if pres.role == 'chair' else pres.role.replace('_', ' ').title()} of the {body}] presiding." if pres else " presiding.")
+    convened = f"The {body} met, pursuant to notice," + (f" at {h.time_convened}," if h.time_convened else "") + (f" in {h.location}," if h.location else "") + (f" Hon. {pres.name} [{'Chair' if pres.role == 'chair' else pres.role.replace('_', ' ').title()} of the {body}] presiding." if pres else " presiding.")
     out += textwrap.wrap(convened, width, initial_indent="    ")
     present = [P[k] for k in h.present if k in P]
     if present:

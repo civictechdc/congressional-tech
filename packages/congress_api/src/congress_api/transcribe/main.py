@@ -78,7 +78,16 @@ def place(participants: dict[str, Person], name: str, role: str, confidence, lab
             k = matches[0]
     p = participants.get(k)
     if p is None:
-        participants[k] = Person(name=name, role=role or "unknown", surname=name.split()[-1], speaker_label=label, confidence=confidence)
+        p = Person(name=name, role=role or "unknown", surname=name.split()[-1], speaker_label=label, confidence=confidence)
+        ## someone the roster lacks (GPO's member lists have gaps): a sitting member by that surname?
+        if role not in ("witness", "staff", "clerk"):
+            hits = [(b, l) for b, l in metadata.legislators_current().items() if l["last"].lower() == p.surname.lower()]
+            if len(hits) == 1:
+                b, l = hits[0]
+                p.role = role if role in ("chair", "ranking_member") else "member"
+                p.name, p.party, p.state, p.bioguide_id = l["name"], l["party"], l["state"], b
+                p.honorific = "Senator" if l["chamber"] == "sen" else {"M": "Mr.", "F": "Ms."}.get(l["gender"], "")
+        participants[k] = p
         return k
     if role in ("chair", "ranking_member") and p.role in ("member", "unknown", "other"):
         p.role = role
