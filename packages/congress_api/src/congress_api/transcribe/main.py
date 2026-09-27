@@ -15,7 +15,8 @@ gemini.py for why the windows are 25 minutes and why the dedicated transcription
 was dropped.
 
 Writes <id>.json (the schema) and <id>.gpo.txt (the print's layout). Needs GEMINI_API_KEY;
---proxy is passed to yt-dlp for the audio download when YouTube asks for a sign-in.
+YOUTUBE_API_KEY lets the video's length come from the Data API instead of yt-dlp, and --proxy
+is passed to yt-dlp when YouTube asks for a sign-in.
 """
 import argparse
 import csv
@@ -87,6 +88,21 @@ def place(participants: dict[str, Person], name: str, role: str, confidence) -> 
     return k
 
 
+def video_duration(video_id: str, proxy: str | None = None) -> float:
+    """Seconds, from the YouTube Data API when YOUTUBE_API_KEY is set (no bot checks), else yt-dlp."""
+    import os
+    key = os.environ.get("YOUTUBE_API_KEY")
+    if key:
+        d = requests.get("https://www.googleapis.com/youtube/v3/videos", params={"part": "contentDetails", "id": video_id, "key": key}, timeout=30).json()
+        if d.get("items"):
+            m = re.fullmatch(r"PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?", d["items"][0]["contentDetails"]["duration"])
+            if m:
+                return sum(int(x or 0) * k for x, k in zip(m.groups(), (3600, 60, 1)))
+    import yt_dlp
+    with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True, "logger": logging.getLogger("yt_dlp"), **({"proxy": proxy, "nocheckcertificate": True} if proxy else {})}) as ydl:
+        return ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False).get("duration") or 4 * 3600
+
+
 def merge_turns(turns: list[Turn]) -> list[Turn]:
     """Join consecutive turns by the same speaker: the models split long answers into several."""
     out: list[Turn] = []
@@ -108,9 +124,7 @@ def transcribe(ctx: HearingContext, out_dir: Path, video_id: str = "", senate_ur
     turns: list[Turn] = []
     events, usage = [], {"in": 0, "out": 0}
     if video_id:
-        import yt_dlp
-        with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True, "logger": logging.getLogger("yt_dlp"), **({"proxy": proxy, "nocheckcertificate": True} if proxy else {})}) as ydl:
-            dur = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False).get("duration") or 4 * 3600
+        dur = video_duration(video_id, proxy)
         windows = [(None, start, min(start + G.WINDOW_SECONDS, dur)) for start in range(0, int(dur), G.WINDOW_SECONDS)]
     else:
         path = A.get_audio(out_dir / "audio", senate_url=senate_url, local=local)

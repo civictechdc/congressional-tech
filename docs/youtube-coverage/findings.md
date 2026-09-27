@@ -106,7 +106,7 @@ Notes:
 - **Benghazi:** 11 of its 15 GPO volumes are closed-door transcribed witness interviews, so there is no public video to find.
 - **Helsinki Commission:** most of its 2013–2019 GPO "hearings" are staff briefings. Its website embeds recordings of 31 of them from the Commission's Facebook page, not YouTube.
 - **Appropriations:** the "not public" rows are printed volumes that contain only written testimony, budget justifications or answers for the record.
-- **Clips only** now means what it says. A video under 10 minutes found by weak evidence (a date window or a date in the title) counts as a clip. The research-pass snapshot counted some of those as recordings, which is why Homeland Security, Foreign Affairs and the Joint Economic Committee show more clips here.
+- **Clips only** now means what it says. A video found by weak evidence (a date window or a date in the title) counts as a clip when it's under 20 minutes, or under 30 with a member-clip title ("Q&A", "Questions", "Opening Statement"). The research-pass snapshot counted some of those as recordings, which is why Homeland Security, Foreign Affairs and the Joint Economic Committee show more clips here.
 
 ## Senate coverage
 
@@ -312,9 +312,9 @@ GPO's printed transcript is the record, but it arrives 6–8 months after a Hous
 | | House meetings | Senate meetings |
 |---|---|---|
 | GPO print | 9,040 (70%) | 2,567 (56%) |
-| YouTube caption track (uploader's or automatic) | 1,721 (13%) | — |
-| Senate player caption track (recordings since mid-2023) | — | 645 (14%) |
-| Video with no caption track | 1,355 (11%) | 842 (18%) |
+| YouTube caption track (uploader's or automatic) | 2,144 (17%) | 23 (1%) |
+| Senate player caption track (recordings since mid-2023) | — | 775 (17%) |
+| Video with no caption track | 932 (7%) | 690 (15%) |
 | No recording found | 749 (6%) | 520 (11%) |
 
 **Meetings with nothing** (`research/data/meetings_without_records.csv`): 1,291 since 2013 have no print, no recording found and no captions. They are a different population from the printed hearings this document is mostly about; only 9 of them have a print that failed to link. Of the 749 House meetings, 383 are markups and business meetings, which GPO never prints, and 366 are hearings, led by Intelligence (164, closed by design) and Natural Resources (158, whose archive uploads are titled with dates and subcommittee codes the title rule can't match, so many of these likely exist). 548 have witness or meeting documents on docs.house.gov. Of the 520 Senate meetings (records begin with the 116th Congress), 292 are Intelligence's and 30 more are marked closed; the rest are mostly Armed Services and Foreign Relations business meetings. 413 are bare calendar entries.
@@ -393,7 +393,7 @@ Eight agents took the 840 House and joint hearings still without a full recordin
   2. the hearing's event ID in a video's title or description, whenever it was uploaded;
   3. the hearing's date in the title or description, with a matching title or subcommittee, or alone when the video's title is only a date label and the committee held one hearing that day;
   4. a similar title, or the subcommittee's name, on a video posted one day before to three days after.
-  A video under 10 minutes found by the weaker rules counts as a clip. Multi-hearing Appropriations volumes are matched on each hearing day.
+  A video found by the weaker rules counts as a clip when it's under 20 minutes, or under 30 with a member-clip title. Event-ID or Congress.gov evidence for a video posted more than a week after the hearing ranks below a same-week title match when its title doesn't fit (committees mistag videos). Multi-hearing Appropriations volumes are matched on each hearing day.
 - **Research pass:** 16 agents, one per batch of 113–162 hearings grouped by committee. They worked from prepared evidence packets:
   - the hearing metadata;
   - every video from that committee within a few days;
@@ -404,7 +404,7 @@ Eight agents took the 840 House and joint hearings still without a full recordin
 - **Verdict rules:**
   - "Full recording" means the proceeding itself (livestream, full upload, or all its parts), not clips or statements.
   - "Not public" requires evidence: a "CLOSED" notice, a written-only volume, an errata page, or closed-door interviews.
-- **Not reachable from the research environment:** the Wayback Machine, C-SPAN, and YouTube watch pages (bot-walled). Some recordings may exist there or in private archives.
+- **Reach:** the original research pass could not reach the Wayback Machine, C-SPAN or YouTube watch pages (bot-walled). The archive investigation later reached the first two (C-SPAN through the Zyte API) and the Data API stood in for watch pages. Private archives and dead streams remain out of reach.
 
 ## Files
 

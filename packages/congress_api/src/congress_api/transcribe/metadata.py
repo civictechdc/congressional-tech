@@ -26,6 +26,7 @@ from pathlib import Path
 
 from congress_shared.globals import DEFAULT_GPO_HEARINGS_FILE, DEFAULT_MEETINGS_FILE
 
+from congress_api.transcribe import names
 from congress_api.transcribe.schema import Header, Person, person_key
 
 MODS_URL = "https://www.govinfo.gov/metadata/pkg/{pkg}/mods.xml"
@@ -85,7 +86,7 @@ def mods_people(package_id: str) -> tuple[dict[str, Person], dict]:
         name = re.search(r'<name type="authority-fnf">([^<]+)</name>', m.group(2))
         if not name:
             continue
-        p = Person(name=name.group(1).strip(), role="member", surname=name.group(1).split()[-1], party=attrs.get("party", ""), state=attrs.get("state", ""), bioguide_id=attrs.get("bioGuideId", ""))
+        p = Person(name=name.group(1).strip(), role="member", surname=names.surname(name.group(1).strip()), party=attrs.get("party", ""), state=attrs.get("state", ""), bioguide_id=attrs.get("bioGuideId", ""))
         p.honorific = "Senator" if attrs.get("chamber") == "S" else ""
         people[person_key(p.name)] = p
     for w in re.findall(r"<witness>([^<]+)</witness>", x):
@@ -95,6 +96,7 @@ def mods_people(package_id: str) -> tuple[dict[str, Person], dict]:
         name = re.sub(r"^(The )?(Hon\.|Honorable) ", "", parts[0])
         p = Person(name=name, role="witness", honorific=re.match(r"(Mr|Ms|Mrs|Dr)\.", name).group(0) if re.match(r"(Mr|Ms|Mrs|Dr)\.", name) else "", surname=name.split()[-1], position=parts[1] if len(parts) > 1 else "", organization=", ".join(parts[2:]) if len(parts) > 2 else "")
         p.name = re.sub(r"^(Mr|Ms|Mrs|Dr)\. ", "", p.name)
+        p.surname = names.surname(p.name)
         people[person_key(p.name)] = p
     g = lambda pat: (re.search(pat, x, re.S).group(1).strip() if re.search(pat, x, re.S) else "")
     facts = {"title": g(r"<searchTitle>([^<]+)</searchTitle>"), "serial": g(r"<preferredCitation>([^<]+)</preferredCitation>"), "held_date": g(r"<heldDate>([^<]+)</heldDate>"),
@@ -158,7 +160,7 @@ def context_for_event(event_id: str, package_id: str = "") -> HearingContext:
         name = re.sub(r"^(The )?(Hon\.|Honorable) ", "", w.get("name", "")).strip()
         hon = re.match(r"(Mr|Ms|Mrs|Dr)\.", name)
         p = Person(name=re.sub(r"^(Mr|Ms|Mrs|Dr)\. ", "", name), role="witness", honorific=hon.group(0) if hon else "", organization=w.get("organization", ""), position=w.get("position", ""))
-        p.surname = p.name.split()[-1] if p.name else ""
+        p.surname = names.surname(p.name) if p.name else ""
         participants[person_key(p.name)] = p
     if package_id:
         people, facts = mods_people(package_id)

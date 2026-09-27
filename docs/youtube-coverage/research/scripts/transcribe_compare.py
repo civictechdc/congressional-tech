@@ -1,7 +1,7 @@
 """
 Compare two ways of transcribing a hearing against its GPO print.
 
-    python docs/youtube-coverage/research/scripts/transcribe_compare.py CHRG-118hhrg54254 8V3OGbZOLB0 <out_dir> [--proxy URL]
+    python docs/youtube-coverage/research/scripts/transcribe_compare.py CHRG-118hhrg54254 8V3OGbZOLB0 <out_dir>
 
 Scores the package's route (Gemini 3.8 Flash on the YouTube video in 25-minute windows,
 named turns) against the print: word error rate of the spoken text (jiwer), speaker
@@ -49,7 +49,7 @@ def roster_json(participants):
     return [{k: v for k, v in dataclasses.asdict(p).items() if v and k not in ("speaker_label", "confidence", "honorific")} for p in participants.values()]
 
 
-def main(package_id, video_id, out_dir, proxy=None):
+def main(package_id, video_id, out_dir):
     out = Path(out_dir); out.mkdir(parents=True, exist_ok=True)
     rows = {r["package_id"]: r for r in csv.DictReader(open(ROOT / "apps/committee_youtube/data/gpo_hearings.csv"))}
     row = rows[package_id]
@@ -95,5 +95,4 @@ def main(package_id, video_id, out_dir, proxy=None):
 
 
 if __name__ == "__main__":
-    a = sys.argv[1:]; proxy = a[a.index("--proxy") + 1] if "--proxy" in a else None
-    main(a[0], a[1], a[2], proxy)
+    main(*sys.argv[1:4])
