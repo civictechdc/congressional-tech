@@ -312,38 +312,48 @@ GPO's printed transcript is the record, but it arrives 6–8 months after a Hous
 
 **Which print is a meeting's.** A print is matched to a meeting by event ID, or when the committee held it that day and one of three things is true: the titles agree, the print collects several hearings under one title (an Appropriations volume, a multi-day print), or it is the day's only print for the committee's only meeting. A markup takes only a print that says it is one. The date alone is not enough: a committee often holds a hearing and a markup, or two hearings, on one day, and the date would give each the other's transcript. An earlier version of this index did that, and 676 meetings claimed a print that was another proceeding's. Congress.gov's own `hearingTranscript` field makes the same mistake: it ties six unrelated Appropriations hearings of March 4, 2015 to one print, so it is not used.
 
-**Committee transcripts.** Committees attach their own transcripts to meeting records as documents ("Hearing: Transcript", "Markup Transcript"). 3,408 meetings have one, all but one of them in the House. For 548 meetings it is the only text, and 285 of those are markups, which GPO never prints.
+**Committee transcripts.** House committees attach their own transcripts to meeting records as documents ("Hearing: Transcript", "Markup Transcript"), and Senate committees post them on the hearing's page. 3,953 meetings have one: 3,410 in the House, 531 in the Senate and 12 of the joint bodies. For 599 meetings it is the only text (551 House, 48 Senate), and 285 of those are markups, which GPO never prints.
 
 **Which recording is a meeting's.** A recording counts when Congress.gov links it, a tracked video carries the meeting's event ID, a tracked video of the committee was posted within a day before to three days after with a matching title or naming one of the same bills (the matcher's rules for printed hearings, applied to unprinted meetings too), a tracked upload of the committee is titled with the meeting's date, or is a generic hearing or markup upload from the meeting's day when the committee held nothing else that day or the title names the meeting's subcommittee, or the Senate archive has one for the committee and day (including a House committee's joint hearing with its Senate counterpart). A joint hearing is entered once per committee, so same-day meetings with the same title share their records. Recordings found by hand, on a committee's own event page or a partner committee's channel, are listed in `research/data/meeting_recordings_found.csv` and counted.
 
 | Where the text is | House meetings | Senate meetings |
 |---|---|---|
 | GPO print | 8,645 (67%) | 2,695 (59%) |
-| Committee's own transcript | 548 (4%) | — |
+| Committee's own transcript | 551 (4%) | 48 (1%) |
 | YouTube caption track (uploader's or automatic) | 2,034 (16%) | 31 (1%) |
-| Senate player caption track (recordings since mid-2023) | — | 680 (15%) |
-| Recording with no text | 1,149 (9%) | 650 (14%) |
-| No recording found | 489 (4%) | 519 (11%) |
+| Senate player caption track (recordings since mid-2023) | — | 652 (14%) |
+| Recording with no text | 1,147 (9%) | 630 (14%) |
+| No recording found | 488 (4%) | 519 (11%) |
 
-**Meetings with nothing** (`research/data/meetings_without_records.csv`): 973 since 2013 have no print, no transcript, no recording found and no captions. 549 are closed by nature: the record's type or title says closed, briefing or deposition. Of the 448 House meetings, 260 are markups and business meetings and 188 are hearings, led by Intelligence (144 of the House rows in all, closed by design), Natural Resources (37), Ways and Means (32) and Veterans' Affairs (31). 270 have witness or meeting documents. The 424 open meetings have all been searched for. Some were never held: Congress.gov keeps a meeting as Scheduled when the committee postponed it. When the postponed meeting was re-entered under a new event ID and held within 60 days, the index marks the stale record with `rescheduled_to` and leaves it out of this file (44 meetings). Eleven more say so in their own title ("POSTPONED: FY19 Oversight Hearing on the NASA James Webb Space Telescope", or just "Test", dated Christmas Day 2019) and are marked `not_held`.
+**Meetings with nothing** (`research/data/meetings_without_records.csv`): 970 since 2013 have no print, no transcript, no recording found and no captions. 549 are closed by nature: the record's type or title says closed, briefing or deposition. Of the 447 House meetings, 260 are markups and business meetings and 187 are hearings, led by Intelligence (144 of the House rows in all, closed by design), Natural Resources (37), Ways and Means (31) and Veterans' Affairs (31). 294 have documents, in the record or on the committee's page. The 421 open meetings have all been searched for. Some were never held: Congress.gov keeps a meeting as Scheduled when the committee postponed it. When the postponed meeting was re-entered under a new event ID and held within 60 days, the index marks the stale record with `rescheduled_to` and leaves it out of this file (44 meetings). Eleven more say so in their own title ("POSTPONED: FY19 Oversight Hearing on the NASA James Webb Space Telescope", or just "Test", dated Christmas Day 2019) and are marked `not_held`, as are two Senate hearings with no recording whose committee page is headed POSTPONED.
 
 ## What each meeting has on the record
 
 `research/data/meeting_completeness.csv` has one row per meeting: its recording, where its text is, its witness list and where that came from, its documents, its location. For open hearings that were held:
 
-| | House (9,821) | Senate (3,112) | Joint bodies (116) |
+| | House (9,821) | Senate (3,110) | Joint bodies (116) |
 |---|---|---|---|
 | Recording | 96% | 99% | 98% |
-| Text (print, transcript or captions) | 94% | 93% | 94% |
-| Witness list | 98% | 60% | 60% |
-| Any document | 98% | 29% | 1% |
+| Text (print, transcript or captions) | 94% | 94% | 94% |
+| Witness list | 98% | 96% | 60% |
+| Any document | 98% | 85% | 34% |
 | Location | 93% | 99% | 91% |
 
-**Congress.gov's House records are incomplete copies of the House's own repository.** Its meeting records are built from docs.house.gov, but not all of it arrives. `research/scripts/house_event_pages.py` read the repository's page for the 5,402 House and joint meetings whose record lacked documents, witnesses or text. 2,173 of them have documents the record lacks (18,232 in all: 8,094 witness statements, 3,694 Truth in Testimony forms, 3,246 biographies, 1,728 bills and amendments, 52 transcripts), and 1,879 have a witness list the record lacks (7,908 witnesses). With them, House hearings with a witness list go from 80% to 98%. Both are in `research/data/house_documents_found.csv` and `house_witnesses_found.csv`.
+A document counts when it has an address. In Congress.gov's own records that is 92% of House hearings and none of the Senate's.
 
-**Congress.gov lists no witnesses for the Senate at all.** Senate witness lists were filled from two places (`research/data/meeting_witnesses.csv`): the GPO record of the hearing's print, when the print and the meeting are each other's only match (48% of Senate hearings), and the meeting's own title for nomination hearings, whose nominees are their witnesses (13%). That leaves 40% of Senate hearings without a witness list: 872 have no print yet, and 360 share a print with other meetings, so the print can't say whose witnesses are whose. The Senate committees' own hearing pages list them, in four different page layouts.
+**Congress.gov's House records are incomplete copies of the House's own repository.** Its meeting records are built from docs.house.gov, but not all of it arrives. `research/scripts/house_event_pages.py` read the repository's page for the 5,741 House and joint meetings whose record lacked documents, witnesses, or a transcript or print. 2,191 of them have documents the record lacks (18,271 in all: 8,104 witness statements, 3,701 Truth in Testimony forms, 3,247 biographies, 1,735 bills and amendments, 55 transcripts), and 1,881 have a witness list the record lacks (7,921 witnesses). With them, House hearings with a witness list go from 80% to 98%. Both are in `research/data/house_documents_found.csv` and `house_witnesses_found.csv`.
 
-**GPO's witness lines come three ways** ("Mr. Nels Leader, Vice President, Bread Alone Bakery"; "Richard J. Powell, Executive Director, ClearPath"; surname first, "Campbell, Jr., J.H., President and CEO"), plus contents lines that are not witnesses at all. The reader in `congress_api.transcribe.metadata` handles the three and drops the fourth; `hearing-transcribe` uses the same reader for its participant list.
+**Congress.gov has no witnesses and no document files for the Senate.** Its Senate records name documents ("Generic Document", "Bills and Resolutions") without an address, and list no witnesses. The committees' own sites have both. `research/scripts/senate_hearing_pages.py` reads every hearing page that 20 Senate and joint committee sites list since June 2019 (4,831 pages) and finds the page of 2,837 of the 3,143 open hearings on record: the page that names the hearing's date and holds most of its subject, both in text that is the page's own. From those pages:
+
+- witnesses for 2,708 hearings (9,196, with a post for 8,025), in `research/data/senate_witnesses_found.csv`;
+- 14,258 documents for 2,695 hearings (7,636 witness statements, 1,392 senators' statements, 1,283 sets of questions for the record, 550 transcripts, 252 nominees' questionnaires), in `senate_documents_found.csv`;
+- the page itself, in `senate_hearing_pages_found.csv`.
+
+Senate witness lists (`research/data/meeting_witnesses.csv`) come from the GPO record of the hearing's print, when the print and the meeting are each other's only match (48% of Senate hearings), from the committee's page (48%), and from the meeting's own title for a nomination hearing, whose nominees are its witnesses (1%). Where a hearing has both a GPO list and a page, they were compared as a check on the page matching: of 1,216 hearings, 1,194 share most or all of their witnesses' surnames, and the 22 that share few are nomination hearings where GPO lists the senators who introduced the nominee and the page lists the nominee. 110 Senate hearings (4%) are left without a witness list: 81 have no page found, and 29 have a page that names no witnesses. The Joint Economic Committee and the Helsinki Commission write their witnesses in running text, which is not read; 46 joint hearings have no list.
+
+Three things the pages taught the matching. A listing's date can't be trusted: the Aging Committee's listing puts each hearing beside the date of the row above, and matched by listing date, 68 of its 78 hearings took the page of the hearing before. A page names dates that are not its own: sites carry a panel of coming hearings on every page, so a line that more than five pages carry is not counted. And a later page can name an earlier hearing's day and subject: the business meeting that reports a nominee gives the day of the nominee's hearing.
+
+**GPO's witness lines come three ways** ("Mr. Nels Leader, Vice President, Bread Alone Bakery"; "Richard J. Powell, Executive Director, ClearPath"; surname first, "Campbell, Jr., J.H., President and CEO"), plus contents lines that are not witnesses at all. The reader in `congress_api.transcribe.metadata` handles the three and drops the fourth; `hearing-transcribe` uses the same reader for its participant list, and the Senate pages' names go through it too. It takes a title off the front of a name (civil, clerical, or a military rank written in full or abbreviated: "Lieutenant General", "LTG", "Master Chief Petty Officer"), degrees and service branches off the end, and rejects a line that holds a noun of office or of paper ("State Director", "Printed Hearing Record"), which is a post or a document and not a person.
 
 The captions were fetched with `youtube-captions` and `senate-captions` (see the app README); they are search-grade text, unpunctuated for YouTube's automatic ones, with no speaker attribution. C-SPAN no longer publishes transcripts.
 
@@ -448,7 +458,7 @@ Eight agents took the 840 House and joint hearings still without a full recordin
   - `prior_status`: status before the research pass.
   - `verification`: the adversarial outcome (upheld, revised or refuted) where the row was checked;
   - `verdict_note` and `shared_video`: flags for videos matched to more than one hearing.
-- **`research/data/hearing_text_sources.csv`, `meeting_completeness.csv`, `meeting_witnesses.csv`, `house_documents_found.csv`, `house_witnesses_found.csv`:** one row per meeting for where its text is and what it has on the record, and the witnesses and documents found outside Congress.gov's records.
+- **`research/data/hearing_text_sources.csv`, `meeting_completeness.csv`, `meeting_witnesses.csv`, `house_documents_found.csv`, `house_witnesses_found.csv`, `senate_hearing_pages_found.csv`, `senate_witnesses_found.csv`, `senate_documents_found.csv`:** one row per meeting for where its text is and what it has on the record, and the witnesses, documents and committee pages found outside Congress.gov's records.
 - **`research/`:** the agents' briefs and raw results, the Congress.gov meeting records, the channel-search evidence, the Senate channel notes, and scripts. `research/scripts/aggregate.py` rebuilds `hearing_video_verdicts.csv` offline, byte for byte. See `research/README.md`.
 - **`packages/congress_shared/src/congress_shared/youtube/youtube-accounts.csv`:** the channel list.
 - **`apps/committee_youtube/data/youtube_event_id_report.csv`:** the weekly per-channel report (videos, event-ID coverage, captions).

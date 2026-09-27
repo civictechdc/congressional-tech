@@ -94,18 +94,19 @@ DEGREE = re.compile(r"^(?:(?:Ph|Ed|Psy|Pharm|Sc|M|J)\.? ?D|Dr\.? ?P\.? ?H|Esq)\.
 ## letters after a name: "Ph.D.", "F.A.A.P.", "MPA", "USN (Ret.)"
 CREDENTIAL = re.compile(r"^(?:(?:[A-Z]\.?){2,6}|(?:Ph|Ed|Psy|Pharm|Sc)\.? ?D\.?|Dr\.? ?P\.? ?H\.?|Esq\.?)(?: \(Ret\.?\))?$|^\(Ret\.?\)$")
 CONNECTIVE = {"and", "of", "for", "the", "to", "in", "on", "from", "by", "with", "at"}
-## a post rather than a person ("State Director"), or a name GPO ran together with the post ("Byrum, John Executive
-##  Director"), holds a noun of office
-OFFICE = {"director", "manager", "officer", "president", "secretary", "administrator", "commissioner", "chairman", "chairwoman", "counsel", "attorney",
-          "founder", "owner", "executive", "specialist", "professional", "coordinator", "advocate", "advocacy", "superintendent", "treasurer"}
+## a post rather than a person ("State Director"), a name GPO ran together with the post ("Byrum, John Executive
+##  Director"), or a document listed among the witnesses ("Printed Hearing Record") holds a noun of office or of paper
+NOT_A_NAME = {"director", "manager", "officer", "president", "secretary", "administrator", "commissioner", "commissioners", "chairman", "chairwoman", "counsel",
+              "attorney", "founder", "owner", "executive", "specialist", "professional", "coordinator", "advocate", "advocacy", "superintendent", "treasurer",
+              "record", "testimony", "statement", "hearing", "panel", "witnesses"}
 
 
 def is_name(text: str) -> bool:
     """Could this be a person's name? GPO's witness lines include contents lines ("Answers to questions from
     the following ...") and the broken-off end of a position ("Security Officer and Security Services
-    Administrator"); neither is two to six capitalised words without a connective, a noun of office or a digit."""
+    Administrator"); neither is two to six capitalised words without a connective, a noun of office or paper, or a digit."""
     words = [w.strip(",.-/").lower() for w in text.split()]
-    return 2 <= len(words) <= 6 and text[:1].isupper() and not any(c.isdigit() for c in text) and not (CONNECTIVE | OFFICE) & set(words)
+    return 2 <= len(words) <= 6 and text[:1].isupper() and not any(c.isdigit() for c in text) and not (CONNECTIVE | NOT_A_NAME) & set(words)
 
 
 def witness(text: str) -> Person:

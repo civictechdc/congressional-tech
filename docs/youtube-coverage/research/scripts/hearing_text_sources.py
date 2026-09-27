@@ -47,8 +47,11 @@ OUT = ROOT / "docs/youtube-coverage/research/data/hearing_text_sources.csv"
 OUT_NONE = ROOT / "docs/youtube-coverage/research/data/meetings_without_records.csv"
 ## recordings found by hand (a committee page's embed, a partner committee's channel) that no rule reaches
 FOUND = ROOT / "docs/youtube-coverage/research/data/meeting_recordings_found.csv"
-## documents on docs.house.gov that Congress.gov's meeting record lacks (house_documents.py)
-HOUSE_DOCUMENTS = ROOT / "docs/youtube-coverage/research/data/house_documents_found.csv"
+## documents on docs.house.gov and on Senate committees' hearing pages that the Congress.gov records lack
+##  (house_event_pages.py, senate_hearing_pages.py)
+DOCUMENTS_FOUND = [ROOT / "docs/youtube-coverage/research/data/house_documents_found.csv", ROOT / "docs/youtube-coverage/research/data/senate_documents_found.csv"]
+## the Senate committee's own page for a hearing, whose title says when the hearing was postponed or cancelled (senate_hearing_pages.py)
+PAGES_FOUND = ROOT / "docs/youtube-coverage/research/data/senate_hearing_pages_found.csv"
 TRANSCRIPT = re.compile(r"transcript", re.I)
 
 
@@ -244,11 +247,13 @@ def main(youtube_dir, senate_dir, probe_cache=None):
     if FOUND.exists():
         for r in csv.DictReader(open(FOUND)):
             found[r["event_id"]].append(r["recording"])
-    found_transcripts = collections.defaultdict(list)
-    if HOUSE_DOCUMENTS.exists():
-        for r in csv.DictReader(open(HOUSE_DOCUMENTS)):
+    found_transcripts, found_documents = collections.defaultdict(list), set()
+    for path in DOCUMENTS_FOUND:
+        for r in csv.DictReader(open(path)) if path.exists() else ():
+            found_documents.add(r["event_id"])
             if r["kind"] == "transcript":
                 found_transcripts[r["event_id"]].append(r["url"])
+    page_title = {r["event_id"]: r["title"] for r in csv.DictReader(open(PAGES_FOUND))} if PAGES_FOUND.exists() else {}
     print(f"senate.gov probe: {len(probe_days)} committee-days without a Congress.gov link ({len(todo)} probed now), recordings for {sum(1 for v in probed.values() if v)}")
     rows = []
     for m in meetings:
@@ -274,8 +279,9 @@ def main(youtube_dir, senate_dir, probe_cache=None):
                      "other_recordings": " ".join(v for v in found[m["eventId"]] if v.startswith("http")),
                      "committee_transcripts": " ".join(dict.fromkeys([d["url"] for d in m.get("meetingDocuments") or [] if d.get("url") and TRANSCRIPT.search(f"{d.get('documentType')} {d.get('name')}")]
                                                                         + found_transcripts[m["eventId"]])),
-                     "text_source": "", "documents": "yes" if (m.get("witnessDocuments") or m.get("meetingDocuments")) else "no", "rescheduled_to": "",
-                     "not_held": "yes" if NOT_HELD.match(m.get("title") or "") else ""})
+                     ## a document has an address: Congress.gov's Senate records name documents without one
+                     "text_source": "", "documents": "yes" if m["eventId"] in found_documents or any(d.get("url") for d in (m.get("witnessDocuments") or []) + (m.get("meetingDocuments") or [])) else "no",
+                     "rescheduled_to": "", "not_held": "yes" if NOT_HELD.match(m.get("title") or "") else ""})
     ## a joint hearing is entered once per committee: same day, same title, one set of records
     twins = collections.defaultdict(list)
     for r in rows:
@@ -301,6 +307,8 @@ def main(youtube_dir, senate_dir, probe_cache=None):
             r["text_source"] = "video_no_captions"
         else:
             r["text_source"] = "no_video"
+            ## the record says scheduled, the committee's own page says postponed, and nothing was recorded
+            r["not_held"] = r["not_held"] or ("yes" if NOT_HELD.match(re.sub(r"^\W+", "", page_title.get(r["event_id"], ""))) else "")
         r["gpo_packages"], r["youtube_ids"], r["senate_urls"] = " ".join(sorted(r["gpo_packages"])), " ".join(r["youtube_ids"]), " ".join(r["senate_urls"])
     ## a postponed meeting re-entered under a new event ID keeps its old record as Scheduled: point it at the twin that was held
     same_title = collections.defaultdict(list)

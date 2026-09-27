@@ -7,19 +7,21 @@ One row per Congress.gov meeting record (scheduled or rescheduled), from the mee
 text index (`hearing_text_sources.csv`): its recording, where its text is, its witness list, its
 witness and meeting documents, its location and its related bills or nominations. Congress.gov lists
 witnesses for House meetings only, and not for all of them, so a hearing's witness list is filled from
-two other places when it is missing:
+the first of these that has one:
 
 - the House's Committee Repository (docs.house.gov), whose page for the event lists witnesses that
   Congress.gov's record lacks (`house_event_pages.py` reads them);
 - the GPO record (MODS) of the hearing's print, when the print and the meeting are each other's only
   match (a volume or a same-day print shared by several meetings can't say whose witnesses are whose);
 - the "Witness List" document attached to the meeting, read with `pdftotext` when it has a text layer;
-- the meeting's own title, for a Senate nomination hearing: the nominees it names are its witnesses;
-- the Senate committee's own page for the hearing (`senate_hearing_pages.py` reads them), for the Senate
-  hearings the first four leave without a list.
+- the Senate committee's own page for the hearing (`senate_hearing_pages.py` reads them);
+- the meeting's own title, for a Senate nomination hearing: the nominees it names are its witnesses.
+
+A document counts when it has an address. Congress.gov's Senate records name documents ("Generic
+Document", "Bills and Resolutions") without one; the files are on the committees' pages.
 
 Writes docs/youtube-coverage/research/data/meeting_completeness.csv (one row per meeting) and
-meeting_witnesses.csv (the witnesses filled from those two places; Congress.gov's own are in the
+meeting_witnesses.csv (the witnesses filled from those places; Congress.gov's own are in the
 meeting export), and prints the totals. MODS records and documents are cached under `--cache`.
 """
 import argparse, collections, csv, gzip, html, json, re, subprocess, sys, tempfile
@@ -40,6 +42,7 @@ OUT_WITNESSES = ROOT / "docs/youtube-coverage/research/data/meeting_witnesses.cs
 HOUSE_WITNESSES = ROOT / "docs/youtube-coverage/research/data/house_witnesses_found.csv"
 HOUSE_DOCUMENTS = ROOT / "docs/youtube-coverage/research/data/house_documents_found.csv"
 SENATE_WITNESSES = ROOT / "docs/youtube-coverage/research/data/senate_witnesses_found.csv"
+SENATE_DOCUMENTS = ROOT / "docs/youtube-coverage/research/data/senate_documents_found.csv"
 UA = {"User-Agent": "Mozilla/5.0"}
 CLOSED = re.compile(r"closed|briefing|deposition|executive session", re.I)
 
@@ -120,8 +123,8 @@ def main(cache):
     for e, prints in prints_of.items():
         for p in prints:
             meetings_of[p].append(e)
-    from_house, house_documents, from_senate = collections.defaultdict(list), collections.defaultdict(list), collections.defaultdict(list)
-    for path, into in ((HOUSE_WITNESSES, from_house), (HOUSE_DOCUMENTS, house_documents), (SENATE_WITNESSES, from_senate)):
+    from_house, from_senate, documents_found = collections.defaultdict(list), collections.defaultdict(list), collections.defaultdict(list)
+    for path, into in ((HOUSE_WITNESSES, from_house), (SENATE_WITNESSES, from_senate), (HOUSE_DOCUMENTS, documents_found), (SENATE_DOCUMENTS, documents_found)):
         if path.exists():
             for r in csv.DictReader(open(path)):
                 into[r["event_id"]].append(r)
@@ -147,13 +150,13 @@ def main(cache):
         elif not listed and from_list.get(e):
             source, count = "witness list document", len(from_list[e])
             filled += [{"event_id": e, **w, "source": "witness list document", "from": witness_list[e]} for w in from_list[e]]
+        elif not listed and from_senate[e]:
+            source, count = "senate committee page", len(from_senate[e])
+            filled += [{"event_id": e, "name": w["name"], "position": w["position"], "organization": w["organization"], "source": "senate committee page", "from": w["page"]} for w in from_senate[e]]
         elif not listed and kind(m) == "hearing" and nominees(m.get("title") or ""):
             named = nominees(m["title"])
             source, count = "meeting title (nominees)", len(named)
             filled += [{"event_id": e, "name": n, "position": f"nominee to be {office}", "organization": "", "source": "meeting title (nominees)", "from": m["_url"]} for n, office in named]
-        elif not listed and from_senate[e]:
-            source, count = "senate committee page", len(from_senate[e])
-            filled += [{"event_id": e, "name": w["name"], "position": w["position"], "organization": w["organization"], "source": "senate committee page", "from": w["page"]} for w in from_senate[e]]
         shared = [p for p in prints_of[e] if p not in own_print.values()]
         rows.append({"event_id": e, "congress": m["congress"], "chamber": m.get("chamber", ""), "kind": kind(m), "closed": "yes" if m.get("type", "").startswith("Closed") or CLOSED.search(m.get("title") or "") else "",
                      "date": m["date"][:10], "committees": r["committees"], "title": r["title"],
@@ -162,8 +165,9 @@ def main(cache):
                      "witnesses": count, "witness_source": source,
                      "witness_list_document": "scan" if e in witness_list and not from_list.get(e) else "yes" if e in witness_list else "",
                      "print_shared_with_other_meetings": "yes" if not source and shared else "",
-                     "witness_documents": len(m.get("witnessDocuments") or []), "meeting_documents": len(m.get("meetingDocuments") or []),
-                     "documents_only_on_docs_house_gov": len(house_documents[e]),
+                     "witness_documents": sum(1 for d in m.get("witnessDocuments") or [] if d.get("url")), "meeting_documents": sum(1 for d in m.get("meetingDocuments") or [] if d.get("url")),
+                     ## on docs.house.gov, or on the Senate committee's page for the hearing
+                     "documents_found_elsewhere": len(documents_found[e]),
                      "location": "yes" if m.get("location") else "", "related_items": len(m.get("relatedItems") or []),
                      "rescheduled_to": r["rescheduled_to"], "not_held": r["not_held"]})
     rows.sort(key=lambda r: (r["date"], r["event_id"]))
@@ -179,7 +183,7 @@ def main(cache):
             n = len(hearings)
             c = collections.Counter(r["witness_source"] or ("none (a scanned witness list)" if r["witness_list_document"] == "scan" else "none (print shared with other meetings)" if r["print_shared_with_other_meetings"] else "none") for r in hearings)
             print(f"  {chamber} open hearings ({n:,}) witness list: " + ", ".join(f"{k} {v:,} ({v / n:.0%})" for k, v in c.most_common()))
-            any_document = sum(1 for r in hearings if r["witness_documents"] or r["meeting_documents"] or r["documents_only_on_docs_house_gov"])
+            any_document = sum(1 for r in hearings if r["witness_documents"] or r["meeting_documents"] or r["documents_found_elsewhere"])
             print(f"      recording {sum(1 for r in hearings if r['recording']) / n:.0%}, text {sum(1 for r in hearings if r['text_source'] != 'no_video' and r['text_source'] != 'video_no_captions') / n:.0%}, "
                   f"any document {any_document / n:.0%} (in Congress.gov's record {sum(1 for r in hearings if r['witness_documents'] or r['meeting_documents']) / n:.0%}), location {sum(1 for r in hearings if r['location']) / n:.0%}")
 

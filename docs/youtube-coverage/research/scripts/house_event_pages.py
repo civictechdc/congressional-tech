@@ -7,8 +7,8 @@ Congress.gov's meeting records are built from the House's Committee Repository (
 not all of it arrives: some records have no witnesses or documents although the repository's page for
 the event has both, and transcripts posted months after a hearing are often absent. This reads the
 repository's page for every scheduled House or joint meeting since the 113th Congress whose record has
-no documents, no witnesses (for a hearing), or no transcript or print, and writes what the page has
-that the record lacks:
+no documents, no witnesses (for a hearing), or no transcript of its own and no print, and writes what
+the page has that the record lacks:
 
 - docs/youtube-coverage/research/data/house_documents_found.csv: one row per document (`kind`:
   transcript, witness list, witness statement, witness biography, truth in testimony, member
@@ -26,6 +26,7 @@ import requests
 
 ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from hearing_text_sources import TRANSCRIPT  # noqa: E402
 from meeting_completeness import kind  # noqa: E402
 
 MEETINGS = ROOT.parent / "pipeline-data/congress_meetings.jsonl.gz"
@@ -88,10 +89,12 @@ def main(cache, threads):
         for line in f:
             m = json.loads(line)
             r = index.get(m["eventId"])
+            ## what the record itself lacks: the index's text source would count the transcripts this script found
+            transcript = any(TRANSCRIPT.search(f"{d.get('documentType')} {d.get('name')}") for d in m.get("meetingDocuments") or [] if d.get("url"))
             if r and m.get("chamber") != "Senate" and not r["not_held"] and (
                     not (m.get("meetingDocuments") or m.get("witnessDocuments"))
                     or (kind(m) == "hearing" and not m.get("witnesses"))
-                    or r["text_source"] not in ("gpo", "committee_transcript")):
+                    or not (r["gpo_packages"] or transcript)):
                 lacking.append(m)
     with ThreadPoolExecutor(threads) as pool:
         pages = dict(zip([m["eventId"] for m in lacking], pool.map(lambda m: fetch(m["eventId"], cache), lacking)))
