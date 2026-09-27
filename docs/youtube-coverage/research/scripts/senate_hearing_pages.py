@@ -1,5 +1,5 @@
 """
-Read Senate committees' own hearing pages for the witness lists and documents Congress.gov doesn't have.
+Read Senate and joint committees' own hearing pages for the witness lists and documents Congress.gov doesn't have.
 
     python docs/youtube-coverage/research/scripts/senate_hearing_pages.py [--cache ~/hearing-text] [--threads 8]
 
@@ -13,7 +13,7 @@ Finding the page. A site's hearings are listed one of two ways:
   /wp-json/wp/v2/<type> for each of their hearing types, a hundred hearings to a request;
 - the rest list their hearings a page at a time, at /hearings?PageNum_rs=N, /hearings/?mt_page=N,
   /hearings?page=N and the like. The form a site uses is the one whose second page lists hearings its
-  first does not.
+  first does not; a site that counts its pages from 0 lists other hearings there than on page 1.
 
 Listings are read back to the first Senate meeting record (June 2019), and every page they list is
 fetched. A listing says which pages there are, not when each hearing was: some sites file a hearing
@@ -34,7 +34,7 @@ A search engine was tried first and found the page for one hearing in five: Cong
 paraphrase the committees' ("Hearings to examine the state of patent eligibility in America"), and
 searches return testimony files ahead of the page they belong to.
 
-Reading the page. The sites come in six layouts:
+Reading the page. The sites come in seven layouts:
 
 - a list of `vcard`s with `fn`, `title` and `org` (Finance, Appropriations, Budget, Banking);
 - a name over `witness-content` details, in a list item, under a "Witnesses", "Nominees" or "Panel"
@@ -43,12 +43,14 @@ Reading the page. The sites come in six layouts:
 - list items with a `person` or `full-name`, an `occupation` and an `organization` (Veterans'
   Affairs, Environment and Public Works, Small Business);
 - `field-hearing-new-witness` items, the name in a `group-header` (Indian Affairs' older hearings);
+- `paragraph--witness` items with a field each for name, position and organization (the Helsinki
+  Commission);
 - a `jet-listing-grid` under a "Witnesses" heading, first and last name in separate headings (HSGAC).
 
 Senators' statements are laid out like witnesses, under a heading of their own ("Member Statements",
 "Opening Remarks"); those sections are passed over. Not read: the Joint Economic Committee's pages,
 which name witnesses in running text, and Indian Affairs' newer pages, which fill the list in the
-browser.
+browser. The Helsinki Commission's site, csce.gov, is not the Senate's but is read the same way.
 
 Documents are the files a page links (/download/, /wp-content/uploads/ ...), less the files that more
 than five of the site's pages link (the committee's rules, a report in the margin). Each is typed by
@@ -86,10 +88,11 @@ SITE = {"ssaf00": "agriculture.senate.gov", "ssap00": "appropriations.senate.gov
         "ssbu00": "budget.senate.gov", "sscm00": "commerce.senate.gov", "sseg00": "energy.senate.gov", "ssev00": "epw.senate.gov", "ssfi00": "finance.senate.gov",
         "ssfr00": "foreign.senate.gov", "ssga00": "hsgac.senate.gov", "sshr00": "help.senate.gov", "ssju00": "judiciary.senate.gov", "ssra00": "rules.senate.gov",
         "sssb00": "sbc.senate.gov", "ssva00": "veterans.senate.gov", "slia00": "indian.senate.gov", "spag00": "aging.senate.gov", "slin00": "intelligence.senate.gov",
-        "jsec00": "jec.senate.gov"}
+        "jsec00": "jec.senate.gov", "jcse00": "csce.gov"}
 ## the forms a listing's address takes
 LISTINGS = ["/hearings?PageNum_rs={}", "/committee-activity/hearings?PageNum_rs={}", "/hearings/?mt_page={}", "/committee-activity/hearings/?mt_page={}",
-            "/hearings?page={}", "/public/index.cfm/hearings?page={}", "/public/index.cfm/hearings-calendar?page={}", "/hearings-and-markups?PageNum_rs={}"]
+            "/hearings?page={}", "/public/index.cfm/hearings?page={}", "/public/index.cfm/hearings-calendar?page={}", "/hearings-and-markups?PageNum_rs={}",
+            "/hearings-briefings/hearings?page={}"]
 ## a hearing's page: /hearings/<name>, /meetings/<name>, hearings?ID=<id>, /2024/5/<name>
 HEARING_LINK = re.compile(r"<a[^>]+href=\"((?:https?://[\w.\-]+)?/(?:[\w\-/.]*/)?(?:(?:hearings?|meetings|hearings-and-markups)/[^\"#?]+|hearings(?:-calendar)?\?(?:ID|id)=[\w\-]+"
                           r"|\d{4}/\d{1,2}/[^\"#?/]+))\"[^>]*>(.*?)</a>", re.S)
@@ -102,7 +105,7 @@ MONTHS = "jan feb mar apr may jun jul aug sep oct nov dec".split()
 ## "6/12/2019", "06.12.19", "June 12, 2019", "Wednesday, March 11th, 2026", "Jun 24, 2026", "2019-06-12"
 DATE = re.compile(r"\b(\d{1,2})[/.](\d{1,2})[/.](\d{2,4})\b|\b((?:" + "|".join(MONTHS) + r")[a-z]*)\.? (\d{1,2})(?:st|nd|rd|th)?\s*,?\s*(\d{4})\b|\b(\d{4})-(\d{2})-(\d{2})\b", re.I)
 ## a file a page links, and what its link or name says it is
-FILE = re.compile(r"<a\b[^>]*href=\"([^\"]*(?:/download/|/wp-content/uploads/|/_cache/files/|/imo/media/doc/|/services/files/|/sites/default/files/|files\.serve|\.pdf)[^\"]*)\"[^>]*>(.*?)</a>", re.S | re.I)
+FILE = re.compile(r"<a\b[^>]*href=\"([^\"]*(?:/download/|/wp-content/uploads/|/_cache/files/|/imo/media/doc/|/services/files/|/sites/[^\"]*/files/|files\.serve|\.pdf)[^\"]*)\"[^>]*>(.*?)</a>", re.S | re.I)
 KINDS = [("transcript", r"transcript"), ("questions for the record", r"qfr|questions?[ \-_]for[ \-_]the[ \-_]record|responses?[ \-_]to[ \-_](?:written[ \-_])?questions"),
          ("questionnaire", r"questionnaire"), ("witness biography", r"\bbio(?:graphy)?\b|/bio_"), ("witness statement", r"testimony"), ("member statement", r"statement")]
 text = lambda s: re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", s or ""))).strip()
@@ -120,7 +123,7 @@ def sections(page_html, levels):
 
 
 def witnesses(page_html, url):
-    """The witnesses a hearing page lists, by whichever of the six layouts it uses."""
+    """The witnesses a hearing page lists, by whichever of the seven layouts it uses."""
     page_html, out = re.sub(r"<!--.*?-->", "", page_html, flags=re.S), []
     if "capigacr-widget-card" in page_html:
         for section in re.split(r"capigacr-widget-card__panel-section\"", page_html)[1:]:
@@ -156,6 +159,11 @@ def witnesses(page_html, url):
             name = re.search(r"class=\"(?:full-name|person)\">(.*?)</(?:h4|div)>", item, re.S)
             if name:
                 out.append(person(name.group(1), re.findall(r"class=\"(?:occupation|organization)\">(.*?)</div>", item, re.S), url))
+    elif "paragraph--witness" in page_html:
+        for item in re.split(r"paragraph--witness\"", page_html)[1:]:
+            name = re.search(r"witness__field-name\">(.*?)</div>", item, re.S)
+            if name:
+                out.append(person(name.group(1), re.findall(r"witness__field-(?:position|organization)\">(.*?)</div>", item, re.S), url))
     elif "field-hearing-new-witness" in page_html:
         for item in re.split(r"field-collection-item-field-hearing-new-witness", page_html)[1:]:
             name = re.search(r"class=\"group-header\">(.*?)</div>", item, re.S)
@@ -172,8 +180,9 @@ def witnesses(page_html, url):
 
 
 def documents(page_html, url):
-    """(kind, name, file) for each file a hearing page links. The name is the link's own words, or, under a button
-    ("Download Testimony"), the heading it stands under: the witness or senator whose file it is."""
+    """(kind, name, file) for each file a hearing page links. The name is the link's own words; under a button
+    ("Download Testimony"), the heading it stands under, the witness or senator whose file it is; and the file's
+    own name when the link is a picture."""
     page_html, out = re.sub(r"<!--.*?-->", "", page_html, flags=re.S), {}
     for link in FILE.finditer(page_html):
         file = html.unescape(link.group(1)).strip()
@@ -182,7 +191,7 @@ def documents(page_html, url):
         file = file if file.startswith("http") else "https://" + re.match(r"https?://([^/]+)", url).group(1) + "/" + file.lstrip("/")
         said = text(link.group(2))
         heading = re.findall(r"<h[2-5][^>]*>(.*?)</h[2-5]>", page_html[max(0, link.start() - 2500):link.start()], re.S)
-        name = text(heading[-1]) if heading and (not said or re.match(r"(download|view|read|open)\b", said, re.I)) else said
+        name = text(heading[-1]) if heading and re.match(r"(download|view|read|open)\b", said, re.I) else said or file.rsplit("/", 1)[-1]
         out.setdefault(file, (next((k for k, pattern in KINDS if re.search(pattern, f"{said} {file.rsplit('/', 1)[-1]}", re.I)), "other"), name, file))
     return list(out.values())
 
@@ -261,7 +270,8 @@ def listed(site, cache):
         return out
     first = {f: {r[1] for r in listing_page(site, f, 1, cache)} for f in LISTINGS}
     form = next((f for f in LISTINGS if first[f] and {r[1] for r in listing_page(site, f, 2, cache)} - first[f]), None) or next((f for f in LISTINGS if first[f]), None)
-    for n in range(1, 300) if form else ():
+    from_0 = form and {r[1] for r in listing_page(site, form, 0, cache)} - first[form]
+    for n in range(0 if from_0 else 1, 300) if form else ():
         have = {o[1] for o in out}
         new = [r for r in listing_page(site, form, n, cache) if r[1] not in have]
         if not new:

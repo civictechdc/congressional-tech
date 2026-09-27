@@ -7996,6 +7996,7 @@ event_id,name,position,organization,source,from
 325431,René A. Campos,Senior Director of Government Relations for Veterans-Wounded Warrior Care,Military Officers Association of America,senate committee page,https://www.veterans.senate.gov/2020/3/legislative-presentation-of-multiple-veterans-service-organizations-axpow-pva-sva-gsw-moaa-fra-iava
 325431,Robert Certain,National Commander,American Ex-Prisoners of War,senate committee page,https://www.veterans.senate.gov/2020/3/legislative-presentation-of-multiple-veterans-service-organizations-axpow-pva-sva-gsw-moaa-fra-iava
 325613,Alex Azar,Secretary,U.S. Department of Health and Human Services,senate committee page,https://www.appropriations.senate.gov/hearings/review-of-the-fy2021-budget-request-for-hhs
+325614,H.E. Miroslav Lajcak,Minister of Foreign Affairs,Slovakia,senate committee page,https://www.csce.gov/hearings/slovakia-s-chairmanship-of-the-osce
 325669,Chad Wolf,Acting Secretary,U.S. Department of Homeland Security,senate committee page,https://www.appropriations.senate.gov/hearings/review-of-the-fy2021-budget-request-for-dhs
 325720,Jose A. Quinonez,Founder and CEO,"Mission Asset Fund, San Francisco",gpo,CHRG-116jhrg36469
 325720,Nathaniel Hendren,Professor of Economics and Founding Co- Director of Opportunity Insights,"Harvard University, Cambridge",gpo,CHRG-116jhrg36469
@@ -8122,6 +8123,9 @@ event_id,name,position,organization,source,from
 325986,Gregg Doud,Chief Agricultural Negotiator,"Office of the United States Trade Representative, Washington",gpo,CHRG-116shrg38312
 325986,Robert Johansson,Chief Economist,"Office of the Chief Economist, U.S. Department of Agriculture, Washington",gpo,CHRG-116shrg38312
 325986,Ted McKinney,Under Secretary for Trade and Foreign Agricultural Affairs,"U.S. Department of Agriculture, Washington",gpo,CHRG-116shrg38312
+325987,Mariya Y. Omelicheva,Professor of Strategy at the United States National War College,National Defense University,senate committee page,https://www.csce.gov/hearings/russia-s-counterproductive-counterterrorism
+325987,Michael Carpenter,Senior Director,Penn Biden Center for Diplomacy and Global Engagement,senate committee page,https://www.csce.gov/hearings/russia-s-counterproductive-counterterrorism
+325987,Rachel Denber,"Deputy Director, Europe and Central Asia Division",Human Rights Watch,senate committee page,https://www.csce.gov/hearings/russia-s-counterproductive-counterterrorism
 325988,Jeffery Rupert,Director,"Office of Wildland Fire, U.S. Department of the Interior",gpo,CHRG-116shrg37802
 325988,"John ""Chris Maisch",""" Alaska State Forester",on behalf of the National Association of State Foresters,gpo,CHRG-116shrg37802
 325988,Shawna Legarza,National Director,"Fire and Aviation Management, USDA Forest Service",gpo,CHRG-116shrg37802
@@ -8344,6 +8348,13 @@ event_id,name,position,organization,source,from
 326165,Ben Buchanan,Assistant Teaching Professor,"School of Foreign Service Senior Faculty Fellow, Center for Security and Emerging Technology, Georgetown University",gpo,CHRG-116shrg39542
 326165,Eric L. Hirschhorn,Former Under Secretary for Industry and Security,Department of Commerce,gpo,CHRG-116shrg39542
 326165,Nova J. Daly,Former Deputy Assistant Secretary of Treasury for Investment Security and Senior Public Policy Advisor,Wiley Rein LLP,gpo,CHRG-116shrg39542
+326180,Aaron Jenkins,Vice President of Policy and Advocacy,"The Expectations Project, Washington, DC",senate committee page,https://www.csce.gov/hearings/responding-to-hate-crimes
+326180,Alina Bricman,Elected President,"European Union of Jewish Students, Brussels, Belgium",senate committee page,https://www.csce.gov/hearings/responding-to-hate-crimes
+326180,Father James Martin,Editor at Large,"America Media, New York, NY",senate committee page,https://www.csce.gov/hearings/responding-to-hate-crimes
+326180,Hazzan Jeffrey Myers,Rabbi and Cantor,"Tree of Life Synagogue, Pittsburgh, PA",senate committee page,https://www.csce.gov/hearings/responding-to-hate-crimes
+326180,Imam Gamal Fouda,Imam,"Al Noor Mosque, Christchurch, New Zealand[Video Testimony]",senate committee page,https://www.csce.gov/hearings/responding-to-hate-crimes
+326180,Radia Bakkouch,President,"Coexister, Paris, France",senate committee page,https://www.csce.gov/hearings/responding-to-hate-crimes
+326180,Usra Ghazi,"Director of Policy and Programs, America Indivisible","Mayor’s Interfaith Council, Washington, DC",senate committee page,https://www.csce.gov/hearings/responding-to-hate-crimes
 326183,Michael Leary,Inspector General,Government Publishing Office,senate committee page,https://www.rules.senate.gov/hearings/oversight-of-the-government-publishing-office_-office-of-the-inspector-general
 326184,Christopher A. Wray,Director,Federal Bureau of Investigation,senate committee page,https://www.judiciary.senate.gov/committee-activity/hearings/07/23/2019/oversight-of-the-federal-bureau-of-investigation
 326186,Marcia Bernicat,"Principal Deputy Assistant Secretary, Bureau of Oceans and International Environmental and Scientific Affairs",U.S. Department of State,senate committee page,https://www.foreign.senate.gov/hearings/confronting-ebola-addressing-a-21st-century-global-health-crisis
@@ -8372,6 +8383,7 @@ event_id,name,position,organization,source,from
 326203,Deborah Temkin,Senior Director of Education Research,Child Trends,gpo,CHRG-116shrg37458
 326203,Max Schachter,Founder and Chief Executive Officer,Safe Schools for Alex,gpo,CHRG-116shrg37458
 326203,Tom Hoyer,Treasurer,Stand with Parkland--The National Association of Families for Safe Schools,gpo,CHRG-116shrg37458
+326204,Harlem Desir,Representative on Freedom of the Media,Organization for Security and Cooperation in Europe,senate committee page,https://www.csce.gov/hearings/state-of-media-freedom-in-the-osce-region
 326205,Carl Whitney Bentzel,nominee to be a Federal Maritime Commissioner,,meeting title (nominees),https://api.congress.gov/v3/committee-meeting/116/senate/326205
 326205,Ian Paul Steff,nominee to be Assistant Secretary of Commerce and Director General of the United States and Foreign Commercial Service,,meeting title (nominees),https://api.congress.gov/v3/committee-meeting/116/senate/326205
 326205,Michael J.K. Kratsios,nominee to be an Associate Director of the Office of Science and Technology Policy,,meeting title (nominees),https://api.congress.gov/v3/committee-meeting/116/senate/326205
@@ -8427,6 +8439,19 @@ event_id,name,position,organization,source,from
 326260,Angela Stubblefield,Deputy Associate Administrator for Security/Hazardous Materials Safety,Federal Aviation Administration,senate committee page,https://www.appropriations.senate.gov/hearings/oversight-of-the-federal-aviation-administration
 326260,Carl Burleson,Acting Deputy Administrator,Federal Aviation Administration,senate committee page,https://www.appropriations.senate.gov/hearings/oversight-of-the-federal-aviation-administration
 326260,Winsome Lenfert,Deputy Associate Administrator for Airports,Federal Aviation Administration,senate committee page,https://www.appropriations.senate.gov/hearings/oversight-of-the-federal-aviation-administration
+326300,Alexander Cooley,Director,"Columbia University's Harriman Institute for the Study of Russia, Eurasia and Eastern Europe",senate committee page,https://www.csce.gov/hearings/tools-of-transnational-repression
+326300,Bruno Min,Senior Legal and Policy Advisor,Fair Trials,senate committee page,https://www.csce.gov/hearings/tools-of-transnational-repression
+326300,Nate Schenkkan,Director for Special Research,Freedom House,senate committee page,https://www.csce.gov/hearings/tools-of-transnational-repression
+326300,Sandra A. Grossman,Founding Partner,"Grossman Young &amp; Hammond, Immigration Law, LLC",senate committee page,https://www.csce.gov/hearings/tools-of-transnational-repression
+326320,Alfiaz Vaiya,Coordinator,Anti-Racism and Diversity Intergroup,senate committee page,https://www.csce.gov/hearings/the-state-of-diversity-and-inclusion-in-europe
+326320,Councilor Irene Appiah,"Hamburg, Germany",,senate committee page,https://www.csce.gov/hearings/the-state-of-diversity-and-inclusion-in-europe
+326320,MEP Evin Incir,Sweden,,senate committee page,https://www.csce.gov/hearings/the-state-of-diversity-and-inclusion-in-europe
+326320,MEP Pierrette Herzberger-Fofana,Germany,,senate committee page,https://www.csce.gov/hearings/the-state-of-diversity-and-inclusion-in-europe
+326320,MEP Romeo Franz,Germany,,senate committee page,https://www.csce.gov/hearings/the-state-of-diversity-and-inclusion-in-europe
+326320,MEP Samira Rafaela,The Netherlands,,senate committee page,https://www.csce.gov/hearings/the-state-of-diversity-and-inclusion-in-europe
+326320,MP Danièle Obono,France,,senate committee page,https://www.csce.gov/hearings/the-state-of-diversity-and-inclusion-in-europe
+326320,MP Olivier Serva,France,,senate committee page,https://www.csce.gov/hearings/the-state-of-diversity-and-inclusion-in-europe
+326320,Vice-Chair Domenica Ghidei Biidu,The Netherlands,European Commission against Racism and Intolerance,senate committee page,https://www.csce.gov/hearings/the-state-of-diversity-and-inclusion-in-europe
 326342,Jane Waldfogel,Compton Foundation Centennial Professor for the Prevention of Children's and Youth Problems,"Columbia University, School of Social Work, New York",gpo,CHRG-116jhrg37820
 326342,Kristin Rowe-Finkbeiner,CEO/Executive Director and Co- Founder,"MomsRising, Kirkland",gpo,CHRG-116jhrg37820
 326342,Lyman Stone,Adjunct Fellow for the American Enterprise Institute,"Research Fellow, Institute for Family Studies, Wilmore",gpo,CHRG-116jhrg37820
@@ -8607,6 +8632,11 @@ event_id,name,position,organization,source,from
 326581,Daniel Bresette,Executive Director,Environmental and Energy Study Institute,gpo,CHRG-116shrg39883
 326581,Jennifer Layke,Global Director for Energy,World Resources Institute,gpo,CHRG-116shrg39883
 326581,W. Scott Tew,Executive Director,"Center for Energy Efficiency & Sustainability, Ingersoll Rand",gpo,CHRG-116shrg39883
+326582,Arsen Kharatyan,Founder & Editor-in-Chief,Aliq Media,senate committee page,https://www.csce.gov/hearings/reform-in-armenia
+326582,Daniel Ioannisian,Program Director,Union of Informed Citizens,senate committee page,https://www.csce.gov/hearings/reform-in-armenia
+326582,Hamazasp Danielyan,Member of Parliament (My Step Alliance),National Assembly of Armenia,senate committee page,https://www.csce.gov/hearings/reform-in-armenia
+326582,Jonathan D. Katz,Senior Fellow,German Marshall Fund,senate committee page,https://www.csce.gov/hearings/reform-in-armenia
+326582,Miriam Lanskoy,Senior Director,National Endowment for Democracy,senate committee page,https://www.csce.gov/hearings/reform-in-armenia
 326583,David Shaw,Provost and Executive Vice President,Mississippi State University,gpo,CHRG-116shrg52763
 326583,Diane Souvaine,Chair,"National Science Board, National Science Foundation",gpo,CHRG-116shrg52763
 326583,Rebecca M. Blank,Chancellor,University of Wisconsin--Madison,gpo,CHRG-116shrg52763
@@ -8693,6 +8723,11 @@ event_id,name,position,organization,source,from
 326639,Andeliz N. Castillo,"of New York, to be United States Alternate Executive Director of the Inter-American Development Bank, vice Eliot Pedrosa",,senate committee page,https://www.foreign.senate.gov/hearings/nominations-103119
 326639,Leslie Meredith Tsou,"of Virginia, a Career Member of the Senior Foreign Service, Class of Minister-Counselor, to be Ambassador Extraordinary and Plenipotentiary of the United States of America to the Sultanate of Oman",,senate committee page,https://www.foreign.senate.gov/hearings/nominations-103119
 326639,Peter M. Haymond,"of Virginia, a Career Member of the Senior Foreign Service, Class of Minister-Counselor, to be Ambassador Extraordinary and Plenipotentiary of the United States of America to the Lao People's Democratic Republic",,senate committee page,https://www.foreign.senate.gov/hearings/nominations-103119
+326640,Eric Schwartz,President,Refugees International,senate committee page,https://www.csce.gov/hearings/at-what-cost
+326640,Gonul Tol,"Director, Center for Turkish Studies",Middle East Institute (MEI),senate committee page,https://www.csce.gov/hearings/at-what-cost
+326640,Henri Barkey,Bernard L. and Bertha F. Cohen Professor,Lehigh University,senate committee page,https://www.csce.gov/hearings/at-what-cost
+326640,Merve Tahiroglu,Turkey Program Coordinator,Project on Middle East Democracy (POMED),senate committee page,https://www.csce.gov/hearings/at-what-cost
+326640,Talip Kucukcan,Professor of Sociology,Marmara University,senate committee page,https://www.csce.gov/hearings/at-what-cost
 326641,Christopher A. Wray,Director,"Federal Bureau of Investigation, U.S. Department of Justice",gpo,CHRG-116shrg42868
 326641,David J. Glawe,Under Secretary,"Office of Intelligence and Analysis, U.S. Department of Homeland Security",gpo,CHRG-116shrg42868
 326641,Russell Travers,Acting Director,"National Counterterrorism Center, Office of the Director of National Intelligence",gpo,CHRG-116shrg42868
@@ -8789,6 +8824,9 @@ event_id,name,position,organization,source,from
 326692,Jose Ortiz Jr.,Executive Director,"New York City Employment and Training Coalition, New York",gpo,CHRG-116jhrg39553
 326692,Oren Cass,Senior Fellow,"Manhattan Institute, New York",gpo,CHRG-116jhrg39553
 326692,Veronique De Rugy,Senior Research Fellow,"Mercatus Center, Arlington",gpo,CHRG-116jhrg39553
+326693,Amy Woolf,Specialist in Nuclear Weapons Policy,Congressional Research Services,senate committee page,https://www.csce.gov/hearings/the-importance-of-the-open-skies-treaty
+326693,Damian Leader,"Professor, New York University",Former Chief Arms Control Delegate for the United States Mission to the Organization for Security and Cooperation in Europe),senate committee page,https://www.csce.gov/hearings/the-importance-of-the-open-skies-treaty
+326693,Jon Wolfsthal,"Director, Nuclear Crisis Group","Senior Advisor, Global Zero",senate committee page,https://www.csce.gov/hearings/the-importance-of-the-open-skies-treaty
 326694,James C. Owens,Acting Administrator,National Highway Traffic Safety Administration,gpo,CHRG-116shrg52797
 326694,Joel Szabat,Acting Under Secretary for Policy,Department of Transportation,gpo,CHRG-116shrg52797
 326694,Robert L. Sumwalt III,Chairman,National Transportation Safety Board,gpo,CHRG-116shrg52797
@@ -8796,6 +8834,10 @@ event_id,name,position,organization,source,from
 326695,Jason Karlawish,professor of medicine,"medical ethics and health policy, and neurology; and co-director, Penn Memory Center, University of Pennsylvania, Philadelphia",gpo,CHRG-116shrg44963
 326695,Lauren Kovach,Alzheimer's advocate,Brighton,gpo,CHRG-116shrg44963
 326695,Marc A. Cohen,clinical professor of gerontology,"McCormack Graduate School, and co-director, LeadingAge LTSS Center, University of Massachusetts Boston; and research director, Center for Consumer Engagement in Health Innovation, Community Catalyst, Newton",gpo,CHRG-116shrg44963
+326700,Andrei Yeliseyeu,"Head of Monitoring Unit, International Strategic Action Network for Security (iSANS)","Research Director, EAST Center",senate committee page,https://www.csce.gov/hearings/not-so-good-neighbors
+326700,Brian Whitmore,Senior Fellow and Director of the Russia Program,CEPA,senate committee page,https://www.csce.gov/hearings/not-so-good-neighbors
+326700,Franak Viačorka,Research Media Analyst (Contractor),U.S. Agency for Global Media,senate committee page,https://www.csce.gov/hearings/not-so-good-neighbors
+326700,Sofya Orlosky,Senior Program Manager for Eurasia,Freedom House,senate committee page,https://www.csce.gov/hearings/not-so-good-neighbors
 326701,Amy Lehr,Director of the Human Rights Initiative,Center for Strategic & International Studies,senate committee page,https://www.foreign.senate.gov/hearings/challenges-and-opportunities-for-advancing-us-interests-in-the-united-nations-system-11/20/19
 326701,Brett Schaefer,Jay Kingham Fellow in International Regulatory Affairs,Heritage Foundation,senate committee page,https://www.foreign.senate.gov/hearings/challenges-and-opportunities-for-advancing-us-interests-in-the-united-nations-system-11/20/19
 326701,Jonathan Moore,"Principal Deputy Assistant Secretary, Bureau of International Affairs",United States Department of State,senate committee page,https://www.foreign.senate.gov/hearings/challenges-and-opportunities-for-advancing-us-interests-in-the-united-nations-system-11/20/19
@@ -8855,6 +8897,9 @@ event_id,name,position,organization,source,from
 326800,Patrick J. Lechleitner,Assistant Director for International Operations and Homeland Security Investigations,U.S. Immigration and Customs Enforcement,senate committee page,https://www.foreign.senate.gov/hearings/illicit-mining-threats-to-us-national-security-and-international-human-rights
 326800,Regina Thompson,"Deputy Assistant Director, Criminal Investigative Division",Federal Bureau of Investigation,senate committee page,https://www.foreign.senate.gov/hearings/illicit-mining-threats-to-us-national-security-and-international-human-rights
 326800,Richard H. Glenn,"Deputy Assistant Secretary, Bureau of International Narcotics and Law Enforcement Affairs",U.S. Department of State,senate committee page,https://www.foreign.senate.gov/hearings/illicit-mining-threats-to-us-national-security-and-international-human-rights
+326801,Cordell Carter II,"Executive Director, Socrates Program",The Aspen Institute,senate committee page,https://www.csce.gov/hearings/public-diplomacy-democracy-and-global-leadership
+326801,Lora Berg,"Senior Fellow, Leadership Programs",German Marshall Fund of the United States,senate committee page,https://www.csce.gov/hearings/public-diplomacy-democracy-and-global-leadership
+326801,Stacie Walters Fujii,Chair,American Council of Young Political Leaders,senate committee page,https://www.csce.gov/hearings/public-diplomacy-democracy-and-global-leadership
 326802,Sean Cairncross,Chief Executive Officer,Millennium Challenge Corporation,senate committee page,https://www.foreign.senate.gov/hearings/oversight-of-the-millennium-challenge-corporation
 326803,Joey Hood,"Principal Deputy Assistant Secretary, Bureau of Near Eastern Affairs",U.S. Department of State,senate committee page,https://www.foreign.senate.gov/hearings/lebanon-and-iraq-protests-insights-implications-and-objectives-for-us-policy
 326805,Bernard Barton,Chief Information Officer,Library of Congress,senate committee page,https://www.judiciary.senate.gov/committee-activity/hearings/oversight-of-modernization-of-the-united-states-copyright-office
@@ -8916,6 +8961,9 @@ event_id,name,position,organization,source,from
 327000,Charles P. Blahous,J. Fish and Lillian F. Smith Chair and Senior Research Strategist,"Mercatus Center, George Mason University",gpo,CHRG-116shrg39977
 327000,Douglas Holtz-Eakin,President,American Action Forum,gpo,CHRG-116shrg39977
 327000,Henry J. Aaron,Bruce and Virginia MacLaury Senior Fellow,The Brookings Institution,gpo,CHRG-116shrg39977
+327002,Melinda Haring,"Deputy Director, Atlantic Council’s Eurasia Center","Senior Fellow, Foreign Policy Research Institute",senate committee page,https://www.csce.gov/hearings/life-under-occupation
+327002,Oleg Sentsov,Ukrainian writer and filmmaker held prisoner by Russia for five years,,senate committee page,https://www.csce.gov/hearings/life-under-occupation
+327002,Tamila Tasheva,Deputy Permanent Representative of the President of Ukraine in the Autonomous Republic of Crimea,,senate committee page,https://www.csce.gov/hearings/life-under-occupation
 327003,Joel Szabat,Acting Under Secretary of Transportation for Policy,U.S. Department of Transportation,gpo,CHRG-116shrg52613
 327003,John McCarthy,Port of Tacoma Commission President and Co- Chair,The Northwest Seaport Alliance,gpo,CHRG-116shrg52613
 327003,Morteza Farajian,Executive Director,"Build America Bureau, U.S. Department of Transportation",gpo,CHRG-116shrg52613
@@ -8925,6 +8973,7 @@ event_id,name,position,organization,source,from
 327020,Chris Jahn,President and Chief Executive Officer,American Chemistry Council,gpo,CHRG-116shrg42637
 327020,Shakeel Kadri,Executive Director and Chief Executive Officer,"Center for Chemical Process Safety, American Institute of Chemical Engineers",gpo,CHRG-116shrg42637
 327020,Steve Sallman,Assistant Director,"Health, Safety, and Environment, United Steelworkers",gpo,CHRG-116shrg42637
+327040,Ingibjörg Sólrún Gísladóttir,Director,OSCE Office for Democratic Institutions and Human Rights (ODIHR),senate committee page,https://www.csce.gov/hearings/human-rights-and-democracy
 327041,Andrew Saul,Commissioner,Social Security Administration,senate committee page,https://www.aging.senate.gov/hearings/thats-not-the-government-calling-protecting-seniors-from-the-social-security-impersonation-scam
 327041,Gail S. Ennis,Inspector General,Social Security Administration,senate committee page,https://www.aging.senate.gov/hearings/thats-not-the-government-calling-protecting-seniors-from-the-social-security-impersonation-scam
 327041,Justin Groshon,Manager,Saco Social Security Office (appearing on behalf of the National Council of Social Security Management Associations),senate committee page,https://www.aging.senate.gov/hearings/thats-not-the-government-calling-protecting-seniors-from-the-social-security-impersonation-scam
@@ -8932,6 +8981,8 @@ event_id,name,position,organization,source,from
 327041,Nora Dowd Eisenhower,Executive Director,Mayor’s Commission on Aging,senate committee page,https://www.aging.senate.gov/hearings/thats-not-the-government-calling-protecting-seniors-from-the-social-security-impersonation-scam
 327044,Craig S. Faller,"Commander, United States Southern Command",,senate committee page,https://www.armed-services.senate.gov/hearings/20-01-30-united-states-africa-command-and-united-states-southern-command
 327044,Stephen J. Townsend,"Commander, United States Africa Command",,senate committee page,https://www.armed-services.senate.gov/hearings/20-01-30-united-states-africa-command-and-united-states-southern-command
+327046,Attila Mesterhazy,Member of the Parliament of Hungary,President (Acting) of the NATO Parliamentary Assembly,senate committee page,https://www.csce.gov/hearings/the-power-and-purpose-of-parliamentary-diplomacy
+327046,George Tsereteli,Member of the Parliament of the Republic of Georgia,President of the OSCE Parliamentary Assembly,senate committee page,https://www.csce.gov/hearings/the-power-and-purpose-of-parliamentary-diplomacy
 327060,Adrian Atizado,Deputy National Legislative Director,Disabled American Veterans,gpo,CHRG-116shrg44306
 327060,David J. McIntyre,President and Chief Executive Officer,TriWest Health Alliance,gpo,CHRG-116shrg44306
 327060,Richard A. Stone,Executive in Charge,"Veterans Health Administration, U.S. Department of Veterans Affairs; Accompanied by Kameron Matthews, Assistant Under Secretary for Health and Community Care, Veterans Health Administration; and Jennifer MacDonald, VA MISSION Act Lead, Veterans Health Administration",gpo,CHRG-116shrg44306
@@ -9153,6 +9204,9 @@ event_id,name,position,organization,source,from
 327305,Michael Paustian,Producer and President,"Iowa Pork Producers Association, Walcott",gpo,CHRG-116shrg44638
 327305,Patrick L. Johnson Jr.,Producer and Chairman,"Environmental Task Force, National Cotton Council, Tunica",gpo,CHRG-116shrg44638
 327305,Wayne Parrott,Professor,"Department of Crop and Soil Sciences, Institute of Plant Breeding, Genetics and Genomics, University of Georgia, Athens",gpo,CHRG-116shrg44638
+327324,Tatyana Margolin,"Regional Director, Eurasia Program",Open Society Foundations,senate committee page,https://www.csce.gov/hearings/moldova
+327324,Valeriu Pașa,Program Manager,WatchDog.MD,senate committee page,https://www.csce.gov/hearings/moldova
+327324,William H. Hill,"Global Fellow, Woodrow Wilson Center for International Studies",Former Head of the OSCE Mission to Moldova,senate committee page,https://www.csce.gov/hearings/moldova
 327343,James C. McConville,Chief of Staff of the Army,,senate committee page,https://www.armed-services.senate.gov/hearings/20-03-26-posture-of-the-department-of-the-army-
 327343,Ryan D. McCarthy,Secretary of the Army,,senate committee page,https://www.armed-services.senate.gov/hearings/20-03-26-posture-of-the-department-of-the-army-
 327380,Charles A. Richard,"Commander, United States Strategic Command",,senate committee page,https://www.armed-services.senate.gov/hearings/20-04-09-department-of-energy-budget-posture-
@@ -9426,6 +9480,9 @@ event_id,name,position,organization,source,from
 327627,Francis S. Collins,Director,National Institutes of Health,senate committee page,https://www.appropriations.senate.gov/hearings/review-of-operation-warp-speed-researching-manufacturing-and-distributing-a-safe_effective-coronavirus-vaccine
 327627,Gary Disbrow,"Acting Director, Biomedical Advanced Research and Development Authority",Acting Deputy Assistant Secretary for Preparedness and Response,senate committee page,https://www.appropriations.senate.gov/hearings/review-of-operation-warp-speed-researching-manufacturing-and-distributing-a-safe_effective-coronavirus-vaccine
 327627,Robert R. Redfield,Director,Centers for Disease Control and Prevention,senate committee page,https://www.appropriations.senate.gov/hearings/review-of-operation-warp-speed-researching-manufacturing-and-distributing-a-safe_effective-coronavirus-vaccine
+327631,Ian Kelly,Former U.S. Permanent Representative to the Organization for Security and Cooperation in Europe (OSCE),,senate committee page,https://www.csce.gov/hearings/human-rights-at-home-implications-for-us-leadership
+327631,Malcolm Momodou Jallow,Member of Parliament (Sweden),"General Rapporteur on Combating Racism and Intolerance, Parliamentary Assembly of the Council of Europe (PACE)",senate committee page,https://www.csce.gov/hearings/human-rights-at-home-implications-for-us-leadership
+327631,Nkechi Taifa,"Founding Principal & CEO, The Taifa Group, LLC","Convener, Justice Roundtable and Senior Fellow, Center for Justice, Columbia University",senate committee page,https://www.csce.gov/hearings/human-rights-at-home-implications-for-us-leadership
 327640,Caroline Crenshaw,Member Designate,Securities and Exchange Commission,senate committee page,https://www.banking.senate.gov/hearings/07/10/2020/nomination-hearing
 327640,Hester Peirce,Member Designate,Securities and Exchange Commission,senate committee page,https://www.banking.senate.gov/hearings/07/10/2020/nomination-hearing
 327640,Kyle Hauptman,Member Designate,National Credit Union Administration Board,senate committee page,https://www.banking.senate.gov/hearings/07/10/2020/nomination-hearing
@@ -9467,6 +9524,9 @@ event_id,name,position,organization,source,from
 327668,C.J. Mahoney,"of Kansas, to be Legal Adviser of the Department of State",,senate committee page,https://www.foreign.senate.gov/hearings/nominations-072120
 327668,Carlos Trujillo,"of Florida, to be an Assistant Secretary of State (Western Hemisphere Affairs)",,senate committee page,https://www.foreign.senate.gov/hearings/nominations-072120
 327668,Marshall Billingslea,"of Virginia, to be Under Secretary of State for Arms Control and International Security",,senate committee page,https://www.foreign.senate.gov/hearings/nominations-072120
+327681,Christiane Amanpour,"Chief International Anchor, CNN-PBS","Goodwill Ambassador for Freedom of Expression and Journalist Safety, UNESCO",senate committee page,https://www.csce.gov/hearings/human-rights-at-home-media-politics-and-safety-of-journalists
+327681,Courtney C. Radsch,Advocacy Director,Committee to Protect Journalists,senate committee page,https://www.csce.gov/hearings/human-rights-at-home-media-politics-and-safety-of-journalists
+327681,David Kaye,"Special Rapporteur on the Promotion and Protection of the Right to Freedom of Opinion and Expression, United Nations","Clinical Professor of Law, University of California – Irvine",senate committee page,https://www.csce.gov/hearings/human-rights-at-home-media-politics-and-safety-of-journalists
 327682,Bill Miller,President and CEO,American Gaming Association,senate committee page,https://www.judiciary.senate.gov/committee-activity/hearings/protecting-the-integrity-of-college-athletics
 327682,Dan Radakovich,Athletic Director,Clemson University,senate committee page,https://www.judiciary.senate.gov/committee-activity/hearings/protecting-the-integrity-of-college-athletics
 327682,George Wrighster III,Former Member,National Football League Players Association Board of Representatives,senate committee page,https://www.judiciary.senate.gov/committee-activity/hearings/protecting-the-integrity-of-college-athletics
@@ -9570,6 +9630,9 @@ event_id,name,position,organization,source,from
 327784,Robert J. Wiehe,senior vice president and chief supply chain and logistics officer,"UC Health, Cincinnati",gpo,CHRG-116shrg46633
 327800,Elliott Abrams,Special Representative for Venezuela,U.S. Department of State,senate committee page,https://www.foreign.senate.gov/hearings/venezuela-in-maduros-grasp-assessing-the-deteriorating-security-and-humanitarian-situation
 327800,Joshua Hodges,Senior Deputy Assistant Administrator for Latin America and the Caribbean,U.S. Agency for International Development,senate committee page,https://www.foreign.senate.gov/hearings/venezuela-in-maduros-grasp-assessing-the-deteriorating-security-and-humanitarian-situation
+327820,Kevin Gover,"Acting Under Secretary for Museums and Culture, Smithsonian Institution",,senate committee page,https://www.csce.gov/hearings/human-rights-at-home-values-made-visible
+327820,Lamberto Zannier,Former OSCE Secretary General and High Commissioner on National Minorities,,senate committee page,https://www.csce.gov/hearings/human-rights-at-home-values-made-visible
+327820,Wes Bellamy,"Author and former Vice-Mayor of Charlottesville, VA",,senate committee page,https://www.csce.gov/hearings/human-rights-at-home-values-made-visible
 327840,John E. Whitley,"to be Director of Cost Assessment and Program Evaluation, Department of Defense",,senate committee page,https://www.armed-services.senate.gov/hearings/20-08-04-nominations_whitley--manasco--pearce--hardy
 327840,Liam P. Hardy,to be a Judge of the United States Court of Appeals for the Armed Forces,,senate committee page,https://www.armed-services.senate.gov/hearings/20-08-04-nominations_whitley--manasco--pearce--hardy
 327840,Michele A. Pearce,to be General Counsel of the Department of the Army,,senate committee page,https://www.armed-services.senate.gov/hearings/20-08-04-nominations_whitley--manasco--pearce--hardy
@@ -9812,6 +9875,7 @@ event_id,name,position,organization,source,from
 328342,Dan Glickman,Executive Director,"The Aspen Institute, Washington",gpo,CHRG-116shrg44640
 328342,Stephen Higgs,Director,"Biosecurity Research Institute and Associate Vice President for Research, Kansas State University, Manhattan",gpo,CHRG-116shrg44640
 328342,Steven Rosenzweig,Senior Agricultural Scientist,"Agricultural Research, General Mills, Golden Valley",gpo,CHRG-116shrg44640
+328344,Philip T. Reeker,Senior Bureau Official,U.S. Department of State,senate committee page,https://www.csce.gov/hearings/us-priorities-for-engagement-at-the-osce
 328380,Brian D. McFeeters,"of Virginia, a Career Member of the Senior Foreign Service, Class of Minister-Counselor, to be Ambassador Extraordinary and Plenipotentiary of the United States of America to Malaysia",,senate committee page,https://www.foreign.senate.gov/hearings/nominations-120220
 328380,C. Kevin Blackstone,"of Virginia, a Career Member of the Senior Foreign Service, Class of Minister-Counselor, to be Ambassador Extraordinary and Plenipotentiary of the United States of America to the Democratic Republic of Timor-Leste",,senate committee page,https://www.foreign.senate.gov/hearings/nominations-120220
 328380,Cynthia Kierscht,"of Minnesota, a Career Member of the Senior Foreign Service, Class of Counselor, to be Ambassador Extraordinary and Plenipotentiary of the United States of America to the Islamic Republic of Mauritania",,senate committee page,https://www.foreign.senate.gov/hearings/nominations-120220
@@ -11416,6 +11480,10 @@ event_id,name,position,organization,source,from
 330504,James Danly,Commissioner,Federal Energy Regulatory Commission,gpo,CHRG-117shrg45807
 330504,Mark C. Christie,Commissioner,Federal Energy Regulatory Commission,gpo,CHRG-117shrg45807
 330504,Richard Glick,Chairman,Federal Energy Regulatory Commission,gpo,CHRG-117shrg45807
+330505,David J. Kramer,Senior Fellow,Florida International University,senate committee page,https://www.csce.gov/hearings/seeking-justice-and-freedom-in-belarus
+330505,Serge Kharytonau,Media Expert,International Strategic Action Network for Security (iSANS),senate committee page,https://www.csce.gov/hearings/seeking-justice-and-freedom-in-belarus
+330505,Siarhej Zikratski,Representative on Legal Affairs,Office of Sviatlana Tsikhanouskaya,senate committee page,https://www.csce.gov/hearings/seeking-justice-and-freedom-in-belarus
+330505,Tatsiana Khomich,"Coordination Council Representative for political prisoners, Viktar Babaryka Team Coordinator, and sister of political prisoner Maria Kalesnikava",,senate committee page,https://www.csce.gov/hearings/seeking-justice-and-freedom-in-belarus
 330520,Clare Martorana,Federal Chief Information Officer,Office of Management and Budget,gpo,CHRG-117shrg46705
 330520,Mina Hsiang,Administrator,"United States Digital Service, Office of Management and Budget",gpo,CHRG-117shrg46705
 330520,V. David Zvenyach,Director Technology Transformation Services,U.S. General Services Administration,gpo,CHRG-117shrg46705
@@ -11615,6 +11683,10 @@ event_id,name,position,organization,source,from
 330783,David Miller Jr.,President,U.S. Diplomatic Studies Foundation,senate committee page,https://www.foreign.senate.gov/hearings/training-the-department-of-states-workforce-for-21st-century-diplomacy-110221
 330783,Joan Polaschik,Deputy Director,Foreign Service Institute,senate committee page,https://www.foreign.senate.gov/hearings/training-the-department-of-states-workforce-for-21st-century-diplomacy-110221
 330783,Joshua Marcuse,Former Executive Director,"Defense Innovation Board, Co-founder and Chairman of NGO – Globally",senate committee page,https://www.foreign.senate.gov/hearings/training-the-department-of-states-workforce-for-21st-century-diplomacy-110221
+330801,Jamie Fly,President & CEO,Radio Free Europe/Radio Liberty (RFE/RL),senate committee page,https://www.csce.gov/hearings/in-pursuit-of-truth
+330801,Peter Pomerantsev,"Director of Arena Program and Senior Fellow, Johns Hopkins University",Author and Journalist,senate committee page,https://www.csce.gov/hearings/in-pursuit-of-truth
+330801,Robert Mahoney,Deputy Executive Director,Committee to Protect Journalists,senate committee page,https://www.csce.gov/hearings/in-pursuit-of-truth
+330801,Teresa Ribeiro,Representative on Freedom of the Media,OSCE,senate committee page,https://www.csce.gov/hearings/in-pursuit-of-truth
 330802,Christopher Frey,nominee to be Assistant Administrator for Research and Development,Environmental Protection Agency,gpo,CHRG-117shrg47182
 330802,Jennifer Clyburn Reed,nominee to be Federal Co-Chair,Southeast Crescent Regional Commission,gpo,CHRG-117shrg47182
 330803,Al Schmidt,City Commissioner,City of Philadelphia Board of Elections,senate committee page,https://www.rules.senate.gov/hearings/emerging-threats-to-election-administration
@@ -12567,6 +12639,12 @@ event_id,name,position,organization,source,from
 332467,Alexander Mark Laskaris,"of the District of Columbia, a Career Member of the Senior Foreign Service, Class of Minister-Counselor, to be an Ambassador Extraordinary and Plenipotentiary of the United States of America to the Republic of Chad",,senate committee page,https://www.foreign.senate.gov/hearings/nominations-051022
 332467,Bridget A. Brink,"a Career Member of the Senior Foreign Service, Class of Minister-Counselor, to be Ambassador Extraordinary and Plenipotentiary of the United States of America to Ukraine",,senate committee page,https://www.foreign.senate.gov/hearings/nominations-051022
 332467,Elizabeth H. Richard,"of Virginia, a Career Member of the Senior Foreign Service, Class of Career Minister, to be Coordinator for Counterterrorism, with the rank and status of Ambassador at Large",,senate committee page,https://www.foreign.senate.gov/hearings/nominations-051022
+332468,Beth Van Schaack,U.S. Ambassador at Large for Global Criminal Justice,,senate committee page,https://www.csce.gov/hearings/russian-war-crimes-in-ukraine
+332468,Iryna Venediktova,"Prosecutor General, Ukraine",,senate committee page,https://www.csce.gov/hearings/russian-war-crimes-in-ukraine
+332468,Marco Sassoli,Professor of International Law,University of Geneva,senate committee page,https://www.csce.gov/hearings/russian-war-crimes-in-ukraine
+332468,Timothy Snyder,"Professor of History, Yale University","Permanent Fellow, the Institute for Human Sciences in Vienna",senate committee page,https://www.csce.gov/hearings/russian-war-crimes-in-ukraine
+332468,Veronika Bílková,"Associate Professor, Faculty of Law",Charles University in Prague,senate committee page,https://www.csce.gov/hearings/russian-war-crimes-in-ukraine
+332468,Wolfgang Benedek,Professor of International Law (ret.),University of Graz,senate committee page,https://www.csce.gov/hearings/russian-war-crimes-in-ukraine
 332469,Kalpana Kotagal,Cincinnati,,gpo,CHRG-117shrg48908
 332470,Janet L. Yellen,Secretary,Department of the Treasury,gpo,CHRG-117shrg55754
 332471,J. Brett Blanton,Architect,Architect of the Capitol,senate committee page,https://www.appropriations.senate.gov/hearings/a-review-of-the-fiscal-year-2023-budget-requests-of-the-architect-of-the-capitol-the-senate-sergeant-at-arms-and-the-congressional-budget-office
@@ -13178,6 +13256,8 @@ event_id,name,position,organization,source,from
 333111,Matt Pottinger,China Program Chairman,Foundation for Defense of Democracies,senate committee page,https://www.judiciary.senate.gov/committee-activity/hearings/protecting-americans-private-information-from-hostile-foreign-powers
 333111,Samm Sacks,"Senior Fellow, Paul Tsai China Center",Yale Law School,senate committee page,https://www.judiciary.senate.gov/committee-activity/hearings/protecting-americans-private-information-from-hostile-foreign-powers
 333111,Susan Landau,Bridge Professor in Cyber Security and Policy,"The Fletcher School and the School of Engineering, Tufts University",senate committee page,https://www.judiciary.senate.gov/committee-activity/hearings/protecting-americans-private-information-from-hostile-foreign-powers
+333114,Hanna Hopko,"Co-Founder, International Center for Ukrainian Victory","Former Chair, Committee on Foreign Affairs, Parliament of Ukraine",senate committee page,https://www.csce.gov/hearings/my-hell-in-russian-captivity
+333114,Yuliia “Taira” Paievska,Ukrainian veteran and volunteer paramedic,"Commander, “Taira’s Angels”",senate committee page,https://www.csce.gov/hearings/my-hell-in-russian-captivity
 333115,Anthony J. Cotton,For reappointment to the grade of general and to be Commander of United States Strategic Command,,senate committee page,https://www.armed-services.senate.gov/hearings/nomination_-cotton
 333116,Gary Gensler,Chair,U.S. Securities and Exchange Commission,gpo,CHRG-117shrg53618
 333120,Alex Padilla,a U.S. Senator from California,,gpo,CHRG-117shrg48573
@@ -13459,6 +13539,8 @@ event_id,name,position,organization,source,from
 333462,Hilary J. Allen,Professor,American University Washington College of Law,gpo,CHRG-117shrg53797
 333462,Jennifer J. Schulp,Director of Financial Regulation Studies,"Center for Monetary and Financial Alternatives, Cato Institute",gpo,CHRG-117shrg53797
 333462,Kevin O'Leary,Investor,,gpo,CHRG-117shrg53797
+333465,Andrew Baker,Personal Representative,OSCE Chairman-in-Office on Combating Anti-Semitism and Director of International Jewish Affairs at the American Jewish Committee (AJC),senate committee page,https://www.csce.gov/hearings/the-alarming-rise-in-antisemitism-and-its-threat-to-democracy
+333465,Deborah Lipstadt,U.S. Special Envoy to Monitor and Combat Antisemitism,U.S. Department of State,senate committee page,https://www.csce.gov/hearings/the-alarming-rise-in-antisemitism-and-its-threat-to-democracy
 333466,Rohit Chopra,Director,Consumer Financial Protection Bureau,gpo,CHRG-117shrg53823
 333500,Charnelle Bjelkengren,to be United States District Judge for the Eastern District of Washington,To be introduced by:,senate committee page,https://www.judiciary.senate.gov/committee-activity/hearings/01/25/2023/nominations
 333500,Matthew P. Brookman,to be United States District Judge for the Southern District of Indiana,To be introduced by:,senate committee page,https://www.judiciary.senate.gov/committee-activity/hearings/01/25/2023/nominations
@@ -13578,6 +13660,7 @@ event_id,name,position,organization,source,from
 333707,Kathleen M Sullivan,,,gpo,CHRG-118shrg52251
 333707,Lisa Murkowski,U.S. Senator from Alaska,,gpo,CHRG-118shrg52251
 333707,Thursday Williams,,,gpo,CHRG-118shrg52251
+333708,Bujar Osmani,"Foreign Minister and OSCE Chairperson-in-Office, North Macedonia",,senate committee page,https://www.csce.gov/hearings/north-macedonia-s-leadership-of-the-osce-in-a-time-of-war
 333709,Angela E. Stent,"Director Emerita, Georgetown University Center for Eurasian, Russian and East European Studies",,senate committee page,https://www.armed-services.senate.gov/hearings/to-receive-testimony-on-conflict-in-ukraine
 333709,Dara Massicot,"Senior Policy Researcher, RAND Corporation",,senate committee page,https://www.armed-services.senate.gov/hearings/to-receive-testimony-on-conflict-in-ukraine
 333709,Keith Kellogg,"Co-Chair, Center for American Security America First Policy Institute",,senate committee page,https://www.armed-services.senate.gov/hearings/to-receive-testimony-on-conflict-in-ukraine
@@ -14523,6 +14606,13 @@ event_id,name,position,organization,source,from
 334645,Michael J. Roark,"Deputy Inspector General, Evaluations Component, Department of Defense, Office of Inspector General",,senate committee page,https://www.armed-services.senate.gov/hearings/to-receive-testimony-on-potential-budgetary-efficiencies-achieved-through-improvement-to-management-and-planning-processes-within-department-of-defense-personnel-programs
 334646,Gregory M. Guillot,"to be general and Commander, United States Northern Command/ Commander, North American Aerospace Defense Command",,senate committee page,https://www.armed-services.senate.gov/hearings/to-consider-the-nominations-of_lieutenant-general-gregory-m-guillot-usaf-to-be-general-and--commander-united-states-northern-command/-commander-north-american-aerospace-defense-command--lieutenant-general-stephen-n-whiting-ussf-to-be-general-and--commander-united-states-space-command
 334646,Stephen N. Whiting,"to be general and Commander, United States Space Command",,senate committee page,https://www.armed-services.senate.gov/hearings/to-consider-the-nominations-of_lieutenant-general-gregory-m-guillot-usaf-to-be-general-and--commander-united-states-northern-command/-commander-north-american-aerospace-defense-command--lieutenant-general-stephen-n-whiting-ussf-to-be-general-and--commander-united-states-space-command
+334681,Andriy Kostin,Prosecutor General,Ukraine,senate committee page,https://www.csce.gov/hearings/rescuing-ukrainian-children-and-women-from-russia-s-aggression
+334681,Beth Van Schaack,U.S. Ambassador at Large,Global Criminal Justice,senate committee page,https://www.csce.gov/hearings/rescuing-ukrainian-children-and-women-from-russia-s-aggression
+334681,Cindy Dyer,U.S. Ambassador at Large,Monitor and Combat Trafficking in Persons,senate committee page,https://www.csce.gov/hearings/rescuing-ukrainian-children-and-women-from-russia-s-aggression
+334681,James S. Gordon,The Center for Mind-Body Medicine,,senate committee page,https://www.csce.gov/hearings/rescuing-ukrainian-children-and-women-from-russia-s-aggression
+334681,Mykola Kuleba,Director,Save Ukraine and former Presidential Commissioner for Human Rights,senate committee page,https://www.csce.gov/hearings/rescuing-ukrainian-children-and-women-from-russia-s-aggression
+334681,Oksana Markarova,Ambassador of Ukraine to the United States,,senate committee page,https://www.csce.gov/hearings/rescuing-ukrainian-children-and-women-from-russia-s-aggression
+334681,Sebastian Stachowski,CEO; Former Volunteer Coordinator,Lion Environmental; Polish Red Cross Subcarpathian Region,senate committee page,https://www.csce.gov/hearings/rescuing-ukrainian-children-and-women-from-russia-s-aggression
 334700,Elizabeth Biser,Secretary,North Carolina Department of Environmental Quality,gpo,CHRG-118shrg54997
 334700,Eric Volk,Executive Director,North Dakota Rural Water Systems Association,gpo,CHRG-118shrg54997
 334700,Kishia Powell,General Manager and CEO,Washington Suburban Sanitary Commission,gpo,CHRG-118shrg54997
@@ -15149,6 +15239,12 @@ event_id,name,position,organization,source,from
 335368,Douglas Lute,Former United States Permanent Representative to NATO,"Lieutenant General, United States Army, (Ret.)",senate committee page,https://www.foreign.senate.gov/hearings/the-north-atlantic-treaty-organization-at-75-reflecting-on-past-successes-and-planning-for-the-future
 335368,Luke Coffey,"Senior Fellow, National Security and Defense",Hudson Institute,senate committee page,https://www.foreign.senate.gov/hearings/the-north-atlantic-treaty-organization-at-75-reflecting-on-past-successes-and-planning-for-the-future
 335368,Tara Varma,"Visiting Foreign Policy Fellow, Center on the United States and Europe",Brookings Institution,senate committee page,https://www.foreign.senate.gov/hearings/the-north-atlantic-treaty-organization-at-75-reflecting-on-past-successes-and-planning-for-the-future
+335369,Andriy Kostin,Prosecutor General of Ukraine,,senate committee page,https://www.csce.gov/hearings/eyewitness-accounts-ukrainian-children-and-adult-civilians-abducted-by-russia
+335369,Denys Rostislav,Ukrainian young adults who were forcibly removed from Ukraine as minors and rescued from Russia or Russian-controlled areas,,senate committee page,https://www.csce.gov/hearings/eyewitness-accounts-ukrainian-children-and-adult-civilians-abducted-by-russia
+335369,Dmytro Lubinets,Ukrainian Parliament Commissioner for Human Rights,,senate committee page,https://www.csce.gov/hearings/eyewitness-accounts-ukrainian-children-and-adult-civilians-abducted-by-russia
+335369,Mykola Kuleba,Director of Save Ukraine and former Presidential Commissioner for Children’s Rights,,senate committee page,https://www.csce.gov/hearings/eyewitness-accounts-ukrainian-children-and-adult-civilians-abducted-by-russia
+335369,Oksana Markarova,Ambassador of Ukraine to the United States,,senate committee page,https://www.csce.gov/hearings/eyewitness-accounts-ukrainian-children-and-adult-civilians-abducted-by-russia
+335369,Pia Kauma,President of the OSCE Parliamentary Assembly,,senate committee page,https://www.csce.gov/hearings/eyewitness-accounts-ukrainian-children-and-adult-civilians-abducted-by-russia
 335370,Michael C. Connor,Assistant Secretary of the Army for Civil Works,,gpo,CHRG-118shrg62428
 335370,Scott A. Spellmon,55th Chief of Engineers and Commanding General,U.S. Army Corps of Engineers,gpo,CHRG-118shrg62428
 335371,Samuel J. Paparo Jr.,"for reappointment to the grade of admiral and to be Commander, United States Indo-Pacific Command",,senate committee page,https://www.armed-services.senate.gov/hearings/to-consider-the-nomination-of_admiral-samuel-j-paparo-jr-usn-for-reappointment-to--the-grade-of-admiral-and-to-be--commander-united-states-indo-pacific-command
@@ -15700,6 +15796,9 @@ event_id,name,position,organization,source,from
 335851,Laura Holscher,Executive Director/Assistant Vice President,"Generations, Area 13 Agency on Aging",senate committee page,https://www.aging.senate.gov/hearings/the-older-americans-act-the-local-impact-of-the-law-and-the-upcoming-reauthorization
 335851,Leslie Grenfell,Executive Director,"Southwestern Pennsylvania Area Agency on Aging, Inc.",senate committee page,https://www.aging.senate.gov/hearings/the-older-americans-act-the-local-impact-of-the-law-and-the-upcoming-reauthorization
 335851,Mairead Painter,Connecticut State Long-Term Care Ombudsman,State of Connecticut,senate committee page,https://www.aging.senate.gov/hearings/the-older-americans-act-the-local-impact-of-the-law-and-the-upcoming-reauthorization
+335852,Ivane Chkhikvadze,"EU Integration Program Manager, Civil Society Foundation, and Georgia Country Consultant, European Endowment for Democracy",,senate committee page,https://www.csce.gov/hearings/supporting-georgia-s-sovereignty-and-democracy
+335852,Natalie Sabanadze,"Senior Fellow, Chatham House, and former Georgian Ambassador to the EU",,senate committee page,https://www.csce.gov/hearings/supporting-georgia-s-sovereignty-and-democracy
+335852,William Courtney,"Adjunct Senior Fellow, RAND Corporation, and former U.S. Ambassador to Georgia",,senate committee page,https://www.csce.gov/hearings/supporting-georgia-s-sovereignty-and-democracy
 335853,Frank Calvelli,Assistant Secretary of the Air Force for Space Acquisition and Integration,,senate committee page,https://www.armed-services.senate.gov/hearings/to-receive-testimony-on-the-department-of-defense-space-activities-in-review-of-the-defense-authorization-request-for-fiscal-year-2025-and-the-future-years-defense-program
 335853,John D. Hill,Deputy Assistant Secretary of Defense for Space and Missile Defense,,senate committee page,https://www.armed-services.senate.gov/hearings/to-receive-testimony-on-the-department-of-defense-space-activities-in-review-of-the-defense-authorization-request-for-fiscal-year-2025-and-the-future-years-defense-program
 335853,Michael A. Guetlein,Vice Chief of Space Operations,,senate committee page,https://www.armed-services.senate.gov/hearings/to-receive-testimony-on-the-department-of-defense-space-activities-in-review-of-the-defense-authorization-request-for-fiscal-year-2025-and-the-future-years-defense-program
@@ -16107,6 +16206,9 @@ event_id,name,position,organization,source,from
 336233,Julie Abbate,,,gpo,CHRG-118shrg63051
 336233,Kelsey Bolar,,,gpo,CHRG-118shrg63051
 336233,Kenneth James,,,gpo,CHRG-118shrg63051
+336235,Benjamin L. Schmitt,"Senior Fellow, Department of Physics and Astronomy and Kleinman Center for Energy Policy, University of Pennsylvania",,senate committee page,https://www.csce.gov/hearings/russia-s-shadow-war-on-nato
+336235,Erkki Torri,"Director of National Security and Defense Bureau, the Government Office of Estonia",,senate committee page,https://www.csce.gov/hearings/russia-s-shadow-war-on-nato
+336235,Michael Weiss,Investigative Journalist and Author,,senate committee page,https://www.csce.gov/hearings/russia-s-shadow-war-on-nato
 336236,Carl W. Bentzel,Nominee to be a Commissioner,Federal Maritime Commission,gpo,CHRG-118shrg63644
 336236,Lanhee J. Chen,Nominee to be a Director,Amtrak Board of Directors,gpo,CHRG-118shrg63644
 336236,Mitt Romney,U.S. Senator from Utah,,gpo,CHRG-118shrg63644
@@ -16157,6 +16259,9 @@ event_id,name,position,organization,source,from
 336310,Brendan Duke,Senior Director for Economic Policy,Center for American Progress,gpo,CHRG-118shrg62273
 336310,Elizabeth M. Shuler,President,AFL-CIO,gpo,CHRG-118shrg62273
 336310,Marc H. Morial,President and CEO,National Urban League,gpo,CHRG-118shrg62273
+336340,Gabrielius Landsbergis,"Acting Minister of Foreign Affairs, Republic of Lithuania",,senate committee page,https://www.csce.gov/hearings/the-role-of-belarus-in-russia-s-crimes
+336340,Kateryna Rashevska,"Legal Expert, Regional Center for Human Rights",,senate committee page,https://www.csce.gov/hearings/the-role-of-belarus-in-russia-s-crimes
+336340,Matvei Kupreichyk,"Public Representative, BELPOL",,senate committee page,https://www.csce.gov/hearings/the-role-of-belarus-in-russia-s-crimes
 336360,ANDREW NOCELLA,EXECUTIVE VICE PRESIDENT AND CHIEF COMMERCIAL OFFICER,"UNITED AIRLINES, INC.",senate committee page,https://www.hsgac.senate.gov/subcommittees/investigations/hearings/the-skys-the-limit-new-revelations-about-airline-fees/
 336360,MATTHEW KLEIN,EXECUTIVE VICE PRESIDENT AND CHIEF COMMERCIAL OFFICER,"SPIRIT AIRLINES, INC.",senate committee page,https://www.hsgac.senate.gov/subcommittees/investigations/hearings/the-skys-the-limit-new-revelations-about-airline-fees/
 336360,PETER CARTER,CHIEF EXTERNAL AFFAIRS OFFICER,"DELTA AIR LINES, INC.",senate committee page,https://www.hsgac.senate.gov/subcommittees/investigations/hearings/the-skys-the-limit-new-revelations-about-airline-fees/
@@ -17549,6 +17654,9 @@ event_id,name,position,organization,source,from
 337767,Justin R. Olson,,,senate committee page,https://www.judiciary.senate.gov/committee-activity/hearings/nominations-12-17-2025
 337767,Megan Blair Benton,,,senate committee page,https://www.judiciary.senate.gov/committee-activity/hearings/nominations-12-17-2025
 337768,Bryan Bedford,Administrator,Federal Aviation Administration,gpo,CHRG-119shrg63775
+337769,Christopher Chivvis,"Director, American Statecraft Program, Carnegie Endowment for International Peace",,senate committee page,https://www.csce.gov/hearings/bosnia-and-herzegovina-at-a-crossroads-thirty-years-after-dayton
+337769,Clint Williamson,"Senior Director for International Justice, Georgetown University",,senate committee page,https://www.csce.gov/hearings/bosnia-and-herzegovina-at-a-crossroads-thirty-years-after-dayton
+337769,Paul Williams,"Rebecca I. Grazier Professor of Law and International Relations, American University",,senate committee page,https://www.csce.gov/hearings/bosnia-and-herzegovina-at-a-crossroads-thirty-years-after-dayton
 337840,Rob Luther,Associate Professor of Law,Antonin Scalia Law School at George Mason University,senate committee page,https://www.judiciary.senate.gov/committee-activity/hearings/impeachment-holding-rogue-judges-accountable-01-07-2026
 337840,Stephen I. Vladeck,Agnes Williams Sesquicentennial Professor of Federal Courts,Georgetown University Law Center,senate committee page,https://www.judiciary.senate.gov/committee-activity/hearings/impeachment-holding-rogue-judges-accountable-01-07-2026
 337840,Will Chamberlain,Senior Counsel,Article III Project,senate committee page,https://www.judiciary.senate.gov/committee-activity/hearings/impeachment-holding-rogue-judges-accountable-01-07-2026
