@@ -4,7 +4,7 @@ This pipeline tracks every official House, Senate and joint committee YouTube ch
 
 ## What runs every week
 
-`.github/workflows/update-data.yml` runs every Sunday. It has two jobs.
+`.github/workflows/update-data.yml` runs every Sunday. It has three jobs, each run after the one before even when that one failed.
 
 **`youtube` job:**
 
@@ -20,6 +20,12 @@ This pipeline tracks every official House, Senate and joint committee YouTube ch
 | List GPO's official hearing transcripts | `gpo-fetch` | `data/gpo_hearings.csv` |
 | Keep Congress.gov committee meeting records | `congress-meetings` | raw cache, `pipeline-data` branch |
 | Match each hearing to its recording(s) | `gpo-match` | `data/gpo_hearing_videos.csv`, `data/gpo_hearing_video_coverage.csv` |
+
+**`meetings` job.** A job of its own: its readers depend on docs.house.gov and 21 committee sites, and a failure there must not hold back the GPO and video outputs above.
+
+| Step | Command | Output |
+|---|---|---|
+| Test the parsers and refresh decisions | `pytest` | none |
 | Fill House repository gaps | `house-meeting-records` | `data/house_documents_found.csv`, `data/house_witnesses_found.csv`, `data/house_amendments_found.csv` |
 | Read Senate and joint committee pages | `senate-meeting-records` | `data/senate_hearing_pages_found.csv`, `data/senate_witnesses_found.csv`, `data/senate_documents_found.csv` |
 | Join meeting records, text, recordings and witnesses | `meeting-inventory` | `data/hearing_text_sources.csv`, `data/meetings_without_records.csv`, `data/meeting_completeness.csv`, `data/meeting_witnesses.csv` |
@@ -64,7 +70,7 @@ The Senate recording probe saves each committee-day's positive or negative answe
 
 For an offline rebuild, copy `bootstrap/*.json.gz` into your chosen state directory and pass `--offline` to the three commands. A new backfill uses the same commands with an empty state directory. `--seed-cache ~/hearing-text` imports the old research caches read-only, when available; it is never needed in CI. `house-meeting-records --zyte --threads 16` is an optional metered backfill and requires `ZYTE_TOKEN` in the environment. **No additional weekly secret is needed.** `--limit N` bounds live House meetings or Senate hearing pages; it does not include Senate listing requests. An incomplete initial backfill exits non-zero instead of publishing partial outputs. `--site` restricts live Senate fetching for a bounded check while retaining other saved sites.
 
-The pure parser and refresh tests run in the Congress job. Locally install `packages/congress_api[test]` into the worktree environment and run `.venv/bin/python -m pytest`.
+The pure parser and refresh tests run first in the `meetings` job. Locally install `packages/congress_api[test]` into the worktree environment and run `.venv/bin/python -m pytest`.
 
 ## Channels: `youtube-accounts.csv`
 

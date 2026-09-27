@@ -75,7 +75,7 @@ Two settled passes produced **byte-identical results for all 19 checked CSV/gzip
 
 The copied snapshot that `save-pipeline-data.sh` would stage is **52,781,646 bytes (50.34 MiB)**: the original inputs total 38,953,588 bytes, and new compact state adds **13,828,058 bytes (13.19 MiB)**. This replaces dependence on roughly 1.2 GB of research source caches. The three frozen bootstrap files supply that state on first CI use, then only `pipeline-data` is updated. No snapshot was pushed and neither publication script was executed.
 
-The existing two workflow jobs remain. The Congress job installs the pytest extra, tests, bootstraps absent state, runs the three new steps, saves the existing snapshot and commits all ten derived tables with the existing helper. No new weekly secret is required. README and findings paths now point to the production commands and app data directory.
+The workflow gains a third job, `meetings`, after the Congress job (moved there in review from inside the Congress job, so that a failure at docs.house.gov or a committee site cannot hold back the GPO and video outputs). It installs the pytest extra, tests, bootstraps absent state, runs the three new steps, saves the snapshot with the existing helper and commits the ten derived tables with the existing helper. The Congress job is as before. No new weekly secret is required. README and findings paths now point to the production commands and app data directory.
 
 ## Replay commands
 
