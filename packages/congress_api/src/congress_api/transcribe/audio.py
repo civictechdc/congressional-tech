@@ -6,9 +6,9 @@ Audio for a hearing recording, as 16 kHz mono MP3 chunks the transcription model
     get_audio(local="hearing.mp4") -> Path
     chunks(path, minutes=25, overlap=5) -> [(chunk_path, offset_seconds), ...]
 
-Gemini 3.5 Transcribe takes up to 30 minutes of audio per request with diarization on, so a
-hearing is cut into overlapping chunks; the overlap lets the stitcher drop the repeated
-words at each boundary. ffmpeg does the extraction and cutting.
+Recordings that aren't on YouTube (the Senate player, local files) are cut into 25-minute
+chunks and uploaded; a chunk the model can't return whole is cut again. ffmpeg does the
+extraction and cutting.
 """
 from __future__ import annotations
 
@@ -62,8 +62,16 @@ def duration(path: Path) -> float:
     return float(out.stdout.strip() or 0)
 
 
-def chunks(path: Path, minutes: float = 25, overlap: float = 5) -> list[tuple[Path, float]]:
-    """Cut into chunks of `minutes` with `overlap` seconds shared with the next one. Returns (path, offset_seconds)."""
+def cut(path: Path, start: float, length: float) -> Path:
+    """A piece of an audio file, [start, start+length) seconds."""
+    piece = path.with_name(f"{path.stem}.{int(start):06d}-{int(start + length):06d}.mp3")
+    if not piece.exists():
+        run(["ffmpeg", "-loglevel", "error", "-y", "-ss", f"{start:.3f}", "-t", f"{length:.3f}", "-i", str(path), "-c", "copy", str(piece)])
+    return piece
+
+
+def chunks(path: Path, minutes: float = 25, overlap: float = 0) -> list[tuple[Path, float]]:
+    """Cut into chunks of `minutes` (plus `overlap` seconds shared with the next one). Returns (path, offset_seconds)."""
     total = duration(path)
     step = minutes * 60
     out, start, n = [], 0.0, 0

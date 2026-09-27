@@ -3,12 +3,13 @@ Compare two ways of transcribing a hearing against its GPO print.
 
     python docs/youtube-coverage/research/scripts/transcribe_compare.py CHRG-118hhrg54254 8V3OGbZOLB0 <out_dir> [--proxy URL]
 
-Route A: Gemini 3.5 Transcribe on the recording's audio (25-minute chunks, diarization, word
-timestamps), then Gemini 3.8 Flash maps the speaker labels to people using the roster,
-witness list and the video. Route B: Gemini 3.8 Flash watches the YouTube video directly in
-25-minute windows and returns named turns in the same schema. Both are scored against the
-print: word error rate of the spoken text (jiwer), each speaker's share of words, turn
-counts, time and tokens. Writes gpo.json, routeA.json, routeB.json and compare.json.
+Scores the package's route (Gemini 3.8 Flash on the YouTube video in 25-minute windows,
+named turns) against the print: word error rate of the spoken text (jiwer), speaker
+attribution on aligned words, turn counts, time and tokens. Writes gpo.json, routeB.json
+and compare.json. The September 2026 run also included "route A", Gemini 3.5 Transcribe on
+the audio plus a speaker resolver; its outputs are kept as routeA_*.json in
+research/data/transcribe_compare/ but that code was removed from the package after it
+lost on attribution (66-74% against 85%). Needs `pip install jiwer`.
 """
 import csv, dataclasses, html, json, os, re, sys, time
 from pathlib import Path
@@ -16,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT / "packages/congress_api/src")); sys.path.insert(0, str(ROOT / "packages/congress_shared/src")); sys.path.insert(0, str(ROOT / "packages/youtube_api/src"))
 import jiwer
 import requests
-from congress_api.transcribe import audio as A, gemini as G
+from congress_api.transcribe import gemini as G
 from congress_api.transcribe.gpo_parse import parse_gpo_text
 from congress_api.transcribe.metadata import context_for_event, mods_people
 from congress_api.transcribe.schema import Header, Person, Transcript, Turn, Source, person_key
@@ -64,28 +65,13 @@ def main(package_id, video_id, out_dir, proxy=None):
     meeting = {"title": header.title, "committee": header.committee, "subcommittee": header.subcommittee, "date": header.date, "chamber": header.chamber}
     print(f"GPO print: {len(gpo.turns)} turns, {len(spoken_text(gpo).split())} words, speakers {list(shares(gpo))[:8]}")
     results = {"gpo": {"turns": len(gpo.turns), "words": len(spoken_text(gpo).split()), "shares": shares(gpo)}}
-    ## route A
-    t0 = time.time(); audio = A.get_audio(out / "audio", video_id=video_id, proxy=proxy); dl = time.time() - t0
-    parts = A.chunks(audio, minutes=25, overlap=5); t0 = time.time(); chunked = []
-    for path, offset in parts:
-        utts = G.transcribe_chunk(path, offset); chunked.append((utts, offset, offset + A.duration(path)))
-        print(f"  A: chunk @{offset:.0f}s -> {len(utts)} utterances, {sum(len(u['words']) for u in utts)} words")
-    utts = G.stitch(chunked); ta = time.time() - t0
-    t0 = time.time(); res = G.resolve_speakers(utts, roster, meeting, youtube_id=video_id); tr = time.time() - t0
-    mapping = {s["label"]: s for s in res.get("speakers", [])}
-    A_participants, turns = {}, []
-    for u in utts:
-        s = mapping.get(u["speaker_label"], {"name": "Unknown", "role": "unknown", "confidence": 0})
-        k = person_key(s["name"]) if s["name"] != "Unknown" else u["speaker_label"]
-        if k not in A_participants:
-            base = participants.get(k) or Person(name=s["name"], role=s["role"]); A_participants[k] = dataclasses.replace(base, speaker_label=u["speaker_label"], confidence=s.get("confidence"))
-        turns.append(Turn(speaker=k, text=u["text"], start=u["start"], end=u["end"]))
-    routeA = Transcript(header=dataclasses.replace(header, package_id=""), participants=A_participants, turns=turns, source=Source(kind="gemini_transcription", video_id=video_id, model=f"{G.TRANSCRIBE_MODEL} + {G.RESOLVER_MODEL}", notes=f"download {dl:.0f}s, transcribe {ta:.0f}s, resolve {tr:.0f}s"))
-    (out / "routeA.json").write_text(routeA.to_json())
     ## route B
-    dur = A.duration(audio); t0 = time.time(); B_turns, usage = [], {"in": 0, "out": 0}
+    import yt_dlp
+    with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True}) as ydl:
+        dur = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)["duration"]
+    t0 = time.time(); B_turns, usage = [], {"in": 0, "out": 0}
     for start in range(0, int(dur), WINDOW):
-        d = G.transcribe_video_window(video_id, start, min(start + WINDOW, dur), roster, meeting)
+        d = G.transcribe_window(roster, meeting, start, min(start + WINDOW, dur), youtube_id=video_id)
         B_turns += d.get("turns", []); usage["in"] += d.get("usage", {}).get("in", 0) or 0; usage["out"] += d.get("usage", {}).get("out", 0) or 0
         print(f"  B: window @{start}s -> {len(d.get('turns', []))} turns")
     tb = time.time() - t0
@@ -95,16 +81,16 @@ def main(package_id, video_id, out_dir, proxy=None):
         if k not in B_participants:
             base = participants.get(k) or Person(name=u["speaker"], role=u.get("role", "unknown")); B_participants[k] = dataclasses.replace(base, confidence=u.get("confidence"))
         turns.append(Turn(speaker=k, text=u["text"], start=u.get("start"), end=u.get("end")))
-    routeB = Transcript(header=dataclasses.replace(header, package_id=""), participants=B_participants, turns=turns, source=Source(kind="gemini_transcription", video_id=video_id, model=G.RESOLVER_MODEL + " (video)", notes=f"{tb:.0f}s, tokens {usage}"))
+    routeB = Transcript(header=dataclasses.replace(header, package_id=""), participants=B_participants, turns=turns, source=Source(kind="gemini_transcription", video_id=video_id, model=G.MODEL + " (video)", notes=f"{tb:.0f}s, tokens {usage}"))
     (out / "routeB.json").write_text(routeB.to_json())
     ## scores
     ref = norm(spoken_text(gpo))
-    for name, t in (("A", routeA), ("B", routeB)):
+    for name, t in (("B", routeB),):
         hyp = norm(spoken_text(t))
-        results[name] = {"turns": len(t.turns), "words": len(hyp.split()), "wer": round(jiwer.wer(ref, hyp), 3), "shares": shares(t), "speakers_named": sum(1 for p in t.participants.values() if p.name != "Unknown" and not p.name.startswith("c")), "unknown_word_share": t and round(sum(len(u.text.split()) for u in t.turns if u.speaker == "unknown" or u.speaker.startswith("c")) / max(1, len(hyp.split())), 3), "time_s": t.source.notes}
+        results[name] = {"turns": len(t.turns), "words": len(hyp.split()), "wer": round(jiwer.wer(ref, hyp), 3), "shares": shares(t), "speakers_named": sum(1 for p in t.participants.values() if p.name != "Unknown"), "unknown_word_share": round(sum(len(u.text.split()) for u in t.turns if u.speaker == "unknown") / max(1, len(hyp.split())), 3), "time_s": t.source.notes}
     (out / "compare.json").write_text(json.dumps(results, indent=1))
     print(json.dumps({k: {kk: vv for kk, vv in v.items() if kk != "shares"} for k, v in results.items()}, indent=1))
-    for k in ("gpo", "A", "B"):
+    for k in ("gpo", "B"):
         print(k, "top speakers:", dict(list(results[k]["shares"].items())[:7]))
 
 

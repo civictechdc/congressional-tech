@@ -124,14 +124,9 @@ hearing-transcribe --gpo-package CHRG-118hhrg54254 --out-dir ...     # the print
 
 Who was in the room comes from the Congress.gov meeting record (witnesses with organization and position), GPO's MODS record for the hearing or for the committee's nearest printed hearing that Congress (members with party, state and bioguide ID), and congress-legislators for current members.
 
-Two routes, chosen by `--route` (default `auto`):
+Gemini 3.8 Flash transcribes the recording in 25-minute windows into named speaker turns: the YouTube video itself, where it reads the name plates and hears the chair's recognitions, or uploaded audio chunks for senate.gov and local recordings. Measured on a 2023 Judiciary hearing against its print: word error rate 8.7% (largely the print's own editing of false starts and repairs), speaker right on 85% of words, about 5 minutes and 600k input tokens for a 100-minute hearing.
 
-| Route | What it does | Measured on a 2023 Judiciary hearing against its print |
-|---|---|---|
-| `video` (YouTube recordings) | Gemini 3.8 Flash watches the video in 25-minute windows and returns named turns; it reads name plates and hears the chair's recognitions | Word error rate 8.6%, speaker right on 88% of words, 5 minutes |
-| `audio` (senate.gov, local files) | Gemini 3.5 Transcribe on the audio in 25-minute chunks (verbatim, diarization, word timestamps), then Gemini 3.8 Flash maps the speaker labels to people | Word error rate 8.1%, speaker right on 66–74% of words; diarization mis-maps speakers when there are many |
-
-Window size is set by the model's recitation filter, not its context: a verbatim window over about 30 minutes, or the whole video in one call, comes back empty, so a window that fails is split in half. The 8% word error rate is largely the print's own editing (false starts and repairs the reporter drops). `docs/youtube-coverage/research/scripts/transcribe_compare.py` is the comparison; its outputs are in `research/data/transcribe_compare/`.
+Window size is set by the model's recitation filter, not its context: a verbatim window over about 30 minutes, or the whole video in one call, comes back empty, so a window that fails is split in half. The dedicated transcription model (Gemini 3.5 Transcribe, with diarization and word timestamps) matched the words as well but its speaker labels mapped to the right person for only 66–74% of words, so it isn't used; `docs/youtube-coverage/research/scripts/transcribe_compare.py` and `research/data/transcribe_compare/` hold that comparison.
 
 ## Running locally
 

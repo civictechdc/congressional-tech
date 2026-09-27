@@ -8,14 +8,14 @@
                                 OF THE
                       COMMITTEE ON THE JUDICIARY
                        HOUSE OF REPRESENTATIVES
-                    118th CONGRESS, FIRST SESSION
+                            118th CONGRESS
 
                               2023-11-30
 
-                          Serial No. 118-55
 
     The Subcommittee met, pursuant to notice, at 2:02p.m., in Room
-2141, Hon. Ben Cline [Chair of the Subcommittee] presiding.
+2141, Rayburn House Office Building, Hon. Ben Cline [Chair of the
+Subcommittee] presiding.
     Present: Representatives Cline, Van Drew, Moran, Lee, Swalwell,
 Ivey.
 
@@ -200,18 +200,19 @@ the chefs, led by top Chef Jim Jordan and Chef Boy McCarthy, who went
 down to Mar-a-Lago, in their effort to keep Donald Trump happy. I
 yield back.
 
-    Mr. Cline. Without objection, all other opening statements  will
-be included in the record. I'll now introduce today's witnesses.
+    Mr. Cline. Without objection, all other opening statements will be
+included in the record. I'll now introduce today's witnesses.
 Christopher Dunham is the Acting Assistant Director for the Office of
 Congressional Affairs at the FBI. In that role, he leads the office
 that serves as the Bureau's primary liaison to Congress. Ms. Jeanne
 Bumpus is the Director of the Office of Congressional Relations at the
 Federal Trade Commission. Her office works with Members of Congress
 and their staffs to provide information on the Commission's activities
-and advance the interests of the Commission in Congress. The Honorable
-Naz Darakoglu. Ms. Darakoglu is the Assistant Secretary of State for
-the Bureau of Legislative Affairs. She was confirmed by the Senate on
-June 16, 2002. The Bureau of Legislative Affairs coordinates all
+and advance the interests of the Commission in Congress.
+
+    Ms. Darakoglu. Ms. Darakoglu is the Assistant Secretary of State
+for the Bureau of Legislative Affairs. She was confirmed by the Senate
+on June 16, 2002. The Bureau of Legislative Affairs coordinates all
 legislative activity for the State Department and is the primary
 intermediary to Congress. We welcome our witnesses and thank them for
 appearing today. We'll begin by swearing you in. Would you please rise
@@ -226,8 +227,6 @@ you has a clock and a series of lights. When the lights turn yellow,
 you should begin to conclude your remarks. When the light turns red,
 your time has expired. Please remember to turn on the mics. Mr.
 Dunham, you may begin.
-
-STATEMENT OF CHRISTOPHER DUNHAM, ACTING ASSISTANT DIRECTOR, OFFICE OF LEGISLATION AND CONGRESSIONAL AFFAIRS, FEDERAL BUREAU OF INVESTIGATION
 
     Mr. Dunham. Thank you. Good afternoon, Chair Cline, Ranking Member
 Swalwell, distinguished Members of the Subcommittee. I appreciate the
@@ -287,8 +286,6 @@ questions.
 
     Mr. Cline. Thank you, Mr. Dunham. Ms. Bumpus, you may begin.
 
-STATEMENT OF JEANNE BUMPUS, DIRECTOR, OFFICE OF CONGRESSIONAL RELATIONS, FEDERAL TRADE COMMISSION
-
     Ms. Bumpus. Thank you. Chair Cline, Ranking Member Swalwell, and
 distinguished Members of the Subcommittee, I am Jeanne Bumpus, the
 Director of the Office of Congressional Relations at the FTC. Thanks
@@ -335,8 +332,6 @@ of our system of government. We remain committed to working with
 Congress and with this Committee in good faith. Thank you.
 
     Mr. Cline. Thank you, Ms. Bumpus. Ms. Darakoglu, you may begin.
-
-STATEMENT OF NAZ DARAKOGLU, ASSISTANT SECRETARY, BUREAU OF LEGISLATIVE AFFAIRS, U.S. DEPARTMENT OF STATE
 
     Ms. Darakoglu. Thank you. Chair Cline, Ranking Member Swalwell,
 distinguished Members of this Subcommittee, it's a pleasure to appear
@@ -410,7 +405,7 @@ transcript of FBI Special Agent Elvis Chan in Missouri v. Biden. Why
 did it take the department over a month to make this production of one
 publicly available document?
 
-    Mr. Dunham. Mr. Chair, we're working through the requests  that we
+    Mr. Dunham. Mr. Chair, we're working through the requests that we
 received in April. We've made four productions already of 600 pages of
 documents. We've also been providing transcribed interviews to the
 Committee, which our conversations with staff indicated that was a
@@ -431,7 +426,7 @@ as possible with limited redactions, and--
 
     Mr. Cline. All right. Well--
 
-    Mr. Dunham. --if there are instances where the Committee  has
+    Mr. Dunham. --if there are instances where the Committee has
 concerns about those redactions, I'm happy to continue a dialog so
 that we can see what the legislative purpose is to see the information
 underneath, and we can make accommodations. We've done that several
@@ -439,15 +434,15 @@ times already this year when we've been able to have discussions with
 the Committee and lift redactions, and I'm happy to continue this
 pattern of accommodation.
 
-    Mr. Cline. Well, and there have been a lot of staff
-conversations, but the reason that you're here is, in part, because
-those staff conversations have not produced the documents that we have
-asked for. This is not--when we ask for redacted or documents without
-redactions, it's not a request. It's part of the subpoena. So, the
-subpoena explicitly instructs the FBI to produce unredacted copies of
-the documents. So, let's look at this document that's entirely
-redacted save for the opening and closing remarks. Can you articulate
-what was the reasoning behind the redaction here?
+    Mr. Cline. Well, and there have been a lot of staff conversations,
+but the reason that you're here is, in part, because those staff
+conversations have not produced the documents that we have asked for.
+This is not--when we ask for redacted or documents without redactions,
+it's not a request. It's part of the subpoena. So, the subpoena
+explicitly instructs the FBI to produce unredacted copies of the
+documents. So, let's look at this document that's entirely redacted
+save for the opening and closing remarks. Can you articulate what was
+the reasoning behind the redaction here?
 
     Mr. Dunham. I can't, as we sit here--
 
@@ -461,16 +456,15 @@ what was the reasoning behind the redaction here?
 
     Mr. Cline. You can't tell.
 
-    Mr. Dunham. I can't--as I sit here, I understand the  concern.
-What I can tell you is that we're striving to provide documents as
+    Mr. Dunham. I can't--as I sit here, I understand the concern. What
+I can tell you is that we're striving to provide documents as
 limitedly redacted as possible with employees--
 
-    Mr. Cline. So, tell me: Why are employees at Twitter and
-Facebook, many of whom do not have a clearance of any kind, able to
-receive these communications unredacted, but Members of Congress are
-not?
+    Mr. Cline. So, tell me: Why are employees at Twitter and Facebook,
+many of whom do not have a clearance of any kind, able to receive
+these communications unredacted, but Members of Congress are not?
 
-    Mr. Dunham. I just go back to what I said previously that  we're
+    Mr. Dunham. I just go back to what I said previously that we're
 bound by Department of Justice's and Executive Branch policies that
 dictate how we provide information to Congress, and there are certain
 areas where we have to be more considerate and provide redactions.
@@ -478,60 +472,59 @@ Those conversations that we have with staff to--
 
     Mr. Cline. Right.
 
-    Mr. Dunham. --talk about these redactions are extremely  helpful
+    Mr. Dunham. --talk about these redactions are extremely helpful
 for us in coming to an accommodation to provide more information, so I
 appreciate it.
 
-    Mr. Cline. An accommodation with the request actually helps  even
+    Mr. Cline. An accommodation with the request actually helps even
 more. So, earlier this week, Committee staff prioritized a list of
 documents to be produced in unredacted form to the Committee by
 December 8th. You may recall that conversation. It just happened
 earlier this week. Mr. Dunham, can you commit to producing these
 documents in unredacted form for the Committee by that deadline?
 
-    Mr. Dunham. We are working through those requests now. We  just
-got them a couple days ago, and we'll work to provide them as soon as
+    Mr. Dunham. We are working through those requests now. We just got
+them a couple days ago, and we'll work to provide them as soon as
 possible.
 
-    Mr. Cline. Are you aware that the subpoena requires the
-production of a privilege log if the FBI places redactions on certain
-documents?
+    Mr. Cline. Are you aware that the subpoena requires the production
+of a privilege log if the FBI places redactions on certain documents?
 
-    Mr. Dunham. I believe I have read that in one of the  subpoenas,
+    Mr. Dunham. I believe I have read that in one of the subpoenas,
 correct.
 
-    Mr. Cline. All right. When can the Committee expect that
-privilege log?
+    Mr. Cline. All right. When can the Committee expect that privilege
+log?
 
-    Mr. Dunham. I don't have a response for you today, but I'll  take
+    Mr. Dunham. I don't have a response for you today, but I'll take
 that back and see what we can provide.
 
-    Mr. Cline. All right. You'd agree that the Committee's  subpoena
+    Mr. Cline. All right. You'd agree that the Committee's subpoena
 compels the production of certain categories of documents, correct?
 
     Mr. Dunham. I believe so.
 
-    Mr. Cline. Documents and communications between or among  the FBI
+    Mr. Cline. Documents and communications between or among the FBI
 and the Executive Branch, correct?
 
     Mr. Dunham. I believe so.
 
-    Mr. Cline. All right. Why have no documents or  communications
-with the White House or other Federal agencies been produced?
+    Mr. Cline. All right. Why have no documents or communications with
+the White House or other Federal agencies been produced?
 
-    Mr. Dunham. We're working through the productions. Like I  said,
-we provided four productions already, over 600 pages of documents. We
-did prioritize the transcribed interviews, which we had three
-executives come up to spend the full day with the Committee to talk
-about these issues, and answer questions--
+    Mr. Dunham. We're working through the productions. Like I said, we
+provided four productions already, over 600 pages of documents. We did
+prioritize the transcribed interviews, which we had three executives
+come up to spend the full day with the Committee to talk about these
+issues, and answer questions--
 
     Mr. Cline. All right. Can you commit to produce documents
 responsive to this category by December 14th?
 
-    Mr. Dunham. I commit that we will provide information as  soon as
+    Mr. Dunham. I commit that we will provide information as soon as
 possible.
 
-    Mr. Cline. All right. The Ranking Member is recognized for  five
+    Mr. Cline. All right. The Ranking Member is recognized for five
 minutes.
 
     Mr. Swalwell. Great. Thank you, Chair. Mr. Dunham, following
@@ -539,7 +532,7 @@ subpoenas you've received from the Judiciary Committee Republicans,
 didn't you offer to meet and confer with Judiciary Republicans on
 multiple occasions?
 
-    Mr. Dunham. I think my staff has had several offers to meet  and
+    Mr. Dunham. I think my staff has had several offers to meet and
 several conversations with staff.
 
     Mr. Swalwell. Today, you are appearing voluntarily to this
@@ -547,33 +540,33 @@ hearing?
 
     Mr. Dunham. Correct.
 
-    Mr. Swalwell. This is the second time appearing voluntarily
-before this hearing. Is that--this Committee. Is that right?
+    Mr. Swalwell. This is the second time appearing voluntarily before
+this hearing. Is that--this Committee. Is that right?
 
     Mr. Dunham. That's correct.
 
-    Mr. Swalwell. Has the FBI provided Committee Republicans  with
-over 1,700 pages of documents?
+    Mr. Swalwell. Has the FBI provided Committee Republicans with over
+1,700 pages of documents?
 
     Mr. Dunham. It is actually over 2,500 pages.
 
-    Mr. Swalwell. The FBI has also offered to work with  Committee
+    Mr. Swalwell. The FBI has also offered to work with Committee
 Republicans to prioritize their document request. Is that right?
 
     Mr. Dunham. That's correct.
 
-    Mr. Swalwell. This included offering in-person review of
-nonpublic documents. Is that right?
+    Mr. Swalwell. This included offering in-person review of nonpublic
+documents. Is that right?
 
     Mr. Dunham. That's correct.
 
-    Mr. Swalwell. Have you seen, on social media, the doxxing  of what
+    Mr. Swalwell. Have you seen, on social media, the doxxing of what
 you would call non-SES, which is like senior-level employees--the
 names of FBI agents and DOJ employees, not by my Republican
 colleagues, but by just folks on social media who have doxxed and put
 out their public information?
 
-    Mr. Dunham. I have. This goes to one of the areas where  we're a
+    Mr. Dunham. I have. This goes to one of the areas where we're a
 little bit more considerate about where we can provide information. We
 are bound by the Department of Justice and Executive Branch policies,
 which I mentioned previously. Some of those policies relate to non-SES
@@ -599,18 +592,18 @@ also appearing voluntarily today. Is that right?
 
     Ms. Bumpus. That's right.
 
-    Mr. Swalwell. This is your--you're a 17-year career FTC  employee,
+    Mr. Swalwell. This is your--you're a 17-year career FTC employee,
 and you've served under four Republican Chairs and four Democratic
 Chairs. Is that right?
 
     Ms. Bumpus. That's right.
 
-    Mr. Swalwell. The Judiciary Committee only has jurisdiction  over
+    Mr. Swalwell. The Judiciary Committee only has jurisdiction over
 your antitrust work. Is that right?
 
     Ms. Bumpus. Correct.
 
-    Mr. Swalwell. Ms. Darakoglu, welcome back. You have  testified
+    Mr. Swalwell. Ms. Darakoglu, welcome back. You have testified
 before, and you were unanimously confirmed by the U.S. Senate. Is that
 right?
 
@@ -624,29 +617,28 @@ right?
 
     Ms. Darakoglu. Yes.
 
-    Mr. Swalwell. Did I hear right that the State Department  has
+    Mr. Swalwell. Did I hear right that the State Department has
 provided more than 1,600 total pages responding to the House's
 investigation?
 
     Ms. Darakoglu. It's actually 1,900.
 
-    Mr. Swalwell. OK. So, just like the FBI's, it's going up as  we
+    Mr. Swalwell. OK. So, just like the FBI's, it's going up as we
 speak.
 
     Ms. Darakoglu. Yes.
 
-    Mr. Swalwell. You have also offered numerous times and  through
+    Mr. Swalwell. You have also offered numerous times and through
 meetings, briefings, and correspondence, to Judiciary Committee
 Republicans to meet with them and confer about the documents they
 want. Is that right?
 
-    Ms. Darakoglu. Yes. We've also provided opportunities to  meet
-with the Global Engagement Center itself.
+    Ms. Darakoglu. Yes. We've also provided opportunities to meet with
+the Global Engagement Center itself.
 
-    Mr. Swalwell. What is the purpose of the Global Engagement
-Center?
+    Mr. Swalwell. What is the purpose of the Global Engagement Center?
 
-    Ms. Darakoglu. The purpose of the Global Engagement Center  is to
+    Ms. Darakoglu. The purpose of the Global Engagement Center is to
 identify, analyze, and expose foreign disinformation and propaganda.
 
     Mr. Swalwell. Why is that a problem for us?
@@ -654,10 +646,10 @@ identify, analyze, and expose foreign disinformation and propaganda.
     Ms. Darakoglu. It is a major problem, because a lot of that
 foreign disinformation and propaganda often targets the United States.
 
-    Mr. Swalwell. Does it draw a distinction between the  Republican
+    Mr. Swalwell. Does it draw a distinction between the Republican
 Party or the Democratic Party when it presents itself?
 
-    Ms. Darakoglu. While I'm not an expert in disinformation.  From my
+    Ms. Darakoglu. While I'm not an expert in disinformation. From my
 personal experience, I can tell you that they do not discriminate
 between parties.
 
@@ -729,37 +721,37 @@ hope to have information--
 
     Mr. Dunham. --as soon as possible.
 
-    Mr. Van Drew. So, let me--because I'm a simple guy here,  and so I
+    Mr. Van Drew. So, let me--because I'm a simple guy here, and so I
 just want a simple yes or no. Can you commit to providing the
 Committee with the outstanding requests for information contained in
 the September 19th by December 14th of this year? We've been working
 on it for a while. There is no reason that we can't do this. You say
 you have a lot of people on it. Can you commit to that? Yes or no?
 
-    Mr. Dunham. I will commit to providing the information as  soon as
+    Mr. Dunham. I will commit to providing the information as soon as
 we possibly can.
 
     Mr. Van Drew. Can you do it by December 14th?
 
-    Mr. Dunham. I have to figure out where the information is  in the
+    Mr. Dunham. I have to figure out where the information is in the
 pipeline--
 
-    Mr. Van Drew. Why can you do it by December 14th? This has  been
+    Mr. Van Drew. Why can you do it by December 14th? This has been
 going on for a while.
 
-    Mr. Dunham. I understand that. We've been providing a lot  of
+    Mr. Dunham. I understand that. We've been providing a lot of
 responses to the Committee. We've provided 30 responses this year
 already on 16 different topics.
 
-    Mr. Van Drew. I can give you a commitment. We want it by  December
+    Mr. Van Drew. I can give you a commitment. We want it by December
 14th.
 
-    Mr. Dunham. I understand that, and I commit to you that  we'll
+    Mr. Dunham. I understand that, and I commit to you that we'll
 provide it as soon as possible.
 
     Mr. Van Drew. That's not the answer I wanted. I yield back.
 
-    Mr. Cline. The gentleman from Maryland is recognized for  five
+    Mr. Cline. The gentleman from Maryland is recognized for five
 minutes.
 
     Mr. Ivey. Thank you, Mr. Chair. I'm just getting increasingly
@@ -830,14 +822,14 @@ second round, but I would ask, just out of good faith--
 
     Mr. Cline. Gentleman's time has expired.
 
-    Mr. Ivey. --allow us to participate in the meetings and get  the
+    Mr. Ivey. --allow us to participate in the meetings and get the
 emails that you send. When they come up here to give full days of
 meetings to try and figure out how to comply with the subpoenas,
 please let us know so we can participate.
 
-    Mr. Cline. I would be happy to take that under advisement.  I
-would also State I think they know how to comply. The gentleman from
-Texas is recognized.
+    Mr. Cline. I would be happy to take that under advisement. I would
+also State I think they know how to comply. The gentleman from Texas
+is recognized.
 
     Mr. Moran. Thank you, Mr. Chair. Ms. Bumpus, I want to talk to you
 briefly about some very specific requests to the FTC. On March 9,
@@ -863,22 +855,22 @@ productions and have produced over 1,300 pages of documents so far. We
 are continuing to review documents and produce them on a rolling
 basis.
 
-    Mr. Moran. On those two specific requests, can you provide  me
-with any specific update as to the review and the production of those
+    Mr. Moran. On those two specific requests, can you provide me with
+any specific update as to the review and the production of those
 documents that are responsive?
 
     Ms. Bumpus. I cannot. As you know, our staff are in regular
 contact with staff on the Committee, and we'd be happy to engage with
 you on that.
 
-    Mr. Moran. All right. What's the reason why you can't  provide me
+    Mr. Moran. All right. What's the reason why you can't provide me
 with an update today? I know that's the topic of some discussion that
 has been discussed before today's hearing, so I would expect that you
 would have been prepared to tell me when those documents could be
 produced or how many documents are left to review. Can you tell me any
 of that information?
 
-    Ms. Bumpus. Regrettably, I cannot, but I'm happy to take  that
+    Ms. Bumpus. Regrettably, I cannot, but I'm happy to take that
 back, take your concerns and your priorities back, and we will
 continue to work with the Committee.
 
@@ -895,7 +887,7 @@ documents. We will continue to produce them on a rolling basis, and we
 are happy to continue our regular contact with staff members on the
 Judiciary Committee.
 
-    Mr. Moran. On those two specific requests, do you know if  there
+    Mr. Moran. On those two specific requests, do you know if there
 are actual documents that are being reviewed internally, potentially
 responsive to those requests?
 
@@ -903,31 +895,31 @@ responsive to those requests?
 
     Mr. Moran. Do you know who would know at the FTC?
 
-    Ms. Bumpus. I'm happy to take that back. Again, I know your  staff
+    Ms. Bumpus. I'm happy to take that back. Again, I know your staff
 are in regular contact with staff at the FTC about all the
 productions.
 
-    Mr. Moran. With respect to those two requests, Nos. 4 and 7  from
+    Mr. Moran. With respect to those two requests, Nos. 4 and 7 from
 that March 9, 2023, letter, do you know if any email notification or
 other steps have been taken to notify individuals at the FTC to
 preserve materials that may be potentially relevant and responsive?
 
-    Ms. Bumpus. Yes. My understanding is that notices have gone  out
-to custodians, and documents have been collected and placed in a
-central repository.
+    Ms. Bumpus. Yes. My understanding is that notices have gone out to
+custodians, and documents have been collected and placed in a central
+repository.
 
     Mr. Moran. Who is the custodian of that central repository?
 
-    Ms. Bumpus. There are many people with access to that  central
+    Ms. Bumpus. There are many people with access to that central
 repository who deposit and review documents.
 
-    Mr. Moran. Who would be considered the ultimate custodian  of
-those records?
+    Mr. Moran. Who would be considered the ultimate custodian of those
+records?
 
-    Ms. Bumpus. I'm not able to provide that information today,  but
-we are happy to continue talking to your staff.
+    Ms. Bumpus. I'm not able to provide that information today, but we
+are happy to continue talking to your staff.
 
-    Mr. Moran. I'm still curious why you can't tell me who are  the
+    Mr. Moran. I'm still curious why you can't tell me who are the
 custodian of those records. You've been in the Department for 17
 years. In the Office of Congressional Relations, I would suspect you
 would know who the custodian of records is for this particular
@@ -937,35 +929,33 @@ production request.
 
     Mr. Moran. Can you find out?
 
-    Ms. Bumpus. I am happy to take your request back and I know  your
+    Ms. Bumpus. I am happy to take your request back and I know your
 staff, again, talks regularly to our staff, and I will be happy to get
 back--
 
-    Mr. Moran. No. My question wasn't will you find out. My  question
+    Mr. Moran. No. My question wasn't will you find out. My question
 was: Can you find out? Are you able to find out who are the custodian
 of those records?
 
-    Ms. Bumpus. I don't know that there is a single custodian  of
-those records. Like I said, staff from across the agency have been
+    Ms. Bumpus. I don't know that there is a single custodian of those
+records. Like I said, staff from across the agency have been
 collecting records and placing them into the repository for review.
 
-    Mr. Moran. Is it a large number of staff, or just a limited
-number of staff that is the custodian or has access to that
-depository?
+    Mr. Moran. Is it a large number of staff, or just a limited number
+of staff that is the custodian or has access to that depository?
 
-    Ms. Bumpus. I don't know the numbers. I'm happy to take  that
-back.
+    Ms. Bumpus. I don't know the numbers. I'm happy to take that back.
 
     Mr. Moran. Would you say it is more than 50?
 
     Ms. Bumpus. I don't know.
 
-    Mr. Moran. Is there anything you can tell me about that  document
+    Mr. Moran. Is there anything you can tell me about that document
 production today?
 
     Ms. Bumpus. Nothing more than I've already said.
 
-    Mr. Moran. My request would be, in the next 17 seconds  before we
+    Mr. Moran. My request would be, in the next 17 seconds before we
 let you go, or before I let you go is: Next time you come--those are
 really important questions. I'll probably ask you similar questions
 next time. I'd like to know who is in charge, the custodian of
@@ -978,7 +968,7 @@ you. I yield back.
 
     Ms. Bumpus. Thank you.
 
-    Mr. Cline. The gentlelady from Florida is recognized for  five
+    Mr. Cline. The gentlelady from Florida is recognized for five
 minutes.
 
     Ms. Lee. Thank you, Mr. Chair. I'll start here today: Some of our
@@ -1013,7 +1003,7 @@ Integrity Partnership, correct?
 
     Ms. Darakoglu. [Nonverbal response.]
 
-    Ms. Lee. OK. We don't have any documents yet related to, or
+    Ms. OK. We don't have any documents yet related to, or
 communications with, the EIP or Election Integrity Partnership, and
 the failure to produce those communications is particularly of
 interest to the Committee. There are only a few known custodians. The
@@ -1039,10 +1029,10 @@ point out, 1,800 out of the 1,900 are not public, so we are completely
 responsive. On Stanford, in particular, I'm happy to get back and see
 what we have.
 
-    Ms. Lee. Is it a reasonable goal for all of you to provide  those
+    Ms. Lee. Is it a reasonable goal for all of you to provide those
 documents to us--those responsive documents by December 14th?
 
-    Ms. Darakoglu. So, I have to say, as the Assistant  Secretary for
+    Ms. Darakoglu. So, I have to say, as the Assistant Secretary for
 Legislative Affairs, it is my responsibility to be responsive to all
 of you. If I closed out this search at any point without knowing the
 full universe, that would not be adhering to my responsibility to be
@@ -1051,14 +1041,14 @@ are going to continue providing documents to all of you on a rolling
 basis, and I do not want to put a timeline on it, because we're going
 to continue providing what we see as we get it.
 
-    Ms. Lee. So, your testimony with us today is that the  efforts to
+    Ms. Lee. So, your testimony with us today is that the efforts to
 continue to search and locate those documents are ongoing, and you'll
 be providing us a rolling production?
 
     Ms. Darakoglu. Yes.
 
-    Ms. Lee. OK. So, do we know to a certainty one way or the  other
-whether there are more documents, or is it something that further
+    Ms. OK. So, do we know to a certainty one way or the other whether
+there are more documents, or is it something that further
 investigation and review is required to even make that determination?
 
     Ms. Darakoglu. I think we can confidently say, or I can
@@ -1090,46 +1080,46 @@ subpoena, correct?
     Ms. Bumpus. That's my understanding. Sorry. I understand we
 produced a document at the end of September.
 
-    Mr. Cline. Are you aware that this document was already  publicly
+    Mr. Cline. Are you aware that this document was already publicly
 available?
 
     Ms. Bumpus. Yes.
 
-    Mr. Cline. So, the document that you produced, the only  document
+    Mr. Cline. So, the document that you produced, the only document
 that you've produced in response to the subpoena, was a publicly
 available document. Do you think that is compliance? Is that under
 your definition of compliance?
 
-    Ms. Bumpus. Mr. Chair, as you know, the request implicates  an
+    Ms. Bumpus. Mr. Chair, as you know, the request implicates an
 active law enforcement investigation. The Commission has provided
 several nonpublic responses and a lengthy and very detailed nonpublic
 briefing.
 
     Mr. Cline. Not responding to the subpoena.
 
-    Ms. Bumpus. This is responsive materials to the subpoena.  We have
+    Ms. Bumpus. This is responsive materials to the subpoena. We have
 addressed your interests and addressed your concerns through our
 nonpublic responses, written responses, and through the nonpublic
 briefing.
 
-    Mr. Cline. You would not be here if you had addressed my
-interests and the needs of this Committee. Now, you have said that the
-FTC has identified custodians who may have documents responsive, and
-the FTC has taken steps to preserve documents responsive to the
-subpoena, correct?
+    Mr. Cline. You would not be here if you had addressed my interests
+and the needs of this Committee. Now, you have said that the FTC has
+identified custodians who may have documents responsive, and the FTC
+has taken steps to preserve documents responsive to the subpoena,
+correct?
 
     Ms. Bumpus. That is my understanding.
 
-    Mr. Cline. OK. It's my understanding that the FTC has  deleted
+    Mr. Cline. OK. It's my understanding that the FTC has deleted
 former employee documents. Is that correct?
 
-    Ms. Bumpus. I know that is a concern, and I know that is  the
+    Ms. Bumpus. I know that is a concern, and I know that is the
 subject of correspondence with your Committee.
 
     Mr. Cline. You can confirm that the FTC has deleted former
 employee documents?
 
-    Ms. Bumpus. I think it is addressed in our--we addressed  your
+    Ms. Bumpus. I think it is addressed in our--we addressed your
 concerns in our correspondence.
 
     Mr. Cline. Is that a yes?
@@ -1137,23 +1127,23 @@ concerns in our correspondence.
     Ms. Bumpus. I believe that we did delete emails of former
 employees.
 
-    Mr. Cline. Has the FTC taken any steps to preserve  documents of
+    Mr. Cline. Has the FTC taken any steps to preserve documents of
 former employees who left the agency during the pendency of this
 investigation?
 
-    Ms. Bumpus. My understanding is that we are preserving  former
+    Ms. Bumpus. My understanding is that we are preserving former
 employees' emails, and we are seeking to preserve appropriate
 documents.
 
-    Mr. Cline. As you know, Congress can withhold agency  funding when
+    Mr. Cline. As you know, Congress can withhold agency funding when
 an agency ignores oversight requests, let alone a subpoena. Do you
 agree that the FTC's noncompliance with this subpoena should have
 significant repercussions for the agency?
 
-    Ms. Bumpus. We are attempting to be responsive in light of  the
+    Ms. Bumpus. We are attempting to be responsive in light of the
 fact that this is an ongoing--
 
-    Mr. Cline. You're failing to be responsive. You're failing.  So,
+    Mr. Cline. You're failing to be responsive. You're failing. So,
 your stonewalling, your noncompliance today is, quite frankly,
 insulting to this Committee and insulting to the American people who
 we represent. We expect more from you. It is unfortunate that you are
@@ -1169,15 +1159,15 @@ agencies that fail to comply are held accountable. So, I ask you
 again, can you confirm that the FTC will comply with the subpoena and
 provide the documents requested?
 
-    Ms. Bumpus. We will continue to attempt to meet the  Committee's
+    Ms. Bumpus. We will continue to attempt to meet the Committee's
 informational needs consistent with protecting our law enforcement
 equities and we will continue to review our ability to share
 additional information.
 
-    Mr. Cline. All right. The gentleman from California is  recognized
+    Mr. Cline. All right. The gentleman from California is recognized
 for five minutes.
 
-    Mr. Swalwell. I'm having a hard time understanding where  all this
+    Mr. Swalwell. I'm having a hard time understanding where all this
 is going. We're in December now, and 92 individuals, many from your
 agencies, have come in for secret, nonpublic, no video recording
 interviews, and not a single one of them has come to a public hearing,
@@ -1229,8 +1219,8 @@ for all our constituents, including their constituents, is affected
 and delayed and held up because we have to feed the beast. I yield
 back.
 
-    Mr. Cline. I think the gentleman is a fan of WWE. I can  assure
-him Congress is not WWE. If it is, then this administration is the
+    Mr. Cline. I think the gentleman is a fan of WWE. I can assure him
+Congress is not WWE. If it is, then this administration is the
 equivalent of ``The Sopranos.'' The gentleman from New Jersey is
 recognized.
 
@@ -1287,8 +1277,7 @@ just, yes or no.
 documents on a rolling basis. We've produced almost 6,000 pages to
 date, and we've made eight productions.
 
-    Mr. Van Drew. OK. You haven't completed it. Do you know how much
-remains?
+    Ms. OK. You haven't completed it. Do you know how much remains?
 
     Ms. Bumpus. I do not.
 
@@ -1315,7 +1304,7 @@ Other oversight Committees also believe that their requests are
 priorities. We are attempting to meet all these demands while
 continuing to do the work of the agency.
 
-    Mr. Van Drew. Well, thank you. Some of those are  duplicative, so
+    Mr. Van Drew. Well, thank you. Some of those are duplicative, so
 when you answer our questions, you're going to be answering other
 people's questions. Again, Mr. Moran, Ms. Lee, and I think the Chair,
 of course, we've all asked specific questions. There's no reason you
@@ -1327,13 +1316,13 @@ colleagues. We disagree profoundly to the core on everything that we
 believe. Nevertheless, we're still human beings, and you can still
 like people but thoroughly disagree with them. I yield back.
 
-    Mr. Swalwell. I'm offended on your behalf for the  ``Sopranos''
+    Mr. Swalwell. I'm offended on your behalf for the ``Sopranos''
 comment as a Representative of New Jersey.
 
-    Mr. Van Drew. That's right. I didn't even go into that New  Jersey
+    Mr. Van Drew. That's right. I didn't even go into that New Jersey
 remark. Thank you.
 
-    Mr. Cline. The gentleman from Maryland is recognized for  five
+    Mr. Cline. The gentleman from Maryland is recognized for five
 minutes.
 
     Mr. Ivey. Thank you, Mr. Chair. Yes, I'm a little surprised by the
@@ -1459,7 +1448,7 @@ Wray requesting documents and information related to the indictment of
 Mr. McGonigal, the former special agent in charge. Has the FBI
 searched for documents responsive to this request?
 
-    Mr. Dunham. We provided an initial response earlier this  year. It
+    Mr. Dunham. We provided an initial response earlier this year. It
 was a classified response, providing information about security steps
 that we took to mitigate national security concerns. As you're aware,
 the investigation is still ongoing to the point where Mr. McGonigal
@@ -1469,15 +1458,15 @@ understand that the Committee has additional requests for information,
 and I'm happy to continue to provide information. Once the issue is
 adjudicated, I'm happy to see what else we can provide as well.
 
-    Ms. Lee. Explain for us, if you would, the distinction in  what
-you will be able to produce prior to adjudication and post-
-adjudication and why.
+    Ms. Lee. Explain for us, if you would, the distinction in what you
+will be able to produce prior to adjudication and post-adjudication
+and why.
 
-    Mr. Dunham. I'll have to take that back. I'll have to talk  with
+    Mr. Dunham. I'll have to take that back. I'll have to talk with
 the folks that are closest to this, closest to the case, and see what
 information we can provide.
 
-    Ms. Lee. All right. Please, if you would, will be something  that
+    Ms. Lee. All right. Please, if you would, will be something that
 is a subject in a future hearing, should we reconvene on the subject.
 With respect to the pipe bomb investigation, what steps has the Bureau
 taken so far to provide the Committee with outstanding information
@@ -1500,7 +1489,7 @@ how we can accommodate the Committee.
 
     Ms. Lee. Thank you. Mr. Chair, I yield back.
 
-    Mr. Cline. I thank the gentlelady for her comments, for  reminding
+    Mr. Cline. I thank the gentlelady for her comments, for reminding
 us of the tools that were at her disposal, some of which are at our
 disposal in this body. That concludes today's hearing. As with the
 hearings we've had over the past year, I'm disappointed in the answers
@@ -1509,9 +1498,7 @@ the documents that we've requested. As we near the one-year
 anniversary of the establishment of this Subcommittee, we have to
 consider whether additional action must be taken to hold accountable
 those offices, those officials who are refusing to comply and engaging
-in what is essentially the obstruction of justice.
-
-    Mr. Ivey. Mr. --
+in what is essentially the obstruction of justice. Mr. Ivey. Mr. --
 
     Mr. Cline. The gentleman is not recognized. Without objection, all
 Members will have five legislative days to submit additional written
@@ -1524,34 +1511,20 @@ https://docs.house.gov/Committee/Calendar/ ByEvent
 
     [Whereupon, at 3:26 p.m., the Subcommittee was adjourned.]
 
-    [all]
-
     [Whereupon, at 3:26p.m., the Subcommittee was adjourned.]
 
 
                            A P P E N D I X
 
 
-                Prepared statement of the Hon. Dunham
+          The prepared statement of the Hon. Dunham follows:
 
 
 
-               GRAPHIC(S) NOT AVAILABLE IN TIFF FORMAT
+            The prepared statement of Ms. Bumpus follows:
 
 
 
-                   Prepared statement of Ms. Bumpus
-
-
-
-               GRAPHIC(S) NOT AVAILABLE IN TIFF FORMAT
-
-
-
-               Prepared statement of the Hon. Darakoglu
-
-
-
-               GRAPHIC(S) NOT AVAILABLE IN TIFF FORMAT
+        The prepared statement of the Hon. Darakoglu follows:
 
 

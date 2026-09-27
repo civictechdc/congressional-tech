@@ -12,7 +12,6 @@ dependencies = [
     "tinydb",
   "google-genai",
   "yt-dlp",
-  "jiwer",
 ]
 
 [project.scripts]

@@ -1,7 +1,7 @@
 {
  "gpo": {
-  "turns": 193,
-  "words": 13239
+  "turns": 192,
+  "words": 13234
  },
  "A_video": {
   "turns": 174,
@@ -65,8 +65,8 @@
  "B": {
   "turns": 391,
   "words": 13710,
-  "wer": 0.086,
-  "speaker_word_accuracy": 0.883,
+  "wer": 0.087,
+  "speaker_word_accuracy": 0.855,
   "aligned_words": 12745,
   "unknown_words": 1595,
   "speakers": [

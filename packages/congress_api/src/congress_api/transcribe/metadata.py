@@ -89,8 +89,10 @@ def mods_people(package_id: str) -> tuple[dict[str, Person], dict]:
         p.honorific = "Senator" if attrs.get("chamber") == "S" else ""
         people[person_key(p.name)] = p
     for w in re.findall(r"<witness>([^<]+)</witness>", x):
+        ## some records carry the contents line ("Statement of Dr. Robert D. Putnam, Peter and Isabel Malkin Professor ...")
+        w = re.sub(r"^\s*(?:opening |prepared |written )?(?:statements?|testimony|remarks) (?:of|by|from)\s+", "", w, flags=re.I)
         parts = [s.strip() for s in w.split(",")]
-        name = re.sub(r"^(The )?Hon\. ", "", parts[0])
+        name = re.sub(r"^(The )?(Hon\.|Honorable) ", "", parts[0])
         p = Person(name=name, role="witness", honorific=re.match(r"(Mr|Ms|Mrs|Dr)\.", name).group(0) if re.match(r"(Mr|Ms|Mrs|Dr)\.", name) else "", surname=name.split()[-1], position=parts[1] if len(parts) > 1 else "", organization=", ".join(parts[2:]) if len(parts) > 2 else "")
         p.name = re.sub(r"^(Mr|Ms|Mrs|Dr)\. ", "", p.name)
         people[person_key(p.name)] = p
