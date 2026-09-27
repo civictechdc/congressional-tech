@@ -22,7 +22,7 @@ import requests
 ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT / "packages/congress_api/src")); sys.path.insert(0, str(ROOT / "packages/congress_shared/src"))
 import datetime as dt  # noqa: E402
-from congress_api.gpo.match import EVENT_ID, VIDEO_ID, similarity, words  # noqa: E402
+from congress_api.gpo.match import ALIAS, EVENT_ID, VIDEO_ID, similarity, words  # noqa: E402
 from congress_api.senate.isvp import COMM, STREAM, archive_url, live_url, parse_player_url, player_url  # noqa: E402
 
 GPO = ROOT / "apps/committee_youtube/data/gpo_hearings.csv"
@@ -94,16 +94,17 @@ def main(youtube_dir, senate_dir):
             m = json.loads(line)
             if m.get("meetingStatus") in ("Scheduled", "Rescheduled") and int(m.get("congress", 0)) >= 113:
                 meetings.append(m)
-    ## Senate meetings with no Congress.gov video link: does the Senate player's archive have a recording for the committee that day?
+    ## Meetings with no Congress.gov video link: does the Senate player's archive have a recording for the committee that day?
+    ## Senate meetings, and joint bodies the Senate studio records (JEC, Helsinki, the China commissions)
     probe_days = sorted({(COMM[c["systemCode"][:4] + "00"], m["date"][:10]) for m in meetings
-                         if m.get("chamber") == "Senate" and not m.get("videos") and any(COMM.get(c["systemCode"][:4] + "00") in STREAM for c in m.get("committees", []))
+                         if m.get("chamber") != "House" and not m.get("videos") and any(COMM.get(c["systemCode"][:4] + "00") in STREAM for c in m.get("committees", []))
                          for c in m.get("committees", []) if COMM.get(c["systemCode"][:4] + "00") in STREAM})
     probed = dict(zip(probe_days, ThreadPoolExecutor(12).map(probe_senate_day, probe_days)))
     print(f"senate.gov probe: {len(probe_days)} committee-days without a Congress.gov link, recordings for {sum(1 for v in probed.values() if v)}")
     rows, totals = [], collections.Counter()
     for m in meetings:
         if True:  # (body kept at its indent)
-            codes = [c["systemCode"][:4] + "00" for c in m.get("committees", [])]
+            codes = list(dict.fromkeys(ALIAS.get(c["systemCode"][:4] + "00", c["systemCode"][:4] + "00") for c in m.get("committees", [])))
             packages = set(by_eid.get(m["eventId"], ())) | {p for c in codes for p in by_day.get((c, m["date"][:10]), ())}
             urls = [v.get("url", "") for v in (m.get("videos") or [])]
             youtube = list(dict.fromkeys([VIDEO_ID.search(u).group(1) for u in urls if VIDEO_ID.search(u)] + vid_by_eid.get(m["eventId"], [])

@@ -519,8 +519,9 @@ congress,committee_code,committee_name,status,hearings
 113,sssb00,Senate Small Business and Entrepreneurship,full_recording_offsite,13
 113,ssva00,Senate Veterans' Affairs,full_recording_offsite,18
 113,ssva00,Senate Veterans' Affairs,no_video_found,1
-114,,,committee_not_tracked,6
+114,,,committee_not_tracked,5
 114,,,full_recording,1
+114,,,full_recording_offsite,1
 114,hhah00,,full_recording,1
 114,hlzi00,Select Committee on Benghazi,full_recording,2
 114,hlzi00,Select Committee on Benghazi,not_public,11

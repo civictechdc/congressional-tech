@@ -2,7 +2,7 @@ package_id,congress,chamber,committee_code,held_date,hearing_dates,record_type,s
 CHRG-109shrg25747,109,senate,ssap00,,,hearing,no_video_found,,,,,,,auto,GPO record has no hearing date to match on
 CHRG-109shrg25765,109,senate,ssap00,,,hearing,no_video_found,,,,,,,auto,GPO record has no hearing date to match on
 CHRG-113shrg89736,113,senate,ssap00,,,errata,not_public,,,,,,,auto,"errata cover sheet, not a proceeding"
-CHRG-117shrg29104931,117,senate,ssap00,,,hearing,no_video_found,,,,,,,auto,GPO record has no hearing date to match on
+CHRG-117shrg29104931,117,senate,ssap00,,,hearing,no_video_found,,,,,,,research,No hearing to record: the print's clerk's note says the subcommittee was unable to hold hearings for FY2021 and the volume holds written statements and letters only (Sept 2026)
 CHRG-111shrg57186,111,senate,slia00,1933-03-01,,hearing,before_channel,,,,,,,auto,
 CHRG-115hhrg25555,115,house,hsfa00,1992-03-17,,hearing,before_channel,,,,,,,auto,
 CHRG-106hhrg53880,106,house,hsap00,1999-01-01,,hearing,before_channel,,,,,,,auto,
@@ -23372,7 +23372,7 @@ CHRG-114hhrg99780,114,house,hsba00,2015-11-17,,hearing,full_recording,SFGvdsyB-b
 CHRG-114shrg21472,114,senate,ssfi00,2015-11-17,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=finance&filename=finance111715,senate.gov,research,0,,,research,senate.gov archive probe (Sept 2026): recording finance111715 exists on the Senate Recording Studio's player for this committee and day
 CHRG-114shrg22191,114,senate,ssas00,2015-11-17,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=armed&filename=armedA111715,senate.gov,research,0,,,research,senate.gov archive probe (Sept 2026): recording armedA111715 exists on the Senate Recording Studio's player for this committee and day
 CHRG-114shrg38556,114,senate,ssfr00,2015-11-17,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=foreign&filename=foreign111715,senate.gov,research,0,,,research,senate.gov archive probe (Sept 2026): recording foreign111715 exists on the Senate Recording Studio's player for this committee and day
-CHRG-114shrg52542,114,senate,,2015-11-17,,hearing,committee_not_tracked,,,,,,,auto,
+CHRG-114shrg52542,114,senate,,2015-11-17,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=judiciary&filename=judiciary111715,senate.gov,research,0,,,research,"GPO left the committee code blank; the print is a Senate Judiciary subcommittee hearing (S. Hrg. 114-874). senate.gov archive probe (Sept 2026): recording judiciary111715, 197 min, exists on the Senate Recording Studio's player for Judiciary that day"
 CHRG-114shrg97694,114,senate,sshr00,2015-11-17,,hearing,full_recording_offsite,https://www.senate.gov/isvp/?comm=help&filename=help111715,senate.gov,research,0,,,research,senate.gov archive probe (Sept 2026): recording help111715 exists on the Senate Recording Studio's player for this committee and day
 CHRG-114shrg98946,114,senate,sseg00,2015-11-17,,hearing,clips_only,,,,,,,auto,
 CHRG-114hhrg24361,114,house,hsvr00,2015-11-18,,hearing,full_recording,vq2Y8NKDQ74,@HouseVetsAffairs,date in video + title,80,68,,auto,
