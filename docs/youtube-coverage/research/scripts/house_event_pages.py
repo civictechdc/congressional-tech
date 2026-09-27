@@ -23,7 +23,9 @@ type for each meeting document and holds no witnesses or witness documents (docs
 
 Pages are cached under `--cache`/docs_house, so a rerun fetches only new events. A page that fails to
 load is not kept: the repository refuses a client that asks too fast, and a refusal is not an empty
-event.
+event. Some pages load and say only "There was an error retrieving data for this meeting" (283 of
+5,860, the same on a second try a day later); the repository's XML for the meeting can still hold its
+documents and witnesses (docs_house_xml_route.md).
 """
 import argparse, collections, csv, gzip, html, json, re, sys
 from concurrent.futures import ThreadPoolExecutor
@@ -41,6 +43,8 @@ INDEX = ROOT / "docs/youtube-coverage/research/data/hearing_text_sources.csv"
 OUT_DOCUMENTS = ROOT / "docs/youtube-coverage/research/data/house_documents_found.csv"
 OUT_WITNESSES = ROOT / "docs/youtube-coverage/research/data/house_witnesses_found.csv"
 PAGE = "https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID={}"
+## what the repository serves, with a 200, when its page cannot show a meeting
+FAILED = "There was an error retrieving data for this meeting"
 UA = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/537.36 Chrome/120 Safari/537.36"}
 
 ## the repository names its files by what they are: HHRG-115-VR09-Wstate-MurphyT-20170214.pdf. A hearing's print is
@@ -122,7 +126,8 @@ def main(cache, threads):
     for m in lacking:
         page = pages[m["eventId"]]
         totals["pages read"] += 1
-        totals["pages with nothing (no such event in the repository)"] += not page
+        totals["pages that failed to load"] += not page
+        totals["pages that cannot show the meeting"] += FAILED in page
         have = {d["url"].rsplit("/", 1)[-1] for d in (m.get("meetingDocuments") or []) + (m.get("witnessDocuments") or []) if d.get("url")}
         new = [d for d in documents(page) if d[2].rsplit("/", 1)[-1] not in have]
         found_documents += [{"event_id": m["eventId"], "kind": k, "name": n, "url": u} for k, n, u in new]
