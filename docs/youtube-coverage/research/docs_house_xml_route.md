@@ -87,6 +87,26 @@ Static files, plain GET, no cookies.
   Publication lags the hearing by 1–3 years and many hearings are never
   printed.
 
+Validated against four independent sources (2026-09-27):
+
+- `docs.house.gov/committee/Help.aspx` — the repository exists "in accordance
+  with the rules of the House of Representatives and standards adopted by the
+  Committee on House Administration"; its scope is House floor text and House
+  committee meeting documents. A House-rule institution with no Senate
+  counterpart.
+- Georgetown Law Library, Legislative History Research Guide (updated
+  2026-08-25) — committee transcripts are "some of the most elusive
+  Congressional documents"; for Senate materials it directs researchers to
+  individual committee websites, and names docs.house.gov only for House
+  miscellaneous documents. A librarian guide would name a Senate equivalent
+  if one existed.
+- govinfo CHRG help (GPO) — "To find hearings not available on GovInfo, try
+  visiting the committee's website"; "Whether or not a hearing is
+  disseminated on GovInfo depends on the committee"; hearings "can be
+  published two months to two years after they are held."
+- senate.gov's central Committee Hearing/Meeting Schedule page — schedule
+  only (times, rooms, nomination hearings); no documents, no feeds.
+
 ## At-scale comparison (739 meetings, stratified sample across 112th–116th+)
 
 XML document set vs the API record's `meetingDocuments`:
