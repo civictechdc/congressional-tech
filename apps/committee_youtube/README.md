@@ -87,6 +87,7 @@ Useful columns:
 - `record_type`: `hearing` or `errata`.
 - `hearing_dates`: the hearing days the transcript's day headers name, when they say more than `held_date`: every day of a volume or a multi-day hearing, or the one day GPO dated differently.
 - `text_read`: `yes` once the transcript has been read for its day headers.
+- `committee_name`: GPO's name for the committee, or, where GPO names none, the committee on the transcript's title page. `committee_code` is then filled from the code GPO most often gives that name in that chamber.
 
 **`gpo-transcripts`** downloads transcript text to a local folder for search or summaries. It isn't committed: all House and joint hearings since 2013 come to about 2 GB.
 

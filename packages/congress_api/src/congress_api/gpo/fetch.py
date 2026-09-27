@@ -19,7 +19,8 @@ GPO's held date is one date per package. A volume that prints several hearings c
 only the first (or, for Appropriations volumes, the first day of the Congress), and a
 few single hearings carry the wrong date. The transcript's own day headers
 ("WEDNESDAY, FEBRUARY 25, 2015") say when the hearings were held, so they are recorded
-in `hearing_dates` wherever they say something other than GPO's one date.
+in `hearing_dates` wherever they say something other than GPO's one date. Where GPO names
+no committee, the title page does ("COMMITTEE ON THE JUDICIARY / UNITED STATES SENATE").
 
 The MODS record carries the committee's system code (e.g. hsvr00, the same codes
 as youtube-accounts.csv) and, for many hearings since the 115th Congress, the
@@ -145,7 +146,9 @@ def main(
             ).content
             hearing = parse_mods(package_id, mods, last_modified)
             if hearing.congress >= TEXT_DAYS_FROM_CONGRESS:
-                hearing.hearing_dates, hearing.text_read = read_hearing_dates(session, asdict(hearing)), "yes"
+                read = read_transcript(session, asdict(hearing))
+                hearing.hearing_dates, hearing.text_read = read["hearing_dates"], "yes"
+                hearing.committee_name = hearing.committee_name or read["committee_name"]
             return hearing
         except Exception as ex:
             failures.append(f"{package_id}: {ex!r}")
@@ -166,7 +169,9 @@ def main(
 
         def fill(row):
             try:
-                row["hearing_dates"], row["text_read"] = read_hearing_dates(session, row), "yes"
+                read = read_transcript(session, row)
+                row["hearing_dates"], row["text_read"] = read["hearing_dates"], "yes"
+                row["committee_name"] = row["committee_name"] or read["committee_name"]
             except Exception as ex:
                 failures.append(f"{row['package_id']} hearing days: {ex!r}")
 
@@ -314,12 +319,39 @@ def hearing_days(text: str, congress: int, volume: bool = False) -> list[str]:
     return sorted(capitals | ordinary if volume else capitals or ordinary)
 
 
-def read_hearing_dates(session, row: dict) -> str:
-    """`hearing_dates` for a row: the transcript's hearing days when they say more than GPO's held date."""
+## the chamber line that closes a title page's committee block
+CHAMBER_LINE = re.compile(r"^[ \t]*(?:UNITED STATES SENATE|U\.S\. SENATE|(?:U\.S\. )?HOUSE OF REPRESENTATIVES)[ \t]*$", re.MULTILINE)
+PARENT_BODY = re.compile(r"(?<![A-Z])((?:COMMITTEE|COMMISSION|CAUCUS) ON [A-Z][A-Z,'\u2019 \-]*(?:\n[ \t]*[A-Z][A-Z,'\u2019 \-]*)?)")
+SMALL_WORDS = {"on", "the", "and", "of", "for", "in", "to"}
+
+
+def committee_on_title_page(text: str) -> str:
+    """The committee a transcript's title page names, in GPO's style ("Committee on the Judiciary"), or "".
+    The title page reads "BEFORE THE / SUBCOMMITTEE ON ... / OF THE / COMMITTEE ON THE JUDICIARY /
+    UNITED STATES SENATE": the body wanted is the last one named before the chamber line."""
+    chamber = CHAMBER_LINE.search(text[:8000])
+    named = PARENT_BODY.findall(text[:chamber.start()]) if chamber else []
+    if not named:
+        return ""
+    words = re.sub(r"\s+", " ", named[-1]).strip(" ,-").lower().split()
+    return " ".join(w if i and w in SMALL_WORDS else w.capitalize() for i, w in enumerate(words))
+
+
+def read_transcript(session, row: dict) -> dict:
+    """What the transcript itself says: `hearing_dates`, the hearing days when they say more than
+    GPO's held date, and `committee_name`, the committee on its title page."""
+    text = get_with_retry(session, row["html_url"]).text
     volume = is_multi_hearing_volume(row["title"])
-    days = hearing_days(get_with_retry(session, row["html_url"]).text, int(row["congress"]), volume)
+    days = hearing_days(text, int(row["congress"]), volume)
     tells_more = days and (days != [row["held_date"]] or volume)
-    return ";".join(days) if tells_more else ""
+    return {"hearing_dates": ";".join(days) if tells_more else "", "committee_name": committee_on_title_page(text)}
+
+
+def name_key(chamber: str, committee_name: str) -> tuple:
+    """A committee's name reduced to its distinctive words, with its chamber: both chambers have a
+    "Committee on the Judiciary"."""
+    words = re.sub(r"[^a-z ]", " ", committee_name.lower()).split()
+    return chamber, " ".join(w for w in words if w not in SMALL_WORDS and w not in ("committee", "united", "states", "senate", "house"))
 
 
 def clean_rows(rows: dict[str, dict]) -> None:
@@ -337,16 +369,19 @@ def clean_rows(rows: dict[str, dict]) -> None:
             code = code[:4] + code[4:].replace("o", "0")  # e.g. "hssmoo" -> "hssm00"
         return code if VALID_CODE.match(code) else ""
 
-    ## for blank or unusable codes, use the code GPO most often gives that committee name
+    ## for blank or unusable codes, use the code GPO most often gives that committee name in that chamber,
+    ##  or in any chamber when only one has a committee of that name (a joint print of a Senate committee)
     by_name = collections.defaultdict(collections.Counter)
     for row in rows.values():
         code = fix(row["committee_code_gpo"])
         if code and row["committee_name"]:
-            by_name[row["committee_name"]][code] += 1
+            by_name[name_key(row["chamber"], row["committee_name"])][code] += 1
+            by_name[name_key("", row["committee_name"])][code] += 1
     for row in rows.values():
         code = fix(row["committee_code_gpo"])
-        if not code and by_name.get(row["committee_name"]):
-            code = by_name[row["committee_name"]].most_common(1)[0][0]
+        if not code and row["committee_name"]:
+            here, anywhere = by_name.get(name_key(row["chamber"], row["committee_name"])), by_name.get(name_key("", row["committee_name"]), {})
+            code = here.most_common(1)[0][0] if here else next(iter(anywhere)) if len(anywhere) == 1 else ""
         row["committee_code"] = code
 
 

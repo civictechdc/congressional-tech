@@ -18,6 +18,7 @@ import dataclasses
 import logging
 import datetime as dt
 import gzip
+import html
 import json
 import re
 import urllib.request
@@ -79,7 +80,49 @@ def gpo_rows() -> list[dict]:
 
 def mods_people(package_id: str) -> tuple[dict[str, Person], dict]:
     """Members and witnesses from a package's MODS, plus header facts."""
-    x = fetch(MODS_URL.format(pkg=package_id)).decode("utf-8", "replace")
+    return people_in_mods(fetch(MODS_URL.format(pkg=package_id)).decode("utf-8", "replace"))
+
+
+HONORIFIC = re.compile(r"^(?:The )?(Hon\.|Honorable|Mr\.|Ms\.|Mrs\.|Mx\.|Dr\.|Prof\.|Professor|Rev\.|Reverend|Gen\.|General|Adm\.|Admiral|Lt\. Gen\.|Maj\. Gen\.|Col\.|Capt\.|Sgt\.|Chief|Sheriff) ")
+SUFFIX = re.compile(r"^(Jr|Sr|II|III|IV)\.?$")
+## letters after a name: "Ph.D.", "F.A.A.P.", "MPA", "USN (Ret.)"
+CREDENTIAL = re.compile(r"^(?:(?:[A-Z]\.?){2,6}|Ph\.? ?D\.?|Ed\.? ?D\.?|Pharm\.? ?D\.?|Dr\.? ?P\.? ?H\.?|Esq\.?)(?: \(Ret\.?\))?$|^\(Ret\.?\)$")
+CONNECTIVE = {"and", "of", "for", "the", "to", "in", "on", "from", "by", "with", "at"}
+
+
+def is_name(text: str) -> bool:
+    """Could this be a person's name? GPO's witness lines include contents lines ("Answers to questions from
+    the following ...") and the broken-off end of a position ("Security Officer and Security Services
+    Administrator"); neither is two to six capitalised words without a connective or a digit."""
+    words = text.split()
+    return 2 <= len(words) <= 6 and text[:1].isupper() and not any(c.isdigit() for c in text) and not CONNECTIVE & {w.lower() for w in words}
+
+
+def witness(text: str) -> Person:
+    """A witness from GPO's line for them. GPO writes the line three ways: "Mr. Nels Leader, Vice President,
+    Bread Alone Bakery", "Richard J. Powell, Executive Director, ClearPath", and surname first, "Campbell, Jr.,
+    J.H., President and CEO, Associated Grocers". A name written in order has at least two words before the
+    first comma, so a single word there is a surname. Some records carry the contents line instead
+    ("Statement of Dr. Robert D. Putnam, ...")."""
+    text = re.sub(r"^\s*(?:(?:opening |prepared |written )?(?:statements?|testimony|remarks) (?:of|by|from)|accompanied by)\s+", "", text.strip(), flags=re.I)
+    text = re.sub(r"\s*\([^)]*\d[^)]*\)", "", text)  # "Gary Kennedy (H.R. 1963)"
+    title = HONORIFIC.match(text)
+    parts = [s.strip() for s in text[title.end() if title else 0:].split(",") if s.strip()]
+    name, rest = (parts[0] if parts else ""), [s for s in parts[1:] if not CREDENTIAL.match(s)]
+    if name and " " not in name and rest:
+        suffix = rest.pop(0) if SUFFIX.match(rest[0]) else ""
+        given = rest.pop(0) if rest else ""
+        title = title or HONORIFIC.match(given + " ")  # "Roe, Hon. David P., a Representative in Congress ..."
+        name = " ".join(filter(None, [HONORIFIC.sub("", given + " ").strip(), name, suffix]))
+    elif rest and SUFFIX.match(rest[0]):
+        name = f"{name} {rest.pop(0)}"
+    honorific = title.group(1) if title else ""
+    return Person(name=name, role="witness", honorific=honorific if honorific in ("Mr.", "Ms.", "Mrs.", "Dr.") else "", surname=names.surname(name),
+                  position=rest[0] if rest else "", organization=", ".join(rest[1:]))
+
+
+def people_in_mods(x: str) -> tuple[dict[str, Person], dict]:
+    """Members and witnesses named in a MODS record, plus header facts."""
     people: dict[str, Person] = {}
     for m in re.finditer(r'<congMember\b([^>]*)>(.*?)</congMember>', x, re.S):
         attrs = dict(re.findall(r'(\w+)="([^"]*)"', m.group(1)))
@@ -90,14 +133,9 @@ def mods_people(package_id: str) -> tuple[dict[str, Person], dict]:
         p.honorific = "Senator" if attrs.get("chamber") == "S" else ""
         people[person_key(p.name)] = p
     for w in re.findall(r"<witness>([^<]+)</witness>", x):
-        ## some records carry the contents line ("Statement of Dr. Robert D. Putnam, Peter and Isabel Malkin Professor ...")
-        w = re.sub(r"^\s*(?:opening |prepared |written )?(?:statements?|testimony|remarks) (?:of|by|from)\s+", "", w, flags=re.I)
-        parts = [s.strip() for s in w.split(",")]
-        name = re.sub(r"^(The )?(Hon\.|Honorable) ", "", parts[0])
-        p = Person(name=name, role="witness", honorific=re.match(r"(Mr|Ms|Mrs|Dr)\.", name).group(0) if re.match(r"(Mr|Ms|Mrs|Dr)\.", name) else "", surname=name.split()[-1], position=parts[1] if len(parts) > 1 else "", organization=", ".join(parts[2:]) if len(parts) > 2 else "")
-        p.name = re.sub(r"^(Mr|Ms|Mrs|Dr)\. ", "", p.name)
-        p.surname = names.surname(p.name)
-        people[person_key(p.name)] = p
+        p = witness(html.unescape(w))
+        if is_name(p.name):
+            people[person_key(p.name)] = p
     g = lambda pat: (re.search(pat, x, re.S).group(1).strip() if re.search(pat, x, re.S) else "")
     facts = {"title": g(r"<searchTitle>([^<]+)</searchTitle>"), "serial": g(r"<preferredCitation>([^<]+)</preferredCitation>"), "held_date": g(r"<heldDate>([^<]+)</heldDate>"),
              "congress": g(r"<congress>(\d+)</congress>"), "session": g(r"<session>(\d+)</session>"),
