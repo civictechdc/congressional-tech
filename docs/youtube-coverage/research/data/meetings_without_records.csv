@@ -4,18 +4,11 @@ event_id,congress,chamber,type,date,committees,title,documents
 100269,113,House,Meeting,2013-02-13,hsag00,To consider the Oversight Plan of the Committee on Agriculture for the 113th Congress and other organizational matters,yes
 100375,113,House,Hearing,2013-03-05,hsii00,"Legislative hearing on H.R. 254 (Chaffetz), Bonneville Unit Clean Hydropower Facilitation Act and H.R. 678 (Tipton), Bureau of Reclamation Small Conduit Hydropower Development and Rural Jobs Act",yes
 100397,113,House,Hearing,2013-03-06,hsif00,Our Nation of Builders: Powering U.S. Automobile Manufacturing Forward.,yes
-100432,113,House,Markup,2013-03-06,hswm00,"Markup of: H.R. 890, “Preserving Work Requirements for Welfare Programs Act of 2013”",yes
 100504,113,House,Markup,2013-03-14,hssy00,"H. R. 756, the ""Cybersecurity Enhancement Act of 2013"" and  H. R. 967, the ""Advancing America's Networking and Information Technology Research and Development Act of 2013.",yes
-100548,113,House,Markup,2013-03-20,hsii00,"H.R. 527, H.R. 254, H.R. 291, H.R. 507, H.R. 588, H.R. 678, H.R. 716, H.R. 1033, and H.R. 1159",yes
 100567,113,House,Hearing,2013-04-11,hshm00,“TSA’s Efforts to Advance Risk-Based Security: Stakeholder Perspectives.”,yes
-100674,113,House,Markup,2013-04-11,hssy00,"H.R. 875, to provide for a comprehensive assessment of the scientific and technical research on the implications of the use of mid-level ethanol blends, and for other purposes; and H.R. 1422, to amend the Environmental Research, Development, and Demonstration Authorization Act of 1978 to provide for Scientific Advisory Board member qualifications, public participation, and for other purposes.",yes
 100758,113,House,Markup,2013-04-24,hshm00,"H.R. 1417, (Mr. Michael T. McCaul) To require the Secretary of Homeland Security to develop a comprehensive strategy to gain and maintain operational control of the international borders of the United States, and for other purposes. The ""Border Security Results Act of 2013.""",yes
-100774,113,House,Markup,2013-04-24,hswm00,"Markup of: H.R. 807, “Full Faith and Credit Act”",yes
-100778,113,House,Markup,2013-04-24,hsii00,"Full Committee Markup on H.R. 3, H.R. 85, H.R. 126, H.R. 251, H.R. 253, H.R. 330, H.R. 356, H.R. 462, H.R. 520, H.R. 573, H.R. 674, H.R. 723, H.R. 739, H.R. 767, H.R. 829, H.R. 862, H.R. 876, H.R. 885, H.R. 934, H.R. 993, H.R. 1156, H.R. 1157, H.R. 1158, H.R. 1206, H.R. 1208, H.R. 1241, and H.R. 1377",yes
-100735,113,House,Markup,2013-04-25,hsvr00,"H.R. 569 (Runyan),To increase, effective as of December 1, 2013, the rates of compensation for veterans with service-connected disabilities and the rates of dependency and indemnity compensation for the survivors of certain disabled veterans, and for other purposes, ""Veterans' Compensation Cost-of-Living Adjustment Act of 2013""; H.R. 570 (Runyan),To amend title 38, United States Code, to provide for annual cost-of-living adjustments to be made automatically by law each year in the rates of disability compensation for veterans with service-connected disabilities and the rates of dependency and indemnity compensation for survivors of certain service-connected disabled veterans, ""American Heroes COLA Act"";  H.R. 671 (Pingree),To amend title 38, United States Code, to improve the disability compensation evaluation procedure of the Secretary of Veterans Affairs for veterans with mental health conditions related to military sexual trauma, and for other purposes,""Ruth Moore Act of 2013"";H.R. 894 (Johnson of OH)To amend title 38, United States Code, to improve the supervision of fiduciaries of veterans under the laws administered by the Secretary of Veterans Affairs; and H.R. 1405 (Titus)To amend title 38, United States Code, to require the Secretary of Veterans Affairs to include an appeals form in any notice of decision issued for the denial of a benefit sought.",yes
 100612,113,House,Hearing,2013-04-26,hsii00,"Legislative Hearing on H.R. 1548 (D. Young), To facilitate the development of energy on Indian lands by reducing Federal regulations that impede tribal development of Indian lands, and for other purposes. ‘‘Native American Energy Act” (Rescheduled from April 10, 2013)",yes
 100770,113,House,Hearing,2013-04-26,hsii00,"Legislative Hearing on H.R. 1169 (Amodei), ""Naval Air Station Fallon Housing and Safety Development Act”; H.R. 1299 (Pearce), the “White Sands Missile Range Security Enhancement Act”; H.R. 1574 (Turner), To amend the Dayton Aviation Heritage Preservation Act of 1992 to rename a site of the park; H.R. 1673 (McCarthy), the ‘‘Naval Air Weapons Station China Lake Security Enhancement Act’’; H.R. 1676 (Cook), the ‘‘Johnson Valley National Off-Highway Vehicle Recreation Area Establishment Act’’; H.R. 1672 (Daines), the ‘‘Limestone Hills Training Area Withdrawal Act’’; and H.R. 1691 (Vargas), the ‘‘Chocolate Mountain Aerial Gunnery Range Security Enhancement Act’’",no
-100792,113,House,Hearing,2013-05-08,hsii00,"Oversight hearing titled “DOI Hydraulic Fracturing Rule: A Recipe for Government Waste, Duplication and Delay.”",yes
 100855,113,House,Markup,2013-05-15,hshm00,"H.R. 1417, (Mr. Michael T. McCaul), To require the Secretary of Homeland Security to develop a comprehensive strategy to gain and maintain operational control of the international borders of the United States, and for other purposes.  The “Border Security Results Act of 2013.”",yes
 100842,113,House,Markup,2013-05-16,hsap00,FY 14 Homeland Security Bill - Subcommittee,yes
 100860,113,House,Markup,2013-05-16,hsed00,Markup of H.R. 1911 and H.R. 1949,yes
@@ -25,15 +18,11 @@ event_id,congress,chamber,type,date,committees,title,documents
 100881,113,House,Markup,2013-05-22,hsas00,H.R. 1960 – National Defense Authorization Act for Fiscal Year 2014,yes
 100879,113,House,Markup,2013-05-23,hsas00,H.R. 1960 – National Defense Authorization Act for Fiscal Year 2014,yes
 100882,113,House,Markup,2013-05-23,hsas00,H.R. 1960 – National Defense Authorization Act for Fiscal Year 2014,yes
-100898,113,House,Hearing,2013-05-23,hsii00,"Legislative Hearing on H.R. 255, H.R. 745, H.R. 1963",yes
-100940,113,House,Hearing,2013-06-05,hswm00,"Chairman Johnson Announces Hearing on How Social Security 
-Protects the Benefits of Those Who Cannot Protect Themselves",yes
 100944,113,House,Markup,2013-06-05,hsap00,FY 2014 Defense Appropriations Bill - Subcommittee,yes
 100957,113,House,Hearing,2013-06-13,hsii00,"Legislative hearing on the following bills: H.R. 553 (Issa), A bill to designate the exclusive economic zone of the United States as the ""Ronald Wilson Reagan Exclusive Economic Zone of the United States""; H.R. 1308 (Hastings of WA),Endangered Salmon and Fisheries Predation Prevention Act; H.R. 1399 (Young of AK), Hydrographic Services Improvement Amendments Act of 2013; H.R. 1425 (Bonamici), Marine Debris Emergency Act of 2013; H.R. 1491 (Bonamici), A bill to authorize the Administrator of the National Oceanic and Atmospheric Administration to provide certain funds to eligible entities for activities undertaken to address the marine debris impacts of the March 2011 Tohoku earthquake and subsequent tsunami; H.R. 2219 (Young of AK), A bill to reauthorize the Integrated Coastal and Ocean Observation System Act of 2009.",yes
 101023,113,House,Markup,2013-06-18,hsju00,"H.R. 2278, the ""Strengthen and Fortify Enforcement Act"" (The SAFE Act)",yes
 101020,113,House,Markup,2013-06-19,hsed00,"H.R. 5, ""Student Success Act""",yes
 101060,113,House,Markup,2013-06-26,hsap00,FY 2014 Energy and Water Appropriations Bill,yes
-101081,113,House,Markup,2013-06-28,hsgo00,"a resolution that Lois Lerner waived her Fifth Amendment privilege against self-incrimination when she made a voluntary opening statement at the May 22, 2013 full Committee hearing entitled “The IRS: Targeting Americans for Their Political Beliefs.”",yes
 101125,113,House,Markup,2013-06-29,hssy00,"H.R. 1786, National Windstorm Impact Reduction Act Reauthorization of 2013",yes
 101123,113,House,Markup,2013-07-09,hssy00,"H.R. 2413, Weather Forecasting Improvement Act of 2013",yes
 101105,113,House,Hearing,2013-07-10,hsas00,Armed Services and Veterans Affairs Hearing on DOD and VA Collaboration to Assist Service Members Returning to Civilian Life,no
@@ -55,13 +44,11 @@ General Services Administration Resolution
 Other matters cleared for consideration.",yes
 101169,113,House,Markup,2013-07-18,hssy00,"H.R. 2687, the “National Aeronautics and Space Administration Authorization Act of 2013”",yes
 101146,113,House,Markup,2013-07-19,hsap00,FY 2014 State and Foreign Operations Appropriations Bill,yes
-101188,113,House,Meeting,2013-07-19,hsii00,"Legislative Hearing. H.R. 587 (Young), To authorize the establishment of the Niblack and Bokan Mountain mining area road corridors in the State of Alaska, and for other purposes.  “Niblack and Bokan Mountain Mining Area Roads Authorization Act”; H.R. 1168 (Amodei), To direct the Secretary of the Interior, acting through the Bureau of Land Management, to convey to the City of Carlin, Nevada, in exchange for consideration, all right, title, and interest of the United States, to any Federal land within that city that is under the jurisdiction of that agency, and for other purposes; H.R. 1170 (Amodei), To direct the Secretary of the Interior, acting through the Bureau of Land Management and the Bureau of Reclamation, to convey, by quitclaim deed, to the City of Fernley, Nevada, all right, title, and interest of the United States, to any Federal land within that city that is under the jurisdiction of either of those agencies; H.R. 1684 (Lummis), To convey certain property to the State of Wyoming to consolidate the historic Ranch A, and for other purposes.  “Ranch A Consolidation and Management Improvement Act”; H.R. 2068 (Lummis), To reauthorize the Federal Land Transaction Facilitation Act, and for other purposes. “Federal Land Transaction Facilitation Act Reauthorization of 2013”; H.R. 2095 (Bishop), To prohibit an increase in the lands administered by the Bureau of Land Management until a centralized database of all lands identified as suitable for disposal by Resource Management Plans for lands under the administrative jurisdiction of the Bureau is easily accessible to the public on a website of the Bureau. “Land Disposal Transparency and Efficiency Act”; H.R. 2337 (Polis), To provide for the conveyance of the Forest Service Lake Hill Administrative Site in Summit County, Colorado.  “Lake Hill Administrative Site Affordable Housing Act”; H.R. 2395 (Hastings), To provide for donor contribution acknowledgments to be displayed at projects authorized under the Commemorative Works Act, and for other purposes; S. 130 (Enzi), A bill to require the Secretary of the Interior to convey certain Federal land to the Powell Recreation District in the State of Wyoming.  “Powell Shooting Range Land Conveyance Act”; S. 304 (Cochran), A bill to direct the Secretary of the Interior to convey to the State of Mississippi 2 parcels of surplus land within the boundary of the Natchez Trace Parkway, and for other purposes. “Natchez Trace Parkway Land Conveyance Act of 2013”; S. 459 (Johnson), A bill to modify the boundary of the Minuteman Missile National Historic Site in the State of South Dakota, and for other purposes. “Minuteman Missile National Historic Site Boundary Modification Act”",yes
 101207,113,House,Markup,2013-07-24,hsed00,"Markup of H.R. 2637, “Supporting Academic Freedom through Regulatory Relief Act.”",yes
 101208,113,House,Markup,2013-07-24,hshm00,"H.R. 1204, (Mr. Bennie G. Thompson), To amend title 49, United States Code, to direct the Assistant Secretary of Homeland Security (Transportation Security Administration) to establish an Aviation Security Advisory Committee, and for other purposes.  The ""Aviation Security Stakeholder Participation Act of 2013.""
 
 H.R. 2719, (Mr. Richard Hudson), To require the Transportation Security Administration to implement best practices and improve transparency with regard to technology acquisition programs, and for other purposes.  The ""Transportation Security Acquisition Reform Act.""",yes
 101225,113,House,Hearing,2013-07-31,hswm00,Chairman Reichert Announces Hearing on Improving the Safety Net to Ensure Families Receive Real Help,no
-101244,113,House,Markup,2013-07-31,hsii00,"H.R. 255, H.R. 553, H.R. 623, H.R. 908, H.R. 930, H.R. 1168, H.R. 1170, H.R. 1526, H.R. 1684, H.R. 1818, H.R. 1963, H.R. 2388, H.R. 2463, H.R. 2650, and H.R. 2728",yes
 101248,113,House,Hearing,2013-07-31,hswm00,Chairman Reichert Announces Hearing on Improving the Safety Net to Ensure Families Receive Real Help,no
 101393,113,House,Hearing,2013-10-09,hsju00,Implementation of an Entry-Exit System: Still Waiting After All These Years,yes
 101415,113,House,Meeting,2013-10-15,hsru00,"Senate amendment H.J. Res. 59—Continuing Appropriations Resolution, 2014 (Meeting IV)",yes
@@ -76,23 +63,17 @@ H.R. 2719, The “Transportation Security Acquisition Reform Act.”
 H.R. 2952, The “Critical Infrastructure Research and Development Advancement Act of 2013.”
 
 H.R. 3107,  The “Homeland Security Cybersecurity Boots-on-the-Ground Act.”",yes
-101454,113,House,Markup,2013-10-29,hsgo00,"H.R. 2860, the OPM IG Act; H.R. 3316, the Grant Reform and New Transparency Act of 2013 (GRANT Act); H.R. ___, the Stop Unworthy Spending Act (SUSPEND Act); and H.R. ___, to amend the District of Columbia Home Rule Act to clarify the rules regarding the determination of the compensation of the Chief Financial Officer of the District of Columbia.",yes
 101455,113,House,Markup,2013-10-30,hsii00,"H.R. 298, H.R. 585, H.R. 1308, H.R. 1846, H.R. 2798, H.R. 2799 and H.R. 2954",yes
 101462,113,House,Meeting,2013-11-14,hsvr00,Roundtable Discussion: “Addressing Operational Challenges to Ensure Accurate and Optimal VA Third Party Collections”,no
-101502,113,House,Markup,2013-11-14,hsii00,"H.R. 1308, H.R. 2798, H.R. 2824, H.R. 3008, H.R. 3188, H.R. 3189",yes
 101505,113,House,Hearing,2013-11-20,hsii00,"Oversight Hearing, ""Oversight of the Obama Administration’s Questionable Application of Sequestration to the Secure Rural Schools Program and the Costs to States, Local Economies, and Rural School Children.”",yes
 101526,113,House,Markup,2013-11-20,hsju00,"H.R. 3309, the ""Innovation Act""",yes
-101561,113,House,Markup,2013-12-04,hsii00,"H.R. 915, H.R. 1425, H.R. 1491, H.R. 2208, H.R. 2319, H.R. 3286, H.R. 3492, and S. 230",yes
 101567,113,House,Markup,2013-12-04,hsju00,"H.R. 3627, the ""Kilah Davenport Child Protection Act of 2013""; and, H.R. 1447, the ""Death in Custody Reporting Act of 2013""",yes
 101568,113,House,Markup,2013-12-05,hssy00,"H.R. 2413, the “Weather Forecasting Improvement Act of 2013"";
 H.R. 2431, the “National Integrated Drought Information System Reauthorization Act of 2013”;
 H.R. 2981, the “Technology and Research Accelerating National Security and Future Economic Resiliency Act of 2013” and
 H.R. 3625,  “To provide for termination liability costs for certain National Aeronautics and Space Administration projects, and for other purposes”",yes
 101689,113,House,Meeting,2014-01-16,hsii00,Business Meeting to Authorize the Issuance of Subpoenas for the Production of Documents Relating to Matters Within the Committee's Jurisdiction,yes
-101694,113,House,Markup,2014-01-28,hsii00,"Full Committee Markup on H.R. 163, H.R. 433, H.R. 2095, H.R. 2259, H.R. 2657 and H.R. 3492",yes
 101713,113,House,Markup,2014-02-05,hshm00,"Markup of H.R. 3696, (Mr. McCaul) To amend the Homeland Security Act of 2002 to make certain improvements regarding cybersecurity and critical infrastructure protection, and for other purposes.  The “National Cybersecurity and Critical Infrastructure Protection Act of 2013”.",yes
-101717,113,House,Hearing,2014-02-05,hswm00,"Chairman Boustany Announces Hearing with 
-IRS Commissioner Koskinen",no
 101731,113,House,Markup,2014-02-05,hsju00,"Ratification of Subcommittee memberships;
 Resolution, Reauthorization of the Over-Criminalization Task Force; and, 
 H.R. 2919, the “Open Book on Equal Access to Justice Act”;",yes
@@ -105,14 +86,9 @@ General Services Administration Capital Investment and Leasing Program Resolutio
 H.R. 1378 -   To designate the United States courthouse located at 333 West Broadway in San Diego, California, as the “James M. Carter and Judith N. Keep United States Courthouse”.
 
 H.R. 4005 -   Coast Guard and Maritime Transportation Act of 2014.",yes
-101758,113,House,Markup,2014-02-11,hswm00,"Markup of:
- 
-    H.R. 3865, “Stop Targeting of Political Beliefs by the IRS Act of 2014”",yes
 101821,113,House,Hearing,2014-02-26,hsii00,"Legislative Hearing: H.R. 503 (Roe), To authorize the National Desert Storm Memorial Association to establish the National Desert Storm and Desert Shield Memorial as a commemorative work in the District of Columbia, and for other purposes. “National Desert Storm and Desert Shield War Memorial Act”; H.R. 712 (Frelinghuysen), To extend the authorization of the Highlands Conservation Act through fiscal year 2024; H.R. 1192 (McClintock), To redesignate Mammoth Peak in Yosemite National Park as ""Mount Jessie Benton Fre'mont""; H.R. 1501 (Jeffries), To direct the Secretary of the Interior to study the suitability and feasibility of designating the Prison Ship Martyrs' Monument in Fort Greene Park, in the New York City borough of Brooklyn, as a unit of the National Park System. “Prison Ship Martyrs' Monument Preservation Act”; H.R. 1744 (Horsford),  To provide for the implementation of the multispecies habitat conservation plan for the Virgin River, Nevada, and Lincoln County, Nevada, to extend the authority to purchase certain parcels of public land, and for other purposes. “Multispecies Habitat Conservation Plan Implementation Act”; H.R. 2569 (Welch), To amend the Wild and Scenic Rivers Act to designate segments of the Missisquoi River and the Trout River in the State of Vermont, as components of the National Wild and Scenic Rivers System. “Upper Missisquoi and Trout Wild and Scenic Rivers Act”; H.R. 3222 (Meng), To authorize the Secretary of the Interior to conduct a special resource study of sites associated with the 1657 signing of the Flushing Remonstrance in Queens, New York, and for other purposes. “Flushing Remonstrance Study Act”; H.R. 3366 (Walden), To provide for the release of the property interests retained by the United States in certain land conveyed in 1954 by the United States, acting through the Director of the Bureau of Land Management, to the State of Oregon for the establishment of the Hermiston Agricultural Research and Extension Center of Oregon State University in Hermiston, Oregon; H.R. 3802 (Lynch), To extend the legislative authority of the Adams Memorial Foundation to establish a commemorative work in honor of former President John Adams and his legacy, and for other purposes.",yes
 101963,113,House,Meeting,2014-02-26,hsag00,To Review the impacts of Endangered Species Act and related litigation on National Forest System management,no
 101777,113,House,Hearing,2014-02-27,hsii00,"Legislative Hearing on: H. R. 3105, Aquaculture Risk Reduction Act; H. R. 3280, Lacey Act Clarifying Amendments Act; H. R. 3324, The Lacey Act Paperwork Reduction Act and; H. R. 4032, North Texas Invasive Species Barrier Act.",yes
-101813,113,House,Hearing,2014-02-28,hsii00,"Legislative Hearing on the discussion draft titled, H.R. ____, “Strengthening Fishing Communities and Increasing Flexibility in Fisheries Management Act”",yes
-101894,113,House,Hearing,2014-03-06,hsii00,"Legislative Hearing: H.R. 414 (Young), To provide for the continued lease or eventual conveyance of certain Federal land within the boundaries of Fort Wainwright Military Reservation in Fairbanks, Alaska;  H.R 1839 (Tipton), To designate certain Federal land in the San Juan National Forest in the State of Colorado as wilderness, and for other purposes.  “Hermosa Creek Watershed Protection Act of 2013”; H.R. 2430 (Pascrell), To adjust the boundaries of Paterson Great Falls National Historical Park to include Hinchliffe Stadium, and for other purposes. “Hinchliffe Stadium Heritage Act of 2013”; H.R. 3606 (McClintock), To permit certain activities to be conducted on Federal land within the Emigrant Wilderness of Stanislaus National Forest in the State of California at the level at which such activities were conducted on such land before the wilderness designation, and for other purposes. “Emigrant Wilderness Historical Use Preservation Act of 2013”",yes
 101901,113,House,Markup,2014-03-12,hsgo00,"H.R. 4174, the Alaska Bypass Modernization Act of 2014;
 
 H.R. 3635, the Safe and Secure Federal Websites Act of 2013;	
@@ -158,11 +134,8 @@ H.R. 3765, To designate the facility of the United States Postal Service located
 H.R. ____ , To designate the facilities of the United States Postal Service located at 4000 Leap Road, Hilliard, Ohio as the as the “Master Sergeant Shawn T. Hannon  and Master Sergeant Jeffery J. Rieck and Veterans Memorial Post Office.""",yes
 101899,113,House,Meeting,2014-03-13,hsag00,Full Committee Business Meeting,yes
 101917,113,House,Markup,2014-03-13,hsii00,"Full Committee Markup on H.R. 1192, H.R. 1501, H.R. 3222, and H.R. 4032",yes
-101879,113,House,Hearing,2014-03-14,hsii00,Hearing on a Discussion Draft bill To authorize a demonstration program that allows for State-Federal-Tribal co-management of wildlife throughout the traditional hunting territory of the Ahtna people and for other purposes.  “The Alaska Native Subsistence Co-Management Demonstration Act of 2014”,yes
-102002,113,House,Meeting,2014-03-25,hsii00,"Examining the Proposed Fiscal Year 2015 Spending, Priorities and the Missions of the Bureau of Reclamation, the Four Power Marketing Administrations and the U.S. Geological Survey’s Water Program",yes
 102028,113,House,Hearing,2014-03-26,hsag00,To Review the impacts of Endangered Species Act and related litigation on National Forest System management.,yes
 102124,113,House,Markup,2014-04-09,hsed00,"Markup of  H.R. 4321, “Employee Privacy Protection Act” and H.R. 4320, “Workforce Democracy and Fairness Act”",yes
-102111,113,House,Meeting,2014-04-10,hsii00,Oversight Hearing: “Tribal Forest Management: A Model for Promoting Healthy Forests and Rural Jobs.”,yes
 102147,113,House,Hearing,2014-04-29,hsii00,"“the Department of the Interior Office of Insular Affairs’ spending and the President’s Fiscal Year 2015 budget request for the Office” and on the following bills: H.R. 4296 (Sablan), To amend Public Law 94–241 with respect to the Northern Mariana Islands; H.R. 4402 (Bordallo), To authorize the Secretary of the Navy to establish a surface danger zone over the Guam National Wildlife Refuge or any portion thereof to support the operation of a live-fire training range complex. “Guam Military Training and Readiness Act of 2014”",yes
 102151,113,House,Hearing,2014-04-29,hsii00,Oversight hearing on “American Energy Jobs: Opportunities for Skilled Trades Workers.”,yes
 102187,113,House,Meeting,2014-04-29,hsii00,"Legislative Hearing:
@@ -177,71 +150,39 @@ H.R. 3283, (Mr. Bilirakis) The “Integrated Public Alert and Warning System Mod
 H.R. 4007, (Mr. Meehan) The “Chemical Facility Anti-Terrorism Standards Program Authorization and Accountability Act of 2014”.
 H.R. 4228, (Mr. Duncan of South Carolina) The “DHS Acquisition Accountability and Efficiency Act.”",yes
 102185,113,House,Markup,2014-04-30,hsju00,"H.R. 3530, the “Justice for Victims of Trafficking Act of 2013”; H.R. 3610, the “Stop Exploitation Through Trafficking Act of 2013”; H.R. 4225, the “Stop Advertising Victims of Exploitation Act of 2014”; H.R. 306, For the relief of Corina de Chalup Turcinovic; and, H.R. 776, the “Security in Bonding Act of 2013”",yes
-102188,113,House,Markup,2014-04-30,hsii00,"Full Committee Markup on H.R. 4315, H.R. 4316, H.R. 4317 and H.R. 4318",yes
 102129,113,House,Markup,2014-05-01,hsas00,H.R. 4435 – National Defense Authorization Act for Fiscal Year 2015,yes
 102131,113,House,Markup,2014-05-01,hsas00,H.R. 4435 – National Defense Authorization Act for Fiscal Year 2015,yes
 102146,113,House,Markup,2014-05-07,hsas00,H.R. 4435 – National Defense Authorization Act for Fiscal Year 2015,yes
 102251,113,House,Markup,2014-05-20,hshm00,"Markup of:
 H.R. 3202, (Ms. Jackson Lee) To require the Secretary of Homeland Security to prepare a comprehensive security assessment of the transportation security card program, and for other purposes. The “Essential Transportation Worker Identification Credential Assessment Act.”
 H.R. 3488, (Mr. Meehan) To establish the conditions under which the Secretary of Homeland Security may establish preclearance facilities, conduct preclearance operations, and provide customs services outside the United States, and for other purposes. H.R. 3846, (Mrs. Miller of Michigan) To provide for the authorization of border, maritime, and transportation security responsibilities and functions in the Department of Homeland Security and the establishment of United States Customs and Border Protection, and for other purposes.  The “United States Customs and Border Protection Authorization Act.”",yes
-102272,113,House,Markup,2014-05-21,hsii00,Full Committee Markup on H.R. 4402,yes
 102274,113,House,Hearing,2014-05-29,hshm00,"""Lessons from the LAX Shooting: Airport and Law Enforcement Perspectives""",yes
-102297,113,House,Markup,2014-05-29,hsii00,"Full Committee 
-Markup on H.R. 2175, H.R. 2569, H.R. 3606, H.R. 4296, H.R. 4350, and H.R. 4742",yes
 102337,113,House,Meeting,2014-06-10,hsru00,"H.R. 4453—Permanent S Corporation Built-in Gains Recognition Period Act of 2014; H.R. 4457—America's Small Business Tax Relief Act of 2014; H.R. 4800—Agriculture, Rural Development, Food and Drug Administration, and Related Agencies Appropriations Act, 2015",yes
 102314,113,House,Hearing,2014-06-11,hsas00,"The May 31, 2014 Transfer of Five Senior Taliban Detainees",no
 102336,113,House,Markup,2014-06-11,hssy00,"Committee Print of H.R. _______, the “Department of Energy Research and Development Act of 2014”",yes
 102379,113,House,Markup,2014-06-18,hsju00,"H.R. 3086, the “Permanent Internet Tax Freedom Act”; and,H.R. 4874, the “Searching for and Cutting Regulations that are Unnecessarily Burdensome (SCRUB) Act of 2014”",yes
 102421,113,House,Markup,2014-06-24,hssy00,"H.R. 4012, Secret Science Reform Act of 2014",yes
-102433,113,House,Markup,2014-06-25,hswm00,"Markup of: H.R. 3393, ""Student and Family Tax Simplification Act""; H.R. 4935, ""Child Tax Credit Improvement Act of 2014""",yes
 102434,113,House,Meeting,2014-06-26,hsru00,"Legislative Hearing on H.R. 1869, the Biennial Budgeting and Enhanced Oversight Act of 2014",yes
 102439,113,House,Hearing,2014-07-03,hshm00,“Crisis on the Texas Border: Surge of Unaccompanied Minors.”,yes
 102458,113,House,Markup,2014-07-10,hsed00,"Markup on: H.R. 3136, H.R. 4983, and H.R. 4984",yes
-102480,113,House,Markup,2014-07-10,hswm00,"H. Res. 645, “Requesting that the President of the United States transmit to the House of Representatives copies of any emails in the possession of the Executive Office of the President that were transmitted to or from the email account(s) of former Internal Revenue Service Exempt Organizations Division Director Lois Lerner between January 2009 and April 2011.”; H. Res. 647, “Directing the Secretary of the Treasury to transmit to the House of Representatives copies of any emails in the possession of the Department that were transmitted to or from the email account(s) of former Internal Revenue Service Exempt Organizations Division Director Lois Lerner between January 2009 and April 2011.”; H.R. 5021, “Highway and Transportation Funding Act of 2014.”",yes
-102522,113,House,Markup,2014-07-16,hsii00,"H.R. 277, H.R. 916, H.R. 1810, H.R. 2158, H.R. 3572, H.R. 3806, and H.R. 4751",yes
 102543,113,House,Meeting,2014-07-22,hsru00,H.R. 3136—Advancing Competency-Based Education Demonstration Project Act of 2013; H.R. 4984—Empowering Students Through Enhanced Financial Counseling Act,yes
 102564,113,House,Meeting,2014-07-24,hsru00,H. Res. 676—Providing for authority to initiate litigation for actions by the President or other executive branch officials inconsistent with their duties under the Constitution of the United States.,yes
 102581,113,House,Hearing,2014-07-25,hsgo00,"Resumption of the 7-16-14 hearing, ""White House Office of Political Affairs:  Is Supporting Candidates and Campaign Fund-Raising an Appropriate Use of a Government Office?""",yes
-102599,113,House,Markup,2014-07-30,hsii00,"H.J.Res. 120, H.R. 361, H.R. 3006, H.R. 3109, H.R. 4119, H.R. 4182, H.R. 4867, H.R. 5026, H.R. 5069, H.R. 5203, H.R. 5204, H.R. 5205, S. 311, S. 354, S. 476, and S. 1603",yes
 102603,113,House,Meeting,2014-07-30,hsru00,"H.R. 5230—Making supplemental appropriations for the fiscal year ending September 30, 2014, and for other purposes.; Senate amendment to H.R. 5021—Highway and Transportation Funding Act of 2014; H.R. —To prohibit certain actions with respect to deferred action for aliens not lawfully present in the United States, and for other purposes.",yes
 102602,113,House,Markup,2014-07-31,hswm00,"Markup of: H.R. 647, ""ABLE Act of 2013""",yes
 102605,113,House,Meeting,2014-07-31,hsru00,H. Res. ___—Waiving a requirement of clause 6(a) of rule XIII with respect to consideration of certain resolutions reported from the Committee on Rules.,yes
 102648,113,House,Meeting,2014-09-08,hsru00,"H.R. 5078—Waters of the United States Regulatory Overreach Protection Act of 2014; H. Res. 644—Condemning and disapproving of the Obama administration's failure to comply with the lawful statutory requirement to notify Congress before releasing individuals detained at United States Naval Station, Guantanamo Bay, Cuba, and expressing national security concerns over the release of five Taliban leaders and the repercussions of negotiating with terrorists.",yes
 102666,113,House,Meeting,2014-09-15,hsru00,"H.J. Res. 124—Continuing Appropriations Resolution, 2015",yes
-102703,113,House,Markup,2014-09-18,hsii00,"Full Committee Markup on H.R. 69, H.R. 706, H.R. 712, H.R. 1363, H.R. 1839, H.R. 3226, H.R. 3227, H.R. 3326, H.R. 3608, H.R. 3980, H.R. 3981, H.R. 4166, H.R. 4534, H.R. 4846, H.R. 5003, H.R. 5040, H.R. 5049, H.R. 5050, H.R. 5139, H.R. 5162, H.R. 5167, H.R. 5412, H.R. 5476, S. 363 and S. 609.",yes
 102687,113,House,Hearing,2014-09-19,hsju00,"Ongoing Oversight: Monitoring the Activities of the Justice Department’s Civil, Tax and Environment and Natural Resources Divisions and the U.S. Trustee Program",yes
-102689,113,House,Hearing,2014-09-19,hsii00,"Legislative Hearing: H.R. 4924 (Gosar), the “Bill Williams River Water Rights Settlement Act of 2014”",yes
-102760,113,House,Markup,2014-11-19,hsii00,"H.R. 1561, H.R. 1785, H.R. 4220, H.R. 4668, H.R. 4924, H.R. 4979, H.R. 5086, H.R. 5176 and H.R. 5699",yes
 102763,113,House,Hearing,2014-12-10,hsvr00,“A Review of the Transition Assistance Program (TAP)”,no
-102834,114,House,Meeting,2015-01-21,hswm00,"Organizational Meeting of the Committee on Ways and Means, Consideration of the Committee’s Rules for the 114th Congress and Consideration of the Committee’s Oversight Plan for the 114th Congress",yes
 102835,114,House,Meeting,2015-01-21,hsed00,Organizational meeting to consider and adopt the Committee Rules for the 114th Congress and the Oversight Plan for the 114th Congress,yes
 102838,114,House,Markup,2015-01-21,hshm00,"Markup of H.R. 399, (Mr. McCaul), To require the Secretary of Homeland Security to gain and maintain operational control of the international borders of the United States, and for other purposes. The “Secure Our Borders First Act of 2015.”",yes
 102841,114,House,Meeting,2015-01-21,hsfa00,Full Committee Organizational Meeting,yes
-102891,114,House,Meeting,2015-01-28,hsii00,"The Committee on Natural Resources will hold its organizational meeting.  The purpose of this meeting is to consider Committee Rules and the Committee Oversight Plan for 114th Congress, and appoint Committee staff.",yes
-102884,114,House,Markup,2015-02-04,hswm00,"Markup of:
-
-•	H.R. 644, A bill to amend the Internal Revenue Code of 1986 to permanently extend and expand the charitable deduction for contributions of food inventory.
-•	H.R. 637, A bill to amend the Internal Revenue Code of 1986 to make permanent the rule allowing certain tax-free distributions from individual retirement accounts for charitable purposes.
-•	H.R. 641, Conservation Easement Incentive Act of 2015.
-•	H.R. 640, A bill to amend the Internal Revenue Code of 1986 to modify the tax rate for excise tax on investment income of private foundations.
-•	H.R. 636, America’s Small Business Tax Relief Act of 2015.
-•	H.R. 629, A bill to amend the Internal Revenue Code of 1986 to make permanent the reduced recognition period for built-in gains of S corporations.
-•	H.R. 630, A bill to amend the Internal Revenue Code of 1986 to make permanent certain rules regarding basis adjustments to stock of S corporations making charitable contributions of property.",yes
-102973,114,House,Markup,2015-02-12,hswm00,"Markup of: Committee on Ways and Means Views and Estimates on the Fiscal Year 2016 Federal Budget; H.R. 529, A bill to amend the Internal Revenue Code of 1986 to improve 529 plans; H.R. 622, A bill to amend the Internal Revenue Code of 1986 to make permanent the deduction of State and local general sales taxes; H.R. 880, A bill to amend the Internal Revenue Code of 1986 to simplify and make permanent the research credit.",yes
-102974,114,House,Markup,2015-02-12,hspw00,"H.R. 749 – Passenger Rail Reform and Investment Act of 2015;
-
-Fiscal Year 2016 Budget Views and Estimates of the Committee on Transportation and Infrastructure;
-
-General Services Administration Capital Investment and Leasing Program Resolutions;
-
-Other matters cleared for consideration.",yes
 102977,114,House,Hearing,2015-02-25,hsbu00,Members' Day Hearing,yes
 102916,114,House,Hearing,2015-02-26,hspw00,Surface Transportation Reauthorization Bill: Laying the Foundation for U.S. Economic Growth and Job Creation Part II,no
 103005,114,House,Hearing,2015-02-26,hsag00,RE:  To better understand the SNAP population through published research,no
-103078,114,House,Markup,2015-02-26,hswm00,"Markup of: H.R. 1021, “Protecting the Integrity of Medicare Act of 2015”; H.R. 284, “Medicare DMEPOS Competitive Bidding Improvement Act of 2015”; H.R. 876, “NOTICE Act”; and H.R. 887, “Electronic Health Fairness Act of 2015.”",yes
 103525,114,House,Hearing,2015-02-26,hsag00,RE:  To better understand the SNAP population through published research,no
 103150,114,House,Hearing,2015-03-02,hlig00,Ongoing Intelligence Activities (Closed),no
-103100,114,House,Hearing,2015-03-05,hsii00,Oversight hearing titled “Examining the Department of the Interior’s Spending Priorities and the President’s Fiscal Year 2016 Budget Proposal.”,yes
 103148,114,House,Hearing,2015-03-17,hlig00,Ongoing Intelligence Activities (Closed),no
 102972,114,House,Hearing,2015-03-18,hsvr00,"Legislative Presentation of Multiple Veterans Service Organizations: JWV, AFSA, TREA, FRA, NASDVA, NGAUS, AXPOW, GSW and WWP",yes
 103149,114,House,Hearing,2015-03-19,hlig00,The Growing Cyber Threat and its Impact on American Business (Open),yes
@@ -260,7 +201,6 @@ Other matters cleared for consideration.",yes
 
 
 On Tuesday, March 24, 2015, the Committee will convene at 4:00 p.m. in 1324 Longworth House Office Building for opening statements only.  The Committee will reconvene on Wednesday, March 25 at 9:00 a.m. in the 1324 Longworth House Office Building.",yes
-103262,114,House,Meeting,2015-03-25,hswm00,"Markup of:  H.R. 1058, “Taxpayer Bill of Rights Act of 2015”; H.R. 1152, “To prohibit officers and employees of the Internal Revenue Service from using personal email accounts to conduct official business""; H.R. 1026, “Taxpayer Knowledge of IRS Investigations Act”; H.R. 1314, “To amend the Internal Revenue Code of 1986 to provide for a right to an administrative appeal relating to adverse determinations of tax-exempt status of certain organizations”;H.R. 1295, “To amend the Internal Revenue Code of 1986 to improve the process for making determinations with respect to whether organizations are exempt from taxation under section 501(c)(4) of such Code”; H.R. 709, “Prevent Targeting at the IRS Act”; H.R. 1104, “Fair Treatment for All Donations.; and H.R. 1105, “Death Tax Repeal Act of 2015.”",yes
 103265,114,House,Markup,2015-03-26,hlig00,"""Protecting Cyber Networks Act""",yes
 103322,114,House,Markup,2015-03-26,hsba00,"H.R. 299, the Capital Access for Small Community Financial Institutions Act of 2015; H.R. 601, the Eliminate Privacy Notice Confusion Act; H.R. 650, the Preserving Access to Manufactured Housing Act of 2015; H.R. 685, the Mortgage Choice Act of 2015; H.R. 1195, the Bureau of Consumer Financial Protection Advisory Boards Act; H.R. 1259, the Helping Expand Lending Practices in Rural Communities Act; H.R. 1265, the Bureau Advisory Commission Transparency Act; H.R. 1367, to amend the Expedited Funds Availability Act to clarify the application of that Act to American Samoa and the Northern Mariana Islands; H.R. 1408, the Mortgage Servicing Asset Capital Requirements Act of 2015; H.R. 1480, the SAFE Act Confidentiality and Privilege Enhancement Act; H.R. 1529, the Community Institution Mortgage Relief Act of 2015; and a Resolution to establish the Task Force to Investigate Terrorism Financing",yes
 103146,114,House,Hearing,2015-03-30,hsvr00,"""Tomah VAMC: Examining Quality, Access, and a Culture of Over-Reliance on High-Risk Medications""",yes
@@ -268,21 +208,12 @@ On Tuesday, March 24, 2015, the Committee will convene at 4:00 p.m. in 1324 Long
 103331,114,House,Markup,2015-04-14,hshm00,"Markup of H.R. 1731,  “National Cybersecurity Protection Advancement Act of 2015”.",yes
 103293,114,House,Hearing,2015-04-15,hlig00,Special Activities (Closed),no
 103310,114,House,Markup,2015-04-16,hsvr00,"Markup of H.R. 473, H.R. 475, H.R. 476, H.R. 1382, H.R. 456, H.R. 474, H.R. 643, H.R. 1038, H.R. 1141, H.R. 1187, H.R. 1313",yes
-103350,114,House,Markup,2015-04-21,hsgo00,"H. J. Res. 43, Disapproving the action of the DC Council in approving the Reproductive Health Non-Discrimination Amendment Act of 2014",yes
 103371,114,House,Markup,2015-04-21,hsvr00,"H.R. 571, H.R. 1015, H.R. 1016, H.R. 1017",yes
 103342,114,House,Hearing,2015-04-22,hlig00,USDI Budget (Closed),no
 103364,114,House,Markup,2015-04-22,hssy00,"H.R. 1806, the America COMPETES Reauthorization Act of 2015",yes
 103343,114,House,Hearing,2015-04-23,hlig00,ODNI/NCTC/NCPC Budget (Closed),no
-103383,114,House,Markup,2015-04-23,hswm00,"Markup of: H.R. 1891, “A bill to extend the African Growth and Opportunity Act, the Generalized System of Preferences, the preferential duty treatment program for Haiti, and for other purposes,”; H.R. 1890, “The Bipartisan Congressional Trade Priorities and Accountability Act of 2015,”; H.R. 1892, “A bill to extend the trade adjustment assistance program, and for other purposes,”; H.R. ___, “A bill to reauthorize trade facilitation and trade enforcement functions and activities, and for other purposes.”",yes
 103333,114,House,Hearing,2015-04-30,hshm00,“Allegations of Special Access and Political Influence at the Department of Homeland Security.”,yes
 103379,114,House,Hearing,2015-04-30,hshm00,"“A Review of Access Control Measures at Our Nation's Airports, Part II.”",yes
-103424,114,House,Markup,2015-04-30,hspw00,"To consider the following bills and other legislative business:
-
-H.R. 1987 - The Coast Guard Authorization Act of 2015 
-
-H.R. 1642 - To designate the building utilized as a United States courthouse located at 150 Reade Circle in Greenville, North Carolina, as the ""Randy D. Doub United States Courthouse""
-
-General Services Administration Capital Investment and Leasing Program Resolutions",yes
 103440,114,House,Markup,2015-05-13,hshm00,": H.R. 1615, (Mr. Carter of Georgia), To direct the Chief FOIA Officer of the Department of Homeland Security to make certain improvements in the implementation of section 552 of title 5, United States Code (commonly known as the Freedom of Information Act), and for other purposes.  The “DHS FOIA Efficiency Act of 2015”.  
 
 H.R. 1626, (Mr. Hurd of Texas), To reduce duplication of information technology at the Department of Homeland Security, and for other purposes.  The “DHS IT Duplication Reduction Act of 2015”.  
@@ -298,30 +229,6 @@ H.R. 2200. (Ms. McSally), To amend the Homeland Security Act of 2002 to establis
 H.R. 2206. (Mr. Payne), To amend the Homeland Security Act of 2002 to require recipients of State Homeland Security Grant Program funding to preserve and strengthen interoperable emergency communications capabilities, and for other purposes.",yes
 103452,114,House,Hearing,2015-05-14,hsii00,"“Litigation and Increased Planning’s Impact on Our Nation’s Overgrown, Fire-Prone National Forests.”",yes
 103484,114,House,Markup,2015-05-14,hsif00,Health Subcommittee Markup,yes
-103519,114,House,Markup,2015-05-19,hsgo00,"H.R. ___ (Chaffetz), the Inspector General Reform Act of 2015;
-
-H.R. 1777 (Chaffetz), the Presidential Allowance Modernization Act; 
-
-H.R. 1831 (Ryan), the Evidence-Based Policymaking Commission Act of 2015;
-
-H.R. 451 (Fleischmann), the Safe and Secure Federal Websites Act of 2015;
-
-H.R. 1759 (Ratcliffe), the All Economic Regulations are Transparent (ALERT) Act of 2015;
-
-H.R. 728 (Luetkemeyer), to designate the facility of the United States Postal Service located at 7050 Highway BB in Cedar Hill, Missouri, as the “Sergeant First Class William B. Woods, Jr. Post Office”;
-
-H.R. 891 (Cuellar), to designate the facility of the United States Postal Service located at 141 Paloma Drive in Floresville, Texas, as the “Floresville Veterans Post Office Building”;
-
-H.R. 1326 (Ross), to designate the facility of the United States Postal Service located at 2000 Mulford Road in Mulberry, Florida, as the “Sergeant First Class Daniel M. Ferguson Post Office”;
-
-H.R. 1350 (Serrano), to designate the facility of the United States Postal Service located at
-442 East 167th Street in Bronx, New York, as the “Herman Badillo Post Office Building”; 
-
-H.R. 1442 (Gibson), to designate the facility of the United States Postal Service located at
-90 Cornell Street in Kingston, New York, as the “Staff Sergeant Robert H. Dietz Post Office Building”;
-
-H.R. 1524 (Garrett), to designate the facility of the United States Postal Service located at
-1 Walter Hammond Place in Waldwick, New Jersey, as the “Staff Sergeant Joseph D’Augustine Post Office Building.”",yes
 103514,114,House,Markup,2015-05-20,hshm00,"H.R. 1300, the “First Responder Anthrax Preparedness Act”. 
 H.R. 1615, the “DHS FOIA Efficiency Act of 2015”. 
 H.R. 1626, the “DHS IT Duplication Reduction Act of 2015”.
@@ -334,9 +241,7 @@ H.R. 2200, the “CBRN Intelligence and Information Sharing Act of 2015”.
 H.R. 2206, the “State Wide Interoperable Communications Enhancement Act”.
 H.R. 2390 (Mr. Thompson of Mississippi), 
 the “Homeland Security University-based Centers Review Act”.",yes
-103522,114,House,Markup,2015-05-20,hsif00,Subcommittee Markup,yes
 103491,114,House,Markup,2015-05-21,hsvr00,"H.R. 475, H.R. 571, H.R. 675, H.R. 1575, H.R. 1607, and H.R. 2256",yes
-103562,114,House,Markup,2015-06-02,hswm00,"Markup of: H.R. 160, “Protect Medical Innovation Act of 2015”; H.R. 1190, “Protecting Seniors’ Access to Medicare Act of 2015”; S. 984, “Steve Gleason Act of 2015”; S. 971, “Medicare Independence at Home Medical Practice Demonstration Improvement Act of 2015”; H.R. 2580, “LTCH Technical Correction Act of 2015”; H.R. 2505, “Medicare Advantage Coverage Transparency Act of 2015”; H.R. 2506, “Seniors’ Health Care Plan Protection Act of 2015”; H.R. 2507, “Increasing Regulatory Fairness Act of 2015”; H.R. 2579, “Securing Care for Seniors Act of 2015”; H.R. 2581, “Preservation of Access for Seniors in Medicare Advantage Act of 2015.”",yes
 103572,114,House,Markup,2015-06-10,hsii00,"Full Committee Markup on:
 • H.R. 387 (Rep. Raul Ruiz), “Economic Development Through Tribal Land Exchange Act”
 • H.R. 521 (Rep. Don Young), To provide for the conveyance of certain property to the Yukon Kuskokwim Health Corporation located in Bethel, Alaska.
@@ -361,45 +266,7 @@ H.R. 2750, the “Improved Security Vetting for Aviation Workers Act of 2015”.
 H.R. 2770, the “Keeping our Travelers Safe and Secure Act”.
 H.R. 2786, the ""Cross-Border Rail Security Act of 2015"". and
 .R. 2786, the ""Cross-Border Rail Security Act of 2015""",yes
-103731,114,House,Markup,2015-07-08,hsii00,"The Committee on Natural Resources has scheduled a markup on: 
-• H.R. 487 (Rep. Markwayne Mullin), To allow the Miami Tribe of Oklahoma to lease or transfer certain lands.
-•	H.R. 959 (Rep. Bennie Thompson), To authorize the Secretary of the Interior to conduct a special resource study of the Medgar Evers House, located in Jackson, Mississippi, and for other purposes.  “Medgar Evers House Study Act”
-• H.R. 1554 (Rep. Scott Tipton), To require a land conveyance involving the Elkhorn Ranch and the White River National Forest in the State of Colorado, and for other purposes. “Elkhorn Ranch and White River National Forest Conveyance Act of 2015” 
-•	H.R. 1937 (Rep. Mark Amodei), To require the Secretary of the Interior and the Secretary of Agriculture to more efficiently develop domestic sources of the minerals and mineral materials of strategic and critical importance to United States economic and national security and manufacturing competitiveness. ""National Strategic and Critical Minerals Production Act of 2015"" 
-• H.R.1949 (Rep. G.K. Butterfield), To provide for the consideration and submission of site and design proposals for the National Liberty Memorial approved for establishment in the District of Columbia. “The National Liberty Memorial Clarification Act of 2015”
-• H.R. 2223 (Rep. Doug Lamborn), To authorize, direct, expedite, and facilitate a land exchange in El Paso and Teller Counties, Colorado, and for other purposes. “Crags, Colorado Land Exchange Act of 2015” 
-• H.R. 2791 (Rep. Peter DeFazio), To require that certain Federal lands be held in trust by the United States for the benefit of certain Indian tribes in Oregon, and for other purposes.  “Western Oregon Tribal Fairness Act”
-• H.R. 2898 (Rep. David Valadao), To provide drought relief in the State of California, and for other purposes.  “Western Water and American Food Security Act of 2015”
-• S. 501 (Sen. Tom Udall), To make technical corrections to the Navajo water rights settlement in the State of New Mexico, and for other purposes. “New Mexico Water Settlement Technical Corrections Act”
-
-
-On Wednesday, July 8, 2015, the Committee will convene at 4:00 p.m. in 1324 Longworth House Office Building for opening statements only.  The Committee will reconvene on Thursday, July 9, at 10:00 a.m. until 12:30 p.m. in the 1324 Longworth House Office Building.",yes
 103767,114,House,Markup,2015-07-14,hsag00,"H.R. 1599, the Safe and Accurate Food Labeling Act of 2015",yes
-103795,114,House,Markup,2015-07-22,hsgo00,"H.R. _, to ensure the equitable treatment of individuals affected by recent data breaches at the Office of Personnel Management, to provide for the enhanced security of Federal information systems, and for other purposes; H.R. 598 (Walberg), Taxpayers Right-to-Know Act;
-
-H.R. 2320 (Mulvaney), Federal Improper Payments Coordination Act of 2015;
-
-S. 136 (Wyden), Gold Star Fathers Act of 2015;
-
-H.R. 1613 (Huizenga), Federal Vehicle Repair Cost Savings Act of 2015; 
-
-H.R. 3089 (Walberg), Grants Oversight and New Efficiency Act (“GONE Act”);
-
-H.R. __  (Lieu), Quarterly Financial Report Reauthorization;
-
-H.R.__  , Federal Employee Data Breach Protection Act ;
-
-H.R. 322 (Wagner), to designate the facility of the United States Postal Service located at 16105 Swingley Ridge Road in Chesterfield, Missouri, as the ""Sgt. Zachary M. Fisher Post Office"";
-
-H.R. 323 (Wagner),  to designate the facility of the United States Postal Service located at 55 Grasso Plaza in St. Louis, Missouri, as the ""Sgt. Amanda N. Pinson Post Office"";
-
-H.R. 324 (Wagner), to designate the facility of the United States Postal Service located at 11662 Gravois Road in St. Louis, Missouri, as the ""Lt. Daniel P. Riordan Post Office"";
-
-H.R. 558 (Chabot), to designate the facility of the United States Postal Service located at 55 South Pioneer Boulevard in Springboro, Ohio, as the ""Richard 'Dick' Chenault Post Office Building"";
-
-H.R. 1884 (Slaughter), to designate the facility of the United States Postal Service located at 206 West Commercial Street in East Rochester, New York, as the ""Officer Daryl R. Pierson Memorial Post Office Building""; and,
-
-H.R. 3059 (Russell), to designate the facility of the United States Postal Service located at 4500 SE 28th Street, Del City, Oklahoma, as the James Robert Kalsu Post Office Building.",yes
 103784,114,House,Hearing,2015-07-23,hlig00,Ongoing Intelligence Activities (Closed),no
 103794,114,House,Markup,2015-07-23,hspw00,"the following bills and other legislative business:
 
@@ -417,30 +284,12 @@ Other matters cleared for consideration.",no
 103757,114,House,Hearing,2015-07-29,hlzi00,Hearing 4,no
 103798,114,House,Hearing,2015-08-03,hssm00,"8-3-2015 Joint Field Hearing with the Committee on Natural Resources: ""Restricted Access at Biscayne National Park and Implications for Fishermen, Small Businesses, the Local Economy and Environment""",yes
 103855,114,House,Hearing,2015-08-03,hsii00,"The Natural Resources Committee and Small Business Committee held a Joint Oversight Hearing entitled, “Restricted Access at Biscayne National Park and Implications for Fishermen, Small Businesses, the Local Economy and Environment.”",yes
-103945,114,House,Markup,2015-09-10,hswm00,"H.R. 692, “Default Prevention Act,” and H.R. 3442, “Debt Management and Fiscal Responsibility Act of 2015.”",yes
-103944,114,House,Hearing,2015-09-16,hsag00,To review USDA organization and program administration - Part II,no
 103973,114,House,Meeting,2015-09-17,hssy00,"The deposition of Mark Miller has been scheduled for Thursday, September 17, 2015, beginning at 10:00 a.m. in 2318 Rayburn House Office Building.",yes
 103968,114,House,Hearing,2015-09-18,hlig00,Defense Intelligence Agency and the Defense Clandestine Service (Closed),no
 104045,114,House,Meeting,2015-10-06,hlig00,Access Request (Closed),no
 104041,114,House,Hearing,2015-10-07,hsgo00,"""Secure Immigration Identity Documents.""",no
-104062,114,House,Markup,2015-10-09,hsgo00,"H.R. 10, the Scholarships for Opportunity and Results Reauthorization Act;
-H.R. 3231, the Federal Intern Protection Act of 2015;
-H.R. 2347, the Federal Advisory Committee Act Amendments of 2015;
-S. 1172, the Edward “Ted” Kaufman and Michael Leavitt Presidential Transitions Improvements Act of 2015;
-S. 1576, the Representative Payee Fraud Prevention Act of 2015;
-S. 1580, the Competitive Service Act of 2015;
-S. 1629, the District of Columbia Courts, Public Defender Service, and Court Services and Offender Supervision Agency Act of 2015;
-H.R. 136, To designate the facility of the United States Postal Service located at 1103 USPS Building 1103 in Camp Pendleton, California, as the “Camp Pendleton Medal of Honor Post Office”;
-H.R. 2928, To designate the facility of the United States Postal Service located at 201 B Street in Perryville, Arkansas, as the “Harold George Bennett Post Office”;
-H.R. 3082, To designate the facility of the United States Postal Service located at 5919 Chef Menteur Highway in New Orleans, Louisiana, as the ""Daryle Holloway Post Office Building"";
-H.R. 3274, To designate the facility of the United States Postal Service located at 4567 Rockbridge Road in Pine Lake, Georgia, as the ""Francis Manuel Ortega Post Office"";
-H.R. 3601, To designate the facility of the United States Postal Service located at 7715 Post Road, North Kingstown, Rhode Island, as the ""Melvoid J. Benson Post Office Building"";
-S. 1596, To designate the facility of the United States Postal Service located at 2082 Stringtown Road in Grove City, Ohio, as the ""Specialist Joseph W. Riley Post Office Building""; and,
-S. 1826, To designate the facility of the United States Postal Service located at 99 West 2nd Street in Fond du Lac, Wisconsin, as the Lieutenant Colonel James ""Maggie"" Megellas Post Office.",yes
 104107,114,House,Hearing,2015-10-27,hsvr00,“VA and DoD IT:  Electronic Health Records Interoperability.”,yes
 104128,114,House,Hearing,2015-10-29,hssy00,Examining the Costs and Challenges of EPA’s Power Plan,yes
-104205,114,House,Meeting,2015-11-18,hsii00,"Leg Hrg on a discussion draft of the ""Protecting America's Recreation and Conservation Act""",yes
-104296,114,House,Hearing,2015-12-07,hsii00,"Full Committee oversight field hearing in Riverhead, New York, titled, “Restoring Atlantic Fisheries and Protecting the Regional Seafood Economy.”",yes
 104304,114,House,Meeting,2016-01-07,hlig00,Access Request,no
 104373,114,House,Hearing,2016-01-12,hshm00,“Wassenaar: Cybersecurity & Export Controls”,yes
 104361,114,House,Hearing,2016-01-26,hsed00,Expanding Educational Opportunity Through School Choice,no
@@ -448,35 +297,6 @@ S. 1826, To designate the facility of the United States Postal Service located a
 104384,114,House,Meeting,2016-02-01,hlig00,Consideration of Budget Views & Estimates (Closed),no
 104382,114,House,Markup,2016-02-04,hssm00,Views and Estimates on the President’s FY 2017 Budget for the Small Business Administration,yes
 104385,114,House,Meeting,2016-02-04,hlig00,Consideration of a Committee Report (Open - Possibility of Closing),no
-104471,114,House,Markup,2016-02-11,hspw00,"Fiscal Year 2017 Budget Views and Estimates of the Committee on Transportation and Infrastructure;
-
-H.R. 4441 – The Aviation Innovation, Reform, & Reauthorization Act",yes
-104512,114,House,Markup,2016-02-25,hsvr00,H.R. 4591; H.R. 4336; H.R. 4063; H.R. 4129; H.R. 1769; H.R. 3484; and H.R. 4590,yes
-104599,114,House,Markup,2016-03-02,hspw00,"the following bills and other legislative business:
-
-General Services Administration Capital Investment and Leasing Program Resolutions
-
-H.R. 4487 – The Public Buildings Reform and Savings Act of 2016
-
-H.R. 4465 – The Federal Assets Sale and Transfer Act of 2016
-
-H.R. 3937 – To designate the building utilized as a United States courthouse located at 150 Reade Circle in Greenville, North Carolina, as the “Judge Randy D. Doub Courthouse” 
-
-H.R. 4618 – To designate the Federal building and United States courthouse located at 121 Spring Street SE in Gainesville, Georgia, as the “Sidney Oslin Smith, Jr. Federal Building and United States Courthouse”
-
-H. Con. Res. 119 - Authorizing the use of the Capitol Grounds for the Greater Washington Soap Box Derby  
-
-H. Con. Res. 117 - Authorizing the use of the Capitol Grounds for the National Peace Officers Memorial Service and the National Honor Guard and Pipe Band Exhibition
-
-H. Con Res. 120 - Authorizing the use of the Capitol Grounds for the 3rd Annual Fallen Firefighters Congressional Flag Presentation Ceremony
-
-H.R. 223 – The Great Lakes Restoration Initiative Act of 2015
-
-H.R. 1684 – The Foreign Spill Protection Act of 2015
-
-H.R. 3030 – The Baudette Coast Guard Housing Conveyance Act
-
-Other matters cleared for consideration.",no
 104696,114,House,Markup,2016-03-15,hsii00,"The Committee on Natural Resources has scheduled a markup beginning on Tuesday, March 15, 2016 at 4:00 p.m.  The Committee will consider the following bills: 
 
 •	H.R. 87 (Rep. Marsha Blackburn), To modify the boundary of the Shiloh National Military Park located in Tennessee and Mississippi, to establish Parker’s Crossroads Battlefield as an affiliated area of the National Park System, and for other purposes. “Shiloh National Military Park Boundary Adjustment and Parker’s Crossroads Battlefield Designation Act”;
@@ -500,24 +320,9 @@ Other matters cleared for consideration.",no
 104654,114,House,Hearing,2016-03-17,hlig00,Ongoing Intelligence Activities (Closed),no
 104701,114,House,Hearing,2016-03-22,hlig00,Ongoing Intelligence Activities (Closed),no
 104762,114,House,Hearing,2016-04-14,hsap00,United States Pacific Command Oversight,yes
-104838,114,House,Markup,2016-04-18,hsif00,"Communications and Technology Subcommittee Vote on H.R. 4889, H.R. 4167, H.R. 4884, H.R. 4111, H.R. 4190, H.R. 3998, and H.R. 2031",yes
-104840,114,House,Markup,2016-04-20,hspw00,"the following bills and other legislative business:
-
-H.R. 4937 – The Protecting our Infrastructure of Pipelines and Enhancing Safety Act of 2016;
-
-H.R. 4957 – To designate the Federal building located at 99 New York Avenue, N.E., in the District of Columbia as the “Ariel Rios Federal Building”;
-
-H.R. 4231 - To direct the Librarian of Congress to obtain a stained glass panel depicting the seal of the District of Columbia and install the panel among the stained glass panels depicting the seals of States which overlook the Main Reading Room of the Library of Congress Thomas Jefferson Building;
-
-General Services Administration Capital Investment and Leasing Program Resolutions.",yes
 104763,114,House,Hearing,2016-04-21,hsap00,Intelligence Community Budget,no
-104887,114,House,Markup,2016-04-28,hswm00,"H.R. 3209, “Recovering Missing Children Act.”
-H.R. ____, “To amend the Internal Revenue Code of 1986 to prohibit the Secretary of the Treasury from requiring that the identity of contributors to 501(c) organizations be included in annual returns.”
-H.R. 3832, “Stolen Identify Refund Fraud Prevention Act of 2015.”",yes
 104842,114,House,Markup,2016-04-29,hlig00,"Full Committee Markup (Closed)
 H.R. 5077-Intelligence Authorization Act for Fiscal Year 2017",yes
-104864,114,House,Markup,2016-05-11,hsvr00,H.R. 3286; H.R. 4138; H.R. 5174; H.R. 5175; H.R. 5176; and H.R. 5178,yes
-104865,114,House,Markup,2016-05-11,hsvr00,H.R. 4892; H.R. 3715; H.R. 4758; H.R. 4087; H.R. 4759; H.R. 4782; H.R. 4757; and H.R. 3936,yes
 105086,114,House,Hearing,2016-06-15,hsii00,"Oversight Hearing on ""State Perspectives on BLM’s Draft Planning 2.0 Rule."" [Cancelled]",yes
 105093,114,House,Meeting,2016-06-15,hsap00,Conference of House and Senate Amendments to H.R. 2577,yes
 105092,114,House,Hearing,2016-06-16,hsgo00,“Firearms and Munitions at Risk: Examining Inadequate Safeguards”,no
@@ -533,43 +338,9 @@ H.R. 5077-Intelligence Authorization Act for Fiscal Year 2017",yes
 •	H.R. 5259 (Rep. Ryan Zinke), To direct the Secretary of the Interior to reestablish the Royalty Policy Committee in order to further a more consultative process with key Federal, State, tribal, environmental, and energy stakeholders, and for other purposes. “Certainty for States and Tribes Act”
 
 	On Wednesday, September 7, 2016, the Committee will convene at 5:00 p.m. in 2167 Rayburn House Office Building (Transportation and Infrastructure Committee hearing room) for opening statements only.  The Committee will reconvene on Thursday, September 8, 2016 at 11:00a.m. until 1:00 p.m. in the 2167 Rayburn House Office Building.",yes
-105295,114,House,Markup,2016-09-08,hswm00,Markup of Proposals to Improve the Health Care System for More Americans,yes
 105282,114,House,Hearing,2016-09-09,hsba00,“Corporate Governance: Fostering a System that Promotes Capital Formation and Maximizes Shareholder Value”,no
-105318,114,House,Markup,2016-09-12,hsif00,"Subcommittee Markup of H.R. 4365, H.R. 1192, H.R. 1209, H.R. 1877, and H.R. 2713",yes
 105320,114,House,Meeting,2016-09-15,hlig00,Full Committee Business Meeting: Consideration of Committee Report- Review of Unauthorized Disclosures by Former NSA Contractor Edward Snowden (Closed),yes
-105340,114,House,Markup,2016-09-15,hsgo00,"H.R. 6004, the Modernizing Government Technology Act of 2016;
-
-H.R. 5995, the GAO Civilian Task and Delivery Order Protest Authority Act of 2016;
-
-H.R. 6008, the Transit Benefits Expansion Act;
-
-H.R. 6009, the Federal Agency Mail Management Act of 2016;
-
-H.R. 2532, the EASY Savings Act of 2015; 
-
-H.R. 3779, to restrict the inclusion of social security account numbers on documents sent by mail by the Federal Government, and for other purposes;
-
-H.R. 5625, the Modernizing Government Travel Act;
-
-H.R. 5920, the Whistleblower Protections for Contractors Act;
-
-H.R. 5785, to amend title 5, United States Code, to provide for an annuity supplement for certain air traffic controllers; 
-
-H.R. 5790, the Federal Bureau of Investigation Whistleblower Protection Enhancement Act of 2016;
-
-H.R. 5150, to designate the facility of the United States Postal Service located at 3031 Veterans Road West in Staten Island, New York, as the “Leonard Montalto Post Office Building”;
-
-H.R. 5309, to designate the facility of the United States Postal Service located at 401 McElroy Drive in Oxford, Mississippi, as the “Army First Lieutenant Donald C. Carwile Post Office Building”;
-
-H.R. 5591, to designate the facility of the United States Postal Service located at 810 N US Highway 83 in Zapata, Texas, as the “Zapata Veterans Post Office”;
-
-H.R. 5676, to designate the facility of the United States Postal Service located at 6300 N. Northwest Highway in Chicago, Illinois, as the “Officer Joseph P. Cali Post Office Building”;
-
-H.R. 5798, to designate the facility of the United States Postal Service located at 1101 Davis Street in Evanston, Illinois, as the “Abner J. Mikva Post Office Building”; and
-
-H.R. 5889, to designate the facility of the United States Postal Service located at 1 Chalan Kanoa VLG in Saipan, Northern Mariana Islands, as the “Segundo T. Sablan and CNMI Fallen Military Heroes Post Office Building”.",yes
 105362,114,House,Hearing,2016-09-20,hsgo00,Classifications and Redactions in FBI's Investigative File,no
-105335,114,House,Markup,2016-09-21,hsvr00,"Markup of H.R. 5047; H.R. 5428; H.R. 4757; H.R. 5166; H.R. 3216; H.R. 4150; H.R. 5099; H.R. 5162; H.R. 5392; H.R. 5399; and, H.R. 5600",yes
 105420,114,House,Markup,2016-11-15,hsii00,"The Committee on Natural Resources has scheduled a markup beginning on Tuesday, November 15, 2016 at 4:00 p.m.  The Committee will consider the following bills: 
 
 • H.R. 1219 (Rep. Tom Cole), To authorize the Secretary of the Interior to convey certain land and appurtenances of the Arbuckle Project, Oklahoma, to the Arbuckle Master Conservancy District, and for other purposes.  ""Arbuckle Project Maintenance Complex and District Office Conveyance Act of 2015"";
@@ -579,12 +350,8 @@ H.R. 5889, to designate the facility of the United States Postal Service located
 
 	On Tuesday, November 15, 2016, the Committee will convene at 4:00 p.m. in 1324 Longworth House Office Building for opening statements only.  The Committee will reconvene on Wednesday, November 16, 2016 at 10:00 a.m. until 12:00 p.m. in the 1324 Longworth House Office Building.",yes
 105441,114,House,Meeting,2016-12-01,hlig00,Full Committee Business Meeting: Consideration of Access Request (Closed),yes
-105461,114,House,Markup,2016-12-07,hspw00,General Services Administration Capital Investment and Leasing Program Resolutions,yes
 105469,115,House,Meeting,2017-01-10,hlig00,Full Committee Business Meeting (Closed),yes
-105473,115,House,Markup,2017-01-12,hswm00,Ways and Means Organization Meeting and Consideration of Rules,yes
 105476,115,House,Hearing,2017-01-24,hlig00,Full Committee Hearing: Ongoing Intelligence Activities (Closed),no
-105486,115,House,Markup,2017-01-24,hsed00,Organizational meeting to consider and adopt the Rules of the Committee on Education and the Workforce for the 115th Congress AND to consider and adopt the Committee on Education and the Workforce Oversight Plan for the 115th Congress.,yes
-105492,115,House,Meeting,2017-01-31,hspw00,Organization Meeting,no
 105515,115,House,Markup,2017-02-01,hsag00,"1.  The Rules of the Committee on Agriculture for the 115th Congress.
 2.  The Oversight Plan of the Committee on Agriculture for the 115th Congress.
 3.  The Committee Staff List for the 115th Congress",yes
@@ -592,81 +359,26 @@ H.R. 5889, to designate the facility of the United States Postal Service located
 105524,115,House,Meeting,2017-02-07,hswm00,Organizational Meeting,no
 105525,115,House,Hearing,2017-02-07,hswm00,Hearing on Social Security’s Representative Payee Program,yes
 105562,115,House,Markup,2017-02-13,hsgo00,"H.J. Res. 27, Disapproving the action of the District of Columbia Council in approving the Death with Dignity Act of 2016.",no
-105584,115,House,Markup,2017-02-14,hsgo00,"H.R. 195, Federal Register Printing Savings Act of 2017;
-
-H.R. 624, Social Security Fraud Prevention Act of 2017;
-
-H.R. ___, Searching for and Cutting Regulations that are Unnecessarily Burdensome Act of 2017;
-
-H.R. ___, Regulatory Integrity Act of 2017;
-
-H.R. ___, OIRA Insight, Reform, and Accountability Act;
-
-H.R. ___, DC Courts and Public Defender Service Voluntary Separation Incentive Payments Act; and
-
-H.R. 653, Federal Intern Protection Act of 2017.",no
-105586,115,House,Markup,2017-02-14,hswm00,"Ways and Means Committee Authorization and Oversight Plan for the 115th Congress, and Ways and Means Committee Views and Estimates on the Fiscal Year 2018 Federal Budget.  The Meeting will also include the ratification of Ways and Means Committee Subcommittee assignments and the ratification of appointments to the Joint Committee on Taxation",no
 105592,115,House,Meeting,2017-02-15,hsvr00,"“Resolution to assign Congressman Kilili Sablan, Congresswoman Esty, and Congressman Scott Peters to HVAC Subcommittees”",yes
 105583,115,House,Hearing,2017-02-16,hsvr00,“The Use of Official Time for Union Activities at the Department of Veterans Affairs”,yes
 105635,115,House,Markup,2017-03-01,hsag00,The Budget Views and Estimates Letter of the Committee on Agriculture for the agencies and programs under the jurisdiction of the Committee for fiscal year 2018.,yes
 105609,115,House,Meeting,2017-03-02,hlig00,Full Committee Business Meeting: Adoption of the Committee's Budget Views and Estimates Letter (Closed),no
-105650,115,House,Markup,2017-03-08,hshm00,"Markup of:
-H.R. 0876, the “Aviation Employee Screening and Security Enhancement Act of 2017”.  
-H.R. 1238, the “Securing our Agriculture and Food Act”.   
-H.R. 1249, the “DHS Multiyear Acquisition Strategy Act of 2017”. 
-H.R. 1252, the “DHS Acquisition Authorities Act of 2017”.   
-H.R. 1258, the ""HSA Technical Corrections Act"".   
-H.R. 1282, the ""DHS Acquisition Review Board Act of 2017""   
-H.R. 1294, the ""Reducing DHS Acquisition Cost Growth Act""
-H.R. 1297, the “Quadrennial Homeland Security Review Technical Corrections Act of 2017”. 
-H.R. 1302, the ""Terrorist and Foreign Fighter Travel Exercise Act of 2017""   
-H.R. 1309, the “TSA Administrator Modernization Act of 2017”.
- H.R. 1353, the ""Transparency in Technological Acquisitions Act of 2017""
-H.R. 1365, the ""Department of Homeland Security Acquisition Innovation Act"".   
-H.R. 1372, The ""Homeland Security for Children Act""; and
-H.R. 1370, the “Department of Homeland Security Blue Campaign Authorization Act of 2017”.",no
 105682,115,House,Markup,2017-03-08,hswm00,Budget Reconciliation Recommendations to Repeal and Replace Obamacare,yes
-105713,115,House,Markup,2017-03-10,hsgo00,"H.R. 1293, To amend title 5, United States Code, to require that the Office of Personnel Management submit an annual report to Congress relating to the use of official time by Federal employees;
-
-H.R. 1364, Official Time Reform Act of 2017;
-
-H.R. 653, Federal Intern Protection Act of 2017;
-
-H.R. 680, Eliminating Pornography from Agencies Act;
-
-H. Res. 38, Expressing the sense of the House of Representatives that offices attached to the seat of Government should not be required to exercise their offices in the District of Columbia;
-
-H.R. ____, SOAR Reauthorization Act;
-
-H.R. 745, Federal Records Modernization Act of 2017; and
-
-H.R. ____, Electronic Message Preservation Act of 2017.
-
-CONTINUATION of 3-8-17 Markup.",no
-105732,115,House,Markup,2017-03-16,hsgo00,"H.R. 756, the Postal Service Reform Act of 2017; and
-
-H.R. 760, the Postal Service Financial Improvement Act of 2017.",no
-105722,115,House,Hearing,2017-03-20,hlig00,Full Committee Hearing (Open),yes
-105816,115,House,Markup,2017-03-28,hswm00,H.Res 186,no
 105820,115,House,Hearing,2017-03-28,hsru00,H.R. 1431—EPA Science Advisory Board Reform Act of 2017,yes
 105809,115,House,Markup,2017-04-06,hsvr00,"H.R. 91, H.R. 95, H.R. 467, H.R. 907, H.R. 918, H.R. 1005, H.R. 1162, H.R. 1545, H.R. 1662, H.R. 1848.",yes
 105853,115,House,Meeting,2017-04-06,hsha00,Joint Committee on the Library Organizational Meeting for the 115th Congress,no
 105854,115,House,Meeting,2017-04-06,hsha00,Joint Committee on Printing Organizational Meeting for the 115th Congress,no
 105882,115,House,Hearing,2017-04-28,hsas00,Amphibious Warfare in a Contested Environment,no
 105939,115,House,Meeting,2017-05-02,hlig00,Full Committee Business Meeting: Consideration of Access Request (Closed),no
-105934,115,House,Markup,2017-05-03,hsag00,"H.R. 1177, Removing Outdated Restrictions to Allow for Job Growth Act, and H.R. 2154, To rename the Red River Valley Agricultural Research Center in Fargo, North Dakota, as the Edward T. Schafer Agricultural Research Center",no
 105914,115,House,Hearing,2017-05-04,hlig00,Full Committee Hearing: Ongoing Intelligence Activities (Closed),no
 106021,115,House,Hearing,2017-05-23,hswm00,Hearing on Increasing U.S Competitiveness and Preventing American Jobs from Moving Overseas,yes
 106024,115,House,Hearing,2017-05-23,hswm00,“Protecting Americans’ Identities:  Examining Efforts to Limit the Use of Social Security Numbers”,yes
-106077,115,House,Hearing,2017-06-08,hswm00,Hearing on the Department of Health and Human Services’ Fiscal Year 2018 Budget Request,yes
 106081,115,House,Hearing,2017-06-09,hsif00,"Examining H.R. 772, The Common Sense Nutrition Disclosure Act of 2017",no
 106112,115,House,Hearing,2017-06-14,hsif00,"States’ Perspectives on Energy Security Planning, Emergency Preparedness, and State Energy Programs",yes
 106098,115,House,Hearing,2017-06-15,hlig00,Ongoing Intelligence Activities (Closed),no
-106147,115,House,Markup,2017-06-15,hswm00,Markup of Legislation to Modify the Nuclear Production Tax Credit,yes
 106139,115,House,Hearing,2017-06-21,hlig00,Hearing: Ongoing Intelligence Activities (Closed),no
 106144,115,House,Hearing,2017-06-22,hlig00,Ongoing Intelligence Activities (Closed),no
 106174,115,House,Hearing,2017-06-27,hlig00,Ongoing Intelligence Activities (Closed),no
-106202,115,House,Markup,2017-06-27,hspw00,H.R. 2997 - 21st Century AIRR Act,no
 106175,115,House,Hearing,2017-06-28,hlig00,Ongoing Intelligence Activities (Closed),no
 106203,115,House,Hearing,2017-06-29,hlig00,Full Committee Hearing: Ongoing Intelligence Activity (Closed),no
 106236,115,House,Hearing,2017-07-13,hswm00,Hearing on How Tax Reform Will Help America’s Small Businesses Grow and Create New Jobs,yes
@@ -674,131 +386,27 @@ H.R. 760, the Postal Service Financial Improvement Act of 2017.",no
 106272,115,House,Markup,2017-07-13,hswm00,Markup of Bills to Strengthen Medicare Programs & Protect Taxpayers,yes
 106477,115,House,Hearing,2017-09-05,hsas00,U.S. Defense Strategy In South Asia,no
 106356,115,House,Hearing,2017-09-06,hshm00,“The Future of FEMA: The Administrator’s Perspective.”,no
-106384,115,House,Markup,2017-09-07,hswm00,Markup of H.Res. 479,yes
 106351,115,House,Meeting,2017-09-12,hsas00,Securing the Peace After the Fall of ISIL,no
 106387,115,House,Hearing,2017-09-12,hspw00,"""Building a 21st Century Infrastructure for America: Coast Guard Stakeholders' Perspectives""",no
 106388,115,House,Hearing,2017-09-12,hspw00,"""Building a 21st Century Infrastructure for America: Rail Stakeholders' Perspectives""",no
-106412,115,House,Markup,2017-09-13,hsgo00,"H.R. 3731, Secret Service Recruitment and Retention Act of 2017; 
-
-H.R. 3739, Presidential Allowance Modernization Act of 2017;
-
-H.R. 1701, Eliminating Government-funded Oil-painting Act;
-
-H.R. 3019, Promoting Value Based Procurement Act of 2017;
-
-H.R. 3737, Social Media Use in Clearance Investigations Act of 2017;
-
-H.R. 3071, Federal Acquisition Savings Act of 2017; and
-
-H.R. 2331, Connected Government Act.
-
-H.R. 294, To designate the facility of the United States Postal Service located at 2700 Cullen Boulevard in Pearland, Texas, as the “Endy Ekpanya Post Office Building”;
-
-H.R. 452, To designate the facility of the United States Postal Service located at 324 West Saint Louis Street in Pacific, Missouri, as the “Specialist Jeffrey L. White, Jr. Post Office”;
-
-H.R. 606, To designate the facility of the United States Postal Service located at 1025 Nevin Avenue in Richmond, California, as the “Harold D. McCraw, Sr., Post Office Building”;
-
-H.R. 1207, To designate the facility of the United States Postal Service located at 306 River Street in Tilden, Texas, as the “Tilden Veterans Post Office”;
-
-H.R. 1208, To designate the facility of the United States Postal Service located at 9155 Schaefer Road, Converse, Texas, as the “Converse Veterans Post Office Building”;
-
-H.R. 1209, To designate the facility of the United States Postal Service located at 901 N. Francisco Avenue, Mission, Texas, as the “Mission Veterans Post Office Building”;
-
-H.R. 1210, To designate the facility of the United States Postal Service located at 122 W. Goodwin Street, Pleasanton, Texas, as the “Pleasanton Veterans Post Office”;
-
-H.R. 1211, To designate the facility of the United States Postal Service located at 400 N. Main Street, Encinal, Texas, as the “Encinal Veterans Post Office”;
-
-H.R. 1858, To designate the facility of the United States Postal Service located at 4514 Williamson Trail in Liberty, Pennsylvania, as the “Staff Sergeant Ryan Scott Ostrom Post Office”;
-
-H.R. 1950, To designate the facility of the United States Postal Service located at 120 West Pike Street in Canonsburg, Pennsylvania, as the “Police Officer Scott Bashioum Post Office Building”;
-
-H.R. 2254, To designate the facility of the United States Postal Service located at 2635 Napa Street in Vallejo, California, as the “Janet Capello Post Office Building”;
-
-H.R. 2302, To designate the facility of the United States Postal Service located at 259 Nassau Street, Suite 2 in Princeton, New Jersey, as the “Dr. John F. Nash, Jr. Post Office”;
-
-H.R. 2464, To designate the facility of the United States Postal Service located at 25 New Chardon Street Lobby in Boston, Massachusetts, as the “John Fitzgerald Kennedy Post Office”;
-
-H.R. 2815, To designate the facility of the United States Postal Service located at 30 East Somerset Street in Raritan, New Jersey, as the “Sergeant John Basilone Post Office”;
-
-H.R. 2873, To designate the facility of the United States Postal Service located at 207 Glenside Avenue in Wyncote, Pennsylvania, as the “Staff Sergeant Peter Taub Post Office Building”;
-
-H.R. 3109, To designate the facility of the United States Postal Service located at 1114 North 2nd Street in Chillicothe, Illinois, as the “Sr. Chief Ryan Owens Post Office Building”;
-
-H.R. 3230, To designate the facility of the United States Postal Service located at 915 Center Avenue in Payette, Idaho, as the “Harmon Killebrew Post Office Building”; and
-
-H.R. 3369, To designate the facility of the United States Postal Service located at 225 North Main Street in Spring Lake, North Carolina, as the “Howard B. Pate, Jr. Post Office.”",no
 106430,115,House,Hearing,2017-09-27,hsag00,Examining the 2017 Agenda for the Commodity Futures Trading Commission,no
-106480,115,House,Markup,2017-10-04,hsag00,"H.R. 2936, Resilient Federal Forests Act of 2017,
-H.R. 2521, South Carolina Peanut Parity Act of 2017,
-H.R. 2921, National Forest System Vegetation Management Pilot Program Act of 2017,
-H.R. 2941, Kisatchie National Forest Land Conveyance Act,
-H.R. 3567, To authorize the purchase of a small parcel of National Resources Conservation Service property in Riverside, California, by the Riverside Corona Resource Conservation District, and for other purposes",yes
 106559,115,House,Hearing,2017-11-02,hlig00,Full Committee Hearing: Testimony of Carter Page (Open Hearing in a Closed Space),no
-106608,115,House,Markup,2017-11-06,hswm00,Tax Cuts and Jobs Act,yes
 106661,115,House,Hearing,2017-11-30,hlig00,Full Committee Hearing: Testimony of Erik Prince (Open Hearing in a Closed Space),no
-106683,115,House,Markup,2017-11-30,hsgo00,"H.R. 2623 (Meadows-NC), Lessening Regulatory Costs and Establishing a Federal Regulatory Budget Act of 2017;
-
-H.R. 4431 (Carter-GA), Correcting Miscalculations in Veterans’ Pensions Act; 
-
-H.R. 3638 (Lawson-FL), To designate the facility of the United States Postal Service located at 1100 Kings Road in Jacksonville, Florida, as the “Rutledge Pearson Post Office Building”;
-
-H.R. 3655 (Smith-NJ), To designate the facility of the United States Postal Service located at 1300 Main Street in Belmar, New Jersey, as the “Dr. Walter S. McAfee Post Office Building”;
-
-H.R. 4042 (Soto-FL), To designate the facility of the United States Postal Service located at 1415 West Oak Street, in Kissimmee, Florida, as the “Borinqueneers Post Office Building”;
-
-H.R. 4285 (LoBiondo-NJ), To designate the facility of the United States Postal Service located at 123 Bridgeton Pike in Mullica Hill, New Jersey, as the “James C. 'Billy' Johnson Post Office Building”; and
-
-H.R. 4301 (Norman-SC), To designate the facility of the United States Postal Service located at 201 Tom Hall Street in Fort Mill, South Carolina, as the “J. Elliott Williams Post Office Building.”",no
 106696,115,House,Markup,2017-12-01,hlig00,Full Committee Markup: H.R. 4478 the FISA Amendments Reauthorization Act of 2017.,yes
 106706,115,House,Hearing,2017-12-08,hsif00,Examining the Role of the Department of Energy in Energy Sector Cybersecurity,yes
 106796,115,House,Meeting,2018-01-18,hlig00,Business Meeting: Consideration of the Public Release of a Committee Transcript,yes
 106822,115,House,Meeting,2018-01-29,hlig00,Full Committee Business Meeting: Consideration of Pending Committee Business and Other Matters,no
 106838,115,House,Meeting,2018-02-05,hlig00,"Full Committee Business Meeting:
 Consideration of the public disclosure of executive session material, pursuant to House Rule X, clause 11(g) and other matters.",yes
-106836,115,House,Markup,2018-02-06,hsgo00,"H.R. 1339 (Duncan-TN), Freedom from Government Competition Act of 2017; 
-
-H.R. 4887 (Foxx), Grant Reporting Efficiency and Agreements Transparency (GREAT) Act of 2018;
-
-H.R. ____ (Russell), IG Subpoena Authority Act;
-
-H.R. 3076 (Graves), Creating Advanced Streamlined Electronic Services (CASES) for Constituents Act of 2017;
-
-H.R. 3398 (Young-AK), REAL ID Act Modification for Freely Associated States Act;
-
-H.R. 4631 (Quigley), Access to Congressionally Mandated Reports Act; 
-
-H.R. 4446 (Plaskett), To amend the Virgin Islands of the United States Centennial Commission Act to extend the expiration date of the Commission, and for other purposes.
-
-H.R. 3183 (Garrett), To designate the facility of the United States Postal Service located at 13683 James Madison Highway in Palmyra, Virginia, as the “U.S. Navy Seaman Dakota Kyle Rigsby Post Office”;
-
-H.R. 3184 (Garrett), To designate the facility of the United States Postal Service located at 180 McCormick Road in Charlottesville, Virginia, as the “Captain Humayun Khan Post Office”;
-
-H.R. 4188 (Jenkins), To designate the facility of the United States Postal Service located at 621 Kansas Avenue in Atchison, Kansas, as the “Amelia Earhart Post Office Building”;
-
-H.R. 4405 (Espaillat), To designate the facility of the United States Postal Service located at 4558 Broadway in New York, New York, as the “Stanley Michaels Post Office Building”; 
-
-H.R. 4406 (Espaillat), To designate the facility of the United States Postal Service located at 99 Macombs Place in New York, New York, as the “Tuskegee Airman Post Office Building”;
-
-H.R. 4463 (Velazquez), To designate the facility of the United States Postal Service located at 6 Doyers Street in New York, New York, as the “Mabel Lee Memorial Post Office”;
-
-H.R. 4646 (Palmer), To designate the facility of the United States Postal Service located at 1900 Corporate Drive in Birmingham, Alabama, as the “Lance Corporal Thomas E. Rivers, Jr. Post Office Building”; and
-
-H.R. 4685 (Cicilline), To designate the facility of the United States Postal Service located at 515 Hope Street in Bristol, Rhode Island, as the “First Sergeant P. Andrew McKenna Jr. Post Office.”",yes
 106841,115,House,Markup,2018-02-14,hsii00,"The Committee on Natural Resources has scheduled a markup beginning on Wednesday, February 14, 2018, at 10:15 a.m.  The Committee will consider the following bills: 
 
 
 •	H.R. 835 (Rep. Doug Lamborn), To update the map of, and modify the maximum acreage available for inclusion in, the Florissant Fossil Beds National Monument.
 •	H.R. 4134 (Rep. Michael K. Simpson), To redesignate the White Clouds Wilderness in the Sawtooth and Challis National Forests in the State of Idaho as the Cecil D. Andrus-White Clouds Wilderness in honor of former Idaho Governor and Secretary of the Interior Cecil D. Andrus.  “Cecil D. Andrus-White Clouds Wilderness Redesignation Act”; and 
 •	H.R. 4895 (Rep. Bennie G. Thompson), To establish the Medgar Evers National Monument in the State of Mississippi, and for other purposes.  “Medgar Evers National Monument Act.”",no
-106856,115,House,Hearing,2018-02-14,hswm00,Department of Health and Human Services' Fiscal Year 2019 Budget Request,yes
-106880,115,House,Markup,2018-02-14,hspw00,"Fiscal Year 2019 Budget Views and Estimates of the Committee on Transportation and Infrastructure;
-H.R. 4921 – STB Information Security Improvement Act;
-H.R. 4925 – FRA Safety Data Improvement Act; and other matters cleared for consideration.",no
-106866,115,House,Hearing,2018-02-15,hswm00,The President's Fiscal Year 2019 Budget Proposals with U.S. Secretary of the Treasury Steven Mnuchin,yes
 106885,115,House,Meeting,2018-02-26,hlig00,"Full Committee Business Meeting:
 Adoption of the Committee’s FY 2019 Budget Views and Estimates Letter, pursuant to House Rule X, clause 11(c)(3)",no
 106922,115,House,Markup,2018-02-27,hsag00,the Budget Views and Estimates Letter of the Committee on Agriculture for the agencies and programs under the jurisdiction of the Committee for fiscal year 2019,no
-106924,115,House,Markup,2018-02-27,hswm00,Adoption of Ways and Means Committee Views and Estimates on the Fiscal Year 2019 Federal Budget,no
 106899,115,House,Hearing,2018-02-28,hsas00,"A Review and Assessment of the Department of Defense Budget, Strategy, Policy, and Programs for Cyber Operations and U.S. Cyber Command for Fiscal Year 2019",no
 106908,115,House,Markup,2018-02-28,hsii00,Full Committee,yes
 106957,115,House,Hearing,2018-03-14,hshm00,"“Examining the President’s FY 2019 Budget Request for the Transportation Security Administration.""",yes
@@ -808,8 +416,6 @@ Adoption of the Committee’s FY 2019 Budget Views and Estimates Letter, pursuan
 108046,115,House,Hearing,2018-03-21,hsii00,"The Subcommittee on Water, Power and Oceans will hold an oversight hearing on “Examining the Proposed Fiscal Year 2019 Spending, Priorities and Missions of the Bureau of Reclamation and the Four Power Marketing Administrations.”",yes
 108023,115,House,Meeting,2018-03-22,hlig00,"Full Committee Business Meeting:
 Adoption of the Committee’s Investigative Report into Russian Active Measures During the 2016 Presidential Election",no
-108082,115,House,Markup,2018-04-11,hsvr00,"H.R. 1206, H.R. 3023, H.R. 3940, H.R. 4451, H.R. 4830, H.R. 4835,and H.R. 5044",no
-108133,115,House,Markup,2018-04-11,hswm00,Bills to Better Serve and Protect Taxpayers,yes
 108121,115,House,Hearing,2018-04-12,hlig00,Fiscal Year 2019 Budget Hearing (closed),no
 108242,115,House,Meeting,2018-04-25,hsju00,"Ratification of Subcommittee Assignments;
 H.R.1689, the “Private Property Rights Protection Act of 2017”",yes
@@ -817,20 +423,11 @@ H.R.1689, the “Private Property Rights Protection Act of 2017”",yes
 108203,115,House,Hearing,2018-04-26,hlig00,CIA Subcommittee Hearing: Fiscal Year 2019 Budget Hearing (closed),no
 108268,115,House,Hearing,2018-05-10,hsap00,State and Foreign Operations Member Day,no
 108338,115,House,Markup,2018-05-10,hsju00,"H.R. 2561, the “POLICE Act of 2017”",yes
-108296,115,House,Markup,2018-05-16,hsii00,"Full Committee to consider the following bills: 
-
-•	H.R. 224 (Rep. Don Young), To amend the Marine Mammal Protection Act of 1972 to allow importation of polar bear trophies taken in sport hunts in Canada before the date the polar bear was determined to be a threatened species under the Endangered Species Act of 1973, and for other purposes.  “Polar Bear Conservation and Fairness Act”;
-•	H.R. 857 (Rep. Paul Cook), To provide for conservation and enhanced recreation activities in the California Desert Conservation Area, and for other purposes.  “California Off-Road Recreation and Conservation Act”;
-•	H.R. 3045 (Rep. Luke Messer), To amend the National Trails System Act to extend the Lewis and Clark National Historic Trail, and for other purposes.  “Eastern Legacy Extension Act”;
-•	H.R. 3186 (Rep. Niki Tsongas), To establish an Every Kid Outdoors program, and for other purposes.  “Every Kid Outdoors Act”;
-•	H.R. 3916 (Rep. Ken Calvert), To amend the Endangered Species Act of 1973 to vest in the Secretary of the Interior functions under that Act with respect to species of fish that spawn in fresh or estuarine waters and migrate to ocean waters, and species of fish that spawn in ocean waters and migrate to fresh waters.  “Federally Integrated Species Health Act” or “FISH Act”; and
-•	H.R. 4419 (Rep. Dan Newhouse), To facilitate and streamline the Bureau of Reclamation and Bureau of Indian Affairs processes for creating or expanding certain water projects, and for other purposes.  “Bureau of Reclamation and Bureau of Indian Affairs Water Project Streamlining Act”.",yes
 108297,115,House,Hearing,2018-05-16,hswm00,Series on Tax Reform: Growing Our Economy and Creating Jobs,yes
 108329,115,House,Markup,2018-05-16,hswm00,Bills to Combat the Opioid Crisis,no
 108327,115,House,Hearing,2018-05-22,hlig00,CIA Subcommittee Hearing: Ongoing Intelligence Activities (closed),no
 108364,115,House,Hearing,2018-05-23,hswm00,Tax Reform and Small Businesses: Growing Our Economy and Creating Jobs,yes
 108374,115,House,Markup,2018-05-23,hswm00,the JOBS for Success Act,yes
-108376,115,House,Markup,2018-05-23,hspw00,H.R. 8 – the Water Resources Development Act of 2018.,yes
 108205,115,House,Markup,2018-06-06,hshm00,"Markup of: H.R. 4627, (Mr. Donovan) the “Shielding Public Spaces from Vehicular Terrorism Act”.
 H.R. 4991, (Mr. Donovan) the “Supporting Research and Development for First Responders Act”.
 
@@ -850,10 +447,7 @@ H.R. 5762 (Mr. Langevin) the “Joint Task Force to Combat Opioid Trafficking Ac
 H.R. 5766, (Mr. Payne) the “Securing Public Areas of Transportation Facilities Act of 2018”.
 
 H. Res. 898, (Mr. Thompson of Mississippi) Directing the Secretary of Homeland Security to transmit certain documents to the House of Representatives relating to Department of Homeland Security policies and activities relating to homeland security information produced and disseminated regarding cybersecurity threats posed by the ZTE Corporation, headquartered in Shenzhen, China.",no
-108394,115,House,Hearing,2018-06-06,hswm00,Lowering Costs and Expanding Access to Health Care through Consumer-Directed Health Plans,yes
-108436,115,House,Hearing,2018-06-20,hswm00,Internal Revenue Service and U.S. Department of Justice Efforts to Return Taxpayers' Seized Funds,yes
 108440,115,House,Hearing,2018-06-21,hlig00,Full Committee Hearing: DIA Roles & Mission (Closed),no
-108472,115,House,Markup,2018-06-21,hswm00,"Bills from the Subcommittees on Tax Policy, Health, Social Security, and Oversight",no
 108456,115,House,Hearing,2018-06-22,hssy00,Space Situational Awareness: Whole of Government Perspectives on Roles and Responsibilities,yes
 108473,115,House,Markup,2018-06-26,hsap00,"POSTPONED: FY 2019 Labor, Health and Human Services, Education, and Related Agencies Appropriations Bill",no
 108487,115,House,Hearing,2018-06-26,hsju00,The State of Intellectual Freedom in America,no
@@ -863,19 +457,14 @@ H. Res. 898, (Mr. Thompson of Mississippi) Directing the Secretary of Homeland S
   1. Mark up of H.R. 6237 the Matthew Young Pollard Intelligence Authorization Act for Fiscal Years 2018 and 2019
 
   2. To Call to the Attention of the House, pursuant to Committee Rule 14(i), the Classified Annex Accompanying H.R. 6237 the Matthew Young Pollard Intelligence Authorization Act for Fiscal Years 2018 and 2019",no
-108540,115,House,Markup,2018-07-11,hswm00,Full Committee Markup,yes
 108553,115,House,Hearing,2018-07-17,hswm00,Modernizing Stark Law to Ensure the Successful Transition from Volume to Value in the Medicare Program,yes
 108554,115,House,Meeting,2018-07-17,hswm00,Combating Fraud in Medicare:  A Strategy for Success,yes
 108557,115,House,Hearing,2018-07-18,hswm00,"the Effects of Tariffs on 
 U.S. Agriculture and Rural Communities",yes
 108577,115,House,Markup,2018-07-18,hswm00,Bills from the Subcommittees on Social Security and Tax Policy,no
-108626,115,House,Markup,2018-07-24,hsba00,"H.R. 1511, H.R. 2069, H.R. 2570, H.R. 3626. H.R. 5036, H.R. 5059, and H.R. 6332",yes
 108629,115,House,Hearing,2018-07-25,hsru00,"H. Res. ___—Waiving a requirement of clause 6(a) of rule XIII with respect to consideration of certain resolutions reported from the Committee on Rules, and providing for consideration of motions to suspend the rules.",yes
 108636,115,House,Hearing,2018-08-29,hsii00,Energy and Education: What's the Connection?,yes
-108653,115,House,Markup,2018-09-05,hswm00,Full Committee Markup,no
 108678,115,House,Hearing,2018-09-13,hsap00,FY19 Oversight Hearing on the NASA James Webb Space Telescope,no
-108690,115,House,Markup,2018-09-13,hswm00,Bills to Protect Taxpayers,yes
-108707,115,House,Hearing,2018-09-26,hswm00,The Internal Revenue Service’s Taxpayer Online Authentication Efforts,yes
 108743,115,House,Markup,2018-09-27,hspw00,"General Services Administration Capital Investment and Leasing Program Resolutions;
 
 H.R. 5158,To direct the Secretary of Transportation to request nominations for and make determinations regarding roads to be designated under the national scenic byways program, and for other purposes.; and 
@@ -888,14 +477,12 @@ Other matters cleared for consideration",no
 108773,115,House,Hearing,2018-12-05,hsas00,"Department of Defense’s Artificial Intelligence Structure, Investments, and Applications",no
 108772,115,House,Hearing,2018-12-06,hsas00,National Defense Strategy Commission: Assessment and Recommendations,no
 108778,115,House,Hearing,2018-12-06,hsas00,Naval Surface Forces: On the Road to Recovery?,no
-108798,115,House,Markup,2018-12-12,hspw00,Markup of General Services Administration Capital Investment and Leasing Program Resolutions,yes
 108796,115,House,Meeting,2018-12-13,hlig00,Full Committee Business Meeting,yes
 108803,115,House,Meeting,2018-12-20,hlig00,Full Committee Business Meeting (Closed),no
 108807,116,House,Meeting,2019-01-08,hsru00,"H.R. 264—Financial Services and General Government Appropriations Act, 2019; H.R. 267—Transportation, Housing and Urban Development, and Related Agencies Appropriations Act, 2019; H.R. 265—Agriculture, Rural Development, Food and Drug Administration, and Related Agencies Appropriations Act, 2019; H.R. 266—Department of the Interior, Environment, and Related Agencies Appropriations Act, 2019",yes
 108866,116,House,Meeting,2019-02-06,hlig00,Full Committee Organizational/Business Meeting (Closed),yes
 109067,116,House,Hearing,2019-02-12,hsif00,“The Fiscal Year 2020 HHS Budget”,yes
 108892,116,House,Hearing,2019-02-14,hsju00,"The State of Competition in the Wireless Market: Examining the Impact of the Proposed Merger of T-Mobile and Sprint on Consumers, Workers, and the Internet",yes
-108989,116,House,Hearing,2019-03-06,hsii00,"“Examining the Policies and Priorities of the Bureau of Ocean Energy Management, the Bureau of Safety and Environmental Enforcement, and the U.S. Geological Survey”",yes
 108991,116,House,Meeting,2019-03-07,hlig00,"Full Committee Business Meeting
 Topic: Adoption of the Committee’s Views and Estimates Letter",yes
 109196,116,House,Hearing,2019-04-03,hlig00,"Full Committee Hearing
@@ -1029,14 +616,12 @@ I. Motion to release certain executive session material.",yes
 327448,116,Senate,Meeting,2020-06-17,slin00,Business meeting to consider pending intelligence matters.,no
 327588,116,Senate,Meeting,2020-06-17,ssfr00,"To receive a closed briefing on assessing arms control, focusing on new START and beyond.",no
 328015,116,Senate,Meeting,2020-06-23,slin00,To receive a closed briefing on certain intelligence matters.,no
-110825,116,House,Hearing,2020-06-25,hsii00,"Legislative Hearing on H.R. 1776, H.R. 2264, H.R. 2492, H.R. 2871, H.R. 3937, H.R. 6761",yes
 110842,116,House,Hearing,2020-06-30,hsgo00,Empowering Women and Girls and Promoting International Security,yes
 327633,116,Senate,Meeting,2020-06-30,,"Organizational business meeting to consider designation of the Chairman, designation of the 2021 Inaugural site, approval of the 2021 Inaugural budget, and designation of official staff representatives.",no
 327634,116,Senate,Meeting,2020-06-30,slin00,To receive a closed briefing on certain intelligence matters.,no
 327635,116,Senate,Meeting,2020-07-01,ssas00,To receive a closed briefing on matters relating to Afghanistan.,no
 327781,116,Senate,Meeting,2020-07-01,slin00,Closed business meeting to consider pending intelligence matters; to be immediately followed by a closed hearing to examine certain intelligence matters.,no
 326708,116,Senate,Meeting,2020-07-02,slin00,To receive a closed briefing on certain intelligence matters.,no
-110918,116,House,Hearing,2020-07-22,hsii00,"Legislative Hearing on H.R. 958, H.R. 6237, H.R. 6535, H.R. 7119",yes
 328014,116,Senate,Meeting,2020-07-28,slin00,Closed hearings to examine certain intelligence matters.,no
 109721,116,House,Markup,2020-07-29,hlig00,"Full Committee Business Meeting:
 
@@ -1056,33 +641,7 @@ II. Authorizing all Members of the House of Representatives to review, at a time
 H.R. 3788; H.R. 3826; H.R. 6092; H.R. 7469; H.R. 8005;H.R. 8033; H.R. 8084;H.R. 8068; H.R. 8149 H.R. 8148;H.R. 8108;H.R. 8144;H.R. 8145;H.R. 8130;H.R. 8107;H.R. 8147;H.R. 8172;H.R. 8173;H.R. 5697, Discussion Draft – Veterans Comprehensive Prevention, Access to Care, and Treatment Act of 2020, Discussion Draft - Ensuring Veterans’ Smooth Transition Act; Discussion Draft - VA Expanded Care Hours Act, and Discussion Draft - Veterans Burn Pits Exposure Recognition Act of 2020",yes
 328006,116,Senate,Meeting,2020-09-14,ssfr00,To receive a closed briefing on 2020 global nuclear threats.,no
 328057,116,Senate,Meeting,2020-09-15,slin00,Closed hearings to examine certain intelligence matters.,no
-111004,116,House,Hearing,2020-09-16,hsvr00,Moving Beyond Patchwork Systems: The Future of Education Services IT,yes
-111017,116,House,Markup,2020-09-16,hsgo00,"The Committee will consider the following:
-   
-1.H.R. 4774, Internet of Things Cybersecurity Training for Federal Employees Act; 
-
-2.H.R. 5901, the Technology Modernization Centers of Excellence Program; 
-
-3.H.R. 7496, COVID PREPARE Act; 
-
-4.H.R. 4382, the Integrity Committee Transparency Act; 
-
-5.H.R. 7107, Plum Act; 
-
-6.H.R. 7340, Chai Suthammanont Remembrance Act; 
-
-7.H.R. 7548, PPE Buy America Act;
-
-8.H.R. 7936, Federal Employee Access to Information Act; 
-
-9.H.R. 8109, Nonpartisan Postmaster General Act; 
-
-10.H.R. ____, GAO Report Elimination Act; and 
-
-11.Several postal naming measures.",yes
 327629,116,Senate,Meeting,2020-09-16,slin00,To receive a closed briefing on certain intelligence matters.,no
-111018,116,House,Markup,2020-09-17,hsvr00,"Markup of H.R.8247; A.N.S to H.R. 7163 A.N.S to H.R. 5843; A.N.S. to H.R. 7785, and H.R. 6092",yes
-111024,116,House,Hearing,2020-09-23,hsvr00,Toxic Exposures: Examining Airborne Hazards in the Southwest Asia Theater of Military Operations,yes
 328048,116,Senate,Meeting,2020-09-23,ssas00,To receive a closed briefing on Department of Defense cyber operations in support of efforts to protect the integrity of U.S. national elections from malign actors.,no
 328056,116,Senate,Meeting,2020-09-23,ssva00,"Business meeting to consider S.4393, to improve the provision of health care and other benefits from the Department of Veterans Affairs for veterans who were exposed to toxic substances, and S.4511, to make certain improvements in the laws administered by the Secretary of Veterans Affairs relating to education, burial benefits, and other matters.",yes
 328059,116,Senate,Meeting,2020-09-23,slin00,Closed hearings to examine certain intelligence matters.,no
@@ -1108,13 +667,7 @@ H.R. 3788; H.R. 3826; H.R. 6092; H.R. 7469; H.R. 8005;H.R. 8033; H.R. 8084;H.R. 
 328609,117,Senate,Meeting,2021-02-02,ssva00,"Business meeting to consider the nomination of Denis Richard McDonough, of Maryland, to be Secretary of Veterans Affairs.",yes
 328622,117,Senate,Meeting,2021-02-04,ssas00,To receive a closed briefing on the Army response to the findings and recommendations of the Fort Hood Independent Review Committee's assessment of the Fort Hood command climate and culture.,no
 328680,117,Senate,Meeting,2021-02-08,ssfr00,To receive a closed briefing on around the world threat assessment.,no
-111190,117,House,Markup,2021-02-11,hsif00,"Budget Reconciliation pursuant to S. Con. Res. 5, the Concurrent Resolution on the Budget for Fiscal Year 2021",yes
 328704,117,Senate,Meeting,2021-02-11,slin00,Business meeting to consider pending calendar business.,no
-111197,117,House,Markup,2021-02-12,hsgo00,"1.  Committee Print providing for reconciliation pursuant to S. Con. Res. 5;
-
-a.  ANS to Committee Print, offered by Ms. Maloney of NY; and 
-
-2.  Several postal naming measures.",yes
 328703,117,Senate,Meeting,2021-02-12,ssju00,Organizational business meeting to consider an original resolution authorizing expenditures by the committee for the 117th Congress.,no
 328705,117,Senate,Meeting,2021-02-12,sseg00,Organizational business meeting to consider an original resolution authorizing expenditures by the committee for the 117th Congress.,no
 328720,117,Senate,Meeting,2021-02-13,ssfi00,Business meeting to consider an original resolution authorizing expenditures by the committee for the 117th Congress.,no
@@ -1122,9 +675,6 @@ a.  ANS to Committee Print, offered by Ms. Maloney of NY; and
 328770,117,Senate,Meeting,2021-02-24,ssga00,"Business meeting to consider the nomination of Neera Tanden, of Massachusetts, to be Director of the Office of Management and Budget, and committee rules of procedure for the 117th Congress.",yes
 328772,117,Senate,Meeting,2021-02-24,ssbu00,"Business meeting to consider the nomination of Neera Tanden, of Massachusetts, to be Director of the Office of Management and Budget.",yes
 331300,117,Senate,Meeting,2021-03-02,slin00,Closed business meeting to consider pending intelligence matters; to be immediately followed by a closed briefing on certain intelligence matters.,no
-111256,117,House,Hearing,2021-03-03,hsvr00,"Legislative Presentation of the 
-Disabled American Veterans and Multi VSOs: 
-SVA, BVA, MOAA, NASDVA, MVA, NCHV",yes
 329353,117,Senate,Meeting,2021-03-09,slin00,To receive a closed briefing on certain intelligence matters.,no
 328835,117,Senate,Meeting,2021-03-10,ssap00,Closed hearings to examine domestic and foreign threats and other challenges facing the Federal Bureau of Investigation.,no
 328846,117,Senate,Meeting,2021-03-10,ssbu00,"Business meeting to consider the nomination of Shalanda D. Young, of Louisiana, to be Deputy Director of the Office of Management and Budget.",yes
@@ -1144,34 +694,15 @@ SVA, BVA, MOAA, NASDVA, MVA, NCHV",yes
 329244,117,Senate,Meeting,2021-04-21,slin00,To receive a closed briefing on certain intelligence matters.,no
 329182,117,Senate,Meeting,2021-04-22,ssva00,"Business meeting to consider the nomination of Richard A. Sauber, of the District of Columbia, to be General Counsel, Department of Veterans Affairs.",yes
 329180,117,Senate,Meeting,2021-04-27,ssap00,"Closed hearings to examine the Missile Defense Agency, focusing on a program update.",no
-112493,117,House,Markup,2021-04-28,hsii00,"Markup on the following bills: H.R. 443, H.R. 1029, H.R. 1492, H.R. 1503, H.R. 1505, H.R. 1506, H.R. 1517, H.R. 1884, H.R. 2348",yes
 328844,117,Senate,Meeting,2021-04-28,slin00,To receive a closed briefing on certain intelligence matters.,no
 112557,117,House,Hearing,2021-04-29,hsfa00,Maritime Security in the Indo-Pacific and the UN Convention on the Law of the Sea,no
-112560,117,House,Markup,2021-05-04,hsvr00,"Markup on : Budget Views and Estimates Letter, H.R. 711, H.R. 1510, H.R. 1448, H.R. 2167, H.R. 2878, H.R. 234, H.R. 2195, H.R. 1948, H.R. 2911, H.R. 958, H.R. 239, H.R. 2441, H.R. 2545, H.R. 2093, H.R. 2935, H.R. 293, H.R. 2704, H.R. 1257, H.R. 2788, H.R. 2429, H.R. 2726, H.R. 290, H.R. 2419, H.R. 2494, and H.R. 2082.",yes
-112583,117,House,Markup,2021-05-05,hsii00,"FC Markup: HR 443, HR 1029, HR 1503, HR 1505, HR 1506, HR 1517, HR 2348",yes
 329360,117,Senate,Meeting,2021-05-10,ssaf00,"Business meeting to consider the nomination of Jewel Hairston Bronaugh, of Virginia, to be Deputy Secretary of Agriculture.",yes
 329346,117,Senate,Meeting,2021-05-12,sshr00,"Business meeting to consider the nominations of Jocelyn Samuels, of Maryland, to be a Member of the Equal Employment Opportunity Commission, Jennifer Ann Abruzzo, of New York, to be General Counsel of the National Labor Relations Board, Seema Nanda, of Virginia, to be Solicitor for the Department of Labor, and other pending calendar business.",yes
 329960,117,Senate,Meeting,2021-05-12,slin00,To receive a closed briefing on certain intelligence matters.,no
 329403,117,Senate,Meeting,2021-05-17,ssfr00,To receive a closed briefing on the challenges and opportunities for the United States in the Horn of Africa.,no
 329503,117,Senate,Meeting,2021-05-24,ssfr00,To receive a closed briefing on the United States-Russia bilateral relationship.,no
-112706,117,House,Markup,2021-05-25,hsgo00,"The Committee will consider the following:
-
-1.	H.R. 2662, the IG Independence and Empowerment Act;
-
-2.	H.R. 302, the Preventing a Patronage System Act;
- 
-3.	H.R. 2617, the Performance Enhancement Reform Act; 
-
-4.	H.R. 3327, the No CORRUPTION Act;
- 
-5.	H.R. 1297, the Air America Act; 
- 
-6.	H.R. ____, the Gold Star Children Act; and
-
-7.	Postal naming measures.",yes
 329142,117,Senate,Meeting,2021-05-25,slin00,To receive a closed briefing on certain intelligence matters.,no
 329400,117,Senate,Meeting,2021-05-25,ssap00,Hearings to examine proposed budget estimates and justification for fiscal year 2022 for the Department of State.,no
-112705,117,House,Markup,2021-05-26,hsii00,"Markup of: HR 164, HR 438, HR 1146, HR 1619, HR 1733, HR 1734, HR 2415, and HR 2641.",yes
 328897,117,Senate,Meeting,2021-05-26,slin00,Closed business meeting to consider pending intelligence matters; to be immediately followed by a closed briefing on certain intelligence matters.,no
 329449,117,Senate,Meeting,2021-05-26,slin00,"Closed business meeting to consider the nominations of Christopher Charles Fonzone, of Pennsylvania, to be General Counsel of the Office of the Director of National Intelligence, and Brett M. Holmgren, of Minnesota, to be an Assistant Secretary of State (Intelligence and Research).",yes
 329761,117,Senate,Meeting,2021-06-08,slin00,To receive a closed briefing on certain intelligence matters.,no
@@ -1185,62 +716,18 @@ SVA, BVA, MOAA, NASDVA, MVA, NCHV",yes
 330149,117,Senate,Meeting,2021-06-16,slin00,Closed business meeting to consider pending intelligence matters; to be immediately followed by a closed briefing on certain intelligence matters.,yes
 329866,117,Senate,Meeting,2021-06-22,slin00,Closed business meeting to consider pending intelligence matters; be immediately followed by a closed hearing to examine certain intelligence matters.,no
 112803,117,House,Meeting,2021-06-23,hlig00,Full Committee Hearing - Central Intelligence Agency Budget Hearing (Closed),no
-112834,117,House,Markup,2021-06-23,hsif00,Drinking Water and PFAS Legislation,yes
 329881,117,NoChamber,Meeting,2021-06-23,jspr00,"Organizational business meeting to consider the selection of the Chair and Vice Chair, and committee rules of procedure for the 117th Congress.",no
 329882,117,NoChamber,Meeting,2021-06-23,jslc00,"Organizational business meeting to consider the selection of the Chair and Vice Chair, and committee rules of procedure for the 117th Congress.",no
 332461,117,Senate,Meeting,2021-06-23,slin00,Closed hearings to examine certain intelligence matters.,no
 112812,117,House,Hearing,2021-06-24,hlig00,Full Committee Hearing - National Security Agency Budget Hearing (Closed),no
 112828,117,House,Hearing,2021-06-29,hlig00,Full Committee Hearing - Federal Bureau of Investigation Budget Hearing (Closed),no
-112845,117,House,Hearing,2021-06-29,hsii00,"Legislative hearing on H.R. 1851, H.R. 1869, H.R. 3877, and H.R. 4099",yes
-112869,117,House,Meeting,2021-06-29,hsgo00,"The Committee will consider the following:
- 
-1.  H.R.1204, District of Columbia Chief Financial Officer Salary Home Rule Act;
- 
-2.  H.R. 1224, Merit System Protection Board Empowerment Act;
- 
-3.  H.R. 2043, Plum Act;
- 
-4.  H.R. 2988, Whistleblower Protection Improvement Act;
- 
-5.  H.R. 3599, the Federal Rotational Cyber Workforce Program Act;
- 
-6.  H.R. 3787, District of Columbia Local Juror Nondiscrimination Act; and 
- 
-7.  Postal naming measures.",yes
 112829,117,House,Hearing,2021-06-30,hlig00,Full Committee Hearing - National Reconnaissance Office and National Geospatial-Intelligence Agency Budget Hearing (Closed),no
 112854,117,House,Markup,2021-06-30,hsap00,Fiscal Year 2022 Defense Subcommittee Appropriations Bill (CLOSED),yes
 112858,117,House,Hearing,2021-06-30,hsii00,"On H.R. 1317, “Vieques Recovery and Redevelopment Act of 2021” and H.R. 1126, “Vieques Recovery and Redevelopment Act of 2021.”",yes
 329940,117,Senate,Meeting,2021-07-12,ssfr00,"To receive a closed briefing on S.J.Res.10, to repeal the authorizations for use of military force against Iraq, focusing on recent U.S. military strikes in Iraq and Syria.",yes
-112889,117,House,Hearing,2021-07-13,hsii00,"Legislative hearing on H.R. 2049, H.R. 2816, H.R. 3211, H.R. 3132, and H.R. 4300",yes
 330148,117,Senate,Meeting,2021-07-13,slin00,To receive a closed briefing on certain intelligence matters.,no
-112898,117,House,Markup,2021-07-14,hsii00,"HR 820, HR 972, HR 1154, HR 1664, HR 1908, HR 2278, HR 2444, HR 2497, HR 2780, HR 2899, HR 3113, HR 3616, HR 3764, HR 4300",yes
 325673,117,Senate,Meeting,2021-07-19,ssas00,Closed business meeting to markup those provisions which fall under the subcommittee's jurisdiction of the proposed National Defense Authorization Act for fiscal year 2022.,no
 325674,117,Senate,Meeting,2021-07-19,ssas00,Closed business meeting to markup those provisions which fall under the subcommittee's jurisdiction of the proposed National Defense Authorization Act for fiscal year 2022.,no
-113943,117,House,Markup,2021-07-20,hsgo00,"the following:
- 
-1.H.R. 564, the Comprehensive Paid Leave for Federal Employees Act;
-
-2.H.R. 1508, the Guidance Clarity Act;
-
-3.H.R. 2994, the Accountability for Acting Officials Act;
-
-4.H.R. 3533, “To establish occupational series for Federal positions in software development, software engineering, data science, and data management”;
-
-5.H.R. 4125, the Keep the Watchdogs Running Act;
-
-6.H.R. 4393, “To require the Directors of the Courts Services and Offender Supervision Agency of the District of Columbia and the District of Columbia Pretrial Services Agency to reside in the District of Columbia”;
-
-7.H.R. ____, the Administrative Law Judge Competitive Service Restoration Act;
-
-8.H.R. ____, the Artificial Intelligence for Agency Impact Act;
-
-9.H.R. ____, the AI in Counterterrorism Oversight Enhancement Act;
-
-10.H.R. ____, the Federally Funded Research and Technology Development Protection Act;
-
-11.H.R. ____, the Made in America Pandemic Preparedness Act; and
-
-12.Several postal naming measures",yes
 113912,117,House,Hearing,2021-07-21,hlig00,DIWS Subcommittee Hearing - Military Intelligence Program Budget Overview Hearing (Closed),no
 329865,117,Senate,Meeting,2021-07-21,slin00,Closed hearings to examine certain intelligence matters.,no
 329964,117,Senate,Meeting,2021-07-21,ssas00,Closed business meeting to markup the proposed National Defense Authorization Act for fiscal year 2022.,no
@@ -1249,12 +736,10 @@ SVA, BVA, MOAA, NASDVA, MVA, NCHV",yes
 330160,117,Senate,Meeting,2021-07-26,ssaf00,"Business meeting to consider the nomination of Jennifer Lester Moffitt, of California, to be Under Secretary of Agriculture for Marketing and Regulatory Programs.",yes
 330240,117,Senate,Meeting,2021-07-27,slin00,To receive a closed briefing on certain intelligence matters.,no
 113961,117,House,Hearing,2021-07-28,hlig00,DHS I&A Budget Hearing (Closed),no
-114004,117,House,Markup,2021-07-28,hsvr00,"Markup on: A.N.S. to H.R. 4657 Veteran Home Energy Savings Act, A.N.S. to H.R. 912 American Indian and Alaska Native Mental Health Act, A.N.S. to H.R. 3856 To require the Comptroller General of the United States to conduct a study on disparities associated with race and ethnicity with respect to certain benefits administered by the Secretary of Veterans Affairs, A.N.S. to H.R. 147 Bringing Registered Apprenticeships to Veterans Education (BRAVE) Act, H.R. 4673 Ensuring Veterans' Smooth Transition (EVEST) Act, A.N.S. to H.R. 4626 VA Assessment by Independent Measures (AIM) Act, H.R. 4625 VA Caregiver Transparency Act, H.R. 4233 Student Veterans Counseling Centers Eligibility Act",yes
 328820,117,Senate,Meeting,2021-07-28,slin00,Closed business meeting to consider pending intelligence matters.,no
 330120,117,Senate,Meeting,2021-07-28,ssga00,"Business meeting to consider the nominations of Robert Luis Santos, of Texas, to be Director of the Census, Department of Commerce, and Ed Gonzalez, of Texas, to be an Assistant Secretary of Homeland Security.",yes
 330182,117,Senate,Meeting,2021-07-28,ssva00,"Business meeting to consider S.372, to require the Secretary of Veterans Affairs to enter into a contract or other agreement with a third party to review appointees in the Veterans Health Administration who had a license terminated for cause by a State licensing board for care or services rendered at a non-Veterans Health Administration facility and to provide individuals treated by such an appointee with notice if it is determined that an episode of care or services that they received was below the standard of care, S.612, to require the Under Secretary for Health of the Department of Veterans Affairs to provide certain information to medical center staff and homelessness service providers of the Department regarding the coordinated entry processes for housing and services operated under the Continuum of Care Program of the Department of Housing and Urban Development, S.887, make certain improvements relating to the supply chain of the Department of Veterans Affairs, S.1040, to amend title 38, United States Code, to expand eligibility for hospital care, medical services, and nursing home care from the Department of Veterans Affairs to include veterans of World War II, S.1198, to amend title 38, United States Code, to improve and expand the Solid Start program of the Department of Veterans Affairs, S.1220, to amend title 38, United States Code, to recognize and honor the service of individuals who served in the United States Cadet Nurse Corps during World War II, S.1319, to direct the Secretary of Veterans Affairs to make certain information publicly available on one internet website of the Department of Veterans Affairs, S.1863, to amend title 38, United States Code, to improve access to health care for veterans, S.1875, to amend title 38, United States Code, to provide a deadline of 180 days for the filing of claims for payment for emergency treatment furnished to veterans, S.1965, to direct the Secretary of Veterans Affairs to improve long-term care provided to veterans by the Department of Veterans Affairs, S.2041, to amend title 38, United States Code, to direct the Secretary of Veterans Affairs to enforce the licensure requirement for medical providers of the Department of Veterans Affairs, S.2102, to amend title 38, United States Code, to direct the Under Secretary for Health of the Department of Veterans Affairs to provide mammography screening for veterans who served in locations associated with toxic exposure, and S.2172, to amend title 38, United States Code, to improve grants, payments, and technical assistance provided by the Secretary of Veterans Affairs to serve homeless veterans.",yes
 113964,117,House,Meeting,2021-07-29,hlef00,Organizational Meeting for the 117th Congress,no
-113985,117,House,Hearing,2021-07-29,hsii00,"Hybrid Legislative Hearing on H.R. 273, H.R. 274, H.R. 1569, H.R. 1983, H.R. 2026, H.R. 2325, H.R. 2773, H.R. 2793, H.R. 2848, H.R. 2872, H.R. 3075, H.R. 3128, H.R. 3135, H.R. 3396, and H.R. 4458",yes
 114002,117,House,Hearing,2021-07-29,hlef00,The Nature and Consequences of American Economic Disparity,yes
 330146,117,Senate,Meeting,2021-07-29,ssas00,To receive a closed briefing on the security situation on the Korean Peninsula.,no
 329544,117,Senate,Meeting,2021-08-03,slin00,To receive a closed briefing on certain intelligence matters.,no
@@ -1265,7 +750,6 @@ SVA, BVA, MOAA, NASDVA, MVA, NCHV",yes
 330223,117,Senate,Meeting,2021-08-11,ssev00,"Hearings to examine the nominations of Amanda Howe, of Virginia, and David M. Uhlmann, of Michigan, both to be an Assistant Administrator, and Carlton Waterhouse, of Virginia, to be Assistant Administrator, Office of Solid Waste, all of the Environmental Protection Agency.",yes
 330321,117,Senate,Meeting,2021-08-11,ssju00,"Hearings to examine the nominations of Jane M. Beckering, to be United States District Judge for the Western District of Michigan, Shalina D. Kumar, to be United States District Judge for the Eastern District of Michigan, and Armando O. Bonilla, of Virginia, and Carolyn N. Lerner, of Maryland, both to be a Judge of the United States Court of Federal Claims.",yes
 330340,117,Senate,Meeting,2021-08-12,ssju00,"Business meeting to consider S.1787, to amend title 28 of the United States Code to prevent the transfer of actions arising under the antitrust laws in which a State is a complainant, S.2502, to provide first-time, low-level, nonviolent simple possession offenders an opportunity to expunge that conviction after successful completion of court-imposed probation, and the nominations of Toby J. Heytens, of Virginia, to be United States Circuit Judge for the Fourth Circuit, Patricia Tolliver Giles, and Michael S. Nachmanoff, both to be a United States District Judge for the Eastern District of Virginia, Sarala Vidya Nagala, and Omar Antonio Williams, both to be a United States District Judge for the District of Connecticut, and Hampton Y. Dellinger, of North Carolina, to be an Assistant Attorney General, Department of Justice.",yes
-114019,117,House,Markup,2021-09-02,hsii00,"Markup to consider legislative proposals to comply with the reconciliation directive included in section 2002 of the Concurrent Resolution on the Budget for Fiscal Year 2022, S. Con. Res.14.",yes
 114020,117,House,Markup,2021-09-02,hsgo00,"the Committee Print to implement the instructions provided by S. Con. Res. 14, the Concurrent Resolution on the Budget for Fiscal Year 2022.  
 
 The Committee Print contains:
@@ -1277,12 +761,10 @@ The Committee Print contains:
 3.	Funding for the National Archives to speed the processing of veterans’ record requests; and
 
 4.	Oversight and accountability provisions.",yes
-114022,117,House,Markup,2021-09-09,hsii00,"Markup to consider the committee print containing legislative proposals to comply with the reconciliation directive included in section 2002 of the Concurrent Resolution on the Budget for Fiscal Year 2022, S. Con. Res.14.",yes
 114038,117,House,Markup,2021-09-13,hsvr00,"Legislative proposals to comply with the reconciliation directive included in section 2002 of the Concurrent Resolution on the Budget for Fiscal Year 2022, S. Con. Res. 14",yes
 114035,117,House,Hearing,2021-09-14,hssy00,The Disinformation Black Box: Researching Social Media Data,yes
 330420,117,Senate,Meeting,2021-09-14,ssas00,To receive a closed briefing on recent events in Afghanistan.,no
 331166,117,Senate,Meeting,2021-09-14,slin00,To receive a closed briefing on certain intelligence matters.,no
-114046,117,House,Hearing,2021-09-21,hsvr00,"Legislative Hearing on: Discussion Draft, To amend title 38, United States Code, to direct the Secretary of Veterans Affairs to pay to certain veterans, who receive certain educational assistance furnished by the Secretary, a weekly stipend for child care services; Discussion Draft, To amend title 38, United States Code, to increase and extend the authorization of appropriations for homeless veterans reintegration programs; Discussion Draft, To amend the Servicemembers Civil Relief Act to establish protections under that Act for a member of the Armed Forces who leaves a course of education, paid for with certain educational assistance, to perform certain service; Discussion Draft, To direct the Secretary of Veterans Affairs to report on the Warrior Training Advancement Course of the Veterans Benefit Administration; Discussion Draft, To amend title 38, United States Code, to extend eligibility for a certain work-study allowance paid by the Secretary of Veterans Affairs to certain individuals who pursue programs of rehabilitation, education, or training on at least a half-time basis; Discussion Draft, Homeless Grant; Discussion Draft, To direct the Secretary of Veterans Affairs to carry out a pilot program on grants for care for elderly homeless veterans, and for other purposes; Discussion Draft, To extend the delimiting period for certain individuals to use educational assistance benefits administered by the Department of Veterans Affairs; Discussion Draft, To direct the Secretary of Veterans Affairs to carry out a pilot program on substance use and alcohol use disorder recovery for homeless veterans, and for other purposes; Discussion Draft, To amend title 38, United States Code, to direct the Secretary of Veterans Affairs to provide technical assistance to recipients of grants for supportive services for very low-income families in permanent housing and comprehensive service programs, and for other purposes; Discussion Draft, To amend title 38, United States Code, to adjust the rate of per diem payments provided by the Secretary of Veterans Affairs to grantees that provide services to homeless veterans; Discussion Draft, To direct the Secretary of Veterans Affairs to submit to Congress a report on the shallow subsidy program under the supportive services for veteran families program, and for other purposes; Discussion Draft, To direct the Secretary of Veterans Affairs to carry out a pilot program to improve public transportation services for veterans; Discussion Draft, To amend title 38, United States Code, to ensure that the Secretary of Veterans Affairs repays members of the Armed Forces for certain contributions made by such members towards Post-9/11 Educational Assistance; H.R. 4874, To amend title 38, United States Code, to make certain improvements to the use of educational assistance provided by the Department of Veterans Affairs for flight training programs; Discussion Draft, To amend title 38, United States Code, to prohibit the use of entitlement to educational assistance under the Survivors’ and Dependents’ Educational Assistance Program for secondary school education; Discussion Draft, Fry Scholarship Enhancement Act of 2021; Discussion Draft, Col. James Floyd Turner IV U.S.M.C. GI Bill Transfer Act of 2021",yes
 330463,117,Senate,Meeting,2021-09-21,slin00,To receive a closed briefing on certain intelligence matters.,no
 330466,117,Senate,Meeting,2021-09-21,ssas00,To receive a closed briefing on Department of Defense support of Afghan Nationals who have recently left Afghanistan.,no
 330561,117,Senate,Meeting,2021-09-22,slin00,To receive a closed briefing on certain intelligence matters.,no
@@ -1295,39 +777,24 @@ I. Mark-up of the Intelligence Authorization Act for Fiscal Year 2022.
  
 II. Authorizing all Members of the House of Representatives to review, at a time to be determined by the Committee, the Classified Annex to the Intelligence Authorization Act for Fiscal Year 2022. (Closed)",yes
 114091,117,House,Hearing,2021-10-02,hsvr00,POSTPONED: Ending Veteran Hunger: Examining the Impact of COVID-19 on Food Insecurity,yes
-114098,117,House,Hearing,2021-10-05,hsii00,"Legislative Hearing on H.J.Res.55, H.R.441, H.R.2402, H.R.4881, and H.R.5221",yes
 330645,117,Senate,Meeting,2021-10-05,slin00,To receive a closed briefing on certain intelligence matters.,no
 330756,117,Senate,Meeting,2021-10-06,slin00,To receive a closed briefing on certain intelligence matters.,no
-114109,117,House,Hearing,2021-10-07,hsvr00,Legislative Hearing on the VA Electronic Health Record Transparency Act of 2021 and IT Reform and Data Collection Bills,yes
-114120,117,House,Markup,2021-10-13,hsii00,"Full Committee Markup on HR 160, HR 442, HR 570, HR 897, HR 1286, HR 1975, HR 2024, HR 2074, HR 2088, HR 2107, HR 2643, HR 2930, HR 3075, HR 3222, HR 3670, HR 4881, and HR 5221",yes
 114121,117,House,Hearing,2021-10-14,hsii00,"Legislative Hearing on H.R. 149, H.R. 250, H.R. 3197, H.R. 3531, H.R. 4009, H.R. 4380, H.R. 4454, H.R. 4648, and H.R. 4706.",yes
 330840,117,Senate,Meeting,2021-10-19,slin00,To receive a closed briefing on certain intelligence matters.,no
-114137,117,House,Hearing,2021-10-20,hsvr00,"Legislative Hearing on: H.R. 2568, United States Cadet Nurse Corps Service Recognition Act of 2021; H.R. 2724, VA Peer Support Enhancement for MST Survivors Act; H.R. 2800, WINGMAN Act; HR 2827, Captain James C. Edge Gold Star Spouse Equity Act; H.R. 3402, Caring for Survivors Act of 2021; H.R. 3793, Supporting Families of the Fallen Act; H.R. 4191, Gold Star Spouses Non-Monetary Benefits Act; H.R. 4601, Commitment to Veteran Support and Outreach Act; H.R. 4633, to amend title 38, United States Code, to improve the repayment by the Secretary of Veterans Affairs of benefits misused by a fiduciary; H.R. 4772, Mark O’Brien VA Clothing Allowance Improvement Act; Discussion Draft, legislation to amend title 38, United States Code, to direct the Secretary of Veterans Affairs to repay the estates of deceased beneficiaries for certain benefits paid by the Secretary and misused by fiduciaries of such beneficiaries; Discussion Draft, legislation to amend title 38, United States Code, to improve the manner in which the Board of Veterans’ Appeals conducts hearings regarding claims involving military sexual trauma and to direct the Secretary of Veterans Affairs to improve the language and practices of the Department of Veterans Affairs with respect to such claims; Discussion Draft, legislation to amend title 38, United States Code, to extend increased dependency and indemnity compensation paid to surviving spouses of veterans who die from amyotrophic lateral sclerosis, regardless of how long the veterans had such disease prior to death; Discussion Draft, legislation to improve coordination between the Veterans Health Administration and the Veterans Benefits Administration with respect to claims for compensation arising from military sexual trauma, and for other purposes",yes
 330421,117,Senate,Meeting,2021-10-20,slin00,To receive a closed briefing on certain intelligence matters.,no
 114146,117,House,Hearing,2021-10-21,hlig00,Covert Action’s Role in Foreign Policy (Closed),yes
-114167,117,House,Markup,2021-10-21,hsag00,"“H.R. 4252, To provide additional funding for scholarships for students at 1890’s institutions; H.R. 2361, Rebuild Rural America Act of 2021; H.R. 5608, Chronic Wasting Disease Research and Management Act; H.R. 3532, To require the Secretary of Agriculture to carry out a periodic wildfire assessment, and for other purposes; H.R. 4489, National Forest Restoration and Remediation Act; H.R. 5609, Cattle Contract Library Act of 2021; and H.R. 5589, Pyrolysis Innovation Grants Act”",yes
 330841,117,Senate,Meeting,2021-10-26,slin00,To receive a closed briefing on certain intelligence matters.,no
 330928,117,Senate,Meeting,2021-10-27,slin00,To receive a closed briefing on certain intelligence matters.,no
 114187,117,House,Hearing,2021-10-29,hsvr00,POSTPONED: Ensuring a Successful Military to Civilian Transition for Servicemembers in Southern Alabama,yes
 330757,117,Senate,Meeting,2021-11-02,slin00,To receive a closed briefing on certain intelligence matters.,no
 114278,117,House,Hearing,2021-11-03,hsju00,"The Administrative Procedure Act at 75: Ensuring the Rulemaking Process is Transparent, Accountable, and Effective",yes
 330940,117,Senate,Meeting,2021-11-03,ssbk00,"Business meeting to consider the nominations of Judith DelZoppo Pryor, of Ohio, to be First Vice President of the Export-Import Bank of the United States, Owen Edward Herrnstadt, of Maryland, to be a Member of the Board of Directors of the Export-Import Bank of the United States,  Matthew S. Axelrod, of Maryland, to be an Assistant Secretary of Commerce, and Reta Jo Lewis, of Georgia, to be President of the Export-Import Bank of the United States.",yes
-114210,117,House,Hearing,2021-11-04,hsii00,"Remote Legislative Hearing on H.Res. 320, H.R. 4832, H.R. 5001, and H.R. 5345",yes
 330923,117,Senate,Meeting,2021-11-04,ssga00,"Hearings to examine the nomination of Michael Kubayanda, of Ohio, to be a Commissioner of the Postal Regulatory Commission.",yes
 330960,117,Senate,Meeting,2021-11-04,ssaf00,"Business meeting to consider the nominations of Rostin Behnam, of Maryland, to be Chairman, and to be a Commissioner of the Commodity Futures Trading Commission.",yes
-114222,117,House,Hearing,2021-11-09,hsii00,"Legislative Hearing on: H.R. 268, H.R. 980, H.R. 1469, H.R. 2512, H.R. 2551, H.R. 3600, H.R. 4358, H.R. 4404, H.R. 4494, and H.R. 5118.",yes
 331026,117,Senate,Meeting,2021-11-16,slin00,To receive a closed briefing on certain intelligence matters.,no
-114256,117,House,Markup,2021-11-17,hsii00,Remote Markup on multiple bills.,yes
 330929,117,Senate,Meeting,2021-11-17,sssb00,"Business meeting to consider S.1617, to modify the requirements for the Administrator of the Small Business Administration relating to declaring a disaster in a rural area, S.1621, to reauthorize and limit the pre-disaster mitigation program of the Small Business Administration, the nomination of Dilawar Syed, of California, to be Deputy Administrator of the Small Business Administration, and other pending calendar business.",yes
 331027,117,Senate,Meeting,2021-11-17,slin00,To receive a closed briefing on certain intelligence matters.,no
 331220,117,Senate,Meeting,2021-12-01,slin00,To receive a closed briefing on certain intelligence matters.,no
-114282,117,House,Markup,2021-12-02,hsgo00,"The Committee on Oversight and Reform will hold a hybrid business meeting to consider the following:
-1. H.R. 5477, the Federal Agency Climate Planning, Resilience, and Enhanced Preparedness (PREP) Act;
-2. H.R. 4688, the Federal Agency Customer Experience (FACE) Act;
-3. H.R. 5792, the State and Local Digital Services Act;
-4. H.R. 4778, the District of Columbia Courts Vacancy Reduction Act;
-5. H.R. 6066, the Strengthening the Office of Personnel Management Act; and
-6. Several postal naming measures.",yes
 331061,117,Senate,Meeting,2021-12-03,ssbk00,"Business meeting to consider the nominations of Alanna McCargo, of Virginia, to be President, Government National Mortgage Association, and James Arthur Jemison II, of Michigan, and Elizabeth de Leon Bhargava, of New York, both to be an Assistant Secretary, all of the Department of Housing and Urban Development, and Arun Venkataraman, of the District of Columbia, to be Assistant Secretary of Commerce and Director General of the United States and Foreign Commercial Service.",yes
 331181,117,Senate,Meeting,2021-12-06,ssfr00,To receive a closed briefing on U.S.-Russia policy.,no
 114300,117,House,Hearing,2021-12-07,hsba00,Ensuring Equitable Delivery of Disaster Benefits to Vulnerable Communities and Peoples: An Examination of GAO's Findings of the CDBG-DR Program,yes
@@ -1349,15 +816,11 @@ II. Authorizing all Members of the House of Representatives to review, at a time
 114361,117,House,Hearing,2022-02-02,hsfa00,The Biden Administration's Policy Objectives in the Middle East and North Africa,no
 331461,117,Senate,Meeting,2022-02-02,ssas00;ssfr00,To receive a closed joint briefing on U.S. policy on Afghanistan.,no
 331843,117,Senate,Meeting,2022-02-02,slin00,To receive a closed briefing on certain intelligence matters.,no
-114363,117,House,Hearing,2022-02-03,hsii00,"Legislative Hearing on: H.R. 6142, H.R. 6199, H.R. 6201,
-H.R. 6337, H.R. 6451, H.R. 6434 & H.R. 6435",yes
 114389,117,House,Hearing,2022-02-08,hlig00,"Intelligence Support to the DoD's August 29, 2021 Strike in Kabul (Closed)",yes
 331975,117,Senate,Meeting,2022-02-08,slin00,To receive a closed briefing on certain intelligence matters.,no
 331921,117,Senate,Meeting,2022-02-09,slin00,To receive a closed briefing on certain intelligence matters.,no
 331922,117,Senate,Meeting,2022-02-15,slin00,To receive a closed briefing on certain intelligence matters.,no
-114420,117,House,Markup,2022-02-16,hsii00,FC Markup on multiple bills.,yes
 331747,117,Senate,Meeting,2022-02-16,slin00,To receive a closed briefing on certain intelligence matters.,no
-114424,117,House,Hearing,2022-02-17,hsii00,Securing the Future of Climate Adaptation Science at the United States Geological Survey,yes
 331965,117,Senate,Meeting,2022-03-01,ssfr00,To receive a closed briefing on United States hostage policy.,no
 331974,117,Senate,Meeting,2022-03-02,ssfi00,"Business meeting to continue consideration of the nominations of Robert Michael Gordon, of the District of Columbia, to be an Assistant Secretary, January Contreras, of Arizona, to be Assistant Secretary for Family Support, and Rebecca E. Jones Gaston, of Oregon, to be Commissioner on Children, Youth, and Families, all of the Department of Health and Human Services.",yes
 332100,117,Senate,Meeting,2022-03-02,slin00,To receive a closed briefing on certain intelligence matters.,no
@@ -1374,82 +837,35 @@ H.R. 6337, H.R. 6451, H.R. 6434 & H.R. 6435",yes
 332171,117,Senate,Meeting,2022-03-23,ssaf00,"Business meeting to consider the nominations of Christy Goldsmith Romero, of Virginia, Kristin N. Johnson, of Michigan, Summer Kristine Mersinger, of South Dakota, and Caroline D. Pham, of New York, each to be a Commissioner of the Commodity Futures Trading Commission.",yes
 332184,117,Senate,Meeting,2022-03-23,slin00,To receive a closed briefing on certain intelligence matters.,no
 332166,117,Senate,Meeting,2022-03-24,ssfr00,To receive a briefing on U.S.-Taiwan policy.,no
-114456,117,House,Hearing,2022-03-29,hsii00,"Hybrid Legislative Hearing on H.R. 6427, H.R. 6734, and 7025",yes
 332174,117,Senate,Meeting,2022-03-29,ssfr00,"Business meeting to consider S.J.Res.17, requiring the advice and consent of the Senate or an Act of Congress to suspend, terminate, or withdraw the United States from the North Atlantic Treaty and authorizing related litigation, S.3199, to promote peace and democracy in Ethiopia, the Convention between the Government of the United States of America and the Government of the Republic of Chile for the Avoidance of Double Taxation and the Prevention of Fiscal Evasion with Respect to Taxes on Income and Capital, signed in Washington on February 4, 2010, with a Protocol signed the same day, as corrected by exchanges of notes effected February 25, 2011, and February 10 and 21, 2012, and a related agreement effected by exchange of notes (the ""related Agreement"") on February 4, 2010 (Treaty Doc.112-08), and the nominations of Maria Fabiana Jorge, of the District of Columbia, to be United States Alternate Executive Director, and Leopoldo Martinez Nucete, of Virginia, to be United States Executive Director, both of the Inter-American Development Bank, and Deborah E. Lipstadt, of Georgia, to be Special Envoy to Monitor and Combat Anti-Semitism, with the rank of Ambassador, and Barbara A. Leaf, of Virginia, to be an Assistant Secretary (Near Eastern Affairs), both of the Department of State.",yes
 332281,117,Senate,Meeting,2022-03-29,slin00,To receive a closed briefing on certain intelligence matters.,no
 114543,117,House,Hearing,2022-03-30,hsii00,Preventing Pandemics through US Wildlife-borne Disease Surveillance,yes
 114549,117,House,Hearing,2022-03-30,hssy00,Space Situational Awareness: Guiding the Transition to a Civil Capability,yes
 114558,117,House,Hearing,2022-03-31,hsii00,"Legislative Hearing on H.R.4715, H.R.5715, and H.R.6707",yes
 331844,117,Senate,Meeting,2022-04-05,slin00,To receive a closed briefing on certain intelligence matters.,no
-114618,117,House,Markup,2022-04-06,hsii00,"HR 920, HR 1638, HR 2626, HR 5093, and HR 6651",yes
 114624,117,House,Hearing,2022-04-06,hlig00,Compartmented Hearing (Closed),yes
-114625,117,House,Markup,2022-04-06,hsgo00,"1.	H.R. 1756, the Measuring Real Income Growth Act;
-
-2.	H.R. 6531, the Targeting Resources to Communities in Need Act of 2022;
-
-3.	H.R. 6967, the Chance to Compete Act;
-
-4.	H.R. ____, the Honoring Civil Servants Killed in the Line of Duty Act;
-
-5.	H.R. 5815, the Honest Census Communications Act;
-
-6.	H.R. 7185, the Federal Contracting for Peace and Security Act;
-
-7.	H.R. 3544, the Computers for Veterans and Students (COVS) Act;
-
-8.	H.R. 7337, the Access for Veterans to Records Act; and
-
-9.	Several postal naming measures.",yes
-114627,117,House,Markup,2022-04-06,hsvr00,"Markup on: H.R. 5738, the Lactation Spaces for Veteran Moms Act; H.R. 6961, the Dignity for MST Survivors Act; A.N.S. to H.R. 2724, the VA Peer Support Enhancement for MST Survivors Act; H.R. 7335, VBA/VHA Coordination; H.R. 6052, the VA OIG Training Act; A.N.S. to H.R. 7277, Improving Oversight of VA Community Care Providers; H.R. 7393, Improving VA Workforce through Minority Serving Institutions; H.R. 2428, VA OIG Testimonial Subpoena Authority; H.R. 7369, Self Employment VR&E Improvement; A.N.S. to H.R. 6376, Student Veteran Work Study Modernization; Discussion Draft, VA Foreign School Payments; H.R. 2326, the Veterans Cyber Risk Awareness Act; H.R. 7158, the Long-Term Care Veterans Choice Act; H.R. 5754, the Patient Advocate Tracker Act; H.R. 6064, VA & NASEM Agreement for MST; H.R. 7153, the Department of Veterans Affairs Principles of Benefits Automation Act; H.R. 6604, VETS Credit Act",yes
 332460,117,Senate,Meeting,2022-04-26,slin00,To receive a closed briefing on certain intelligence matters.,no
-114668,117,House,Hearing,2022-04-27,hsii00,"Legislative Hearing on H.R. 437, H.R. 6063, H.R. 6181 [Discussion Draft ANS], S. 314, S. 559, and S. 789",yes
 332388,117,Senate,Meeting,2022-04-27,ssfr00,To receive a closed briefing on recent developments in China's nuclear capabilities.,no
 332600,117,Senate,Meeting,2022-05-03,slin00,To receive a closed briefing on certain intelligence matters.,no
 332463,117,Senate,Meeting,2022-05-04,ssva00,"Business meeting to consider the nomination of Shereef M. Elnahal, of New Jersey, to be Under Secretary for Health of the Department of Veterans Affairs.",yes
 334153,117,Senate,Meeting,2022-05-04,slin00,Closed hearings to examine certain intelligence matters.,no
 332064,117,Senate,Meeting,2022-05-10,slin00,"Closed business meeting to consider the nomination of Kate Elizabeth Heinzelman, of New York, to be General Counsel of the Central Intelligence Agency; to be immediately followed by a closed briefing on certain intelligence matters.",yes
 332554,117,Senate,Meeting,2022-05-10,slin00,Closed hearings to examine certain intelligence matters.,no
-114722,117,House,Hearing,2022-05-11,hsii00,"Legislative Hearing on H.R. 279, H.R. 7329, H.R. 7399 & H.R. 7665",yes
-114739,117,House,Markup,2022-05-11,hsgo00,"1.	HR ____, the Artificial Intelligence Training for the Acquisition Workforce Act;
-
-2.	H.R. 4176, the LGBTQI+ Data Inclusion Act;
-
-3.	H.R. 7331, the Improving Government for America’s Taxpayers Act;
-
-4.	H.R. 7535, the Quantum Computing Cybersecurity Preparedness Act;
-
-5.	H.R. 521, the First Responder Fair Return for Employees on Their Initial Retirement Earned Act;
-
-6.	H.R. ____, the District of Columbia Code Returning Citizens Coordination Act;
-
-7.	H.R. ____, the Ensuring Oversight Access at the Postal Service Act;
-
-8.	H.R. 6104, the Building the Next Generation of Federal Employees Act;
-
-9.	H.R. _____, the Ensuring an Accurate Postal Fleet Electrification Act; and
-
-10.	Several Postal naming measures.",yes
 114704,117,House,Hearing,2022-05-12,hlig00,Fiscal Year 2023 Military Intelligence Program Budget Hearing (Closed),yes
-114799,117,House,Markup,2022-05-17,hsag00,"the Budget Views and Estimates Letter of the Committee on Agriculture for the agencies and programs under the jurisdiction of the Committee for Fiscal Year 2023; H.R. 7764, A bill to direct the Secretary of Agriculture to provide additional payments under the environmental quality incentives program for implementation of a nutrient management practice, and for other purposes. ; H.R. 2518,  “Producing Responsible Energy and Conservation Incentives and Solutions for the Environment Act or the PRECISE Act”; H.R. 2606, “Sponsoring USDA Sustainability Targets in Agriculture to Incentivize Natural Solutions Act of 2021, or the ‘SUSTAINS’ Act”; H.R. 4140, “Butcher Block Act”; H.R. 7675,  To amend the Department of Agriculture Reorganization Act of 1994 to establish an Agricultural and Food System Supply Chain Resilience and Crisis Response Task Force, and for other purposes.; H.R. 7606,  “Meat and Poultry Special Investigator Act of 2022”; H.R. 7763, To direct the Secretary of Agriculture to support and incentivize domestic activities to address fertilizer shortages and deficiencies, diversity fertilizer sources, and reduce depending on foreign sources for fertilizer, and other purposes; H.R. 7765, “American Food Supply Chain Resiliency Act of 2022”",yes
 332555,117,Senate,Meeting,2022-05-17,slin00,Closed hearings to examine certain intelligence matters.,no
-114771,117,House,Hearing,2022-05-18,hsvr00,"Legislative Hearing on: H.R. 3950, the Veterans Medical Legal Partnerships Act of 2021; H.R. 6124, the Veterans Affairs Home Loan Guaranty Resiliency and Concurrency Enhancement Act of 2021; Discussion Draft, A.N.S. to the Tiny Homes for Homeless Veterans Act; Discussion Draft, to amend Title 38, United States Code, to establish in the Department of Veterans Affairs an Office of Food Insecurity, and for other purposes; Discussion Draft, to amend Title 38, United States Code, to extend certain Department of Veterans Affairs programs for homeless veterans; Discussion Draft, to amend Title 38, United States Code, to expand eligibility for, and extend authorization of, certain programs for homeless veterans; Discussion Draft, to amend Title 38, United States Code, to extend authority for supportive services for very low-income veteran families in permanent housing; Discussion Draft, to amend Title 38, United States Code, to extend Department of Veterans Affairs assistance for individuals residing temporarily in housing owned by a family member; Discussion Draft, the Emergency Relief for Servicemembers Act; Discussion Draft, the Building Credit Access for Veterans Act of 2022; Discussion Draft, to expand and improve the Department of Veterans Affairs COVID-19 veteran rapid retraining assistance programs and high technology pilot programs, and for other purposes; Discussion Draft, the Empowering Veterans Against Cyberthreats Act of 2022; H.R. 2650, the Military Spouse Licensing Relief Act of 2021; H.R. 4702, the Military Spouse Tax Act; Discussion Draft, the Improving the VA Home Loan Benefit Act of 2022; Discussion Draft, to amend Title 38, United States Code, to provide for the eligibility of educational assistance under the Department of Veterans Affairs Post-9/11 Educational Assistance Program of certain individuals who receive sole survivorship discharges, and for other purposes; Discussion Draft, to direct the Secretary of Veterans Affairs to seek to enter into an agreement with an entity to carry out a pilot program under which such entity shall connect homeless veterans to a network of supportive services, and for other purposes; Discussion Draft, to amend Title 38, United States Code, to provide for the approval of certain study-abroad programs for purposes of the educational assistance programs of the Department of Veterans Affairs, and for other purposes""",yes
 114780,117,House,Hearing,2022-05-18,hlig00,FY23 National Intelligence Program Budget Hearing (Closed),yes
 332601,117,Senate,Meeting,2022-05-18,slin00,Closed hearings to examine certain intelligence matters.,no
-114744,117,House,Hearing,2022-05-24,hsii00,Boundary Waters Legislative Hearing,yes
 332724,117,Senate,Meeting,2022-05-24,slin00,To receive a closed briefing on certain intelligence matters.,no
 328058,117,Senate,Meeting,2022-05-25,slin00,Closed hearings to examine certain intelligence matters.,no
 332572,117,Senate,Meeting,2022-05-25,sshr00,"Business meeting to consider the nominations of Kalpana Kotagal, of Ohio, to be a Member of the Equal Employment Opportunity Commission, LaWanda Amaker Toney, of Maryland, to be Assistant Secretary for Communications and Outreach, and Nasser H. Paydar, of Indiana, to be Assistant Secretary for Postsecondary Education, both of the Department of Education, Rita M. Landgraf, of Delaware, to be Assistant Secretary for Aging, Department of Health and Human Services, and other pending calendar business.",yes
 114871,117,House,Meeting,2022-06-07,hsgo00,Deposition of David Pauken,yes
-114854,117,House,Markup,2022-06-08,hsii00,"HR 263, HR 3081, HR 5444, HR 6063, HR 6181, HR 6337, HR 6427, HR 6707, HR 6734, HR 7002, HR 7025, HR 7075, HR 7612, S.314, S.559, S. 789",yes
 114865,117,House,Hearing,2022-06-08,hlig00,Compartmented Posture Hearing (Closed),yes
 332723,117,Senate,Meeting,2022-06-08,slin00,Closed hearings to examine certain intelligence matters.,no
 114851,117,House,Hearing,2022-06-09,hlig00,Compartmented Budget Hearing (Closed),no
-114869,117,House,Hearing,2022-06-09,hsii00,“Coal Community Protection and Revitalization.”,yes
 334324,117,Senate,Meeting,2022-06-13,ssas00,Closed business meeting to markup those provisions which fall under the subcommittee's jurisdiction of the proposed National Defense Authorization Act for fiscal year 2023.,no
 114893,117,House,Hearing,2022-06-14,hlig00,National Reconnaissance Office and National Geospatial Intelligence Agency Budgets Hearing (Closed),yes
 333541,117,Senate,Meeting,2022-06-14,slin00,Closed hearings to examine certain intelligence matters.,no
 114895,117,House,Hearing,2022-06-15,hlig00,Central Intelligence Agency Budget Hearing (Closed),yes
-114898,117,House,Markup,2022-06-15,hsii00,"HR 263, HR 5444, HR 6063, HR 6181, HR 6337, HR 6427, HR 6707, HR 6734, HR 7002, HR 7025, HR 7075, S. 789",yes
 332283,117,Senate,Meeting,2022-06-15,slin00,To receive a closed briefing on certain intelligence matters.,no
 332741,117,Senate,Meeting,2022-06-15,ssfr00,To receive a closed briefing on Iran's nuclear program and U.S. strategy.,no
 334331,117,Senate,Meeting,2022-06-15,ssas00,Closed business meeting to markup the proposed National Defense Authorization Act for fiscal year 2023.,no
@@ -1458,27 +874,11 @@ H.R. 6337, H.R. 6451, H.R. 6434 & H.R. 6435",yes
 114928,117,House,Hearing,2022-06-22,hlig00,National Security Agency Budget Hearing (Closed),yes
 332773,117,Senate,Meeting,2022-06-22,slin00,Closed business meeting to consider pending intelligence matters.,no
 114938,117,House,Hearing,2022-06-23,hlig00,Defense Intelligence Agency Budget Hearing (Closed),no
-114957,117,House,Hearing,2022-06-23,hsii00,"Legislative Hearing on H.R. 2522, H.R. 2882, H.R. 5355, H.R. 6240 & H.R. 7509",yes
 114956,117,House,Meeting,2022-06-29,hsfa00,International Efforts to Encourage a Sustainable Blue Economy,no
 332880,117,Senate,Meeting,2022-07-12,slin00,To receive a closed briefing on certain intelligence matters.,no
-114990,117,House,Markup,2022-07-13,hsii00,"HR 2794, HR 3686, HR 5715, HR 6364, HR 6442, HR 6654, HR 6936, HR 7283, HR 7496, HR 7693",yes
 332859,117,Senate,Meeting,2022-07-13,slia00,"Business meeting to consider the nomination of Roselyn Tso, of Oregon, to be Director of the Indian Health Service, Department of Health and Human Services.",yes
 114999,117,House,Hearing,2022-07-14,hsfa00,"Examining the U.S. Interest in Regional Security Cooperation in the Middle East 
 and North Africa: Opportunities, Obstacles, and Objectives",no
-115007,117,House,Markup,2022-07-14,hsgo00,"1.	H.R. 4258, the Improving Digital Identity Act;
-
-2.	H.R. 8322, the Strengthening Tools to Obstruct and Prevent Fraud Act of 2022;
-
-3.	H.R. 7602, the Preventing Organizational Conflicts of Interest in Federal Acquisition Act;
-
-4.	H.R. 8326, the Ensuring a Fair and Accurate Census Act; 
-
-5.	H.R. 8325, the Preventing the Personal Conflicts of Interest Act in Federal Acquisition Act;
-
-6.	H.R. 6548, the Justice in Power Plant Permitting Act; and
-
-7.	Several postal naming measures.",yes
-115011,117,House,Hearing,2022-07-14,hsii00,"Legislative Hearing on H.R. 1256, H.R.6438, H.R. 6353, H.R. 6611, H.R. 6720, H.R. 6799, H.R. 7618, H.R. 7912, H.R. 8046 & H.R. 8258",yes
 115001,117,House,Meeting,2022-07-19,hsvr00,RESCHEDULED: Full Committee Business Meeting: Reauthorization of the Women Veterans Task Force and Subcommittee Assignments,yes
 115029,117,House,Markup,2022-07-19,hlmh00,Business Meeting to Vote on Recommendations,yes
 332868,117,Senate,Meeting,2022-07-19,ssfr00,"Business meeting to consider S.4428, to support the security of Taiwan and its right of self-determination, S.4466, to amend the Peace Corps Act by reauthorizing the Peace Corps, providing better support for current, returning, and former volunteers, S.3052, to promote free and fair elections, democracy, political freedoms, and human rights in Cambodia, S.3317, to strengthen United States national security through the defense of democracy abroad and to address contemporary threats to democracy around the world, S.552, to direct the Administrator of the United States Agency for International Development to submit to Congress a report on the impact of the COVID-19 pandemic on global basic education programs, S.4320, to enhance security at United States diplomatic facilities, S.4216, to reauthorize the North Korean Human Rights Act of 2004, S.3589, to require a United States security strategy for the Western Hemisphere, H.R.4693, to advance targeted and evidence-based interventions for the prevention and treatment of global malnutrition and to improve the coordination of such programs, H.R.1036, to amend the State Department Basic Authorities Act of 1956 to authorize rewards under the Department of State's rewards program relating to information regarding individuals or entities engaged in activities in contravention of United States or United Nations sanctions, H.R.6899, to prohibit the Secretary of the Treasury from engaging in transactions involving the exchange of Special Drawing Rights issued by the International Monetary Fund that are held by the Russian Federation or Belarus, protocols to the North Atlantic Treaty of 1949 on the Accession of the Republic of Finland and the Kingdom of Sweden (Treaty Doc.117-03), the nominations of David Pressman, of New York, to be Ambassador to Hungary, Geoffrey R. Pyatt, of California, to be an Assistant Secretary (Energy Resources), Robert A. Wood, of New York, to be an Alternate Representative of the United States of America to the Sessions of the General Assembly of the United Nations, during his tenure of service as Alternate Representative of the United States of America for Special Political Affairs in the United Nations, and Geeta Rao Gupta, of Virginia, to be Ambassador at Large for Global Women's Issues, Dean R. Thompson, of Maryland, to be Ambassador to Nepal, Robert F. Godec, of Virginia, to be Ambassador to the Kingdom of Thailand, Richard Lee Buangan, of California, to be Ambassador to Mongolia, and Marie C. Damour, of Virginia, to be Ambassador to the Republic of Fiji, and to serve concurrently and without additional compensation as Ambassador to the Republic of Kiribati, the Republic of Nauru, the Kingdom of Tonga, and Tuvalu, all of the Department of State, Elizabeth Shortino, of the District of Columbia, to be United States Executive Director of the International Monetary Fund, routine lists in the Foreign Service, and other pending calendar business.",yes
@@ -1491,31 +891,13 @@ I. Mark-up of the Intelligence Authorization Act for Fiscal Year 2023.
 II. Authorizing all Members of the House of Representatives to review, at a time to be determined by the Committee, the Classified Annex to the Intelligence Authorization Act for Fiscal Year 2023. 
 
 (Closed)",yes
-115043,117,House,Markup,2022-07-20,hsgo00,"*NOTICE TO RECONVENE*
-7-14-2022 BUSINESS MEETING 
-
-1. H.R. 4258, the Improving Digital Identity Act;
-
-2. H.R. 8322, the Strengthening Tools to Obstruct and Prevent Fraud Act of 2022;
-
-3. H.R. 7602, the Preventing Organizational Conflicts of Interest in Federal Acquisition Act;
-
-4. H.R. 8326, the Ensuring a Fair and Accurate Census Act; 
-
-5. H.R. 8325, the Preventing the Personal Conflicts of Interest Act in Federal Acquisition Act;
-
-6. H.R. 6548, the Justice in Power Plant Permitting Act; and
-
-7. Several postal naming measures.",yes
 332784,117,Senate,Meeting,2022-07-20,ssev00,Business meeting to consider pending calendar business.,no
 333113,117,Senate,Meeting,2022-07-20,slin00,Closed business meeting to consider pending calendar business; to be immediately followed by a closed briefing on certain intelligence matters.,no
 115038,117,House,Hearing,2022-07-21,hsii00,"Hybrid Legislative Hearing on H.R. 4951, H.R. 7918, H.R. 7975, H.R. 8090",yes
 115080,117,House,Hearing,2022-07-21,hsii00,"Hybrid Legislative Hearing on H.R. 4951, H.R. 7918, H.R. 7975, H.R. 8090",yes
 332909,117,Senate,Meeting,2022-07-26,ssas00,To receive a closed briefing on Indo-Pacific policy and operations.,no
 332973,117,Senate,Meeting,2022-07-26,slin00,To receive a closed briefing on certain intelligence matters.,no
-115048,117,House,Hearing,2022-07-27,hlig00,Full Committee Hearing - Combatting the Threats to U.S. National Security from the Proliferation of Foreign Commercial Spyware,yes
 115053,117,House,Markup,2022-07-27,hsii00,"HR 2021, To restore, reaffirm, and reconcile environmental justice and civil rights, and for other purposes. ""Environmental Justice For All Act""",yes
-115071,117,House,Hearing,2022-07-28,hsii00,Preventing Polluters from Getting Government Contracts: Bureau of Land Management’s Corporate Exclusions Lists,yes
 332980,117,Senate,Meeting,2022-08-01,ssfr00,To receive a closed briefing on Taiwan.,no
 332947,117,Senate,Meeting,2022-08-02,ssas00,To receive a closed briefing on global nuclear threats and U.S. nuclear deterrence strategy and policies.,no
 332881,117,Senate,Meeting,2022-08-03,slin00,To receive a closed briefing on certain intelligence matters.,no
@@ -1526,19 +908,6 @@ II. Authorizing all Members of the House of Representatives to review, at a time
 332842,117,Senate,Meeting,2022-09-14,slin00,Closed business meeting to consider pending calendar business; to be immediately followed by a closed briefing on certain intelligence matters.,no
 333020,117,Senate,Meeting,2022-09-14,ssfr00,"Business meeting to consider S.4428, to support the security of Taiwan and its right of self-determination, S.4653, to provide for certain authorities of the Department of State, and the nominations of Rolfe Michael Schiffer, of New York, to be an Assistant Administrator of the United States Agency for International Development, Nathaniel Fick, of Maine, to be Ambassador at Large for Cyberspace and Digital Policy, Department of State, Patrick Leahy, of Vermont, and James E. Risch, of Idaho, both to be a Representative of the United States of America to the Seventy-seventh Session of the General Assembly of the United Nations, routine lists in the Foreign Service, and other pending calendar business.",yes
 115136,117,House,Meeting,2022-09-15,hsed00,Business Meeting to approve new subcommittee assignments,no
-115159,117,House,Meeting,2022-09-20,hswm00,"Markup of:
-
-•	H.R. 82, the “Social Security Fairness Act of 2021”
-
-•	H. Res. 1269, Of inquiry directing the Secretary of the Treasury to provide certain documents in the Secretary's possession to the House of Representatives relating to the impact of the OECD Pillar One agreement on the United States Treasury. 
-
-•	H. Res. 1285, Requesting the President to transmit certain information to the House of Representatives relating to a waiver of intellectual property commitments under the World Trade Organization Agreement on Trade-Related Aspects of Intellectual Property Rights. 
-
-•	H. Res. 1262, Of inquiry directing the Secretary of Health and Human Services to provide to the House of Representatives certain documents in the Secretary's possession regarding the reinterpretation of sections 36B(c)(2)(C)(i)(II) and 5000A(e)(1)(B) of the Internal Revenue Code of 1986, commonly known as the ""fix to the family glitch”.
-
-•	H. Res. 1283, Of inquiry directing the Secretary of the Treasury to provide to the House of Representatives a copy of the Internal Revenue Service Small Business/Self Employed Division Decision Memorandum regarding the decision to destroy approximately 30,000,000 paper information returns around the time of March 2021, and any other memorandum related to the decision to destroy those information returns. 
-
-•	H. Res. 1288, Of inquiry directing the Secretary of Labor to provide to the House of Representatives certain documents in the Secretary's possession relating to Unemployment Insurance fraud during the COVID-19 pandemic.",yes
 333176,117,Senate,Meeting,2022-09-20,slin00,To receive a closed briefing to examine certain intelligence matters.,no
 333184,117,Senate,Meeting,2022-09-27,ssaf00,"Business meeting to consider the nominations of Jose Emilio Esteban, of California, to be Under Secretary for Food Safety, and Alexis Taylor, of Iowa, to be Under Secretary for Trade and Foreign Agricultural Affairs, both of the Department of Agriculture, and Vincent Garfield Logan, of New York, to be a Member of the Farm Credit Administration Board, Farm Credit Administration.",yes
 333087,117,Senate,Meeting,2022-09-28,slin00,To receive a closed briefing to examine certain intelligence matters.,no
@@ -1547,28 +916,15 @@ II. Authorizing all Members of the House of Representatives to review, at a time
 115178,117,House,Meeting,2022-09-29,hlig00,Full Committee Business Meeting: Consideration of the Access Request from Rep. Doug Lamborn (Closed),yes
 333170,117,Senate,Meeting,2022-09-29,ssfr00,To receive a closed briefing on the Russian Invasion of Ukraine.,no
 115169,117,House,Meeting,2022-09-30,hsfa00,Members Roundtable: The Progress and Promise of the Alliance for Development in Democracy (Closed),yes
-115160,117,House,Meeting,2022-10-13,hlij00,On the January 6th Investigation,yes
 333325,117,Senate,Meeting,2022-11-15,slin00,To receive a closed briefing on certain intelligence matters.,no
-115199,117,House,Markup,2022-11-16,hsvr00,"Markup on: H.Res 1379, of inquiry requesting the President and directing the Secretary of Veterans Affairs to transmit, respectively, certain documents to the House of Representatives relating to wait times for veterans to receive primary care, mental health care, and specialty care appointments at medical centers of the Department of Veterans Affairs; H.R. 4772, the Mark O’Brien VA Clothing Allowance Improvement Act",yes
 333361,117,Senate,Meeting,2022-11-16,slin00,To receive a closed briefing on certain intelligence matters.,no
-115201,117,House,Markup,2022-11-17,hsgo00,"1.  H.R. 1283, the CONTRACT Act of 2021;
-
-2.  H.R. 1307, the Vote by Mail Tracking Act;
-
-3.  H. Res. 1412, “Of inquiry directing the Secretary of the Treasury to transmit certain documents to the House of Representatives relating to the projected inflationary impact of the implementation of the Infrastructure Investment and Jobs Act, the Build Back Better Act, and the Infrastructure and Jobs Act in conjunction with the Build Back Better Act”; and
-
-4.  Several postal naming measures.",yes
 333440,117,Senate,Meeting,2022-11-29,slin00,To receive a closed briefing on certain intelligence matters.,no
 333324,117,Senate,Meeting,2022-11-30,slin00,To receive a closed briefing on certain intelligence matters.,no
 333360,117,Senate,Meeting,2022-11-30,ssas00,To receive a closed briefing on electronic warfare.,no
-115226,117,House,Markup,2022-12-06,hsgo00,"1.	H. Res. 1479, “Of inquiry requesting the President transmit certain documents in his possession to the House of Representatives relating to the surveillance or monitoring of prog-gun, pro-life, or conservative groups under the Internet Covert Operations Program operated by the United States Postal Inspection Service”; and
-
-2.	Several postal naming measures.",yes
 333463,117,Senate,Meeting,2022-12-06,slin00,To receive a closed briefing on certain intelligence matters.,no
 115221,117,House,Markup,2022-12-07,hlig00,2 Resolutions,yes
 333422,117,Senate,Meeting,2022-12-07,ssfr00,"Business meeting to consider S.3386, to prevent, treat, and cure tuberculosis globally, S.4824, to provide for proper oversight of North Korea policy, S.4064, to facilitate the development of a whole-of-government strategy for nuclear cooperation and nuclear exports, S.4509, to provide for security in the Black Sea region, S.4996, to amend the National Defense Authorization Act for Fiscal Year 2020 to modify the establishment of a coordinator for detained ISIS members and relevant displaced populations in Syria, S.4955, to amend certain authorities relating to human rights violations and abuses in Ukraine, S.Con.Res.47, commending the bravery, courage, and resolve of the women and men of Iran demonstrating in more than 80 cities and risking their safety to speak out against the Iranian regime's human rights abuses, S.Con.Res.16, commemorating the 30th anniversary of Operation Provide Comfort, S.Res.713, recognizing Russian actions in Ukraine as a genocide, S.Res.472, reaffirming the partnership between the United States and the Dominican Republic and advancing opportunities to deepen diplomatic, economic, and security cooperation between the two nations, S.Res.730, remembering the 30th anniversary of the bombing of the Embassy of Israel in Buenos Aires on March 17, 1992, the 28th anniversary of the bombing of the Argentine-Israeli Mutual Association building in Buenos Aires on July 18, 1994, and recommitting to efforts to uphold justice for the victims of the attacks, S.Res.322, reaffirming the alliance between the United States and Bulgaria, congratulating Bulgaria on its July 11, 2021 parliamentary elections, and calling for continued progress in Bulgaria towards combating corruption, respecting the freedom of the press, and protecting minority rights, S.Res.650, recognizing May 28 as ""World Hunger Day"", that the 90th anniversary of the Ukrainian Famine of 1932-1933, known as the Holodomor, should serve as a reminder of repressive Soviet policies against the people of Ukraine, and that Vladimir Putin's illegal war against Ukraine has diminished Ukraine's agricultural output and threatens to exacerbate the problems of global hunger on World Hunger Day, H.R.7240, to reauthorize the READ Act, the nominations of Joey R. Hood, of New Hampshire, to be Ambassador to the Republic of Tunisia, Lucy Tamlyn, of Rhode Island, to be Ambassador to the Democratic Republic of the Congo, Jessica Davis Ba, of the District of Columbia, to be Ambassador to the Republic of Cote d'Ivoire, and Rachna Sachdeva Korhonen, of New Jersey, to be Ambassador to the Republic of Mali, Cynthia Dyer, of Virginia, to be Director of the Office to Monitor and Combat Trafficking, with the rank of Ambassador at Large, Julie D. Fisher, of Tennessee, to be Ambassador to the Republic of Cyprus, Henry V. Jardine, of Virginia, to be Ambassador to the Republic of Mauritius, and to serve concurrently and without additional compensation as Ambassador to the Republic of Seychelles, Kathleen Ann Kavalec, of California, to be Ambassador to Romania, George P. Kent, of Massachusetts, to be Ambassador to the Republic of Estonia, Kristina A. Kvien, of California, to be Ambassador to the Republic of Armenia, Kenneth Merten, of Virginia, to be Ambassador to the Republic of Bulgaria, Manuel P. Micaller, Jr., of California, to be Ambassador to the Republic of Tajikistan, Christopher T. Robinson, of Maryland, to be Ambassador to the Republic of Latvia, Bijan Sabet, of Massachusetts, to be Ambassador to the Czech Republic, Stephanie Sanders Sullivan, of Maryland, to be Representative of the United States of America to the African Union, with the rank and status of Ambassador, and Lynne M. Tracy, of Ohio, to be Ambassador to the Russian Federation, all of the Department of State, L. Felice Gorordo, of Florida, to be United States Alternate Executive Director of the International Bank for Reconstruction and Development, Richard L.A. Weiner, of the District of Columbia, to be United States Director of the European Bank for Reconstruction and Development, Carol Spahn, of Maryland, to be Director of the Peace Corps, routine lists in the Foreign Service, and other pending calendar business.",yes
 333464,117,Senate,Meeting,2022-12-13,slin00,To receive a closed briefing on certain intelligence matters.,no
-115239,117,House,Markup,2022-12-14,hsif00,H. Res. 1476,yes
 333481,117,Senate,Meeting,2022-12-14,slia00,"Business meeting to consider S.4439, to take certain Federal land located in Siskiyou County, California, and Humboldt County, California, into trust for the benefit of the Karuk Tribe.",yes
 333503,117,Senate,Meeting,2022-12-14,slin00,To receive a closed briefing on certain intelligence matters.,no
 333482,117,Senate,Meeting,2022-12-15,ssfr00,To receive a closed briefing on Russian activity across Africa.,no
@@ -1660,7 +1016,6 @@ II. Authorizing all Members of the House of Representatives to review, at a time
 116221,118,House,Markup,2023-07-19,hsvr00,"H.R. 3848, HOME Act of 2023; H.R. 3874, Veterans Education Assistance Improvement Act; H.R. 3898, Transcript Assurance for Heroes Act; H.R. 3900, To amend title 38, United States Code, to establish certain rights for spouses of members of the uniformed services; H.R. 3933, TAP Promotion Act; H.R. 3943, Servicemember Employment Protection Act of 2023; and H.R. 3981, Veterans Education Oversight Expansion Act",yes
 334741,118,Senate,Meeting,2023-07-19,slin00,To receive a closed briefing on certain intelligence matters.,no
 333869,118,Senate,Meeting,2023-07-26,slin00,Closed business meeting to consider pending intelligence matters; to be immediately followed by a closed briefing on certain intelligence matters.,no
-115732,118,House,Markup,2023-07-27,hssy00,Markup,yes
 335018,118,Senate,Meeting,2023-09-06,slin00,To receive a closed briefing on certain intelligence matters.,no
 334822,118,Senate,Meeting,2023-09-12,slin00,To receive a closed briefing on certain intelligence matters.,no
 334852,118,Senate,Meeting,2023-09-13,slin00,To receive a closed briefing on certain intelligence matters.,no
@@ -1678,21 +1033,17 @@ II. Authorizing all Members of the House of Representatives to review, at a time
 335080,118,Senate,Meeting,2023-11-01,slin00,To receive a closed briefing on certain intelligence matters.,no
 335102,118,Senate,Meeting,2023-11-07,ssbk00,"Business meeting to consider the nominations of Tanya F. Otsuka, of Virginia, to be a Member of the National Credit Union Administration Board, Mark Toshiro Uyeda, of California, to be a Member of the Securities and Exchange Commission, Spencer Bachus III, of Alabama, to be a Member of the Board of Directors of the Export-Import Bank of the United States, Jennifer L. Fain, of Virginia, to be Inspector General, Federal Deposit Insurance Corporation, and Claudia Slacik, of New York, and William Brodsky, of Illinois, both to be a Director of the Securities Investor Protection Corporation.",yes
 335120,118,Senate,Meeting,2023-11-07,slin00,To receive a closed briefing on certain intelligence matters.,no
-116524,118,House,Markup,2023-11-08,hssy00,Markup,yes
 116581,118,House,Meeting,2023-11-13,hlig00,To Consider a Resolution to Enable a Joint Hearing with the Committee on Homeland Security and a Resolution to Enable Outside Committee Participation at a Briefing,yes
 116593,118,House,Hearing,2023-11-14,hlig00,"Joint Hearing with Committee on Homeland Security Subcommittee on Counterterrorism, Law Enforcement, & Intelligence on Countering Terrorism in a Shifting Geopolitical Landscape (CLOSED)",no
-116525,118,House,Markup,2023-11-15,hssy00,Markup,yes
 335081,118,Senate,Meeting,2023-11-15,slin00,To receive a closed briefing on certain intelligence matters.,no
 116634,118,House,Markup,2023-11-29,hssy00,Markup Final Passage Voting,no
 335173,118,Senate,Meeting,2023-11-29,ssfr00,To receive a closed briefing on the US-PRC relationship after APEC.,no
 335180,118,Senate,Meeting,2023-11-29,,"Meeting of conferees on H.R.2670, to authorize appropriations for fiscal year 2024 for military activities of the Department of Defense and for military construction, and for defense activities of the Department of Energy, to prescribe military personnel strengths for such fiscal year.",yes
-116622,118,House,Meeting,2023-12-01,hsha00,House Communications Standards Commission Meeting,yes
 116609,118,House,Markup,2023-12-05,hsvr00,"H.R. 522, Deliver for Veterans Act; H.R. 3738, To amend title 38, United States Code, to establish in the Department of Veterans Affairs the Veterans Economic Opportunity and Transition Administration, and for other purposes; H.R. 5914, To amend title 38, United States Code, to improve the processes to approve programs of education for purposes of the educational assistance programs of the Department of Veterans Affairs, and for other purposes; H.R. 3722, Daniel J. Harvey, Jr., and Adam Lambert Improving Servicemember Transition to Reduce Veteran Suicide Act; H.R. 5938, Veterans Exam Expansion Act of 2023; H.R. 1753, Jax Act; H.R. 5890, Every Veterans Claim Act of 2023; H.R. 5785, To amend title 38, United States Code, to modify the requirements of the Edith Nourse Rogers STEM Scholarship; H.R. 3790, Justice for ALS Veterans Act of 2023; H.R. 4016, Veteran Fraud Reimbursement Act; and H.R. 4190, Restoring Benefits to Defrauded Veterans Act",yes
 116642,118,House,Hearing,2023-12-05,hswm00,Hearing with IRS Whistleblowers: Hunter Biden Investigation Obstruction in Their Own Words,yes
 116658,118,House,Meeting,2023-12-05,hswm00,Meeting on Documents Protected Under Internal Revenue Code Section 6103,yes
 335227,118,Senate,Meeting,2023-12-06,ssaf00,"Business meeting to consider the nominations of Basil Ivanhoe Gooden, of Virginia, to be Under Secretary of Agriculture for Rural Development, and Summer K. Mersinger, of South Dakota, to be a Commissioner of the Commodity Futures Trading Commission.",yes
 335232,118,Senate,Meeting,2023-12-06,slin00,To receive a closed briefing on certain intelligence matters.,no
-116682,118,House,Meeting,2023-12-12,hlzs00,House Select Committee on the Strategic Competition between the United States and Chinese Communist Party: Committee Business Meeting,yes
 335230,118,Senate,Meeting,2023-12-12,ssfr00,To receive a closed briefing on Iran and its proxy threat to U.S. policy and personnel post-October 7.,no
 335233,118,Senate,Meeting,2023-12-12,slin00,To receive a closed briefing on certain intelligence matters.,no
 335121,118,Senate,Meeting,2023-12-13,slin00,To receive a closed briefing on certain intelligence matters.,no
@@ -1706,17 +1057,10 @@ II. Authorizing all Members of the House of Representatives to review, at a time
 335511,118,Senate,Meeting,2024-03-20,slin00,To receive a closed briefing on certain intelligence matters.,no
 117070,118,House,Hearing,2024-04-05,hshm00,"""Port Safety, Security, and Infrastructure Investment""",yes
 117110,118,House,Markup,2024-04-16,hsvr00,"H.R. 1083, Caring for Survivors Act of 2023; H.R. 2911, Fairness for Servicemembers and their Families Act of 2023; H.R. 3651, Love Lies On Act of 2023; H.R. 7100, Prioritizing Veterans’ Survivors Act; H.R. 7150, Survivor Benefits Delivery Improvement Act of 2024; H.R. 7777. Veterans’ Compensation Cost-of-Living Adjustment Act of 2024; H.R. 7793, Veterans Appeals Options Expansion Act of 2024; H.R. 7816, Clear Communications for Veterans Claims Act; H.R. 7883, Toxic Exposures Examination Improvement Act; H.R. 7917, Veterans Appeals Efficiency Act of 2024; and H.R. 7919, Veterans Claims Quality Improvement Act of 2024.",yes
-117156,118,House,Markup,2024-04-16,hspw00,Updated Committee roster,yes
 117115,118,House,Hearing,2024-04-17,hsvr00,"H.R. 6452, Veterans Scam and Fraud Evasion Act of 2023; H.R. TRAIN VA Employees Act; H.R. 6538, VA Correct Compensation Act of 2023; H.R. 6874, VA WEB Act; H.R. 6947, Veterans Affairs Centennial and Heritage Act of 2024; H.R. 7342, Veterans Accessibility Advisory Committee Act of 2024; H.R. 7713, VA Political Performance Disclosure Act; H.R. 7734, To amend title 38, United States Code, to require a notation in the personnel record file of certain employees of the Department of Veterans Affairs who resign from Government employment under certain circumstances; and H.R. 7765, VA Security Screening Pilot Program Act.",yes
-117117,118,House,Markup,2024-04-17,hsvr00,"H.R. 6225, Expanding Home Loans for Guard and Reservists Act; H.R. 6656, 
-Stuck on Hold Act; H.R. 7323, Montgomery GI Bill Selected Reserves Tuition Fairness Act; 
-H.R. 7613, Veterans Flight Training Responsibility Act of 2024; H.R. 7643, Veterans 
-Congressional Work Study Act of 2024; H.R. 7653, VERY Act of 2024; and H.R. 7732, ETS 
-Act.",yes
 117243,118,House,Hearing,2024-04-30,hlig00,FY 2025 General Defense Intelligence Program (GDIP) Budget Request (CLOSED),no
 117244,118,House,Hearing,2024-04-30,hlig00,FY 2025 Central Intelligence Agency Budget Request (CLOSED),no
 335726,118,Senate,Meeting,2024-04-30,slin00,To receive a closed briefing on certain intelligence matters.,no
-117200,118,House,Markup,2024-05-01,hsvr00,"H.R. 705, Veterans 2nd Amendment Protection Act; H.R. 2499, VA Supply Chain Management System Authorization Act; H.R. 2911, Fairness for Servicemembers and their Families Act of 2023; H.R. 3225, BUILD for Veterans Act; H.R. 4424, Vietnam Veterans Liver Fluke Cancer Study Act; H.R. 5794, VA Peer Review Neutrality Act; H.R. 5870, Veteran Appeals Transparency Act of 2024; H.R. 6324, FY24 VA Major Medical Facility Authorization Act; H.R. 6373, Veterans STAND Act; H.R. 6452, Veterans Scam and Fraud Evasion Act; H.R. 6531, TRAIN VA Ecmployees Act; H.R. 6538, VA Correct Compensation Act; H.R. 6874, VA WEB Act; H.R. 7100, Prioritizing Veterans’ Survivors Act; H.R. 7150, Survivor Benefits Delivery Improvement Act of 2024; H.R. 7323, Montgomery GI Bill Selected Reserves Tuition Fairness Act; H.R. 7342, Veterans Accessibility Advisory Committee Act; H.R. 7347,  To amend title 38, United States Code, to direct the Secretary of Veterans Affairs to report on whether the Secretary will include certain psychedelic drugs in the formulary of the Department of Veterans Affairs; H.R. 7643, Veterans Congressional Work Study Act of 2024; H.R. 7653, Veterans Employment Readiness Yield (VERY) Act of 2024; H.R. 7734, Personnel Integrity in Veterans Affairs Act; H.R. 7777, Veterans’ Compensation Cost-of-Living Adjustment Act of 2024; H.R. 7816, Clear Communications for Veterans Claims Act; Lease Resolutions; and Subpoena Resolution",yes
 117246,118,House,Hearing,2024-05-01,hlig00,FY 2025 National Security Agency Budget Request (CLOSED),no
 335641,118,Senate,Meeting,2024-05-01,slin00,To receive a closed briefing on certain intelligence matters.,no
 117278,118,House,Hearing,2024-05-06,hlig00,Hot Spots: SRP,no
@@ -1734,17 +1078,12 @@ Act.",yes
 117436,118,House,Markup,2024-06-11,hlig00,FY 2025 Intelligence Authorization Act (CLOSED),yes
 335920,118,Senate,Meeting,2024-06-11,ssfr00,To received a closed briefing on policy developments and dynamics in the Middle East.,no
 335891,118,Senate,Meeting,2024-06-12,ssap00,Closed hearings to examine proposed budget estimates and justification for fiscal year 2025 for the Central Intelligence Agency and the National Security Agency.,no
-117471,118,House,Markup,2024-07-10,hssy00,Markup,yes
 335998,118,Senate,Meeting,2024-07-10,ssfr00,To receive a closed briefing on the Columbia River Treaty.,no
-117584,118,House,Markup,2024-09-11,hssy00,SST Full Committee Markup,yes
 117627,118,House,Hearing,2024-09-11,hsag00,“Severe Food Distribution Shortages in Tribal and Elderly Communities”,yes
 117641,118,House,Meeting,2024-09-11,hsgo00,“Examining the Biden-Harris Administration’s Resettlement of Afghan Evacuees”,yes
 335905,118,Senate,Meeting,2024-09-11,slin00,Closed business meeting to consider pending intelligence matters; to be immediately followed by a closed briefing on certain intelligence matters.,no
 336239,118,Senate,Meeting,2024-09-24,slin00,To receive a closed briefing on certain intelligence matters.,no
-117704,118,House,Meeting,2024-09-25,hssy00,SST Full Committee Markup,yes
 336246,118,Senate,Meeting,2024-09-25,slin00,To receive a closed briefing on certain intelligence matters.,no
-117692,118,House,Hearing,2024-09-26,htzt00,"The Ongoing Investigation of the Butler, Pennsylvania Security Failure: The Secret Service’s Reliance on State and Local Law Enforcement.",yes
-117698,118,House,Hearing,2024-09-26,hsba00,Vanishing Independence: How FHFA’s Political Agenda Endangers Homeowners and Taxpayers,yes
 336280,118,Senate,Meeting,2024-11-13,slin00,To receive a closed briefing on certain intelligence matters.,no
 336313,118,Senate,Meeting,2024-11-19,slin00,To receive a closed briefing on certain intelligence matters.,no
 117610,118,House,Hearing,2024-11-20,hshm00,"""Worldwide Threats to the Homeland""",yes
@@ -1854,23 +1193,6 @@ Act.",yes
 338014,119,Senate,Meeting,2026-02-26,ssfr00,"To receive a closed briefing on tech competition, critical minerals, and supply chain security.",no
 119025,119,House,Hearing,2026-03-04,hlig00,"CI Screening, Vetting, & Watch listing (CLOSED)",no
 338034,119,Senate,Meeting,2026-03-04,slin00,To receive a closed briefing on certain intelligence matters.,no
-118919,119,House,Markup,2026-03-05,hsii00,"Full Committee Markup of:
-• H.R. 41 (Rep. Begich), “Unrecognized Southeast Alaska Native Communities Recognition and Compensation Act”
-• H.R. 301 (Rep. Maloy), “Geothermal Energy Opportunity Act” or the “GEO Act”
-• H.R. 398 (Rep. Ocasio-Cortez), “Geothermal Cost-Recovery Authority Act of 2025” 
-• H.R. 1077 (Rep. Lee of NV), “Streamlining Thermal Energy through Advanced Mechanisms Act” or the “STEAM Act”
-• H.R. 2252 (Rep. Fedorchak), “North Dakota Trust Lands Completion Act of 2025”
-• H.R. 2709 (Rep. Fong), “Save Our Sequoias Act”
-• H.R. 2768 (Rep. Fleischmann), “Benton MacKaye National Scenic Trail Feasibility Study Act of 2025”
-• H.R. 3553 (Rep. Min), “Building Resiliency and Understanding of Shrublands to Halt Fires Act” or the “BRUSH Fires Act”
-• H.R. 3831 (Rep. Webster), “Florida Safe Seas Act of 2025”
-• H.R. 4684 (Rep. Kennedy of UT), “Star-Spangled Summit Act of 2025”
-• H.R. 5576 (Rep. Fulcher), “Enhancing Geothermal Production on Federal Lands Act” 
-•	H.R. 5587 (Rep. Kim), “Harnessing Energy At Thermal Sources Act” or the “HEATS Act” 
-• H.R. 5617 (Rep. Ansari), “Geothermal Gold Book Development Act”
-• H.R. 5631 (Rep. Hurd), “Geothermal Ombudsman for National Deployment and Optimal Reviews Act”
-• H.R. 5638 (Rep. Kennedy of UT), “Geothermal Royalty Reform Act”
-• H.R. 5682 (Rep. Issa), To take certain land in the State of California into trust for the benefit of the Pechanga Band of Indians, and for other purposes.",yes
 338049,119,Senate,Meeting,2026-03-10,ssas00,To receive a closed briefing on Operation Epic Fury.,no
 338052,119,Senate,Meeting,2026-03-10,slin00,To receive a closed briefing on certain intelligence matters.,no
 338046,119,Senate,Meeting,2026-03-11,ssfr00,"Business meeting to consider the nominations of Wesley Brooks, of Florida, to be Assistant Secretary for Oceans and International Environmental and Scientific Affairs, William Long, of Missouri, to be Ambassador to the Republic of Iceland, Robert Sweeney, of Texas, to be United States Director of the Asian Development Bank, with the rank of Ambassador, Frank Garcia, of Virginia, to be a Member of the Board of Directors of the African Development Foundation, Lee Lipton, of Florida, to be Ambassador to the Republic of the Philippines, Asel Roberts, of Virginia, to be Ambassador to the Republic of Slovenia, Troy Edgar, of California, to be Ambassador to the Republic of El Salvador, and Jared Novelly, of Missouri, to be Ambassador to New Zealand, and to serve concurrently and without additional compensation as Ambassador to the Independent State of Samoa, the Cook Islands, and Niue, all of the Department of State.",yes
@@ -1913,7 +1235,6 @@ Act.",yes
 338603,119,Senate,Closed Business Meeting,2026-06-23,slin00,"Closed business meeting to consider the nominations of Roger Mason, of Virginia, to be Director of the National Reconnaissance Office, and Michael Vance, of Virginia, to be an Assistant Secretary of State (Intelligence and Research); to be immediately followed by a closed briefing on certain intelligence matters.",yes
 119388,119,House,Hearing,2026-06-24,hlig00,Effectiveness of the Intelligence Community's Inspector General (CLOSED),yes
 338604,119,Senate,Closed Hearing,2026-06-24,slin00,To receive a closed briefing on certain intelligence matters.,no
-119391,119,House,Markup,2026-06-25,hssy00,Full Committee,yes
 119407,119,House,Markup,2026-07-01,hspw00,"updated Subcommittee rosters due to changes on the Majority side; General Services Administration Capital Investment and Leasing Program Resolutions' an ANS to H.R. ____, the ""Water Resources Development Act of 2026""; and other matters cleared for consideration",yes
 119428,119,House,Hearing,2026-07-01,hssy00,Weathering the Solar Storm: Advancing America’s Space Weather Capabilities,yes
 338640,119,Senate,Closed Hearing,2026-07-14,slin00,To receive a closed briefing on certain intelligence matters.,no
