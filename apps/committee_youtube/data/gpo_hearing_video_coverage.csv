@@ -593,8 +593,8 @@ congress,committee_code,committee_name,status,hearings
 114,sscm00,"Senate Commerce, Science, and Transportation",no_video_found,3
 114,sseg00,Senate Energy and Natural Resources,clips_only,4
 114,sseg00,Senate Energy and Natural Resources,full_recording,1
-114,sseg00,Senate Energy and Natural Resources,full_recording_offsite,59
-114,sseg00,Senate Energy and Natural Resources,no_video_found,11
+114,sseg00,Senate Energy and Natural Resources,full_recording_offsite,60
+114,sseg00,Senate Energy and Natural Resources,no_video_found,10
 114,sseg00,Senate Energy and Natural Resources,not_public,2
 114,ssev00,Senate Environment and Public Works,full_recording_offsite,58
 114,ssev00,Senate Environment and Public Works,no_video_found,11
@@ -833,8 +833,9 @@ congress,committee_code,committee_name,status,hearings
 117,ssva00,Senate Veterans' Affairs,full_recording_offsite,35
 117,ssva00,Senate Veterans' Affairs,no_video_found,2
 117,ssva00,Senate Veterans' Affairs,not_public,1
-118,,,committee_not_tracked,18
+118,,,committee_not_tracked,17
 118,,,full_recording,5
+118,,,full_recording_offsite,1
 118,,,not_public,1
 118,hsag00,Agriculture,full_recording,27
 118,hsap00,Appropriations,full_recording,32

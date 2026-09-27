@@ -3,7 +3,6 @@ event_id,congress,chamber,type,date,committees,title,documents
 100201,113,House,Markup,2013-01-22,hsed00,Full Committee Organizational Meeting,yes
 100269,113,House,Meeting,2013-02-13,hsag00,To consider the Oversight Plan of the Committee on Agriculture for the 113th Congress and other organizational matters,yes
 100375,113,House,Hearing,2013-03-05,hsii00,"Legislative hearing on H.R. 254 (Chaffetz), Bonneville Unit Clean Hydropower Facilitation Act and H.R. 678 (Tipton), Bureau of Reclamation Small Conduit Hydropower Development and Rural Jobs Act",yes
-100376,113,House,Hearing,2013-03-05,hsii00,"Oversight hearing on ""America's Offshore Energy Resources: Creating Jobs, Securing America, and Lowering Prices.""",yes
 100397,113,House,Hearing,2013-03-06,hsif00,Our Nation of Builders: Powering U.S. Automobile Manufacturing Forward.,yes
 100432,113,House,Markup,2013-03-06,hswm00,"Markup of: H.R. 890, “Preserving Work Requirements for Welfare Programs Act of 2013”",yes
 100504,113,House,Markup,2013-03-14,hssy00,"H. R. 756, the ""Cybersecurity Enhancement Act of 2013"" and  H. R. 967, the ""Advancing America's Networking and Information Technology Research and Development Act of 2013.",yes
@@ -31,7 +30,6 @@ event_id,congress,chamber,type,date,committees,title,documents
 Protects the Benefits of Those Who Cannot Protect Themselves",yes
 100944,113,House,Markup,2013-06-05,hsap00,FY 2014 Defense Appropriations Bill - Subcommittee,yes
 100957,113,House,Hearing,2013-06-13,hsii00,"Legislative hearing on the following bills: H.R. 553 (Issa), A bill to designate the exclusive economic zone of the United States as the ""Ronald Wilson Reagan Exclusive Economic Zone of the United States""; H.R. 1308 (Hastings of WA),Endangered Salmon and Fisheries Predation Prevention Act; H.R. 1399 (Young of AK), Hydrographic Services Improvement Amendments Act of 2013; H.R. 1425 (Bonamici), Marine Debris Emergency Act of 2013; H.R. 1491 (Bonamici), A bill to authorize the Administrator of the National Oceanic and Atmospheric Administration to provide certain funds to eligible entities for activities undertaken to address the marine debris impacts of the March 2011 Tohoku earthquake and subsequent tsunami; H.R. 2219 (Young of AK), A bill to reauthorize the Integrated Coastal and Ocean Observation System Act of 2009.",yes
-100965,113,House,Hearing,2013-06-13,hsii00,Oversight hearing on “Mining in America: The Administration’s Use of Claim Maintenance Fees and Cleanup of Abandoned Mine Lands.”,yes
 101023,113,House,Markup,2013-06-18,hsju00,"H.R. 2278, the ""Strengthen and Fortify Enforcement Act"" (The SAFE Act)",yes
 101020,113,House,Markup,2013-06-19,hsed00,"H.R. 5, ""Student Success Act""",yes
 101060,113,House,Markup,2013-06-26,hsap00,FY 2014 Energy and Water Appropriations Bill,yes
@@ -110,16 +108,11 @@ H.R. 4005 -   Coast Guard and Maritime Transportation Act of 2014.",yes
 101758,113,House,Markup,2014-02-11,hswm00,"Markup of:
  
     H.R. 3865, “Stop Targeting of Political Beliefs by the IRS Act of 2014”",yes
-101604,113,House,Hearing,2014-02-25,hsvr00,Joint House and Senate Committee on Veterans' Affairs to receive Legislative Presentation of the Disabled American Veterans,yes
 101821,113,House,Hearing,2014-02-26,hsii00,"Legislative Hearing: H.R. 503 (Roe), To authorize the National Desert Storm Memorial Association to establish the National Desert Storm and Desert Shield Memorial as a commemorative work in the District of Columbia, and for other purposes. “National Desert Storm and Desert Shield War Memorial Act”; H.R. 712 (Frelinghuysen), To extend the authorization of the Highlands Conservation Act through fiscal year 2024; H.R. 1192 (McClintock), To redesignate Mammoth Peak in Yosemite National Park as ""Mount Jessie Benton Fre'mont""; H.R. 1501 (Jeffries), To direct the Secretary of the Interior to study the suitability and feasibility of designating the Prison Ship Martyrs' Monument in Fort Greene Park, in the New York City borough of Brooklyn, as a unit of the National Park System. “Prison Ship Martyrs' Monument Preservation Act”; H.R. 1744 (Horsford),  To provide for the implementation of the multispecies habitat conservation plan for the Virgin River, Nevada, and Lincoln County, Nevada, to extend the authority to purchase certain parcels of public land, and for other purposes. “Multispecies Habitat Conservation Plan Implementation Act”; H.R. 2569 (Welch), To amend the Wild and Scenic Rivers Act to designate segments of the Missisquoi River and the Trout River in the State of Vermont, as components of the National Wild and Scenic Rivers System. “Upper Missisquoi and Trout Wild and Scenic Rivers Act”; H.R. 3222 (Meng), To authorize the Secretary of the Interior to conduct a special resource study of sites associated with the 1657 signing of the Flushing Remonstrance in Queens, New York, and for other purposes. “Flushing Remonstrance Study Act”; H.R. 3366 (Walden), To provide for the release of the property interests retained by the United States in certain land conveyed in 1954 by the United States, acting through the Director of the Bureau of Land Management, to the State of Oregon for the establishment of the Hermiston Agricultural Research and Extension Center of Oregon State University in Hermiston, Oregon; H.R. 3802 (Lynch), To extend the legislative authority of the Adams Memorial Foundation to establish a commemorative work in honor of former President John Adams and his legacy, and for other purposes.",yes
 101963,113,House,Meeting,2014-02-26,hsag00,To Review the impacts of Endangered Species Act and related litigation on National Forest System management,no
 101777,113,House,Hearing,2014-02-27,hsii00,"Legislative Hearing on: H. R. 3105, Aquaculture Risk Reduction Act; H. R. 3280, Lacey Act Clarifying Amendments Act; H. R. 3324, The Lacey Act Paperwork Reduction Act and; H. R. 4032, North Texas Invasive Species Barrier Act.",yes
-101792,113,House,Hearing,2014-02-27,hsii00,Oversight hearing entitled “Obama Administration Oversight:  GAO Report – Interior Hiring and Retention Challenges.”,yes
 101813,113,House,Hearing,2014-02-28,hsii00,"Legislative Hearing on the discussion draft titled, H.R. ____, “Strengthening Fishing Communities and Increasing Flexibility in Fisheries Management Act”",yes
-101605,113,House,Hearing,2014-03-05,hsvr00,Joint House and Senate Committee on Veterans' Affairs to receive the Legislative Presentation of the Veterans of Foreign Wars,yes
-101606,113,House,Hearing,2014-03-06,hsvr00,Joint House and Senate Committee on Veterans' Affairs to receive the Legislative Presentation of Multiple Veterans Service Organizations,yes
 101894,113,House,Hearing,2014-03-06,hsii00,"Legislative Hearing: H.R. 414 (Young), To provide for the continued lease or eventual conveyance of certain Federal land within the boundaries of Fort Wainwright Military Reservation in Fairbanks, Alaska;  H.R 1839 (Tipton), To designate certain Federal land in the San Juan National Forest in the State of Colorado as wilderness, and for other purposes.  “Hermosa Creek Watershed Protection Act of 2013”; H.R. 2430 (Pascrell), To adjust the boundaries of Paterson Great Falls National Historical Park to include Hinchliffe Stadium, and for other purposes. “Hinchliffe Stadium Heritage Act of 2013”; H.R. 3606 (McClintock), To permit certain activities to be conducted on Federal land within the Emigrant Wilderness of Stanislaus National Forest in the State of California at the level at which such activities were conducted on such land before the wilderness designation, and for other purposes. “Emigrant Wilderness Historical Use Preservation Act of 2013”",yes
-101607,113,House,Hearing,2014-03-12,hsvr00,Joint House and Senate Committee on Veterans' Affairs to receive the Legislative Presentation of Multiple Veterans Service Organizations,no
 101901,113,House,Markup,2014-03-12,hsgo00,"H.R. 4174, the Alaska Bypass Modernization Act of 2014;
 
 H.R. 3635, the Safe and Secure Federal Websites Act of 2013;	
@@ -242,26 +235,17 @@ Fiscal Year 2016 Budget Views and Estimates of the Committee on Transportation a
 General Services Administration Capital Investment and Leasing Program Resolutions;
 
 Other matters cleared for consideration.",yes
-102821,114,House,Hearing,2015-02-24,hsvr00,"""Joint Hearing of the House and Senate Veterans' Affairs Committees to receive the Legislative Presentation of the Disabled American Veterans""",yes
-102822,114,House,Hearing,2015-02-25,hsvr00,"""Joint Hearing of the House and Senate Veterans' Affairs Committees to receive the Legislative Presentation of The American Legion""",yes
 102977,114,House,Hearing,2015-02-25,hsbu00,Members' Day Hearing,yes
 102916,114,House,Hearing,2015-02-26,hspw00,Surface Transportation Reauthorization Bill: Laying the Foundation for U.S. Economic Growth and Job Creation Part II,no
 103005,114,House,Hearing,2015-02-26,hsag00,RE:  To better understand the SNAP population through published research,no
 103078,114,House,Markup,2015-02-26,hswm00,"Markup of: H.R. 1021, “Protecting the Integrity of Medicare Act of 2015”; H.R. 284, “Medicare DMEPOS Competitive Bidding Improvement Act of 2015”; H.R. 876, “NOTICE Act”; and H.R. 887, “Electronic Health Fairness Act of 2015.”",yes
 103525,114,House,Hearing,2015-02-26,hsag00,RE:  To better understand the SNAP population through published research,no
 103150,114,House,Hearing,2015-03-02,hlig00,Ongoing Intelligence Activities (Closed),no
-102823,114,House,Hearing,2015-03-04,hsvr00,"""Joint Hearing of the House and Senate Veterans' Affairs Committees to receive the Legislative Presentation of the Veterans of Foreign Wars""",yes
 103100,114,House,Hearing,2015-03-05,hsii00,Oversight hearing titled “Examining the Department of the Interior’s Spending Priorities and the President’s Fiscal Year 2016 Budget Proposal.”,yes
 103148,114,House,Hearing,2015-03-17,hlig00,Ongoing Intelligence Activities (Closed),no
-103164,114,House,Hearing,2015-03-17,hsii00,"“Examining the Spending Priorities and Missions of the Bureau of Ocean Energy Management (BOEM), the Bureau of Safety and Environmental Enforcement (BSEE) and the Office of Natural Resources Revenue (ONRR) in the President’s FY 2016 Budget Proposals.”",yes
-103168,114,House,Hearing,2015-03-17,hsii00,"“Examining the Spending Priorities and Missions of the National Park Service in the President’s FY 2016 Budget Proposal""",yes
 102972,114,House,Hearing,2015-03-18,hsvr00,"Legislative Presentation of Multiple Veterans Service Organizations: JWV, AFSA, TREA, FRA, NASDVA, NGAUS, AXPOW, GSW and WWP",yes
-103147,114,House,Hearing,2015-03-18,hsii00,"“Funding Priorities for and the United States’ Responsibilities concerning Indians, Alaska Natives, and Insular Areas in the President’s FY 2016 Budget Request for the Bureau of Indian Affairs, Indian Health Service, Office of Insular Affairs, and Office of the Special Trustee for American Indians.”",yes
-103165,114,House,Hearing,2015-03-18,hsii00,"“Effect of the President’s FY 2016 Budget and Legislative Proposals for the Office of Surface Mining on Private Sector Job Creation, Domestic Energy Production, State Programs and Deficit Reduction.”",yes
 103149,114,House,Hearing,2015-03-19,hlig00,The Growing Cyber Threat and its Impact on American Business (Open),yes
 103210,114,House,Hearing,2015-03-23,hlig00,Ongoing Intelligence Activities (Closed),no
-103166,114,House,Hearing,2015-03-24,hsii00,“Examining the Spending Priorities and Mission of the U.S. Geological Survey in the President’s FY 2016 Budget Proposal.”,yes
-103170,114,House,Meeting,2015-03-24,hsii00,“Examining the Spending Priorities and Missions of the Forest Service and the Bureau of Land Management in the President’s FY 2016 Budget Proposals”,yes
 103264,114,House,Markup,2015-03-24,hsii00,"On Committee on Natural Resources has scheduled a markup beginning on Tuesday, March 24, 2015 at 4:00 p.m.  The Committee will consider the following bills: 
 
 •	H.R. 152 (Rep. Walter Jones), “Corolla Wild Horses Protection Act”
@@ -277,7 +261,6 @@ Other matters cleared for consideration.",yes
 
 On Tuesday, March 24, 2015, the Committee will convene at 4:00 p.m. in 1324 Longworth House Office Building for opening statements only.  The Committee will reconvene on Wednesday, March 25 at 9:00 a.m. in the 1324 Longworth House Office Building.",yes
 103262,114,House,Meeting,2015-03-25,hswm00,"Markup of:  H.R. 1058, “Taxpayer Bill of Rights Act of 2015”; H.R. 1152, “To prohibit officers and employees of the Internal Revenue Service from using personal email accounts to conduct official business""; H.R. 1026, “Taxpayer Knowledge of IRS Investigations Act”; H.R. 1314, “To amend the Internal Revenue Code of 1986 to provide for a right to an administrative appeal relating to adverse determinations of tax-exempt status of certain organizations”;H.R. 1295, “To amend the Internal Revenue Code of 1986 to improve the process for making determinations with respect to whether organizations are exempt from taxation under section 501(c)(4) of such Code”; H.R. 709, “Prevent Targeting at the IRS Act”; H.R. 1104, “Fair Treatment for All Donations.; and H.R. 1105, “Death Tax Repeal Act of 2015.”",yes
-103167,114,House,Hearing,2015-03-26,hsii00,"“Effect of the President’s FY 2016 Budget and Legislative Proposals for the Bureau of Land Management and the U.S. Forest Service’s Energy and Minerals Programs on Private Sector Job Creation, Domestic Energy and Minerals Production and Deficit Reduction.”",yes
 103265,114,House,Markup,2015-03-26,hlig00,"""Protecting Cyber Networks Act""",yes
 103322,114,House,Markup,2015-03-26,hsba00,"H.R. 299, the Capital Access for Small Community Financial Institutions Act of 2015; H.R. 601, the Eliminate Privacy Notice Confusion Act; H.R. 650, the Preserving Access to Manufactured Housing Act of 2015; H.R. 685, the Mortgage Choice Act of 2015; H.R. 1195, the Bureau of Consumer Financial Protection Advisory Boards Act; H.R. 1259, the Helping Expand Lending Practices in Rural Communities Act; H.R. 1265, the Bureau Advisory Commission Transparency Act; H.R. 1367, to amend the Expedited Funds Availability Act to clarify the application of that Act to American Samoa and the Northern Mariana Islands; H.R. 1408, the Mortgage Servicing Asset Capital Requirements Act of 2015; H.R. 1480, the SAFE Act Confidentiality and Privilege Enhancement Act; H.R. 1529, the Community Institution Mortgage Relief Act of 2015; and a Resolution to establish the Task Force to Investigate Terrorism Financing",yes
 103146,114,House,Hearing,2015-03-30,hsvr00,"""Tomah VAMC: Examining Quality, Access, and a Culture of Over-Reliance on High-Risk Medications""",yes
@@ -290,7 +273,6 @@ On Tuesday, March 24, 2015, the Committee will convene at 4:00 p.m. in 1324 Long
 103342,114,House,Hearing,2015-04-22,hlig00,USDI Budget (Closed),no
 103364,114,House,Markup,2015-04-22,hssy00,"H.R. 1806, the America COMPETES Reauthorization Act of 2015",yes
 103343,114,House,Hearing,2015-04-23,hlig00,ODNI/NCTC/NCPC Budget (Closed),no
-103363,114,House,Hearing,2015-04-23,hsii00,"“The Devastating Impacts of Wildland Fires and the Need to Better Manage our Overgrown, Fire-prone National Forests”",yes
 103383,114,House,Markup,2015-04-23,hswm00,"Markup of: H.R. 1891, “A bill to extend the African Growth and Opportunity Act, the Generalized System of Preferences, the preferential duty treatment program for Haiti, and for other purposes,”; H.R. 1890, “The Bipartisan Congressional Trade Priorities and Accountability Act of 2015,”; H.R. 1892, “A bill to extend the trade adjustment assistance program, and for other purposes,”; H.R. ___, “A bill to reauthorize trade facilitation and trade enforcement functions and activities, and for other purposes.”",yes
 103333,114,House,Hearing,2015-04-30,hshm00,“Allegations of Special Access and Political Influence at the Department of Homeland Security.”,yes
 103379,114,House,Hearing,2015-04-30,hshm00,"“A Review of Access Control Measures at Our Nation's Airports, Part II.”",yes
@@ -314,7 +296,6 @@ H.R. 1646, (Mrs. Watson Coleman), To require the Secretary of Homeland Security 
 H.R. 2200. (Ms. McSally), To amend the Homeland Security Act of 2002 to establish chemical, biological, radiological, and nuclear intelligence and information sharing functions of the Office of Intelligence and Analysis of the Department of Homeland Security and to require dissemination of information analyzed by the Department to entities with responsibilities relating to homeland security.
 
 H.R. 2206. (Mr. Payne), To amend the Homeland Security Act of 2002 to require recipients of State Homeland Security Grant Program funding to preserve and strengthen interoperable emergency communications capabilities, and for other purposes.",yes
-103445,114,House,Hearing,2015-05-14,hsii00,"oversight hearing titled, ""Inadequate Standards for Trust Land Acquisition in the Indian Reorganization Act of 1934.""",yes
 103452,114,House,Hearing,2015-05-14,hsii00,"“Litigation and Increased Planning’s Impact on Our Nation’s Overgrown, Fire-Prone National Forests.”",yes
 103484,114,House,Markup,2015-05-14,hsif00,Health Subcommittee Markup,yes
 103519,114,House,Markup,2015-05-19,hsgo00,"H.R. ___ (Chaffetz), the Inspector General Reform Act of 2015;
@@ -341,7 +322,6 @@ H.R. 1442 (Gibson), to designate the facility of the United States Postal Servic
 
 H.R. 1524 (Garrett), to designate the facility of the United States Postal Service located at
 1 Walter Hammond Place in Waldwick, New Jersey, as the “Staff Sergeant Joseph D’Augustine Post Office Building.”",yes
-102971,114,House,Hearing,2015-05-20,hsvr00,"Joint Hearing of the House and Senate Veterans' Affairs Committees to receive the Legislative Presentations of Multiple Veterans Service Organizations: PVA, AMVETS, MOAA, MOPH, IAVA, VVA, BVA and NCOA",yes
 103514,114,House,Markup,2015-05-20,hshm00,"H.R. 1300, the “First Responder Anthrax Preparedness Act”. 
 H.R. 1615, the “DHS FOIA Efficiency Act of 2015”. 
 H.R. 1626, the “DHS IT Duplication Reduction Act of 2015”.
@@ -357,7 +337,6 @@ the “Homeland Security University-based Centers Review Act”.",yes
 103522,114,House,Markup,2015-05-20,hsif00,Subcommittee Markup,yes
 103491,114,House,Markup,2015-05-21,hsvr00,"H.R. 475, H.R. 571, H.R. 675, H.R. 1575, H.R. 1607, and H.R. 2256",yes
 103562,114,House,Markup,2015-06-02,hswm00,"Markup of: H.R. 160, “Protect Medical Innovation Act of 2015”; H.R. 1190, “Protecting Seniors’ Access to Medicare Act of 2015”; S. 984, “Steve Gleason Act of 2015”; S. 971, “Medicare Independence at Home Medical Practice Demonstration Improvement Act of 2015”; H.R. 2580, “LTCH Technical Correction Act of 2015”; H.R. 2505, “Medicare Advantage Coverage Transparency Act of 2015”; H.R. 2506, “Seniors’ Health Care Plan Protection Act of 2015”; H.R. 2507, “Increasing Regulatory Fairness Act of 2015”; H.R. 2579, “Securing Care for Seniors Act of 2015”; H.R. 2581, “Preservation of Access for Seniors in Medicare Advantage Act of 2015.”",yes
-103571,114,House,Hearing,2015-06-03,hsii00,"Legislative hearing on a discussion draft entitled, “Returning Resilience to our Overgrown, Fire-prone National Forests Act of 2015.”",yes
 103572,114,House,Markup,2015-06-10,hsii00,"Full Committee Markup on:
 • H.R. 387 (Rep. Raul Ruiz), “Economic Development Through Tribal Land Exchange Act”
 • H.R. 521 (Rep. Don Young), To provide for the conveyance of certain property to the Yukon Kuskokwim Health Corporation located in Bethel, Alaska.
@@ -366,9 +345,7 @@ the “Homeland Security University-based Centers Review Act”.",yes
 • H.R. 2295 (Rep. Thomas MacArthur), “National Energy Security Corridors Act”
 • H.R. 2358 (Rep. Ryan Zinke), “Electricity Reliability and Forest Protection Act”.
 • H.R. 2647 (Rep. Bruce Westerman), “Resilient Federal Forests Act of 2015.”",yes
-103573,114,House,Hearing,2015-06-10,hsii00,"legislative hearing on the following bills: H.R. 487 (Mullin), To allow the Miami Tribe of Oklahoma to lease or transfer certain lands; H.R. 2212 (LaMalfa), To take certain Federal lands located in Lassen County, California, into trust for the benefit of the Susanville Indian Rancheria, and for other purposes; and H.R. 2387 (Young of AK), To amend the Alaska Native Claims Settlement Act to provide for equitable allotment of land to Alaska Native veterans.",yes
 103602,114,House,Markup,2015-06-10,hsif00,"Subcommittee Markup of H.R. 805, the Domain Openness Through Continued Oversight Matters Act of 2015",yes
-103625,114,House,Hearing,2015-06-16,hsii00,Oversight Hearing on “Arctic Resources and American Competitiveness”,yes
 103653,114,House,Markup,2015-06-17,hsju00,"H.R. 2584, the “Business Activity Tax Simplification Act of 2015”;
 H.R. 2315, the “Mobile Workforce State Income Tax Simplification Act of 2015”; and
 H.R. 1643, the “Digital Goods and Services Tax Fairness Act of 2015”",yes
@@ -398,8 +375,6 @@ H.R. 2786, the ""Cross-Border Rail Security Act of 2015"". and
 
 On Wednesday, July 8, 2015, the Committee will convene at 4:00 p.m. in 1324 Longworth House Office Building for opening statements only.  The Committee will reconvene on Thursday, July 9, at 10:00 a.m. until 12:30 p.m. in the 1324 Longworth House Office Building.",yes
 103767,114,House,Markup,2015-07-14,hsag00,"H.R. 1599, the Safe and Accurate Food Labeling Act of 2015",yes
-103772,114,House,Hearing,2015-07-14,hsii00,"Legislative Hearing on H.R. 2270, the ""Billy Frank Jr. Tell Your Story Act,"" and a discussion draft of H.R. _____, ""The Lake Tahoe Restoration Act of 2015""",yes
-103848,114,House,Hearing,2015-07-14,hsii00,Sub on EMR Oversight Hearing titled “The Fundamental Role of Safe Seismic Surveying in OCS Energy Exploration and Development.”,yes
 103795,114,House,Markup,2015-07-22,hsgo00,"H.R. _, to ensure the equitable treatment of individuals affected by recent data breaches at the Office of Personnel Management, to provide for the enhanced security of Federal information systems, and for other purposes; H.R. 598 (Walberg), Taxpayers Right-to-Know Act;
 
 H.R. 2320 (Mulvaney), Federal Improper Payments Coordination Act of 2015;
@@ -426,7 +401,6 @@ H.R. 1884 (Slaughter), to designate the facility of the United States Postal Ser
 
 H.R. 3059 (Russell), to designate the facility of the United States Postal Service located at 4500 SE 28th Street, Del City, Oklahoma, as the James Robert Kalsu Post Office Building.",yes
 103784,114,House,Hearing,2015-07-23,hlig00,Ongoing Intelligence Activities (Closed),no
-103790,114,House,Hearing,2015-07-23,hsii00,"Oversight hearing on ""New and Innovative Ideas for the Next Century of Our National Parks""",yes
 103794,114,House,Markup,2015-07-23,hspw00,"the following bills and other legislative business:
 
 General Services Administration Capital Investment and Leasing Program Resolutions
@@ -438,10 +412,6 @@ S. 261 - A bill to designate the United States courthouse located at 200 NW 4th 
 H.R. XXXX - To provide funds to the Army Corps of Engineers to hire veterans and members of the Armed Forces to assist the Corps with curation and historic preservation activities, and for other purposes
 
 Other matters cleared for consideration.",no
-103872,114,House,Meeting,2015-07-23,hsii00,"Subcommittee on Water, Power and Ocean's Legislative Hearing on the following bills:
-•H.R. 564 (Rep. Herrera Beutler), “Endangered Salmon and Fisheries Predation Prevention Act;” 
-•H.R. 1772 (Rep. Carney), “Delaware River Basin Conservation Act of 2015;” and 
-•H.R. 2168 (Rep. Herrera Beutler), “West Coast Dungeness Crab Management Act.”",yes
 103804,114,House,Hearing,2015-07-24,hsgo00,DATA Act Implementation,no
 103799,114,House,Hearing,2015-07-28,hlig00,Iran (Closed),no
 103757,114,House,Hearing,2015-07-29,hlzi00,Hearing 4,no
@@ -470,7 +440,6 @@ S. 1826, To designate the facility of the United States Postal Service located a
 104107,114,House,Hearing,2015-10-27,hsvr00,“VA and DoD IT:  Electronic Health Records Interoperability.”,yes
 104128,114,House,Hearing,2015-10-29,hssy00,Examining the Costs and Challenges of EPA’s Power Plan,yes
 104205,114,House,Meeting,2015-11-18,hsii00,"Leg Hrg on a discussion draft of the ""Protecting America's Recreation and Conservation Act""",yes
-104251,114,House,Markup,2015-12-02,hsif00,"Markup of H.R. 1641, “Federal Spectrum Incentive Act of 2015”, and, Discussion Draft, to amend the National Telecommunications and Information Administration Organization Act to facilitate that deployment of communications infrastructure by providing for an inventory of Federal assets for use in connection with such deployment, to streamline certain Federal approvals of communication facilities, to provide for measures to promote the use of utility poles in the deployment, and for other purposes.",yes
 104296,114,House,Hearing,2015-12-07,hsii00,"Full Committee oversight field hearing in Riverhead, New York, titled, “Restoring Atlantic Fisheries and Protecting the Regional Seafood Economy.”",yes
 104304,114,House,Meeting,2016-01-07,hlig00,Access Request,no
 104373,114,House,Hearing,2016-01-12,hshm00,“Wassenaar: Cybersecurity & Export Controls”,yes
@@ -482,9 +451,7 @@ S. 1826, To designate the facility of the United States Postal Service located a
 104471,114,House,Markup,2016-02-11,hspw00,"Fiscal Year 2017 Budget Views and Estimates of the Committee on Transportation and Infrastructure;
 
 H.R. 4441 – The Aviation Innovation, Reform, & Reauthorization Act",yes
-104491,114,House,Hearing,2016-02-11,hsii00,"Leg hrg on H.R. 87, H.R. 295, H.R. 1621, and H.R. 2817",yes
 104512,114,House,Markup,2016-02-25,hsvr00,H.R. 4591; H.R. 4336; H.R. 4063; H.R. 4129; H.R. 1769; H.R. 3484; and H.R. 4590,yes
-104578,114,House,Hearing,2016-03-02,hsii00,"Oversight hearing on ""The Impact of the President’s FY 2017 Budget on the Energy and Mineral Leasing and Production Missions of the Bureau of Ocean Energy Management (BOEM), the Bureau of Safety and Environmental Enforcement (BSEE), and the Bureau of Land Management (BLM).""",yes
 104599,114,House,Markup,2016-03-02,hspw00,"the following bills and other legislative business:
 
 General Services Administration Capital Investment and Leasing Program Resolutions
@@ -531,7 +498,6 @@ Other matters cleared for consideration.",no
 	On Tuesday, March 15, 2016, the Committee will convene at 4:00 p.m. in 1324 Longworth House Office Building for opening statements only.  The Committee will reconvene on Wednesday, March 16, 2016 at 10:00 a.m. until 12:00 p.m. in the 1324 Longworth House Office Building.",yes
 104653,114,House,Hearing,2016-03-16,hlig00,Ongoing Intelligence Activities (Closed),no
 104654,114,House,Hearing,2016-03-17,hlig00,Ongoing Intelligence Activities (Closed),no
-104698,114,House,Hearing,2016-03-22,hsii00,Oversight Hearing Titled: “The President’s Fiscal Year 2017 Funding Priorities and Impacts on Indian Country and Insular Areas.”,yes
 104701,114,House,Hearing,2016-03-22,hlig00,Ongoing Intelligence Activities (Closed),no
 104762,114,House,Hearing,2016-04-14,hsap00,United States Pacific Command Oversight,yes
 104838,114,House,Markup,2016-04-18,hsif00,"Communications and Technology Subcommittee Vote on H.R. 4889, H.R. 4167, H.R. 4884, H.R. 4111, H.R. 4190, H.R. 3998, and H.R. 2031",yes
@@ -552,12 +518,9 @@ H.R. 3832, “Stolen Identify Refund Fraud Prevention Act of 2015.”",yes
 H.R. 5077-Intelligence Authorization Act for Fiscal Year 2017",yes
 104864,114,House,Markup,2016-05-11,hsvr00,H.R. 3286; H.R. 4138; H.R. 5174; H.R. 5175; H.R. 5176; and H.R. 5178,yes
 104865,114,House,Markup,2016-05-11,hsvr00,H.R. 4892; H.R. 3715; H.R. 4758; H.R. 4087; H.R. 4759; H.R. 4782; H.R. 4757; and H.R. 3936,yes
-104950,114,House,Hearing,2016-05-19,hsii00,"""Examining Deficiencies in Transparency at the Department of the Interior.""",yes
-104990,114,House,Hearing,2016-05-25,hsii00,"“Exploring 21st Century Mining Safety, Environmental Control, and Technological Innovation.”",yes
 105086,114,House,Hearing,2016-06-15,hsii00,"Oversight Hearing on ""State Perspectives on BLM’s Draft Planning 2.0 Rule."" [Cancelled]",yes
 105093,114,House,Meeting,2016-06-15,hsap00,Conference of House and Senate Amendments to H.R. 2577,yes
 105092,114,House,Hearing,2016-06-16,hsgo00,“Firearms and Munitions at Risk: Examining Inadequate Safeguards”,no
-105132,114,House,Hearing,2016-06-22,hsii00,“Challenges and Potential Solutions for BLM’s Wild Horse & Burro Program.”,yes
 105114,114,House,Hearing,2016-07-06,hlig00,Department of Defense Intelligence and Overhead Architecture Subcommittee (Closed),no
 105209,114,House,Meeting,2016-07-08,hlzi00,Business Meeting to Consider: Report of the Select Committee on the Events Surrounding the 2012 Terrorist Attack in Benghazi,yes
 105217,114,House,Meeting,2016-07-15,hlig00,Business Meeting: Public Release of Committee Document (Open in a Closed Space),yes
@@ -617,8 +580,6 @@ H.R. 5889, to designate the facility of the United States Postal Service located
 	On Tuesday, November 15, 2016, the Committee will convene at 4:00 p.m. in 1324 Longworth House Office Building for opening statements only.  The Committee will reconvene on Wednesday, November 16, 2016 at 10:00 a.m. until 12:00 p.m. in the 1324 Longworth House Office Building.",yes
 105441,114,House,Meeting,2016-12-01,hlig00,Full Committee Business Meeting: Consideration of Access Request (Closed),yes
 105461,114,House,Markup,2016-12-07,hspw00,General Services Administration Capital Investment and Leasing Program Resolutions,yes
-105467,115,House,Meeting,2017-01-05,hsru00,"H.R. 26—Regulations from the Executive in Need of Scrutiny Act of 2017; H. Res. 11—Objecting to United Nations Security Council Resolution 2334 as an obstacle to Israeli-Palestinian peace, and for other purposes.",yes
-105595,115,House,Hearing,2017-01-09,hsru00,H.R. 5—Regulatory Accountability Act of 2017; H.R. 79—HALOS Act,yes
 105469,115,House,Meeting,2017-01-10,hlig00,Full Committee Business Meeting (Closed),yes
 105473,115,House,Markup,2017-01-12,hswm00,Ways and Means Organization Meeting and Consideration of Rules,yes
 105476,115,House,Hearing,2017-01-24,hlig00,Full Committee Hearing: Ongoing Intelligence Activities (Closed),no
@@ -630,7 +591,6 @@ H.R. 5889, to designate the facility of the United States Postal Service located
 105634,115,House,Hearing,2017-02-02,hssm00,Learning from History: Ideas to Strengthen and Modernize the HUBZone Program,yes
 105524,115,House,Meeting,2017-02-07,hswm00,Organizational Meeting,no
 105525,115,House,Hearing,2017-02-07,hswm00,Hearing on Social Security’s Representative Payee Program,yes
-105533,115,House,Meeting,2017-02-07,hsii00,"Organizational meeting to consider Committee Rules and the Committee Oversight Plan for 115th Congress, and appoint Committee staff.",yes
 105562,115,House,Markup,2017-02-13,hsgo00,"H.J. Res. 27, Disapproving the action of the District of Columbia Council in approving the Death with Dignity Act of 2016.",no
 105584,115,House,Markup,2017-02-14,hsgo00,"H.R. 195, Federal Register Printing Savings Act of 2017;
 
@@ -648,7 +608,6 @@ H.R. 653, Federal Intern Protection Act of 2017.",no
 105586,115,House,Markup,2017-02-14,hswm00,"Ways and Means Committee Authorization and Oversight Plan for the 115th Congress, and Ways and Means Committee Views and Estimates on the Fiscal Year 2018 Federal Budget.  The Meeting will also include the ratification of Ways and Means Committee Subcommittee assignments and the ratification of appointments to the Joint Committee on Taxation",no
 105592,115,House,Meeting,2017-02-15,hsvr00,"“Resolution to assign Congressman Kilili Sablan, Congresswoman Esty, and Congressman Scott Peters to HVAC Subcommittees”",yes
 105583,115,House,Hearing,2017-02-16,hsvr00,“The Use of Official Time for Union Activities at the Department of Veterans Affairs”,yes
-105617,115,House,Hearing,2017-03-01,hsii00,"""Modernizing Western Water and Power Infrastructure in the 21st Century""",yes
 105635,115,House,Markup,2017-03-01,hsag00,The Budget Views and Estimates Letter of the Committee on Agriculture for the agencies and programs under the jurisdiction of the Committee for fiscal year 2018.,yes
 105609,115,House,Meeting,2017-03-02,hlig00,Full Committee Business Meeting: Adoption of the Committee's Budget Views and Estimates Letter (Closed),no
 105650,115,House,Markup,2017-03-08,hshm00,"Markup of:
@@ -687,60 +646,21 @@ CONTINUATION of 3-8-17 Markup.",no
 105732,115,House,Markup,2017-03-16,hsgo00,"H.R. 756, the Postal Service Reform Act of 2017; and
 
 H.R. 760, the Postal Service Financial Improvement Act of 2017.",no
-105751,115,House,Hearing,2017-03-16,hsii00,Oversight hearing on “Identifying Innovative Infrastructure Ideas for the National Park Service and Forest Service”,no
 105722,115,House,Hearing,2017-03-20,hlig00,Full Committee Hearing (Open),yes
-105726,115,House,Hearing,2017-03-21,hsii00,The Importance of Domestically Sourced Raw Materials for Infrastructure Projects,yes
 105816,115,House,Markup,2017-03-28,hswm00,H.Res 186,no
 105820,115,House,Hearing,2017-03-28,hsru00,H.R. 1431—EPA Science Advisory Board Reform Act of 2017,yes
-105865,115,House,Hearing,2017-04-04,hsii00,"Legislative Hearing on H.R. 220, H.R. 1411, and a Discussion Draft H.R. _____",yes
-105827,115,House,Hearing,2017-04-05,hsii00,"Legislative Hearing on H.R. 1731, the RECLAIM Act of 2017",yes
 105809,115,House,Markup,2017-04-06,hsvr00,"H.R. 91, H.R. 95, H.R. 467, H.R. 907, H.R. 918, H.R. 1005, H.R. 1162, H.R. 1545, H.R. 1662, H.R. 1848.",yes
 105853,115,House,Meeting,2017-04-06,hsha00,Joint Committee on the Library Organizational Meeting for the 115th Congress,no
 105854,115,House,Meeting,2017-04-06,hsha00,Joint Committee on Printing Organizational Meeting for the 115th Congress,no
-105857,115,House,Hearing,2017-04-06,hsru00,H.R. 1628—American Health Care Act of 2017,no
-105901,115,House,Markup,2017-04-26,hsii00,"The Committee on Natural Resources on Wednesday April 26, 2017, at 4:00 p.m.  The Committee will consider the following bills: 
-
-
-•	H.R. 220 (Rep. Don Young of AK), To authorize the expansion of an existing hydroelectric project, and for other purposes;
-•	H.R. 497 (Rep. Paul Cook), To direct the Secretary of the Interior to convey certain public lands in San Bernardino County, California, to the San Bernardino Valley Water Conservation District, and to accept in return certain exchanged non-public lands, and for other purposes.  “Santa Ana River Wash Plan Land Exchange Act”;
-•	H.R. 660 (Rep. Paul Gosar), To require the Secretary of the Interior to submit to Congress a report on the efforts of the Bureau of Reclamation to manage its infrastructure assets.  “Bureau of Reclamation Transparency Act”;
-•	H.R. 1073 (Rep. Don Beyer), To authorize the Secretary of the Interior to establish a structure for visitor services on the Arlington Ridge tract, in the area of the U.S. Marine Corps War Memorial, and for other purposes;
-•	H.R. 1135 (Rep. James Clyburn), To reauthorize the Historically Black Colleges and Universities Historic Preservation program;
-•	H.R. 1500 (Rep. Joseph Crowley), To redesignate the small triangular property located in Washington, DC, and designated by the National Park Service as reservation 302 as “Robert Emmet Park”, and for other purposes.  “Robert Emmet Park Act of 2017”;
-•	H.R. 1654 (Rep. Tom McClintock), To authorize the Secretary of the Interior to coordinate Federal and State permitting processes related to the construction of new surface water storage projects on lands under the jurisdiction of the Secretary of the Interior and the Secretary of Agriculture and to designate the Bureau of Reclamation as the lead agency for permit processing, and for other purposes.   “Water Supply Permitting Coordination Act”;
-•	H.R. 1715 (Rep. Bennie Thompson of MS), To authorize the Secretary of the Interior to conduct a special resource study of the Medgar Evers House, located in Jackson, Mississippi, and for other purposes.  “Medgar Evers House Study Act”;
-•	H.R. 1769 (Rep. David Valadao), To affirm an agreement between the United States and Westlands Water District dated September 15, 2015, and for other purposes.  “San Luis Unit Drainage Resolution Act”;
-•	H.R. 1807 (Rep. Louie Gohmert), To exempt from the Lacey Act and the Lacey Act Amendments of 1981 certain water transfers between any of the States of Texas, Arkansas, and Louisiana.  “Public Water Supply Invasive Species Compliance Act of 2017”;
-•	H.R. 1873 (Rep. Doug LaMalfa), To amend the Federal Land Policy and Management Act of 1976 to enhance the reliability of the electricity grid and reduce the threat of wildfires to and from electric transmission and distribution facilities on Federal lands by facilitating vegetation management on such lands. “Electricity Reliability and Forest Protection Act”;
-•	H.R. 1967 (Rep. Doug Lamborn), To amend the Reclamation Project Act of 1939 to authorize pumped storage hydropower development utilizing multiple Bureau of Reclamation reservoirs.  “Bureau of Reclamation Pumped Storage Hydropower Development Act”; and
-•	H.R. 2085 (Rep. Gregorio Kilili Camacho Sablan), To approve an agreement between the United States and the Republic of Palau, and for other purposes.
-
-	On Wednesday, April 26, 2017, the Committee will convene at 4:00 p.m. in 1324 Longworth House Office Building for opening statements only.  The Committee will reconvene on Thursday, April 27, 2017 at 10:00 a.m. until 12:30 p.m. in the 1324 Longworth House Office Building.",yes
 105882,115,House,Hearing,2017-04-28,hsas00,Amphibious Warfare in a Contested Environment,no
 105939,115,House,Meeting,2017-05-02,hlig00,Full Committee Business Meeting: Consideration of Access Request (Closed),no
-105924,115,House,Hearing,2017-05-03,hsii00,The Challenges of Keeping Hydropower Affordable and Opportunities for New Development,yes
 105934,115,House,Markup,2017-05-03,hsag00,"H.R. 1177, Removing Outdated Restrictions to Allow for Job Growth Act, and H.R. 2154, To rename the Red River Valley Agricultural Research Center in Fargo, North Dakota, as the Edward T. Schafer Agricultural Research Center",no
 105914,115,House,Hearing,2017-05-04,hlig00,Full Committee Hearing: Ongoing Intelligence Activities (Closed),no
-105965,115,House,Hearing,2017-05-17,hsii00,Reviewing Recent State Successes with the Rigs to Reefs Program,yes
-106026,115,House,Hearing,2017-05-17,hsii00,"""Seeking Better Management of America's Overgrown, Fire-Prone National Forests.""",yes
-105991,115,House,Hearing,2017-05-18,hsii00,Legislative Hearing on H.R. 2371 and a Discussion Draft,yes
 106021,115,House,Hearing,2017-05-23,hswm00,Hearing on Increasing U.S Competitiveness and Preventing American Jobs from Moving Overseas,yes
 106024,115,House,Hearing,2017-05-23,hswm00,“Protecting Americans’ Identities:  Examining Efforts to Limit the Use of Social Security Numbers”,yes
-106039,115,House,Markup,2017-05-23,hsju00,"H.R. 2431, the “Michael Davis, Jr. and Danny Oliver in Honor of State and Local Law Enforcement Act”",no
-106072,115,House,Hearing,2017-06-07,hsii00,"Legislative Hearing on three bills:
-
-•H.R. 1074 (Rep. Rod Blum), To repeal the Act entitled ""An Act to confer jurisdiction on the State of Iowa over offenses committed by or against Indians on the Sac and Fox Indian Reservation.""
-
-•H.R. 1901 (Rep. Don Young), To provide for the conveyance of certain property to the Southeast Alaska Regional Health Consortium located in Sitka, Alaska, and for other purposes. “Southeast Alaska Regional Health Consortium Land Transfer Act of 2017.”
-
-•S. 249 (Sen. Tom Udall), A bill to provide that the pueblo of Santa Clara may lease for 99 years certain restricted land, and for other purposes.",yes
-106071,115,House,Hearing,2017-06-08,hsii00,"Legislative Hearing on H.R. 2083 and a Discussion Draft of HR ___ ""Reclamation Title Transfer Act""",yes
 106077,115,House,Hearing,2017-06-08,hswm00,Hearing on the Department of Health and Human Services’ Fiscal Year 2018 Budget Request,yes
-106118,115,House,Meeting,2017-06-08,hsii00,"Oversight Hearing on “Burdensome Litigation and Federal Bureaucratic Roadblocks to Manage our Nation’s Overgrown, Fire-Prone National Forests.”",yes
 106081,115,House,Hearing,2017-06-09,hsif00,"Examining H.R. 772, The Common Sense Nutrition Disclosure Act of 2017",no
 106112,115,House,Hearing,2017-06-14,hsif00,"States’ Perspectives on Energy Security Planning, Emergency Preparedness, and State Energy Programs",yes
-106135,115,House,Markup,2017-06-14,hsju00,"H.J. Res. 76, Granting the consent and approval of Congress for the Commonwealth of Virginia, the State of Maryland, and the District of Columbia to a enter into a compact relating to the establishment of the Washington Metrorail Safety Commission;
-H.J. Res. 92, Granting the consent and approval of Congress for the Commonwealth of Virginia, the State of Maryland, and the District of Columbia to amend the Washington Area Transit Regulation Compact;",yes
 106098,115,House,Hearing,2017-06-15,hlig00,Ongoing Intelligence Activities (Closed),no
 106147,115,House,Markup,2017-06-15,hswm00,Markup of Legislation to Modify the Nuclear Production Tax Credit,yes
 106139,115,House,Hearing,2017-06-21,hlig00,Hearing: Ongoing Intelligence Activities (Closed),no
@@ -754,21 +674,10 @@ H.J. Res. 92, Granting the consent and approval of Congress for the Commonwealth
 106272,115,House,Markup,2017-07-13,hswm00,Markup of Bills to Strengthen Medicare Programs & Protect Taxpayers,yes
 106477,115,House,Hearing,2017-09-05,hsas00,U.S. Defense Strategy In South Asia,no
 106356,115,House,Hearing,2017-09-06,hshm00,“The Future of FEMA: The Administrator’s Perspective.”,no
-106364,115,House,Hearing,2017-09-06,hsii00,"Legislative Hearing on H.R. 2661 (Rep. Liz Cheney), H.R. 2907 (Rep. Scott Tipton), and H.R. 3565 (Rep. Diane Black)",yes
 106384,115,House,Markup,2017-09-07,hswm00,Markup of H.Res. 479,yes
 106351,115,House,Meeting,2017-09-12,hsas00,Securing the Peace After the Fall of ISIL,no
 106387,115,House,Hearing,2017-09-12,hspw00,"""Building a 21st Century Infrastructure for America: Coast Guard Stakeholders' Perspectives""",no
 106388,115,House,Hearing,2017-09-12,hspw00,"""Building a 21st Century Infrastructure for America: Rail Stakeholders' Perspectives""",no
-106391,115,House,Markup,2017-09-12,hsii00,"•	H.R. 210 (Rep. Don Young of AK), To facilitate the development of energy on Indian lands by reducing Federal regulations that impede tribal development of Indian lands, and for other purposes. “Native American Energy Act”;
-•	H.R. 424 (Rep. Collin Peterson), To direct the Secretary of the Interior to reissue final rules relating to listing of the gray wolf in the Western Great Lakes and Wyoming under the Endangered Species Act of 1973, and for other purposes. “Gray Wolf State Management Act of 2017”;
-•	H.R. 717 (Rep. Pete Olson), To amend the Endangered Species Act of 1973 to require review of the economic cost of adding a species to the list of endangered species or threatened species, and for other purposes. “Listing Reform Act” ;
-•	H.R. 1274 (Rep. Dan Newhouse), To amend the Endangered Species Act of 1973 to require making available to States affected by determinations that species are endangered species or threatened species all data that is the basis of such determinations, and for other purposes. “State, Tribal and Local Species Transparency and Recovery Act” ;   
-•	H.R. 2603 (Rep. Louie Gohmert), To amend the Endangered Species Act of 1973 to provide that nonnative species in the United States shall not be treated as endangered species or threatened species for purposes of that Act. “Saving America’s Endangered Species Act” or the “SAVES Act”.
-•	H.R. 3131 (Rep. Bill Huizenga), To amend the Endangered Species Act of 1973 to conform citizen suits under that Act with other existing law, and for other purposes.  “Endangered Species Litigation Reasonableness Act”; and
-•	H.R. 3668 (Rep. Jeff Duncan), To provide for the preservation of sportsmen’s heritage and enhance recreation opportunities on Federal land, and for other purposes. “Sportsmen’s Heritage and Recreational Enhancement Act” or “SHARE Act.”
-
-On Tuesday, September 12, 2017, the Committee will convene at 4:00 p.m. in 1334 Longworth House Office Building for opening statements only.  The Committee will reconvene on Wednesday, September 13, 2017 at 10:00 a.m. until 12:00 p.m. in 1334 Longworth House Office Building.",no
-106418,115,House,Meeting,2017-09-12,hsii00,"H.R. 3668 (Rep. Jeff Duncan), To provide for the preservation of sportsmen’s heritage and enhance recreation opportunities on Federal land, and for other purposes. “Sportsmen’s Heritage And Recreational Enhancement Act” or the “SHARE Act”.",yes
 106412,115,House,Markup,2017-09-13,hsgo00,"H.R. 3731, Secret Service Recruitment and Retention Act of 2017; 
 
 H.R. 3739, Presidential Allowance Modernization Act of 2017;
@@ -819,31 +728,13 @@ H.R. 3230, To designate the facility of the United States Postal Service located
 
 H.R. 3369, To designate the facility of the United States Postal Service located at 225 North Main Street in Spring Lake, North Carolina, as the “Howard B. Pate, Jr. Post Office.”",no
 106430,115,House,Hearing,2017-09-27,hsag00,Examining the 2017 Agenda for the Commodity Futures Trading Commission,no
-106446,115,House,Hearing,2017-10-03,hsii00,"H.R. 3400 (Rep. Rob Bishop), To promote innovative approaches to outdoor recreation on Federal land and to open up opportunities for collaboration with non-Federal partners, and for other purposes. “Recreation Not Red-Tape Act”",yes
-106464,115,House,Markup,2017-10-03,hsii00,"the Committee on Natural Resources will convene on Tuesday, October 3, 2017, at 4:00p.m. for opening statements only, for a Full Committee markup in 1334 Longworth House Office Building.  The Committee will reconvene the markup on Wednesday, October 4, 2017 at 10:00 a.m. in 1334 Longworth House Office Building.",yes
 106480,115,House,Markup,2017-10-04,hsag00,"H.R. 2936, Resilient Federal Forests Act of 2017,
 H.R. 2521, South Carolina Peanut Parity Act of 2017,
 H.R. 2921, National Forest System Vegetation Management Pilot Program Act of 2017,
 H.R. 2941, Kisatchie National Forest Land Conveyance Act,
 H.R. 3567, To authorize the purchase of a small parcel of National Resources Conservation Service property in Riverside, California, by the Riverside Corona Resource Conservation District, and for other purposes",yes
-106447,115,House,Hearing,2017-10-11,hsii00,"•H.R. 219 (Rep. Don Young of AK), To correct the Swan Lake hydroelectric project survey boundary and to provide for the conveyance of the remaining tract of land within the corrected survey boundary to the State of Alaska. ""Swan Lake Hydroelectric Project Boundary Correction Act"";
-•H.R. 2630 (Rep. Paul Gosar), To authorize the Secretary of the Interior to convey certain land to La Paz County, Arizona, and for other purposes. ""La Paz County Land Conveyance Act"";
-•H.R. 3373 (Rep. Eleanor Holmes Norton), To amend the District of Columbia Stadium Act of 1957 to extend for an additional 50 years the lease under which the government of the District of Columbia uses the ground under and the parking facilities associated with Robert F. Kennedy Memorial Stadium; and
-•H.R. 3607 (Rep. Tom McClintock), To authorize the Secretary of the Interior to establish fees for medical services provided in units of the National Park System, and for other purposes.",yes
-106504,115,House,Hearing,2017-10-11,hsii00,"Legislative Hearing on the Discussion Draft of the ""Accessing Strategic Resources Offshore Act"" or ""ASTRO Act.""",yes
-106515,115,House,Hearing,2017-10-13,hsii00,"Legislative Hearing on the Discussion Draft of the ""Opportunities for the Nation and States to Harness Onshore Resources Act"" or ""ONSHORE Act.""",yes
 106559,115,House,Hearing,2017-11-02,hlig00,Full Committee Hearing: Testimony of Carter Page (Open Hearing in a Closed Space),no
 106608,115,House,Markup,2017-11-06,hswm00,Tax Cuts and Jobs Act,yes
-106639,115,House,Hearing,2017-11-13,hsru00,Conference report to accompany H.R. 2810—National Defense Authorization Act for Fiscal Year 2018 (H. Rept. 115-404) (as filed); H.R. 2874—21st Century Flood Reform Act,no
-106629,115,House,Hearing,2017-11-15,hsii00,"Legislative hearing on the following bills: 
-
-•H.R. 801 (Rep. Darin LaHood), To amend the National Trails System Act to designate the Route 66 National Historic Trail, and for other purposes. “Route 66 National Historic Trail Designation Act”;
-
-•H.R. 2888 (Rep. Jason Smith of MO), To establish the Ste. Genevieve National Historic Site in the State of Missouri, and for other purposes. “Ste. Genevieve National Historical Park Establishment Act”;
-
-•H.R. 3979 (Rep. Hakeem Jeffries), To amend the Fish and Wildlife Act of 1956 to reauthorize the volunteer services, community partnership, and refuge education programs of the National Wildlife Refuge System, and for other purposes. “Keep America’s Refuges Operational Act”;
-
-•H.R. 4266 (Rep. Bruce Poliquin), To clarify the boundary of Acadia National Park, and for other purposes. “Acadia National Park Boundary Clarification Act”",yes
 106661,115,House,Hearing,2017-11-30,hlig00,Full Committee Hearing: Testimony of Erik Prince (Open Hearing in a Closed Space),no
 106683,115,House,Markup,2017-11-30,hsgo00,"H.R. 2623 (Meadows-NC), Lessening Regulatory Costs and Establishing a Federal Regulatory Budget Act of 2017;
 
@@ -859,40 +750,11 @@ H.R. 4285 (LoBiondo-NJ), To designate the facility of the United States Postal S
 
 H.R. 4301 (Norman-SC), To designate the facility of the United States Postal Service located at 201 Tom Hall Street in Fort Mill, South Carolina, as the “J. Elliott Williams Post Office Building.”",no
 106696,115,House,Markup,2017-12-01,hlig00,Full Committee Markup: H.R. 4478 the FISA Amendments Reauthorization Act of 2017.,yes
-106694,115,House,Hearing,2017-12-07,hsii00,"Legislative Hearing on 
-•	H.R. 805 (Rep. Devin Nunes), To authorize the conveyance of and remove the reversionary interest of the United States in certain lands in the City of Tulare, California. “Tulare Youth Recreation and Women’s History Enhancement Act”;
-
-•	H.R. 1349 (Rep. Tom McClintock), To amend the Wilderness Act to ensure that the use of bicycles, wheelchairs, strollers, and game carts is not prohibited in Wilderness Areas, and for other purposes;
-
-•	H.R. 3371 (Rep. Doug LaMalfa), To provide for the conveyance of an obsolete Over-the-Horizon Backscatter Radar System receiving station in Modoc County, California, to promote economic development of the site. “Modoc County Land Transfer and Economic Development Act of 2017”; and
-
-•	H.R. 3961 (Rep. Darren Soto), To amend the Wild and Scenic Rivers Act to designate segments of the Kissimmee River and its tributaries in the State of Florida for study for potential addition to the National Wild and Scenic Rivers System, and for other purposes. “Kissimmee River Wild and Scenic River Study Act of 2017”",yes
-106700,115,House,Hearing,2017-12-07,hsii00,Oversight hearing titled “Transforming the Department of the Interior for the 21st Century.”,yes
 106706,115,House,Hearing,2017-12-08,hsif00,Examining the Role of the Department of Energy in Energy Sector Cybersecurity,yes
-106759,115,House,Markup,2018-01-10,hsii00,"The Committee on Natural Resources has scheduled a markup on Wednesday, January 10, 2018, at 10:00 a.m.  The Committee will consider the following bills: 
-
-•	H.R. 219 (Rep. Don Young),“Swan Lake Hydroelectric Project Boundary Correction Act”;
-•	H “Route 66 National Historic Trail Designation Act”;
-•	H.R. 1220 (Rep. Stephen F. Lynch), To establish the Adams Memorial Commission to carry out the provisions of Public Law 107-62, and for other purposes;
-•	H.R. 2711 (Rep. Roger W. Marshall),  “National Memorial to Fallen Educators Act”;
-•	H.R. 3133 (Rep. Mike Johnson), “Streamlining Environmental Approvals Act of 2017”; and
-•	S. 117 (Sen. Steve Daines), “Alex Diekmann Peak Designation Act of 2017.”",no
-106802,115,House,Hearing,2018-01-17,hsii00,"Legislative Hearing on H.R. 4506 (Rep. Norma Torres), ""Jobs for Tribes Act.""",yes
 106796,115,House,Meeting,2018-01-18,hlig00,Business Meeting: Consideration of the Public Release of a Committee Transcript,yes
 106822,115,House,Meeting,2018-01-29,hlig00,Full Committee Business Meeting: Consideration of Pending Committee Business and Other Matters,no
 106838,115,House,Meeting,2018-02-05,hlig00,"Full Committee Business Meeting:
 Consideration of the public disclosure of executive session material, pursuant to House Rule X, clause 11(g) and other matters.",yes
-106829,115,House,Hearing,2018-02-06,hsii00,"Legislative hearing on the following bills: 
-
-• H.R. 835 (Rep. Doug Lamborn), To update the map of, and modify the maximum
-acreage available for inclusion in, the Florissant Fossil Beds National Monument.
-
-• H.R. 857 (Rep. Paul Cook), To provide for conservation and enhanced recreation
-activities in the California Desert Conservation Area, and for other purposes.
-
-• H.R. 4895 (Rep. Bennie Thompson), To establish the Medgar Evers National
-Monument in the State of Mississippi, and for other purposes. “Medgar Evers National
-Monument Act”",yes
 106836,115,House,Markup,2018-02-06,hsgo00,"H.R. 1339 (Duncan-TN), Freedom from Government Competition Act of 2017; 
 
 H.R. 4887 (Foxx), Grant Reporting Efficiency and Agreements Transparency (GREAT) Act of 2018;
@@ -922,7 +784,6 @@ H.R. 4463 (Velazquez), To designate the facility of the United States Postal Ser
 H.R. 4646 (Palmer), To designate the facility of the United States Postal Service located at 1900 Corporate Drive in Birmingham, Alabama, as the “Lance Corporal Thomas E. Rivers, Jr. Post Office Building”; and
 
 H.R. 4685 (Cicilline), To designate the facility of the United States Postal Service located at 515 Hope Street in Bristol, Rhode Island, as the “First Sergeant P. Andrew McKenna Jr. Post Office.”",yes
-106843,115,House,Hearing,2018-02-06,hsii00,"Legislative Hearing on H.R. 231 (Rep. Don Young of AK), ""Canyon Village Land Conveyance Act,"" and H.R. 4032 (Rep. Tom O'Halleran), ""Gila River Indian Community Federal Rights-of-Way, Easements, and Boundary Clarification Act.""",yes
 106841,115,House,Markup,2018-02-14,hsii00,"The Committee on Natural Resources has scheduled a markup beginning on Wednesday, February 14, 2018, at 10:15 a.m.  The Committee will consider the following bills: 
 
 
@@ -933,19 +794,14 @@ H.R. 4685 (Cicilline), To designate the facility of the United States Postal Ser
 106880,115,House,Markup,2018-02-14,hspw00,"Fiscal Year 2019 Budget Views and Estimates of the Committee on Transportation and Infrastructure;
 H.R. 4921 – STB Information Security Improvement Act;
 H.R. 4925 – FRA Safety Data Improvement Act; and other matters cleared for consideration.",no
-106884,115,House,Hearing,2018-02-14,hsii00,"Oversight hearing titled, ""The State of the Nation's Water and Power Infrastructure.""",yes
 106866,115,House,Hearing,2018-02-15,hswm00,The President's Fiscal Year 2019 Budget Proposals with U.S. Secretary of the Treasury Steven Mnuchin,yes
 106885,115,House,Meeting,2018-02-26,hlig00,"Full Committee Business Meeting:
 Adoption of the Committee’s FY 2019 Budget Views and Estimates Letter, pursuant to House Rule X, clause 11(c)(3)",no
-106886,115,House,Hearing,2018-02-27,hsvr00,Joint Hearing of the House and Senate Veterans' Affairs Committees to receive the Legislative Presentation of the Disabled American Veterans,yes
 106922,115,House,Markup,2018-02-27,hsag00,the Budget Views and Estimates Letter of the Committee on Agriculture for the agencies and programs under the jurisdiction of the Committee for fiscal year 2019,no
 106924,115,House,Markup,2018-02-27,hswm00,Adoption of Ways and Means Committee Views and Estimates on the Fiscal Year 2019 Federal Budget,no
-106887,115,House,Hearing,2018-02-28,hsvr00,Joint Hearing of the House and Senate Veterans' Affairs Committees to receive the Legislative Presentation of The American Legion,yes
 106899,115,House,Hearing,2018-02-28,hsas00,"A Review and Assessment of the Department of Defense Budget, Strategy, Policy, and Programs for Cyber Operations and U.S. Cyber Command for Fiscal Year 2019",no
 106908,115,House,Markup,2018-02-28,hsii00,Full Committee,yes
 106957,115,House,Hearing,2018-03-14,hshm00,"“Examining the President’s FY 2019 Budget Request for the Transportation Security Administration.""",yes
-106969,115,House,Hearing,2018-03-14,hsvr00,"Joint Hearing of the House and Senate Veterans' Affairs Committees to receive the Legislative Presentation of
-Multiple Veterans Service Organizations (FRA, JWV, AFSA, BVA, MOPH, NASDVA, MOAA, TREA, GSW)",yes
 108037,115,House,Hearing,2018-03-21,hsap00,"POSTPONED: FY19 - Budget Oversight Hearing on Energy, Installations, and Environment",no
 108040,115,House,Hearing,2018-03-21,hsap00,FY 19 Budget - Open World Leadership Trust Fund,no
 108044,115,House,Meeting,2018-03-21,hsii00,"The Subcommittee on Water, Power and Oceans will hold an oversight hearing on “Examining the Proposed Fiscal Year 2019 Spending, Priorities and Missions of the Bureau of Reclamation and the Four Power Marketing Administrations.”",no
@@ -954,7 +810,6 @@ Multiple Veterans Service Organizations (FRA, JWV, AFSA, BVA, MOPH, NASDVA, MOAA
 Adoption of the Committee’s Investigative Report into Russian Active Measures During the 2016 Presidential Election",no
 108082,115,House,Markup,2018-04-11,hsvr00,"H.R. 1206, H.R. 3023, H.R. 3940, H.R. 4451, H.R. 4830, H.R. 4835,and H.R. 5044",no
 108133,115,House,Markup,2018-04-11,hswm00,Bills to Better Serve and Protect Taxpayers,yes
-108081,115,House,Hearing,2018-04-12,hsii00,"Examining the Proposed Fiscal Year 2019 Spending, Priorities and Missions of the Bureau of Reclamation, the U.S. Fish and Wildlife Service, the National Oceanic and Atmospheric Administration, and the Four Power Marketing Administrations",yes
 108121,115,House,Hearing,2018-04-12,hlig00,Fiscal Year 2019 Budget Hearing (closed),no
 108242,115,House,Meeting,2018-04-25,hsju00,"Ratification of Subcommittee Assignments;
 H.R.1689, the “Private Property Rights Protection Act of 2017”",yes
@@ -1002,7 +857,6 @@ H. Res. 898, (Mr. Thompson of Mississippi) Directing the Secretary of Homeland S
 108456,115,House,Hearing,2018-06-22,hssy00,Space Situational Awareness: Whole of Government Perspectives on Roles and Responsibilities,yes
 108473,115,House,Markup,2018-06-26,hsap00,"POSTPONED: FY 2019 Labor, Health and Human Services, Education, and Related Agencies Appropriations Bill",no
 108487,115,House,Hearing,2018-06-26,hsju00,The State of Intellectual Freedom in America,no
-108622,115,House,Hearing,2018-06-26,hsii00,Legislative Hearing on Discussion Draft (Rep. Bordallo) and H.R. 5291 and Discussion Draft,no
 108506,115,House,Meeting,2018-06-27,hsju00,Deposition of Peter P. Strzok,yes
 108471,115,House,Markup,2018-06-28,hlig00,"Full Committee Business Meeting: 
 
@@ -1015,7 +869,6 @@ H. Res. 898, (Mr. Thompson of Mississippi) Directing the Secretary of Homeland S
 108557,115,House,Hearing,2018-07-18,hswm00,"the Effects of Tariffs on 
 U.S. Agriculture and Rural Communities",yes
 108577,115,House,Markup,2018-07-18,hswm00,Bills from the Subcommittees on Social Security and Tax Policy,no
-108619,115,House,Hearing,2018-07-24,hsii00,Assessing Innovative and Alternative Uses of Coal,no
 108626,115,House,Markup,2018-07-24,hsba00,"H.R. 1511, H.R. 2069, H.R. 2570, H.R. 3626. H.R. 5036, H.R. 5059, and H.R. 6332",yes
 108629,115,House,Hearing,2018-07-25,hsru00,"H. Res. ___—Waiving a requirement of clause 6(a) of rule XIII with respect to consideration of certain resolutions reported from the Committee on Rules, and providing for consideration of motions to suspend the rules.",yes
 108636,115,House,Hearing,2018-08-29,hsii00,Energy and Education: What's the Connection?,yes
@@ -1032,7 +885,6 @@ Other matters cleared for consideration",no
 108748,115,House,Meeting,2018-09-28,hlig00,Full Committee Business Meeting (Closed) See Attachment for Full Details,yes
 108754,115,House,Hearing,2018-11-14,hshm00,"Interagency Cyber Cooperation: Roles, Responsibilities and Authorities of the Department of Defense & the Department of Homeland Security",yes
 108756,115,House,Hearing,2018-11-14,hshm00,"“Interagency Cyber Cooperation: Roles, Responsibilities and Authorities of the Department of Defense & the Department of Homeland Security.”",yes
-108771,115,House,Hearing,2018-11-28,hsru00,"H.R. 88—Shiloh National Military Park Boundary Adjustment and Parker's Crossroads Battlefield Designation Act (Rules Committee Print 115-85——Showing the text of the Retirement, Savings, and Other Tax Relief Act of 2018 and the Taxpayer First Act of 2018.)",yes
 108773,115,House,Hearing,2018-12-05,hsas00,"Department of Defense’s Artificial Intelligence Structure, Investments, and Applications",no
 108772,115,House,Hearing,2018-12-06,hsas00,National Defense Strategy Commission: Assessment and Recommendations,no
 108778,115,House,Hearing,2018-12-06,hsas00,Naval Surface Forces: On the Road to Recovery?,no
@@ -1286,9 +1138,6 @@ SVA, BVA, MOAA, NASDVA, MVA, NCHV",yes
 328943,117,Senate,Meeting,2021-03-23,slin00,To receive a closed briefing on certain intelligence matters.,no
 328845,117,Senate,Meeting,2021-03-24,slin00,To receive a closed briefing on certain intelligence matters.,no
 112489,117,House,Markup,2021-03-25,hlmh00,Organizational Meeting for the 117th Congress,yes
-111452,117,House,Markup,2021-04-14,hsgo00,"The Committee will consider the following: 
-1.  H.R. 51, DC Admissions Act; and 
-2.  Several postal naming measures.",yes
 329101,117,Senate,Meeting,2021-04-19,ssfr00,To receive a closed briefing on the negotiation process and understanding the security situation in Afghanistan.,no
 112473,117,House,Hearing,2021-04-21,hsii00,"Legislative hearing on H.R. 820, H.R. 920, H.R. 2497, and the Pullman National Historical Park Act.",yes
 329120,117,Senate,Meeting,2021-04-21,sshr00,"Business meeting to consider the nominations of Julie A. Su, of California, to be Deputy Secretary of Labor, Cynthia Minette Marten, of California, to be Deputy Secretary, and James Richard Kvaal, of Massachusetts, to be Under Secretary, both of the Department of Education, and other pending calendar business.",yes
@@ -1367,7 +1216,6 @@ SVA, BVA, MOAA, NASDVA, MVA, NCHV",yes
 112898,117,House,Markup,2021-07-14,hsii00,"HR 820, HR 972, HR 1154, HR 1664, HR 1908, HR 2278, HR 2444, HR 2497, HR 2780, HR 2899, HR 3113, HR 3616, HR 3764, HR 4300",yes
 325673,117,Senate,Meeting,2021-07-19,ssas00,Closed business meeting to markup those provisions which fall under the subcommittee's jurisdiction of the proposed National Defense Authorization Act for fiscal year 2022.,no
 325674,117,Senate,Meeting,2021-07-19,ssas00,Closed business meeting to markup those provisions which fall under the subcommittee's jurisdiction of the proposed National Defense Authorization Act for fiscal year 2022.,no
-113928,117,House,Hearing,2021-07-20,hsii00,Legislative Hearing on H.R. 442 and H.R. 3469,yes
 113943,117,House,Markup,2021-07-20,hsgo00,"the following:
  
 1.H.R. 564, the Comprehensive Paid Leave for Federal Employees Act;
