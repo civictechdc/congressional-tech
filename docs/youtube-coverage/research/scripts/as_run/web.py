@@ -13,10 +13,12 @@ Shared, cached, rate-limited web helper for the missing-video investigation agen
 
 Every network call is cached (shared by all agents) and throttled per host, so never bypass this module.
 """
-import hashlib, json, os, re, subprocess, time, fcntl, urllib.parse
+import hashlib, json, os, re, subprocess, sys, time, fcntl, urllib.parse
 import requests
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.dirname(HERE))
+import zyte  # noqa: E402
 CACHE = os.path.join(HERE, "cache"); os.makedirs(CACHE, exist_ok=True)
 MIN_INTERVAL = {"web.archive.org": 1.0, "archive.org": 1.0, "www.c-span.org": 1.0, "www.youtube.com": 0.5}
 _sess = requests.Session()
@@ -66,34 +68,16 @@ def get(url, params=None, timeout=60):
 
 CURL_HOSTS = set()
 ## c-span.org answers python-requests with a 202 bot challenge, and curl too after the first hit.
-##  Zyte's API (httpResponseBody = the site's own bytes) gets through. The token comes from a
-##  sibling repo's .env; never print it or copy it anywhere.
+##  Zyte's API (httpResponseBody = the site's own bytes) gets through (../zyte.py).
 ZYTE_HOSTS = {"www.c-span.org"}
-ZYTE_ENV = os.path.expanduser("~/Work/spicy-stack/RefSpec/.env")
-
-
-def _zyte_token():
-    tok = os.environ.get("ZYTE_TOKEN")
-    if not tok and os.path.exists(ZYTE_ENV):
-        for line in open(ZYTE_ENV):
-            if line.startswith("ZYTE_TOKEN="):
-                tok = line.split("=", 1)[1].strip().strip("'\"")
-    if not tok:
-        raise RuntimeError("ZYTE_TOKEN not found")
-    return tok
 
 
 def _zyte(url, params):
     """Fetch through Zyte's API. Returns (status of the target site, body text)."""
-    import base64
     if params:
         url += ("&" if "?" in url else "?") + urllib.parse.urlencode(params)
-    r = _sess.post("https://api.zyte.com/v1/extract", auth=(_zyte_token(), ""), timeout=120,
-                   json={"url": url, "httpResponseBody": True})
-    if r.status_code != 200:
-        return (429 if r.status_code in (429, 503, 520) else r.status_code), ""
-    d = r.json()
-    return d.get("statusCode", 200), base64.b64decode(d["httpResponseBody"]).decode("utf-8", "replace")
+    status, body = zyte.get(url, _sess)
+    return (429 if not body and status in (429, 503, 520) else status), body.decode("utf-8", "replace")
 
 
 def _curl(url, params, timeout):

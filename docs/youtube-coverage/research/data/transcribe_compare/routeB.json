@@ -1,0 +1,2895 @@
+{
+ "header": {
+  "title": "HEARING ON COMPLIANCE WITH COMMITTEE OVERSIGHT",
+  "chamber": "house",
+  "congress": 118,
+  "session": 1,
+  "committee": "Committee on the Judiciary",
+  "committee_code": "hsju00",
+  "subcommittee": "Subcommittee on Responsiveness and Accountability to Oversight",
+  "date": "2023-11-30",
+  "time_convened": "2:02p.m.",
+  "time_adjourned": "3:26p.m.",
+  "location": "Room 2141",
+  "presiding": "cline-ben",
+  "present": [
+   "cline-ben",
+   "drew-jeff",
+   "moran-nathaniel",
+   "lee-laurel",
+   "swalwell-eric",
+   "ivey-glenn"
+  ],
+  "serial": "Serial No. 118-55",
+  "package_id": "",
+  "event_id": ""
+ },
+ "participants": {
+  "cline-ben": {
+   "name": "Ben Cline",
+   "role": "chair",
+   "honorific": "Mr.",
+   "surname": "Cline",
+   "party": "R",
+   "state": "VA",
+   "bioguide_id": "C001118",
+   "organization": "",
+   "position": "",
+   "speaker_label": "",
+   "confidence": 1.0
+  },
+  "swalwell-eric": {
+   "name": "Eric Swalwell",
+   "role": "member",
+   "honorific": "Mr.",
+   "surname": "Swalwell",
+   "party": "D",
+   "state": "CA",
+   "bioguide_id": "S001193",
+   "organization": "",
+   "position": "",
+   "speaker_label": "",
+   "confidence": 1.0
+  },
+  "dunham-christopher": {
+   "name": "Christopher Dunham",
+   "role": "witness",
+   "honorific": "Mr.",
+   "surname": "Dunham",
+   "party": "",
+   "state": "",
+   "bioguide_id": "",
+   "organization": "Office of Legislation and Congressional Affairs, Federal Bureau of Investigation",
+   "position": "Acting Assistant Director",
+   "speaker_label": "",
+   "confidence": 1.0
+  },
+  "bumpus-jeanne": {
+   "name": "Jeanne Bumpus",
+   "role": "witness",
+   "honorific": "Ms.",
+   "surname": "Bumpus",
+   "party": "",
+   "state": "",
+   "bioguide_id": "",
+   "organization": "Office of Congressional Relations, Federal Trade Commission",
+   "position": "Director",
+   "speaker_label": "",
+   "confidence": 1.0
+  },
+  "darakoglu-naz": {
+   "name": "Naz Darakoglu",
+   "role": "witness",
+   "honorific": "Ms.",
+   "surname": "Darakoglu",
+   "party": "",
+   "state": "",
+   "bioguide_id": "",
+   "organization": "Bureau of Legislative Affairs, U.S. Department of State",
+   "position": "Assistant Secretary",
+   "speaker_label": "",
+   "confidence": 1.0
+  },
+  "unknown": {
+   "name": "Unknown",
+   "role": "unknown",
+   "honorific": "",
+   "surname": "",
+   "party": "",
+   "state": "",
+   "bioguide_id": "",
+   "organization": "",
+   "position": "",
+   "speaker_label": "",
+   "confidence": 0.0
+  },
+  "ivey-glenn": {
+   "name": "Glenn Ivey",
+   "role": "member",
+   "honorific": "Mr.",
+   "surname": "Ivey",
+   "party": "D",
+   "state": "MD",
+   "bioguide_id": "I000058",
+   "organization": "",
+   "position": "",
+   "speaker_label": "",
+   "confidence": 1.0
+  },
+  "moran-nathaniel": {
+   "name": "Nathaniel Moran",
+   "role": "member",
+   "honorific": "Mr.",
+   "surname": "Moran",
+   "party": "R",
+   "state": "TX",
+   "bioguide_id": "M001224",
+   "organization": "",
+   "position": "",
+   "speaker_label": "",
+   "confidence": 1.0
+  },
+  "lee-laurel": {
+   "name": "Laurel M. Lee",
+   "role": "member",
+   "honorific": "Ms.",
+   "surname": "Lee",
+   "party": "R",
+   "state": "FL",
+   "bioguide_id": "L000597",
+   "organization": "",
+   "position": "",
+   "speaker_label": "",
+   "confidence": 1.0
+  }
+ },
+ "turns": [
+  {
+   "speaker": "cline-ben",
+   "text": "All right. All right, the subcommittee will come to order. Without objection, the chair is authorized to declare a recess at any time. We welcome everyone to this hearing of the subcommittee on Responsiveness and Accountability to Oversight. And as we do in this committee, we will begin with the pledge. So if everybody would rise and face the flag.",
+   "start": 18.19,
+   "end": 18.37,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "I pledge allegiance to the flag of the United States of America, and to the republic for which it stands, one nation under God, indivisible, with liberty and justice for all.",
+   "start": 18.38,
+   "end": 18.49,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Thank you. Want to thank our witnesses for appearing, and I want to also thank Ranking Member Swalwell and Member Lee for being here as well. Today the subcommittee is going to continue our efforts to get answers directly from representatives from the Federal Bureau of Investigation, the Department of State, and the Federal Trade Commission. We look forward today to engaging with the witnesses that have appeared to discuss the productions we've received to date and the status of our other outstanding requests, as well as the agencies' compliance with the committee's subpoenas. Since the beginning of the Biden administration, the committee has made numerous requests for information and documents concerning the operations and actions of the Federal Bureau of Investigation. The committee has also issued various subpoenas to the FBI. To date, the FBI has yet to fully comply with the committee's subpoenas, as well as certain requests for information and documents. For example, on August 17th, 2023, Chairman Jordan issued subpoenas to Attorney General Garland and Director Wray regarding coercion by the federal government to have companies and groups engage in content moderation. To date, the responses to these subpoenas have been deficient and overdue. While the FBI has produced some documents to the committee and made some documents available for review, many are publicly available, duplicative, non-responsive, or significantly and substantively redacted. Relatedly, on April 28th, 2023, Chairman Jordan issued a subpoena to Global Engagement Center Special Envoy Rubin to investigate the nature and extent of the GEC's interactions with companies and groups over content moderation. GEC's response to date, less than 1,500 non-publicly available pages of documents, which are extremely limited in scope, has been wholly incomplete and inadequate. Since the State Department last testified before this subcommittee in July of this year, only 290 additional pages have been produced. This is despite the State Department representatives proffering that production would be in the tens of thousands of pages at the least, as virtually everything that GEC does is related to content moderation on social media. It's vital that these agencies produce all relevant documents that the subpoena compels them to produce so that the committee has the opportunity to determine how the FBI, the State Department, and other actors with which the agencies were communicating with labeled speech misinformation, disinformation, or malinformation to effectuate its takedown from platforms. It's also important for the committee to obtain these documents in order to ascertain the nature of the relationship between the Biden administration and social media companies. Additionally, the FBI has been deficient in responding to the committee on several other important oversight matters. For example, on March 9th, 2022, the committee requested a briefing on the status of the FBI's investigation into the pipe bombs placed at the RNC and DNC headquarters on January 6th, 2021. After receiving a non-substantive response from the FBI, the committee sent a letter reiterating its request for a briefing on May 24th of this year and June 14th. The committee has also requested documents and information related to the pipe bomb investigation. While we look forward to the FBI providing the committee with the requested briefing in the coming weeks, we still await the requested documents and information. Additionally, the committee has sent letters to the FBI requesting documents and information related to its confidential human source program and information regarding former special agent in charge Charles McGonigal and the overt politization of the FBI. To date, the FBI has not responded to the committee's requests. We are also here to hold the FTC accountable. Since Biden appointee Lina Khan has began chairing the FTC in June of 2021, she has advanced a radical agenda, upset the rule of law in ways that have hurt the American people, mismanaged agency career staff, and sought to act in ways inconsistent with what the FTC's legal authorities permit. Given our oversight responsibilities, committee Republicans have sent the agency 16 letters containing numerous requests. The committee has also issued a subpoena to the FTC. Committee requests have covered a range of topics, such as Chair Khan's abandonment of longstanding bipartisan antitrust standards or the rapid decline in FTC career staff morale and record staff departures from the FTC. Likewise, in April, over seven months ago, the committee subpoenaed Chair Khan for documents based on the Judiciary Committee and the Select Subcommittee on the Weaponization of the Federal Government's report about how the FTC harassed Twitter in the wake of Elon Musk's purchase of the company. The FTC has fallen far short in its responses to congressional oversight. The agency has routinely failed to provide status updates requested about document productions. Even where the FTC has made an effort to produce requested documents, its responses have been inadequate or raise new questions. For example, the FTC has produced thousands of pages of publicly available documents, hundreds of pages of non-substantive schedules, but is withholding key materials from the committee with no sound basis. And the FTC has produced only one publicly available court filing in response to the committee's April 12th subpoena. In defiance of the subpoena, the agency is withholding everything else. In her interactions with the committee, Chair Khan has taken it upon herself to question the legitimacy of and seek to block congressional oversight. Congress must make important decisions about funding the FTC and the scope of the FTC's authority. The FTC's obstructionist approach to the committee's oversight can and should be a factor in",
+   "start": 18.52,
+   "end": 25.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "in Congress's decisions.",
+   "start": 1500.22,
+   "end": 1501.99,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "The committee's work here is still underway and will continue despite the FTC's efforts to frustrate its oversight.",
+   "start": 1502.26,
+   "end": 1509.32,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "These hearings play a critical role in assisting the committee in its oversight obligations, which in turn allow the committee to examine potential legislative changes within our jurisdiction.",
+   "start": 1510.36,
+   "end": 1519.82,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "The courts have recognized that Congress's power to conduct oversight is an indispensable component of our Article 1 authority to legislate.",
+   "start": 1520.4,
+   "end": 1527.67,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Without the information that the committee needs from the administration, we cannot do our jobs for the American people.",
+   "start": 1528.24,
+   "end": 1534.62,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Thank you.",
+   "start": 1535.15,
+   "end": 1535.88,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "The chair now recognizes the ranking member, the gentleman from California, Mr. Swalwell, for his opening statement.",
+   "start": 1536.4,
+   "end": 1541.3,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "He's not eating.",
+   "start": 1544.47,
+   "end": 1545.96,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "He's not eating.",
+   "start": 1547.45,
+   "end": 1548.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "\"Mar-a-Lago? What the hell, Kevin?\"",
+   "start": 1549.95,
+   "end": 1551.98,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "Cheney asked.",
+   "start": 1552.01,
+   "end": 1552.79,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "\"They're really worried,\"",
+   "start": 1552.88,
+   "end": 1554.49,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "McCarthy said.",
+   "start": 1554.51,
+   "end": 1555.24,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "\"Trump's not eating, so they asked me to come see him.\"",
+   "start": 1555.3,
+   "end": 1558.12,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "\"What? You went to Mar-a-Lago because Trump's not eating?\"",
+   "start": 1558.55,
+   "end": 1561.94,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "Cheney responded.",
+   "start": 1562.13,
+   "end": 1563.34,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "\"Yeah, he's really depressed,\"",
+   "start": 1564.44,
+   "end": 1566.2,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "McCarthy said.",
+   "start": 1566.42,
+   "end": 1567.42,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "That's why we're here.",
+   "start": 1569.69,
+   "end": 1571.18,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "Trump's not eating, and this entire Congress has been Jim Jordan and MAGA Republicans feeding Trump.",
+   "start": 1572.23,
+   "end": 1580.4,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "They're just feeding the beast with the insane hearings that they're holding",
+   "start": 1580.89,
+   "end": 1587.35,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "all over the Capitol. That's why these three witnesses have been pulled out of the important work they do is because Trump",
+   "start": 1587.38,
+   "end": 1594.38,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "is not eating.",
+   "start": 1595.05,
+   "end": 1596.11,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "This is not the first feast for the beast.",
+   "start": 1598.66,
+   "end": 1601.76,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "In fact, we've seen this the whole Congress.",
+   "start": 1602.04,
+   "end": 1604.42,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "We saw the creation of the weaponization committee.",
+   "start": 1604.59,
+   "end": 1607.72,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "There have been multiple investigations into",
+   "start": 1608.2,
+   "end": 1612.01,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "the investigation of Hunter Biden.",
+   "start": 1612.44,
+   "end": 1614.93,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "There's been an investigation into the prosecutor",
+   "start": 1615.11,
+   "end": 1618.3,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "who indicted Hunter Biden.",
+   "start": 1618.7,
+   "end": 1621.13,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "There have been efforts to defund the FBI who were a part of a raid",
+   "start": 1621.5,
+   "end": 1626.83,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "on to Mar-a-Lago.",
+   "start": 1627.02,
+   "end": 1628.79,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "There's been an effort to undermine the New York district attorney's investigation",
+   "start": 1629.41,
+   "end": 1634.34,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "into the former president.",
+   "start": 1634.73,
+   "end": 1636.31,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "They brought in prosecutors who are a part of that investigation. There have been letters to Fani",
+   "start": 1636.72,
+   "end": 1641.56,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "Willis in her January 6 investigation into the foreign former president.",
+   "start": 1641.56,
+   "end": 1646.68,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "So you're just here as a part of an effort to feed the beast,",
+   "start": 1647.4,
+   "end": 1651.95,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "and Jim Jordan, who has assembled this hearing today, and the other MAGA Republicans are just working every day",
+   "start": 1652.41,
+   "end": 1661.85,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "as Trump's chef.",
+   "start": 1662.33,
+   "end": 1664.12,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "But this isn't Top Chef.",
+   "start": 1665.26,
+   "end": 1667.09,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "This is the United States Congress.",
+   "start": 1668.04,
+   "end": 1669.96,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "We were sent here to govern.",
+   "start": 1671.13,
+   "end": 1673.47,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "We're not sent here to work every day on behalf of one person.",
+   "start": 1673.81,
+   "end": 1679.52,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "He's not eating, and that's why you're here",
+   "start": 1680.11,
+   "end": 1682.35,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "to feed him.",
+   "start": 1682.68,
+   "end": 1683.82,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "And then, there's",
+   "start": 1686.09,
+   "end": 1688.19,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "the comical hypocrisy that Jim Jordan would convene a hearing around anyone's subpoena compliance.",
+   "start": 1688.19,
+   "end": 1698.81,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "You see, we are now",
+   "start": 1704.83,
+   "end": 1706.72,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "567 days, 19 hours, 12 minutes, and 35 seconds into Jim Jordan refusing to comply with the subpoena",
+   "start": 1707.16,
+   "end": 1718.3,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "for his involvement in January 6, an attack on the Capitol.",
+   "start": 1718.78,
+   "end": 1723.1,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "And you would think that a member of Congress who has sworn an oath to defend the Constitution would want to help their government in the largest investigation",
+   "start": 1723.82,
+   "end": 1731.42,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "the country has ever taken,",
+   "start": 1731.64,
+   "end": 1734.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "the largest investigation with the most indictments, the most witnesses, the most trials around a single event.",
+   "start": 1735.6,
+   "end": 1740.92,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "The chairman of this committee, who's got a problem with the subpoena compliance, and we're going to talk about the overcompliance that we've seen from your agencies, it's just comical",
+   "start": 1741.52,
+   "end": 1749.77,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "that he would call a hearing to complain about you complying with subpoenas when he, 567",
+   "start": 1749.79,
+   "end": 1757.26,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "days in, won't even comply with his own.",
+   "start": 1757.26,
+   "end": 1761.32,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "And these claims, it's clear that what Republicans want to do to impeach Joe Biden is not working. They can't draw the straight line between",
+   "start": 1764.44,
+   "end": 1774.22,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "what they think Hunter Biden did and what they want Joe Biden to have done.",
+   "start": 1774.75,
+   "end": 1777.6,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "They may prove at the end of this Congress that Hunter Biden is Joe Biden's son.",
+   "start": 1778.69,
+   "end": 1782.16,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "That may be coming. But they have not proved anything else, and so they're trying to draw the foul. They're going to ask for dozens,",
+   "start": 1782.68,
+   "end": 1792.05,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "hundreds, thousands of documents, and they're going to hope that you're not going to respond to one of them, so now they have an obstruction of justice case",
+   "start": 1792.05,
+   "end": 1799.31,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "to use as the predicate for impeachment.",
+   "start": 1800.1,
+   "end": 1803.95,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "I also want to talk about the transcribed interviews because you all have sent to this committee",
+   "start": 1805.15,
+   "end": 1813.93,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "92 individuals to be a part",
+   "start": 1814.93,
+   "end": 1818.17,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "of transcribed private",
+   "start": 1818.42,
+   "end": 1820.65,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "interviews,",
+   "start": 1821.13,
+   "end": 1821.92,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "not for the public to observe, but",
+   "start": 1822.42,
+   "end": 1825.13,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "92 private transcribed interviews.",
+   "start": 1825.64,
+   "end": 1829.13,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "Take a guess at how many of those interviews have resulted in a public hearing.",
+   "start": 1830.43,
+   "end": 1836.56,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "It's zero.",
+   "start": 1838.48,
+   "end": 1839.81,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "It is all theater. It is all to feed the beast",
+   "start": 1841.0,
+   "end": 1848.01,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "because Donald Trump's not eating, so they have to haul these people in. They learn in private that there is no wrongdoing, and so we never hear about it",
+   "start": 1848.8,
+   "end": 1856.88,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "in public.",
+   "start": 1857.06,
+   "end": 1858.74,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "Finally,",
+   "start": 1860.84,
+   "end": 1862.03,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "the center of so many of these investigations has been the current president's son.",
+   "start": 1864.07,
+   "end": 1868.52,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "And you would think after a year of hearings about",
+   "start": 1872.48,
+   "end": 1877.01,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "the current president's son",
+   "start": 1877.67,
+   "end": 1879.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "and the indictments against the current president's son, and the prosecutors involved in the case of the current president's son, and the private transcribed interviews around the current president's son,",
+   "start": 1880.89,
+   "end": 1891.13,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "that you would see the Republicans bring in for a public hearing",
+   "start": 1892.4,
+   "end": 1897.68,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "the president's son.",
+   "start": 1898.39,
+   "end": 1899.88,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "And so, what happened this week?",
+   "start": 1900.58,
+   "end": 1902.57,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "The Republicans subpoenaed Hunter Biden.",
+   "start": 1903.65,
+   "end": 1906.12,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "Hunter Biden says,",
+   "start": 1906.37,
+   "end": 1907.41,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "\"Great. I'll come in.",
+   "start": 1907.82,
+   "end": 1910.12,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "I'll testify publicly.\"",
+   "start": 1910.87,
+   "end": 1912.44,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "And Jim Jordan and James Comer, they can't take yes for an answer. They don't want him",
+   "start": 1912.83,
+   "end": 1918.59,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "to testify publicly.",
+   "start": 1918.66,
+   "end": 1920.69,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "And it's for the same reason that the other 92 witnesses have never come in. It is all",
+   "start": 1921.84,
+   "end": 1929.07,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "to just feed the beast, to keep Donald Trump happy. So,",
+   "start": 1929.07,
+   "end": 1935.26,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "welcome to a post-Thanksgiving meal to feed",
+   "start": 1935.91,
+   "end": 1941.05,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "Donald Trump, and I introduce to you",
+   "start": 1941.07,
+   "end": 1944.57,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "the chefs led by Top Chef Jim Jordan and Chef Boy McCarthy, who went down to Mar-a-Lago,",
+   "start": 1945.71,
+   "end": 1953.25,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "in their effort to keep Donald Trump happy. I yield",
+   "start": 1953.52,
+   "end": 1956.49,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "back.",
+   "start": 1956.49,
+   "end": 1956.88,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Without objection, all other opening statements will be included in the record. We'll now introduce today's witnesses.",
+   "start": 1964.88,
+   "end": 1970.63,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Christopher Dunham is the acting assistant director for the Office of Congressional Affairs at the FBI. In that role, he leads the office that serves as the bureau's primary liaison to Congress.",
+   "start": 1971.86,
+   "end": 1980.59,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Ms. Jeanne Bumpus is the director of the Office of Congressional Relations at the Federal Trade Commission. Her office",
+   "start": 1982.52,
+   "end": 1988.89,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "works with members of Congress and their staffs to provide information on the commission's activities and advance the interests of the commission in Congress.",
+   "start": 1988.89,
+   "end": 1996.1,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "And the Honorable Naz Durakoğlu. Ms. Durakoğlu is the assistant secretary of state for the Bureau of Legislative Affairs.",
+   "start": 1997.4,
+   "end": 2004.99,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "She was confirmed by the Senate on June 16, 2022. The Bureau of Legislative Affairs coordinates all legislative activity for the State Department and is the primary intermediary to Congress.",
+   "start": 2005.15,
+   "end": 2014.73,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "We welcome our witnesses and thank them for appearing today.",
+   "start": 2015.65,
+   "end": 2018.66,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "We begin by swearing you in. So, please rise and raise your right hand.",
+   "start": 2018.9,
+   "end": 2022.42,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Do you swear or affirm under penalty of perjury that the testimony you're about to give is true and correct to the best of your knowledge, information, and belief, so help you God?",
+   "start": 2024.1,
+   "end": 2032.55,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Let the record reflect that the witnesses have answered in the affirmative.",
+   "start": 2034.34,
+   "end": 2038.31,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Please know that your written testimony will be entered into the record in its entirety. Accordingly, we ask that you summarize your testimony in 5 minutes.",
+   "start": 2038.86,
+   "end": 2045.02,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "The microphone in front of you has a clock and a series of lights. When the lights turn yellow, you should begin to conclude your remarks. When the light turns red, your time has expired.",
+   "start": 2045.8,
+   "end": 2052.28,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Please remember to turn on the mics. Mr. Dunham, you may begin.",
+   "start": 2053.07,
+   "end": 2056.88,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "Thank you. Good afternoon, Chairman Cline, Ranking Member Swalwell, distinguished members of the subcommittee. I appreciate the opportunity to come before you again",
+   "start": 2058.85,
+   "end": 2068.7,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "to describe the FBI's continued efforts to respond to the committee's oversight requests.",
+   "start": 2069.11,
+   "end": 2073.49,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "I'm the acting assistant director of the FBI's Office of Congressional Affairs.",
+   "start": 2074.22,
+   "end": 2077.29,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "I'm here again voluntarily to answer your questions.",
+   "start": 2077.71,
+   "end": 2080.3,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "Unlike others who have come before this subcommittee, I'm not a political appointee,",
+   "start": 2080.89,
+   "end": 2084.28,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "nor am I an attorney. I've spent the entirety of my professional government life in civil service in support of the FBI's mission.",
+   "start": 2084.58,
+   "end": 2091.22,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "I agreed to serve as the assistant director in an acting capacity late last year.",
+   "start": 2092.11,
+   "end": 2096.35,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "In this role, I have led a team of agents and professional staff who are dedicated to working with Congress on all manner of legislative, policy, and oversight issues.",
+   "start": 2097.02,
+   "end": 2106.87,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "As long as I've served in this role, I've been committed to working in good faith with all members of this subcommittee and the full Judiciary Committee.",
+   "start": 2107.75,
+   "end": 2113.82,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "The FBI recognizes the important role of congressional oversight.",
+   "start": 2116.14,
+   "end": 2119.24,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "We appreciate that oversight is a critical underpinning of the legislative process, and we recognize that it can shed valuable light on the FBI's operations and stewardship of taxpayer dollars.",
+   "start": 2120.08,
+   "end": 2130.49,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "By virtue of the FBI's dual law enforcement and intelligence responsibilities, we work closely with eight congressional committees of jurisdiction, including both House and Senate committees who oversee the intelligence community and committees like this one who oversee the Justice Department.",
+   "start": 2131.78,
+   "end": 2147.24,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "In every instance, we strive to provide Congress with information to support its legislative needs without compromising our law enforcement and national security efforts, including our investigative and prosecutorial responsibilities.",
+   "start": 2148.06,
+   "end": 2160.05,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "The FBI must also, now more than ever, consider the privacy and safety interests implicated in revealing the identities of our dedicated line agents and personnel.",
+   "start": 2160.99,
+   "end": 2170.83,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "With these considerations in mind, we're committed to continuing to accommodate the committee's oversight interests.",
+   "start": 2171.74,
+   "end": 2177.34,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "We understand the purview of this subcommittee is to oversee the responsiveness of agencies to the full committee's oversight requests.",
+   "start": 2178.53,
+   "end": 2184.14,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "In this Congress so far, the committee has identified well over 50 informational requests for the FBI across 17 different topics, in addition to requests for dozens of transcribed interviews.",
+   "start": 2184.87,
+   "end": 2195.91,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "Since January, the FBI has provided nearly 30 responses to this committee, including 22 document productions.",
+   "start": 2197.04,
+   "end": 2203.22,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "And more specifically, since I was here before you in March, the FBI has produced nearly 2,000 pages of documents and provided dozens of briefings for committee members and staff, including at our Quantico and Redstone facilities.",
+   "start": 2203.88,
+   "end": 2216.59,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "During that time, we've also provided 14 FBI witnesses from multiple FBI divisions and from literally across the country who have come before this committee to sit for extensive questioning and transcribed interviews covering a multitude of topics.",
+   "start": 2217.15,
+   "end": 2230.13,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "Today, we remain engaged with committee staff and the FBI's actively responding to your requests for documents and information, including working to supplement our ongoing productions as we identify additional responsive documents.",
+   "start": 2231.02,
+   "end": 2244.37,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "We remain optimistic that by working cooperatively, we'll be able to satisfy the committee's legislative needs, while also safeguarding the independence, integrity, and effectiveness of our vital law enforcement and intelligence efforts.",
+   "start": 2245.54,
+   "end": 2257.77,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "This, of course, is at the core of the FBI's mission to protect the American people and uphold the Constitution.",
+   "start": 2258.85,
+   "end": 2264.44,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "I'm happy to answer your questions.",
+   "start": 2265.55,
+   "end": 2266.93,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Thank you, Mr. Dunham. Ms. Bumpus, you may begin.",
+   "start": 2268.48,
+   "end": 2271.69,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "Chairman Cline, Ranking Member Swalwell, and distinguished members of the subcommittee, I'm Jeanne Bumpus, the director of the Office of Congressional Relations at the FTC.",
+   "start": 2276.4,
+   "end": 2284.97,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "Thanks for the opportunity to address the commission's responses to requests from the Committee on the—of the Judiciary",
+   "start": 2285.06,
+   "end": 2292.05,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "since the beginning of the 118th Congress.",
+   "start": 2292.05,
+   "end": 2294.13,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "The FTC is the only federal agency with the broad mission of both protecting consumers and maintaining competition in most sectors of the economy. Its jurisdiction includes privacy and data security, consumer fraud,",
+   "start": 2295.27,
+   "end": 2307.72,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "and anticompetitive mergers and conduct in the pharmaceutical, defense, technology, hospital, retail food, and other sectors that affect every American every day.",
+   "start": 2307.72,
+   "end": 2316.58,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "The FTC's 1,200 public servants work tirelessly to meet this broad and critical mission.",
+   "start": 2317.84,
+   "end": 2322.04,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "The commission is committed to accommodating the committee's requests for information consistent with our obligation to safeguard the independence, integrity, and effectiveness of our vital work.",
+   "start": 2323.01,
+   "end": 2333.15,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "Since I last testified before the subcommittee in March, the commission has established a clear responsiveness to the House Judiciary Committee's wide range and unprecedented number of oversight requests.",
+   "start": 2333.91,
+   "end": 2344.25,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "The commission has received 15 letters with 76 specific requests from the Judiciary Committee, and we've responded with 29 letters, 20 productions, five transcribed interviews, a nonpublic briefing, hearing testimony, and over 8,500 pages of documents.",
+   "start": 2345.54,
+   "end": 2364.57,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "These are just some of the House oversight requests that the commission is currently responding to. In this calendar year, the FTC has received a total of 25 letters",
+   "start": 2364.6,
+   "end": 2374.32,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "with 133 specific requests from House committees, and we've responded with 46 letters, 33 productions, and over 12,000 pages of documents.",
+   "start": 2374.32,
+   "end": 2385.25,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "These responses are in addition to providing information to Congress as a regular part of what we do every day. The FTC works with members and committees to provide them with expert, thoughtful, and timely information, irrespective of party or position.",
+   "start": 2386.35,
+   "end": 2399.79,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "The FTC devotes significant time and resources to supporting Congress's needs for information, working with our bureaus and offices across the agency to respond to requests.",
+   "start": 2400.99,
+   "end": 2410.74,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "Commission officials and subject matter experts are in constant communication with members and congressional staff.",
+   "start": 2411.39,
+   "end": 2417.84,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "In this year alone, the FTC has provided technical assistance on over 100 proposed bills, responded to over 80 congressional letters, provided about 15 nonpublic and over 80 public briefings about our programs and operations, and assisted with constituent services and outreach efforts aimed at helping consumers avoid fraud.",
+   "start": 2418.81,
+   "end": 2438.41,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "The commission is eager to continue to share our work and collaborate with Congress to improve and enhance our service to the American people.",
+   "start": 2439.42,
+   "end": 2445.69,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "In conclusion, the FTC recognizes that congressional oversight is an important part of our system of government. We remain committed to working with Congress and with this committee in good faith. Thank you.",
+   "start": 2446.42,
+   "end": 2457.77,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Thank you, Ms. Bumpus. Ms. Durakoğlu, you may begin.",
+   "start": 2459.74,
+   "end": 2463.13,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "Thank you. Chairman Cline, Ranking Member Swalwell, distinguished members of this subcommittee, it's a pleasure to appear before you again today.",
+   "start": 2464.08,
+   "end": 2472.03,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "Last time I appeared before this subcommittee, I cited our congressional engagement from 2022 and the beginning of 2023.",
+   "start": 2472.93,
+   "end": 2479.52,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "So far in the 118th Congress, the State Department's Bureau of Legislative Affairs, also known as H, is lined up for another record-breaking year of congressional engagement.",
+   "start": 2480.08,
+   "end": 2489.17,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "Since January, H has supported 88 congressional hearings, more than 2,900 briefings and meetings with members and staff,",
+   "start": 2490.1,
+   "end": 2499.78,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "responded to more than 1,000 letters from Congress, produced 474 reports to Congress, and facilitated 512 CODELs and staffdels around the world.",
+   "start": 2500.1,
+   "end": 2509.34,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "Regarding our commitment to oversight, the State Department is currently responding to 29 open and wide-ranging investigations from six separate House committees.",
+   "start": 2510.45,
+   "end": 2519.06,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "When I testified in July, the department had provided more than 16,000 pages of documents across committees.",
+   "start": 2519.78,
+   "end": 2526.49,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "We are now up to over 25,500 pages.",
+   "start": 2527.13,
+   "end": 2530.13,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "In response to this committee's inquiry into the Global Engagement Center, or GEC, we have produced more than 1,900 pages of documents, up from 1,200 in July.",
+   "start": 2531.02,
+   "end": 2541.74,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "The GEC's offer to brief members and staff of this subcommittee still stands, and we welcome the opportunity to further engage with you on the GEC's day-to-day work in furtherance of our national security.",
+   "start": 2542.47,
+   "end": 2553.11,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "GEC principals have also testified before other House committees in a demonstration of the department's responsiveness and cooperation with oversight inquiries.",
+   "start": 2553.79,
+   "end": 2563.15,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "As noted in my previous testimony, the GEC focuses on the international information space and works to identify, analyze, and expose harmful foreign disinformation and propaganda emanating from places like Tehran, Moscow, and Beijing.",
+   "start": 2563.79,
+   "end": 2577.92,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "The GEC does not focus on the domestic information space.",
+   "start": 2578.47,
+   "end": 2582.43,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "As we continue to make productions and show the breadth and depth of the GEC's work abroad, we ask that Congress repeal the termination clause included in the GEC's mandate so that the US government can continue this important effort beyond 2024.",
+   "start": 2583.35,
+   "end": 2597.4,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "In addition to the GEC request, the department has provided Chairman Jordan and this subcommittee with all available information on three specific visa cases in response to requests from the committee.",
+   "start": 2598.15,
+   "end": 2609.43,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "Should there be additional cases of interest, we look forward to reviewing and responding to those requests.",
+   "start": 2610.99,
+   "end": 2615.65,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "Secretary Blinken and the department's leadership maintain that Congress is a partner in foreign policy, and we remain committed to working with you in good faith on your oversight priorities.",
+   "start": 2616.71,
+   "end": 2627.42,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "Across all congressional oversight inquiries, career department employees have been pulled off their day-to-day missions to support the document production and review process.",
+   "start": 2628.26,
+   "end": 2637.33,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "The the department has also hired more oversight staff to assist with the growing number of requests.",
+   "start": 2638.16,
+   "end": 2643.76,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "As we work to respond to more than 2 dozen requests, I would be remiss if I did not share the department's concern over the House's proposed 14% cut to the State Department and foreign operations budget.",
+   "start": 2644.47,
+   "end": 2656.78,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "This drastic cut would not only hinder the department's ability to respond to congressional oversight in a timely manner, but would also endanger the department's national security objectives, particularly as the United States faces new and enduring challenges with the People's Republic of China, in the Middle East and Israel, Ukraine, and beyond.",
+   "start": 2657.48,
+   "end": 2676.84,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "Of course, not passing the administration's full supplemental request touching on these priorities would have a similar negative effect.",
+   "start": 2677.93,
+   "end": 2684.58,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "Again, I thank the subcommittee for allowing me the opportunity to before to appear before you again, and I look forward to your questions.",
+   "start": 2685.25,
+   "end": 2692.67,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Thank you, Ms. Durakoğlu.",
+   "start": 2694.04,
+   "end": 2695.14,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Let me begin with a question for Mr. Dunham.",
+   "start": 2697.16,
+   "end": 2703.95,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Well, let me just say, we will now proceed under the 5-minute rule with questions, anticipate we'll have two rounds of questions today.",
+   "start": 2704.4,
+   "end": 2710.37,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Mr. Dunham, understanding the FBI's role in censorship on social media is a crucial part of the committee's investigation into the apparent collusion between the federal government and technology and social media companies.",
+   "start": 2712.56,
+   "end": 2724.89,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "On April 18th, 2023, the committee requested documents and information in furtherance of its investigation by the FBI.",
+   "start": 2725.92,
+   "end": 2733.27,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "However, the FBI did not make its first production until June 21st, 2023, over a month after the response to the committee's April 18th, 2023 request was due.",
+   "start": 2733.72,
+   "end": 2743.83,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "The entirety of the first production was the publicly available 386-page deposition transcript of FBI Special Agent Elvis Chan in Missouri v. Biden.",
+   "start": 2744.49,
+   "end": 2753.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Why did it take the department over a month to make this production of one publicly available document?",
+   "start": 2754.74,
+   "end": 2760.77,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "Mr. Chairman, we're we're working through the requests that we received in April. We've made four productions already of 600 pages of documents. We've also been providing",
+   "start": 2763.5,
+   "end": 2772.37,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "transcribed interviews to the committee, which our conversations with staff indicated that that was a committee priority, so we had three senior executives who came before this committee for daylong transcribed interviews to talk about this very subject.",
+   "start": 2772.37,
+   "end": 2786.1,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "And we have more more information in the pipeline that's that's that's that's that's forthcoming. And I understand the the committee's concerns with with redactions on the documents. We've had",
+   "start": 2786.75,
+   "end": 2795.3,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "some some discussions with committee staff already to to address those concerns. I think our most recent production provided more limited redactions. That's my goal is to provide as limited redactions as possible on our productions to the committee.",
+   "start": 2795.3,
+   "end": 2809.13,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "We are bound by Department of Justice and executive branch policies, which means there are certain areas where we have to be a little more considerate when we're providing information. Those areas could be when we're touching on ongoing investigations, or sources and methods, or non-SES employees.",
+   "start": 2810.74,
+   "end": 2824.71,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "But my goal is always to provide as much information as possible with limited redactions. And if if",
+   "start": 2827.65,
+   "end": 2832.41,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "All right. Well",
+   "start": 2832.41,
+   "end": 2833.02,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "there's instances where the committee has concerns about those redactions, happy to continue a dialogue so that we can see what the legislative purposes is to to see the information underneath, and we can make accommodations. We've done that several times already this year where we've been able to",
+   "start": 2833.02,
+   "end": 2843.83,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "have discussions with the committee and lift redactions, and I'm happy to continue this pattern of accommodation.",
+   "start": 2843.83,
+   "end": 2847.66,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Well, and there have been a lot of staff conversations, but the reason that you're here is in part because",
+   "start": 2847.66,
+   "end": 2854.54,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "those staff conversations have not produced the documents that we have asked for. And this is not",
+   "start": 2855.15,
+   "end": 2862.06,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "when we ask for redacted, or documents without redactions, it's not a request. It's part of the subpoena.",
+   "start": 2863.3,
+   "end": 2872.23,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "So, the subpoena explicitly instructs the FBI to produce unredacted copies of the documents.",
+   "start": 2872.76,
+   "end": 2878.89,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "So let's look at this document that's entirely redacted, save for the opening and closing remarks.",
+   "start": 2879.44,
+   "end": 2884.27,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Can you articulate what was the reasoning behind the redaction here?",
+   "start": 2884.66,
+   "end": 2888.75,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "I can't as we sit here",
+   "start": 2889.37,
+   "end": 2892.44,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Because you can't read what's in the redaction.",
+   "start": 2892.44,
+   "end": 2893.99,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "determine that.",
+   "start": 2893.99,
+   "end": 2894.67,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Neither can anybody else.",
+   "start": 2894.67,
+   "end": 2895.73,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "I'm not I'm not the one",
+   "start": 2895.73,
+   "end": 2896.65,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Nobody can read the document, can they?",
+   "start": 2896.65,
+   "end": 2897.68,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "that that redacts, so I can't I can't as I sit here. I I I understand the concern. What I can tell you is that",
+   "start": 2897.68,
+   "end": 2904.38,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "we are we are striving to provide documents as limitedly redacted as possible.",
+   "start": 2905.01,
+   "end": 2908.76,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "So tell me, why are employees at Twitter and Facebook, many of whom do not have a clearance of any kind,",
+   "start": 2908.76,
+   "end": 2915.22,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "able to receive these communications unredacted, but members of Congress are not?",
+   "start": 2915.65,
+   "end": 2920.89,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "I'd just go back to what I said previously that we're we're bound by Department of Justice and executive branch policies that that dictate how we",
+   "start": 2923.61,
+   "end": 2933.91,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "provide information to Congress, and there are certain areas where we have to be more considerate and provide redactions. But those those conversations that we have with staff to talk about these redactions are extremely helpful for us",
+   "start": 2934.33,
+   "end": 2946.43,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "in coming to an accommodation to provide more information. So I appreciate that.",
+   "start": 2946.99,
+   "end": 2956.32,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "And an accommodation with the requests actually helps even more.",
+   "start": 2956.32,
+   "end": 2963.02,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "So earlier this week, committee staff prioritized a list of documents to be produced in unredacted form to the committee by December 8th.",
+   "start": 2963.5,
+   "end": 2970.61,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "You may recall that conversation, it just happened earlier this week. Mr. Dunham, can you commit",
+   "start": 2970.73,
+   "end": 2975.31,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "to producing these documents in unredacted form to the committee by that deadline?",
+   "start": 2975.31,
+   "end": 2980.59,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "We're working through those requests now. We just got them a couple days ago, and and we'll work to provide them as soon as possible.",
+   "start": 2981.87,
+   "end": 2987.89,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Are you aware that our subpoena requires the production of a privilege log if the FBI places redactions on certain documents?",
+   "start": 2988.66,
+   "end": 2995.6,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "I believe I've read that in one of the subpoenas, correct.",
+   "start": 2996.1,
+   "end": 3000.1,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "All right. When can the committee expect that privilege log?",
+   "start": 3000.32,
+   "end": 3002.99,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "I don't have a response for you today, but I'll take that back and see what we can provide.",
+   "start": 3004.09,
+   "end": 3008.97,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "All right. You'd agree that the committee subpoena compels the production of certain categories of documents, correct?",
+   "start": 3009.68,
+   "end": 3014.28,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "I believe so.",
+   "start": 3015.01,
+   "end": 3015.93,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Documents and communications between or among the FBI and the executive branch, correct?",
+   "start": 3016.43,
+   "end": 3020.91,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "I believe so.",
+   "start": 3021.73,
+   "end": 3022.69,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "All right. Why have no documents or communications with the White House or other federal agencies been produced?",
+   "start": 3023.23,
+   "end": 3027.91,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "We're working through the productions. Like I said, we provided four productions already over 600 pages of documents. We did prioritize the transcribed interviews, which we had three executives come up to spend the full day with the committee to talk about these issues and",
+   "start": 3028.94,
+   "end": 3042.86,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Okay. Can you commit to producing documents responsive to this category by December 14th?",
+   "start": 3042.86,
+   "end": 3048.23,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "I commit that we will provide information as soon as possible.",
+   "start": 3048.23,
+   "end": 3052.79,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "All right. The ranking member's recognized for 5 minutes.",
+   "start": 3054.12,
+   "end": 3057.94,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "Great. Thank you, Chairman. Mr. Dunham, following subpoenas you've received from the Judiciary Committee Republicans,",
+   "start": 3060.03,
+   "end": 3070.76,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "didn't you offer to meet and confer with Judiciary Republicans on multiple occasions?",
+   "start": 3072.15,
+   "end": 3077.56,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "I my staff has had several offers to meet and several conversations with staff.",
+   "start": 3079.13,
+   "end": 3084.25,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "And today, you are appearing voluntarily to this hearing.",
+   "start": 3085.16,
+   "end": 3089.47,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "Correct.",
+   "start": 3089.96,
+   "end": 3090.72,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "And this is the second time appearing voluntarily before this hearing, is that this committee, is that right?",
+   "start": 3091.68,
+   "end": 3097.23,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "That's correct.",
+   "start": 3097.4,
+   "end": 3098.54,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "Has the FBI provided committee Republicans with over 1,700 pages of documents?",
+   "start": 3101.42,
+   "end": 3106.84,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "It's actually over 2,500 pages.",
+   "start": 3107.96,
+   "end": 3110.15,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "And the FBI has also offered to work with committee Republicans to prioritize their document requests. Is that right?",
+   "start": 3002.5,
+   "end": 3008.3,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "That's correct.",
+   "start": 3008.8,
+   "end": 3009.9,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "This included offering in-person review of non-public documents. Is that right?",
+   "start": 3010.5,
+   "end": 3014.2,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "That's correct.",
+   "start": 3014.7,
+   "end": 3015.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "Have you seen on social media the doxing of what you would call non-SES, which is like senior-level employees, the names of FBI agents and DOJ employees, not by my Republican colleagues, but by just folks on social media who have doxed and put out their public information?",
+   "start": 3016.9,
+   "end": 3039.7,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "I have. And this goes to one of the areas where we're a little bit more considerate about where we can provide information. We are bound by Department of Justice and executive branch policies, which I mentioned previously. Some of those policies relate to non-SES employees. They feel that executives are best suited to answer questions and and answer for decisions that are made under their command. But it's not just about those policies. It's also about the safety of our employees. We've had employees that have been named by congressional committees, that have come before congressional committees, that have experienced harassment and threats this Congress. It's not lost on me that a couple of weeks ago, a man in Tennessee was arrested or pled guilty to conspiracy to kill FBI employees who were working on a January 6th case. We're in a heightened threat environment. Just last week, the website you're referring to, which had non-public information about our interactions with the committee, promotes doxing. It's got pictures of FBI employees. It's got their dates of birth, their addresses, their spouse names. It's ridiculous. It's unacceptable. So when I say we're protecting these employees, it's not some effort to hide the ball. It's to protect them for their safety and protect them from these threats and harassment that they've experienced this year.",
+   "start": 3040.6,
+   "end": 3207.2,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "Thank you, Mr. Dunham. Ms. Bumpus, welcome. You're also appearing voluntarily today, is that right?",
+   "start": 3207.7,
+   "end": 3213.7,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "That's right.",
+   "start": 3213.9,
+   "end": 3214.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "And this is your you're a 17-year career FTC employee, and and you've served under four Republican chairs and four Democratic chairs, is that right?",
+   "start": 3215.3,
+   "end": 3225.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "That's right.",
+   "start": 3225.7,
+   "end": 3226.7,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "And the Judiciary Committee only has jurisdiction over your antitrust work, is that right?",
+   "start": 3227.1,
+   "end": 3232.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "Correct.",
+   "start": 3232.2,
+   "end": 3233.1,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "And Ms. Darakoglu, welcome back. You have testified before, and you were unanimously confirmed by the United States Senate, is that right?",
+   "start": 3234.3,
+   "end": 3242.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "That's right.",
+   "start": 3243.0,
+   "end": 3244.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "And you are also voluntarily appearing?",
+   "start": 3244.3,
+   "end": 3246.7,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "Yes.",
+   "start": 3247.3,
+   "end": 3248.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "And second time for this committee?",
+   "start": 3248.3,
+   "end": 3251.4,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "Yes.",
+   "start": 3251.6,
+   "end": 3252.1,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "And did I hear right that the State Department has provided more than 1600 total pages responding to the House's investigation?",
+   "start": 3252.4,
+   "end": 3259.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "It's actually 1900.",
+   "start": 3259.4,
+   "end": 3261.2,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "Okay. So, just like the FBI's, it's going up",
+   "start": 3261.7,
+   "end": 3265.1,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "Yes.",
+   "start": 3265.2,
+   "end": 3265.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "as we speak. And you have also offered numerous times and through meetings, briefings, and correspondence to Judiciary Committee Republicans to meet with them and confer about the documents they want, is that right?",
+   "start": 3265.9,
+   "end": 3277.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "Yes, and we've also provided opportunities to meet with the Global Engagement Center itself.",
+   "start": 3278.4,
+   "end": 3283.6,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "What is the purpose of the Global Engagement Center?",
+   "start": 3284.9,
+   "end": 3288.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "The purpose of the Global Engagement Center is to identify, analyze, and expose foreign disinformation and propaganda.",
+   "start": 3288.6,
+   "end": 3296.2,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "Why is that a problem for us?",
+   "start": 3296.7,
+   "end": 3298.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "Uh it is a major problem uh because a lot of that foreign disinformation and propaganda often targets the United States.",
+   "start": 3298.9,
+   "end": 3305.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "Does it draw a distinction between the Republican Party or the Democratic Party when it presents itself?",
+   "start": 3306.4,
+   "end": 3312.4,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "Well, I'm not an expert in disinformation. Um from my personal experience, I can tell you that they do not discriminate between parties.",
+   "start": 3313.1,
+   "end": 3320.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "Great. Thank you. I yield back.",
+   "start": 3320.6,
+   "end": 3322.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Gentleman from New Jersey is recognized for five minutes.",
+   "start": 3323.0,
+   "end": 3325.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "unknown",
+   "text": "Thank you, Mr. Chairman. You know, I had prepared remarks, but I'm going to go off of them a little bit. I want to speak about my colleague and friend Eric Swalwell's remarks about feeding the beast. I I can't let it go. You want to know what the beast is? The beast is the invasion of people's personal rights, their freedoms. And when it's done by agencies, the beast is even bigger. The beast is the invasion of their security. The beast is when when we require, when a standing subcommittee of the Judiciary Committee, requires and requests documentation over and over again, and we don't get it. And if we weren't concerned about how much of it we were going to redact, if we weren't concerned that we didn't want the committee members to know, perhaps it would move a whole lot faster. This isn't about raw abuse of politics. Quite frankly, this isn't about Donald Trump or any one individual person. It's about the misuse of agencies. And we've had an FBI director who has admitted that it has happened right before this committee. We've had an attorney general who's admitted it. We have John Durham who did a report on it. We know it exists. Ben Franklin said, anybody that is willing to give up freedom for security deserves neither. The beast is $42 million that we spend on a secret program uh for confidential human sources that has hurt good people. That's the beast. That's the beast that we fear. That's why we have so much concern. That's why we have so many requests. This is serious stuff. It's about the very essence of this republic.",
+   "start": 3327.2,
+   "end": 3395.7,
+   "kind": "speech"
+  },
+  {
+   "speaker": "unknown",
+   "text": "So, Mr. Dunham, since the beginning of the Biden administration, our committee has been actively engaged in overseeing the actions of the FBI. And in doing so, we have made numerous requests for documents and information regarding a number of issues regarding the bureau's actions, their activities, and their operations. And we have continued issues obtaining said some such documents. We still have the problem. In In areas, we have gotten particularly little response. I mentioned confidential human source program, which we know has gone awry. We've proven that numerous times. Even the FBI has admitted it. On September 19th, the committee wrote to 2023, Director Christopher Wray, seeking clarity on the FBI's use of CHSs. Despite receiving an estimated $42 million of every man and woman who pays taxes in this country, the program is pretty much secretive. It's unacceptable to me. It's unacceptable. What we do know only comes from select testimony. What we do know comes from the Durham report, both of which were highly critical of the program. This is not a Republican talking point. It's not a Jeff Van Drew talking point. It is what we know and have found out. It is fact. Given these concerns, I have to wonder why the FBI has not addressed our requests and more thoroughly. So, in briefly, cause I'm going to run out of time, what steps have the FBI taken so far to provide the committee with the outstanding information requested September 19th, 2023 letter? What have they done? Please bullet it out. Not a long, vague thing. I want to know direct answers. What steps have you taken?",
+   "start": 3396.9,
+   "end": 3465.1,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "Sure. Uh thank you, Congressman. Uh so we've we've provided uh some information already on this topic. Uh earlier this year, we provided uh a letter in response to the committee that detailed some information about our CHSs. Uh we had the assistant director of our Counterterrorism Division come up earlier this year and brief the committee. And uh he discussed uh uh the CHS program a little bit during that briefing. We had six individuals who were uh come before the committee for transcribed interviews who got to this issue of uh of CHSs, and we're aware of the committee's additional uh requests, and we're working through them, and I hope to have information as soon as possible.",
+   "start": 3465.5,
+   "end": 3520.6,
+   "kind": "speech"
+  },
+  {
+   "speaker": "unknown",
+   "text": "Thank you, sir. Let me, because, you know, I'm a simple guy here, and so I just want a simple yes or no. Can you commit to providing the committee with the outstanding requests for information contained in the September 19th by December 14th of this year? We've been working on it a while. There's no reason that we can't do this. You say you have a lot of people on it. Can you commit to that, yes or no?",
+   "start": 3520.7,
+   "end": 3543.1,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "I can commit to providing the information as soon as we possibly can.",
+   "start": 3543.4,
+   "end": 3546.7,
+   "kind": "speech"
+  },
+  {
+   "speaker": "unknown",
+   "text": "Can you do it by December 14th?",
+   "start": 3547.0,
+   "end": 3548.7,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "I I I have to figure out where the information is. We're",
+   "start": 3549.0,
+   "end": 3551.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "unknown",
+   "text": "Why can't you do it by December 14th? We've This has been going on for a while.",
+   "start": 3551.9,
+   "end": 3555.2,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "I understand that. We've been providing a lot of responses to the committee, providing 30 responses this year already on six",
+   "start": 3555.4,
+   "end": 3560.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "unknown",
+   "text": "I can give you a commitment. We want it by December 14th.",
+   "start": 3560.9,
+   "end": 3563.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "I understand that, and I commit to you that we will provide it as soon as possible.",
+   "start": 3564.0,
+   "end": 3566.2,
+   "kind": "speech"
+  },
+  {
+   "speaker": "unknown",
+   "text": "That's not the answer I wanted. I yield back.",
+   "start": 3566.5,
+   "end": 3568.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Gentleman from Maryland is recognized for five minutes.",
+   "start": 3570.1,
+   "end": 3573.3,
+   "kind": "speech"
+  },
+  {
+   "speaker": "ivey-glenn",
+   "text": "Thank you, Mr. Chairman. I I This is I'm just getting increasingly angry as this hearing goes forward. I I think A, there's a Groundhog Day feel to this. Um and I want to make the request um because uh you know, we we have these witnesses come back that represent different departments over and over again, and there's a discussion about efforts to comply with the subpoenas. The The Republicans state their dissatisfaction with that. Um, but in the process, there's, I would think, communications between the majority staff and the the departments. Uh apparently, minority staff doesn't get included in those. I'd like to see those, uh because, frankly, when I look at some of these uh document requests, they're ridiculously overbroad. I mean the one here from April 18, 2018, number one, \"All documents and communications from January 1, 2020, to the present referring or relating to the moderation, deletion, suppression, restriction, or reduced circulation of content, the development, execution, or application of company's content moderation policy.\" I mean, how many documents are we expecting to get from You know, I I There should be some limitations on a request that broad. And And I I got to say this too, and it's a little broader than the context of this hearing, but the effort to comply with the Republican requests for documents um and information has gone above and beyond. I mean, you know, having Weiss come up here to testify uh in the middle of a of a prosecution, a federal prosecution, that the Republicans clearly want to have go forward, or I would think, um, and then asking him questions that no prosecutor should ever be asked in the middle of a prosecution, I mean, you never do that. But the Department of Justice took the extra step and made him available to come testify. And now, when you didn't like what he said, now the committee's issued subpoenas to the next layer of of prosecutors, Ms. Wolf and others. Um, same thing with the SES um requests too, uh, you know, which I thought was again over the top. Uh, you know, it's pretty unusual to have five SES employees come and testify, uh, but didn't like what they said, I guess. And then you tried to go and and get lower-level staff to testify. And in doing that, um, apparently majority staff reached out directly to people who were represented by counsel uh at the department in violation of bar counsel rule 4.2. Uh and you got a letter back from uh Chair Khan on that point, which I think is good, but I it's I think we need to make sure what we're trying to do here with the committee um is use the powers for the right purposes. I mean, you Mr. Chair made a reference to legislative purpose. I don't know that that the Judiciary Committee has any jurisdiction over the State Department, really. Um, and the legislative purpose for some of the things you've requested like this stuff about morale at the FTC, uh I don't really know what the legislative fix would be for morale issues. And, by the way, as somebody who's been on the opposite end of these kinds of subpoenas, you want to hurt morale for staff? Have them spend entire days going through files to turn up documents uh for stuff that's not relevant to the mission that they're trying to address, cuz, you know what, the State Department's, we've got two hot wars we're in the middle of right now with respect to Ukraine, uh with respect to Hamas. There's a lot of other things I mean, Antony Blinken, I feel like he's on a plane somewhere every day. But we've got instead of them addressing those kinds of issues, this is what we're talking about, you know, documents for what is this? Um, the the the I guess there's some theory about pipe bombs or, you know, uh some kind of fake effort uh or false flag with respect to the pipe bombs. And I'm looking at this, the January 6th, I think they've had 800 successful prosecutions in that case. Not one witness, not one case has raised anything about this. And homeland security, we had something about ghost buses where they're saying they were false, uh FBI agents undercover pretending to be part of the January 6th invasion, and there's not one piece of evidence to support it. 800 convictions, pleas, and and and trials. Nobody's raised this. And if they have a right to get it, you know it's in a criminal case. Same thing with this confidential human source stuff. If there's a confidential human source that testifies, or it has relevant information in a criminal case, it has to be disclosed. Where is the evidence of that in the cases that have come forward? I submit that there's none. I've run out of time. I guess I'll come back to this on the second range, second round, but I would ask just out of good faith,",
+   "start": 3574.6,
+   "end": 3662.6,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Gentleman's time has expired.",
+   "start": 3660.7,
+   "end": 3661.7,
+   "kind": "speech"
+  },
+  {
+   "speaker": "ivey-glenn",
+   "text": "allow us to participate in the meetings and get the emails that you send, and when they come up here to give full days of meetings to try and figure out how to comply with the subpoenas, please let us know so we can participate.",
+   "start": 3661.8,
+   "end": 3675.2,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "I'd be happy to take that under advisement. I would also state I think they know how to comply. The gentleman from Texas is recognized.",
+   "start": 3676.0,
+   "end": 3683.4,
+   "kind": "speech"
+  },
+  {
+   "speaker": "moran-nathaniel",
+   "text": "Uh thank you, Mr. Chairman. Ms. Bumpus, I want to talk to you briefly about some very specific requests to the FTC. On March 9th, 2023, a number of House Judiciary Committee members, including myself, Ms. Lee, Mr. Van Drew, uh wrote the FTC concerning its ill-advised current approaches to mergers and acquisitions. And in that letter, the committee requested related documents and information. Later, Chairman uh Jordan and Chairman Massie reiterated these requests on April the April 5, 2023. That was over seven months ago. There's still several requests, in particular items number 4 and 7, which will be the topic of my uh questions to you today. As a refresher, item number 4 is, \"All documents and communications referring to or relating to the decision to withdraw the Trump administration's 2020 Vertical Merger Guidelines.\" And then item number 7 is, \"All documents and communications relating to the FTC's policy concerning early terminations.\" Those are the two primary uh scopes of of what I want to ask you about.",
+   "start": 3684.5,
+   "end": 3736.6,
+   "kind": "speech"
+  },
+  {
+   "speaker": "moran-nathaniel",
+   "text": "We uh we understand that the FTC is not completed its productions of those uh requests. What's the status of the FTC's document collection and review of those two requests in particular?",
+   "start": 3745.0,
+   "end": 3755.7,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "Congressman, um as you're aware, we've made four productions and have produced over 1300 pages of documents so far. We are continuing to review documents and produce them on a rolling basis.",
+   "start": 3759.5,
+   "end": 3770.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "moran-nathaniel",
+   "text": "On those two specific requests, can you provide me any specific update as to the review and the production of those documents that are responsive?",
+   "start": 3771.0,
+   "end": 3778.6,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "I cannot, but as you know, our staff are in regular contact with staff on the committee and would be happy to engage with you on that.",
+   "start": 3779.1,
+   "end": 3786.6,
+   "kind": "speech"
+  },
+  {
+   "speaker": "moran-nathaniel",
+   "text": "All right. What's the reason why you can't provide me with an update today? I know that that's the topic of some discussion that's that's been had before today's hearing. So, I would expect that you would have been prepared to tell me when those documents could be produced or how much there how many documents are left to review. Can you tell me any of that information?",
+   "start": 3787.0,
+   "end": 3802.7,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "Uh regrettably, I cannot, but I'm happy to take that back, take your concerns and your priorities back, and um and and we will continue to work with the committee.",
+   "start": 3803.5,
+   "end": 3811.2,
+   "kind": "speech"
+  },
+  {
+   "speaker": "moran-nathaniel",
+   "text": "So, how come you weren't prepared to answer that question today? That seems like a very basic question and, frankly, a reasonable question. I'm supposed to be asking about a document production. Those are two uh requests that have been made and reiterated, not just by the committee, but by the chairman. You've been working on them for seven months. How come you can't tell me the status of that production?",
+   "start": 3812.3,
+   "end": 3831.3,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "I can tell you that we are continuing to review documents. Uh we will continue to produce them on a rolling basis. And we are happy to continue our regular contact with staff members on the Judiciary Committee.",
+   "start": 3832.0,
+   "end": 3842.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "moran-nathaniel",
+   "text": "On on those two specific requests, uh do you know if there are actual documents that are being reviewed internally uh potentially responsive to those requests?",
+   "start": 3843.0,
+   "end": 3851.3,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "I I don't know.",
+   "start": 3852.1,
+   "end": 3853.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "moran-nathaniel",
+   "text": "Do you know who would know at the FTC?",
+   "start": 3853.8,
+   "end": 3856.2,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "I'm happy to take that back. Again, I I know your staff are in regular contact with staff at the FTC about all of the productions.",
+   "start": 3856.8,
+   "end": 3863.6,
+   "kind": "speech"
+  },
+  {
+   "speaker": "moran-nathaniel",
+   "text": "With respect to those two requests, numbers uh 4 and 7, uh from that March 9th, 2023, letter, do you know if any email notification or other steps have been taken to notify individuals at the FTC to preserve materials that may be potentially relevant and responsive?",
+   "start": 3864.0,
+   "end": 3878.7,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "Yes. My understanding is that notices have gone out to custodians, and documents have been collected and placed in a central repository.",
+   "start": 3879.5,
+   "end": 3887.2,
+   "kind": "speech"
+  },
+  {
+   "speaker": "moran-nathaniel",
+   "text": "Who is the custodian of that central repository?",
+   "start": 3887.7,
+   "end": 3891.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "Uh there are many people with access to that central repository who deposit and review documents.",
+   "start": 3891.5,
+   "end": 3896.7,
+   "kind": "speech"
+  },
+  {
+   "speaker": "moran-nathaniel",
+   "text": "Who would be considered the ultimate custodian of those records?",
+   "start": 3897.0,
+   "end": 3900.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "I'm not able to provide that information today, but we're happy to continue talking to your staff.",
+   "start": 3901.0,
+   "end": 3905.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "moran-nathaniel",
+   "text": "I'm I'm still curious why you can't tell me who the custodian of those records are. You've been at the department for 17 years. In the Office of Congressional Relations, I would suspect you would know who the custodian of records is for this particular production request.",
+   "start": 3905.1,
+   "end": 3913.6,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "I I don't.",
+   "start": 3918.4,
+   "end": 3919.4,
+   "kind": "speech"
+  },
+  {
+   "speaker": "moran-nathaniel",
+   "text": "Can you find out?",
+   "start": 3920.8,
+   "end": 3921.9,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "I am happy to take your request back, and and and I I I know your staff, again, talks regularly to our staff.",
+   "start": 3922.8,
+   "end": 3929.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "moran-nathaniel",
+   "text": "My My question wasn't, \"Will you find out?\" My question was, \"Can you find out?\" Are you able to find out who the custodian of those records are?",
+   "start": 3929.2,
+   "end": 3935.9,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "I don't know that there is a single custodian of those records, like I said. Um staff from across the agency have been collecting records and place them and placing them into the repository for review.",
+   "start": 3936.3,
+   "end": 3946.9,
+   "kind": "speech"
+  },
+  {
+   "speaker": "moran-nathaniel",
+   "text": "Is it a large number of staff or just a limited number of staff that is the custodian or has access to that repository?",
+   "start": 3947.5,
+   "end": 3953.6,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "I I don't know the numbers. I'm happy to take that back.",
+   "start": 3954.2,
+   "end": 3956.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "moran-nathaniel",
+   "text": "Would you say it's more than 50?",
+   "start": 3957.0,
+   "end": 3958.4,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "I I I don't know.",
+   "start": 3958.8,
+   "end": 3960.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "moran-nathaniel",
+   "text": "Uh is there anything you can tell me about that document production today?",
+   "start": 3961.3,
+   "end": 3964.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "Nothing more than I've already said.",
+   "start": 3964.9,
+   "end": 3966.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "moran-nathaniel",
+   "text": "My request would be in the next 17 seconds before we let you go or before I let you go is um next time you come, those are really important questions. I'll probably ask you the similar questions next time. I'd like to know who's in charge, the custody of records. I'd also like to know, as it relates to items that have not been produced, what the status of that production is. That's useful information that we need as the committee to make decisions on this uh on this side of the dais, and it'll be helpful in reaching a conclusion as to our document requests. So, I would make that request of you. Thank you. I yield back.",
+   "start": 3967.0,
+   "end": 3998.6,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "Thank you.",
+   "start": 3999.0,
+   "end": 3999.6,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Gentlelady from Florida is recognized for five minutes.",
+   "start": 4000.7,
+   "end": 4003.1,
+   "kind": "speech"
+  },
+  {
+   "speaker": "lee-laurel",
+   "text": "Thank you, Mr. Chairman, and I'll start here today. Uh some of our colleagues today have questioned why we have these hearings, why we've continued to have these hearings, why we've done this more than once. And I think in the line of question and answer that we just heard, we were getting the answer to that loud and clear. And it's simple, because we have been requesting documents and subpoenaing documents and requesting information, and we still don't have it. If the documents responsive to the subpoenas had been provided, if the information responsive to the requests had been provided, we wouldn't be here. This hearing is only necessary because we do not have the responsive documents and information that have been requested of these agencies.",
+   "start": 4004.2,
+   "end": 4054.4,
+   "kind": "speech"
+  },
+  {
+   "speaker": "lee-laurel",
+   "text": "I would like to start here with Mrs. or Ms. Naz Durakoglu. On March 22nd, 2023, the committee wrote to GEC Special Envoy Rubin, requesting documents and information related to the nature and extent of the agency's interaction with technology companies and third-party groups over content moderation and the censorship of speech on social media and other platforms. Uh this information was subsequently subpoenaed on May 22nd, 2023, and also the subject of discussion at a prior hearing of this subcommittee in July.",
+   "start": 4055.6,
+   "end": 4103.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "lee-laurel",
+   "text": "To date, the State Department's production has been incomplete. The documents produced are limited to the work that the GEC has done to identify foreign miss- and disinformation promoted by various news outlets and platforms uh as well as coordination with third-party fact checkers, uh but we have less than 1800 pages of non-publicly available documents, much of which is not wholly related to the underlying requests. So, I'd like to start there.",
+   "start": 4114.1,
+   "end": 4157.7,
+   "kind": "speech"
+  },
+  {
+   "speaker": "lee-laurel",
+   "text": "Uh the committee subpoena compels the production of multiple categories of documents, for example, the production of certain documents and communications between the GEC and third-party entities such as the Stanford University's Election Integrity Partnership, correct? Okay.",
+   "start": 4200.0,
+   "end": 4214.3,
+   "kind": "speech"
+  },
+  {
+   "speaker": "lee-laurel",
+   "text": "Uh we don't have any documents yet related to uh or communications with the EIP or Election Integrity Partnership, uh and the failure to produce those communications is particularly of interest to the committee. There are only a few known custodians, the time frame is known, and uh there shouldn't be any concern about privilege because this relates to a third-party entity. You noted in your opening testimony that the focus really was on uh foreign actors and not domestic, uh which, of course, is one of the key issues that we're trying to get to the bottom of, is what was the nature of this relationship and the why? So, it would really add a lot of transparency to one of the core questions. So, could you tell me why there hasn't been more information produced on that subject, and what timeline could we expect additional compliance there?",
+   "start": 4215.3,
+   "end": 4305.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "Thank you, Congresswoman. Um I will note that I personally review every tranche this subcommittee receives, and seven tranches have been produced, so I can tell you several of those tranches did have information with third-party entities, cuz I have seen them myself. In terms of Stanford and others, I'm happy to get back to you, but just to say we have been producing responsive documents and 1900 pages of such have been provided to this committee. You referenced 1800 pages that are not public. Just to point out, 1800 out of the 1900 are not public, so we are we are completely responsive. But I on Stanford in particular, I'm happy to get back and see what we have.",
+   "start": 4306.4,
+   "end": 4345.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "lee-laurel",
+   "text": "Is it a reasonable goal for you all to provide those documents to us, those responsive documents, by December 14th?",
+   "start": 4346.5,
+   "end": 4354.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "So, I have to say as the Assistant Secretary for Legislative Affairs, it is my responsibility to be responsive to you all, and if I closed out this search at any point without knowing the full universe, that would not be adhering to my responsibility to be responsive, so I have to say, we're going to continue searching, we're going to continue providing documents to you all on a rolling basis, and I do not want to put a timeline on it because we're going to continue providing what we see as we get it.",
+   "start": 4355.2,
+   "end": 4422.3,
+   "kind": "speech"
+  },
+  {
+   "speaker": "lee-laurel",
+   "text": "So, your testimony with us today is that the efforts to continue to search and locate those documents is ongoing and you'll be providing us a rolling production?",
+   "start": 4423.0,
+   "end": 4431.1,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "Yes.",
+   "start": 4431.5,
+   "end": 4431.9,
+   "kind": "speech"
+  },
+  {
+   "speaker": "lee-laurel",
+   "text": "Okay. So, uh do we know to a certainty one way or the other whether there are more documents or is it something that further investigation and review is required to even make that determination?",
+   "start": 4432.2,
+   "end": 4441.9,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "I think we can confidently say or I can confidently say that there are more documents. Just to point out one example, there were nine requests in the original letter that you referenced. One of them is, \"All documents and communications from January 1st, 2020 to the present referring or relating to misinformation, disinformation, or mal\"",
+   "start": 4442.2,
+   "end": 4500.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "darakoglu-naz",
+   "text": "all information. These are broad scopes. We are working with your staff continually on prioritization, but yes, I think it's fair to say with with a request like this, there are more documents out there.",
+   "start": 4500.0,
+   "end": 4510.6,
+   "kind": "speech"
+  },
+  {
+   "speaker": "lee-laurel",
+   "text": "Thank you. Uh my time is expired, Mr. Chairman. I yield back.",
+   "start": 4511.0,
+   "end": 4514.4,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "I thank the gentlelady. Ms. Bumpus, as you know, on March 10th, 2023, the committee wrote to Chair Khan raising concerns that the FTC was abusing its authority in investigating Twitter. Committee requested relevant documents and communications. The chair refused to comply voluntarily with the committee's requests. Therefore, on April 12th, 2023, the committee issued a subpoena to Chair Khan for the relevant information. Notwithstanding that subpoena and the committee's subsequent accommodation and follow-up communications with the FTC, Chair Khan remains non-compliant with the subpoena. Her justification for failure to produce FTC documents and yours today are unpersuasive. First, the FTC has produced one document, a single document in response to the subpoena, correct?",
+   "start": 4514.4,
+   "end": 4606.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "I understand we we produced a document at the end of September.",
+   "start": 4607.0,
+   "end": 4612.9,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Are you aware that that document was already publicly available?",
+   "start": 4613.0,
+   "end": 4616.9,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "Um, yes.",
+   "start": 4618.0,
+   "end": 4620.6,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "So, the document that you produced, the only document that you produced in response to the subpoena, was a publicly available document. Do you think that that is compliance? Is that under your definition of compliance?",
+   "start": 4621.0,
+   "end": 4633.9,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "Mr. Chairman, as you know, the request implicates an active law enforcement investigation. Um, the commission has provided several non-public responses, um, and a lengthy and very detailed non-public briefing.",
+   "start": 4634.0,
+   "end": 4649.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Not responding to the subpoena.",
+   "start": 4649.0,
+   "end": 4651.1,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "Uh, this is responsive materials to the subpoena. We have addressed, um, your interests and addressed your concerns through our non-public responses, written responses, and through the non-public briefing.",
+   "start": 4651.1,
+   "end": 4704.9,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "You would not be here if you have addressed, uh, my, my interests and and the needs of this committee. Do you know Now, you have said that the FTC has identified custodians who may have documents responsive, and the FTC has taken steps to preserve documents responsive to the subpoena, correct?",
+   "start": 4705.0,
+   "end": 4724.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "Um, that that that that is my understanding.",
+   "start": 4724.5,
+   "end": 4727.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Okay. Uh, it's my understanding that the FTC has deleted former employee documents. Is that correct?",
+   "start": 4728.0,
+   "end": 4734.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "I I know that is a concern, and I know that is the subject of correspondence with uh what with your committee.",
+   "start": 4734.0,
+   "end": 4741.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "And you can confirm that you have that the FTC has deleted former employee documents.",
+   "start": 4741.0,
+   "end": 4746.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "Um, I think it is addressed in in our in we addressed your concerns in our correspondence.",
+   "start": 4747.0,
+   "end": 4753.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Is that a yes?",
+   "start": 4753.8,
+   "end": 4755.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "Um, I I believe that, um, that we did delete, um, emails of former employees.",
+   "start": 4755.0,
+   "end": 4803.1,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Has the FTC taken any steps to preserve documents of former employees who left the agency during the pendency of this investigation?",
+   "start": 4803.2,
+   "end": 4812.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "Um, my understanding is that we are preserving former employees', um, emails, and we are seeking to preserve, um, appropriate documents.",
+   "start": 4812.0,
+   "end": 4824.2,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "As you know, Congress can withhold agency funding when an agency ignores oversight requests, let alone a subpoena. Do you agree that the FTC's non-compliance with the subpoena should have significant repercussions for the agency?",
+   "start": 4824.5,
+   "end": 4839.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "Um, we are attempting to be responsive in light of the fact that this is an ongoing—",
+   "start": 4839.0,
+   "end": 4843.9,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "You're failing to be responsive.",
+   "start": 4843.9,
+   "end": 4845.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "—in—",
+   "start": 4845.8,
+   "end": 4846.1,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "You're failing. So, your stonewalling, your non-compliance today, um, is, quite frankly, insulting to this committee and insulting to the American people who we represent. We expect more from you. It is unfortunate that you are here again because we strive through our committee conversations, our staff conversations, to actually work behind the scenes to get the information that we've requested without having to resort to these hearings. We understand that it takes time from your schedule. We understand that it takes time from the staff behind you. But the American people are demanding these documents, are demanding this information, are demanding accountability. And we are the branch of government that must ensure compliance, that must ensure that those executive branch agencies that fail to comply are held accountable. So, I ask you again, can you confirm that the FTC will comply with the subpoena and provide the documents requested?",
+   "start": 4846.1,
+   "end": 5000.9,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "We will continue to attempt to meet the committee's informational needs consistent with protecting our law enforcement equities, and we will continue to review our ability to share additional information.",
+   "start": 5001.0,
+   "end": 5014.2,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "All right. Gentleman from California is recognized for 5 minutes.",
+   "start": 5014.5,
+   "end": 5018.9,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "Having a hard time understanding where all of this is going. We're in December now, and 92 individuals, many from your agencies, have come in for secret, non-public, no video recording interviews. And not a single one of them has come to a public hearing, has testified publicly about any of the claims that they're making. And so, after 92 people come in, and we're almost in December, and nothing is coming to public light, that's how you conclude that this is just an effort to feed the beast. That Donald Trump is not eating, and that he wants his allies in Congress to just bring in his enemies and to torment them. And then we see, you can't make this public. These people don't have anything that add up to what Donald Trump is alleging. And so we just go through this exercise. It's a little bit concerning because the FBI isn't tasked with small responsibilities. You know, they're only in charge of taking on terrorism, public corruption, child exploitation, white-collar crime, fraud, kidnapping. And instead, they're dealing with this nonsense to just satisfy a petty, aggrieved former president who has many of my colleagues, as I said, just working as his chefs. This is a buffet for the former president to just make him happy. And And the And the greatest example is Hunter Biden. These guys have literally in this room put up pictures of non-consensual nudes of Hunter Biden to embarrass the former to embarrass the current president. That's the length that they will go. And he says, \"Hey, I'll come in. You can show your pictures, you can embarrass me, there's not going to be any lines between what you think I've done and what you think my dad has done.\" And now they don't want to do it. It just shows a complete lack of seriousness. I actually think this Congress is more like the WWE. It's like pro wrestling. Because so many of these folks, when the cameras aren't on, when we're not in the {quote} {unquote} ring, they come up to me, they pay me and my colleagues compliments. Don't take my word for it. Talk to Mr. Ivey or anyone else on this committee. They mock the former president, and you see that in Liz Cheney's book, the number of these guys who mock the former president. But when the lights and cameras are on, we're in that ring, they've got to take the steel chair, swing it around because they're doing it on his behalf. And to the American public, they can't tell the difference that it's just for entertainment for these folks. These folks think that the American public are fans and that this is just entertaining and we're keeping, you know, the chief entertainer, Donald Trump, happy. These folks aren't fans. They're constituents. They want us to work work on making healthcare affordable. They want us to address the global crisis that could come to America. They want us to have more security on every corner in in America so that we're safe in our communities. They want their college to be affordable. They want breathing room in their personal finances. And so it is a little maddening that you all are dragged in here for what is really just, as I said, more feeding of the beast, this pro wrestling exercise where I promise you when we're not in front of the lights and camera, these guys are going to roll their eyes at Donald Trump. They don't like him, but they do this because they need him and his fans to stay in office. And I'm sorry that the important work that you're doing for all of our constituents, including their constituents, is affected and delayed and held up because we have to feed the beast. I yield back.",
+   "start": 5019.0,
+   "end": 5245.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Thank the gentleman. As a fan of WWE, I can assure him the Congress is is not WWE, but if it is, then this administration is the equivalent of The Sopranos. Gentleman from New Jersey is recognized.",
+   "start": 5245.5,
+   "end": 5257.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "unknown",
+   "text": "Thank you, Chairman. Uh this has been a very colorful meeting today, and uh it's part of my personality. I can't let things go. So let's be clear. This is not about WWE, it's not about Donald Trump, it's not about any of these things. It's about a concern. Let's really get down to the real essence, the nub of this, that agencies have information that reveals that there are problems in some of the things that they did.",
+   "start": 5257.0,
+   "end": 5288.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "unknown",
+   "text": "And this is not far-fetched. This is not fabricated. This is not something untrue. We know, for example, that the FBI had a plan to send undercover agents into traditional Roman Catholic churches. The FBI director apologized for it, said it was wrong. We know for the truth that there was no Russian collusion. The Attorney General said that was true. The Durham Report, which was objective, not done by a Republican or a Democrat, just an objective report showed that they used confidential sources, namely Igor Danchenko, who was a bad international actor, and paid him American tax dollars, and it was all false. Those are just two brief, small examples. So, the reason we're doing this, the reason this is important is because we are trying to get information that is occurred within agencies, whether it be the FBI, whether and again, it goes across the board into many different agencies, the misuse of FISA, by the way. That's something that a traditional liberal should be concerned about, the misuse of FISA, because guess what? Hundreds of thousands of times, they were invading people's personal lives and getting information on every Jack and Jill in the country. People don't like that. We're a free country. That's a mark of a totalita- totalitarian country. So, it boils down to those specific facts. We're being specific here. You guys are busy and you're doing a lot of important work. I realize that. You're busy, but you're not forthcoming with the information because I think it's I, quite frankly, and I believe this to my very core, there's information there that you don't want us to know. So, the work of this committee is important because we need to have that information in order to get to the truth. And it's good for all of us to know what the truth is. You know, a trick in politics is to get people's eye off the ball about a feast, about Donald Trump, about feeding the be- It's none of that. It's just that we want specific, and we've been specific. We want specific information. Turn it over, and you don't have to be here. Guess what? This whole committee is busy. We don't want to be here, either. But we're not getting the stuff we need, and we're going to keep doing it over and over again. And you're probably going to be told over and over again to do everything you can to talk around it. But we're going to keep asking the questions, because it is our job, because we want to keep this a free country. And it really does boil down to that. So, in any event, Ms. Bumpus, as you know, the committee also wrote the FTC on February 14th, 2023, requesting documents and communications related to the FTC's non-comp- non-compete rule making. We haven't heard back in nine months. I know we're all saying here there's an effort to do this, but it's been nine months. Has the FTC completed its collection of documents? Please just yes or no.",
+   "start": 5288.0,
+   "end": 5427.9,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "Um, my understanding is that we are still producing documents on a rolling basis. We've produced uh almost 6,000 pages to date, and we've made eight productions.",
+   "start": 5427.9,
+   "end": 5434.9,
+   "kind": "speech"
+  },
+  {
+   "speaker": "unknown",
+   "text": "Okay, but you haven't completed it. Uh do you know how much remains?",
+   "start": 5435.0,
+   "end": 5439.1,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "I do not.",
+   "start": 5439.1,
+   "end": 5440.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "unknown",
+   "text": "Okay. I You know, specific questions were asked today of you all, um, by uh Congressman Moran and uh Ms. Lee, uh Congresswoman Mali Lee. I I would hope that next time when you're going because you're going to be here again, that when you come again, you can answer the specific questions that were asked today. The FTC completed its review of the documents it as it collected? As it completed its review? I know the answer is no from what you've told me, correct?",
+   "start": 5440.0,
+   "end": 5506.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "That's correct.",
+   "start": 5506.5,
+   "end": 5507.9,
+   "kind": "speech"
+  },
+  {
+   "speaker": "unknown",
+   "text": "When does the FTC expect to complete the full production of documents in response to the February 14th letter? If you ask me when I expect, at least. We're not even going to lock you in, but say, \"Gee, this is when I expect it would be done. This is what we believe unless there's something that happens that we don't anticipate.\" Can you give me a date, a time frame, any information?",
+   "start": 5508.0,
+   "end": 5530.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "bumpus-jeanne",
+   "text": "I I'm sorry, I can't. Um, as you know, the committee has sent us 15 letters. It's made 76 requests. I know this is a priority. Other oversight committees also believe that their requests are priorities. We are attempting to meet all of these demands while continuing to do the work of the agency.",
+   "start": 5530.0,
+   "end": 5548.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "unknown",
+   "text": "Thank you. But some some of those, um, are duplicatives, so when you answer our questions, you're going to be answering other people's questions. And again, Mr. Moran, Ms. Lee, I, and I think the chairman, of course, we've all asked specific questions. Uh there's no reason you can't come back next time. Sorry to say there will be a next time, I believe. It's up to the chairman, um with specific answers. I thank you for being here today. You're nice people. And real quickly to uh Congressman Swalwell, sure, I'm going to be nice when I see you. We're all colleagues. We disagree profoundly to the core and everything that uh we believe, but nevertheless, we're still human beings and you can still like people, but thoroughly disagree with them. I yield back.",
+   "start": 5548.8,
+   "end": 5628.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "I'm offended I'm offended on your behalf for the Sopranos comment as a representative of New Jersey.",
+   "start": 5628.0,
+   "end": 5631.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "unknown",
+   "text": "That's right. I didn't even go into that New Jersey remark. Thank you.",
+   "start": 5631.5,
+   "end": 5635.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Gentleman from Maryland recognized for 5 minutes.",
+   "start": 5636.0,
+   "end": 5639.2,
+   "kind": "speech"
+  },
+  {
+   "speaker": "ivey-glenn",
+   "text": "Thank you, Mr. Chairman. Um, yeah, I'm a little surprised by the Sopranos comment. Uh seems like the Trump family'd be allied closer to the Sopranos than the Biden family, but we'll leave that to the side for the moment. Um, I I I agree with Congressman Van Drew with respect to uh Section 702. Um, and I would also note that not only goes does it go to the heart of protecting the country uh as we heard from the testimony here from uh Chairman Wray, and I believe from the Attorney General not that long ago, and I heard it in Homeland Security as well. What's interesting, though, is that there's bipartisan legislation pending to address 702, which expires, I believe, at the end of December. Um, and we haven't had a hearing on it. Um, you know, we we we we've we keep doing these kinds of hearings and then these other kinds of hearings where I think they're off on the tangents about other things, but, you know, it'd be nice to try and and and, by the way, uh Director Wray testified in Homeland Security there were four other provisions that are set to expire that he thinks are important for national security reasons uh that we need to address. No hearings here in Judiciary, no hearings here on Homeland Security, either, with respect to those issues. Um, so I hope, since I assume all of us are interested in national security, um especially of of that nature, um you know, we can get around to having a hearing on that. Maybe we can squeeze it in between one of these these uh production hearings that we keep having. Uh and, you know, with respect to the legislative purpose issue, you know, we've got pending legislation for 702. I don't know that I've seen any legislation that's come out of the 11 months of hearings we've been having on these kinds of issues. Uh so I look forward to that. If there is a legislative purpose, um let's get to it. Let's get the the legislation out. Uh one other comment, too. You know, I worked on the Senate Whitewater hearings. And when I first got there, the Democrats were in the majority. After that election that came up in '94, I was on the minority staff. But no matter which side I was on, the two staffs worked together uh to deal with these kinds of document productions. Matter of fact, before these subpoenas went out, uh the minority staff, whichever was Democrat or Republican depending on the time, had a chance to review it and raise concerns or questions about it. So I think the the the subpoena I mentioned earlier, I think I think we certainly would have raised concerns about that before it was sent out because, as I said, it was tremendously overbroad. By the way, it didn't have an end date, either. So when you all say you're going to you have to do rolling productions, um I guess that's understandable because there's no deadline for when the to, you know, the the production is supposed to terminate and, potentially, new documents could have been generated. So I think you have to be careful about making some sort of date commitment. And just to mention this as well, in court contexts, civil or criminal, uh rolling productions are understood. And so the rules of discovery and productions are are written in a way that contemplate the fact that, \"All right, produce what you can, but uh there may be documents that that you find later.\" Uh certainly, in agencies as large as yours and the and the number of demands that you're facing from across all these House committees. Um so I would I would hope that we could keep that in mind. But I think at the end of the day, I mean, I would say this. Uh we have a lot of very urgent matters uh that we could be addressing, and I hope that we can get to them. As I mentioned, there's a hot war going on uh with respect to Hamas. Um I would note that maybe it was 2 weeks ago that's this bin Laden letter surfaced um that became viral. And uh you know, one of the things that we heard in the testimony in the Homeland Security Committee was there's a sensitivity or concern about uh lone wolf terrorism being generated here in the United States by these kinds of online outreach efforts. Um and we know that Hamas and other terrorist organizations engage in that sort of thing, and, frankly, they've been successful with that. We also know from testimony that from the FBI and the Department of Justice and Homeland Security that the domestic terrorism threat is bigger than foreign terrorism threat here in the United States. So it'd be good if we allowed agencies that are trying to address these kinds of things. It's CISA at at uh Homeland Security. I think your agency has GAEC has some over- oversight with respect to this on the foreign side. Um but these are important times to allow you to do that work, and tying your hands at a time when I think, well, actually, I don't have to say I think, the uh FBI Director testified that there's heig- heightened risk of that kind of terrorism taking place, seems like a bad idea to me and and puts the American people at risk. So I would hope that we can get to the point where we're addressing those kinds of critical issues that have that kind of deadline and uh do some of that work here in the committee. And with that, I yield back.",
+   "start": 5639.2,
+   "end": 5753.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Thank the gentleman. Gentlelady from Florida is recognized for 5 minutes.",
+   "start": 5753.5,
+   "end": 5757.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "lee-laurel",
+   "text": "Well, I feel like we need to start here again. There've been numerous hearings on the subject of FISA and 702. In the crime subcommittee, we've had two full hearings on that subject. In fact, the Judiciary Committee and its various subcommittees have hearings every single week on urgent and important substantive issues. We are here today because it is also important and significant and meaningful that when a committee of the United States Congress asks for documents or information from an agency, that we get a response. It is not nonsense when the United States Congress requests documents and that request is ignored. It is not nonsense when we conduct a hearing to get compliance with a subpoena or a document request and we are slow-walked or we are stonewalled. One of our important functions here is to ensure that we are providing accountability, oversight, and transparency for the American people. That is one of the important functions that we have. And to suggest that the work of this committee is somehow unimportant or a waste of time is to absolutely miss the fundamental principle that the role of Congress is to ensure that we are providing that accountability and transparency. And that is why we were here. If we received the documents we requested immediately upon submission of the subpoena, a hearing would be unnecessary. But we haven't, and so we continue. I'm familiar with the concept of a rolling production. In fact, I'm a former judge. I'm very familiar with what happens in the context of document productions and discovery. The difference is, if we were in a courtroom, in a standard courtroom, and we requested documents and they weren't received by a deadline, you know what we would do? We would have a contempt hearing. And if in that instance there still wasn't compliance, there's an escalating range of sanctions that get imposed by a judge. So, we are here, and we work with you, and we will continue to work with you in good faith in an effort to find what exists, to do so in a meaningful and reasonable way, to appreciate your compliance, and to work with you when there is more that we need. But it is abjectly incorrect to insinuate that this hearing, that our purpose here today, that our continued purpose in having these hearings if it continues to be necessary, is insignificant. What we are doing here today is the foundation of providing transparency and accountability, and we will continue to have these hearings for as long as it takes. Mr. Dunham, this committee has requested documents from the FBI related to a couple of different categories that I would like to address with you here today. One relates to pipe bombs that were placed at the RNC and the DNC headquarters in January of 2021. The second is documents related former Special Agent in Charge Charles McGonigal, uh and the alleged politicization of the FBI. So, let's begin there. On February 2nd, 2023, the committee wrote a letter to Director Wray requesting documents and information related to uh the indictment of Mr. McGonigal, the former Special Agent in Charge. Uh has the FBI searched for documents responsive to this request?",
+   "start": 5759.0,
+   "end": 5932.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "We provided a initial uh response earlier this year. It was a classified response, uh providing information about uh security steps that we took to mitigate national security concerns. As you're aware, the investigation is still ongoing to the point where Mr. McGonigal has not been sentenced yet, so there are still some of those Department of Justice uh considerations that that that that we are bound by. But, uh I understand that the the committee has additional requests for info-",
+   "start": 5933.0,
+   "end": 6000.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "information and happy to continue to provide reformation once the uh the issue is adjudicated. I'm happy to to see what else we can provide as well.",
+   "start": 6000.0,
+   "end": 6009.68,
+   "kind": "speech"
+  },
+  {
+   "speaker": "lee-laurel",
+   "text": "And explain for us if you would the distinction in what you will be able to produce prior to adjudication and post-adjudication, and why.",
+   "start": 6010.5,
+   "end": 6020.21,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "I'll have to take that back. I'm not I'll have to talk with folks that are closest to this, closest to the case, and see what information we can provide.",
+   "start": 6021.28,
+   "end": 6027.94,
+   "kind": "speech"
+  },
+  {
+   "speaker": "lee-laurel",
+   "text": "All right, please if you would, that will be something that is a subject in a future hearing should we reconvene on the subject. With respect to the pipe bomb investigation, what steps has the Bureau taken so far uh to provide the committee with outstanding information that was requested in the June 14, 2023, letter?",
+   "start": 6028.47,
+   "end": 6046.06,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "Sure, so uh I was disappointed that we were we we offered a briefing a couple of weeks ago. We weren't able to make schedules work. I believe we have a briefing scheduled for December 12th, a couple of weeks from now. Uh, we have provided an initial response last Congress on this that went to the the heart of kind of what we've done so far on the on the case as best we could. We provided an updated response this Congress. This is one of those areas where I mentioned earlier were bound by Department of Justice and executive branch uh policies, where",
+   "start": 6046.12,
+   "end": 6075.69,
+   "kind": "speech"
+  },
+  {
+   "speaker": "dunham-christopher",
+   "text": "we have considerations we have to make when things touch on ongoing investigations. The pipe bomb is very much still ongoing. We've been able to make a significant accommodation for the committee to get this briefing scheduled. Uh, I hope it satisfies a lot of your questions. I'm I'm I'm I'm we'll be waiting and standing by for any questions that are not answered uh to take those back and see how we can accommodate the committee.",
+   "start": 6075.9,
+   "end": 6137.94,
+   "kind": "speech"
+  },
+  {
+   "speaker": "lee-laurel",
+   "text": "Thank you, Mr. Chairman, I yield back.",
+   "start": 6138.41,
+   "end": 6140.23,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "Thank the gentlelady for her comments, for reminding us of the tools that were at her disposal, some of which are at our disposal uh in this body. But uh that concludes today's hearing. As with hearings we've had over the past year, I'm disappointed in the answers that have been given, the lack of clarity and a commitment to produce the documents that we've requested. And as we near the one-year anniversary of the establishment of this subcommittee, we have to consider whether uh additional action must be taken to hold accountable those offices, those officials who are refusing to comply and engaging in what is essentially the obstruction of justice. Without objection, all members will have five legislative days to submit--",
+   "start": 6140.66,
+   "end": 6218.42,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "Mr. Cline?",
+   "start": 6218.47,
+   "end": 6218.84,
+   "kind": "speech"
+  },
+  {
+   "speaker": "cline-ben",
+   "text": "--the gentleman is not recognized, additional written questions for the witnesses or additional materials for the record. Without objection, this hearing is adjourned.",
+   "start": 6218.9,
+   "end": 6226.79,
+   "kind": "speech"
+  },
+  {
+   "speaker": "swalwell-eric",
+   "text": "I was just going to ask about uh the follow-up on the--",
+   "start": 6228.69,
+   "end": 6234.34,
+   "kind": "speech"
+  }
+ ],
+ "inserts": [],
+ "source": {
+  "kind": "gemini_transcription",
+  "url": "",
+  "video_id": "8V3OGbZOLB0",
+  "model": "gemini-3.8-flash (video)",
+  "generated_at": "",
+  "notes": ""
+ },
+ "schema_version": "1.0"
+}

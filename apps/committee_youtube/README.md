@@ -51,7 +51,7 @@ Rules:
 - **Mistagged videos:** committees sometimes tag a video with another hearing's event ID, and Congress.gov's link follows the tag. Event-ID or Congress.gov evidence for a video posted more than a week after the hearing ranks below a same-week title match when the video's title doesn't match the hearing, or matches a hearing held the week it was posted.
 - **One video per hearing:** each video goes to its best-matching hearing. Hearings on the same day may share one.
 - **Clips:** a video found by weaker evidence (no Congress.gov link or event ID) counts as a clip when it's under 20 minutes, or under 30 minutes with a member-clip title ("Wyden Q&A …", "Chairman Smith Questions Witnesses …", "Opening Statement …"). Senate party channels post question rounds of that length for most hearings.
-- **Multi-hearing Appropriations volumes:** these are matched on each hearing day, read from the transcript (the `hearing_dates` column). About a quarter of them are scanned PDFs with no text, so only their GPO date is used.
+- **Hearing days come from the transcript:** `gpo-fetch` reads the day headers of every transcript since the 113th Congress, and a hearing is matched on each day they name (the `hearing_dates` column), else on GPO's held date, and on both when the transcript names one day and GPO another. Multi-hearing Appropriations volumes are matched to meetings by subcommittee, since their title names no hearing. Scanned prints have no text, so only their GPO date is used.
 
 `data/hearing_video_overrides.csv` holds reviewed verdicts from the September 2026 research, plus `found_offsite` rows for Senate hearings whose recording the senate.gov archive probe found (`research/scripts/as_run/senate_isvp_probe.py` in the docs folder). They're used where they exist, with these exceptions:
 - a "no video"/"clips only" verdict gives way to strong new evidence, or to a dated recording of 30+ minutes;
@@ -85,13 +85,50 @@ Useful columns:
 - `event_id`: the Congress.gov event ID. It's only recorded from about the 114th Congress on, and not always.
 - `days_to_govinfo`: days from hearing to publication. Before about the 111th Congress this is when GPO digitized old records.
 - `record_type`: `hearing` or `errata`.
-- `hearing_dates`: every hearing day in an Appropriations volume.
+- `hearing_dates`: the hearing days the transcript's day headers name, when they say more than `held_date`: every day of a volume or a multi-day hearing, or the one day GPO dated differently.
+- `text_read`: `yes` once the transcript has been read for its day headers.
+- `committee_name`: GPO's name for the committee, or, where GPO names none, the committee on the transcript's title page. `committee_code` is then filled from the code GPO most often gives that name in that chamber.
 
 **`gpo-transcripts`** downloads transcript text to a local folder for search or summaries. It isn't committed: all House and joint hearings since 2013 come to about 2 GB.
 
 ```bash
 gpo-transcripts --out-dir ~/transcripts --congress 118 --committee hsvr00
 ```
+
+## Transcripts and captions
+
+GPO prints transcripts for roughly 70–90% of House hearings, months later, and for none of the markups. For the rest, the recordings' captions are the only text:
+
+| Command | Source | Text quality |
+|---|---|---|
+| `gpo-transcripts` | GPO's printed transcript | The record |
+| `youtube-captions` | The video's English caption track: the uploader's if there is one, else YouTube's automatic captions | Automatic captions are unpunctuated speech recognition, fine for search and for finding who said what when |
+| `senate-captions` | The caption track of the Senate player's recordings since mid-2023 | Closed captions as broadcast, in capitals |
+
+```bash
+youtube-captions --out-dir ~/hearing-text/youtube --ids-file videos.txt
+senate-captions  --out-dir ~/hearing-text/senate  --urls-file links.txt   # senate.gov/isvp/?comm=...&filename=... links
+```
+
+Each writes one text file per recording and a `captions_index.csv` (what was fetched and what had no track), and skips what's already there. YouTube starts asking for a sign-in after a few hundred requests from one address. A JavaScript runtime on the machine (`brew install deno`) makes that rarer, `youtube-captions --proxy http://<zyte-api-key>:@api.zyte.com:8011` routes the fetch through Zyte's proxy mode, which passes, and failed videos are left out of the index so the next run retries them. Like `gpo-transcripts`, they fill a local folder rather than the repository. Older Senate recordings (the archive path, before mid-2023) carry captions only inside the video stream, which `senate-captions` doesn't decode. C-SPAN no longer publishes transcripts of its programs.
+
+`packages/congress_api/src/congress_api/senate/isvp.py` holds the Senate player's committee table and URL patterns, shared by `senate-captions` and the archive probe in the docs folder.
+
+### Machine transcripts in the print's shape: `hearing-transcribe`
+
+For a hearing with no print, `hearing-transcribe` produces a transcript with the members and witnesses named, in one schema that a GPO print also parses into (`congress_api/transcribe/schema.py`: header, participants with role, party, state, bioguide ID and affiliation, speaker turns with times, record inserts). It writes `<id>.json` and `<id>.gpo.txt`, the latter laid out like the print.
+
+```bash
+export GEMINI_API_KEY=...
+hearing-transcribe --event-id 116xxx --out-dir ~/hearing-text/transcripts --gpo-path apps/committee_youtube/data/gpo_hearings.csv --meetings ../pipeline-data/congress_meetings.jsonl.gz
+hearing-transcribe --gpo-package CHRG-118hhrg54254 --out-dir ...     # the print itself, parsed into the schema
+```
+
+Who was in the room comes from the Congress.gov meeting record (witnesses with organization and position), GPO's MODS record for the hearing or for the committee's nearest printed hearing that Congress (members with party, state and bioguide ID), and congress-legislators for current members.
+
+Gemini 3.8 Flash transcribes the recording in 25-minute windows into named speaker turns: the YouTube video itself, where it reads the name plates and hears the chair's recognitions, or uploaded audio chunks for senate.gov and local recordings. Measured on a 2023 Judiciary hearing against its print: word error rate 8.7% (largely the print's own editing of false starts and repairs), speaker right on 85% of words, about 5 minutes and 600k input tokens for a 100-minute hearing.
+
+Window size is set by the model's recitation filter, not its context: a verbatim window over about 30 minutes, or the whole video in one call, comes back empty, so a window that fails is split in half. The dedicated transcription model (Gemini 3.5 Transcribe, with diarization and word timestamps) matched the words as well but its speaker labels mapped to the right person for only 66–74% of words, so it isn't used; `docs/youtube-coverage/research/scripts/transcribe_compare.py` and `research/data/transcribe_compare/` hold that comparison.
 
 ## Running locally
 

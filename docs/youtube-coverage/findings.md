@@ -14,10 +14,10 @@ We compared every official hearing transcript that GPO has published since 2013 
 | Full recording on a tracked committee channel | 8,768 | 90.9% |
 | Full recording only on another YouTube channel (member, news, third party) | 64 | 0.7% |
 | Full recording off YouTube (senate.gov, C-SPAN, an archive) | 217 | 2.3% |
-| Only clips or opening statements on YouTube | 226 | 2.3% |
+| Only clips or opening statements on YouTube | 227 | 2.4% |
 | Never public video (closed session, written-only volume, errata) | 65 | 0.7% |
 | No video found | 298 | 3.1% |
-| Held before the committee's earliest tracked video | 5 | 0.1% |
+| Held before the committee's earliest tracked video | 4 | 0.0% |
 <!-- /table:house_summary -->
 
 The gaps are almost entirely historical. **Since the 116th Congress (2019), 99.1% of House and joint hearings have a full recording.** Only 18 hearings since 2019 have no video found; among them are field hearings and Appropriations placeholder records.
@@ -27,13 +27,14 @@ The gaps are almost entirely historical. **Since the 116th Congress (2019), 99.1
 <!-- table:senate_summary -->
 | Outcome | Hearings | Share |
 |---|---|---|
-| Full recording on a tracked committee channel | 345 | 5.9% |
-| Full recording off YouTube (senate.gov, C-SPAN, an archive) | 5,119 | 87.7% |
+| Full recording on a tracked committee channel | 347 | 5.9% |
+| Full recording only on another YouTube channel (member, news, third party) | 5 | 0.1% |
+| Full recording off YouTube (senate.gov, C-SPAN, an archive) | 5,203 | 89.2% |
 | Only clips or opening statements on YouTube | 13 | 0.2% |
 | Never public video (closed session, written-only volume, errata) | 49 | 0.8% |
-| No video found | 211 | 3.6% |
-| Held before the committee's earliest tracked video | 23 | 0.4% |
-| Committee has no YouTube channel | 75 | 1.3% |
+| No video found | 191 | 3.3% |
+| Held before the committee's earliest tracked video | 17 | 0.3% |
+| Committee has no YouTube channel | 10 | 0.2% |
 <!-- /table:senate_summary -->
 
 **Senate hearings are on the Senate's own player, not YouTube.** The Senate Recording Studio hosts committee video at senate.gov and names each recording after the committee and date. Congress.gov links those recordings from Senate meeting records since late 2023 (1,381 links, none to YouTube, while all 7,538 House links go to YouTube). For everything earlier or unlinked, a probe of the player by committee and date found recordings for 4,786 of 5,115 hearings. Senate committees' YouTube channels are party channels carrying members' statements and a selection of hearings; only Environment and Public Works' Democrats have livestreamed hearings there since 2011.
@@ -56,7 +57,7 @@ What was still missing was then searched off YouTube. Eight agents took the 840 
 |---|---|---|---|---|---|---|---|
 | 113th | 2013–14 | 1,791 | 1,389 | 168 | 17 | 216 | 77.6% |
 | 114th | 2015–16 | 1,716 | 1,587 | 54 | 23 | 50 | 92.5% |
-| 115th | 2017–18 | 1,482 | 1,462 | 3 | 2 | 14 | 98.7% |
+| 115th | 2017–18 | 1,482 | 1,462 | 4 | 2 | 14 | 98.7% |
 | 116th | 2019–20 | 1,404 | 1,373 | 1 | 14 | 15 | 97.8% |
 | 117th | 2021–22 | 1,163 | 1,158 | 0 | 5 | 0 | 99.6% |
 | 118th | 2023–24 | 1,439 | 1,434 | 0 | 2 | 3 | 99.7% |
@@ -73,16 +74,16 @@ Sorted from least to most complete. Committees with fewer than 5 GPO hearings ar
 | Committee | Hearings | Full recording | Clips only | Not public | None found | Found | Found since 2019 |
 |---|---|---|---|---|---|---|---|
 | Select Committee on Benghazi | 15 | 4 | 0 | 11 | 0 | 27% | — |
-| (no committee code in GPO data) | 17 | 14 | 0 | 2 | 1 | 82% | 83% of 12 |
+| (no committee code in GPO data) | 6 | 4 | 0 | 1 | 1 | 67% | 67% of 3 |
 | Homeland Security | 533 | 442 | 79 | 1 | 11 | 83% | 100% of 284 |
-| Education & Workforce | 388 | 328 | 18 | 10 | 32 | 85% | 100% of 223 |
-| Armed Services | 678 | 585 | 22 | 0 | 71 | 86% | 100% of 284 |
+| Education & Workforce | 390 | 330 | 18 | 10 | 32 | 85% | 100% of 225 |
+| Armed Services | 681 | 588 | 22 | 0 | 71 | 86% | 100% of 287 |
 | Veterans' Affairs | 456 | 400 | 19 | 2 | 35 | 88% | 100% of 206 |
 | Appropriations | 308 | 272 | 0 | 24 | 12 | 88% | 93% of 140 |
 | Helsinki Commission | 202 | 180 | 0 | 1 | 21 | 89% | 98% of 90 |
 | Transportation and Infrastructure | 428 | 384 | 14 | 0 | 30 | 90% | 100% of 238 |
-| Judiciary | 651 | 609 | 12 | 10 | 20 | 94% | 97% of 366 |
-| Foreign Affairs | 1,000 | 937 | 50 | 0 | 12 | 94% | 100% of 348 |
+| Judiciary | 654 | 612 | 12 | 10 | 20 | 94% | 97% of 368 |
+| Foreign Affairs | 1,000 | 937 | 51 | 0 | 12 | 94% | 100% of 348 |
 | Small Business | 503 | 473 | 1 | 0 | 29 | 94% | 95% of 261 |
 | Congressional-Executive Commission on China | 71 | 67 | 0 | 2 | 0 | 94% | 100% of 40 |
 | Select Committee on the Climate Crisis | 43 | 42 | 0 | 0 | 0 | 98% | 98% of 43 |
@@ -90,11 +91,11 @@ Sorted from least to most complete. Committees with fewer than 5 GPO hearings ar
 | House Administration | 190 | 186 | 0 | 0 | 4 | 98% | 99% of 129 |
 | Ways and Means | 269 | 264 | 2 | 0 | 3 | 98% | 100% of 83 |
 | Budget | 85 | 84 | 1 | 0 | 0 | 99% | 100% of 60 |
-| Oversight and Government Reform | 910 | 900 | 4 | 0 | 6 | 99% | 100% of 466 |
-| Agriculture | 220 | 218 | 0 | 1 | 1 | 99% | 100% of 119 |
+| Oversight and Government Reform | 911 | 901 | 4 | 0 | 6 | 99% | 100% of 466 |
+| Agriculture | 221 | 219 | 0 | 1 | 1 | 99% | 100% of 120 |
 | Financial Services | 731 | 727 | 1 | 0 | 3 | 99% | 100% of 394 |
 | Science,Space,and Technology | 474 | 473 | 1 | 0 | 0 | 100% | 100% of 210 |
-| Energy & Commerce | 868 | 868 | 0 | 0 | 0 | 100% | 100% of 324 |
+| Energy & Commerce | 869 | 868 | 0 | 1 | 0 | 100% | 100% of 325 |
 | Joint Economic Committee | 96 | 96 | 0 | 0 | 0 | 100% | 100% of 32 |
 | Rules | 18 | 18 | 0 | 0 | 0 | 100% | 100% of 16 |
 | Select Committee on the January 6th Attack | 10 | 10 | 0 | 0 | 0 | 100% | 100% of 10 |
@@ -106,7 +107,7 @@ Notes:
 - **Benghazi:** 11 of its 15 GPO volumes are closed-door transcribed witness interviews, so there is no public video to find.
 - **Helsinki Commission:** most of its 2013–2019 GPO "hearings" are staff briefings. Its website embeds recordings of 31 of them from the Commission's Facebook page, not YouTube.
 - **Appropriations:** the "not public" rows are printed volumes that contain only written testimony, budget justifications or answers for the record.
-- **Clips only** now means what it says. A video under 10 minutes found by weak evidence (a date window or a date in the title) counts as a clip. The research-pass snapshot counted some of those as recordings, which is why Homeland Security, Foreign Affairs and the Joint Economic Committee show more clips here.
+- **Clips only** now means what it says. A video found by weak evidence (a date window or a date in the title) counts as a clip when it's under 20 minutes, or under 30 with a member-clip title ("Q&A", "Questions", "Opening Statement"). The research-pass snapshot counted some of those as recordings, which is why Homeland Security, Foreign Affairs and the Joint Economic Committee show more clips here.
 
 ## Senate coverage
 
@@ -115,13 +116,13 @@ The Senate numbers cover 16 committees with 32 YouTube channels, found by checki
 <!-- table:senate_congress -->
 | Congress | Years | Hearings | Full recording | Clips only | Not public | None found | On senate.gov | Before channel | No channel | Found |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 113th | 2013–14 | 987 | 935 | 3 | 2 | 30 | 928 | 17 | 0 | 94.7% |
-| 114th | 2015–16 | 1,010 | 913 | 4 | 16 | 69 | 909 | 0 | 8 | 90.4% |
-| 115th | 2017–18 | 960 | 903 | 3 | 6 | 41 | 901 | 2 | 5 | 94.1% |
-| 116th | 2019–20 | 696 | 659 | 3 | 5 | 26 | 647 | 0 | 3 | 94.7% |
-| 117th | 2021–22 | 1,051 | 1,004 | 0 | 17 | 23 | 916 | 0 | 7 | 95.5% |
-| 118th | 2023–24 | 794 | 753 | 0 | 1 | 18 | 592 | 4 | 18 | 94.8% |
-| 119th | 2025– | 337 | 297 | 0 | 2 | 4 | 226 | 0 | 34 | 88.1% |
+| 113th | 2013–14 | 987 | 938 | 3 | 2 | 28 | 930 | 16 | 0 | 95.0% |
+| 114th | 2015–16 | 1,010 | 926 | 4 | 16 | 62 | 918 | 0 | 2 | 91.7% |
+| 115th | 2017–18 | 960 | 907 | 3 | 6 | 39 | 903 | 0 | 5 | 94.5% |
+| 116th | 2019–20 | 696 | 664 | 3 | 5 | 24 | 652 | 0 | 0 | 95.4% |
+| 117th | 2021–22 | 1,051 | 1,010 | 0 | 17 | 22 | 922 | 0 | 2 | 96.1% |
+| 118th | 2023–24 | 794 | 777 | 0 | 1 | 14 | 616 | 1 | 1 | 97.9% |
+| 119th | 2025– | 337 | 333 | 0 | 2 | 2 | 262 | 0 | 0 | 98.8% |
 <!-- /table:senate_congress -->
 
 By committee, sorted from least to most complete. "Veterans' Affairs" at the bottom is seven joint House–Senate veterans' service organization hearings printed by the Senate under the House committee's code.
@@ -129,27 +130,26 @@ By committee, sorted from least to most complete. "Veterans' Affairs" at the bot
 <!-- table:senate_committee -->
 | Committee | Hearings | Full recording | Clips only | Not public | None found | On senate.gov | Before channel | No channel | Found | Found since 2019 |
 |---|---|---|---|---|---|---|---|---|---|---|
-| (no committee code in GPO data) | 66 | 0 | 0 | 0 | 0 | 0 | 0 | 66 | 0% | 0% of 60 |
 | Joint Select Solvency of Multiemployer Pension Plans | 5 | 0 | 0 | 0 | 0 | 0 | 0 | 5 | 0% | — |
-| Small Business and Entrepreneurship | 146 | 108 | 0 | 1 | 32 | 102 | 5 | 0 | 74% | 81% of 80 |
+| Small Business and Entrepreneurship | 146 | 109 | 0 | 1 | 31 | 103 | 5 | 0 | 75% | 82% of 80 |
 | Veterans' Affairs (joint hearings, House code) | 7 | 6 | 0 | 0 | 1 | 0 | 0 | 0 | 86% | 86% of 7 |
-| Aging | 196 | 174 | 0 | 9 | 12 | 161 | 1 | 0 | 89% | 96% of 103 |
-| Energy and Natural Resources | 434 | 388 | 11 | 5 | 30 | 365 | 0 | 0 | 89% | 95% of 212 |
-| Veterans' Affairs (Senate) | 184 | 165 | 0 | 2 | 17 | 165 | 0 | 0 | 90% | 93% of 114 |
-| Appropriations | 625 | 565 | 0 | 2 | 52 | 565 | 6 | 0 | 90% | 89% of 260 |
-| Environment and Public Works | 426 | 404 | 0 | 3 | 19 | 299 | 0 | 0 | 95% | 99% of 227 |
-| Homeland Security and Governmental Affairs | 491 | 469 | 1 | 13 | 8 | 468 | 0 | 0 | 96% | 95% of 211 |
+| Aging | 196 | 176 | 0 | 9 | 10 | 163 | 1 | 0 | 90% | 98% of 103 |
+| Energy and Natural Resources | 434 | 391 | 11 | 5 | 27 | 368 | 0 | 0 | 90% | 95% of 212 |
+| Veterans' Affairs (Senate) | 184 | 167 | 0 | 2 | 15 | 165 | 0 | 0 | 91% | 93% of 114 |
+| Appropriations | 625 | 570 | 0 | 2 | 48 | 570 | 5 | 0 | 91% | 90% of 260 |
+| Environment and Public Works | 426 | 405 | 0 | 3 | 18 | 300 | 0 | 0 | 95% | 99% of 227 |
 | Rules and Administration | 46 | 44 | 0 | 1 | 0 | 44 | 0 | 1 | 96% | 97% of 37 |
+| Homeland Security and Governmental Affairs | 491 | 472 | 1 | 13 | 5 | 468 | 0 | 0 | 96% | 95% of 211 |
 | Indian Affairs | 185 | 178 | 0 | 0 | 7 | 172 | 0 | 0 | 96% | 99% of 74 |
-| Commerce, Science, and Transportation | 570 | 550 | 1 | 1 | 18 | 484 | 0 | 0 | 96% | 99% of 270 |
 | Budget | 87 | 84 | 0 | 2 | 1 | 73 | 0 | 0 | 97% | 99% of 69 |
-| Foreign Relations | 436 | 426 | 0 | 3 | 0 | 426 | 7 | 0 | 98% | 96% of 182 |
+| Commerce, Science, and Transportation | 570 | 551 | 1 | 1 | 17 | 484 | 0 | 0 | 97% | 99% of 270 |
 | Health, Education, Labor, and Pensions | 322 | 316 | 0 | 1 | 5 | 295 | 0 | 0 | 98% | 99% of 134 |
 | Armed Services | 346 | 340 | 0 | 4 | 0 | 339 | 0 | 2 | 98% | 99% of 177 |
-| Judiciary | 277 | 273 | 0 | 0 | 0 | 273 | 4 | 0 | 99% | 100% of 152 |
-| Banking, Housing, and Urban Affairs | 444 | 438 | 0 | 1 | 5 | 359 | 0 | 0 | 99% | 98% of 234 |
-| Finance | 307 | 303 | 0 | 0 | 4 | 303 | 0 | 0 | 99% | 99% of 138 |
 | Select Intelligence | 77 | 76 | 0 | 0 | 0 | 76 | 0 | 1 | 99% | 97% of 37 |
+| Judiciary | 342 | 338 | 0 | 0 | 0 | 338 | 4 | 0 | 99% | 100% of 211 |
+| Foreign Relations | 436 | 431 | 0 | 3 | 0 | 431 | 2 | 0 | 99% | 98% of 182 |
+| Finance | 307 | 304 | 0 | 0 | 3 | 303 | 0 | 0 | 99% | 99% of 138 |
+| Banking, Housing, and Urban Affairs | 444 | 440 | 0 | 1 | 3 | 361 | 0 | 0 | 99% | 99% of 234 |
 | Agriculture, Nutrition, and Forestry | 151 | 150 | 0 | 1 | 0 | 150 | 0 | 0 | 99% | 99% of 93 |
 <!-- /table:senate_committee -->
 
@@ -270,7 +270,7 @@ Handled specially:
 - **A committee could only list two channels.** The second column now takes several handles, separated by `;`.
 - **Video length wasn't stored.** The fetch now records each video's duration, which the matcher uses to tell clips from recordings.
 - **A channel with no public uploads crashed the fetch.** Empty channels (Senate Finance's `@SenateFinance`) are now recorded as empty.
-- **GPO committee codes had typos and blanks.** `gpo-fetch` now fixes known typos, fills blank codes from the committee name where it can, marks errata sheets, and reads each hearing day out of multi-hearing Appropriations volumes.
+- **GPO committee codes had typos and blanks.** `gpo-fetch` now fixes known typos, fills blank codes from the committee name where it can, marks errata sheets, and reads the hearing days out of every transcript since the 113th Congress.
 
 ## Problems found in GPO's metadata
 
@@ -282,12 +282,13 @@ The research pass turned up many GPO records whose metadata doesn't match the tr
   - Both H. Res. 755 impeachment markup packages are dated January or July 2019 but ran December 11–13, 2019.
   - CHRG-117hhrg49370 is dated 2021 but was held in 2022.
 - **Missing dates.** Four Senate records have no held date at all; the matcher reports them as "no video found" with a note.
-- **Placeholder dates on Appropriations volumes.** Multi-hearing volumes carry the first day of the Congress (e.g. 2021-01-01) as their held date. `gpo-fetch` now reads the real hearing days from the transcript, except for the quarter of volumes that are scanned PDFs with no text.
+- **Placeholder dates on Appropriations volumes.** Multi-hearing volumes carry the first day of the Congress (e.g. 2021-01-01) as their held date. `gpo-fetch` reads the real hearing days from the transcript, except for the quarter of volumes that are scanned PDFs with no text.
+- **One date per package, whatever the package holds.** Agriculture's `CHRG-114hhrg93961` ("Supplemental Nutrition Assistance Program") prints five hearings, from February 25 to June 10, 2015, and Homeland Security's `CHRG-114hhrg94105` prints two, February 3 and April 30, 2015; GPO dates each by its first day, so the other days couldn't link to their meetings or videos. **Fix:** `gpo-fetch` now reads the day headers of every transcript since the 113th Congress (15,478) and records the days in `hearing_dates` wherever they say more than GPO's date: 776 prints cover several days, and 159 name one day that differs from GPO's. The matcher and the text index match on those days. Where the transcript names one day and GPO another, both count, because either can be the misprint: the Taliban-transfer hearing's GPO date is wrong, while "Human Rights Abuses in Egypt" (`CHRG-113hhrg86002`) has the misprint in its own header. For printed hearings the gain is small, since a hearing's first day usually had its video already (3 more hearings found, 28 gained the recordings of their other days). For the meeting records it is larger: 228 more meetings link to a print.
 - **Wrong or missing committee codes.** For example:
   - an impeachment hearing is coded as Appropriations;
   - an air traffic control hearing is filed under Appropriations but belongs to Transportation and Infrastructure;
   - a 2019 House Veterans' Affairs subcommittee hearing (CHRG-116hhrg48810) is coded as the Senate committee;
-  - 22 Helsinki hearings, 15 other House records and 66 Senate records have a blank code;
+  - 22 Helsinki hearings, 15 other House records and 66 Senate records have a blank code. **Fix:** where GPO names no committee, `gpo-fetch` reads it from the transcript's title page ("COMMITTEE ON THE JUDICIARY / UNITED STATES SENATE"), which filled 76 of the 81 blank codes since the 113th Congress, 65 of them Senate Judiciary. With a committee and the right day, the Senate archive had recordings for 46 more printed hearings, and Congress.gov's own links attached to 28;
   - one Small Business record is coded `hssmoo` instead of `hssm00`.
 - **Wrong titles or event IDs.** For example, CHRG-115hhrg26237's title says NASA's FY2018 budget, but the transcript is a different hearing. CHRG-117hhrg45372's event ID points to another hearing.
 - **Records that aren't hearings.** These include errata cover sheets, a staff report, and a chapter of an annual report.
@@ -304,6 +305,74 @@ Done since the research pass:
 Still open:
 6. **Ask committees to restore private or deleted archives.** Education & Workforce (2013–14) and Veterans' Affairs (2014–15) made public hearing recordings private, and Ways and Means' 2016–18 hearing pages embed dead videos even though the 2019 re-uploads exist. The dead video IDs are listed in the research verdicts.
 7. **Report the GPO metadata problems above** to GPO, starting with the wrong dates and blank codes, since they hide hearings from every date-based search.
+
+## Transcripts and captions
+
+GPO's printed transcript is the record, but it arrives 6–8 months after a House hearing (12–18 months for the Senate) and only for what committees send to print: no markups, and 10–30% of hearings never. `research/data/hearing_text_sources.csv` lists, for every Congress.gov meeting since 2013 (hearings, markups and business meetings), where its text can be found.
+
+**Which print is a meeting's.** A print is matched to a meeting by event ID, or when the committee held it that day and one of four things is true: the titles agree, the print collects several hearings under one title (an Appropriations volume, a multi-day print), the meeting's own documents hold the print under GPO's name for it (`CHRG-113hhrg86486.pdf`), or it is the day's only print for the committee's only meeting. A markup takes only a print that says it is one. The date alone is not enough: a committee often holds a hearing and a markup, or two hearings, on one day, and the date would give each the other's transcript. An earlier version of this index did that, and 676 meetings claimed a print that was another proceeding's. Congress.gov's own `hearingTranscript` field makes the same mistake: it ties six unrelated Appropriations hearings of March 4, 2015 to one print, so it is not used. The attached prints also check the other rules against a source they do not use: 488 meetings hold a print that GPO lists among their documents, and the other rules had already linked that print for 481 of them. Two hold the print of a different day's hearing, which is why the day must agree.
+
+**Committee transcripts.** House committees attach their own transcripts to meeting records as documents ("Hearing: Transcript", "Markup Transcript"), and Senate committees post them on the hearing's page. 3,998 meetings have one: 3,410 in the House, 531 in the Senate and 57 of the joint bodies. For 610 meetings it is the only text (551 House, 44 Senate, 15 joint), and 285 of those are markups, which GPO never prints.
+
+**Which recording is a meeting's.** A recording counts when Congress.gov links it, a tracked video carries the meeting's event ID, a tracked video of the committee was posted within a day before to three days after with a matching title or naming one of the same bills (the matcher's rules for printed hearings, applied to unprinted meetings too), a tracked upload of the committee is titled with the meeting's date, or is a generic hearing or markup upload from the meeting's day when the committee held nothing else that day or the title names the meeting's subcommittee, or the Senate archive has one for the committee and day (including a House committee's joint hearing with its Senate counterpart). A joint hearing is entered once per committee, so same-day meetings with the same title share their records. Recordings found by hand, on a committee's own event page or a partner committee's channel, are listed in `research/data/meeting_recordings_found.csv` and counted.
+
+| Where the text is | House meetings | Senate meetings |
+|---|---|---|
+| GPO print | 8,645 (67%) | 2,699 (59%) |
+| Committee's own transcript | 551 (4%) | 44 (1%) |
+| YouTube caption track (uploader's or automatic) | 2,034 (16%) | 31 (1%) |
+| Senate player caption track (recordings since mid-2023) | — | 652 (14%) |
+| Recording with no text | 1,147 (9%) | 630 (14%) |
+| No recording found | 488 (4%) | 519 (11%) |
+
+**Meetings with nothing** (`research/data/meetings_without_records.csv`): 970 since 2013 have no print, no transcript, no recording found and no captions. 549 are closed by nature: the record's type or title says closed, briefing or deposition. Of the 447 House meetings, 260 are markups and business meetings and 187 are hearings, led by Intelligence (144 of the House rows in all, closed by design), Natural Resources (37), Ways and Means (31) and Veterans' Affairs (31). 294 have documents, in the record or on the committee's page. The 421 open meetings have all been searched for. Some were never held: Congress.gov keeps a meeting as Scheduled when the committee postponed it. When the postponed meeting was re-entered under a new event ID and held within 60 days, the index marks the stale record with `rescheduled_to` and leaves it out of this file (44 meetings). Eleven more say so in their own title ("POSTPONED: FY19 Oversight Hearing on the NASA James Webb Space Telescope", or just "Test", dated Christmas Day 2019) and are marked `not_held`, as are two Senate hearings with no recording whose committee page is headed POSTPONED. Eleven Senate hearings have a committee page and no recording. On nine of them the page embeds the Senate's player for a file the archive no longer serves (`energy110719`, `help020122`): the committee linked a recording that is gone at the source.
+
+## What each meeting has on the record
+
+`research/data/meeting_completeness.csv` has one row per meeting: its recording, where its text is, its witness list and where that came from, its documents, its location. For open hearings that were held:
+
+| | House (9,821) | Senate (3,110) | Joint bodies (116) |
+|---|---|---|---|
+| Recording | 96% | 99% | 98% |
+| Text (print, transcript or captions) | 94% | 94% | 97% |
+| Witness list | 98% | 96% | 87% |
+| Any document | 98% | 85% | 78% |
+| Location | 93% | 99% | 91% |
+
+A document counts when it has an address. In Congress.gov's own records that is 92% of House hearings and none of the Senate's.
+
+**Congress.gov's House records are incomplete copies of the House's own repository.** Its meeting records are built from docs.house.gov, but not all of it arrives. `research/scripts/house_event_pages.py` reads the repository's two XML files (below) for the 5,741 House and joint meetings whose record lacks documents, witnesses, or a transcript or print: 5,545 from their XML, and 196 from their page because no XML is found at any address (165 joint meetings the repository does not hold, 31 House meetings, 8 of which list outside files on their page). 2,103 of them have documents the record lacks (18,126 in all: 8,153 witness statements, 3,741 Truth in Testimony forms, 3,250 biographies, 1,637 bills and amendments, 55 transcripts), and 1,885 have a witness list the record lacks (7,939 witnesses, with position, organization and city apart, and for 5,668 the kind of witness). With them, House hearings with a witness list go from 80% to 98%. `research/data/house_amendments_found.csv` lists the 13,231 amendments (13,135 with their sponsor's bioguide ID) and 6,754 recorded votes in 1,372 of these meetings. A document counts once whatever formats it comes in: the XML lists a bill's PDF and its XML as one document, and the record has it when it has either.
+
+The repository's firewall refuses a client for about 90 seconds after a few hundred requests in quick succession (389 in 17 seconds; 137 at five a second). Fetched one at a time 1.2 seconds apart, the 11,000 files would take four hours; through Zyte's API (`research/scripts/zyte.py`), 24 at a time, they took 18 minutes, with 932 of Zyte's own 429s retried. Addresses built from the record's committee and date alone missed 19 meetings filed under another committee (a joint hearing is filed under either of its committees: 108754 is Homeland Security's record, filed under Armed Services' AS26) or another day, the Intelligence and select committees' 166 (their codes begin `hl`, not `hs`), and 61 witness lists of meetings filed under the full committee while naming a subcommittee. The address is now read from the file names and folders of the meeting's own documents, on the record or the page, before it is built.
+
+**The repository's XML holds everything its page does, and more.** docs.house.gov publishes two XML files beside a meeting's documents: the meeting (`HHRG-118-II10-20230622.xml`) and, for a meeting with witnesses, the witness list (`HHRG-118-II10-WList-20230622.xml`). `research/docs_house_xml_route.md` has the addresses. `research/scripts/house_xml_fields.py` counts every element and attribute over the files in hand, 6,155 meeting files and 3,388 witness lists, and writes `research/data/house_xml_fields.csv`.
+
+- *Against the page.* The page's meeting area is the XML rendered through the repository's own stylesheet (it opens with the stylesheet's style block), and a two-way audit bears that out (`house_xml_fields.py --pages`). On the 5,594 meetings whose page shows them and whose two files are in hand, the same witnesses are on both, 15,012; every document on the page is in the XML. Of the files in the XML the page reader did not record, 1,952 are a second format of a document it did record (an XML beside a PDF), 14 are images and RTF files it passed over, and 25 are one markup's amendments the committee withdrew, which the XML keeps with a removal date and the page, like the new reader, leaves out. Every line of the page's meeting area is an XML value or the stylesheet's own words: section headings, the names of document kinds, "Washington, D.C.", room and building run together, "Panel one". The page adds only a link to the committee's website.
+- *Where the page fails.* 283 of the 5,860 pages cached carry "There was an error retrieving data for this meeting", and say it again when asked a second time. On 81 the error is a line at the foot and the meeting is shown; there page and XML agree (521 documents, 214 witnesses on the 56 with the XML in hand). 202 say "No meeting data is available": 165 are joint meetings the repository does not hold, 37 are House meetings. For 28 of those the XML was fetched, and it holds 30 documents and 36 witnesses the page shows none of.
+- *What the page does not show.* Committee and subcommittee codes, the sponsor's bioguide ID and the kind of each amendment (878 and 10 in the files audited), a testifying Member's bioguide ID (79), the kind of witness (611), whether they testified (356), a rescheduled meeting's earlier dates (13), whether the full committee or a subcommittee considered a bill, and the codes behind the document kinds the page names.
+- *Witnesses.* The witness list gives each witness's name in parts (honorific, first, middle, last, suffix), position, organization, city, whom they appeared on behalf of, the panel and their order in it, their documents typed (statement, Truth in Testimony, biography, other), and two things that are on neither the page nor Congress.gov's record: what kind of witness (non-governmental 277, federal 128, local 29, state 12) and whether they testified (yes 308, no 7, "no, but took oath" 4). A Member of Congress who testifies carries a bioguide ID. Every sampled hearing has the file; no markup does.
+- *Amendments and votes.* A markup's meeting file holds each amendment with its sponsor's bioguide ID, the bill it amends, its number and kind (House, Senate, en bloc), and each recorded vote with its number: 817 amendments and 542 votes in the files in hand. The description often says what became of the amendment ("agreed to by voice", "Withdrawn"). Congress.gov's record has the same files and descriptions without these fields.
+- *Also only in the XML.* The earlier dates of a rescheduled meeting (41 files), whether a bill was considered by the full committee or a subcommittee, a budget document's fiscal year, each document's revisions with a note on some ("Officially Withdrawn by Rep. Brownley", "Bill number updated"), and when each file was published. Continuation days and a field hearing's address are in both.
+- *Not met.* The repository's own stylesheet reads three fields no file in hand has: `affected-bill-num`, `cr-num`, `supplement-num`.
+- *The address.* It is built from the meeting's kind (HHRG hearing, HMKP markup, HMTG other), Congress, committee code and date. Of 7,785 House records since 2013 whose documents name the file, the name is what those four give for 7,738; 28 are filed under another committee's code and 18 under another day. A meeting with no witnesses has no witness list file.
+
+An earlier version of this section said the XML has no witnesses. That was the meeting file alone: the witness list is a file of its own, which none of the first 747 files read pointed to. The XML also served as the check on the page reader, and found three faults in it: a document's name began in the page's menu for the first document on a page (2,001 names), a Rules Committee Print was typed as a recorded vote (51), and reports, committee prints and attendance sheets were typed as other. With those fixed, the reader gives the XML's type for 934 of 1,049 files; for 109 more the XML says only "support document" where its own description says witness list or transcript, or the file is a bill's text; 6 differ.
+
+**Congress.gov has no witnesses and no document files for the Senate.** Its Senate records name documents ("Generic Document", "Bills and Resolutions") without an address, and list no witnesses. The committees' own sites have both. `research/scripts/senate_hearing_pages.py` reads every hearing page that 21 Senate and joint committee sites list since June 2019 (4,925 pages) and finds the page of 2,900 of the 3,217 open hearings on record: the page that names the hearing's date and holds most of its subject, both in text that is the page's own. From those pages:
+
+- witnesses for 2,769 hearings (9,401, with a post for 8,228), in `research/data/senate_witnesses_found.csv`;
+- 14,407 documents for 2,746 hearings (7,695 witness statements, 1,398 members' statements, 1,283 sets of questions for the record, 599 transcripts, 252 nominees' questionnaires), in `senate_documents_found.csv`;
+- the page itself, in `senate_hearing_pages_found.csv`.
+
+Senate witness lists (`research/data/meeting_witnesses.csv`) come from the GPO record of the hearing's print, when the print and the meeting are each other's only match (48% of Senate hearings), from the committee's page (48%), and from the meeting's own title for a nomination hearing, whose nominees are its witnesses (1%). Where a hearing has both a GPO list and a page, they were compared as a check on the page matching: of 1,246 hearings, 1,224 share most or all of their witnesses' surnames, and the 22 that share few are nomination hearings where GPO lists the senators who introduced the nominee and the page lists the nominee. 110 Senate hearings (4%) are left without a witness list: 81 have no page found, and 29 have a page that names no witnesses. Of the joint bodies, the Helsinki Commission's pages are read (27% of joint hearings take their witness list from them); the Joint Economic Committee writes its witnesses in running text, which is not read. 15 joint hearings have no list.
+
+Three things the pages taught the matching. A listing's date can't be trusted: the Aging Committee's listing puts each hearing beside the date of the row above, and matched by listing date, 68 of its 78 hearings took the page of the hearing before. A page names dates that are not its own: sites carry a panel of coming hearings on every page, so a line that more than five pages carry is not counted. And a later page can name an earlier hearing's day and subject: the business meeting that reports a nominee gives the day of the nominee's hearing.
+
+**GPO's witness lines come three ways** ("Mr. Nels Leader, Vice President, Bread Alone Bakery"; "Richard J. Powell, Executive Director, ClearPath"; surname first, "Campbell, Jr., J.H., President and CEO"), plus contents lines that are not witnesses at all. The reader in `congress_api.transcribe.metadata` handles the three and drops the fourth; `hearing-transcribe` uses the same reader for its participant list, and the Senate pages' names go through it too. It takes a title off the front of a name (civil, clerical, or a military rank written in full or abbreviated: "Lieutenant General", "LTG", "Master Chief Petty Officer"), degrees and service branches off the end, and rejects a line that holds a noun of office or of paper ("State Director", "Printed Hearing Record"), which is a post or a document and not a person.
+
+The captions were fetched with `youtube-captions` and `senate-captions` (see the app README); they are search-grade text, unpunctuated for YouTube's automatic ones, with no speaker attribution. C-SPAN no longer publishes transcripts.
+
+For the hearings with video but no print, `hearing-transcribe` produces a transcript in the print's shape with members and witnesses named: Gemini 3.8 Flash watches the video in 25-minute windows, reading name plates and hearing the chair's recognitions, with the committee roster and witness list in the prompt. Tested on a 2023 Judiciary subcommittee hearing against its print (193 turns, 13,112 words): word error rate 8.7%, mostly the print's own editing of false starts, and 85% of words attributed to the right speaker. Two alternatives were tried and dropped: the dedicated transcription model (Gemini 3.5 Transcribe, diarization and word timestamps, then a resolver) matched the words as well but its speaker labels, which the model documents as experimental beyond three speakers, mapped to the right person for only 66–74% of words; and a single call for the whole hearing, which the model's recitation filter refuses, as it does any verbatim window much over 30 minutes.
 
 ## Verification
 
@@ -347,6 +416,7 @@ Eight agents took the 840 House and joint hearings still without a full recordin
 - **Finds:** recordings for about a third of the hearings. C-SPAN has 120; the Senate's archive has 52 (Joint Economic Committee and Helsinki Commission events, found by probing the archive by date); the Helsinki Commission's Facebook page has 43; DVIDS has 2; and 96 are on YouTube after all, almost all on the committees' own channels, as unlisted uploads, untitled archive uploads, or videos filed under the wrong hearing.
 - **Checks:** every claimed YouTube video was looked up in the Data API. Seventeen finds under 20 minutes, or with no length on record, were reviewed by hand: ten are whole proceedings that ran only minutes (organizational meetings, markups, a two-minute Member Day hearing, a hearing that went into closed session after five minutes) or unlisted uploads the API lists without a length, and were kept; two Ways and Means re-uploads whose file-name room didn't match the transcript and five Facebook embeds that can't be verified were dropped. C-SPAN finds were checked against the program page's date and length and the transcript's gavel times; where C-SPAN has only one session of a two-session print, or a session runs short, the find is marked medium.
 - **What's gone:** the committees' own 2013–2015 streams. Ustream recordings (Judiciary, Foreign Affairs, Transportation, Veterans' Affairs, Appropriations, Natural Resources), Windows Media playlists on edgeboss.net (Homeland Security, Education & Workforce, Natural Resources), Granicus (Armed Services) and an Akamai Flash stream (Natural Resources field hearings) are all dead, and the Wayback Machine holds the player pages and playlists but never the video. Field hearings of every committee came up empty.
+- **Research verdicts it overturned:** 31 hearings the research pass had marked found on a tracked channel were in fact 1–6 minute member clips (Homeland Security Democrats' and JEC Republicans' channels); the agents found their full recordings on C-SPAN and in the Senate's archive. Comparing the live output with the frozen research snapshot (`hearing_video_verdicts.csv`) is how such changes are caught; nothing in the pipeline reads the snapshot itself.
 - **What was learned about the data:** committees tag videos with the wrong event ID more often than expected (Financial Services, Small Business, Ways and Means), which is why the matcher now discounts a late, mismatched tag. Several GPO held dates are wrong by days or months. C-SPAN's listings include placeholder entries with a committee's name and no video.
 
 ### The weekly matcher
@@ -354,11 +424,15 @@ Eight agents took the 840 House and joint hearings still without a full recordin
 - **One video per hearing.** Each video is assigned to its best-evidenced hearing; hearings on different days can't share one. This retires the research snapshot's 74 "unconfirmed" automatic matches, where the old matcher had given one video to consecutive-day hearings with similar titles. 32 hearings share a video with another hearing on the same day (joint hearings, or several GPO packages for one proceeding) and are flagged.
 - **Research verdicts are kept unless outweighed.** A reviewed "found" verdict always stands. A reviewed "no video" or "clips only" verdict gives way only to strong evidence (a Congress.gov link or event ID) or to a dated recording of 30 minutes or more, and rows the verifiers rejected are locked.
 - **Spot check of the overturned verdicts.** A random sample of the Ways and Means re-uploads was checked by hand: each is a 90–200 minute video titled with the hearing's date, and the description carries a `YYMMDD` code that confirms the date where the title has a typo.
+- **Search-engine check of the open gaps.** 1,389 gap rows were searched on Google in eight rounds (`research/data/search_smoke_test.csv`). The first four rounds were run in a browser: one hand-picked row per gap listed in this document, then seeded random samples across printed hearings with no video or clips only and unprinted meetings with no records, stratified by chamber, committee and meeting type. The last four went through SerpAPI (`research/scripts/search_smoke.py`), with every committee page among the answers read for the videos it embeds: the 50 open House meetings whose committee had recorded 80% or more of that kind of meeting that year, every open meeting not yet searched (235), every printed hearing since the 113th Congress without a full recording (844), and the 109 meetings that turned out to have claimed another proceeding's print. 1,250 held: the search surfaced nothing beyond what the pipeline had. Twelve were wrong in a way a rule could fix, and the unprinted-meeting index gained those rules: the matcher's committee-code aliases (Congress.gov files the Joint Economic Committee as `jjec00`, GPO as `jsec00`); a shared bill number counts as a title match ("Rules Committee Hearing H.R. 5 and H.R. 79"); an upload titled with the meeting's date matches when the committee held nothing else that day or the title names the subcommittee (Natural Resources' "3.2.16. EMR. 10:00 AM.", Ways and Means' 2019 re-uploads "W&M Hearing: Jun 25, 2014"); a generic "Full Committee Markup" or "Legislative Hearing | Federal Lands Subcommittee" upload from the meeting's day matches under the same condition when its kind agrees with the meeting's type; House meetings titled as joint hearings with the Senate are probed on the Senate counterpart's stream; same-day, same-title records of a joint hearing share their records; and two blank-code Senate Judiciary hearings got senate.gov overrides. Those rules gave 322 meetings a recording, and 46 records of meetings that were postponed or never held are marked instead of counted. 105 more had a recording. 74 of them were printed hearings found while the search ran, once their transcripts' own days and committees were read. The rest are recordings no rule reaches safely, now overrides (printed hearings) or rows in `research/data/meeting_recordings_found.csv` (meetings): Senate field hearings carried by WisconsinEye, Arkansas TV or a senator's own channel, joint hearings whose upload sits on the partner committee's channel (Veterans' Affairs with Oversight, Homeland Security with Armed Services and with Oversight, Armed Services with Foreign Affairs, Agriculture with Appropriations), uploads that cover two same-day meetings, a markup only 14 minutes long, an upload whose title carries the wrong year, a hearing re-entered under an event ID that Congress.gov's export lacks, and a Natural Resources field hearing streamed only on the committee's Facebook page. Twelve were explained rather than changed: closed sessions and depositions, executive sessions on tax-return documents, a conference meeting, postponed hearings, a hearing its witnesses skipped, a livestream that never started, and the undated Legislative Branch FY2021 volume, whose clerk's note says the subcommittee was unable to hold hearings. The rest: one Intelligence interview has a committee-released transcript but no recording; one C-SPAN listing is a medium-confidence find; two leads are unverifiable; and two meetings sat inside multi-day prints that GPO dates by their first day, since fixed (below). The no-records list went from 1,291 to 923, and to 907 once the transcripts' own hearing days were read. Two relaxations were measured and rejected for their false matches: accepting an upload when the meeting is the only one of its kind that day, and matching titles across committees' channels by rule (17 candidates, 7 right).
 
 **Known limitations:**
 - **Multi-hearing volumes count as found if any hearing day in them has video.** The `volume_days_with_video` flag says how many days were covered.
 - **Some archive uploads are audio only.** A few of Appropriations' 2015 archive uploads say "This is an audio recording" and are flagged `audio_only`.
 - **Automatic matches weren't individually re-verified.** The 7,400 automatic matches got the one-video-per-hearing check and spot checks during development.
+- **The Senate studio names a second recording of the day with a trailing `p`** (`banking040622p`), beside the `A` and `B` names the probe already tried. 164 committee-days have one.
+- **Congress.gov's committee video pages add nothing to its meeting records.** One committee's listing (House Budget, 891 videos, fetched through Zyte because the site blocks scripts) pairs 108 videos with events, and the meeting export already carries all 108.
+- **The channel cache is complete.** Checked in September 2026 by listing every tracked channel's uploads playlist from the Data API and looking each video up in the cache: 117 channels list 65,085 videos, and 19 are not cached, all of them published after the last fetch. The cache holds 67,244, because it keeps videos that were later deleted or made private. Comparing the two totals would have hidden any shortfall, so the check is by video ID. Unlisted uploads are outside any uploads playlist and reach the pipeline only through a Congress.gov link or a committee page.
 - **Senate recordings are confirmed by name, not content.** The senate.gov probe checks that a recording exists for the committee and day; it doesn't tell same-day hearings apart or check length.
 - **Off-YouTube finds are only as durable as their hosts.** The C-SPAN, DVIDS and senate.gov recordings were confirmed live in September 2026; the 43 Facebook videos were confirmed only through archived copies of their pages.
 
@@ -374,7 +448,7 @@ Eight agents took the 840 House and joint hearings still without a full recordin
   2. the hearing's event ID in a video's title or description, whenever it was uploaded;
   3. the hearing's date in the title or description, with a matching title or subcommittee, or alone when the video's title is only a date label and the committee held one hearing that day;
   4. a similar title, or the subcommittee's name, on a video posted one day before to three days after.
-  A video under 10 minutes found by the weaker rules counts as a clip. Multi-hearing Appropriations volumes are matched on each hearing day.
+  A video found by the weaker rules counts as a clip when it's under 20 minutes, or under 30 with a member-clip title. Event-ID or Congress.gov evidence for a video posted more than a week after the hearing ranks below a same-week title match when its title doesn't fit (committees mistag videos). Multi-hearing Appropriations volumes are matched on each hearing day.
 - **Research pass:** 16 agents, one per batch of 113–162 hearings grouped by committee. They worked from prepared evidence packets:
   - the hearing metadata;
   - every video from that committee within a few days;
@@ -385,7 +459,7 @@ Eight agents took the 840 House and joint hearings still without a full recordin
 - **Verdict rules:**
   - "Full recording" means the proceeding itself (livestream, full upload, or all its parts), not clips or statements.
   - "Not public" requires evidence: a "CLOSED" notice, a written-only volume, an errata page, or closed-door interviews.
-- **Not reachable from the research environment:** the Wayback Machine, C-SPAN, and YouTube watch pages (bot-walled). Some recordings may exist there or in private archives.
+- **Reach:** the original research pass could not reach the Wayback Machine, C-SPAN or YouTube watch pages (bot-walled). The archive investigation later reached the first two (C-SPAN through the Zyte API) and the Data API stood in for watch pages. Private archives and dead streams remain out of reach.
 
 ## Files
 
@@ -399,6 +473,7 @@ Eight agents took the 840 House and joint hearings still without a full recordin
   - `prior_status`: status before the research pass.
   - `verification`: the adversarial outcome (upheld, revised or refuted) where the row was checked;
   - `verdict_note` and `shared_video`: flags for videos matched to more than one hearing.
+- **`research/data/hearing_text_sources.csv`, `meeting_completeness.csv`, `meeting_witnesses.csv`, `house_documents_found.csv`, `house_witnesses_found.csv`, `senate_hearing_pages_found.csv`, `senate_witnesses_found.csv`, `senate_documents_found.csv`:** one row per meeting for where its text is and what it has on the record, and the witnesses, documents and committee pages found outside Congress.gov's records.
 - **`research/`:** the agents' briefs and raw results, the Congress.gov meeting records, the channel-search evidence, the Senate channel notes, and scripts. `research/scripts/aggregate.py` rebuilds `hearing_video_verdicts.csv` offline, byte for byte. See `research/README.md`.
 - **`packages/congress_shared/src/congress_shared/youtube/youtube-accounts.csv`:** the channel list.
 - **`apps/committee_youtube/data/youtube_event_id_report.csv`:** the weekly per-channel report (videos, event-ID coverage, captions).

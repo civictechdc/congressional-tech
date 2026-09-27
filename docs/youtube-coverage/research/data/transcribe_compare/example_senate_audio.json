@@ -1,0 +1,1122 @@
+{
+ "header": {
+  "title": "Hearings to examine public investment.",
+  "chamber": "senate",
+  "congress": 118,
+  "session": 1,
+  "committee": "Committee on the Budget",
+  "committee_code": "ssbu00",
+  "subcommittee": "",
+  "date": "2023-09-20",
+  "time_convened": "10:00 a.m.",
+  "time_adjourned": "",
+  "location": "Room 608, Dirksen Senate Office Building",
+  "presiding": "whitehouse-sheldon",
+  "present": [
+   "braun-mike",
+   "grassley-chuck",
+   "kaine-tim",
+   "lujan-ben",
+   "padilla-alex",
+   "hollen-chris",
+   "whitehouse-sheldon"
+  ],
+  "serial": "S. Hrg. 118-147",
+  "package_id": "CHRG-118shrg53786",
+  "event_id": "334844"
+ },
+ "participants": {
+  "braun-mike": {
+   "name": "Mike Braun",
+   "role": "member",
+   "honorific": "Senator",
+   "surname": "Braun",
+   "party": "R",
+   "state": "IN",
+   "bioguide_id": "B001310",
+   "organization": "",
+   "position": "",
+   "speaker_label": "",
+   "confidence": 1.0
+  },
+  "crapo-mike": {
+   "name": "Mike Crapo",
+   "role": "member",
+   "honorific": "Senator",
+   "surname": "Crapo",
+   "party": "R",
+   "state": "ID",
+   "bioguide_id": "C000880",
+   "organization": "",
+   "position": "",
+   "speaker_label": "",
+   "confidence": null
+  },
+  "graham-lindsey": {
+   "name": "Lindsey Graham",
+   "role": "member",
+   "honorific": "Senator",
+   "surname": "Graham",
+   "party": "R",
+   "state": "SC",
+   "bioguide_id": "G000359",
+   "organization": "",
+   "position": "",
+   "speaker_label": "",
+   "confidence": null
+  },
+  "grassley-chuck": {
+   "name": "Chuck Grassley",
+   "role": "ranking_member",
+   "honorific": "Senator",
+   "surname": "Grassley",
+   "party": "R",
+   "state": "IA",
+   "bioguide_id": "G000386",
+   "organization": "",
+   "position": "",
+   "speaker_label": "",
+   "confidence": 1.0
+  },
+  "johnson-ron": {
+   "name": "Ron Johnson",
+   "role": "member",
+   "honorific": "Senator",
+   "surname": "Johnson",
+   "party": "R",
+   "state": "WI",
+   "bioguide_id": "J000293",
+   "organization": "",
+   "position": "",
+   "speaker_label": "",
+   "confidence": null
+  },
+  "kaine-tim": {
+   "name": "Tim Kaine",
+   "role": "member",
+   "honorific": "Senator",
+   "surname": "Kaine",
+   "party": "D",
+   "state": "VA",
+   "bioguide_id": "K000384",
+   "organization": "",
+   "position": "",
+   "speaker_label": "",
+   "confidence": 1.0
+  },
+  "kennedy-john": {
+   "name": "John Kennedy",
+   "role": "member",
+   "honorific": "Senator",
+   "surname": "Kennedy",
+   "party": "R",
+   "state": "LA",
+   "bioguide_id": "K000393",
+   "organization": "",
+   "position": "",
+   "speaker_label": "",
+   "confidence": null
+  },
+  "lujan-ben": {
+   "name": "Ben Ray Lujan",
+   "role": "member",
+   "honorific": "Senator",
+   "surname": "Lujan",
+   "party": "D",
+   "state": "NM",
+   "bioguide_id": "L000570",
+   "organization": "",
+   "position": "",
+   "speaker_label": "",
+   "confidence": 1.0
+  },
+  "lee-mike": {
+   "name": "Mike Lee",
+   "role": "member",
+   "honorific": "Senator",
+   "surname": "Lee",
+   "party": "R",
+   "state": "UT",
+   "bioguide_id": "L000577",
+   "organization": "",
+   "position": "",
+   "speaker_label": "",
+   "confidence": null
+  },
+  "murray-patty": {
+   "name": "Patty Murray",
+   "role": "member",
+   "honorific": "Senator",
+   "surname": "Murray",
+   "party": "D",
+   "state": "WA",
+   "bioguide_id": "M001111",
+   "organization": "",
+   "position": "",
+   "speaker_label": "",
+   "confidence": null
+  },
+  "merkley-jeff": {
+   "name": "Jeff Merkley",
+   "role": "member",
+   "honorific": "Senator",
+   "surname": "Merkley",
+   "party": "D",
+   "state": "OR",
+   "bioguide_id": "M001176",
+   "organization": "",
+   "position": "",
+   "speaker_label": "",
+   "confidence": null
+  },
+  "marshall-roger": {
+   "name": "Roger Marshall",
+   "role": "member",
+   "honorific": "Senator",
+   "surname": "Marshall",
+   "party": "R",
+   "state": "KS",
+   "bioguide_id": "M001198",
+   "organization": "",
+   "position": "",
+   "speaker_label": "",
+   "confidence": null
+  },
+  "padilla-alex": {
+   "name": "Alex Padilla",
+   "role": "member",
+   "honorific": "Senator",
+   "surname": "Padilla",
+   "party": "D",
+   "state": "CA",
+   "bioguide_id": "P000145",
+   "organization": "",
+   "position": "",
+   "speaker_label": "",
+   "confidence": 0.95
+  },
+  "romney-mitt": {
+   "name": "Mitt Romney",
+   "role": "member",
+   "honorific": "Senator",
+   "surname": "Romney",
+   "party": "R",
+   "state": "UT",
+   "bioguide_id": "R000615",
+   "organization": "",
+   "position": "",
+   "speaker_label": "",
+   "confidence": null
+  },
+  "sanders-bernard": {
+   "name": "Bernard Sanders",
+   "role": "member",
+   "honorific": "Senator",
+   "surname": "Sanders",
+   "party": "I",
+   "state": "VT",
+   "bioguide_id": "S000033",
+   "organization": "",
+   "position": "",
+   "speaker_label": "",
+   "confidence": null
+  },
+  "stabenow-debbie": {
+   "name": "Debbie Stabenow",
+   "role": "member",
+   "honorific": "Senator",
+   "surname": "Stabenow",
+   "party": "D",
+   "state": "MI",
+   "bioguide_id": "S000770",
+   "organization": "",
+   "position": "",
+   "speaker_label": "",
+   "confidence": null
+  },
+  "scott-rick": {
+   "name": "Rick Scott",
+   "role": "member",
+   "honorific": "Senator",
+   "surname": "Scott",
+   "party": "R",
+   "state": "FL",
+   "bioguide_id": "S001217",
+   "organization": "",
+   "position": "",
+   "speaker_label": "",
+   "confidence": null
+  },
+  "hollen-chris": {
+   "name": "Chris Van Hollen",
+   "role": "member",
+   "honorific": "Senator",
+   "surname": "Hollen",
+   "party": "D",
+   "state": "MD",
+   "bioguide_id": "V000128",
+   "organization": "",
+   "position": "",
+   "speaker_label": "",
+   "confidence": 1.0
+  },
+  "wyden-ron": {
+   "name": "Ron Wyden",
+   "role": "member",
+   "honorific": "Senator",
+   "surname": "Wyden",
+   "party": "D",
+   "state": "OR",
+   "bioguide_id": "W000779",
+   "organization": "",
+   "position": "",
+   "speaker_label": "",
+   "confidence": null
+  },
+  "whitehouse-sheldon": {
+   "name": "Sheldon Whitehouse",
+   "role": "chair",
+   "honorific": "Senator",
+   "surname": "Whitehouse",
+   "party": "D",
+   "state": "RI",
+   "bioguide_id": "W000802",
+   "organization": "",
+   "position": "",
+   "speaker_label": "",
+   "confidence": 1.0
+  },
+  "warner-mark": {
+   "name": "Mark R. Warner",
+   "role": "member",
+   "honorific": "Senator",
+   "surname": "Warner",
+   "party": "D",
+   "state": "VA",
+   "bioguide_id": "W000805",
+   "organization": "",
+   "position": "",
+   "speaker_label": "",
+   "confidence": null
+  },
+  "harris-benjamin": {
+   "name": "Benjamin Harris",
+   "role": "witness",
+   "honorific": "",
+   "surname": "Harris",
+   "party": "",
+   "state": "",
+   "bioguide_id": "",
+   "organization": "The Brookings Institution, and Former Assistant Secretary for Economic Policy and Chief Economist, United States Department of the Treasury",
+   "position": "Vice President and Director of Economic Studies",
+   "speaker_label": "",
+   "confidence": 1.0
+  },
+  "strom-shayna": {
+   "name": "Shayna Strom",
+   "role": "witness",
+   "honorific": "Ms.",
+   "surname": "Strom",
+   "party": "",
+   "state": "",
+   "bioguide_id": "",
+   "organization": "Washington Center for Equitable Growth",
+   "position": "President and CEO",
+   "speaker_label": "",
+   "confidence": 1.0
+  },
+  "puentes-veronica": {
+   "name": "Veronica Puentes",
+   "role": "witness",
+   "honorific": "Mrs.",
+   "surname": "Puentes",
+   "party": "",
+   "state": "",
+   "bioguide_id": "",
+   "organization": "New Flyer of America, and Steward, Communications Workers of America Local 7304",
+   "position": "Assembly Technician",
+   "speaker_label": "",
+   "confidence": 1.0
+  },
+  "rugy-veronique": {
+   "name": "Veronique de Rugy",
+   "role": "witness",
+   "honorific": "Dr.",
+   "surname": "Rugy",
+   "party": "",
+   "state": "",
+   "bioguide_id": "",
+   "organization": "Mercatus Center at George Mason University",
+   "position": "George Gibbs Chair and Senior Research Fellow",
+   "speaker_label": "",
+   "confidence": 1.0
+  },
+  "goodspeed-tyler": {
+   "name": "Tyler Goodspeed",
+   "role": "witness",
+   "honorific": "Dr.",
+   "surname": "Goodspeed",
+   "party": "",
+   "state": "",
+   "bioguide_id": "",
+   "organization": "Hoover Institution, Stanford University",
+   "position": "Kleinheinz Fellow",
+   "speaker_label": "",
+   "confidence": 1.0
+  }
+ },
+ "turns": [
+  {
+   "speaker": "whitehouse-sheldon",
+   "text": "Welcome, everyone. Let me uh call to order this hearing of the Senate Budget Committee entitled Reducing Inequality, Fueling Growth: How Public Investment Promotes Prosperity for All. Let me thank the uh witnesses for being here and our uh ranking member. Um the point of today's hearing is to illustrate that income inequality not only is an injustice in and of itself, but it actually impedes economic growth. Economic growth is essential for our nation and its people, fostering a climate where new ideas can turn into technological advancements, where healthy competition thrives, where good work is rewarded. That's the heart of modern capitalism. But while economic growth is a big positive, it's harmed by economic inequality. Economic inequality constricts economic growth and undermines economic stability. Evidence shows that reduced economic inequality promotes economic growth. Investments that reduce economic inequality, that address climate change, that create jobs, that bolster physical infrastructure, and that improve the quality of our healthcare system, those are how we make our economy and our budget stronger and more stable. Inequality worsened markedly in the United States in the 1980s, and by 2019, the top 10 percent had captured almost 75 percent of our nation's wealth. Over the same time, the wealth held by the bottom 50 percent, half of all Americans, collapsed to just 2 percent. The effects have been pernicious. Children fare worse in countries with worse levels of income inequality across health, education, and overall well-being. And it sticks through time. In the United States, children born to parents at the bottom of the income distribution of uh at the bottom of income distribution have less than a 10 percent chance of reaching the top fifth. In Canada, family upward mobility is almost twice that. The ability of children to out-earn their parents, which was once nearly a guarantee in American life, is now down to just 50/50, just the flip of a coin. There's a better way to do things. We can make the kind of public investments that grow the economy and ensure more people benefit from that growth: more good jobs, meaningful progress to decarbonize our economy before the harms arise, families able to afford prescription drugs and the other necessities of life. Our economic legislation: the American Rescue Plan, the Infrastructure Investment and Jobs Act, the CHIPS and Science Act, the Inflation Reduction Act, they all strengthened our economy by investing in workers, families, and small businesses. And the effect? The effect was terrific. Our recovery from the pandemic-induced recession was faster than anyone predicted. Today, our labor market is historically strong, and real wages are rising and returning to their pre-pandemic trend for many workers. By contrast, it took more than a decade to recover from the Great Recession. Our investments in healthcare, in expanded nutrition benefits, and in the expanded child tax credit kept families afloat during the pandemic. Renewable energy and infrastructure investments helped jumpstart our economic recovery and paved the way for the strongest labor market we've seen in decades. Poverty, and especially child poverty, fell to record low rates. The share of people aged 25 to 54 who are working is the highest it's been since 2001. These investments have been good for workers, especially unionized workers, and they have been good for business. As Ms. Puentes, a union steward, will testify, she's seen the benefits firsthand, and so has her employer, New Flyer of America, a leading manufacturer of electric buses. New Flyer stated that the Bipartisan Infrastructure Law was a, 'once-in-a-generation bill that has translated to unprecedented demand for our buses and coaches, driving improvements to public transportation throughout the United States that will benefit employees, customers, and riders across the country for years to come.' This is a win for Mrs. Puentes, of course. It's also a win for our economy, and by reducing fossil fuel use, it's a win for our safety. However, the failure to extend the Child Tax Credit expansion has caused the child poverty rate to jump to more than double. More than 6 million people, perhaps up to 40 percent of whom are kids, have been kicked off Medicaid since the pandemic-era continuous enrollment provision ended. And we are on the precipice of a government shutdown because House Republicans won't honor promises they made in the bipartisan agreement they signed on to just this spring. CBO says the proposed cuts from House Republicans are so severe that they would kill half a million jobs and reduce GDP growth by $138 billion next year alone. The House Budget Committee is marking up a budget resolution they claim will balance the budget by cutting $16 trillion over 10 years, but they violate the laws of arithmetic. Using the same old tired trickle-down playbook, they're seeking to balance the budget on the backs of regular folks while delivering huge tax cuts for businesses, Republican funders, and billionaires. Their massive tax giveaways are based on fantasy math. The math just doesn't add up. With 10 days left to fund the government before a shutdown, House Republicans have reneged on the bipartisan agreement and released a deal-breaking budget that would harm national safety and security, attacks essential government programs, would drive up economic inequality, and undermines our economic growth. Trickle-down economics through tax cuts for the rich is a proven failure. Investing in healthcare, infrastructure, growth, and safety, that actually works. And it works better when we reduce income inequality. We've seen what works. Now is the time to do it. Senator Grassley.",
+   "start": 18.03,
+   "end": 24.25,
+   "kind": "speech"
+  },
+  {
+   "speaker": "",
+   "text": "Convened at 0:18 into the recording: Let me uh call to order this hearing of the Senate Budget Committee",
+   "start": 18.05,
+   "end": null,
+   "kind": "direction"
+  },
+  {
+   "speaker": "grassley-chuck",
+   "text": "Yeah. Thank you, Mr. Chairman. I appreciate the subject of today's hearing uh because I've spent uh my Senate career advancing policies that improve the livelihood of ordinary Americans. Uh as former chairman of the Finance Committee, I've personally shepherded legislation that has delivered tax relief to working families and made the tax code more progressive. Today's hearing title suggests, though, that the Biden adminis- -stration's overspending and corporate cronyism have led to prosperity for all? Well, I just wrapped up my annual meetings across Iowa's 99 counties, and I can tell you that Iowans aren't buying into this uh proposition that that it's a uh program, prosperity for all. And they're not alone. We have a clear majority of Americans disapproving of the President's handling of the economy. Just talk to ordinary folks. They'll tell you that their paycheck uh don't uh go as far as they used to and that the American dream seems further out of reach. So let's look at a few facts. Thanks to the spending binge and energy policy blunders of the majority party and the President's party, consumer prices have risen more than 17% since President Biden took office. Inflation remains well above the Fed's target, and price hikes have accelerated the past 2 years. And even if we uh get inflation down to what the Fed wants, at 2%, don't forget the $7,000 a year that's already in the economy uh as uh increased costs for families, it's going to be there forever. 2% inflation isn't going to reduce that at all. Yet to hear Democrats tell it, it seems that they expect uh praise for prices not being even higher. Inflation isn't the only problem with this economy. Just last week, the Census Bureau announced that real median household income fell $1,750 last year, and are down $3,670 uh from 20 uh 19. And you can see those figures on the chart. According to Bloomberg, the average middle-class adult has seen a staggering $33,000 drop in real wealth since the Fed started hiking interest rates. Moreover, skyrocketing mortgage rates have made homeownership the least affordable it's been in nearly 40 years. When you enact bad policies, what do you expect? You get bad outcomes. President Biden claims that his economic strategy is about growing the economy from the bottom up, but when you look at many of his policies, the ones who benefit happen to be the wealthy and the well-connected. According to Mr. Harris's own uh Brookings Institute, um the President's student loan policies are costly, poorly targeted, and provide substantial benefits to highly educated and well-off borrowers. Then there's the so-called Inflation Reduction Act, which even President Biden now admits wasn't about reducing inflation. In fact, it has and will increase prices, according to the nonpartisan Congressional Budget Office. That bill was chalk-full of corporate handouts and regressive new tax subsidies that even Democrat economists say will disproportionately benefit the wealthy. With that said, Mr. Chairman, I don't doubt that everyone on this committee wants prosperity for all Americans, but I think the President's economy and policies aren't the answer to that. Experience shows us the best way to promote prosperity for all is through pro-growth policies that empower ordinary people rather than Washington. Republicans took that approach in the years immediately preceding the pandemic, and the results were an economy where Americans saw gains. Not only did we have historically low unemployment, but inflation was stable, interest rates were affordable, and wages were rising faster than prices. In fact, uh blue-collar workers saw the biggest wage gains. As a result, the Census Bureau, the Congressional Budget Office, and the Federal Reserve all reported that inequality fell and incomes went up, and uh look at the chart to back this up. Instead of raising taxes like my Democrat law- colleagues, we lowered taxes across the board while making the tax code more progressive. 2017 tax law built upon 20 years of Republican-led tax cuts that have removed millions of low- uh to moderate-income Americans from the tax rolls. As a result, the bottom 20% of the households have seen their average federal tax uh drop from over 7% to only half a percent today. The working class has already been at the center of Republican tax relief efforts. I welcome today's witnesses and look forward to hearing from their testimony and asking them questions.",
+   "start": 24.25,
+   "end": 1863.6,
+   "kind": "speech"
+  },
+  {
+   "speaker": "whitehouse-sheldon",
+   "text": "Our first witness is the Honorable Benjamin Harris. Dr. Harris recently joined the Brookings Institution as its vice president and director of economic studies. Previously, Dr. Harris served as assistant secretary for economic policy and chief economist at the U.S. Department of the Treasury. Earlier in his career, he served as the chief economist and economic advisor to then Vice President Joe Biden. Dr. Harris, welcome. Next, we have Shayna Strom, president and CEO, Washington Center for Equitable Growth, a nonprofit research and grantmaking organization. Ms. Strom previously served as the chief deputy national political director at the American Civil Liberties Union and in multiple senior roles at the Office of Management and Budget under President Obama. Ms. Strom, thank you for joining us today. We will also hear from Veronica Puentes. Mrs. Puentes is an assembly technician at a New Flyer electric bus manufacturing plant in St. Cloud, Minnesota. She's a Communications Workers of America member and steward of CWA Local 7304. Ms. Puentes, we very much appreciate your taking the trouble to join us. Then we have Veronique de Rugy, George Gibbs Chair and senior research fellow at the Mercatus Center at George Mason University. Dr. de Rugy is also a nationally syndicated columnist. She has been a resident fellow at the American Enterprise Institute, a policy analyst at the Cato Institute, and a research fellow at the Atlas Economic Research Foundation. Dr. de Rugy, welcome. Finally, Dr. Tyler Goodspeed Kleinhenz, a fellow at the Hoover Institution at Stanford University. Dr. Goodspeed served on the President Council of Economic Advisers from 2019 to 2021, including as the council's acting chairman beginning in 2020. Prior to his appointment, Dr. Goodspeed served as the council's chief economist for macroeconomic policy. Thank you for being here. Dr. Harris, please proceed. All of your full written statements will be made a matter of the record for this hearing, so you can confine yourself to the 5 minutes that will allow us to ask questions.",
+   "start": 1864.0,
+   "end": 1988.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "harris-benjamin",
+   "text": "Thank you, Chairman Whitehouse, Ranking Member Grassley, and members of the committee, for inviting me to testify at this important hearing today. I'm honored to appear before the committee to discuss ways that social investments can work towards the dual goals of reducing inequality while strengthening America's economic future. My testimony today will focus on policy strategies to promote sustained long-term economic growth. In particular, I will discuss a new perspective on growth termed \"modern supply-side economics,\" which was introduced by Treasury Secretary Janet Yellen in a virtual keynote address to the World Economic Forum in January 2022. The primary goal of this testimony is to advance and elaborate on key elements of modern supply-side economics, laying out six principal pillars of this strategy. To frame any dis- discussion concerning economic growth, it is important to first note the United States is projected to continue a period of modest, but steady, economic growth over the next decade. In the latest economic projections, CBO projects that real GDP growth will measure between 1.7% and 2.7% annually between 2024 and 2033. While these ranges are within recent historical experience, achieving faster growth could not only improve livelihoods, but also partially mitigate our government's long-term fiscal challenges. The heart of these growth challenges relates to two key macroeconomic factors. The first is sluggish growth in the labor force, which is expanding very slowly for the foreseeable future. A second key factor constraining economic growth is productivity. Subpar productivity growth has been a long-term challenge for the United States and advanced economies in general, with slow productivity growth characterizing the economy since the 1970s, with only brief exceptions. These long-term challenges notwithstanding, it is important to recognize the United States generally fell- fared better than our competitors in the aftermath of the pandemic. This relative success reflects a more robust turnaround in domestic consumption in the United States, which has typically not been the case among our competitors. Importantly, too, the U.S. has experienced a much stronger rebound in the labor market while also maintaining core inflation rates that are lower than many other countries. With that background, I will now turn to modern supply-side economics. Modern supply-side economics and traditional supply-side economics share the common key goal of expanding the productive capacity of the economy, or the aggregate amount of goods and services that can be produced by U.S. firms and workers. However, there are many key differences, with the central difference being the specific channel for boosting various factors of production, like capital and labor. The central elements of traditional supply-side economics approach to boosting factors of production are threefold. One, the levels of investment are high- that levels of investment are highly responsive to changes in tax rates, including corporate taxes and taxes on individual income, investment income. Two, that sweeping deregulation can reduce barriers to economic activity and promote growth. And three, that government intervention is a poor avenue for pursuing long-term growth, in part because ultra-low low tax rates on capital are a necessary condition for maximizing the deployment of capital, um over time, government intervention obviously requires raising revenues to support various public programs. In my view, these various approaches are not well supported by the academic uh literature and by uh empirical evidence. In stark contrast, modern supply-side economics aims to make the economy more productive through more ef- through more directly raising factors of production and by mitigating the costs of economic shocks from events like climate change and ener- energy disruptions. In my written testimony, I lay out six key elements of modern supply-side economics. I'll list them here. These elements are: one, thorough policies can dramatically reduce barriers to work and raise the quantity of labor in the economy; two, legal immigration should be regarded as an economic growth strategy; three, more equal distribution of capital, all else equal, can raise economic output; four, the rate of aggregate investment is not especially sensitive to the tax rate on capital; five, addressing climate change can both mitigate risks and boost growth by investing in the green energy transition; and sixth, more robust robust competition can spur faster growth. Thank you for the opportunity to testify today. I look forward to discussing strategies for promoting faster and more inclusive growth. Thank you.",
+   "start": 1988.3,
+   "end": 2245.9,
+   "kind": "speech"
+  },
+  {
+   "speaker": "whitehouse-sheldon",
+   "text": "Thank you very much. Ms. Strom, please proceed with your statement.",
+   "start": 2246.1,
+   "end": 2249.9,
+   "kind": "speech"
+  },
+  {
+   "speaker": "strom-shayna",
+   "text": "Chairman Whitehouse, Ranking Member Grassley, and members of the committee, thank you for the opportunity to testify. I am the president and CEO of the Washington Center for Equitable Growth, a nonprofit research and grantmaking organization dedicated to advancing evidence-backed ideas and policies that promote strong, stable, and broad-based economic growth. Today, I want to make two important points. First, high levels of economic inequality are not only detrimental to the millions of people left behind economically, but they are also detrimental to strong, stable, and broad-based economic growth. Second, the economic policies pursued by the federal government since the start of the pandemic, especially significant public investments and income supports, had a notably positive impact on many of those obstacles to growth and have resulted in strong economic outcomes. To make sense of the American economy over the last several decades, you have to start with the insight that I mentioned a moment ago: very high inequality is itself an impediment to growth. This is true for a number of reasons. For example, a more equitable economy supports people to develop the skills and knowledge to be productive members of society. This is one of the reasons that investing in children is so powerful. In addition, economic research shows that low- and middle-income households spend more out of every dollar they make as compared to higher-income households. That additional consumption is good for the economy. It creates demand that encourages businesses to invest in innovation and further production. Unfortunately, over the last four decades, the United States experienced a rapid increase in inequality. According to one estimate, between 1979 and 2019, the bottom 90% of individuals lost 9% of their share of national income, an enormous transfer of income from working- and middle-class families to those at the top. This rapid increase in income inequality had negative impacts on Americans who were left behind. A child born in 1940 had a 90% chance to earn more income than their parents by the time they were age 30, but a child born in 1980 had just a 50% chance to do the same. And as we now expect, the rapid rise of inequality harmed economic growth. The fortunes of the rich did not trickle down as promised, but simply resulted in stagnant pay for everyone else. Average economic growth was lower in the recent decades when inequality was increasing than it was in the recent decades when inequality was falling. The good news is that we are now starting to see some real progress to reduce inequality and strengthen the economy. Social supports provided to families during the pandemic and economic investments that the federal government is making have contributed to putting households on firmer financial footing, helping them find high-quality jobs, and stabilizing and growing the overall economy. New metrics published by the Bureau of Economic Analysis show that between 2019 and 2021, the share of disposable income earned by the bottom half of households rose nearly 2 full percentage points, the highest share of income for that group since BEA's first year of data. And as inequality has come down, the American economy has soared. Employment recovered faster than in any of our previous three recessions, prime-age employment is at a 20-year high, and median real wages, adjusted for inflation and demographic changes, are back on the upward path they were on in 2019. I attribute much of that success to the significant investments you and your colleagues made in the American people during and in the aftermath of the pandemic. The enhanced child tax credit, boosted SNAP benefits, and enhanced unemployment insurance helped stabilize household finances during the pandemic. Expansion of the CTC, for example, lifted 2.1 million children out of poverty, and last week's child poverty report demonstrates what happens when that investment expires. These investments weren't just good for families. Economists credit these programs for keeping consumption and the economy afloat during the pandemic. Moreover, compare today's economic recovery to the last one. After the Great Recession, it took just 7 years- it took about 7 years to get unemployment back to where it had been before the Great Recession b- before the recession began. This time, it took only 2 years, even though unemployment spiked much higher. To drive down inequality and encourage growth, it is clear that we have to invest in our public infrastructure, including investments in people. I've included more examples of how government investment can spur innovation and benefit the economy in my written testimony. As you consider the 2024 appropriations bills, I would urge you to continue to protect these investments in our economy. Economic inequality in the U.S. remains elevated, but by investing in people and in our infrastructure, we can achieve strong, stable, and broad-based economic growth that will lift up everyone in our country. I look forward to your questions. Thank you.",
+   "start": 2250.7,
+   "end": 2541.3,
+   "kind": "speech"
+  },
+  {
+   "speaker": "whitehouse-sheldon",
+   "text": "Thank you very much. Mrs. Puentes, we are delighted to have you here. Thank you so much. Please make your statement.",
+   "start": 2541.6,
+   "end": 2547.4,
+   "kind": "speech"
+  },
+  {
+   "speaker": "puentes-veronica",
+   "text": "Good morning, Chairman Whitehouse, Ranking Member Grassley, and members of the committee. Thank you for the opportunity to testify before you today. My name is Veronica Puentes. I am an assembler technician at New Flyer in Crookston, Minnesota. I am a mother to seven children, and I am a grandmother of four. I am a union steward and a member of Communication Workers of America, Local 7304. But most importantly, I am a child of God. I have worked at New Flyer for 12 years. At my facility, we manufacture electric buses. I work in the finish department where I fix any last-minute problems before the finished electric bus is sent to the quality inspectors and shipped to its final destination. My life hasn't always been easy. I spent my childhood traveling between Texas and Minnesota because my parents were migrant workers. I became a mother and struggled with addiction issues at a very young age. I headed down a destructive path. I ended up serving 2 years at the Minnesota Correctional Facility, and during that time, I deepened my relationship with Christ, and enrolled myself in programs to build my skills and better myself in hopes for a better future for myself and for my children. Finding a good-paying, stable job was the first step to turn my life around. I was lucky to land a job at New Flyer. I owe it all to God and our union, both of which have given me a second chance. The union doesn't care about who you are. They will give you a fair chance regardless of your background. For example, our union enforces a nondiscrimination policy when hiring so that returning citizens are given a chance to interview and be hired. I went from making $8.50 as a housekeeper to $13 an hour when I worked at New Flyer. With the regular wage increases our union contract, I started a savings account, began to pay off my debt, and eventually bought a car and a house. I finally had a chance of stability. As Congress debates funding our government, it is important to continue the critical investments made through the infrastructure bill and the Inflation Re- Reduction Act. So many workers like me across the country are benefiting from the good union jobs created by the investments from these laws. There was a time my coworkers and I were concerned about our facility, would it shut down? Which was stressful for all of us. It would be extremely difficult for me to find another job with a good wage, benefits, and workplace protections because of my background. The success of the plant is also important to our local community. Crookston is a small rural town with the population of over a little so a little over 7,000. People come from all over to work at New Flyer because union manufacturing jobs, like mine, provide better pay and benefits than any other job site in the area. If this facility closed, it would devastate our local community with job losses and loss of financial revenue and investment. But thanks to the infrastructure bill and the IRA, our facility has been busy fitting filling orders for electric buses for all across the country. Workers no longer stress about losing their jobs. The IRA makes it easier for state and local government to invest in electric buses. The infrastructure bill includes $5 billion for state and local governments to buy or lease U.S.-built zero-emission and low-emission electric buses. The grant program helps improve local air quality and also expand getting affordable and accessible transportation for communities across the country. The increased demand for electric buses means that we have a lot of new job openings at the facility. But it is not enough to create jobs. Congress must ensure that all jobs created through federal investment are union jobs that will provide workers with good-quality life. The future of this economy is green jobs and union jobs. I am a prime example of how unions can be a life-changing opportunity for someone struggling to get by. I love my job. I'm a proud and I am proud of the work I do to create a sustainable, clean public transportation system for all Americans. I am working on electric buses that will connect people to their schools, work, the grocery store, and their loved ones. This world is changing, and we must adapt. The investments from the infrastructure bill and the IRA guarantee our facility will thrive for years to come. And if our facility prospers, that means my family and Crookston will continue to flourish as well. God bless America, for the Lord knows that we are one nation under God. And thank you again for the opportunity to testify you before you today. I look forward to any questions you may have.",
+   "start": 2548.0,
+   "end": 2747.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "whitehouse-sheldon",
+   "text": "Thank you, Mrs. Puentes. Dr. de Rugy.",
+   "start": 2748.1,
+   "end": 2751.4,
+   "kind": "speech"
+  },
+  {
+   "speaker": "rugy-veronique",
+   "text": "Chairman Whitehouse, Ranking Member Grassley, and member of this committee, thank you for having me today to talk about an important topic about how to fuel growth, especially for lower-income American. I have uh three points. Um rather than targeting inequality, our policy should be to try to make those who struggle the most better off. Second, Americans continue to struggle, unfortunately, under the weight of government spending and inflation. And third, the return on investment from government spending is generally lower than returns from private-sector investment, especially during times um no- outside of time of emergency. So first, um concern about income and wealth inequality, while valid in some instances, should not make us overlook that what matters the most is the well-being of lower-income Americans. Unfortunately, the President's policy, the sum of which he calls \"Bidenomics,\" aren't helping much on that front. For instance, the cornerstone of Biden's economic agenda is government-subsidized factory investment in manufacturing. However, manufacturing is a sector that employs 8% of Americans, the plurality of whom are workers with bachelor degree and higher. Moreover, manufacturing uh only accounts for 11% of the economy, so even if the sector were growing, which is not, it's been contracting for the last 10 months, um the benefit wouldn't be widely shared across um the economy. Companies, often big and rich, will be the one benefiting from the subsidies for project, many of which would have happened even without the subsidies. For instance, about half of the Inflation Reduction Act projects were in the works before uh the the bill was even passed, and the private uh green energy market was booming even before the subsidy, in part because of large demand uh for EVs and for electric buses. Um Other subsidies overwhelmingly benefit affluent consumers of electric cars and charging safe station. Finally, all this new spending will be subjected to old and new political requirements that will increase the cost of whatever technology is produced, and that too will hurt lower-income Americans. Second, American are still struggling. Real growth was 2.1 percent in the second quarter, and unemployment is low, but these numbers are the flip side of an economy that's been overstimulated with too much spending, and inflation which started in 2021. Progress has been made on inflation, but it's not over and people feel it. Their real wages are down. Again, that hurts lower-income Americans the most. Over 50 percent of a typical family budget is devoted to food, energy, and shelter, all of which have seen large increases in prices since 2021 and are still growing by 5 percent a year. Inflation-adjusted medium household income has declined by roughly $2,000, leaving Americans worse off. Excess spending contributed to inflation and produced enormous deficit and a record level of debt, 33 trillion since Monday. The prospect of gigantic, never-ending deficit during good times is also making investors nervous, as demonstrated by the rise in yields on benchmark 10-year Treasury notes. Other borrowing costs are also rising, such as mortgage rates and car loan rates. Unfortunately, all these negative trends, inflation, high debt, higher interest rate, and the certainty of a slowing economy in the future impose a heavy burden on all Americans, especially lower-income Americans. What's more, there are no sign that the erosion of governance in Washington evoked by the credit agency Fitch, when it announced the downgrade of Treasury debt, will get better. Third, the administration argues that its public sector investment will eventually create growth and job for ordinary Americans. But the economic literature generally finds that government spending in time of full employment crowds out private sector. The Congressional Budget Office analysis of infrastructure legislation finds that moving $1 of investment from the private sector to $1 of government infrastructure investments means giving up half of the rate of return. In addition, every deficit-funded federal dollars in infrastructure shrinks private investment by 33 cents, according to CBO. This is likely an understatement because the massive, because of the massive supply constraints investors face when wanting to build infrastructure projects. So in conclusion, reducing inequality is a noble goal, but a reduction in inequality doesn't guarantee the well-being of low-income Americans. Growing the economy is the best way to do this. The government needs to evaluate which policies are contributing to that growth and which one are harming it. I'm looking forward to your questions.",
+   "start": 2752.4,
+   "end": 3113.1,
+   "kind": "speech"
+  },
+  {
+   "speaker": "whitehouse-sheldon",
+   "text": "Dr. Goodspeed.",
+   "start": 3113.1,
+   "end": 3116.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "goodspeed-tyler",
+   "text": "Thank you, Chairman Whitehouse, Ranking Member Grassley, members of the committee. I want to focus my remarks this morning on a set of empirical observations about the pattern of real earnings growth in the United States since the 2008-2009 recession, which I think are essential for an intellectually open discussion about inequality in this country. From the start of the economic recovery in July 2009 through the end of 2016, the U.S. labor market was characterized by a highly unequal recovery. On an inflation-adjusted basis, weekly wage growth for managers outpaced that of workers. Real weekly wage growth for the top tenth of the wage distribution was more than double that for the bottom tenth of the wage distribution. Real weekly wage growth for those with a college degree outpaced that for workers without a college degree. However, beginning in 2017, the Trump administration, working with colleagues on the Hill, implemented a tax and regulatory agenda designed to incentivize private domestic capital formation, enhance labor demand by lowering the relative value of multinational enterprises' outside options, and incentivized greater labor force participation, in part by lowering marginal rates and by nearly doubling the standard deduction, as the ranking member pointed out, bringing more Americans out of federal tax liability altogether. In stark contrast to the economic recovery in the 7 and 1/2 years through 2016, in 2017, 2018, and 2019, it was then the case that real weekly wage growth for workers was more than double that of managers. Real weekly wage growth for the bottom tenth of the distribution was more than double that for the top tenth. While real wages grew across the board, real weekly wage growth for those without a college degree outpaced that for workers with a college degree. And in the aftermath of historic tax reform in 2017, labor compensation's share of total economic output increased and income inequality, whether measured by 90/10, 80/20, Gini coefficient, income inequality in 2018, 2019 decreased. In 2019, real median household income, the typical family's income after inflation, increased by $5,220, the largest increase in a single year on record and a bigger increase in 1 year than cumulatively during the 16 years through 2016 combined. In the 3 years through 2019, real median household income grew more than three times faster than during the 7 years through 2016 combined. Looking at wealth, in the 3 years through 2019, real wealth for the top 1 percent of the distribution rose at an annual rate of 5.4 percent. Not bad. Real wealth for the bottom 50 percent grew at an annual rate of 16.1 percent, and in the aftermath of 2017 tax reform, the bottom 50 percent's share of total real wealth rose and that of the top 1 percent fell. The official poverty rate reached its lowest level on record, with the number of Americans living in poverty declining by 6.6 million in the 3 years through 2019, including almost 3 million children. Unfortunately, since the end of 2020, though real weekly wage growth for production workers and workers without a college degree has been relatively stronger than real weekly wage growth for managers and workers with a college degree, in absolute terms, real weekly wage growth has declined. It has been negative across the board for all these groups. In 2022, real median household income declined by $1,750. That was a bigger decline than during the 2020 recession and during the the 2001 recession in the early 2000s. The share of household income earned by the top 5 percent has risen. The share held by the bottom 20 percent, 40 percent, and 60 percent has fallen. And there are today more Americans living in poverty than there were not only in 2019, but more even than in 2020 during the depths of the pandemic. And there are more children in poverty today than there were in 2019. Nobel laureate Milton Friedman once warned that one of the great mistakes is to judge policies and programs by their intentions rather than their results. However noble the intentions of recent policy may have been, it was the results of the economic policy agenda implemented in 2017, 2018, 2019 that generated robust real wage gains and declining inequality. And I think it I think that if we are seriously interested in answering fundamental questions about inequality and growth, then we ought to, at the very least, be curious about why 2018 and 2019 stand out so uniquely over the past 15 years. Thank you.",
+   "start": 3116.5,
+   "end": 3193.3,
+   "kind": "speech"
+  },
+  {
+   "speaker": "whitehouse-sheldon",
+   "text": "Thanks very much, Dr. Goodspeed. Miss Ms. Fuentes, again, welcome. You've had quite a journey that brought you here, not just immediately, but across the span of your life.",
+   "start": 3193.3,
+   "end": 3224.7,
+   "kind": "speech"
+  },
+  {
+   "speaker": "puentes-veronica",
+   "text": "Yes.",
+   "start": 3228.1,
+   "end": 3228.9,
+   "kind": "speech"
+  },
+  {
+   "speaker": "whitehouse-sheldon",
+   "text": "When you joined the labor union, what were the most powerful effects in your life, both economically and in terms of your confidence and security for yourself and for your family?",
+   "start": 3229.0,
+   "end": 3244.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "puentes-veronica",
+   "text": "It's one of the best things that that I've been a part of. Um, I knew nothing about a union until I started working for New Flyer. And it has changed not only my life, but many lives of my members. That also, it has shown me unity to its fullest, that when we come together, we can make a difference. So, me working with my fellow coworkers, union members, the executive board, doing everything that we can together to make not only the company better, but the union better has with the help of God and the union, it has just taken me places I never thought that I'd be. I mean here I am before you today testifying and saying how important this infrastructure bill is to not only me, but my coworkers, to New Flyer, St. Cloud, Anniston, Crookston. There's many members of us who rely on this and we appreciate that. We appreciate not feeling that we're drowning, that we are finally above water, that everything's going to be okay. We're not going to shut our doors thanks to this bill. So, that is what the union has done for me.",
+   "start": 3245.2,
+   "end": 3311.2,
+   "kind": "speech"
+  },
+  {
+   "speaker": "whitehouse-sheldon",
+   "text": "Well, thank you very much.",
+   "start": 3311.2,
+   "end": 3312.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "puentes-veronica",
+   "text": "Thank you.",
+   "start": 3312.8,
+   "end": 3313.9,
+   "kind": "speech"
+  },
+  {
+   "speaker": "whitehouse-sheldon",
+   "text": "Dr. Harris, you mentioned, um, climate mitigation and risks in the course of your testimony. And there's been some discussion about inflation. I'd love to hear your opinion on the correlation between climate risk and inflation. It strikes me that insurance costs are a pretty elementary household cost, and we're seeing them soar as insurance companies have to grapple with new and unprecedented fire and flooding risks that are caused by climate change driven by carbon pollution. It strikes me that we are seeing in certain areas reduced production of food products because of again, flooding and drought and climate disruptions. And when production reduces and demand stays the same, guess what, prices go up. We are seeing health costs go up for families, both from the pollution associated with burning fossil fuel, but also from the disasters and the health effects of those disasters associated with burning fossil fuel. What are your thoughts on the role that climate change plays in the inflation that we continue to see?",
+   "start": 3313.9,
+   "end": 3383.1,
+   "kind": "speech"
+  },
+  {
+   "speaker": "harris-benjamin",
+   "text": "Thank you for that Thank you for that question, Mr. Chairman. I think you're exactly right on the positive correlation between climate change and inflation. And just so a few a few further points on that. The first good example, I think, is is around energy production. And we can look, for example, at rising energy prices, not just due to, for example, Russia's aggression in Ukraine, which spiked the price of crude, quite sharply in the wake of the invasion, but also more broadly, due to various disruptions. The perfect example is what happened in Texas several years ago with that climate event that not only cost the lives of between 200 and 700 people from Texas, but also cost between $80 and $130 billion, according to a report from regulators. So, you know, I think that with energy production, there's a real opportunity to address climate change and actually to drive down prices. So if you look, for example, at various models looking at the impact of cheaper electricity coming out of the IRA, you see that after 10 years, it will drive down electricity costs for American families by 2.2 percent. After 20 years, that more than doubles to around 5 percent. These are meaningful cuts. And so, not only is legislation like the IRA reducing the harmful costs of these climate disruptions, but also making electricity cheaper for American families.",
+   "start": 3383.1,
+   "end": 3469.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "whitehouse-sheldon",
+   "text": "I would add that one of the characteristics of our dependence on fossil fuel is that, um, we then become dependent on pricing decisions that are made by a foreign cartel. The notion that we can have energy independence in the United States with fossil fuel is a complete fantasy because the price of fossil fuel is set by a foreign cartel that plays with production in order to drive up price. And then we've seen over and over again that American fossil fuel companies, over and over again, presented with the choice between following the cartel-inflated price and charging American consumers more or continuing to run a profitable business and letting the real market dictate the price of their product, inevitably, they ride up with the cartel pricing. And that's one of the reasons we've seen such astonishing profits associated with the price gouging that the cartels, uh, opened up and that the American oil companies followed. With that, let me turn to my ranking member for his questions, Senator Grassley, and, uh, we'll proceed from there.",
+   "start": 3469.0,
+   "end": 3552.1,
+   "kind": "speech"
+  },
+  {
+   "speaker": "grassley-chuck",
+   "text": "Dr. Goodspeed, you were acting chairman of the President's Council of Economic Advisers in 2020. We've had witnesses on this panel point out their testimony that the U.S. recovered from the pandemic recession faster than other countries, and they tend to attribute it to the Bidenomics. What role did the fact that our prepandemic economy was the strongest it's been in years play in the speed of recovery rather than the inflationary policies of this administration?",
+   "start": 3552.1,
+   "end": 3587.3,
+   "kind": "speech"
+  },
+  {
+   "speaker": "goodspeed-tyler",
+   "text": "Thank you, Senator. So, I think it is instructive to note that by the end of 2020, the U.S. economy had already regained 84 percent of the lost output during those horrific months of of March and April 2020, and by the end of the year had already regained almost 60 percent, six in 10 of the jobs lost during those horrific months of March and April. And part of that was the the swift response of Congress working with the White House to pass measures such as the Paycheck Protection Program and the Employee Retention Tax Credit. But I think another factor was the strength of the pre-COVID U.S. labor market. We actually in the 2021 Economic Report of the President, conducted a simulation in which we shocked, we imposed the same COVID shock on the 2016 labor market with the 2016 unemployment rate and the 2016 probabilities of transition between unemployment, employment, and not in the labor force. And in that simulation, the unemployment rate by fall 2020 was still 3 percentage points higher than what it actually was. And that corresponds to almost 5 million more Americans that would have been in unemployment, would have been unemployed were were we not blessed with the strong labor market of February 2020.",
+   "start": 3587.3,
+   "end": 3660.1,
+   "kind": "speech"
+  },
+  {
+   "speaker": "grassley-chuck",
+   "text": "I've authored several major tax laws. I've seen the results letting working families and businesses keep more of their hard-earned money. So, Dr. Goodspeed, could you discuss some of the pro-growth provisions of our 2017 tax bill, the effect they had on the economy? But more important than that general comment is, what would happen if we allowed the law's tax relief to expire? What effect that would have on middle-income families?",
+   "start": 3660.1,
+   "end": 3696.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "goodspeed-tyler",
+   "text": "So, one of the historically anomalous features of the economic recovery in the 7 and 1/2 years through 2016 was that we had 1.6 million prime-age American workers leave the labor force, despite the fact that that population was growing. And firms were not investing enough to replace depreciation of existing capital per worker. And so we actually had a negative contribution of so-called capital deepening to labor productivity growth. In the aftermath of 2017, in contrast, we saw business investment rise to a level that was about 10 percent above that which would be predicted by by pre-2017 trend. We saw, as noted in my testimony, in 2019 bigger real median household income gains in 1 year than in the 16 years combined through 2016. We saw labor force participation rates rise across the board, but partic- in particular rise for older workers, and rise for prime-age women, uh, who for whom work may have required the incurrence of child care costs. So all that would would go away if if these provisions",
+   "start": 3696.0,
+   "end": 3766.1,
+   "kind": "speech"
+  },
+  {
+   "speaker": "grassley-chuck",
+   "text": "And you heard the second part of my question about the if we let this, uh, lapse, what'll happen to the middle class?",
+   "start": 3766.1,
+   "end": 3773.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "goodspeed-tyler",
+   "text": "If we if we let this last lapse, I think that we would see a return to the sort of recovery that prevailed from July 2009 through the end of 2016 with weak real wage growth, declining labor force participation, including among prime-age workers, and weak business investment.",
+   "start": 3773.0,
+   "end": 3790.3,
+   "kind": "speech"
+  },
+  {
+   "speaker": "grassley-chuck",
+   "text": "Dr. Rugy, Democrats like to claim any government spending that happened to like is an investment. We saw this in the so-called Inflation Reduction Act. What are some of the major ways Bidenomics so-called investments have undermined our economy and Americans' livelihood?",
+   "start": 3790.3,
+   "end": 3810.7,
+   "kind": "speech"
+  },
+  {
+   "speaker": "rugy-veronique",
+   "text": "Thank you, Senator. Thank you, Senator. Um, I mean, at first, I'd like to note that I mean, what these investment, which is, um, estimated to be like subsidies between $1.2 trillion and $2.1 trillion when you put them all together. Um, they're What they're doing is that they're they're attempting to change the sectorial composition of the economy, rather than actually growing the economy or de- de- de- declining inflation or reducing growth. Uh, what that means another way to talk about this is to say they're picking winners and losers. And that means shifting basically capital away from unsubsidized, uh, companies and unsubsidized sectors towards subsidized sectors, um, and and towards subsidized consumers, um, some subsidized consumers of particular goods and away. So, that The liter- I mean, what when we've looked at particular programs that do just that, we see that it may be beneficial for the companies receiving the subsidies. Certainly, in the short-term it does, but in the It's not It doesn't mean it's a net growth for the It's a net net benefit for the economy. In fact, usually, it is not. There's another added, uh, problem with these subsidies is that they tend to benefit big companies, as I've mentioned, uh, that were already in the process of of doing this. For instance, uh, uh, whether it's for the invest- uh, the Inflation Reduction Act, a lot of these companies, uh, were I mean, a lot of these projects were already in the pla- in the in the, uh, in the, um, in the in the works. I mean, there was a booming economy and enormous demand of investing in green energy and and consumer, uh, demand for green energy. But the problem is this, uh, this enormous amount of spending is taking place in an environment that hasn't been freed from a lot of the restraints imposed by some regulations or or some, uh, some government action, the bottleneck for immigration. Uh, permitting reform is is badly needed, because you can you can, you know, decide to spend a lot of money in building a factory. If If it takes you three or four, five years to even get the permission to build this factory, you are going to be, uh, in problem. And then, of course, um, those the implementation of these, uh, of these, uh, investments, um, for those who benefit from the subsidies, now, uh, face added requirements like like providing building childcare, uh, on the facilities, prevailing wage, all sorts of things. And the problem is if we had removed all these impediments to investments beforehand, um, again, because there was so much interest in in building green energy, there was some geopolitical, uh, tension, uh, and because of the pandemic, a lot of companies felt that it was time to rebalance and move back to the U.S. or or elsewhere out of China. Um, if we If we didn't have all these requirements and and impediment to to, um, investment, uh, we would have seen much, much more private investment in in these sectors than than we see today. And we may not even have needed any of the of the, um, government, um, any of the government incentives. But, again, I mean, I think the real problem is going to be that effectively, because you haven't the the job hasn't been done before, it's like putting, you know, a hose on a on a fire hydrant and just turning on the water. And and it's just not going to go that great.",
+   "start": 3810.7,
+   "end": 3930.1,
+   "kind": "speech"
+  },
+  {
+   "speaker": "whitehouse-sheldon",
+   "text": "If, uh, you don't mind, Senator Grassley, um, I think we have lost our colleagues who were here, including to a Foreign Relations markup that is waiting for a, uh, quorum. So it's not clear that they'll be back, so, um, I didn't get a chance to ask, uh, Ms. Strom a question, so I will have a second round with her. If you'd like to have a second round to engage with your witnesses, that would be fine.",
+   "start": 3930.1,
+   "end": 3956.3,
+   "kind": "speech"
+  },
+  {
+   "speaker": "grassley-chuck",
+   "text": "I'll have two more questions.",
+   "start": 3956.3,
+   "end": 3957.7,
+   "kind": "speech"
+  },
+  {
+   "speaker": "whitehouse-sheldon",
+   "text": "Terrific. And then, uh, we'll wrap it up. Um, so you mentioned in your testimony, Ms. Strom, the general economic burden of climate change costs on the economy. Your testimony focused very much on the issue of income and economic inequality. Could you connect the dots with how the economic burdens on the general economy of climate change flow through to the issue of economic inequality?",
+   "start": 3957.7,
+   "end": 3996.3,
+   "kind": "speech"
+  },
+  {
+   "speaker": "strom-shayna",
+   "text": "Absolutely. Thank you for that question, Senator. Um, I should note that that climate change will have a really significant impact on the economy. Uh, a recent estimate is that climate change could lower world GDP by 4 to 18 percent within 30 years, depending on how aggressively we tackle it now. And OMB has estimated that climate change could reduce federal revenues by 2 trillion annually by 2100. Um, it is certainly the case that low-income people bear the costs of climate change in a very significant way. For example, rising heat leads workers to It leads both to lost productivity and also it leads to more injuries, more problems in the workplace. Um, and so, um, and also, lower-income individuals often will bear the costs even more significantly. So what I would say is again, you know, reducing inequality and mitigating climate change go hand in hand, and it is also the case, as I have mentioned in my testimony, that reducing inequality itself helps to improve economic growth.",
+   "start": 3997.4,
+   "end": 4041.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "whitehouse-sheldon",
+   "text": "And I had, um, an exchange with Dr. Harris about how climate change is driving inflation. We talked about how the prevalence of disasters and the unpredictability of those disasters is dramatically driving up insurance costs, which go right to a family's budget, how interference with crop growth from drought and flooding reduces production and is predicted to reduce production considerably more, which then would raise food price. is that the health harms from climate change, both from just pollution in the air and from the direct physical disasters that ensue of wildfires and so forth, raises healthcare costs for families and for the community, and that the longer we continue to depend on fossil fuel, the more we subject ourselves to unfair, improper cartel pricing which hits American families' pocketbooks at the pump as they're gouged by American oil companies which choose to ride the cartel pricing up rather than just make reasonable profits and protect Americans' pocketbooks with reasonable pricing. What is your take on that interaction between the climate risks that you've talked about and the inflation factors that we're seeing in the economy?",
+   "start": 4042.4,
+   "end": 4555.7,
+   "kind": "speech"
+  },
+  {
+   "speaker": "strom-shayna",
+   "text": "Absolutely. Um, I would agree with my fellow witness um about that the impacts that um climate change has on inflation, and I would also note, um, as you mentioned, that one of the ways that we could most ensure that we are not as uh sensitive to the kinds of climate risks we are seeing right now, into the impacts on gas prices and that kind of thing, is to invest in uh mitigating climate change. I was very glad to see the Inflation Reduction Act pass, and I think it's an important step towards ensuring that our energy future is better. Um, you know, a clean planet is one of the most important assets that we can leave for our children, and um, and again, I I believe it ultimately will be very impactful on on things like uh inflation.",
+   "start": 4556.0,
+   "end": 4641.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "whitehouse-sheldon",
+   "text": "So in addition to helping Mrs. Fuentes continue to make wonderful electric buses in Minnesota, good climate policies will reduce income inequality, boost our economy, and help reduce inflation.",
+   "start": 4642.0,
+   "end": 4660.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "strom-shayna",
+   "text": "Yes, that is correct.",
+   "start": 4663.0,
+   "end": 4663.9,
+   "kind": "speech"
+  },
+  {
+   "speaker": "whitehouse-sheldon",
+   "text": "Got it. Okay, thanks very much. Um, we may have a late arrival, but go ahead with your questions, and if there are late arrivals, when you're done, we can give them a a turn, and if not, then I'll close the hearing.",
+   "start": 4664.0,
+   "end": 4676.7,
+   "kind": "speech"
+  },
+  {
+   "speaker": "grassley-chuck",
+   "text": "Dr. Harris, uh I'll start with you, Dr. de Rugy. Uh, you pointed out in your testimony very well the unsustainable fiscal path and uh and have uh we've got to do something about it uh have a growing er got to do something about the federal debt, and it's growing, and it's going to continue to grow if we uh e- even more as a percent of gross national product. So, um, I don't want you to go give me a long dissertation on what the economic literature says about how countries should best put their fiscal house in order, but is it uh is it better to rely on tax hikes or spending restraints?",
+   "start": 4677.0,
+   "end": 4706.7,
+   "kind": "speech"
+  },
+  {
+   "speaker": "rugy-veronique",
+   "text": "It's uh What the literature is showing is Sorry. Thank you. What the literature is showing is that uh fiscal consolidation packages that are made mostly of spending cuts uh are better than those made mostly of uh uh tax increases, and they are they're better in many ways. So for the long terms it they the spending uh cut ones grow the economy. Um so that's that's you know that's not in question. But in the short term, uh even if there's uh a a slow down with a fiscal adjustment that is uh based on on spending cuts, it's going to be milder and and not as long-lived as a um a package that is based on um on um tax increases. The problem is that is a political one is like in uh in the literature, what you when you look at uh how many countries have successfully who have adopted fiscal adjustment have successfully adopted the one that leads to debt to GDP ratio, you see that actually uh most of them, 80%, adopt the kind that is mostly based on tax increases, and that's because uh of the grip of special interests which led us to this problem in the first place.",
+   "start": 4707.5,
+   "end": 4765.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "grassley-chuck",
+   "text": "Thank you. Uh, I'm going to ask Dr. Harris Uh, I'm going to give a quote from Adam Lu- Looney, and then if you disagree with it, uh give you a chance to respond uh what uh analysis you have that would say that uh he was wrong. Uh, he quotes uh about the president's student loan, quote, \"costly, poorly targeted to help Americans who struggle financially, provide substantial benefit to highly educated and well-off borrowers, and exacerbate negative incentives in the market for institutions of higher education.\"",
+   "start": 4765.5,
+   "end": 4809.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "harris-benjamin",
+   "text": "Thank you, Senator. So, uh Adam Looney is a non-resident senior fellow at the Brookings Institution. It's difficult for me to respond to your very good question without knowing exactly what provision he's referring to. If he's referring to, for example, income-based repay--",
+   "start": 4810.0,
+   "end": 4826.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "grassley-chuck",
+   "text": "Well then, why don't I ask you to respond in writing?",
+   "start": 4826.6,
+   "end": 4828.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "harris-benjamin",
+   "text": "Thank you, sir. I appreciate that.",
+   "start": 4828.6,
+   "end": 4829.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "grassley-chuck",
+   "text": "Bet. Yes. Uh, ca- Before you go to the next person, if I could just kind of sum up here so I can I can leave. Uh",
+   "start": 4829.9,
+   "end": 4839.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "whitehouse-sheldon",
+   "text": "Gladly. I'd be sorry to see you leave, but you're welcome to sum up.",
+   "start": 4839.1,
+   "end": 4842.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "grassley-chuck",
+   "text": "Okay. Well, it's kind of a case of the fact that I want to respond to what uh the administration and the Democrats are trying to make things look as good as they are, when I think they're very bad. I think the facts are clear that Bidenomics has failed lower- and middle-income Americans. So I'll give these points: prices are up 17.4% since Biden took office; real wages are down 3 and 1/10% under Biden; real incomes are down $3,670 since 2019; middle class wealth down 33,000 per adult since interest rate hike started. In contrast, under pro-growth policies that we have put in place, medium net income grew 18% between 2016 and 2019, real medium income grew $5,220 from 2018 to 2019, the largest increase on records, medium household income after taxes and transfers reached an all-time high in 2019. So I thank you for listening to me.",
+   "start": 4842.1,
+   "end": 4905.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "whitehouse-sheldon",
+   "text": "I thank you, Senator Grassley. Senator Van Hollen, followed by Senator Braun, followed by Senator uh Kaine if he's here, or Senator Lujan if he's not. Chris.",
+   "start": 4905.5,
+   "end": 4914.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "hollen-chris",
+   "text": "Uh thank you. Thank you, Mr. Chairman. Thank all of you for your testimony here today. Uh I I think uh the facts are in when it comes to uh trickle-down economics. Um it was a failed ideology. The idea that if you give big tax cuts to very rich and very wealthy people, somehow that will trickle down and lift everybody else up has been a proven failure. Um what happened is that the very wealthy got even richer, and everybody else sort of was running in place. In other words, a rising tide lifted the yachts, but the boats got stranded. Uh so I I I want to again emphasize, I think, the main theme of this hearing, which is that by making important public investments, whether in education, whether in transportation, other areas, we can, in fact, um help uh both have growth uh with more short shared uh prosperity. Now, that involves, of course, revenues to make investments, uh and uh it is important to take a look at what we call tax expenditures, right, which is the this tax spending side. When a particular group of people gets a better tax break than everybody else, that is the same as transferring revenue, income directly to them. Uh and so, I just want to go through a couple of them because the the Biden administration has put forward a plan that both invests, but also raises revenue in a way that stabilizes the debt over a period of time. Uh so I I want to focus first on the the capital gains uh taxes because right now, we tax capital gains um at lower rates than normal income, implying that we value um money made from money uh more than we value money made from hard work uh through wages. And if you uh look at the benefits uh right now of the discrepancy in the rate we tax income versus how we deal with capital gains, you'll see that 70% of the value of that tax break goes to the wealthiest 1% uh in our in our country. Uh so, Mr. Harris, I have a a question for you because when we talk about raising revenues in these ways by closing tax breaks, getting rid of tax expenditures to to the wealthy folks, uh we often hear from our colleagues, \"No, no, no, no, no, that's going to that's going to hurt economic growth.\" Again, that's the trickle-down theory. If you if you if you don't keep this tax break for wealthy people, it's going to somehow hurt other people, uh even when we use those revenues for investments to help everybody. So, Mr. Harris, I just is there is there a downside to changing these kinds of tax policies that primarily benefit the very wealthy?",
+   "start": 4915.0,
+   "end": 5007.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "harris-benjamin",
+   "text": "Uh thank you, Senator, for that question. I think that in general, there are two main takeaways when we talk about the reforms that you reference, particularly with respect to the taxation of capital income. One is on rates. And so the notion that if we raise rates to be equal to the current levels on labor income, that it would somehow result in this massive withdrawal of investment in the United States, I think is not well founded by the evidence. There've been uh experiments both at the federal and state level when we've seen cuts to tax rates on capital income, and that has not resulted in a flow of new investment. So I think the empirical evidence is pretty clear on that, particularly at the rates to which you're talking about. Secondly, the design of our taxation on capital is actually counterproductive. And a really good example about that is the uh fact that we exempt all capital gains at death, which leaves investors to go ahead and hold onto investments which might might not be productive and ultimately harm economic growth. So they can actually be counterproductive to investment.",
+   "start": 5008.0,
+   "end": 5047.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "hollen-chris",
+   "text": "So you you anticipated my next question, right? Because there's the issue of the fact that capital gains get a preferential rate compared to regular income through wages, um but it's even more lopsided because of our current uh policy that doesn't deal with stepped-up basis. Uh the president's proposal actually combines the two. Uh do you think that that is the right approach?",
+   "start": 5047.3,
+   "end": 5071.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "harris-benjamin",
+   "text": "Uh, yes, sir. I do think that is the the right approach, particularly because it's important when you're talking about any sort of revenue-raising uh initiative to think about what that revenue would go for. And whether that revenue goes towards deficit reduction, which I think is incredibly important, or the type of investments that this hearing is focused on, the net impact of that that increase in revenue coupled with those investments um can, from my view, only be seen as net positive for the US economy.",
+   "start": 5071.5,
+   "end": 5096.7,
+   "kind": "speech"
+  },
+  {
+   "speaker": "hollen-chris",
+   "text": "And would those changes to capital gain rates, and I should emphasize that the president's plan, I think, uh says that this only applies to people over a million dollars uh in capital gains, uh is there any if we if we did that change, would that affect uh people's 401(k) tax uh approach to taxes?",
+   "start": 5097.0,
+   "end": 5117.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "harris-benjamin",
+   "text": "So the president has not called for any direct uh change to the tax treatment of 401(k)s, to to my knowledge. Uh so the argument would have to be, again, that that higher capital gains rates would be so would make investors so allergic to investing in the US economy that they would pull out all of that capital, and I just don't think the evidence is there to suggest that.",
+   "start": 5117.8,
+   "end": 5138.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "hollen-chris",
+   "text": "Got it. Thank you. Um thank you, Mr. Chairman.",
+   "start": 5138.8,
+   "end": 5142.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "whitehouse-sheldon",
+   "text": "Senator Braun.",
+   "start": 5142.1,
+   "end": 5143.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "braun-mike",
+   "text": "Thank you, Mr. Chairman. I want to take off right where Senator Van Hollen left off, that epic debate about where uh our economy comes from. Um I've mentioned it many times here that regardless of our revenue uh uh our tax rate, our revenues stubbornly stay around 18% of our GDP. Uh one time, and Senator Van Hollen cited it a couple sessions ago, that we did that in the Clinton years, to where we were able to raise revenue to the tune of about 20% of our GDP, but statistically, over 50 years, it's around 17 1/2 to 18%. Kind of as a given if, statistically, it's that way other than 2 years out of 50. So generally, you raise the rates, you flush a little more into the Treasury, but your economic growth rate starts to measurably flatten or go down. When you cut the rates, you take money away from the Treasury, but generally, your economic growth rate starts to go up a little bit. It begs the question: is our economy one that can ever be government-centric when the stats seem to show otherwise? And then, what do you do with something that's a given? Um and I want you to address, I'm going to ask two of you to respond to it, uh Mr. Harris and Mr. Goodspeed. The business plan: when I got here 5 years ago, government had already, due to Republicans and Democrats, gotten into structural trillion-dollar deficits annually. Debated Bernie Sanders on the floor, one of my most enjoyable moments, uh since I've been in the Senate, about the modern monetary theory. Please explain to me the arithmetic once we price the five percentage points that interest costs have gone up for everyone, either the government or the private sector, how does that work out? And I remind you that 1% of 30 trillion is 300 billion. Interest rates have gone up 5%, and currently this committee right here, which does nothing on budgeting, is dealing with total discretionary domestic and defense that totals about 1.7 trillion. You know what uh 5% on 30 trillion would be? That's 1.5 trillion, I believe, in interest costs. We're just beginning, as this debt rolls, to have along with Medicare Trust Fund going broke in 4 years, that's more government. I am a believer in raising wages and good benefits and helping the people that need it the most, not corporate America, but this looks like a house of cards, that there's no way you could grow it into something that would be sustainable. I'm going to start with Mr. uh Goodspeed, and then uh I would at least like a minute or two for uh Mr. Harris to uh answer as well. Go ahead.",
+   "start": 5143.5,
+   "end": 5217.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "goodspeed-tyler",
+   "text": "Thank you, Senator. Yes, so I I I think that to the to Senator Van Hollen's point about tax expenditures, one of the things that we did in the 2017 tax law was classic tax policy 101: you lower marginal rates to incentivize investment, incentivize labor force participation, and you you pay for that in part by closing tax expenditures. So two of the tax expenditures that we closed or limited in 2017 were the deduction for state and local taxes and the mortgage interest deduction. Those are two tax expenditures that cost hundreds of billions of dollars a year and massively skew toward the highest-income households. Now the result of that approach of lowering marginal rates was to increase GDP, the the gross output of the US economy, by $300 billion over what the Congressional Budget Office had projected in in its final 2016 forecast.",
+   "start": 5218.0,
+   "end": 5250.7,
+   "kind": "speech"
+  },
+  {
+   "speaker": "braun-mike",
+   "text": "And it was paying for itself, it looked like to me, right before COVID hit. Would you agree with that, in terms of the 150 billion a year that the whole the thing was supposedly costing from the CBO?",
+   "start": 5250.8,
+   "end": 5262.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "goodspeed-tyler",
+   "text": "I I think if you look at the upward revision in the Congressional Budget Office's 10-year forecast, uh most of that upward revision in growth was attributable attributable to the corporate tax changes. So I can see that the $333 billion in corporate tax changes were likely paying for themselves.",
+   "start": 5263.0,
+   "end": 5278.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "braun-mike",
+   "text": "And before you run out of time, what about the idea that we can extrapolate this into the future in terms of what it does in terms of causing a fiscal crisis when we've got have this much debt now being held by the federal government?",
+   "start": 5278.2,
+   "end": 5292.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "goodspeed-tyler",
+   "text": "Well, we have this much debt being held by the government, 31% of which matures in less than 1 year. Historically, after 1945, we had a debt-to-GDP ratio above 100%, but we were also occasionally running budget surpluses, and we had a lot of growth tailwinds.",
+   "start": 5293.0,
+   "end": 5309.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "braun-mike",
+   "text": "We were investors and savers then, not consumers and spenders, and there was a work ethic. Uh Mr. Harris.",
+   "start": 5309.6,
+   "end": 5316.3,
+   "kind": "speech"
+  },
+  {
+   "speaker": "harris-benjamin",
+   "text": "Uh so I agree with you, Senator, that we do have a long-term I Do we have a long-term uh fiscal imbalance that does threaten the US economy, in part because we don't know exactly what will happen to interest rates. And if if interest rates spike more than they are at the current level, it will crowd out private investment. So it's a real concern. Um that's one of the reasons why I've been publicly opposed to the TCJA is because it cost nearly $2 trillion and would cost more if extended.",
+   "start": 5316.5,
+   "end": 5342.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "braun-mike",
+   "text": "Over 10 years, and it used to be 1.5 trillion, but I'll give you the 200 billion a year. That is true chump change. Aren't you more worried about the more global consideration of what running through the Biden administration, they're the only ones that put out a blueprint, $2 trillion deficits as far out as we can see annually? And that's a trillion every 6 months. Doesn't that somehow uh argue against what you're trying to promote through a more I'm not saying it's perfect in terms of the other system. I don't think it's helping the people that need it the most. I'm not for helping big corporations, I'm for helping that average person on the street. But what we've generated is inflation and debt that no country can sustain. How is that a good long-term business plan?",
+   "start": 5343.0,
+   "end": 5370.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "whitehouse-sheldon",
+   "text": "Given the Go ahead and answer, but we're well into Senator Kaine's time now, so if you could keep it short.",
+   "start": 5371.0,
+   "end": 5376.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "harris-benjamin",
+   "text": "I'll be very brief. I've been encouraged by the Biden administration's anti-deficit proposals, including a proposal to extend the solvency of the Medicare Trust Fund by a generation, largely through changes in prescription drug policy, and also through revenue raisers on uh corporations and people making more than $400,000.",
+   "start": 5377.0,
+   "end": 5394.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "braun-mike",
+   "text": "I'll believe it when I see it, and hope that does work, but uh looks like we're in trouble as a nation, in my mind.",
+   "start": 5395.0,
+   "end": 5400.9,
+   "kind": "speech"
+  },
+  {
+   "speaker": "whitehouse-sheldon",
+   "text": "Senator Kaine.",
+   "start": 5401.0,
+   "end": 5402.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "kaine-tim",
+   "text": "Um thank you. We are in, by many measures, a a significant and historic recovery, 13 and 1/2 million jobs since President Biden has taken office, 800,000 new manufacturing jobs and growing. I know some suggest that, okay, there was going to be a period of recovery after COVID, and some, you know, de- demean the manufacturing job growth by saying it's just 8% of the economy. But, Mr. Harris, you touched upon this in your testimony. I'd like you dig in further. How has the recovery uh in the United States since the darkest days of COVID compared to international peers?",
+   "start": 5403.0,
+   "end": 5438.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "harris-benjamin",
+   "text": "So we're the envy of the world economy. Uh we have grown faster, you've seen stronger consumption growth, in part because the recovery packages that was passed by this body were designed to do exactly that was maintain consumption throughout the recovery. This is one of the first recoveries we've had where there was virtually no scarring. And it's in stark contrast to what we saw out of the last recession when there was severe scarring. I think we corrected for many of those problems. Secondly, while inflation was worse in the United States for a period, in our economic peers, they've largely caught up, and that's because many of the inflation drivers are global in nature. They're rising food prices, they're rising energy prices, uh and many of the other factors we've discussed. So in general, on an international scale, we are the envy of the world. We're growing faster, we're more stable, and our inflation rates look similar.",
+   "start": 5439.0,
+   "end": 5491.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "kaine-tim",
+   "text": "My chief worry about the economy right now is the labor market. Everywhere I go in Virginia, whether it's my ag sector or my manufacturers or hoteliers, hospitals, shipbuilders, hard to hire people. Hard to hire people. And I don't think there is a single answer to that. I think it's, you know, better skills, training. Um it is uh immigration reform that is focus on the workforce. Our birth rate's not going to change. If it did, we wouldn't see it for 25 years, so I think immigration reform is really important. But another component that I think is really important is affordable childcare. The the number of workers that are out of the workforce, so they're not showing up in an unemployment rate, because they're out of the workforce because they can't find high-quality, affordable childcare is significant, and these are often people with very high levels of skills, and they really want to be in the workforce, and it would be great if they could, for the economy and for their families and their own sense of well-being and productivity. But if they can't find high-quality, affordable childcare, they're not in. And and even people who are in the workforce, but who are worried about childcare, I spent a lot of time on military bases, and I talked to sailors, um naval aviators at uh Oceana Naval Station in Virginia Beach, for example, and they say, \"The absence of childcare means I can find something, but I don't feel that comfortable with it. So 5% of my brain, when I'm at work and I'm really supposed to be focusing on the defense of the nation, about 5% of my brain is like, I don't know if my childcare situation is very good.\" So talk a little bit about the connection between affordable, high-quality childcare and labor market productivity.",
+   "start": 5491.5,
+   "end": 5564.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "harris-benjamin",
+   "text": "So I agree 100% that uh too expensive childcare and too hard-to-find childcare is a major economic issue, particularly for women, but not exclusively. Um it's there's just not enough of it. We saw many childcare centers contract the the supply of childcare contract over the pandemic. So you've taken a bad situation, and you made it worse. The average American family with a child under 5 spends 13% of their income on childcare. So for a lot of, you know, in a lot of instances, particularly for second earners, it doesn't make financial sense for them to go into the labor market. So if you came to me and you said, \"I want to boost labor force participation. What's the single best thing I can do?\" I would probably say make childcare affordable. And then you can do that through a host of different strategies: you can uh subsidize childcare, you can subsidize employers to build childcare, which was actually where workers want it, they want it at that place of employment, or you can invest in major block grants uh that go to states and and let them use their discretion. But childcare is 100% an economic issue, and I see it as the best avenue for raising labor.",
+   "start": 5565.0,
+   "end": 5624.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "kaine-tim",
+   "text": "And it's likely to get worse at the end of this month because the childcare stabilization funds that were put in place during the COVID public health emergency expire. There's um estimates that suggest about 80,000 kids in Virginia could lose childcare spots if these funds expire, and about 2,800 childcare workers could lose their jobs uh as the market contracts. We already don't have enough; it's going to get worse if we don't do something about it. Um, it's funny, I've never asked this question before and I'm kind of surprised I haven't. Uh Dr. Goodspeed, is the Hoover Institution named after Herbert Hoover?",
+   "start": 5624.6,
+   "end": 5660.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "goodspeed-tyler",
+   "text": "It is.",
+   "start": 5661.0,
+   "end": 5661.9,
+   "kind": "speech"
+  },
+  {
+   "speaker": "kaine-tim",
+   "text": "Okay. Thanks, Mr. Chair.",
+   "start": 5662.0,
+   "end": 5663.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "whitehouse-sheldon",
+   "text": "Senator Lujan.",
+   "start": 5666.0,
+   "end": 5667.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "lujan-ben",
+   "text": "Thank you, Mr. Chairman. Now, recent census data show that after the pandemic relief programs like the expanded child tax credit and others that expired resulted in a increase, a sobering 13.5 million Sorry, 15 million people in poverty. So, my my question, Ms. Strom, is yes or no, is it true that the same census data found that child poverty more than doubled from 2021 to '22 from a historic low of",
+   "start": 5668.0,
+   "end": 5700.0,
+   "kind": "speech"
+  },
+  {
+   "speaker": "padilla-alex",
+   "text": "5.2% to 12.4%.",
+   "start": 6000,
+   "end": 6003.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "strom-shayna",
+   "text": "Absolutely. I believe that's correct. Um it is the case that the enhanced child tax credit um lifted 2.1 million children out of poverty, and I think the Census report shows to us what happens when that expires.",
+   "start": 6005.1,
+   "end": 6017.9,
+   "kind": "speech"
+  },
+  {
+   "speaker": "padilla-alex",
+   "text": "And it seems like old inequalities that existed before the pandemic snapped back after pandemic programs expired. Black child poverty rose from 8.3% to 18.3%. Latino child poverty rose from 8.4% to 19.5% as examples. Um Ms. Strom, yes or no, is it true that Congress could have kept an additional 3 million children out of poverty had it extended the American Rescue's Child Tax Credit?",
+   "start": 6018,
+   "end": 6045.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "strom-shayna",
+   "text": "Um extending the the Child Tax Credit would indeed have a sig- significant impact on children in poverty. Um there have been studies that have shown that the if making the enhanced child tax credit permanent would have benefits to society that are ten times the cost of the program. Um so I I believe that making the enhanced child tax credit permanent is is one of the one significant thing you could do to to help raise children out of poverty.",
+   "start": 6046,
+   "end": 6071,
+   "kind": "speech"
+  },
+  {
+   "speaker": "padilla-alex",
+   "text": "I appreciate that. And, Ms. Puentes, um yes or no, if a family has difficulty paying the bills, buying groceries, or struggling with medical conditions, does it make raising children more difficult and stressful?",
+   "start": 6071.1,
+   "end": 6085.1,
+   "kind": "speech"
+  },
+  {
+   "speaker": "puentes-veronica",
+   "text": "Yes, very. I've I've found that I've realized in my community even talking with my family and friends, it's hard nowadays just for one person to live off of just their income. And let's say you have a single father or a single mother. It's very hard to make ends meet with that. And I know that personally because when I was a single mother, working as a housekeeper, I barely had food in my fridge. I had to go eat at my mother's place or my sister's place. And until I started to work at New Flyer, started to make more income, met my husband, got married, we now have There's two of us who work for the same company. And now we're we're we're good. We're not we're not stressed. But if that were to be taken away from, it is very hard for for just a single parent to make it. Very.",
+   "start": 6085.1,
+   "end": 6126.3,
+   "kind": "speech"
+  },
+  {
+   "speaker": "padilla-alex",
+   "text": "Appreciate that, Ms. Puentes. Ms. Strom, yes or no, while working people struggle, is it true that billionaires are a third richer now than they were before the pandemic?",
+   "start": 6126.6,
+   "end": 6136.2,
+   "kind": "speech"
+  },
+  {
+   "speaker": "strom-shayna",
+   "text": "Um it is it is certainly the case that economic inequality has increased significantly. Um and one of the think- you know, the I will say again that the the programs that were put in place during the pandemic and to counter that pandemic luckily had an impact on reducing inequality overall. But certainly the the wealthy the extent to which the wealthy in this country um have are are not paying their fair share of taxes is one of the really significant problems. Uh the Council of Economic Advisers uh had released a report showing that the wealthiest 400 billionaires, I I believe it's, paid 8.2% of uh in effective individual income taxes, which is significantly lower than most other uh, you know, Americans pay today. And so that's that's, you know, truly means that the wealthiest people in society are earning uh are are not paying much less into into the federal coffers.",
+   "start": 6137.6,
+   "end": 6194.2,
+   "kind": "speech"
+  },
+  {
+   "speaker": "padilla-alex",
+   "text": "And as a follow-up to that, how does child poverty and this striking inequality undermine long-term economic growth?",
+   "start": 6194.3,
+   "end": 6221.7,
+   "kind": "speech"
+  },
+  {
+   "speaker": "strom-shayna",
+   "text": "Child poverty has a really significant impact on economic growth. Um so, as I had mentioned in my testimony, one of the ways that economic inequality uh increases inco- economic growth is that you're not investing enough in human capital. And investing in children is one of the best ways you can invest in human capital. So when children have more, um you know, when they can thrive, when they can go on to go to college and make a better income, it's better for society as a whole. It makes them a more productive member of society. That's why um there have been studies like uh that by Hilary Hoynes, who found that investing, for example, in SNAP benefits has 62 times um the impact for society of the cost of uh of SNAP. So, you for for every dollar spent on SNAP, you get 62 time- $62 in benefit for society. Um and that's when you take into consideration the fact that SNAP benefits make it more likely that children will go to college um and, you know, other other types of succeed in life in other kinds of ways.",
+   "start": 6222.1,
+   "end": 6266.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "padilla-alex",
+   "text": "And, Ms. Puentes, how how has your union job changed your ability to care for your children and what does it mean for their future?",
+   "start": 6267.1,
+   "end": 6275.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "puentes-veronica",
+   "text": "Once again, everything, right? Because I get because of my union, I get better healthcare coverage, and which not only healthcare coverage, but better wages. Um and it keeps us feeling stable, secure. Um wages, healthcare, my 401(k), being able to match 6%. I mean, I I just feel comfortable. And and that's exactly what the union has done for me. It makes me feel That's why I say I'm proud to work at where I do. Because and and that and the union has to do with that. It's just given me a sense of everything's going to be okay.",
+   "start": 6276.1,
+   "end": 6316.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "padilla-alex",
+   "text": "Thank you, Mr. Chairman.",
+   "start": 6316.5,
+   "end": 6317.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "whitehouse-sheldon",
+   "text": "I've offered Senator Braun one other round before we close. So, Senator Braun, please proceed.",
+   "start": 6318.2,
+   "end": 6322.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "braun-mike",
+   "text": "Thank you, Mr. Chairman. I think it's such an interesting conversation we're in. And for most of us, um everything you've said, of course, you'd aspire to do that through your own business. If you do offer your employees great pay and great benefits, you don't have turnover. Uh and sadly, it seems like the only ones winning in this whole equation, to where you just don't have to fight tooth and nail for it, would be big business and big government when you look at it. And I know the solution so often is to turn to big government, but it is not sustainable. If you took the wealth of the six richest Americans now, it's about 600 billion. That's a lot for any six people to have. Of course, you'd dissolve it. Uh it's not that much when you start trying to turn it into liquidity. And you divide that into the number of Americans, it'd give you about 2,000 apiece. That's not the solution, I think we all know it. You've got to have entrepreneurs, but somehow you've got to figure out how to balance it better. And until we find that equation, the one I'm looking for is how Main Street, how employees benefit without having to turn to the federal government. That's the place of last resort to go to. But I think I'm going to win the argument on the business plan not working out there, and it creates a false hope. We need to be finding out where we change America. Do you think it's going to be from here down, borrowing $2 trillion a year? No one has given me a good argument on how we do some of the things that we're talking about without bankrupting the country. So, we're in a tricky spot in terms of how to find that right formula so that the average American benefits, the average small business owner does, and the blue-collar worker. Whoever, on either side of the aisle, gets that figured out is going to, I think, come up with that new plan. It didn't work the way Hoover had it going. I don't know that it's working the way we are now, even if good intentions underpin it. So, I'd like to ask Ms. Strom and um uh Dr. uh de Rugy, do you have any ideas, weigh in. Do you think the answer is here? Or do you think the answer has to come from a more granular place where you're not borrowing from future generations like we are here to accomplish the goals we're all interested in? Start with you, uh Ms. Strom.",
+   "start": 6322.8,
+   "end": 6487.4,
+   "kind": "speech"
+  },
+  {
+   "speaker": "strom-shayna",
+   "text": "Thank you for that question, Senator. Um I think there are two important points to make in response to that. The first is that our children inherit not only our debts, but also our assets. So smart investment in the future helps our children to have a better future. Um the other thing I would say, I notice you talked about entrepreneurs. And I think that, you know, that the fact that you're emphasizing the importance of entrepreneurs is exactly the reason that we should care about things like inequality. Um there's a famous study that looked at US patent holders and examines US patent holders where they came from and how they compare to uh students who when they were younger were getting the same test scores and finds that low-income children who did really well in school patent at a much lower rate. And the researchers call those people lost Einsteins, people who really had the opportunity to innovate and add to society, to add to the, you know, the incredible innovation that our society can create. But, in fact, they weren't able to do so because they weren't exposed to innovation and they weren't exposed to the types of people who patented things when they were younger.",
+   "start": 6487.6,
+   "end": 6558.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "braun-mike",
+   "text": "Very good. I see where you're coming from there. And then it would beg the question of maybe how we educate our kids better and whether that ought to be driven from here or, you know, from a more grassroots point of view, local and state governments. Uh I think, again, you're making the point, it's where do we craft the best solution. Dr. de Rugy.",
+   "start": 6559,
+   "end": 6578.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "rugy-veronique",
+   "text": "So, I mean, it's a it's a really good question, but um I think there is a case to be made for the government to um spend money to help people and to uh boost jump-start the economy. But what we know from the literature is that the only chance we have for this to actually not be shrinking the the private sector um and to be productive is when we're in a recession. Um also, we need an environment like the multiplier, this, you know, the bang for the buck that you get for the government investment, um is is going to be lower as our debt grows. There's a pretty significant literature on this. Um there are conditions under which the government investments is going to actually be productive. And let's not forget, I mean, the the Congressional Budget Office put out It looked at um There are two studies, actually. It looked at the uh the the infrastructure legislations and tried to actually see what we're leaving on the table when we're actually uh having the government do the spending compared to the private sector, and it's half of the rate of return. Uh",
+   "start": 6579,
+   "end": 6644.9,
+   "kind": "speech"
+  },
+  {
+   "speaker": "braun-mike",
+   "text": "When the government does it?",
+   "start": 6645,
+   "end": 6646.2,
+   "kind": "speech"
+  },
+  {
+   "speaker": "rugy-veronique",
+   "text": "When the Yeah, then compared to when the the the the private sector does it. And while, you know, you get you get a",
+   "start": 6646.2,
+   "end": 6653.6,
+   "kind": "speech"
+  },
+  {
+   "speaker": "braun-mike",
+   "text": "So, right there, I think that begs an important question. I've always advocated that businesses need to do more to invest in their own communities if they want less government. And they are, and they are, but is that done at the corporate level, the way we'd like to see it, or is it done more, percentage-wise, at the Main Street level? And I believe it's the latter. And then, before we use up too much time here, how can we possibly do this through a federal government that's doing it on a house of cards and a mountain of debt?",
+   "start": 6654.2,
+   "end": 6684.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "rugy-veronique",
+   "text": "We we We Actually, there's a and there's an enormous risk. So, we've reached 33 trillion of um debt. I think the number came out on on Monday. Um in the next 30 years, the federal government is going to have to convince investors to borrow four times this, $120 trillion.",
+   "start": 6684.6,
+   "end": 6705.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "braun-mike",
+   "text": "Which the markets would not allow that, so.",
+   "start": 6705.5,
+   "end": 6707.5,
+   "kind": "speech"
+  },
+  {
+   "speaker": "rugy-veronique",
+   "text": "So, so, I mean, and and, again, you know, higher debt uh eventually, even in the best country in the world, drags the economy. And that that is, you know, that's unquestionable, and and it will hurt in the same way as economic growth is the best way to lift people out of poverty, the lack of economic growth not only hurts lower income the most, but also it gives There's more intolerance, less uh embracing of social democracy and a lot of the values that we that we all care about and that are represented with this country. So so it's it's a problem. We need to Well, you need to take care of this debt that we have.",
+   "start": 6707.5,
+   "end": 6731.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "braun-mike",
+   "text": "Thank you. It's the beginning of a conversation, it's going to take a while to figure out. I'm glad you're all here to discuss it today, though. Thank you.",
+   "start": 6732,
+   "end": 6738,
+   "kind": "speech"
+  },
+  {
+   "speaker": "whitehouse-sheldon",
+   "text": "Thanks, Senator Braun. I appreciate the sincerity of your interest in all of this, and it's good to have you here. Um I'll make a brief closing remark just because Mrs. Fuentes is here and because we're here at a time when uh your brothers and sisters in the United Auto Workers are fighting for increased pay and benefits and um at better working conditions. Uh a strike which I hope is successful and brief. Um one of the things that I recall seeing over and over again are graphs that show American gross domestic product shooting upwards, American corporate profits shooting upwards, American CEO pay shooting upwards, American productivity shooting upwards. You can layer graph over graph and see all of those increases, and then lagging along the bottom of the chart is wages. And I think we're long overdue for a significant, secular, cross-the-board upward shift in working wages. Um we are already starting to see it, I think, from workforce pressures. Even fast-food restaurants have to pay more, hiring bonuses, salaries up. Um wherever, all around Rhode Island, entry-level positions are now commanding more pay. And um this is going to be, I think, a very significant correction, but a very positive correction and a very overdue one. And I think there's a good chance that it gets led by labor unions. And there's the possibility that this UAW effort becomes a sort of catalytic moment for corporate America to realize that they've got to pay their workers more. You cannot have 500 times the salary of your entry-level employees as a CEO, 1,000 times the salary of your entry-level employees as a CEO. That is not sustainable. And I think, while there'll be some dislocations as we make that wage adjustment upward, uh we'll come out of that a stronger, fairer, and better country. So, uh to you, thank you for being here, Mrs. Fuentes, and to your uh labor brothers and sisters who are on the line uh for labor workers everywhere, good luck. As I said, may it be successful, and may it be brief. Thank you very much. If uh anybody has questions for the witnesses, the usual rules apply about getting the questions in. And I'd urge the witnesses to turn answers around quickly if you receive questions for the record. And with that, the hearing is adjourned. Thank you all very much.",
+   "start": 6738,
+   "end": 6939.8,
+   "kind": "speech"
+  },
+  {
+   "speaker": "",
+   "text": "Adjourned at 115:39 into the recording: And with that, the hearing is adjourned.",
+   "start": 6939,
+   "end": null,
+   "kind": "direction"
+  }
+ ],
+ "inserts": [],
+ "source": {
+  "kind": "gemini_transcription",
+  "url": "https://www.senate.gov/isvp/?comm=budget&filename=budget092023",
+  "video_id": "",
+  "model": "gemini-3.8-flash (audio)",
+  "generated_at": "2026-09-27T03:09:16+00:00",
+  "notes": "tokens in 186,435, out 26,464; time_convened is the scheduled time from Congress.gov"
+ },
+ "schema_version": "1.0"
+}

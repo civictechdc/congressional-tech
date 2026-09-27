@@ -1,0 +1,162 @@
+file,path,attribute,files,occurrences,with_a_value,values,commonest
+meeting,committee-meeting,,6155,6155,0,0,
+meeting,committee-meeting,congress-num,6155,6155,6155,8,113 (1184); 114 (1096); 117 (834); 119 (818); 115 (804); 116 (755); 118 (565); 112 (99)
+meeting,committee-meeting,create-date,6155,6155,6155,6155,2013-01-02T16:34:16.303 (1); 2013-01-02T16:57:13.560 (1); 2013-01-02T18:02:15.070 (1); 2013-01-02T18:32:50.810 (1); 2013-01-02T18:47:20.510 (1); 2013-01-03T10:25:56.697 (1); 2013-01-03T11:35:35.400 (1); 2013-01-03T11:37:28.370 (1)
+meeting,committee-meeting,floor-creator,2,2,2,2,Sprutting (1); megwagner (1)
+meeting,committee-meeting,meeting-id,6155,6155,6155,6155,HHRG100031 (1); HHRG100032 (1); HMTG100033 (1); HHRG100035 (1); HHRG100036 (1); HHRG100037 (1); HHRG100038 (1); HHRG100039 (1)
+meeting,committee-meeting,meeting-type,6155,6155,6155,3,HHRG (3887); HMKP (1409); HMTG (859)
+meeting,committee-meeting,orig-publish-date,6155,6155,6155,6155,2013-01-02T17:49:40.710 (1); 2013-01-03T12:26:23.123 (1); 2013-01-02T18:07:25.310 (1); 2013-01-02T18:41:00.437 (1); 2013-01-02T19:16:14.260 (1); 2013-01-03T10:35:27.943 (1); 2013-01-03T12:22:44.403 (1); 2013-01-03T15:12:48.647 (1)
+meeting,committee-meeting,session-num,6155,6155,6155,2,1 (3527); 2 (2628)
+meeting,committee-meeting,update-date,6155,6155,6155,6155,2013-01-03T15:09:15.310 (1); 2013-02-21T11:19:43.963 (1); 2013-01-03T15:13:55.790 (1); 2013-01-03T15:09:36.430 (1); 2013-01-03T15:10:16.547 (1); 2013-02-20T13:46:40.067 (1); 2013-03-25T11:39:35.080 (1); 2013-01-03T15:12:48.647 (1)
+meeting,committee-meeting/copyright,,6155,6155,6155,1,"Pursuant to Title 17 Section 105 of the United States Code,  (6155)"
+meeting,committee-meeting/current-status,,6155,6155,6155,3,S (5698); R (430); P (27)
+meeting,committee-meeting/language,,6155,6155,6155,1,en-us (6155)
+meeting,committee-meeting/meeting-details,,6155,6155,0,0,
+meeting,committee-meeting/meeting-details/committees,,2975,2975,0,0,
+meeting,committee-meeting/meeting-details/committees/committee-name,,2975,2981,2981,35,Committee on Rules (535); Committee on Natural Resources (200); Committee on Veterans' Affairs (183); Committee on Ways and Means (183); Committee on the Judiciary (177); Committee on Financial Services (177); Committee on Foreign Affairs (137); Committee on Homeland Security (118)
+meeting,committee-meeting/meeting-details/committees/committee-name,id,2975,2981,2981,29,RU00 (535); II00 (200); VR00 (183); WM00 (183); JU00 (177); BA00 (177); GO00 (163); FA00 (137)
+meeting,committee-meeting/meeting-details/continuations,,79,79,0,0,
+meeting,committee-meeting/meeting-details/continuations/continuation,,79,83,0,0,
+meeting,committee-meeting/meeting-details/continuations/continuation/calendar-date,,79,83,83,79,2015-07-29 (2); 2019-10-30 (2); 2021-04-21 (2); 2022-05-18 (2); 2013-04-11 (1); 2013-05-15 (1); 2013-06-19 (1); 2013-07-11 (1)
+meeting,committee-meeting/meeting-details/continuations/continuation/end-time,,5,5,5,5,17:00:00 (1); 19:15:00 (1); 01:35:00 (1); 10:00:00 (1); 09:00:00 (1)
+meeting,committee-meeting/meeting-details/continuations/continuation/start-time,,79,83,83,26,10:00:00 (34); 09:00:00 (7); 14:00:00 (4); 09:30:00 (3); 16:00:00 (3); 11:00:00 (3); 08:00:00 (3); 13:30:00 (2)
+meeting,committee-meeting/meeting-details/meeting-date,,6155,6155,0,0,
+meeting,committee-meeting/meeting-details/meeting-date/calendar-date,,6155,6155,6155,1587,2015-03-24 (27); 2015-03-18 (25); 2015-02-26 (24); 2015-03-17 (22); 2015-03-25 (22); 2015-02-25 (20); 2013-04-25 (19); 2015-02-11 (19)
+meeting,committee-meeting/meeting-details/meeting-date/end-time,,532,532,532,63,12:00:00 (93); 13:00:00 (63); 16:00:00 (55); 11:00:00 (42); 15:00:00 (26); 17:30:00 (22); 17:00:00 (18); 14:00:00 (17)
+meeting,committee-meeting/meeting-details/meeting-date/start-time,,6155,6155,6155,90,10:00:00 (2517); 14:00:00 (869); 09:00:00 (313); 10:15:00 (273); 10:30:00 (252); 13:00:00 (246); 09:30:00 (243); 15:00:00 (209)
+meeting,committee-meeting/meeting-details/meeting-location,,6151,6151,0,0,
+meeting,committee-meeting/meeting-details/meeting-location/capitol-complex,,6038,6038,0,0,
+meeting,committee-meeting/meeting-details/meeting-location/capitol-complex/building,,5980,5980,5980,9,RHOB (3008); LHOB (970); CAPITOL (944); CHOB (522); Select one (359); ---------- (144); DSOB (30); HSOB (2)
+meeting,committee-meeting/meeting-details/meeting-location/capitol-complex/room,,5679,5679,5679,125,H-313 (426); 1324 (421); 2172 (297); 2141 (281); 2118 (280); 1100 (269); 2123 (242); 2128 (239)
+meeting,committee-meeting/meeting-details/meeting-location/capitol-complex/zip-suffix,,351,351,351,9,6128 (189); 20515 (66); 6256 (31); 515 (28); 6065 (21); 1 (10); 6542 (3); 6001 (2)
+meeting,committee-meeting/meeting-details/meeting-location/field,,113,113,0,0,
+meeting,committee-meeting/meeting-details/meeting-location/field/building-name,,106,106,106,105,"Lake Cumberland State Resort Park (2); Texas State Capitol (1); Clearwater City Council Chambers  Clearwater City Hall (1); Marvin I. Danto Engineering Development Center Auditorium, W (1); U.S. District Court for the Western District of New York Nin (1); The Mirenda Center for Sport, Spirituality and Character Dev (1); Arizona National Guard -- Building M5101, Russell Auditorium (1); Monroe County Community College, Administration Building Roo (1)"
+meeting,committee-meeting/meeting-details/meeting-location/field/city,,106,106,106,94,New York (4); Washington (3); Concord (2); Los Angeles (2); Las Vegas (2); Homestead (2); Oceanside (2); Jamestown (2)
+meeting,committee-meeting/meeting-details/meeting-location/field/state,,113,113,0,0,
+meeting,committee-meeting/meeting-details/meeting-location/field/state,postal-code,113,113,108,32,CA (16); NY (11); TX (9); MI (7); FL (6); AZ (5); OH (4); GA (4)
+meeting,committee-meeting/meeting-details/meeting-location/field/state/state-fullname,,113,113,108,32,California (16); New York (11); Texas (9); Michigan (7); Florida (6); Arizona (5); Ohio (4); Georgia (4)
+meeting,committee-meeting/meeting-details/meeting-location/field/street-address,,101,101,101,98,"7850 Five Mile Road (2); 1601 N. Krome Avenue (2); 5465 State Park Road (2); 1100 Congress Avenue, Room E1.010 (1); 112 S. Osceola Avenue (1); 5050 Anthony Wayne Drive (1); 2 Niagara Square (1); One Neumann Drive (1)"
+meeting,committee-meeting/meeting-details/meeting-location/field/zip,,88,88,88,85,10007 (2); 92058 (2); 42629 (2); 78701 (1); 33756 (1); 48202 (1); 14202 (1); 19014 (1)
+meeting,committee-meeting/meeting-details/meeting-title,,6155,6155,6155,5740,Various Measures (39); Member Day (30); Markup of Various Measures (25); Organizational Meeting (20); Full Committee Markup (18); Business Meeting (14); Ongoing Intelligence Activities (Closed) (11); Member Day Hearing (8)
+meeting,committee-meeting/meeting-details/notes,,785,785,785,486,Cisco Webex (35); This hearing will be hybrid. Member participation will be in (27); This meeting is fully remote. Member participation will be t (16); The hearing will be held remotely via the Cisco Webex Virtua (13); Please Note: In accordance with House Resolution 8 and Remot (13); This hearing is CLOSED. (12); Joint Hearing with the Senate Veterans' Affairs Committee (11); Member participation through Webex Virtual Platform. Public  (11)
+meeting,committee-meeting/meeting-details/rescheduled-dates,,253,253,0,0,
+meeting,committee-meeting/meeting-details/rescheduled-dates/meeting-dates,,253,266,0,0,
+meeting,committee-meeting/meeting-details/rescheduled-dates/meeting-dates/calendar-date,,253,266,266,198,2026-05-19 (9); 2013-03-06 (7); 2015-03-05 (7); 2023-05-11 (6); 2014-03-04 (4); 2018-03-21 (4); 2013-03-07 (3); 2013-04-10 (3)
+meeting,committee-meeting/meeting-details/rescheduled-dates/meeting-dates/end-time,,253,266,266,10,00:00:00 (236); 12:00:00 (13); 11:00:00 (5); 16:00:00 (3); 15:00:00 (3); 18:00:00 (2); 03:00:00 (1); 13:00:00 (1)
+meeting,committee-meeting/meeting-details/rescheduled-dates/meeting-dates/start-time,,253,266,266,24,10:00:00 (103); 14:00:00 (43); 09:00:00 (18); 10:30:00 (16); 13:00:00 (14); 09:30:00 (13); 15:00:00 (10); 11:00:00 (8)
+meeting,committee-meeting/meeting-details/subcommittees,,3207,3207,0,0,
+meeting,committee-meeting/meeting-details/subcommittees/committee-name,,3207,3282,3282,234,"Subcommittee on Health (153); Subcommittee on Oversight and Investigations (145); Subcommittee on Energy and Mineral Resources (101); Subcommittee on Defense (72); Subcommittee on Interior, Environment, and Related Agencies (65); Subcommittee on Agriculture, Rural Development, Food and Dru (58); Subcommittee on Federal Lands (56); Subcommittee on Africa, Global Health, Global Human Rights,  (53)"
+meeting,committee-meeting/meeting-details/subcommittees/committee-name,id,3207,3282,3282,128,II10 (112); II06 (101); II13 (89); IF14 (82); AP02 (72); FA16 (67); AP06 (65); II24 (65)
+meeting,committee-meeting/meeting-details/subcommittees/committee-name,parent-id,3207,3282,3282,19,AP00 (577); II00 (414); IF00 (308); FA00 (294); AS00 (263); VR00 (189); HM00 (175); JU00 (147)
+meeting,committee-meeting/meeting-details/subcommittees/committee-name,parent-name,3207,3282,3282,23,Committee on Appropriations (577); Committee on Natural Resources (414); Committee on Energy and Commerce (308); Committee on Foreign Affairs (294); Committee on Armed Services (263); Committee on Veterans' Affairs (189); Committee on Homeland Security (175); Committee on the Judiciary (147)
+meeting,committee-meeting/meeting-details/updates,,2931,2931,0,0,
+meeting,committee-meeting/meeting-details/updates/update-date,,2931,7935,0,0,
+meeting,committee-meeting/meeting-details/updates/update-date,date,2931,7935,7935,7935,2013-01-03T16:39:17.067 (1); 2013-01-03T17:21:45.583 (1); 2013-01-04T09:44:32.693 (1); 2013-01-10T11:49:20.473 (1); 2013-01-11T15:43:12.323 (1); 2013-01-11T15:43:10.357 (1); 2013-01-17T18:42:10.520 (1); 2013-01-11T18:34:55.547 (1)
+meeting,committee-meeting/meeting-details/updates/update-date,publish-date,2931,7935,7935,5203,2026-06-18T16:33:35.947 (15); 2015-03-12T15:07:45.997 (14); 2023-06-20T11:19:04.090 (14); 2024-10-08T11:33:42.480 (14); 2026-01-14T12:49:26.567 (14); 2024-05-30T15:52:48.137 (13); 2023-03-28T09:47:41.847 (12); 2025-12-11T13:23:12.753 (12)
+meeting,committee-meeting/meeting-details/updates/update-date,user,1,1,1,1,megwagner (1)
+meeting,committee-meeting/meeting-details/updates/update-date/explanatory-notes,,2931,7935,0,0,
+meeting,committee-meeting/meeting-details/updates/update-date/explanatory-notes,doc-modified,2931,7935,7935,1,False (7935)
+meeting,committee-meeting/meeting-documents,,4827,4827,0,0,
+meeting,committee-meeting/meeting-documents/meeting-document,,4823,51328,0,0,
+meeting,committee-meeting/meeting-documents/meeting-document,add-date,4823,51328,51328,51316,2014-05-08T14:16:20.803 (2); 2017-02-27T09:36:24.413 (2); 2018-05-10T13:12:29.970 (2); 2018-05-10T13:08:37.627 (2); 2018-05-10T12:30:50.127 (2); 2018-05-10T12:03:02.903 (2); 2018-05-10T12:01:07.143 (2); 2018-05-10T11:58:13.953 (2)
+meeting,committee-meeting/meeting-documents/meeting-document,publish-date,4823,51328,51328,15692,2026-05-27T09:36:19.973 (148); 2025-05-07T15:33:28.277 (132); 2025-05-01T11:01:51.843 (102); 2025-12-02T11:56:48.387 (98); 2026-07-22T22:53:31.133 (96); 2025-09-15T10:26:03.610 (93); 2026-06-05T18:05:56.840 (86); 2025-05-08T19:30:44.743 (81)
+meeting,committee-meeting/meeting-documents/meeting-document,remove-date,4823,51328,28,3,2025-09-17T00:00:00 (14); 2025-09-16T00:00:00 (13); 2025-09-15T00:00:00 (1)
+meeting,committee-meeting/meeting-documents/meeting-document,type,4823,51328,51328,15,SD (15660); CA (13524); BR (10508); CV (6974); MS (1531); CR (929); HT (832); HQ (481)
+meeting,committee-meeting/meeting-documents/meeting-document,user,1,567,567,1,megwagner (567)
+meeting,committee-meeting/meeting-documents/meeting-document/description,,4681,50007,50007,40011,Hearing Notice (1230); Witness List (583); Markup Notice (301); Hearing Memo (300); Notice (292); The Honorable Mr. McGovern (248); Hearing transcript (199); Hearing notice (176)
+meeting,committee-meeting/meeting-documents/meeting-document/filename-metadata,,4823,51328,0,0,
+meeting,committee-meeting/meeting-documents/meeting-document/filename-metadata/amdt-num,,1195,13564,13564,1637,1 (2235); 2 (893); 3 (638); 4 (492); 5 (406); 6 (316); 7 (265); 8 (231)
+meeting,committee-meeting/meeting-documents/meeting-document/filename-metadata/amdt-type,,44,97,97,4,HAmdt (59); HAmdt2 (24); SAmdt (13); SAmdt2 (1)
+meeting,committee-meeting/meeting-documents/meeting-document/filename-metadata/bioguideID,,1639,15103,15103,795,G000577 (327); P000605 (317); M000312 (251); A000370 (249); G000551 (210); W000791 (210); P000034 (192); H001068 (182)
+meeting,committee-meeting/meeting-documents/meeting-document/filename-metadata/considered,,185,473,473,3,FC (361); SC (111); ORH (1)
+meeting,committee-meeting/meeting-documents/meeting-document/filename-metadata/doc-type,,4823,51328,51328,15,SD (15660); CA (13524); BR (10508); CV (6974); MS (1531); CR (929); HT (832); HQ (481)
+meeting,committee-meeting/meeting-documents/meeting-document/filename-metadata/enbloc-num,,79,635,635,71,1 (258); 2 (141); 3 (60); 4 (32); 5 (20); 6 (12); 7 (9); 10 (7)
+meeting,committee-meeting/meeting-documents/meeting-document/filename-metadata/legis-num,,2131,24470,24470,9018,1 (402); 5300 (350); H.R. (278); 3 (178); H.R. 2 (170); 8870 (147); CP (125); N/A (114)
+meeting,committee-meeting/meeting-documents/meeting-document/filename-metadata/legis-stage,,4823,51322,51322,10,ih (48981); rh (1153); pih (893); pp (103); es (95); rth (57); ats (18); rfh (15)
+meeting,committee-meeting/meeting-documents/meeting-document/filename-metadata/part-num,,48,58,58,4,1 (40); 2 (16); 3 (1); 11 (1)
+meeting,committee-meeting/meeting-documents/meeting-document/filename-metadata/short-desc,,775,2034,2034,1707,Postal Naming (36); SubcommitteeDraft (29); MLP (24); SPF (22); RDY (21); TAL (17); STR (13); CITI (10)
+meeting,committee-meeting/meeting-documents/meeting-document/filename-metadata/timeFrame,,191,483,483,14,FY2019 (87); FY2014 (68); FY2018 (54); FY2016 (47); FY2022 (36); FY2017 (32); FY2020 (32); FY2023 (32)
+meeting,committee-meeting/meeting-documents/meeting-document/filename-metadata/update-num,,747,3330,3330,67,1 (1843); 2 (588); 3 (243); 4 (159); 5 (99); 6 (63); 7 (45); 8 (34)
+meeting,committee-meeting/meeting-documents/meeting-document/filename-metadata/version-num,,4120,16234,16234,725,1 (4237); 2 (2412); 3 (1540); 4 (1159); 5 (851); 6 (685); 7 (569); 8 (462)
+meeting,committee-meeting/meeting-documents/meeting-document/filename-metadata/vote-num,,978,6986,6986,476,1 (744); 2 (580); 3 (509); 4 (430); 5 (378); 6 (327); 7 (282); 8 (247)
+meeting,committee-meeting/meeting-documents/meeting-document/files,,4816,50907,0,0,
+meeting,committee-meeting/meeting-documents/meeting-document/files/file,,4816,52858,0,0,
+meeting,committee-meeting/meeting-documents/meeting-document/files/file,add-date,4816,52858,52858,52774,2013-03-04T14:33:35.420 (2); 2013-03-18T11:37:15.813 (2); 2013-04-19T11:35:34.990 (2); 2013-04-19T11:35:34.987 (2); 2013-04-24T11:21:21.220 (2); 2013-04-19T15:03:49.260 (2); 2013-04-25T11:32:30.070 (2); 2013-05-22T13:31:03.870 (2)
+meeting,committee-meeting/meeting-documents/meeting-document/files/file,doc-type,4816,52858,52858,8,PDF (51026); XML (1793); DOCX (21); DOC (8); PNG (6); JPG (2); XLSX (1); TXT (1)
+meeting,committee-meeting/meeting-documents/meeting-document/files/file,doc-url,4816,52858,52858,51906,http://docs.house.gov/meetings/WM/WM00/20170308/105682/BILLS (10); http://docs.house.gov/meetings/ED/ED00/20150211/102958/CRPT- (7); http://docs.house.gov/meetings/IF/IF17/20260210/118968/HMKP- (5); http://docs.house.gov/meetings/IF/IF17/20260630/119423/HHRG- (5); http://docs.house.gov/meetings/SM/SM27/20131205/101348/HHRG- (4); http://docs.house.gov/meetings/II/II00/20150610/103572/CRPT- (4); https://www.gpo.gov/fdsys/pkg/CRPT-115hrpt219/pdf/CRPT-115hr (4); http://docs.house.gov/meetings/WM/WM00/20180905/108653/HMKP- (4)
+meeting,committee-meeting/meeting-documents/meeting-document/files/file,publish-date,4816,52858,52858,15649,2026-05-27T09:36:19.973 (147); 2025-05-07T15:33:28.277 (132); 2025-05-01T11:01:51.843 (102); 2025-12-02T11:56:48.387 (98); 2026-07-22T22:53:31.133 (96); 2025-09-15T10:26:03.610 (93); 2026-06-05T18:05:56.840 (86); 2025-05-08T19:30:44.743 (81)
+meeting,committee-meeting/meeting-documents/meeting-document/files/file,user,1,566,566,1,megwagner (566)
+meeting,committee-meeting/meeting-documents/meeting-document/legis-num,,2131,24470,24470,9018,1 (402); 5300 (350); H.R. (278); 3 (178); H.R. 2 (170); 8870 (147); CP (125); N/A (114)
+meeting,committee-meeting/meeting-documents/meeting-document/updates,,2519,16188,0,0,
+meeting,committee-meeting/meeting-documents/meeting-document/updates/update-date,,2519,28024,0,0,
+meeting,committee-meeting/meeting-documents/meeting-document/updates/update-date,date,2519,28024,28024,27959,2015-06-19T00:00:00 (25); 2025-09-17T00:00:00 (16); 2025-09-16T00:00:00 (16); 2018-05-10T13:13:01.877 (2); 2018-05-10T19:37:28.890 (2); 2018-05-10T12:25:20.713 (2); 2018-05-10T12:25:15.510 (2); 2018-05-10T12:25:43.310 (2)
+meeting,committee-meeting/meeting-documents/meeting-document/updates/update-date,publish-date,2519,28024,20573,4883,2019-05-06T15:11:04.283 (127); 2021-07-14T18:54:28.893 (110); 2023-03-01T16:54:05.747 (109); 2023-04-27T18:18:05.010 (109); 2020-02-25T19:45:40.377 (108); 2025-09-15T10:26:03.610 (107); 2021-09-13T07:31:11.630 (103); 2020-02-21T18:48:47.287 (89)
+meeting,committee-meeting/meeting-documents/meeting-document/updates/update-date,user,1,288,288,1,megwagner (288)
+meeting,committee-meeting/meeting-documents/meeting-document/updates/update-date/explanatory-notes,,2519,28024,839,211,GPO Version (146); Rept. number added (48); Res. number added (48); GPO version (47); GPO versions (41); Bill number added (40); Res number added (40); GPO version added (36)
+meeting,committee-meeting/meeting-documents/meeting-document/updates/update-date/explanatory-notes,doc-modified,2519,28024,28024,2,False (26310); True (1714)
+meeting,committee-meeting/publish-dates,,6155,6155,0,0,
+meeting,committee-meeting/publish-dates/publish-date,,6155,40380,0,0,
+meeting,committee-meeting/publish-dates/publish-date,date,6155,40380,40380,40380,2013-01-03T15:09:15.310 (1); 2013-01-03T10:38:45.213 (1); 2013-01-02T18:40:33.610 (1); 2013-01-02T17:49:40.710 (1); 2013-02-21T11:19:43.963 (1); 2013-01-03T15:04:59.167 (1); 2013-01-03T12:26:23.123 (1); 2013-01-03T15:13:55.790 (1)
+meeting,committee-meeting/publish-dates/publish-date,user,2,377,377,3,megwagner (373); Sprutting (3); mearle (1)
+wlist,witness-list,,3388,3388,0,0,
+wlist,witness-list,create-date,3388,3388,3388,3388,2013-02-05T14:32:49.333 (1); 2013-10-10T14:22:16.573 (1); 2014-10-27T14:06:32.950 (1); 2013-10-18T09:48:25.580 (1); 2013-10-25T09:05:55.663 (1); 2013-04-03T15:18:55.960 (1); 2013-02-28T11:54:35.423 (1); 2013-02-26T14:10:38.817 (1)
+wlist,witness-list,meeting-id,3161,3161,3161,3161,100218 (1); 100219 (1); 100220 (1); 100221 (1); 100242 (1); 100262 (1); 100263 (1); 100264 (1)
+wlist,witness-list/copyright,,3388,3388,3388,1,"Pursuant to Title 17 Section 105 of the United States Code,  (3388)"
+wlist,witness-list/language,,3388,3388,3388,1,en-us (3388)
+wlist,witness-list/panel,,3388,4236,0,0,
+wlist,witness-list/panel,sort-order,3388,4236,4236,9,1 (3380); 2 (661); 3 (144); 4 (20); 5 (11); 6 (8); 7 (6); 8 (4)
+wlist,witness-list/panel/witness,,3386,15048,0,0,
+wlist,witness-list/panel/witness,add-date,3386,15048,15048,1613,2018-02-27T00:00:00 (168); 2015-03-16T00:00:00 (124); 2025-02-21T00:00:00 (90); 2013-04-22T00:00:00 (86); 2026-03-13T00:00:00 (77); 2015-03-11T00:00:00 (73); 2013-04-15T00:00:00 (71); 2014-03-26T00:00:00 (63)
+wlist,witness-list/panel/witness,display-order,1753,8041,8041,36,NA (2581); 1 (1429); 2 (1278); 3 (1104); 4 (853); 5 (397); 6 (180); 7 (85)
+wlist,witness-list/panel/witness,publish-date,3386,15048,15048,3857,2013-03-20T15:04:47.150 (43); 2018-05-01T12:53:52.190 (41); 2018-05-17T13:36:45.750 (38); 2016-05-18T09:35:08.947 (36); 2019-03-13T17:57:48.753 (35); 2020-06-23T00:52:52.677 (28); 2015-05-13T23:14:07.977 (27); 2025-02-21T15:42:11.500 (27)
+wlist,witness-list/panel/witness,remove-date,3386,15048,0,0,
+wlist,witness-list/panel/witness,testified,2449,7317,7317,3,"Yes (6873); No (412); No, but took Oath (32)"
+wlist,witness-list/panel/witness,user,1,27,27,1,Sprutting (27)
+wlist,witness-list/panel/witness,witness-type,2862,11664,11664,4,Non-Governmental (6700); Government - Federal (3659); Government - Local (956); Government - State (349)
+wlist,witness-list/panel/witness/behalf-of,,420,909,909,506,U.S. Department of Veterans Affairs (183); themselves (30); U.S. Department of the Interior (25); The American Legion (14); Disabled American Veterans (13); U.S. Department of Agriculture (9); Veterans of Foreign Wars of the United States (9); U.S. Department of Labor (8)
+wlist,witness-list/panel/witness/bioguideID,,369,1839,1839,593,J000032 (21); P000598 (19); J000288 (18); G000289 (17); W000187 (17); Y000033 (16); H001068 (15); L000263 (13)
+wlist,witness-list/panel/witness/firstname,,3386,15048,15048,2587,John (424); Michael (415); David (367); Robert (317); James (231); Mark (224); Paul (187); Thomas (156)
+wlist,witness-list/panel/witness/honorific,,3164,13168,13168,22,Mr. (5259); The Honorable (3650); Ms. (2091); Dr. (1516); Lieutenant General (154); General (139); Mrs. (66); Vice Admiral (51)
+wlist,witness-list/panel/witness/lastname,,3386,15048,15048,7418,Smith (112); Johnson (101); Miller (76); Young (49); Brown (42); Jones (42); Davis (41); Thompson (38)
+wlist,witness-list/panel/witness/location,,1128,4875,4875,1506,"Washington D.C. (1840); Washington, DC (376); Washington, D.C. (336); New York, NY (36); Boston, MA (25); Arlington, VA (25); Denver, CO (22); Chicago, IL (17)"
+wlist,witness-list/panel/witness/middlename,,1805,3952,3617,360,A. (329); J. (322); M. (278); E. (213); L. (211); D. (195); R. (177); C. (161)
+wlist,witness-list/panel/witness/organization,,3060,11934,11934,6563,U.S. Department of State (150); U.S. Department of Veterans Affairs (142); Department of Defense (117); Disabled American Veterans (111); U.S. Department of Homeland Security (105); U.S. Government Accountability Office (97); The American Legion (89); American Enterprise Institute (63)
+wlist,witness-list/panel/witness/position,,3350,14574,14574,5863,Member of Congress (1873); President (647); Executive Director (512); Director (485); Chairman (267); President and CEO (229); Chief Executive Officer (176); Secretary (159)
+wlist,witness-list/panel/witness/retired,,1753,8041,44,1,(Ret.) (44)
+wlist,witness-list/panel/witness/suffix,,445,645,645,119,Ph.D. (181); Jr. (131); III (44); M.D. (37); Sr. (23); Esq. (15); II (15); USA (13)
+wlist,witness-list/panel/witness/testified,,2449,7317,7317,3,"Yes (6873); No (412); No, but took Oath (32)"
+wlist,witness-list/panel/witness/updates,,1541,3249,0,0,
+wlist,witness-list/panel/witness/updates/update-date,,1541,4475,0,0,
+wlist,witness-list/panel/witness/updates/update-date,date,1541,4475,4475,4475,2013-02-05T13:37:54.010 (1); 2013-02-05T14:32:44.737 (1); 2013-02-05T13:38:32.397 (1); 2013-02-04T09:54:08.440 (1); 2013-02-04T11:01:17.203 (1); 2013-02-04T11:01:43.337 (1); 2013-02-04T11:02:52.890 (1); 2013-02-05T17:54:13.177 (1)
+wlist,witness-list/panel/witness/updates/update-date,publish-date,1541,4475,3538,1514,2015-03-16T12:27:46.210 (25); 2026-09-02T20:53:23.120 (22); 2015-03-23T10:45:40.780 (21); 2015-03-23T13:20:41.893 (21); 2021-10-14T10:21:04.370 (17); 2025-03-13T15:54:36.723 (16); 2013-10-10T14:23:10.193 (15); 2019-03-13T17:57:48.753 (15)
+wlist,witness-list/panel/witness/updates/update-date,user,1,2,2,2,Sprutting (1); mearle (1)
+wlist,witness-list/panel/witness/updates/update-date/explanatory-notes,,1541,4475,15,11,"Accompanied by
+Master Chief Steven W. Cantrell
+Master Chief  (3); Mr. Lyle and Mr. Larry submitted joint written testimony on  (2); Sgt. Vargas-Andrews is appearing in his personal capacity an (2); Changed witness's first name (1); Witness is a government witness (1); Former Associate Counsel in the George W. Bush White House (1); Updated spelling on Michael (1); Rep. Graves did not submit a statement for the record but te (1)"
+wlist,witness-list/panel/witness/updates/update-date/explanatory-notes,doc-modified,1541,4475,4475,2,False (4342); True (133)
+wlist,witness-list/panel/witness/witness-documents,,2995,12530,0,0,
+wlist,witness-list/panel/witness/witness-documents/witness-document,,2992,28185,0,0,
+wlist,witness-list/panel/witness/witness-documents/witness-document,publish-date,2802,26717,26717,5654,2025-02-21T15:42:11.500 (78); 2026-03-13T17:59:38.910 (56); 2013-10-25T13:12:06.583 (54); 2026-03-16T10:57:25.377 (53); 2018-05-08T10:24:19.200 (49); 2026-03-13T16:36:24.453 (48); 2015-03-24T13:51:08.990 (47); 2013-10-25T13:31:38.020 (45)
+wlist,witness-list/panel/witness/witness-documents/witness-document,remove-date,2802,26717,1,1,2025-03-10T00:00:00 (1)
+wlist,witness-list/panel/witness/witness-documents/witness-document/description,,1484,13085,13085,4633,Testimony (1705); Witness Statement (687); Truth in Testimony (637); Witness Testimony (552); Bio (422); Disclosure Form (385); Witness Biography (385); Disclosure (349)
+wlist,witness-list/panel/witness/witness-documents/witness-document/filename-metadata,,2992,28185,0,0,
+wlist,witness-list/panel/witness/witness-documents/witness-document/filename-metadata/description,,1421,12725,12725,4420,Testimony (1640); Witness Statement (687); Truth in Testimony (636); Witness Testimony (548); Bio (422); Witness Biography (385); Disclosure Form (376); Invitation (320)
+wlist,witness-list/panel/witness/witness-documents/witness-document/filename-metadata/type,,2802,26717,26717,4,WS (11227); WT (6885); WB (6202); WD (2403)
+wlist,witness-list/panel/witness/witness-documents/witness-document/filename-metadata/update-num,,308,1757,1757,39,1 (1390); 2 (160); 3 (74); 4 (30); 5 (18); 6 (12); 7 (7); 8 (7)
+wlist,witness-list/panel/witness/witness-documents/witness-document/filename-metadata/updates,,822,1923,0,0,
+wlist,witness-list/panel/witness/witness-documents/witness-document/filename-metadata/updates/update-date,,822,2357,0,0,
+wlist,witness-list/panel/witness/witness-documents/witness-document/filename-metadata/updates/update-date,date,822,2357,2357,2357,2014-07-25T09:59:14.263 (1); 2013-10-22T14:15:49.620 (1); 2013-10-18T11:50:12.710 (1); 2013-10-24T15:59:34.383 (1); 2013-09-19T12:28:43.967 (1); 2013-09-19T13:01:04.830 (1); 2013-09-11T17:25:09.790 (1); 2013-09-11T17:23:41.890 (1)
+wlist,witness-list/panel/witness/witness-documents/witness-document/filename-metadata/updates/update-date,publish-date,822,2357,1901,901,2026-05-21T17:09:33.993 (40); 2022-07-13T08:48:39.190 (28); 2022-04-27T08:59:39.370 (25); 2023-03-28T14:19:31.347 (21); 2022-03-16T08:58:39.050 (20); 2026-09-16T17:43:07.690 (18); 2015-04-30T16:33:54.290 (15); 2021-02-24T12:07:16.527 (15)
+wlist,witness-list/panel/witness/witness-documents/witness-document/filename-metadata/updates/update-date,user,1,2,2,1,Sprutting (2)
+wlist,witness-list/panel/witness/witness-documents/witness-document/filename-metadata/updates/update-date/explanatory-notes,,822,2357,9,8,Updated to fix typographical errors (2); Added attachment (1); Revised & updated (1); Updated Testimony as of 10/15 at 10:52 am ET (1); Updated with witness signatures (1); Updated and edited minor typos (1); Document did not link correctly (1); Document did not link; reuploaded file (1)
+wlist,witness-list/panel/witness/witness-documents/witness-document/filename-metadata/updates/update-date/explanatory-notes,doc-modified,822,2357,2357,2,False (2252); True (105)
+wlist,witness-list/panel/witness/witness-documents/witness-document/filename-metadata/version-num,,543,2382,2382,172,1 (1075); 2 (431); 3 (336); 4 (140); 5 (52); 6 (34); 7 (14); 10 (10)
+wlist,witness-list/panel/witness/witness-documents/witness-document/files,,2990,28150,0,0,
+wlist,witness-list/panel/witness/witness-documents/witness-document/files/file,,2990,28161,0,0,
+wlist,witness-list/panel/witness/witness-documents/witness-document/files/file,add-date,2990,28161,28161,28161,2013-02-05T13:36:04.573 (1); 2013-02-05T13:06:12.953 (1); 2013-02-05T13:43:41.287 (1); 2013-02-05T13:04:16.503 (1); 2013-02-05T13:04:33.860 (1); 2013-02-05T13:04:52.177 (1); 2013-02-05T17:52:44.977 (1); 2013-02-04T13:45:37.373 (1)
+wlist,witness-list/panel/witness/witness-documents/witness-document/files/file,doc-type,2990,28161,28161,7,PDF (28099); DOCX (45); DOC (11); JPG (3); XLSX (1); PPTX (1); RTF (1)
+wlist,witness-list/panel/witness/witness-documents/witness-document/files/file,doc-url,2990,28161,28161,27886,http://docs.house.gov/meetings/IF/IF14/20131114/101481/HHRG- (4); http://docs.house.gov/meetings/IF/IF14/20131114/101481/HHRG- (3); http://docs.house.gov/meetings/II/II00/20190926/110029/HHRG- (3); http://docs.house.gov/meetings/II/II06/20200205/110436/HHRG- (3); http://docs.house.gov/meetings/WM/WM02/20200205/110445/HHRG- (3); http://docs.house.gov/meetings/EF/EF00/20210729/114002/HHRG- (3); http://docs.house.gov/meetings/II/II24/20211026/114170/HHRG- (3); http://docs.house.gov/meetings/ZS/ZS00/20240307/116924/HHRG- (3)
+wlist,witness-list/panel/witness/witness-documents/witness-document/files/file,publish-date,2990,28161,28161,3381,2013-03-20T15:04:47.150 (110); 2018-05-01T12:53:52.190 (91); 2025-02-21T15:42:11.500 (79); 2015-03-24T13:51:08.990 (75); 2015-03-16T12:27:46.210 (72); 2015-03-16T12:34:49.207 (72); 2015-03-23T13:20:41.893 (64); 2013-04-15T10:20:29.377 (59)
+wlist,witness-list/panel/witness/witness-documents/witness-document/files/file,user,1,79,79,1,Sprutting (79)
+wlist,witness-list/panel/witness/witness-documents/witness-document/type,,2992,28185,28185,4,WS (11983); WT (7251); WB (6506); WD (2445)
+wlist,witness-list/panel/witness/witness-type,,2862,11664,11664,4,Non-Governmental (6700); Government - Federal (3659); Government - Local (956); Government - State (349)

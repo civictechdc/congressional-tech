@@ -1,0 +1,38 @@
+{
+ "accepted": [
+  "CHRG-113jhrg95506",
+  "CHRG-113jhrg82471",
+  "CHRG-113hhrg82994",
+  "CHRG-113hhrg87497",
+  "CHRG-113hhrg87518",
+  "CHRG-114hhrg92556",
+  "CHRG-114hhrg94691",
+  "CHRG-115hhrg33410",
+  "CHRG-116hhrg36878",
+  "CHRG-117hhrg44926",
+  "CHRG-117hhrg45515",
+  "CHRG-117hhrg45383",
+  "CHRG-117hhrg46009",
+  "CHRG-118hhrg61961"
+ ],
+ "accepted_why": "date-confirmed uploads on news, witness-organization, member or third-party channels whose title and length match the hearing; the reasons per hearing are the notes written by scripts/as_run/news_overrides.py",
+ "rejected": {
+  "CHRG-113hhrg91545": "the Roll Call video is the Homeland Security hearing the same morning (already CHRG-113hhrg93649)",
+  "CHRG-115jhrg27641": "Freedom House's own report launch the same day, not the Commission briefing",
+  "CHRG-113hhrg96134": "'Flores Questions Panel' (47 min) is one member's questions, not the hearing"
+ },
+ "side_find": {
+  "impeachment_volumes": [
+   "CHRG-116hhrg39401",
+   "CHRG-116hhrg39402",
+   "CHRG-116hhrg39403",
+   "CHRG-116hhrg39404",
+   "CHRG-116hhrg39406",
+   "CHRG-116hhrg39407",
+   "CHRG-116hhrg39408",
+   "CHRG-116hhrg39409",
+   "CHRG-116hhrg39411"
+  ],
+  "why": "volumes of the H. Res. 755 markup given the recordings of volume V, whose wrong GPO date had reserved them; volumes II-XI were later set not_public by the archive review as document-only volumes"
+ }
+}

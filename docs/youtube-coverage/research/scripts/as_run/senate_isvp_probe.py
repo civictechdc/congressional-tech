@@ -15,27 +15,13 @@ Writes one row per hearing: package_id, held_date, committee_code, comm, urls (p
 space-separated; empty when nothing was found).
 """
 import collections, csv, datetime as dt, sys, os, time
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 import requests
 
-## GPO committee code -> the player's `comm` value (learned from Congress.gov's senate.gov links)
-COMM = {"ssaf00": "ag", "ssap00": "approps", "ssas00": "armed", "ssbk00": "banking", "ssbu00": "budget", "sscm00": "commerce",
-        "sseg00": "energy", "ssev00": "epw", "ssfi00": "finance", "ssfr00": "foreign", "ssga00": "govtaff", "sshr00": "help",
-        "ssju00": "judiciary", "ssra00": "rules", "sssb00": "smbiz", "ssva00": "vetaff", "slia00": "indian", "slin00": "intel",
-        "spag00": "aging", "slet00": "ethics",
-        ## joint bodies the Senate studio records: Helsinki Commission, Joint Economic Committee, China commissions
-        "jcse00": "csce", "jsec00": "jec", "jjec00": "jec", "jcpk00": "cecc", "jcuc00": "uscc"}
-## `comm` -> archive stream name, from the player page's streamInfo table (September 2026)
-STREAM = {"ag": "agriculture", "aging": "aging", "approps": "appropriations", "armed": "armedservices", "banking": "banking",
-          "budget": "budget", "commerce": "commerce", "csce": "srs_srs", "energy": "energy", "epw": "environment", "ethics": "ethics",
-          "finance": "finance_finance", "foreign": "foreignrelations", "govtaff": "hsgac", "help": "help", "indian": "indianaffairs",
-          "intel": "intelligence", "jec": "jointeconomic", "judiciary": "judiciary", "rules": "rules", "smbiz": "smallbusiness",
-          "vetaff": "veteransaffairs", "cecc": "srs_cecc", "uscc": "srs_uscc"}
-## `comm` -> live-stream ID, same table; recordings since about mid-2023 sit on this path instead of the archive
-LIVE_ID = {"cecc": "2036782", "uscc": "2036781", "ag": "2036803", "aging": "2036801", "approps": "2036802", "armed": "2036800", "banking": "2036799", "budget": "2036798", "commerce": "2036779", "csce": "2036777", "energy": "2036797", "epw": "2036783", "ethics": "2036796", "finance": "2036795", "foreign": "2036794", "govtaff": "2036792", "help": "2036793", "indian": "2036791", "intel": "2036790", "jec": "2036789", "judiciary": "2036788", "rules": "2036787", "smbiz": "2036786", "vetaff": "2036785"}
-ARCHIVE = "https://www-senate-gov-msl3archive.akamaized.net/{stream}/{fn}_1/master.m3u8"
-LIVE = "https://www-senate-gov-media-srs.akamaized.net/hls/live/{sid}/{comm}/{fn}/master.m3u8"
-PLAYER = "https://www.senate.gov/isvp/?comm={comm}&filename={fn}"
+sys.path.insert(0, str(Path(__file__).resolve().parents[5] / "packages/congress_api/src"))
+from congress_api.senate.isvp import COMM, STREAM, archive_url, live_url, player_url  # noqa: E402
+
 VARIANTS = ["", "A", "B"]  # lettered names are tried when the committee held several hearings that day, or the plain one is missing
 WORKERS = 8
 sess = requests.Session()
@@ -55,10 +41,10 @@ def head(url):
 
 def exists(comm, fn):
     """True when the recording is in the archive or on the live path; None when neither answered."""
-    a = head(ARCHIVE.format(stream=STREAM[comm], fn=fn))
+    a = head(archive_url(comm, fn))
     if a:
         return True
-    b = head(LIVE.format(sid=LIVE_ID[comm], comm=comm, fn=fn))
+    b = head(live_url(comm, fn))
     return b if b or a is not None else None
 
 
@@ -73,7 +59,7 @@ def probe_day(comm, d, several):
         if ok is None:
             unknown = True
         elif ok:
-            urls.append(PLAYER.format(comm=comm, fn=fn))
+            urls.append(player_url(comm, fn))
     return urls, unknown
 
 

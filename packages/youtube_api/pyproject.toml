@@ -7,11 +7,14 @@ dependencies = [
     "congress-shared",
     "google-api-python-client",
     "tinydb",
+    "yt-dlp",
+    "curl_cffi",  # lets yt-dlp impersonate a browser, which YouTube's bot check usually accepts
 ]
 
 [project.scripts]
 youtube-fetch = "youtube_api.fetch.main:parse_args_and_run"
 youtube-analyze = "youtube_api.analyze.main:parse_args_and_run"
+youtube-captions = "youtube_api.captions.main:parse_args_and_run"
 
 [build-system]
 requires = ["setuptools>=61"]

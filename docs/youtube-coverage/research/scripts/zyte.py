@@ -1,0 +1,36 @@
+"""
+Fetch a URL through Zyte's API, for sites that refuse a plain client: c-span.org answers with a bot
+challenge, and docs.house.gov's firewall refuses a client for about 90 seconds after a few hundred
+requests in quick succession (measured: 389 in 17 seconds, then 137 at five a second).
+
+    status, body = zyte.get(url)      # the site's own status and bytes; Zyte's failure as (its status, b"")
+
+The token is ZYTE_TOKEN, from the environment or a sibling repository's .env. Never print it or copy it
+anywhere. Zyte charges per request.
+"""
+import base64, os
+
+import requests
+
+API = "https://api.zyte.com/v1/extract"
+ENV = os.path.expanduser("~/Work/spicy-stack/RefSpec/.env")
+
+
+def token():
+    tok = os.environ.get("ZYTE_TOKEN")
+    if not tok and os.path.exists(ENV):
+        for line in open(ENV):
+            if line.startswith("ZYTE_TOKEN="):
+                tok = line.split("=", 1)[1].strip().strip("'\"")
+    if not tok:
+        raise RuntimeError("ZYTE_TOKEN not found")
+    return tok
+
+
+def get(url, session=None, timeout=120):
+    """(the site's status, its body); when Zyte itself fails (429, 503, 520 ...), (Zyte's status, b"")."""
+    r = (session or requests).post(API, auth=(token(), ""), timeout=timeout, json={"url": url, "httpResponseBody": True})
+    if r.status_code != 200:
+        return r.status_code, b""
+    d = r.json()
+    return d.get("statusCode", 200), base64.b64decode(d["httpResponseBody"])
