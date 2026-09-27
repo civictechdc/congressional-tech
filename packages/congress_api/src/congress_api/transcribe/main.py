@@ -68,6 +68,7 @@ def place(participants: dict[str, Person], name: str, role: str, confidence, lab
     (the roster may say "Jefferson Van Drew" where the model says "Jeff Van Drew"), else a new one.
     A chair or ranking-member role from the model upgrades a roster "member"."""
     if name == "Unknown":
+        participants.setdefault("unknown", Person(name="Unknown", role="unknown", confidence=0))
         return "unknown"
     k = person_key(name)
     if k not in participants:
