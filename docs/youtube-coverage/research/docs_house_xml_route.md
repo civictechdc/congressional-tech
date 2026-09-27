@@ -106,6 +106,17 @@ Validated against four independent sources (2026-09-27):
   published two months to two years after they are held."
 - senate.gov's central Committee Hearing/Meeting Schedule page — schedule
   only (times, rooms, nomination hearings); no documents, no feeds.
+- The Library of Congress itself: congress.gov *is* the LoC (the API already
+  mirrored). The Law Library's own guidance for finding hearing materials
+  (`guides.loc.gov/legislative-history/unpublished-congressional-hearings`,
+  updated 2026-08-05) lists as its free resources: Congress.gov committee
+  landing pages (which link out to committee websites), C-SPAN, and the House
+  Committee Repository (docs.house.gov) — it names no Senate repository,
+  because their librarians know of none. The Law Library's 75,000 printed
+  hearing volumes are historical physical stock (a Google digitization pilot
+  put up a few topical PDF groups); for old unpublished Senate hearings their
+  pointer is NARA's Center for Legislative Archives (20-year closure), or
+  subscription ProQuest/CIS (coverage to 1824).
 
 ## At-scale comparison (739 meetings, stratified sample across 112th–116th+)
 
