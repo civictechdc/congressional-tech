@@ -14,7 +14,9 @@ two other places when it is missing:
 - the GPO record (MODS) of the hearing's print, when the print and the meeting are each other's only
   match (a volume or a same-day print shared by several meetings can't say whose witnesses are whose);
 - the "Witness List" document attached to the meeting, read with `pdftotext` when it has a text layer;
-- the meeting's own title, for a Senate nomination hearing: the nominees it names are its witnesses.
+- the meeting's own title, for a Senate nomination hearing: the nominees it names are its witnesses;
+- the Senate committee's own page for the hearing (`senate_hearing_pages.py` reads them), for the Senate
+  hearings the first four leave without a list.
 
 Writes docs/youtube-coverage/research/data/meeting_completeness.csv (one row per meeting) and
 meeting_witnesses.csv (the witnesses filled from those two places; Congress.gov's own are in the
@@ -28,7 +30,7 @@ import requests
 
 ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT / "packages/congress_api/src")); sys.path.insert(0, str(ROOT / "packages/congress_shared/src"))
-from congress_api.transcribe.metadata import HONORIFIC, is_name, people_in_mods  # noqa: E402
+from congress_api.transcribe.metadata import TITLE, is_name, people_in_mods  # noqa: E402
 
 MEETINGS = ROOT.parent / "pipeline-data/congress_meetings.jsonl.gz"
 INDEX = ROOT / "docs/youtube-coverage/research/data/hearing_text_sources.csv"
@@ -37,6 +39,7 @@ OUT = ROOT / "docs/youtube-coverage/research/data/meeting_completeness.csv"
 OUT_WITNESSES = ROOT / "docs/youtube-coverage/research/data/meeting_witnesses.csv"
 HOUSE_WITNESSES = ROOT / "docs/youtube-coverage/research/data/house_witnesses_found.csv"
 HOUSE_DOCUMENTS = ROOT / "docs/youtube-coverage/research/data/house_documents_found.csv"
+SENATE_WITNESSES = ROOT / "docs/youtube-coverage/research/data/senate_witnesses_found.csv"
 UA = {"User-Agent": "Mozilla/5.0"}
 CLOSED = re.compile(r"closed|briefing|deposition|executive session", re.I)
 
@@ -91,15 +94,16 @@ def document_witnesses(url, cache):
         text = subprocess.run(["pdftotext", f.name, "-"], capture_output=True, text=True).stdout  # reading order: a two-column list column by column
     out, current = [], None
     for line in (l.strip() for l in text.splitlines()):
-        title = HONORIFIC.match(line + " ")
-        if title and 2 <= len(line.split()) <= 8 and not line.endswith(":"):
-            current = {"name": re.sub(r",.*$", "", line[title.end():]).strip(), "details": []}
+        title = TITLE.match(line + " ")
+        name = re.sub(r",.*$", "", line[title.end():]).strip() if title else ""
+        if is_name(name) and len(line.split()) <= 8 and not line.endswith(":"):
+            current = {"name": name, "details": []}
             out.append(current)
         elif not line or re.match(r"(panel|witnesses)\b", line, re.I):
             current = None
         elif current is not None and len(current["details"]) < 4:
             current["details"].append(line)
-    return [{"name": w["name"], "position": w["details"][0] if w["details"] else "", "organization": ", ".join(w["details"][1:])} for w in out if is_name(w["name"])]
+    return [{"name": w["name"], "position": w["details"][0] if w["details"] else "", "organization": ", ".join(w["details"][1:])} for w in out]
 
 
 def main(cache):
@@ -116,8 +120,8 @@ def main(cache):
     for e, prints in prints_of.items():
         for p in prints:
             meetings_of[p].append(e)
-    from_house, house_documents = collections.defaultdict(list), collections.defaultdict(list)
-    for path, into in ((HOUSE_WITNESSES, from_house), (HOUSE_DOCUMENTS, house_documents)):
+    from_house, house_documents, from_senate = collections.defaultdict(list), collections.defaultdict(list), collections.defaultdict(list)
+    for path, into in ((HOUSE_WITNESSES, from_house), (HOUSE_DOCUMENTS, house_documents), (SENATE_WITNESSES, from_senate)):
         if path.exists():
             for r in csv.DictReader(open(path)):
                 into[r["event_id"]].append(r)
@@ -147,6 +151,9 @@ def main(cache):
             named = nominees(m["title"])
             source, count = "meeting title (nominees)", len(named)
             filled += [{"event_id": e, "name": n, "position": f"nominee to be {office}", "organization": "", "source": "meeting title (nominees)", "from": m["_url"]} for n, office in named]
+        elif not listed and from_senate[e]:
+            source, count = "senate committee page", len(from_senate[e])
+            filled += [{"event_id": e, "name": w["name"], "position": w["position"], "organization": w["organization"], "source": "senate committee page", "from": w["page"]} for w in from_senate[e]]
         shared = [p for p in prints_of[e] if p not in own_print.values()]
         rows.append({"event_id": e, "congress": m["congress"], "chamber": m.get("chamber", ""), "kind": kind(m), "closed": "yes" if m.get("type", "").startswith("Closed") or CLOSED.search(m.get("title") or "") else "",
                      "date": m["date"][:10], "committees": r["committees"], "title": r["title"],
