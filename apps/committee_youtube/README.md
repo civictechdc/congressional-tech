@@ -93,6 +93,25 @@ Useful columns:
 gpo-transcripts --out-dir ~/transcripts --congress 118 --committee hsvr00
 ```
 
+## Transcripts and captions
+
+GPO prints transcripts for roughly 70–90% of House hearings, months later, and for none of the markups. For the rest, the recordings' captions are the only text:
+
+| Command | Source | Text quality |
+|---|---|---|
+| `gpo-transcripts` | GPO's printed transcript | The record |
+| `youtube-captions` | The video's English caption track: the uploader's if there is one, else YouTube's automatic captions | Automatic captions are unpunctuated speech recognition, fine for search and for finding who said what when |
+| `senate-captions` | The caption track of the Senate player's recordings since mid-2023 | Closed captions as broadcast, in capitals |
+
+```bash
+youtube-captions --out-dir ~/hearing-text/youtube --ids-file videos.txt
+senate-captions  --out-dir ~/hearing-text/senate  --urls-file links.txt   # senate.gov/isvp/?comm=...&filename=... links
+```
+
+Each writes one text file per recording and a `captions_index.csv` (what was fetched and what had no track), and skips what's already there. YouTube starts asking for a sign-in after a few hundred requests from one address; `youtube-captions --proxy http://<zyte-api-key>:@api.zyte.com:8011` routes the fetch through Zyte's proxy mode, which passes, and failed videos are left out of the index so the next run retries them. Like `gpo-transcripts`, they fill a local folder rather than the repository. Older Senate recordings (the archive path, before mid-2023) carry captions only inside the video stream, which `senate-captions` doesn't decode. C-SPAN no longer publishes transcripts of its programs.
+
+`packages/congress_api/src/congress_api/senate/isvp.py` holds the Senate player's committee table and URL patterns, shared by `senate-captions` and the archive probe in the docs folder.
+
 ## Running locally
 
 ```bash
