@@ -51,7 +51,7 @@ Rules:
 - **Mistagged videos:** committees sometimes tag a video with another hearing's event ID, and Congress.gov's link follows the tag. Event-ID or Congress.gov evidence for a video posted more than a week after the hearing ranks below a same-week title match when the video's title doesn't match the hearing, or matches a hearing held the week it was posted.
 - **One video per hearing:** each video goes to its best-matching hearing. Hearings on the same day may share one.
 - **Clips:** a video found by weaker evidence (no Congress.gov link or event ID) counts as a clip when it's under 20 minutes, or under 30 minutes with a member-clip title ("Wyden Q&A …", "Chairman Smith Questions Witnesses …", "Opening Statement …"). Senate party channels post question rounds of that length for most hearings.
-- **Multi-hearing Appropriations volumes:** these are matched on each hearing day, read from the transcript (the `hearing_dates` column). About a quarter of them are scanned PDFs with no text, so only their GPO date is used.
+- **Hearing days come from the transcript:** `gpo-fetch` reads the day headers of every transcript since the 113th Congress, and a hearing is matched on each day they name (the `hearing_dates` column), else on GPO's held date, and on both when the transcript names one day and GPO another. Multi-hearing Appropriations volumes are matched to meetings by subcommittee, since their title names no hearing. Scanned prints have no text, so only their GPO date is used.
 
 `data/hearing_video_overrides.csv` holds reviewed verdicts from the September 2026 research, plus `found_offsite` rows for Senate hearings whose recording the senate.gov archive probe found (`research/scripts/as_run/senate_isvp_probe.py` in the docs folder). They're used where they exist, with these exceptions:
 - a "no video"/"clips only" verdict gives way to strong new evidence, or to a dated recording of 30+ minutes;
@@ -85,7 +85,8 @@ Useful columns:
 - `event_id`: the Congress.gov event ID. It's only recorded from about the 114th Congress on, and not always.
 - `days_to_govinfo`: days from hearing to publication. Before about the 111th Congress this is when GPO digitized old records.
 - `record_type`: `hearing` or `errata`.
-- `hearing_dates`: every hearing day in an Appropriations volume.
+- `hearing_dates`: the hearing days the transcript's day headers name, when they say more than `held_date`: every day of a volume or a multi-day hearing, or the one day GPO dated differently.
+- `text_read`: `yes` once the transcript has been read for its day headers.
 
 **`gpo-transcripts`** downloads transcript text to a local folder for search or summaries. It isn't committed: all House and joint hearings since 2013 come to about 2 GB.
 

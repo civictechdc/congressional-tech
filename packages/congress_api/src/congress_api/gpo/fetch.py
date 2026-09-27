@@ -4,13 +4,22 @@ Fetch metadata and links for official GPO hearing transcripts from GovInfo.
 GovInfo's "Congressional Hearings" collection (CHRG) holds the official printed
 transcript of each hearing, usually published a year or more after it was held.
 We store one row per hearing: metadata plus links to the HTML text and the PDF.
-The transcript text itself is not downloaded; the links point to it.
+The transcript text is read once per hearing, for the days it was held, and not kept;
+the links point to it.
 
 Data flow:
     1. api.govinfo.gov/collections/CHRG/{since}   -> package ids + lastModified
        (needs a data.gov API key)
     2. www.govinfo.gov/metadata/pkg/{id}/mods.xml -> hearing metadata
        (public; one request per new or changed hearing)
+    3. www.govinfo.gov/content/pkg/{id}/html/{id}.htm -> the day headers in the transcript
+       (public; one request per new or changed hearing since the 113th Congress)
+
+GPO's held date is one date per package. A volume that prints several hearings carries
+only the first (or, for Appropriations volumes, the first day of the Congress), and a
+few single hearings carry the wrong date. The transcript's own day headers
+("WEDNESDAY, FEBRUARY 25, 2015") say when the hearings were held, so they are recorded
+in `hearing_dates` wherever they say something other than GPO's one date.
 
 The MODS record carries the committee's system code (e.g. hsvr00, the same codes
 as youtube-accounts.csv) and, for many hearings since the 115th Congress, the
@@ -51,6 +60,9 @@ CHAMBERS = {"h": "house", "s": "senate", "j": "joint"}
 FULL_HISTORY_START = "1990-01-01T00:00:00Z"
 ## re-list a little before the newest lastModified we have, to be safe
 RELIST_OVERLAP = timedelta(days=2)
+## transcripts are read for their hearing days from this Congress on: the first with
+##  committee channels and Congress.gov meeting records to match the days against
+TEXT_DAYS_FROM_CONGRESS = 113
 
 
 ## define columns in the output CSV
@@ -79,9 +91,13 @@ class GpoHearing:
     committee_code_gpo: str = ""
     ## "hearing", or "errata" for errata cover sheets GPO files as separate packages
     record_type: str = "hearing"
-    ## every hearing day in a multi-hearing volume (Appropriations "Part N" volumes),
-    ##  read from the transcript; ";"-separated. Blank for single hearings.
+    ## the hearing days the transcript's day headers give, ";"-separated, when they say
+    ##  more than `held_date` does: every day of a multi-hearing volume, both days of a
+    ##  two-day hearing, or the one day GPO got wrong. Blank when the transcript agrees
+    ##  with `held_date` or has no day header (scanned prints).
     hearing_dates: str = ""
+    ## "yes" once the transcript has been read for its day headers
+    text_read: str = ""
 
 
 def main(
@@ -128,8 +144,8 @@ def main(
                 session, f"{GOVINFO_CONTENT}/metadata/pkg/{package_id}/mods.xml"
             ).content
             hearing = parse_mods(package_id, mods, last_modified)
-            if is_multi_hearing_volume(hearing.title):
-                hearing.hearing_dates = volume_hearing_dates(session, hearing)
+            if hearing.congress >= TEXT_DAYS_FROM_CONGRESS:
+                hearing.hearing_dates, hearing.text_read = read_hearing_dates(session, asdict(hearing)), "yes"
             return hearing
         except Exception as ex:
             failures.append(f"{package_id}: {ex!r}")
@@ -142,16 +158,15 @@ def main(
             if i % 500 == 0:
                 logging.info(f"Fetched {i}/{len(to_fetch)}")
 
-    ## one-time backfill: hearing days for multi-hearing volumes fetched before
-    ##  this column existed
+    ## one-time backfill: hearing days for transcripts fetched before they were read
     backfill = [r for r in existing.values()
-                if is_multi_hearing_volume(r["title"]) and "hearing_dates" not in r]
+                if int(r["congress"]) >= TEXT_DAYS_FROM_CONGRESS and not r.get("text_read")]
     if backfill:
-        logging.info(f"Reading hearing days for {len(backfill)} multi-hearing volumes")
+        logging.info(f"Reading hearing days from {len(backfill)} transcripts")
 
         def fill(row):
             try:
-                row["hearing_dates"] = volume_hearing_dates(session, row)
+                row["hearing_dates"], row["text_read"] = read_hearing_dates(session, row), "yes"
             except Exception as ex:
                 failures.append(f"{row['package_id']} hearing days: {ex!r}")
 
@@ -262,31 +277,49 @@ def parse_mods(package_id: str, mods: bytes, last_modified: str) -> GpoHearing:
 
 
 VALID_CODE = re.compile(r"^[hsj][a-z]{3}\d\d$")
-MONTHS = "January|February|March|April|May|June|July|August|September|October|November|December"
-DAY_HEADER = re.compile(
-    rf"(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),\s+({MONTHS})\s+(\d{{1,2}}),\s+(\d{{4}})"
-)
+MONTHS = "January February March April May June July August September October November December".split()
+WEEKDAYS = "Monday Tuesday Wednesday Thursday Friday Saturday Sunday".split()
+## a day header stands alone on its line: "WEDNESDAY, FEBRUARY 25, 2015", or in the prints
+##  of some committees and in Appropriations volumes "Wednesday, February 25, 2015."
+DAY = rf"({'|'.join(WEEKDAYS)}),\s+({'|'.join(MONTHS)})\s+(\d{{1,2}}),\s+(\d{{4}})"
+DAY_HEADER = re.compile(rf"^[ \t]*{DAY}\.?[ \t]*$".replace("\\s+", "[ \\t]+"), re.IGNORECASE | re.MULTILINE)
+## some volumes' HTML runs the page head and the day header together:
+##  "DEPARTMENT OF HOMELAND SECURITY APPROPRIATIONS FOR 2022Wednesday, March 17, 2021DHS ..."
+RUNNING_HEAD_DAY = re.compile(rf"APPROPRIATIONS FOR \d{{4}}\s*{DAY}", re.IGNORECASE)
 
 
 def is_multi_hearing_volume(title: str) -> bool:
-    """Appropriations prints several hearings per volume ("... APPROPRIATIONS FOR 2016")."""
+    """House Appropriations prints several hearings per volume ("... APPROPRIATIONS FOR 2016"),
+    under a title that names none of them."""
     return bool(re.search(r"APPROPRIATIONS FOR \d{4}", title.upper()))
 
 
-def volume_hearing_dates(session, row) -> str:
-    """Every "Wednesday, February 25, 2015"-style day header in the transcript, within the Congress's years."""
-    row = row if isinstance(row, dict) else asdict(row)
-    text = get_with_retry(session, row["html_url"]).text
-    congress = int(row["congress"])
+def hearing_days(text: str, congress: int, volume: bool = False) -> list[str]:
+    """The days a transcript's day headers name, within the Congress's years. A hearing's print
+    sets its day headers one way: where any is in capitals, a date in ordinary case standing
+    alone is something else (the dateline of the hearing advisory that Ways and Means prints).
+    A multi-hearing volume mixes the two, and every header counts. Headers are taken as printed:
+    checking the weekday against the date drops more real days, whose weekday was misprinted,
+    than false ones."""
     first_year = 1789 + 2 * (congress - 1)
-    dates = set()
-    for month, day, year in DAY_HEADER.findall(text):
+    capitals, ordinary = set(), set()
+    for header in list(DAY_HEADER.finditer(text)) + (list(RUNNING_HEAD_DAY.finditer(text)) if volume else []):
+        _, month, day, year = header.groups()
         if first_year - 1 <= int(year) <= first_year + 2:
             try:
-                dates.add(datetime.strptime(f"{month} {day} {year}", "%B %d %Y").date().isoformat())
+                date = datetime(int(year), [m.lower() for m in MONTHS].index(month.lower()) + 1, int(day)).date().isoformat()
             except ValueError:
-                pass
-    return ";".join(sorted(dates))
+                continue
+            (capitals if header.group(0) == header.group(0).upper() else ordinary).add(date)
+    return sorted(capitals | ordinary if volume else capitals or ordinary)
+
+
+def read_hearing_dates(session, row: dict) -> str:
+    """`hearing_dates` for a row: the transcript's hearing days when they say more than GPO's held date."""
+    volume = is_multi_hearing_volume(row["title"])
+    days = hearing_days(get_with_retry(session, row["html_url"]).text, int(row["congress"]), volume)
+    tells_more = days and (days != [row["held_date"]] or volume)
+    return ";".join(days) if tells_more else ""
 
 
 def clean_rows(rows: dict[str, dict]) -> None:
@@ -296,6 +329,7 @@ def clean_rows(rows: dict[str, dict]) -> None:
             row["committee_code_gpo"] = row["committee_code"]  # rows written before this column existed
         row.setdefault("record_type", "errata" if "[ERRATA]" in row["title"].upper() else "hearing")
         row.setdefault("hearing_dates", "")
+        row.setdefault("text_read", "")
 
     def fix(code):
         code = (code or "").strip().lower()

@@ -33,7 +33,7 @@ import requests
 ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT / "packages/congress_api/src")); sys.path.insert(0, str(ROOT / "packages/congress_shared/src"))
 import datetime as dt  # noqa: E402
-from congress_api.gpo.match import ALIAS, EVENT_ID, VIDEO_ID, similarity, words  # noqa: E402
+from congress_api.gpo.match import ALIAS, EVENT_ID, VIDEO_ID, matching_days, similarity, words  # noqa: E402
 from congress_api.senate.isvp import COMM, STREAM, archive_url, live_url, parse_player_url, player_url  # noqa: E402
 
 GPO = ROOT / "apps/committee_youtube/data/gpo_hearings.csv"
@@ -146,9 +146,8 @@ def main(youtube_dir, senate_dir, probe_cache=None):
     for r in gpo:
         if r["event_id"]:
             by_eid[r["event_id"]].add(r["package_id"])
-        for d in (r["hearing_dates"] or r["held_date"]).split(";"):
-            if d:
-                by_day[(r["committee_code"], d)].add(r["package_id"])
+        for d in matching_days(r):
+            by_day[(r["committee_code"], d)].add(r["package_id"])
     vid_by_eid = collections.defaultdict(list)
     by_code_day: dict = collections.defaultdict(list)  # (committee code, upload date) -> videos, for date-window matching
     dated: dict = collections.defaultdict(list)  # (committee code, date in the title) -> uploads of 20+ minutes titled with that date

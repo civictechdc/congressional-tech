@@ -487,9 +487,9 @@ congress,committee_code,committee_name,status,hearings
 113,spag00,Senate Aging,no_video_found,3
 113,spag00,Senate Aging,not_public,1
 113,ssaf00,,full_recording_offsite,17
-113,ssap00,Senate Appropriations,before_channel,6
+113,ssap00,Senate Appropriations,before_channel,5
 113,ssap00,Senate Appropriations,full_recording_offsite,112
-113,ssap00,Senate Appropriations,no_video_found,5
+113,ssap00,Senate Appropriations,no_video_found,6
 113,ssap00,Senate Appropriations,not_public,1
 113,ssas00,,full_recording_offsite,32
 113,ssbk00,"Senate Banking, Housing, and Urban Affairs",full_recording_offsite,93
@@ -497,10 +497,10 @@ congress,committee_code,committee_name,status,hearings
 113,ssbu00,Senate Budget,full_recording_offsite,8
 113,sscm00,"Senate Commerce, Science, and Transportation",full_recording_offsite,90
 113,sscm00,"Senate Commerce, Science, and Transportation",no_video_found,5
-113,sseg00,Senate Energy and Natural Resources,clips_only,3
+113,sseg00,Senate Energy and Natural Resources,clips_only,4
 113,sseg00,Senate Energy and Natural Resources,full_recording,2
 113,sseg00,Senate Energy and Natural Resources,full_recording_offsite,49
-113,sseg00,Senate Energy and Natural Resources,no_video_found,6
+113,sseg00,Senate Energy and Natural Resources,no_video_found,5
 113,ssev00,Senate Environment and Public Works,full_recording,1
 113,ssev00,Senate Environment and Public Works,full_recording_offsite,42
 113,ssev00,Senate Environment and Public Works,no_video_found,4
@@ -626,7 +626,7 @@ congress,committee_code,committee_name,status,hearings
 115,hsba00,Financial Services,no_video_found,1
 115,hsbu00,Budget,full_recording,14
 115,hsed00,Education & Workforce,full_recording,34
-115,hsfa00,Foreign Affairs,before_channel,1
+115,hsfa00,Foreign Affairs,clips_only,1
 115,hsfa00,Foreign Affairs,full_recording,174
 115,hsgo00,Oversight and Government Reform,full_recording,112
 115,hsha00,House Administration,full_recording,30
@@ -868,8 +868,8 @@ congress,committee_code,committee_name,status,hearings
 118,spag00,Senate Aging,full_recording_offsite,23
 118,spag00,Senate Aging,no_video_found,2
 118,ssaf00,,full_recording_offsite,24
-118,ssap00,Senate Appropriations,full_recording_offsite,49
-118,ssap00,Senate Appropriations,no_video_found,11
+118,ssap00,Senate Appropriations,full_recording_offsite,51
+118,ssap00,Senate Appropriations,no_video_found,9
 118,ssas00,,full_recording_offsite,43
 118,ssbk00,"Senate Banking, Housing, and Urban Affairs",full_recording,41
 118,ssbk00,"Senate Banking, Housing, and Urban Affairs",full_recording_offsite,20
@@ -885,8 +885,8 @@ congress,committee_code,committee_name,status,hearings
 118,ssev00,Senate Environment and Public Works,full_recording_offsite,16
 118,ssfi00,Senate Finance,full_recording_offsite,44
 118,ssfi00,Senate Finance,no_video_found,1
-118,ssfr00,Senate Foreign Relations,before_channel,4
-118,ssfr00,Senate Foreign Relations,full_recording_offsite,50
+118,ssfr00,Senate Foreign Relations,before_channel,3
+118,ssfr00,Senate Foreign Relations,full_recording_offsite,51
 118,ssga00,Senate Homeland Security and Governmental Affairs,full_recording_offsite,54
 118,sshr00,"Senate Health, Education, Labor, and Pensions",full_recording,13
 118,sshr00,"Senate Health, Education, Labor, and Pensions",full_recording_offsite,27

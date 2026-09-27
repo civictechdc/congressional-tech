@@ -3,8 +3,6 @@ event_id,congress,chamber,type,date,committees,title,documents
 100201,113,House,Markup,2013-01-22,hsed00,Full Committee Organizational Meeting,yes
 100269,113,House,Meeting,2013-02-13,hsag00,To consider the Oversight Plan of the Committee on Agriculture for the 113th Congress and other organizational matters,yes
 100375,113,House,Hearing,2013-03-05,hsii00,"Legislative hearing on H.R. 254 (Chaffetz), Bonneville Unit Clean Hydropower Facilitation Act and H.R. 678 (Tipton), Bureau of Reclamation Small Conduit Hydropower Development and Rural Jobs Act",yes
-100504,113,House,Markup,2013-03-14,hssy00,"H. R. 756, the ""Cybersecurity Enhancement Act of 2013"" and  H. R. 967, the ""Advancing America's Networking and Information Technology Research and Development Act of 2013.",yes
-100567,113,House,Hearing,2013-04-11,hshm00,“TSA’s Efforts to Advance Risk-Based Security: Stakeholder Perspectives.”,yes
 100758,113,House,Markup,2013-04-24,hshm00,"H.R. 1417, (Mr. Michael T. McCaul) To require the Secretary of Homeland Security to develop a comprehensive strategy to gain and maintain operational control of the international borders of the United States, and for other purposes. The ""Border Security Results Act of 2013.""",yes
 100612,113,House,Hearing,2013-04-26,hsii00,"Legislative Hearing on H.R. 1548 (D. Young), To facilitate the development of energy on Indian lands by reducing Federal regulations that impede tribal development of Indian lands, and for other purposes. ‘‘Native American Energy Act” (Rescheduled from April 10, 2013)",yes
 100770,113,House,Hearing,2013-04-26,hsii00,"Legislative Hearing on H.R. 1169 (Amodei), ""Naval Air Station Fallon Housing and Safety Development Act”; H.R. 1299 (Pearce), the “White Sands Missile Range Security Enhancement Act”; H.R. 1574 (Turner), To amend the Dayton Aviation Heritage Preservation Act of 1992 to rename a site of the park; H.R. 1673 (McCarthy), the ‘‘Naval Air Weapons Station China Lake Security Enhancement Act’’; H.R. 1676 (Cook), the ‘‘Johnson Valley National Off-Highway Vehicle Recreation Area Establishment Act’’; H.R. 1672 (Daines), the ‘‘Limestone Hills Training Area Withdrawal Act’’; and H.R. 1691 (Vargas), the ‘‘Chocolate Mountain Aerial Gunnery Range Security Enhancement Act’’",no
@@ -25,7 +23,6 @@ event_id,congress,chamber,type,date,committees,title,documents
 101125,113,House,Markup,2013-06-29,hssy00,"H.R. 1786, National Windstorm Impact Reduction Act Reauthorization of 2013",yes
 101123,113,House,Markup,2013-07-09,hssy00,"H.R. 2413, Weather Forecasting Improvement Act of 2013",yes
 101105,113,House,Hearing,2013-07-10,hsas00,Armed Services and Veterans Affairs Hearing on DOD and VA Collaboration to Assist Service Members Returning to Civilian Life,no
-101108,113,House,Hearing,2013-07-10,hshm00,"""Assessing Attacks on the Homeland: From Fort Hood to Boston.”",yes
 101126,113,House,Markup,2013-07-10,hspw00,"The Committee on Transportation and Infrastructure will meet to consider the following bills and other legislative business:
 
 H.R. 1848 - The Small Airplane Revitalization Act of 2013
@@ -83,11 +80,9 @@ H.R. 1378 -   To designate the United States courthouse located at 333 West Broa
 
 H.R. 4005 -   Coast Guard and Maritime Transportation Act of 2014.",yes
 101821,113,House,Hearing,2014-02-26,hsii00,"Legislative Hearing: H.R. 503 (Roe), To authorize the National Desert Storm Memorial Association to establish the National Desert Storm and Desert Shield Memorial as a commemorative work in the District of Columbia, and for other purposes. “National Desert Storm and Desert Shield War Memorial Act”; H.R. 712 (Frelinghuysen), To extend the authorization of the Highlands Conservation Act through fiscal year 2024; H.R. 1192 (McClintock), To redesignate Mammoth Peak in Yosemite National Park as ""Mount Jessie Benton Fre'mont""; H.R. 1501 (Jeffries), To direct the Secretary of the Interior to study the suitability and feasibility of designating the Prison Ship Martyrs' Monument in Fort Greene Park, in the New York City borough of Brooklyn, as a unit of the National Park System. “Prison Ship Martyrs' Monument Preservation Act”; H.R. 1744 (Horsford),  To provide for the implementation of the multispecies habitat conservation plan for the Virgin River, Nevada, and Lincoln County, Nevada, to extend the authority to purchase certain parcels of public land, and for other purposes. “Multispecies Habitat Conservation Plan Implementation Act”; H.R. 2569 (Welch), To amend the Wild and Scenic Rivers Act to designate segments of the Missisquoi River and the Trout River in the State of Vermont, as components of the National Wild and Scenic Rivers System. “Upper Missisquoi and Trout Wild and Scenic Rivers Act”; H.R. 3222 (Meng), To authorize the Secretary of the Interior to conduct a special resource study of sites associated with the 1657 signing of the Flushing Remonstrance in Queens, New York, and for other purposes. “Flushing Remonstrance Study Act”; H.R. 3366 (Walden), To provide for the release of the property interests retained by the United States in certain land conveyed in 1954 by the United States, acting through the Director of the Bureau of Land Management, to the State of Oregon for the establishment of the Hermiston Agricultural Research and Extension Center of Oregon State University in Hermiston, Oregon; H.R. 3802 (Lynch), To extend the legislative authority of the Adams Memorial Foundation to establish a commemorative work in honor of former President John Adams and his legacy, and for other purposes.",yes
-101963,113,House,Meeting,2014-02-26,hsag00,To Review the impacts of Endangered Species Act and related litigation on National Forest System management,no
 101777,113,House,Hearing,2014-02-27,hsii00,"Legislative Hearing on: H. R. 3105, Aquaculture Risk Reduction Act; H. R. 3280, Lacey Act Clarifying Amendments Act; H. R. 3324, The Lacey Act Paperwork Reduction Act and; H. R. 4032, North Texas Invasive Species Barrier Act.",yes
 101899,113,House,Meeting,2014-03-13,hsag00,Full Committee Business Meeting,yes
 101917,113,House,Markup,2014-03-13,hsii00,"Full Committee Markup on H.R. 1192, H.R. 1501, H.R. 3222, and H.R. 4032",yes
-102028,113,House,Hearing,2014-03-26,hsag00,To Review the impacts of Endangered Species Act and related litigation on National Forest System management.,yes
 102124,113,House,Markup,2014-04-09,hsed00,"Markup of  H.R. 4321, “Employee Privacy Protection Act” and H.R. 4320, “Workforce Democracy and Fairness Act”",yes
 102147,113,House,Hearing,2014-04-29,hsii00,"“the Department of the Interior Office of Insular Affairs’ spending and the President’s Fiscal Year 2015 budget request for the Office” and on the following bills: H.R. 4296 (Sablan), To amend Public Law 94–241 with respect to the Northern Mariana Islands; H.R. 4402 (Bordallo), To authorize the Secretary of the Navy to establish a surface danger zone over the Guam National Wildlife Refuge or any portion thereof to support the operation of a live-fire training range complex. “Guam Military Training and Readiness Act of 2014”",yes
 102151,113,House,Hearing,2014-04-29,hsii00,Oversight hearing on “American Energy Jobs: Opportunities for Skilled Trades Workers.”,yes
@@ -109,18 +104,13 @@ H.R. 4228, (Mr. Duncan of South Carolina) The “DHS Acquisition Accountability 
 102251,113,House,Markup,2014-05-20,hshm00,"Markup of:
 H.R. 3202, (Ms. Jackson Lee) To require the Secretary of Homeland Security to prepare a comprehensive security assessment of the transportation security card program, and for other purposes. The “Essential Transportation Worker Identification Credential Assessment Act.”
 H.R. 3488, (Mr. Meehan) To establish the conditions under which the Secretary of Homeland Security may establish preclearance facilities, conduct preclearance operations, and provide customs services outside the United States, and for other purposes. H.R. 3846, (Mrs. Miller of Michigan) To provide for the authorization of border, maritime, and transportation security responsibilities and functions in the Department of Homeland Security and the establishment of United States Customs and Border Protection, and for other purposes.  The “United States Customs and Border Protection Authorization Act.”",yes
-102274,113,House,Hearing,2014-05-29,hshm00,"""Lessons from the LAX Shooting: Airport and Law Enforcement Perspectives""",yes
 102337,113,House,Meeting,2014-06-10,hsru00,"H.R. 4453—Permanent S Corporation Built-in Gains Recognition Period Act of 2014; H.R. 4457—America's Small Business Tax Relief Act of 2014; H.R. 4800—Agriculture, Rural Development, Food and Drug Administration, and Related Agencies Appropriations Act, 2015",yes
-102314,113,House,Hearing,2014-06-11,hsas00,"The May 31, 2014 Transfer of Five Senior Taliban Detainees",no
-102336,113,House,Markup,2014-06-11,hssy00,"Committee Print of H.R. _______, the “Department of Energy Research and Development Act of 2014”",yes
 102379,113,House,Markup,2014-06-18,hsju00,"H.R. 3086, the “Permanent Internet Tax Freedom Act”; and,H.R. 4874, the “Searching for and Cutting Regulations that are Unnecessarily Burdensome (SCRUB) Act of 2014”",yes
 102421,113,House,Markup,2014-06-24,hssy00,"H.R. 4012, Secret Science Reform Act of 2014",yes
 102434,113,House,Meeting,2014-06-26,hsru00,"Legislative Hearing on H.R. 1869, the Biennial Budgeting and Enhanced Oversight Act of 2014",yes
-102439,113,House,Hearing,2014-07-03,hshm00,“Crisis on the Texas Border: Surge of Unaccompanied Minors.”,yes
 102458,113,House,Markup,2014-07-10,hsed00,"Markup on: H.R. 3136, H.R. 4983, and H.R. 4984",yes
 102543,113,House,Meeting,2014-07-22,hsru00,H.R. 3136—Advancing Competency-Based Education Demonstration Project Act of 2013; H.R. 4984—Empowering Students Through Enhanced Financial Counseling Act,yes
 102564,113,House,Meeting,2014-07-24,hsru00,H. Res. 676—Providing for authority to initiate litigation for actions by the President or other executive branch officials inconsistent with their duties under the Constitution of the United States.,yes
-102581,113,House,Hearing,2014-07-25,hsgo00,"Resumption of the 7-16-14 hearing, ""White House Office of Political Affairs:  Is Supporting Candidates and Campaign Fund-Raising an Appropriate Use of a Government Office?""",yes
 102603,113,House,Meeting,2014-07-30,hsru00,"H.R. 5230—Making supplemental appropriations for the fiscal year ending September 30, 2014, and for other purposes.; Senate amendment to H.R. 5021—Highway and Transportation Funding Act of 2014; H.R. —To prohibit certain actions with respect to deferred action for aliens not lawfully present in the United States, and for other purposes.",yes
 102602,113,House,Markup,2014-07-31,hswm00,"Markup of: H.R. 647, ""ABLE Act of 2013""",yes
 102605,113,House,Meeting,2014-07-31,hsru00,H. Res. ___—Waiving a requirement of clause 6(a) of rule XIII with respect to consideration of certain resolutions reported from the Committee on Rules.,yes
@@ -131,8 +121,6 @@ H.R. 3488, (Mr. Meehan) To establish the conditions under which the Secretary of
 102838,114,House,Markup,2015-01-21,hshm00,"Markup of H.R. 399, (Mr. McCaul), To require the Secretary of Homeland Security to gain and maintain operational control of the international borders of the United States, and for other purposes. The “Secure Our Borders First Act of 2015.”",yes
 102841,114,House,Meeting,2015-01-21,hsfa00,Full Committee Organizational Meeting,yes
 102977,114,House,Hearing,2015-02-25,hsbu00,Members' Day Hearing,yes
-103005,114,House,Hearing,2015-02-26,hsag00,RE:  To better understand the SNAP population through published research,no
-103525,114,House,Hearing,2015-02-26,hsag00,RE:  To better understand the SNAP population through published research,no
 103150,114,House,Hearing,2015-03-02,hlig00,Ongoing Intelligence Activities (Closed),no
 103148,114,House,Hearing,2015-03-17,hlig00,Ongoing Intelligence Activities (Closed),no
 102972,114,House,Hearing,2015-03-18,hsvr00,"Legislative Presentation of Multiple Veterans Service Organizations: JWV, AFSA, TREA, FRA, NASDVA, NGAUS, AXPOW, GSW and WWP",yes
@@ -163,8 +151,6 @@ On Tuesday, March 24, 2015, the Committee will convene at 4:00 p.m. in 1324 Long
 103342,114,House,Hearing,2015-04-22,hlig00,USDI Budget (Closed),no
 103364,114,House,Markup,2015-04-22,hssy00,"H.R. 1806, the America COMPETES Reauthorization Act of 2015",yes
 103343,114,House,Hearing,2015-04-23,hlig00,ODNI/NCTC/NCPC Budget (Closed),no
-103333,114,House,Hearing,2015-04-30,hshm00,“Allegations of Special Access and Political Influence at the Department of Homeland Security.”,yes
-103379,114,House,Hearing,2015-04-30,hshm00,"“A Review of Access Control Measures at Our Nation's Airports, Part II.”",yes
 103440,114,House,Markup,2015-05-13,hshm00,": H.R. 1615, (Mr. Carter of Georgia), To direct the Chief FOIA Officer of the Department of Homeland Security to make certain improvements in the implementation of section 552 of title 5, United States Code (commonly known as the Freedom of Information Act), and for other purposes.  The “DHS FOIA Efficiency Act of 2015”.  
 
 H.R. 1626, (Mr. Hurd of Texas), To reduce duplication of information technology at the Department of Homeland Security, and for other purposes.  The “DHS IT Duplication Reduction Act of 2015”.  
@@ -517,7 +503,6 @@ I. Motion to release certain executive session material.",yes
 110661,116,House,Hearing,2020-03-12,hlig00,FBI Budget Hearing (Closed),no
 327307,116,Senate,Meeting,2020-03-12,ssva00,"Business meeting to consider the nomination of Scott J. Laurer, of Virginia, to be a Judge of the United States Court of Appeals for Veterans Claims.",yes
 327535,116,Senate,Meeting,2020-03-12,slin00,Closed business meeting to consider pending intelligence matters.,no
-327343,116,Senate,Meeting,2020-03-26,ssas00,Hearings to examine the posture of the Department of the Army in review of the Defense Authorization Request for fiscal year 2021 and the Future Years Defense Program.,no
 327380,116,Senate,Meeting,2020-04-09,ssas00,Hearings to examine the Department of Energy budget posture in review of the Defense Authorization Request for fiscal year 2021 and the Future Years Defense Program.,no
 110736,116,House,Meeting,2020-04-22,hsru00,"H. Res. ___—Authorizing remote voting by proxy in the House of Representatives and providing for official remote committee proceedings during a designated pandemic emergency, and for other purposes. [Original Jurisdiction Hearing and Markup, Rule]",no
 327406,116,Senate,Meeting,2020-05-13,slin00,Closed hearings to examine certain intelligence matters.,no
@@ -991,7 +976,6 @@ II. Authorizing all Members of the House of Representatives to review, at a time
 336706,119,NoChamber,Meeting,2025-03-11,jslc00,"Business meeting to consider committee rules of procedure for the 119th Congress, and to designate the Chair and Vice Chair.",no
 336714,119,Senate,Meeting,2025-03-12,ssfr00,"Business meeting to consider the nominations of Christopher Landau, of Maryland, to be Deputy Secretary of State, Michael Rigas, of Virginia, to be Deputy Secretary of State for Management and Resources, and Matthew Whitaker, of Iowa, to be United States Permanent Representative on the Council of the North Atlantic Treaty Organization, with the rank and status of Ambassador.",yes
 336719,119,Senate,Meeting,2025-03-12,slin00,To receive a closed briefing on certain intelligence matters.,no
-336724,119,Senate,Meeting,2025-03-12,ssbu00,"Business meeting to consider the nomination of James Bishop, of North Carolina, to be Deputy Director of the Office of Management and Budget.",yes
 118029,119,House,Hearing,2025-03-26,hlig00,Annual Worldwide Threats Assessment Hearing (Closed),no
 336747,119,Senate,Meeting,2025-03-26,slin00,To receive a closed briefing on certain intelligence matters.,no
 336894,119,Senate,Meeting,2025-04-29,slin00,Closed business meeting to consider pending intelligence matters; to be immediately followed by a closed briefing on certain intelligence matters in SH-219.,no

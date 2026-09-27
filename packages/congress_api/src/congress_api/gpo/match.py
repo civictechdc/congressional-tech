@@ -29,8 +29,11 @@ Rules:
   "Chairman Smith Questions Witnesses ...", "Opening Statement ..."). Senate party channels
   post 10-25 minute question rounds for most hearings; measured on the September 2026 data,
   nearly every weak match under 20 minutes was one.
-- Multi-hearing volumes (Appropriations "Part N") are matched on every hearing day
-  listed in `hearing_dates`.
+- A hearing is matched on every day listed in `hearing_dates` (the days its transcript's
+  day headers give) when there are any, else on GPO's held date; on both when the
+  transcript names one day and GPO another. Multi-hearing volumes
+  (Appropriations "Part N") are matched to meetings by subcommittee, since their title
+  names no hearing.
 - Curated verdicts in the overrides file (seeded from the September 2026 research
   pass) apply where they exist. A "no video"/"clips only" verdict gives way to strong
   new evidence (score 90+) or a dated recording of 30+ minutes, unless the row is
@@ -51,6 +54,7 @@ import os
 import re
 from pathlib import Path
 
+from congress_api.gpo.fetch import is_multi_hearing_volume
 from congress_shared.globals import (
     DATA_DIR,
     DEFAULT_CHANNELS_CSV,
@@ -119,6 +123,17 @@ def dates_in_text(text):
         found.add(valid_date(2000 + int(code[:2]), int(code[2:4]), int(code[4:])))
     found.discard(None)
     return {d for d in found if "2005" <= d <= "2100"}
+
+
+def matching_days(h):
+    """The days to match a hearing on: those its transcript's day headers give, else GPO's held date.
+    When the transcript names one day and GPO another, either may be the misprint (CHRG-113hhrg88456's
+    GPO date is wrong, CHRG-113hhrg86002's day header is), so both count. A volume's GPO date is a
+    placeholder and never counts beside the transcript's days."""
+    days = set(filter(None, (h.get("hearing_dates") or "").split(";")))
+    if h["held_date"] and (not days or (len(days) == 1 and not is_multi_hearing_volume(h["title"]))):
+        days.add(h["held_date"])
+    return sorted(days)
 
 
 def is_clip(v):
@@ -194,7 +209,9 @@ def candidates(h, videos, meetings, hearings_on_day, titles_on_day):
         pub = dt.date.fromisoformat(published)
         return [t for k in range(-1, 4) for d in [(pub - dt.timedelta(days=k)).isoformat()] if d not in dates for t in titles_on_day.get((code, d), [])]
     sub_w = [words(re.sub(r"^.*?Subcommittee on ", "", s)) for s in h["subcommittees"].split(";") if s.strip()]
-    volume = bool(h["hearing_dates"])
+    ## a volume prints several hearings under a title that names none of them; a two-day hearing, or one GPO misdated,
+    ##  also lists its days but is still matched by its title
+    volume = bool(h["hearing_dates"]) and is_multi_hearing_volume(h["title"])
     by_id = {v["videoId"]: v for v in videos}
     out = []
 
@@ -247,8 +264,7 @@ def candidates(h, videos, meetings, hearings_on_day, titles_on_day):
         else:
             if volume:
                 continue  # volume titles are too generic for window matching
-            gap = (dt.date.fromisoformat(v["published"]) - dt.date.fromisoformat(h["held_date"])).days
-            if -1 <= gap <= 3:
+            if any(-1 <= (dt.date.fromisoformat(v["published"]) - dt.date.fromisoformat(day)).days <= 3 for day in dates):
                 if similarity(title_w, v["words"]) >= 0.5:
                     out.append((60, "date window + title", v))
                 elif any(sw and sw <= v["words"] for sw in sub_w):
@@ -265,7 +281,7 @@ def main(output_path, tinydb_dir, channels_csv_path, gpo_path, meetings_path, ov
     hearings = [h for h in csv.DictReader(open(gpo_path))]
     for h in hearings:
         h["committee_code"] = ALIAS.get(h["committee_code"], h["committee_code"])
-        h["_dates"] = sorted(set(filter(None, (h.get("hearing_dates") or "").split(";")))) or [d for d in [h["held_date"]] if d]
+        h["_dates"] = matching_days(h)
     hearings_on_day = collections.Counter((h["committee_code"], d) for h in hearings for d in h["_dates"])
     titles_on_day = collections.defaultdict(list)
     for h in hearings:
