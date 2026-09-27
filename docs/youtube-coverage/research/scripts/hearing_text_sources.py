@@ -1,7 +1,7 @@
 """
 Where the text of each committee meeting since the 113th Congress can be found.
 
-    python docs/youtube-coverage/research/scripts/hearing_text_sources.py [--youtube-dir ~/hearing-text/youtube] [--senate-dir ~/hearing-text/senate]
+    python docs/youtube-coverage/research/scripts/hearing_text_sources.py [--youtube-dir ~/hearing-text/youtube] [--senate-dir ~/hearing-text/senate] [--probe-cache probe.json]
 
 One row per Congress.gov meeting record (hearings, markups, business meetings; scheduled or
 rescheduled), with the GPO transcript(s) matched to it, its recordings (Congress.gov's video
@@ -13,9 +13,13 @@ that day or the title names the meeting's subcommittee; or a recording on the Se
 for a Senate or joint committee, or for a House committee's joint hearing with its Senate
 counterpart), and which of those has text: `gpo` (a printed transcript),
 `youtube_captions` / `senate_captions` (a caption track fetched by `youtube-captions` or
-`senate-captions`), `video_no_captions`, or `no_video`. Writes
+`senate-captions`), `video_no_captions`, or `no_video`. Joint hearings are entered once per
+committee, so same-day meetings with the same title share their records. A meeting Congress.gov
+still lists as Scheduled although the committee postponed it and re-entered it under a new event
+ID gets `rescheduled_to` (the later twin with a record) and stays out of the no-records file. Writes
 docs/youtube-coverage/research/data/hearing_text_sources.csv, plus meetings_without_records.csv
-for the meetings with none of those, and prints the totals.
+for the meetings with none of those, and prints the totals. `--probe-cache` keeps the Senate archive
+probe's answers between runs.
 """
 import argparse, collections, csv, gzip, json, re, sys
 from concurrent.futures import ThreadPoolExecutor
@@ -75,6 +79,15 @@ NAME_STOP = set("house senate committee subcommittee on the and of for".split())
 ET = ZoneInfo("America/New_York")
 
 
+CLOSED = re.compile(r"closed|briefing|deposition", re.I)
+
+
+def title_key(title):
+    """A title's distinct words, sorted, for matching the same meeting entered twice; "" when too short to be specific."""
+    w = set(words(title))
+    return " ".join(sorted(w)) if len(w) >= 4 else ""
+
+
 def codes_of(m):
     """A meeting's committee codes at the parent-committee level, through the matcher's aliases."""
     return list(dict.fromkeys(ALIAS.get(c["systemCode"][:4] + "00", c["systemCode"][:4] + "00") for c in m.get("committees", [])))
@@ -122,7 +135,7 @@ def unit_and_minutes(title):
     return NR_UNITS[unit.upper()], (int(hh) % 12 + (12 if ap.upper() == "P" else 0)) * 60 + int(mm)
 
 
-def main(youtube_dir, senate_dir):
+def main(youtube_dir, senate_dir, probe_cache=None):
     gpo = [r for r in csv.DictReader(open(GPO)) if int(r["congress"]) >= 113]
     by_eid = collections.defaultdict(set); by_day = collections.defaultdict(set)
     for r in gpo:
@@ -148,15 +161,15 @@ def main(youtube_dir, senate_dir):
                         for day in title_dates(v["title"]):
                             dated[(c["systemCode"], day.isoformat())].append((v["videoId"], *unit_and_minutes(v["title"])))
 
-    def window_matches(m, codes, meetings_that_day, units_that_day, parent_words):
+    def window_matches(m, codes, meetings_that_day, kinds_that_day, units_that_day, parent_words):
         """Tracked videos of the committee at least 20 minutes long (a markup's or short hearing's full recording; a
         few-minute clip isn't) that fit the meeting one of three ways: posted a day before to three days after it with a
         similar title or naming one of the same bills; titled with the meeting's date, when the meeting is the
         committee's only one that day or the title names its subcommittee (Natural Resources' 2016-18 archive uploads,
         nearest hour when that subcommittee met twice); or a session upload, a generic hearing or markup title that
         agrees with the meeting's type and carries no other date and no event ID, posted on the meeting's day (or the
-        next, when the committee did not meet then), when the meeting is the committee's only one that day or the
-        title names its subcommittee and that subcommittee met only once."""
+        next, when the committee held no session of that kind then), when the meeting is the committee's only one that
+        day or the title names its subcommittee and that subcommittee met only once."""
         day, title = m["date"][:10], m.get("title") or ""
         tw, tb, out = words(title), bills(title), []
         d0 = dt.date.fromisoformat(day)
@@ -172,7 +185,7 @@ def main(youtube_dir, senate_dir):
                         continue
                     if similarity(tw, words(vt)) >= 0.5 or (tb and tb & bills(vt)):
                         out.append(vid)
-                    elif (k == 0 or (k == 1 and meetings_that_day[(code, d)] == 0)) and not tagged and not (title_dates(vt) - {d0}) \
+                    elif (k == 0 or (k == 1 and ("markup" if MARKUP_WORDS.search(vt) else "hearing") not in kinds_that_day[(code, d)])) and not tagged and not (title_dates(vt) - {d0}) \
                             and session_kind_fits(m.get("type"), vt) and (meetings_that_day[(code, day)] == 1 or any(sw and sw <= set(words(vt)) for sw in sub_words)):
                         out.append(vid)
             same_day = [(vid, minutes) for vid, unit, minutes in dated.get((code, day), []) if unit in units or (unit is None and meetings_that_day[(code, day)] == 1)]
@@ -190,42 +203,73 @@ def main(youtube_dir, senate_dir):
                 meetings.append(m)
     ## Meetings with no Congress.gov video link: does the Senate player's archive have a recording for the committee that day?
     probe_days = sorted({(comm, m["date"][:10]) for m in meetings if not m.get("videos") for comm in senate_comms(m, codes_of(m))})
-    probed = dict(zip(probe_days, ThreadPoolExecutor(12).map(probe_senate_day, probe_days)))
-    ## how many meetings each committee, and each subcommittee, held on each day; the words of each parent committee's name
+    cache = json.load(open(probe_cache)) if probe_cache and Path(probe_cache).exists() else {}
+    todo = [k for k in probe_days if f"{k[0]}|{k[1]}" not in cache]
+    cache.update({f"{k[0]}|{k[1]}": v for k, v in zip(todo, ThreadPoolExecutor(12).map(probe_senate_day, todo))})
+    if probe_cache:
+        json.dump(cache, open(probe_cache, "w"))
+    probed = {k: cache[f"{k[0]}|{k[1]}"] for k in probe_days}
+    ## how many meetings each committee, and each subcommittee, held on each day, and of which kinds; the words of each parent committee's name
     meetings_that_day = collections.Counter((c, m["date"][:10]) for m in meetings for c in codes_of(m))
+    kinds_that_day = collections.defaultdict(set)
+    for m in meetings:
+        for c in codes_of(m):
+            kinds_that_day[(c, m["date"][:10])].add("markup" if m.get("type") == "Markup" else "hearing" if m.get("type") == "Hearing" else "meeting")
     units_that_day = collections.Counter((c["systemCode"], m["date"][:10]) for m in meetings for c in m.get("committees", []))
     parent_words = {c["systemCode"]: set(words(c["name"])) for m in meetings for c in m.get("committees", []) if c["systemCode"].endswith("00") and c.get("name")}
-    print(f"senate.gov probe: {len(probe_days)} committee-days without a Congress.gov link, recordings for {sum(1 for v in probed.values() if v)}")
-    rows, totals = [], collections.Counter()
+    print(f"senate.gov probe: {len(probe_days)} committee-days without a Congress.gov link ({len(todo)} probed now), recordings for {sum(1 for v in probed.values() if v)}")
+    rows = []
     for m in meetings:
-        if True:  # (body kept at its indent)
-            codes = codes_of(m)
-            packages = set(by_eid.get(m["eventId"], ())) | {p for c in codes for p in by_day.get((c, m["date"][:10]), ())}
-            urls = [v.get("url", "") for v in (m.get("videos") or [])]
-            youtube = list(dict.fromkeys([VIDEO_ID.search(u).group(1) for u in urls if VIDEO_ID.search(u)] + vid_by_eid.get(m["eventId"], [])
-                                         + (window_matches(m, codes, meetings_that_day, units_that_day, parent_words) if not packages else [])))
-            senate = [u for u in urls if parse_player_url(u)] or [u for comm in senate_comms(m, codes) for u in probed.get((comm, m["date"][:10]), [])]
-            if packages:
-                source = "gpo"
-            elif any(yt_caps.get(v) in ("manual", "auto") for v in youtube):
-                source = "youtube_captions"
-            elif any(sen_caps.get(parse_player_url(u)[1]) == "webvtt" for u in senate):
-                source = "senate_captions"
-            elif youtube or senate:
-                source = "video_no_captions"
-            else:
-                source = "no_video"
-            rows.append({"event_id": m["eventId"], "congress": m["congress"], "chamber": m.get("chamber", ""), "type": m.get("type", ""), "date": m["date"][:10],
-                         "committees": ";".join(codes), "title": (m.get("title") or "").strip(), "gpo_packages": " ".join(sorted(packages)),
-                         "youtube_ids": " ".join(youtube), "senate_urls": " ".join(senate), "text_source": source,
-                         "documents": "yes" if (m.get("witnessDocuments") or m.get("meetingDocuments")) else "no"})
-            totals[(m.get("chamber", ""), source)] += 1
+        codes = codes_of(m)
+        packages = set(by_eid.get(m["eventId"], ())) | {p for c in codes for p in by_day.get((c, m["date"][:10]), ())}
+        urls = [v.get("url", "") for v in (m.get("videos") or [])]
+        youtube = list(dict.fromkeys([VIDEO_ID.search(u).group(1) for u in urls if VIDEO_ID.search(u)] + vid_by_eid.get(m["eventId"], [])
+                                     + (window_matches(m, codes, meetings_that_day, kinds_that_day, units_that_day, parent_words) if not packages else [])))
+        senate = [u for u in urls if parse_player_url(u)] or [u for comm in senate_comms(m, codes) for u in probed.get((comm, m["date"][:10]), [])]
+        rows.append({"event_id": m["eventId"], "congress": m["congress"], "chamber": m.get("chamber", ""), "type": m.get("type", ""), "date": m["date"][:10],
+                     "committees": ";".join(codes), "title": (m.get("title") or "").strip(), "gpo_packages": packages, "youtube_ids": youtube, "senate_urls": senate,
+                     "text_source": "", "documents": "yes" if (m.get("witnessDocuments") or m.get("meetingDocuments")) else "no", "rescheduled_to": ""})
+    ## a joint hearing is entered once per committee: same day, same title, one set of records
+    twins = collections.defaultdict(list)
+    for r in rows:
+        if title_key(r["title"]):
+            twins[(r["date"], title_key(r["title"]))].append(r)
+    for group in twins.values():
+        if len(group) > 1:
+            packages = set().union(*(r["gpo_packages"] for r in group))
+            youtube = list(dict.fromkeys(v for r in group for v in r["youtube_ids"]))
+            senate = list(dict.fromkeys(u for r in group for u in r["senate_urls"]))
+            for r in group:
+                r["gpo_packages"], r["youtube_ids"], r["senate_urls"] = packages, youtube, senate
+    for r in rows:
+        if r["gpo_packages"]:
+            r["text_source"] = "gpo"
+        elif any(yt_caps.get(v) in ("manual", "auto") for v in r["youtube_ids"]):
+            r["text_source"] = "youtube_captions"
+        elif any(sen_caps.get(parse_player_url(u)[1]) == "webvtt" for u in r["senate_urls"]):
+            r["text_source"] = "senate_captions"
+        elif r["youtube_ids"] or r["senate_urls"]:
+            r["text_source"] = "video_no_captions"
+        else:
+            r["text_source"] = "no_video"
+        r["gpo_packages"], r["youtube_ids"], r["senate_urls"] = " ".join(sorted(r["gpo_packages"])), " ".join(r["youtube_ids"]), " ".join(r["senate_urls"])
+    ## a postponed meeting re-entered under a new event ID keeps its old record as Scheduled: point it at the twin that was held
+    same_title = collections.defaultdict(list)
+    for r in rows:
+        if title_key(r["title"]) and r["text_source"] != "no_video":
+            same_title[(r["committees"], title_key(r["title"]))].append(r)
+    for r in rows:
+        if r["text_source"] == "no_video" and title_key(r["title"]) and not CLOSED.search(r["title"]) and not r["type"].startswith("Closed"):
+            later = [o for o in same_title[(r["committees"], title_key(r["title"]))] if 0 < (dt.date.fromisoformat(o["date"]) - dt.date.fromisoformat(r["date"])).days <= 60]
+            if later:
+                r["rescheduled_to"] = min(later, key=lambda o: o["date"])["event_id"]
+    totals = collections.Counter((r["chamber"], r["text_source"]) for r in rows)
     rows.sort(key=lambda r: (r["date"], r["event_id"]))
     with open(OUT, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0].keys())); w.writeheader(); w.writerows(rows)
-    print(len(rows), "meetings ->", OUT.relative_to(ROOT))
-    ## the meetings with nothing: no print, no recording found anywhere, no captions
-    none_rows = [r for r in rows if r["text_source"] == "no_video"]
+    print(len(rows), "meetings ->", OUT.relative_to(ROOT), f"({sum(1 for r in rows if r['rescheduled_to'])} postponed meetings point at the twin that was held)")
+    ## the meetings with nothing: no print, no recording found anywhere, no captions, and not a postponed meeting's stale record
+    none_rows = [r for r in rows if r["text_source"] == "no_video" and not r["rescheduled_to"]]
     with open(OUT_NONE, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=["event_id", "congress", "chamber", "type", "date", "committees", "title", "documents"]); w.writeheader()
         w.writerows([{k: r[k] for k in w.fieldnames} for r in none_rows])
@@ -240,4 +284,5 @@ def main(youtube_dir, senate_dir):
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--youtube-dir", default="~/hearing-text/youtube"); p.add_argument("--senate-dir", default="~/hearing-text/senate")
-    a = p.parse_args(); main(a.youtube_dir, a.senate_dir)
+    p.add_argument("--probe-cache", help="JSON file that keeps the Senate archive probe's answers between runs")
+    a = p.parse_args(); main(a.youtube_dir, a.senate_dir, a.probe_cache)
