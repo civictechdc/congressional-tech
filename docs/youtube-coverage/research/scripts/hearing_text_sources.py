@@ -16,7 +16,8 @@ counterpart), and which of those has text: `gpo` (a printed transcript),
 `senate-captions`), `video_no_captions`, or `no_video`. Joint hearings are entered once per
 committee, so same-day meetings with the same title share their records. A meeting Congress.gov
 still lists as Scheduled although the committee postponed it and re-entered it under a new event
-ID gets `rescheduled_to` (the later twin with a record) and stays out of the no-records file. Writes
+ID gets `rescheduled_to` (the later twin with a record) and stays out of the no-records file, as does
+a record whose own title says POSTPONED, CANCELED or RESCHEDULED (`not_held`). Writes
 docs/youtube-coverage/research/data/hearing_text_sources.csv, plus meetings_without_records.csv
 for the meetings with none of those, and prints the totals. `--probe-cache` keeps the Senate archive
 probe's answers between runs.
@@ -80,6 +81,7 @@ ET = ZoneInfo("America/New_York")
 
 
 CLOSED = re.compile(r"closed|briefing|deposition", re.I)
+NOT_HELD = re.compile(r"^\s*(postponed|cancel+ed|rescheduled|test)\b", re.I)  # the record's own title says the meeting did not happen as entered
 
 
 def title_key(title):
@@ -228,7 +230,8 @@ def main(youtube_dir, senate_dir, probe_cache=None):
         senate = [u for u in urls if parse_player_url(u)] or [u for comm in senate_comms(m, codes) for u in probed.get((comm, m["date"][:10]), [])]
         rows.append({"event_id": m["eventId"], "congress": m["congress"], "chamber": m.get("chamber", ""), "type": m.get("type", ""), "date": m["date"][:10],
                      "committees": ";".join(codes), "title": (m.get("title") or "").strip(), "gpo_packages": packages, "youtube_ids": youtube, "senate_urls": senate,
-                     "text_source": "", "documents": "yes" if (m.get("witnessDocuments") or m.get("meetingDocuments")) else "no", "rescheduled_to": ""})
+                     "text_source": "", "documents": "yes" if (m.get("witnessDocuments") or m.get("meetingDocuments")) else "no", "rescheduled_to": "",
+                     "not_held": "yes" if NOT_HELD.match(m.get("title") or "") else ""})
     ## a joint hearing is entered once per committee: same day, same title, one set of records
     twins = collections.defaultdict(list)
     for r in rows:
@@ -268,8 +271,9 @@ def main(youtube_dir, senate_dir, probe_cache=None):
     with open(OUT, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0].keys())); w.writeheader(); w.writerows(rows)
     print(len(rows), "meetings ->", OUT.relative_to(ROOT), f"({sum(1 for r in rows if r['rescheduled_to'])} postponed meetings point at the twin that was held)")
-    ## the meetings with nothing: no print, no recording found anywhere, no captions, and not a postponed meeting's stale record
-    none_rows = [r for r in rows if r["text_source"] == "no_video" and not r["rescheduled_to"]]
+    ## the meetings with nothing: no print, no recording found anywhere, no captions, and not a record of a meeting that did not happen
+    none_rows = [r for r in rows if r["text_source"] == "no_video" and not r["rescheduled_to"] and not r["not_held"]]
+    print(f"{sum(1 for r in rows if r['not_held'] and r['text_source'] == 'no_video')} records whose title says postponed, canceled or rescheduled have no record and are left out")
     with open(OUT_NONE, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=["event_id", "congress", "chamber", "type", "date", "committees", "title", "documents"]); w.writeheader()
         w.writerows([{k: r[k] for k in w.fieldnames} for r in none_rows])
