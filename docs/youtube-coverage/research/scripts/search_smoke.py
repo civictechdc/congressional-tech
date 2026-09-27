@@ -30,7 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "packages/congress_api/src"))
 from congress_api.gpo.match import VIDEO_ID  # noqa: E402
 from congress_api.senate.isvp import STREAM, archive_url, live_url, player_url  # noqa: E402
-from hearing_text_sources import title_dates  # noqa: E402
+from congress_api.inventory.text_sources import title_dates  # noqa: E402
 
 OFFICIAL = re.compile(r"\.(house|senate)\.gov|c-span\.org|congress\.gov|govinfo\.gov", re.I)
 ## official pages that never embed a recording of their own

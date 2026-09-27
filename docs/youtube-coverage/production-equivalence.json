@@ -1,0 +1,1014 @@
+{
+  "hearing_text_sources": {
+    "rows": [
+      17606,
+      17606
+    ],
+    "keys": [
+      17606,
+      17606
+    ],
+    "removed_keys": [],
+    "added_keys": [],
+    "changed_columns": {
+      "text_source": 37
+    },
+    "changes": [
+      {
+        "key": [
+          "118632"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "youtube_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "119075"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "youtube_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "119107"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "youtube_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "334987"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "335011"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "335061"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "335320"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "335353"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "335561"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "335630"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "335668"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "335783"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "335900"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "335928"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "336283"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "336570"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "336609"
+        ],
+        "values": {
+          "text_source": [
+            "senate_captions",
+            "youtube_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "336626"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "336641"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "336648"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "336661"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "336690"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "336748"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "336820"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "336962"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "336990"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "337002"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "337266"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "337445"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "337647"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "337655"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "337734"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "338080"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "338568"
+        ],
+        "values": {
+          "text_source": [
+            "senate_captions",
+            "youtube_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "338652"
+        ],
+        "values": {
+          "text_source": [
+            "senate_captions",
+            "youtube_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "338748"
+        ],
+        "values": {
+          "text_source": [
+            "senate_captions",
+            "youtube_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "338763"
+        ],
+        "values": {
+          "text_source": [
+            "senate_captions",
+            "youtube_captions"
+          ]
+        }
+      }
+    ],
+    "byte_identical": false,
+    "sha256": "a2779fbef502feb52e12269cb3a2c63c5967e3f190cfc5cd2bc53c25f1b57d49"
+  },
+  "meetings_without_records": {
+    "rows": [
+      970,
+      970
+    ],
+    "keys": [
+      970,
+      970
+    ],
+    "removed_keys": [],
+    "added_keys": [],
+    "changed_columns": {},
+    "changes": [],
+    "byte_identical": true,
+    "sha256": "1c3487e6eaabea77134da0ad68de85eeb731b538886dda48ae5f7583b176ac2b"
+  },
+  "meeting_completeness": {
+    "rows": [
+      17606,
+      17606
+    ],
+    "keys": [
+      17606,
+      17606
+    ],
+    "removed_keys": [],
+    "added_keys": [],
+    "changed_columns": {
+      "witnesses": 1,
+      "witness_source": 1,
+      "witness_list_document": 1,
+      "print_shared_with_other_meetings": 1,
+      "text_source": 37
+    },
+    "changes": [
+      {
+        "key": [
+          "112626"
+        ],
+        "values": {
+          "witnesses": [
+            "1",
+            "0"
+          ],
+          "witness_source": [
+            "witness list document",
+            ""
+          ],
+          "witness_list_document": [
+            "yes",
+            "unparsed"
+          ],
+          "print_shared_with_other_meetings": [
+            "",
+            "yes"
+          ]
+        }
+      },
+      {
+        "key": [
+          "118632"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "youtube_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "119075"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "youtube_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "119107"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "youtube_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "334987"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "335011"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "335061"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "335320"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "335353"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "335561"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "335630"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "335668"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "335783"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "335900"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "335928"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "336283"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "336570"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "336609"
+        ],
+        "values": {
+          "text_source": [
+            "senate_captions",
+            "youtube_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "336626"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "336641"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "336648"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "336661"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "336690"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "336748"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "336820"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "336962"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "336990"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "337002"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "337266"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "337445"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "337647"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "337655"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "337734"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "338080"
+        ],
+        "values": {
+          "text_source": [
+            "video_no_captions",
+            "senate_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "338568"
+        ],
+        "values": {
+          "text_source": [
+            "senate_captions",
+            "youtube_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "338652"
+        ],
+        "values": {
+          "text_source": [
+            "senate_captions",
+            "youtube_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "338748"
+        ],
+        "values": {
+          "text_source": [
+            "senate_captions",
+            "youtube_captions"
+          ]
+        }
+      },
+      {
+        "key": [
+          "338763"
+        ],
+        "values": {
+          "text_source": [
+            "senate_captions",
+            "youtube_captions"
+          ]
+        }
+      }
+    ],
+    "byte_identical": false,
+    "sha256": "1bcceaa6c981defc1568fdf1309ea46cd029e3a32b62fbea4c0914ff2390e138"
+  },
+  "meeting_witnesses": {
+    "rows": [
+      18496,
+      18495
+    ],
+    "keys": [
+      18475,
+      18474
+    ],
+    "removed_keys": [
+      [
+        "112626",
+        "Van Drew"
+      ]
+    ],
+    "added_keys": [],
+    "changed_columns": {},
+    "changes": [],
+    "byte_identical": false,
+    "sha256": "2d02165e7a5fc614d55279d5d3dde1a71ffe96d2154284e5d8713fb2bab6136f"
+  },
+  "house_documents_found": {
+    "rows": [
+      18126,
+      18126
+    ],
+    "keys": [
+      17947,
+      17947
+    ],
+    "removed_keys": [],
+    "added_keys": [],
+    "changed_columns": {},
+    "changes": [],
+    "byte_identical": true,
+    "sha256": "3fa995876f11f1e918e376f3e672c75e955a96ab6d634525356db6ec5efafc9d"
+  },
+  "house_witnesses_found": {
+    "rows": [
+      7939,
+      7939
+    ],
+    "keys": [
+      7934,
+      7934
+    ],
+    "removed_keys": [],
+    "added_keys": [],
+    "changed_columns": {},
+    "changes": [],
+    "byte_identical": true,
+    "sha256": "3fe5a37b7e108665b34d1659811fee952fbff3ee26183da2722aa95ff93ac118"
+  },
+  "house_amendments_found": {
+    "rows": [
+      19985,
+      19985
+    ],
+    "keys": [
+      19536,
+      19536
+    ],
+    "removed_keys": [],
+    "added_keys": [],
+    "changed_columns": {},
+    "changes": [],
+    "byte_identical": true,
+    "sha256": "c30da15581828247adbbb638d7a2d500569ece7052ab16231a4d777954fee253"
+  },
+  "senate_hearing_pages_found": {
+    "rows": [
+      2900,
+      2900
+    ],
+    "keys": [
+      2900,
+      2900
+    ],
+    "removed_keys": [],
+    "added_keys": [],
+    "changed_columns": {},
+    "changes": [],
+    "byte_identical": true,
+    "sha256": "ff15d68048a57876c680a012321c099c108b702e1f637a953bd1bcf295d0c452"
+  },
+  "senate_witnesses_found": {
+    "rows": [
+      9401,
+      9401
+    ],
+    "keys": [
+      9401,
+      9401
+    ],
+    "removed_keys": [],
+    "added_keys": [],
+    "changed_columns": {},
+    "changes": [],
+    "byte_identical": true,
+    "sha256": "db9c1aa77ff35e138c2455c27b37e3143f93f1e213acf3da6cda43267103a95e"
+  },
+  "senate_documents_found": {
+    "rows": [
+      14407,
+      14407
+    ],
+    "keys": [
+      14407,
+      14407
+    ],
+    "removed_keys": [],
+    "added_keys": [],
+    "changed_columns": {},
+    "changes": [],
+    "byte_identical": true,
+    "sha256": "0085500fcbf0adfd89a430e415e01e2b66a28a082017f0344bc6aa78957ff9c6"
+  }
+}

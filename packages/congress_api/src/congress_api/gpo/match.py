@@ -54,6 +54,7 @@ import os
 import re
 from pathlib import Path
 
+from congress_api.committees import ALIAS, codes_of
 from congress_api.gpo.fetch import is_multi_hearing_volume
 from congress_shared.globals import (
     DATA_DIR,
@@ -68,8 +69,6 @@ from congress_shared.globals import (
 DEFAULT_OVERRIDES_FILE = DATA_DIR / "hearing_video_overrides.csv"
 STOP = set("the a an of and to in on for with from at by is are be as or its it this that hearing hearings "
            "subcommittee committee house u.s. us part examining examine review oversight markup meeting full".split())
-## meeting records filed under select subcommittees whose videos live on the parent's channels
-ALIAS = {"jjec00": "jsec00", "hlvc00": "hsgo00", "hlfd00": "hsju00", "hlqj00": "hsju00"}
 CLIP_SECONDS = 1200
 CLIP_TITLE_SECONDS = 1800
 CLIP_TITLE = re.compile(r"\b(q&a|questions?|opening statement|opening remarks|statement|remarks|round of questions|closing)\b"
@@ -180,7 +179,7 @@ def load_meetings(path):
                    "videos": [VIDEO_ID.search(u).group(1) for u in urls if VIDEO_ID.search(u)],
                    ## the Senate hosts hearing video on its own player, not YouTube
                    "offsite": [u for u in urls if SENATE_VIDEO.match(u)]}
-            for code in {ALIAS.get(c["systemCode"][:4] + "00", c["systemCode"][:4] + "00") for c in m.get("committees", [])}:
+            for code in codes_of(m):
                 out[code][m["date"][:10]].append(rec)
     return out
 

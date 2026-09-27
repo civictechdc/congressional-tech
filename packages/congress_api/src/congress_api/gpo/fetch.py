@@ -36,8 +36,6 @@ import csv
 import logging
 import re
 import sys
-import time
-import xml.etree.ElementTree as ET
 
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, fields
@@ -46,12 +44,13 @@ from pathlib import Path
 
 import requests
 
+from congress_api.http import get_with_retry
+from congress_api.xml import MODS_NS, mods_elements, parse_xml
 from congress_shared.auth import load_congress_api_key
 from congress_shared.globals import CONGRESS_METADATA, DEFAULT_GPO_HEARINGS_FILE
 
 GOVINFO_API = "https://api.govinfo.gov"
 GOVINFO_CONTENT = "https://www.govinfo.gov"
-MODS_NS = {"m": "http://www.loc.gov/mods/v3"}
 
 ## e.g. CHRG-118hhrg57177 -> congress 118, chamber h, jacket 57177
 PACKAGE_ID_REGEX = re.compile(r"^CHRG-(\d+)([hsj])hrg(\w+)$")
@@ -99,6 +98,18 @@ class GpoHearing:
     hearing_dates: str = ""
     ## "yes" once the transcript has been read for its day headers
     text_read: str = ""
+
+
+def mods_witnesses(data):
+    """Witness names and affiliations from MODS, including granule-only lists."""
+    from congress_api.witnesses import is_name, person_key, witness
+    found = {}
+    ## Some Senate records put witnesses in granules only; deduplicate across both levels.
+    for element in parse_xml(data).iter("{http://www.loc.gov/mods/v3}witness"):
+        fields = witness(element.text or "")
+        if is_name(fields["name"]):
+            found[person_key(fields["name"])] = fields
+    return list(found.values())
 
 
 def main(
@@ -204,25 +215,15 @@ def list_collection(since: str, api_key: str):
         params = {"api_key": api_key}
 
 
-def get_with_retry(session, url, params=None, attempts=4) -> requests.Response:
-    for attempt in range(attempts):
-        response = session.get(url, params=params, timeout=60)
-        if response.status_code in (429, 500, 502, 503, 504) and attempt < attempts - 1:
-            time.sleep(2 ** (attempt + 1))
-            continue
-        response.raise_for_status()
-        return response
-
-
 def parse_mods(package_id: str, mods: bytes, last_modified: str) -> GpoHearing:
     """Pull the hearing-level fields out of a GovInfo MODS record."""
-    root = ET.fromstring(mods)
+    root = parse_xml(mods)
     congress, chamber, _ = PACKAGE_ID_REGEX.match(package_id).groups()
 
     ## hearing-level data lives in the root's own <extension> blocks; the
     ##  <relatedItem> granules below repeat some of it, so don't search deeper
     def ext_all(tag):
-        return root.findall(f"m:extension/m:{tag}", MODS_NS)
+        return mods_elements(root, tag)
 
     def ext_text(tag):
         found = ext_all(tag)

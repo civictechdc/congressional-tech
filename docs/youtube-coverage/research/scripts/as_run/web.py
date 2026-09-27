@@ -17,8 +17,7 @@ import hashlib, json, os, re, subprocess, sys, time, fcntl, urllib.parse
 import requests
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.dirname(HERE))
-import zyte  # noqa: E402
+from congress_api import zyte
 CACHE = os.path.join(HERE, "cache"); os.makedirs(CACHE, exist_ok=True)
 MIN_INTERVAL = {"web.archive.org": 1.0, "archive.org": 1.0, "www.c-span.org": 1.0, "www.youtube.com": 0.5}
 _sess = requests.Session()
@@ -68,7 +67,7 @@ def get(url, params=None, timeout=60):
 
 CURL_HOSTS = set()
 ## c-span.org answers python-requests with a 202 bot challenge, and curl too after the first hit.
-##  Zyte's API (httpResponseBody = the site's own bytes) gets through (../zyte.py).
+##  Zyte's API (httpResponseBody = the site's own bytes) gets through (congress_api.zyte).
 ZYTE_HOSTS = {"www.c-span.org"}
 
 

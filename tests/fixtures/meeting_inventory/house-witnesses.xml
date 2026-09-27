@@ -1,0 +1,44 @@
+﻿<?xml version='1.0' encoding='utf-8'?>
+<witness-list meeting-id="115588" create-date="2023-03-28T18:40:01.067">
+  <panel sort-order="1">
+    <witness add-date="2023-03-24T00:00:00" testified="Yes" witness-type="Government - Federal" remove-date="" publish-date="2023-03-24T16:20:28.903" display-order="NA">
+      <honorific>The Honorable</honorific>
+      <retired />
+      <firstname>Robert</firstname>
+      <middlename>M.</middlename>
+      <lastname>Califf</lastname>
+      <suffix>M.D., MACC</suffix>
+      <position>Commissioner of Food and Drugs for the Food and Drug Administration</position>
+      <testified>Yes</testified>
+      <witness-type>Government - Federal</witness-type>
+      <updates>
+        <update-date date="2023-03-24T16:19:37.600" publish-date="2023-03-24T16:20:28.903">
+          <explanatory-notes doc-modified="False" />
+        </update-date>
+        <update-date date="2023-03-24T16:19:54.500" publish-date="2023-03-24T16:20:28.903">
+          <explanatory-notes doc-modified="False" />
+        </update-date>
+      </updates>
+      <witness-documents>
+        <witness-document remove-date="" publish-date="2023-03-28T18:40:01.020">
+          <type>WB</type>
+          <filename-metadata>
+            <type>WB</type>
+          </filename-metadata>
+          <files>
+            <file doc-url="http://docs.house.gov/meetings/AP/AP01/20230329/115588/HHRG-118-AP01-Bio-CaliffR-20230329.pdf" doc-type="PDF" add-date="2023-03-28T18:39:08.570" publish-date="2023-03-24T16:20:28.903" />
+          </files>
+        </witness-document>
+        <witness-document remove-date="" publish-date="2023-03-28T18:40:01.020">
+          <type>WS</type>
+          <filename-metadata>
+            <type>WS</type>
+          </filename-metadata>
+          <files>
+            <file doc-url="http://docs.house.gov/meetings/AP/AP01/20230329/115588/HHRG-118-AP01-Wstate-CaliffR-20230329.pdf" doc-type="PDF" add-date="2023-03-28T18:39:31.153" publish-date="2023-03-24T16:20:28.903" />
+          </files>
+        </witness-document>
+      </witness-documents>
+    </witness>
+  </panel>
+</witness-list>

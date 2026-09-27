@@ -124,7 +124,7 @@ def collect(cache):
                 for doc in meeting.get(field) or []:
                     add(doc.get("url", ""), "Congress.gov meeting export", "document", meeting["eventId"])
     for filename in ("house_documents_found.csv", "senate_documents_found.csv", "senate_hearing_pages_found.csv"):
-        path = DATA / filename
+        path = ROOT / "apps/committee_youtube/data" / filename
         source(path)
         with path.open() as stream:
             for row in csv.DictReader(stream):

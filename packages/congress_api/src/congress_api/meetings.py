@@ -15,7 +15,6 @@ import json
 import logging
 import sys
 import threading
-import time
 
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
@@ -23,6 +22,7 @@ from pathlib import Path
 
 import requests
 
+from congress_api.http import get_with_retry
 from congress_shared.auth import load_congress_api_key
 from congress_shared.globals import CONGRESS_METADATA, DEFAULT_MEETINGS_FILE
 
@@ -87,13 +87,7 @@ def main(output_path: Path = DEFAULT_MEETINGS_FILE, nthreads: int = 5) -> None:
 
 
 def get(session, url, api_key, params=None, attempts=5):
-    for attempt in range(attempts):
-        r = session.get(url, params={**(params or {}), "api_key": api_key, "format": "json"}, timeout=60)
-        if r.status_code in (429, 500, 502, 503, 504) and attempt < attempts - 1:
-            time.sleep(3 * 2 ** attempt)
-            continue
-        r.raise_for_status()
-        return r.json()
+    return get_with_retry(session, url, params={**(params or {}), "api_key": api_key, "format": "json"}, attempts=attempts).json()
 
 
 def read(path: Path) -> dict[str, dict]:

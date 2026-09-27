@@ -23,7 +23,7 @@ Writes docs/youtube-coverage/research/data/house_xml_fields.csv (file, path, att
 occurrences, values, commonest) and prints it.
 
 With `--pages`, it also sets each meeting's XML against its page on docs.house.gov (cached under
-`--cache`/docs_house by house_event_pages.py), for the meetings whose witness list has been fetched or
+`--cache`/docs_house during the research pass), for the meetings whose witness list has been fetched or
 found absent: the documents and witnesses each gives, every line of the page's meeting area that no
 XML value accounts for, and for each XML field the share of its values the page shows.
 """
@@ -41,10 +41,7 @@ NOT_FIELDS = set("""and or not position last count string-length substring conca
     dateStringFormat timeFrame meetingSTime meetingETime meetingDate pubDate addDate types doctypes key file-type at m d e lt""".split())
 
 
-def parse_xml(data):
-    """The repository serves UTF-8 XML, sometimes with a BOM before its stylesheet instruction."""
-    return ET.fromstring(data.removeprefix(b"\xef\xbb\xbf"))
-
+from congress_api.xml import parse_xml
 
 def fields(path):
     """(path, attribute or "", value) for every element and attribute of a file; "" as the value of an element with no text of its own."""
@@ -79,7 +76,7 @@ def written(value):
 
 def against_pages(cache):
     """The XML and the page, each checked for what the other lacks."""
-    from house_event_pages import FAILED, documents, witnesses
+    from congress_api.house.repository import FAILED, documents, witnesses
 
     xml_dir, page_dir = cache / "docs_house_xml", cache / "docs_house"
     file = lambda u: html.unescape(u).rsplit("/", 1)[-1].lower()
