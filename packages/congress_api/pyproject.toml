@@ -10,6 +10,9 @@ dependencies = [
     "lxml",
     "requests",
     "tinydb",
+  "google-genai",
+  "yt-dlp",
+  "jiwer",
 ]
 
 [project.scripts]
@@ -18,6 +21,7 @@ congress-analyze = "congress_api.analyze.main:parse_args_and_run"
 gpo-fetch = "congress_api.gpo.fetch:parse_args_and_run"
 gpo-match = "congress_api.gpo.match:parse_args_and_run"
 senate-captions = "congress_api.senate.captions:parse_args_and_run"
+hearing-transcribe = "congress_api.transcribe.main:parse_args_and_run"
 gpo-transcripts = "congress_api.gpo.transcripts:parse_args_and_run"
 congress-meetings = "congress_api.meetings:parse_args_and_run"
 

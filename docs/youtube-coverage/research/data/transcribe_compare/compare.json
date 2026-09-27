@@ -1,0 +1,95 @@
+{
+ "gpo": {
+  "turns": 193,
+  "words": 13239
+ },
+ "A_video": {
+  "turns": 174,
+  "words": 13570,
+  "wer": 0.081,
+  "speaker_word_accuracy": 0.661,
+  "aligned_words": 12686,
+  "unknown_words": 0,
+  "speakers": [
+   "Ben Cline",
+   "Christopher Dunham",
+   "Eric Swalwell",
+   "Glenn Ivey",
+   "Jeanne Bumpus",
+   "Laurel M. Lee",
+   "Nathaniel Moran",
+   "Naz Darakoglu"
+  ],
+  "per_speaker_accuracy": {
+   "Ben Cline": 1.0,
+   "Eric Swalwell": 0.96,
+   "Christopher Dunham": 0.99,
+   "Glenn Ivey": 0.0,
+   "Jeff Van Drew": 0.0,
+   "Laurel M. Lee": 1.0,
+   "Jeanne Bumpus": 0.72,
+   "Naz Darakoglu": 0.1,
+   "Nathaniel Moran": 1.0
+  }
+ },
+ "A_text": {
+  "turns": 174,
+  "words": 13570,
+  "wer": 0.081,
+  "speaker_word_accuracy": 0.737,
+  "aligned_words": 12686,
+  "unknown_words": 12,
+  "speakers": [
+   "Ben Cline",
+   "Christopher Dunham",
+   "Eric Swalwell",
+   "Glenn Ivey",
+   "Jeanne Bumpus",
+   "Laurel M. Lee",
+   "Nathaniel Moran",
+   "Naz Darakoglu",
+   "Unknown"
+  ],
+  "per_speaker_accuracy": {
+   "Ben Cline": 1.0,
+   "Eric Swalwell": 0.96,
+   "Christopher Dunham": 0.99,
+   "Glenn Ivey": 0.48,
+   "Jeff Van Drew": 0.0,
+   "Laurel M. Lee": 1.0,
+   "Jeanne Bumpus": 0.71,
+   "Naz Darakoglu": 0.31,
+   "Nathaniel Moran": 1.0
+  }
+ },
+ "B": {
+  "turns": 391,
+  "words": 13710,
+  "wer": 0.086,
+  "speaker_word_accuracy": 0.883,
+  "aligned_words": 12745,
+  "unknown_words": 1595,
+  "speakers": [
+   "Ben Cline",
+   "Christopher Dunham",
+   "Eric Swalwell",
+   "Glenn Ivey",
+   "Jeanne Bumpus",
+   "Laurel M. Lee",
+   "Nathaniel Moran",
+   "Naz Darakoglu",
+   "Unknown"
+  ],
+  "per_speaker_accuracy": {
+   "Ben Cline": 1.0,
+   "Eric Swalwell": 1.0,
+   "Christopher Dunham": 1.0,
+   "Glenn Ivey": 1.0,
+   "Jeff Van Drew": 0.0,
+   "Laurel M. Lee": 1.0,
+   "Jeanne Bumpus": 1.0,
+   "Naz Darakoglu": 1.0,
+   "Nathaniel Moran": 1.0
+  }
+ }
+}

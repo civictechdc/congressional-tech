@@ -84,6 +84,11 @@ One JSON line per hearing, as each agent wrote it. Where an agent rewrote a hear
   - `senate_isvp_probe.py`: the senate.gov archive probe (below).
   - `web.py`: the shared, cached, rate-limited web client the archive agents used (C-SPAN through Zyte, Wayback CDX and page fetches, video-link extraction). `aggregate_agents.py` turns their verdicts into override rows after a Data API check of every claimed YouTube video; `apply_overrides.py` merges those rows into `hearing_video_overrides.csv`.
 
+## Transcripts and captions (September 2026)
+
+- `data/hearing_text_sources.csv`: every Congress.gov meeting since the 113th Congress with the GPO print(s) matched to it, its recordings, and which has text (`research/scripts/hearing_text_sources.py`).
+- `data/transcribe_compare/`: the comparison of machine transcription routes against a GPO print (`scripts/transcribe_compare.py`): `gpo.json` (the print parsed into the shared schema), `routeA_*.json` (Gemini 3.5 Transcribe plus a speaker resolver, with and without the video), `routeB.json` (Gemini 3.8 Flash on the video), `compare.json` (word error rate and speaker accuracy), and rendered samples.
+
 ## Archive investigation (September 2026)
 
 After the news-channel search, eight agents took the 840 House and joint hearings still without a full recording, grouped by committee, and looked off YouTube: C-SPAN's video library listed by hearing date, the Wayback Machine's copies of each committee's hearing pages and every video reference on them, and the archives those pointed to (DVIDS, the Senate's video archive, csce.gov, host organizations). They found recordings for about a third. Every claimed YouTube video was checked with the Data API; finds under 20 minutes were reviewed by hand (`archive_review_decisions.json`). C-SPAN bot-blocks direct clients, so those requests went through the Zyte API.

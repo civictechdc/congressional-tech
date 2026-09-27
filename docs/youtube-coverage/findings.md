@@ -305,6 +305,22 @@ Still open:
 6. **Ask committees to restore private or deleted archives.** Education & Workforce (2013–14) and Veterans' Affairs (2014–15) made public hearing recordings private, and Ways and Means' 2016–18 hearing pages embed dead videos even though the 2019 re-uploads exist. The dead video IDs are listed in the research verdicts.
 7. **Report the GPO metadata problems above** to GPO, starting with the wrong dates and blank codes, since they hide hearings from every date-based search.
 
+## Transcripts and captions
+
+GPO's printed transcript is the record, but it arrives 6–8 months after a House hearing (12–18 months for the Senate) and only for what committees send to print: no markups, and 10–30% of hearings never. `research/data/hearing_text_sources.csv` lists, for every Congress.gov meeting since 2013, where its text can be found:
+
+| | House meetings | Senate meetings |
+|---|---|---|
+| GPO print | 9,040 (70%) | 2,567 (56%) |
+| YouTube caption track (uploader's or automatic) | 1,430 (11%) | — |
+| Senate player caption track (recordings since mid-2023) | — | 629 (14%) |
+| Video with no caption track | 999 (8%) | 140 (3%) |
+| No video linked | 1,396 (11%) | 1,239 (27%) |
+
+The captions were fetched with `youtube-captions` and `senate-captions` (see the app README); they are search-grade text, unpunctuated for YouTube's automatic ones, with no speaker attribution. C-SPAN no longer publishes transcripts.
+
+For the hearings with video but no print, `hearing-transcribe` produces a transcript in the print's shape with members and witnesses named. Tested on a 2023 Judiciary subcommittee hearing against its print (193 turns, 13,112 words): Gemini 3.8 Flash watching the video in 25-minute windows matched the print's words with an 8.6% word error rate, mostly the print's own editing of false starts, and attributed 88% of words to the right speaker, reading name plates and the chair's recognitions; the one member it missed was recognized only as "the gentleman from New Jersey". The dedicated transcription model (Gemini 3.5 Transcribe, with diarization and word timestamps) matched the words as well but its speaker labels, which the model documents as experimental beyond three speakers, mapped to the right person for only 66–74% of words. Whole-hearing single calls fail on the model's recitation filter, which caps a verbatim window near 30 minutes.
+
 ## Verification
 
 Two kinds of checks stand behind the numbers.
