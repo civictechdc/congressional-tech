@@ -88,7 +88,7 @@ One JSON line per hearing, as each agent wrote it. Where an agent rewrote a hear
 
 - `data/hearing_text_sources.csv`: every Congress.gov meeting since the 113th Congress with the GPO print(s) matched to it, its recordings, and which has text (`research/scripts/hearing_text_sources.py`).
 - `data/meetings_without_records.csv`: the Congress.gov meetings since the 113th Congress with no GPO print, no recording found (by Congress.gov link, event ID, the matcher's date-and-title rules, or the Senate archive probe) and no captions, with whether witness or meeting documents exist. Written by `scripts/hearing_text_sources.py` alongside the index.
-- `data/transcribe_compare/`: the comparison of machine transcription routes against a GPO print (`scripts/transcribe_compare.py`): `gpo.json` (the print parsed into the shared schema), `routeA_*.json` (Gemini 3.5 Transcribe plus a speaker resolver, with and without the video), `routeB.json` (Gemini 3.8 Flash on the video), `compare.json` (word error rate and speaker accuracy), and rendered samples.
+- `data/transcribe_compare/`: the comparison of machine transcription routes against a GPO print (`scripts/transcribe_compare.py`): `gpo.json` (the print parsed into the shared schema), `routeA_*.json` (Gemini 3.5 Transcribe plus a speaker resolver, with and without the video), `routeB.json` (Gemini 3.8 Flash on the video), `compare.json` (word error rate and speaker accuracy), and rendered samples; `example_house_video.*` and `example_senate_audio.*` are `hearing-transcribe`'s output for a House hearing from its YouTube video and a Senate hearing from the Senate player's audio.
 
 ## Archive investigation (September 2026)
 
