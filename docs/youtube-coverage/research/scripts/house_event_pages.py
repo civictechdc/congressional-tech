@@ -12,11 +12,18 @@ the page has that the record lacks:
 
 - docs/youtube-coverage/research/data/house_documents_found.csv: one row per document (`kind`:
   transcript, witness list, witness statement, witness biography, truth in testimony, member
-  statement, questions for the record, bill or amendment, recorded vote, report, support document);
+  statement, questions for the record, bill or amendment, recorded vote, report, hearing record,
+  support document);
 - docs/youtube-coverage/research/data/house_witnesses_found.csv: one row per witness (name, position,
   organization, panel).
 
-Pages are cached under `--cache`/docs_house, so a rerun fetches only new events.
+A document is typed by its file's name, then by what the page calls it, then by the section of the
+page it stands in. The typing was checked against the repository's own meeting XML, which states a
+type for each meeting document and holds no witnesses or witness documents (docs_house_xml_route.md).
+
+Pages are cached under `--cache`/docs_house, so a rerun fetches only new events. A page that fails to
+load is not kept: the repository refuses a client that asks too fast, and a refusal is not an empty
+event.
 """
 import argparse, collections, csv, gzip, html, json, re, sys
 from concurrent.futures import ThreadPoolExecutor
@@ -36,33 +43,46 @@ OUT_WITNESSES = ROOT / "docs/youtube-coverage/research/data/house_witnesses_foun
 PAGE = "https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID={}"
 UA = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/537.36 Chrome/120 Safari/537.36"}
 
-## the repository names its files by what they are: HHRG-115-VR09-Wstate-MurphyT-20170214.pdf
-KINDS = [("transcript", r"-Transcript-"), ("witness list", r"-WList-"), ("witness statement", r"-Wstate-"), ("witness biography", r"-Bio-"),
-         ("truth in testimony", r"-TTF-"), ("member statement", r"-MState-"), ("questions for the record", r"-QFR-"),
-         ("recorded vote", r"-RCP|-Vote"), ("report", r"^CRPT-"), ("bill or amendment", r"^BILLS-|-Amdt-"), ("support document", r"-SD\d")]
-DOCUMENT = re.compile(r"<li>(.*?)\[<a [^>]*href=\"([^\"]+)\"[^>]*>\s*(?:PDF|XML|DOC[X]?|HTML?)\s*</a>\]", re.I | re.S)
+## the repository names its files by what they are: HHRG-115-VR09-Wstate-MurphyT-20170214.pdf. A hearing's print is
+##  attached under GPO's name for it (CHRG-113hhrg86486.pdf); -RCP is a Rules Committee Print, a bill's text.
+KINDS = [("transcript", r"-Transcript-|^CHRG-"), ("witness list", r"-WList-"), ("witness statement", r"-Wstate-"), ("witness biography", r"-Bio-"),
+         ("truth in testimony", r"-TTF-"), ("member statement", r"-MState-"), ("questions for the record", r"-QFR"),
+         ("recorded vote", r"-Vote\d"), ("report", r"^[CH]RPT-"), ("bill or amendment", r"^BILLS-|^CPRT-|-Amdt-")]
+## what the page calls a document, when its file is only numbered (HHRG-113-IF03-20130319-SD007.pdf, "Transcript")
+NAMED = [("transcript", r"\btranscript\b"), ("witness list", r"\bwitness list\b"), ("questions for the record", r"\bquestions? for the record\b|\bQFRs?\b")]
+## the sections of a page
+SECTIONS = {"text of legislation": "bill or amendment", "amendments": "bill or amendment", "votes": "recorded vote", "member statements": "member statement",
+            "hearing record": "hearing record", "support documents": "support document"}
+## a document's name runs from its own list item: the first on a page would otherwise begin in the menu
+DOCUMENT = re.compile(r"<li>((?:(?!<li\b).)*?)\[<a [^>]*href=\"([^\"]+)\"[^>]*>\s*(?:PDF|XML|DOC[X]?|HTML?)\s*</a>\]", re.I | re.S)
 WITNESS = re.compile(r"<h3 class=\"witPanelHeader\">(.*?)</h3>|<p><strong>(.*?)</strong>\s*(?:<br\s*/?>)?\s*(?:<small[^>]*>(.*?)</small>)?", re.S)
 text = lambda s: re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", s or ""))).strip()
 
 
 def fetch(event_id, cache):
+    """The repository's page for an event, fetched once; a failed fetch is not kept, so a rerun tries it again."""
     path = cache / "docs_house" / f"{event_id}.html"
-    if not path.exists():
+    if not path.exists() or not path.stat().st_size:
         path.parent.mkdir(parents=True, exist_ok=True)
         try:
             r = requests.get(PAGE.format(event_id), timeout=60, headers=UA)
-            path.write_text(r.text if r.status_code == 200 else "")
         except requests.RequestException:
             return ""
+        if r.status_code != 200:
+            return ""
+        path.write_text(r.text)
     return path.read_text()
 
 
 def documents(page):
     """(kind, name, url) for each document the page links."""
-    out = []
-    for name, url in DOCUMENT.findall(page):
-        file = url.rsplit("/", 1)[-1]
-        out.append((next((k for k, pattern in KINDS if re.search(pattern, file)), "other"), text(name), url.replace("http://", "https://")))
+    out, sections = [], [(h.start(), text(h.group(1)).lower()) for h in re.finditer(r"<h2[^>]*>(.*?)</h2>", page, re.S)]
+    for link in DOCUMENT.finditer(page):
+        name, url = text(re.sub(r"<strong class=\"newFlags\">.*?</strong>", "", link.group(1), flags=re.S)), link.group(2)
+        file, section = url.rsplit("/", 1)[-1], next((s for at, s in reversed(sections) if at < link.start()), "")
+        kind = (next((k for k, pattern in KINDS if re.search(pattern, file, re.I)), "") or next((k for k, pattern in NAMED if re.search(pattern, name, re.I)), "")
+                or SECTIONS.get(section, "") or ("support document" if re.search(r"-SD\d", file) else "other"))
+        out.append((kind, name, url.replace("http://", "https://")))
     return out
 
 

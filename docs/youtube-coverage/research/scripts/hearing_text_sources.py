@@ -53,6 +53,8 @@ DOCUMENTS_FOUND = [ROOT / "docs/youtube-coverage/research/data/house_documents_f
 ## the Senate committee's own page for a hearing, whose title says when the hearing was postponed or cancelled (senate_hearing_pages.py)
 PAGES_FOUND = ROOT / "docs/youtube-coverage/research/data/senate_hearing_pages_found.csv"
 TRANSCRIPT = re.compile(r"transcript", re.I)
+## a print attached to a meeting under GPO's own name for it: .../CHRG-113hhrg86486.pdf
+PRINT_FILE = re.compile(r"/(CHRG-\d{3}[hsj]hrg[\w\-]+?)(?:\.\w+)?$", re.I)
 
 
 _sess = requests.Session()
@@ -247,10 +249,11 @@ def main(youtube_dir, senate_dir, probe_cache=None):
     if FOUND.exists():
         for r in csv.DictReader(open(FOUND)):
             found[r["event_id"]].append(r["recording"])
-    found_transcripts, found_documents = collections.defaultdict(list), set()
+    found_transcripts, found_documents, attached = collections.defaultdict(list), set(), collections.defaultdict(set)
     for path in DOCUMENTS_FOUND:
         for r in csv.DictReader(open(path)) if path.exists() else ():
             found_documents.add(r["event_id"])
+            attached[r["event_id"]] |= {"CHRG-" + p[5:].lower() for p in PRINT_FILE.findall(r["url"])}
             if r["kind"] == "transcript":
                 found_transcripts[r["event_id"]].append(r["url"])
     page_title = {r["event_id"]: r["title"] for r in csv.DictReader(open(PAGES_FOUND))} if PAGES_FOUND.exists() else {}
@@ -259,14 +262,15 @@ def main(youtube_dir, senate_dir, probe_cache=None):
     for m in meetings:
         codes = codes_of(m)
         ## a print of the committee held that day is the meeting's when the titles agree, when the print collects
-        ##  several hearings under one title, or when it is the day's only print and this the day's only meeting.
-        ##  A markup takes only a print that says it is one. A day often holds a hearing and a markup, or two
-        ##  hearings: the date alone would give each the other's transcript.
+        ##  several hearings under one title, when the meeting's own documents hold the print, or when it is the
+        ##  day's only print and this the day's only meeting. A markup takes only a print that says it is one. A day
+        ##  often holds a hearing and a markup, or two hearings: the date alone would give each the other's transcript.
         tw, day = words(m.get("title") or ""), m["date"][:10]
         that_day = {(c, p) for c in codes for p in by_day.get((c, day), ())}
+        held = attached[m["eventId"]] | {"CHRG-" + p[5:].lower() for d in m.get("meetingDocuments") or [] for p in PRINT_FILE.findall(d.get("url") or "")}
         packages = set(by_eid.get(m["eventId"], ())) | {
             p for c, p in that_day
-            if similarity(tw, print_words[p]) >= 0.4 or p in collection
+            if similarity(tw, print_words[p]) >= 0.4 or p in collection or p in held
             or (m.get("type") == "Markup" and p in markup_print)
             or (m.get("type") != "Markup" and meetings_that_day[(c, day)] == 1 and len(by_day[(c, day)]) == 1)}
         urls = [v.get("url", "") for v in (m.get("videos") or [])]
