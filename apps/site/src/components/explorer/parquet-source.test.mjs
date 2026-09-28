@@ -341,3 +341,65 @@ test('reject unsupported range serving, malformed responses and canceled reads',
   assert.equal(calls.length, count);
   assert.equal((await reader.search({ congress: 115 })).total, 1);
 });
+
+test('concurrent detail sections share ranges and repeated record navigation does not fetch again', async () => {
+  const {fetcher,calls} = transport();
+  const reader = await openPublicationReader({pointerUrl:'https://example.org/CURRENT.json',fetcher});
+  const meeting = (await reader.search({kind:'meeting',congress:117})).rows[0];
+  const [documents, recordings] = await Promise.all([
+    reader.getRelated(meeting,{kind:'material',materialType:'document'}),
+    reader.getRelated(meeting,{kind:'material',materialType:'recording'}),
+  ]);
+  assert.equal(documents.total,74);
+  assert.equal(recordings.total,1);
+  const ranges = calls.filter(call=>call.range).map(call=>`${call.path}/${call.range}`);
+  assert.equal(new Set(ranges).size,ranges.length,'a byte range is downloaded only once');
+  const before = calls.length;
+  await reader.getRecords(documents.records);
+  await reader.getRelated(meeting,{kind:'material',materialType:'document'});
+  assert.equal(calls.length,before);
+});
+
+test('canceling one shared lookup leaves the other caller running; failed reads can retry', async () => {
+  const {fetcher} = transport();
+  const reader = await openPublicationReader({pointerUrl:'https://example.org/CURRENT.json',fetcher});
+  const meeting = (await reader.search({kind:'meeting',congress:117})).rows[0];
+  const controller = new AbortController();
+  const canceled = reader.getRecord(meeting,{signal:controller.signal});
+  const retained = reader.getRecord(meeting);
+  controller.abort();
+  await assert.rejects(canceled,{name:'AbortError'});
+  assert.equal((await retained).id,meeting.id);
+  let fail = true;
+  const retryReader = await openPublicationReader({pointerUrl:'https://example.org/CURRENT.json',fetcher:async (url,options) => {
+    if (options?.headers?.Range && fail) { fail=false; throw new Error('Temporary failure'); }
+    return fetcher(url,options);
+  }});
+  await assert.rejects(retryReader.getRecord(meeting),/Temporary failure/);
+  assert.equal((await retryReader.getRecord(meeting)).id,meeting.id);
+});
+
+test('a canceled lookup releases shared work and a later navigation can retry', async () => {
+  const {fetcher} = transport();
+  let pause = false, started, release;
+  const began = new Promise(resolve => { started=resolve; });
+  const gate = new Promise(resolve => { release=resolve; });
+  const reader = await openPublicationReader({pointerUrl:'https://example.org/CURRENT.json',fetcher:async (url,options) => {
+    if (pause && options?.headers?.Range) {
+      started();
+      await gate;
+      options.signal.throwIfAborted();
+    }
+    return fetcher(url,options);
+  }});
+  const meeting = (await reader.search({kind:'meeting',congress:117})).rows[0];
+  pause=true;
+  const controller = new AbortController();
+  const canceled = reader.getRecord(meeting,{signal:controller.signal});
+  await began;
+  controller.abort();
+  release();
+  await assert.rejects(canceled,{name:'AbortError'});
+  pause=false;
+  assert.equal((await reader.getRecord(meeting)).id,meeting.id);
+});
