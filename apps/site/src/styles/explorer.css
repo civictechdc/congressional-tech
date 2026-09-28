@@ -92,6 +92,7 @@
 
 .explorer-file-links { display: flex; flex-wrap: wrap; gap: .6rem 1.2rem; margin: .8rem 0; }
 .explorer-file-links a { font-weight: 600; text-underline-offset: .2em; }
+.explorer-recording-player { display: block; width: 100%; max-width: 64rem; aspect-ratio: 16 / 9; min-height: 200px; border: 0; margin: 1rem 0; background: #071522; }
 .explorer-related-list { list-style: none; padding: 0; }
 .explorer-related-list li { padding: .8rem 0; border-bottom: 1px solid var(--explorer-border, #dce1e6); }
 .explorer-detail-section summary { cursor: pointer; padding: .8rem 0; }

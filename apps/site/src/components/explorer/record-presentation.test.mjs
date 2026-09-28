@@ -1,10 +1,40 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { presentRecord, recordingVisible } from './record-presentation.js';
+import { documentSourceLabel, presentRecord, recordingEmbedUrl, recordingVisible } from './record-presentation.js';
+import { matches } from './query-utils.js';
 
 const now = new Date('2026-09-27T15:00:00Z');
 const meeting = {kind: 'meeting', status: 'scheduled', date: '2026-09-27', evidence_states: {recording: 'reported', captions: 'inferred', documents: 'reported'}};
 const recording = {kind: 'material', type: 'recording', recording_url: 'https://example.org/player', meeting_status: 'scheduled', files: [{url: 'https://example.org/player'}]};
+
+test('supported YouTube and Senate recordings embed without autoplay', () => {
+  for (const url of ['https://www.youtube.com/watch?v=PRXQf-CSnoo&t=0', 'https://youtu.be/PRXQf-CSnoo', 'https://www.youtube.com/embed/PRXQf-CSnoo', 'https://m.youtube.com/shorts/PRXQf-CSnoo', 'https://www.youtube.com/live/PRXQf-CSnoo']) {
+    assert.equal(recordingEmbedUrl({...recording, recording_url: url}, now), 'https://www.youtube.com/embed/PRXQf-CSnoo');
+  }
+  assert.equal(recordingEmbedUrl({...recording, recording_url: 'https://www.senate.gov/isvp/?comm=armed&filename=armedA050825&auto_play=true'}, now),
+    'https://www.senate.gov/isvp/?comm=armed&filename=armedA050825&auto_play=false');
+});
+
+test('unsupported URLs and unavailable recordings never produce embeds', () => {
+  for (const url of ['javascript:alert(1)', 'https://example.org/player', 'https://www.youtube.com.evil.test/watch?v=PRXQf-CSnoo', 'https://www.youtube.com/watch?v=invalid', 'https://www.senate.gov/isvp/?comm=armed', 'https://www.senate.gov/hearing', null]) {
+    assert.equal(recordingEmbedUrl({...recording, recording_url: url}, now), undefined);
+  }
+  const row = {...recording, recording_url: 'https://youtu.be/PRXQf-CSnoo'};
+  for (const changes of [{date: '2026-10-01'}, {date: '2026-09-27'}, {meeting_status: 'canceled'}, {meeting_status: 'postponed'}, {type: 'document'}]) {
+    assert.equal(recordingEmbedUrl({...row, ...changes}, now), undefined);
+  }
+});
+
+test('source document groups remain distinct and searchable alongside native documentType', () => {
+  const row = {title: 'Prepared remarks', document_type: 'Witness Statement', source_document_groups: ['witnessDocuments']};
+  assert.equal(documentSourceLabel(row), 'Witness document');
+  assert.equal(matches(row, {q: 'witness document'}), true);
+  assert.equal(matches(row, {q: 'witnessDocuments'}), true);
+  assert.equal(matches(row, {q: 'Witness Statement'}), true);
+  assert.equal(matches(row, {q: 'meetingDocuments'}), false);
+  assert.equal(documentSourceLabel({source_document_groups: ['meetingDocuments', 'witnessDocuments']}), 'Meeting document · Witness document');
+  assert.equal(documentSourceLabel({}), '');
+});
 
 test('elapsed schedules become Past without asserting that the meeting was held', () => {
   const past = presentRecord({...meeting, date: '2026-09-26'}, now);

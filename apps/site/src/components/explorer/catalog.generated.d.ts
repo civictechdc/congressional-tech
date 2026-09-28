@@ -100,7 +100,14 @@ export type Congress1 = number | null;
 export type CongressSession = (1 | 2 | 3) | null;
 export type Chamber1 = 'house' | 'senate' | 'joint' | 'unknown';
 export type MeetingType =
-  'hearing' | 'markup' | 'business' | 'briefing' | 'field_hearing' | 'other' | 'unknown';
+  | 'meeting'
+  | 'hearing'
+  | 'markup'
+  | 'business'
+  | 'briefing'
+  | 'field_hearing'
+  | 'other'
+  | 'unknown';
 export type Role1 = 'host' | 'cohost' | 'participating' | 'unknown';
 export type Committees = ConveningCommittee[];
 export type Id13 = string;

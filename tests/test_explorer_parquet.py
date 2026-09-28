@@ -77,6 +77,9 @@ def test_native_document_labels_and_event_video_wrapper(tmp_path):
     assert recordings[0]['scheduled_at'] == row['date']
     assert catalog.sources[0].payload['videos'][0]['url'] == event
     assert {r['document_type'] for r in records if r['type'] == 'document'} == {'Generic Document', 'Witness Statement', 'Witness Truth in Testimony'}
+    assert {r['title']: r['source_document_groups'] for r in records if r['type'] == 'document'} == {
+        'Nominee questionnaire': ['meetingDocuments'], 'Witness Statement': ['witnessDocuments'],
+        'Witness Truth in Testimony': ['witnessDocuments']}
     assert all(not r['appearance_ids'] for r in records)  # Source supplies no witness ownership.
 
 
@@ -129,6 +132,40 @@ def test_retained_native_payload_repairs_old_untitled_rows_without_reassembly(tm
     assert material['title'] == 'Witness Truth in Testimony'
     assert material['category'] == 'disclosure'
     assert material['document_type'] == 'Witness Truth in Testimony'
+    assert material['source_document_groups'] == ['witnessDocuments']
+
+
+def test_shared_document_keeps_every_source_collection_without_inventing_witness_ownership(tmp_path):
+    from committee_explorer.parquet import write_tables
+    document = {'documentType': 'Witness Statement', 'url': 'https://example.org/statement.pdf'}
+    citations = [{'source': {'id': 'source'}, 'selector': f'/{group}/0'} for group in ('meetingDocuments', 'witnessDocuments')]
+    records = [dict(kind='material', id='statement', provenance=dict(citations=citations + citations))]
+    sources = [dict(kind='source_record', id='source', provider='congress.gov',
+                    payload=dict(meetingDocuments=[document], witnessDocuments=[document]))]
+    queries = [dict(kind='material', id='statement', title='Statement', type='document')]
+    write_tables(records, sources, queries, tmp_path, lambda *args, **kwargs: None)
+    row = pq.read_table(tmp_path/'materials.parquet').to_pylist()[0]
+    assert row['source_document_groups'] == ['meetingDocuments', 'witnessDocuments']
+    assert row['document_type'] == 'Witness Statement'
+    assert row['appearance_ids'] == []
+
+
+def test_shared_bill_does_not_attach_other_meetings_as_source_evidence(tmp_path):
+    from committee_explorer.parquet import write_tables
+    def evidence(source): return dict(citations=[dict(source=dict(id=source))])
+    records = [dict(kind='meeting', id='meeting', provenance=evidence('own')),
+               dict(kind='legislative_item', id='bill', item_type='bill', designation='H.R. 10', provenance=evidence('other')),
+               dict(kind='meeting_subject', id='agenda', meeting=dict(kind='meeting', id='meeting'),
+                    item=dict(kind='legislative_item', id='bill'), provenance=evidence('own'))]
+    sources = [dict(kind='source_record', id='own', provider='congress.gov', payload=dict(type='Meeting')),
+               dict(kind='source_record', id='other', provider='congress.gov', payload=dict(type='Markup'))]
+    write_tables(records, sources, [dict(kind='meeting', id='meeting', title='Current meeting')], tmp_path, lambda *args, **kwargs: None)
+    row = pq.read_table(tmp_path/'meetings.parquet').to_pylist()[0]
+    assert row['type'] == 'meeting'
+    assert row['source_ids'] == ['own']
+    assert {'label': 'Related bill', 'value': 'H.R. 10'} in row['facts']
+    # Other meetings' source observations remain in the archive.
+    assert set(pq.read_table(tmp_path/'sources.parquet', columns=['id'])['id'].to_pylist()) == {'own', 'other'}
 
 
 @pytest.mark.parametrize('raw_type,title,expected', [
@@ -138,7 +175,9 @@ def test_retained_native_payload_repairs_old_untitled_rows_without_reassembly(tm
     ('Markup', 'Full Committee Business Meeting', 'markup'),
     ('Field Hearing', 'Rural access', 'field_hearing'),
     ('Briefing', 'Current operations', 'briefing'),
-    ('Meeting', 'Small business lending', 'unknown'),
+    ('Meeting', 'Small business lending', 'meeting'),
+    (None, 'Small business lending', 'unknown'),
+    ('', 'Small business lending', 'unknown'),
 ])
 def test_meeting_types_survive_adapter_and_retained_publication_conversion(tmp_path, raw_type, title, expected):
     from committee_explorer.parquet import migrate
@@ -151,7 +190,7 @@ def test_meeting_types_survive_adapter_and_retained_publication_conversion(tmp_p
     _, root, _ = verify(tmp_path/'parquet')
     exported = pq.read_table(root/'meetings.parquet').to_pylist()[0]
     assert exported['type'] == expected
-    assert {'label': 'Source type', 'value': raw_type} in exported['facts']
+    assert ({'label': 'Source type', 'value': raw_type} in exported['facts']) == bool(raw_type)
 
 
 def test_conflicts_follow_folded_subjects_and_keep_competing_values(tmp_path):

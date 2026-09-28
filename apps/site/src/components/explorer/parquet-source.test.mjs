@@ -23,8 +23,9 @@ row['witnesses'] += [{'name':f'Witness {i}'} for i in range(30)]
 row['meetingDocuments'].append({'name':'Printed record','documentType':'Transcript','format':'PDF','url':'https://example.org/record.pdf'})
 row['videos'] = [{'url':'https://www.congress.gov/event/115th-congress/house-event/106245'},
                  {'url':'https://www.senate.gov/isvp/?comm=banking&filename=banking071217'}]
-shared = {**row, 'eventId':'106246', 'congress':116, 'date':'2019-07-12', 'title':'Shared recording', 'witnesses':[]}
+shared = {**row, 'eventId':'106246', 'congress':116, 'date':'2019-07-12', 'type':'Meeting', 'title':'Shared recording', 'witnesses':[]}
 earlier = {**shared, 'eventId':'106247', 'date':'2019-01-01', 'title':'A January meeting', 'videos':[],
+           'type':'Markup',
            'committees':[{'systemCode':'hsru00', 'name':'Renamed Rules'}]}
 future = {**row, 'eventId':'338793', 'congress':119, 'date':'2099-10-01T14:00:00Z', 'title':'Upcoming meeting', 'witnesses':[],
           'videos':[{'url':'https://www.senate.gov/isvp/?comm=banking&filename=banking100199'}]}
@@ -65,7 +66,12 @@ test('real Parquet supports search, direct files, witnesses, coverage and on-dem
   assert.equal((await reader.search({ congress: 114 })).total, 0);
   const documents = await reader.search({kind:'material', congress:115, q:'Printed record'});
   assert.equal(documents.rows[0].document_type, 'Transcript');
+  assert.deepEqual(documents.rows[0].source_document_groups, ['meetingDocuments']);
   assert.equal((await reader.search({kind:'material', congress:115, q:'Transcript'})).rows[0].title, 'Printed record');
+  assert.ok((await reader.search({kind:'material', congress:115, q:'meetingDocuments'})).rows.some(row => row.title === 'Printed record'));
+  const genericMeetings = await reader.search({congress:116, type:'meeting'});
+  assert.equal(genericMeetings.total, 1);
+  assert.equal(genericMeetings.rows[0].title, 'Shared recording');
   assert.equal((await reader.search({ congress: 'all', q: 'Alex Smith' })).total, 1);
   const meeting = await reader.getRecord(meetings.rows[0]);
   const related = await reader.getRelated(meeting, {limit:100});

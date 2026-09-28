@@ -31,6 +31,8 @@ def meeting_type(row):
     # meeting explicitly in the title. Keep that distinction in field evidence.
     if text == 'meeting' and re.search(r'\bbusiness meeting\b', str(row.get('title') or ''), re.I):
         return 'business', '/title'
+    if text == 'meeting':
+        return 'meeting', '/type'
     return 'unknown', '/type'
 
 

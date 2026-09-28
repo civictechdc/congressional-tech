@@ -14,15 +14,15 @@ from congress_api.adapters.meetings import category, document_title, event_page,
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+from .collector_labels import PLACEHOLDER_LABELS, collector_placeholder_conflict
+
 TABLES = {'meeting': 'meetings', 'committee_term': 'committees', 'material': 'materials',
           'appearance': 'witnesses', 'data_issue': 'issues', 'source_record': 'sources'}
 ASPECTS = ('recording', 'transcript', 'documents', 'witnesses', 'captions')
-# Former collector defaults, never values supplied by the source.
-PLACEHOLDER_LABELS = {'Reported edition; revision not established', 'Reported recording; revision not established'}
 STRINGS = ('id', 'kind', 'title', 'chamber', 'date', 'type', 'status', 'meeting_id',
            'provider', 'category', 'selection', 'search_text', 'position', 'organization',
            'participation', 'explanation', 'severity', 'subject_kind', 'subject_id', 'scheduled_at', 'meeting_status', 'recording_url', 'document_type')
-LISTS = ('committee_ids', 'roles', 'meeting_ids', 'appearance_ids', 'source_ids')
+LISTS = ('committee_ids', 'roles', 'meeting_ids', 'appearance_ids', 'source_ids', 'source_document_groups')
 LINK = pa.struct([(k, pa.string()) for k in ('url', 'label', 'role', 'media_type', 'version', 'published_at', 'sha256')])
 NOTE = pa.struct([(k, pa.string()) for k in ('label', 'value')])
 SCHEMA = pa.schema([(k, pa.string()) for k in STRINGS] + [('congress', pa.int32()), ('issue_count', pa.int32())]
@@ -31,7 +31,7 @@ SCHEMA = pa.schema([(k, pa.string()) for k in STRINGS] + [('congress', pa.int32(
                       ('files', pa.list_(LINK)), ('facts', pa.list_(NOTE))])
 SOURCE_SCHEMA = pa.schema([(k, pa.string()) for k in
     ('id', 'kind', 'provider', 'url', 'retrieved_at', 'source_modified_at', 'imported_at', 'input_snapshot_id', 'identifier', 'retained_uri', 'retained_sha256', 'payload')])
-QUERY_COLUMNS = [*STRINGS[:12], 'congress', 'issue_count', 'committee_ids', 'roles', 'evidence_states', 'scheduled_at', 'meeting_status', 'recording_url', 'position', 'organization', 'document_type']
+QUERY_COLUMNS = [*STRINGS[:12], 'congress', 'issue_count', 'committee_ids', 'roles', 'evidence_states', 'scheduled_at', 'meeting_status', 'recording_url', 'position', 'organization', 'document_type', 'source_document_groups']
 
 
 def sources_of(record):
@@ -51,7 +51,7 @@ def write_tables(records, sources, query_rows, stage, descriptor):
             native_meetings[source['id']] = {k: source['payload'].get(k) for k in ('type', 'title')}
             for group in ('meetingDocuments', 'witnessDocuments'):
                 for i, document in enumerate(source['payload'].get(group) or []):
-                    native_documents[(source['id'], f'/{group}/{i}')] = document
+                    native_documents[(source['id'], f'/{group}/{i}')] = (group, document)
         row = {key: source.get(key) for key in SOURCE_SCHEMA.names}
         row['source_modified_at'] = (source.get('source_modified_at') or {}).get('date')
         row['identifier'] = json.dumps(source.get('identifier'), ensure_ascii=False)
@@ -107,13 +107,14 @@ def write_tables(records, sources, query_rows, stage, descriptor):
                 dates = record.get('proceeding_dates') or []
                 if not row.get('date') and dates:
                     row['date'] = min(d['date'] for d in dates)
-                for citation in provenance.get('citations', []):
-                    document = native_documents.get((citation['source']['id'], citation.get('selector')))
-                    if document:
-                        row['title'] = document_title(document) or row['title']
-                        row['category'] = category(document)
-                        if isinstance(document.get('documentType'), str): row['document_type'] = document['documentType']
-                        break
+                documents = [native_documents[key] for citation in provenance.get('citations', [])
+                             if (key := (citation['source']['id'], citation.get('selector'))) in native_documents]
+                row['source_document_groups'] = sorted({group for group, _ in documents})
+                if documents:
+                    document = documents[0][1]
+                    row['title'] = document_title(document) or row['title']
+                    row['category'] = category(document)
+                    if isinstance(document.get('documentType'), str): row['document_type'] = document['documentType']
                 if not row.get('title') or row['title'] == '(Untitled source record)':
                     row['title'] = (row.get('category') if row.get('category') not in (None, 'unknown') else row.get('type') or 'Document').replace('_', ' ').capitalize()
             if kind == 'appearance':
@@ -195,7 +196,9 @@ def write_tables(records, sources, query_rows, stage, descriptor):
         item = context_records.get(record['item']['id'])
         if row is not None and item:
             row['facts'].append({'label': 'Related ' + item['item_type'], 'value': item['designation']})
-            row['source_ids'].extend(sources_of(record) | sources_of(item))
+            # The agenda association cites this meeting's source. A shared bill
+            # also has citations from other meetings; those do not describe this one.
+            row['source_ids'].extend(sources_of(record))
     for id, action in context_records.items():
         if action['kind'] not in ('amendment', 'vote') or id in attached_actions: continue
         row = rows['meeting'].get(action['meeting']['id'])
@@ -238,8 +241,8 @@ def write_tables(records, sources, query_rows, stage, descriptor):
         subject = (issue['subject_kind'], issue['subject_id'])
         disagreement = conflict_facts.get((*subject, field), [])
         issue['facts'].extend(disagreement)
-        compared = [f['value'].rstrip('.') for f in disagreement if f['label'] == 'Selected value' or f['label'].startswith('Alternative ')]
-        if issue.get('status') == 'open' and subject[0] == 'material_version' and field == '/label' and compared and set(compared) <= PLACEHOLDER_LABELS:
+        compared = [f['value'] for f in disagreement if f['label'] == 'Selected value' or f['label'].startswith('Alternative ')]
+        if issue.get('status') == 'open' and subject[0] == 'material_version' and field == '/label' and collector_placeholder_conflict(compared):
             issue['status'] = 'dismissed'
             issue['title'] = 'Collector placeholder labels differed'
             issue['explanation'] = 'Collectors assigned different internal edition labels. This is not evidence of a disagreement in source content.'

@@ -89,6 +89,7 @@ export interface QueryRow extends ExplorerRecordRef {
   type?: string | null;
   /** Exact source documentType; category is our separate classification. */
   document_type?: string | null;
+  source_document_groups?: readonly string[] | null;
   status?: string | null;
   committee_ids?: readonly string[];
   meeting_id?: string | null;
