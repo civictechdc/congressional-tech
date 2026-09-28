@@ -6,13 +6,14 @@ import { mkdtempSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { openPublicationReader } from './data-source.js';
+import { createParquetReader } from './parquet-source.js';
 
 // Generate real Snappy Parquet with the Python publisher; no mocked decoder.
 const root = mkdtempSync(join(tmpdir(), 'explorer-parquet-'));
 const repo = resolve(import.meta.dirname, '../../../../..');
 const python = process.env.EXPLORER_PYTHON || process.env.COMMITTEE_PYTHON || (existsSync(join(repo, '.venv/bin/python')) ? join(repo, '.venv/bin/python') : 'python3');
 execFileSync(python, ['-c', `
-import sys
+import sys, gzip, json
 from pathlib import Path
 sys.path.insert(0, 'tests')
 from test_explorer_export import native, write_meetings, NOW
@@ -23,14 +24,32 @@ row['witnesses'] += [{'name':f'Witness {i}'} for i in range(30)]
 row['meetingDocuments'].append({'name':'Printed record','documentType':'Transcript','format':'PDF','url':'https://example.org/record.pdf'})
 row['videos'] = [{'url':'https://www.congress.gov/event/115th-congress/house-event/106245'},
                  {'url':'https://www.senate.gov/isvp/?comm=banking&filename=banking071217'}]
-shared = {**row, 'eventId':'106246', 'congress':116, 'date':'2019-07-12', 'title':'Shared recording', 'witnesses':[]}
+shared = {**row, 'eventId':'106246', 'congress':116, 'date':'2019-07-12', 'type':'Meeting', 'title':'Shared recording', 'witnesses':[]}
 earlier = {**shared, 'eventId':'106247', 'date':'2019-01-01', 'title':'A January meeting', 'videos':[],
+           'type':'Closed Markup',
            'committees':[{'systemCode':'hsru00', 'name':'Renamed Rules'}]}
 future = {**row, 'eventId':'338793', 'congress':119, 'date':'2099-10-01T14:00:00Z', 'title':'Upcoming meeting', 'witnesses':[],
           'videos':[{'url':'https://www.senate.gov/isvp/?comm=banking&filename=banking100199'}]}
 canceled = {**row, 'eventId':'338792', 'congress':119, 'meetingStatus':'Canceled', 'title':'Canceled meeting', 'witnesses':[],
             'videos':[{'url':'https://www.senate.gov/isvp/?comm=banking&filename=banking071217c'}]}
-export(meetings=write_meetings(root,[row,shared,earlier,future,canceled]), output_dir=root/'public', state_dir=root/'state', as_of=NOW, format='parquet')
+bulk = {**row, 'eventId':'338790', 'congress':117, 'date':'2021-01-01', 'title':'Many attachments', 'witnesses':[], 'relatedItems':{},
+        'videos':[{'url':'https://www.youtube.com/watch?v=PRXQf-CSnoo'}],
+        'meetingDocuments':[{'name':f'Attachment {i:02d}', 'documentType':'Witness Statement' if i < 30 else 'Support Document',
+                             'url':f'https://example.org/attachment-{i}.pdf','format':'PDF'} for i in range(74)]}
+committee_rows = [
+    {'congress':congress, 'committee':{'systemCode':'hsru00', 'name':'Rules', 'chamber':'House', 'committeeTypeCode':'Standing'}}
+    for congress in [115,116,117,119]
+] + [
+    {'congress':congress, 'committee':{'systemCode':'hsru01', 'name':'Rules subcommittee', 'chamber':'House', 'committeeTypeCode':'Subcommittee', 'parent':{'systemCode':'hsru00'}}}
+    for congress in [115,116,117,119]
+]
+committee_path = root/'committees.jsonl.gz'
+committee_path.write_bytes(gzip.compress(bytes('\\n'.join(json.dumps(item) for item in committee_rows), 'utf-8')))
+export(meetings=write_meetings(root,[row,shared,earlier,future,canceled,bulk]), committees_path=committee_path, output_dir=root/'public', state_dir=root/'state', as_of=NOW, format='parquet')
+import pyarrow as pa
+import pyarrow.parquet as pq
+pq.write_table(pa.table({'id':[f'large-{i:06}' for i in range(180000)], 'kind':['material']*180000,
+                        'title':['Large catalog entry']*180000, 'congress':[119]*180000}), root/'public'/'large.parquet')
 `, root], { cwd: repo });
 test.after(() => rmSync(root, { recursive: true }));
 
@@ -59,13 +78,28 @@ function transport(mode) {
 test('real Parquet supports search, direct files, witnesses, coverage and on-demand source evidence', async () => {
   const { fetcher, calls } = transport();
   const reader = await openPublicationReader({ pointerUrl: 'https://example.org/CURRENT.json', fetcher });
+  assert.deepEqual((await reader.getQueryInfo()).supported_filters, ['committeeLevel', 'committeeType', 'access']);
   const meetings = await reader.search({ congress: 115 });
   assert.equal(meetings.total, 1);
   assert.equal(meetings.rows[0].title, 'Rules consideration');
   assert.equal((await reader.search({ congress: 114 })).total, 0);
   const documents = await reader.search({kind:'material', congress:115, q:'Printed record'});
   assert.equal(documents.rows[0].document_type, 'Transcript');
+  assert.deepEqual(documents.rows[0].source_document_groups, ['meetingDocuments']);
   assert.equal((await reader.search({kind:'material', congress:115, q:'Transcript'})).rows[0].title, 'Printed record');
+  assert.ok((await reader.search({kind:'material', congress:115, q:'meetingDocuments'})).rows.some(row => row.title === 'Printed record'));
+  const genericMeetings = await reader.search({congress:116, type:'meeting'});
+  assert.equal(genericMeetings.total, 1);
+  assert.equal(genericMeetings.rows[0].title, 'Shared recording');
+  const fullCommittees = await reader.search({congress:116, committeeLevel:'full'});
+  assert.equal(fullCommittees.total, 1);
+  assert.equal(fullCommittees.rows[0].title, 'A January meeting');
+  assert.equal(fullCommittees.rows[0].access, 'closed');
+  assert.equal((await reader.search({congress:116, access:'closed'})).total, 1);
+  assert.equal((await reader.search({congress:116, access:'open'})).total, 0);
+  assert.equal((await reader.getCoverage({filters:{congress:116, committeeLevel:'full'}})).state_breakdown.recording.denominator, fullCommittees.total);
+  assert.equal((await reader.search({kind:'appearance', congress:115, committeeLevel:'full'})).total, 0);
+  assert.equal((await reader.search({kind:'committee_term', congress:115, committeeLevel:'full'})).total, 1);
   assert.equal((await reader.search({ congress: 'all', q: 'Alex Smith' })).total, 1);
   const meeting = await reader.getRecord(meetings.rows[0]);
   const related = await reader.getRelated(meeting, {limit:100});
@@ -78,6 +112,26 @@ test('real Parquet supports search, direct files, witnesses, coverage and on-dem
   const sources = await reader.getRecords(meeting.source_ids.map(id => ({kind: 'source_record', id})));
   assert.ok(sources.some(source => source.payload.eventId === '106245'));
   assert.equal((await reader.getRecord({ kind: 'meeting', id: 'missing' })), undefined);
+});
+
+test('official parent committee types filter committees, meetings, documents, witnesses and coverage consistently', async () => {
+  const reader = await openPublicationReader({pointerUrl:'https://example.org/CURRENT.json', fetcher:transport().fetcher});
+  const committees = await reader.search({kind:'committee_term', congress:115, committeeType:'standing'});
+  assert.equal(committees.total, 2); // Includes the standing committee's subcommittee.
+  assert.equal((await reader.search({kind:'committee_term', congress:115, committeeType:'standing', committeeLevel:'full'})).total, 1);
+  const child = committees.rows.find(row => row.committee_level === 'subcommittee');
+  assert.equal(child.source_committee_type, 'Subcommittee');
+  assert.equal(child.committee_type, 'subcommittee');
+  assert.deepEqual(child.committee_types, ['standing']);
+  for (const kind of ['meeting', 'material', 'appearance']) {
+    const all = await reader.search({kind, congress:115});
+    assert.equal((await reader.search({kind, congress:115, committeeType:'standing'})).total, all.total);
+    assert.equal((await reader.search({kind, congress:115, committeeType:'select'})).total, 0);
+  }
+  const filters = {congress:116, committeeType:'standing', committeeLevel:'full', access:'closed'};
+  const selected = await reader.search(filters);
+  assert.equal(selected.total, 1);
+  assert.equal((await reader.getCoverage({filters})).state_breakdown.recording.denominator, selected.total);
 });
 
 test('shared recordings remain reachable across Congress filters; event pages and future streams stay hidden', async () => {
@@ -115,6 +169,31 @@ test('documents and witnesses page independently so neither hides the other', as
   assert.ok(documents.records.every(r => r.kind === 'material'));
 });
 
+test('related document categories count the complete meeting and filter before pagination', async () => {
+  const reader = await openPublicationReader({pointerUrl:'https://example.org/CURRENT.json', fetcher:transport().fetcher});
+  const meeting = (await reader.search({congress:117})).rows[0];
+  const all = await reader.getRelated(meeting, {kind:'material', materialType:'document', limit:25});
+  assert.equal(all.total, 74);
+  assert.equal(all.records.length, 25);
+  assert.deepEqual(all.categories, [{label:'Support Document', count:44}, {label:'Witness Statement', count:30}]);
+  assert.ok(all.records.every(record => record.document_type === 'Support Document'));
+  const first = await reader.getRelated(meeting, {kind:'material', materialType:'document', category:'Witness Statement', limit:25});
+  const last = await reader.getRelated(meeting, {kind:'material', materialType:'document', category:'Witness Statement', offset:25, limit:25});
+  assert.equal(first.total, 30);
+  assert.equal(first.records.length, 25);
+  assert.equal(last.records.length, 5);
+  assert.equal(new Set([...first.records, ...last.records].map(record => record.id)).size, 30);
+  assert.ok([...first.records, ...last.records].every(record => record.document_type === 'Witness Statement' && record.files.length));
+  assert.deepEqual(first.categories, all.categories);
+  assert.deepEqual(last.categories, all.categories);
+  const recordings = await reader.getRelated(meeting, {kind:'material', materialType:'recording'});
+  assert.equal(recordings.total, 1);
+  assert.equal(recordings.records[0].recording_url, 'https://www.youtube.com/watch?v=PRXQf-CSnoo');
+  const absent = await reader.getRelated(meeting, {kind:'material', materialType:'document', category:'Not in this meeting'});
+  assert.equal(absent.total, 0);
+  assert.deepEqual(absent.categories, all.categories);
+});
+
 test('committee meetings are chronological, witnesses searchable by organization, and issues have usable subjects', async () => {
   const {fetcher, calls} = transport();
   const reader = await openPublicationReader({pointerUrl:'https://example.org/CURRENT.json', fetcher});
@@ -133,6 +212,23 @@ test('committee meetings are chronological, witnesses searchable by organization
   assert.deepEqual(meetings.records.map(r => r.date), ['2019-07-12','2019-01-01']);
   const affected = await reader.getRecord({kind:issues.records[0].subject_kind, id:issues.records[0].subject_id});
   assert.equal(affected.id, committee.id);
+});
+
+test('all-Congress scans exceed the JavaScript argument limit without overflowing the stack', async () => {
+  const bytes = await readFile(join(root, 'public', 'large.parquet'));
+  const reader = createParquetReader({
+    manifest: {partitions:[{path:'large.parquet', schema_name:'committee_explorer.parquet.material',
+      media_type:'application/vnd.apache.parquet', byte_size:bytes.length, record_count:180000}]},
+    manifestUrl: new URL('https://example.org/manifest.json'),
+    select: () => ({}),
+    readPartition: async () => ({storage:'parquet', default_congress:119, kinds:[{kind:'material'}],
+      query_columns:['id','kind','title','congress']}),
+  }, transport().fetcher);
+  const result = await reader.search({kind:'material', congress:'all', offset:179975});
+  assert.equal(result.total, 180000);
+  assert.equal(result.rows.length, 25);
+  assert.equal(result.rows[0].id, 'large-179975');
+  assert.equal(result.rows.at(-1).id, 'large-179999');
 });
 
 test('reject unsupported range serving, malformed responses and canceled reads', async () => {

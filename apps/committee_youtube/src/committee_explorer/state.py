@@ -20,7 +20,7 @@ def pack(source, output):
         archive=stage/'state.tar.gz'
         with tarfile.open(archive,'w:gz') as tar:
             for item in sorted(source.iterdir()):
-                if item.name in ('ids.json','publication.json','issue-history'):tar.add(item,arcname=item.name)
+                if item.name in ('ids.json','publication.json','issue-history','reuse.json'):tar.add(item,arcname=item.name)
         parts=[]
         with archive.open('rb') as stream:
             while raw:=stream.read(CHUNK_BYTES):

@@ -1,4 +1,5 @@
 import { matches, pageBounds, summarizeCoverage } from './query-utils.js';
+import { selectRelatedMaterials } from './related-materials.js';
 /**
  * The frontend's data boundary contains no UI or chart logic. Its consumers do
  * not need storage paths or decoding libraries. See data-source.d.ts for the
@@ -200,7 +201,7 @@ export async function openPublicationReader(options) {
         }
         return document.rows;
       }));
-      for (const batch of batches) rows.push(...batch);
+      for (const batch of batches) for (const row of batch) rows.push(row);
     }
     signal?.throwIfAborted();
     // Large archive-wide scans remain uncached; ordinary Congress views stay responsive.
@@ -289,6 +290,12 @@ export async function openPublicationReader(options) {
       const allRefs = bucket.relations[key] || [];
       if (!Array.isArray(allRefs)) throw new Error('Explorer relationships are invalid.');
       const refs = options.kind ? allRefs.filter(r => r.kind === options.kind) : allRefs;
+      if (options.kind === 'material') {
+        const materials = await getRecords(refs, { signal });
+        if (materials.some(record => !record)) throw new Error('Explorer relationship points to a missing record.');
+        const selected = selectRelatedMaterials(materials, options);
+        return { records: selected.rows.slice(offset, offset + limit), total: selected.rows.length, offset, limit, categories: selected.categories };
+      }
       const records = await getRecords(refs.slice(offset, offset + limit), { signal });
       if (records.some(record => !record)) throw new Error('Explorer relationship points to a missing record.');
       return { records, total: refs.length, offset, limit };

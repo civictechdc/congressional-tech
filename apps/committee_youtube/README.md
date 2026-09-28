@@ -21,6 +21,7 @@ main. The existing reports continue through their current commands.
   --video-matches-path apps/committee_youtube/data/gpo_hearing_videos.csv \
   --recordings-path apps/committee_youtube/data/meeting_recordings_found.csv \
   --recovered-witnesses apps/committee_youtube/data/meeting_witnesses.csv \
+  --reuse-from ../pipeline-data/committee-explorer/public \
   --state-dir .cache/explorer-state --output-dir .cache/explorer-public
 ```
 
@@ -30,7 +31,25 @@ attendance. Optional `--issue-decisions PATH` reads documented resolution rows
 with `issue_id`, `status` (`resolved` or `dismissed`), and `explanation`.
 `--limit N` declares a rehearsal selection and is not a full-population export.
 
-Preserve the state directory: it stores stable IDs and compact issue history.
+Preserve the state directory: it stores stable IDs, compact issue history, and
+the receipt used to reuse an unchanged publication. `--reuse-from` checks exact
+input bytes, supplied source families, export options, Python/dependency versions,
+source-adapter code, schema code, and bundled lookup tables. If these and the
+retained identity/history state match, it verifies and reuses the existing
+Parquet tables before constructing model records. The first run creates the
+receipt; older publications without one receive a normal rebuild. CI retains
+the receipt with state and passes its existing browser publication to this option.
+
+Changed source data, collection-job receipts, issue decisions, `--limit`, an
+explicit `--as-of` value, or relevant code trigger a full refresh. An unchanged
+rerun retains the original publication/import times and source revision; a new
+pipeline commit containing identical input bytes does not claim a new source
+observation. Transcript paths also participate because their local URIs are
+retained evidence. Omitting `--reuse-from` always performs the normal export.
+**Partial updates of changed inputs or individual tables remain unfinished.**
+Cross-source matching and retained issue history still run together when any
+input changes; this addition avoids repeated work only for unchanged publications.
+
 Records validate individually before the complete graph check, so assembling
 the Catalog does not copy the whole graph again. Prior issues load from SQLite
 only when needed; the exporter does not reload the previous complete Catalog.
@@ -40,17 +59,14 @@ references, evidence selectors and artifact hashes before replacing
 hashes, source scope, media types and file discovery. A failed export leaves the
 working pointer in place. Unknown retrieval times remain unknown.
 
-The full local publication includes a compatibility meeting index, record/source
-chunks, hashed locators, related-record indexes, paged browse indexes and
-evidence-state coverage. Browse pages cover committee terms, meetings,
-appearances, materials and issues, grouped by Congress. Meeting rows carry the
+The default publication contains six logical Parquet tables: committees,
+meetings, appearances, materials, issues, and source evidence. Source evidence
+splits across files to fit Git's file limit. Small JSON files describe coverage
+and file discovery. The browser reads these tables directly; packaging preserves
+their bytes and enforces a 900 MB publication budget. Meeting rows carry the
 same evidence states used in coverage, so filtering and charts share a denominator.
-Chunks target 2 MiB; an indivisible source record can exceed this budget and is
-listed explicitly. A complete Catalog remains a local offline artifact.
-The browser packager excludes that Catalog and the large compatibility index,
-compresses browser files with an explicit media type, and enforces a 900 MB
-publication budget. The site reader uses query pages, relations and locators.
-Coverage counts source
+`--format json` retains the older complete Catalog and its indexes for offline
+compatibility; publication reuse applies only to Parquet. Coverage counts source
 entries in all statuses; unchecked canceled or future meetings are not inferred
 publication failures. Issues overlap and are counted separately.
 
@@ -64,9 +80,12 @@ is saved, Pages receives exact code and pipeline commit IDs, verifies the files
 again and enforces GitHub's 1 GB site limit before deployment. A failed export or
 verification leaves the prior public site in place.
 
+See [publication reuse checks and measured limits](../../docs/youtube-coverage/publication-reuse.md)
+for validation and the remaining work on changed-input updates.
+
 ## What runs every week
 
-`.github/workflows/update-data.yml` runs every Sunday. It has three jobs, each run after the one before even when that one failed.
+`.github/workflows/update-data.yml` runs every Sunday. It has four jobs, each run after the one before even when that one failed.
 
 **`youtube` job:**
 
@@ -92,7 +111,9 @@ verification leaves the prior public site in place.
 | Read Senate and joint committee pages | `senate-meeting-records` | `data/senate_hearing_pages_found.csv`, `data/senate_witnesses_found.csv`, `data/senate_documents_found.csv` |
 | Join meeting records, text, recordings and witnesses | `meeting-inventory` | `data/hearing_text_sources.csv`, `data/meetings_without_records.csv`, `data/meeting_completeness.csv`, `data/meeting_witnesses.csv` |
 
-- **Raw caches:** the YouTube caches (`youtube/youtube_NN.json`), meeting records (`congress_meetings.jsonl.gz`) and parsed meeting-source state (`meeting-inventory/*.json.gz`) live on the bot-owned `pipeline-data` branch. It's replaced by one snapshot commit each run, so the weekly data doesn't pile up in `main`'s history.
+**`committees` job.** `congress-committees` retains the official Congress-scoped committee lists in `congress_committees.jsonl.gz` on `pipeline-data`. It refreshes the latest two Congresses and fills missing historical Congresses. The Explorer uses exact source categories and parent committee links; it does not guess committee type from names. This job saves independently so a metadata request failure cannot prevent the other collectors from saving their results.
+
+- **Raw caches:** the YouTube caches (`youtube/youtube_NN.json`), meeting records (`congress_meetings.jsonl.gz`), committee metadata (`congress_committees.jsonl.gz`) and parsed meeting-source state (`meeting-inventory/*.json.gz`) live on the bot-owned `pipeline-data` branch. It's replaced by one snapshot commit each run, so the weekly data doesn't pile up in `main`'s history.
 - **Initial state and recovery:** `pipeline-data/meeting-inventory/*.json.gz` supplies the parsed records and availability observations. The initial seed was added directly to that branch; no seed blobs are kept in the code branch. See [meeting-state setup and recovery](../../docs/youtube-coverage/meeting-state.md).
 - **Failures:** every command exits non-zero on any failure. Derived CSV commits require the whole job to succeed. Once committee readers have started, their raw-state snapshot still saves the last usable records and failed-refresh receipts; setup/test failures do not create a snapshot. The publication records the failed job separately, and incremental fetching catches up on the next run.
 

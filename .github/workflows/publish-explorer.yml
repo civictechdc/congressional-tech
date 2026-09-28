@@ -78,8 +78,12 @@ jobs:
           if [[ -f pipeline-data/committee-explorer/attempts.json ]]; then
             args+=(--attempts pipeline-data/committee-explorer/attempts.json)
           fi
+          if [[ -f pipeline-data/congress_committees.jsonl.gz ]]; then
+            args+=(--committees-path pipeline-data/congress_committees.jsonl.gz)
+          fi
           python .github/scripts/offline-python.py -m committee_explorer.export \
             --format parquet \
+            --reuse-from pipeline-data/committee-explorer/public \
             --meetings pipeline-data/congress_meetings.jsonl.gz \
             --house-state pipeline-data/meeting-inventory/house.json.gz \
             --senate-state pipeline-data/meeting-inventory/senate.json.gz \

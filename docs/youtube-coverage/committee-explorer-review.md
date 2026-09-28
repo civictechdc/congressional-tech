@@ -134,3 +134,44 @@ meeting-specific browsing row. Their citations and compared values remain
 available; the exporter does not invent a unique committee term or appearance.
 The old JSON reader remains available for compatibility, while the deployed
 simplified UI uses the converted Parquet publication.
+
+## Follow-up review: players, source labels, and publication reuse
+
+The next patch embeds supported YouTube and Senate recordings in both meeting
+attachments and recording details. Native `meetingDocuments` / `witnessDocuments`
+membership is retained independently of `documentType`, displayed, and searchable.
+The model and filter now recognize the literal generic `Meeting` type.
+
+Two additional confirmed defects are fixed:
+
+- Shared legislative items were adding other meetings' source records to a
+  meeting's evidence. Event 118855 correctly says `Meeting`, but its evidence
+  included four other events labeled `Markup`. The exporter now cites only the
+  meeting's own agenda association; shared bill records and all raw sources remain.
+- Removing collector placeholder labels could leave their old conflicts open
+  in persistent history. A regression test reproduced this. History now records
+  an explicit dismissal with original compared values and citations, and preserves
+  it across a second build. Real current disagreements and manual decisions survive.
+
+| Function trace | Verified behavior |
+| --- | --- |
+| `recordingEmbedUrl` → `recordingVisible` → `RecordingPlayer` | Same date/status guard as listings; known YouTube/Senate endpoints only; external links retained; no autoplay |
+| `meeting_type` → model `Meeting.meeting_type` → Parquet → filter | Generic Meeting has its own value; title-explicit business meetings retain their distinction |
+| `write_tables` → `documentSourceLabel` / `matches` | Native collection names and exact document types survive conversion and actual browser Parquet decoding |
+| `Assembly.finish` → `_review_old_label_conflict` → `IssueResolution` | Exact former collector defaults only; current findings and previously closed decisions are not overridden |
+| `export` → `request_key` / `try_reuse` → `browser.verify` | Unchanged input/code/state reuses verified files before model assembly; changed inputs rebuild |
+| `save_receipt` → state pack/unpack → clean-runner reuse | Original publication and provenance survive packaging and restoration byte-for-byte |
+
+Validation: **257 Python tests and 31 subtests; 32 frontend tests**. Checks cover
+unsupported embed URLs, upcoming/canceled recordings, both document collections,
+generic Meeting filtering, shared-bill evidence isolation, history roundtrips,
+cache invalidation and corrupt files. Senate playback advanced to 29 seconds;
+YouTube playback advanced to 70 seconds inside the embedded players. At 390 px,
+the player fits in a 350 × 200 px frame without horizontal overflow.
+
+Independent read-only review found no additional actionable defects. **Approve
+after CI.** Production's intervening publication already lost the old placeholder
+values; that requires a separate, evidence-backed one-time data repair from its
+actual predecessor snapshot. The code does not guess those missing values.
+Changed-input incremental table updates remain unfinished; the reuse change
+addresses unchanged reruns only. See `publication-reuse.md` for measured limits.

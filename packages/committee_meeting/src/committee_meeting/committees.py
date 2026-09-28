@@ -16,7 +16,8 @@ class CommitteeTerm(Record):
     congress: PositiveInt
     name: Text | None = None
     chamber: Chamber
-    committee_type: Literal["standing", "select", "special", "joint", "subcommittee", "other", "unknown"] = "unknown"
+    committee_type: Literal["standing", "select", "special", "joint", "subcommittee", "commission_or_caucus", "task_force", "other", "unknown"] = "unknown"
+    source_committee_type: Text | None = None
     parent: Ref[Literal["committee_term"]] | None = None
     active: DateRange | None = None
     jurisdiction: str | None = None

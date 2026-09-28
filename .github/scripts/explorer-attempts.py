@@ -10,6 +10,7 @@ JOB_PROVIDERS = {
     "youtube": ("youtube",),
     "congress": ("congress.gov", "govinfo", "gpo-video-matches"),
     "meetings": ("docs.house.gov", "senate.committees", "meeting-inventory", "recovered-witnesses"),
+    "committees": ("congress.gov:committees",),
 }
 
 

@@ -1,13 +1,18 @@
+import { documentSourceLabel } from './record-presentation.js';
+
 export function matches(row, query) {
     const words = String(query.q || '').trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
-    const text = `${row.title} ${row.search_text || ''} ${row.document_type || ''}`.toLocaleLowerCase();
+    const text = `${row.title} ${row.search_text || ''} ${row.document_type || ''} ${documentSourceLabel(row)} ${(row.source_document_groups || []).join(' ')}`.toLocaleLowerCase();
     return (!query.chamber || query.chamber === 'all' || row.chamber === query.chamber)
       && (!query.dateFrom || (row.date && row.date >= query.dateFrom))
       && (!query.dateTo || (row.date && row.date <= query.dateTo))
       && (!query.month || (query.month === 'unknown' ? !row.date : row.date?.startsWith(query.month)))
       && (!query.type || query.type === 'all' || row.type === query.type)
       && (!query.status || query.status === 'all' || row.status === query.status)
+      && (!query.access || row.access === query.access)
       && (!query.committeeId || row.committee_ids?.includes(query.committeeId))
+      && (!query.committeeLevel || row.committee_level === query.committeeLevel)
+      && (!query.committeeType || row.committee_types?.includes(query.committeeType))
       && (!query.aspect || !query.evidence || row.evidence_states?.[query.aspect] === query.evidence)
       && words.every(word => text.includes(word));
   }

@@ -10,6 +10,33 @@ export function sourcePageUrl(value) {
     return event ? `https://www.congress.gov/event/${event[1]}th-congress/${event[2]}-event/${event[3]}` : value;
   } catch { return undefined; }
 }
+
+/** Embed only known player endpoints; other recordings retain their external link. */
+export function recordingEmbedUrl(row, now = new Date()) {
+  if (row.type !== 'recording' || !recordingVisible(row, now)) return undefined;
+  try {
+    const url = new URL(row.recording_url);
+    if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password) return undefined;
+    let video;
+    if (url.hostname === 'youtu.be') video = url.pathname.slice(1);
+    if (['youtube.com', 'www.youtube.com', 'm.youtube.com', 'www.youtube-nocookie.com'].includes(url.hostname)) {
+      video = url.pathname === '/watch' ? url.searchParams.get('v') : url.pathname.match(/^\/(?:embed|shorts|live)\/([^/]+)\/?$/)?.[1];
+    }
+    if (video && /^[\w-]{11}$/.test(video)) return `https://www.youtube.com/embed/${video}`;
+    if (['www.senate.gov', 'senate.gov'].includes(url.hostname) && /^\/isvp\/?$/.test(url.pathname)
+      && url.searchParams.get('comm') && url.searchParams.get('filename')) {
+      url.protocol = 'https:';
+      url.searchParams.set('auto_play', 'false');
+      return url.href;
+    }
+  } catch { /* A malformed source URL still appears in the raw record. */ }
+  return undefined;
+}
+
+export function documentSourceLabel(row) {
+  const labels = { meetingDocuments: 'Meeting document', witnessDocuments: 'Witness document' };
+  return (row.source_document_groups || []).map(group => labels[group] || group).join(' · ');
+}
 function phase(row, now) {
   const start = row.scheduled_at;
   if (typeof start === 'string' && /T.*(?:Z|[+-]\d\d:\d\d)$/.test(start)) {

@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { sourcePageUrl } from './record-presentation.js';
+import { documentSourceLabel, recordingEmbedUrl, sourcePageUrl } from './record-presentation.js';
 import type { ExplorerRecord, ExplorerRecordRef, ExplorerSourceRecord } from './data-source';
 
 export type DetailRecord = ExplorerRecord | ExplorerSourceRecord;
@@ -51,6 +51,13 @@ export function FileLinks({ record }: { record: unknown }) {
   if (!files.length) return null;
   return <div className="explorer-file-links">{files.map(file => <a key={String(file.url)} href={publicUrl(file.url)} target="_blank" rel="noreferrer">{file.role === 'player' || file.role === 'stream' ? 'Watch recording' : (file.label !== 'unknown' && words(file.label)) || 'Open file'} ↗</a>)}</div>;
 }
+export function RecordingPlayer({ record }: { record: unknown }) {
+  const url = recordingEmbedUrl(fields(record));
+  if (!url) return null;
+  return <iframe className="explorer-recording-player" src={url} title={`Recording: ${recordTitle(record)}`}
+    loading="lazy" allow="encrypted-media; picture-in-picture; fullscreen" allowFullScreen
+    referrerPolicy="strict-origin-when-cross-origin" />;
+}
 function RawRecord({ record }: { record: DetailRecord }) {
   const [open, setOpen] = useState(false);
   return <details onToggle={event => setOpen(event.currentTarget.open)}><summary>View record data</summary>
@@ -61,8 +68,11 @@ function RawRecord({ record }: { record: DetailRecord }) {
 export function RecordDetail({ record, onSelect, sourceEvidence }: { record: DetailRecord; onSelect: (ref: ExplorerRecordRef) => void; sourceEvidence?: ReactNode }) {
   const row = fields(record);
   const facts = [
-    ['Date', row.date], ['Congress', row.congress], ['Chamber', row.chamber],
+    ['Date', row.date], ['Congress', row.congress], ['Chamber', row.chamber], ['Access', row.access],
+    ['Committee type', row.source_committee_type || (row.committee_type !== 'unknown' ? enumLabel(row.committee_type) : null)],
+    ['Committee level', row.committee_level === 'full' ? 'Full committee' : row.committee_level === 'subcommittee' ? 'Subcommittee' : null],
     [documentType(record) ? 'Document type' : 'Type', documentType(record) || row.type || row.meeting_type], ['Status', row.status], ['Category', documentType(record) ? null : row.category],
+    ['Source collection', Array.isArray(row.source_document_groups) && row.source_document_groups.length ? `${documentSourceLabel(row)} (${row.source_document_groups.join(', ')})` : null],
     ['Position', row.position], ['Organization', row.organization], ['Participation', row.participation],
     ['Provider', row.provider], ['Retrieved', row.retrieved_at],
     ...(Array.isArray(row.facts) ? row.facts.map(fact => [fields(fact).label, fields(fact).value]) : []),
@@ -76,6 +86,7 @@ export function RecordDetail({ record, onSelect, sourceEvidence }: { record: Det
   return <>
     <p className="explorer-record-kind">{LABELS[record.kind] || words(record.kind)}</p>
     <h2 id="explorer-detail-title">{recordTitle(record)}</h2>
+    <RecordingPlayer record={record} />
     <FileLinks record={record} />
     {sourceUrl ? <p><a href={sourceUrl} target="_blank" rel="noreferrer">Open original source ↗</a></p> : null}
     {facts.length ? <dl className="explorer-facts">{facts.map(([label, value], i) => <div key={i}><dt>{String(label)}</dt><dd>{['Type', 'Status', 'Category', 'Chamber', 'Participation', 'medium', 'coverage', 'production', 'Access'].includes(String(label)) ? enumLabel(value) : String(value)}</dd></div>)}</dl> : null}

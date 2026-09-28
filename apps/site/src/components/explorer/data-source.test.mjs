@@ -109,7 +109,7 @@ test('HTTP failure is preserved instead of becoming an empty result', async () =
   await assert.rejects(source.load(), /HTTP 503/);
 });
 
-function partitioned({ wrongRecord = false, wrongBucketCount = false } = {}) {
+function partitioned({ wrongRecord = false, wrongBucketCount = false, relatedMaterials = [] } = {}) {
   const result = publication();
   const manifestUrl = 'https://example.test/explorer/releases/a/manifest.json';
   const manifest = JSON.parse(new TextDecoder().decode(result.resources.get(manifestUrl)));
@@ -124,10 +124,10 @@ function partitioned({ wrongRecord = false, wrongBucketCount = false } = {}) {
   }
   artifact('indexes/meetings.data', 'index', 'committee_explorer.meetings', { schema_version: fixture.schema_version, rows: [{ id: meeting.id }] }, 1);
   artifact('coverage.data', 'coverage', 'committee_explorer.coverage', { metrics: [] }, 0);
-  artifact(paths.meeting, 'details', 'committee_explorer.records', { schema_version: fixture.schema_version, records: [wrongRecord ? { ...meeting, id: 'different' } : meeting] }, 1);
+  artifact(paths.meeting, 'details', 'committee_explorer.records', { schema_version: fixture.schema_version, records: [wrongRecord ? { ...meeting, id: 'different' } : meeting, ...relatedMaterials] }, 1 + relatedMaterials.length);
   artifact(paths.source, 'sources', 'committee_explorer.sources', { schema_version: fixture.schema_version, sources: [source] }, 1);
   const buckets = {}, locations = {};
-  for (const [record, path] of [[meeting, paths.meeting], [source, paths.source]]) {
+  for (const [record, path] of [[meeting, paths.meeting], ...relatedMaterials.map(record => [record, paths.meeting]), [source, paths.source]]) {
     const key = `${record.kind}/${record.id}`, bucket = hash(new TextEncoder().encode(key)).slice(0, 2);
     buckets[bucket] = `indexes/locations/${bucket}.data`;
     (locations[bucket] ||= {})[key] = path;
@@ -149,7 +149,7 @@ function partitioned({ wrongRecord = false, wrongBucketCount = false } = {}) {
   artifact('queries/root.data', 'index', 'committee_explorer.queries', { schema_version: fixture.schema_version, default_congress: 119, congresses: [119, 118], kinds: [{kind: 'meeting', count: 3}], committee_labels: {'joint-a': 'Committee A', 'joint-b': 'Committee B'}, partitions: queryParts }, queryParts.length);
   const relationKey = `meeting/${meeting.id}`, relationBucket = hash(new TextEncoder().encode(relationKey)).slice(0, 2);
   const relationPath = 'relations/selected.data';
-  artifact(relationPath, 'index', 'committee_explorer.relation-bucket', { schema_version: fixture.schema_version, relations: {[relationKey]: [{kind: source.kind, id: source.id, relation: 'evidence'}]} }, 1);
+  artifact(relationPath, 'index', 'committee_explorer.relation-bucket', { schema_version: fixture.schema_version, relations: {[relationKey]: [{kind: source.kind, id: source.id, relation: 'evidence'}, ...relatedMaterials.map(({kind,id}) => ({kind,id}))]} }, 1);
   artifact('relations/root.data', 'index', 'committee_explorer.relations', {schema_version: fixture.schema_version, key_format: '<kind>/<id>', bucket_algorithm: 'sha256-prefix-2', buckets: {[relationBucket]: relationPath}}, 1);
   const manifestBytes = encode(manifest);
   result.resources.set(manifestUrl, manifestBytes);
@@ -213,6 +213,19 @@ test('query reader scopes by Congress, filters before paging, and fetches relate
   assert.deepEqual((await reader.getRelated(files.meeting)).records, [files.source]);
   assert.equal((await reader.getRelated(files.meeting, {offset: 1})).total, 1);
   assert.equal((await reader.getRelated(files.meeting, {offset: 1})).records.length, 0);
+});
+
+test('legacy related-material queries count every category before filtering and paging', async () => {
+  const relatedMaterials = Array.from({length:36}, (_, index) => ({kind:'material', id:`material-${index}`, title:`Attachment ${index}`,
+    details:index === 35 ? {type:'recording'} : {type:'document', category:index < 30 ? 'statement' : 'supporting'}}));
+  const files = partitioned({relatedMaterials});
+  const reader = await openPublicationReader({pointerUrl, fetcher:files.fetcher});
+  const page = await reader.getRelated(files.meeting, {kind:'material', materialType:'document', category:'Statement', offset:25, limit:25});
+  assert.equal(page.total, 30);
+  assert.equal(page.records.length, 5);
+  assert.ok(page.records.every(record => record.details.category === 'statement'));
+  assert.deepEqual(page.categories, [{label:'Statement',count:30},{label:'Supporting',count:5}]);
+  assert.equal((await reader.getRelated(files.meeting, {kind:'material', materialType:'recording'})).total, 1);
 });
 
 test('filtered coverage uses published states and reconciles shared committee denominators', async () => {

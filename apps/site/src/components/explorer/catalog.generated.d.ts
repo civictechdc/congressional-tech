@@ -54,7 +54,16 @@ export type Congress = number;
 export type Name1 = string | null;
 export type Chamber = 'house' | 'senate' | 'joint' | 'unknown';
 export type CommitteeType =
-  'standing' | 'select' | 'special' | 'joint' | 'subcommittee' | 'other' | 'unknown';
+  | 'standing'
+  | 'select'
+  | 'special'
+  | 'joint'
+  | 'subcommittee'
+  | 'commission_or_caucus'
+  | 'task_force'
+  | 'other'
+  | 'unknown';
+export type SourceCommitteeType = string | null;
 export type Kind5 = 'committee_term';
 export type Id5 = string;
 export type Start = string | null;
@@ -100,7 +109,14 @@ export type Congress1 = number | null;
 export type CongressSession = (1 | 2 | 3) | null;
 export type Chamber1 = 'house' | 'senate' | 'joint' | 'unknown';
 export type MeetingType =
-  'hearing' | 'markup' | 'business' | 'briefing' | 'field_hearing' | 'other' | 'unknown';
+  | 'meeting'
+  | 'hearing'
+  | 'markup'
+  | 'business'
+  | 'briefing'
+  | 'field_hearing'
+  | 'other'
+  | 'unknown';
 export type Role1 = 'host' | 'cohost' | 'participating' | 'unknown';
 export type Committees = ConveningCommittee[];
 export type Id13 = string;
@@ -562,6 +578,7 @@ export interface CommitteeTerm {
   name?: Name1;
   chamber: Chamber;
   committee_type?: CommitteeType;
+  source_committee_type?: SourceCommitteeType;
   parent?: RefLiteralCommitteeTerm | null;
   active?: DateRange | null;
   jurisdiction?: Jurisdiction;
