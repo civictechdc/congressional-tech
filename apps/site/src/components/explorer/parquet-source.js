@@ -120,13 +120,17 @@ export function createParquetReader(publication, fetcher) {
         if (ref.kind === 'meeting' && (!options.kind || options.kind === 'appearance')) {
           related.push(...(await queryRows({ kind: 'appearance', congress }, signal)).filter(r => r.meeting_id === ref.id));
         }
-      } else if (ref.kind === 'committee_term') {
+      } else if (ref.kind === 'committee_term' && (!options.kind || options.kind === 'meeting')) {
         related = (await queryRows({ kind: 'meeting', congress }, signal)).filter(r => r.committee_ids?.includes(ref.id));
-      } else if (ref.kind === 'material') {
+      } else if (ref.kind === 'material' && (!options.kind || options.kind === 'meeting')) {
         related = (await getRecords((record.meeting_ids || []).map(id => ({ kind: 'meeting', id })), { signal })).filter(Boolean);
       }
       if (options.kind) related = related.filter(r => r.kind === options.kind);
-      related.sort((a, b) => a.kind.localeCompare(b.kind) || a.title.localeCompare(b.title));
+      if (!options.kind || options.kind === 'data_issue') {
+        related.push(...await read('data_issue', { columns: ['id', 'kind', 'title', 'date'],
+          filter: { subject_kind: { $eq: ref.kind }, subject_id: { $eq: ref.id } }, signal }));
+      }
+      related.sort((a, b) => a.kind.localeCompare(b.kind) || (a.kind === 'meeting' ? (b.date || '').localeCompare(a.date || '') : 0) || a.title.localeCompare(b.title) || a.id.localeCompare(b.id));
       const records = (await getRecords(related.slice(offset, offset + limit), { signal })).filter(Boolean);
       return { records, total: related.length, offset, limit };
     },

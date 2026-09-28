@@ -17,6 +17,8 @@ import pyarrow.parquet as pq
 TABLES = {'meeting': 'meetings', 'committee_term': 'committees', 'material': 'materials',
           'appearance': 'witnesses', 'data_issue': 'issues', 'source_record': 'sources'}
 ASPECTS = ('recording', 'transcript', 'documents', 'witnesses', 'captions')
+# Former collector defaults, never values supplied by the source.
+PLACEHOLDER_LABELS = {'Reported edition; revision not established', 'Reported recording; revision not established'}
 STRINGS = ('id', 'kind', 'title', 'chamber', 'date', 'type', 'status', 'meeting_id',
            'provider', 'category', 'selection', 'search_text', 'position', 'organization',
            'participation', 'explanation', 'severity', 'subject_kind', 'subject_id', 'scheduled_at', 'meeting_status', 'recording_url')
@@ -29,7 +31,7 @@ SCHEMA = pa.schema([(k, pa.string()) for k in STRINGS] + [('congress', pa.int32(
                       ('files', pa.list_(LINK)), ('facts', pa.list_(NOTE))])
 SOURCE_SCHEMA = pa.schema([(k, pa.string()) for k in
     ('id', 'kind', 'provider', 'url', 'retrieved_at', 'source_modified_at', 'imported_at', 'input_snapshot_id', 'identifier', 'retained_uri', 'retained_sha256', 'payload')])
-QUERY_COLUMNS = [*STRINGS[:12], 'congress', 'issue_count', 'committee_ids', 'roles', 'evidence_states', 'scheduled_at', 'meeting_status', 'recording_url']
+QUERY_COLUMNS = [*STRINGS[:12], 'congress', 'issue_count', 'committee_ids', 'roles', 'evidence_states', 'scheduled_at', 'meeting_status', 'recording_url', 'position', 'organization']
 
 
 def sources_of(record):
@@ -62,9 +64,25 @@ def write_tables(records, sources, query_rows, stage, descriptor):
         rows[row['kind']][row['id']] = {**row, 'files': [], 'facts': [], 'meeting_ids': [],
                                       'appearance_ids': [], 'source_ids': []}
     versions, formats, links, occurrences, subjects = {}, defaultdict(list), [], defaultdict(list), {}
-    context_records, meeting_subjects = {}, []
+    context_records, meeting_subjects, conflict_facts, owners = {}, [], {}, {}
     for record in records:
         kind, id = record['kind'], record['id']
+        # Keep the actual disagreement when the internal subject is folded away.
+        for field in record.get('field_evidence', []):
+            if not field.get('alternatives'): continue
+            value = record
+            for key in field['path'].lstrip('/').split('/'):
+                key = key.replace('~1', '/').replace('~0', '~')
+                value = value[int(key)] if isinstance(value, list) else value.get(key) if isinstance(value, dict) else None
+            def display(value):
+                return value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
+            facts = [{'label': 'Selected value', 'value': display(value)}]
+            facts += [{'label': f'Alternative {i + 1}', 'value': display(alt['value'])} for i, alt in enumerate(field['alternatives'])]
+            if field.get('selection_reason'): facts.append({'label': 'Selection reason', 'value': field['selection_reason']})
+            conflict_facts[(kind, id, field['path'])] = facts
+        if kind not in rows:
+            owner = record.get('material') or record.get('version') or record.get('meeting') or (record.get('subject') if kind == 'assessment' else None)
+            if owner: owners[(kind, id)] = (owner['kind'], owner['id'])
         # Every meeting-owned subject uses its explicit meeting reference.
         if record.get('meeting'):
             subjects[id] = record['meeting']['id']
@@ -101,6 +119,7 @@ def write_tables(records, sources, query_rows, stage, descriptor):
                 affiliation = record.get('affiliation') or {}
                 row.update(position=affiliation.get('position'), organization=affiliation.get('organization_name'),
                            participation=record.get('participation'))
+                row['search_text'] = ' '.join(str(v) for v in (row['title'], row['position'], row['organization']) if v)
                 for key in ('on_behalf_of', 'location'):
                     if affiliation.get(key): row['facts'].append({'label': key.replace('_', ' '), 'value': affiliation[key]})
             elif kind == 'data_issue':
@@ -131,7 +150,7 @@ def write_tables(records, sources, query_rows, stage, descriptor):
         if row.get('type') == 'recording' and not row.get('date') and published:
             row['date'] = published['date']
         # The routine placeholder is an implementation detail, not an edition label.
-        if label in ('Reported edition; revision not established', 'Reported edition; revision not established.'): label = None
+        if label and label.rstrip('.') in PLACEHOLDER_LABELS: label = None
         for record in entries:
             row['source_ids'].extend(version_sources | sources_of(record))
             for location in record.get('locations', []):
@@ -211,6 +230,27 @@ def write_tables(records, sources, query_rows, stage, descriptor):
                         1 if url.hostname in ('www.youtube.com', 'youtube.com', 'youtu.be') else 2, file['url'])
             candidates = sorted((f for f in row['files'] if not event_page(f['url'])), key=preference)
             row['recording_url'] = candidates[0]['url'] if candidates else None
+    for entries in rows.values():
+        for row in entries.values(): row['issue_count'] = 0
+    for issue in rows['data_issue'].values():
+        field = next((f['value'] for f in issue['facts'] if f['label'] == 'field path'), None)
+        subject = (issue['subject_kind'], issue['subject_id'])
+        disagreement = conflict_facts.get((*subject, field), [])
+        issue['facts'].extend(disagreement)
+        compared = [f['value'].rstrip('.') for f in disagreement if f['label'] == 'Selected value' or f['label'].startswith('Alternative ')]
+        if issue.get('status') == 'open' and subject[0] == 'material_version' and field == '/label' and compared and set(compared) <= PLACEHOLDER_LABELS:
+            issue['status'] = 'dismissed'
+            issue['title'] = 'Collector placeholder labels differed'
+            issue['explanation'] = 'Collectors assigned different internal edition labels. This is not evidence of a disagreement in source content.'
+            issue['facts'].append({'label': 'Display correction', 'value': 'Automatically dismissed by the Parquet exporter; original values retained below.'})
+        visited = set()
+        while subject in owners and subject not in visited:
+            visited.add(subject)
+            subject = owners[subject]
+        owner = rows.get(subject[0], {}).get(subject[1])
+        if owner is not None:
+            issue['subject_kind'], issue['subject_id'] = subject
+            if issue.get('status') == 'open': owner['issue_count'] += 1
     for kind, entries in rows.items():
         values = sorted(entries.values(), key=lambda r: (r.get('congress') or 0, r['id']))
         for row in values:

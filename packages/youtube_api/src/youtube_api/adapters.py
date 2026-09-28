@@ -95,7 +95,6 @@ def records(
         version_ref = Ref(kind="material_version", id=context.ids("material_version", key + "|reported-edition"))
         yield MaterialVersion(
             id=version_ref.id, material=material_ref,
-            label="Reported recording; revision not established",
             duration_seconds=None if invalid_duration else duration,
             provenance=evidence,
         )

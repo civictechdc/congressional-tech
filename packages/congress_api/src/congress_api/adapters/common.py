@@ -67,7 +67,7 @@ def material_records(context, evidence, key, *, title=None, urls=(), details=Non
     material = Material(id=context.ids("material", key), title=title or None,
                         details=details or DocumentDetails(category="unknown"), identifiers=identifiers, provenance=evidence)
     version = MaterialVersion(id=context.ids("material_version", key + "|reported-edition"), material=ref(material),
-                              label="Reported edition; revision not established", provenance=evidence)
+                              provenance=evidence)
     out = [material, version]
     for url in dict.fromkeys(urls):
         if not web_url(url):

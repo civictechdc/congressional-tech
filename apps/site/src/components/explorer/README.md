@@ -35,7 +35,15 @@ and a valid `Content-Range`; a host that ignores ranges produces an explicit
 error instead of silently downloading the full catalog.
 
 Details show useful facts and direct file links. Empty optional values are
-omitted. Source evidence is available on demand. Known issues and coverage
+omitted. Source evidence expands inline on demand, including the raw payload and a
+public-source link. Known issues include their selected and alternative values where recorded.
+Issues on internal versions or checks lead to their visible document or meeting.
+Legacy differences between collector placeholder edition labels are explicitly
+dismissed in the browser tables; their original values remain inspectable.
+Witness search includes recorded positions and organizations. Coverage choices
+and compatible filters persist in shareable URLs and browser history.
+
+Known issues and coverage
 remain separate from empty fields: an unchecked source does not mean a missing
 document. The UI does not expose internal editions, representations or association
 objects as navigation steps.

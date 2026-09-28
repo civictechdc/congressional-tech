@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
+import { sourcePageUrl } from './record-presentation.js';
 import type { ExplorerRecord, ExplorerRecordRef, ExplorerSourceRecord } from './data-source';
 
 export type DetailRecord = ExplorerRecord | ExplorerSourceRecord;
@@ -9,6 +10,10 @@ export function fields(value: unknown): Fields {
 export function words(value: unknown): string {
   if (value === 'business') return 'Business meeting';
   return typeof value === 'string' ? value.replaceAll('_', ' ') : '';
+}
+export function enumLabel(value: unknown): string {
+  const text = words(value);
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 export function recordTitle(value: unknown): string {
   const row = fields(value);
@@ -49,7 +54,7 @@ function RawRecord({ record }: { record: DetailRecord }) {
 }
 
 /** A short fact sheet; source evidence is an optional disclosure. */
-export function RecordDetail({ record, onSelect }: { record: DetailRecord; onSelect: (ref: ExplorerRecordRef) => void }) {
+export function RecordDetail({ record, onSelect, sourceEvidence }: { record: DetailRecord; onSelect: (ref: ExplorerRecordRef) => void; sourceEvidence?: ReactNode }) {
   const row = fields(record);
   const facts = [
     ['Date', row.date], ['Congress', row.congress], ['Chamber', row.chamber],
@@ -58,23 +63,24 @@ export function RecordDetail({ record, onSelect }: { record: DetailRecord; onSel
     ['Provider', row.provider], ['Retrieved', row.retrieved_at],
     ...(Array.isArray(row.facts) ? row.facts.map(fact => [fields(fact).label, fields(fact).value]) : []),
   ].filter(([, value]) => value !== null && value !== undefined && value !== '' && value !== 'unknown');
-  const sourceIds = Array.isArray(row.source_ids) ? row.source_ids : [];
   const files = Array.isArray(row.files) ? row.files : [];
-  const sourceUrl = publicUrl(row.url);
+  const sourceUrl = publicUrl(sourcePageUrl(row.url));
+  const affected = record.kind !== 'data_issue' ? null
+    : ['meeting', 'material', 'appearance', 'committee_term', 'source_record'].includes(String(row.subject_kind))
+      ? {kind: String(row.subject_kind), id: String(row.subject_id)}
+      : row.meeting_id ? {kind: 'meeting', id: String(row.meeting_id)} : null;
   return <>
     <p className="explorer-record-kind">{LABELS[record.kind] || words(record.kind)}</p>
     <h2 id="explorer-detail-title">{recordTitle(record)}</h2>
     <FileLinks record={record} />
     {sourceUrl ? <p><a href={sourceUrl} target="_blank" rel="noreferrer">Open original source ↗</a></p> : null}
-    {facts.length ? <dl className="explorer-facts">{facts.map(([label, value], i) => <div key={i}><dt>{String(label)}</dt><dd>{typeof value === 'string' ? words(value) : String(value)}</dd></div>)}</dl> : null}
+    {facts.length ? <dl className="explorer-facts">{facts.map(([label, value], i) => <div key={i}><dt>{String(label)}</dt><dd>{['Type', 'Status', 'Category', 'Chamber', 'Participation', 'medium', 'coverage', 'production', 'Access'].includes(String(label)) ? enumLabel(value) : String(value)}</dd></div>)}</dl> : null}
     {record.kind === 'meeting' ? Object.entries(fields(row.evidence_states)).filter(([, state]) => ['inferred', 'error', 'blocked', 'not_found_in_checked_scope'].includes(String(state))).map(([aspect, state]) => <p className="explorer-note" key={aspect}>{words(aspect)}: {state === 'inferred' ? 'inferred match; needs verification' : state === 'not_found_in_checked_scope' ? 'not found in the sources checked' : state === 'error' ? 'source check failed' : 'source check blocked'}.</p>) : null}
     {row.explanation ? <p className="explorer-note">{String(row.explanation)}</p> : null}
     {record.kind === 'material' && !files.length ? <p className="explorer-note">{row.type === 'recording' ? 'No recording is available to display for this meeting yet.' : 'No file link in the collected sources.'}</p> : null}
-    {row.meeting_id && record.kind !== 'meeting' ? <p><button className="explorer-text-button" onClick={() => onSelect({ kind: 'meeting', id: String(row.meeting_id) })}>View meeting →</button></p> : null}
-    {record.kind === 'data_issue' && ['meeting', 'material', 'appearance', 'committee_term'].includes(String(row.subject_kind)) ? <p><button className="explorer-text-button" onClick={() => onSelect({ kind: String(row.subject_kind), id: String(row.subject_id) })}>View affected record →</button></p> : null}
-    {sourceIds.length ? <details className="explorer-detail-section"><summary>Source evidence ({sourceIds.length})</summary>
-      <ul className="explorer-values">{sourceIds.map((id, i) => <li key={String(id)}><button className="explorer-text-button" onClick={() => onSelect({ kind: 'source_record', id: String(id) })}>View source {i + 1} →</button></li>)}</ul>
-    </details> : null}
+    {row.meeting_id && !['meeting', 'material', 'data_issue'].includes(record.kind) ? <p><button className="explorer-text-button" onClick={() => onSelect({ kind: 'meeting', id: String(row.meeting_id) })}>View meeting →</button></p> : null}
+    {affected ? <p><button className="explorer-text-button" onClick={() => onSelect(affected)}>View affected record →</button></p> : null}
+    {sourceEvidence}
     <RawRecord key={`${record.kind}/${record.id}`} record={record} />
   </>;
 }

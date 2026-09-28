@@ -106,7 +106,7 @@ def records(
                     )
                     yield MaterialVersion(
                         id=version.id, material=material,
-                        label="Reported recording; revision not established", provenance=evidence,
+                        provenance=evidence,
                     )
                     yield Representation(
                         id=context.ids("representation", recording_key + "|player"), version=version,

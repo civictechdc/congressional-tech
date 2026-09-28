@@ -150,3 +150,52 @@ def test_meeting_types_survive_adapter_and_retained_publication_conversion(tmp_p
     exported = pq.read_table(root/'meetings.parquet').to_pylist()[0]
     assert exported['type'] == expected
     assert {'label': 'Source type', 'value': raw_type} in exported['facts']
+
+
+def test_conflicts_follow_folded_subjects_and_keep_competing_values(tmp_path):
+    from committee_explorer.parquet import write_tables
+    records = [
+        dict(kind='meeting', id='meeting'),
+        dict(kind='material', id='document'),
+        dict(kind='material_version', id='version', material=dict(kind='material', id='document'), label='Revised statement',
+             field_evidence=[dict(path='/label', alternatives=[dict(value='Original statement', provenance={})],
+                                  selection_reason='Later source observation')]),
+        dict(kind='data_issue', id='issue', subject=dict(kind='material_version', id='version'), field_path='/label'),
+        dict(kind='assessment', id='check', subject=dict(kind='material', id='document')),
+        dict(kind='data_issue', id='check-issue', subject=dict(kind='assessment', id='check')),
+        dict(kind='appearance', id='witness', meeting=dict(kind='meeting', id='meeting'),
+             affiliation=dict(position='Director', organization_name='Example Institute')),
+    ]
+    queries = [dict(kind='meeting', id='meeting', title='Hearing'),
+               dict(kind='material', id='document', type='document', title='Statement'),
+               dict(kind='data_issue', id='issue', title='Sources disagree about label', status='open'),
+               dict(kind='data_issue', id='check-issue', title='Source check failed', status='open'),
+               dict(kind='appearance', id='witness', title='Jane Smith')]
+    write_tables(records, [], queries, tmp_path, lambda *args, **kwargs: None)
+    issues = pq.read_table(tmp_path/'issues.parquet').to_pylist()
+    assert all(i['subject_id'] == 'document' for i in issues)
+    issue = next(i for i in issues if i['id'] == 'issue')
+    assert (issue['subject_kind'], issue['subject_id']) == ('material', 'document')
+    assert {'label':'Selected value', 'value':'Revised statement'} in issue['facts']
+    assert {'label':'Alternative 1', 'value':'Original statement'} in issue['facts']
+    assert pq.read_table(tmp_path/'materials.parquet').to_pylist()[0]['issue_count'] == 2
+    witness = pq.read_table(tmp_path/'witnesses.parquet').to_pylist()[0]
+    assert witness['search_text'] == 'Jane Smith Director Example Institute'
+
+
+@pytest.mark.parametrize('status,expected', [('open', 'dismissed'), ('resolved', 'resolved')])
+def test_collector_placeholders_are_not_open_source_conflicts(tmp_path, status, expected):
+    from committee_explorer.parquet import write_tables
+    records = [dict(kind='material',id='recording'),
+               dict(kind='material_version',id='version',material=dict(kind='material',id='recording'),
+                    label='Reported recording; revision not established', field_evidence=[dict(path='/label',
+                    alternatives=[dict(value='Reported edition; revision not established',provenance={})])]),
+               dict(kind='data_issue',id='issue',subject=dict(kind='material_version',id='version'),field_path='/label')]
+    queries=[dict(kind='material',id='recording',type='recording',title='Video'),
+             dict(kind='data_issue',id='issue',title='Sources disagree about label',status=status)]
+    write_tables(records,[],queries,tmp_path,lambda *args,**kwargs:None)
+    issue=pq.read_table(tmp_path/'issues.parquet').to_pylist()[0]
+    assert issue['status']==expected
+    if status == 'open': assert issue['title']=='Collector placeholder labels differed'
+    assert any(f['label']=='Alternative 1' for f in issue['facts'])
+    assert pq.read_table(tmp_path/'materials.parquet').to_pylist()[0]['issue_count']==0

@@ -75,6 +75,8 @@ export type QueryKind = 'meeting' | 'committee_term' | 'material' | 'appearance'
 export type EvidenceState = 'observed' | 'reported' | 'curated' | 'derived' | 'inferred' | 'error' | 'blocked' | 'not_found_in_checked_scope' | 'not_applicable' | 'unknown' | 'unchecked';
 export type CoverageAspect = 'recording' | 'transcript' | 'documents' | 'witnesses' | 'captions';
 export interface QueryRow extends ExplorerRecordRef {
+  position?: string | null;
+  organization?: string | null;
   kind: QueryKind;
   title: string;
   congress: number | null;

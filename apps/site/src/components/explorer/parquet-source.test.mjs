@@ -24,11 +24,13 @@ row['meetingDocuments'].append({'name':'Printed record','documentType':'Transcri
 row['videos'] = [{'url':'https://www.congress.gov/event/115th-congress/house-event/106245'},
                  {'url':'https://www.senate.gov/isvp/?comm=banking&filename=banking071217'}]
 shared = {**row, 'eventId':'106246', 'congress':116, 'date':'2019-07-12', 'title':'Shared recording', 'witnesses':[]}
+earlier = {**shared, 'eventId':'106247', 'date':'2019-01-01', 'title':'A January meeting', 'videos':[],
+           'committees':[{'systemCode':'hsru00', 'name':'Renamed Rules'}]}
 future = {**row, 'eventId':'338793', 'congress':119, 'date':'2099-10-01T14:00:00Z', 'title':'Upcoming meeting', 'witnesses':[],
           'videos':[{'url':'https://www.senate.gov/isvp/?comm=banking&filename=banking100199'}]}
 canceled = {**row, 'eventId':'338792', 'congress':119, 'meetingStatus':'Canceled', 'title':'Canceled meeting', 'witnesses':[],
             'videos':[{'url':'https://www.senate.gov/isvp/?comm=banking&filename=banking071217c'}]}
-export(meetings=write_meetings(root,[row,shared,future,canceled]), output_dir=root/'public', state_dir=root/'state', as_of=NOW, format='parquet')
+export(meetings=write_meetings(root,[row,shared,earlier,future,canceled]), output_dir=root/'public', state_dir=root/'state', as_of=NOW, format='parquet')
 `, root], { cwd: repo });
 test.after(() => rmSync(root, { recursive: true }));
 
@@ -108,6 +110,26 @@ test('documents and witnesses page independently so neither hides the other', as
   const documents = await reader.getRelated(meeting, {kind:'material',limit:25});
   assert.ok(documents.records.some(r => r.files.some(f => f.url === 'https://example.org/record.pdf')));
   assert.ok(documents.records.every(r => r.kind === 'material'));
+});
+
+test('committee meetings are chronological, witnesses searchable by organization, and issues have usable subjects', async () => {
+  const {fetcher, calls} = transport();
+  const reader = await openPublicationReader({pointerUrl:'https://example.org/CURRENT.json', fetcher});
+  const witnesses = await reader.search({kind:'appearance', congress:115, q:'First office'});
+  assert.equal(witnesses.total, 1);
+  assert.equal(witnesses.rows[0].title, 'Alex Smith');
+  assert.equal(witnesses.rows[0].organization, 'First office');
+  const committees = await reader.search({kind:'committee_term', congress:116});
+  const committee = committees.rows.find(r => r.issue_count > 0);
+  assert.ok(committee);
+  const before = calls.length;
+  const issues = await reader.getRelated(committee, {kind:'data_issue'});
+  assert.ok(issues.records.some(r => r.facts.some(f => f.label === 'Alternative 1')));
+  assert.ok(!calls.slice(before).some(c => c.path.includes('meetings.parquet')));
+  const meetings = await reader.getRelated(committee, {kind:'meeting'});
+  assert.deepEqual(meetings.records.map(r => r.date), ['2019-07-12','2019-01-01']);
+  const affected = await reader.getRecord({kind:issues.records[0].subject_kind, id:issues.records[0].subject_id});
+  assert.equal(affected.id, committee.id);
 });
 
 test('reject unsupported range serving, malformed responses and canceled reads', async () => {
