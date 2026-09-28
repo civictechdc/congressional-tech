@@ -87,6 +87,8 @@ export interface QueryRow extends ExplorerRecordRef {
   meeting_status?: string | null;
   recording_url?: string | null;
   type?: string | null;
+  /** Exact source documentType; category is our separate classification. */
+  document_type?: string | null;
   status?: string | null;
   committee_ids?: readonly string[];
   meeting_id?: string | null;

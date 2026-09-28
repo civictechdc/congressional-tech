@@ -1,6 +1,6 @@
 export function matches(row, query) {
     const words = String(query.q || '').trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
-    const text = `${row.title} ${row.search_text || ''}`.toLocaleLowerCase();
+    const text = `${row.title} ${row.search_text || ''} ${row.document_type || ''}`.toLocaleLowerCase();
     return (!query.chamber || query.chamber === 'all' || row.chamber === query.chamber)
       && (!query.dateFrom || (row.date && row.date >= query.dateFrom))
       && (!query.dateTo || (row.date && row.date <= query.dateTo))

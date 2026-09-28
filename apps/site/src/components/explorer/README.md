@@ -61,7 +61,9 @@ the date alone does not establish that a meeting was held. Congress.gov event
 pages are retained as source evidence, not counted as separate recordings.
 Each recording uses one preferred player URL.
 
-The native document label supplies a title when no name or description exists
+The exact source `documentType` is preserved as `document_type`, displayed and
+searchable. Our normalized `category` remains separate; it never replaces that
+source value. The native document label supplies a title when no name or description exists
 (for example, `Witness Statement`). Truth-in-testimony forms are disclosures.
 Business meetings have a distinct type and filter. When a generic `Meeting`
 record explicitly says business meeting in its title, the classification records

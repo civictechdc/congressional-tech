@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type DependencyList } from 'react';
 import { openPublicationReader, type CoverageSummary, type ExplorerQuery, type ExplorerReader, type ExplorerRecordRef, type QueryInfo, type QueryResult } from './data-source';
-import { RecordDetail, enumLabel, fields, FileLinks, publicUrl, recordFiles, recordTitle, words, type DetailRecord } from './RecordDetail';
+import { RecordDetail, documentType, enumLabel, fields, FileLinks, publicUrl, recordFiles, recordTitle, words, type DetailRecord } from './RecordDetail';
 import Coverage from './Coverage';
 import { downloadJson } from './download';
 import { readNavigation, viewNavigation, drillNavigation } from './navigation.js';
@@ -184,7 +184,7 @@ function Listing({ reader, query, view, info, onSelect, onPage }: { reader: Expl
             <span className="explorer-row-meta">{[enumLabel(row.chamber), ...(view === 'committees' ? [] : row.committee_ids || []).map(id => info.committee_labels?.[id]).filter(Boolean), row.provider].filter(Boolean).join(' · ')}</span>
           </td>
           <td>{view !== 'committees' ? row.date || <span className="explorer-unknown">Date unrecorded</span> : null}<span className={view === 'committees' ? undefined : 'explorer-row-meta'}>{view === 'committees' || view === 'witnesses' ? row.congress ? `${row.congress}th Congress` : 'Congress unrecorded' : enumLabel(row.status)}</span></td>
-          {view !== 'committees' ? <td>{view === 'witnesses' ? <>{row.position || row.roles?.map(enumLabel).join(', ') || 'Position unrecorded'}{row.organization ? <span className="explorer-row-meta">{row.organization}</span> : null}</> : <>{row.congress ? `${row.congress}th Congress` : 'Congress unrecorded'}<span className="explorer-row-meta">{[row.type, row.category].filter((value, index, list) => value && value !== 'unknown' && list.indexOf(value) === index).map(enumLabel).join(' · ')}</span>{row.selection === 'retained_history' ? <span className="explorer-row-meta">Retained issue history · not present in latest inputs</span> : null}</>}</td> : null}
+          {view !== 'committees' ? <td>{view === 'witnesses' ? <>{row.position || row.roles?.map(enumLabel).join(', ') || 'Position unrecorded'}{row.organization ? <span className="explorer-row-meta">{row.organization}</span> : null}</> : <>{row.congress ? `${row.congress}th Congress` : 'Congress unrecorded'}<span className="explorer-row-meta">{documentType(row) || [row.type, row.category].filter((value, index, list) => value && value !== 'unknown' && list.indexOf(value) === index).map(enumLabel).join(' · ')}</span>{row.selection === 'retained_history' ? <span className="explorer-row-meta">Retained issue history · not present in latest inputs</span> : null}</>}</td> : null}
           {view !== 'committees' && view !== 'gaps' ? <td className="explorer-number">{row.issue_count === undefined ? '—' : integer(row.issue_count)}</td> : null}
         </tr>)}
       </tbody></table></div><Pagination total={state.value.total} offset={state.value.offset} count={state.value.rows.length} onPage={onPage} />
@@ -246,6 +246,7 @@ function RelatedSection({ reader, selected, onSelect, kind }: { reader: Explorer
           {kind === 'material' ? <>
             {files.length ? <a href={publicUrl(files[0].url)} target="_blank" rel="noreferrer">{title} ↗</a> : <span>{title}</span>}
             {files.length > 1 ? <FileLinks record={record} /> : null}
+            {documentType(record) ? <span className="explorer-row-meta">{documentType(record)}</span> : null}
             {Array.isArray(row.facts) ? <span className="explorer-row-meta">{row.facts.map(fields).filter(f => !['medium', 'coverage', 'production'].includes(String(f.label))).map(f => `${f.label}: ${f.value}`).join(' · ')}</span> : null}
             <button className="explorer-text-button explorer-row-meta" onClick={() => onSelect(record)}>Details & source</button>
           </> : <>

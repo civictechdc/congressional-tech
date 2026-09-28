@@ -63,6 +63,9 @@ test('real Parquet supports search, direct files, witnesses, coverage and on-dem
   assert.equal(meetings.total, 1);
   assert.equal(meetings.rows[0].title, 'Rules consideration');
   assert.equal((await reader.search({ congress: 114 })).total, 0);
+  const documents = await reader.search({kind:'material', congress:115, q:'Printed record'});
+  assert.equal(documents.rows[0].document_type, 'Transcript');
+  assert.equal((await reader.search({kind:'material', congress:115, q:'Transcript'})).rows[0].title, 'Printed record');
   assert.equal((await reader.search({ congress: 'all', q: 'Alex Smith' })).total, 1);
   const meeting = await reader.getRecord(meetings.rows[0]);
   const related = await reader.getRelated(meeting, {limit:100});

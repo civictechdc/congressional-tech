@@ -21,7 +21,7 @@ ASPECTS = ('recording', 'transcript', 'documents', 'witnesses', 'captions')
 PLACEHOLDER_LABELS = {'Reported edition; revision not established', 'Reported recording; revision not established'}
 STRINGS = ('id', 'kind', 'title', 'chamber', 'date', 'type', 'status', 'meeting_id',
            'provider', 'category', 'selection', 'search_text', 'position', 'organization',
-           'participation', 'explanation', 'severity', 'subject_kind', 'subject_id', 'scheduled_at', 'meeting_status', 'recording_url')
+           'participation', 'explanation', 'severity', 'subject_kind', 'subject_id', 'scheduled_at', 'meeting_status', 'recording_url', 'document_type')
 LISTS = ('committee_ids', 'roles', 'meeting_ids', 'appearance_ids', 'source_ids')
 LINK = pa.struct([(k, pa.string()) for k in ('url', 'label', 'role', 'media_type', 'version', 'published_at', 'sha256')])
 NOTE = pa.struct([(k, pa.string()) for k in ('label', 'value')])
@@ -31,7 +31,7 @@ SCHEMA = pa.schema([(k, pa.string()) for k in STRINGS] + [('congress', pa.int32(
                       ('files', pa.list_(LINK)), ('facts', pa.list_(NOTE))])
 SOURCE_SCHEMA = pa.schema([(k, pa.string()) for k in
     ('id', 'kind', 'provider', 'url', 'retrieved_at', 'source_modified_at', 'imported_at', 'input_snapshot_id', 'identifier', 'retained_uri', 'retained_sha256', 'payload')])
-QUERY_COLUMNS = [*STRINGS[:12], 'congress', 'issue_count', 'committee_ids', 'roles', 'evidence_states', 'scheduled_at', 'meeting_status', 'recording_url', 'position', 'organization']
+QUERY_COLUMNS = [*STRINGS[:12], 'congress', 'issue_count', 'committee_ids', 'roles', 'evidence_states', 'scheduled_at', 'meeting_status', 'recording_url', 'position', 'organization', 'document_type']
 
 
 def sources_of(record):
@@ -112,6 +112,7 @@ def write_tables(records, sources, query_rows, stage, descriptor):
                     if document:
                         row['title'] = document_title(document) or row['title']
                         row['category'] = category(document)
+                        if isinstance(document.get('documentType'), str): row['document_type'] = document['documentType']
                         break
                 if not row.get('title') or row['title'] == '(Untitled source record)':
                     row['title'] = (row.get('category') if row.get('category') not in (None, 'unknown') else row.get('type') or 'Document').replace('_', ' ').capitalize()

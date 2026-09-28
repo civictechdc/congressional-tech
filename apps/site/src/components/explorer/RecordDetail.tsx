@@ -15,6 +15,10 @@ export function enumLabel(value: unknown): string {
   const text = words(value);
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
+export function documentType(record: unknown): string {
+  const row = fields(record);
+  return typeof row.document_type === 'string' ? row.document_type : '';
+}
 export function recordTitle(value: unknown): string {
   const row = fields(value);
   if (row.kind === 'source_record') return String(row.provider || 'Source evidence');
@@ -58,7 +62,7 @@ export function RecordDetail({ record, onSelect, sourceEvidence }: { record: Det
   const row = fields(record);
   const facts = [
     ['Date', row.date], ['Congress', row.congress], ['Chamber', row.chamber],
-    ['Type', row.type || row.meeting_type], ['Status', row.status], ['Category', row.category],
+    [documentType(record) ? 'Document type' : 'Type', documentType(record) || row.type || row.meeting_type], ['Status', row.status], ['Category', documentType(record) ? null : row.category],
     ['Position', row.position], ['Organization', row.organization], ['Participation', row.participation],
     ['Provider', row.provider], ['Retrieved', row.retrieved_at],
     ...(Array.isArray(row.facts) ? row.facts.map(fact => [fields(fact).label, fields(fact).value]) : []),

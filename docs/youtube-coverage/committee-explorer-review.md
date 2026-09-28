@@ -50,6 +50,8 @@ URLs; a chart's destination must contain the population represented by its count
 
 The confirmed findings above are fixed. Source evidence now opens raw source data
 inline on demand, with a public-source link, without navigating to another record.
+The exact native `documentType` is retained as `document_type`, separately from
+our normalized category, and appears in lists, attachments, details and search.
 Meeting/material tables pair date with status and Congress with type; enum labels
 use sentence case. Witnesses and committees retain relevant columns. Follow-up inspection found two more
 functional gaps: witness organization/position were absent from search columns,

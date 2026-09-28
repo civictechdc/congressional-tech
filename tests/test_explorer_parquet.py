@@ -76,6 +76,7 @@ def test_native_document_labels_and_event_video_wrapper(tmp_path):
     assert recordings[0]['recording_url'] == player
     assert recordings[0]['scheduled_at'] == row['date']
     assert catalog.sources[0].payload['videos'][0]['url'] == event
+    assert {r['document_type'] for r in records if r['type'] == 'document'} == {'Generic Document', 'Witness Statement', 'Witness Truth in Testimony'}
     assert all(not r['appearance_ids'] for r in records)  # Source supplies no witness ownership.
 
 
@@ -127,6 +128,7 @@ def test_retained_native_payload_repairs_old_untitled_rows_without_reassembly(tm
     material = pq.read_table(tmp_path/'materials.parquet').to_pylist()[0]
     assert material['title'] == 'Witness Truth in Testimony'
     assert material['category'] == 'disclosure'
+    assert material['document_type'] == 'Witness Truth in Testimony'
 
 
 @pytest.mark.parametrize('raw_type,title,expected', [
