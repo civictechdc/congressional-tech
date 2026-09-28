@@ -110,7 +110,7 @@ jobs:
 
   meetings:
     needs: congress
-    # Its own job: the readers depend on docs.house.gov and 21 committee sites, and a failure there must not
+    # Its own job: the readers depend on docs.house.gov and 22 committee sites, and a failure there must not
     # hold back the GPO and video outputs above. Runs on the last saved snapshot if the Congress job failed.
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
@@ -187,6 +187,8 @@ jobs:
       - name: Refresh official committee metadata
         env:
           DATA_GOV_API_KEY: ${{ secrets.DATA_GOV_API_KEY }}
-        run: congress-committees --meetings-path pipeline-data/congress_meetings.jsonl.gz --output-path pipeline-data/congress_committees.jsonl.gz
+        run: |
+          congress-committees --meetings-path pipeline-data/congress_meetings.jsonl.gz \
+            --gpo-path "$DATA_DIR/gpo_hearings.csv" --output-path pipeline-data/congress_committees.jsonl.gz
       - name: Save committee metadata
         run: .github/scripts/save-pipeline-data.sh "Official committee metadata"

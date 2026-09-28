@@ -56,7 +56,7 @@ def build(catalog, current, input_ids, *, states_out=None):
         available = sum(counts[b] for b in POSITIVE)
         unknown = sum(counts[s] for s in ("error", "blocked", "unknown", "unchecked"))
         metrics.append(CoverageMetric(id=f"meetings-with-{aspect}", label=f"Meetings with {aspect} evidence", unit="meeting",
-            population="Distinct retained Congress.gov source entries in the current export, all statuses. This measures supplied evidence, not expected publication or hearings held.",
+            population="Retained meetings from Congress.gov and official committee pages in the current export, all statuses. This measures supplied evidence, not expected publication or hearings held.",
             method=Method(name="committee-explorer.coverage.evidence-state", version="2"), input_snapshot_ids=tuple(input_ids),
             numerator=available, denominator=len(meetings), unknown=unknown, evidence_basis="mixed"))
         breakdown[aspect] = {"unit": "meeting", "denominator": len(meetings), "states": dict(counts),

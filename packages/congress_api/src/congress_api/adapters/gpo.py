@@ -13,6 +13,35 @@ from committee_meeting.materials import (
 from committee_meeting.provenance import AlternativeValue, FieldEvidence, Method
 
 from .common import AdapterContext, reported_time, web_url
+from .committees import committee_lookup, ensure_committee_term, source_committee_key
+
+
+def committee_records(rows, context, *, existing):
+    """Retain missing terms explicitly identified by document metadata.
+
+    Official committee lists take precedence. A transcript can establish that a
+    committee existed in a Congress without establishing its type or a meeting.
+    Only the identified body is added; a parent is not fabricated from its name.
+    """
+    known = committee_lookup(existing.values())
+    for row in rows:
+        identity = source_committee_key(row)
+        if identity is None or identity in known:
+            continue
+        congress, code = identity
+        package = str(row.get('package_id') or '').strip()
+        if not package:
+            continue
+        source = context.source(f'govinfo:{package}', dict(row))
+        evidence = context.evidence(source, selector='/committee_code', basis='derived',
+                                    method='congress_api.adapters.gpo.explicit-committee')
+        records = list(ensure_committee_term(congress, code, row.get('committee_name'), context, evidence, existing))
+        if not records:
+            continue
+        yield source
+        yield from records
+        term = next(item for item in records if item.kind == 'committee_term')
+        known[identity] = Ref(kind='committee_term', id=term.id)
 
 
 def records(
@@ -20,6 +49,7 @@ def records(
     context: AdapterContext,
     *,
     meetings: Mapping[tuple[int, str, str], Ref] | None = None,
+    committees: Mapping[tuple[int, str], Ref] | None = None,
 ):
     """Yield source observations and materials for every package, including errata.
 
@@ -27,6 +57,10 @@ def records(
     by the application. A package's dates, title or committee never create a
     meeting or establish a match. CSV ingestion dates are retained as evidence;
     they are not promoted to original publication dates.
+
+    ``committees`` separately resolves an explicit code and Congress to a term.
+    That document ownership link neither resolves nor suppresses a missing
+    meeting association. The document retains its own publication chamber.
     """
     for original in rows:
         row = dict(original)
@@ -137,6 +171,17 @@ def records(
                 ))
 
         event_id = str(row.get("event_id") or "").strip()
+        committee = (committees or {}).get(source_committee_key(row))
+        if committee:
+            if committee.kind != 'committee_term':
+                raise ValueError('GPO committee lookup must contain committee_term references')
+            yield MaterialLink(
+                id=context.ids('material_link', f'{key}:committee:{committee.id}'),
+                material=material_ref, version=version_ref, subject=committee,
+                role='supporting' if category == 'errata' else 'transcript',
+                provenance=context.evidence(source, basis='derived', selector='/committee_code',
+                                            method='congress_api.adapters.gpo.explicit-committee'),
+            )
         meeting = (meetings or {}).get((congress, chamber, event_id)) if event_id else None
         if meeting:
             if meeting.kind != "meeting":

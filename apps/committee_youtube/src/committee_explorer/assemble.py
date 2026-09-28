@@ -66,7 +66,13 @@ class Assembly:
             if old is not None and old != item and not isinstance(item, SourceRecord):
                 citations = {c.model_dump_json(): c for c in (*old.provenance.citations, *item.provenance.citations)}
                 ev = item.provenance.model_copy(update={"citations": tuple(citations[k] for k in sorted(citations))})
-                fields = {f.path: f for f in old.field_evidence}
+                old_fields = {f.path: f for f in old.field_evidence}
+                incoming_fields = {f.path: f for f in item.field_evidence}
+                fields = dict(old_fields)
+                for path, field in incoming_fields.items():
+                    alternatives = {a.model_dump_json(): a for a in (
+                        *(old_fields[path].alternatives if path in old_fields else ()), *field.alternatives)}
+                    fields[path] = field.model_copy(update={"alternatives": tuple(alternatives.values())})
                 updates = {}
                 for name in type(item).model_fields:
                     if name in ("id", "kind", "provenance", "field_evidence"):
@@ -76,17 +82,24 @@ class Assembly:
                         continue
                     if after is None or after == "" or after == ():
                         updates[name] = before
+                        if "/" + name in old_fields:
+                            fields["/" + name] = old_fields["/" + name]
+                        else:
+                            fields.pop("/" + name, None)
                     elif before is not None and before != "" and before != ():
                         if name == "identifiers":
                             updates[name] = tuple({v.model_dump_json(): v for v in (*before, *after)}.values())
                         elif not isinstance(item, DataIssue):
                             path = "/" + name
                             alternatives = list(fields[path].alternatives) if path in fields else []
-                            alt = AlternativeValue(value=old.model_dump(mode="json")[name], provenance=old.provenance)
+                            alt = AlternativeValue(value=old.model_dump(mode="json")[name],
+                                                   provenance=old_fields[path].selected if path in old_fields else old.provenance)
                             if all(a.value != alt.value for a in alternatives):
                                 alternatives.append(alt)
-                            fields[path] = FieldEvidence(path=path, selected=item.provenance, alternatives=tuple(alternatives),
-                                                         selection_reason="Later record in deterministic source order; alternatives retained.")
+                            selected = incoming_fields.get(path)
+                            fields[path] = FieldEvidence(path=path, selected=selected.selected if selected else item.provenance,
+                                                         alternatives=tuple(alternatives), selection_reason=selected.selection_reason if selected
+                                                         else "Later record in deterministic source order; alternatives retained.")
                 item = item.model_copy(update={**updates, "provenance": ev, "field_evidence": tuple(fields.values())})
             into[key] = item
             self.current.add(key)
