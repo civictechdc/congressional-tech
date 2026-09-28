@@ -6,7 +6,7 @@ from committee_meeting.issues import IssueResolution
 
 def apply_decisions(catalog, rows, context):
     records = {(r.kind, r.id): r for r in catalog.records}
-    sources = list(catalog.sources)
+    sources = {source.id: source for source in catalog.sources}
     seen = set()
     for row in rows:
         issue_id = row["issue_id"]
@@ -19,8 +19,16 @@ def apply_decisions(catalog, rows, context):
         if row.get("status") not in ("resolved", "dismissed"):
             raise ValueError("Issue decision status must be resolved or dismissed")
         source = context.source(issue_id, row)
-        sources.append(source)
-        decided = datetime.fromisoformat(row["decided_at"]) if row.get("decided_at") else context.now
+        previous = sources.get(source.id)
+        if previous is not None:
+            # Replaying the same retained decision is the same observation.
+            # Keep its original import time; never replace different evidence.
+            if previous.model_dump(exclude={'imported_at'}) != source.model_dump(exclude={'imported_at'}):
+                raise ValueError(f"Conflicting issue decision source: {source.id}")
+            source = previous
+        else:
+            sources[source.id] = source
+        decided = datetime.fromisoformat(row["decided_at"]) if row.get("decided_at") else source.imported_at or context.now
         resolution = IssueResolution(decided_at=decided, explanation=row["explanation"], provenance=context.evidence(source, basis="curated"))
         records[key] = type(records[key]).model_validate(records[key].model_copy(update={"status": row["status"], "resolution": resolution}))
-    return Catalog.model_construct(sources=tuple(sources), records=tuple(records[k] for k in sorted(records))).check_graph()
+    return Catalog.model_construct(sources=tuple(sources.values()), records=tuple(records[k] for k in sorted(records))).check_graph()

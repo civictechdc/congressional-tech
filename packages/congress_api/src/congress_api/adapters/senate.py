@@ -1,7 +1,6 @@
 """Adapt retained Senate committee pages without fetching or rematching them."""
 from collections import Counter, defaultdict
 from datetime import date, datetime
-import re
 from urllib.parse import urlsplit
 
 from committee_meeting.assessments import Assessment
@@ -14,7 +13,7 @@ from committee_meeting.provenance import AlternativeValue, FieldEvidence, Method
 from congress_api.senate.pages import OWN, SITE, attachment_page
 from congress_api.senate.corrections import DATE_CORRECTIONS, selected_date
 
-from .common import digest, material_records, ref, web_url, reported_time
+from .common import digest, material_records, ref, web_url, reported_time, witness_roles
 from .meetings import category, meeting_type, meeting_access
 
 
@@ -292,7 +291,7 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                     yield Appearance(
                         id=context.ids("appearance", key + "|witness|" + witness_key + "|" + meeting.id),
                         meeting=meeting, name=RecordedName(display=witness["name"]),
-                        roles=("witness", "nominee") if re.match(r"^\s*nominee\b", witness.get("position") or "", re.I) else ("witness",), participation="listed",
+                        roles=witness_roles(witness.get("position")), participation="listed",
                         affiliation=Affiliation(organization_name=witness.get("organization") or None, position=witness.get("position") or None),
                         provenance=match_evidence.model_copy(update={"citations": match_evidence.citations + context.evidence(source, selector=selector).citations}),
                     )

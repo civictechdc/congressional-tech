@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 import hashlib
 import json
+import re
 from typing import Callable
 from urllib.parse import urlsplit
 
@@ -17,6 +18,11 @@ def digest(value):
 
 def ref(record):
     return Ref(kind=record.kind, id=record.id)
+
+
+def witness_roles(position):
+    """Preserve an explicitly listed nominee role alongside witness participation."""
+    return ("witness", "nominee") if re.match(r"^\s*nominee\b", position or "", re.I) else ("witness",)
 
 
 def web_url(value):

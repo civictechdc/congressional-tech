@@ -143,6 +143,12 @@ def test_documented_issue_resolution_retains_original_evidence(tmp_path):
     assert closed.provenance == original.provenance
     assert closed.resolution.provenance.basis == "curated"
     assert closed.detected_at == original.detected_at
+    # Issue history retains this decision source; the next export must reuse it.
+    _, third = run(tmp_path, path, issue_decisions=decisions)
+    replay = next(r for r in third.records if r.kind == 'data_issue' and r.id == original.id)
+    assert replay.resolution == closed.resolution
+    decision_sources = [s for s in third.sources if s.provider == 'curated-issue-decisions']
+    assert len(decision_sources) == 1
 
 
 def test_explicit_youtube_id_unifies_native_link_and_cache_metadata(tmp_path):
@@ -261,3 +267,35 @@ def test_roundtable_enrichment_keeps_the_committee_source_selection(tmp_path):
     assert source.payload['event']['type'] == 'Roundtable'
     assert {a.value for a in field.alternatives} == {'hearing'}
     assert 'convening committee' in field.selection_reason
+
+
+def test_official_nominee_csv_and_senate_state_share_one_appearance(tmp_path):
+    import csv
+
+    url = 'https://www.indian.senate.gov/hearings/nomination-hearing-to-consider-mark-cruz-to-be-director-of-the-indian-health-service-department-of-health-and-human-services/'
+    row = {'_url': 'https://api.congress.gov/v3/committee-meeting/119/senate/338584',
+           'eventId': '338584', 'congress': 119, 'chamber': 'Senate', 'date': '2026-06-24T14:00:00Z',
+           'title': 'Hearings to examine the nomination of Mark Cruz, of Oregon, to be Director of the Indian Health Service, Department of Health and Human Services.',
+           'type': 'Open Hearing', 'meetingStatus': 'Scheduled',
+           'committees': [{'systemCode': 'slia00', 'name': 'Senate Indian Affairs'}]}
+    witness = {'name': 'Mark Cruz', 'position': 'Nominee, Director of the Indian Health Service',
+               'organization': 'U.S. Department of Health and Human Services, Salem, Oregon', 'page': url}
+    state = tmp_path / 'senate.json.gz'
+    state.write_bytes(gzip.compress(json.dumps({'indian.senate.gov': {'pages': {url: {
+        'title': 'Nomination Hearing to consider Mark Cruz', 'events': ['338584'], 'documents': [], 'witnesses': [witness]
+    }}}}).encode()))
+    recovered = tmp_path / 'meeting_witnesses.csv'
+    csv_row = {key: witness[key] for key in ('name', 'position', 'organization')}
+    csv_row.update(event_id='338584', source='senate committee page', **{'from': url})
+    with recovered.open('w', newline='') as stream:
+        writer = csv.DictWriter(stream, fieldnames=list(csv_row))
+        writer.writeheader()
+        writer.writerow(csv_row)
+
+    _, catalog = run(tmp_path, write_meetings(tmp_path, [row]), senate_state=state, recovered_witnesses=recovered)
+    appearance, = [record for record in catalog.records if record.kind == 'appearance']
+    assert appearance.name.display == witness['name']
+    assert appearance.affiliation.position == witness['position']
+    assert appearance.roles == ('witness', 'nominee')
+    sources = {source.id: source for source in catalog.sources}
+    assert {sources[citation.source.id].provider for citation in appearance.provenance.citations} == {'senate.committees', 'recovered-witnesses'}
