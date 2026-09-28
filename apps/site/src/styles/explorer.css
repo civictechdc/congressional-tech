@@ -96,3 +96,5 @@
 .explorer-related-list { list-style: none; padding: 0; }
 .explorer-related-list li { padding: .8rem 0; border-bottom: 1px solid var(--explorer-border, #dce1e6); }
 .explorer-detail-section summary { cursor: pointer; padding: .8rem 0; }
+
+.explorer-congress-terms { display:flex; flex-wrap:wrap; gap:.35rem .75rem; max-width:20rem; }

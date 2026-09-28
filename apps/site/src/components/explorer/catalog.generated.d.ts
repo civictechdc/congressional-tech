@@ -115,6 +115,7 @@ export type MeetingType =
   | 'business'
   | 'briefing'
   | 'field_hearing'
+  | 'roundtable'
   | 'other'
   | 'unknown';
 export type Role1 = 'host' | 'cohost' | 'participating' | 'unknown';
@@ -218,6 +219,7 @@ export type Category =
   | 'bill_text'
   | 'witness_list'
   | 'hearing_record'
+  | 'committee_print'
   | 'supporting'
   | 'errata'
   | 'other'

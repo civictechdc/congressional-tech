@@ -19,7 +19,7 @@ class Meeting(Record):
     congress: PositiveInt | None = None
     congress_session: Literal[1, 2, 3] | None = None
     chamber: Chamber = "unknown"
-    meeting_type: Literal["meeting", "hearing", "markup", "business", "briefing", "field_hearing", "other", "unknown"] = "unknown"
+    meeting_type: Literal["meeting", "hearing", "markup", "business", "briefing", "field_hearing", "roundtable", "other", "unknown"] = "unknown"
     committees: tuple[ConveningCommittee, ...] = ()
 
 

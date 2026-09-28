@@ -1,0 +1,69 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mods xmlns="http://www.loc.gov/mods/v3" xmlns:ns2="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="3.3" xsi:schemaLocation="http://www.loc.gov/mods/v3 http://www.loc.gov/standards/mods/v3/mods-3-3.xsd" ID="P0b002ee199ee9160">
+  <extension>
+    <dateIngested>2018-04-03</dateIngested>
+  </extension>
+  <titleInfo>
+    <title>THE NEXT FARM BILL</title>
+  </titleInfo>
+  <titleInfo type="alternative" />
+  <location>
+    <url displayLabel="Content Detail" access="object in context">https://www.govinfo.gov/app/details/CHRG-115hhrg24725</url>
+  </location>
+  <extension>
+    <accessId>CHRG-115hhrg24725</accessId>
+    <heldDate>2017-02-28</heldDate>
+    <heldDate>2017-03-09</heldDate>
+    <heldDate>2017-03-16</heldDate>
+    <heldDate>2017-03-21</heldDate>
+    <heldDate>2017-03-22</heldDate>
+    <heldDate>2017-03-28</heldDate>
+    <heldDate>2017-04-04</heldDate>
+    <heldDate>2017-06-07</heldDate>
+    <heldDate>2017-06-08</heldDate>
+    <heldDate>2017-06-22</heldDate>
+    <heldDate>2017-07-12</heldDate>
+    <heldDate>2017-07-18</heldDate>
+    <preferredCitation>Serial No. 115-3</preferredCitation>
+  </extension>
+  <relatedItem type="constituent" ID="id-24725p1" ns2:href="https://www.govinfo.gov/metadata/granule/CHRG-115hhrg24725/CHRG-115hhrg24725-pt1/mods.xml">
+    <titleInfo>
+      <title>THE NEXT FARM BILL</title>
+      <partName>Part 1</partName>
+    </titleInfo>
+    <location>
+      <url displayLabel="Content Detail" access="object in context">https://www.govinfo.gov/app/details/CHRG-115hhrg24725/CHRG-115hhrg24725-pt1</url>
+      <url access="raw object" displayLabel="PDF rendition">https://www.govinfo.gov/content/pkg/CHRG-115hhrg24725/pdf/CHRG-115hhrg24725-pt1.pdf</url>
+      <url access="raw object" displayLabel="HTML rendition">https://www.govinfo.gov/content/pkg/CHRG-115hhrg24725/html/CHRG-115hhrg24725-pt1.htm</url>
+    </location>
+    <extension>
+      <searchTitle>THE NEXT FARM BILL</searchTitle>
+      <granuleClass>FIRSTPART</granuleClass>
+      <accessId>CHRG-115hhrg24725-pt1</accessId>
+      <congCommittee authorityId="hsag00" chamber="H" congress="115" type="S">
+        <name type="authority-standard">Committee on Agriculture</name>
+        <name type="authority-short">Agriculture</name>
+      </congCommittee>
+    </extension>
+  </relatedItem>
+  <relatedItem type="constituent" ID="id-24725p2" ns2:href="https://www.govinfo.gov/metadata/granule/CHRG-115hhrg24725/CHRG-115hhrg24725-pt2/mods.xml">
+    <titleInfo>
+      <title>THE NEXT FARM BILL</title>
+      <partName>Part 2</partName>
+    </titleInfo>
+    <location>
+      <url displayLabel="Content Detail" access="object in context">https://www.govinfo.gov/app/details/CHRG-115hhrg24725/CHRG-115hhrg24725-pt2</url>
+      <url access="raw object" displayLabel="PDF rendition">https://www.govinfo.gov/content/pkg/CHRG-115hhrg24725/pdf/CHRG-115hhrg24725-pt2.pdf</url>
+      <url access="raw object" displayLabel="HTML rendition">https://www.govinfo.gov/content/pkg/CHRG-115hhrg24725/html/CHRG-115hhrg24725-pt2.htm</url>
+    </location>
+    <extension>
+      <searchTitle>THE NEXT FARM BILL</searchTitle>
+      <granuleClass>OTHERPART</granuleClass>
+      <accessId>CHRG-115hhrg24725-pt2</accessId>
+      <congCommittee authorityId="hsag00" chamber="H" congress="115" type="S">
+        <name type="authority-standard">Committee on Agriculture</name>
+        <name type="authority-short">Agriculture</name>
+      </congCommittee>
+    </extension>
+  </relatedItem>
+</mods>

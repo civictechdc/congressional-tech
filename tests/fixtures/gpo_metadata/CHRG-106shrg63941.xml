@@ -1,0 +1,33 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mods xmlns="http://www.loc.gov/mods/v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="3.3" xsi:schemaLocation="http://www.loc.gov/mods/v3 http://www.loc.gov/standards/mods/v3/mods-3-3.xsd" ID="P0b002ee180ac962f">
+  <extension>
+    <dateIngested>2010-09-28</dateIngested>
+  </extension>
+  <titleInfo>
+    <title>JOINT HEARING ON SUPPLEMENTAL REQUEST FOR PLAN COLOMBIA</title>
+  </titleInfo>
+  <titleInfo type="alternative" />
+  <location>
+    <url displayLabel="Content Detail" access="object in context">https://www.govinfo.gov/app/details/CHRG-106shrg63941</url>
+    <url displayLabel="HTML rendition" access="raw object">https://www.govinfo.gov/content/pkg/CHRG-106shrg63941/html/CHRG-106shrg63941.htm</url>
+    <url displayLabel="PDF rendition" access="raw object">https://www.govinfo.gov/content/pkg/CHRG-106shrg63941/pdf/CHRG-106shrg63941.pdf</url>
+  </location>
+  <extension>
+    <accessId>CHRG-106shrg63941</accessId>
+    <heldDate>2000-02-24</heldDate>
+    <preferredCitation>S. Hrg. 106-621</preferredCitation>
+  </extension>
+  <extension>
+    <searchTitle>JOINT HEARING ON SUPPLEMENTAL REQUEST FOR PLAN COLOMBIA</searchTitle>
+    <granuleClass>OTHERPART</granuleClass>
+    <accessId>CHRG-106shrg63941</accessId>
+    <congCommittee authorityId="sp2k00" chamber="S" congress="106" type="P">
+      <name type="authority-standard">Special Committee on Year 2000 Technology Problem</name>
+      <name type="authority-short">Year 2000 Technology Problem (Special)</name>
+    </congCommittee>
+    <congCommittee authorityId="ssap00" chamber="S" congress="106" type="S">
+      <name type="authority-standard">Committee on Appropriations</name>
+      <name type="authority-short">Appropriations</name>
+    </congCommittee>
+  </extension>
+</mods>

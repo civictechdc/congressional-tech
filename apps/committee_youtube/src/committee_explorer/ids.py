@@ -16,6 +16,25 @@ class IdRegistry:
             self.values[scoped] = str(uuid4())
         return self.values[scoped]
 
+    def existing(self, kind, key):
+        """Inspect an identity without allocating an ID."""
+        return self.values.get(json.dumps([kind, key], ensure_ascii=False))
+
+    def alias(self, kind, key, existing_key):
+        """Give a newly encountered source key an already retained identity.
+
+        Existing keys never move. In particular, this cannot merge two records
+        whose different public IDs have already been allocated.
+        """
+        target = self.existing(kind, existing_key)
+        if target is None:
+            return False
+        scoped = json.dumps([kind, key], ensure_ascii=False)
+        if scoped in self.values:
+            return self.values[scoped] == target
+        self.values[scoped] = target
+        return True
+
     def save(self):
         self.path.parent.mkdir(parents=True, exist_ok=True)
         tmp = self.path.with_suffix(".tmp")

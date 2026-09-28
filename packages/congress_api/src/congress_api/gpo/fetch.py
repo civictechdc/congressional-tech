@@ -33,6 +33,7 @@ modified since the newest lastModified in it are re-fetched.
 import argparse
 import collections
 import csv
+import json
 import logging
 import re
 import sys
@@ -46,6 +47,7 @@ import requests
 
 from congress_api.http import get_with_retry
 from congress_api.xml import MODS_NS, mods_elements, parse_xml
+from congress_api.gpo.reviewed_committees import reviewed
 from congress_shared.auth import load_congress_api_key
 from congress_shared.globals import CONGRESS_METADATA, DEFAULT_GPO_HEARINGS_FILE
 
@@ -98,6 +100,16 @@ class GpoHearing:
     hearing_dates: str = ""
     ## "yes" once the transcript has been read for its day headers
     text_read: str = ""
+    # All bodies/files explicitly listed in root and constituent metadata.
+    # Singular columns remain the first value for older readers.
+    committee_codes_gpo: str = ""
+    committee_codes: str = ""
+    html_urls: str = ""
+    pdf_urls: str = ""
+    # URL-keyed part labels preserve publisher distinctions such as hearing,
+    # markup, errata and addendum without splitting the package identity.
+    file_metadata: str = ""
+    committee_metadata: str = ""
 
 
 def mods_witnesses(data):
@@ -229,10 +241,23 @@ def parse_mods(package_id: str, mods: bytes, last_modified: str) -> GpoHearing:
         found = ext_all(tag)
         return found[0].text.strip() if found and found[0].text else ""
 
-    ## a joint hearing lists several committees; the first is the lead
-    committees = ext_all("congCommittee")
+    # Root and constituent metadata describe package contents. Other related
+    # items are cited laws/bills and must not contribute committee ownership.
+    committees = ext_all("congCommittee") + root.findall(
+        "m:relatedItem[@type='constituent']/m:extension/m:congCommittee", MODS_NS
+    )
+    committee_codes = list(dict.fromkeys(c.get("authorityId", "").strip().lower()
+                                        for c in committees if c.get("authorityId")))
+    committee_metadata = []
+    for committee in committees:
+        claim = {**committee.attrib,
+                 'names': [{'type': n.get('type'), 'name': n.text.strip()}
+                           for n in committee.findall('m:name', MODS_NS) if n.text],
+                 'subcommittees': [n.text.strip() for n in committee.findall('m:subCommittee/m:name', MODS_NS) if n.text]}
+        if claim not in committee_metadata:
+            committee_metadata.append(claim)
     ## codes are lowercase in youtube-accounts.csv (a few MODS records aren't)
-    committee_code = committees[0].get("authorityId", "").lower() if committees else ""
+    committee_code = committee_codes[0] if committee_codes else ""
     committee_name = ""
     subcommittees = []
     for committee in committees:
@@ -260,6 +285,21 @@ def parse_mods(package_id: str, mods: bytes, last_modified: str) -> GpoHearing:
         "m:titleInfo/m:title", "", MODS_NS
     ).strip()
 
+    def rendition_urls(label):
+        nodes = root.findall('m:location/m:url', MODS_NS) + root.findall(
+            "m:relatedItem[@type='constituent']/m:location/m:url", MODS_NS)
+        return list(dict.fromkeys(el.text.strip() for el in nodes
+                                  if el.get('displayLabel') == label and el.text and el.text.strip()))
+
+    html_urls, pdf_urls = rendition_urls('HTML rendition'), rendition_urls('PDF rendition')
+    file_metadata = {}
+    for part in root.findall("m:relatedItem[@type='constituent']", MODS_NS):
+        label = part.findtext('m:titleInfo/m:title', '', MODS_NS).strip()
+        part_type = part.findtext('m:extension/m:granuleClass', '', MODS_NS).strip()
+        for element in part.findall('m:location/m:url', MODS_NS):
+            if element.get('displayLabel') in ('HTML rendition', 'PDF rendition') and element.text:
+                file_metadata[element.text.strip()] = {'title': label, 'granule_class': part_type}
+
     return GpoHearing(
         package_id=package_id,
         congress=int(congress),
@@ -267,6 +307,9 @@ def parse_mods(package_id: str, mods: bytes, last_modified: str) -> GpoHearing:
         event_id=ext_text("eventId"),
         committee_code=committee_code,
         committee_code_gpo=committee_code,
+        committee_codes_gpo=";".join(committee_codes),
+        committee_codes=";".join(committee_codes),
+        committee_metadata=json.dumps(committee_metadata, ensure_ascii=False, separators=(',', ':')) if committee_metadata else "",
         record_type="errata" if "[ERRATA]" in title.upper() else "hearing",
         committee_name=committee_name,
         subcommittees="; ".join(dict.fromkeys(subcommittees)),
@@ -276,13 +319,16 @@ def parse_mods(package_id: str, mods: bytes, last_modified: str) -> GpoHearing:
         days_to_govinfo=days_to_govinfo,
         serial=ext_text("preferredCitation"),
         witness_count=len(ext_all("witness")),
-        html_url=f"{GOVINFO_CONTENT}/content/pkg/{package_id}/html/{package_id}.htm",
-        pdf_url=f"{GOVINFO_CONTENT}/content/pkg/{package_id}/pdf/{package_id}.pdf",
+        html_url=html_urls[0] if html_urls else "",
+        pdf_url=pdf_urls[0] if pdf_urls else "",
+        html_urls=";".join(html_urls),
+        pdf_urls=";".join(pdf_urls),
+        file_metadata=json.dumps(file_metadata, ensure_ascii=False, separators=(',', ':')) if file_metadata else "",
         last_modified=last_modified,
     )
 
 
-VALID_CODE = re.compile(r"^[hsj][a-z]{3}\d\d$")
+VALID_CODE = re.compile(r"^[hsj][a-z0-9]{3}\d\d$")
 MONTHS = "January February March April May June July August September October November December".split()
 WEEKDAYS = "Monday Tuesday Wednesday Thursday Friday Saturday Sunday".split()
 ## a day header stands alone on its line: "WEDNESDAY, FEBRUARY 25, 2015", or in the prints
@@ -341,11 +387,18 @@ def committee_on_title_page(text: str) -> str:
 def read_transcript(session, row: dict) -> dict:
     """What the transcript itself says: `hearing_dates`, the hearing days when they say more than
     GPO's held date, and `committee_name`, the committee on its title page."""
-    text = get_with_retry(session, row["html_url"]).text
     volume = is_multi_hearing_volume(row["title"])
-    days = hearing_days(text, int(row["congress"]), volume)
+    days, names = set(), []
+    urls = str(row.get('html_urls') or row.get('html_url') or '').split(';')
+    for url in dict.fromkeys(u for u in urls if u):
+        text = get_with_retry(session, url).text
+        days.update(hearing_days(text, int(row['congress']), volume))
+        name = committee_on_title_page(text)
+        if name:
+            names.append(name)
+    days = sorted(days)
     tells_more = days and (days != [row["held_date"]] or volume)
-    return {"hearing_dates": ";".join(days) if tells_more else "", "committee_name": committee_on_title_page(text)}
+    return {"hearing_dates": ";".join(days) if tells_more else "", "committee_name": names[0] if names else ""}
 
 
 def name_key(chamber: str, committee_name: str) -> tuple:
@@ -383,7 +436,16 @@ def clean_rows(rows: dict[str, dict]) -> None:
         if not code and row["committee_name"]:
             here, anywhere = by_name.get(name_key(row["chamber"], row["committee_name"])), by_name.get(name_key("", row["committee_name"]), {})
             code = here.most_common(1)[0][0] if here else next(iter(anywhere)) if len(anywhere) == 1 else ""
-        row["committee_code"] = code
+        codes = list(dict.fromkeys(fix(c) for c in row.get('committee_codes_gpo', '').split(';') if fix(c)))
+        if code and code not in codes:
+            codes.insert(0, code)
+        decision = reviewed(row)
+        if decision and decision.get('committee_codes') and not fix(row['committee_code_gpo']) and not row.get('committee_codes_gpo'):
+            codes = decision['committee_codes']
+        row["committee_code"] = codes[0] if codes else ""
+        # An old cache row remains readable without asserting additional codes.
+        if row.get('committee_codes_gpo') or (decision and decision.get('committee_codes')):
+            row['committee_codes'] = ';'.join(codes)
 
 
 def parse_timestamp(value: str) -> datetime:

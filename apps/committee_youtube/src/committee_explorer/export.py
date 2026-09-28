@@ -18,7 +18,9 @@ from committee_meeting.provenance import Citation, Method, RetainedContent
 from committee_meeting.publication import ExportPartition, InputSnapshot, PublicationManifest, SourceScope
 from congress_api.adapters.common import AdapterContext
 from congress_api.adapters import meetings as native, house, gpo, transcripts, findings, inventory, video_matches, recordings as curated_recordings
-from congress_api.adapters import committee_metadata
+from congress_api.adapters import committee_metadata, committee_adjustments
+from congress_api.gpo import reviewed_committees
+from congress_api.adapters.committees import committee_lookup, ensure_committee_term
 from .assemble import Assembly
 from .coverage import build as coverage
 from .ids import IdRegistry
@@ -95,6 +97,43 @@ def load_previous(output, state):
     return history, manifest
 
 
+def _retain_senate_meeting_ids(rows, senate_state, ids):
+    """A first native record may continue an already-published official-page ID.
+
+    Saved matches supply the association; titles and dates never merge IDs.
+    Multiple existing source identities or ambiguous native IDs remain separate.
+    """
+    from collections import defaultdict
+    from congress_api.adapters.senate import official_events
+
+    native_by_event = defaultdict(list)
+    for row in rows:
+        native_by_event[str(row['eventId'])].append(row)
+    matches = defaultdict(set)
+    for event in official_events(senate_state):
+        saved = set(map(str, event['page'].get('events') or ()))
+        if len(saved) != 1:
+            continue
+        candidates = native_by_event.get(next(iter(saved)), ())
+        if len(candidates) != 1:
+            continue
+        row = candidates[0]
+        if (int(row['congress']) != event['congress'] or native.chamber(row.get('chamber')) == 'house'
+                or not any(c.get('systemCode') == event['committee_code'] for c in row.get('committees') or ())):
+            continue
+        native_key = native.meeting_key(row)
+        source_key = 'senate.committee|' + event['url']
+        if ids.existing('meeting', source_key) is not None:
+            matches[native_key].add(source_key)
+    aliases = 0
+    for native_key, source_keys in matches.items():
+        if ids.existing('meeting', native_key) is not None:
+            continue
+        if len({ids.existing('meeting', key) for key in source_keys}) == 1:
+            aliases += ids.alias('meeting', native_key, sorted(source_keys)[0])
+    return aliases
+
+
 def export(*, meetings, output_dir, state_dir, gpo_path=None, house_state=None, senate_state=None,
            youtube_dir=None, inventory_state=None, recovered_witnesses=None, video_matches_path=None, recordings_path=None,
            transcript_files=(), issue_decisions=None, attempts=None, limit=None, as_of=None, revision=None, format="json", reuse_from=None, committees_path=None):
@@ -153,6 +192,15 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, house_state=None, 
         total = len(rows)
         if limit:
             rows = rows[:limit]
+        senate_input = None
+        if senate_state:
+            senate_context, senate_body = context(senate_state, 'senate.committees',
+                ('Legacy checked dates may reflect seed import; live retrieval is established only by explicit receipts.',))
+            senate_data = json.loads(senate_body)
+            senate_input = (senate_context, senate_data)
+            retained_ids = _retain_senate_meeting_ids(rows, senate_data, ids)
+            if retained_ids:
+                reconciliation.append({'provider': 'senate.committees', 'retained_meeting_id_aliases': retained_ids})
         assembly.add(native.records(rows, ctx))
         if committees_path:
             committee_context, committee_body = context(committees_path, 'congress.gov:committees')
@@ -179,36 +227,80 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, house_state=None, 
                   Ref(kind="meeting", id=ids("meeting", native.meeting_key(r))) for r in rows}
         scopes.insert(0, SourceScope(provider="congress.gov", scope="retained committee meeting records, all statuses", status="partial" if len(rows)<total else "included",
                                   input_snapshot_ids=(ctx.input_id,), explanation=f"Imported {len(rows)} of {total} retained records. Retention is not proof of complete upstream coverage."))
+        # Load document metadata before supplemental events so every explicitly
+        # identified committee can be linked without requiring a meeting match.
+        gpo_context, gpo_review_context, gpo_rows, all_gpo = None, None, [], []
+        if gpo_path:
+            gpo_context, content = context(gpo_path, "govinfo", ("CSV does not preserve all raw MODS metadata or downloaded transcript bytes.",))
+            gpo_review_context, _ = context(reviewed_committees.__file__, 'gpo.committee-review')
+            all_gpo = list(csv.DictReader(io.StringIO(content.decode())))
+            gpo_rows = all_gpo
+            if limit:
+                selected = [r for r in all_gpo if (int(r["congress"]), native.chamber(r["chamber"]), r["event_id"]) in lookup]
+                selected_ids = {r["package_id"] for r in selected}
+                gpo_rows = selected + [r for r in all_gpo if r["package_id"] not in selected_ids][:limit]
+            assembly.add(gpo.committee_records(gpo_rows, gpo_context, existing=assembly.records, review_context=gpo_review_context))
+
         sources = (("docs.house.gov", house_state, house, "House parsed source state"),)
         if senate_state:
             from congress_api.adapters import senate
             sources += (("senate.committees", senate_state, senate, "Senate parsed source state"),)
+        supplemental = []
         for provider, path, adapter, label in sources:
             if path:
-                c, content = context(path, provider, ("Legacy checked dates may reflect seed import; live retrieval is established only by explicit receipts.",))
-                data = json.loads(content)
+                if provider == 'senate.committees':
+                    c, data = senate_input
+                else:
+                    c, content = context(path, provider, ("Legacy checked dates may reflect seed import; live retrieval is established only by explicit receipts.",))
+                    data = json.loads(content)
                 if provider == "docs.house.gov" and limit:
                     data = {k: v for k, v in data.items() if any(x[2] == str(k) for x in lookup)}
-                assembly.add(adapter.records(data, c, meetings=lookup))
+                if provider == "senate.committees":
+                    if limit:
+                        # A bounded rehearsal must not admit every source-only
+                        # historical event in the full retained Senate cache.
+                        selected_events = {key[2] for key in lookup}
+                        data = {host: {**site, 'pages': {url: page for url, page in site.get('pages', {}).items()
+                                if selected_events.intersection(map(str, page.get('events') or ()))}}
+                                for host, site in data.items()}
+                    for event in senate.official_events(data):
+                        source = c.source(f"senate-page|{event['host']}|{event['url']}", event['page'], event['url'])
+                        evidence = c.evidence(source, selector='/event')
+                        missing = list(ensure_committee_term(event['congress'], event['committee_code'],
+                                       event['committee_code'], c, evidence, assembly.records))
+                        if missing:
+                            assembly.add([source, *missing])
+                supplemental.append((provider, adapter, data, c))
                 reconciliation.append({"provider": provider, "selected_top_level_entries": len(data)})
                 scopes.append(SourceScope(provider=provider, scope=label, status="partial", input_snapshot_ids=(c.input_id,), explanation="Retained supplemental source records; uncollected meetings and unsupported layouts are not covered."))
             else:
                 scopes.append(SourceScope(provider=provider, scope=label, status="not_collected", explanation="No input was supplied to this offline export."))
         if not senate_state:
             scopes.append(SourceScope(provider="senate.committees", scope="Senate parsed source state", status="not_collected", explanation="No input was supplied to this offline export."))
+
+        adjustment_context, _ = context(committee_adjustments.__file__, 'committee-review')
+        selected_congresses = {int(row['congress']) for row in rows} if limit else None
+        for item in committee_metadata.adjustment_records(adjustment_context, assembly.records, congresses=selected_congresses):
+            key = (item.kind, item.id)
+            into = assembly.sources if item.kind == 'source_record' else assembly.records
+            into[key] = item
+            assembly.current.add(key)
+        scopes.append(SourceScope(provider='committee-review', scope='Reviewed committee metadata corrections', status='included',
+                                  input_snapshot_ids=(adjustment_context.input_id,),
+                                  explanation='Cited corrections preserve original source names and classifications.'))
+        committees = committee_lookup(assembly.records.values())
+        for provider, adapter, data, c in supplemental:
+            options = {'meetings': lookup}
+            if provider == 'senate.committees':
+                options.update(committee_terms=committees,
+                               meeting_records={r.id: r for r in assembly.records.values() if r.kind == 'meeting'})
+            assembly.add(adapter.records(data, c, **options))
+
         versions, print_versions = {}, {}
         print_decisions = []
         if gpo_path:
-            c, content = context(gpo_path, "govinfo", ("CSV does not preserve all raw MODS metadata or downloaded transcript bytes.",))
-            data = list(csv.DictReader(io.StringIO(content.decode())))
-            all_gpo = data
-            if limit:
-                # A bounded meeting rehearsal also includes a deterministic unlinked
-                # sample; the scope explicitly declares this selection.
-                selected = [r for r in data if (int(r["congress"]), native.chamber(r["chamber"]), r["event_id"]) in lookup]
-                selected_ids = {r["package_id"] for r in selected}
-                data = selected + [r for r in data if r["package_id"] not in selected_ids][:limit]
-            assembled = list(gpo.records(data, c, meetings=lookup))
+            c, data = gpo_context, gpo_rows
+            assembled = list(gpo.records(data, c, meetings=lookup, committees=committees, review_context=gpo_review_context))
             assembly.add(assembled)
             reconciliation.append({"provider": "govinfo", "input_records": len(all_gpo), "selected_records": len(data),
                                    "distinct_selected_identities": len({r['package_id'] for r in data})})
@@ -235,13 +327,14 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, house_state=None, 
                                           explanation="Existing matcher decisions computed from all supplied native/GPO context before applying the export selection."))
                 match_ctx = AdapterContext(now, input_id, "congress_api.inventory.prints", ids)
                 assembly.add(findings.print_links(print_decisions, match_ctx, meetings=lookup, versions=print_versions))
-                linked = {r.material.id: r.provenance for r in assembly.records.values() if r.kind == "material_link" and r.role == "transcript"}
+                linked = {r.material.id: r.provenance for r in assembly.records.values()
+                          if r.kind == "material_link" and r.role == "transcript" and r.subject.kind == "meeting"}
                 from committee_meeting.issues import IssueResolution
                 for key, issue in list(assembly.records.items()):
                     if issue.kind == "data_issue" and issue.category == "unlinked" and issue.subject.id in linked:
                         assembly.add([issue.model_copy(update={"status": "resolved", "resolution": IssueResolution(decided_at=now,
                             explanation="The existing print matcher supplied a supported association; its method and evidence remain on the link.", provenance=linked[issue.subject.id])})])
-            scopes.append(SourceScope(provider="govinfo", scope="retained GPO package metadata", status="partial" if limit else "included", input_snapshot_ids=(c.input_id,), explanation=f"Imported {len(data)} packages; explicit event IDs and existing print matching rules supply associations with retained evidence."))
+            scopes.append(SourceScope(provider="govinfo", scope="retained GPO package metadata", status="partial" if limit else "included", input_snapshot_ids=(c.input_id, gpo_review_context.input_id), explanation=f"Imported {len(data)} packages; explicit committee IDs and cited document reviews establish committee ownership. Explicit event IDs and existing print matching rules separately supply meeting associations."))
         else:
             scopes.append(SourceScope(provider="govinfo", scope="GPO packages", status="not_collected", explanation="No GPO input was supplied."))
         if youtube_dir:

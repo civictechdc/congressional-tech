@@ -1,10 +1,10 @@
-"""Pure parsing for 21 Senate/joint sites: seven witness layouts and linked files.
+"""Pure parsing for Senate/joint sites: seven witness layouts and linked files.
 
-Witness headings exclude senators' statements. JEC running text and Indian
-Affairs' browser-filled newer lists are deliberately not interpreted. Listings
+Witness headings exclude senators' statements. JEC running text is not interpreted. Listings
 locate pages; only a page's own date and subject establish which meeting it is.
 """
 import datetime as dt, html, re
+from urllib.parse import urljoin, urlsplit
 
 from congress_api.witnesses import is_name, witness
 from congress_api.inventory.common import text
@@ -14,7 +14,7 @@ SITE = {"ssaf00": "agriculture.senate.gov", "ssap00": "appropriations.senate.gov
         "ssbu00": "budget.senate.gov", "sscm00": "commerce.senate.gov", "sseg00": "energy.senate.gov", "ssev00": "epw.senate.gov", "ssfi00": "finance.senate.gov",
         "ssfr00": "foreign.senate.gov", "ssga00": "hsgac.senate.gov", "sshr00": "help.senate.gov", "ssju00": "judiciary.senate.gov", "ssra00": "rules.senate.gov",
         "sssb00": "sbc.senate.gov", "ssva00": "veterans.senate.gov", "slia00": "indian.senate.gov", "spag00": "aging.senate.gov", "slin00": "intelligence.senate.gov",
-        "jsec00": "jec.senate.gov", "jcse00": "csce.gov"}
+        "jsec00": "jec.senate.gov", "jcse00": "csce.gov", "scnc00": "drugcaucus.senate.gov"}
 ## the forms a listing's address takes
 LISTINGS = ["/hearings?PageNum_rs={}", "/committee-activity/hearings?PageNum_rs={}", "/hearings/?mt_page={}", "/committee-activity/hearings/?mt_page={}",
             "/hearings?page={}", "/public/index.cfm/hearings?page={}", "/public/index.cfm/hearings-calendar?page={}", "/hearings-and-markups?PageNum_rs={}",
@@ -31,7 +31,7 @@ MONTHS = "jan feb mar apr may jun jul aug sep oct nov dec".split()
 ## "6/12/2019", "06.12.19", "June 12, 2019", "Wednesday, March 11th, 2026", "Jun 24, 2026", "2019-06-12"
 DATE = re.compile(r"\b(\d{1,2})[/.](\d{1,2})[/.](\d{2,4})\b|\b((?:" + "|".join(MONTHS) + r")[a-z]*)\.? (\d{1,2})(?:st|nd|rd|th)?\s*,?\s*(\d{4})\b|\b(\d{4})-(\d{2})-(\d{2})\b", re.I)
 ## a file a page links, and what its link or name says it is
-FILE = re.compile(r"<a\b[^>]*href=\"([^\"]*(?:/download/|/wp-content/uploads/|/_cache/files/|/imo/media/doc/|/services/files/|/sites/[^\"]*/files/|files\.serve|\.pdf)[^\"]*)\"[^>]*>(.*?)</a>", re.S | re.I)
+FILE = re.compile(r"<a\b[^>]*href=\"([^\"]*(?:/download/|/media-center/files/|/wp-content/uploads/|/_cache/files/|/imo/media/doc/|/services/files/|/sites/[^\"]*/files/|files\.serve|\.pdf)[^\"]*)\"[^>]*>(.*?)</a>", re.S | re.I)
 KINDS = [("transcript", r"transcript"), ("questions for the record", r"qfr|questions?[ \-_]for[ \-_]the[ \-_]record|responses?[ \-_]to[ \-_](?:written[ \-_])?questions"),
          ("questionnaire", r"questionnaire"), ("witness biography", r"\bbio(?:graphy)?\b|/bio_"), ("witness statement", r"testimony"), ("member statement", r"statement")]
 
@@ -98,9 +98,9 @@ def witnesses(page_html, url):
     else:
         start = re.search(r">\s*Witnesses\s*</h\d>", page_html)
         for item in re.split(r"jet-listing-grid__item ", page_html[start.start():] if start else "")[1:]:
-            names = re.findall(r"<h3 class=\"jet-listing-dynamic-field__content\">(.*?)</h3>", item, re.S)
+            names = re.findall(r"<h[34] class=\"jet-listing-dynamic-field__content\">(.*?)</h[34]>", item, re.S)
             if names:
-                out.append(person(" ".join(names), re.findall(r"<div class=\"jet-listing-dynamic-field__content\">(.*?)</div>", item, re.S), url))
+                out.append(person(" ".join(names), re.findall(r"<(?:div|p) class=\"jet-listing-dynamic-field__content\">(.*?)</(?:div|p)>", item, re.S), url))
     seen = set()
     return [w for w in out if is_name(w["name"]) and not (w["name"] in seen or seen.add(w["name"]))]
 
@@ -114,7 +114,7 @@ def documents(page_html, url):
         file = html.unescape(link.group(1)).strip()
         if re.search(r"\.(jpe?g|png|gif|svg|css|js|ico)($|\?)", file, re.I):
             continue
-        file = file if file.startswith("http") else "https://" + re.match(r"https?://([^/]+)", url).group(1) + "/" + file.lstrip("/")
+        file = urljoin(url, file)
         said = text(link.group(2))
         heading = re.findall(r"<h[2-5][^>]*>(.*?)</h[2-5]>", page_html[max(0, link.start() - 2500):link.start()], re.S)
         name = text(heading[-1]) if heading and re.match(r"(download|view|read|open)\b", said, re.I) else said or file.rsplit("/", 1)[-1]
@@ -143,3 +143,55 @@ def lines(page_html):
 def topic(title):
     """The subject of a Senate meeting title: "Hearings to examine improving veterans' employment ..." -> "improving veterans' employment ..."."""
     return re.sub(r"^\s*(an? )?(oversight |joint )*hearings? (to examine|to receive testimony on|on)\s+", "", re.sub(r"\s+", " ", title), flags=re.I)
+
+
+def attachment_page(url):
+    """Only explicit official-site attachment pages, never speculative URL swaps."""
+    parsed = urlsplit(url)
+    return parsed.hostname in ("drugcaucus.senate.gov", "www.drugcaucus.senate.gov") and parsed.path.startswith("/media-center/files/")
+
+
+
+def event_type(title):
+    """The first proceeding named by a title, excluding later agenda items."""
+    proceeding = re.match(r"^\W*(?:(?:rescheduled|postponed|cancell?ed)\s*(?:[:)\]]\s*)+)?(?:(?:open|closed|joint|oversight|legislative|SCIA)\s+)*(roundtable|field hearing|business meeting|mark[ -]?up|briefing|hearing)\b", title, re.I)
+    return proceeding.group(1).title().replace("Mark Up", "Markup").replace("Mark-Up", "Markup") if proceeding else None
+
+def event_details(page_html, url):
+    """Read a proceeding's own displayed title/date; publication dates are excluded.
+
+    An event is admitted only from a recognized official hearing layout. Generic
+    dates elsewhere in the page (menus, transcripts, publication metadata) cannot
+    create a meeting. The source date stays unchanged if a curated correction is
+    subsequently selected by the adapter.
+    """
+    host = urlsplit(url).hostname or ""
+    if host.removeprefix("www.") not in SITE.values() or not re.search(r"/hearings/[^/]+", urlsplit(url).path):
+        return None
+    heading = re.search(r"<h1\b[^>]*>(.*?)</h1>", page_html, re.S)
+    if not heading:
+        return None
+    title = text(heading.group(1))
+    # WordPress event templates explicitly mark the hearing date. The Drug
+    # Caucus uses an unlabeled date immediately before the hearing heading.
+    candidates = [text(value) for value in re.findall(r'<(?:div|p)[^>]*class="jet-listing-dynamic-field__content"[^>]*>(.*?)</(?:div|p)>', page_html, re.S)]
+    date_text = next((value for value in candidates if re.match(r"^Date:\s*", value, re.I)), None)
+    if date_text is None and host.removeprefix("www.") == "drugcaucus.senate.gov":
+        before = page_html[max(0, heading.start() - 3000):heading.start()]
+        values = re.findall(r'<(?:div|p)[^>]*class="jet-listing-dynamic-field__content"[^>]*>(.*?)</(?:div|p)>', before, re.S)
+        date_text = next((text(value) for value in reversed(values) if DATE.fullmatch(text(value))), None)
+    match = DATE.search(date_text or "")
+    date = written_day(match) if match else None
+    if not title or date is None:
+        return None
+    native_type = event_type(title) or "Meeting"
+    if native_type == "Meeting" and re.search(r'\b(?:hold|held)\s+(?:a\s+)?field hearing titled', text(page_html[heading.end():heading.end() + 18000]), re.I):
+        native_type = "Field Hearing"
+    if native_type == "Meeting" and re.search(r'<body[^>]*class="[^"]*\bsingle-hearings\b', page_html):
+        native_type = "Hearing"
+    return {"title": title, "date": date.isoformat(), "date_text": date_text, "type": native_type, "url": url}
+
+
+def document_labels(page_html, url):
+    """Keep the provider's exact anchor words alongside our document category."""
+    return {urljoin(url, html.unescape(link.group(1)).strip()): text(link.group(2)) for link in FILE.finditer(page_html)}

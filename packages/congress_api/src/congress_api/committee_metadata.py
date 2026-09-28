@@ -1,5 +1,6 @@
 """Retain the official Congress-scoped committee lists used by the Explorer."""
 import argparse
+import csv
 from datetime import datetime, timezone
 import gzip
 import json
@@ -11,10 +12,14 @@ from congress_shared.auth import load_congress_api_key
 from .meetings import API, get, read, write
 
 
-def collect(meetings_path, output_path, *, api_key, session=None):
-    congresses = sorted({int(row['congress']) for row in read(meetings_path).values()})
+def collect(meetings_path, output_path, *, api_key, session=None, gpo_path=None):
+    congresses = {int(row['congress']) for row in read(meetings_path).values()}
+    if gpo_path:
+        with Path(gpo_path).open(newline='') as stream:
+            congresses.update(int(row['congress']) for row in csv.DictReader(stream) if row.get('congress'))
+    congresses = sorted(congresses)
     if not congresses:
-        raise ValueError('The retained meeting input has no Congresses')
+        raise ValueError('The retained meeting and document inputs have no Congresses')
     output = Path(output_path)
     existing = []
     if output.exists():
@@ -51,6 +56,7 @@ def collect(meetings_path, output_path, *, api_key, session=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--meetings-path', type=Path, required=True)
+    parser.add_argument('--gpo-path', type=Path, help='Include Congresses represented by retained GPO documents')
     parser.add_argument('--output-path', type=Path, required=True)
     args = parser.parse_args()
     collect(**vars(args), api_key=load_congress_api_key())

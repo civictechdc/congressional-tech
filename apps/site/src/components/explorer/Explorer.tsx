@@ -6,7 +6,7 @@ import RelatedMaterials from './RelatedMaterials';
 import { PAGE_SIZE, Pagination, RequestMessage, useRequest } from './request-state';
 import { downloadJson } from './download';
 import { readNavigation, viewNavigation, drillNavigation } from './navigation.js';
-import { documentSourceLabel, sourcePageUrl } from './record-presentation.js';
+import { committeeTypeLabel, documentSourceLabel, sourcePageUrl } from './record-presentation.js';
 
 const VIEWS = [
   { key: 'meetings', label: 'Meetings', kind: 'meeting' },
@@ -98,7 +98,7 @@ function Workspace({ reader, info }: { reader: ExplorerReader; info: QueryInfo }
       {nav.view !== 'committees' ? <><label>From date<input aria-label="From date" type="date" value={nav.from} onChange={(event) => filter({ from: event.target.value })} /></label>
       <label>Through date<input aria-label="Through date" type="date" value={nav.to} onChange={(event) => filter({ to: event.target.value })} /></label></> : null}
       {nav.view === 'materials' ? <label>Material type<select value={nav.type} onChange={(event) => filter({ type: event.target.value })}><option value="">All types</option><option value="document">Document</option><option value="recording">Recording</option><option value="text">Text product</option></select></label> : null}
-      {nav.view === 'meetings' || nav.view === 'coverage' ? <label>Meeting type<select value={nav.type} onChange={event => filter({type: event.target.value})}><option value="">All types</option><option value="hearing">Hearing</option><option value="markup">Markup</option><option value="business">Business meeting</option><option value="meeting">Meeting</option><option value="briefing">Briefing</option><option value="field_hearing">Field hearing</option><option value="other">Other</option><option value="unknown">Unknown</option></select></label> : null}
+      {nav.view === 'meetings' || nav.view === 'coverage' ? <label>Meeting type<select value={nav.type} onChange={event => filter({type: event.target.value})}><option value="">All types</option><option value="hearing">Hearing</option><option value="markup">Markup</option><option value="business">Business meeting</option><option value="meeting">Meeting</option><option value="briefing">Briefing</option><option value="roundtable">Roundtable</option><option value="field_hearing">Field hearing</option><option value="other">Other</option><option value="unknown">Unknown</option></select></label> : null}
       {info.supported_filters?.includes('access') && (nav.view === 'meetings' || nav.view === 'coverage') ? <label>Access<select value={nav.access} onChange={event => filter({access: event.target.value})}><option value="">All access states</option><option value="open">Open</option><option value="closed">Closed</option><option value="partly_closed">Partly closed</option><option value="unknown">Unknown</option></select></label> : null}
       {nav.view === 'gaps' ? <label>Issue status<select value={nav.status} onChange={(event) => filter({ status: event.target.value })}><option value="">All statuses</option><option value="open">Open</option><option value="resolved">Resolved</option><option value="dismissed">Dismissed</option></select></label> : null}
       <button type="button" className="explorer-text-button" onClick={reset}>Reset</button>
@@ -141,7 +141,7 @@ function PublicationScope({ publication }: { publication: Readonly<Record<string
 
 const VIEW_NOTES: Record<Exclude<View, 'coverage'>, string> = {
   meetings: 'Committee meetings, including scheduled, postponed and canceled entries.',
-  committees: 'Browse each committee’s meetings by Congress.',
+  committees: 'Browse each committee’s documents, recordings and meetings by Congress.',
   materials: 'Documents and recordings from collected sources, including items without a matched meeting.',
   witnesses: 'Witnesses listed by meeting. A listing does not confirm attendance.',
   gaps: 'Known collection and matching issues. Coverage shows which material remains unchecked.',
@@ -151,22 +151,23 @@ function Listing({ reader, query, view, info, onSelect, onPage }: { reader: Expl
   const key = JSON.stringify(query);
   const [state, retry] = useRequest<QueryResult>((signal) => reader.search(query, { signal }), [reader, key]);
   const title = VIEWS.find((item) => item.key === view)!.label;
+  const groupedCommittees = view === 'committees' && query.congress === 'all';
   return <>
-    <div className="explorer-subheading"><h2>{title}</h2>{state.status === 'ready' ? <><span className="explorer-muted">{integer(state.value.total)} {view === 'witnesses' ? (state.value.total === 1 ? 'appearance' : 'appearances') : (state.value.total === 1 ? 'record' : 'records')}</span><button className="explorer-text-button" onClick={() => downloadJson(`committee-explorer-${view}-page-${Math.floor(state.value.offset / PAGE_SIZE) + 1}.json`, { scope: 'selection', publication_id: reader.publication.publication_id, schema_version: reader.publication.schema_version, filters: query, total: state.value.total, offset: state.value.offset, rows: state.value.rows })}>Download this page (JSON)</button></> : null}</div>
-    <p className="explorer-note">{VIEW_NOTES[view]}</p>
+    <div className="explorer-subheading"><h2>{title}</h2>{state.status === 'ready' ? <><span className="explorer-muted">{integer(state.value.total)} {view === 'committees' ? (state.value.total === 1 ? 'committee' : 'committees') : view === 'witnesses' ? (state.value.total === 1 ? 'appearance' : 'appearances') : (state.value.total === 1 ? 'record' : 'records')}</span><button className="explorer-text-button" onClick={() => downloadJson(`committee-explorer-${view}-page-${Math.floor(state.value.offset / PAGE_SIZE) + 1}.json`, { scope: 'selection', publication_id: reader.publication.publication_id, schema_version: reader.publication.schema_version, filters: query, total: state.value.total, offset: state.value.offset, rows: state.value.rows })}>Download this page (JSON)</button></> : null}</div>
+    <p className="explorer-note">{groupedCommittees ? 'Each committee appears once. Choose a Congress to see its name, classification and records for that term.' : VIEW_NOTES[view]}</p>
     {state.status !== 'ready' ? <RequestMessage state={state} retry={retry} /> : state.value.rows.length ? <>
       <div className="explorer-table-scroll"><table className="explorer-table"><thead><tr>
         <th scope="col">{view === 'witnesses' ? 'Recorded name' : view === 'gaps' ? 'Known issue' : 'Record'}</th>
         <th scope="col">{view === 'committees' ? 'Congress' : view === 'witnesses' ? 'Date / Congress' : 'Date / status'}</th>
-        <th scope="col">{view === 'committees' ? 'Type / level' : view === 'witnesses' ? 'Position / organization' : view === 'gaps' ? 'Congress / category' : 'Congress / type'}</th>
+        <th scope="col">{view === 'committees' ? groupedCommittees ? 'Latest type / level' : 'Type / level' : view === 'witnesses' ? 'Position / organization' : view === 'gaps' ? 'Congress / category' : 'Congress / type'}</th>
         {view !== 'committees' && view !== 'gaps' ? <th scope="col" className="explorer-number">Open issues</th> : null}
       </tr></thead><tbody>
         {state.value.rows.map(row => <tr key={`${row.kind}/${row.id}`}>
           <td className="explorer-title-cell"><button className="explorer-text-button" title={row.title} onClick={() => onSelect(row)}>{recordTitle(row)}</button>
             <span className="explorer-row-meta">{[enumLabel(row.chamber), ...(view === 'committees' ? [] : row.committee_ids || []).map(id => info.committee_labels?.[id]).filter(Boolean), row.provider].filter(Boolean).join(' · ')}</span>
           </td>
-          <td>{view !== 'committees' ? row.date || <span className="explorer-unknown">Date unrecorded</span> : null}<span className={view === 'committees' ? undefined : 'explorer-row-meta'}>{view === 'committees' || view === 'witnesses' ? row.congress ? `${row.congress}th Congress` : 'Congress unrecorded' : enumLabel(row.status)}</span></td>
-          <td>{view === 'committees' ? <>{row.committee_type === 'subcommittee' && row.committee_types?.some(type => type !== 'unknown') ? `${row.committee_types.filter(type => type !== 'unknown').map(enumLabel).join(', ')} (parent)` : row.source_committee_type || enumLabel(row.committee_type) || 'Type unrecorded'}<span className="explorer-row-meta">{row.committee_level === 'full' ? 'Full committee' : row.committee_level === 'subcommittee' ? 'Subcommittee' : 'Level unrecorded'}</span></> : view === 'witnesses' ? <>{row.position || row.roles?.map(enumLabel).join(', ') || 'Position unrecorded'}{row.organization ? <span className="explorer-row-meta">{row.organization}</span> : null}</> : <>{row.congress ? `${row.congress}th Congress` : 'Congress unrecorded'}<span className="explorer-row-meta">{[documentType(row) || [row.type, row.category].filter((value, index, list) => value && value !== 'unknown' && list.indexOf(value) === index).map(enumLabel).join(' · '), documentSourceLabel(row)].filter(Boolean).join(' · ')}</span>{row.selection === 'retained_history' ? <span className="explorer-row-meta">Retained issue history · not present in latest inputs</span> : null}</>}</td>
+          <td>{view !== 'committees' ? row.date || <span className="explorer-unknown">Date unrecorded</span> : null}<span className={view === 'committees' ? undefined : 'explorer-row-meta'}>{view === 'committees' && row.terms ? <span className="explorer-congress-terms">{row.terms.map(term => <button key={term.id} className="explorer-text-button" title={`${term.title} — ${term.congress}th Congress`} aria-label={`View ${term.title}, ${term.congress}th Congress`} onClick={() => onSelect(term)}>{term.congress}th</button>)}</span> : view === 'committees' || view === 'witnesses' ? row.congress ? `${row.congress}th Congress` : 'Congress unrecorded' : enumLabel(row.status)}</span></td>
+          <td>{view === 'committees' ? <>{committeeTypeLabel(row)}<span className="explorer-row-meta">{row.committee_level === 'full' ? 'Full committee' : row.committee_level === 'subcommittee' ? 'Subcommittee' : 'Level unrecorded'}</span></> : view === 'witnesses' ? <>{row.position || row.roles?.map(enumLabel).join(', ') || 'Position unrecorded'}{row.organization ? <span className="explorer-row-meta">{row.organization}</span> : null}</> : <>{row.congress ? `${row.congress}th Congress` : 'Congress unrecorded'}<span className="explorer-row-meta">{[documentType(row) || [row.type, row.category].filter((value, index, list) => value && value !== 'unknown' && list.indexOf(value) === index).map(enumLabel).join(' · '), documentSourceLabel(row)].filter(Boolean).join(' · ')}</span>{row.selection === 'retained_history' ? <span className="explorer-row-meta">Retained issue history · not present in latest inputs</span> : null}</>}</td>
           {view !== 'committees' && view !== 'gaps' ? <td className="explorer-number">{row.issue_count === undefined ? '—' : integer(row.issue_count)}</td> : null}
         </tr>)}
       </tbody></table></div><Pagination total={state.value.total} offset={state.value.offset} count={state.value.rows.length} onPage={onPage} />
@@ -211,7 +212,7 @@ function SourceRecords({ reader, ids }: { reader: ExplorerReader; ids: string[] 
 }
 
 function Related({ reader, selected, onSelect }: { reader: ExplorerReader; selected: ExplorerRecordRef; onSelect: (ref: ExplorerRecordRef) => void }) {
-  const sections: Record<string, string[]> = {meeting: ['material', 'appearance', 'data_issue'], appearance: ['material', 'data_issue'], material: ['meeting', 'data_issue'], committee_term: ['meeting', 'data_issue']};
+  const sections: Record<string, string[]> = {meeting: ['material', 'appearance', 'data_issue'], appearance: ['material', 'data_issue'], material: ['meeting', 'data_issue'], committee_term: ['committee_term', 'material', 'meeting', 'data_issue']};
   return <div className="explorer-related">{(sections[selected.kind] || []).map(kind => kind === 'material'
     ? <RelatedMaterials key={kind} reader={reader} selected={selected} onSelect={onSelect} />
     : <RelatedSection key={kind} kind={kind} reader={reader} selected={selected} onSelect={onSelect} />)}</div>;
@@ -220,14 +221,14 @@ function Related({ reader, selected, onSelect }: { reader: ExplorerReader; selec
 function RelatedSection({ reader, selected, onSelect, kind }: { reader: ExplorerReader; selected: ExplorerRecordRef; onSelect: (ref: ExplorerRecordRef) => void; kind: string }) {
   const [page, setPage] = useState(0);
   const [state, retry] = useRequest(signal => reader.getRelated(selected, { kind, offset: page * PAGE_SIZE, limit: PAGE_SIZE, signal }), [reader, selected.kind, selected.id, kind, page]);
-  const labels: Record<string, string> = { material: 'Documents & recordings', appearance: 'Witnesses', meeting: 'Meetings', data_issue: 'Known issues' };
+  const labels: Record<string, string> = { material: 'Documents & recordings', appearance: 'Witnesses', meeting: 'Meetings', committee_term: 'Subcommittees', data_issue: 'Known issues' };
   if (state.status !== 'ready') return <RequestMessage state={state} retry={retry} noun={labels[kind].toLowerCase()} />;
   if (!state.value.records.length) return null;
   return <section className="explorer-detail-section"><h3>{labels[kind]} <span className="explorer-muted">({integer(state.value.total)})</span></h3><ul className="explorer-related-list">{state.value.records.map(record => {
         const row = fields(record);
         return <li key={record.id}>
           <button className="explorer-text-button" onClick={() => onSelect(record)}>{recordTitle(record)}</button>
-          <span className="explorer-row-meta">{[row.position, row.organization, row.date, row.status].filter(Boolean).map(words).join(' · ')}</span>
+          <span className="explorer-row-meta">{[row.position, row.organization, row.date, row.status, kind === 'committee_term' && row.congress ? `${row.congress}th Congress` : ''].filter(Boolean).map(words).join(' · ')}</span>
         </li>;
       })}</ul>
     {state.value.total > PAGE_SIZE ? <Pagination total={state.value.total} offset={state.value.offset} count={state.value.records.length} onPage={setPage} /> : null}

@@ -16,7 +16,7 @@ from committee_meeting.provenance import Method
 
 from congress_api.senate.isvp import LIVE_ID, STREAM, archive_url, live_url, parse_player_url
 
-from .common import digest, ref, web_url
+from .common import digest, ref, web_url, witness_roles
 
 
 def records(state, context, *, meetings, materials=None, recovered_witnesses=()):
@@ -162,7 +162,7 @@ def records(state, context, *, meetings, materials=None, recovered_witnesses=())
             provenance = provenance.model_copy(update={"citations": provenance.citations + context.evidence(underlying).citations})
         yield Appearance(
             id=context.ids("appearance", "recovered-witness|" + row_key), meeting=candidates[0], name=RecordedName(display=row["name"]),
-            roles=("nominee",) if nominee else ("witness",), participation="listed",
+            roles=("nominee",) if nominee else witness_roles(row.get("position")), participation="listed",
             affiliation=Affiliation(position=row.get("position") or None, organization_name=row.get("organization") or None),
             provenance=provenance,
         )

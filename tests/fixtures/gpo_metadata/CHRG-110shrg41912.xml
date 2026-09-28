@@ -1,0 +1,58 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mods xmlns="http://www.loc.gov/mods/v3" xmlns:ns2="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="3.3" xsi:schemaLocation="http://www.loc.gov/mods/v3 http://www.loc.gov/standards/mods/v3/mods-3-3.xsd" ID="P0b002ee180aceeb6">
+  <extension>
+    <dateIngested>2010-09-28</dateIngested>
+  </extension>
+  <titleInfo>
+    <title>MARKUP ON PENDING LEGISLATION</title>
+  </titleInfo>
+  <titleInfo type="alternative" />
+  <location>
+    <url displayLabel="Content Detail" access="object in context">https://www.govinfo.gov/app/details/CHRG-110shrg41912</url>
+    <url displayLabel="HTML rendition" access="raw object">https://www.govinfo.gov/content/pkg/CHRG-110shrg41912/html/CHRG-110shrg41912.htm</url>
+    <url displayLabel="PDF rendition" access="raw object">https://www.govinfo.gov/content/pkg/CHRG-110shrg41912/pdf/CHRG-110shrg41912.pdf</url>
+  </location>
+  <extension>
+    <accessId>CHRG-110shrg41912</accessId>
+    <heldDate>2007-11-14</heldDate>
+    <preferredCitation>S. Hrg. 110-378</preferredCitation>
+  </extension>
+  <relatedItem type="constituent" ID="id-41912" ns2:href="https://www.govinfo.gov/metadata/granule/CHRG-110shrg41912/CHRG-110shrg41912/mods.xml">
+    <titleInfo>
+      <title>MARKUP ON PENDING LEGISLATION</title>
+    </titleInfo>
+    <location>
+      <url displayLabel="Content Detail" access="object in context">https://www.govinfo.gov/app/details/CHRG-110shrg41912/CHRG-110shrg41912</url>
+      <url access="raw object" displayLabel="PDF rendition">https://www.govinfo.gov/content/pkg/CHRG-110shrg41912/pdf/CHRG-110shrg41912.pdf</url>
+      <url access="raw object" displayLabel="HTML rendition">https://www.govinfo.gov/content/pkg/CHRG-110shrg41912/html/CHRG-110shrg41912.htm</url>
+    </location>
+    <extension>
+      <searchTitle>MARKUP ON PENDING LEGISLATION</searchTitle>
+      <granuleClass>OTHERPART</granuleClass>
+      <accessId>CHRG-110shrg41912</accessId>
+      <congCommittee authorityId="ssva00" chamber="S" congress="110" type="S">
+        <name type="authority-standard">Committee on Veterans' Affairs</name>
+        <name type="authority-short">Veterans' Affairs</name>
+      </congCommittee>
+    </extension>
+  </relatedItem>
+  <relatedItem type="constituent" ID="id-41912err" ns2:href="https://www.govinfo.gov/metadata/granule/CHRG-110shrg41912/CHRG-110shrg41912-err/mods.xml">
+    <titleInfo>
+      <title>MARKUP ON PENDING LEGISLATION</title>
+    </titleInfo>
+    <location>
+      <url displayLabel="Content Detail" access="object in context">https://www.govinfo.gov/app/details/CHRG-110shrg41912/CHRG-110shrg41912-err</url>
+      <url access="raw object" displayLabel="PDF rendition">https://www.govinfo.gov/content/pkg/CHRG-110shrg41912/pdf/CHRG-110shrg41912-err.pdf</url>
+      <url access="raw object" displayLabel="HTML rendition">https://www.govinfo.gov/content/pkg/CHRG-110shrg41912/html/CHRG-110shrg41912-err.htm</url>
+    </location>
+    <extension>
+      <searchTitle>MARKUP ON PENDING LEGISLATION</searchTitle>
+      <granuleClass>ERRATA</granuleClass>
+      <accessId>CHRG-110shrg41912-err</accessId>
+      <congCommittee authorityId="ssva00" chamber="S" congress="110" type="S">
+        <name type="authority-standard">Committee on Veterans' Affairs</name>
+        <name type="authority-short">Veterans' Affairs</name>
+      </congCommittee>
+    </extension>
+  </relatedItem>
+</mods>

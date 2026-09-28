@@ -22,7 +22,7 @@ TABLES = {'meeting': 'meetings', 'committee_term': 'committees', 'material': 'ma
 ASPECTS = ('recording', 'transcript', 'documents', 'witnesses', 'captions')
 STRINGS = ('id', 'kind', 'title', 'chamber', 'date', 'type', 'status', 'meeting_id',
            'provider', 'category', 'selection', 'search_text', 'position', 'organization',
-           'participation', 'explanation', 'severity', 'subject_kind', 'subject_id', 'scheduled_at', 'meeting_status', 'recording_url', 'document_type', 'committee_level', 'parent_committee_id', 'access', 'committee_type', 'source_committee_type')
+           'participation', 'explanation', 'severity', 'subject_kind', 'subject_id', 'scheduled_at', 'meeting_status', 'recording_url', 'document_type', 'committee_level', 'parent_committee_id', 'access', 'committee_type', 'source_committee_type', 'committee_code')
 LISTS = ('committee_ids', 'roles', 'meeting_ids', 'appearance_ids', 'source_ids', 'source_document_groups', 'committee_types')
 LINK = pa.struct([(k, pa.string()) for k in ('url', 'label', 'role', 'media_type', 'version', 'published_at', 'sha256')])
 NOTE = pa.struct([(k, pa.string()) for k in ('label', 'value')])
@@ -32,7 +32,7 @@ SCHEMA = pa.schema([(k, pa.string()) for k in STRINGS] + [('congress', pa.int32(
                       ('files', pa.list_(LINK)), ('facts', pa.list_(NOTE))])
 SOURCE_SCHEMA = pa.schema([(k, pa.string()) for k in
     ('id', 'kind', 'provider', 'url', 'retrieved_at', 'source_modified_at', 'imported_at', 'input_snapshot_id', 'identifier', 'retained_uri', 'retained_sha256', 'payload')])
-QUERY_COLUMNS = [*STRINGS[:12], 'congress', 'issue_count', 'committee_ids', 'roles', 'evidence_states', 'scheduled_at', 'meeting_status', 'recording_url', 'position', 'organization', 'document_type', 'source_document_groups', 'committee_level', 'access', 'committee_type', 'source_committee_type', 'committee_types']
+QUERY_COLUMNS = [*STRINGS[:12], 'congress', 'issue_count', 'committee_ids', 'roles', 'evidence_states', 'scheduled_at', 'meeting_status', 'recording_url', 'position', 'organization', 'document_type', 'source_document_groups', 'committee_level', 'access', 'committee_type', 'source_committee_type', 'committee_types', 'committee_code', 'parent_committee_id']
 
 
 def sources_of(record):
@@ -47,13 +47,16 @@ def sources_of(record):
 
 def write_tables(records, sources, query_rows, stage, descriptor):
     """Accept iterables so a retained JSON publication can migrate without reassembly."""
-    source_rows, native_documents, native_meetings = [], {}, {}
+    source_rows, native_documents, native_meetings, reviewed_document_types = [], {}, {}, {}
     for source in sources:
         if source['provider'] == 'congress.gov' and isinstance(source.get('payload'), dict):
             native_meetings[source['id']] = {k: source['payload'].get(k) for k in ('type', 'title')}
             for group in ('meetingDocuments', 'witnessDocuments'):
                 for i, document in enumerate(source['payload'].get(group) or []):
                     native_documents[(source['id'], f'/{group}/{i}')] = (group, document)
+        if source['provider'] == 'gpo.committee-review' and isinstance(source.get('payload'), dict):
+            label = source['payload'].get('source_document_type')
+            if isinstance(label, str) and label: reviewed_document_types[source['id']] = label
         row = {key: source.get(key) for key in SOURCE_SCHEMA.names}
         row['source_modified_at'] = (source.get('source_modified_at') or {}).get('date')
         row['identifier'] = json.dumps(source.get('identifier'), ensure_ascii=False)
@@ -104,9 +107,15 @@ def write_tables(records, sources, query_rows, stage, descriptor):
                 row['committee_type'] = committee_type or 'unknown'
                 row['source_committee_type'] = record.get('source_committee_type')
                 row['parent_committee_id'] = parent
+                for key, label in (('start', 'Active from'), ('end', 'Active through')):
+                    value = (record.get('active') or {}).get(key)
+                    if value: row['facts'].append({'label': label, 'value': value})
+                if record.get('website'):
+                    row['facts'].append({'label': 'Official website or archive', 'value': record['website']})
                 row['committee_level'] = ('subcommittee' if parent or committee_type == 'subcommittee' else
                                           'full' if committee_type not in (None, 'unknown') else 'unknown')
                 code = next((i['value'] for i in record.get('identifiers', []) if i['scheme'] == 'congress.gov:committee'), None)
+                row['committee_code'] = code
                 level, parent_code = hierarchy_from_code(code)
                 if level != 'unknown':
                     committee_codes[(row.get('congress'), code.lower())] = id
@@ -122,9 +131,12 @@ def write_tables(records, sources, query_rows, stage, descriptor):
                 for source_id in row['source_ids']:
                     if source_id not in native_meetings: continue
                     native = native_meetings[source_id]
-                    row['type'], field = meeting_type(native)
+                    native_type, field = meeting_type(native)
+                    assembled_type = record.get('meeting_type')
+                    row['type'] = assembled_type if assembled_type not in (None, 'unknown', 'meeting') else native_type
                     if native.get('type'): row['facts'].append({'label': 'Source type', 'value': native['type']})
-                    if field == '/title': row['facts'].append({'label': 'Type based on', 'value': 'The source title explicitly identifies this meeting type.'})
+                    if field == '/title' and row['type'] == native_type:
+                        row['facts'].append({'label': 'Type based on', 'value': 'The source title explicitly identifies this meeting type.'})
                     row['access'], access_field = meeting_access(native)
                     if access_field == '/title': row['facts'].append({'label': 'Access based on', 'value': 'The source title explicitly identifies this access state.'})
                     break
@@ -135,6 +147,8 @@ def write_tables(records, sources, query_rows, stage, descriptor):
                 documents = [native_documents[key] for citation in provenance.get('citations', [])
                              if (key := (citation['source']['id'], citation.get('selector'))) in native_documents]
                 row['source_document_groups'] = sorted({group for group, _ in documents})
+                row['document_type'] = next((reviewed_document_types[citation['source']['id']]
+                    for citation in provenance.get('citations', []) if citation['source']['id'] in reviewed_document_types), row.get('document_type'))
                 if documents:
                     document = documents[0][1]
                     row['title'] = document_title(document) or row['title']
@@ -194,6 +208,7 @@ def write_tables(records, sources, query_rows, stage, descriptor):
         if row is None: continue
         meeting_id = id if kind == 'meeting' else subjects.get(id)
         if meeting_id: row['meeting_ids'].append(meeting_id)
+        if kind == 'committee_term': row['committee_ids'] = [*(row.get('committee_ids') or []), id]
         if kind == 'appearance': row['appearance_ids'].append(id)
         row['source_ids'].extend(source_ids)
         if kind in ('amendment', 'vote') and id in context_records:

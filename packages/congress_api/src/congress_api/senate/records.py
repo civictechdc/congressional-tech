@@ -1,78 +1,43 @@
-"""senate-meeting-records: find and read Senate and joint committees' hearing pages.
+"""Collect Senate/joint committee pages and retain replayable parsed source data.
 
-Read the meeting export, discover listings on 21 committee sites, and match
-pages by their own date and at least half their rarity-weighted subject. Ignore
-lines/documents shared by more than five pages, business meetings and listings
-more than a year away. Tied pages must name the same witnesses. Aging's listing
-misdated 68/78 hearings; listing dates therefore only rank candidates.
+Discovery reads official hearing listings on the supported sites. The default
+boundary is June 2019. An earlier --since requires an explicit --site scope;
+that boundary and the latest collection date remain in each site's state.
+WordPress event dates rank listings when available. Publication dates are only
+ranking hints, never evidence of a proceeding's date.
 
-Write senate_hearing_pages_found.csv, senate_witnesses_found.csv and
-senate_documents_found.csv. State retains parsed text lines for the site-wide
-menu check, witnesses, documents, listing routes/dates, checks and absences;
-never HTML. Weekly discovery stops after two overlapping known listing pages.
-New/changed records get priority, with 450 age-based page refreshes per run.
---seed-cache imports the research cache read-only for the initial backfill.
+Page associations use the page's own date and at least half the native title's
+rarity-weighted subject. Shared menu lines and files are excluded from matching;
+ambiguous ties remain unlinked. Existing associations survive changes in rarity
+weights unless a newly explicit event date contradicts the native record.
 
-Finding the page. A site's hearings are listed one of two ways:
+Recognized official event headers retain their title, date and type, so an
+unmatched official proceeding can later be admitted under its own URL identity.
+Same-day native candidates are retained even after a partial collection failure
+and prevent accidental duplicate admission. Indian Affairs and Drug Caucus use
+all native statuses for matching; other sites keep their established population.
 
-- the WordPress sites that record when a hearing is held (Homeland Security, Indian Affairs) answer
-  /wp-json/wp/v2/<type> for each of their hearing types, a hundred hearings to a request;
-- the rest list their hearings a page at a time, at /hearings?PageNum_rs=N, /hearings/?mt_page=N,
-  /hearings?page=N and the like. The form a site uses is the one whose second page lists hearings its
-  first does not; a site that counts its pages from 0 lists other hearings there than on page 1.
+Witness parsing covers the seven retained layouts, including Jet h3/h4 names and
+paragraph roles. Explicit Drug Caucus attachment pages are followed to their
+reported files; original landing URLs and anchor labels remain in state. Files
+are discovered, not downloaded. Every request has an actual receipt, separate
+from the scheduling day. Failures keep the last usable page.
 
-A backfill reads listings back to the first Senate meeting record (June 2019), and fetches
-every listed page. Later runs refresh new, changed and due pages. A listing says which pages there are, not when each hearing was: some sites file a hearing
-under the day it was announced, and the date read off a listing is the one written nearest the link,
-which on some sites is the row above's. The page says when. A page is the hearing's when it names the
-hearing's date and holds most of the meeting's subject, both in its own text: a line that more than
-five of the site's pages carry is the site's (a menu naming every subcommittee, a panel of coming
-hearings with their dates). Subject words are weighed by how rare they are in the committee's titles:
-"budget", "fiscal" and "year" are in every Appropriations title and say little; "Interior" says which
-hearing. A later page can name the day and the subject too: the business meeting that reports a
-nominee gives the day of the nominee's hearing, and an oversight hearing recalls the last one. So a
-business meeting's page is not a hearing's, and neither is a page listed more than a year from the
-day. Of the rest, the page with the most of the subject is taken when it holds at least half; when two
-hold as much, the one listed nearer the day, and when they are listed as near, neither, unless they
-list the same witnesses: a site that lists one hearing at two addresses.
-
-A search engine was tried first and found the page for one hearing in five: Congress.gov's titles
-paraphrase the committees' ("Hearings to examine the state of patent eligibility in America"), and
-searches return testimony files ahead of the page they belong to.
-
-Reading the page. The sites come in seven layouts:
-
-- a list of `vcard`s with `fn`, `title` and `org` (Finance, Appropriations, Budget, Banking);
-- a name over `witness-content` details, in a list item, under a "Witnesses", "Nominees" or "Panel"
-  heading (Judiciary, Armed Services, HELP, Aging, Foreign Relations ...);
-- `capigacr-widget-card`s in a "Testimony" panel (Commerce, Energy);
-- list items with a `person` or `full-name`, an `occupation` and an `organization` (Veterans'
-  Affairs, Environment and Public Works, Small Business);
-- `field-hearing-new-witness` items, the name in a `group-header` (Indian Affairs' older hearings);
-- `paragraph--witness` items with a field each for name, position and organization (the Helsinki
-  Commission);
-- a `jet-listing-grid` under a "Witnesses" heading, first and last name in separate headings (HSGAC).
-
-Senators' statements are laid out like witnesses, under a heading of their own ("Member Statements",
-"Opening Remarks"); those sections are passed over. Not read: the Joint Economic Committee's pages,
-which name witnesses in running text, and Indian Affairs' newer pages, which fill the list in the
-browser. The Helsinki Commission's site, csce.gov, is not the Senate's but is read the same way.
-
-Documents are the files a page links (/download/, /wp-content/uploads/ ...), less the files that more
-than five of the site's pages link (the committee's rules, a report in the margin). Each is typed by
-what its link or file name says.
-
-
+State contains parsed page evidence, listings, associations and request outcomes,
+not HTML. It is checkpointed every 25 pages. CSV files are views of those same
+saved associations. --seed-cache imports existing research pages read-only.
 """
-import argparse, collections, datetime as dt, json, math, re
+import argparse, collections, datetime as dt, gzip, json, math, re
 from pathlib import Path
 
 from congress_api import http
 from congress_api.committees import codes_of
 from congress_api.gpo.match import words
-from congress_api.inventory.common import CLOSED, due, kind, nonnegative, read_meetings, read_state, source_args, write_csv, write_state, text
+from congress_api.inventory.common import CLOSED, due, kind, nonnegative, read_state, source_args, write_csv, write_state, text
 from congress_api.senate.pages import (SITE, LISTINGS, HEARING_LINK, FIRST_RECORD, OWN, NEAR, BUSINESS, DATE,
-    documents, witnesses, lines, written_day, topic)
+    documents, witnesses, lines, written_day, topic, attachment_page, event_details, document_labels)
+from congress_api.senate.corrections import DATE_CORRECTIONS, selected_date
+from congress_api.senate.matching import match_identifiers
 
 PAGE_FIELDS = "event_id page title witnesses documents".split()
 WITNESS_FIELDS = "event_id name position organization page".split()
@@ -102,19 +67,28 @@ def wordpress_listed(site, get):
     for base in sorted({t["rest_base"] for t in types.values() if re.search(r"hearing|meeting", t.get("rest_base", "")) and "file" not in t["rest_base"]} if isinstance(types, dict) else ()):
         for n in range(1, 100):
             try:
-                posts = json.loads(get(f"https://www.{site}/wp-json/wp/v2/{base}?per_page=100&page={n}&_fields=link,title,acf") or "[]")
+                posts = json.loads(get(f"https://www.{site}/wp-json/wp/v2/{base}?per_page=100&page={n}&_fields=link,title,acf,date") or "[]")
             except ValueError:
                 break
-            held = [(p["acf"]["hearing_date_time"], p) for p in posts if isinstance(p.get("acf"), dict) and re.match(r"\d{4}-\d\d-\d\d", p["acf"].get("hearing_date_time") or "")]
+            held = []
+            for post in posts:
+                acf = post.get("acf") or {}
+                day = acf.get("hearing_date_time") if isinstance(acf, dict) else None
+                # Publication day only ranks discovery candidates for this site;
+                # a page's own event date is required before event admission.
+                if not day and site == "drugcaucus.senate.gov":
+                    day = post.get("date")
+                if re.match(r"\d{4}-\d\d-\d\d", day or ""):
+                    held.append((day, post))
             out += [(dt.date.fromisoformat(day[:10]), p["link"], text(p["title"]["rendered"])) for day, p in held]
             if len(posts) < 100 or not held:
                 break
     return out
 
 
-def listed(site, get, saved=None):
+def listed(site, get, saved=None, since=FIRST_RECORD):
     """(day, url, title) for the hearing pages a site lists, back to the first Senate meeting record."""
-    out = [r for r in wordpress_listed(site, get) if r[0] >= FIRST_RECORD] if not saved or saved.get("wordpress") else []
+    out = [r for r in wordpress_listed(site, get) if r[0] >= since] if not saved or saved.get("wordpress") else []
     if out:
         return out, {"wordpress": True}
     if saved and saved.get("form"):
@@ -131,9 +105,9 @@ def listed(site, get, saved=None):
         out += new
         if saved and n >= (1 if from_0 else 2) and all(r[1] in saved["listings"] for r in new):
             break  # two overlapping pages protect against a newly inserted hearing at a page boundary
-        if max(r[0] for r in new) < FIRST_RECORD:
+        if max(r[0] for r in new) < since:
             break
-    return out, {"form": form, "from_0": bool(from_0)}
+    return [row for row in out if row[0] >= since], {"form": form, "from_0": bool(from_0)}
 
 
 def match_pages(meetings, state):
@@ -144,41 +118,49 @@ def match_pages(meetings, state):
         if m.get("chamber") != "House" and codes:
             c = codes[0]
             titles[c].append(set(words(topic(m.get("title") or ""))))
-            if kind(m) == "hearing" and not CLOSED.search(f"{m.get('type')} {m.get('title')}") and c in SITE:
-                hearings.append({"event_id": m["eventId"], "date": m["date"][:10], "title": (m.get("title") or "").strip(), "committees": ";".join(codes)})
+            if c in SITE and m.get("date") and ((kind(m) == "hearing" and not CLOSED.search(f"{m.get('type')} {m.get('title')}")) or c in ("slia00", "scnc00")):
+                hearings.append({"event_id": m["eventId"], "date": m["date"][:10], "title": (m.get("title") or "").strip(), "committees": ";".join(codes), "kind": kind(m)})
     ## a subject word weighs by how few of the committee's titles hold it
     held_in = {c: collections.Counter(w for t in ts for w in t) for c, ts in titles.items()}
     weight = lambda c, w: math.log(len(titles[c]) / held_in[c][w])
 
-    sites = sorted({SITE[code(r)] for r in hearings})
+    sites = sorted({SITE[code(r)] for r in hearings} & set(state))
+    hearings = [row for row in hearings if SITE[code(row)] in sites]
     listings = {s: {u: (dt.date.fromisoformat(v[0]), v[1]) for u, v in state[s]["listings"].items()} for s in sites}
     pages = {u: p for s in sites for u, p in state[s]["pages"].items() if u in listings[s]}
-    found = {u: p["documents"] for u, p in pages.items()}
+    found = {u: p.get("documents", []) for u, p in pages.items()}
+    for listing in listings.values():
+        for url in listing:
+            found.setdefault(url, [])
     page_words, on_day = {}, collections.defaultdict(list)
     for s in sites:
-        print(f"  {s}: {len(listings[s]):,} hearing pages listed, {sum(1 for u in listings[s] if pages[u]):,} read", flush=True)
+        print(f"  {s}: {len(listings[s]):,} hearing pages listed, {sum(1 for u in listings[s] if pages.get(u, {})):,} read", flush=True)
         ## what many of a site's pages carry or link is the site's, not a hearing's
-        written = {u: set(pages[u]["lines"]) for u in listings[s]}
+        written = {u: set(pages.get(u, {}).get("lines", [])) for u in listings[s]}
         carried_by = collections.Counter(l for u in listings[s] for l in written[u])
         linked_by = collections.Counter(file for u in listings[s] for _, _, file in found[u])
         for u in listings[s]:
             own = " \n ".join(l for l in written[u] if carried_by[l] <= OWN)
             page_words[u] = set(words(own))
             found[u] = [d for d in found[u] if linked_by[d[2]] <= OWN]
-            for day in {written_day(m) for m in DATE.finditer(own)}:
+            event = pages.get(u, {}).get("event")
+            days = {dt.date.fromisoformat(selected_date(u, event))} if event else {written_day(m) for m in DATE.finditer(own)}
+            if u in DATE_CORRECTIONS:
+                days.add(dt.date.fromisoformat(DATE_CORRECTIONS[u]["date"]))
+            for day in days:
                 on_day[s, day].append(u)
 
     found_pages, found_witnesses, found_documents, stats = [], [], [], collections.Counter(hearings=len(hearings))
     for r in hearings:
         e, c, day = r["event_id"], code(r), dt.date.fromisoformat(r["date"])
         named = lambda u: f"{u.rstrip('/').rsplit('/', 1)[-1]} {listings[SITE[c]][u][1]}"
-        its = [(abs((listings[SITE[c]][u][0] - day).days), u) for u in on_day[SITE[c], day] if not BUSINESS.search(named(u)) or re.search(r"hearing|nominat", named(u), re.I)]
+        its = [(abs((listings[SITE[c]][u][0] - day).days), u) for u in on_day[SITE[c], day] if r["kind"] != "hearing" or not BUSINESS.search(named(u)) or re.search(r"hearing|nominat", named(u), re.I)]
         stats["with a page that names the day"] += bool(its)
         subject = set(words(topic(r["title"])))
         whole = sum(weight(c, w) for w in sorted(subject))
-        held = sorted((-sum(weight(c, w) for w in sorted(subject & page_words[u])) / whole if whole else 0.0, away, -len(found[u]), u) for away, u in its if away <= NEAR)
+        held = sorted((-sum(weight(c, w) for w in sorted(subject & page_words[u])) / whole if whole else -len(subject & page_words[u]) / max(1, len(subject)), away, -len(found[u]), u) for away, u in its if away <= NEAR)
         held = [h for h in held if -h[0] >= 0.5]
-        best = [(u, pages[u]["witnesses"]) for share, away, _, u in held if (share, away) == held[0][:2]]
+        best = [(u, pages.get(u, {}).get("witnesses", [])) for share, away, _, u in held if (share, away) == held[0][:2]]
         if not best or any(sorted(w["name"] for w in people) != sorted(w["name"] for w in best[0][1]) for _, people in best):
             stats["whose pages that day hold under half of the subject"] += bool(its and not best)
             stats["whose pages that day hold as much of the subject as each other"] += bool(best)
@@ -195,10 +177,52 @@ def match_pages(meetings, state):
     return found_pages, found_witnesses, found_documents
 
 
+
+
+def retained_matches(state):
+    """CSV views use the same saved associations as the downstream adapter."""
+    pages, witnesses, documents = [], [], []
+    for site in state.values():
+        shared = collections.Counter(document[2] for url, page in site.get("pages", {}).items() if url in site.get("listings", {}) for document in page.get("documents", []))
+        for url, page in site.get("pages", {}).items():
+            files = [document for document in page.get("documents", []) if shared[document[2]] <= OWN]
+            people = page.get("witnesses", [])
+            for event in page.get("events", []):
+                pages.append({"event_id": event, "page": url, "title": page.get("title", ""), "witnesses": len(people), "documents": len(files)})
+                witnesses.extend({"event_id": event, **person, "page": url} for person in people)
+                documents.extend({"event_id": event, "kind": kind, "name": name, "url": file, "page": url} for kind, name, file in files)
+    return pages, witnesses, documents
+
+def mark_possible_matches(meetings, state):
+    """Unresolved same-day native events prevent accidental duplicate admission.
+
+    A date/committee collision alone never establishes a match. Keep the source
+    event and its evidence, and expose the unresolved association for review.
+    """
+    native = collections.defaultdict(set)
+    for meeting in meetings:
+        if meeting.get("chamber") == "House" or not meeting.get("date"):
+            continue
+        for code in codes_of(meeting):
+            host = SITE.get(code)
+            if host:
+                native[host, meeting["date"][:10]].add(str(meeting["eventId"]))
+    for host, site in state.items():
+        for url, page in site.get("pages", {}).items():
+            if event := page.get("event"):
+                page["candidate_events"] = sorted(native[host, selected_date(url, event)] - set(map(str, page.get("events") or [])))
+
 def parsed(page, url):
     title = re.search(r'<meta property="og:title" content="([^"]+)"|<title>(.*?)</title>', page, re.S)
-    return {"title": text(title.group(1) or title.group(2)).split(" | ")[0] if title else "",
-            "lines": sorted(lines(page)), "witnesses": witnesses(page, url), "documents": documents(page, url)}
+    result = {"title": text(title.group(1) or title.group(2)).split(" | ")[0] if title else "",
+              "lines": sorted(lines(page)), "witnesses": witnesses(page, url), "documents": documents(page, url)}
+    if labels := document_labels(page, url):
+        result["document_labels"] = labels
+    event = event_details(page, url)
+    if event:
+        result["event"] = event
+        result["title"] = result["title"] or event["title"]
+    return result
 
 
 def seed_fetch(cache, url):
@@ -250,6 +274,15 @@ def fetch_page(url, previous, today, *, cache=None, check=None):
                 result = {"title": "", "lines": [], "witnesses": [], "documents": [], "absent": True}
             else:
                 result = parsed(decoded_page(response, url, check["receipts"][-1]), url)
+                attachments = {}
+                for _, _, linked_url in result["documents"]:
+                    if attachment_page(linked_url):
+                        response_file = request(linked_url, check["receipts"])
+                        if response_file.status_code == 200:
+                            attachment_html = decoded_page(response_file, linked_url, check["receipts"][-1])
+                            attachments[linked_url] = [dict(kind=kind, label=label, url=file_url) for kind, label, file_url in documents(attachment_html, linked_url) if not attachment_page(file_url)]
+                if attachments:
+                    result["attachments"] = attachments
                 if not result["title"]:
                     check["receipts"][-1]["outcome"] = "unrecognized_page"
                     raise ValueError(f"Unrecognized Senate hearing page {url}")
@@ -257,11 +290,11 @@ def fetch_page(url, previous, today, *, cache=None, check=None):
             result["last_check"] = check
             result["observation_check"] = check  # Retain this evidence if a later refresh fails.
             if response.status_code == 200:
-                result["retrieved_at"] = check["receipts"][-1]["completed_at"]
+                result["retrieved_at"] = next(receipt["completed_at"] for receipt in check["receipts"] if receipt["url"] == url)
         except (ValueError, RuntimeError, OSError) as error:
             check.update(completed_at=timestamp(), outcome="error", error=str(error))
             raise
-    return {**result, "checked": today.isoformat(), "version": "", "events": previous.get("events", [])}
+    return {**result, "checked": today.isoformat(), "version": "", "parser_version": 2, "events": previous.get("events", []), **({"match_details": previous["match_details"]} if previous.get("match_details") else {})}
 
 
 def refresh_urls(state, versions, today, limit, sites=None):
@@ -279,14 +312,26 @@ def refresh_urls(state, versions, today, limit, sites=None):
     return {url for _, url in sorted(aged)[:limit]}
 
 
-def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=None, refresh_limit=450, site=None, limit=None):
-    ms, path = read_meetings(meetings), state_dir / "senate.json.gz"
+def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=None, refresh_limit=450, site=None, limit=None, since=None):
+    if since is not None and since < FIRST_RECORD and not site:
+        raise ValueError("Historical collection before June 2019 requires an explicit --site scope")
+    # Collection/admission must see canceled and historical native meetings too;
+    # the inventory's reporting filter would make them look like missing events.
+    with gzip.open(meetings, "rt", encoding="utf-8") as stream:
+        native_meetings = list(map(json.loads, stream))
+    # Preserve the established refresh scope for other sites. Full native input
+    # still informs duplicate guards, including canceled or historical records.
+    ms = [meeting for meeting in native_meetings if any(code in ("slia00", "scnc00") for code in codes_of(meeting)) or
+          (meeting.get("meetingStatus") in ("Scheduled", "Rescheduled") and int(meeting.get("congress", 0)) >= 113)]
+    path = state_dir / "senate.json.gz"
     state, totals = read_state(path), collections.Counter()
     versions = collections.defaultdict(dict)
     for m in ms:
         codes = codes_of(m)
         if m.get("chamber") != "House" and codes and codes[0] in SITE:
             versions[SITE[codes[0]]][m["eventId"]] = m.get("updateDate", "")
+    for host in site or ():
+        versions.setdefault(host, {})
     maintenance = refresh_urls(state, versions, as_of, refresh_limit, site)
     errors, live_pages = [], 0
     for host in sorted(versions):
@@ -295,6 +340,8 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
         saved = state.get(host, {})
         if saved.get("status") == "error":
             saved = {}  # Failed initial discovery does not change discovery policy.
+        boundary = since or dt.date.fromisoformat(saved.get("collection_scope", {}).get("since", FIRST_RECORD.isoformat()))
+        expanded = boundary < dt.date.fromisoformat(saved.get("collection_scope", {}).get("since", FIRST_RECORD.isoformat()))
         importing = not saved and seed_cache is not None
         if offline and not importing:
             if not saved:
@@ -308,11 +355,12 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
             response = request(url, listing_check["receipts"], allowed=(200, 400, 404))
             return decoded_page(response, url, listing_check["receipts"][-1]) if response.status_code == 200 else ""
         try:
-            if importing or not saved or saved.get("versions") != versions[host] or (as_of - dt.date.fromisoformat(saved["checked"])).days >= 7:
+            if importing or not saved or expanded or saved.get("versions") != versions[host] or (as_of - dt.date.fromisoformat(saved["checked"])).days >= 7:
                 if not importing:
                     listing_check.update(mode="live", started_at=timestamp(), receipts=[])
                 try:
-                    rows, route = listed(host, get, saved)
+                    rows, route = (listed(host, get, None if expanded else saved, since=boundary)
+                                   if boundary != FIRST_RECORD else listed(host, get, saved))
                     if not rows and not importing:
                         raise ValueError(f"{host}: previously working listing returned no hearings")
                 except (ValueError, RuntimeError, OSError) as error:
@@ -328,17 +376,18 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
                 else:
                     listing_check.update(completed_at=timestamp(), outcome="present")
                     saved["last_check"] = listing_check
+                saved["collection_scope"] = {"since": boundary.isoformat(), "through": as_of.isoformat(), "basis": "official hearing listings"}
                 totals["sites listed"] += 1
             pages = saved["pages"]
             changed = {e for e, v in versions[host].items() if saved.get("versions", {}).get(e) != v}
             urgent, aged = [], []
             for url, (day, _) in saved["listings"].items():
                 previous = pages.get(url)
-                if not previous or previous.get("status") == "error" or changed.intersection(previous.get("events", [])):
+                if not previous or previous.get("status") == "error" or (host in ("indian.senate.gov", "drugcaucus.senate.gov") and previous.get("parser_version") != 2) or changed.intersection(previous.get("events", [])):
                     urgent.append(url)
                 elif url in maintenance:
                     aged.append(url)
-            aged.sort(key=lambda u: (pages[u]["checked"], u))
+            aged.sort(key=lambda u: (pages.get(u, {})["checked"], u))
             for url in urgent + aged:
                 if limit is not None and live_pages >= limit and not importing:
                     break
@@ -351,6 +400,11 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
                         previous["last_check"] = page_check
                     raise
                 totals["pages seeded" if importing else "pages fetched"] += 1
+                if not importing and totals["pages fetched"] % 25 == 0:
+                    print(f"{host}: {totals['pages fetched']} pages refreshed; checkpoint saved", flush=True)
+                    state[host] = saved
+                    mark_possible_matches(native_meetings, state)
+                    write_state(path, state)
                 if not importing:
                     live_pages += 1
             if limit is None or live_pages < limit:
@@ -364,20 +418,35 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
                 attempt.update(completed_at=timestamp(), outcome="error", error=str(error))
                 saved["last_attempt"] = attempt
                 state[host] = saved
+    mark_possible_matches(native_meetings, state)
     write_state(path, state)
-    missing = [host for host in versions if host not in state or state[host].get("status") == "error" or any(
-        u not in state[host]["pages"] or state[host]["pages"][u].get("status") == "error" for u in state[host]["listings"])]
+    missing = [host for host in versions if (not site or host in site) and (host not in state or state[host].get("status") == "error" or any(
+        u not in state[host]["pages"] or state[host]["pages"][u].get("status") == "error" for u in state[host]["listings"]))]
     if errors or missing:
         raise RuntimeError(f"Senate source incomplete: {errors[:5] or missing}")
     found = match_pages(ms, state)
-    for host in state:
-        for page in state[host]["pages"].values():
-            page["events"] = []
-    for r in found[0]:
-        for host in state:
-            if r["page"] in state[host]["pages"]:
-                state[host]["pages"][r["page"]]["events"].append(r["event_id"])
+    # A changing site corpus changes rarity weights. Keep a previously supported
+    # association unless the page's explicit event date now contradicts it.
+    previous = {url: list(page.get("events") or []) for saved in state.values() for url, page in saved["pages"].items()}
+    native = collections.defaultdict(list)
+    for meeting in native_meetings:
+        native[str(meeting["eventId"])].append(meeting)
+    for host, saved in state.items():
+        for url, page in saved["pages"].items():
+            event = page.get("event")
+            page["events"] = [identifier for identifier in previous[url] if not event or any(
+                meeting.get("date", "")[:10] == selected_date(url, event) and any(SITE.get(code) == host for code in codes_of(meeting))
+                for meeting in native[str(identifier)])]
+    for row in found[0]:
+        for saved in state.values():
+            if row["page"] in saved["pages"]:
+                page = saved["pages"][row["page"]]
+                if row["event_id"] not in page["events"]:
+                    page["events"].append(row["event_id"])
+    match_identifiers(native_meetings, state)
+    mark_possible_matches(native_meetings, state)
     write_state(path, state)
+    found = retained_matches(state)
     for name, rows, fields in zip(("senate_hearing_pages_found", "senate_witnesses_found", "senate_documents_found"), found, (PAGE_FIELDS, WITNESS_FIELDS, DOCUMENT_FIELDS)):
         write_csv(output_dir / f"{name}.csv", rows, fields)
         totals[name] = len(rows)
@@ -389,5 +458,6 @@ def parse_args_and_run():
     source_args(p)
     p.add_argument("--refresh-limit", type=nonnegative, default=450)
     p.add_argument("--site", action="append", choices=sorted(SITE.values()), help="limit live fetching to these sites; retain other saved sites")
+    p.add_argument("--since", type=dt.date.fromisoformat, help="earliest listing day; before June 2019 requires --site")
     p.add_argument("--limit", type=nonnegative, help="maximum live hearing pages (listings are additional)")
     main(**vars(p.parse_args()))

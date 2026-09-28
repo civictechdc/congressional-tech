@@ -48,6 +48,15 @@ def write_queries(catalog, current, write, *, evidence_states=None, include_rela
         result = (congress, chamber, meeting_id, committees)
         scope_cache[key] = result
         return result
+    def committee_level(record):
+        if not record: return 'unknown'
+        if record.parent or record.committee_type == 'subcommittee': return 'subcommittee'
+        return 'full' if record.committee_type != 'unknown' else 'unknown'
+    def committee_type(id, seen=()):
+        record = records.get(('committee_term', id))
+        if not record or id in seen: return 'unknown'
+        if record.committee_type not in ('unknown', 'subcommittee'): return record.committee_type
+        return committee_type(record.parent.id, (*seen, id)) if record.parent else 'unknown'
     dates, statuses, witness_names, issue_counts = {}, {}, defaultdict(set), Counter()
     relations = defaultdict(lambda: defaultdict(dict))
     def relate(target, record, relation):
@@ -57,6 +66,9 @@ def write_queries(catalog, current, write, *, evidence_states=None, include_rela
         value = {'kind': record.kind, 'id': record.id, 'relation': relation}
         relations[bucket][key][(record.kind, record.id, relation)] = value
     for record in catalog.records:
+        if include_relations and record.kind == 'material_link' and record.subject.kind == 'committee_term':
+            material = records.get(('material', record.material.id))
+            if material: relate(record.subject, material, 'material')
         if record.kind == 'occurrence' and record.scheduled_start:
             dates.setdefault(record.meeting.id, record.scheduled_start.date.isoformat())
             statuses.setdefault(record.meeting.id, record.status)
@@ -98,7 +110,15 @@ def write_queries(catalog, current, write, *, evidence_states=None, include_rela
         for field in ('provider', 'category'):
             value = getattr(record, field, None) or getattr(details, field, None)
             if value: row[field] = value
+        row['committee_types'] = sorted({committee_type(id) for id in committees}) or ['unknown']
+        levels = {committee_level(records.get(('committee_term', id))) for id in committees}
+        row['committee_level'] = 'subcommittee' if 'subcommittee' in levels else 'full' if levels == {'full'} else 'unknown'
         if record.kind == 'appearance': row['roles'] = list(record.roles)
+        if record.kind == 'committee_term':
+            row['committee_code'] = next((i.value for i in record.identifiers if i.scheme == 'congress.gov:committee'), None)
+            row['parent_committee_id'] = record.parent.id if record.parent else None
+            row['committee_type'] = record.committee_type
+            row['source_committee_type'] = record.source_committee_type
         if record.kind == 'data_issue':
             row['subject'] = record.subject.model_dump(mode='json')
             if not is_current: row['selection'] = 'retained_history'

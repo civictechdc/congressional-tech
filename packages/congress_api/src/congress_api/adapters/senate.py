@@ -1,18 +1,20 @@
 """Adapt retained Senate committee pages without fetching or rematching them."""
 from collections import Counter, defaultdict
-from datetime import datetime
+from datetime import date, datetime
 from urllib.parse import urlsplit
 
 from committee_meeting.assessments import Assessment
+from committee_meeting.common import Identifier
 from committee_meeting.issues import DataIssue
 from committee_meeting.materials import DocumentDetails, MaterialLink
-from committee_meeting.meetings import Affiliation, Appearance, RecordedName
-from committee_meeting.provenance import Method
+from committee_meeting.meetings import Affiliation, Appearance, RecordedName, ConveningCommittee, Meeting, MeetingOccurrence
+from committee_meeting.provenance import AlternativeValue, FieldEvidence, Method
 
-from congress_api.senate.pages import OWN
+from congress_api.senate.pages import OWN, SITE, attachment_page
+from congress_api.senate.corrections import DATE_CORRECTIONS, selected_date
 
-from .common import digest, material_records, ref, web_url
-from .meetings import category
+from .common import digest, material_records, ref, web_url, reported_time, witness_roles
+from .meetings import category, meeting_type, meeting_access
 
 
 MATCH_METHOD = Method(name="senate.records.match_pages", version="1")
@@ -49,13 +51,41 @@ def _live_receipt(page, url, now):
     return None
 
 
-def records(state, context, *, meetings):
+
+def official_events(state):
+    """Validated source-owned events for metadata discovery and offline admission."""
+    codes = {host: code for code, host in SITE.items()}
+    for host, site in sorted(state.items()):
+        if host not in codes:
+            continue
+        for url, page in sorted((site.get("pages") or {}).items()):
+            event = page.get("event")
+            if page.get("absent") or page.get("status") == "error" or not isinstance(event, dict):
+                continue
+            if not event.get("title") or event.get("url") != url or (urlsplit(url).hostname or "").removeprefix("www.") != host:
+                continue
+            try:
+                day = date.fromisoformat(selected_date(url, event))
+            except (ValueError, TypeError, KeyError):
+                continue
+            # Congresses since 1935 begin January 3. This collector's explicit
+            # historical boundary is much later; dates before that stay raw.
+            if day.year < 1935:
+                continue
+            year = day.year - (1 if (day.month, day.day) < (1, 3) else 0)
+            congress = (year - 1789) // 2 + 1
+            yield {"host": host, "url": url, "page": page, "event": event,
+                   "congress": congress, "committee_code": codes[host]}
+
+def records(state, context, *, meetings, committee_terms=None, meeting_records=None):
     """Yield every page and document, with only saved, unambiguous associations.
 
     Lookup keys are (Congress, chamber, eventId). Senate state retains only the
     eventId, so a repeated eventId across those keys cannot establish a link.
     The producer's page match is derived evidence; a listing date is not used.
     """
+    committee_terms, meeting_records = committee_terms or {}, meeting_records or {}
+    events = {event["url"]: event for event in official_events(state)}
     by_event = defaultdict(list)
     for (_, _, event), meeting in meetings.items():
         if meeting.kind != "meeting":
@@ -92,6 +122,12 @@ def records(state, context, *, meetings):
             if live or previous_retrieval:
                 source = source.model_copy(update={"retrieved_at": live[0] if live else previous_retrieval})
             yield source
+            correction = DATE_CORRECTIONS.get(url)
+            correction_evidence = None
+            if correction:
+                correction_source = context.source("senate-date-correction|" + url, correction, correction["source_url"])
+                yield correction_source
+                correction_evidence = context.evidence(correction_source, basis="curated", selector="/date")
 
             def issue(code, category, summary, *, explanation=None, subject=None, selector=None):
                 return DataIssue(
@@ -130,10 +166,69 @@ def records(state, context, *, meetings):
                 candidates = by_event.get(str(event), [])
                 if len(candidates) == 1:
                     meeting = candidates[0]
-                    matched[meeting.id] = (meeting, context.evidence(source, basis="derived", method=MATCH_METHOD, selector=f"/events/{index}"))
+                    details = (page.get("match_details") or {}).get(str(event))
+                    if details and details.get("method") == "senate.records.match_identifiers":
+                        match_evidence = context.evidence(source, basis="derived", method=Method(name=details["method"], version=details["version"]), selector=f"/match_details/{event}")
+                    else:
+                        match_evidence = context.evidence(source, basis="derived", method=MATCH_METHOD, selector=f"/events/{index}")
+                    if correction_evidence:
+                        match_evidence = match_evidence.model_copy(update={"citations": match_evidence.citations + correction_evidence.citations})
+                    matched[meeting.id] = (meeting, match_evidence)
                 else:
                     yield issue(f"unresolved-event|{event}", "unlinked", "A saved page association has no unique meeting reference.",
                                 explanation=f"Event {event} resolves to {len(candidates)} entries in the supplied meeting lookup.", selector=f"/events/{index}")
+            official = events.get(url)
+            event = official["event"] if official else None
+            if official and not matched and not seen_events and not page.get("candidate_events"):
+                # The official URL is the provider identity. Congress numbers
+                # organize the proceeding; no Congress.gov event ID is invented.
+                term = committee_terms.get((official["congress"], official["committee_code"]))
+                event_evidence = context.evidence(source, selector="/event")
+                if term is None:
+                    yield issue("unresolved-event-committee", "unlinked", "The official event has no retained committee term.",
+                                explanation=f"Committee {official['committee_code']} in Congress {official['congress']} is missing.", selector="/event")
+                else:
+                    kind = "roundtable" if event.get("type") == "Roundtable" else meeting_type(event)[0]
+                    native_key = f"senate.committee|{url}"
+                    meeting = Meeting(id=context.ids("meeting", native_key), title=event["title"], congress=official["congress"],
+                                      chamber="joint" if official["committee_code"].startswith("j") else "senate", meeting_type=kind,
+                                      committees=(ConveningCommittee(committee=term, role="host", provenance=event_evidence),),
+                                      identifiers=(Identifier(scheme="senate.committee:page", value=url),), provenance=event_evidence)
+                    yield meeting
+                    occurrence_evidence = event_evidence
+                    date_fields = ()
+                    if correction:
+                        occurrence_evidence = correction_evidence
+                        date_fields = (FieldEvidence(path="/scheduled_start", selected=occurrence_evidence,
+                                      alternatives=(AlternativeValue(value=reported_time(event["date"]).model_dump(mode="json"), provenance=event_evidence),),
+                                      selection_reason=correction["reason"]),)
+                    access, _ = meeting_access(event)
+                    yield MeetingOccurrence(id=context.ids("occurrence", native_key + "|sitting"), meeting=ref(meeting),
+                                            scheduled_start=reported_time(selected_date(url, event)), access=access,
+                                            provenance=occurrence_evidence, field_evidence=date_fields)
+                    matched[meeting.id] = (ref(meeting), event_evidence)
+            elif event:
+                for meeting_ref, match_evidence in matched.values():
+                    original = meeting_records.get(meeting_ref.id)
+                    if original is None:
+                        continue
+                    identifier = Identifier(scheme="senate.committee:page", value=url)
+                    identifiers = original.identifiers if identifier in original.identifiers else original.identifiers + (identifier,)
+                    event_evidence = context.evidence(source, selector="/event")
+                    evidence = original.provenance.model_copy(update={"citations": original.provenance.citations + tuple(citation for citation in event_evidence.citations if citation not in original.provenance.citations)})
+                    fields = original.field_evidence
+                    kind = original.meeting_type
+                    if event.get("type") == "Roundtable" and kind != "roundtable":
+                        selected = context.evidence(source, selector="/event/type")
+                        field = FieldEvidence(path="/meeting_type", selected=selected,
+                                              alternatives=(AlternativeValue(value=kind, provenance=original.provenance),),
+                                              selection_reason="The convening committee explicitly describes its proceeding as a Roundtable.")
+                        fields = tuple(field for field in fields if field.path != "/meeting_type") + (field,)
+                        kind = "roundtable"
+                    yield original.model_copy(update={"meeting_type": kind, "field_evidence": fields, "identifiers": identifiers, "provenance": evidence})
+            if not matched and page.get("candidate_events"):
+                yield issue("possible-native-event", "unlinked", "The official event may already have a Congress.gov meeting.",
+                            explanation="The same committee has a retained meeting on this date, but the page match is not established; a duplicate meeting was not created.", selector="/candidate_events")
             if not matched:
                 yield issue("unlinked-page", "unlinked", "This retained committee page has no supported meeting association.",
                             explanation="Documents remain discoverable. Witness rows remain in the source payload until their meeting is established.")
@@ -152,7 +247,12 @@ def records(state, context, *, meetings):
                 document_key = key + "|document|" + document_hash
                 cat = "questions_for_record" if kind == "questions for the record" else category({"kind": kind, "name": title})
                 ev = context.evidence(source, selector=selector)
-                built = material_records(context, ev, document_key, title=title, urls=[document_url], details=DocumentDetails(category=cat))
+                resolved = [entry.get("url") for entry in (page.get("attachments") or {}).get(document_url, []) if isinstance(entry, dict) and web_url(entry.get("url"))]
+                urls = [document_url, *resolved]
+                built = material_records(context, ev, document_key, title=title, urls=urls, details=DocumentDetails(category=cat))
+                if attachment_page(document_url):
+                    built = [item.model_copy(update={"locations": tuple(location.model_copy(update={"role": "landing"}) for location in item.locations)})
+                             if item.kind == "representation" and item.locations[0].url == document_url else item for item in built]
                 yield from built
                 material, version = built[:2]
                 if not web_url(document_url):
@@ -191,7 +291,7 @@ def records(state, context, *, meetings):
                     yield Appearance(
                         id=context.ids("appearance", key + "|witness|" + witness_key + "|" + meeting.id),
                         meeting=meeting, name=RecordedName(display=witness["name"]),
-                        roles=("witness",), participation="listed",
+                        roles=witness_roles(witness.get("position")), participation="listed",
                         affiliation=Affiliation(organization_name=witness.get("organization") or None, position=witness.get("position") or None),
                         provenance=match_evidence.model_copy(update={"citations": match_evidence.citations + context.evidence(source, selector=selector).citations}),
                     )

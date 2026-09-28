@@ -12,7 +12,7 @@ class DocumentDetails(Model):
     category: Literal[
         "transcript", "statement", "biography", "disclosure", "questions_for_record",
         "responses_for_record", "notice", "agenda", "amendment", "vote", "report",
-        "bill_text", "witness_list", "hearing_record", "supporting", "errata", "other", "unknown",
+        "bill_text", "witness_list", "hearing_record", "committee_print", "supporting", "errata", "other", "unknown",
     ] = "unknown"
 
 

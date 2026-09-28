@@ -8,7 +8,7 @@ from committee_meeting import Catalog
 from committee_meeting.common import Identifier, Ref
 from committee_meeting.issues import DataIssue
 from committee_meeting.meetings import Appearance, Meeting, RecordedName
-from committee_meeting.provenance import Citation, Provenance, SourceRecord
+from committee_meeting.provenance import Citation, FieldEvidence, Provenance, SourceRecord
 
 
 NOW = datetime(2026, 9, 27, tzinfo=UTC)
@@ -88,3 +88,14 @@ def test_merge_keeps_disagreement_and_produces_valid_conflict_issue():
     issue = next(record for record in catalog.records if record.kind == "data_issue")
     assert selected.title == "Revised title" and selected.field_evidence[0].alternatives[0].value == "Retained hearing"
     assert issue.category == "conflicting" and issue.field_path == "/title"
+
+
+def test_empty_incoming_value_does_not_supply_evidence_for_retained_value():
+    assembly = Assembly()
+    assembly.add([source(), source('empty'), meeting()])
+    assembly.add([meeting().model_copy(update={'title': None, 'field_evidence': (
+        FieldEvidence(path='/title', selected=evidence('empty'), selection_reason='Source has no title.'),)})])
+    retained = assembly.records['meeting', 'meeting']
+    assert retained.title == 'Retained hearing'
+    assert not any(field.path == '/title' for field in retained.field_evidence)
+    assembly.finish()
