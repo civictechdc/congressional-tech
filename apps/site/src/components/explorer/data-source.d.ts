@@ -91,7 +91,13 @@ export interface QueryRow extends ExplorerRecordRef {
   document_type?: string | null;
   source_document_groups?: readonly string[] | null;
   status?: string | null;
+  access?: 'open' | 'closed' | 'partly_closed' | 'unknown' | null;
   committee_ids?: readonly string[];
+  committee_level?: 'full' | 'subcommittee' | 'unknown' | null;
+  parent_committee_id?: string | null;
+  committee_type?: string | null;
+  source_committee_type?: string | null;
+  committee_types?: readonly string[] | null;
   meeting_id?: string | null;
   provider?: string | null;
   category?: string | null;
@@ -111,19 +117,41 @@ export interface ExplorerQuery {
   month?: string;
   type?: string;
   status?: string;
+  access?: string;
   committeeId?: string;
+  committeeLevel?: 'full';
+  committeeType?: string;
   aspect?: CoverageAspect;
   evidence?: EvidenceState;
   offset?: number;
   limit?: number;
 }
 export interface QueryInfo {
+  supported_filters?: readonly ('committeeLevel' | 'committeeType' | 'access')[];
   default_congress: number;
   congresses: readonly number[];
   kinds: readonly {kind: QueryKind; count: number}[];
   committee_labels?: Readonly<Record<string, string>>;
 }
 export interface QueryResult { rows: readonly QueryRow[]; total: number; offset: number; limit: number }
+export interface MaterialCategory { label: string; count: number }
+export interface RelatedOptions {
+  kind?: string;
+  /** Document includes text products; recordings have their own section. */
+  materialType?: 'document' | 'recording';
+  category?: string;
+  offset?: number;
+  limit?: number;
+  signal?: AbortSignal;
+}
+export interface RelatedResult {
+  records: readonly (ExplorerRecord | ExplorerSourceRecord)[];
+  total: number;
+  offset: number;
+  limit: number;
+  /** Full attachment counts, before category filtering and pagination. */
+  categories?: readonly MaterialCategory[];
+}
 export interface EvidenceCounts { unit: 'meeting'; denominator: number; states: Record<EvidenceState, number>; rule: string }
 export interface CoverageGroup { key: string; label: string; denominator: number; state_breakdown: Record<CoverageAspect, EvidenceCounts> }
 export interface CoverageSummary {
@@ -137,7 +165,7 @@ export interface ExplorerReader {
   readonly publication: Readonly<Record<string, unknown>>;
   getQueryInfo(options?: { signal?: AbortSignal }): Promise<QueryInfo>;
   search(query?: ExplorerQuery, options?: { signal?: AbortSignal }): Promise<QueryResult>;
-  getRelated(ref: ExplorerRecordRef, options?: { kind?: string; offset?: number; limit?: number; signal?: AbortSignal }): Promise<{records: readonly (ExplorerRecord | ExplorerSourceRecord)[]; total: number; offset: number; limit: number}>;
+  getRelated(ref: ExplorerRecordRef, options?: RelatedOptions): Promise<RelatedResult>;
   getMeetingIndex?(options?: { signal?: AbortSignal }): Promise<readonly MeetingIndexRow[]>;
   getCoverage(options: { filters: ExplorerQuery; signal?: AbortSignal }): Promise<CoverageSummary>;
   getCoverage(options?: { signal?: AbortSignal }): Promise<Readonly<Record<string, unknown>>>;

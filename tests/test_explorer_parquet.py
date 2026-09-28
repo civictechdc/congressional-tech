@@ -10,6 +10,75 @@ from committee_explorer.export import export
 from test_explorer_export import native, write_meetings, NOW
 
 
+def test_issue_resolution_evidence_is_available_inline(tmp_path):
+    from committee_explorer.parquet import write_tables
+    issue = dict(kind='data_issue', id='issue', subject={'kind': 'meeting', 'id': 'meeting'},
+                 provenance={'citations': [{'source': {'id': 'original'}}]},
+                 resolution={'explanation': 'Reviewed collector labels.', 'decided_at': '2026-09-28T00:00:00Z',
+                             'provenance': {'citations': [{'source': {'id': 'decision'}}]}})
+    sources = [dict(kind='source_record', id=id, provider='test', payload={'id': id}) for id in ('original', 'decision')]
+    queries = [dict(kind='meeting', id='meeting', title='Meeting'),
+               dict(kind='data_issue', id='issue', title='Closed finding', status='dismissed')]
+    write_tables([dict(kind='meeting', id='meeting'), issue], sources, queries, tmp_path, lambda *a, **k: None)
+    published = pq.read_table(tmp_path/'issues.parquet').to_pylist()[0]
+    assert published['source_ids'] == ['decision', 'original']
+    assert {r['id'] for r in pq.read_table(tmp_path/'sources.parquet').to_pylist()} == {'decision', 'original'}
+
+
+def test_committee_scope_uses_explicit_hierarchy_and_keeps_unknowns(tmp_path):
+    from committee_explorer.parquet import write_tables
+    terms = [dict(kind='committee_term', id='full', committee_type='standing'),
+             dict(kind='committee_term', id='child', parent={'kind': 'committee_term', 'id': 'full'}),
+             dict(kind='committee_term', id='other-child', committee_type='subcommittee'),
+             dict(kind='committee_term', id='unknown', name='Committee on Rules', committee_type='unknown'),
+             dict(kind='committee_term', id='coded-full', committee_type='standing', source_committee_type='Standing', identifiers=[{'scheme': 'congress.gov:committee', 'value': 'hsif00'}]),
+             dict(kind='committee_term', id='coded-child', committee_type='subcommittee', source_committee_type='Subcommittee', identifiers=[{'scheme': 'congress.gov:committee', 'value': 'hsif03'}]),
+             dict(kind='committee_term', id='task-force-child', committee_type='task_force', source_committee_type='Task Force', parent={'kind': 'committee_term', 'id': 'full'}, identifiers=[{'scheme': 'congress.gov:committee', 'value': 'hsta00'}])]
+    records = terms + [dict(kind='meeting', id='meeting'), dict(kind='material', id='document'),
+                       dict(kind='appearance', id='witness'),
+                       dict(kind='data_issue', id='issue', subject={'kind': 'meeting', 'id': 'meeting'})]
+    queries = [dict(kind='committee_term', id=r['id'], title=r['id'], committee_ids=[r['id']]) for r in terms]
+    queries += [dict(kind='meeting', id='meeting', title='Joint hearing', committee_ids=['full', 'child']),
+                dict(kind='material', id='document', title='Full committee document', type='document', committee_ids=['full']),
+                dict(kind='appearance', id='witness', title='Witness', committee_ids=['other-child']),
+                dict(kind='data_issue', id='issue', title='Issue', committee_ids=['unknown'], status='open')]
+    write_tables(records, [], queries, tmp_path, lambda *a, **k: None)
+    committees = {r['id']: r for r in pq.read_table(tmp_path/'committees.parquet').to_pylist()}
+    assert {id: r['committee_level'] for id, r in committees.items()} == {
+        'full': 'full', 'child': 'subcommittee', 'other-child': 'subcommittee', 'unknown': 'unknown',
+        'coded-full': 'full', 'coded-child': 'subcommittee', 'task-force-child': 'subcommittee'}
+    assert committees['child']['parent_committee_id'] == 'full'
+    assert committees['coded-child']['parent_committee_id'] == 'coded-full'
+    assert committees['coded-child']['source_committee_type'] == 'Subcommittee'
+    assert committees['coded-child']['committee_type'] == 'subcommittee'
+    assert committees['coded-child']['committee_types'] == ['standing']
+    assert committees['other-child']['committee_types'] == ['unknown']
+    assert committees['task-force-child']['committee_types'] == ['task_force']
+    assert committees['task-force-child']['source_committee_type'] == 'Task Force'
+    assert committees['task-force-child']['parent_committee_id'] == 'full'
+    assert {'label': 'Committee hierarchy', 'value': 'The source identifies a parent committee.'} in committees['task-force-child']['facts']
+    assert not any('00 identify a full committee' in f['value'] for f in committees['task-force-child']['facts'])
+    assert any(f['label'] == 'Hierarchy definition' for f in committees['coded-child']['facts'])
+    for table, level in [('meetings', 'subcommittee'), ('materials', 'full'), ('witnesses', 'subcommittee'), ('issues', 'unknown')]:
+        assert pq.read_table(tmp_path/f'{table}.parquet').to_pylist()[0]['committee_level'] == level
+
+
+def test_access_is_separate_from_meeting_type_and_survives_export(tmp_path):
+    rows = [{**native(), 'eventId': str(106245+i), 'type': kind, 'title': title}
+            for i, (kind, title) in enumerate([('Meeting', 'Closed briefing on readiness'),
+                                             ('Open Hearing', 'School funding'),
+                                             ('Meeting', 'Closed School Program: student outcomes')])]
+    export(meetings=write_meetings(tmp_path, rows), output_dir=tmp_path/'out', state_dir=tmp_path/'state', as_of=NOW, format='parquet')
+    _, root, _ = verify(tmp_path/'out')
+    records = {r['title']: r for r in pq.read_table(root/'meetings.parquet').to_pylist()}
+    assert (records['Closed briefing on readiness']['type'], records['Closed briefing on readiness']['access']) == ('briefing', 'closed')
+    assert records['School funding']['access'] == 'open'
+    assert records['Closed School Program: student outcomes']['access'] == 'unknown'
+    assert {'label': 'Source type', 'value': 'Meeting'} in records['Closed briefing on readiness']['facts']
+    assert any(f['label'] == 'Access based on' for f in records['Closed briefing on readiness']['facts'])
+    assert 'access' in json.loads((root/'queries.json').read_text())['query_columns']
+
+
 def test_parquet_export_preserves_browse_population_files_and_raw_evidence(tmp_path):
     row = native()
     row['meetingDocuments'].append({'name': 'Printed hearing', 'documentType': 'Transcript', 'format': 'PDF',

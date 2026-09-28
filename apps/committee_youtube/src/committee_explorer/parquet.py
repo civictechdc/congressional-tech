@@ -9,7 +9,8 @@ import json
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from congress_api.adapters.meetings import category, document_title, event_page, meeting_type
+from congress_api.adapters.meetings import category, document_title, event_page, meeting_access, meeting_type
+from congress_api.adapters.committees import HIERARCHY_SOURCE, hierarchy_from_code
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -21,8 +22,8 @@ TABLES = {'meeting': 'meetings', 'committee_term': 'committees', 'material': 'ma
 ASPECTS = ('recording', 'transcript', 'documents', 'witnesses', 'captions')
 STRINGS = ('id', 'kind', 'title', 'chamber', 'date', 'type', 'status', 'meeting_id',
            'provider', 'category', 'selection', 'search_text', 'position', 'organization',
-           'participation', 'explanation', 'severity', 'subject_kind', 'subject_id', 'scheduled_at', 'meeting_status', 'recording_url', 'document_type')
-LISTS = ('committee_ids', 'roles', 'meeting_ids', 'appearance_ids', 'source_ids', 'source_document_groups')
+           'participation', 'explanation', 'severity', 'subject_kind', 'subject_id', 'scheduled_at', 'meeting_status', 'recording_url', 'document_type', 'committee_level', 'parent_committee_id', 'access', 'committee_type', 'source_committee_type')
+LISTS = ('committee_ids', 'roles', 'meeting_ids', 'appearance_ids', 'source_ids', 'source_document_groups', 'committee_types')
 LINK = pa.struct([(k, pa.string()) for k in ('url', 'label', 'role', 'media_type', 'version', 'published_at', 'sha256')])
 NOTE = pa.struct([(k, pa.string()) for k in ('label', 'value')])
 SCHEMA = pa.schema([(k, pa.string()) for k in STRINGS] + [('congress', pa.int32()), ('issue_count', pa.int32())]
@@ -31,11 +32,12 @@ SCHEMA = pa.schema([(k, pa.string()) for k in STRINGS] + [('congress', pa.int32(
                       ('files', pa.list_(LINK)), ('facts', pa.list_(NOTE))])
 SOURCE_SCHEMA = pa.schema([(k, pa.string()) for k in
     ('id', 'kind', 'provider', 'url', 'retrieved_at', 'source_modified_at', 'imported_at', 'input_snapshot_id', 'identifier', 'retained_uri', 'retained_sha256', 'payload')])
-QUERY_COLUMNS = [*STRINGS[:12], 'congress', 'issue_count', 'committee_ids', 'roles', 'evidence_states', 'scheduled_at', 'meeting_status', 'recording_url', 'position', 'organization', 'document_type', 'source_document_groups']
+QUERY_COLUMNS = [*STRINGS[:12], 'congress', 'issue_count', 'committee_ids', 'roles', 'evidence_states', 'scheduled_at', 'meeting_status', 'recording_url', 'position', 'organization', 'document_type', 'source_document_groups', 'committee_level', 'access', 'committee_type', 'source_committee_type', 'committee_types']
 
 
 def sources_of(record):
     citations = list(record.get('provenance', {}).get('citations', []))
+    citations += (record.get('resolution') or {}).get('provenance', {}).get('citations', [])
     for evidence in record.get('field_evidence', []):
         citations += evidence.get('selected', {}).get('citations', [])
         for alternative in evidence.get('alternatives', []):
@@ -65,6 +67,7 @@ def write_tables(records, sources, query_rows, stage, descriptor):
                                       'appearance_ids': [], 'source_ids': []}
     versions, formats, links, occurrences, subjects = {}, defaultdict(list), [], defaultdict(list), {}
     context_records, meeting_subjects, conflict_facts, owners = {}, [], {}, {}
+    committee_codes, committee_parents = {}, {}
     for record in records:
         kind, id = record['kind'], record['id']
         # Keep the actual disagreement when the internal subject is folded away.
@@ -95,13 +98,35 @@ def write_tables(records, sources, query_rows, stage, descriptor):
             provenance = record.get('provenance', {})
             row['source_ids'] = sorted(sources_of(record))
             row['explanation'] = provenance.get('explanation')
+            if kind == 'committee_term':
+                parent = (record.get('parent') or {}).get('id')
+                committee_type = record.get('committee_type')
+                row['committee_type'] = committee_type or 'unknown'
+                row['source_committee_type'] = record.get('source_committee_type')
+                row['parent_committee_id'] = parent
+                row['committee_level'] = ('subcommittee' if parent or committee_type == 'subcommittee' else
+                                          'full' if committee_type not in (None, 'unknown') else 'unknown')
+                code = next((i['value'] for i in record.get('identifiers', []) if i['scheme'] == 'congress.gov:committee'), None)
+                level, parent_code = hierarchy_from_code(code)
+                if level != 'unknown':
+                    committee_codes[(row.get('congress'), code.lower())] = id
+                    if row['committee_level'] == 'unknown': row['committee_level'] = level
+                    if parent_code: committee_parents[id] = (row.get('congress'), parent_code.lower())
+                    if parent:
+                        row['facts'].append({'label': 'Committee hierarchy', 'value': 'The source identifies a parent committee.'})
+                    elif row['committee_level'] == level:
+                        row['facts'].append({'label': 'Committee hierarchy', 'value': f'Congress.gov systemCode {code}: final two digits 00 identify a full committee; other digits identify a subcommittee.'})
+                        row['facts'].append({'label': 'Hierarchy definition', 'value': HIERARCHY_SOURCE})
             if kind == 'meeting':
+                row['access'] = 'unknown'
                 for source_id in row['source_ids']:
                     if source_id not in native_meetings: continue
                     native = native_meetings[source_id]
                     row['type'], field = meeting_type(native)
                     if native.get('type'): row['facts'].append({'label': 'Source type', 'value': native['type']})
-                    if field == '/title': row['facts'].append({'label': 'Type based on', 'value': 'The source title explicitly says business meeting.'})
+                    if field == '/title': row['facts'].append({'label': 'Type based on', 'value': 'The source title explicitly identifies this meeting type.'})
+                    row['access'], access_field = meeting_access(native)
+                    if access_field == '/title': row['facts'].append({'label': 'Access based on', 'value': 'The source title explicitly identifies this access state.'})
                     break
             if kind == 'material':
                 dates = record.get('proceeding_dates') or []
@@ -217,8 +242,8 @@ def write_tables(records, sources, query_rows, stage, descriptor):
             location = record.get('location') or {}
             for key, value in location.items():
                 if isinstance(value, str) and value: row['facts'].append({'label': key.replace('_', ' '), 'value': value})
-            if record.get('access') not in (None, 'unknown'):
-                row['facts'].append({'label': 'Access', 'value': record['access']})
+            if row['access'] == 'unknown' and record.get('access') not in (None, 'unknown'):
+                row['access'] = record['access']
     for row in rows['material'].values():
         if len(set(row['meeting_ids'])) == 1: row['meeting_id'] = row['meeting_ids'][0]
         meetings = [rows['meeting'][id] for id in row['meeting_ids'] if id in rows['meeting']]
@@ -255,9 +280,25 @@ def write_tables(records, sources, query_rows, stage, descriptor):
         if owner is not None:
             issue['subject_kind'], issue['subject_id'] = subject
             if issue.get('status') == 'open': owner['issue_count'] += 1
+    for id, parent_code in committee_parents.items():
+        row = rows['committee_term'][id]
+        if not row['parent_committee_id']: row['parent_committee_id'] = committee_codes.get(parent_code)
+    def effective_committee_type(id, seen=()):
+        if id in seen: return 'unknown'
+        committee = rows['committee_term'].get(id, {})
+        native_type = committee.get('committee_type')
+        if native_type not in (None, 'unknown', 'subcommittee'):
+            return native_type
+        if committee.get('committee_level') == 'subcommittee':
+            return effective_committee_type(committee.get('parent_committee_id'), (*seen, id))
+        return 'unknown'
     for kind, entries in rows.items():
         values = sorted(entries.values(), key=lambda r: (r.get('congress') or 0, r['id']))
         for row in values:
+            row['committee_types'] = sorted({effective_committee_type(id) for id in row.get('committee_ids') or []}) or ['unknown']
+            if kind != 'committee_term':
+                levels = {rows['committee_term'].get(id, {}).get('committee_level', 'unknown') for id in row.get('committee_ids') or []}
+                row['committee_level'] = 'subcommittee' if 'subcommittee' in levels else 'full' if levels == {'full'} else 'unknown'
             for key in LISTS: row[key] = sorted(set(row.get(key) or []))
             row['facts'] = [dict(label=k, value=v) for k, v in dict.fromkeys((f['label'], f['value']) for f in row['facts'])]
         path = TABLES[kind] + '.parquet'

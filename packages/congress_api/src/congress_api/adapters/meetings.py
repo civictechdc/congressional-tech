@@ -23,17 +23,60 @@ def meeting_key(row):
 
 
 def meeting_type(row):
-    text = str(row.get('type') or '').lower()
+    text = ' '.join(str(row.get('type') or '').lower().split())
     for label, kind in (('field hearing', 'field_hearing'), ('business meeting', 'business'),
                         ('hearing', 'hearing'), ('markup', 'markup'), ('briefing', 'briefing')):
         if label in text: return kind, '/type'
-    # Some older records use the generic type Meeting and name the business
-    # meeting explicitly in the title. Keep that distinction in field evidence.
-    if text == 'meeting' and re.search(r'\bbusiness meeting\b', str(row.get('title') or ''), re.I):
-        return 'business', '/title'
+    if text in ('', 'meeting'):
+        title = ' '.join(str(row.get('title') or '').lower().split())
+        # Classify the proceeding named at the beginning, not a later agenda
+        # item or a second event following a semicolon.
+        prefix = (r'^\W*(?:(?:rescheduled|postponed|cancell?ed)\s*:\s*)?'
+                  r'(?:(?:to\s+)?(?:receive|received|hold)\s+)?(?:(?:an?|the)\s+)?'
+                  r'(?:(?:open|closed|joint|oversight|legislative|public|full|committee|subcommittee|members?|and)\s+)*')
+        hearing = r'hearings?(?=\s*(?:$|[:“"\']|\b(?:on|to|with|of|entitled|titled)\b))'
+        for pattern, kind in ((r'field\s+' + hearing, 'field_hearing'),
+                              (r'business\s+meeting\b', 'business'), (r'briefings?\b', 'briefing'),
+                              (r'mark[\s-]?up\b', 'markup'), (hearing, 'hearing')):
+            if re.search(prefix + pattern, title): return kind, '/title'
+        # Committee names sometimes precede the business-meeting label.
+        # A resolution merely authorizing a later event is not that event.
+        if not re.match(r'^(?:to\s+)?(?:consider|resolution)\b', title) and re.search(r'\bbusiness meeting\b', title.split(';', 1)[0]):
+            return 'business', '/title'
     if text == 'meeting':
         return 'meeting', '/type'
     return 'unknown', '/type'
+
+
+def meeting_access(row):
+    """Keep explicit native access, otherwise use explicit title phrases only."""
+    native = str(row.get('type') or '').lower()
+    reported = {value for value in ('open', 'closed') if re.search(r'\b' + value + r'\b', native)}
+    if reported:
+        return ('partly_closed' if len(reported) == 2 else reported.pop()), '/type'
+    title = ' '.join(str(row.get('title') or '').lower().split())
+    # Possibility is not a declaration that a closed portion will occur.
+    title = re.sub(r'\b(?:possibility of|possibly|may (?:be|go into|hold))\s+(?:an?\s+)?(?:closed|open)\s+(?:session|hearing|meeting)\b', '', title)
+    event = r'(?:hearings?|briefings?|(?:business\s+)?meetings?|mark[ -]?up(?:\s+sessions?)?|sessions?|panels?|roundtables?)'
+    if re.search(r'\b(?:open\s*(?:and|&|/)\s*closed|closed\s*(?:and|&|/)\s*open)(?=\s*(?:[\])]|' + event + r'\b))', title):
+        return 'partly_closed', '/title'
+    found, primary = set(), set()
+    subsequent = re.search(r'\b(?:followed|preceded)\s+by\b', title)
+    for access in ('open', 'closed'):
+        marker = r'[\[(]\s*' + access + r'\s*(?:[\])]|(?:session|hearing|briefing)\b|in a closed space\b|-\s*possibility of closing\b)'
+        phrase = r'\b' + access + r'\s+(?:joint\s+)?' + event + r'\b'
+        declaration = r'\b' + event + r'\s+(?:is\s+|will be\s+)?' + access + r'\b|^\W*' + access + r'\s+to (?:the )?public\b'
+        matches = [match for pattern in (marker, phrase, declaration) for match in re.finditer(pattern, title)]
+        if matches:
+            found.add(access)
+            if subsequent is None or any(match.start() < subsequent.start() for match in matches):
+                primary.add(access)
+    if len(found) == 2:
+        return 'partly_closed', '/title'
+    # A later closed session alone does not establish access to the main event.
+    if primary:
+        return primary.pop(), '/title'
+    return 'unknown', None
 
 
 def document_title(row):
@@ -84,10 +127,9 @@ def records(rows, context):
             yield committee
             yield term
             comms.append(ConveningCommittee(committee=ref(term), role="unknown", provenance=evidence))
-        raw_type = str(row.get("type") or "").lower()
         kind, type_field = meeting_type(row)
         type_evidence = (FieldEvidence(path='/meeting_type', selected=context.evidence(source, selector=type_field,
-                         basis='derived', method='congress_api.meeting_type'), selection_reason='The source title explicitly identifies a business meeting.'),) if type_field == '/title' else ()
+                         basis='derived', method='congress_api.meeting_type'), selection_reason='The source title explicitly identifies this meeting type.'),) if type_field == '/title' else ()
         meeting = Meeting(id=context.ids("meeting", key), title=row.get("title") or None, congress=congress,
                           chamber=chamber(row.get("chamber")), meeting_type=kind, committees=tuple(comms), provenance=evidence,
                           field_evidence=type_evidence,
@@ -102,8 +144,14 @@ def records(rows, context):
         location = row.get("location") or {}
         loc = Location(**{k: str(location[k]) for k in ("building", "room", "city", "region", "country") if location.get(k)}) if isinstance(location, dict) and location else None
         status = {"Scheduled": "scheduled", "Rescheduled": "rescheduled", "Postponed": "postponed", "Canceled": "canceled", "Cancelled": "canceled", "Held": "held"}.get(row.get("meetingStatus"), "unknown")
+        access, access_field = meeting_access(row)
+        access_evidence = (FieldEvidence(path='/access', selected=context.evidence(source, selector=access_field,
+                           basis='derived' if access_field == '/title' else 'reported',
+                           method='congress_api.meeting_access' if access_field == '/title' else None),
+                           selection_reason='The source title explicitly describes access to the proceeding.' if access_field == '/title'
+                                            else 'The source meeting type explicitly describes access to the proceeding.'),) if access_field else ()
         yield MeetingOccurrence(id=context.ids("occurrence", key + "|sitting"), meeting=ref(meeting), status=status,
-                                scheduled_start=start, location=loc, access="closed" if "closed" in raw_type else "unknown", provenance=evidence)
+                                scheduled_start=start, location=loc, access=access, provenance=evidence, field_evidence=access_evidence)
         witnesses = row.get("witnesses") or []
         names = Counter(w.get("name") for w in witnesses)
         for i, w in enumerate(witnesses):

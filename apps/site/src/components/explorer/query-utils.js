@@ -9,7 +9,10 @@ export function matches(row, query) {
       && (!query.month || (query.month === 'unknown' ? !row.date : row.date?.startsWith(query.month)))
       && (!query.type || query.type === 'all' || row.type === query.type)
       && (!query.status || query.status === 'all' || row.status === query.status)
+      && (!query.access || row.access === query.access)
       && (!query.committeeId || row.committee_ids?.includes(query.committeeId))
+      && (!query.committeeLevel || row.committee_level === query.committeeLevel)
+      && (!query.committeeType || row.committee_types?.includes(query.committeeType))
       && (!query.aspect || !query.evidence || row.evidence_states?.[query.aspect] === query.evidence)
       && words.every(word => text.includes(word));
   }

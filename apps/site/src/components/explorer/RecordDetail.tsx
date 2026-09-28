@@ -68,7 +68,9 @@ function RawRecord({ record }: { record: DetailRecord }) {
 export function RecordDetail({ record, onSelect, sourceEvidence }: { record: DetailRecord; onSelect: (ref: ExplorerRecordRef) => void; sourceEvidence?: ReactNode }) {
   const row = fields(record);
   const facts = [
-    ['Date', row.date], ['Congress', row.congress], ['Chamber', row.chamber],
+    ['Date', row.date], ['Congress', row.congress], ['Chamber', row.chamber], ['Access', row.access],
+    ['Committee type', row.source_committee_type || (row.committee_type !== 'unknown' ? enumLabel(row.committee_type) : null)],
+    ['Committee level', row.committee_level === 'full' ? 'Full committee' : row.committee_level === 'subcommittee' ? 'Subcommittee' : null],
     [documentType(record) ? 'Document type' : 'Type', documentType(record) || row.type || row.meeting_type], ['Status', row.status], ['Category', documentType(record) ? null : row.category],
     ['Source collection', Array.isArray(row.source_document_groups) && row.source_document_groups.length ? `${documentSourceLabel(row)} (${row.source_document_groups.join(', ')})` : null],
     ['Position', row.position], ['Organization', row.organization], ['Participation', row.participation],

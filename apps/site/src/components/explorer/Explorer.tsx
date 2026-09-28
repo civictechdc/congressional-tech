@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState, type DependencyList } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { openPublicationReader, type CoverageSummary, type ExplorerQuery, type ExplorerReader, type ExplorerRecordRef, type QueryInfo, type QueryResult } from './data-source';
-import { RecordDetail, RecordingPlayer, documentType, enumLabel, fields, FileLinks, publicUrl, recordFiles, recordTitle, words, type DetailRecord } from './RecordDetail';
+import { RecordDetail, documentType, enumLabel, fields, publicUrl, recordTitle, words, type DetailRecord } from './RecordDetail';
 import Coverage from './Coverage';
+import RelatedMaterials from './RelatedMaterials';
+import { PAGE_SIZE, Pagination, RequestMessage, useRequest } from './request-state';
 import { downloadJson } from './download';
 import { readNavigation, viewNavigation, drillNavigation } from './navigation.js';
 import { documentSourceLabel, sourcePageUrl } from './record-presentation.js';
@@ -15,30 +17,7 @@ const VIEWS = [
   { key: 'gaps', label: 'Gaps & issues', kind: 'data_issue' },
 ] as const;
 type View = typeof VIEWS[number]['key'];
-const PAGE_SIZE = 25;
 const integer = (value: number) => value.toLocaleString('en-US');
-type RequestState<T> = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; value: T };
-
-/** Each request owns its cancellation; replacing filters cannot paint an older result. */
-function useRequest<T>(load: (signal: AbortSignal) => Promise<T>, dependencies: DependencyList): [RequestState<T>, () => void] {
-  const [state, setState] = useState<RequestState<T>>({ status: 'loading' });
-  const [retry, setRetry] = useState(0);
-  useEffect(() => {
-    const controller = new AbortController();
-    setState({ status: 'loading' });
-    load(controller.signal).then((value) => {
-      if (!controller.signal.aborted) setState({ status: 'ready', value });
-    }).catch((error: unknown) => {
-      if (!controller.signal.aborted) setState({ status: 'error', message: error instanceof Error ? error.message : String(error) });
-    });
-    return () => controller.abort();
-  }, [...dependencies, retry]);
-  return [state, () => setRetry((value) => value + 1)];
-}
-
-function RequestMessage({ state, retry, noun = 'records' }: { state: { status: 'loading' } | { status: 'error'; message: string }; retry: () => void; noun?: string }) {
-  return state.status === 'loading' ? <p className="explorer-loading" role="status">Loading {noun}…</p> : <div className="explorer-alert" role="alert"><p>Could not load {noun}. {state.message}</p><button className="explorer-button" onClick={retry}>Try again</button></div>;
-}
 
 /** Composition root: only this adapter choice knows a publication URL. */
 export default function Explorer({ pointerUrl }: { pointerUrl: string }) {
@@ -54,8 +33,8 @@ export function CommitteeExplorer({ reader }: { reader: ExplorerReader }) {
 
 export interface Navigation {
   view: View; congress: string; chamber: string; q: string; from: string; to: string;
-  type: string; status: string; page: number; kind: string; id: string;
-  committee: string; month: string; aspect: string; evidence: string;
+  type: string; status: string; access: string; page: number; kind: string; id: string;
+  committee: string; committeeLevel: '' | 'full'; committeeType: string; month: string; aspect: string; evidence: string;
   measure: import('./data-source').CoverageAspect; grouping: 'congress' | 'month';
 }
 function writeNavigation(nav: Navigation, replace: boolean) {
@@ -64,12 +43,15 @@ function writeNavigation(nav: Navigation, replace: boolean) {
   for (const [key, value] of Object.entries(nav)) if (value !== '' && !(key === 'page' && value === 0)) url.searchParams.set(key, String(value));
   window.history[replace ? 'replaceState' : 'pushState'](null, '', url);
 }
-function toQuery(nav: Navigation): ExplorerQuery {
+function toQuery(nav: Navigation, info: QueryInfo): ExplorerQuery {
   const query: ExplorerQuery = {
     kind: VIEWS.find((view) => view.key === nav.view)!.kind,
     congress: nav.congress === 'all' ? 'all' : Number(nav.congress),
     chamber: nav.chamber || undefined, q: nav.q || undefined, dateFrom: nav.view === 'committees' ? undefined : nav.from || undefined, dateTo: nav.view === 'committees' ? undefined : nav.to || undefined,
     type: nav.type || undefined, status: nav.status || undefined, committeeId: nav.committee || undefined, month: nav.month || undefined,
+    committeeLevel: info.supported_filters?.includes('committeeLevel') ? nav.committeeLevel || undefined : undefined,
+    committeeType: info.supported_filters?.includes('committeeType') ? nav.committeeType || undefined : undefined,
+    access: info.supported_filters?.includes('access') && (nav.view === 'meetings' || nav.view === 'coverage') ? nav.access || undefined : undefined,
     aspect: nav.aspect as ExplorerQuery['aspect'] || undefined, evidence: nav.evidence as ExplorerQuery['evidence'] || undefined,
     offset: nav.page * PAGE_SIZE, limit: PAGE_SIZE,
   };
@@ -96,11 +78,11 @@ function Workspace({ reader, info }: { reader: ExplorerReader; info: QueryInfo }
     headingRef.current?.focus({ preventScroll: true });
     headingRef.current?.scrollIntoView({ block: 'start', behavior: 'instant' });
   };
-  const query = toQuery(nav);
+  const query = toQuery(nav, info);
   const selection = nav.kind && nav.id ? { kind: nav.kind, id: nav.id } : null;
   const changeView = (view: View) => update(viewNavigation(nav, view));
   const drill = (patch: ExplorerQuery) => update(drillNavigation(nav, patch));
-  const reset = () => { const next: Navigation = { view: nav.view, congress: String(info.default_congress), chamber: '', q: '', from: '', to: '', type: '', status: '', page: 0, kind: '', id: '', committee: '', month: '', aspect: '', evidence: '', measure: 'transcript', grouping: 'congress' }; writeNavigation(next, false); setNav(next); setQueryText(''); };
+  const reset = () => { const next: Navigation = { view: nav.view, congress: String(info.default_congress), chamber: '', q: '', from: '', to: '', type: '', status: '', access: '', page: 0, kind: '', id: '', committee: '', committeeLevel: '', committeeType: '', month: '', aspect: '', evidence: '', measure: 'transcript', grouping: 'congress' }; writeNavigation(next, false); setNav(next); setQueryText(''); };
   const dateError = nav.view !== 'committees' && nav.from && nav.to && nav.from > nav.to;
   const hasDrill = nav.committee || nav.month || nav.aspect || nav.evidence;
   return <div className="explorer">
@@ -111,16 +93,20 @@ function Workspace({ reader, info }: { reader: ExplorerReader; info: QueryInfo }
       <button type="submit" className="explorer-button">Search</button>
       <label>Congress<select value={nav.congress} onChange={(event) => filter({ congress: event.target.value })}><option value="all">All Congresses</option>{info.congresses.map((value) => <option key={value} value={value}>{value}th Congress</option>)}</select></label>
       <label>Chamber<select value={nav.chamber} onChange={(event) => filter({ chamber: event.target.value })}><option value="">All chambers</option><option value="house">House</option><option value="senate">Senate</option><option value="joint">Joint</option><option value="unknown">Unknown</option></select></label>
+      {info.supported_filters?.includes('committeeLevel') ? <label>Committee level<select value={nav.committeeLevel} onChange={event => filter({ committeeLevel: event.target.value === 'full' ? 'full' : '' })}><option value="">Include subcommittees</option><option value="full">Full committees only</option></select></label> : null}
+      {info.supported_filters?.includes('committeeType') ? <label>Committee type<select value={nav.committeeType} onChange={event => filter({committeeType: event.target.value})}><option value="">All committee types</option><option value="standing">Standing</option><option value="select">Select</option><option value="joint">Joint</option><option value="special">Special</option><option value="other">Other</option><option value="commission_or_caucus">Commission or caucus</option><option value="task_force">Task force</option><option value="unknown">Unknown</option></select></label> : null}
       {nav.view !== 'committees' ? <><label>From date<input aria-label="From date" type="date" value={nav.from} onChange={(event) => filter({ from: event.target.value })} /></label>
       <label>Through date<input aria-label="Through date" type="date" value={nav.to} onChange={(event) => filter({ to: event.target.value })} /></label></> : null}
       {nav.view === 'materials' ? <label>Material type<select value={nav.type} onChange={(event) => filter({ type: event.target.value })}><option value="">All types</option><option value="document">Document</option><option value="recording">Recording</option><option value="text">Text product</option></select></label> : null}
       {nav.view === 'meetings' || nav.view === 'coverage' ? <label>Meeting type<select value={nav.type} onChange={event => filter({type: event.target.value})}><option value="">All types</option><option value="hearing">Hearing</option><option value="markup">Markup</option><option value="business">Business meeting</option><option value="meeting">Meeting</option><option value="briefing">Briefing</option><option value="field_hearing">Field hearing</option><option value="other">Other</option><option value="unknown">Unknown</option></select></label> : null}
+      {info.supported_filters?.includes('access') && (nav.view === 'meetings' || nav.view === 'coverage') ? <label>Access<select value={nav.access} onChange={event => filter({access: event.target.value})}><option value="">All access states</option><option value="open">Open</option><option value="closed">Closed</option><option value="partly_closed">Partly closed</option><option value="unknown">Unknown</option></select></label> : null}
       {nav.view === 'gaps' ? <label>Issue status<select value={nav.status} onChange={(event) => filter({ status: event.target.value })}><option value="">All statuses</option><option value="open">Open</option><option value="resolved">Resolved</option><option value="dismissed">Dismissed</option></select></label> : null}
       <button type="button" className="explorer-text-button" onClick={reset}>Reset</button>
     </form>
     {hasDrill ? <div className="explorer-subheading"><p className="explorer-note">From coverage: {[nav.committee ? info.committee_labels?.[nav.committee] || 'selected committee' : '', nav.month, words(nav.aspect), words(nav.evidence)].filter(Boolean).join(' · ')}</p><button className="explorer-text-button" onClick={() => filter({ committee: '', month: '', aspect: '', evidence: '' })}>Clear chart filters</button></div> : null}
     {nav.congress === 'all' ? <p className="explorer-note">All-Congress queries search the full retained archive and may take longer.</p> : null}
     {nav.view !== 'committees' && (nav.from || nav.to) ? <p className="explorer-note">Date filters exclude records without a recorded date in this index.</p> : null}
+    {query.committeeLevel === 'full' ? <p className="explorer-note">Full committees only excludes subcommittee records and records whose committee level is unknown.</p> : null}
     <section ref={headingRef} tabIndex={-1} className="explorer-workspace" aria-label="Explorer results">
       {dateError ? <p className="explorer-alert" role="alert">The start date must be on or before the end date.</p> : selection ? <Inspector key={`${selection.kind}/${selection.id}`} reader={reader} selected={selection} onSelect={select} onClose={() => { update({ kind: '', id: '' }); headingRef.current?.focus({preventScroll: true}); }} /> : nav.view === 'coverage' ? <CoverageView reader={reader} query={query} onDrill={drill} measure={nav.measure} grouping={nav.grouping} onSettings={update} /> : <Listing reader={reader} query={query} view={nav.view} info={info} onSelect={select} onPage={(page) => update({ page })} />}
     </section>
@@ -153,10 +139,6 @@ function PublicationScope({ publication }: { publication: Readonly<Record<string
   </section>;
 }
 
-function Pagination({ total, offset, count, onPage }: { total: number; offset: number; count: number; onPage: (page: number) => void }) {
-  return <div className="explorer-pagination"><span>{total ? `${integer(count ? offset + 1 : 0)}–${integer(count ? offset + count : 0)} of ${integer(total)}` : '0 matching records'}</span><div><button className="explorer-button" disabled={offset === 0} onClick={() => onPage(Math.max(0, Math.floor(offset / PAGE_SIZE) - 1))}>← Previous</button><button className="explorer-button" disabled={offset + count >= total} onClick={() => onPage(Math.floor(offset / PAGE_SIZE) + 1)}>Next →</button></div></div>;
-}
-
 const VIEW_NOTES: Record<Exclude<View, 'coverage'>, string> = {
   meetings: 'Committee meetings, including scheduled, postponed and canceled entries.',
   committees: 'Browse each committee’s meetings by Congress.',
@@ -176,7 +158,7 @@ function Listing({ reader, query, view, info, onSelect, onPage }: { reader: Expl
       <div className="explorer-table-scroll"><table className="explorer-table"><thead><tr>
         <th scope="col">{view === 'witnesses' ? 'Recorded name' : view === 'gaps' ? 'Known issue' : 'Record'}</th>
         <th scope="col">{view === 'committees' ? 'Congress' : view === 'witnesses' ? 'Date / Congress' : 'Date / status'}</th>
-        {view !== 'committees' ? <th scope="col">{view === 'witnesses' ? 'Position / organization' : view === 'gaps' ? 'Congress / category' : 'Congress / type'}</th> : null}
+        <th scope="col">{view === 'committees' ? 'Type / level' : view === 'witnesses' ? 'Position / organization' : view === 'gaps' ? 'Congress / category' : 'Congress / type'}</th>
         {view !== 'committees' && view !== 'gaps' ? <th scope="col" className="explorer-number">Open issues</th> : null}
       </tr></thead><tbody>
         {state.value.rows.map(row => <tr key={`${row.kind}/${row.id}`}>
@@ -184,7 +166,7 @@ function Listing({ reader, query, view, info, onSelect, onPage }: { reader: Expl
             <span className="explorer-row-meta">{[enumLabel(row.chamber), ...(view === 'committees' ? [] : row.committee_ids || []).map(id => info.committee_labels?.[id]).filter(Boolean), row.provider].filter(Boolean).join(' · ')}</span>
           </td>
           <td>{view !== 'committees' ? row.date || <span className="explorer-unknown">Date unrecorded</span> : null}<span className={view === 'committees' ? undefined : 'explorer-row-meta'}>{view === 'committees' || view === 'witnesses' ? row.congress ? `${row.congress}th Congress` : 'Congress unrecorded' : enumLabel(row.status)}</span></td>
-          {view !== 'committees' ? <td>{view === 'witnesses' ? <>{row.position || row.roles?.map(enumLabel).join(', ') || 'Position unrecorded'}{row.organization ? <span className="explorer-row-meta">{row.organization}</span> : null}</> : <>{row.congress ? `${row.congress}th Congress` : 'Congress unrecorded'}<span className="explorer-row-meta">{[documentType(row) || [row.type, row.category].filter((value, index, list) => value && value !== 'unknown' && list.indexOf(value) === index).map(enumLabel).join(' · '), documentSourceLabel(row)].filter(Boolean).join(' · ')}</span>{row.selection === 'retained_history' ? <span className="explorer-row-meta">Retained issue history · not present in latest inputs</span> : null}</>}</td> : null}
+          <td>{view === 'committees' ? <>{row.source_committee_type || enumLabel(row.committee_type) || 'Type unrecorded'}<span className="explorer-row-meta">{row.committee_level === 'full' ? 'Full committee' : row.committee_level === 'subcommittee' ? 'Subcommittee' : 'Level unrecorded'}</span></> : view === 'witnesses' ? <>{row.position || row.roles?.map(enumLabel).join(', ') || 'Position unrecorded'}{row.organization ? <span className="explorer-row-meta">{row.organization}</span> : null}</> : <>{row.congress ? `${row.congress}th Congress` : 'Congress unrecorded'}<span className="explorer-row-meta">{[documentType(row) || [row.type, row.category].filter((value, index, list) => value && value !== 'unknown' && list.indexOf(value) === index).map(enumLabel).join(' · '), documentSourceLabel(row)].filter(Boolean).join(' · ')}</span>{row.selection === 'retained_history' ? <span className="explorer-row-meta">Retained issue history · not present in latest inputs</span> : null}</>}</td>
           {view !== 'committees' && view !== 'gaps' ? <td className="explorer-number">{row.issue_count === undefined ? '—' : integer(row.issue_count)}</td> : null}
         </tr>)}
       </tbody></table></div><Pagination total={state.value.total} offset={state.value.offset} count={state.value.rows.length} onPage={onPage} />
@@ -230,7 +212,9 @@ function SourceRecords({ reader, ids }: { reader: ExplorerReader; ids: string[] 
 
 function Related({ reader, selected, onSelect }: { reader: ExplorerReader; selected: ExplorerRecordRef; onSelect: (ref: ExplorerRecordRef) => void }) {
   const sections: Record<string, string[]> = {meeting: ['material', 'appearance', 'data_issue'], appearance: ['material', 'data_issue'], material: ['meeting', 'data_issue'], committee_term: ['meeting', 'data_issue']};
-  return <div className="explorer-related">{(sections[selected.kind] || []).map(kind => <RelatedSection key={kind} kind={kind} reader={reader} selected={selected} onSelect={onSelect} />)}</div>;
+  return <div className="explorer-related">{(sections[selected.kind] || []).map(kind => kind === 'material'
+    ? <RelatedMaterials key={kind} reader={reader} selected={selected} onSelect={onSelect} />
+    : <RelatedSection key={kind} kind={kind} reader={reader} selected={selected} onSelect={onSelect} />)}</div>;
 }
 
 function RelatedSection({ reader, selected, onSelect, kind }: { reader: ExplorerReader; selected: ExplorerRecordRef; onSelect: (ref: ExplorerRecordRef) => void; kind: string }) {
@@ -240,20 +224,10 @@ function RelatedSection({ reader, selected, onSelect, kind }: { reader: Explorer
   if (state.status !== 'ready') return <RequestMessage state={state} retry={retry} noun={labels[kind].toLowerCase()} />;
   if (!state.value.records.length) return null;
   return <section className="explorer-detail-section"><h3>{labels[kind]} <span className="explorer-muted">({integer(state.value.total)})</span></h3><ul className="explorer-related-list">{state.value.records.map(record => {
-        const row = fields(record), files = recordFiles(record);
-        const title = row.type === 'recording' ? 'Watch recording' : recordTitle(record);
+        const row = fields(record);
         return <li key={record.id}>
-          {kind === 'material' ? <>
-            {files.length ? <a href={publicUrl(files[0].url)} target="_blank" rel="noreferrer">{title} ↗</a> : <span>{title}</span>}
-            {files.length > 1 ? <FileLinks record={record} /> : null}
-            {documentType(record) || documentSourceLabel(row) ? <span className="explorer-row-meta">{[documentType(record), documentSourceLabel(row)].filter(Boolean).join(' · ')}</span> : null}
-            {Array.isArray(row.facts) ? <span className="explorer-row-meta">{row.facts.map(fields).filter(f => !['medium', 'coverage', 'production'].includes(String(f.label))).map(f => `${f.label}: ${f.value}`).join(' · ')}</span> : null}
-            <button className="explorer-text-button explorer-row-meta" onClick={() => onSelect(record)}>Details & source</button>
-            <RecordingPlayer record={record} />
-          </> : <>
-            <button className="explorer-text-button" onClick={() => onSelect(record)}>{title}</button>
-            <span className="explorer-row-meta">{[row.position, row.organization, row.date, row.status].filter(Boolean).map(words).join(' · ')}</span>
-          </>}
+          <button className="explorer-text-button" onClick={() => onSelect(record)}>{recordTitle(record)}</button>
+          <span className="explorer-row-meta">{[row.position, row.organization, row.date, row.status].filter(Boolean).map(words).join(' · ')}</span>
         </li>;
       })}</ul>
     {state.value.total > PAGE_SIZE ? <Pagination total={state.value.total} offset={state.value.offset} count={state.value.records.length} onPage={setPage} /> : null}

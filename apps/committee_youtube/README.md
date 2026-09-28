@@ -85,7 +85,7 @@ for validation and the remaining work on changed-input updates.
 
 ## What runs every week
 
-`.github/workflows/update-data.yml` runs every Sunday. It has three jobs, each run after the one before even when that one failed.
+`.github/workflows/update-data.yml` runs every Sunday. It has four jobs, each run after the one before even when that one failed.
 
 **`youtube` job:**
 
@@ -111,7 +111,9 @@ for validation and the remaining work on changed-input updates.
 | Read Senate and joint committee pages | `senate-meeting-records` | `data/senate_hearing_pages_found.csv`, `data/senate_witnesses_found.csv`, `data/senate_documents_found.csv` |
 | Join meeting records, text, recordings and witnesses | `meeting-inventory` | `data/hearing_text_sources.csv`, `data/meetings_without_records.csv`, `data/meeting_completeness.csv`, `data/meeting_witnesses.csv` |
 
-- **Raw caches:** the YouTube caches (`youtube/youtube_NN.json`), meeting records (`congress_meetings.jsonl.gz`) and parsed meeting-source state (`meeting-inventory/*.json.gz`) live on the bot-owned `pipeline-data` branch. It's replaced by one snapshot commit each run, so the weekly data doesn't pile up in `main`'s history.
+**`committees` job.** `congress-committees` retains the official Congress-scoped committee lists in `congress_committees.jsonl.gz` on `pipeline-data`. It refreshes the latest two Congresses and fills missing historical Congresses. The Explorer uses exact source categories and parent committee links; it does not guess committee type from names. This job saves independently so a metadata request failure cannot prevent the other collectors from saving their results.
+
+- **Raw caches:** the YouTube caches (`youtube/youtube_NN.json`), meeting records (`congress_meetings.jsonl.gz`), committee metadata (`congress_committees.jsonl.gz`) and parsed meeting-source state (`meeting-inventory/*.json.gz`) live on the bot-owned `pipeline-data` branch. It's replaced by one snapshot commit each run, so the weekly data doesn't pile up in `main`'s history.
 - **Initial state and recovery:** `pipeline-data/meeting-inventory/*.json.gz` supplies the parsed records and availability observations. The initial seed was added directly to that branch; no seed blobs are kept in the code branch. See [meeting-state setup and recovery](../../docs/youtube-coverage/meeting-state.md).
 - **Failures:** every command exits non-zero on any failure. Derived CSV commits require the whole job to succeed. Once committee readers have started, their raw-state snapshot still saves the last usable records and failed-refresh receipts; setup/test failures do not create a snapshot. The publication records the failed job separately, and incremental fetching catches up on the next run.
 

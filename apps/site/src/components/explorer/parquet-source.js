@@ -1,6 +1,7 @@
 import { parquetMetadataAsync, parquetReadObjects, rowIndex } from 'hyparquet';
 import { presentRecord, recordingDue, recordingVisible } from './record-presentation.js';
 import { matches, pageBounds, summarizeCoverage } from './query-utils.js';
+import { selectRelatedMaterials } from './related-materials.js';
 
 /** HTTP ranges remain inside the injected reader. No SQL engine or record shards. */
 export function createParquetReader(publication, fetcher) {
@@ -10,10 +11,21 @@ export function createParquetReader(publication, fetcher) {
   const rowsCache = new Map();
   const positions = new Map();
   let info;
+  function cacheRows(key, rows) {
+    if (rows.length <= 100000) {
+      rowsCache.set(key, rows);
+      if (rowsCache.size > 3) rowsCache.delete(rowsCache.keys().next().value);
+    }
+    return rows;
+  }
   async function getQueryInfo({ signal } = {}) {
     signal?.throwIfAborted();
-    if (!info) info = await readPartition(select('index', 'committee_explorer.queries'), signal);
-    if (info.storage !== 'parquet' || !Array.isArray(info.query_columns)) throw new Error('Unsupported Parquet catalog.');
+    if (!info) {
+      const index = await readPartition(select('index', 'committee_explorer.queries'), signal);
+      if (index.storage !== 'parquet' || !Array.isArray(index.query_columns)) throw new Error('Unsupported Parquet catalog.');
+      info = {...index, supported_filters: [['committeeLevel', 'committee_level'], ['committeeType', 'committee_types'], ['access', 'access']]
+        .filter(([, column]) => index.query_columns.includes(column)).map(([filter]) => filter)};
+    }
     return info;
   }
   function file(part, signal) {
@@ -64,11 +76,7 @@ export function createParquetReader(publication, fetcher) {
     if (rowsCache.has(key)) return rowsCache.get(key);
     const rows = await read(kind, { columns: [...info.query_columns, ...extra],
       filter: congress === 'all' ? undefined : { congress: { $eq: Number(congress) } }, signal });
-    if (rows.length <= 100000) {
-      rowsCache.set(key, rows);
-      if (rowsCache.size > 3) rowsCache.delete(rowsCache.keys().next().value);
-    }
-    return rows;
+    return cacheRows(key, rows);
   }
   async function getRecords(refs, { signal } = {}) {
     const found = new Map();
@@ -112,8 +120,10 @@ export function createParquetReader(publication, fetcher) {
       if (ref.kind === 'meeting' || ref.kind === 'appearance') {
         if (!options.kind || options.kind === 'material') {
           const membership = ref.kind === 'meeting' ? 'meeting_ids' : 'appearance_ids';
-          const material = await read('material', { columns: ['id', 'kind', 'title', 'meeting_ids', 'appearance_ids', 'type', 'date', 'scheduled_at', 'meeting_status', 'recording_url'],
-            filter: { [membership]: { $in: [ref.id] } }, signal });
+          const cacheKey = `related-material/${ref.kind}/${ref.id}`;
+          const material = rowsCache.get(cacheKey) || cacheRows(cacheKey, await read('material', {
+            columns: ['id', 'kind', 'title', 'meeting_ids', 'appearance_ids', 'type', 'document_type', 'category', 'date', 'scheduled_at', 'meeting_status', 'recording_url'],
+            filter: { [membership]: { $in: [ref.id] } }, signal }));
           related.push(...material.filter(r => recordingVisible(r) && (r.type !== 'recording' || recordingDue(record))
             && r[membership]?.includes(ref.id)));
         }
@@ -131,8 +141,14 @@ export function createParquetReader(publication, fetcher) {
           filter: { subject_kind: { $eq: ref.kind }, subject_id: { $eq: ref.id } }, signal }));
       }
       related.sort((a, b) => a.kind.localeCompare(b.kind) || (a.kind === 'meeting' ? (b.date || '').localeCompare(a.date || '') : 0) || a.title.localeCompare(b.title) || a.id.localeCompare(b.id));
+      let categories;
+      if (options.kind === 'material') {
+        const selected = selectRelatedMaterials(related, options);
+        related = selected.rows;
+        categories = selected.categories;
+      }
       const records = (await getRecords(related.slice(offset, offset + limit), { signal })).filter(Boolean);
-      return { records, total: related.length, offset, limit };
+      return { records, total: related.length, offset, limit, ...(categories ? { categories } : {}) };
     },
   });
 }

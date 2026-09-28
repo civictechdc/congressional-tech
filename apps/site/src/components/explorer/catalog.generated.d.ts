@@ -54,7 +54,16 @@ export type Congress = number;
 export type Name1 = string | null;
 export type Chamber = 'house' | 'senate' | 'joint' | 'unknown';
 export type CommitteeType =
-  'standing' | 'select' | 'special' | 'joint' | 'subcommittee' | 'other' | 'unknown';
+  | 'standing'
+  | 'select'
+  | 'special'
+  | 'joint'
+  | 'subcommittee'
+  | 'commission_or_caucus'
+  | 'task_force'
+  | 'other'
+  | 'unknown';
+export type SourceCommitteeType = string | null;
 export type Kind5 = 'committee_term';
 export type Id5 = string;
 export type Start = string | null;
@@ -569,6 +578,7 @@ export interface CommitteeTerm {
   name?: Name1;
   chamber: Chamber;
   committee_type?: CommitteeType;
+  source_committee_type?: SourceCommitteeType;
   parent?: RefLiteralCommitteeTerm | null;
   active?: DateRange | null;
   jurisdiction?: Jurisdiction;

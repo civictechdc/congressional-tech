@@ -18,6 +18,7 @@ from committee_meeting.provenance import Citation, Method, RetainedContent
 from committee_meeting.publication import ExportPartition, InputSnapshot, PublicationManifest, SourceScope
 from congress_api.adapters.common import AdapterContext
 from congress_api.adapters import meetings as native, house, gpo, transcripts, findings, inventory, video_matches, recordings as curated_recordings
+from congress_api.adapters import committee_metadata
 from .assemble import Assembly
 from .coverage import build as coverage
 from .ids import IdRegistry
@@ -96,7 +97,7 @@ def load_previous(output, state):
 
 def export(*, meetings, output_dir, state_dir, gpo_path=None, house_state=None, senate_state=None,
            youtube_dir=None, inventory_state=None, recovered_witnesses=None, video_matches_path=None, recordings_path=None,
-           transcript_files=(), issue_decisions=None, attempts=None, limit=None, as_of=None, revision=None, format="json", reuse_from=None):
+           transcript_files=(), issue_decisions=None, attempts=None, limit=None, as_of=None, revision=None, format="json", reuse_from=None, committees_path=None):
     if format not in ("json", "parquet"):
         raise ValueError("format must be json or parquet")
     now = as_of or datetime.now(timezone.utc)
@@ -109,7 +110,8 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, house_state=None, 
     transcript_files = tuple(transcript_files)
     attempt_receipt = json.loads(Path(attempts).read_text()) if attempts else {}
     provider_jobs = {'youtube':'youtube', 'congress.gov':'congress', 'govinfo':'congress', 'gpo-video-matches':'congress',
-                     'docs.house.gov':'meetings', 'senate.committees':'meetings', 'meeting-inventory':'meetings', 'recovered-witnesses':'meetings'}
+                     'docs.house.gov':'meetings', 'senate.committees':'meetings', 'meeting-inventory':'meetings', 'recovered-witnesses':'meetings',
+                     'congress.gov:committees':'committees'}
     output, state = Path(output_dir), Path(state_dir)
     state.mkdir(parents=True, exist_ok=True)
     output.mkdir(parents=True, exist_ok=True)
@@ -122,7 +124,7 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, house_state=None, 
                 'meetings': meetings, 'gpo': gpo_path, 'house': house_state, 'senate': senate_state,
                 'inventory': inventory_state, 'recovered_witnesses': recovered_witnesses,
                 'video_matches': video_matches_path, 'recordings': recordings_path,
-                'issue_decisions': issue_decisions, 'attempts': attempts,
+                'issue_decisions': issue_decisions, 'attempts': attempts, 'committees': committees_path,
             }, youtube_dir=youtube_dir, transcript_files=transcript_files, format=format, limit=limit, as_of=as_of)
             if reused := try_reuse(output, state, reuse_from, reuse_key):
                 return reused, None
@@ -152,11 +154,30 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, house_state=None, 
         if limit:
             rows = rows[:limit]
         assembly.add(native.records(rows, ctx))
+        if committees_path:
+            committee_context, committee_body = context(committees_path, 'congress.gov:committees')
+            committee_rows = [json.loads(line) for line in committee_body.splitlines() if line.strip()]
+            selected_congresses = {int(row['congress']) for row in rows}
+            if limit:
+                committee_rows = [row for row in committee_rows if int(row['congress']) in selected_congresses]
+            for item in committee_metadata.records(committee_rows, committee_context, assembly.records):
+                # Metadata fills unknown classifications rather than treating
+                # the former unknown value as a competing source assertion.
+                key = (item.kind, item.id)
+                into = assembly.sources if item.kind == 'source_record' else assembly.records
+                into[key] = item
+                assembly.current.add(key)
+            scopes.append(SourceScope(provider='congress.gov:committees', scope='Official Congress-scoped committee lists',
+                                      status='partial' if limit else 'included', input_snapshot_ids=(committee_context.input_id,),
+                                      explanation=f'Imported {len(committee_rows)} retained committee records; committees with no retained meetings may also appear.'))
+        else:
+            scopes.append(SourceScope(provider='congress.gov:committees', scope='Official Congress-scoped committee lists',
+                                      status='not_collected', explanation='No retained committee metadata supplied; names do not establish committee type.'))
         reconciliation.append({"provider": "congress.gov", "input_records": total, "selected_records": len(rows),
                                "distinct_selected_identities": len({native.meeting_key(r) for r in rows})})
         lookup = {(int(r["congress"]), native.chamber(r.get("chamber")), str(r["eventId"])):
                   Ref(kind="meeting", id=ids("meeting", native.meeting_key(r))) for r in rows}
-        scopes.append(SourceScope(provider="congress.gov", scope="retained committee meeting records, all statuses", status="partial" if len(rows)<total else "included",
+        scopes.insert(0, SourceScope(provider="congress.gov", scope="retained committee meeting records, all statuses", status="partial" if len(rows)<total else "included",
                                   input_snapshot_ids=(ctx.input_id,), explanation=f"Imported {len(rows)} of {total} retained records. Retention is not proof of complete upstream coverage."))
         sources = (("docs.house.gov", house_state, house, "House parsed source state"),)
         if senate_state:
@@ -485,6 +506,7 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--format", choices=("json", "parquet"), default="parquet")
     p.add_argument("--meetings", type=Path, required=True)
+    p.add_argument("--committees-path", type=Path, help="Retained Congress-scoped committee metadata JSON Lines, optionally gzipped.")
     p.add_argument("--output-dir", type=Path, required=True)
     p.add_argument("--state-dir", type=Path, required=True)
     p.add_argument("--gpo-path", type=Path)
