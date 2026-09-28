@@ -201,7 +201,7 @@ export async function openPublicationReader(options) {
         }
         return document.rows;
       }));
-      for (const batch of batches) rows.push(...batch);
+      for (const batch of batches) for (const row of batch) rows.push(row);
     }
     signal?.throwIfAborted();
     // Large archive-wide scans remain uncached; ordinary Congress views stay responsive.

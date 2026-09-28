@@ -61,8 +61,8 @@ export function createParquetReader(publication, fetcher) {
       for (const row of batch) {
         positions.set(`${kind}/${row.id}`, { path: part.path, index: row[rowIndex] });
         if (positions.size > 100000) positions.delete(positions.keys().next().value);
+        rows.push(row);
       }
-      rows.push(...batch);
     }
     signal?.throwIfAborted();
     return rows;

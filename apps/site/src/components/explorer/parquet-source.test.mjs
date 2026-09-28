@@ -6,6 +6,7 @@ import { mkdtempSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { openPublicationReader } from './data-source.js';
+import { createParquetReader } from './parquet-source.js';
 
 // Generate real Snappy Parquet with the Python publisher; no mocked decoder.
 const root = mkdtempSync(join(tmpdir(), 'explorer-parquet-'));
@@ -45,6 +46,10 @@ committee_rows = [
 committee_path = root/'committees.jsonl.gz'
 committee_path.write_bytes(gzip.compress(bytes('\\n'.join(json.dumps(item) for item in committee_rows), 'utf-8')))
 export(meetings=write_meetings(root,[row,shared,earlier,future,canceled,bulk]), committees_path=committee_path, output_dir=root/'public', state_dir=root/'state', as_of=NOW, format='parquet')
+import pyarrow as pa
+import pyarrow.parquet as pq
+pq.write_table(pa.table({'id':[f'large-{i:06}' for i in range(180000)], 'kind':['material']*180000,
+                        'title':['Large catalog entry']*180000, 'congress':[119]*180000}), root/'public'/'large.parquet')
 `, root], { cwd: repo });
 test.after(() => rmSync(root, { recursive: true }));
 
@@ -207,6 +212,23 @@ test('committee meetings are chronological, witnesses searchable by organization
   assert.deepEqual(meetings.records.map(r => r.date), ['2019-07-12','2019-01-01']);
   const affected = await reader.getRecord({kind:issues.records[0].subject_kind, id:issues.records[0].subject_id});
   assert.equal(affected.id, committee.id);
+});
+
+test('all-Congress scans exceed the JavaScript argument limit without overflowing the stack', async () => {
+  const bytes = await readFile(join(root, 'public', 'large.parquet'));
+  const reader = createParquetReader({
+    manifest: {partitions:[{path:'large.parquet', schema_name:'committee_explorer.parquet.material',
+      media_type:'application/vnd.apache.parquet', byte_size:bytes.length, record_count:180000}]},
+    manifestUrl: new URL('https://example.org/manifest.json'),
+    select: () => ({}),
+    readPartition: async () => ({storage:'parquet', default_congress:119, kinds:[{kind:'material'}],
+      query_columns:['id','kind','title','congress']}),
+  }, transport().fetcher);
+  const result = await reader.search({kind:'material', congress:'all', offset:179975});
+  assert.equal(result.total, 180000);
+  assert.equal(result.rows.length, 25);
+  assert.equal(result.rows[0].id, 'large-179975');
+  assert.equal(result.rows.at(-1).id, 'large-179999');
 });
 
 test('reject unsupported range serving, malformed responses and canceled reads', async () => {
