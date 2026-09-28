@@ -4,8 +4,9 @@ name: Update committee data
 # and compact parsed committee-source state
 # live on the bot-owned `pipeline-data` branch, replaced by a single snapshot
 # commit each run so history doesn't grow. main only gets the small derived
-# CSVs. Every tool exits non-zero on any failure, which fails the job and skips
-# its commits; fetching is incremental, so the next run catches up.
+# CSVs. Every tool exits non-zero on any failure. Derived output commits require
+# success; committee raw state also preserves failed-refresh receipts and the
+# last usable result. Fetching is incremental, so the next run catches up.
 # Publish Committee Explorer data listens for this entire workflow's completion;
 # deployment happens only after that publication passes verification.
 on:
@@ -132,6 +133,7 @@ jobs:
         run: python -m pytest -q
 
       - name: Read House repository records
+        id: house_records
         run: |
           house-meeting-records --meetings pipeline-data/congress_meetings.jsonl.gz \
             --gpo-path "$DATA_DIR/gpo_hearings.csv" --state-dir pipeline-data/meeting-inventory \
@@ -151,6 +153,10 @@ jobs:
             --state-dir pipeline-data/meeting-inventory --output-dir "$DATA_DIR"
 
       - name: Save pipeline data snapshot
+        # The readers save the last usable records and each failed check before
+        # raising. Persist that evidence even when a later reader/inventory fails;
+        # do not save when setup/tests stopped the job before any reader ran.
+        if: ${{ !cancelled() && (steps.house_records.outcome == 'success' || steps.house_records.outcome == 'failure') }}
         run: .github/scripts/save-pipeline-data.sh "Parsed committee records"
 
       - name: Commit outputs to ${{ github.ref_name }}

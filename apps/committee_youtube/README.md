@@ -94,7 +94,7 @@ verification leaves the prior public site in place.
 
 - **Raw caches:** the YouTube caches (`youtube/youtube_NN.json`), meeting records (`congress_meetings.jsonl.gz`) and parsed meeting-source state (`meeting-inventory/*.json.gz`) live on the bot-owned `pipeline-data` branch. It's replaced by one snapshot commit each run, so the weekly data doesn't pile up in `main`'s history.
 - **Initial state and recovery:** `pipeline-data/meeting-inventory/*.json.gz` supplies the parsed records and availability observations. The initial seed was added directly to that branch; no seed blobs are kept in the code branch. See [meeting-state setup and recovery](../../docs/youtube-coverage/meeting-state.md).
-- **Failures:** every command exits non-zero on any failure. That fails the job and skips its commits, and because fetching is incremental, the next run catches up.
+- **Failures:** every command exits non-zero on any failure. Derived CSV commits require the whole job to succeed. Once committee readers have started, their raw-state snapshot still saves the last usable records and failed-refresh receipts; setup/test failures do not create a snapshot. The publication records the failed job separately, and incremental fetching catches up on the next run.
 
 The workflow needs two repository secrets:
 

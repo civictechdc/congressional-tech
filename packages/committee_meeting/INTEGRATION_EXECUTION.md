@@ -74,7 +74,7 @@ global people or an actual meeting start. The scheduled-time producer note gets
 its own issue. The owner deserializer checks structure/version but is not a full
 JSON Schema validator; every imported representation states that limitation.
 
-## Input population and reconciliation
+## Initial retained-data validation
 
 The complete retained native/source/cache input was extracted locally from
 `origin/pipeline-data` commit `acc8108dca3239fe275c708b5372a5a44a108eb4`.
@@ -110,7 +110,7 @@ closed or future entries do not become publication failures. The older inventory
 has a narrower selection and different caption inference rules, so its counts
 are compatibility measures rather than interchangeable Explorer metrics.
 
-## Publication format and local artifacts
+## Initial archive artifacts
 
 `CURRENT.json` contains `schema_version`, `publication_id`, `manifest_path`,
 `manifest_sha256` and `media_type`. Manifest partition counts for Catalog count
@@ -210,13 +210,13 @@ version changed; `uv lock --check` passes for both. CI install lines include the
 local model package; the existing meetings test job also installs the exporter
 app required by its new tests. The new publication workflow runs after the complete collection workflow settles; local validation does not claim its first hosted execution.
 
-The complete Python suite passes **187 tests plus 31 subtests**. These include
+The initial adapter milestone passed **187 tests plus 31 subtests**. These include
 model structure, adapter identity/provenance, raw field retention, issue history,
 failure atomicity, exclusive coverage, source failure receipts, caption failures
 and locator resolution. The exact CI editable install command passes a pip
 dry-run; whitespace checks pass.
 
-The frontend's 14 Node tests, generated-type drift check and Astro check pass.
+The initial frontend milestone passed 14 Node tests, generated-type drift checking and Astro checking.
 The site build produces 27 pages. The existing dashboard still shows its retained
 65,074 total / 8,037 event-ID / 57,037 missing-ID counts. Prototype checks cover
 keyboard drilldowns/Back and a 390-pixel viewport. These UI checks use the
@@ -264,8 +264,8 @@ Specific limits remain visible:
   individually instead of duplicating the graph. Old issues and their evidence
   load lazily from SQLite; the complete previous Catalog is never loaded.
   The first optimized production export used 10,835,804,160 peak resident bytes
-  and took 382.44 seconds. The repeated publication measurement is recorded
-  below once complete. This is a local macOS measurement, not a hosted-run claim.
+  and took 382.44 seconds. The restored-state repeat used 10,466,000,896 peak resident bytes
+  and took 489.63 seconds. This is a local macOS measurement, not a hosted-run claim.
 - The public site has not loaded these artifacts, and no source-qualified live
   refresh or public readback is claimed. Those are concrete release/collection
   steps, separate from the completed local integration and replay.
@@ -313,3 +313,68 @@ advertised as a hosted download. Filtered browser exports remain available.
 PR validation has an independent no-secrets workflow with network-disabled
 Python tests, browser-reader tests, generated-type drift checks, Astro checking
 and a site build. This checks application code without starting collection.
+
+The final backend suite passes **213 tests plus 31 subtests**, with
+socket and DNS access blocked. The first compressed full-publication browser
+check retrieved the latest Congress's 2,767 meetings and filtered coverage in
+15 requests / 1,397,858 bytes, without requesting the Catalog or compatibility
+index. Its transcript chart showed 433 non-inferred, 718 inferred and 1,616
+unchecked meetings; selecting the inferred segment returned exactly 718 rows.
+The witness view returned 9,749 source-scoped appearances. Browser navigation and
+Back were exercised against these real retained records. Final repeated-build qualification follows.
+
+## Final production qualification
+
+The restored-checkpoint repeat produced publication
+`b460a42dee7f7196f89e0b29`, with the same **2,022,124 domain records / 221,164
+source observations / 18,139 meetings**. It completed in **489.63 seconds**
+(8 minutes 10 seconds), with **10,466,000,896 bytes peak resident memory**
+(9.75 GiB) and 14,177,528,584 bytes peak macOS memory footprint. It reads the
+435 MiB issue checkpoint lazily and never loads the old Catalog. These measured
+resident requirements fit the public repository's 16 GB standard Linux runner
+with headroom; the first hosted run remains a separately observed release gate.
+Source-independent exporter tests use blocked sockets and DNS.
+
+The final browser publication is **`f749bcda356626b44851e3cc`**, at
+[the local pointer](../../.cache/committee-explorer/production-browser-final/CURRENT.json).
+It contains **454,402,946 bytes across 2,423 artifacts**, including the supported
+material date/committee indexes and readable missing-committee labels. No full
+Catalog or compatibility meeting index ships. Real browser readback verified:
+
+- 2,767 latest-Congress meetings and 18,139 meetings across all Congresses;
+- 718 inferred transcript rows from the corresponding coverage segment;
+- 25,362 dated material rows for the latest Congress;
+- meeting/source/related-record retrieval with all requested artifact hashes,
+  sizes and counts checked;
+- latest meeting query plus coverage in **15 requests / 1,431,494 bytes**, without
+  a Catalog or old-index request.
+
+The receipt is [production-reader-receipt.json](../../.cache/committee-explorer/production-reader-receipt.json).
+The UI also passed real appearance, material/version/PDF, issue, Back-navigation
+and 390-pixel viewport checks. It now builds 28 pages. The PR validation workflow
+passed its Python, browser, type-generation and Astro checks; its hosted build
+is tracked in the PR rather than inferred from the local build.
+
+The independent complete first-production audit passed **2,320 partition
+hashes/sizes, 2,243,288 typed record/locator identities, all graph constraints,
+all retained source payloads, 18,139 native meeting identities and 2,316,860
+inverse relationships**. It found no missing/duplicate edges. Prior IDs differed
+only by the documented research transcript example closure. The audit used
+578,158,592 bytes peak resident memory and took 466.66 seconds. See
+[production-full-independent-reconciliation.json](../../.cache/committee-explorer/production-full-independent-reconciliation.json).
+The final repeat receives focused input/ID/history/query checks instead of
+repeating that identical complete source/graph audit.
+
+Quality indexes all retained issues, including unresolved issues absent from
+current inputs. Those rows explicitly carry `selection: retained_history`.
+They preserve original detection, subject and evidence rather than implying a
+new observation. The complete repeat has zero historical-only issues because
+its input population is unchanged; a targeted omission regression proves the
+history row remains searchable when the current source disappears.
+
+Committee reader failures now save their raw-state receipt before the failed
+job ends. The save step runs only after the House reader actually starts, on
+success or failure and while the job is not canceled. Setup/test failures do
+not publish a snapshot; derived CSV commits still require job success. Thus the
+next Explorer publication sees the failed per-source check and its last usable
+record, in addition to the separate coarse failed-job receipt.
