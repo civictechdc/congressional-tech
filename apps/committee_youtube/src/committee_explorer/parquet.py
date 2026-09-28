@@ -35,6 +35,28 @@ SOURCE_SCHEMA = pa.schema([(k, pa.string()) for k in
 QUERY_COLUMNS = [*STRINGS[:12], 'congress', 'issue_count', 'committee_ids', 'roles', 'evidence_states', 'scheduled_at', 'meeting_status', 'recording_url', 'position', 'organization', 'document_type', 'source_document_groups', 'committee_level', 'access', 'committee_type', 'source_committee_type', 'committee_types', 'committee_code', 'parent_committee_id']
 
 
+# Shared field types, explicit table shapes. Optional domain fields remain even
+# when today's sources do not populate them (for example witness document links).
+COMMON_COLUMNS = ('id', 'kind', 'title', 'chamber', 'congress', 'committee_ids',
+                  'committee_level', 'committee_types', 'source_ids', 'explanation',
+                  'issue_count', 'facts')
+TABLE_COLUMNS = {
+    'meeting': (*COMMON_COLUMNS, 'date', 'type', 'status', 'meeting_id',
+                'search_text', 'scheduled_at', 'access', 'evidence_states'),
+    'committee_term': (*COMMON_COLUMNS, 'committee_type', 'source_committee_type',
+                       'committee_code', 'parent_committee_id'),
+    'appearance': (*COMMON_COLUMNS, 'date', 'meeting_id', 'search_text', 'position',
+                   'organization', 'participation', 'roles'),
+    'material': (*COMMON_COLUMNS, 'date', 'type', 'meeting_id', 'provider', 'category',
+                 'scheduled_at', 'meeting_status', 'recording_url', 'document_type',
+                 'meeting_ids', 'appearance_ids', 'source_document_groups', 'files'),
+    'data_issue': (*COMMON_COLUMNS, 'date', 'status', 'meeting_id', 'category',
+                   'selection', 'severity', 'subject_kind', 'subject_id'),
+}
+TABLE_SCHEMAS = {kind: pa.schema([SCHEMA.field(name) for name in names])
+                 for kind, names in TABLE_COLUMNS.items()}
+
+
 def sources_of(record):
     citations = list(record.get('provenance', {}).get('citations', []))
     citations += (record.get('resolution') or {}).get('provenance', {}).get('citations', [])
@@ -316,8 +338,13 @@ def write_tables(records, sources, query_rows, stage, descriptor):
                 row['committee_level'] = 'subcommittee' if 'subcommittee' in levels else 'full' if levels == {'full'} else 'unknown'
             for key in LISTS: row[key] = sorted(set(row.get(key) or []))
             row['facts'] = [dict(label=k, value=v) for k, v in dict.fromkeys((f['label'], f['value']) for f in row['facts'])]
+        omitted = set(SCHEMA.names) - set(TABLE_SCHEMAS[kind].names)
+        for row in values:
+            populated = sorted(name for name in omitted if row.get(name) not in (None, '', [], {}))
+            if populated:
+                raise ValueError(f"{kind} {row['id']} has populated fields outside its table schema: {populated}")
         path = TABLES[kind] + '.parquet'
-        pq.write_table(pa.Table.from_pylist(values, schema=SCHEMA), Path(stage) / path,
+        pq.write_table(pa.Table.from_pylist(values, schema=TABLE_SCHEMAS[kind]), Path(stage) / path,
                        compression='snappy', row_group_size=2048, write_statistics=True)
         if (Path(stage) / path).stat().st_size >= 100_000_000:
             raise ValueError(f'{path} exceeds GitHub file limit; partition this table before publishing')
