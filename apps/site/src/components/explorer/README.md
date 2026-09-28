@@ -1,85 +1,78 @@
-# Explorer data sources
+# Committee Explorer data
 
-The production React UI receives an `ExplorerReader`. The bounded design preview
-receives an `ExplorerDataSource`. Both return normalized records; the UI does
-not know which files, encoding or service supplied them. The interfaces are in
-`data-source.d.ts`, with dependency-free browser implementations in
-`data-source.js`. The working design preview uses this code directly.
+The UI receives one `ExplorerReader` with `search`, `getRecord`, `getRelated` and
+`getCoverage`. React components know nothing about Parquet, URLs or HTTP ranges.
+`openPublicationReader` chooses the reader from the release manifest.
 
-```text
-page startup chooses source and decoder
-                  ↓
-ExplorerDataSource.load({ signal })
-                  ↓
-ExplorerSnapshot { schemaVersion, records, sources, publication? }
-                  ↓
-record views, selectors, charts, source inspector
-```
+Production exports six logical tables:
 
-- `createCatalogSource({ url, decode?, fetcher? })` loads one bounded catalog.
-  JSON is its default decoder. The preview's startup passes this source to
-  `mountExplorer({ source })`; its renderer contains no network or decoding code.
-- `createPublicationSource({ pointerUrl, decoders?, fetcher? })` follows `CURRENT`
-  to the release manifest and discovers the complete catalog by role/schema.
-  It selects the decoder by `media_type`, verifies both manifest and data hashes,
-  and checks the decoded schema and record count. It never guesses file suffixes.
-- An in-memory object implementing `load` supplies deterministic test data.
-  HTTP failures stay failures; they never become an empty or complete collection.
-- `openPublicationReader` opens one immutable release for real archive browsing.
-  Its `search`, `getRelated`, `getRecord`, `getRecords` and `getCoverage` methods use
-  published query pages and hashed locator shards to fetch only requested data.
-  The reader verifies every artifact and caches eight completed files. Queries
-  stay on one release even if `CURRENT` changes; open a new reader to refresh.
-- `getQueryInfo` supplies available Congresses, record kinds and committee labels.
-  Search defaults to the latest Congress, filters before pagination, and returns
-  at most 100 rows. `congress: 'all'` is an explicit archive-wide query. At most
-  four query pages transfer concurrently; two ordinary query sets are cached.
-- Filtered coverage counts the published evidence state of each matching meeting
-  entry. It uses the same filters as search and does not repeat the Python rules
-  that decide a meeting's evidence state. Committee group counts overlap for
-  jointly convened meetings.
-- Browser artifacts use explicit gzip JSON media types and the native browser
-  decompression API. The complete Catalog and legacy meeting index stay outside
-  the deployed browser distribution.
+| Table | Contents |
+| --- | --- |
+| `meetings.parquet` | Dates, committees, status, search fields and coverage states |
+| `committees.parquet` | Committee names and Congress |
+| `materials.parquet` | Documents and recordings, direct file links and meeting/witness IDs |
+| `witnesses.parquet` | Meeting-specific names, roles, positions and organizations |
+| `issues.parquet` | Known issues, explanations and recorded resolutions |
+| `sources*.parquet` | Provider metadata and complete retained source payloads |
 
-To change to Parquet, supply a decoder that maps the published columns into the
-same domain records, or supply a different `ExplorerDataSource` if querying must
-happen in a worker or on a server. Keep stable string IDs, date precision,
-unknown values, evidence and relationship meanings intact. Decode Parquet
-integers/bytes/nested columns at this boundary, not inside chart components.
-Load a Parquet/WASM library only in the selected adapter. No such dependency is
-included today; the tests exercise decoder substitution with a stub.
+The current retained corpus needs two source files to stay below GitHub's 100 MB
+file limit: seven Parquet files in total. A small `queries.json` supplies available
+Congresses, counts and committee labels. `CURRENT.json` selects an immutable
+release manifest. There are no record files, locator shards or inverse-reference
+files in a Parquet release.
 
-The first full retained-data check used a 9.6 MB meeting index. Production queries
-replace that transfer with compressed pages scoped by record kind and Congress.
-See the
-[execution receipt](../../../../../packages/committee_meeting/INTEGRATION_EXECUTION.md)
-for the pinned release and remaining limits.
+`parquet-source.js` uses Hyparquet, loaded only for Parquet releases. It reads
+selected columns and row groups through HTTP byte ranges. Results retain their
+physical row positions so opening a result can read that row directly. Searches
+and charts never load source payloads. The source table's `payload` column holds
+JSON because upstream providers have different schemas; the browse columns,
+file links and meeting/witness associations are typed Parquet columns.
 
-The `load` method is intentionally for a bounded complete snapshot. The public
-explorer uses an `ExplorerReader`, which provides paginated search and
-partitioned details. Keep storage paths,
-SQL, Arrow tables and Parquet row groups outside UI props. The byte decoder can
-use the supplied `schemaName`/`schemaVersion` to reconstruct each normalized
-artifact. Do not create a global service container or a format flag in every
-component.
+The publisher checks complete file hashes. The browser checks the manifest hash,
+row counts and HTTP range lengths against an immutable release. It does **not**
+claim to verify a whole-file hash from partial reads. Hosting must return `206`
+and a valid `Content-Range`; a host that ignores ranges produces an explicit
+error instead of silently downloading the full catalog.
 
-`committee_meeting` owns full domain validation and the schema version. The
-frontend checks compatibility and basic identity/collection structure before
-rendering; it does not duplicate the Python graph validator. The interface uses
-the TypeScript domain union in `catalog.generated.d.ts`, generated directly from
-the Python schema. Run `npm run generate:explorer-types` from `apps/site` after
-model changes; `npm run check:explorer-types` detects drift. Set
-`COMMITTEE_PYTHON` if the model's dependencies use a different interpreter.
+Details show useful facts and direct file links. Empty optional values are
+omitted. Source evidence is available on demand. Known issues and coverage
+remain separate from empty fields: an unchecked source does not mean a missing
+document. The UI does not expose internal editions, representations or association
+objects as navigation steps.
 
-The existing YouTube dashboard uses the same pattern with its separate
-`CoverageReportSource` in `../dashboard/report-source.ts`. `Dashboard` chooses
-the CSV adapter inside the hydrated island; `CoverageDashboard` receives the
-source as a prop and renders normalized `ReportRow` values. Its video population
-and Event ID definition remain separate from meeting coverage.
+Meeting details retain legislative subjects. Document details include their
+explicit amendment, vote, bill and en bloc context; actions without a file remain
+listed on the meeting. Documents and witnesses have separate counts and paging.
+Related-file lookups use meeting/witness IDs, including files shared across
+Congresses. Witness ownership requires an explicit source association.
 
-Run the data-boundary and chart checks from `apps/site`:
+Recording links are hidden before the scheduled start and for canceled or
+postponed meetings. Date-only events stay hidden through that calendar day in
+Washington. Elapsed schedules display as `Past`, preserving `source_status`;
+the date alone does not establish that a meeting was held. Congress.gov event
+pages are retained as source evidence, not counted as separate recordings.
+Each recording uses one preferred player URL.
+
+The native document label supplies a title when no name or description exists
+(for example, `Witness Statement`). Truth-in-testimony forms are disclosures.
+Business meetings have a distinct type and filter. When a generic `Meeting`
+record explicitly says business meeting in its title, the classification records
+that basis and keeps the original source type.
+
+The old JSON reader remains for existing releases and the bounded design preview.
+The current publisher CLI defaults to Parquet; Python callers can explicitly use
+`format='json'` for compatibility. Model validation and historical issue/ID state
+still run upstream. This change removes JSON packaging and graph navigation; it
+does not replace acquisition or the normalized model with a new matching system.
+
+Frontend changes deploy the existing published files. Data/source changes trigger
+the exporter. To convert an existing local release without rebuilding records:
 
 ```sh
-npm run test:explorer
+python -m committee_explorer.parquet --input path/to/old-release --output path/to/parquet-release
 ```
+
+Run `npm run test:explorer` from `apps/site`. The tests build a small real Parquet
+fixture with the Python exporter, then exercise range reads, filtering, detail
+links, coverage, source retrieval, cancellation and bad HTTP responses. They use
+the repo's `.venv` when present, or `EXPLORER_PYTHON` / `COMMITTEE_PYTHON`.

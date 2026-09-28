@@ -9,7 +9,7 @@ from committee_meeting.catalog import _references
 KINDS = ('committee_term', 'meeting', 'appearance', 'material', 'data_issue')
 
 
-def write_queries(catalog, current, write, *, evidence_states=None):
+def write_queries(catalog, current, write, *, evidence_states=None, include_relations=True):
     records = {(r.kind, r.id): r for r in catalog.records}
     material_subjects = defaultdict(set)
     for record in catalog.records:
@@ -64,7 +64,7 @@ def write_queries(catalog, current, write, *, evidence_states=None):
         if record.kind == 'data_issue' and record.status == 'open': issue_counts[(record.subject.kind, record.subject.id)] += 1
         # Inverse links let views find appearances/materials/issues without
         # scanning the graph. Exclude citation and field-evidence trees.
-        for field in type(record).model_fields:
+        for field in type(record).model_fields if include_relations else ():
             if field in ('provenance', 'field_evidence', 'identifiers'): continue
             for target in _references(getattr(record, field)):
                 relate(target, record, field)
@@ -116,6 +116,7 @@ def write_queries(catalog, current, write, *, evidence_states=None):
           'kinds': [{'kind': k, 'count': counts[k]} for k in KINDS], 'congresses': sorted(congresses, reverse=True),
           'committee_labels': {r.id: r.name or 'Committee name not recorded' for r in catalog.records if r.kind == 'committee_term'},
           'partitions': partitions}, 'index', 'committee_explorer.queries', len(partitions))
+    if not include_relations: return
     buckets = {}
     for bucket, entries in sorted(relations.items()):
         path = f'indexes/relations/{bucket}.json'

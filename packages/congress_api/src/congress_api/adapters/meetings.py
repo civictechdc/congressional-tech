@@ -1,5 +1,6 @@
 """Full Congress.gov meeting records, including statuses omitted by inventory reports."""
 from collections import Counter
+from urllib.parse import urlsplit
 import re
 
 from committee_meeting.common import Identifier, Location
@@ -8,6 +9,7 @@ from committee_meeting.issues import DataIssue
 from committee_meeting.legislation import LegislativeItem, MeetingSubject
 from committee_meeting.materials import DocumentDetails, RecordingDetails
 from committee_meeting.meetings import Affiliation, Appearance, ConveningCommittee, Meeting, MeetingOccurrence, RecordedName
+from committee_meeting.provenance import FieldEvidence
 
 from .common import digest, material_records, ref, reported_time, web_url
 
@@ -20,9 +22,31 @@ def meeting_key(row):
     return f"congress.gov|{row['congress']}|{chamber(row.get('chamber'))}|{row['eventId']}"
 
 
+def meeting_type(row):
+    text = str(row.get('type') or '').lower()
+    for label, kind in (('field hearing', 'field_hearing'), ('business meeting', 'business'),
+                        ('hearing', 'hearing'), ('markup', 'markup'), ('briefing', 'briefing')):
+        if label in text: return kind, '/type'
+    # Some older records use the generic type Meeting and name the business
+    # meeting explicitly in the title. Keep that distinction in field evidence.
+    if text == 'meeting' and re.search(r'\bbusiness meeting\b', str(row.get('title') or ''), re.I):
+        return 'business', '/title'
+    return 'unknown', '/type'
+
+
+def document_title(row):
+    return next((value.strip() for key in ("name", "title", "description", "documentType")
+                 if isinstance(value := row.get(key), str) and value.strip()), None)
+
+
+def event_page(url):
+    parsed = urlsplit(url or "")
+    return parsed.hostname in ("congress.gov", "www.congress.gov") and parsed.path.startswith("/event/")
+
+
 def category(row):
     text = f"{row.get('documentType', '')} {row.get('kind', '')} {row.get('name', '')}".lower()
-    for needle, value in (("transcript", "transcript"), ("witness list", "witness_list"), ("statement", "statement"),
+    for needle, value in (("truth in testimony", "disclosure"), ("transcript", "transcript"), ("witness list", "witness_list"), ("statement", "statement"),
                           ("testimony", "statement"), ("biograph", "biography"), ("disclosure", "disclosure"),
                           ("amendment", "amendment"), ("vote", "vote"), ("bill", "bill_text")):
         if needle in text:
@@ -59,9 +83,12 @@ def records(rows, context):
             yield term
             comms.append(ConveningCommittee(committee=ref(term), role="unknown", provenance=evidence))
         raw_type = str(row.get("type") or "").lower()
-        kind = "hearing" if "hearing" in raw_type else "markup" if "markup" in raw_type else "unknown"
+        kind, type_field = meeting_type(row)
+        type_evidence = (FieldEvidence(path='/meeting_type', selected=context.evidence(source, selector=type_field,
+                         basis='derived', method='congress_api.meeting_type'), selection_reason='The source title explicitly identifies a business meeting.'),) if type_field == '/title' else ()
         meeting = Meeting(id=context.ids("meeting", key), title=row.get("title") or None, congress=congress,
                           chamber=chamber(row.get("chamber")), meeting_type=kind, committees=tuple(comms), provenance=evidence,
+                          field_evidence=type_evidence,
                           identifiers=(Identifier(scheme="congress.gov:event", value=str(row["eventId"]), scope=f"{congress}/{chamber(row.get('chamber'))}"),))
         yield meeting
         start = None
@@ -72,7 +99,7 @@ def records(rows, context):
                             summary="Meeting date could not be interpreted", detected_at=context.now, provenance=evidence)
         location = row.get("location") or {}
         loc = Location(**{k: str(location[k]) for k in ("building", "room", "city", "region", "country") if location.get(k)}) if isinstance(location, dict) and location else None
-        status = {"Scheduled": "scheduled", "Rescheduled": "rescheduled", "Postponed": "postponed", "Canceled": "canceled", "Cancelled": "canceled"}.get(row.get("meetingStatus"), "unknown")
+        status = {"Scheduled": "scheduled", "Rescheduled": "rescheduled", "Postponed": "postponed", "Canceled": "canceled", "Cancelled": "canceled", "Held": "held"}.get(row.get("meetingStatus"), "unknown")
         yield MeetingOccurrence(id=context.ids("occurrence", key + "|sitting"), meeting=ref(meeting), status=status,
                                 scheduled_start=start, location=loc, access="closed" if "closed" in raw_type else "unknown", provenance=evidence)
         witnesses = row.get("witnesses") or []
@@ -99,6 +126,9 @@ def records(rows, context):
                 ev = context.evidence(source, selector=f"/{group}/{i}")
                 cat = category(d)
                 recording = group == "videos"
+                # An event landing page is not a second recording. Its exact
+                # URL remains in the retained native source record.
+                if recording and event_page(url): continue
                 provider = None
                 identifiers = ()
                 if recording and url:
@@ -115,7 +145,7 @@ def records(rows, context):
                             provider = "senate"
                             dkey = "senate|" + "|".join(player)
                             identifiers = (Identifier(scheme="senate.filename", value=player[1], scope=player[0]),)
-                yield from material_records(context, ev, dkey, title=d.get("name") or d.get("title"), urls=[url] if url else [],
+                yield from material_records(context, ev, dkey, title=document_title(d), urls=[url] if url else [],
                                              subject=ref(meeting), role="recording" if recording else cat if cat in ("transcript", "statement", "biography", "disclosure", "amendment") else "supporting",
                                              details=RecordingDetails(medium="video", provider=provider) if recording else DocumentDetails(category=cat), identifiers=identifiers)
         for family, items in (row.get("relatedItems") or {}).items():

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type DependencyList } from 'react';
 import { openPublicationReader, type CoverageSummary, type ExplorerQuery, type ExplorerReader, type ExplorerRecordRef, type QueryInfo, type QueryResult } from './data-source';
-import { RecordDetail, fields, publicUrl, recordTitle, words, type DetailRecord } from './RecordDetail';
+import { RecordDetail, fields, FileLinks, publicUrl, recordFiles, recordTitle, words, type DetailRecord } from './RecordDetail';
 import Coverage from './Coverage';
 import { downloadJson } from './download';
 
@@ -128,6 +128,7 @@ function Workspace({ reader, info }: { reader: ExplorerReader; info: QueryInfo }
       <label>From date<input aria-label="From date" type="date" value={nav.from} onChange={(event) => filter({ from: event.target.value })} /></label>
       <label>Through date<input aria-label="Through date" type="date" value={nav.to} onChange={(event) => filter({ to: event.target.value })} /></label>
       {nav.view === 'materials' ? <label>Material type<select value={nav.type} onChange={(event) => filter({ type: event.target.value })}><option value="">All types</option><option value="document">Document</option><option value="recording">Recording</option><option value="text">Text product</option></select></label> : null}
+      {nav.view === 'meetings' || nav.view === 'coverage' ? <label>Meeting type<select value={nav.type} onChange={event => filter({type: event.target.value})}><option value="">All types</option><option value="hearing">Hearing</option><option value="markup">Markup</option><option value="business">Business meeting</option><option value="briefing">Briefing</option><option value="field_hearing">Field hearing</option><option value="other">Other</option><option value="unknown">Unknown</option></select></label> : null}
       {nav.view === 'gaps' ? <label>Issue status<select value={nav.status} onChange={(event) => filter({ status: event.target.value })}><option value="">All statuses</option><option value="open">Open</option><option value="resolved">Resolved</option><option value="dismissed">Dismissed</option></select></label> : null}
       <button type="button" className="explorer-text-button" onClick={reset}>Reset</button>
     </form>
@@ -171,11 +172,11 @@ function Pagination({ total, offset, count, onPage }: { total: number; offset: n
 }
 
 const VIEW_NOTES: Record<Exclude<View, 'coverage'>, string> = {
-  meetings: 'Retained source entries, including scheduled, canceled and postponed proceedings. An entry does not by itself establish a hearing held.',
-  committees: 'Committee identities within each Congress. Open a committee to explore related meetings and its source evidence.',
-  materials: 'Source-described documents, recordings and text products. Unmatched materials remain discoverable; formats and meeting links appear in the record details.',
-  witnesses: 'Source-listed appearances. Names are not automatically merged across meetings, and being listed does not establish testimony.',
-  gaps: 'Known issues and documented decisions, including retained issue history. An issue missing from the latest inputs stays open until evidence supports closure. An empty list does not establish completeness; Coverage shows unknown and unchecked populations.',
+  meetings: 'Committee meetings, including scheduled, postponed and canceled entries.',
+  committees: 'Browse each committee’s meetings by Congress.',
+  materials: 'Documents and recordings from collected sources, including items without a matched meeting.',
+  witnesses: 'Witnesses listed by meeting. A listing does not confirm attendance.',
+  gaps: 'Known collection and matching issues. Coverage shows which material remains unchecked.',
 };
 
 function Listing({ reader, query, view, info, onSelect, onPage }: { reader: ExplorerReader; query: ExplorerQuery; view: Exclude<View, 'coverage'>; info: QueryInfo; onSelect: (ref: ExplorerRecordRef) => void; onPage: (page: number) => void }) {
@@ -187,7 +188,7 @@ function Listing({ reader, query, view, info, onSelect, onPage }: { reader: Expl
     <p className="explorer-note">{VIEW_NOTES[view]}</p>
     {state.status !== 'ready' ? <RequestMessage state={state} retry={retry} /> : state.value.rows.length ? <>
       <div className="explorer-table-scroll"><table className="explorer-table"><thead><tr><th scope="col">{view === 'witnesses' ? 'Recorded name' : view === 'gaps' ? 'Known issue' : 'Record'}</th><th scope="col">Date / Congress</th><th scope="col">Type / status</th><th scope="col" className="explorer-number">Issues</th></tr></thead><tbody>
-        {state.value.rows.map((row) => <tr key={`${row.kind}/${row.id}`}><td className="explorer-title-cell"><button className="explorer-text-button" title={row.title} onClick={() => onSelect(row)}>{row.title || 'Title not recorded'}</button><span className="explorer-row-meta">{[words(row.chamber), ...(row.committee_ids || []).map((id) => info.committee_labels?.[id]).filter(Boolean), row.provider].filter(Boolean).join(' · ') || 'Source details available'}</span></td><td>{row.date || <span className="explorer-unknown">Date unrecorded</span>}<span className="explorer-row-meta">{row.congress ? `${row.congress}th Congress` : 'Congress unrecorded'}</span></td><td>{[row.type, row.category, row.status].filter((value, index, list) => value && list.indexOf(value) === index).map(words).join(' · ') || 'Not established'}{row.selection === 'retained_history' ? <span className="explorer-row-meta">Retained issue history · not present in latest inputs</span> : null}{row.roles?.length ? <span className="explorer-row-meta">{row.roles.map(words).join(', ')}</span> : null}</td><td className="explorer-number">{row.issue_count === undefined ? '—' : integer(row.issue_count)}</td></tr>)}
+        {state.value.rows.map((row) => <tr key={`${row.kind}/${row.id}`}><td className="explorer-title-cell"><button className="explorer-text-button" title={row.title} onClick={() => onSelect(row)}>{recordTitle(row)}</button><span className="explorer-row-meta">{[words(row.chamber), ...(row.committee_ids || []).map((id) => info.committee_labels?.[id]).filter(Boolean), row.provider].filter(Boolean).join(' · ') || 'Source details available'}</span></td><td>{row.date || <span className="explorer-unknown">Date unrecorded</span>}<span className="explorer-row-meta">{row.congress ? `${row.congress}th Congress` : 'Congress unrecorded'}</span></td><td>{[row.type, row.category, row.status].filter((value, index, list) => value && value !== 'unknown' && list.indexOf(value) === index).map(words).join(' · ') || '—'}{row.selection === 'retained_history' ? <span className="explorer-row-meta">Retained issue history · not present in latest inputs</span> : null}{row.roles?.length ? <span className="explorer-row-meta">{row.roles.map(words).join(', ')}</span> : null}</td><td className="explorer-number">{row.issue_count === undefined ? '—' : integer(row.issue_count)}</td></tr>)}
       </tbody></table></div><Pagination total={state.value.total} offset={state.value.offset} count={state.value.rows.length} onPage={onPage} />
     </> : <div className="explorer-alert"><p>No records match this selection. Broaden the Congress, date, or search filters. This does not establish that no such records exist at the source.</p>{query.offset ? <button className="explorer-button" onClick={() => onPage(0)}>Return to first page</button> : null}</div>}
   </>;
@@ -202,27 +203,36 @@ function CoverageView({ reader, query, onDrill }: { reader: ExplorerReader; quer
 function Inspector({ reader, selected, onSelect, onClose }: { reader: ExplorerReader; selected: ExplorerRecordRef; onSelect: (ref: ExplorerRecordRef) => void; onClose: () => void }) {
   const [state, retry] = useRequest<DetailRecord | undefined>((signal) => reader.getRecord(selected, { signal }), [reader, selected.kind, selected.id]);
   return <article className="explorer-detail"><div className="explorer-subheading"><button className="explorer-text-button" onClick={onClose}>← Back to results</button>{state.status === 'ready' && state.value ? <button className="explorer-text-button" onClick={() => downloadJson(`committee-explorer-${selected.kind}-${selected.id}.json`, { scope: 'record', publication_id: reader.publication.publication_id, schema_version: reader.publication.schema_version, record: state.value })}>Download record (JSON)</button> : null}</div>
-    {state.status !== 'ready' ? <RequestMessage state={state} retry={retry} noun="record details" /> : state.value ? <><RecordDetail record={state.value} onSelect={onSelect} /><Related reader={reader} selected={selected} onSelect={onSelect} /></> : <p className="explorer-alert">This record is not present in the selected publication. Its absence does not establish that it was removed at the source.</p>}
+    {state.status !== 'ready' ? <RequestMessage state={state} retry={retry} noun="record details" /> : state.value ? <><RecordDetail record={state.value} onSelect={onSelect} /><Related key={`${selected.kind}/${selected.id}`} reader={reader} selected={selected} onSelect={onSelect} /></> : <p className="explorer-alert">This record is not present in the selected publication. Its absence does not establish that it was removed at the source.</p>}
   </article>;
 }
 
 function Related({ reader, selected, onSelect }: { reader: ExplorerReader; selected: ExplorerRecordRef; onSelect: (ref: ExplorerRecordRef) => void }) {
+  const sections: Record<string, string[]> = {meeting: ['material', 'appearance'], appearance: ['material'], material: ['meeting'], committee_term: ['meeting']};
+  return <div className="explorer-related">{(sections[selected.kind] || []).map(kind => <RelatedSection key={kind} kind={kind} reader={reader} selected={selected} onSelect={onSelect} />)}</div>;
+}
+
+function RelatedSection({ reader, selected, onSelect, kind }: { reader: ExplorerReader; selected: ExplorerRecordRef; onSelect: (ref: ExplorerRecordRef) => void; kind: string }) {
   const [page, setPage] = useState(0);
-  const [state, retry] = useRequest(async (signal) => {
-    const result = await reader.getRelated(selected, { offset: page * PAGE_SIZE, limit: PAGE_SIZE, signal });
-    const refs = result.records.filter((record) => record.kind === 'material_link').map((record) => fields(fields(record).material)).filter((ref) => typeof ref.id === 'string').map((ref) => ({ kind: 'material', id: String(ref.id) }));
-    const materials = refs.length ? await reader.getRecords(refs, { signal }) : [];
-    const labels = new Map(materials.filter((record) => record !== undefined).map((record) => [record!.id, recordTitle(record)]));
-    return { ...result, labels };
-  }, [reader, selected.kind, selected.id, page]);
-  return <section className="explorer-related"><div className="explorer-subheading"><h3>Related records</h3>{state.status === 'ready' ? <span className="explorer-muted">{integer(state.value.total)} associations</span> : null}</div><p className="explorer-note">Follow materials through their editions to file formats and source locations. Links state their own evidence and full, partial, or unknown coverage.</p>
-    {state.status !== 'ready' ? <RequestMessage state={state} retry={retry} noun="related records" /> : state.value.records.length ? <><div className="explorer-table-scroll"><table className="explorer-table"><thead><tr><th scope="col">Record</th><th scope="col">Kind</th><th scope="col">Evidence basis</th></tr></thead><tbody>{state.value.records.map((record) => {
-      const row = fields(record); const material = fields(row.material);
-      const locations = Array.isArray(row.locations) ? row.locations : [];
-      return <tr key={`${record.kind}/${record.id}`}><td className="explorer-title-cell"><button className="explorer-text-button" onClick={() => onSelect(record)}>{recordTitle(record)}</button>
-        {record.kind === 'material_link' && typeof material.id === 'string' ? <span className="explorer-row-meta"><button className="explorer-text-button" onClick={() => onSelect({ kind: 'material', id: String(material.id) })}>{state.value.labels.get(material.id) || 'Open linked material'} →</button></span> : null}
-        {locations.filter((location) => publicUrl(fields(location).url)).map((location, index) => <span className="explorer-row-meta" key={index}><a href={publicUrl(fields(location).url)} target="_blank" rel="noreferrer">Open {words(fields(location).role) || 'source location'} ↗</a></span>)}
-      </td><td>{words(record.kind)}</td><td>{words(fields(row.provenance).basis) || 'Source observation'}</td></tr>;
-    })}</tbody></table></div><Pagination total={state.value.total} offset={state.value.offset} count={state.value.records.length} onPage={setPage} /></> : <p className="explorer-note">No related records are recorded in this publication. This does not establish that no related material exists.</p>}
+  const [state, retry] = useRequest(signal => reader.getRelated(selected, { kind, offset: page * PAGE_SIZE, limit: PAGE_SIZE, signal }), [reader, selected.kind, selected.id, kind, page]);
+  const labels: Record<string, string> = { material: 'Documents & recordings', appearance: 'Witnesses', meeting: 'Meetings' };
+  if (state.status !== 'ready') return <RequestMessage state={state} retry={retry} noun={labels[kind].toLowerCase()} />;
+  if (!state.value.records.length) return null;
+  return <section className="explorer-detail-section"><h3>{labels[kind]} <span className="explorer-muted">({integer(state.value.total)})</span></h3><ul className="explorer-related-list">{state.value.records.map(record => {
+        const row = fields(record), files = recordFiles(record);
+        const title = row.type === 'recording' ? 'Watch recording' : recordTitle(record);
+        return <li key={record.id}>
+          {kind === 'material' ? <>
+            {files.length ? <a href={publicUrl(files[0].url)} target="_blank" rel="noreferrer">{title} ↗</a> : <span>{title}</span>}
+            {files.length > 1 ? <FileLinks record={record} /> : null}
+            {Array.isArray(row.facts) ? <span className="explorer-row-meta">{row.facts.map(fields).filter(f => !['medium', 'coverage', 'production'].includes(String(f.label))).map(f => `${f.label}: ${f.value}`).join(' · ')}</span> : null}
+            <button className="explorer-text-button explorer-row-meta" onClick={() => onSelect(record)}>Details & source</button>
+          </> : <>
+            <button className="explorer-text-button" onClick={() => onSelect(record)}>{title}</button>
+            <span className="explorer-row-meta">{[row.position, row.organization, row.date].filter(Boolean).join(' · ')}</span>
+          </>}
+        </li>;
+      })}</ul>
+    {state.value.total > PAGE_SIZE ? <Pagination total={state.value.total} offset={state.value.offset} count={state.value.records.length} onPage={setPage} /> : null}
   </section>;
 }

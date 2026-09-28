@@ -1,8 +1,35 @@
 import type { Catalog, ReportedTime, Meeting } from './catalog.generated';
 
 /** Domain types come from committee_meeting; serialized identities are required at the boundary. */
-export type ExplorerRecord = Readonly<NonNullable<Catalog['records']>[number] & { kind: string; id: string }>;
-export type ExplorerSourceRecord = Readonly<NonNullable<Catalog['sources']>[number] & { kind: 'source_record'; id: string }>;
+export interface BrowserRecord extends QueryRow {
+  position?: string | null;
+  organization?: string | null;
+  participation?: string | null;
+  explanation?: string | null;
+  meeting_ids: readonly string[];
+  appearance_ids: readonly string[];
+  source_ids: readonly string[];
+  files: readonly { url: string; label?: string | null; role?: string | null; media_type?: string | null; version?: string | null; published_at?: string | null; sha256?: string | null }[];
+  facts: readonly { label: string; value: string }[];
+  subject_kind?: string | null;
+  subject_id?: string | null;
+}
+export type ExplorerRecord = Readonly<(NonNullable<Catalog['records']>[number] | BrowserRecord) & { kind: string; id: string }>;
+export interface BrowserSourceRecord {
+  kind: 'source_record';
+  id: string;
+  provider: string;
+  url?: string | null;
+  retrieved_at?: string | null;
+  imported_at?: string | null;
+  source_modified_at?: string | null;
+  input_snapshot_id?: string | null;
+  identifier?: string | null;
+  retained_uri?: string | null;
+  retained_sha256?: string | null;
+  payload: unknown;
+}
+export type ExplorerSourceRecord = Readonly<(NonNullable<Catalog['sources']>[number] | BrowserSourceRecord) & { kind: 'source_record'; id: string }>;
 export interface ExplorerSnapshot {
   readonly schemaVersion: string;
   readonly records: readonly ExplorerRecord[];
@@ -53,6 +80,10 @@ export interface QueryRow extends ExplorerRecordRef {
   congress: number | null;
   chamber?: string | null;
   date?: string | null;
+  scheduled_at?: string | null;
+  source_status?: string | null;
+  meeting_status?: string | null;
+  recording_url?: string | null;
   type?: string | null;
   status?: string | null;
   committee_ids?: readonly string[];
@@ -101,8 +132,8 @@ export interface ExplorerReader {
   readonly publication: Readonly<Record<string, unknown>>;
   getQueryInfo(options?: { signal?: AbortSignal }): Promise<QueryInfo>;
   search(query?: ExplorerQuery, options?: { signal?: AbortSignal }): Promise<QueryResult>;
-  getRelated(ref: ExplorerRecordRef, options?: { offset?: number; limit?: number; signal?: AbortSignal }): Promise<{records: readonly (ExplorerRecord | ExplorerSourceRecord)[]; total: number; offset: number; limit: number}>;
-  getMeetingIndex(options?: { signal?: AbortSignal }): Promise<readonly MeetingIndexRow[]>;
+  getRelated(ref: ExplorerRecordRef, options?: { kind?: string; offset?: number; limit?: number; signal?: AbortSignal }): Promise<{records: readonly (ExplorerRecord | ExplorerSourceRecord)[]; total: number; offset: number; limit: number}>;
+  getMeetingIndex?(options?: { signal?: AbortSignal }): Promise<readonly MeetingIndexRow[]>;
   getCoverage(options: { filters: ExplorerQuery; signal?: AbortSignal }): Promise<CoverageSummary>;
   getCoverage(options?: { signal?: AbortSignal }): Promise<Readonly<Record<string, unknown>>>;
   getRecord(ref: ExplorerRecordRef, options?: { signal?: AbortSignal }): Promise<ExplorerRecord | ExplorerSourceRecord | undefined>;

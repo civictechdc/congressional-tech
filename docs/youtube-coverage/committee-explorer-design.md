@@ -1,5 +1,14 @@
 # Congressional Committee Explorer
 
+> Implementation update: the browser now uses six domain tables stored in seven
+> Parquet files (source evidence spans two files). Direct file links and useful
+> facts replace generic relationship, edition and representation navigation.
+> Empty optional fields are omitted; known issues and coverage checks retain
+> specific explanations. The earlier detailed model below describes retained
+> source semantics, not a requirement to expose every model object in the UI.
+> See [the reader documentation](../../apps/site/src/components/explorer/README.md).
+
+
 Status: implemented model, retained-source export and production site integration.
 The six real-data workspaces live at `/dashboard/`; the original Event ID report
 has its own `/youtube-coverage/` route. The synthetic preview remains a design

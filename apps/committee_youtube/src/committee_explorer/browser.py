@@ -1,4 +1,4 @@
-"""Verify and package only browser-needed data, with explicit gzip JSON encoding."""
+"""Verify and stage browser data; Parquet files are served unchanged."""
 import argparse
 import gzip
 import hashlib
@@ -37,7 +37,8 @@ def package(input_dir, output_dir, *, max_bytes=900_000_000):
         parts = [p for p in manifest.partitions if p.role != 'download' and p.schema_name not in ('committee_explorer.meetings', 'congress_api.print-decisions')]
         # Opaque suffix keeps static servers from adding Content-Encoding:gzip:
         # fetch must receive the stored bytes so manifest digests remain valid.
-        replacements = {p.path: p.path + '.data' for p in parts}
+        parquet = any(p.media_type == 'application/vnd.apache.parquet' for p in parts)
+        replacements = {p.path: p.path if parquet else p.path + '.data' for p in parts}
         def remap(value):
             if isinstance(value, dict): return {k: remap(v) for k,v in value.items()}
             if isinstance(value, list): return [remap(v) for v in value]
@@ -45,12 +46,12 @@ def package(input_dir, output_dir, *, max_bytes=900_000_000):
         compressed = []
         for part in parts:
             raw = (source / part.path).read_bytes()
-            if part.schema_name in ('committee_explorer.locations','committee_explorer.location-bucket','committee_explorer.queries','committee_explorer.relations','committee_explorer.relation-bucket'):
+            if not parquet and part.schema_name in ('committee_explorer.locations','committee_explorer.location-bucket','committee_explorer.queries','committee_explorer.relations','committee_explorer.relation-bucket'):
                 raw = encode(remap(json.loads(raw)))
-            raw = gzip.compress(raw, compresslevel=6, mtime=0)
+            if not parquet: raw = gzip.compress(raw, compresslevel=6, mtime=0)
             path = replacements[part.path]
             target = stage / path; target.parent.mkdir(parents=True, exist_ok=True); target.write_bytes(raw)
-            compressed.append(part.model_copy(update={'path':path,'media_type':MEDIA_TYPE,'sha256':sha(raw),'byte_size':len(raw)}))
+            compressed.append(part.model_copy(update={'path':path,'media_type':part.media_type if parquet else MEDIA_TYPE,'sha256':sha(raw),'byte_size':len(raw)}))
         publication_id = sha(encode({'source_publication':manifest.publication_id,'files':[p.sha256 for p in compressed]}))[:24]
         packaged = manifest.model_copy(update={'publication_id':publication_id, 'partitions':tuple(compressed),
             'limitations':(*manifest.limitations, 'Browser distribution: original publication '+manifest.publication_id+'. Complete Catalog and legacy meeting index are excluded; query pages retain browse coverage.')})
