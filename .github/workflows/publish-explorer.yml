@@ -1,20 +1,18 @@
 name: Publish Committee Explorer data
 
 # Collection writes several snapshots. Publish only after the whole run settles;
-# main code/site changes also rebuild the browser publication from saved inputs.
+# Source and exporter changes rebuild from saved inputs. Site-only changes deploy separately.
 on:
   push:
     branches: [main]
     paths:
       - "apps/committee_youtube/**"
-      - "apps/site/**"
       - "packages/committee_meeting/**"
       - "packages/congress_api/**"
       - "packages/congress_shared/**"
       - "packages/youtube_api/**"
       - ".github/scripts/**"
       - ".github/workflows/publish-explorer.yml"
-      - ".github/workflows/deploy-pages.yml"
       - ".github/workflows/update-data.yml"
   workflow_run:
     workflows: ["Update committee data"]
@@ -81,6 +79,7 @@ jobs:
             args+=(--attempts pipeline-data/committee-explorer/attempts.json)
           fi
           python .github/scripts/offline-python.py -m committee_explorer.export \
+            --format parquet \
             --meetings pipeline-data/congress_meetings.jsonl.gz \
             --house-state pipeline-data/meeting-inventory/house.json.gz \
             --senate-state pipeline-data/meeting-inventory/senate.json.gz \

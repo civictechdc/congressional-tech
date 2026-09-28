@@ -13,6 +13,7 @@ dependencies = [
   "congress-api",
   "youtube-api",
   "tinydb",
+  "pyarrow>=19,<26",
 ]
 
 [project.scripts]
