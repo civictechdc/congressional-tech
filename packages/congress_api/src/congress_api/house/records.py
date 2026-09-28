@@ -13,12 +13,14 @@ refreshed per run, oldest checks first. --zyte is only a backfill option.
 """
 import argparse
 import collections
+import datetime as dt
 import re
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from congress_api import http
+from congress_api.house.evidence import SCHEMA_VERSION, retained_evidence
 from congress_api.house.repository import (AMENDMENT_FIELDS, WITNESS_FIELDS, addresses, cached_xml, documents,
     read_xml, witness_area, witness_rows, witnesses)
 from congress_api.inventory.common import (NOT_HELD, TRANSCRIPT, due, kind, nonnegative, read_csv, read_meetings,
@@ -45,7 +47,8 @@ def parsed(root, wlist, page, wstatus):
         listed = [dict(zip(WITNESS_FIELDS[1:5], w)) for w in witnesses(page)]
     return {"documents": [[k, n, u, sorted(files)] for k, n, u, files in docs], "witnesses": listed,
             "amendments": amendments, "xml_update": root.get("update-date", "") if root is not None else "",
-            "status": "xml" if root is not None else "page" if page else "absent", "witness_status": wstatus}
+            "status": "xml" if root is not None else "page" if page else "absent", "witness_status": wstatus,
+            "evidence": retained_evidence(root, wlist, fallback)}
 
 
 def seed(m, cache):
@@ -60,12 +63,32 @@ def seed(m, cache):
     result = parsed(root, wlist, page, wstatus)
     result["urls"] = addresses(m, root, page) if root is not None else addresses(m, page=page)
     result["seed"] = "research cache"
+    result["imported_at"] = timestamp()
     return result
 
 
-def fetch_xml(urls, expected, through_zyte):
+def timestamp():
+    return dt.datetime.now(dt.UTC).isoformat()
+
+
+def request(url, through_zyte, receipts, allowed=(200, 404)):
+    """Record the retry helper's final outcome, not its unobserved inner attempts."""
+    receipt = {"url": url, "started_at": timestamp()}
+    receipts.append(receipt)
+    try:
+        response = http.get_with_retry(None, url, allowed=allowed, through_zyte=through_zyte)
+    except (RuntimeError, ValueError, OSError) as error:
+        receipt.update(completed_at=timestamp(), outcome="error", error=str(error))
+        raise
+    receipt.update(completed_at=timestamp(), status_code=response.status_code,
+                   outcome="not_found" if response.status_code == 404 else "retrieved")
+    return response
+
+
+def fetch_xml(urls, expected, through_zyte, receipts=None):
+    receipts = receipts if receipts is not None else []
     for url in dict.fromkeys(urls):
-        response = http.get_with_retry(None, url, allowed=(200, 404), through_zyte=through_zyte)
+        response = request(url, through_zyte, receipts)
         if response.status_code == 404:
             continue
         for attempt in range(3):
@@ -75,34 +98,54 @@ def fetch_xml(urls, expected, through_zyte):
                     raise ET.ParseError(f"unexpected root {root.tag}")
                 break
             except ET.ParseError:
+                receipts[-1]["outcome"] = "invalid_xml"
                 if attempt == 2:
                     raise
-                response = http.get_with_retry(None, url, through_zyte=through_zyte)
+                response = request(url, through_zyte, receipts, allowed=(200,))
         if root.tag != expected:
             raise ValueError(f"Unexpected XML root from {url}: {root.tag}")
         return root, url
     return None, ""
 
 
-def fetch(m, previous, through_zyte=False):
+def fetch(m, previous, through_zyte=False, *, check=None):
+    """Fetch one observation with actual UTC check times, independent of --as-of."""
+    check = check if check is not None else {}
+    check.update(started_at=timestamp(), mode="live", receipts=[])
+    try:
+        result = _fetch(m, previous, through_zyte, check["receipts"])
+    except (RuntimeError, ValueError, OSError, ET.ParseError) as error:
+        check.update(completed_at=timestamp(), outcome="error", error=str(error))
+        raise
+    absent = result["status"] == "absent" or (result["status"] == "page" and result["page_status"] == "no_meeting_data")
+    check.update(completed_at=timestamp(), outcome="not_found" if absent else "present")
+    result["last_check"] = check
+    if any(receipt["outcome"] == "retrieved" for receipt in check["receipts"]):
+        result["retrieved_at"] = check["completed_at"]
+    return result
+
+
+def _fetch(m, previous, through_zyte, receipts):
     candidates = list(dict.fromkeys(previous.get("urls", []) + addresses(m)))
-    root, url = fetch_xml(candidates, "committee-meeting", through_zyte)
+    root, url = fetch_xml(candidates, "committee-meeting", through_zyte, receipts)
     page, page_url = "", f"https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID={m['eventId']}"
     if root is None:
-        response = http.get_with_retry(None, page_url, allowed=(200, 404), through_zyte=through_zyte)
+        response = request(page_url, through_zyte, receipts)
         page = response.content.decode("utf-8", "replace") if response.status_code == 200 else ""
         extra = [u for u in addresses(m, page=page) if u not in candidates]
-        root, url = fetch_xml(extra, "committee-meeting", through_zyte)
+        root, url = fetch_xml(extra, "committee-meeting", through_zyte, receipts)
         candidates += extra
         if root is None and page and not any(s in page for s in ("DivMeetingContent", "No meeting data is available")):
+            next(r for r in receipts if r["url"] == page_url)["outcome"] = "unrecognized_page"
             raise ValueError(f"Unrecognized House meeting page for {m['eventId']}")
     wlist, wurl = None, ""
     if root is not None:
         bases = [url] + [u for u in candidates if f"/{root.get('meeting-type')}-" in u] + addresses(m, root)
-        wlist, wurl = fetch_xml([re.sub(r"-(\d{8})\.xml$", r"-WList-\1.xml", u) for u in bases if u], "witness-list", through_zyte)
+        wlist, wurl = fetch_xml([re.sub(r"-(\d{8})\.xml$", r"-WList-\1.xml", u) for u in bases if u], "witness-list", through_zyte, receipts)
     result = parsed(root, wlist, page, "present" if wlist is not None else "absent")
     result["urls"] = [url] if url else candidates
     result["witness_url"], result["page_url"] = wurl, page_url if page else ""
+    result["page_status"] = "no_meeting_data" if "No meeting data is available" in page else "present" if page else "not_retrieved"
     return result
 
 
@@ -118,28 +161,37 @@ def main(meetings, gpo_path, state_dir, output_dir, seed_cache=None, offline=Fal
     totals, errors = collections.Counter(selected=len(selected)), []
     if seed_cache:
         for m in selected:
-            if m["eventId"] not in state and (result := seed(m, seed_cache)) is not None:
+            if (m["eventId"] not in state or state[m["eventId"]].get("status") == "error") and (result := seed(m, seed_cache)) is not None:
                 state[m["eventId"]] = {**result, "checked": as_of.isoformat(), "version": m.get("updateDate", "")}
                 totals["seeded"] += 1
-    pending = [m for m in selected if due(state.get(m["eventId"]), m["date"], m.get("updateDate", ""), as_of)]
+    # A parser upgrade joins the bounded unchanged-record queue. It must not
+    # turn an old seed into thousands of immediate requests.
+    pending = [m for m in selected if state.get(m["eventId"], {}).get("status") == "error"
+               or state.get(m["eventId"], {}).get("evidence", {}).get("schema_version") != SCHEMA_VERSION
+               or due(state.get(m["eventId"]), m["date"], m.get("updateDate", ""), as_of)]
     changed = [m for m in pending if state.get(m["eventId"], {}).get("version") != m.get("updateDate", "")]
     aged = [m for m in pending if m not in changed]
     aged.sort(key=lambda m: (state.get(m["eventId"], {}).get("checked", ""), m["eventId"]))
     todo = (changed + aged[:refresh_limit])[:limit] if not offline else []
     def fetch_one(m):
+        check = {}
         try:
-            return fetch(m, state.get(m["eventId"], {}), zyte), ""
+            return fetch(m, state.get(m["eventId"], {}), zyte, check=check), "", check
         except (RuntimeError, ValueError, OSError, ET.ParseError) as error:
-            return None, f"{m['eventId']}: {error}"
+            return None, f"{m['eventId']}: {error}", check
     with ThreadPoolExecutor(threads) as pool:
-        for m, (result, error) in zip(todo, pool.map(fetch_one, todo)):
+        for m, (result, error, check) in zip(todo, pool.map(fetch_one, todo)):
             if error:
                 errors.append(error)
+                # Preserve the last usable parsed observation after a failed
+                # check. A first-check failure remains explicitly incomplete.
+                previous = state.setdefault(m["eventId"], {"documents": [], "witnesses": [], "amendments": [], "status": "error"})
+                previous["last_check"] = check
             else:
                 state[m["eventId"]] = {**result, "checked": as_of.isoformat(), "version": m.get("updateDate", "")}
                 totals["fetched meetings"] += 1
     write_state(path, state)
-    missing = [m["eventId"] for m in selected if m["eventId"] not in state]
+    missing = [m["eventId"] for m in selected if m["eventId"] not in state or state[m["eventId"]].get("status") == "error"]
     if missing or errors:
         raise RuntimeError(f"House source incomplete: {len(missing)} missing, {len(errors)} failed; {errors[:5] or missing[:5]}")
     attached = {e: attached_prints(d[2] for d in saved["documents"]) for e, saved in state.items()}

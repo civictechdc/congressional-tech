@@ -6,6 +6,8 @@ name: Update committee data
 # commit each run so history doesn't grow. main only gets the small derived
 # CSVs. Every tool exits non-zero on any failure, which fails the job and skips
 # its commits; fetching is incremental, so the next run catches up.
+# Publish Committee Explorer data listens for this entire workflow's completion;
+# deployment happens only after that publication passes verification.
 on:
   schedule:
     - cron: "0 0 * * 0" # 12:00 AM UTC Sunday
@@ -13,7 +15,6 @@ on:
 
 permissions:
   contents: write
-  actions: write # to start the site deploy after the dashboard data changes
 
 concurrency:
   group: update-data
@@ -39,7 +40,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install packages
-        run: pip install -e packages/congress_shared -e packages/youtube_api -e packages/congress_api
+        run: pip install -e packages/committee_meeting -e packages/congress_shared -e packages/youtube_api -e packages/congress_api
 
       - name: Fetch YouTube channels
         env:
@@ -61,13 +62,6 @@ jobs:
           .github/scripts/commit-and-push.sh "Updated YouTube report" \
             "$DATA_DIR/youtube_event_id_report.csv" apps/site/public/data/youtube/youtube_event_id_report.csv
 
-      - name: Redeploy the site
-        # pushes made with GITHUB_TOKEN don't trigger other workflows
-        if: github.ref_name == 'main'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run deploy-pages.yml --ref main
-
   congress:
     needs: youtube
     # still refresh GPO data and matches if the YouTube job failed
@@ -86,7 +80,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install packages
-        run: pip install -e packages/congress_shared -e packages/youtube_api -e packages/congress_api
+        run: pip install -e packages/committee_meeting -e packages/congress_shared -e packages/youtube_api -e packages/congress_api
 
       - name: Fetch GPO hearing transcripts
         env:
@@ -132,7 +126,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install packages
-        run: pip install -e packages/congress_shared -e packages/youtube_api -e 'packages/congress_api[test]'
+        run: pip install -e packages/committee_meeting -e packages/congress_shared -e packages/youtube_api -e 'packages/congress_api[test]' -e apps/committee_youtube
 
       - name: Test source parsing and refresh decisions
         run: python -m pytest -q

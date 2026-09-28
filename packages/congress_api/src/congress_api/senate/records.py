@@ -206,6 +206,64 @@ def seed_fetch(cache, url):
     return path.read_text() if path.exists() else ""
 
 
+def timestamp():
+    return dt.datetime.now(dt.UTC).isoformat()
+
+
+def request(url, receipts, *, allowed=(200, 404)):
+    """Retain one retry-helper outcome; its internal attempts are not counted."""
+    receipt = {"url": url, "started_at": timestamp()}
+    receipts.append(receipt)
+    try:
+        response = http.get_with_retry(None, url, allowed=allowed)
+    except (ValueError, RuntimeError, OSError) as error:
+        receipt.update(completed_at=timestamp(), outcome="error", error=str(error))
+        raise
+    receipt.update(completed_at=timestamp(), status_code=response.status_code,
+                   outcome="retrieved" if response.status_code == 200 else "not_found" if response.status_code == 404 else "unsupported")
+    return response
+
+
+def decoded_page(response, url, receipt):
+    """The hearing-page reader accepts text, never a PDF decoded as UTF-8."""
+    headers = getattr(response, "headers", {})
+    content_type = headers.get("Content-Type", headers.get("content-type", ""))
+    if response.content.lstrip().startswith(b"%PDF-") or content_type.split(";", 1)[0].strip().lower() == "application/pdf":
+        receipt.update(outcome="unsupported_format", detected_format="pdf")
+        if content_type:
+            receipt["content_type"] = content_type
+        raise ValueError(f"Senate hearing-page reader received PDF content from {url}")
+    return response.content.decode("utf-8", "replace")
+
+
+def fetch_page(url, previous, today, *, cache=None, check=None):
+    """Read one page, retaining schedule dates separately from actual receipts."""
+    check = check if check is not None else {}
+    if cache is not None:
+        result = parsed(seed_fetch(cache, url), url)
+        result["imported_at"] = timestamp()
+    else:
+        check.update(mode="live", started_at=timestamp(), receipts=[])
+        try:
+            response = request(url, check["receipts"])
+            if response.status_code == 404:
+                result = {"title": "", "lines": [], "witnesses": [], "documents": [], "absent": True}
+            else:
+                result = parsed(decoded_page(response, url, check["receipts"][-1]), url)
+                if not result["title"]:
+                    check["receipts"][-1]["outcome"] = "unrecognized_page"
+                    raise ValueError(f"Unrecognized Senate hearing page {url}")
+            check.update(completed_at=timestamp(), outcome="not_found" if result.get("absent") else "present")
+            result["last_check"] = check
+            result["observation_check"] = check  # Retain this evidence if a later refresh fails.
+            if response.status_code == 200:
+                result["retrieved_at"] = check["receipts"][-1]["completed_at"]
+        except (ValueError, RuntimeError, OSError) as error:
+            check.update(completed_at=timestamp(), outcome="error", error=str(error))
+            raise
+    return {**result, "checked": today.isoformat(), "version": "", "events": previous.get("events", [])}
+
+
 def refresh_urls(state, versions, today, limit, sites=None):
     """Spend the maintenance budget on the oldest due checks across all sites."""
     aged = []
@@ -214,6 +272,8 @@ def refresh_urls(state, versions, today, limit, sites=None):
             continue
         changed = {e for e, v in versions[host].items() if saved.get("versions", {}).get(e) != v}
         for url, page in saved["pages"].items():
+            if page.get("status") == "error":
+                continue  # No successful observation exists; the main pass retries it as urgent.
             if url in saved["listings"] and not changed.intersection(page.get("events", [])) and due(page, saved["listings"][url][0], page.get("version"), today):
                 aged.append((page["checked"], url))
     return {url for _, url in sorted(aged)[:limit]}
@@ -233,30 +293,48 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
         if site and host not in site:
             continue
         saved = state.get(host, {})
+        if saved.get("status") == "error":
+            saved = {}  # Failed initial discovery does not change discovery policy.
         importing = not saved and seed_cache is not None
         if offline and not importing:
             if not saved:
                 errors.append(f"{host}: no saved listing")
             continue
+        listing_check = {}
+        attempt = {"mode": "cache_import" if importing else "live", "started_at": timestamp()}
         def get(url):
             if importing:
                 return seed_fetch(seed_cache, url)
-            response = http.get_with_retry(None, url, allowed=(200, 400, 404))
-            return response.content.decode("utf-8", "replace") if response.status_code == 200 else ""
+            response = request(url, listing_check["receipts"], allowed=(200, 400, 404))
+            return decoded_page(response, url, listing_check["receipts"][-1]) if response.status_code == 200 else ""
         try:
             if importing or not saved or saved.get("versions") != versions[host] or (as_of - dt.date.fromisoformat(saved["checked"])).days >= 7:
-                rows, route = listed(host, get, saved)
-                if not rows and not importing:
-                    raise ValueError(f"{host}: previously working listing returned no hearings")
+                if not importing:
+                    listing_check.update(mode="live", started_at=timestamp(), receipts=[])
+                try:
+                    rows, route = listed(host, get, saved)
+                    if not rows and not importing:
+                        raise ValueError(f"{host}: previously working listing returned no hearings")
+                except (ValueError, RuntimeError, OSError) as error:
+                    if not importing:
+                        listing_check.update(completed_at=timestamp(), outcome="error", error=str(error))
+                        saved = saved or {"pages": {}, "listings": {}, "status": "error"}
+                        saved["last_check"] = listing_check
+                    raise
                 listing = {**saved.get("listings", {}), **{u: [d.isoformat(), t] for d, u, t in rows}}
                 saved = {**saved, **route, "checked": as_of.isoformat(), "listings": listing, "pages": saved.get("pages", {})}
+                if importing:
+                    saved["imported_at"] = timestamp()
+                else:
+                    listing_check.update(completed_at=timestamp(), outcome="present")
+                    saved["last_check"] = listing_check
                 totals["sites listed"] += 1
             pages = saved["pages"]
             changed = {e for e, v in versions[host].items() if saved.get("versions", {}).get(e) != v}
             urgent, aged = [], []
             for url, (day, _) in saved["listings"].items():
                 previous = pages.get(url)
-                if not previous or changed.intersection(previous.get("events", [])):
+                if not previous or previous.get("status") == "error" or changed.intersection(previous.get("events", [])):
                     urgent.append(url)
                 elif url in maintenance:
                     aged.append(url)
@@ -264,31 +342,31 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
             for url in urgent + aged:
                 if limit is not None and live_pages >= limit and not importing:
                     break
-                if importing:
-                    page, absent = get(url), False
-                else:
-                    response = http.get_with_retry(None, url, allowed=(200, 404))
-                    page, absent = response.content.decode("utf-8", "replace"), response.status_code == 404
-                if absent:
-                    # A gone page is a confirmed absence. Other HTTP failures raise above.
-                    result = {"title": "", "lines": [], "witnesses": [], "documents": [], "absent": True}
-                else:
-                    result = parsed(page, url)
-                    if not importing and not result["title"]:
-                        raise ValueError(f"{host}: unrecognized hearing page {url}")
-                pages[url] = {**result, "checked": as_of.isoformat(), "version": "", "events": pages.get(url, {}).get("events", [])}
+                page_check = {}
+                try:
+                    pages[url] = fetch_page(url, pages.get(url, {}), as_of, cache=seed_cache if importing else None, check=page_check)
+                except (ValueError, RuntimeError, OSError):
+                    if not importing:
+                        previous = pages.setdefault(url, {"title": "", "lines": [], "witnesses": [], "documents": [], "events": [], "status": "error"})
+                        previous["last_check"] = page_check
+                    raise
                 totals["pages seeded" if importing else "pages fetched"] += 1
                 if not importing:
                     live_pages += 1
             if limit is None or live_pages < limit:
                 saved["versions"] = versions[host]
+            attempt.update(completed_at=timestamp(), outcome="imported" if importing else "complete")
+            saved["last_attempt"] = attempt
             state[host] = saved
         except (ValueError, RuntimeError, OSError) as error:
             errors.append(str(error))
             if saved:
+                attempt.update(completed_at=timestamp(), outcome="error", error=str(error))
+                saved["last_attempt"] = attempt
                 state[host] = saved
     write_state(path, state)
-    missing = [host for host in versions if host not in state or any(u not in state[host]["pages"] for u in state[host]["listings"])]
+    missing = [host for host in versions if host not in state or state[host].get("status") == "error" or any(
+        u not in state[host]["pages"] or state[host]["pages"][u].get("status") == "error" for u in state[host]["listings"])]
     if errors or missing:
         raise RuntimeError(f"Senate source incomplete: {errors[:5] or missing}")
     found = match_pages(ms, state)

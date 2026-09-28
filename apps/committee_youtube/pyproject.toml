@@ -7,14 +7,16 @@ authors = [
 ]
 requires-python = ">=3.12"
 readme = "README.md"
-# This app is a thin aggregator: it pulls in the real implementation packages.
-# The console scripts (youtube-fetch/-analyze, congress-fetch/-analyze) are
-# defined by those packages, so installing this app puts all four on PATH.
+# Source commands stay in their packages; this app owns Explorer publication.
 dependencies = [
+  "committee-meeting",
   "congress-api",
   "youtube-api",
   "tinydb",
 ]
+
+[project.scripts]
+committee-explorer-export = "committee_explorer.export:main"
 
 [project.urls]
 Homepage = "https://github.com/civictechdc/congressional-tech"
@@ -23,14 +25,12 @@ Homepage = "https://github.com/civictechdc/congressional-tech"
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
-# Metadata-only distribution: no importable modules of its own, just the
-# dependency graph + (via its deps) the console scripts.
-[tool.setuptools]
-packages = []
-py-modules = []
+[tool.setuptools.packages.find]
+where = ["src"]
 
 # uv-native path sources (ignored by pip). Lets `uv pip install -e .`
 # resolve the sibling packages from the local tree instead of an index.
 [tool.uv.sources]
+committee-meeting = { path = "../../packages/committee_meeting", editable = true }
 congress-api = { path = "../../packages/congress_api", editable = true }
 youtube-api = { path = "../../packages/youtube_api", editable = true }
