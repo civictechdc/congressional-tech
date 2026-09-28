@@ -1,18 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import congressMetadata from '../../data/congress_metadata.json';
+import { createCsvReportSource, type CoverageReportSource } from './report-source';
 import {
   formatInt,
   groupBy,
   ordinal,
   pct,
   sumTotals,
-  toReportRows,
   type CongressInfo,
   type ReportRow,
 } from './data';
 
 /**
- * The one client island on the site: loads the committee YouTube coverage
+ * The original YouTube report island: loads the committee YouTube coverage
  * report (CSV) and renders filterable, hand-rolled SVG/HTML charts styled
  * with the ctdc tokens. Coverage entity colors are fixed everywhere:
  * "has Event ID" = primary blue, "missing" = amber gold.
@@ -37,7 +37,17 @@ type LoadState =
   | { status: 'error'; message: string }
   | { status: 'ready'; rows: ReportRow[] };
 
+// Composition stays inside the hydrated island: Astro does not serialize functions.
+// A future Parquet/API source must return the same ReportRow values.
+const defaultReportSource = createCsvReportSource({
+  url: `${import.meta.env.BASE_URL.replace(/\/+$/, '')}/data/youtube/youtube_event_id_report.csv`,
+});
+
 export default function Dashboard() {
+  return <CoverageDashboard source={defaultReportSource} />;
+}
+
+export function CoverageDashboard({ source }: { source: CoverageReportSource }) {
   const [state, setState] = useState<LoadState>({ status: 'loading' });
   const [filters, setFilters] = useState<Filters>({
     congress: 'all',
@@ -46,15 +56,12 @@ export default function Dashboard() {
   });
 
   useEffect(() => {
-    const url = `${import.meta.env.BASE_URL.replace(/\/+$/, '')}/data/youtube/youtube_event_id_report.csv`;
+    const controller = new AbortController();
     let cancelled = false;
-    fetch(url)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.text();
-      })
-      .then((text) => {
-        if (!cancelled) setState({ status: 'ready', rows: toReportRows(text) });
+    setState({ status: 'loading' });
+    source.load({ signal: controller.signal })
+      .then((rows) => {
+        if (!cancelled) setState({ status: 'ready', rows });
       })
       .catch((err: unknown) => {
         if (!cancelled)
@@ -65,8 +72,9 @@ export default function Dashboard() {
       });
     return () => {
       cancelled = true;
+      controller.abort();
     };
-  }, []);
+  }, [source]);
 
   const allRows = state.status === 'ready' ? state.rows : [];
 
@@ -108,9 +116,7 @@ export default function Dashboard() {
   if (state.status === 'error') {
     return (
       <p className="dash-status" role="alert">
-        Could not load the coverage report ({state.message}). The raw CSV lives
-        at <code>public/data/youtube/youtube_event_id_report.csv</code> in the
-        repo.
+        Could not load the coverage report ({state.message}). Reload to retry.
       </p>
     );
   }
