@@ -10,7 +10,7 @@ from committee_explorer import history
 from committee_meeting.common import Identifier, Ref
 from committee_meeting.issues import DataIssue, IssueResolution
 from committee_meeting.materials import DocumentDetails, Material, MaterialVersion, Representation
-from committee_meeting.provenance import Citation, Provenance, SourceRecord
+from committee_meeting.provenance import AlternativeValue, Citation, FieldEvidence, Provenance, SourceRecord
 
 
 NOW = datetime(2026, 9, 27, tzinfo=UTC)
@@ -101,6 +101,91 @@ def test_closed_issue_stays_closed_when_absent_and_reopens_on_new_finding(tmp_pa
         recurring.add([issue.model_copy(update={"detected_at": NOW.replace(day=28)})])
         reopened = next(row for row in recurring.finish().records if row.kind == "data_issue")
         assert reopened.status == "open" and reopened.resolution is None and reopened.detected_at == NOW
+
+
+def label_conflict_snapshot(alternative="Reported edition; revision not established"):
+    assembly = snapshot()
+    source, provenance = observation("alternative-source")
+    version = assembly.records[("material_version", "version")]
+    version = version.model_copy(update={
+        "label": "Reported recording; revision not established",
+        "field_evidence": (FieldEvidence(path="/label", selected=version.provenance,
+            alternatives=(AlternativeValue(value=alternative, provenance=provenance),),
+            selection_reason="Later collector wins."),),
+    })
+    issue = assembly.records[("data_issue", "issue")].model_copy(update={
+        "subject": Ref(kind="material_version", id="version"), "category": "conflicting",
+        "field_path": "/label", "summary": "Sources disagree about label",
+    })
+    assembly.sources[(source.kind, source.id)] = source
+    assembly.records[(version.kind, version.id)] = version
+    assembly.records[(issue.kind, issue.id)] = issue
+    return assembly
+
+
+@pytest.mark.parametrize("alternative", ["Reported edition; revision not established", "Reported edition; revision not established."])
+def test_rebuilt_version_does_not_revive_collector_label_conflict(tmp_path, alternative):
+    first = label_conflict_snapshot(alternative)
+    history.save_history(tmp_path, "first", ChainMap(first.records, first.sources))
+    current_version = first.records[("material_version", "version")].model_copy(update={"label": None, "field_evidence": ()})
+    with history.load_history(tmp_path, "first") as previous:
+        assembly = Assembly(previous, now=NOW.replace(day=28))
+        assembly.add([current_version])
+        catalog = assembly.finish()
+    issue = next(row for row in catalog.records if row.kind == "data_issue")
+    assert issue.status == "dismissed"
+    assert issue.id == "issue" and issue.detected_at == NOW
+    assert issue.resolution.decided_at == NOW.replace(day=28)
+    assert "Reported recording; revision not established" in issue.resolution.explanation
+    assert "Reported edition; revision not established" in issue.resolution.explanation
+    assert {citation.source.id for citation in issue.resolution.provenance.citations} == {"source", "alternative-source"}
+    assert assembly.records[("material_version", "version")] == current_version
+    # The decision must survive a second full build after the old field values
+    # have left the current version and its retained history.
+    history.save_history(tmp_path, "second", ChainMap(assembly.records, assembly.sources))
+    with history.load_history(tmp_path, "second") as previous:
+        next_assembly = Assembly(previous, now=NOW.replace(day=29))
+        next_assembly.add([current_version])
+        next_issue = next(row for row in next_assembly.finish().records if row.kind == "data_issue")
+    assert next_issue == issue
+
+
+@pytest.mark.parametrize("alternative", ["Revised edition", None, {"label": "Reported edition; revision not established"}])
+def test_source_label_conflicts_are_never_dismissed_as_collector_defaults(tmp_path, alternative):
+    first = label_conflict_snapshot(alternative)
+    history.save_history(tmp_path, "first", ChainMap(first.records, first.sources))
+    with history.load_history(tmp_path, "first") as previous:
+        assembly = Assembly(previous, now=NOW.replace(day=28))
+        current_version = first.records[("material_version", "version")].model_copy(update={"label": None, "field_evidence": ()})
+        assembly.add([current_version])
+        issue = next(row for row in assembly.finish().records if row.kind == "data_issue")
+    assert issue.status == "open" and issue.resolution is None
+
+
+@pytest.mark.parametrize("status", ["resolved", "dismissed"])
+def test_collector_cleanup_preserves_manual_resolution(tmp_path, status):
+    first = label_conflict_snapshot()
+    old_issue = first.records[("data_issue", "issue")]
+    resolution = IssueResolution(decided_at=NOW, explanation="Manual review", provenance=old_issue.provenance)
+    old_issue = old_issue.model_copy(update={"status": status, "resolution": resolution})
+    first.records[("data_issue", "issue")] = old_issue
+    history.save_history(tmp_path, "first", ChainMap(first.records, first.sources))
+    with history.load_history(tmp_path, "first") as previous:
+        issue = next(row for row in Assembly(previous, now=NOW.replace(day=28)).finish().records if row.kind == "data_issue")
+    assert issue == old_issue
+
+
+@pytest.mark.parametrize("generate_issue", [False, True])
+def test_current_label_disagreement_is_not_dismissed_using_old_defaults(tmp_path, generate_issue):
+    first = label_conflict_snapshot()
+    history.save_history(tmp_path, "first", ChainMap(first.records, first.sources))
+    current_version = first.records[("material_version", "version")].model_copy(update={"label": "Revised edition"})
+    with history.load_history(tmp_path, "first") as previous:
+        assembly = Assembly(previous, ids=(lambda *_: "issue") if generate_issue else None, now=NOW.replace(day=28))
+        assembly.add([current_version])
+        issue = next(row for row in assembly.finish().records if row.kind == "data_issue")
+    assert issue.status == "open" and issue.resolution is None and issue.detected_at == NOW
+    assert assembly.records[("material_version", "version")] == current_version
 
 
 def test_incomplete_or_conflicting_save_cannot_replace_previous_snapshot(tmp_path):

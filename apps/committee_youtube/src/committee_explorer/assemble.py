@@ -1,12 +1,15 @@
 """Assemble source-owned records; retain disagreements and open issue history."""
 from collections.abc import Mapping, MutableMapping
+import json
 
 from committee_meeting import Catalog
 from committee_meeting.catalog import DomainRecord, _references
-from committee_meeting.issues import DataIssue
+from committee_meeting.issues import DataIssue, IssueResolution
 from committee_meeting.provenance import AlternativeValue, FieldEvidence, Method, Provenance, SourceRecord
 from committee_meeting.common import Ref
 from pydantic import TypeAdapter, ValidationError
+
+from .collector_labels import collector_placeholder_conflict
 
 
 _DOMAIN_RECORD = TypeAdapter(DomainRecord)
@@ -88,6 +91,36 @@ class Assembly:
             into[key] = item
             self.current.add(key)
 
+    def _review_old_label_conflict(self, issue, previous):
+        """Record a lasting correction to a known collector-generated conflict."""
+        if (self.now is None or issue.status != "open" or issue.category != "conflicting"
+                or issue.subject.kind != "material_version" or issue.field_path != "/label"
+                or (issue.kind, issue.id) in self.current):
+            return issue
+        subject_key = (issue.subject.kind, issue.subject.id)
+        current = self.records.get(subject_key)
+        if current is not None and any(field.path == "/label" and field.alternatives for field in current.field_evidence):
+            return issue  # A current disagreement needs its own review.
+        previous_version = previous.get(subject_key)
+        field = next((field for field in previous_version.field_evidence if field.path == "/label" and field.alternatives), None) if previous_version else None
+        if field is None:
+            return issue
+        values = [previous_version.label, *(alternative.value for alternative in field.alternatives)]
+        if not collector_placeholder_conflict(values):
+            return issue
+        evidence = (issue.provenance, previous_version.provenance, field.selected,
+                    *(alternative.provenance for alternative in field.alternatives))
+        citations = {citation.model_dump_json(): citation for provenance in evidence for citation in provenance.citations}
+        resolution = IssueResolution(
+            decided_at=self.now,
+            explanation=("Collectors assigned different internal edition labels. This is not evidence of a disagreement in source content. "
+                         f"Original selected value: {json.dumps(values[0])}. Original alternatives: {json.dumps(values[1:])}."),
+            provenance=Provenance(citations=tuple(citations[key] for key in sorted(citations)), basis="derived",
+                                 method=Method(name="committee-explorer.dismiss-collector-label-conflict", version="1"),
+                                 explanation=field.selection_reason),
+        )
+        return issue.model_copy(update={"status": "dismissed", "resolution": resolution})
+
     def finish(self):
         if self.ids:
             for record in list(self.records.values()):
@@ -110,6 +143,7 @@ class Assembly:
             issues = previous.iter_issues() if hasattr(previous, "iter_issues") else (v for k, v in previous.items() if k[0] == "data_issue")
             seen = set()
             for issue in issues:
+                issue = self._review_old_label_conflict(issue, previous)
                 pending = [issue]
                 while pending:
                     old = pending.pop()
