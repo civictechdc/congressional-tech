@@ -80,6 +80,7 @@ jobs:
           fi
           python .github/scripts/offline-python.py -m committee_explorer.export \
             --format parquet \
+            --reuse-from pipeline-data/committee-explorer/public \
             --meetings pipeline-data/congress_meetings.jsonl.gz \
             --house-state pipeline-data/meeting-inventory/house.json.gz \
             --senate-state pipeline-data/meeting-inventory/senate.json.gz \

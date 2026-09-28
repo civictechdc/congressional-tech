@@ -96,7 +96,7 @@ def load_previous(output, state):
 
 def export(*, meetings, output_dir, state_dir, gpo_path=None, house_state=None, senate_state=None,
            youtube_dir=None, inventory_state=None, recovered_witnesses=None, video_matches_path=None, recordings_path=None,
-           transcript_files=(), issue_decisions=None, attempts=None, limit=None, as_of=None, revision=None, format="json"):
+           transcript_files=(), issue_decisions=None, attempts=None, limit=None, as_of=None, revision=None, format="json", reuse_from=None):
     if format not in ("json", "parquet"):
         raise ValueError("format must be json or parquet")
     now = as_of or datetime.now(timezone.utc)
@@ -104,6 +104,9 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, house_state=None, 
         raise ValueError("as_of must include a timezone")
     if limit is not None and limit < 1:
         raise ValueError("limit must be positive")
+    if reuse_from is not None and format != "parquet":
+        raise ValueError("publication reuse requires parquet format")
+    transcript_files = tuple(transcript_files)
     attempt_receipt = json.loads(Path(attempts).read_text()) if attempts else {}
     provider_jobs = {'youtube':'youtube', 'congress.gov':'congress', 'govinfo':'congress', 'gpo-video-matches':'congress',
                      'docs.house.gov':'meetings', 'senate.committees':'meetings', 'meeting-inventory':'meetings', 'recovered-witnesses':'meetings'}
@@ -112,6 +115,17 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, house_state=None, 
     output.mkdir(parents=True, exist_ok=True)
     with (state / "export.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        reuse_key = None
+        if reuse_from is not None:
+            from .reuse import request_key, try_reuse, save_receipt
+            reuse_key = request_key(files={
+                'meetings': meetings, 'gpo': gpo_path, 'house': house_state, 'senate': senate_state,
+                'inventory': inventory_state, 'recovered_witnesses': recovered_witnesses,
+                'video_matches': video_matches_path, 'recordings': recordings_path,
+                'issue_decisions': issue_decisions, 'attempts': attempts,
+            }, youtube_dir=youtube_dir, transcript_files=transcript_files, format=format, limit=limit, as_of=as_of)
+            if reused := try_reuse(output, state, reuse_from, reuse_key):
+                return reused, None
         ids = IdRegistry(state / "ids.json")
         previous, previous_manifest = load_previous(output, state)
         previous_id = previous_manifest.publication_id if previous_manifest else None
@@ -459,6 +473,8 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, house_state=None, 
             retained_manifest.replace(state / "publication.json")
             for old in (state / "issue-history").glob("*.sqlite"):
                 if old.stem != publication_id: old.unlink()
+            if reuse_key is not None:
+                save_receipt(state, reuse_key, manifest)
             return manifest, catalog
         finally:
             if stage.exists():
@@ -485,9 +501,13 @@ def main():
     p.add_argument("--limit", type=int, help="Bound a rehearsal; manifest declares the selected population.")
     p.add_argument("--as-of", type=datetime.fromisoformat)
     p.add_argument("--revision", help="Revision of supplied native/House/Senate/YouTube/inventory state. Separate CSV/body inputs are pinned by digest.")
+    p.add_argument("--reuse-from", type=Path, help="Reuse an unchanged verified Parquet publication from this directory or the local output. Changed inputs, options, code or state rebuild it.")
     args = p.parse_args()
     manifest, catalog = export(**vars(args))
-    print(f"Published locally {manifest.publication_id}: {len(catalog.records)} records, {len(catalog.sources)} source observations")
+    if catalog is None:
+        print(f"Reused verified publication {manifest.publication_id}; inputs and implementation are unchanged")
+    else:
+        print(f"Published locally {manifest.publication_id}: {len(catalog.records)} records, {len(catalog.sources)} source observations")
 
 
 if __name__ == "__main__":
