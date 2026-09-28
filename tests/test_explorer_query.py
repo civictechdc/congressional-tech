@@ -9,7 +9,7 @@ import pytest
 from test_explorer_export import native, run, write_meetings
 from committee_explorer.browser import package, verify, MEDIA_TYPE
 from committee_explorer.query import write_queries
-from committee_meeting.common import Ref, ReportedTime
+from committee_meeting.common import Identifier, Ref, ReportedTime
 from committee_meeting.committees import CommitteeTerm
 from committee_meeting.issues import DataIssue
 from committee_meeting.materials import DocumentDetails, Material, MaterialLink, MaterialVersion, Representation
@@ -145,6 +145,31 @@ def test_direct_committee_material_scope_and_missing_name_are_readable():
     assert index['committee_labels'][committee.id] == 'Committee name not recorded'
 
 
+def test_legacy_query_keeps_committee_codes_parent_terms_and_direct_document_relations():
+    committee = scope_fixture('parent')[0].model_copy(update={
+        'identifiers': (Identifier(scheme='congress.gov:committee', value='hsru00'),),
+        'committee_type': 'standing', 'source_committee_type': 'Standing'})
+    child = scope_fixture('child')[0].model_copy(update={
+        'identifiers': (Identifier(scheme='congress.gov:committee', value='hsru01'),),
+        'parent': Ref(kind='committee_term', id=committee.id)})
+    material = Material(id='committee-document', details=DocumentDetails(), provenance=EVIDENCE)
+    records = [material, committee, child, link('committee-link', material, committee)]
+    written = {}
+    write_queries(SimpleNamespace(records=records), {(r.kind, r.id) for r in records},
+                  lambda path, data, *a, **k: written.__setitem__(path, data))
+    rows = {row['id']: row for path, data in written.items() if path.startswith('queries/') for row in data['rows']}
+    assert rows[committee.id]['committee_code'] == 'hsru00'
+    assert rows[committee.id]['committee_type'] == 'standing'
+    assert rows[child.id]['parent_committee_id'] == committee.id
+    assert rows[child.id]['committee_level'] == 'subcommittee'
+    assert rows[child.id]['committee_types'] == ['standing']
+    related = next(data['relations'][f'committee_term/{committee.id}'] for data in written.values()
+                   if f'committee_term/{committee.id}' in data.get('relations', {}))
+    assert {'kind': 'material', 'id': material.id, 'relation': 'material'} in related
+    assert {'kind': 'committee_term', 'id': child.id, 'relation': 'parent'} in related
+    assert rows[material.id]['meeting_id'] is None
+
+
 def test_quality_keeps_unresolved_history_when_its_source_is_not_regenerated():
     committee, meeting, occurrence = scope_fixture('historical')
     issue = DataIssue(id='retained-issue', subject=Ref(kind='meeting', id=meeting.id),
@@ -156,3 +181,19 @@ def test_quality_keeps_unresolved_history_when_its_source_is_not_regenerated():
     assert rows[issue.id]['status'] == 'open'
     assert rows[issue.id]['meeting_id'] == meeting.id
     assert next(k['count'] for k in index['kinds'] if k['kind']=='data_issue') == 1
+
+
+@pytest.mark.parametrize('child_type,parent_type,expected', [
+    ('subcommittee', 'standing', 'standing'), ('unknown', 'special', 'special'),
+    ('task_force', 'standing', 'task_force'), ('subcommittee', 'unknown', 'unknown'),
+])
+def test_legacy_committee_type_inherits_only_generic_child_type(child_type, parent_type, expected):
+    parent = scope_fixture('parent')[0].model_copy(update={'committee_type': parent_type})
+    child = scope_fixture('child')[0].model_copy(update={
+        'committee_type': child_type, 'source_committee_type': 'Subcommittee',
+        'parent': Ref(kind='committee_term', id=parent.id)})
+    rows, _ = query_rows([parent, child])
+    assert rows[child.id]['committee_types'] == [expected]
+    assert rows[child.id]['committee_type'] == child_type
+    assert rows[child.id]['source_committee_type'] == 'Subcommittee'
+    assert rows[child.id]['committee_level'] == 'subcommittee'

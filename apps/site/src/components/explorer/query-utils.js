@@ -20,6 +20,22 @@ export function pageBounds(options) {
     return { offset: Math.max(0, Math.floor(Number(options.offset) || 0)), limit: Math.min(100, Math.max(1, Math.floor(Number(options.limit) || 25))) };
   }
 
+/** Group only explicit source codes within a chamber; names and classifications can change by Congress. */
+export function groupCommitteeTerms(rows, query) {
+    if (query.kind !== 'committee_term' || query.congress !== 'all') return rows;
+    const groups = new Map();
+    for (const row of rows) {
+      const key = row.committee_code && row.chamber ? `${row.chamber}/${row.committee_code.toLowerCase()}` : row.id;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(row);
+    }
+    return [...groups.values()].map(terms => {
+      terms.sort((a, b) => (b.congress || 0) - (a.congress || 0) || a.id.localeCompare(b.id));
+      return {...terms[0], terms: terms.map(({kind, id, title, congress}) => ({kind, id, title, congress})),
+        issue_count: terms.reduce((count, term) => count + (term.issue_count || 0), 0)};
+    });
+}
+
 export function summarizeCoverage(info, rows) {
     const aspects = ['recording', 'transcript', 'documents', 'witnesses', 'captions'];
     const states = ['observed', 'reported', 'curated', 'derived', 'inferred', 'error', 'blocked', 'not_found_in_checked_scope', 'not_applicable', 'unknown', 'unchecked'];
@@ -55,7 +71,7 @@ export function summarizeCoverage(info, rows) {
     return {
       state_breakdown: total.state_breakdown,
       groups: Object.fromEntries(Object.entries(groups).map(([kind, values]) => [kind, [...values.values()].sort((a, b) => kind === 'committee' ? b.denominator - a.denominator || a.label.localeCompare(b.label) : a.key.localeCompare(b.key))])),
-      population: 'Retained Congress.gov meeting entries in the selected filters, all included statuses. This is evidence coverage, not an expected-publication score.',
+      population: 'Collected Congress.gov and official committee meeting entries in the selected filters, all included statuses. The collection may omit meetings. This measures retained evidence, not expected publication.',
       limitations: ['Reported and inferred evidence does not establish checked URLs, captured text, or complete coverage.', 'Unknown and unchecked do not mean absent. Failed checks remain visible even when another source supplies positive evidence.', 'Joint meetings appear for each convening committee; committee rows are not additive.'],
     };
 }

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { documentSourceLabel, presentRecord, recordingEmbedUrl, recordingVisible } from './record-presentation.js';
+import { committeeTypeLabel, documentSourceLabel, presentRecord, recordingEmbedUrl, recordingVisible } from './record-presentation.js';
 import { matches } from './query-utils.js';
 
 const now = new Date('2026-09-27T15:00:00Z');
@@ -67,4 +67,16 @@ test('date-only events use Washington calendar day; canceled meetings retain the
   }
   assert.equal(recordingVisible({...recording, recording_url: null}, now), false);
   assert.equal(recordingVisible(recording, now), true); // Undated archive video is not assumed upcoming.
+});
+
+
+test('committee category is separate from level and preserves explicit child categories', () => {
+  const child = {committee_type:'subcommittee', committee_level:'subcommittee', source_committee_type:'Subcommittee', committee_types:['standing']};
+  assert.equal(committeeTypeLabel(child), 'Standing (inherited from parent)');
+  assert.equal(child.source_committee_type, 'Subcommittee');
+  assert.equal(committeeTypeLabel({...child, committee_type:'task_force'}), 'Task force');
+  assert.equal(committeeTypeLabel({...child, committee_type:'unknown'}), 'Standing (inherited from parent)');
+  assert.equal(committeeTypeLabel({...child, committee_types:['unknown']}), 'Type unrecorded');
+  assert.equal(committeeTypeLabel({...child, committee_types:undefined}), 'Type unrecorded');
+  assert.equal(committeeTypeLabel({committee_type:'unknown', committee_level:'full', committee_types:['standing']}), 'Type unrecorded');
 });

@@ -10,6 +10,48 @@ from committee_explorer.export import export
 from test_explorer_export import native, write_meetings, NOW
 
 
+def test_direct_committee_material_links_preserve_scope_and_lifecycle_without_meetings(tmp_path):
+    from committee_explorer.parquet import write_tables
+    source = dict(kind='source_record', id='source', provider='official-archive', payload={'committeeTypeCode': 'Other'})
+    records = [
+        dict(kind='committee_term', id='panel', committee_type='commission_or_caucus', source_committee_type='Other',
+             active={'end': '2011-04-03'}, website='https://example.org/archive',
+             provenance={'explanation': 'The panel concluded its work; retained documents remain available.'}),
+        dict(kind='material', id='report'),
+        dict(kind='material_link', id='link', material={'kind': 'material', 'id': 'report'}, subject={'kind': 'committee_term', 'id': 'panel'},
+             provenance={'citations': [{'source': {'id': 'source'}}]}),
+    ]
+    queries = [dict(kind='committee_term', id='panel', title='Oversight Panel', congress=112, committee_ids=['panel']),
+               dict(kind='material', id='report', title='Panel report', type='document', congress=112, committee_ids=['another'])]
+    write_tables(records, [source], queries, tmp_path, lambda *a, **k: None)
+    material = pq.read_table(tmp_path/'materials.parquet').to_pylist()[0]
+    assert material['committee_ids'] == ['another', 'panel']
+    assert material['meeting_ids'] == [] and material['meeting_id'] is None
+    assert material['source_ids'] == ['source']
+    assert material['committee_types'] == ['commission_or_caucus', 'unknown']
+    assert pq.read_table(tmp_path/'meetings.parquet').num_rows == 0
+    committee = pq.read_table(tmp_path/'committees.parquet').to_pylist()[0]
+    assert committee['committee_type'] == 'commission_or_caucus'
+    assert committee['source_committee_type'] == 'Other'
+    assert committee['explanation'].startswith('The panel concluded its work')
+    assert {'label': 'Active through', 'value': '2011-04-03'} in committee['facts']
+    assert {'label': 'Official website or archive', 'value': 'https://example.org/archive'} in committee['facts']
+
+
+def test_assembled_roundtable_keeps_native_hearing_as_source_evidence(tmp_path):
+    from committee_explorer.parquet import write_tables
+    source = dict(kind='source_record', id='source', provider='congress.gov', payload={'type': 'Hearing', 'title': 'Hearings to examine prediction markets'})
+    meeting = dict(kind='meeting', id='meeting', meeting_type='roundtable',
+                   provenance={'citations': [{'source': {'id': 'source'}}]})
+    write_tables([meeting], [source], [dict(kind='meeting', id='meeting', type='roundtable', title='Prediction markets roundtable')],
+                 tmp_path, lambda *a, **k: None)
+    row = pq.read_table(tmp_path/'meetings.parquet').to_pylist()[0]
+    assert row['type'] == 'roundtable'
+    assert {'label': 'Source type', 'value': 'Hearing'} in row['facts']
+    assert row['source_ids'] == ['source']
+    assert json.loads(pq.read_table(tmp_path/'sources.parquet').to_pylist()[0]['payload']) == source['payload']
+
+
 def test_issue_resolution_evidence_is_available_inline(tmp_path):
     from committee_explorer.parquet import write_tables
     issue = dict(kind='data_issue', id='issue', subject={'kind': 'meeting', 'id': 'meeting'},

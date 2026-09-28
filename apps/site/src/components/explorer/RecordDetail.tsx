@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { documentSourceLabel, recordingEmbedUrl, sourcePageUrl } from './record-presentation.js';
+import { committeeTypeLabel, documentSourceLabel, recordingEmbedUrl, sourcePageUrl } from './record-presentation.js';
 import type { ExplorerRecord, ExplorerRecordRef, ExplorerSourceRecord } from './data-source';
 
 export type DetailRecord = ExplorerRecord | ExplorerSourceRecord;
@@ -69,15 +69,19 @@ export function RecordDetail({ record, onSelect, sourceEvidence }: { record: Det
   const row = fields(record);
   const facts = [
     ['Date', row.date], ['Congress', row.congress], ['Chamber', row.chamber], ['Access', row.access],
-    ['Committee type', row.source_committee_type || (row.committee_type !== 'unknown' ? enumLabel(row.committee_type) : null)],
+    ['Committee type', row.kind === 'committee_term' ? committeeTypeLabel(row) : null],
+    ['Source committee type', row.source_committee_type && (String(row.source_committee_type).toLowerCase().replaceAll(' ', '_') !== row.committee_type || row.committee_type === 'subcommittee') ? row.source_committee_type : null],
     ['Committee level', row.committee_level === 'full' ? 'Full committee' : row.committee_level === 'subcommittee' ? 'Subcommittee' : null],
-    [documentType(record) ? 'Document type' : 'Type', documentType(record) || row.type || row.meeting_type], ['Status', row.status], ['Category', documentType(record) ? null : row.category],
+    [documentType(record) ? 'Document type' : 'Type', row.kind === 'committee_term' ? null : documentType(record) || row.type || row.meeting_type], ['Status', row.status], ['Category', documentType(record) ? null : row.category],
     ['Source collection', Array.isArray(row.source_document_groups) && row.source_document_groups.length ? `${documentSourceLabel(row)} (${row.source_document_groups.join(', ')})` : null],
     ['Position', row.position], ['Organization', row.organization], ['Participation', row.participation],
     ['Provider', row.provider], ['Retrieved', row.retrieved_at],
-    ...(Array.isArray(row.facts) ? row.facts.map(fact => [fields(fact).label, fields(fact).value]) : []),
+    ['Active from', fields(row.active).start], ['Active through', fields(row.active).end],
+    ['Official website or archive', row.website],
+    ...(Array.isArray(row.facts) ? row.facts.filter(fact => !['Committee hierarchy', 'Hierarchy definition'].includes(String(fields(fact).label))).map(fact => [fields(fact).label, fields(fact).value]) : []),
   ].filter(([, value]) => value !== null && value !== undefined && value !== '' && value !== 'unknown');
   const files = Array.isArray(row.files) ? row.files : [];
+  const explanation = row.explanation || fields(row.provenance).explanation;
   const sourceUrl = publicUrl(sourcePageUrl(row.url));
   const affected = record.kind !== 'data_issue' ? null
     : ['meeting', 'material', 'appearance', 'committee_term', 'source_record'].includes(String(row.subject_kind))
@@ -89,10 +93,13 @@ export function RecordDetail({ record, onSelect, sourceEvidence }: { record: Det
     <RecordingPlayer record={record} />
     <FileLinks record={record} />
     {sourceUrl ? <p><a href={sourceUrl} target="_blank" rel="noreferrer">Open original source ↗</a></p> : null}
-    {facts.length ? <dl className="explorer-facts">{facts.map(([label, value], i) => <div key={i}><dt>{String(label)}</dt><dd>{['Type', 'Status', 'Category', 'Chamber', 'Participation', 'medium', 'coverage', 'production', 'Access'].includes(String(label)) ? enumLabel(value) : String(value)}</dd></div>)}</dl> : null}
+    {facts.length ? <dl className="explorer-facts">{facts.map(([label, value], i) => <div key={i}><dt>{String(label)}</dt><dd>{label === 'Official website or archive' && publicUrl(value)
+      ? <a href={publicUrl(value)} target="_blank" rel="noreferrer">Visit website or archive ↗</a>
+      : ['Type', 'Status', 'Category', 'Chamber', 'Participation', 'medium', 'coverage', 'production', 'Access'].includes(String(label)) ? enumLabel(value) : String(value)}</dd></div>)}</dl> : null}
     {record.kind === 'meeting' ? Object.entries(fields(row.evidence_states)).filter(([, state]) => ['inferred', 'error', 'blocked', 'not_found_in_checked_scope'].includes(String(state))).map(([aspect, state]) => <p className="explorer-note" key={aspect}>{words(aspect)}: {state === 'inferred' ? 'inferred match; needs verification' : state === 'not_found_in_checked_scope' ? 'not found in the sources checked' : state === 'error' ? 'source check failed' : 'source check blocked'}.</p>) : null}
-    {row.explanation ? <p className="explorer-note">{String(row.explanation)}</p> : null}
-    {record.kind === 'material' && !files.length ? <p className="explorer-note">{row.type === 'recording' ? 'No recording is available to display for this meeting yet.' : 'No file link in the collected sources.'}</p> : null}
+    {explanation ? <p className="explorer-note">{String(explanation)}</p> : null}
+    {record.kind === 'committee_term' && (row.parent_committee_id || fields(row.parent).id) ? <p><button className="explorer-text-button" onClick={() => onSelect({kind: 'committee_term', id: String(row.parent_committee_id || fields(row.parent).id)})}>View parent committee →</button></p> : null}
+    {record.kind === 'material' && !files.length ? <p className="explorer-note">{row.type === 'recording' ? 'No recording is available in the collected sources.' : 'No file link in the collected sources.'}</p> : null}
     {row.meeting_id && !['meeting', 'material', 'data_issue'].includes(record.kind) ? <p><button className="explorer-text-button" onClick={() => onSelect({ kind: 'meeting', id: String(row.meeting_id) })}>View meeting →</button></p> : null}
     {affected ? <p><button className="explorer-text-button" onClick={() => onSelect(affected)}>View affected record →</button></p> : null}
     {sourceEvidence}

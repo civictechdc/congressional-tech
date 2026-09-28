@@ -93,7 +93,11 @@ export interface QueryRow extends ExplorerRecordRef {
   status?: string | null;
   access?: 'open' | 'closed' | 'partly_closed' | 'unknown' | null;
   committee_ids?: readonly string[];
+  committee_code?: string | null;
+  /** Matching Congress-specific terms, only for the grouped All Congresses committee list. */
+  terms?: readonly { kind: 'committee_term'; id: string; title: string; congress: number | null }[];
   committee_level?: 'full' | 'subcommittee' | 'unknown' | null;
+  parent_committee_code?: string | null;
   parent_committee_id?: string | null;
   committee_type?: string | null;
   source_committee_type?: string | null;

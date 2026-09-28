@@ -37,6 +37,14 @@ export function documentSourceLabel(row) {
   const labels = { meetingDocuments: 'Meeting document', witnessDocuments: 'Witness document' };
   return (row.source_document_groups || []).map(group => labels[group] || group).join(' · ');
 }
+/** The committee's category and its organizational level are separate facts. */
+export function committeeTypeLabel(row) {
+  const label = value => value.replaceAll('_', ' ').replace(/^./, letter => letter.toUpperCase());
+  if (row.committee_type && !['unknown', 'subcommittee'].includes(row.committee_type)) return label(row.committee_type);
+  const subcommittee = row.committee_level === 'subcommittee' || row.committee_type === 'subcommittee' || row.parent_committee_id || row.parent?.id;
+  const inherited = [...new Set(row.committee_types || [])].filter(type => type && !['unknown', 'subcommittee'].includes(type));
+  return subcommittee && inherited.length ? `${inherited.map(label).join(', ')} (inherited from parent)` : 'Type unrecorded';
+}
 function phase(row, now) {
   const start = row.scheduled_at;
   if (typeof start === 'string' && /T.*(?:Z|[+-]\d\d:\d\d)$/.test(start)) {

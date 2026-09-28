@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { openPublicationReader } from './data-source.js';
 import { createParquetReader } from './parquet-source.js';
+import { committeeTypeLabel } from './record-presentation.js';
 
 // Generate real Snappy Parquet with the Python publisher; no mocked decoder.
 const root = mkdtempSync(join(tmpdir(), 'explorer-parquet-'));
@@ -50,6 +51,35 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 pq.write_table(pa.table({'id':[f'large-{i:06}' for i in range(180000)], 'kind':['material']*180000,
                         'title':['Large catalog entry']*180000, 'congress':[119]*180000}), root/'public'/'large.parquet')
+from committee_explorer.parquet import write_tables, QUERY_COLUMNS
+direct = root/'public'/'direct'
+direct.mkdir()
+records, queries, descriptors = [], [], []
+for congress in (111,112):
+    for child in (False, True):
+        id = ('child' if child else 'panel') + str(congress)
+        records.append(dict(kind='committee_term', id=id, committee_type='subcommittee' if child else 'commission_or_caucus',
+                            source_committee_type='Subcommittee' if child else 'Other',
+                            parent={'id':'panel'+str(congress)} if child else None,
+                            identifiers=[dict(scheme='congress.gov:committee', value='jocp01' if child else 'jocp00')]))
+        queries.append(dict(kind='committee_term', id=id, title='Investigations' if child else 'Oversight Panel',
+                            congress=congress, chamber='joint', committee_ids=[id]))
+records.append(dict(kind='meeting',id='unrelated',meeting_type='roundtable'))
+queries.append(dict(kind='meeting',id='unrelated',title='Unrelated roundtable',type='roundtable',congress=112,
+                    committee_ids=[],evidence_states={aspect:'unchecked' for aspect in ('recording','transcript','documents','witnesses','captions')}))
+for i in range(36):
+    id = 'direct-'+str(i)
+    records.extend([dict(kind='material',id=id),dict(kind='material_link',id=id+'-link',material={'kind':'material','id':id},subject={'kind':'committee_term','id':'panel112'})])
+    queries.append(dict(kind='material',id=id,title='Panel document '+str(i),congress=112,committee_ids=[],
+                        type='recording' if i==35 else 'document',category='transcript' if i<30 else 'supporting'))
+    if i==35:
+        records.extend([dict(kind='material_version',id='video-version',material={'kind':'material','id':id}),
+                        dict(kind='representation',id='video-file',version={'kind':'material_version','id':'video-version'},locations=[dict(url='https://youtu.be/PRXQf-CSnoo',role='player')])])
+def describe(path, role, schema, count, **kwargs):
+    descriptors.append(dict(path='direct/'+path,record_count=count,schema_name=schema,byte_size=(direct/path).stat().st_size,**kwargs))
+write_tables(records,[],queries,direct,describe)
+(direct/'index.json').write_text(json.dumps(dict(parts=descriptors,info=dict(storage='parquet',default_congress=112,
+    query_columns=QUERY_COLUMNS,kinds=[dict(kind=k) for k in ('committee_term','meeting','material')],committee_labels={}))))
 `, root], { cwd: repo });
 test.after(() => rmSync(root, { recursive: true }));
 
@@ -74,6 +104,53 @@ function transport(mode) {
   };
   return { fetcher, calls };
 }
+
+async function directCommitteeReader() {
+  const {parts,info} = JSON.parse(await readFile(join(root,'public','direct','index.json')));
+  return createParquetReader({manifest:{partitions:parts},manifestUrl:new URL('https://example.org/manifest.json'),
+    select:()=>({}),readPartition:async()=>info},transport().fetcher);
+}
+
+test('direct committee documents keep categories, paging and filters without creating meeting coverage', async () => {
+  const reader = await directCommitteeReader();
+  const committee = await reader.getRecord({kind:'committee_term',id:'panel112'});
+  assert.equal(committee.committee_type,'commission_or_caucus');
+  assert.equal(committee.source_committee_type,'Other');
+  const documents = await reader.search({kind:'material',congress:112,committeeId:committee.id,type:'document',committeeType:'commission_or_caucus'});
+  assert.equal(documents.total,35);
+  const first = await reader.getRelated(committee,{kind:'material',materialType:'document',category:'Transcript',limit:25});
+  const second = await reader.getRelated(committee,{kind:'material',materialType:'document',category:'Transcript',offset:25,limit:25});
+  assert.equal(first.total,30);
+  assert.equal(first.records.length,25);
+  assert.equal(second.records.length,5);
+  assert.deepEqual(first.categories,[{label:'Supporting',count:5},{label:'Transcript',count:30}]);
+  assert.ok([...first.records,...second.records].every(row=>row.meeting_ids.length===0 && row.meeting_id===null));
+  assert.equal((await reader.getRelated(committee,{kind:'material',materialType:'recording'})).total,1);
+  assert.equal((await reader.getRelated(committee,{kind:'meeting'})).total,0);
+  assert.equal((await reader.getCoverage({filters:{congress:112}})).state_breakdown.documents.denominator,1);
+  assert.equal((await reader.getCoverage({filters:{congress:112,committeeId:committee.id}})).state_breakdown.documents.denominator,0);
+  assert.equal((await reader.search({kind:'meeting',congress:112,type:'roundtable'})).total,1);
+});
+
+test('All Congresses groups source committee identities before paging while detail links stay in the chosen term', async () => {
+  const reader = await directCommitteeReader();
+  const first = await reader.search({kind:'committee_term',congress:'all',limit:1});
+  const second = await reader.search({kind:'committee_term',congress:'all',limit:1,offset:1});
+  assert.equal(first.total,2);
+  assert.equal(second.total,2);
+  const panel = [...first.rows,...second.rows].find(row=>row.id==='panel112');
+  assert.deepEqual(panel.terms.map(term=>[term.id,term.congress]),[['panel112',112],['panel111',111]]);
+  const single = await reader.search({kind:'committee_term',congress:112});
+  assert.equal(single.total,2);
+  assert.ok(single.rows.every(row=>row.terms===undefined));
+  for (const term of panel.terms) {
+    const record = await reader.getRecord(term);
+    assert.equal(record.congress,term.congress);
+    const children = await reader.getRelated(record,{kind:'committee_term'});
+    assert.deepEqual(children.records.map(child=>child.id),['child'+term.congress]);
+    assert.equal(children.records[0].parent_committee_id,term.id);
+  }
+});
 
 test('real Parquet supports search, direct files, witnesses, coverage and on-demand source evidence', async () => {
   const { fetcher, calls } = transport();
@@ -123,6 +200,10 @@ test('official parent committee types filter committees, meetings, documents, wi
   assert.equal(child.source_committee_type, 'Subcommittee');
   assert.equal(child.committee_type, 'subcommittee');
   assert.deepEqual(child.committee_types, ['standing']);
+  const childDetail = await reader.getRecord(child);
+  assert.equal(committeeTypeLabel(childDetail), 'Standing (inherited from parent)');
+  assert.equal(committeeTypeLabel(childDetail), committeeTypeLabel(child));
+  assert.equal(childDetail.source_committee_type, 'Subcommittee');
   for (const kind of ['meeting', 'material', 'appearance']) {
     const all = await reader.search({kind, congress:115});
     assert.equal((await reader.search({kind, congress:115, committeeType:'standing'})).total, all.total);

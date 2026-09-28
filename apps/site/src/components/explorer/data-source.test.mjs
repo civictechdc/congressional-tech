@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { gzipSync } from 'node:zlib';
 import test from 'node:test';
+import { committeeTypeLabel } from './record-presentation.js';
 import { createCatalogSource, createPublicationSource, decodeGzipJson, normalizeCatalog, openPublicationReader } from './data-source.js';
 
 const fixtureUrl = new URL('../../../../../docs/youtube-coverage/committee-explorer-preview.json', import.meta.url);
@@ -109,11 +110,11 @@ test('HTTP failure is preserved instead of becoming an empty result', async () =
   await assert.rejects(source.load(), /HTTP 503/);
 });
 
-function partitioned({ wrongRecord = false, wrongBucketCount = false, relatedMaterials = [] } = {}) {
+function partitioned({ wrongRecord = false, wrongBucketCount = false, relatedMaterials = [], subject, committeeRows = [] } = {}) {
   const result = publication();
   const manifestUrl = 'https://example.test/explorer/releases/a/manifest.json';
   const manifest = JSON.parse(new TextDecoder().decode(result.resources.get(manifestUrl)));
-  const meeting = fixture.records.find(r => r.kind === 'meeting');
+  const meeting = subject || fixture.records.find(r => r.kind === 'meeting');
   const source = fixture.sources[0];
   const paths = { meeting: 'details/selected.data', source: 'sources/selected.data' };
   function artifact(path, role, schemaName, value, count) {
@@ -146,8 +147,12 @@ function partitioned({ wrongRecord = false, wrongBucketCount = false, relatedMat
     artifact(path, 'index', 'committee_explorer.query-rows', { schema_version: fixture.schema_version, rows }, rows.length);
     return { kind: 'meeting', congress, path, record_count: rows.length };
   });
-  artifact('queries/root.data', 'index', 'committee_explorer.queries', { schema_version: fixture.schema_version, default_congress: 119, congresses: [119, 118], kinds: [{kind: 'meeting', count: 3}], committee_labels: {'joint-a': 'Committee A', 'joint-b': 'Committee B'}, partitions: queryParts }, queryParts.length);
-  const relationKey = `meeting/${meeting.id}`, relationBucket = hash(new TextEncoder().encode(relationKey)).slice(0, 2);
+  if (committeeRows.length) {
+    artifact('queries/committees.data', 'index', 'committee_explorer.query-rows', {schema_version:fixture.schema_version, rows:committeeRows}, committeeRows.length);
+    queryParts.push({kind:'committee_term', congress:119, path:'queries/committees.data', record_count:committeeRows.length});
+  }
+  artifact('queries/root.data', 'index', 'committee_explorer.queries', { schema_version: fixture.schema_version, default_congress: 119, congresses: [119, 118], kinds: [{kind: 'meeting', count: 3}, ...(committeeRows.length ? [{kind:'committee_term', count:committeeRows.length}] : [])], committee_labels: {'joint-a': 'Committee A', 'joint-b': 'Committee B'}, partitions: queryParts }, queryParts.length);
+  const relationKey = `${meeting.kind}/${meeting.id}`, relationBucket = hash(new TextEncoder().encode(relationKey)).slice(0, 2);
   const relationPath = 'relations/selected.data';
   artifact(relationPath, 'index', 'committee_explorer.relation-bucket', { schema_version: fixture.schema_version, relations: {[relationKey]: [{kind: source.kind, id: source.id, relation: 'evidence'}, ...relatedMaterials.map(({kind,id}) => ({kind,id}))]} }, 1);
   artifact('relations/root.data', 'index', 'committee_explorer.relations', {schema_version: fixture.schema_version, key_format: '<kind>/<id>', bucket_algorithm: 'sha256-prefix-2', buckets: {[relationBucket]: relationPath}}, 1);
@@ -215,17 +220,19 @@ test('query reader scopes by Congress, filters before paging, and fetches relate
   assert.equal((await reader.getRelated(files.meeting, {offset: 1})).records.length, 0);
 });
 
-test('legacy related-material queries count every category before filtering and paging', async () => {
+test('legacy meeting and committee materials count every category before filtering and paging', async () => {
   const relatedMaterials = Array.from({length:36}, (_, index) => ({kind:'material', id:`material-${index}`, title:`Attachment ${index}`,
     details:index === 35 ? {type:'recording'} : {type:'document', category:index < 30 ? 'statement' : 'supporting'}}));
-  const files = partitioned({relatedMaterials});
-  const reader = await openPublicationReader({pointerUrl, fetcher:files.fetcher});
-  const page = await reader.getRelated(files.meeting, {kind:'material', materialType:'document', category:'Statement', offset:25, limit:25});
-  assert.equal(page.total, 30);
-  assert.equal(page.records.length, 5);
-  assert.ok(page.records.every(record => record.details.category === 'statement'));
-  assert.deepEqual(page.categories, [{label:'Statement',count:30},{label:'Supporting',count:5}]);
-  assert.equal((await reader.getRelated(files.meeting, {kind:'material', materialType:'recording'})).total, 1);
+  for (const subject of [undefined, {kind:'committee_term', id:'panel', name:'Oversight panel', congress:112}]) {
+    const files = partitioned({relatedMaterials, subject});
+    const reader = await openPublicationReader({pointerUrl, fetcher:files.fetcher});
+    const page = await reader.getRelated(files.meeting, {kind:'material', materialType:'document', category:'Statement', offset:25, limit:25});
+    assert.equal(page.total, 30);
+    assert.equal(page.records.length, 5);
+    assert.ok(page.records.every(record => record.details.category === 'statement'));
+    assert.deepEqual(page.categories, [{label:'Statement',count:30},{label:'Supporting',count:5}]);
+    assert.equal((await reader.getRelated(files.meeting, {kind:'material', materialType:'recording'})).total, 1);
+  }
 });
 
 test('filtered coverage uses published states and reconciles shared committee denominators', async () => {
@@ -250,4 +257,20 @@ test('explicit gzip decoder preserves domain values without a UI format switch',
   const files = publication({mediaType: 'application/vnd.committee-explorer+json+gzip', bytes});
   const loaded = await createPublicationSource({pointerUrl, fetcher: files.fetcher}).load();
   assert.deepEqual(loaded.records, fixture.records);
+});
+
+
+test('legacy committee list and detail share inherited category without replacing native type', async () => {
+  const subject = {kind:'committee_term', id:'child', congress:119, name:'Defense Subcommittee',
+    committee_type:'subcommittee', source_committee_type:'Subcommittee', parent:{kind:'committee_term',id:'parent'}};
+  const committeeRows = [{...subject, title:subject.name, committee_level:'subcommittee', committee_types:['standing'], parent_committee_id:'parent'}];
+  const files = partitioned({subject, committeeRows});
+  const reader = await openPublicationReader({pointerUrl, fetcher:files.fetcher});
+  const listed = (await reader.search({kind:'committee_term', congress:119})).rows[0];
+  const detail = await reader.getRecord(subject);
+  assert.equal(committeeTypeLabel(listed), 'Standing (inherited from parent)');
+  assert.equal(committeeTypeLabel(detail), committeeTypeLabel(listed));
+  assert.equal(detail.source_committee_type, 'Subcommittee');
+  assert.equal(detail.committee_type, 'subcommittee');
+  assert.equal(detail.parent_committee_id, 'parent');
 });

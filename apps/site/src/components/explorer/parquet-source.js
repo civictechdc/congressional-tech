@@ -1,6 +1,6 @@
 import { parquetMetadataAsync, parquetReadObjects, rowIndex } from 'hyparquet';
 import { presentRecord, recordingDue, recordingVisible } from './record-presentation.js';
-import { matches, pageBounds, summarizeCoverage } from './query-utils.js';
+import { groupCommitteeTerms, matches, pageBounds, summarizeCoverage } from './query-utils.js';
 import { selectRelatedMaterials } from './related-materials.js';
 
 /** HTTP ranges remain inside the injected reader. No SQL engine or record shards. */
@@ -100,7 +100,7 @@ export function createParquetReader(publication, fetcher) {
     getQueryInfo, getRecords,
     async getRecord(ref, options) { return (await getRecords([ref], options))[0]; },
     async search(query = {}, { signal } = {}) {
-      const rows = (await queryRows(query, signal)).map(row => presentRecord(row)).filter(row => recordingVisible(row) && matches(row, query));
+      const rows = groupCommitteeTerms((await queryRows(query, signal)).map(row => presentRecord(row)).filter(row => recordingVisible(row) && matches(row, query)), query);
       rows.sort((a, b) => (b.date || '').localeCompare(a.date || '') || a.title.localeCompare(b.title) || a.id.localeCompare(b.id));
       const { offset, limit } = pageBounds(query);
       return { rows: rows.slice(offset, offset + limit), total: rows.length, offset, limit };
@@ -117,12 +117,12 @@ export function createParquetReader(publication, fetcher) {
       if (!record) return { records: [], total: 0, offset, limit };
       let related = [];
       const congress = record.congress ?? 'all';
-      if (ref.kind === 'meeting' || ref.kind === 'appearance') {
+      if (['meeting', 'appearance', 'committee_term'].includes(ref.kind)) {
         if (!options.kind || options.kind === 'material') {
-          const membership = ref.kind === 'meeting' ? 'meeting_ids' : 'appearance_ids';
+          const membership = {meeting: 'meeting_ids', appearance: 'appearance_ids', committee_term: 'committee_ids'}[ref.kind];
           const cacheKey = `related-material/${ref.kind}/${ref.id}`;
           const material = rowsCache.get(cacheKey) || cacheRows(cacheKey, await read('material', {
-            columns: ['id', 'kind', 'title', 'meeting_ids', 'appearance_ids', 'type', 'document_type', 'category', 'date', 'scheduled_at', 'meeting_status', 'recording_url'],
+            columns: ['id', 'kind', 'title', 'meeting_ids', 'appearance_ids', 'committee_ids', 'type', 'document_type', 'category', 'date', 'scheduled_at', 'meeting_status', 'recording_url'],
             filter: { [membership]: { $in: [ref.id] } }, signal }));
           related.push(...material.filter(r => recordingVisible(r) && (r.type !== 'recording' || recordingDue(record))
             && r[membership]?.includes(ref.id)));
@@ -130,8 +130,12 @@ export function createParquetReader(publication, fetcher) {
         if (ref.kind === 'meeting' && (!options.kind || options.kind === 'appearance')) {
           related.push(...(await queryRows({ kind: 'appearance', congress }, signal)).filter(r => r.meeting_id === ref.id));
         }
-      } else if (ref.kind === 'committee_term' && (!options.kind || options.kind === 'meeting')) {
-        related = (await queryRows({ kind: 'meeting', congress }, signal)).filter(r => r.committee_ids?.includes(ref.id));
+        if (ref.kind === 'committee_term' && (!options.kind || options.kind === 'meeting')) {
+          related.push(...(await queryRows({ kind: 'meeting', congress }, signal)).filter(r => r.committee_ids?.includes(ref.id)));
+        }
+        if (ref.kind === 'committee_term' && (!options.kind || options.kind === 'committee_term')) {
+          related.push(...(await queryRows({ kind: 'committee_term', congress }, signal)).filter(r => r.parent_committee_id === ref.id && r.congress === record.congress));
+        }
       } else if (ref.kind === 'material' && (!options.kind || options.kind === 'meeting')) {
         related = (await getRecords((record.meeting_ids || []).map(id => ({ kind: 'meeting', id })), { signal })).filter(Boolean);
       }

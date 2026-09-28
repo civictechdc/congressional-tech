@@ -1,4 +1,4 @@
-import { matches, pageBounds, summarizeCoverage } from './query-utils.js';
+import { groupCommitteeTerms, matches, pageBounds, summarizeCoverage } from './query-utils.js';
 import { selectRelatedMaterials } from './related-materials.js';
 /**
  * The frontend's data boundary contains no UI or chart logic. Its consumers do
@@ -212,7 +212,7 @@ export async function openPublicationReader(options) {
     return rows;
   }
   async function search(query = {}, { signal } = {}) {
-    const rows = (await queryRows(query, signal)).filter(row => matches(row, query));
+    const rows = groupCommitteeTerms((await queryRows(query, signal)).filter(row => matches(row, query)), query);
     rows.sort((a, b) => (b.date || '').localeCompare(a.date || '') || a.title.localeCompare(b.title) || a.id.localeCompare(b.id));
     const { offset, limit } = pageBounds(query);
     signal?.throwIfAborted();
@@ -266,6 +266,17 @@ export async function openPublicationReader(options) {
       }
     }
     if (keys.some(key => locations.has(key) && !found.has(key))) throw new Error('Explorer record lookup and detail contents disagree.');
+    const committees = [...found.values()].filter(record => record.kind === 'committee_term');
+    if (committees.length && (await getQueryInfo({signal})).kinds.some(entry => entry.kind === 'committee_term')) {
+      for (const congress of new Set(committees.map(record => record.congress))) {
+        const metadata = new Map((await queryRows({kind:'committee_term', congress}, signal)).map(row => [row.id, row]));
+        for (const record of committees.filter(record => record.congress === congress)) {
+          const row = metadata.get(record.id);
+          if (row) found.set(`committee_term/${record.id}`, {...record, committee_types:row.committee_types,
+            committee_level:row.committee_level, parent_committee_id:row.parent_committee_id});
+        }
+      }
+    }
     signal?.throwIfAborted();
     return keys.map(key => found.get(key));
   }
@@ -290,6 +301,13 @@ export async function openPublicationReader(options) {
       const allRefs = bucket.relations[key] || [];
       if (!Array.isArray(allRefs)) throw new Error('Explorer relationships are invalid.');
       const refs = options.kind ? allRefs.filter(r => r.kind === options.kind) : allRefs;
+      if (ref.kind === 'committee_term' && options.kind === 'committee_term') {
+        const [parent] = await getRecords([ref], { signal });
+        const candidates = await getRecords(refs, { signal });
+        if (candidates.some(record => !record)) throw new Error('Explorer relationship points to a missing record.');
+        const children = candidates.filter(record => (record.parent_committee_id || record.parent?.id) === ref.id && record.congress === parent?.congress);
+        return { records: children.slice(offset, offset + limit), total: children.length, offset, limit };
+      }
       if (options.kind === 'material') {
         const materials = await getRecords(refs, { signal });
         if (materials.some(record => !record)) throw new Error('Explorer relationship points to a missing record.');
