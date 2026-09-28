@@ -26,7 +26,7 @@ def committee_lookup(records):
 def source_committee_key(row):
     """A retained GPO committee code is independent of its print's chamber."""
     code = str(row.get('committee_code') or '').strip().lower()
-    if not re.fullmatch(r'[hsj][a-z]{3}\d{2}', code):
+    if not re.fullmatch(r'[hsj][a-z0-9]{3}\d{2}', code):
         return None
     try:
         congress = int(row.get('congress'))
@@ -35,6 +35,13 @@ def source_committee_key(row):
     if isinstance(row.get('congress'), bool) or congress <= 0:
         return None
     return congress, code
+
+
+def source_committee_keys(row):
+    """Every explicit body, with the legacy single-code field as a fallback."""
+    codes = [str(row.get('committee_code') or '')] + str(row.get('committee_codes') or '').split(';')
+    return tuple(dict.fromkeys(key for code in codes
+                              if (key := source_committee_key({**row, 'committee_code': code}))))
 
 
 def ensure_committee_term(congress, code, name, context, provenance, existing):
@@ -64,6 +71,6 @@ def ensure_committee_term(congress, code, name, context, provenance, existing):
 
 def hierarchy_from_code(code):
     """The last two digits are 00 for a full committee, otherwise a child."""
-    if not isinstance(code, str) or not re.fullmatch(r'[a-z]{4}\d{2}', code, re.I):
+    if not isinstance(code, str) or not re.fullmatch(r'[hsj][a-z0-9]{3}\d{2}', code, re.I):
         return 'unknown', None
     return ('full', None) if code.endswith('00') else ('subcommittee', code[:4] + '00')

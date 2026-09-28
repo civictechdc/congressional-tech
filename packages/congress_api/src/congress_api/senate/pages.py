@@ -154,7 +154,7 @@ def attachment_page(url):
 
 def event_type(title):
     """The first proceeding named by a title, excluding later agenda items."""
-    proceeding = re.match(r"^\W*(?:(?:rescheduled|postponed|cancell?ed)\s*:\s*)?(?:(?:open|closed|joint|oversight|legislative|SCIA)\s+)*(roundtable|field hearing|business meeting|mark[ -]?up|briefing|hearing)\b", title, re.I)
+    proceeding = re.match(r"^\W*(?:(?:rescheduled|postponed|cancell?ed)\s*(?:[:)\]]\s*)+)?(?:(?:open|closed|joint|oversight|legislative|SCIA)\s+)*(roundtable|field hearing|business meeting|mark[ -]?up|briefing|hearing)\b", title, re.I)
     return proceeding.group(1).title().replace("Mark Up", "Markup").replace("Mark-Up", "Markup") if proceeding else None
 
 def event_details(page_html, url):

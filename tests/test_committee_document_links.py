@@ -113,6 +113,18 @@ def test_curated_additions_respect_limited_congress_scope():
     assert values == []
 
 
+def test_historical_medicare_commission_keeps_native_classification_and_term_scope():
+    ctx = context('congress.gov:committees')
+    rows = [metadata(c, 'jcfm00', 'Other') for c in (106, 107)]
+    records = indexed(committee_metadata.records(rows, ctx, {}))
+    records.update(indexed(committee_metadata.adjustment_records(context('committee-review'), records)))
+    terms = {r.congress: r for r in validate(records).records if r.kind == 'committee_term'}
+    assert terms[106].committee_type == 'commission_or_caucus'
+    assert terms[106].source_committee_type == 'Other'
+    assert terms[106].active is None or terms[106].active.end is None
+    assert terms[107].committee_type == 'other'
+
+
 def test_collector_includes_document_only_historical_congresses(tmp_path, monkeypatch):
     meetings = write_meetings(tmp_path, [native()])
     output = save(tmp_path / 'committees.jsonl.gz', [metadata(115)])

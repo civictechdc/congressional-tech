@@ -71,7 +71,13 @@ for i in range(36):
     id = 'direct-'+str(i)
     records.extend([dict(kind='material',id=id),dict(kind='material_link',id=id+'-link',material={'kind':'material','id':id},subject={'kind':'committee_term','id':'panel112'})])
     queries.append(dict(kind='material',id=id,title='Panel document '+str(i),congress=112,committee_ids=[],
-                        type='recording' if i==35 else 'document',category='transcript' if i<30 else 'supporting'))
+                        type='recording' if i==35 else 'document',category='transcript' if i<30 else 'committee_print' if i==34 else 'supporting'))
+    if i==34:
+        records.extend([dict(kind='material_link',id='shared-child-link',material={'kind':'material','id':id},subject={'kind':'committee_term','id':'child112'}),
+                        dict(kind='material_version',id='parts-version',material={'kind':'material','id':id})])
+        for part in ('Markup','Errata'):
+            records.append(dict(kind='representation',id='part-'+part,version={'kind':'material_version','id':'parts-version'},
+                format_label='PDF — '+part,media_type='application/pdf',locations=[dict(url='https://example.org/'+part+'.pdf',role='download')]))
     if i==35:
         records.extend([dict(kind='material_version',id='video-version',material={'kind':'material','id':id}),
                         dict(kind='representation',id='video-file',version={'kind':'material_version','id':'video-version'},locations=[dict(url='https://youtu.be/PRXQf-CSnoo',role='player')])])
@@ -123,13 +129,23 @@ test('direct committee documents keep categories, paging and filters without cre
   assert.equal(first.total,30);
   assert.equal(first.records.length,25);
   assert.equal(second.records.length,5);
-  assert.deepEqual(first.categories,[{label:'Supporting',count:5},{label:'Transcript',count:30}]);
+  assert.deepEqual(first.categories,[{label:'Committee print',count:1},{label:'Supporting',count:4},{label:'Transcript',count:30}]);
   assert.ok([...first.records,...second.records].every(row=>row.meeting_ids.length===0 && row.meeting_id===null));
   assert.equal((await reader.getRelated(committee,{kind:'material',materialType:'recording'})).total,1);
   assert.equal((await reader.getRelated(committee,{kind:'meeting'})).total,0);
   assert.equal((await reader.getCoverage({filters:{congress:112}})).state_breakdown.documents.denominator,1);
   assert.equal((await reader.getCoverage({filters:{congress:112,committeeId:committee.id}})).state_breakdown.documents.denominator,0);
   assert.equal((await reader.search({kind:'meeting',congress:112,type:'roundtable'})).total,1);
+  const print = await reader.getRelated(committee,{kind:'material',materialType:'document',category:'Committee print'});
+  const childPrint = await reader.getRelated({kind:'committee_term',id:'child112'},{kind:'material',materialType:'document',category:'Committee print'});
+  assert.equal(print.total,1);
+  assert.equal(childPrint.total,1);
+  assert.equal(print.records[0].id,childPrint.records[0].id);
+  assert.deepEqual(print.records[0].committee_ids,['child112','panel112']);
+  assert.deepEqual(print.records[0].files.map(file=>[file.label,file.url]),[
+    ['PDF — Markup','https://example.org/Markup.pdf'],['PDF — Errata','https://example.org/Errata.pdf']]);
+  assert.equal(print.records[0].meeting_ids.length,0);
+
 });
 
 test('All Congresses groups source committee identities before paging while detail links stay in the chosen term', async () => {

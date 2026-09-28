@@ -37,6 +37,7 @@ from congress_api.inventory.common import CLOSED, due, kind, nonnegative, read_s
 from congress_api.senate.pages import (SITE, LISTINGS, HEARING_LINK, FIRST_RECORD, OWN, NEAR, BUSINESS, DATE,
     documents, witnesses, lines, written_day, topic, attachment_page, event_details, document_labels)
 from congress_api.senate.corrections import DATE_CORRECTIONS, selected_date
+from congress_api.senate.matching import match_identifiers
 
 PAGE_FIELDS = "event_id page title witnesses documents".split()
 WITNESS_FIELDS = "event_id name position organization page".split()
@@ -293,7 +294,7 @@ def fetch_page(url, previous, today, *, cache=None, check=None):
         except (ValueError, RuntimeError, OSError) as error:
             check.update(completed_at=timestamp(), outcome="error", error=str(error))
             raise
-    return {**result, "checked": today.isoformat(), "version": "", "parser_version": 2, "events": previous.get("events", [])}
+    return {**result, "checked": today.isoformat(), "version": "", "parser_version": 2, "events": previous.get("events", []), **({"match_details": previous["match_details"]} if previous.get("match_details") else {})}
 
 
 def refresh_urls(state, versions, today, limit, sites=None):
@@ -442,6 +443,7 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
                 page = saved["pages"][row["page"]]
                 if row["event_id"] not in page["events"]:
                     page["events"].append(row["event_id"])
+    match_identifiers(native_meetings, state)
     mark_possible_matches(native_meetings, state)
     write_state(path, state)
     found = retained_matches(state)

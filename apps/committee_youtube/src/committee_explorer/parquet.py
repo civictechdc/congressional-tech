@@ -47,13 +47,16 @@ def sources_of(record):
 
 def write_tables(records, sources, query_rows, stage, descriptor):
     """Accept iterables so a retained JSON publication can migrate without reassembly."""
-    source_rows, native_documents, native_meetings = [], {}, {}
+    source_rows, native_documents, native_meetings, reviewed_document_types = [], {}, {}, {}
     for source in sources:
         if source['provider'] == 'congress.gov' and isinstance(source.get('payload'), dict):
             native_meetings[source['id']] = {k: source['payload'].get(k) for k in ('type', 'title')}
             for group in ('meetingDocuments', 'witnessDocuments'):
                 for i, document in enumerate(source['payload'].get(group) or []):
                     native_documents[(source['id'], f'/{group}/{i}')] = (group, document)
+        if source['provider'] == 'gpo.committee-review' and isinstance(source.get('payload'), dict):
+            label = source['payload'].get('source_document_type')
+            if isinstance(label, str) and label: reviewed_document_types[source['id']] = label
         row = {key: source.get(key) for key in SOURCE_SCHEMA.names}
         row['source_modified_at'] = (source.get('source_modified_at') or {}).get('date')
         row['identifier'] = json.dumps(source.get('identifier'), ensure_ascii=False)
@@ -144,6 +147,8 @@ def write_tables(records, sources, query_rows, stage, descriptor):
                 documents = [native_documents[key] for citation in provenance.get('citations', [])
                              if (key := (citation['source']['id'], citation.get('selector'))) in native_documents]
                 row['source_document_groups'] = sorted({group for group, _ in documents})
+                row['document_type'] = next((reviewed_document_types[citation['source']['id']]
+                    for citation in provenance.get('citations', []) if citation['source']['id'] in reviewed_document_types), row.get('document_type'))
                 if documents:
                     document = documents[0][1]
                     row['title'] = document_title(document) or row['title']

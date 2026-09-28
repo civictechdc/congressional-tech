@@ -6,6 +6,13 @@ Additions are bounded to the documented Congress; no future term is assumed.
 
 ADJUSTMENTS = (
     {
+        'code': 'jcfm00', 'first_congress': 106, 'last_congress': 106,
+        'values': {'committee_type': 'commission_or_caucus'},
+        'explanation': 'The Medicare Commission was a bipartisan commission. Historical meeting notices are available in the Federal Register; these notices are outside the current meeting collection.',
+        'evidence': [{'url': 'https://www.govinfo.gov/content/pkg/FR-1999-01-13/pdf/FR-1999-01-13.pdf',
+                      'description': 'Page 2237 contains the National Bipartisan Commission on the Future of Medicare public meeting notice for January 26, 1999.'}],
+    },
+    {
         'code': 'scnc00', 'first_congress': 99,
         'values': {'committee_type': 'commission_or_caucus', 'website': 'https://www.drugcaucus.senate.gov/'},
         'explanation': 'Commission or Caucus describes its organizational form. The Senate Drug Caucus also has standing-committee status; the original source classification is retained.',

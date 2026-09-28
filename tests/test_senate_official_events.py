@@ -166,6 +166,10 @@ def test_historical_collection_requires_explicit_sites(tmp_path):
     ('Business Meeting to consider S.325 and Roundtable discussion on Tribal Water Rights', 'Business Meeting'),
     ('Business Meeting to consider S.436 and Roundtable on Native American Priorities', 'Business Meeting'),
     ('Field Hearing titled, “Alaska Native Voices: A Roundtable Discussion on the Unmet Needs of Alaska Native Communities” (Part I)', 'Field Hearing'),
+    ('(Rescheduled) Business Meeting to consider S. 616, S. 2868, S. 3022, H.R. 1240, S. 2796 and Legislative Hearing to receive testimony on S. 465 & S. 2695', 'Business Meeting'),
+    ('(Rescheduled) Legislative Hearing to receive testimony on S. 1797, S. 1895 & H.R. 1688', 'Hearing'),
+    ('[Postponed] Business Meeting to consider S. 616', 'Business Meeting'),
+    ('Rescheduled: Business Meeting to consider S. 616', 'Business Meeting'),
 ])
 def test_first_proceeding_wins_over_later_agenda_or_topic(title, expected):
     page = '<h1>' + title + '</h1><div class="jet-listing-dynamic-field__content"><strong>Date:</strong> August 4, 2026</div>'

@@ -1,6 +1,7 @@
 """Adapt retained Senate committee pages without fetching or rematching them."""
 from collections import Counter, defaultdict
 from datetime import date, datetime
+import re
 from urllib.parse import urlsplit
 
 from committee_meeting.assessments import Assessment
@@ -166,7 +167,11 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                 candidates = by_event.get(str(event), [])
                 if len(candidates) == 1:
                     meeting = candidates[0]
-                    match_evidence = context.evidence(source, basis="derived", method=MATCH_METHOD, selector=f"/events/{index}")
+                    details = (page.get("match_details") or {}).get(str(event))
+                    if details and details.get("method") == "senate.records.match_identifiers":
+                        match_evidence = context.evidence(source, basis="derived", method=Method(name=details["method"], version=details["version"]), selector=f"/match_details/{event}")
+                    else:
+                        match_evidence = context.evidence(source, basis="derived", method=MATCH_METHOD, selector=f"/events/{index}")
                     if correction_evidence:
                         match_evidence = match_evidence.model_copy(update={"citations": match_evidence.citations + correction_evidence.citations})
                     matched[meeting.id] = (meeting, match_evidence)
@@ -287,7 +292,7 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                     yield Appearance(
                         id=context.ids("appearance", key + "|witness|" + witness_key + "|" + meeting.id),
                         meeting=meeting, name=RecordedName(display=witness["name"]),
-                        roles=("witness",), participation="listed",
+                        roles=("witness", "nominee") if re.match(r"^\s*nominee\b", witness.get("position") or "", re.I) else ("witness",), participation="listed",
                         affiliation=Affiliation(organization_name=witness.get("organization") or None, position=witness.get("position") or None),
                         provenance=match_evidence.model_copy(update={"citations": match_evidence.citations + context.evidence(source, selector=selector).citations}),
                     )

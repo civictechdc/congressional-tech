@@ -108,3 +108,16 @@ def test_same_name_witness_rows_remain_separate_appearances():
     saved["witnesses"].reverse()
     reordered = of_kind(adapt(saved), "appearance")
     assert {row.affiliation.organization_name: row.id for row in appearances} == {row.affiliation.organization_name: row.id for row in reordered}
+
+
+def test_nominee_role_uses_explicit_witness_position_without_changing_source_text():
+    saved = page(title="Nomination hearing for Mark Cruz", witnesses=[
+        {"name": "Mark Cruz", "position": "Nominee, Director of the Indian Health Service", "organization": "U.S. Department of Health and Human Services, Salem, Oregon"},
+        {"name": "Introducing witness", "position": "Senator", "organization": "U.S. Senate"},
+    ])
+    rows = adapt(saved)
+    nominee, introducer = of_kind(rows, "appearance")
+    assert nominee.roles == ("witness", "nominee")
+    assert nominee.affiliation.position == saved["witnesses"][0]["position"]
+    assert introducer.roles == ("witness",)
+    assert of_kind(rows, "source_record")[0].payload == saved

@@ -1,0 +1,2238 @@
+[
+  {
+    "expected_event_id": "326642",
+    "review_reason": "H.R.317 is the business portion of the native November 6 record. The native record then describes the 477 oversight hearing, which has a separate committee page (pair21). Link this business page to the combined native record; do not create another meeting.",
+    "page_url": "https://www.indian.senate.gov/hearings/business-meeting-consider-hr-317/",
+    "page": {
+      "event": {
+        "title": "Business Meeting to consider H.R. 317",
+        "date": "2019-11-06",
+        "date_text": "Date: November 6, 2019",
+        "type": "Business Meeting",
+        "url": "https://www.indian.senate.gov/hearings/business-meeting-consider-hr-317/"
+      },
+      "documents": [],
+      "witnesses": [],
+      "events": []
+    },
+    "native": {
+      "eventId": "326642",
+      "congress": 116,
+      "chamber": "Senate",
+      "date": "2019-11-06T19:30:00Z",
+      "title": "Business meeting to consider H.R.317, to reaffirm the action of the Secretary of the Interior to take land into trust for the benefit of the Santa Ynez Band of Chumash Mission Indians; to be immediately followed by an oversight hearing to examine the 477 program, focusing on   reducing red tape while promoting employment and training opportunities   in Indian country.",
+      "type": "Meeting",
+      "committees": [
+        {
+          "name": "Senate Indian Affairs",
+          "systemCode": "slia00",
+          "url": "https://api.congress.gov/v3/committee/senate/slia00?format=json"
+        }
+      ],
+      "hearingTranscript": [
+        {
+          "jacketNumber": 39744,
+          "url": "https://api.congress.gov/v3/hearing/116/senate/39744?format=json"
+        }
+      ],
+      "relatedItems": {
+        "bills": [
+          {
+            "congress": 116,
+            "number": "317",
+            "type": "HR",
+            "url": "https://api.congress.gov/v3/bill/116/hr/317?format=json"
+          }
+        ]
+      },
+      "_url": "https://api.congress.gov/v3/committee-meeting/116/senate/326642"
+    }
+  },
+  {
+    "expected_event_id": "326015",
+    "review_reason": "S.1211 and H.R.1388 identify the business portion. The same native record follows that business with the five-bill hearing represented by pair13. Both pages describe components of event326015.",
+    "page_url": "https://www.indian.senate.gov/hearings/business-meeting-consider-s-1211-hr-1388/",
+    "page": {
+      "event": {
+        "title": "Business Meeting to consider S. 1211 & H.R. 1388",
+        "date": "2019-06-19",
+        "date_text": "Date: June 19, 2019",
+        "type": "Business Meeting",
+        "url": "https://www.indian.senate.gov/hearings/business-meeting-consider-s-1211-hr-1388/"
+      },
+      "documents": [],
+      "witnesses": [],
+      "events": []
+    },
+    "native": {
+      "eventId": "326015",
+      "congress": 116,
+      "chamber": "Senate",
+      "date": "2019-06-19T18:30:00Z",
+      "title": "Business meeting to consider S.1211, to provide for improvements to Tribal transportation facilities and Tribal transportation safety, and H.R.1388, to take lands in Sonoma County, California, into trust as part of the reservation of the Lytton Rancheria of California; to be immediately followed by a hearing to examine S.227, to direct the Attorney General to review, revise, and develop law enforcement and justice protocols appropriate to address missing and murdered Indians, S.288, to amend the Indian Civil Rights Act of 1968 to extend the jurisdiction of tribal courts to cover crimes involving sexual violence, S.290, to protect Native children and promote public safety in Indian country, S.982, to increase intergovernmental coordination to identify and combat violent crime within Indian lands and of Indians, and S.1853, to require Federal law enforcement agencies to report on cases of missing or murdered Indians.",
+      "type": "Meeting",
+      "committees": [
+        {
+          "name": "Senate Indian Affairs",
+          "systemCode": "slia00",
+          "url": "https://api.congress.gov/v3/committee/senate/slia00?format=json"
+        }
+      ],
+      "hearingTranscript": [
+        {
+          "jacketNumber": 37844,
+          "url": "https://api.congress.gov/v3/hearing/116/senate/37844?format=json"
+        }
+      ],
+      "relatedItems": {
+        "bills": [
+          {
+            "congress": 116,
+            "number": "227",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/227?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "288",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/288?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "290",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/290?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "982",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/982?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "1388",
+            "type": "HR",
+            "url": "https://api.congress.gov/v3/bill/116/hr/1388?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "317",
+            "type": "HR",
+            "url": "https://api.congress.gov/v3/bill/116/hr/317?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "1211",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/1211?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "886",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/886?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "1853",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/1853?format=json"
+          }
+        ]
+      },
+      "_url": "https://api.congress.gov/v3/committee-meeting/116/senate/326015"
+    }
+  },
+  {
+    "expected_event_id": "334066",
+    "review_reason": "The page and native record share S.1308, S.195 and S.382. The committee numbers the remaining bill S.1322; the native title calls it an original tribal-leasing bill. The page links CHRG-118shrg53481, exactly matching native hearingTranscript jacket53481 and Congress118. This independently confirms the whole combined event despite the bill-label difference.",
+    "page_url": "https://www.indian.senate.gov/hearings/business-meeting-consider-s-1308-legislative-hearing-receive-testimony-s-195-s-382-s-1322/",
+    "page": {
+      "event": {
+        "title": "Business Meeting to consider S. 1308 & Legislative Hearing to receive testimony on S. 195, S. 382 & S. 1322",
+        "date": "2023-05-03",
+        "date_text": "Date: May 3, 2023",
+        "type": "Business Meeting",
+        "url": "https://www.indian.senate.gov/hearings/business-meeting-consider-s-1308-legislative-hearing-receive-testimony-s-195-s-382-s-1322/"
+      },
+      "documents": [
+        [
+          "transcript",
+          "Download Transcript",
+          "https://www.indian.senate.gov/wp-content/uploads/CHRG-118shrg53481.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/2023-05-03-HRG-Testimony-Newland-DOI.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/2023-05-03-HRG-Testimony-Blaker-Keweenaw.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/2023-05-03-HRG-Testimony-Miller-Puyallup.pdf"
+        ]
+      ],
+      "witnesses": [
+        {
+          "name": "Bryan Newland",
+          "position": "Assistant Secretary-Indian Affairs",
+          "organization": "U.S. Department of the Interior, Washington, DC",
+          "page": "https://www.indian.senate.gov/hearings/business-meeting-consider-s-1308-legislative-hearing-receive-testimony-s-195-s-382-s-1322/"
+        },
+        {
+          "name": "Doreen Blaker",
+          "position": "President",
+          "organization": "Keweenaw Bay Indian Community, Baraga, MI",
+          "page": "https://www.indian.senate.gov/hearings/business-meeting-consider-s-1308-legislative-hearing-receive-testimony-s-195-s-382-s-1322/"
+        },
+        {
+          "name": "Annette M. Bryan",
+          "position": "Councilwoman,",
+          "organization": "Puyallup Tribe, Tacoma, WA",
+          "page": "https://www.indian.senate.gov/hearings/business-meeting-consider-s-1308-legislative-hearing-receive-testimony-s-195-s-382-s-1322/"
+        }
+      ],
+      "events": []
+    },
+    "native": {
+      "eventId": "334066",
+      "congress": 118,
+      "chamber": "Senate",
+      "date": "2023-05-03T18:30:00Z",
+      "title": "Business meeting to consider S.1308, to amend the Indian Self-Determination and Education Assistance Act to extend the deadline for the Secretary of the Interior to promulgate regulations implementing title IV of that Act; to be immediately followed by a hearing to examine S.195, to provide compensation to the Keweenaw Bay Indian Community for the taking without just compensation of land by the United States inside the exterior boundaries of the L'Anse Indian Reservation that were guaranteed to the Community under a treaty signed in 1854, S.382, to take certain land in the State of Washington into trust for the benefit of the Puyallup Tribe of the Puyallup Reservation, and an original bill to amend the Act of August 9, 1955, to modify the authorized purposes and term period of tribal leases.",
+      "type": "Meeting",
+      "committees": [
+        {
+          "name": "Senate Indian Affairs",
+          "systemCode": "slia00",
+          "url": "https://api.congress.gov/v3/committee/senate/slia00?format=json"
+        }
+      ],
+      "hearingTranscript": [
+        {
+          "jacketNumber": 53481,
+          "url": "https://api.congress.gov/v3/hearing/118/senate/53481?format=json"
+        }
+      ],
+      "relatedItems": {
+        "bills": [
+          {
+            "congress": 118,
+            "number": "195",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/118/s/195?format=json"
+          },
+          {
+            "congress": 118,
+            "number": "382",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/118/s/382?format=json"
+          },
+          {
+            "congress": 118,
+            "number": "1308",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/118/s/1308?format=json"
+          }
+        ]
+      },
+      "_url": "https://api.congress.gov/v3/committee-meeting/118/senate/334066"
+    }
+  },
+  {
+    "expected_event_id": "329520",
+    "review_reason": "The source and native record both combine business on S.1471 with Native-language COVID-19 oversight and S.989/S.1402 testimony. The linked CHRG-117shrg45041 also matches the native transcript reference. This is the full combined event, even though its native agenda has several parts.",
+    "page_url": "https://www.indian.senate.gov/hearings/business-meeting-consider-s-1471-oversight-hearing-examining-covid-19-response-native/",
+    "page": {
+      "event": {
+        "title": "Business Meeting to consider S. 1471 / Oversight Hearing on “Examining the COVID-19 Response in Native Communities: Native Languages One Year Later” / Legislative Hearing to receive testimony on S. 989 & S. 1402",
+        "date": "2021-05-26",
+        "date_text": "Date: May 26, 2021",
+        "type": "Business Meeting",
+        "url": "https://www.indian.senate.gov/hearings/business-meeting-consider-s-1471-oversight-hearing-examining-covid-19-response-native/"
+      },
+      "documents": [
+        [
+          "transcript",
+          "Download Transcript",
+          "https://www.indian.senate.gov/wp-content/uploads/documents/CHRG-117shrg45041.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/HHS%20testimony%20Native%20Am%20Languages%20COVID%205-26-21%20%28Ms.%20Michelle%20Sauve%29.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/TEST-%20SCIA%20Durbin%20Feeling%20Act_FINAL_5%2021%2021%20%28Honorable%20Chuck%20Hoskin%2C%20Jr%29.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/HarperLS%20SCIA%20May%2026%20testimony%20NCNALSP.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/TESTIMONY%20of%20Ka%E2%80%98iulani%20Laeh%C4%81%20May%2026%2C%202021%20Senate%20Committee%20on%20Indian%20Affairs%202.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/Testimony%20Kawerak%20EHP%20Director%20and%20Chair%20of%20ANLPAC%28B.%20Yaayuk%20Alvanna-Stimpfle%29.pdf"
+        ]
+      ],
+      "witnesses": [
+        {
+          "name": "Michelle Sauve",
+          "position": "Acting Commissioner",
+          "organization": "Administration for Native Americans, Department of Health & Human Services, Washington, DC",
+          "page": "https://www.indian.senate.gov/hearings/business-meeting-consider-s-1471-oversight-hearing-examining-covid-19-response-native/"
+        },
+        {
+          "name": "Chuck Hoskin Jr.",
+          "position": "Principal Chief",
+          "organization": "Cherokee Nation, Tahlequah, OK",
+          "page": "https://www.indian.senate.gov/hearings/business-meeting-consider-s-1471-oversight-hearing-examining-covid-19-response-native/"
+        },
+        {
+          "name": "Leslie Harper",
+          "position": "President",
+          "organization": "National Coalition of Native American Language Schools and Programs, Cass Lake, MN",
+          "page": "https://www.indian.senate.gov/hearings/business-meeting-consider-s-1471-oversight-hearing-examining-covid-19-response-native/"
+        },
+        {
+          "name": "Kaʻiulani Laehā",
+          "position": "Chief Executive Officer",
+          "organization": "Aha Punana Leo, Hilo,HI",
+          "page": "https://www.indian.senate.gov/hearings/business-meeting-consider-s-1471-oversight-hearing-examining-covid-19-response-native/"
+        },
+        {
+          "name": "Bernadette \"Yaayuk\" Alvanna-Stimpfle",
+          "position": "Director, Kawerak Eskimo Heritage",
+          "organization": "Chair, Alaska Native Language Preservation and Advisory Council, Nome, AK",
+          "page": "https://www.indian.senate.gov/hearings/business-meeting-consider-s-1471-oversight-hearing-examining-covid-19-response-native/"
+        }
+      ],
+      "events": []
+    },
+    "native": {
+      "eventId": "329520",
+      "congress": 117,
+      "chamber": "Senate",
+      "date": "2021-05-26T18:30:00Z",
+      "title": "Business meeting to consider S.1471, to enhance protections of Native American tangible cultural heritage; to be immediately followed by an oversight hearing to examine the COVID-19 response in Native communities, focusing on Native languages one year later, including S.989, to establish a Native American language resource center in furtherance of the policy set forth in the Native American Languages Act, and S.1402, to amend the Native American Languages Act to ensure the survival and continuing vitality of Native American languages.",
+      "type": "Meeting",
+      "committees": [
+        {
+          "name": "Senate Indian Affairs",
+          "systemCode": "slia00",
+          "url": "https://api.congress.gov/v3/committee/senate/slia00?format=json"
+        }
+      ],
+      "hearingTranscript": [
+        {
+          "jacketNumber": 45041,
+          "url": "https://api.congress.gov/v3/hearing/117/senate/45041?format=json"
+        }
+      ],
+      "relatedItems": {
+        "bills": [
+          {
+            "congress": 117,
+            "number": "1402",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/117/s/1402?format=json"
+          },
+          {
+            "congress": 117,
+            "number": "989",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/117/s/989?format=json"
+          },
+          {
+            "congress": 117,
+            "number": "1471",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/117/s/1471?format=json"
+          }
+        ]
+      },
+      "_url": "https://api.congress.gov/v3/committee-meeting/117/senate/329520"
+    }
+  },
+  {
+    "expected_event_id": "326762",
+    "review_reason": "S.1853 and S.2365 identify the business portion. The native record immediately follows it with the Michael D. Weahkee nomination. Pair20 is the corresponding hearing page, not a separate Congress event.",
+    "page_url": "https://www.indian.senate.gov/hearings/business-meeting-consider-s-1853-s-2365/",
+    "page": {
+      "event": {
+        "title": "Business Meeting to consider S. 1853 & S. 2365",
+        "date": "2019-12-11",
+        "date_text": "Date: December 11, 2019",
+        "type": "Business Meeting",
+        "url": "https://www.indian.senate.gov/hearings/business-meeting-consider-s-1853-s-2365/"
+      },
+      "documents": [],
+      "witnesses": [],
+      "events": []
+    },
+    "native": {
+      "eventId": "326762",
+      "congress": 116,
+      "chamber": "Senate",
+      "date": "2019-12-11T19:30:00Z",
+      "title": "Business meeting to consider S.1853, to require Federal law enforcement agencies to report on cases of missing or murdered Indians, and S.2365, to amend the Indian Health Care Improvement Act to authorize urban Indian organizations to enter into arrangements for the sharing of medical services and facilities; to be immediately followed by a hearing to examine the nomination of Michael D. Weahkee, of New   Mexico, to be Director of the Indian Health Service, Department of   Health and Human Services.",
+      "type": "Meeting",
+      "committees": [
+        {
+          "name": "Senate Indian Affairs",
+          "systemCode": "slia00",
+          "url": "https://api.congress.gov/v3/committee/senate/slia00?format=json"
+        }
+      ],
+      "hearingTranscript": [
+        {
+          "jacketNumber": 39563,
+          "url": "https://api.congress.gov/v3/hearing/116/senate/39563?format=json"
+        }
+      ],
+      "relatedItems": {
+        "bills": [
+          {
+            "congress": 116,
+            "number": "1853",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/1853?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "2365",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/2365?format=json"
+          }
+        ],
+        "nominations": [
+          {
+            "congress": 116,
+            "number": 1250,
+            "part": "00",
+            "url": "https://api.congress.gov/v3/nomination/116/1250?format=json"
+          }
+        ]
+      },
+      "_url": "https://api.congress.gov/v3/committee-meeting/116/senate/326762"
+    }
+  },
+  {
+    "expected_event_id": "326221",
+    "review_reason": "S.2159 identifies the business portion. The native record then names E. Sequoyah Simermeyer and the National Indian Gaming Commission chairmanship; pair19 is that hearing component.",
+    "page_url": "https://www.indian.senate.gov/hearings/business-meeting-consider-s-2159/",
+    "page": {
+      "event": {
+        "title": "Business Meeting to consider S. 2159",
+        "date": "2019-07-24",
+        "date_text": "Date: July 24, 2019",
+        "type": "Business Meeting",
+        "url": "https://www.indian.senate.gov/hearings/business-meeting-consider-s-2159/"
+      },
+      "documents": [],
+      "witnesses": [],
+      "events": []
+    },
+    "native": {
+      "eventId": "326221",
+      "congress": 116,
+      "chamber": "Senate",
+      "date": "2019-07-24T18:30:00Z",
+      "title": "Business meeting to consider S.2159, to repeal the Act entitled \"An Act to confer jurisdiction on the State of North Dakota over offenses committed by or against Indians on the Devils Lake Indian Reservation\"; to be immediately followed by a hearing to examine the nomination of E. Sequoyah Simermeyer, of Maryland, to be Chairman of the National Indian Gaming Commission.",
+      "type": "Meeting",
+      "committees": [
+        {
+          "name": "Senate Indian Affairs",
+          "systemCode": "slia00",
+          "url": "https://api.congress.gov/v3/committee/senate/slia00?format=json"
+        }
+      ],
+      "hearingTranscript": [
+        {
+          "jacketNumber": 37479,
+          "url": "https://api.congress.gov/v3/hearing/116/senate/37479?format=json"
+        }
+      ],
+      "relatedItems": {
+        "bills": [
+          {
+            "congress": 116,
+            "number": "2159",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/2159?format=json"
+          }
+        ],
+        "nominations": [
+          {
+            "congress": 116,
+            "number": 901,
+            "part": "00",
+            "url": "https://api.congress.gov/v3/nomination/116/901?format=json"
+          }
+        ]
+      },
+      "_url": "https://api.congress.gov/v3/committee-meeting/116/senate/326221"
+    }
+  },
+  {
+    "expected_event_id": "326682",
+    "review_reason": "S.227 and S.982 identify the business portion. The native record then describes Native-veterans oversight and S.1001/S.2365 testimony, represented by pair23.",
+    "page_url": "https://www.indian.senate.gov/hearings/business-meeting-consider-s-227-s-982/",
+    "page": {
+      "event": {
+        "title": "Business Meeting to consider S. 227 & S. 982",
+        "date": "2019-11-20",
+        "date_text": "Date: November 20, 2019",
+        "type": "Business Meeting",
+        "url": "https://www.indian.senate.gov/hearings/business-meeting-consider-s-227-s-982/"
+      },
+      "documents": [],
+      "witnesses": [],
+      "events": []
+    },
+    "native": {
+      "eventId": "326682",
+      "congress": 116,
+      "chamber": "Senate",
+      "date": "2019-11-20T19:30:00Z",
+      "title": "Business meeting to consider S.227, to direct the Attorney General to review, revise, and develop law enforcement and justice protocols appropriate to address missing and murdered Indians, and S.982, to increase intergovernmental coordination to identify and combat violent crime within Indian lands and of Indians; to be immediately followed by an oversight hearing to examine honoring a nation¿s promise to Native veterans, including S.1001, to amend the Indian Health Care Improvement Act to allow the Indian Health Service to cover the cost of a copayment of an Indian or Alaska Native veteran receiving medical care or services from the Department of Veterans Affairs, and S.2365, to amend the Indian Health Care Improvement Act to authorize urban Indian organizations to enter into arrangements for the sharing of medical services and facilities.",
+      "type": "Meeting",
+      "committees": [
+        {
+          "name": "Senate Indian Affairs",
+          "systemCode": "slia00",
+          "url": "https://api.congress.gov/v3/committee/senate/slia00?format=json"
+        }
+      ],
+      "hearingTranscript": [
+        {
+          "jacketNumber": 40402,
+          "url": "https://api.congress.gov/v3/hearing/116/senate/40402?format=json"
+        }
+      ],
+      "relatedItems": {
+        "bills": [
+          {
+            "congress": 116,
+            "number": "1001",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/1001?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "2365",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/2365?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "227",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/227?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "982",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/982?format=json"
+          }
+        ]
+      },
+      "_url": "https://api.congress.gov/v3/committee-meeting/116/senate/326682"
+    }
+  },
+  {
+    "expected_event_id": "326123",
+    "review_reason": "Both records list only the business consideration of S.886 and S.2071 on July17. The source says No Webcast; that label concerns recording availability and does not invalidate the event association.",
+    "page_url": "https://www.indian.senate.gov/hearings/business-meeting-consider-s-886-s-2071-no-webcast/",
+    "page": {
+      "event": {
+        "title": "Business Meeting to consider S. 886 & S. 2071 (No Webcast)",
+        "date": "2019-07-17",
+        "date_text": "Date: July 17, 2019",
+        "type": "Business Meeting",
+        "url": "https://www.indian.senate.gov/hearings/business-meeting-consider-s-886-s-2071-no-webcast/"
+      },
+      "documents": [],
+      "witnesses": [],
+      "events": []
+    },
+    "native": {
+      "eventId": "326123",
+      "congress": 116,
+      "chamber": "Senate",
+      "date": "2019-07-17T18:30:00Z",
+      "title": "Business meeting to consider S.886, to amend the Omnibus Public Land Management Act of 2009 to make the Reclamation Water Settlements Fund permanent, and S.2071, to repeal certain obsolete laws relating to Indians.",
+      "type": "Meeting",
+      "committees": [
+        {
+          "name": "Senate Indian Affairs",
+          "systemCode": "slia00",
+          "url": "https://api.congress.gov/v3/committee/senate/slia00?format=json"
+        }
+      ],
+      "relatedItems": {
+        "bills": [
+          {
+            "congress": 116,
+            "number": "2071",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/2071?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "886",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/886?format=json"
+          }
+        ]
+      },
+      "_url": "https://api.congress.gov/v3/committee-meeting/116/senate/326123"
+    }
+  },
+  {
+    "expected_event_id": "330264",
+    "review_reason": "Both records describe the August4 business meeting on S.989 and S.1402. Congress expands the language-program bill descriptions, but the exact two identifiers agree.",
+    "page_url": "https://www.indian.senate.gov/hearings/business-meeting-consider-s989-s1402/",
+    "page": {
+      "event": {
+        "title": "Business Meeting to consider S.989 & S.1402",
+        "date": "2021-08-04",
+        "date_text": "Date: August 4, 2021",
+        "type": "Business Meeting",
+        "url": "https://www.indian.senate.gov/hearings/business-meeting-consider-s989-s1402/"
+      },
+      "documents": [],
+      "witnesses": [],
+      "events": []
+    },
+    "native": {
+      "eventId": "330264",
+      "congress": 117,
+      "chamber": "Senate",
+      "date": "2021-08-04T19:00:00Z",
+      "title": "Business meeting to consider S.989, to establish a Native American language resource center in furtherance of the policy set forth in the Native American Languages Act, and S.1402, to amend the Native American Languages Act to ensure the survival and continuing vitality of Native American languages.",
+      "type": "Meeting",
+      "committees": [
+        {
+          "name": "Senate Indian Affairs",
+          "systemCode": "slia00",
+          "url": "https://api.congress.gov/v3/committee/senate/slia00?format=json"
+        }
+      ],
+      "relatedItems": {
+        "bills": [
+          {
+            "congress": 117,
+            "number": "1402",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/117/s/1402?format=json"
+          },
+          {
+            "congress": 117,
+            "number": "989",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/117/s/989?format=json"
+          }
+        ]
+      },
+      "_url": "https://api.congress.gov/v3/committee-meeting/117/senate/330264"
+    }
+  },
+  {
+    "expected_event_id": "335124",
+    "review_reason": "Both records describe the November15 business meeting on S.1898 and S.2088. The source abbreviated bill list and native expanded descriptions cover the same two bills.",
+    "page_url": "https://www.indian.senate.gov/hearings/business-meeting-to-consider-s-1898-s-2088/",
+    "page": {
+      "event": {
+        "title": "Business Meeting to consider S. 1898 & S. 2088",
+        "date": "2023-11-15",
+        "date_text": "Date: November 15, 2023",
+        "type": "Business Meeting",
+        "url": "https://www.indian.senate.gov/hearings/business-meeting-to-consider-s-1898-s-2088/"
+      },
+      "documents": [],
+      "witnesses": [],
+      "events": []
+    },
+    "native": {
+      "eventId": "335124",
+      "congress": 118,
+      "chamber": "Senate",
+      "date": "2023-11-15T19:30:00Z",
+      "title": "Business meeting to consider S.1898, to amend the Northwestern New Mexico Rural Water Projects Act to make improvements to that Act, and S.2088, to direct the Secretary of the Interior to complete all actions necessary for certain land to be held in restricted fee status by the Oglala Sioux Tribe and Cheyenne River Sioux Tribe.",
+      "type": "Meeting",
+      "committees": [
+        {
+          "name": "Senate Indian Affairs",
+          "systemCode": "slia00",
+          "url": "https://api.congress.gov/v3/committee/senate/slia00?format=json"
+        }
+      ],
+      "relatedItems": {
+        "bills": [
+          {
+            "congress": 118,
+            "number": "1898",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/118/s/1898?format=json"
+          },
+          {
+            "congress": 118,
+            "number": "2088",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/118/s/2088?format=json"
+          }
+        ]
+      },
+      "_url": "https://api.congress.gov/v3/committee-meeting/118/senate/335124"
+    }
+  },
+  {
+    "expected_event_id": "338720",
+    "review_reason": "All five identifiers agree: S.239, S.1055, S.1514, S.3219 and H.R.2400. The native source additionally reports Open Business Meeting; preserve that access assertion while attaching the official business page.",
+    "page_url": "https://www.indian.senate.gov/hearings/business-meeting-to-consider-s-239-s-1055-s-1514-s-3219-h-r-2400/",
+    "page": {
+      "event": {
+        "title": "Business Meeting to consider S. 239, S. 1055, S. 1514, S. 3219 & H.R. 2400",
+        "date": "2026-08-05",
+        "date_text": "Date: August 5, 2026",
+        "type": "Business Meeting",
+        "url": "https://www.indian.senate.gov/hearings/business-meeting-to-consider-s-239-s-1055-s-1514-s-3219-h-r-2400/"
+      },
+      "documents": [],
+      "witnesses": [],
+      "events": []
+    },
+    "native": {
+      "eventId": "338720",
+      "congress": 119,
+      "chamber": "Senate",
+      "date": "2026-08-05T18:00:00Z",
+      "title": "Business meeting to consider S.239, to take certain mineral interests into trust for the benefit of the Crow Tribe of Montana, S.1055, to amend the Indian Health Care Improvement Act to modify the notification requirement for emergency contract health services for certain beneficiaries, S.1514, to take certain land in the State of Washington into trust for the benefit of the Quinault Indian Nation, S.3219, to transfer certain Federal land into trust for certain Indian Pueblos in the State of New Mexico, and H.R.2400, to take certain Federal land in the State of California into trust for the benefit of the Pit River Tribe.",
+      "type": "Open Business Meeting",
+      "committees": [
+        {
+          "name": "Senate Indian Affairs",
+          "systemCode": "slia00",
+          "url": "https://api.congress.gov/v3/committee/senate/slia00?format=json"
+        }
+      ],
+      "relatedItems": {
+        "bills": [
+          {
+            "congress": 119,
+            "number": "2400",
+            "type": "HR",
+            "url": "https://api.congress.gov/v3/bill/119/hr/2400?format=json"
+          },
+          {
+            "congress": 119,
+            "number": "1055",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/119/s/1055?format=json"
+          },
+          {
+            "congress": 119,
+            "number": "1514",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/119/s/1514?format=json"
+          },
+          {
+            "congress": 119,
+            "number": "239",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/119/s/239?format=json"
+          },
+          {
+            "congress": 119,
+            "number": "3219",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/119/s/3219?format=json"
+          }
+        ]
+      },
+      "_url": "https://api.congress.gov/v3/committee-meeting/119/senate/338720"
+    }
+  },
+  {
+    "expected_event_id": "327579",
+    "review_reason": "The same seven bills appear in both records: S.2165, S.2716, S.2912, S.3019, S.3044, S.3099 and S.3100. The page links CHRG-116shrg42357, identical to the native transcript reference.",
+    "page_url": "https://www.indian.senate.gov/hearings/legislative-hearing-receive-testimony-s-2165-s-2716-s-2912-s-3019-s-3044-s-3099-s-3100/",
+    "page": {
+      "event": {
+        "title": "Legislative Hearing to receive testimony on S. 2165, S. 2716, S. 2912, S. 3019, S. 3044, S. 3099 & S. 3100",
+        "date": "2020-06-24",
+        "date_text": "Date: June 24, 2020",
+        "type": "Hearing",
+        "url": "https://www.indian.senate.gov/hearings/legislative-hearing-receive-testimony-s-2165-s-2716-s-2912-s-3019-s-3044-s-3099-s-3100/"
+      },
+      "documents": [
+        [
+          "transcript",
+          "Download Transcript",
+          "https://www.indian.senate.gov/wp-content/uploads/documents/CHRG-116shrg42357.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/6.24.20_ASPetty_Testimony_on_S_3019.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/LaCounte%20Statement%20for%206.24.20%20SCIA%20Leg.%20Hearing%20%28Cleared%29.pdf"
+        ]
+      ],
+      "witnesses": [
+        {
+          "name": "Timothy R. Petty",
+          "position": "Assistant Secretary, Water and Science",
+          "organization": "U.S. Department of the Interior, Washington, DC",
+          "page": "https://www.indian.senate.gov/hearings/legislative-hearing-receive-testimony-s-2165-s-2716-s-2912-s-3019-s-3044-s-3099-s-3100/"
+        },
+        {
+          "name": "Darryl LaCounte",
+          "position": "Director, Bureau of Indian Affairs",
+          "organization": "U.S. Department of the Interior, Washington, DC",
+          "page": "https://www.indian.senate.gov/hearings/legislative-hearing-receive-testimony-s-2165-s-2716-s-2912-s-3019-s-3044-s-3099-s-3100/"
+        }
+      ],
+      "events": []
+    },
+    "native": {
+      "eventId": "327579",
+      "congress": 116,
+      "chamber": "Senate",
+      "date": "2020-06-24T18:30:00Z",
+      "title": "Hearings to examine S.2165, to enhance protections of Native American tangible cultural heritage, S.2716, to amend the Grand Ronde Reservation Act, S.2912, to direct the Secretary of the Interior to take certain land located in Pinal County, Arizona, into trust for the benefit of the Gila River Indian Community, S.3019, to protect access to water for all Montanans, S.3044, to amend the American's Water Infrastructure Act of 2018 to expand the Indian reservation drinking water program, S.3099, to provide for the conveyance of certain property to the Southeast Alaska Regional Health Consortium located in Sitka, Alaska, and S.3100, to convey land in Anchorage, Alaska, to the Alaska Native Tribal Health Consortium.",
+      "type": "Meeting",
+      "committees": [
+        {
+          "name": "Senate Indian Affairs",
+          "systemCode": "slia00",
+          "url": "https://api.congress.gov/v3/committee/senate/slia00?format=json"
+        }
+      ],
+      "hearingTranscript": [
+        {
+          "jacketNumber": 42357,
+          "url": "https://api.congress.gov/v3/hearing/116/senate/42357?format=json"
+        }
+      ],
+      "relatedItems": {
+        "bills": [
+          {
+            "congress": 116,
+            "number": "2165",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/2165?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "2716",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/2716?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "2912",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/2912?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "3019",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/3019?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "3044",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/3044?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "3099",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/3099?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "3100",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/3100?format=json"
+          }
+        ]
+      },
+      "_url": "https://api.congress.gov/v3/committee-meeting/116/senate/327579"
+    }
+  },
+  {
+    "expected_event_id": "326015",
+    "review_reason": "S.227, S.288, S.290, S.982 and S.1853 identify the hearing portion of the combined business/hearing native record. CHRG-116shrg37844 confirms the transcript identity. Pair2 describes its preceding business portion.",
+    "page_url": "https://www.indian.senate.gov/hearings/legislative-hearing-receive-testimony-s-227-s-288-s-290-s-982-s-1853/",
+    "page": {
+      "event": {
+        "title": "Legislative Hearing to receive testimony on S. 227, S. 288, S. 290, S. 982 & S. 1853",
+        "date": "2019-06-19",
+        "date_text": "Date: June 19, 2019",
+        "type": "Hearing",
+        "url": "https://www.indian.senate.gov/hearings/legislative-hearing-receive-testimony-s-227-s-288-s-290-s-982-s-1853/"
+      },
+      "documents": [
+        [
+          "transcript",
+          "Download Transcript",
+          "https://www.indian.senate.gov/wp-content/uploads/documents/CHRG-116shrg37844.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/Toulou%20Statement.SCIA%205%20Bills%20Hearing%2006-19-2019.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/6.19.19%20Addington%20Statement%20for%20Legislative%20Hearing%20%28FINAL%29.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/Final%20SCIA%20Testimony%20MDemmert%20CJ.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/USET%20SPF%20Written%20Testimony%20SCIA%20Hearing%20Public%20Safety%20Bills%206_17_19%20FINAL.pdf"
+        ]
+      ],
+      "witnesses": [
+        {
+          "name": "Tracy Toulou",
+          "position": "Director, Office of Tribal Justice",
+          "organization": "U.S. Department of Justice, Washington, D.C.",
+          "page": "https://www.indian.senate.gov/hearings/legislative-hearing-receive-testimony-s-227-s-288-s-290-s-982-s-1853/"
+        },
+        {
+          "name": "Charles Addington",
+          "position": "Deputy Bureau Director, Office of Justice Services",
+          "organization": "Bureau of Indian Affairs, U.S. Department of the Interior, Washington, D.C.",
+          "page": "https://www.indian.senate.gov/hearings/legislative-hearing-receive-testimony-s-227-s-288-s-290-s-982-s-1853/"
+        },
+        {
+          "name": "Michelle Demmert",
+          "position": "Chief Justice",
+          "organization": "Central Council Tlingit and Haida Indian Tribes of Alaska, Juneau, AK",
+          "page": "https://www.indian.senate.gov/hearings/legislative-hearing-receive-testimony-s-227-s-288-s-290-s-982-s-1853/"
+        },
+        {
+          "name": "Lynn Malerba",
+          "position": "Secretary",
+          "organization": "United South & Eastern Tribes Protection, Washington, D.C.",
+          "page": "https://www.indian.senate.gov/hearings/legislative-hearing-receive-testimony-s-227-s-288-s-290-s-982-s-1853/"
+        }
+      ],
+      "events": []
+    },
+    "native": {
+      "eventId": "326015",
+      "congress": 116,
+      "chamber": "Senate",
+      "date": "2019-06-19T18:30:00Z",
+      "title": "Business meeting to consider S.1211, to provide for improvements to Tribal transportation facilities and Tribal transportation safety, and H.R.1388, to take lands in Sonoma County, California, into trust as part of the reservation of the Lytton Rancheria of California; to be immediately followed by a hearing to examine S.227, to direct the Attorney General to review, revise, and develop law enforcement and justice protocols appropriate to address missing and murdered Indians, S.288, to amend the Indian Civil Rights Act of 1968 to extend the jurisdiction of tribal courts to cover crimes involving sexual violence, S.290, to protect Native children and promote public safety in Indian country, S.982, to increase intergovernmental coordination to identify and combat violent crime within Indian lands and of Indians, and S.1853, to require Federal law enforcement agencies to report on cases of missing or murdered Indians.",
+      "type": "Meeting",
+      "committees": [
+        {
+          "name": "Senate Indian Affairs",
+          "systemCode": "slia00",
+          "url": "https://api.congress.gov/v3/committee/senate/slia00?format=json"
+        }
+      ],
+      "hearingTranscript": [
+        {
+          "jacketNumber": 37844,
+          "url": "https://api.congress.gov/v3/hearing/116/senate/37844?format=json"
+        }
+      ],
+      "relatedItems": {
+        "bills": [
+          {
+            "congress": 116,
+            "number": "227",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/227?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "288",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/288?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "290",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/290?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "982",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/982?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "1388",
+            "type": "HR",
+            "url": "https://api.congress.gov/v3/bill/116/hr/1388?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "317",
+            "type": "HR",
+            "url": "https://api.congress.gov/v3/bill/116/hr/317?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "1211",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/1211?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "886",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/886?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "1853",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/1853?format=json"
+          }
+        ]
+      },
+      "_url": "https://api.congress.gov/v3/committee-meeting/116/senate/326015"
+    }
+  },
+  {
+    "expected_event_id": "332870",
+    "review_reason": "S.4104, S.4439 and H.R.5221 agree. The page links CHRG-117shrg50110, matching the native hearing transcript. Both are the July20 legislative hearing.",
+    "page_url": "https://www.indian.senate.gov/hearings/legislative-hearing-receive-testimony-s-4104-s-4439-hr-5221/",
+    "page": {
+      "event": {
+        "title": "Legislative Hearing to receive testimony on S. 4104, S. 4439 & H.R. 5221",
+        "date": "2022-07-20",
+        "date_text": "Date: July 20, 2022",
+        "type": "Hearing",
+        "url": "https://www.indian.senate.gov/hearings/legislative-hearing-receive-testimony-s-4104-s-4439-hr-5221/"
+      },
+      "documents": [
+        [
+          "transcript",
+          "Download Transcript",
+          "https://www.indian.senate.gov/wp-content/uploads/documents/CHRG-117shrg50110.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/DOI%20Draft%20Tribal%20Water%20Rights%20and%20Sacred%20Lands%20Testimony%20%28CLEARED%29v2.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/IHS%20testimony%20HR%205221%20%28SCIA-July20-LegHrg%29%207-13-22.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/Testimony%20of%20Dr.%20Damon%20Clarke%2C%20Chairman%2C%20Hualapai%20Tribe%20to%20Senate%20Committee%20on%20Indian%20Affairs%20re%20S.%204104%20%28July%2020%2C%202022%29.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/S%204439%20Written%20Testimony_%20Karuk%20Tribe%20.docx.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/2022.07.20%20Dr.%20Patrick%20Rock%20Written%20Testimony_SCIA%20Hearing%20on%20Urban%20Confer%20bill.pdf"
+        ]
+      ],
+      "witnesses": [
+        {
+          "name": "Jason Freihage",
+          "position": "Deputy Assistant Secretary of Management",
+          "organization": "U.S. Department of Interior, Washington, DC",
+          "page": "https://www.indian.senate.gov/hearings/legislative-hearing-receive-testimony-s-4104-s-4439-hr-5221/"
+        },
+        {
+          "name": "Benjamin Smith",
+          "position": "Deputy Director, Indian Health Service",
+          "organization": "U.S. Department of Health and Human Services, Washington, DC",
+          "page": "https://www.indian.senate.gov/hearings/legislative-hearing-receive-testimony-s-4104-s-4439-hr-5221/"
+        },
+        {
+          "name": "Damon Clarke",
+          "position": "Chairman",
+          "organization": "Hualapai Tribe, Peach Springs, AZ",
+          "page": "https://www.indian.senate.gov/hearings/legislative-hearing-receive-testimony-s-4104-s-4439-hr-5221/"
+        },
+        {
+          "name": "Russell Attebery",
+          "position": "Chairman",
+          "organization": "Karuk Tribe, Happy Camp, CA",
+          "page": "https://www.indian.senate.gov/hearings/legislative-hearing-receive-testimony-s-4104-s-4439-hr-5221/"
+        },
+        {
+          "name": "Patrick Rock",
+          "position": "Chief Executive Officer",
+          "organization": "Indian Health Board of Minneapolis, Minneapolis, MN",
+          "page": "https://www.indian.senate.gov/hearings/legislative-hearing-receive-testimony-s-4104-s-4439-hr-5221/"
+        }
+      ],
+      "events": []
+    },
+    "native": {
+      "eventId": "332870",
+      "congress": 117,
+      "chamber": "Senate",
+      "date": "2022-07-20T18:30:00Z",
+      "title": "Hearings to examine S.4104, to approve the settlement of water rights claims of the Hualapai Tribe and certain allottees in the State of Arizona, to authorize construction of a water project relating to those water rights claims, S.4439, to take certain Federal land located in Siskiyou County, California, and Humboldt County, California, into trust for the benefit of the Karuk Tribe, and H.R.5221, to amend the Indian Health Care Improvement Act to establish an urban Indian organization confer policy for the Department of Health and Human Services.",
+      "type": "Meeting",
+      "committees": [
+        {
+          "name": "Senate Indian Affairs",
+          "systemCode": "slia00",
+          "url": "https://api.congress.gov/v3/committee/senate/slia00?format=json"
+        }
+      ],
+      "hearingTranscript": [
+        {
+          "jacketNumber": 50110,
+          "url": "https://api.congress.gov/v3/hearing/117/senate/50110?format=json"
+        }
+      ],
+      "relatedItems": {
+        "bills": [
+          {
+            "congress": 117,
+            "number": "5221",
+            "type": "HR",
+            "url": "https://api.congress.gov/v3/bill/117/hr/5221?format=json"
+          },
+          {
+            "congress": 117,
+            "number": "4104",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/117/s/4104?format=json"
+          },
+          {
+            "congress": 117,
+            "number": "4439",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/117/s/4439?format=json"
+          }
+        ]
+      },
+      "_url": "https://api.congress.gov/v3/committee-meeting/117/senate/332870"
+    }
+  },
+  {
+    "expected_event_id": "337951",
+    "review_reason": "The three exact identifiers agree: S.2098, S.1055 and S.699. The native title expands the conveyance and Indian Health Care Improvement Act descriptions; the committee lists the same three bills on the same date.",
+    "page_url": "https://www.indian.senate.gov/hearings/legislative-hearing-to-receive-testimony-on-s-2098-s-1055-s-699/",
+    "page": {
+      "event": {
+        "title": "Legislative Hearing to receive testimony on S. 2098, S.1055 & S. 699",
+        "date": "2026-02-04",
+        "date_text": "Date: February 4, 2026",
+        "type": "Hearing",
+        "url": "https://www.indian.senate.gov/hearings/legislative-hearing-to-receive-testimony-on-s-2098-s-1055-s-699/"
+      },
+      "documents": [],
+      "witnesses": [
+        {
+          "name": "Darrell LaRoche",
+          "position": "Deputy Director for Management Operations, Indian Health Service",
+          "organization": "U.S. Department of Health and Human Services, Washington, D.C.",
+          "page": "https://www.indian.senate.gov/hearings/legislative-hearing-to-receive-testimony-on-s-2098-s-1055-s-699/"
+        },
+        {
+          "name": "Dayna Seymour",
+          "position": "Health & Human Services Chair, Colville Business Council",
+          "organization": "Confederate Tribes of the Colville Reservation, Nespelem, WA",
+          "page": "https://www.indian.senate.gov/hearings/legislative-hearing-to-receive-testimony-on-s-2098-s-1055-s-699/"
+        },
+        {
+          "name": "Leanndra Ross",
+          "position": "Vice President of Executive and Tribal Services",
+          "organization": "Southcentral Foundation, Anchorage, AK",
+          "page": "https://www.indian.senate.gov/hearings/legislative-hearing-to-receive-testimony-on-s-2098-s-1055-s-699/"
+        }
+      ],
+      "events": []
+    },
+    "native": {
+      "eventId": "337951",
+      "congress": 119,
+      "chamber": "Senate",
+      "date": "2026-02-04T19:15:00Z",
+      "title": "Hearings to examine S.2098, to provide for the conveyance of certain property to the Southcentral Foundation located in Anchorage, Alaska, S.1055, to amend the Indian Health Care Improvement Act to modify the notification requirement for emergency contract health services for certain beneficiaries, and S.699, to amend the Indian Health Care Improvement Act to address liability for payment of charges or costs associated with the provision of purchased/referred care services.",
+      "type": "Meeting",
+      "committees": [
+        {
+          "name": "Senate Indian Affairs",
+          "systemCode": "slia00",
+          "url": "https://api.congress.gov/v3/committee/senate/slia00?format=json"
+        }
+      ],
+      "relatedItems": {
+        "bills": [
+          {
+            "congress": 119,
+            "number": "1055",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/119/s/1055?format=json"
+          },
+          {
+            "congress": 119,
+            "number": "2098",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/119/s/2098?format=json"
+          },
+          {
+            "congress": 119,
+            "number": "699",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/119/s/699?format=json"
+          }
+        ]
+      },
+      "_url": "https://api.congress.gov/v3/committee-meeting/119/senate/337951"
+    }
+  },
+  {
+    "expected_event_id": "336000",
+    "review_reason": "All four bills agree: S.2783, S.3406, S.3857 and S.4365. CHRG-118shrg57859 is also shared. This is the full July10 hearing.",
+    "page_url": "https://www.indian.senate.gov/hearings/legislative-hearing-to-receive-testimony-on-s-2783-s-3406-s-3857-s-4365/",
+    "page": {
+      "event": {
+        "title": "Legislative Hearing to receive testimony on S. 2783, S. 3406, S. 3857 & S. 4365",
+        "date": "2024-07-10",
+        "date_text": "Date: July 10, 2024",
+        "type": "Hearing",
+        "url": "https://www.indian.senate.gov/hearings/legislative-hearing-to-receive-testimony-on-s-2783-s-3406-s-3857-s-4365/"
+      },
+      "documents": [
+        [
+          "transcript",
+          "Download Transcript",
+          "https://www.indian.senate.gov/wp-content/uploads/CHRG-118shrg57859.pdf"
+        ]
+      ],
+      "witnesses": [
+        {
+          "name": "Melanie Egorin",
+          "position": "Assistant Secretary for Legislation",
+          "organization": "Department of Health and Human Services, Washington, D.C.",
+          "page": "https://www.indian.senate.gov/hearings/legislative-hearing-to-receive-testimony-on-s-2783-s-3406-s-3857-s-4365/"
+        },
+        {
+          "name": "Jason Freihage",
+          "position": "Deputy Assistant Secretary for Management, Office of the Assistant Secretary Indian Affairs",
+          "organization": "Department of the Interior, Washington, D.C.",
+          "page": "https://www.indian.senate.gov/hearings/legislative-hearing-to-receive-testimony-on-s-2783-s-3406-s-3857-s-4365/"
+        },
+        {
+          "name": "Talbert Cypress",
+          "position": "Chairman",
+          "organization": "Miccosukee Tribe of Indians, Miami, FL",
+          "page": "https://www.indian.senate.gov/hearings/legislative-hearing-to-receive-testimony-on-s-2783-s-3406-s-3857-s-4365/"
+        },
+        {
+          "name": "Erica Pinto",
+          "position": "Chairwoman",
+          "organization": "Jamul Indian Village of California, Jamul, CA",
+          "page": "https://www.indian.senate.gov/hearings/legislative-hearing-to-receive-testimony-on-s-2783-s-3406-s-3857-s-4365/"
+        },
+        {
+          "name": "Brian Lefferts",
+          "position": "Director of Public Health",
+          "organization": "Yukon Kuskokwim Health Corporation, Bethel, AK",
+          "page": "https://www.indian.senate.gov/hearings/legislative-hearing-to-receive-testimony-on-s-2783-s-3406-s-3857-s-4365/"
+        }
+      ],
+      "events": []
+    },
+    "native": {
+      "eventId": "336000",
+      "congress": 118,
+      "chamber": "Senate",
+      "date": "2024-07-10T18:30:00Z",
+      "title": "Hearings to examine S.2783, to amend the Miccosukee Reserved Area Act to authorize the expansion of the Miccosukee Reserved Area and to carry out activities to protect structures within the Osceola Camp from flooding, S.3406, to amend the Omnibus Public Land Management Act of 2009 to make a technical correction to the Navajo Nation Water Resources Development Trust Fund, to amend the Claims Resolution Act of 2010 to make technical corrections to the Taos Pueblo Water Development Fund and Aamodt Settlement Pueblos' Fund, S.3857, to take certain land in the State of California into trust for the benefit of the Jamul Indian Village of California, and S.4365, to provide public health veterinary services to Indian Tribes and Tribal organizations for rabies prevention.",
+      "type": "Meeting",
+      "committees": [
+        {
+          "name": "Senate Indian Affairs",
+          "systemCode": "slia00",
+          "url": "https://api.congress.gov/v3/committee/senate/slia00?format=json"
+        }
+      ],
+      "hearingTranscript": [
+        {
+          "jacketNumber": 57859,
+          "url": "https://api.congress.gov/v3/hearing/118/senate/57859?format=json"
+        }
+      ],
+      "relatedItems": {
+        "bills": [
+          {
+            "congress": 118,
+            "number": "2783",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/118/s/2783?format=json"
+          },
+          {
+            "congress": 118,
+            "number": "3406",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/118/s/3406?format=json"
+          },
+          {
+            "congress": 118,
+            "number": "3857",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/118/s/3857?format=json"
+          },
+          {
+            "congress": 118,
+            "number": "4365",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/118/s/4365?format=json"
+          }
+        ]
+      },
+      "_url": "https://api.congress.gov/v3/committee-meeting/118/senate/336000"
+    }
+  },
+  {
+    "expected_event_id": "336230",
+    "review_reason": "Both records contain the same eight bills. The committee heading lists the five hearing bills before the three business bills; Congress lists the business portion first. Order alone does not create another event; retain both source descriptions of the combined September25 proceeding.",
+    "page_url": "https://www.indian.senate.gov/hearings/legislative-hearing-to-receive-testimony-on-s-4444-s-4633-s-4643-s-4705-s-4998/",
+    "page": {
+      "event": {
+        "title": "Legislative Hearing to receive testimony on S. 4444, S. 4633, S. 4643, S. 4705, S. 4998 and Business Meeting to consider S. 465, S. 2908, S. 4370",
+        "date": "2024-09-25",
+        "date_text": "Date: September 25, 2024",
+        "type": "Hearing",
+        "url": "https://www.indian.senate.gov/hearings/legislative-hearing-to-receive-testimony-on-s-4444-s-4633-s-4643-s-4705-s-4998/"
+      },
+      "documents": [],
+      "witnesses": [
+        {
+          "name": "Bryan Newland",
+          "position": "Assistant Secretary-Indian Affairs",
+          "organization": "Department of the Interior, Washington, D.C.",
+          "page": "https://www.indian.senate.gov/hearings/legislative-hearing-to-receive-testimony-on-s-4444-s-4633-s-4643-s-4705-s-4998/"
+        },
+        {
+          "name": "Frank White Clay",
+          "position": "Chairman",
+          "organization": "Crow Tribe, Crow Agency, MT",
+          "page": "https://www.indian.senate.gov/hearings/legislative-hearing-to-receive-testimony-on-s-4444-s-4633-s-4643-s-4705-s-4998/"
+        },
+        {
+          "name": "Buu Nygren",
+          "position": "President",
+          "organization": "Navajo Nation, Window Rock, AZ",
+          "page": "https://www.indian.senate.gov/hearings/legislative-hearing-to-receive-testimony-on-s-4444-s-4633-s-4643-s-4705-s-4998/"
+        },
+        {
+          "name": "Timothy L. Nuvangyaoma",
+          "position": "Chairman",
+          "organization": "Hopi Tribe, Kykotsmovi, AZ",
+          "page": "https://www.indian.senate.gov/hearings/legislative-hearing-to-receive-testimony-on-s-4444-s-4633-s-4643-s-4705-s-4998/"
+        },
+        {
+          "name": "Johnny Lehi Jr.",
+          "position": "Vice President",
+          "organization": "San Juan Southern Paiute Tribe, Tuba City, AZ",
+          "page": "https://www.indian.senate.gov/hearings/legislative-hearing-to-receive-testimony-on-s-4444-s-4633-s-4643-s-4705-s-4998/"
+        },
+        {
+          "name": "Arden Kucate",
+          "position": "Governor",
+          "organization": "Zuni Tribe, Zuni, NM",
+          "page": "https://www.indian.senate.gov/hearings/legislative-hearing-to-receive-testimony-on-s-4444-s-4633-s-4643-s-4705-s-4998/"
+        },
+        {
+          "name": "Tanya Lewis",
+          "position": "Chairwoman",
+          "organization": "Yavapai-Apache Nation, Camp Verde, AZ",
+          "page": "https://www.indian.senate.gov/hearings/legislative-hearing-to-receive-testimony-on-s-4444-s-4633-s-4643-s-4705-s-4998/"
+        }
+      ],
+      "events": []
+    },
+    "native": {
+      "eventId": "336230",
+      "congress": 118,
+      "chamber": "Senate",
+      "date": "2024-09-25T18:30:00Z",
+      "title": "Business meeting to consider S.465, to require Federal law enforcement agencies to report on cases of missing or murdered Indians, S.2908, to assist Tribal governments in the management of buffalo and buffalo habitat and the reestablishment of buffalo on Indian land, and S.4370, to amend the Tribal Forest Protection Act of 2004 to improve that Act; to be immediately followed by a hearing to examine S.4444, to take certain mineral interests into trust for the benefit of the Crow Tribe of Montana, S.4633, to provide for the settlement of the water rights claims of the Navajo Nation, the Hopi Tribe, and the San Juan Southern Paiute Tribe, S.4643, to approve the settlement of water rights claims of the Zuni Indian Tribe in the Zuni River Stream System in the State of New Mexico, to protect the Zuni Salt Lake, S.4705, to approve the settlement of water rights claims of the Yavapai-Apache Nation in the State of Arizona, to authorize construction of a water project relating to those water rights claims, and S.4998, to approve the settlement of water rights claims of the Navajo Nation in the Rio San Jose Stream System in the State of New Mexico.",
+      "type": "Meeting",
+      "committees": [
+        {
+          "name": "Senate Indian Affairs",
+          "systemCode": "slia00",
+          "url": "https://api.congress.gov/v3/committee/senate/slia00?format=json"
+        }
+      ],
+      "hearingTranscript": [
+        {
+          "jacketNumber": 58426,
+          "url": "https://api.congress.gov/v3/hearing/118/senate/58426?format=json"
+        }
+      ],
+      "relatedItems": {
+        "bills": [
+          {
+            "congress": 118,
+            "number": "2908",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/118/s/2908?format=json"
+          },
+          {
+            "congress": 118,
+            "number": "4370",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/118/s/4370?format=json"
+          },
+          {
+            "congress": 118,
+            "number": "465",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/118/s/465?format=json"
+          },
+          {
+            "congress": 118,
+            "number": "4444",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/118/s/4444?format=json"
+          },
+          {
+            "congress": 118,
+            "number": "4633",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/118/s/4633?format=json"
+          },
+          {
+            "congress": 118,
+            "number": "4643",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/118/s/4643?format=json"
+          },
+          {
+            "congress": 118,
+            "number": "4705",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/118/s/4705?format=json"
+          },
+          {
+            "congress": 118,
+            "number": "4998",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/118/s/4998?format=json"
+          }
+        ]
+      },
+      "_url": "https://api.congress.gov/v3/committee-meeting/118/senate/336230"
+    }
+  },
+  {
+    "expected_event_id": "335678",
+    "review_reason": "The current source explicitly dates the rescheduled event May1, matching the native date. All seven bill identifiers agree, and CHRG-118shrg56749 matches. The Rescheduled title label does not justify a second sitting or a different date.",
+    "page_url": "https://www.indian.senate.gov/hearings/legislative-hearing-to-receive-testimony-on-s-465-s-2695/",
+    "page": {
+      "event": {
+        "title": "(Rescheduled) Business Meeting to consider S. 616, S. 2868, S. 3022, H.R. 1240, S. 2796 and Legislative Hearing to receive testimony on S. 465 & S. 2695",
+        "date": "2024-05-01",
+        "date_text": "Date: May 1, 2024",
+        "type": "Hearing",
+        "url": "https://www.indian.senate.gov/hearings/legislative-hearing-to-receive-testimony-on-s-465-s-2695/"
+      },
+      "documents": [
+        [
+          "transcript",
+          "Download Transcript",
+          "https://www.indian.senate.gov/wp-content/uploads/CHRG-118shrg56749.pdf"
+        ]
+      ],
+      "witnesses": [
+        {
+          "name": "Mark Macarro",
+          "position": "President",
+          "organization": "National Congress of American Indians, Washington, DC",
+          "page": "https://www.indian.senate.gov/hearings/legislative-hearing-to-receive-testimony-on-s-465-s-2695/"
+        },
+        {
+          "name": "Bryan Newland",
+          "position": "Assistant Secretary",
+          "organization": "Indian Affairs, Department of the Interior, Washington, DC",
+          "page": "https://www.indian.senate.gov/hearings/legislative-hearing-to-receive-testimony-on-s-465-s-2695/"
+        },
+        {
+          "name": "Chris Sutter",
+          "position": "Chief of Police",
+          "organization": "Tulalip Tribal Police Department, Tulalip, WA",
+          "page": "https://www.indian.senate.gov/hearings/legislative-hearing-to-receive-testimony-on-s-465-s-2695/"
+        }
+      ],
+      "events": []
+    },
+    "native": {
+      "eventId": "335678",
+      "congress": 118,
+      "chamber": "Senate",
+      "date": "2024-05-01T18:45:00Z",
+      "title": "Business meeting to consider S.616, to amend the Leech Lake Band of Ojibwe Reservation Restoration Act to provide for the transfer of additional Federal land to the Leech Lake Band of Ojibwe, S.2796, to provide for the equitable settlement of certain Indian land disputes regarding land in Illinois, S.2868, to accept the request to revoke the charter of incorporation of the Lower Sioux Indian Community in the State of Minnesota at the request of that Community, S.3022, to amend the Indian Health Care Improvement Act to allow Indian Health Service scholarship and loan recipients to fulfill service obligations through half-time clinical practice, and H.R.1240, to transfer administrative jurisdiction of certain Federal lands from the Army Corps of Engineers to the Bureau of Indian Affairs, to take such lands into trust for the Winnebago Tribe of Nebraska; to be immediately followed by a hearing to examine S.465, to require Federal law enforcement agencies to report on cases of missing or murdered Indians, and S.2695, to amend the Indian Law Enforcement Reform Act to provide for advancements in public safety services to Indian communities.",
+      "type": "Meeting",
+      "committees": [
+        {
+          "name": "Senate Indian Affairs",
+          "systemCode": "slia00",
+          "url": "https://api.congress.gov/v3/committee/senate/slia00?format=json"
+        }
+      ],
+      "hearingTranscript": [
+        {
+          "jacketNumber": 56749,
+          "url": "https://api.congress.gov/v3/hearing/118/senate/56749?format=json"
+        }
+      ],
+      "relatedItems": {
+        "bills": [
+          {
+            "congress": 118,
+            "number": "2695",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/118/s/2695?format=json"
+          },
+          {
+            "congress": 118,
+            "number": "465",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/118/s/465?format=json"
+          },
+          {
+            "congress": 118,
+            "number": "1240",
+            "type": "HR",
+            "url": "https://api.congress.gov/v3/bill/118/hr/1240?format=json"
+          },
+          {
+            "congress": 118,
+            "number": "2868",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/118/s/2868?format=json"
+          },
+          {
+            "congress": 118,
+            "number": "3022",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/118/s/3022?format=json"
+          },
+          {
+            "congress": 118,
+            "number": "616",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/118/s/616?format=json"
+          },
+          {
+            "congress": 118,
+            "number": "2796",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/118/s/2796?format=json"
+          }
+        ]
+      },
+      "_url": "https://api.congress.gov/v3/committee-meeting/118/senate/335678"
+    }
+  },
+  {
+    "expected_event_id": "326221",
+    "review_reason": "The page names E. Sequoyah Simermeyer, the National Indian Gaming Commission chair nominee named after the business portion in event326221. CHRG-116shrg37479 matches the native transcript. Pair6 covers the preceding S.2159 business.",
+    "page_url": "https://www.indian.senate.gov/hearings/nomination-hearing-consider-e-sequoyah-simermeyer-serve-chairman-national-indian-gaming/",
+    "page": {
+      "event": {
+        "title": "Nomination Hearing to consider E. Sequoyah Simermeyer to serve as Chairman of the National Indian Gaming Commission.",
+        "date": "2019-07-24",
+        "date_text": "Date: July 24, 2019",
+        "type": "Hearing",
+        "url": "https://www.indian.senate.gov/hearings/nomination-hearing-consider-e-sequoyah-simermeyer-serve-chairman-national-indian-gaming/"
+      },
+      "documents": [
+        [
+          "transcript",
+          "Download Transcript",
+          "https://www.indian.senate.gov/wp-content/uploads/documents/CHRG-116shrg37479.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/ESS%20SCIA%20Written%20Testimony%20%28Final%29.pdf"
+        ]
+      ],
+      "witnesses": [
+        {
+          "name": "E. Sequoyah Simermeyer",
+          "position": "Associate Commissioner, National Indian Gaming Commission",
+          "organization": "Department of the Interior, Washington, DC",
+          "page": "https://www.indian.senate.gov/hearings/nomination-hearing-consider-e-sequoyah-simermeyer-serve-chairman-national-indian-gaming/"
+        }
+      ],
+      "events": []
+    },
+    "native": {
+      "eventId": "326221",
+      "congress": 116,
+      "chamber": "Senate",
+      "date": "2019-07-24T18:30:00Z",
+      "title": "Business meeting to consider S.2159, to repeal the Act entitled \"An Act to confer jurisdiction on the State of North Dakota over offenses committed by or against Indians on the Devils Lake Indian Reservation\"; to be immediately followed by a hearing to examine the nomination of E. Sequoyah Simermeyer, of Maryland, to be Chairman of the National Indian Gaming Commission.",
+      "type": "Meeting",
+      "committees": [
+        {
+          "name": "Senate Indian Affairs",
+          "systemCode": "slia00",
+          "url": "https://api.congress.gov/v3/committee/senate/slia00?format=json"
+        }
+      ],
+      "hearingTranscript": [
+        {
+          "jacketNumber": 37479,
+          "url": "https://api.congress.gov/v3/hearing/116/senate/37479?format=json"
+        }
+      ],
+      "relatedItems": {
+        "bills": [
+          {
+            "congress": 116,
+            "number": "2159",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/2159?format=json"
+          }
+        ],
+        "nominations": [
+          {
+            "congress": 116,
+            "number": 901,
+            "part": "00",
+            "url": "https://api.congress.gov/v3/nomination/116/901?format=json"
+          }
+        ]
+      },
+      "_url": "https://api.congress.gov/v3/committee-meeting/116/senate/326221"
+    }
+  },
+  {
+    "expected_event_id": "326762",
+    "review_reason": "The page names Michael D. Weahkee as the Indian Health Service director nominee, matching the native hearing portion. CHRG-116shrg39563 also matches. Pair5 is the preceding business page.",
+    "page_url": "https://www.indian.senate.gov/hearings/nomination-hearing-consider-radm-michael-d-weahkee-new-mexico-be-director-indian-health/",
+    "page": {
+      "event": {
+        "title": "Nomination Hearing to consider RADM Michael D. Weahkee, of New Mexico, to be Director of the Indian Health Service, U.S. Department of Health and Human Services",
+        "date": "2019-12-11",
+        "date_text": "Date: December 11, 2019",
+        "type": "Hearing",
+        "url": "https://www.indian.senate.gov/hearings/nomination-hearing-consider-radm-michael-d-weahkee-new-mexico-be-director-indian-health/"
+      },
+      "documents": [
+        [
+          "transcript",
+          "Download Transcript",
+          "https://www.indian.senate.gov/wp-content/uploads/documents/CHRG-116shrg39563.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/12.11.19%20%20Opening%20Statement%20-%20RADM%20Michael%20Weahkee.pdf"
+        ]
+      ],
+      "witnesses": [
+        {
+          "name": "Michael D. Weahkee",
+          "position": "Principal Deputy Director, Indian Health Service",
+          "organization": "U.S. Department of Health and Human Services, Washington, D.C.",
+          "page": "https://www.indian.senate.gov/hearings/nomination-hearing-consider-radm-michael-d-weahkee-new-mexico-be-director-indian-health/"
+        }
+      ],
+      "events": []
+    },
+    "native": {
+      "eventId": "326762",
+      "congress": 116,
+      "chamber": "Senate",
+      "date": "2019-12-11T19:30:00Z",
+      "title": "Business meeting to consider S.1853, to require Federal law enforcement agencies to report on cases of missing or murdered Indians, and S.2365, to amend the Indian Health Care Improvement Act to authorize urban Indian organizations to enter into arrangements for the sharing of medical services and facilities; to be immediately followed by a hearing to examine the nomination of Michael D. Weahkee, of New   Mexico, to be Director of the Indian Health Service, Department of   Health and Human Services.",
+      "type": "Meeting",
+      "committees": [
+        {
+          "name": "Senate Indian Affairs",
+          "systemCode": "slia00",
+          "url": "https://api.congress.gov/v3/committee/senate/slia00?format=json"
+        }
+      ],
+      "hearingTranscript": [
+        {
+          "jacketNumber": 39563,
+          "url": "https://api.congress.gov/v3/hearing/116/senate/39563?format=json"
+        }
+      ],
+      "relatedItems": {
+        "bills": [
+          {
+            "congress": 116,
+            "number": "1853",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/1853?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "2365",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/2365?format=json"
+          }
+        ],
+        "nominations": [
+          {
+            "congress": 116,
+            "number": 1250,
+            "part": "00",
+            "url": "https://api.congress.gov/v3/nomination/116/1250?format=json"
+          }
+        ]
+      },
+      "_url": "https://api.congress.gov/v3/committee-meeting/116/senate/326762"
+    }
+  },
+  {
+    "expected_event_id": "326642",
+    "review_reason": "Both records name the 477 program and reducing red tape for Indian-country employment/training. The page links CHRG-116shrg39744, matching the native hearing transcript. Pair1 covers the H.R.317 business portion of the same native event.",
+    "page_url": "https://www.indian.senate.gov/hearings/oversight-hearing-examining-477-program-reducing-red-tape-while-promoting-employment-and/",
+    "page": {
+      "event": {
+        "title": "Oversight Hearing on “Examining the 477 Program: Reducing Red Tape While Promoting Employment and Training Opportunities in Indian Country.”",
+        "date": "2019-11-06",
+        "date_text": "Date: November 6, 2019",
+        "type": "Hearing",
+        "url": "https://www.indian.senate.gov/hearings/oversight-hearing-examining-477-program-reducing-red-tape-while-promoting-employment-and/"
+      },
+      "documents": [
+        [
+          "transcript",
+          "Download Transcript",
+          "https://www.indian.senate.gov/wp-content/uploads/documents/CHRG-116shrg39744.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/11.6.19%20-%20Bighorn%20Statement.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/10-31-2019%20-%20Hoskin%20Testimony-477Program.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/Ralph%20Andersen%20Testimony%20477%20oversight%2011-6-19%20%28002%29.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/CPN-MZientek-Written%20Testimony%20SCIA%2011.6.19_0.pdf"
+        ]
+      ],
+      "witnesses": [
+        {
+          "name": "Spike Bighorn",
+          "position": "Acting Deputy Bureau Director, Office of Indian Services, Bureau of Indian Affairs",
+          "organization": "U.S. Department of the Interior, Washington, DC",
+          "page": "https://www.indian.senate.gov/hearings/oversight-hearing-examining-477-program-reducing-red-tape-while-promoting-employment-and/"
+        },
+        {
+          "name": "Chuck Hoskin Jr.",
+          "position": "Principal Chief",
+          "organization": "Cherokee Nation, Tahlequah, OK",
+          "page": "https://www.indian.senate.gov/hearings/oversight-hearing-examining-477-program-reducing-red-tape-while-promoting-employment-and/"
+        },
+        {
+          "name": "Ralph Andersen",
+          "position": "President & CEO",
+          "organization": "Bristol Bay Native Association, Dillingham, AK",
+          "page": "https://www.indian.senate.gov/hearings/oversight-hearing-examining-477-program-reducing-red-tape-while-promoting-employment-and/"
+        },
+        {
+          "name": "Margaret Zientek",
+          "position": "Co-Chair",
+          "organization": "P.L. 102-477 Tribal Work Group, Shawnee, OK",
+          "page": "https://www.indian.senate.gov/hearings/oversight-hearing-examining-477-program-reducing-red-tape-while-promoting-employment-and/"
+        }
+      ],
+      "events": []
+    },
+    "native": {
+      "eventId": "326642",
+      "congress": 116,
+      "chamber": "Senate",
+      "date": "2019-11-06T19:30:00Z",
+      "title": "Business meeting to consider H.R.317, to reaffirm the action of the Secretary of the Interior to take land into trust for the benefit of the Santa Ynez Band of Chumash Mission Indians; to be immediately followed by an oversight hearing to examine the 477 program, focusing on   reducing red tape while promoting employment and training opportunities   in Indian country.",
+      "type": "Meeting",
+      "committees": [
+        {
+          "name": "Senate Indian Affairs",
+          "systemCode": "slia00",
+          "url": "https://api.congress.gov/v3/committee/senate/slia00?format=json"
+        }
+      ],
+      "hearingTranscript": [
+        {
+          "jacketNumber": 39744,
+          "url": "https://api.congress.gov/v3/hearing/116/senate/39744?format=json"
+        }
+      ],
+      "relatedItems": {
+        "bills": [
+          {
+            "congress": 116,
+            "number": "317",
+            "type": "HR",
+            "url": "https://api.congress.gov/v3/bill/116/hr/317?format=json"
+          }
+        ]
+      },
+      "_url": "https://api.congress.gov/v3/committee-meeting/116/senate/326642"
+    }
+  },
+  {
+    "expected_event_id": "327746",
+    "review_reason": "The committee page concerns safely reopening Bureau of Indian Education schools. That exact subject follows the long business agenda in the native record. CHRG-116shrg42457 independently confirms the hearing component.",
+    "page_url": "https://www.indian.senate.gov/hearings/oversight-hearing-preparing-head-back-class-addressing-how-safely-reopen-bureau-indian/",
+    "page": {
+      "event": {
+        "title": "Oversight Hearing on “Preparing to Head Back to Class: Addressing How to Safely Reopen Bureau of Indian Education Schools.”",
+        "date": "2020-07-29",
+        "date_text": "Date: July 29, 2020",
+        "type": "Hearing",
+        "url": "https://www.indian.senate.gov/hearings/oversight-hearing-preparing-head-back-class-addressing-how-safely-reopen-bureau-indian/"
+      },
+      "documents": [
+        [
+          "transcript",
+          "Download Transcript",
+          "https://www.indian.senate.gov/wp-content/uploads/documents/CHRG-116shrg42457.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/07.29.20%20-%20Tony%20Dearman%20BIE%20SCIA%20Testimony%20-%20Final_0.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/07.29.20%20NIEA%20Testimony%20%20BIE%20Schools%20Final_0.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/AIHEC_SCIA%20Hearing_July%2029%202020_with%20apendices_FINAL_0.pdf"
+        ]
+      ],
+      "witnesses": [
+        {
+          "name": "Tony Dearman",
+          "position": "Director, Bureau of Indian Education",
+          "organization": "U.S. Department of the Interior, Washington, DC",
+          "page": "https://www.indian.senate.gov/hearings/oversight-hearing-preparing-head-back-class-addressing-how-safely-reopen-bureau-indian/"
+        },
+        {
+          "name": "Marita Hinds",
+          "position": "President",
+          "organization": "National Indian Education Association, Washington, DC",
+          "page": "https://www.indian.senate.gov/hearings/oversight-hearing-preparing-head-back-class-addressing-how-safely-reopen-bureau-indian/"
+        },
+        {
+          "name": "David Yarlott Jr.",
+          "position": "Chair",
+          "organization": "American Indian Higher Education Consortium, Alexandria, VA",
+          "page": "https://www.indian.senate.gov/hearings/oversight-hearing-preparing-head-back-class-addressing-how-safely-reopen-bureau-indian/"
+        }
+      ],
+      "events": []
+    },
+    "native": {
+      "eventId": "327746",
+      "congress": 116,
+      "chamber": "Senate",
+      "date": "2020-07-29T18:30:00Z",
+      "title": "Business meeting to consider S.1161, to support the education of Indian children, S.2165, to enhance protections of Native American tangible cultural heritage, S.2610, to reauthorize certain programs under the Office of Indian Energy Policy and Programs of the Department of Energy, S.2716, to amend the Grand Ronde Reservation Act, S.2891, to require the Secretary of the Interior to establish Tribal Wildlife Corridors, S.2912, to direct the Secretary of the Interior to take certain land located in Pinal County, Arizona, into trust for the benefit of the Gila River Indian Community, S.3019, to protect access to water for all Montanans, S.3044, to amend the American's Water Infrastructure Act of 2018 to expand the Indian reservation drinking water program, S.3099, to provide for the conveyance of certain property to the Southeast Alaska Regional Health Consortium located in Sitka, Alaska, S.3100, to convey land in Anchorage, Alaska, to the Alaska Native Tribal Health Consortium, S.3650, to amend the Indian Health Care Improvement Act to deem employees of urban Indian organizations as part of the Public Health Service for certain purposes, and S.3948, to amend the Alyce Spotted Bear and Walter Soboleff Commission on Native Children Act to extend the deadline for a report by the Alyce Spotted Bear and Walter Soboleff Commission on Native Children; to be immediately followed by an oversight hearing to examine how to safely reopen Bureau of Indian Education schools, focusing on preparing to head back to class.",
+      "type": "Meeting",
+      "committees": [
+        {
+          "name": "Senate Indian Affairs",
+          "systemCode": "slia00",
+          "url": "https://api.congress.gov/v3/committee/senate/slia00?format=json"
+        }
+      ],
+      "hearingTranscript": [
+        {
+          "jacketNumber": 42457,
+          "url": "https://api.congress.gov/v3/hearing/116/senate/42457?format=json"
+        }
+      ],
+      "relatedItems": {
+        "bills": [
+          {
+            "congress": 116,
+            "number": "1161",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/1161?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "2165",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/2165?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "2610",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/2610?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "2716",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/2716?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "2891",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/2891?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "2912",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/2912?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "3019",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/3019?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "3044",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/3044?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "3099",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/3099?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "3100",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/3100?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "3650",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/3650?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "3948",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/3948?format=json"
+          }
+        ]
+      },
+      "_url": "https://api.congress.gov/v3/committee-meeting/116/senate/327746"
+    }
+  },
+  {
+    "expected_event_id": "326682",
+    "review_reason": "The page covers Native-veterans oversight plus S.1001 and S.2365; the native record describes that hearing after business on S.227/S.982. CHRG-116shrg40402 matches. Pair7 covers the business component.",
+    "page_url": "https://www.indian.senate.gov/hearings/oversight-hearing-recognizing-sacrifice-honoring-nation-s-promise-native-veterans/",
+    "page": {
+      "event": {
+        "title": "Oversight Hearing on “Recognizing the Sacrifice: Honoring A Nation’s Promise to Native Veterans” & Legislative Hearing to receive testimony on S. 1001 & S. 2365",
+        "date": "2019-11-20",
+        "date_text": "Date: November 20, 2019",
+        "type": "Hearing",
+        "url": "https://www.indian.senate.gov/hearings/oversight-hearing-recognizing-sacrifice-honoring-nation-s-promise-native-veterans/"
+      },
+      "documents": [
+        [
+          "transcript",
+          "Download Transcript",
+          "https://www.indian.senate.gov/wp-content/uploads/documents/CHRG-116shrg40402.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/Wilkie%20Testimony%20SCIA%20VA%2011.20.2019%20FINAL.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/Buchanan%20Testimony%20%20HHS%20IHS%20RADM%2011.20.2019.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/Mark%20Fox%20Testimony%20re%20Native%20Veterans%20Healthcare%2011%2020%2017%20FINAL%20APPROVED.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/Jestin%20Dupree%27s%20Testimony%20before%20SCIA%2011.20.19.pdf"
+        ]
+      ],
+      "witnesses": [
+        {
+          "name": "Robert Wilkie",
+          "position": "Secretary of Veteran Affairs",
+          "organization": "U.S. Department of Veteran Affairs, Washington, DC",
+          "page": "https://www.indian.senate.gov/hearings/oversight-hearing-recognizing-sacrifice-honoring-nation-s-promise-native-veterans/"
+        },
+        {
+          "name": "Kameron Matthews",
+          "position": "Deputy Undersecretary for Community Care",
+          "organization": "U.S. Department of Veterans Affairs, Washington, DC",
+          "page": "https://www.indian.senate.gov/hearings/oversight-hearing-recognizing-sacrifice-honoring-nation-s-promise-native-veterans/"
+        },
+        {
+          "name": "Chris Buchanan",
+          "position": "Deputy Director, Indian Health Service",
+          "organization": "U.S. Department of Health and Human Service, Rockville, MD",
+          "page": "https://www.indian.senate.gov/hearings/oversight-hearing-recognizing-sacrifice-honoring-nation-s-promise-native-veterans/"
+        },
+        {
+          "name": "Mark Fox",
+          "position": "Chairman",
+          "organization": "Mandan, Hidatsa, and Arikara Nation, New Town, ND",
+          "page": "https://www.indian.senate.gov/hearings/oversight-hearing-recognizing-sacrifice-honoring-nation-s-promise-native-veterans/"
+        },
+        {
+          "name": "Jestin Dupree",
+          "position": "Councilman",
+          "organization": "Fort Peck Assiniboine & Sioux Tribes, Popular, MT",
+          "page": "https://www.indian.senate.gov/hearings/oversight-hearing-recognizing-sacrifice-honoring-nation-s-promise-native-veterans/"
+        }
+      ],
+      "events": []
+    },
+    "native": {
+      "eventId": "326682",
+      "congress": 116,
+      "chamber": "Senate",
+      "date": "2019-11-20T19:30:00Z",
+      "title": "Business meeting to consider S.227, to direct the Attorney General to review, revise, and develop law enforcement and justice protocols appropriate to address missing and murdered Indians, and S.982, to increase intergovernmental coordination to identify and combat violent crime within Indian lands and of Indians; to be immediately followed by an oversight hearing to examine honoring a nation¿s promise to Native veterans, including S.1001, to amend the Indian Health Care Improvement Act to allow the Indian Health Service to cover the cost of a copayment of an Indian or Alaska Native veteran receiving medical care or services from the Department of Veterans Affairs, and S.2365, to amend the Indian Health Care Improvement Act to authorize urban Indian organizations to enter into arrangements for the sharing of medical services and facilities.",
+      "type": "Meeting",
+      "committees": [
+        {
+          "name": "Senate Indian Affairs",
+          "systemCode": "slia00",
+          "url": "https://api.congress.gov/v3/committee/senate/slia00?format=json"
+        }
+      ],
+      "hearingTranscript": [
+        {
+          "jacketNumber": 40402,
+          "url": "https://api.congress.gov/v3/hearing/116/senate/40402?format=json"
+        }
+      ],
+      "relatedItems": {
+        "bills": [
+          {
+            "congress": 116,
+            "number": "1001",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/1001?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "2365",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/2365?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "227",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/227?format=json"
+          },
+          {
+            "congress": 116,
+            "number": "982",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/116/s/982?format=json"
+          }
+        ]
+      },
+      "_url": "https://api.congress.gov/v3/committee-meeting/116/senate/326682"
+    }
+  },
+  {
+    "expected_event_id": "330044",
+    "review_reason": "The source dates this rescheduled hearing July21, matching the native record. S.1797, S.1895 and H.R.1688 all agree, and CHRG-117shrg45584 confirms the transcript. Keep the source rescheduling label without inventing an extra occurrence.",
+    "page_url": "https://www.indian.senate.gov/hearings/rescheduled-legislative-hearing-receive-testimony-s-1797-s-1895-hr-1688/",
+    "page": {
+      "event": {
+        "title": "(Rescheduled) Legislative Hearing to receive testimony on S. 1797, S. 1895 & H.R. 1688",
+        "date": "2021-07-21",
+        "date_text": "Date: July 21, 2021",
+        "type": "Hearing",
+        "url": "https://www.indian.senate.gov/hearings/rescheduled-legislative-hearing-receive-testimony-s-1797-s-1895-hr-1688/"
+      },
+      "documents": [
+        [
+          "transcript",
+          "Download Transcript",
+          "https://www.indian.senate.gov/wp-content/uploads/documents/CHRG-117shrg45584.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/HHS%20IHS%207-14-21%20SCIA%20leg%20testimony%207-9-21%20Randy%20Grinnell_0.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/Testimony%20H.R.%201688%20Native%20American%20Child%20Protection%20Act%20%28cleared%29%20Heidi%20Todacheene.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/2021.07.09_Written%20Testimony_President%20Nez%20re%20IHS%20SDS%20Listing.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/SCIA%20testimony%20NA%20Child%20Protection%20Act%20Final%20Gil%20Vigil.pdf"
+        ],
+        [
+          "witness statement",
+          "Testimony",
+          "https://www.indian.senate.gov/sites/default/files/NCUIH_Written%20Testimony_SCIA_Facilities_2021_0712%20Robyn%20Sunday-Allen.pdf"
+        ]
+      ],
+      "witnesses": [
+        {
+          "name": "Randy Grinnell",
+          "position": "Deputy Director for Management Operations",
+          "organization": "Indian Health Service, Rockville, MD",
+          "page": "https://www.indian.senate.gov/hearings/rescheduled-legislative-hearing-receive-testimony-s-1797-s-1895-hr-1688/"
+        },
+        {
+          "name": "Heidi Todacheene",
+          "position": "Senior Advisor, Office of the Assistant Secretary-Indian Affairs",
+          "organization": "Department of the Interior, Washington, DC",
+          "page": "https://www.indian.senate.gov/hearings/rescheduled-legislative-hearing-receive-testimony-s-1797-s-1895-hr-1688/"
+        },
+        {
+          "name": "Jonathan Nez",
+          "position": "President",
+          "organization": "Navajo Nation, Window Rock, AZ",
+          "page": "https://www.indian.senate.gov/hearings/rescheduled-legislative-hearing-receive-testimony-s-1797-s-1895-hr-1688/"
+        },
+        {
+          "name": "Gil Vigil",
+          "position": "President",
+          "organization": "National Indian Child Welfare Association, Portland, OR",
+          "page": "https://www.indian.senate.gov/hearings/rescheduled-legislative-hearing-receive-testimony-s-1797-s-1895-hr-1688/"
+        },
+        {
+          "name": "Robyn Sunday-Allen",
+          "position": "Vice President",
+          "organization": "National Congress of Urban Indian Health, Washington, DC",
+          "page": "https://www.indian.senate.gov/hearings/rescheduled-legislative-hearing-receive-testimony-s-1797-s-1895-hr-1688/"
+        }
+      ],
+      "events": []
+    },
+    "native": {
+      "eventId": "330044",
+      "congress": 117,
+      "chamber": "Senate",
+      "date": "2021-07-21T18:30:00Z",
+      "title": "Hearings to examine S.1797, to amend the Indian Health Care Improvement Act to expand the funding authority for renovating, constructing, and expanding certain facilities, S.1895, to require the Secretary of Health and Human Services to award additional funding through the Sanitation Facilities Construction Program of the Indian Health Service, and H.R.1688, to amend the Indian Child Protection and Family Violence Prevention Act.",
+      "type": "Meeting",
+      "committees": [
+        {
+          "name": "Senate Indian Affairs",
+          "systemCode": "slia00",
+          "url": "https://api.congress.gov/v3/committee/senate/slia00?format=json"
+        }
+      ],
+      "hearingTranscript": [
+        {
+          "jacketNumber": 45584,
+          "url": "https://api.congress.gov/v3/hearing/117/senate/45584?format=json"
+        }
+      ],
+      "relatedItems": {
+        "bills": [
+          {
+            "congress": 117,
+            "number": "1688",
+            "type": "HR",
+            "url": "https://api.congress.gov/v3/bill/117/hr/1688?format=json"
+          },
+          {
+            "congress": 117,
+            "number": "1797",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/117/s/1797?format=json"
+          },
+          {
+            "congress": 117,
+            "number": "1895",
+            "type": "S",
+            "url": "https://api.congress.gov/v3/bill/117/s/1895?format=json"
+          }
+        ]
+      },
+      "_url": "https://api.congress.gov/v3/committee-meeting/117/senate/330044"
+    }
+  }
+]

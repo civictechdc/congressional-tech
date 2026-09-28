@@ -19,6 +19,7 @@ from committee_meeting.publication import ExportPartition, InputSnapshot, Public
 from congress_api.adapters.common import AdapterContext
 from congress_api.adapters import meetings as native, house, gpo, transcripts, findings, inventory, video_matches, recordings as curated_recordings
 from congress_api.adapters import committee_metadata, committee_adjustments
+from congress_api.gpo import reviewed_committees
 from congress_api.adapters.committees import committee_lookup, ensure_committee_term
 from .assemble import Assembly
 from .coverage import build as coverage
@@ -228,16 +229,17 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, house_state=None, 
                                   input_snapshot_ids=(ctx.input_id,), explanation=f"Imported {len(rows)} of {total} retained records. Retention is not proof of complete upstream coverage."))
         # Load document metadata before supplemental events so every explicitly
         # identified committee can be linked without requiring a meeting match.
-        gpo_context, gpo_rows, all_gpo = None, [], []
+        gpo_context, gpo_review_context, gpo_rows, all_gpo = None, None, [], []
         if gpo_path:
             gpo_context, content = context(gpo_path, "govinfo", ("CSV does not preserve all raw MODS metadata or downloaded transcript bytes.",))
+            gpo_review_context, _ = context(reviewed_committees.__file__, 'gpo.committee-review')
             all_gpo = list(csv.DictReader(io.StringIO(content.decode())))
             gpo_rows = all_gpo
             if limit:
                 selected = [r for r in all_gpo if (int(r["congress"]), native.chamber(r["chamber"]), r["event_id"]) in lookup]
                 selected_ids = {r["package_id"] for r in selected}
                 gpo_rows = selected + [r for r in all_gpo if r["package_id"] not in selected_ids][:limit]
-            assembly.add(gpo.committee_records(gpo_rows, gpo_context, existing=assembly.records))
+            assembly.add(gpo.committee_records(gpo_rows, gpo_context, existing=assembly.records, review_context=gpo_review_context))
 
         sources = (("docs.house.gov", house_state, house, "House parsed source state"),)
         if senate_state:
@@ -298,7 +300,7 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, house_state=None, 
         print_decisions = []
         if gpo_path:
             c, data = gpo_context, gpo_rows
-            assembled = list(gpo.records(data, c, meetings=lookup, committees=committees))
+            assembled = list(gpo.records(data, c, meetings=lookup, committees=committees, review_context=gpo_review_context))
             assembly.add(assembled)
             reconciliation.append({"provider": "govinfo", "input_records": len(all_gpo), "selected_records": len(data),
                                    "distinct_selected_identities": len({r['package_id'] for r in data})})
@@ -332,7 +334,7 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, house_state=None, 
                     if issue.kind == "data_issue" and issue.category == "unlinked" and issue.subject.id in linked:
                         assembly.add([issue.model_copy(update={"status": "resolved", "resolution": IssueResolution(decided_at=now,
                             explanation="The existing print matcher supplied a supported association; its method and evidence remain on the link.", provenance=linked[issue.subject.id])})])
-            scopes.append(SourceScope(provider="govinfo", scope="retained GPO package metadata", status="partial" if limit else "included", input_snapshot_ids=(c.input_id,), explanation=f"Imported {len(data)} packages; explicit event IDs and existing print matching rules supply associations with retained evidence."))
+            scopes.append(SourceScope(provider="govinfo", scope="retained GPO package metadata", status="partial" if limit else "included", input_snapshot_ids=(c.input_id, gpo_review_context.input_id), explanation=f"Imported {len(data)} packages; explicit committee IDs and cited document reviews establish committee ownership. Explicit event IDs and existing print matching rules separately supply meeting associations."))
         else:
             scopes.append(SourceScope(provider="govinfo", scope="GPO packages", status="not_collected", explanation="No GPO input was supplied."))
         if youtube_dir:

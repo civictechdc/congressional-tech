@@ -20,3 +20,14 @@ test('native types remain exact; legacy typed records use their normalized categ
   assert.deepEqual(selectRelatedMaterials(records, {materialType:'recording'}).rows.map(row => row.id), ['r']);
   assert.deepEqual(records.map(row => row.id), ['b','a','q','r','t']);
 });
+
+
+test('reviewed committee prints and supporting documents stay distinct from transcripts', () => {
+  for (const legacy of [false, true]) {
+    const records = ['transcript','committee_print','supporting'].map(category => ({kind:'material',id:category,
+      ...(legacy ? {details:{type:'document',category}} : {type:'document',category})}));
+    const selected = selectRelatedMaterials(records,{materialType:'document',category:'Committee print'});
+    assert.deepEqual(selected.rows.map(row=>row.id),['committee_print']);
+    assert.deepEqual(selected.categories,[{label:'Committee print',count:1},{label:'Supporting',count:1},{label:'Transcript',count:1}]);
+  }
+});
