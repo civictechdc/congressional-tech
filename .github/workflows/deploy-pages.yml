@@ -1,13 +1,18 @@
 name: Deploy website to Pages
 
-# Builds apps/site (Astro static export) and deploys it to GitHub Pages.
+# Called only after Explorer publication succeeds. Both inputs pin the exact
+# verified browser files and site code; no mid-collection push triggers a build.
 on:
-  push:
-    branches: [main]
-    paths:
-      - "apps/site/**"
-      - ".github/workflows/deploy-pages.yml"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      code_revision:
+        description: Site code commit verified by the publication workflow
+        required: true
+        type: string
+      pipeline_revision:
+        description: pipeline-data commit containing the verified Explorer publication
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -20,18 +25,41 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.code_revision }}
+      - name: Check out the published browser snapshot
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.pipeline_revision }}
+          path: pipeline-data
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install publication verifier
+        run: >-
+          pip install -e packages/committee_meeting -e packages/congress_shared
+          -e packages/youtube_api -e packages/congress_api -e apps/committee_youtube
+      - name: Verify and stage only published browser files
+        run: |
+          test -f pipeline-data/committee-explorer/public/CURRENT.json
+          python .github/scripts/offline-python.py -m committee_explorer.browser \
+            --verify pipeline-data/committee-explorer/public
+          mkdir -p apps/site/public/data/explorer
+          rsync -a --delete pipeline-data/committee-explorer/public/ apps/site/public/data/explorer/
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
       - name: Install dependencies
         working-directory: apps/site
         run: npm install --no-audit --no-fund
       - name: Build Astro site
         working-directory: apps/site
         run: npm run build
+      - name: Enforce the Pages publication size limit
+        run: python .github/scripts/publication-budget.py apps/site/dist --total-limit 1000000000
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
@@ -39,7 +67,7 @@ jobs:
 
   deploy:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

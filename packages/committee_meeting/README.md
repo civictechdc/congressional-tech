@@ -1,99 +1,44 @@
-# Committee Meeting Data Platform
+# Committee Meeting data model
 
-A unified data platform for storing and managing congressional committee meeting information, including hearings, markups, recordings, and transcripts.
+An executable, versioned metadata model for the Congressional Committee
+Explorer. It covers meetings, committee terms, witness appearances, materials,
+file formats, amendments, votes, provenance and coverage.
 
-## Overview
+Start with the [model proposal](src/committee_meeting/MODEL.md), including its
+relationship diagram, source mappings, identity rules, known gaps and adoption
+sequence. The Python definitions live beside it in `src/committee_meeting/`.
 
-This package provides standardized data models for congressional committee activities, serving as a single source of truth for multiple civic tech projects. The platform addresses the fragmentation of committee meeting data across various sources and provides consistent, accessible data structures.
+The central distinctions are:
 
-### [Original Design Doc](https://civictechdc.slack.com/docs/T02GC3VEL/F09N31638MQ)
+- A meeting can have several dated occurrences and convening committees.
+- An appearance preserves its recorded name and affiliation without requiring
+  a globally resolved person.
+- A material can have several revisions and file formats, serve several
+  meetings, or remain unlinked.
+- A transcript can exist independently of a recording.
+- Availability findings retain evidence, scope and dates; an inference does
+  not imply captured text.
+- Data issues make missing expectations, unperformed checks, conflicts, errors,
+  stale inputs and correction history explicit. No open issues does not mean complete.
 
-## Data Models
+The [Congress API integration design](CONGRESS_API_INTEGRATION.md) describes
+source-owned adapters, producing-code repairs and adoption. The
+[execution receipt](INTEGRATION_EXECUTION.md) records implementation and checks.
 
-```mermaid
-erDiagram
-    COMMITTEE {
-        string committee_id PK
-        string committee_name
-        string chamber
-        array recording_channels
-    }
-    
-    COMMITTEE_MEETING {
-        string event_id PK
-        string event_title
-        string committee_id FK
-        timestamp start_time
-        timestamp end_time
-        string recording_id FK
-    }
-    
-    RECORDING {
-        string recording_id PK
-        string type
-        string video_id
-        string video_title
-        timestamp upload_date
-    }
-    
-    TRANSCRIPT {
-        string transcript_id PK
-        string recording_id FK
-        string transcript_url
-        timestamp created_date
-        string source
-    }
-    
-    COMMITTEE ||--o{ COMMITTEE_MEETING : "hosts"
-    COMMITTEE_MEETING ||--|| RECORDING : "has_recording"
-    RECORDING ||--o{ TRANSCRIPT : "has_transcript"
+Pydantic models validate individual records. `Catalog` additionally checks
+references, identity uniqueness and relationship consistency. Generate JSON
+Schema from those same definitions. Source adapters stay in their owner packages;
+publication stays in the application. This package performs no network operations.
+
+From the repository root, with Python 3.12+ and the package dependency installed:
+
+```sh
+PYTHONPATH=packages/committee_meeting/src .venv/bin/python -m unittest discover -s packages/committee_meeting/tests -v
+PYTHONPATH=packages/committee_meeting/src .venv/bin/python -m committee_meeting.main > /tmp/committee-meeting.schema.json
+PYTHONPATH=packages/committee_meeting/src .venv/bin/python packages/committee_meeting/examples/worked_catalog.py > /tmp/committee-meeting.example.json
 ```
 
-## Core Models
-
-### Committee
-Represents congressional committees across House and Senate.
-
-**Fields:**
-- `committee_id` (Primary Key): Committee ID from Congress.gov API
-- `committee_name`: Official committee name
-- `chamber`: "House" or "Senate"
-- `recording_channels`: Array of platform channels (originally `youtube-accounts.csv`)
-
-### Committee Meeting
-Central entity for individual hearings and markup sessions.
-
-**Fields:**
-- `event_id` (Primary Key): Event ID from Congress.gov API
-- `event_title`: Meeting title/subject
-- `committee_id` (Foreign Key): Links to hosting committee
-- `start_time`, `end_time`: Meeting schedule
-- `recording_id` (Foreign Key): Associated recording
-
-### Recording
-Platform-agnostic video recording metadata.
-
-**Fields:**
-- `recording_id` (Primary Key): Internal recording identifier
-- `type`: Platform type ("youtube", "alkami")
-- `video_id`: Platform-specific video identifier
-- `video_title`: Video title
-- `upload_date`: Upload timestamp
-
-**Note:** Video URLs are constructed from `type` + `video_id` (`https://youtu.be/<video_id>`).
-
-### Transcript
-Transcript data from various sources (automated, official, corrected).
-
-**Fields:**
-- `transcript_id` (Primary Key): Unique transcript identifier
-- `recording_id` (Foreign Key): Links to source recording
-- `transcript_url`: URL/path to transcript content
-- `created_date`: Creation timestamp
-- `source`: Origin ("Congress.gov API", "YouTube Auto-Generated", etc.)
-
-## Relationships
-
-- **Committee → Committee Meeting**: One-to-Many (committees host multiple meetings)
-- **Committee Meeting → Recording**: One-to-One (each meeting has exactly one recording)
-- **Recording → Transcript**: One-to-Many (multiple transcript versions per recording)
+The example is synthetic; tests also include a small retained House XML fixture.
+This model supersedes the package's initial four-entity sketch. The
+[original private design document](https://civictechdc.slack.com/docs/T02GC3VEL/F09N31638MQ)
+remains a historical reference; its contents were not reviewed for this draft.

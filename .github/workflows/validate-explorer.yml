@@ -1,0 +1,59 @@
+name: Validate Committee Explorer
+
+on:
+  pull_request:
+    paths:
+      - "apps/committee_youtube/**"
+      - "apps/site/**"
+      - "packages/committee_meeting/**"
+      - "packages/congress_api/**"
+      - "packages/congress_shared/**"
+      - "packages/youtube_api/**"
+      - "tests/**"
+      - "docs/youtube-coverage/**"
+      - ".github/scripts/**"
+      - ".github/workflows/**"
+      - "package.json"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-explorer-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install local Python packages and test tools
+        run: >-
+          pip install -e packages/committee_meeting -e packages/congress_shared
+          -e packages/youtube_api -e 'packages/congress_api[test]' -e apps/committee_youtube
+      - name: Test models, retained-source adapters and publication offline
+        run: python .github/scripts/offline-python.py -m pytest -q tests packages/committee_meeting/tests
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install site dependencies
+        working-directory: apps/site
+        run: npm install --no-audit --no-fund
+      - name: Test browser data loading and model type generation
+        working-directory: apps/site
+        run: |
+          npm run test:explorer
+          npm run check:explorer-types
+      - name: Check Astro and TypeScript
+        working-directory: apps/site
+        run: npx --no-install astro check
+      - name: Build the static site
+        working-directory: apps/site
+        run: npm run build

@@ -1,0 +1,1513 @@
+{
+  "schema_version": "0.1.0-draft.2",
+  "scope": "complete",
+  "sources": [
+    {
+      "kind": "source_record",
+      "id": "synthetic",
+      "provider": "example",
+      "identifier": {
+        "scheme": "example",
+        "value": "worked-catalog"
+      },
+      "payload": {
+        "notice": "All records in this example are synthetic."
+      }
+    }
+  ],
+  "records": [
+    {
+      "id": "committee-a",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "committee",
+      "label": "Committee on Infrastructure"
+    },
+    {
+      "id": "term-a",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "committee_term",
+      "committee": {
+        "kind": "committee",
+        "id": "committee-a"
+      },
+      "congress": 119,
+      "name": "Committee on Infrastructure",
+      "chamber": "house",
+      "committee_type": "unknown"
+    },
+    {
+      "id": "committee-b",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "committee",
+      "label": "Committee on Science and Technology"
+    },
+    {
+      "id": "term-b",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "committee_term",
+      "committee": {
+        "kind": "committee",
+        "id": "committee-b"
+      },
+      "congress": 119,
+      "name": "Committee on Science and Technology",
+      "chamber": "house",
+      "committee_type": "unknown"
+    },
+    {
+      "id": "hearing",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [
+        {
+          "path": "/title",
+          "selected": {
+            "citations": [
+              {
+                "source": {
+                  "kind": "source_record",
+                  "id": "synthetic"
+                }
+              }
+            ],
+            "basis": "reported"
+          },
+          "alternatives": [
+            {
+              "value": "Regional infrastructure preparedness",
+              "provenance": {
+                "citations": [
+                  {
+                    "source": {
+                      "kind": "source_record",
+                      "id": "synthetic"
+                    }
+                  }
+                ],
+                "basis": "reported"
+              }
+            }
+          ],
+          "selection_reason": "Publisher title displayed; disagreement remains unresolved in this example."
+        }
+      ],
+      "kind": "meeting",
+      "title": "Keeping public infrastructure resilient",
+      "congress": 119,
+      "chamber": "house",
+      "meeting_type": "hearing",
+      "committees": [
+        {
+          "committee": {
+            "kind": "committee_term",
+            "id": "term-a"
+          },
+          "role": "cohost",
+          "provenance": {
+            "citations": [
+              {
+                "source": {
+                  "kind": "source_record",
+                  "id": "synthetic"
+                }
+              }
+            ],
+            "basis": "reported"
+          }
+        },
+        {
+          "committee": {
+            "kind": "committee_term",
+            "id": "term-b"
+          },
+          "role": "cohost",
+          "provenance": {
+            "citations": [
+              {
+                "source": {
+                  "kind": "source_record",
+                  "id": "synthetic"
+                }
+              }
+            ],
+            "basis": "reported"
+          }
+        }
+      ]
+    },
+    {
+      "id": "markup",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "meeting",
+      "title": "Clean energy research and development",
+      "congress": 119,
+      "chamber": "house",
+      "meeting_type": "markup",
+      "committees": [
+        {
+          "committee": {
+            "kind": "committee_term",
+            "id": "term-a"
+          },
+          "role": "cohost",
+          "provenance": {
+            "citations": [
+              {
+                "source": {
+                  "kind": "source_record",
+                  "id": "synthetic"
+                }
+              }
+            ],
+            "basis": "reported"
+          }
+        }
+      ]
+    },
+    {
+      "id": "day-1",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "occurrence",
+      "meeting": {
+        "kind": "meeting",
+        "id": "hearing"
+      },
+      "status": "held",
+      "access": "open",
+      "actual_start": {
+        "date": "2026-09-01",
+        "precision": "day",
+        "approximate": false
+      }
+    },
+    {
+      "id": "day-2",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "occurrence",
+      "meeting": {
+        "kind": "meeting",
+        "id": "hearing"
+      },
+      "status": "held",
+      "access": "open",
+      "actual_start": {
+        "date": "2026-09-02",
+        "precision": "day",
+        "approximate": false
+      }
+    },
+    {
+      "id": "panel",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "panel",
+      "meeting": {
+        "kind": "meeting",
+        "id": "hearing"
+      },
+      "occurrence": {
+        "kind": "occurrence",
+        "id": "day-1"
+      },
+      "label": "Panel I"
+    },
+    {
+      "id": "witness-a",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "appearance",
+      "meeting": {
+        "kind": "meeting",
+        "id": "hearing"
+      },
+      "panel": {
+        "kind": "panel",
+        "id": "panel"
+      },
+      "name": {
+        "display": "Alex Example"
+      },
+      "roles": [
+        "witness"
+      ],
+      "participation": "listed",
+      "affiliation": {
+        "organization_name": "Public Infrastructure Institute",
+        "position": "Research director"
+      }
+    },
+    {
+      "id": "witness-b",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "appearance",
+      "meeting": {
+        "kind": "meeting",
+        "id": "hearing"
+      },
+      "panel": {
+        "kind": "panel",
+        "id": "panel"
+      },
+      "name": {
+        "display": "Alex Example"
+      },
+      "roles": [
+        "witness"
+      ],
+      "participation": "listed",
+      "affiliation": {
+        "organization_name": "Regional Planning Council",
+        "position": "Policy director"
+      }
+    },
+    {
+      "id": "print",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "material",
+      "title": "Combined hearing record",
+      "congress": 119,
+      "chamber": "house",
+      "proceeding_dates": [
+        {
+          "date": "2026-09-01",
+          "precision": "day",
+          "approximate": false
+        },
+        {
+          "date": "2026-09-02",
+          "precision": "day",
+          "approximate": false
+        }
+      ],
+      "details": {
+        "type": "document",
+        "category": "transcript"
+      }
+    },
+    {
+      "id": "print-v1",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "material_version",
+      "material": {
+        "kind": "material",
+        "id": "print"
+      },
+      "label": "First edition",
+      "languages": []
+    },
+    {
+      "id": "print-v2",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "material_version",
+      "material": {
+        "kind": "material",
+        "id": "print"
+      },
+      "label": "Corrected edition",
+      "supersedes": {
+        "kind": "material_version",
+        "id": "print-v1"
+      },
+      "languages": []
+    },
+    {
+      "id": "print-pdf",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "representation",
+      "version": {
+        "kind": "material_version",
+        "id": "print-v2"
+      },
+      "locations": [
+        {
+          "url": "https://example.org/record.pdf",
+          "role": "download"
+        }
+      ],
+      "media_type": "application/pdf",
+      "format_label": "PDF"
+    },
+    {
+      "id": "print-html",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "representation",
+      "version": {
+        "kind": "material_version",
+        "id": "print-v2"
+      },
+      "locations": [
+        {
+          "url": "https://example.org/record.html",
+          "role": "download"
+        }
+      ],
+      "media_type": "text/html",
+      "format_label": "HTML"
+    },
+    {
+      "id": "print-xml",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "representation",
+      "version": {
+        "kind": "material_version",
+        "id": "print-v2"
+      },
+      "locations": [
+        {
+          "url": "https://example.org/record.xml",
+          "role": "download"
+        }
+      ],
+      "media_type": "application/xml",
+      "format_label": "XML"
+    },
+    {
+      "id": "print-hearing",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "material_link",
+      "material": {
+        "kind": "material",
+        "id": "print"
+      },
+      "version": {
+        "kind": "material_version",
+        "id": "print-v2"
+      },
+      "subject": {
+        "kind": "meeting",
+        "id": "hearing"
+      },
+      "role": "transcript",
+      "coverage": "full",
+      "extent": {
+        "representation": {
+          "kind": "representation",
+          "id": "print-pdf"
+        },
+        "first_page": 1,
+        "last_page": 20
+      }
+    },
+    {
+      "id": "print-markup",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "material_link",
+      "material": {
+        "kind": "material",
+        "id": "print"
+      },
+      "version": {
+        "kind": "material_version",
+        "id": "print-v2"
+      },
+      "subject": {
+        "kind": "meeting",
+        "id": "markup"
+      },
+      "role": "transcript",
+      "coverage": "partial",
+      "extent": {
+        "representation": {
+          "kind": "representation",
+          "id": "print-pdf"
+        },
+        "first_page": 21,
+        "last_page": 35
+      }
+    },
+    {
+      "id": "archive-video",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "material",
+      "title": "Unlinked archival recording",
+      "congress": 119,
+      "chamber": "senate",
+      "proceeding_dates": [
+        {
+          "date": "2026-09-08",
+          "precision": "day",
+          "approximate": false
+        }
+      ],
+      "details": {
+        "type": "recording",
+        "medium": "video",
+        "coverage": "unknown",
+        "provider": "senate-isvp"
+      }
+    },
+    {
+      "id": "archive-v1",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "material_version",
+      "material": {
+        "kind": "material",
+        "id": "archive-video"
+      },
+      "languages": []
+    },
+    {
+      "id": "archive-player",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "representation",
+      "version": {
+        "kind": "material_version",
+        "id": "archive-v1"
+      },
+      "locations": [
+        {
+          "url": "https://example.org/player",
+          "role": "player"
+        }
+      ]
+    },
+    {
+      "id": "caption-estimate",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "inferred",
+        "method": {
+          "name": "example-caption-date-rule",
+          "version": "1"
+        }
+      },
+      "field_evidence": [],
+      "kind": "assessment",
+      "subject": {
+        "kind": "material",
+        "id": "archive-video"
+      },
+      "aspect": "captions",
+      "status": "available",
+      "evaluated_at": "2026-09-27T12:00:00Z",
+      "explanation": "Illustrative availability inference; no track identified or bytes retained.",
+      "results": []
+    },
+    {
+      "id": "bill",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "legislative_item",
+      "congress": 119,
+      "item_type": "bill",
+      "designation": "H.R. 99999"
+    },
+    {
+      "id": "markup-bill",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "meeting_subject",
+      "meeting": {
+        "kind": "meeting",
+        "id": "markup"
+      },
+      "item": {
+        "kind": "legislative_item",
+        "id": "bill"
+      },
+      "relationship": "considered"
+    },
+    {
+      "id": "amendment-1",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "amendment",
+      "meeting": {
+        "kind": "meeting",
+        "id": "markup"
+      },
+      "target": {
+        "kind": "legislative_item",
+        "id": "bill"
+      },
+      "number": "1",
+      "sponsors": [],
+      "disposition": "unknown"
+    },
+    {
+      "id": "amendment-2",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "amendment",
+      "meeting": {
+        "kind": "meeting",
+        "id": "markup"
+      },
+      "target": {
+        "kind": "amendment",
+        "id": "amendment-1"
+      },
+      "number": "2",
+      "sponsors": [],
+      "disposition": "unknown"
+    },
+    {
+      "id": "enbloc",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "amendment_group",
+      "meeting": {
+        "kind": "meeting",
+        "id": "markup"
+      },
+      "label": "En bloc 1",
+      "members": [
+        {
+          "kind": "amendment",
+          "id": "amendment-1"
+        },
+        {
+          "kind": "amendment",
+          "id": "amendment-2"
+        }
+      ]
+    },
+    {
+      "id": "vote-1",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "vote",
+      "meeting": {
+        "kind": "meeting",
+        "id": "markup"
+      },
+      "subject": {
+        "kind": "amendment_group",
+        "id": "enbloc"
+      },
+      "number": "1",
+      "method": "unknown",
+      "outcome": "unknown",
+      "ballots": []
+    },
+    {
+      "id": "markup-day",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "occurrence",
+      "meeting": {
+        "kind": "meeting",
+        "id": "markup"
+      },
+      "status": "held",
+      "access": "open",
+      "actual_start": {
+        "date": "2026-09-03",
+        "precision": "day",
+        "approximate": false
+      }
+    },
+    {
+      "id": "committee-s",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "committee",
+      "label": "Committee on Public Administration"
+    },
+    {
+      "id": "term-s",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "committee_term",
+      "committee": {
+        "kind": "committee",
+        "id": "committee-s"
+      },
+      "congress": 119,
+      "name": "Committee on Public Administration",
+      "chamber": "senate",
+      "committee_type": "unknown"
+    },
+    {
+      "id": "oversight",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "meeting",
+      "title": "Oversight of federal data systems",
+      "congress": 119,
+      "chamber": "senate",
+      "meeting_type": "hearing",
+      "committees": [
+        {
+          "committee": {
+            "kind": "committee_term",
+            "id": "term-s"
+          },
+          "role": "host",
+          "provenance": {
+            "citations": [
+              {
+                "source": {
+                  "kind": "source_record",
+                  "id": "synthetic"
+                }
+              }
+            ],
+            "basis": "reported"
+          }
+        }
+      ]
+    },
+    {
+      "id": "oversight-day",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "occurrence",
+      "meeting": {
+        "kind": "meeting",
+        "id": "oversight"
+      },
+      "status": "held",
+      "access": "open",
+      "actual_start": {
+        "date": "2026-09-08",
+        "precision": "day",
+        "approximate": false
+      }
+    },
+    {
+      "id": "budget",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "meeting",
+      "title": "Fiscal year 2027 transportation budget",
+      "congress": 119,
+      "chamber": "house",
+      "meeting_type": "hearing",
+      "committees": [
+        {
+          "committee": {
+            "kind": "committee_term",
+            "id": "term-a"
+          },
+          "role": "host",
+          "provenance": {
+            "citations": [
+              {
+                "source": {
+                  "kind": "source_record",
+                  "id": "synthetic"
+                }
+              }
+            ],
+            "basis": "reported"
+          }
+        }
+      ]
+    },
+    {
+      "id": "budget-day",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "occurrence",
+      "meeting": {
+        "kind": "meeting",
+        "id": "budget"
+      },
+      "status": "canceled",
+      "access": "open",
+      "scheduled_start": {
+        "date": "2026-09-14",
+        "precision": "day",
+        "approximate": false
+      }
+    },
+    {
+      "id": "water",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "meeting",
+      "title": "Water systems and regional preparedness",
+      "congress": 119,
+      "chamber": "house",
+      "meeting_type": "hearing",
+      "committees": [
+        {
+          "committee": {
+            "kind": "committee_term",
+            "id": "term-a"
+          },
+          "role": "host",
+          "provenance": {
+            "citations": [
+              {
+                "source": {
+                  "kind": "source_record",
+                  "id": "synthetic"
+                }
+              }
+            ],
+            "basis": "reported"
+          }
+        }
+      ]
+    },
+    {
+      "id": "water-day",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "occurrence",
+      "meeting": {
+        "kind": "meeting",
+        "id": "water"
+      },
+      "status": "scheduled",
+      "access": "open",
+      "scheduled_start": {
+        "date": "2026-09-29",
+        "precision": "day",
+        "approximate": false
+      }
+    },
+    {
+      "id": "permits",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "meeting",
+      "title": "Modernizing public permitting",
+      "congress": 119,
+      "chamber": "senate",
+      "meeting_type": "hearing",
+      "committees": [
+        {
+          "committee": {
+            "kind": "committee_term",
+            "id": "term-s"
+          },
+          "role": "host",
+          "provenance": {
+            "citations": [
+              {
+                "source": {
+                  "kind": "source_record",
+                  "id": "synthetic"
+                }
+              }
+            ],
+            "basis": "reported"
+          }
+        }
+      ]
+    },
+    {
+      "id": "permits-day",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "occurrence",
+      "meeting": {
+        "kind": "meeting",
+        "id": "permits"
+      },
+      "status": "postponed",
+      "access": "open",
+      "scheduled_start": {
+        "date": "2026-09-18",
+        "precision": "day",
+        "approximate": false
+      }
+    },
+    {
+      "id": "oversight-text-check",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "assessment",
+      "subject": {
+        "kind": "meeting",
+        "id": "oversight"
+      },
+      "aspect": "transcript",
+      "status": "not_found",
+      "evaluated_at": "2026-09-27T12:00:00Z",
+      "observed_at": {
+        "date": "2026-09-26",
+        "precision": "day",
+        "approximate": false
+      },
+      "provider": "Synthetic committee source",
+      "scope": "Publisher attachment list",
+      "results": []
+    },
+    {
+      "id": "hearing-witness-check",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "assessment",
+      "subject": {
+        "kind": "meeting",
+        "id": "hearing"
+      },
+      "aspect": "witnesses",
+      "status": "unknown",
+      "evaluated_at": "2026-09-27T12:00:00Z",
+      "scope": "Attendance verification",
+      "results": []
+    },
+    {
+      "id": "title-conflict",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "data_issue",
+      "subject": {
+        "kind": "meeting",
+        "id": "hearing"
+      },
+      "field_path": "/title",
+      "category": "conflicting",
+      "impact": "affects_interpretation",
+      "status": "open",
+      "summary": "Source titles disagree",
+      "explanation": "Two source observations use different titles. The display title is selected; neither source is declared incorrect.",
+      "detected_at": "2026-09-27T12:00:00Z"
+    },
+    {
+      "id": "attendance-check",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "data_issue",
+      "subject": {
+        "kind": "meeting",
+        "id": "hearing"
+      },
+      "category": "unverified",
+      "impact": "affects_interpretation",
+      "status": "open",
+      "summary": "Attendance has not been verified",
+      "explanation": "The witness list names two people. It does not establish that either appeared or testified.",
+      "detected_at": "2026-09-27T12:00:00Z"
+    },
+    {
+      "id": "missing-transcript",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "data_issue",
+      "subject": {
+        "kind": "meeting",
+        "id": "oversight"
+      },
+      "category": "missing",
+      "impact": "affects_interpretation",
+      "status": "open",
+      "summary": "Listed transcript attachment not found",
+      "explanation": "In this synthetic case, a publisher notice lists a transcript but its attachment list contains no file at the dated check.",
+      "expected": "The synthetic publisher notice explicitly lists a transcript.",
+      "detected_at": "2026-09-27T12:00:00Z",
+      "last_checked_at": {
+        "date": "2026-09-26",
+        "precision": "day",
+        "approximate": false
+      }
+    },
+    {
+      "id": "unlinked-video",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "data_issue",
+      "subject": {
+        "kind": "material",
+        "id": "archive-video"
+      },
+      "category": "unlinked",
+      "impact": "affects_interpretation",
+      "status": "open",
+      "summary": "Recording has no confirmed meeting match",
+      "explanation": "The date suggests a candidate, but there is not enough evidence to associate the recording with that proceeding.",
+      "detected_at": "2026-09-27T12:00:00Z"
+    },
+    {
+      "id": "stale-markup",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "data_issue",
+      "subject": {
+        "kind": "meeting",
+        "id": "markup"
+      },
+      "category": "stale",
+      "impact": "affects_interpretation",
+      "status": "open",
+      "summary": "Amendment attachments need a fresh check",
+      "explanation": "The last successful observation predates a publisher update. Current attachments may differ.",
+      "detected_at": "2026-09-27T12:00:00Z",
+      "last_checked_at": {
+        "date": "2026-09-04",
+        "precision": "day",
+        "approximate": false
+      }
+    },
+    {
+      "id": "corrected-time",
+      "identifiers": [],
+      "provenance": {
+        "citations": [
+          {
+            "source": {
+              "kind": "source_record",
+              "id": "synthetic"
+            }
+          }
+        ],
+        "basis": "reported"
+      },
+      "field_evidence": [],
+      "kind": "data_issue",
+      "subject": {
+        "kind": "occurrence",
+        "id": "day-1"
+      },
+      "field_path": "/actual_start",
+      "category": "incorrect",
+      "impact": "affects_interpretation",
+      "status": "resolved",
+      "summary": "Scheduled time had been shown as the actual start",
+      "explanation": "The time was removed; only the supported date is retained in this synthetic record.",
+      "detected_at": "2026-09-25T12:00:00Z",
+      "resolution": {
+        "decided_at": "2026-09-26T12:00:00Z",
+        "explanation": "Restored a date-only value. Actual start time remains unknown.",
+        "provenance": {
+          "citations": [
+            {
+              "source": {
+                "kind": "source_record",
+                "id": "synthetic"
+              }
+            }
+          ],
+          "basis": "reported"
+        }
+      }
+    }
+  ]
+}

@@ -2,6 +2,68 @@
 
 This pipeline tracks every official House, Senate and joint committee YouTube channel. It also tracks every official GPO hearing transcript, and works out which video records which hearing. Findings from the first full analysis are in [`docs/youtube-coverage/findings.md`](../../docs/youtube-coverage/findings.md).
 
+## Committee Explorer publication
+
+`committee-explorer-export` assembles retained source records into the shared
+`committee_meeting` model. Source packages still own collection, parsing and
+matching. This command reads local files only. The publication workflow runs
+after the collection workflow settles and when relevant code changes reach
+main. The existing reports continue through their current commands.
+
+```bash
+.venv/bin/committee-explorer-export \
+  --meetings ../pipeline-data/congress_meetings.jsonl.gz \
+  --house-state ../pipeline-data/meeting-inventory/house.json.gz \
+  --senate-state ../pipeline-data/meeting-inventory/senate.json.gz \
+  --inventory-state ../pipeline-data/meeting-inventory/inventory.json.gz \
+  --youtube-dir ../pipeline-data/youtube \
+  --gpo-path apps/committee_youtube/data/gpo_hearings.csv \
+  --video-matches-path apps/committee_youtube/data/gpo_hearing_videos.csv \
+  --recordings-path apps/committee_youtube/data/meeting_recordings_found.csv \
+  --recovered-witnesses apps/committee_youtube/data/meeting_witnesses.csv \
+  --state-dir .cache/explorer-state --output-dir .cache/explorer-public
+```
+
+Pass `--transcript PATH` for each existing structured transcript body. It remains
+unchanged and has its own schema; contextual participant rosters do not become
+attendance. Optional `--issue-decisions PATH` reads documented resolution rows
+with `issue_id`, `status` (`resolved` or `dismissed`), and `explanation`.
+`--limit N` declares a rehearsal selection and is not a full-population export.
+
+Preserve the state directory: it stores stable IDs and compact issue history.
+Records validate individually before the complete graph check, so assembling
+the Catalog does not copy the whole graph again. Prior issues load from SQLite
+only when needed; the exporter does not reload the previous complete Catalog.
+The exporter validates
+references, evidence selectors and artifact hashes before replacing
+`CURRENT.json`. The pointer identifies an immutable manifest with exact input
+hashes, source scope, media types and file discovery. A failed export leaves the
+working pointer in place. Unknown retrieval times remain unknown.
+
+The full local publication includes a compatibility meeting index, record/source
+chunks, hashed locators, related-record indexes, paged browse indexes and
+evidence-state coverage. Browse pages cover committee terms, meetings,
+appearances, materials and issues, grouped by Congress. Meeting rows carry the
+same evidence states used in coverage, so filtering and charts share a denominator.
+Chunks target 2 MiB; an indivisible source record can exceed this budget and is
+listed explicitly. A complete Catalog remains a local offline artifact.
+The browser packager excludes that Catalog and the large compatibility index,
+compresses browser files with an explicit media type, and enforces a 900 MB
+publication budget. The site reader uses query pages, relations and locators.
+Coverage counts source
+entries in all statuses; unchecked canceled or future meetings are not inferred
+publication failures. Issues overlap and are counted separately.
+
+See [integration execution and measured limits](../../packages/committee_meeting/INTEGRATION_EXECUTION.md)
+for the complete retained-data rehearsal, source repairs and remaining release
+work. Large generated artifacts remain outside the code branch. IDs, current
+issue history, job receipts and the browser publication live on `pipeline-data`.
+State archives split into checked 50 MiB chunks; expanded state never enters Git.
+Publication and collection share a concurrency group. After a verified snapshot
+is saved, Pages receives exact code and pipeline commit IDs, verifies the files
+again and enforces GitHub's 1 GB site limit before deployment. A failed export or
+verification leaves the prior public site in place.
+
 ## What runs every week
 
 `.github/workflows/update-data.yml` runs every Sunday. It has three jobs, each run after the one before even when that one failed.
@@ -32,7 +94,7 @@ This pipeline tracks every official House, Senate and joint committee YouTube ch
 
 - **Raw caches:** the YouTube caches (`youtube/youtube_NN.json`), meeting records (`congress_meetings.jsonl.gz`) and parsed meeting-source state (`meeting-inventory/*.json.gz`) live on the bot-owned `pipeline-data` branch. It's replaced by one snapshot commit each run, so the weekly data doesn't pile up in `main`'s history.
 - **Initial state and recovery:** `pipeline-data/meeting-inventory/*.json.gz` supplies the parsed records and availability observations. The initial seed was added directly to that branch; no seed blobs are kept in the code branch. See [meeting-state setup and recovery](../../docs/youtube-coverage/meeting-state.md).
-- **Failures:** every command exits non-zero on any failure. That fails the job and skips its commits, and because fetching is incremental, the next run catches up.
+- **Failures:** every command exits non-zero on any failure. Derived CSV commits require the whole job to succeed. Once committee readers have started, their raw-state snapshot still saves the last usable records and failed-refresh receipts; setup/test failures do not create a snapshot. The publication records the failed job separately, and incremental fetching catches up on the next run.
 
 The workflow needs two repository secrets:
 
@@ -70,7 +132,9 @@ The Senate recording probe saves each committee-day's positive or negative answe
 
 For an offline rebuild, copy `meeting-inventory/*.json.gz` from the latest `pipeline-data` snapshot into your chosen state directory and pass `--offline` to the three commands. A new backfill uses the same commands with an empty state directory. `--seed-cache ~/hearing-text` imports the old research caches read-only, when available; it is never needed in CI. `house-meeting-records --zyte --threads 16` is an optional metered backfill and requires `ZYTE_TOKEN` in the environment. **No additional weekly secret is needed.** `--limit N` bounds live House meetings or Senate hearing pages; it does not include Senate listing requests. An incomplete initial backfill exits non-zero instead of publishing partial outputs. `--site` restricts live Senate fetching for a bounded check while retaining other saved sites.
 
-The pure parser and refresh tests run first in the `meetings` job. Locally install `packages/congress_api[test]` into the worktree environment and run `.venv/bin/python -m pytest`.
+The parser, refresh and offline-export tests run first in the `meetings` job.
+Install the local packages using the command below, adding the `test` extra to
+`packages/congress_api`, and run `.venv/bin/python -m pytest`.
 
 ## Channels: `youtube-accounts.csv`
 
@@ -178,7 +242,7 @@ Window size is set by the model's recitation filter, not its context: a verbatim
 
 ```bash
 python3.12 -m venv .venv && source .venv/bin/activate
-pip install -e packages/congress_shared -e packages/youtube_api -e packages/congress_api
+pip install -e packages/committee_meeting -e packages/congress_shared -e packages/youtube_api -e 'packages/congress_api[test]' -e apps/committee_youtube
 git worktree add ../pipeline-data pipeline-data   # raw caches
 
 youtube-fetch   --tinydb_dir ../pipeline-data/youtube

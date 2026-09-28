@@ -78,7 +78,7 @@ Content lives as markdown under `src/content/` (themes, proposals, projects) —
 One editable install pulls the whole package graph:
 
 ```bash
-pip install -e apps/committee_youtube      # brings in congress_shared, youtube_api, congress_api
+pip install -e packages/committee_meeting -e packages/congress_shared -e packages/youtube_api -e packages/congress_api -e apps/committee_youtube
 # or: uv pip install -e apps/committee_youtube
 ```
 

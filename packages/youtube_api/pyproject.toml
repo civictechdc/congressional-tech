@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "YouTube API Client for Congressional Tech"
 requires-python = ">=3.12"
 dependencies = [
+    "committee-meeting",
     "congress-shared",
     "google-api-python-client",
     "tinydb",
@@ -26,4 +27,5 @@ where = ["src"]
 # uv-native path source (ignored by pip). Lets `uv pip install -e .`
 # resolve the sibling package from the local tree instead of an index.
 [tool.uv.sources]
+committee-meeting = { path = "../committee_meeting", editable = true }
 congress-shared = { path = "../congress_shared", editable = true }
