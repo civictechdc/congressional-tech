@@ -80,7 +80,11 @@ def write_queries(catalog, current, write, *, evidence_states=None):
         sizes[group] = 0
         numbers[group] += 1
     for record in catalog.records:
-        if record.kind not in KINDS or (record.kind, record.id) not in current: continue
+        if record.kind not in KINDS: continue
+        is_current = (record.kind, record.id) in current
+        # Unchecked or omitted source records cannot silently remove an issue
+        # from Quality. Its retained subject and evidence remain inspectable.
+        if not is_current and record.kind != 'data_issue': continue
         congress, chamber, meeting_id, committees = scope(record)
         title = getattr(record, 'title', None) or getattr(record, 'summary', None) or getattr(record, 'name', None)
         if record.kind == 'appearance': title = record.name.display
@@ -95,7 +99,9 @@ def write_queries(catalog, current, write, *, evidence_states=None):
             value = getattr(record, field, None) or getattr(details, field, None)
             if value: row[field] = value
         if record.kind == 'appearance': row['roles'] = list(record.roles)
-        if record.kind == 'data_issue': row['subject'] = record.subject.model_dump(mode='json')
+        if record.kind == 'data_issue':
+            row['subject'] = record.subject.model_dump(mode='json')
+            if not is_current: row['selection'] = 'retained_history'
         if record.kind == 'meeting':
             row['status'] = statuses.get(record.id)
             row['evidence_states'] = (evidence_states or {}).get(record.id, {})

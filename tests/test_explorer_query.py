@@ -80,11 +80,11 @@ def scope_fixture(label, congress=119, chamber='house', committee_name='Committe
     return [committee, meeting, occurrence]
 
 
-def query_rows(records):
+def query_rows(records, current=None):
     written = {}
     def write(path, data, *args, **kwargs):
         written[path] = data
-    write_queries(SimpleNamespace(records=records), {(r.kind, r.id) for r in records}, write)
+    write_queries(SimpleNamespace(records=records), {(r.kind, r.id) for r in records} if current is None else current, write)
     rows = {row['id']: row for path, data in written.items() if path.startswith('queries/') for row in data['rows']}
     return rows, written['indexes/queries.json']
 
@@ -143,3 +143,16 @@ def test_direct_committee_material_scope_and_missing_name_are_readable():
     assert rows[material.id]['meeting_id'] is None and rows[material.id]['date'] is None
     assert rows[committee.id]['title'] == 'Committee name not recorded'
     assert index['committee_labels'][committee.id] == 'Committee name not recorded'
+
+
+def test_quality_keeps_unresolved_history_when_its_source_is_not_regenerated():
+    committee, meeting, occurrence = scope_fixture('historical')
+    issue = DataIssue(id='retained-issue', subject=Ref(kind='meeting', id=meeting.id),
+                      category='unverified', summary='Check still pending',
+                      detected_at=datetime(2026, 9, 27, tzinfo=timezone.utc), provenance=EVIDENCE)
+    rows, index = query_rows([committee, meeting, occurrence, issue], current=set())
+    assert set(rows) == {issue.id}
+    assert rows[issue.id]['selection'] == 'retained_history'
+    assert rows[issue.id]['status'] == 'open'
+    assert rows[issue.id]['meeting_id'] == meeting.id
+    assert next(k['count'] for k in index['kinds'] if k['kind']=='data_issue') == 1
