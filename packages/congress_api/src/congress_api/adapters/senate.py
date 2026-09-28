@@ -4,7 +4,7 @@ from datetime import date, datetime
 from urllib.parse import urlsplit
 
 from committee_meeting.assessments import Assessment
-from committee_meeting.common import Identifier
+from committee_meeting.common import Identifier, Ref
 from committee_meeting.issues import DataIssue
 from committee_meeting.materials import DocumentDetails, MaterialLink
 from committee_meeting.meetings import Affiliation, Appearance, RecordedName, ConveningCommittee, Meeting, MeetingOccurrence
@@ -18,6 +18,33 @@ from .meetings import category, meeting_type, meeting_access
 
 
 MATCH_METHOD = Method(name="senate.records.match_pages", version="1")
+
+
+def _attachment_aliases(page):
+    """Group only an explicit landing-page resolution to one listed direct file.
+
+    Keep the direct document's identity. Equal names or URL basenames do not
+    establish this relation; the retained attachment response must report it.
+    """
+    documents, aliases, skipped = page.get("documents") or [], defaultdict(list), set()
+    valid = [(index, document) for index, document in enumerate(documents)
+             if isinstance(document, (list, tuple)) and len(document) == 3 and all(isinstance(value, str) for value in document)]
+    metadata = page.get("document_metadata") or {}
+    for index, document in valid:
+        kind, _, url = document
+        if not attachment_page(url):
+            continue
+        files = {entry.get("url") for entry in (page.get("attachments") or {}).get(url, []) if isinstance(entry, dict) and web_url(entry.get("url"))}
+        if len(files) != 1:
+            continue
+        direct_url = next(iter(files))
+        owners = set(metadata.get(url, {}).get("witness_indexes") or [])
+        candidates = [(candidate, other) for candidate, other in valid if other[2] == direct_url and other[0] == kind
+                      and not attachment_page(other[2]) and set(metadata.get(other[2], {}).get("witness_indexes") or []) == owners]
+        if len(candidates) == 1:
+            aliases[candidates[0][0]].append((index, document))
+            skipped.add(index)
+    return aliases, skipped
 
 
 def _timestamp(value, now):
@@ -233,8 +260,23 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                 yield issue("unlinked-page", "unlinked", "This retained committee page has no supported meeting association.",
                             explanation="Documents remain discoverable. Witness rows remain in the source payload until their meeting is established.")
 
+            witness_counts = Counter(digest(w) for w in page.get("witnesses") or [])
+            seen_witnesses = Counter()
+            appearance_keys = {}
+            for index, witness in enumerate(page.get("witnesses") or []):
+                if not isinstance(witness, dict) or not isinstance(witness.get("name"), str) or not witness["name"].strip():
+                    continue
+                witness_key = digest(witness)
+                seen_witnesses[witness_key] += 1
+                if witness_counts[witness_key] > 1:
+                    witness_key += f"|duplicate|{seen_witnesses[witness_key]}"
+                appearance_keys[index] = key + "|witness|" + witness_key
+
+            aliases, skipped = _attachment_aliases(page)
             seen_documents = set()
             for index, document in enumerate(page.get("documents") or []):
+                if index in skipped:
+                    continue
                 selector = f"/documents/{index}"
                 if not isinstance(document, (list, tuple)) or len(document) != 3 or not all(isinstance(value, str) for value in document):
                     yield issue(f"invalid-document|{index}", "unverified", "A retained document row could not be interpreted.", selector=selector)
@@ -247,12 +289,25 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                 document_key = key + "|document|" + document_hash
                 cat = "questions_for_record" if kind == "questions for the record" else category({"kind": kind, "name": title})
                 ev = context.evidence(source, selector=selector)
+                for alias_index, alias_document in aliases.get(index, []):
+                    attachment_selector = "/attachments/" + alias_document[2].replace("~", "~0").replace("/", "~1")
+                    ev = ev.model_copy(update={"citations": ev.citations + context.evidence(source, selector=f"/documents/{alias_index}").citations
+                                               + context.evidence(source, selector=attachment_selector).citations})
+                metadata = (page.get("document_metadata") or {}).get(document_url, {})
+                metadata_selector = "/document_metadata/" + document_url.replace("~", "~0").replace("/", "~1")
+                if metadata:
+                    ev = ev.model_copy(update={"citations": ev.citations + context.evidence(source, selector=metadata_selector).citations})
                 resolved = [entry.get("url") for entry in (page.get("attachments") or {}).get(document_url, []) if isinstance(entry, dict) and web_url(entry.get("url"))]
-                urls = [document_url, *resolved]
+                urls = [document_url, *resolved, *(alias_document[2] for _, alias_document in aliases.get(index, []))]
+                if title.strip().lower() in ("here", "download", "view", "read") and len(aliases.get(index, [])) == 1:
+                    title = aliases[index][0][1][1]
                 built = material_records(context, ev, document_key, title=title, urls=urls, details=DocumentDetails(category=cat))
-                if attachment_page(document_url):
-                    built = [item.model_copy(update={"locations": tuple(location.model_copy(update={"role": "landing"}) for location in item.locations)})
+                media_types = {attributes.get("type") for attributes in metadata.get("attributes", []) if isinstance(attributes, dict) and attributes.get("type")}
+                if len(media_types) == 1:
+                    built = [item.model_copy(update={"media_type": next(iter(media_types))})
                              if item.kind == "representation" and item.locations[0].url == document_url else item for item in built]
+                built = [item.model_copy(update={"locations": tuple(location.model_copy(update={"role": "landing"}) if attachment_page(location.url) else location for location in item.locations)})
+                         if item.kind == "representation" else item for item in built]
                 yield from built
                 material, version = built[:2]
                 if not web_url(document_url):
@@ -271,9 +326,17 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                             role=cat if cat in ("transcript", "statement", "biography", "disclosure", "questions_for_record") else "supporting",
                             provenance=match_evidence,
                         )
+                        for witness_index in dict.fromkeys(metadata.get("witness_indexes") or []):
+                            if type(witness_index) is not int or witness_index not in appearance_keys:
+                                continue
+                            appearance = Ref(kind="appearance", id=context.ids("appearance", appearance_keys[witness_index] + "|" + meeting.id))
+                            yield MaterialLink(
+                                id=context.ids("material_link", document_key + "|" + appearance.id),
+                                material=ref(material), version=ref(version), subject=appearance,
+                                role=cat if cat in ("transcript", "statement", "biography", "disclosure", "questions_for_record") else "supporting",
+                                provenance=ev.model_copy(update={"citations": ev.citations + match_evidence.citations}),
+                            )
 
-            witness_counts = Counter(digest(w) for w in page.get("witnesses") or [])
-            seen_witnesses = Counter()
             for index, witness in enumerate(page.get("witnesses") or []):
                 if not matched:
                     break
@@ -281,19 +344,20 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                 if not isinstance(witness, dict) or not isinstance(witness.get("name"), str) or not witness["name"].strip():
                     yield issue(f"invalid-witness|{index}", "unverified", "A listed witness has no usable name.", selector=selector)
                     continue
-                witness_key = digest(witness)
-                seen_witnesses[witness_key] += 1
-                if witness_counts[witness_key] > 1:
-                    witness_key += f"|duplicate|{seen_witnesses[witness_key]}"
+                metadata = (page.get("witness_metadata") or {}).get(str(index), {})
+                witness_evidence = context.evidence(source, selector=selector)
+                if metadata:
+                    witness_evidence = witness_evidence.model_copy(update={"citations": witness_evidence.citations + context.evidence(source, selector=f"/witness_metadata/{index}").citations})
                 for meeting, match_evidence in matched.values():
                     # Each observed row remains local to its page and meeting;
                     # equal names do not establish a shared person identity.
                     yield Appearance(
-                        id=context.ids("appearance", key + "|witness|" + witness_key + "|" + meeting.id),
+                        id=context.ids("appearance", appearance_keys[index] + "|" + meeting.id),
                         meeting=meeting, name=RecordedName(display=witness["name"]),
                         roles=witness_roles(witness.get("position")), participation="listed",
-                        affiliation=Affiliation(organization_name=witness.get("organization") or None, position=witness.get("position") or None),
-                        provenance=match_evidence.model_copy(update={"citations": match_evidence.citations + context.evidence(source, selector=selector).citations}),
+                        affiliation=Affiliation(organization_name=witness.get("organization") or None, position=witness.get("position") or None,
+                                                location=metadata.get("location") or None),
+                        provenance=match_evidence.model_copy(update={"citations": match_evidence.citations + witness_evidence.citations}),
                     )
             if failed:
                 for meeting, match_evidence in matched.values():

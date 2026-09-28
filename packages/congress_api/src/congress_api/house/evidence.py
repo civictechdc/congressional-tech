@@ -4,10 +4,32 @@ Selectors address the retained observation, not a permanent document or person
 identity. Source dates and URLs keep their original spelling and precision.
 """
 
-from congress_api.house.repository import NAME, active, value
+import re
+
+from lxml import html
+
+from congress_api.house.repository import NAME, active, document_kind, documents, value, witnesses as page_witnesses
 from congress_api.inventory.common import text
 
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION = "1.1"
+
+
+def html_document_groups(page):
+    """Keep every explicitly linked rendition in each fallback page list item."""
+    legacy = {url: (kind, name) for kind, name, url in documents(page)}
+    tree = html.fromstring(page)
+    for index, item in enumerate(tree.xpath("//li"), 1):
+        links = [a for a in item.xpath(".//a[@href]") if re.fullmatch(r"PDF|XML|DOCX?|HTML?|XLSX?|RTF|TXT", a.text_content().strip(), re.I)
+                 and a.xpath("ancestor::li[1]")[0] == item]
+        if not links:
+            continue
+        files = [{"url": link.get("href"), "format": link.text_content().strip(), "active": True,
+                  "metadata": {"attributes": dict(link.attrib)}} for link in links]
+        preferred = next((file["url"] for file in files if file["format"].upper() == "PDF"), files[0]["url"])
+        kind, name = legacy.get(preferred.replace("http://", "https://"), ("", text(item.text_content().split("[", 1)[0])))
+        yield {"source": "html", "source_order": index, "active": True, "selector": f"//li[{index}]",
+               "legacy_kind": kind or document_kind("", name, preferred), "description": name,
+               "metadata": {"attributes": dict(item.attrib)}, "files": files}
 
 
 def metadata(element, *, omit=()):
@@ -70,11 +92,19 @@ def retained_evidence(root, wlist, page=""):
                 for index, document in enumerate(witness.findall("witness-documents/witness-document"), 1):
                     groups.append(document_group(document, "witness_xml", f"{selector}/witness-documents/witness-document[{index}]", index,
                                                  selector, active(panel) and active(witness)))
+    if page:
+        groups.extend(html_document_groups(page))
+        for index, (name, position, organization, panel) in enumerate(page_witnesses(page), 1):
+            witnesses.append({"name": name, "position": position, "organization": organization,
+                              "panel": panel, "source_order": index, "active": True, "source": "html"})
     return {
         "schema_version": SCHEMA_VERSION,
         "meeting_metadata": metadata(root, omit=("meeting-documents",)) if root is not None else None,
         "witness_list_metadata": metadata(wlist, omit=("panel",)) if wlist is not None else None,
         "document_groups": groups, "panels": panels, "witness_observations": witnesses,
-        "limitations": (["HTML fallback retains legacy extracted rows only; XML grouping, ownership and source metadata are unavailable."]
+        # Retain the fallback body: extracted rows cannot preserve every source
+        # label or establish document ownership after the HTML was flattened.
+        **({"html": page} if page else {}),
+        "limitations": (["HTML fallback retains its body and extracted rows; XML grouping and witness-document ownership are unavailable."]
                         if page and (root is None or wlist is None) else []),
     }

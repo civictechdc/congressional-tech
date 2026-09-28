@@ -71,8 +71,12 @@ def main(
                     if not fetcher.update_video_details(handle):
                         failures.append(f"{handle} ({committee_name}): video details check failed")
                 except Exception as ex:
-                    logging.exception(f"Failed on {handle}")
-                    failures.append(f"{handle} ({committee_name}): {ex!r}")
+                    # HttpError text/tracebacks can contain the authenticated
+                    # request URL. Keep the failure type and status, not the key.
+                    status = getattr(getattr(ex, "resp", None), "status", None)
+                    reason = type(ex).__name__ + (f" (HTTP {status})" if status else "")
+                    logging.error(f"Failed on {handle}: {reason}")
+                    failures.append(f"{handle} ({committee_name}): {reason}")
 
     if failures:
         logging.error(

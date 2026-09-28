@@ -31,12 +31,16 @@ def collect(meetings_path, output_path, *, api_key, session=None, gpo_path=None)
     session = session or requests.Session()
     for congress in sorted(refresh):
         url, offset, count = f'{API}/committee/{congress}', 0, 0
-        retrieved = datetime.now(timezone.utc).isoformat()
+        seen_codes = set()
         while True:
             page = get(session, url, api_key, {'limit': 250, 'offset': offset})
+            retrieved = datetime.now(timezone.utc).isoformat()
             committees = page['committees']
             for committee in committees:
                 code = committee['systemCode']
+                if code in seen_codes:
+                    raise ValueError(f'Duplicate committee {congress}/{code}; retained snapshot was not replaced')
+                seen_codes.add(code)
                 rows[f'{congress}|{code}'] = dict(congress=congress, committee=committee, _url=url, retrieved_at=retrieved)
             count += len(committees)
             if not page.get('pagination', {}).get('next'):
@@ -47,9 +51,7 @@ def collect(meetings_path, output_path, *, api_key, session=None, gpo_path=None)
         if not count:
             raise ValueError(f'No committee metadata returned for Congress {congress}; retained snapshot was not replaced')
         print(f'Congress {congress}: {count} committee records', flush=True)
-    temporary = output.with_suffix(output.suffix + '.tmp')
-    write(rows, temporary)
-    temporary.replace(output)
+    write(rows, output)
     return rows
 
 

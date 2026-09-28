@@ -2,19 +2,20 @@
 
 The cache's ``publishedAt`` comes from playlistItems.snippet: it is the time an
 item was added to the uploads playlist, not independently verified publication
-time. The cache also omits channel IDs. Preserve both limits rather than infer
+time. Legacy cache rows also omit channel IDs; refreshed rows retain complete API items and the video publication timestamp. Preserve both limits rather than infer
 channel identity from a handle/playlist or publication time from another event.
 """
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
+from datetime import datetime, timezone
 import math
 from typing import Any
 from urllib.parse import quote
 
 from committee_meeting.assessments import Assessment
 from committee_meeting.committees import Channel
-from committee_meeting.common import Identifier, Ref
+from committee_meeting.common import Identifier, Ref, ReportedTime
 from committee_meeting.issues import DataIssue
 from committee_meeting.materials import (
     Material, MaterialLink, MaterialLocation, MaterialVersion, RecordingDetails,
@@ -93,8 +94,18 @@ def records(
             or not math.isfinite(duration) or duration < 0
         )
         version_ref = Ref(kind="material_version", id=context.ids("material_version", key + "|reported-edition"))
+        publication = None
+        if row.get("videoPublishedAt"):
+            try:
+                instant = datetime.fromisoformat(row["videoPublishedAt"].replace("Z", "+00:00"))
+                if instant.tzinfo is not None:
+                    instant = instant.astimezone(timezone.utc)
+                    publication = ReportedTime(date=instant.date(), time=instant.time(), timezone="UTC",
+                                               precision="second", original=row["videoPublishedAt"])
+            except (ValueError, TypeError, AttributeError):
+                pass  # The unparsed source value remains available in the source record.
         yield MaterialVersion(
-            id=version_ref.id, material=material_ref,
+            id=version_ref.id, material=material_ref, published_at=publication,
             duration_seconds=None if invalid_duration else duration,
             provenance=evidence,
         )
@@ -110,7 +121,7 @@ def records(
                 summary="The retained recording duration is not a valid number of seconds.",
                 detected_at=context.now, provenance=evidence,
             )
-        if row.get("publishedAt"):
+        if row.get("publishedAt") and publication is None:
             yield DataIssue(
                 id=context.ids("data_issue", key + "|publication-time"), subject=version_ref,
                 category="unverified", impact="informational", field_path="/published_at",
@@ -118,11 +129,27 @@ def records(
                 explanation="The retained publishedAt field is the playlist-item timestamp. It remains in the source record.",
                 detected_at=context.now, provenance=context.evidence(source, selector=pointer + "/publishedAt"),
             )
+        observed_at = None
+        try:
+            checked = datetime.fromisoformat(row.get("details_checked_at", "").replace("Z", "+00:00"))
+            if checked.tzinfo is not None and checked <= context.now:
+                observed_at = checked
+        except (ValueError, TypeError, AttributeError):
+            pass
+        if row.get("available") is False:
+            yield Assessment(
+                id=context.ids("assessment", key + "|api-availability"), subject=material_ref,
+                aspect="reachability", status="not_found" if observed_at else "unknown",
+                evaluated_at=context.now, observed_at=observed_at, provider="youtube",
+                scope="YouTube Data API videos.list response for this video ID; the web player was not checked.",
+                explanation="The API omitted this video from a successful response. This does not establish whether it was deleted, made private, or can be played elsewhere.",
+                provenance=context.evidence(source, selector=pointer + "/available"),
+            )
         caption = row.get("caption")
         yield Assessment(
             id=context.ids("assessment", key + "|captions"), subject=material_ref,
             aspect="captions", status="available" if caption is True else "unknown",
-            evaluated_at=context.now, provider="youtube",
+            evaluated_at=context.now, observed_at=observed_at, provider="youtube",
             scope="Retained YouTube contentDetails.caption flag; automatic captions were not checked.",
             explanation=(
                 "The retained API flag reports published captions; no caption bytes or language were acquired."

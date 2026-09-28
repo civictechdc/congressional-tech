@@ -50,7 +50,7 @@ def main(meetings, state_dir, output_dir, gpo_path, videos_path, tinydb_dir, rec
         inventory, witnesses = completeness.build(ms, index, recorded, read_csv(output_dir / "house_witnesses_found.csv"),
             read_csv(output_dir / "senate_witnesses_found.csv"), documents, {r["package_id"]: r for r in gpo}, state, as_of, offline, seed_cache)
     finally:
-        ## Partial progress survives a local failure; the workflow saves only successful runs.
+        ## Partial source progress and failed checks survive a local or CI failure.
         write_state(path, state)
     none = [{k: r[k] for k in NONE_FIELDS} for r in rows if r["text_source"] == "no_video" and not r["rescheduled_to"] and not r["not_held"]]
     for name, data, fields in (("hearing_text_sources", rows, TEXT_FIELDS), ("meetings_without_records", none, NONE_FIELDS),

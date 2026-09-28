@@ -64,7 +64,11 @@ def witness(text: str) -> dict:
     words = name.split()
     while len(words) > 2 and CREDENTIAL.match(words[-1]) and not SUFFIX.match(words[-1]):
         words.pop()  # "Brian S. Eifler USA", "Puneet S. Arora MD MS"
-    name, rest = " ".join(words), [s for s in rest if not CREDENTIAL.match(s)]
+    name = " ".join(words)
+    # Degrees immediately follow the name. Later comma-separated abbreviations
+    # can be an employer's suffix (LLC) or location (Washington, D.C.).
+    while rest and CREDENTIAL.match(rest[0]):
+        rest.pop(0)
     honorific = title.group(1) if title else ""
     return {"name": name, "honorific": honorific if honorific in ("Mr.", "Ms.", "Mrs.", "Dr.") else "",
             "position": rest[0] if rest else "", "organization": ", ".join(rest[1:])}

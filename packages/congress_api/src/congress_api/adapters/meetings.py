@@ -11,7 +11,7 @@ from committee_meeting.materials import DocumentDetails, RecordingDetails
 from committee_meeting.meetings import Affiliation, Appearance, ConveningCommittee, Meeting, MeetingOccurrence, RecordedName
 from committee_meeting.provenance import FieldEvidence
 
-from .common import digest, material_records, ref, reported_time, web_url
+from .common import digest, material_records, ref, reported_time, web_url, observed_time
 
 
 def chamber(value):
@@ -90,19 +90,53 @@ def event_page(url):
 
 
 def category(row):
+    native = str(row.get("documentType") or "").strip().lower()
+    # These labels describe the document itself; a title mentioning a bill or
+    # witness must not replace the publisher's more specific classification.
+    explicit = {
+        "hearing: questions for the record": "questions_for_record",
+        "committee report": "report", "conference report": "report",
+        "hearing: member roster": "hearing_record", "hearing: cover page": "hearing_record",
+        "hearing: table of contents": "hearing_record",
+    }
+    if native in explicit:
+        return explicit[native]
     text = f"{row.get('documentType', '')} {row.get('kind', '')} {row.get('name', '')}".lower()
     for needle, value in (("truth in testimony", "disclosure"), ("transcript", "transcript"), ("witness list", "witness_list"), ("statement", "statement"),
                           ("testimony", "statement"), ("biograph", "biography"), ("disclosure", "disclosure"),
                           ("amendment", "amendment"), ("vote", "vote"), ("bill", "bill_text")):
         if needle in text:
             return value
-    return "unknown"
+    return "supporting" if native == "support document" else "unknown"
+
+
+def related_item_identity(family, item, congress):
+    """Native nomination/treaty references omit the bill-specific type field."""
+    number = item.get("number")
+    if number in (None, ""):
+        return None
+    ic = int(item.get("congress") or congress)
+    typ = item.get("type")
+    if family == "nominations":
+        part = str(item.get("part") or "")
+        suffix = f"-{part}" if part and part != "00" else ""
+        value = f"PN/{number}" + (f"/{part}" if part else "")
+        return ic, f"congress.gov|{ic}|PN|{number}|{part}", "nomination", f"PN{number}{suffix}", value
+    if family == "treaties":
+        return ic, f"congress.gov|{ic}|treaty|{number}", "treaty", f"Treaty Doc. {ic}-{number}", f"treaty/{number}"
+    if not typ:
+        return None
+    kind = "resolution" if family == "bills" and str(typ).upper().endswith("RES") else "bill" if family == "bills" else "other"
+    return ic, f"congress.gov|{ic}|{typ}|{number}", kind, f"{typ} {number}", f"{typ}/{number}"
 
 
 def records(rows, context):
     for row in rows:
         key = meeting_key(row)
         source = context.source(key, row, row.get("_url"))
+        captured_at = observed_time(row.get("_retrieved_at"), context.now)
+        if captured_at is not None:
+            source = source.model_copy(update={"retrieved_at": captured_at})
         yield source
         evidence = context.evidence(source)
         congress = int(row["congress"])
@@ -152,6 +186,19 @@ def records(rows, context):
                                             else 'The source meeting type explicitly describes access to the proceeding.'),) if access_field else ()
         yield MeetingOccurrence(id=context.ids("occurrence", key + "|sitting"), meeting=ref(meeting), status=status,
                                 scheduled_start=start, location=loc, access=access, provenance=evidence, field_evidence=access_evidence)
+        for i, continuation in enumerate(row.get("continuations") or []):
+            ev = context.evidence(source, selector=f"/continuations/{i}")
+            try:
+                continuation_start = reported_time(continuation.get("continuationDate"))
+            except (ValueError, TypeError):
+                continuation_start = None
+            if continuation_start is None:
+                yield DataIssue(id=context.ids("data_issue", key + "|invalid-continuation|" + digest(continuation)),
+                                subject=ref(meeting), category="unverified", summary="Continuation date could not be interpreted",
+                                detected_at=context.now, provenance=ev)
+                continue
+            yield MeetingOccurrence(id=context.ids("occurrence", key + "|continuation|" + continuation["continuationDate"]),
+                                    meeting=ref(meeting), label="Continuation", scheduled_start=continuation_start, provenance=ev)
         witnesses = row.get("witnesses") or []
         names = Counter(w.get("name") for w in witnesses)
         for i, w in enumerate(witnesses):
@@ -196,18 +243,16 @@ def records(rows, context):
                             dkey = "senate|" + "|".join(player)
                             identifiers = (Identifier(scheme="senate.filename", value=player[1], scope=player[0]),)
                 yield from material_records(context, ev, dkey, title=document_title(d), urls=[url] if url else [],
-                                             subject=ref(meeting), role="recording" if recording else cat if cat in ("transcript", "statement", "biography", "disclosure", "amendment") else "supporting",
+                                             subject=ref(meeting), role="recording" if recording else "vote_record" if cat == "vote" else cat if cat in ("transcript", "statement", "biography", "disclosure", "amendment", "questions_for_record") else "supporting",
                                              details=RecordingDetails(medium="video", provider=provider) if recording else DocumentDetails(category=cat), identifiers=identifiers)
         for family, items in (row.get("relatedItems") or {}).items():
             for i, item in enumerate(items or []):
-                num, typ = item.get("number"), item.get("type")
-                if not num or not typ:
+                identity = related_item_identity(family, item, congress)
+                if identity is None:
                     continue
-                ic = int(item.get("congress") or congress)
-                ikey = f"congress.gov|{ic}|{typ}|{num}"
+                ic, ikey, itype, designation, identifier = identity
                 ev = context.evidence(source, selector=f"/relatedItems/{family}/{i}")
-                itype = "bill" if family == "bills" else "nomination" if family == "nominations" else "treaty" if family == "treaties" else "other"
-                item_record = LegislativeItem(id=context.ids("legislative_item", ikey), congress=ic, designation=f"{typ} {num}", item_type=itype,
-                                             identifiers=(Identifier(scheme="congress.gov:legislation", value=f"{typ}/{num}", scope=str(ic)),), provenance=ev)
+                item_record = LegislativeItem(id=context.ids("legislative_item", ikey), congress=ic, designation=designation, item_type=itype,
+                                             identifiers=(Identifier(scheme="congress.gov:legislation", value=identifier, scope=str(ic)),), provenance=ev)
                 yield item_record
                 yield MeetingSubject(id=context.ids("meeting_subject", key + "|" + ikey), meeting=ref(meeting), item=ref(item_record), relationship="related", provenance=ev)

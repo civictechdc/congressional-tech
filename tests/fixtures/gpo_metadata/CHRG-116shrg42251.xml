@@ -1,0 +1,128 @@
+<mods xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:exslt="http://exslt.org/common" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.loc.gov/mods/v3" version="3.3" xsi:schemaLocation="http://www.loc.gov/mods/v3 http://www.loc.gov/standards/mods/v3/mods-3-3.xsd" ID="P0b002ee1af71c1bb">
+    <name type="corporate">
+         <namePart>United States Government Publishing Office</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">publisher</roleTerm>
+              <roleTerm authority="marcrelator" type="code">pbl</roleTerm>
+        </role>
+         <role>
+              <roleTerm authority="marcrelator" type="text">distributor</roleTerm>
+              <roleTerm authority="marcrelator" type="code">dst</roleTerm>
+        </role>
+    </name>
+    <name type="corporate">
+         <namePart>United States</namePart>
+         <namePart>Congress</namePart>
+         <namePart>Senate</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">author</roleTerm>
+              <roleTerm authority="marcrelator" type="code">aut</roleTerm>
+        </role>
+         <description>Government Organization</description>
+    </name>
+    <typeOfResource>text</typeOfResource>
+    <genre authority="marcgt">government publication</genre>
+    <language>
+         <languageTerm type="code" authority="iso639-2b">eng</languageTerm>
+    </language>
+    <extension>
+         <collectionCode>CHRG</collectionCode>
+         <category>Congressional Committee Materials</category>
+         <waisDatabaseName>116_senate_hearings</waisDatabaseName>
+         <branch>legislative</branch>
+         <dateIngested>2021-08-03</dateIngested>
+    </extension>
+    <titleInfo>
+         <title>NOMINATION OF THE HONORABLE RUSSELL T. VOUGHT, OF VIRGINIA, TO BE DIRECTOR OF THE OFFICE OF MANAGEMENT AND BUDGET</title>
+    </titleInfo>
+    <titleInfo type="alternative"></titleInfo>
+    <location>
+         <url displayLabel="Content Detail" access="object in context">https://www.govinfo.gov/app/details/CHRG-116shrg42251</url>
+         <url displayLabel="HTML rendition" access="raw object">https://www.govinfo.gov/content/pkg/CHRG-116shrg42251/html/CHRG-116shrg42251.htm</url>
+         <url displayLabel="PDF rendition" access="raw object">https://www.govinfo.gov/content/pkg/CHRG-116shrg42251/pdf/CHRG-116shrg42251.pdf</url>
+    </location>
+    <originInfo>
+         <publisher>U.S. Government Publishing Office</publisher>
+         <dateIssued encoding="w3cdtf">2020-06-03</dateIssued>
+         <issuance>monographic</issuance>
+    </originInfo>
+    <physicalDescription>
+         <note type="source content type">deposited</note>
+         <digitalOrigin>born digital</digitalOrigin>
+         <extent>119 digital object pages</extent>
+    </physicalDescription>
+    <classification authority="sudocs">Y 4.B 85/2:S.HRG.116-439</classification>
+    <identifier type="uri">https://www.govinfo.gov/app/details/CHRG-116shrg42251</identifier>
+    <identifier type="local">P0b002ee1af71c1bb</identifier>
+    <identifier type="ILS system id">001161318</identifier>
+    <identifier type="former package identifier">f:42251.txt</identifier>
+    <recordInfo>
+         <recordContentSource authority="marcorg">DGPO</recordContentSource>
+         <recordCreationDate encoding="w3cdtf">2021-08-03</recordCreationDate>
+         <recordChangeDate encoding="w3cdtf">2025-08-21</recordChangeDate>
+         <recordIdentifier source="DGPO">CHRG-116shrg42251</recordIdentifier>
+         <recordOrigin>machine generated</recordOrigin>
+         <languageOfCataloging>
+              <languageTerm type="code" authority="iso639-2b">eng</languageTerm>
+        </languageOfCataloging>
+    </recordInfo>
+    <accessCondition type="GPO scope determination">fdlp</accessCondition>
+    <extension>
+         <docClass>SHRG</docClass>
+         <accessId>CHRG-116shrg42251</accessId>
+         <type>N</type>
+         <chamber>SENATE</chamber>
+         <congress years="2019-2020">116</congress>
+         <session>2</session>
+         <number>439</number>
+         <heldDate>2020-06-03</heldDate>
+         <heldDate>2020-06-11</heldDate>
+         <preferredCitation>S. Hrg. 116-439</preferredCitation>
+    </extension>
+    <extension>
+         <searchTitle>NOMINATION OF THE HONORABLE RUSSELL T. VOUGHT, OF VIRGINIA, TO BE DIRECTOR OF THE OFFICE OF MANAGEMENT AND BUDGET</searchTitle>
+         <granuleClass>OTHERPART</granuleClass>
+         <accessId>CHRG-116shrg42251</accessId>
+         <graphicsInPDF>true</graphicsInPDF>
+         <textInPDF>true</textInPDF>
+         <nominee state="VA">
+                                    
+              <name>The Honorable Russell T. Vought</name>
+                                    
+              <position>To Be Director of the Office of Management and Budget</position>
+                                
+        </nominee>
+         <isAppropriation>false</isAppropriation>
+         <jacketId>42-251</jacketId>
+         <congCommittee authorityId="ssbu00" chamber="S" congress="116" type="S">
+                                    
+              <name type="authority-standard">Committee on the Budget</name>
+                                    
+              <name type="authority-short">Budget</name>
+                                
+        </congCommittee>
+         <isNomination>true</isNomination>
+         <isErrata>false</isErrata>
+    </extension>
+    <name type="corporate">
+         <namePart>United States</namePart>
+         <namePart>Congress</namePart>
+         <namePart>Senate</namePart>
+         <namePart>Committee on the Budget</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">associated name</roleTerm>
+              <roleTerm authority="marcrelator" type="code">asn</roleTerm>
+        </role>
+         <description>Government Organization</description>
+    </name>
+    <name type="personal">
+         <namePart>The Honorable Russell T. Vought</namePart>
+         <role>
+              <roleTerm type="text">nominee</roleTerm>
+        </role>
+         <description>Hearing Nominee</description>
+    </name>
+    <relatedItem type="isReferencedBy">
+         <identifier type="Jacket citation"></identifier>
+    </relatedItem>
+</mods>

@@ -393,3 +393,26 @@ def test_each_browser_table_has_its_own_schema_and_rejects_silent_data_loss(tmp_
     with pytest.raises(ValueError, match='populated fields outside its table schema.*position'):
         write_tables([], [], [dict(kind='material', id='doc', title='Document', type='document', position='Must not disappear')],
                      tmp_path, lambda *a, **k: None)
+
+
+def test_committee_source_types_and_witness_ownership_survive_parquet(tmp_path):
+    from committee_explorer.parquet import write_tables
+    url = 'https://example.org/testimony'
+    selector = '/document_metadata/' + url.replace('~', '~0').replace('/', '~1')
+    sources = [dict(kind='source_record', id='house', provider='docs.house.gov', payload={
+        'evidence': {'document_groups': [{'type': 'WT', 'source': 'witness_xml'}]}}),
+        dict(kind='source_record', id='senate', provider='senate.committees', payload={
+            'document_metadata': {url: {'labels': ['Download Testimony'], 'witness_indexes': [0]}}})]
+    records = [dict(kind='material', id='house-doc', details={'type': 'document', 'category': 'disclosure'},
+        provenance={'citations': [{'source': {'id': 'house'}, 'selector': '/evidence/document_groups/0'}]}),
+        dict(kind='material', id='senate-doc', details={'type': 'document', 'category': 'statement'},
+        provenance={'citations': [{'source': {'id': 'senate'}, 'selector': selector}]})]
+    queries = [dict(kind='material', id=r['id'], title=r['id'], type='document') for r in records]
+    write_tables(records, sources, queries, tmp_path, lambda *a, **k: None)
+    rows = {r['id']: r for r in pq.read_table(tmp_path/'materials.parquet').to_pylist()}
+    assert rows['house-doc']['document_type'] == 'Truth in testimony'
+    assert rows['house-doc']['source_document_groups'] == ['Witness documents']
+    assert {'label': 'Source document type code', 'value': 'WT'} in rows['house-doc']['facts']
+    assert rows['senate-doc']['document_type'] is None  # A link label is not a reported document type.
+    assert rows['senate-doc']['source_document_groups'] == ['Witness documents']
+    assert {'label': 'Source link label', 'value': 'Download Testimony'} in rows['senate-doc']['facts']

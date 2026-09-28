@@ -35,13 +35,14 @@ from congress_api.committees import codes_of
 from congress_api.gpo.match import words
 from congress_api.inventory.common import CLOSED, due, kind, nonnegative, read_state, source_args, write_csv, write_state, text
 from congress_api.senate.pages import (SITE, LISTINGS, HEARING_LINK, FIRST_RECORD, OWN, NEAR, BUSINESS, DATE,
-    documents, witnesses, lines, written_day, topic, attachment_page, event_details, document_labels)
+    documents, witnesses, lines, written_day, topic, attachment_page, event_details, document_labels, source_details, KINDS)
 from congress_api.senate.corrections import DATE_CORRECTIONS, selected_date
 from congress_api.senate.matching import match_identifiers
 
 PAGE_FIELDS = "event_id page title witnesses documents".split()
-WITNESS_FIELDS = "event_id name position organization page".split()
-DOCUMENT_FIELDS = "event_id kind name url page".split()
+WITNESS_FIELDS = "event_id name position organization page location".split()
+DOCUMENT_FIELDS = "event_id kind name url page source_labels witness_indexes witness_names".split()
+PARSER_VERSION = 4
 
 def listing_page(site, form, n, get):
     """(day, url, title) for the hearing pages one page of a listing shows. The day is the date written nearest the
@@ -189,8 +190,16 @@ def retained_matches(state):
             people = page.get("witnesses", [])
             for event in page.get("events", []):
                 pages.append({"event_id": event, "page": url, "title": page.get("title", ""), "witnesses": len(people), "documents": len(files)})
-                witnesses.extend({"event_id": event, **person, "page": url} for person in people)
-                documents.extend({"event_id": event, "kind": kind, "name": name, "url": file, "page": url} for kind, name, file in files)
+                for index, person in enumerate(people):
+                    metadata = (page.get("witness_metadata") or {}).get(str(index), {})
+                    witnesses.append({"event_id": event, **person, "page": url, "location": metadata.get("location", "")})
+                for kind, name, file in files:
+                    metadata = (page.get("document_metadata") or {}).get(file, {})
+                    indexes = metadata.get("witness_indexes", [])
+                    documents.append({"event_id": event, "kind": kind, "name": name, "url": file, "page": url,
+                                      "source_labels": json.dumps(metadata.get("labels", []), ensure_ascii=False),
+                                      "witness_indexes": json.dumps(indexes),
+                                      "witness_names": json.dumps([people[index]["name"] for index in indexes if isinstance(index, int) and 0 <= index < len(people)], ensure_ascii=False)})
     return pages, witnesses, documents
 
 def mark_possible_matches(meetings, state):
@@ -218,6 +227,13 @@ def parsed(page, url):
               "lines": sorted(lines(page)), "witnesses": witnesses(page, url), "documents": documents(page, url)}
     if labels := document_labels(page, url):
         result["document_labels"] = labels
+    result["document_metadata"], result["witness_metadata"], result["page_metadata"] = source_details(page, url, result["witnesses"])
+    known = {row[2] for row in result["documents"]}
+    for file, metadata in result["document_metadata"].items():
+        if file not in known:
+            label = next(iter(metadata["labels"]), "")
+            kind = next((kind for kind, pattern in KINDS if re.search(pattern, f"{label} {file.rsplit('/', 1)[-1]}", re.I)), "other")
+            result["documents"].append((kind, label or file.rsplit("/", 1)[-1], file))
     event = event_details(page, url)
     if event:
         result["event"] = event
@@ -294,7 +310,7 @@ def fetch_page(url, previous, today, *, cache=None, check=None):
         except (ValueError, RuntimeError, OSError) as error:
             check.update(completed_at=timestamp(), outcome="error", error=str(error))
             raise
-    return {**result, "checked": today.isoformat(), "version": "", "parser_version": 2, "events": previous.get("events", []), **({"match_details": previous["match_details"]} if previous.get("match_details") else {})}
+    return {**result, "checked": today.isoformat(), "version": "", "parser_version": PARSER_VERSION, "events": previous.get("events", []), **({"match_details": previous["match_details"]} if previous.get("match_details") else {})}
 
 
 def refresh_urls(state, versions, today, limit, sites=None):
@@ -307,9 +323,9 @@ def refresh_urls(state, versions, today, limit, sites=None):
         for url, page in saved["pages"].items():
             if page.get("status") == "error":
                 continue  # No successful observation exists; the main pass retries it as urgent.
-            if url in saved["listings"] and not changed.intersection(page.get("events", [])) and due(page, saved["listings"][url][0], page.get("version"), today):
-                aged.append((page["checked"], url))
-    return {url for _, url in sorted(aged)[:limit]}
+            if url in saved["listings"] and not changed.intersection(page.get("events", [])) and (page.get("parser_version", 0) < PARSER_VERSION or due(page, saved["listings"][url][0], page.get("version"), today)):
+                aged.append((page.get("parser_version", 0) >= PARSER_VERSION, page.get("checked", ""), url))
+    return {url for _, _, url in sorted(aged)[:limit]}
 
 
 def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=None, refresh_limit=450, site=None, limit=None, since=None):
@@ -383,7 +399,7 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
             urgent, aged = [], []
             for url, (day, _) in saved["listings"].items():
                 previous = pages.get(url)
-                if not previous or previous.get("status") == "error" or (host in ("indian.senate.gov", "drugcaucus.senate.gov") and previous.get("parser_version") != 2) or changed.intersection(previous.get("events", [])):
+                if not previous or previous.get("status") == "error" or (host in ("indian.senate.gov", "drugcaucus.senate.gov") and previous.get("parser_version", 0) < 2) or changed.intersection(previous.get("events", [])):
                     urgent.append(url)
                 elif url in maintenance:
                     aged.append(url)

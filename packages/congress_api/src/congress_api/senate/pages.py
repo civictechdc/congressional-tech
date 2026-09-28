@@ -6,6 +6,8 @@ locate pages; only a page's own date and subject establish which meeting it is.
 import datetime as dt, html, re
 from urllib.parse import urljoin, urlsplit
 
+from lxml import html as dom
+
 from congress_api.witnesses import is_name, witness
 from congress_api.inventory.common import text
 
@@ -194,4 +196,159 @@ def event_details(page_html, url):
 
 def document_labels(page_html, url):
     """Keep the provider's exact anchor words alongside our document category."""
+    page_html = re.sub(r"<!--.*?-->", "", page_html, flags=re.S)
     return {urljoin(url, html.unescape(link.group(1)).strip()): text(link.group(2)) for link in FILE.finditer(page_html)}
+
+
+def source_details(page_html, url, people):
+    """Keep page content, links and explicit witness-card ownership.
+
+    Existing witness rows and document triples remain unchanged for stable source
+    identities. The indexes here refer to those rows. An ambiguous/repeated name
+    is never enough to attach a document; it must be inside a recognized card
+    containing exactly one already parsed witness.
+    """
+    if not page_html.strip():
+        return {}, {}, {}
+    root = dom.fromstring(page_html, parser=dom.HTMLParser(remove_comments=True))
+    def has(node, token):
+        return token in (node.get("class") or "").split()
+    def nodes(node, token):
+        return [child for child in node.iter() if has(child, token)]
+    def value(node):
+        return text(dom.tostring(node, encoding="unicode", with_tail=False))
+    # Matching uses a set of text lines; retained evidence must also preserve
+    # paragraph/panel order and repeated text. Scripts and styles are not prose.
+    blocks = {"div", "p", "li", "ul", "ol", "h1", "h2", "h3", "h4", "h5", "h6", "tr", "td", "th", "table",
+              "section", "article", "header", "footer", "nav", "aside", "main", "form", "dl", "dt", "dd", "br"}
+    def visible(node):
+        if not isinstance(node.tag, str) or node.tag.lower() in ("script", "style"):
+            return
+        if node.tag in blocks:
+            yield "\n"
+        yield node.text or ""
+        for child in node:
+            yield from visible(child)
+            yield child.tail or ""
+        if node.tag in blocks:
+            yield "\n"
+    ordered = [re.sub(r"\s+", " ", line).strip() for line in "".join(visible(root)).splitlines()]
+    page_metadata = {"text": "\n".join(line for line in ordered if line)}
+    media = [{"tag": node.tag, "attributes": dict(node.attrib)} for node in root.iter()
+             if node.tag in ("iframe", "video", "audio", "source", "track", "object", "embed")]
+    if media:
+        page_metadata["media"] = media
+    # Non-visible descriptions and structured data can contain meeting facts.
+    meta = [dict(node.attrib) for node in root.xpath(".//meta") if
+            "description" in (node.get("name") or node.get("property") or "").lower()
+            or "video" in (node.get("name") or node.get("property") or "").lower()]
+    if meta:
+        page_metadata["meta"] = meta
+    structured = [node.text or "" for node in root.xpath(".//script[@type='application/ld+json']")]
+    if structured:
+        page_metadata["structured_data"] = structured
+    # HSGAC/Indian pages build their player from separate inline assignments.
+    # Keep the original configuration, timing code and iframe template together;
+    # none is executed or turned into an asserted recording URL.
+    scripts = root.xpath(".//script[not(@src)]")
+    if any(re.search(r"\barchive_stream\s*=", node.text or "") for node in scripts):
+        page_metadata["media_scripts"] = [
+            {"attributes": dict(node.attrib), "text": node.text or ""} for node in scripts
+            if re.search(r"\b(?:archive_stream|archive_offset|originalTimestamp|live_starttime|comm_code|posterframe)\b", node.text or "")]
+    by_name = {}
+    for index, row in enumerate(people):
+        by_name.setdefault(row["name"], []).append(index)
+    cards = []
+    for node in root.iter():
+        if not isinstance(node.tag, str):
+            continue
+        family = next((token for token in ("capigacr-widget-card", "vcard", "paragraph--witness",
+            "field-collection-item-field-hearing-new-witness", "jet-listing-grid__item") if has(node, token)), None)
+        if not family and node.tag == "li" and len(nodes(node, "witness-content")) == 1:
+            family = "witness-content"
+        if not family and node.tag == "li" and has(node, "list-group-item") and (nodes(node, "full-name") or nodes(node, "person")):
+            family = "list-group-item"
+        if family:
+            cards.append((node, family))
+    witnesses_by_node, witness_metadata = {}, {}
+    for card, family in cards:
+        selectors = {"capigacr-widget-card": "capigacr-widget-card__title", "vcard": "fn",
+                     "paragraph--witness": "witness__field-name", "field-collection-item-field-hearing-new-witness": "group-header",
+                     "list-group-item": "full-name"}
+        if family in selectors:
+            names = nodes(card, selectors[family])
+            if not names and family == "list-group-item":
+                names = nodes(card, "person")
+            raw_name = " ".join(value(node) for node in names)
+            if family == "vcard":
+                raw_name = " ".join(value(node) for node in nodes(card, "honorific-prefix")) + " " + raw_name
+        elif family == "jet-listing-grid__item":
+            raw_name = " ".join(value(node) for node in card.iter() if node.tag in ("h3", "h4") and has(node, "jet-listing-dynamic-field__content"))
+        else:
+            headings = card.xpath(".//h2|.//h3|.//h4|.//h5")
+            above = card.xpath(".//p")
+            raw_name = value(headings[-1]) if headings else (value(above[0]) if above else "")
+            raw_name = re.sub(r"^\d+\.\s*", "", raw_name)
+        matches = by_name.get(witness(raw_name)["name"], []) if raw_name.strip() else []
+        if len(matches) != 1:
+            continue
+        index = matches[0]
+        fields = []
+        field_classes = {"title", "org", "occupation", "organization", "member-detail-item", "locality", "region",
+                         "witness__field-position", "witness__field-organization", "jet-listing-dynamic-field__content"}
+        for node in card.iter():
+            parent = node.getparent()
+            if isinstance(node.tag, str) and (set((node.get("class") or "").split()) & field_classes or
+                    (parent is not None and has(parent, "witness-content")) or node.tag == "em"):
+                if written := value(node):
+                    fields.append({"class": node.get("class", ""), "text": written})
+        metadata = {"layout": family, "name": raw_name.strip(), "text": value(card), "attributes": dict(card.attrib), "fields": fields}
+        for ancestor in card.iterancestors():
+            if has(ancestor, "capigacr-widget-card__panel-section"):
+                headings = nodes(ancestor, "capigacr-widget-card__panel-section-title")
+                if len(headings) == 1:
+                    metadata["panel"] = value(headings[0])
+                break
+        location = next((field["text"] for field in fields if field["class"] in ("locality", "region") or
+                         re.fullmatch(r"[^,]+,\s*[A-Z]{2}(?:\s+\d{5})?", field["text"])), None)
+        if location:
+            metadata["location"] = location
+        witness_metadata[str(index)] = metadata
+        witnesses_by_node[card] = index
+    # Separate cards with the same parsed name are not proof that their people
+    # are identical. The older witness list may already have deduplicated names.
+    repeated = {index for index in witnesses_by_node.values() if list(witnesses_by_node.values()).count(index) > 1}
+    witnesses_by_node = {card: index for card, index in witnesses_by_node.items() if index not in repeated}
+    witness_metadata = {index: metadata for index, metadata in witness_metadata.items() if int(index) not in repeated}
+    files = {}
+    file_path = re.compile(r"/download/|/media-center/files/|/wp-content/uploads/|/_cache/files/|/imo/media/doc/|/services/files/|/sites/.*/files/|files\.serve|\.(?:pdf|docx?|xlsx?|xml|csv|txt|rtf|vtt)(?:$|[?#])", re.I)
+    for anchor in root.xpath(".//a[@href]"):
+        href = urljoin(url, anchor.get("href", "").strip())
+        if not file_path.search(href) or re.search(r"\.(jpe?g|png|gif|svg|css|js|ico)($|\?)", href, re.I):
+            continue
+        if (anchor.get("type") or "").lower() in ("application/rss+xml", "application/atom+xml") or re.search(r"/(?:rss|atom|sitemap)\.xml(?:$|[?#])", href, re.I):
+            continue
+        entry = files.setdefault(href, {"labels": [], "attributes": [], "container_attributes": [], "witness_indexes": []})
+        label = value(anchor)
+        if label and label not in entry["labels"]:
+            entry["labels"].append(label)
+        attributes = dict(anchor.attrib)
+        if attributes not in entry["attributes"]:
+            entry["attributes"].append(attributes)
+        # The closest card wins; nested template containers cannot attach a file
+        # to another witness elsewhere on the page.
+        for ancestor in anchor.iterancestors():
+            attributes = {key: value for key, value in ancestor.attrib.items() if key.startswith("data-")}
+            if attributes and attributes not in entry["container_attributes"]:
+                entry["container_attributes"].append(attributes)
+            if ancestor in witnesses_by_node:
+                index = witnesses_by_node[ancestor]
+                if index not in entry["witness_indexes"]:
+                    entry["witness_indexes"].append(index)
+                break
+    # Non-file links can identify bills, nominations or witness organizations.
+    # Retain their literal destinations without interpreting or following them.
+    page_metadata["links"] = [{"text": value(anchor), "attributes": dict(anchor.attrib)}
+                              for anchor in root.xpath(".//a[@href]")
+                              if urljoin(url, anchor.get("href", "").strip()) not in files]
+    return files, witness_metadata, page_metadata

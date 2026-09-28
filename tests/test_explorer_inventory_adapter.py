@@ -89,3 +89,45 @@ def test_title_nominee_does_not_become_a_testifying_witness():
     appearance, = of_kind(adapt({}, recovered_witnesses=[nominee]), "appearance")
     assert appearance.roles == ("nominee",) and appearance.participation == "listed"
     assert appearance.provenance.basis == "inferred" and appearance.person is None
+
+
+def test_witness_source_keeps_all_payload_fields_and_verified_live_receipt():
+    url = "https://www.govinfo.gov/metadata/pkg/CHRG-113hhrg21122/mods.xml"
+    receipt = {"mode": "live", "url": url, "completed_at": "2026-09-26T12:00:00+00:00", "status_code": 200, "outcome": "present"}
+    observation = {"people": [{"name": "Alex Smith"}], "url": url, "checked": "2020-01-01", "source_witnesses": ["Smith, Alex, Director, Institute"],
+                   "unmapped_source_field": {"preserve": ["literal", "values"]}, "last_check": receipt, "observation_check": receipt}
+    recovered = {"event_id": "12", "name": "Alex Smith", "source": "gpo", "from": "package"}
+    rows = adapt({"mods": {"package": observation}}, recovered_witnesses=[recovered])
+    source = next(row for row in of_kind(rows, "source_record") if row.payload == observation)
+    assert source.retrieved_at == datetime.fromisoformat(receipt["completed_at"])
+    assert source.payload == observation and not of_kind(rows, "data_issue")
+    observation["last_check"] = {**receipt, "completed_at": "2026-09-26T18:00:00+00:00", "outcome": "error", "error": "503"}
+    rows = adapt({"mods": {"package": observation}}, recovered_witnesses=[recovered])
+    source = next(row for row in of_kind(rows, "source_record") if row.payload == observation)
+    assert source.retrieved_at == datetime.fromisoformat(receipt["completed_at"])
+    assert len(of_kind(rows, "appearance")) == 1
+    assert [issue.id.rsplit("|", 1)[-1] for issue in of_kind(rows, "data_issue")] == ["witness-source-check-failed"]
+
+
+def test_witness_import_and_failed_or_future_receipts_do_not_invent_retrieval():
+    url = "https://example.org/witness-list.pdf"
+    for receipt in (
+        {"mode": "cache_import", "url": url, "completed_at": "2026-09-26T12:00:00+00:00", "outcome": "present"},
+        {"mode": "live", "url": url, "completed_at": "2026-09-28T12:00:00+00:00", "status_code": 200, "outcome": "present"},
+        {"mode": "live", "url": url, "completed_at": "2026-09-26T12:00:00+00:00", "status_code": 200, "outcome": "error"},
+    ):
+        observation = {"people": [], "url": url, "checked": "2026-09-26", "last_check": receipt}
+        rows = adapt({"witness_lists": {url: observation}})
+        source, = of_kind(rows, "source_record")
+        assert source.payload == observation and source.retrieved_at is None
+        assert any(issue.id.endswith("unverified-retrieval") for issue in of_kind(rows, "data_issue"))
+
+
+def test_dated_witness_404_is_a_verified_check_not_a_retrieved_document():
+    url = "https://example.org/witness-list.pdf"
+    observation = {"people": [], "url": url, "absent": True, "last_check": {
+        "mode": "live", "url": url, "completed_at": "2026-09-26T12:00:00+00:00", "status_code": 404, "outcome": "not_found"}}
+    rows = adapt({"witness_lists": {url: observation}})
+    source, = of_kind(rows, "source_record")
+    assert source.payload == observation and source.retrieved_at is None
+    assert not of_kind(rows, "data_issue")

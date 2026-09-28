@@ -89,6 +89,8 @@ def witness_rows(root):
     """Page-compatible names, with the XML's separate fields and numeric panel/display ordering."""
     out = []
     for panel in sorted(root.findall("panel"), key=lambda p: number(p.get("sort-order", ""))):
+        if not active(panel):
+            continue
         for w in sorted(panel.findall("witness"), key=lambda w: (number(w.get("display-order", "")), value(w, "lastname"), value(w, "firstname"))):
             if not active(w):
                 continue
@@ -105,12 +107,19 @@ def xml_documents(root, wlist):
         if active(d):
             yield d, ""
     if wlist is not None:
-        for w in wlist.findall("panel/witness"):
+        for w in (w for panel in wlist.findall("panel") if active(panel) for w in panel.findall("witness")):
             if active(w):
                 name = text(" ".join(value(w, tag) for _, tag in NAME))
                 for d in w.findall("witness-documents/witness-document"):
                     if active(d):
                         yield d, name
+
+
+def document_kind(code, description, url):
+    file = url.rsplit("/", 1)[-1]
+    return (next((k for k, pattern in KINDS if re.search(pattern, file, re.I)), "")
+            or (XML_KINDS.get(code, "") if code != "SD" else "")
+            or next((k for k, pattern in NAMED if re.search(pattern, description, re.I)), "") or "support document")
 
 
 def read_xml(root, wlist):
@@ -124,8 +133,7 @@ def read_xml(root, wlist):
         if files:
             url = next((u for u in files if u.lower().endswith(".pdf")), files[0])
             file = url.rsplit("/", 1)[-1]
-            k = (next((k for k, pattern in KINDS if re.search(pattern, file, re.I)), "") or (XML_KINDS.get(code, "") if code != "SD" else "")
-                 or next((k for k, pattern in NAMED if re.search(pattern, description, re.I)), "") or "support document")
+            k = document_kind(code, description, url)
             name = description or (f"{k}: {witness}" if witness else file)
             docs.append((k, name, url, {u.rsplit("/", 1)[-1] for u in files}))
         if d.tag == "meeting-document" and code in ("CA", "HA", "FA", "CV"):

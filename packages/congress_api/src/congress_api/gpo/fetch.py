@@ -4,8 +4,8 @@ Fetch metadata and links for official GPO hearing transcripts from GovInfo.
 GovInfo's "Congressional Hearings" collection (CHRG) holds the official printed
 transcript of each hearing, usually published a year or more after it was held.
 We store one row per hearing: metadata plus links to the HTML text and the PDF.
-The transcript text is read once per hearing, for the days it was held, and not kept;
-the links point to it.
+The transcript text is read for the days it was held. With --evidence-path, the
+upstream XML/HTML bytes are retained separately from this CSV.
 
 Data flow:
     1. api.govinfo.gov/collections/CHRG/{since}   -> package ids + lastModified
@@ -26,8 +26,9 @@ The MODS record carries the committee's system code (e.g. hsvr00, the same codes
 as youtube-accounts.csv) and, for many hearings since the 115th Congress, the
 Congress.gov event id (the id committees put in YouTube descriptions).
 
-Runs incrementally: the output CSV doubles as the cache, and only packages
-modified since the newest lastModified in it are re-fetched.
+Runs incrementally: new and modified packages are fetched, plus a bounded number
+of unchanged rows needing a newer parser or retained upstream evidence. The small
+CSV remains the summary; --evidence-path retains XML/HTML bytes on pipeline-data.
 """
 
 import argparse
@@ -40,7 +41,7 @@ import sys
 
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, fields
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import requests
@@ -48,6 +49,7 @@ import requests
 from congress_api.http import get_with_retry
 from congress_api.xml import MODS_NS, mods_elements, parse_xml
 from congress_api.gpo.reviewed_committees import reviewed
+from congress_api.gpo import evidence as upstream_evidence
 from congress_shared.auth import load_congress_api_key
 from congress_shared.globals import CONGRESS_METADATA, DEFAULT_GPO_HEARINGS_FILE
 
@@ -65,6 +67,8 @@ RELIST_OVERLAP = timedelta(days=2)
 ## transcripts are read for their hearing days from this Congress on: the first with
 ##  committee channels and Congress.gov meeting records to match the days against
 TEXT_DAYS_FROM_CONGRESS = 113
+# Parser revisions queue bounded repairs even when GovInfo does not change a package.
+PARSER_VERSION = "2"
 
 
 ## define columns in the output CSV
@@ -110,6 +114,13 @@ class GpoHearing:
     # markup, errata and addendum without splitting the package identity.
     file_metadata: str = ""
     committee_metadata: str = ""
+    # `serial` historically held preferredCitation; retain it for old readers.
+    preferred_citation: str = ""
+    serial_numbers: str = ""
+    parser_version: str = ""
+    document_class: str = ""
+    granule_classes: str = ""
+    held_dates: str = ""
 
 
 def mods_witnesses(data):
@@ -130,13 +141,22 @@ def main(
     min_congress: int | None = None,
     nthreads: int = 4,
     full_relist: bool = False,
+    refresh_limit: int = 100,
+    evidence_path: Path | None = None,
 ) -> None:
+    if refresh_limit < 0:
+        raise ValueError("refresh_limit must be nonnegative")
     api_key = load_congress_api_key()
     if min_congress is None:
         ## match the congresses covered by the YouTube report
         min_congress = min(int(c) for c in CONGRESS_METADATA)
 
     existing = read_csv(output_path)
+    upstream = upstream_evidence.read(evidence_path)
+    # Keep unfinished packages beside retained evidence in CI, or beside the CSV
+    # for local runs. A later successful package must not advance past a failure.
+    pending_path = Path(str(evidence_path or output_path) + '.pending.json')
+    pending = json.loads(pending_path.read_text()) if pending_path.exists() else {}
     since = FULL_HISTORY_START
     ## a full relist still only fetches hearings that are new or changed; use
     ##  it after widening --chambers or --min-congress
@@ -146,17 +166,34 @@ def main(
     logging.info(f"{len(existing)} hearings on file; listing changes since {since}")
 
     ## figure out which packages are new or changed
-    to_fetch = {}
+    to_fetch = {package: modified for package, modified in pending.items()
+                if (match := PACKAGE_ID_REGEX.fullmatch(package)) and match[2] in chambers and int(match[1]) >= min_congress}
+    listings = {}
     for package in list_collection(since, api_key):
         match = PACKAGE_ID_REGEX.match(package["packageId"])
         if not match or match[2] not in chambers:
             continue
         if int(match[1]) < min_congress:
             continue
+        listings[package['packageId']] = {
+            'payload': package, 'retrieved_at': datetime.now(timezone.utc).isoformat(),
+            'url': f'{GOVINFO_API}/collections/CHRG/{since}',
+        }
         old = existing.get(package["packageId"])
         if old is None or old["last_modified"] != package["lastModified"]:
             to_fetch[package["packageId"]] = package["lastModified"]
-    logging.info(f"Fetching metadata for {len(to_fetch)} new or changed hearings")
+    stale = sorted((row for row in existing.values()
+                    if (row.get("parser_version") != PARSER_VERSION
+                        or (evidence_path is not None and not upstream.get(row["package_id"], {}).get("mods")))
+                    and PACKAGE_ID_REGEX.match(row["package_id"])[2] in chambers
+                    and int(row["congress"]) >= min_congress
+                    and row["package_id"] not in to_fetch),
+                   key=lambda row: (-int(row["congress"]), row["package_id"]))
+    for row in stale[:refresh_limit]:
+        to_fetch[row["package_id"]] = row["last_modified"]
+    pending.update(to_fetch)
+    write_pending(pending, pending_path)
+    logging.info(f"Fetching metadata for {len(to_fetch)} new, changed or parser-stale hearings")
 
     failures = []
     session = requests.Session()
@@ -167,32 +204,70 @@ def main(
             mods = get_with_retry(
                 session, f"{GOVINFO_CONTENT}/metadata/pkg/{package_id}/mods.xml"
             ).content
-            hearing = parse_mods(package_id, mods, last_modified)
-            if hearing.congress >= TEXT_DAYS_FROM_CONGRESS:
-                read = read_transcript(session, asdict(hearing))
+            captured = dict(upstream.get(package_id, {}))
+            captured['package_id'] = package_id
+            observation = upstream_evidence.observation(mods,
+                f"{GOVINFO_CONTENT}/metadata/pkg/{package_id}/mods.xml", "application/xml",
+                retrieved_at=datetime.now(timezone.utc).isoformat())
+            if package_id in listings:
+                captured['listing'] = listings[package_id]
+            try:
+                hearing = parse_mods(package_id, mods, last_modified)
+            except Exception as ex:
+                # Keep rejected response bytes without replacing the last valid
+                # MODS record or marking its CSV row freshly parsed.
+                captured['failed_mods'] = {**observation, 'error': str(ex)}
+                if evidence_path is not None:
+                    upstream[package_id] = captured
+                raise
+            captured.update(parser_version=PARSER_VERSION, mods=observation)
+            captured.pop('failed_mods', None)
+            captured['transcripts'] = dict(captured.get('transcripts', {}))
+            if evidence_path is not None:
+                upstream[package_id] = captured
+            old = existing.get(package_id)
+            # Parser repairs must not discard transcript-derived corrections or
+            # turn a small metadata refresh into a full transcript download.
+            unchanged = old and old.get("last_modified") == last_modified
+            if unchanged:
+                hearing.hearing_dates = old.get("hearing_dates", "")
+                hearing.text_read = old.get("text_read", "")
+                hearing.committee_name = hearing.committee_name or old.get("committee_name", "")
+            if hearing.congress >= TEXT_DAYS_FROM_CONGRESS and not (unchanged and hearing.text_read):
+                read = read_transcript(session, asdict(hearing), captured["transcripts"] if evidence_path else None)
                 hearing.hearing_dates, hearing.text_read = read["hearing_dates"], "yes"
                 hearing.committee_name = hearing.committee_name or read["committee_name"]
-            return hearing
+            result = asdict(hearing)
+            if unchanged:
+                result = merge_cached_row(old, result, live_refresh=True)
+                result.update(parser_version=PARSER_VERSION, hearing_dates=hearing.hearing_dates,
+                              text_read=hearing.text_read, witness_count=hearing.witness_count)
+            return result
         except Exception as ex:
             failures.append(f"{package_id}: {ex!r}")
             return None
 
+    completed = set()
     with ThreadPoolExecutor(nthreads) as pool:
         for i, hearing in enumerate(pool.map(fetch_one, to_fetch.items()), 1):
             if hearing is not None:
-                existing[hearing.package_id] = asdict(hearing)
+                existing[hearing["package_id"]] = hearing
+                completed.add(hearing["package_id"])
             if i % 500 == 0:
                 logging.info(f"Fetched {i}/{len(to_fetch)}")
 
     ## one-time backfill: hearing days for transcripts fetched before they were read
-    backfill = [r for r in existing.values()
-                if int(r["congress"]) >= TEXT_DAYS_FROM_CONGRESS and not r.get("text_read")]
+    backfill = sorted((r for r in existing.values()
+                if int(r["congress"]) >= max(TEXT_DAYS_FROM_CONGRESS, min_congress)
+                and PACKAGE_ID_REGEX.match(r["package_id"])[2] in chambers and not r.get("text_read")),
+                key=lambda row: (-int(row["congress"]), row["package_id"]))[:refresh_limit]
     if backfill:
         logging.info(f"Reading hearing days from {len(backfill)} transcripts")
 
         def fill(row):
             try:
-                read = read_transcript(session, row)
+                captured = upstream.setdefault(row['package_id'], {'package_id': row['package_id']}) if evidence_path else {}
+                read = read_transcript(session, row, captured.setdefault('transcripts', {}) if evidence_path else None)
                 row["hearing_dates"], row["text_read"] = read["hearing_dates"], "yes"
                 row["committee_name"] = row["committee_name"] or read["committee_name"]
             except Exception as ex:
@@ -204,7 +279,10 @@ def main(
     clean_rows(existing)
 
     ## write what we have even on failure, so a local run keeps its progress
+    if evidence_path is not None:
+        upstream_evidence.write(upstream, evidence_path)
     write_csv(existing, output_path)
+    write_pending({package: modified for package, modified in pending.items() if package not in completed}, pending_path)
     logging.info(f"Wrote {len(existing)} hearings to {output_path}")
 
     if failures:
@@ -212,6 +290,44 @@ def main(
             f"{len(failures)} hearing(s) failed:\n  " + "\n  ".join(failures[:50])
         )
         sys.exit(1)
+
+
+
+def merge_cached_row(old, parsed, *, live_refresh=False):
+    """Combine explicit facts without replacing existing scalar corrections.
+
+    Only a current network response may fill legacy scalar blanks: an offline
+    cache can predate both a source correction and a deliberately cleared value.
+    """
+    merged = dict(old)
+    if live_refresh:
+        for field in ('event_id', 'committee_code_gpo', 'committee_name', 'subcommittees',
+                      'title', 'held_date', 'date_ingested', 'serial', 'html_url', 'pdf_url'):
+            merged[field] = old.get(field) or parsed.get(field, '')
+        if parsed.get('record_type') == 'errata':
+            merged['record_type'] = 'errata'
+    for field in ('html_urls', 'pdf_urls', 'committee_codes_gpo', 'committee_codes',
+                  'serial_numbers', 'granule_classes', 'held_dates'):
+        values = str(old.get(field) or '').split(';')
+        singular = {'html_urls': 'html_url', 'pdf_urls': 'pdf_url',
+                    'committee_codes_gpo': 'committee_code_gpo', 'committee_codes': 'committee_code'}.get(field)
+        if singular and old.get(singular):
+            values.insert(0, old[singular])
+        merged[field] = ';'.join(dict.fromkeys(v for v in values + str(parsed.get(field) or '').split(';') if v))
+    for field in ('document_class', 'preferred_citation'):
+        merged[field] = old.get(field) or parsed[field]
+    claims = json.loads(old.get('committee_metadata') or '[]')
+    for claim in json.loads(parsed.get('committee_metadata') or '[]'):
+        if claim not in claims:
+            claims.append(claim)
+    merged['committee_metadata'] = json.dumps(claims, ensure_ascii=False, separators=(',', ':')) if claims else ''
+    files = json.loads(parsed.get('file_metadata') or '{}')
+    for url, existing in json.loads(old.get('file_metadata') or '{}').items():
+        files[url] = {**files.get(url, {}), **existing}
+    merged['file_metadata'] = json.dumps(files, ensure_ascii=False, separators=(',', ':')) if files else ''
+    # A cached MODS file can predate this row. Parser freshness belongs to a
+    # successful network refresh, not additive replay of an unknown acquisition.
+    return merged
 
 
 def list_collection(since: str, api_key: str):
@@ -230,7 +346,12 @@ def list_collection(since: str, api_key: str):
 def parse_mods(package_id: str, mods: bytes, last_modified: str) -> GpoHearing:
     """Pull the hearing-level fields out of a GovInfo MODS record."""
     root = parse_xml(mods)
-    congress, chamber, _ = PACKAGE_ID_REGEX.match(package_id).groups()
+    if root.tag != '{http://www.loc.gov/mods/v3}mods':
+        raise ValueError('GovInfo metadata response is not a MODS document')
+    match = PACKAGE_ID_REGEX.fullmatch(package_id)
+    if match is None:
+        raise ValueError(f'Invalid GovInfo hearing package identifier: {package_id}')
+    congress, chamber, _ = match.groups()
 
     ## hearing-level data lives in the root's own <extension> blocks; the
     ##  <relatedItem> granules below repeat some of it, so don't search deeper
@@ -283,7 +404,11 @@ def parse_mods(package_id: str, mods: bytes, last_modified: str) -> GpoHearing:
 
     title = ext_text("searchTitle") or root.findtext(
         "m:titleInfo/m:title", "", MODS_NS
-    ).strip()
+    ).strip() or ext_text("errata")
+
+    scopes = [root, *root.findall("m:relatedItem[@type='constituent']", MODS_NS)]
+    serial_numbers = list(dict.fromkeys(el.get('number', '').strip()
+        for scope in scopes for el in mods_elements(scope, 'congSerial') if el.get('number', '').strip()))
 
     def rendition_urls(label):
         nodes = root.findall('m:location/m:url', MODS_NS) + root.findall(
@@ -310,7 +435,9 @@ def parse_mods(package_id: str, mods: bytes, last_modified: str) -> GpoHearing:
         committee_codes_gpo=";".join(committee_codes),
         committee_codes=";".join(committee_codes),
         committee_metadata=json.dumps(committee_metadata, ensure_ascii=False, separators=(',', ':')) if committee_metadata else "",
-        record_type="errata" if "[ERRATA]" in title.upper() else "hearing",
+        record_type="errata" if (ext_text('isErrata').lower() == 'true'
+            or ext_text('granuleClass').upper() == 'ERRATA'
+            or "[ERRATA]" in title.upper()) else "hearing",
         committee_name=committee_name,
         subcommittees="; ".join(dict.fromkeys(subcommittees)),
         title=" ".join(title.split()),
@@ -318,7 +445,15 @@ def parse_mods(package_id: str, mods: bytes, last_modified: str) -> GpoHearing:
         date_ingested=date_ingested,
         days_to_govinfo=days_to_govinfo,
         serial=ext_text("preferredCitation"),
-        witness_count=len(ext_all("witness")),
+        preferred_citation=ext_text("preferredCitation"),
+        serial_numbers=";".join(serial_numbers),
+        parser_version=PARSER_VERSION,
+        document_class=ext_text("docClass"),
+        granule_classes=";".join(dict.fromkeys(el.text.strip() for scope in scopes
+            for el in mods_elements(scope, "granuleClass") if el.text and el.text.strip())),
+        held_dates=";".join(held_dates),
+        witness_count=len(dict.fromkeys(el.text.strip() for scope in scopes
+            for el in mods_elements(scope, "witness") if el.text and el.text.strip())),
         html_url=html_urls[0] if html_urls else "",
         pdf_url=pdf_urls[0] if pdf_urls else "",
         html_urls=";".join(html_urls),
@@ -368,7 +503,7 @@ def hearing_days(text: str, congress: int, volume: bool = False) -> list[str]:
 
 ## the chamber line that closes a title page's committee block
 CHAMBER_LINE = re.compile(r"^[ \t]*(?:UNITED STATES SENATE|U\.S\. SENATE|(?:U\.S\. )?HOUSE OF REPRESENTATIVES)[ \t]*$", re.MULTILINE)
-PARENT_BODY = re.compile(r"(?<![A-Z])((?:COMMITTEE|COMMISSION|CAUCUS) ON [A-Z][A-Z,'\u2019 \-]*(?:\n[ \t]*[A-Z][A-Z,'\u2019 \-]*)?)")
+PARENT_BODY = re.compile(r"(?<![A-Z])((?:COMMITTEE|COMMISSION|CAUCUS) ON [A-Z][A-Z,'\u2019 \-]*(?:\n[ \t]*(?:\n[ \t]*)*(?!(?:BEFORE THE|UNITED STATES)\b)[A-Z][A-Z,'\u2019 \-]*)?)")
 SMALL_WORDS = {"on", "the", "and", "of", "for", "in", "to"}
 
 
@@ -384,14 +519,18 @@ def committee_on_title_page(text: str) -> str:
     return " ".join(w if i and w in SMALL_WORDS else w.capitalize() for i, w in enumerate(words))
 
 
-def read_transcript(session, row: dict) -> dict:
+def read_transcript(session, row: dict, evidence: dict | None = None) -> dict:
     """What the transcript itself says: `hearing_dates`, the hearing days when they say more than
     GPO's held date, and `committee_name`, the committee on its title page."""
     volume = is_multi_hearing_volume(row["title"])
     days, names = set(), []
     urls = str(row.get('html_urls') or row.get('html_url') or '').split(';')
     for url in dict.fromkeys(u for u in urls if u):
-        text = get_with_retry(session, url).text
+        response = get_with_retry(session, url)
+        text = response.text
+        if evidence is not None:
+            evidence[url] = upstream_evidence.observation(response.content, url, 'text/html',
+                retrieved_at=datetime.now(timezone.utc).isoformat())
         days.update(hearing_days(text, int(row['congress']), volume))
         name = committee_on_title_page(text)
         if name:
@@ -461,13 +600,29 @@ def read_csv(path: Path) -> dict[str, dict]:
 
 def write_csv(rows: dict[str, dict], path: Path) -> None:
     field_names = [field.name for field in fields(GpoHearing)]
-    Path(path).parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=field_names)
-        writer.writeheader()
-        ## sort so weekly diffs only show real changes
-        for package_id in sorted(rows):
-            writer.writerow(rows[package_id])
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + '.tmp')
+    try:
+        with open(temporary, "w", newline="", encoding="utf-8") as handle:
+            writer = csv.DictWriter(handle, fieldnames=field_names)
+            writer.writeheader()
+            ## sort so weekly diffs only show real changes
+            for package_id in sorted(rows):
+                writer.writerow(rows[package_id])
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def write_pending(values, path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + '.tmp')
+    try:
+        temporary.write_text(json.dumps(values, sort_keys=True) + '\n')
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def parse_args_and_run():
@@ -502,6 +657,11 @@ def parse_args_and_run():
         default=4,
         help="Concurrent metadata downloads.",
     )
+
+    parser.add_argument("--evidence-path", type=Path,
+                        help="Gzip JSONL upstream XML/HTML evidence on pipeline-data; kept out of the CSV.")
+    parser.add_argument("--refresh-limit", type=int, default=100,
+                        help="Maximum unchanged rows to refresh for a newer parser (default: 100).")
 
     ## ignore the unknown args (e.g. --congress-api-key, read by the key loader)
     args = parser.parse_known_args()[0]

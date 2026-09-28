@@ -1,0 +1,93 @@
+<mods xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:exslt="http://exslt.org/common" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.loc.gov/mods/v3" version="3.3" xsi:schemaLocation="http://www.loc.gov/mods/v3 http://www.loc.gov/standards/mods/v3/mods-3-3.xsd" ID="P0b002ee1e89eed27">
+    <name type="corporate">
+         <namePart>United States Government Publishing Office</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">publisher</roleTerm>
+              <roleTerm authority="marcrelator" type="code">pbl</roleTerm>
+        </role>
+         <role>
+              <roleTerm authority="marcrelator" type="text">distributor</roleTerm>
+              <roleTerm authority="marcrelator" type="code">dst</roleTerm>
+        </role>
+    </name>
+    <name type="corporate">
+         <namePart>United States</namePart>
+         <namePart>Congress</namePart>
+         <namePart>House of Representatives</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">author</roleTerm>
+              <roleTerm authority="marcrelator" type="code">aut</roleTerm>
+        </role>
+         <description>Government Organization</description>
+    </name>
+    <typeOfResource>text</typeOfResource>
+    <genre authority="marcgt">government publication</genre>
+    <language>
+         <languageTerm type="code" authority="iso639-2b">eng</languageTerm>
+    </language>
+    <extension>
+         <collectionCode>CHRG</collectionCode>
+         <category>Congressional Committee Materials</category>
+         <waisDatabaseName>119_house_hearings</waisDatabaseName>
+         <branch>legislative</branch>
+         <dateIngested>2026-09-28</dateIngested>
+    </extension>
+    <titleInfo>
+         <title></title>
+    </titleInfo>
+    <titleInfo type="alternative"></titleInfo>
+    <location>
+         <url displayLabel="Content Detail" access="object in context">https://www.govinfo.gov/app/details/CHRG-119hhrg64429</url>
+         <url displayLabel="HTML rendition" access="raw object">https://www.govinfo.gov/content/pkg/CHRG-119hhrg64429/html/CHRG-119hhrg64429.htm</url>
+         <url displayLabel="PDF rendition" access="raw object">https://www.govinfo.gov/content/pkg/CHRG-119hhrg64429/pdf/CHRG-119hhrg64429.pdf</url>
+    </location>
+    <originInfo>
+         <publisher>U.S. Government Publishing Office</publisher>
+         <dateIssued encoding="w3cdtf">2026-04-29</dateIssued>
+         <issuance>monographic</issuance>
+    </originInfo>
+    <physicalDescription>
+         <note type="source content type">deposited</note>
+         <digitalOrigin>born digital</digitalOrigin>
+         <extent>2 digital object pages</extent>
+    </physicalDescription>
+    <identifier type="uri">https://www.govinfo.gov/app/details/CHRG-119hhrg64429</identifier>
+    <identifier type="local">P0b002ee1e89eed27</identifier>
+    <identifier type="former package identifier">f:64429.txt</identifier>
+    <recordInfo>
+         <recordContentSource authority="marcorg">DGPO</recordContentSource>
+         <recordCreationDate encoding="w3cdtf">2026-09-28</recordCreationDate>
+         <recordChangeDate encoding="w3cdtf">2026-09-28</recordChangeDate>
+         <recordIdentifier source="DGPO">CHRG-119hhrg64429</recordIdentifier>
+         <recordOrigin>machine generated</recordOrigin>
+         <languageOfCataloging>
+              <languageTerm type="code" authority="iso639-2b">eng</languageTerm>
+        </languageOfCataloging>
+    </recordInfo>
+    <accessCondition type="GPO scope determination">fdlp</accessCondition>
+    <extension>
+         <docClass>HHRG</docClass>
+         <accessId>CHRG-119hhrg64429</accessId>
+         <type>G</type>
+         <chamber>HOUSE</chamber>
+         <congress years="2025-2026">119</congress>
+         <session>2</session>
+         <heldDate>2026-04-29</heldDate>
+    </extension>
+    <extension>
+         <searchTitle></searchTitle>
+         <granuleClass>ERRATA</granuleClass>
+         <accessId>CHRG-119hhrg64429</accessId>
+         <errataNumber>1</errataNumber>
+         <errata marked="true">FULL COMMITTEE BUSINESS MEETING</errata>
+         <graphicsInPDF>true</graphicsInPDF>
+         <textInPDF>true</textInPDF>
+         <isAppropriation>false</isAppropriation>
+         <jacketId>64-429</jacketId>
+         <isNomination>false</isNomination>
+         <isErrata>true</isErrata>
+    </extension>
+    <relatedItem type="isReferencedBy">
+         <identifier type="Jacket citation"></identifier>
+    </relatedItem>
+</mods>

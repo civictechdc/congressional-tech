@@ -133,3 +133,25 @@ class YoutubeAdapterTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_refreshed_video_uses_video_publication_time_without_playlist_warning():
+    row = video(videoPublishedAt='2025-07-22T12:00:00Z', channelId='UC-example')
+    result = list(records([row], Context()))
+    validate(result)
+    version = kind(result, 'material_version')[0]
+    assert version.published_at.original == row['videoPublishedAt']
+    assert version.published_at.timezone == 'UTC'
+    assert not any(i.field_path == '/published_at' for i in kind(result, 'data_issue'))
+
+
+def test_successful_api_omission_is_scoped_and_dated_without_claiming_deleted_video():
+    row = video(available=False, caption=None, duration=None, details_checked_at='2026-09-26T12:00:00Z')
+    result = list(records([row], Context())); validate(result)
+    check = next(r for r in result if r.kind == 'assessment' and r.aspect == 'reachability')
+    assert check.status == 'not_found'
+    assert check.observed_at == datetime(2026, 9, 26, 12, tzinfo=timezone.utc)
+    assert 'videos.list' in check.scope and 'web player was not checked' in check.scope
+    assert kind(result, 'representation')  # Retain the historical source URL.
+    unknown = list(records([video(available=False)], Context()))
+    assert next(r for r in unknown if r.kind == 'assessment' and r.aspect == 'reachability').status == 'unknown'

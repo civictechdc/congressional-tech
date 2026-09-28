@@ -25,6 +25,7 @@ meeting cannot acquire a permanent negative answer. Transient failures raise.
 import datetime as dt
 import json
 import re
+from pathlib import Path
 
 from congress_api import http
 from congress_api.inventory.common import read_csv
@@ -34,8 +35,18 @@ from congress_api.senate.isvp import LIVE_ID, archive_url, live_url, parse_playe
 def import_observations(state, seed_cache=None, youtube_index=None, senate_index=None):
     for source, index, key in (("youtube", youtube_index, "video_id"), ("senate", senate_index, "filename")):
         path = index or (seed_cache / source / "captions_index.csv" if seed_cache else None)
-        if path and path.exists():
-            state.setdefault(source, {}).update({r[key]: r["kind"] for r in read_csv(path)})
+        if path:
+            path = Path(path)
+            if path.exists():
+                state.setdefault(source, {}).update({r[key]: r["kind"] for r in read_csv(path)})
+            # Receipts contain scope/time and file pointers, never caption bytes.
+            # Include failed-only checks even when they have no successful CSV row.
+            for receipt_path in sorted((path.parent / 'caption_receipts').glob('*.json')):
+                receipt = json.loads(receipt_path.read_text())
+                native_id = receipt.get(key)
+                if not isinstance(native_id, str) or not native_id:
+                    continue
+                state.setdefault('caption_observations', {}).setdefault(source, {})[native_id] = receipt
     if seed_cache and not state.get("probes"):
         path = seed_cache / "senate/probe_cache.json"
         if path.exists():

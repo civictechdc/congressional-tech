@@ -108,3 +108,13 @@ def test_invalid_metadata_timestamp_does_not_replace_publication(tmp_path, times
     with pytest.raises(ValueError):
         export(**options, committees_path=path)
     assert (tmp_path / 'public/CURRENT.json').read_bytes() == before
+
+
+def test_duplicate_committee_pages_do_not_silently_overwrite_source(tmp_path, monkeypatch):
+    meetings = write_meetings(tmp_path, [native()])
+    output = save(tmp_path / 'committees.jsonl.gz', [metadata()])
+    before = output.read_bytes()
+    monkeypatch.setattr(collector, 'get', lambda *args: {'committees': [metadata()['committee']], 'pagination': {'next': 'next-page'}})
+    with pytest.raises(ValueError, match='Duplicate committee'):
+        collector.collect(meetings, output, api_key='test-key')
+    assert output.read_bytes() == before

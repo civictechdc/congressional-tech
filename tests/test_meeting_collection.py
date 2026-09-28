@@ -1,0 +1,118 @@
+"""Congress.gov collection keeps source fields and retries interrupted work."""
+from datetime import datetime
+import json
+
+import pytest
+
+from congress_api import meetings
+
+
+def setup(monkeypatch, tmp_path):
+    monkeypatch.setattr(meetings, "load_congress_api_key", lambda: "private-key")
+    monkeypatch.setattr(meetings, "FIRST_CONGRESS", 112)
+    monkeypatch.setattr(meetings, "CONGRESS_METADATA", {"112": {}, "113": {}, "114": {}})
+    monkeypatch.setattr(meetings, "CHAMBERS", ("house",))
+    path = tmp_path / "meetings.jsonl.gz"
+    url = f"{meetings.API}/committee-meeting/112/house/old"
+    old = {"_url": url, "eventId": "old", "congress": 112, "chamber": "House", "updateDate": "2026-01-10T00:00:00Z"}
+    meetings.write({url: old}, path)
+    return path, url, old
+
+
+def pending(path):
+    return json.loads(path.with_suffix(path.suffix + ".pending.json").read_text())["urls"]
+
+
+def test_failed_old_detail_is_retried_after_new_watermark_passes_it(tmp_path, monkeypatch):
+    path, old_url, old = setup(monkeypatch, tmp_path)
+    newer_url = f"{meetings.API}/committee-meeting/114/house/new"
+    calls = []
+    first = True
+
+    def get(session, url, key, params=None):
+        calls.append((url, dict(params) if params else None))
+        if params:
+            return {"committeeMeetings": [{"url": old_url + "?api_key=private-key"}, {"url": newer_url}] if first and url.endswith("112/house") else []}
+        if url == old_url and first:
+            raise RuntimeError("temporary error")
+        return {"committeeMeeting": {**old, "eventId": "old" if url == old_url else "new", "updateDate": "2026-01-11T00:00:00Z" if url == old_url else "2026-01-20T00:00:00Z", "futureField": {"nested": [1, "kept"]}}}
+
+    monkeypatch.setattr(meetings, "get", get)
+    with pytest.raises(SystemExit):
+        meetings.main(path, nthreads=1)
+    assert pending(path) == [old_url]
+    assert meetings.read(path)[old_url] == old
+    first = False
+    calls.clear()
+    meetings.main(path, nthreads=1)
+    assert [url for url, params in calls if params is None] == [old_url]
+    assert all(params["fromDateTime"] == "2026-01-18T00:00:00Z" for _, params in calls if params)
+    assert len([url for url, params in calls if params]) == 3  # Includes historical 112th Congress.
+    assert pending(path) == []
+    updated = meetings.read(path)[old_url]
+    assert updated["futureField"] == {"nested": [1, "kept"]}
+    assert datetime.fromisoformat(updated["_retrieved_at"]).tzinfo is not None
+    assert "private-key" not in json.dumps(updated)
+
+
+def test_pending_work_survives_output_write_failure(tmp_path, monkeypatch):
+    path, url, old = setup(monkeypatch, tmp_path)
+    before = path.read_bytes()
+    monkeypatch.setattr(meetings, "get", lambda session, address, key, params=None: {"committeeMeetings": [{"url": url}]} if params else {"committeeMeeting": old})
+    monkeypatch.setattr(meetings, "write", lambda *args: (_ for _ in ()).throw(OSError("disk full")))
+    with pytest.raises(OSError, match="disk full"):
+        meetings.main(path, nthreads=1)
+    assert path.read_bytes() == before
+    assert pending(path) == [url]
+
+
+def test_atomic_write_keeps_existing_bytes_after_serialization_failure(tmp_path):
+    path = tmp_path / "meetings.jsonl.gz"
+    meetings.write({"old": {"_url": "old", "native": True}}, path)
+    before = path.read_bytes()
+    with pytest.raises(TypeError):
+        meetings.write({"first": {"_url": "first"}, "invalid": {"value": object()}}, path)
+    assert path.read_bytes() == before
+
+
+def test_short_api_page_with_next_is_not_treated_as_complete(tmp_path, monkeypatch):
+    path, url, old = setup(monkeypatch, tmp_path)
+    offsets = []
+    monkeypatch.setattr(meetings, "CONGRESS_METADATA", {"112": {}})
+    def get(session, address, key, params=None):
+        if params:
+            offsets.append(params["offset"])
+            return {"committeeMeetings": [{"url": url}] if params["offset"] == 0 else [{"url": url + "2"}],
+                    "pagination": {"next": "next"} if params["offset"] == 0 else {}}
+        return {"committeeMeeting": old}
+    monkeypatch.setattr(meetings, "get", get)
+    meetings.main(path, nthreads=1)
+    assert offsets == [0, 1]
+    assert len(meetings.read(path)) == 2
+
+
+def test_missing_collection_field_is_an_error_not_confirmed_empty(tmp_path, monkeypatch):
+    path, _, _ = setup(monkeypatch, tmp_path)
+    before = path.read_bytes()
+    monkeypatch.setattr(meetings, "get", lambda *args: {})
+    with pytest.raises(KeyError, match="committeeMeetings"):
+        meetings.main(path, nthreads=1)
+    assert path.read_bytes() == before
+
+
+def test_repeating_pagination_fails_without_replacing_snapshot(tmp_path, monkeypatch):
+    path, url, _ = setup(monkeypatch, tmp_path)
+    before = path.read_bytes()
+    monkeypatch.setattr(meetings, "get", lambda *args: {"committeeMeetings": [{"url": url}], "pagination": {"next": "next"}})
+    with pytest.raises(ValueError, match="repeated a page"):
+        meetings.main(path, nthreads=1)
+    assert path.read_bytes() == before
+
+
+def test_incomplete_detail_does_not_replace_previously_saved_record(tmp_path, monkeypatch):
+    path, url, old = setup(monkeypatch, tmp_path)
+    monkeypatch.setattr(meetings, "get", lambda session, address, key, params=None: {"committeeMeetings": [{"url": url}]} if params else {"committeeMeeting": {}})
+    with pytest.raises(SystemExit):
+        meetings.main(path, nthreads=1)
+    assert meetings.read(path)[url] == old
+    assert pending(path) == [url]

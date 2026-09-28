@@ -1,0 +1,111 @@
+<!-- Actual hearing page; trimmed to title and original player configuration scripts. -->
+<title>Whistleblower Testimony on the COVID Coverup - Committee on Homeland Security &amp; Governmental Affairs</title><script>
+let archive_stream = null; 
+archive_stream = "govtaff051326";
+</script><script>
+let archive_offset = null; 
+archive_offset = "910";
+</script><script>
+//let live_starttime = null; 
+
+// Original timestamp (in seconds)
+const originalTimestamp = 1778665620;
+// Define the offset in seconds for EST (UTC-5) and EDT (UTC-4)
+const estOffsetInSeconds = 5 * 3600; // 5 hours in seconds
+const edtOffsetInSeconds = 4 * 3600; // 4 hours in seconds
+
+// Create a Date object from the original timestamp (multiplied by 1000 to convert it to milliseconds)
+let originalDate = new Date(originalTimestamp * 1000);
+
+// Create a Date object representing the time in Eastern Time Zone
+let easternDate = new Date(originalDate.toLocaleString("en-US", {timeZone: "America/New_York"}));
+
+// Check if daylight saving time is in effect in Eastern Time Zone
+const isDST = easternDate.getTimezoneOffset() === 240;
+
+// Calculate the live start time accounting for the Eastern Time Zone offset
+const live_starttime = originalTimestamp + (isDST ? edtOffsetInSeconds : estOffsetInSeconds);
+
+console.log(live_starttime);
+</script><script>
+//leaving the current site, but staying on senate servers.
+function openVideoWin(urlToOpen) {
+	window.open(urlToOpen,null,
+    "height=400,width=620,status=yes,toolbar=no,menubar=no,location=no");	
+}
+	const comm_code = 'govtaff';
+	//const posterframe = 'https%3A%2F%2Fhsgac%2Esenate%2Egov%2Fwp%2Dcontent%2Fuploads%2FHSGAC%5FVideoPoster%5FWatchVideo%2Ejpeg';
+	const posterframe = 'https://www.hsgac.senate.gov/wp-content/uploads/HSGAC_VideoPoster_WatchVideo.jpeg';
+	
+			
+	function isCurrentTimeBeforeHearingStartTime() {
+		//const currentTime = Math.floor(Date.now() / 1000); // Get the current Unix timestamp
+		//console.log(currentTime);
+		const now = new Date();
+		const utcOffsetInSeconds = now.getTimezoneOffset() * 60; // UTC offset in seconds
+		const easternOffsetInSeconds = 5 * 3600; // Eastern offset in seconds (standard time)
+
+		// Determine if we are currently in daylight saving time in Eastern Time Zone
+		const easternDate = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
+		const easternIsDST = easternDate.getTimezoneOffset() !== easternOffsetInSeconds / 60;
+		
+		const totalOffsetInSeconds = easternIsDST ? easternOffsetInSeconds - 3600 : easternOffsetInSeconds;
+		const currentTime = Math.floor((now.getTime() / 1000) - totalOffsetInSeconds + utcOffsetInSeconds);
+		
+		console.log(currentTime);
+
+		if (typeof live_starttime !== 'undefined') {
+			console.log('live_starttime: ' + live_starttime);
+			return currentTime > live_starttime;
+		}
+	}
+		
+	if (isCurrentTimeBeforeHearingStartTime()) {
+		
+		//insert iframe and create button
+		
+		const baseIframeSrc = "https://www.senate.gov/isvp/?comm=COMMCODE&type=live&stt=OFFSET&filename=STREAM&auto_play=false&poster=POSTERFRAME";
+		//const baseIframeSrc = "https://www.senate.gov/isvp/?comm=COMMCODE&type=live&stt=OFFSET&filename=STREAM&auto_play=false&poster=https%3A%2F%2Fhsgac%2Esenate%2Egov%2Fwp%2Dcontent%2Fuploads%2FHSGAC%5FVideoPoster%5FWatchVideo%2Ejpeg";
+
+		let iframeSrc = baseIframeSrc;
+		iframeSrc = iframeSrc.replace("COMMCODE", encodeURIComponent(comm_code));
+		iframeSrc = iframeSrc.replace("POSTERFRAME", encodeURIComponent(posterframe));
+
+		if (archive_stream !== null && archive_stream !== undefined) {
+			iframeSrc = iframeSrc.replace("STREAM", encodeURIComponent(archive_stream));
+		}
+
+		if (archive_offset !== null && archive_offset !== undefined) {
+			iframeSrc = iframeSrc.replace("OFFSET", encodeURIComponent(archive_offset));
+		}
+
+		const iframe = document.createElement("iframe");
+		iframe.src = iframeSrc;
+		iframe.width = "570";
+		iframe.height = "320";
+		iframe.allowFullscreen = true;
+		
+		const openIframeButton = document.getElementById("openIframe");
+		
+		function openIframeInNewWindow() {
+			const iframeWindow = window.open("", "_blank", "width=570,height=320");
+			iframeWindow.document.write('<!DOCTYPE html><html><head><title>Committee Video</title></head><body style="margin: 0;"><iframe src="' + iframeSrc + '" width="100%" height="320" allowfullscreen="1"></iframe></body></html>');
+			iframeWindow.document.close();
+		} 
+
+		document.getElementById("iframeContainer").appendChild(iframe);
+		openIframeButton.style.display = "block";
+		openIframeButton.addEventListener("click", openIframeInNewWindow);
+	
+	} else {
+		const whiteGrayElements = document.querySelectorAll(".white-gray");
+		whiteGrayElements.forEach(element => {
+			element.style.backgroundImage = "none";
+		});
+		
+		const videoColumnChildren = document.querySelectorAll("#video-column > *");
+		videoColumnChildren.forEach(child => {
+			child.style.background = "none";
+		});
+	}
+	</script>

@@ -151,15 +151,17 @@ class AcquisitionTests(unittest.TestCase):
         self.assertEqual(self.receipt()["outcome"], "error")
         self.assertEqual(self.receipt(second)["outcome"], "not_found")
 
-    def test_legacy_index_skips_without_manufacturing_a_check_receipt(self):
+    def test_legacy_index_is_rechecked_before_assigning_a_current_receipt(self):
         index = self.out / captions.INDEX
         original = "filename,comm,kind,characters\nepw120623,epw,none,0\n"
         index.write_text(original)
-        with patch.object(captions.sess, "get", side_effect=AssertionError("no refetch")) as request:
-            self.assertEqual(captions.main(self.out, [PLAYER]), {"webvtt": 0, "none": 0})
-        request.assert_not_called()
+        with patch.object(captions.sess, "get", return_value=response(404)) as request:
+            self.assertEqual(captions.main(self.out, [PLAYER]), {"webvtt": 0, "none": 1})
+        self.assertEqual(request.call_count, 1)
         self.assertEqual(index.read_text(), original)
-        self.assertFalse(captions.receipt_path(self.out, PLAYER).exists())
+        self.assertEqual(self.receipt()['capture_version'], captions.CAPTURE_VERSION)
+        with patch.object(captions.sess, 'get', side_effect=AssertionError('confirmed capture is current')):
+            self.assertEqual(captions.main(self.out, [PLAYER]), {'webvtt': 0, 'none': 0})
 
     def test_equivalent_player_urls_are_checked_once(self):
         alternative = "https://www.senate.gov/isvp/?filename=epw120623&comm=epw&autoplay=false"

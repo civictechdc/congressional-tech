@@ -78,6 +78,9 @@ jobs:
           if [[ -f pipeline-data/committee-explorer/attempts.json ]]; then
             args+=(--attempts pipeline-data/committee-explorer/attempts.json)
           fi
+          if [[ -f pipeline-data/gpo-evidence.jsonl.gz ]]; then
+            args+=(--gpo-evidence-path pipeline-data/gpo-evidence.jsonl.gz)
+          fi
           if [[ -f pipeline-data/congress_committees.jsonl.gz ]]; then
             args+=(--committees-path pipeline-data/congress_committees.jsonl.gz)
           fi

@@ -1,14 +1,20 @@
 """House retained source groups, with explicit limits for legacy flattened state."""
 import re
-from datetime import datetime
 from committee_meeting.assessments import Assessment
 from committee_meeting.common import Identifier
 from committee_meeting.issues import DataIssue
 from committee_meeting.legislation import Amendment, AmendmentGroup, AmendmentSponsor, LegislativeItem, Vote
 from committee_meeting.materials import DocumentDetails, MaterialLink
 from committee_meeting.meetings import Affiliation, Appearance, Panel, Person, RecordedName
-from .common import digest, material_records, ref, web_url
+from .common import digest, material_records, ref, web_url, observed_time
 from .meetings import category
+
+DOCUMENT_CATEGORIES = {
+    "WS": "statement", "WT": "disclosure", "WB": "biography", "WD": "supporting",
+    "HT": "transcript", "HW": "witness_list", "HQ": "questions_for_record", "MS": "statement",
+    "CV": "vote", "CR": "report", "FR": "report", "BR": "bill_text", "CA": "amendment",
+    "HA": "amendment", "FA": "amendment", "HM": "hearing_record", "HC": "hearing_record",
+}
 
 
 def value(meta, path):
@@ -21,13 +27,42 @@ def number(raw):
     return int(raw) if str(raw).isdigit() else None
 
 
-def observed_time(raw, now):
-    """Promote only an explicit, timezone-aware time no later than the export."""
-    try:
-        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
-        return parsed if parsed.tzinfo is not None and parsed <= now else None
-    except (AttributeError, TypeError, ValueError):
-        return None
+def document_key(key, group, owners):
+    urls = sorted({f["url"] for f in group.get("files", []) if f.get("active", True) and web_url(f.get("url"))})
+    stable = group.get("metadata", {}).get("attributes", {}).get("add-date")
+    owner = owners.get(group.get("owning_witness_selector"))
+    return key + "|document|" + (stable + "|" + group.get("source", "") + "|" + (owner.id if owner else "") + "|" + ("|".join(urls) or digest(group))
+                                if stable else "|".join(urls) or digest(group))
+
+
+def alias_legacy_documents(context, key, saved, groups, owners):
+    """Preserve published IDs only for unambiguous old→rich file correspondence."""
+    alias = getattr(context.ids, "alias", None)
+    existing = getattr(context.ids, "existing", None)
+    if alias is None or existing is None:
+        return
+    by_url = {}
+    for group in groups:
+        if not group.get("active", True):
+            continue
+        rich_key = document_key(key, group, owners)
+        for file in group.get("files", []):
+            if file.get("active", True) and web_url(file.get("url")):
+                by_url.setdefault(file["url"].replace("http://", "https://"), set()).add(rich_key)
+    pairs, old_by_rich = {}, {}
+    for document in saved.get("documents", []):
+        old_key = key + "|document|" + document[2]
+        candidates = by_url.get(document[2].replace("http://", "https://"), set())
+        if len(candidates) != 1:
+            continue
+        rich_key = next(iter(candidates))
+        pairs[old_key] = rich_key
+        old_by_rich.setdefault(rich_key, set()).add(old_key)
+    for old_key, rich_key in pairs.items():
+        if len(old_by_rich[rich_key]) != 1:
+            continue
+        if alias("material", rich_key, old_key):
+            alias("material_version", rich_key + "|reported-edition", old_key + "|reported-edition")
 
 
 def records(state, context, *, meetings):
@@ -39,12 +74,12 @@ def records(state, context, *, meetings):
         source = context.source(key, saved, (saved.get("urls") or [None])[0])
         check = saved.get("last_check") or {}
         check = check if isinstance(check, dict) else {}
-        observed = observed_time(saved.get("retrieved_at"), context.now) if check.get("mode") == "live" else None
+        observed = observed_time(saved.get("retrieved_at"), context.now) if check.get("mode") == "live" and not saved.get("replay") else None
         if observed is not None:
             source = source.model_copy(update={"retrieved_at": observed})
         yield source
         evidence = context.evidence(source, basis="derived", method="congress_api.house.retained-output")
-        if check.get("mode") == "live" and saved.get("retrieved_at") is not None and observed is None:
+        if check.get("mode") == "live" and not saved.get("replay") and saved.get("retrieved_at") is not None and observed is None:
             yield DataIssue(id=context.ids("data_issue", key + "|invalid-retrieval-time"), subject=ref(source), category="unverified",
                             summary="The retained House retrieval time could not be used", field_path="/retrieved_at",
                             explanation="Retrieval times must include a timezone and cannot be later than this export. The original value remains in the source payload.",
@@ -90,8 +125,8 @@ def records(state, context, *, meetings):
                 name = w["name"]
                 witness_key = key + "|witness|" + name
                 # Same-name observations remain separate, with explicit uncertainty.
-                if sum(o.get("name") == name for o in witnesses) > 1:
-                    witness_key += "|" + digest(meta or w)
+                if sum(o.get("name") == name and o.get("active", True) for o in witnesses) > 1:
+                    witness_key += "|" + digest({"metadata": meta, "selector": w["selector"]} if w.get("selector") else w)
                     yield DataIssue(id=context.ids("data_issue", key + "|ambiguous-witness|" + name), subject=meeting,
                                     category="duplicate", summary="Same-name House witnesses need correspondence review", detected_at=context.now, provenance=evidence)
                 bio = get("bioguideID", "bioguide_id")
@@ -112,20 +147,31 @@ def records(state, context, *, meetings):
         groups = rich.get("document_groups")
         if groups is None:
             groups = [{"type": "", "description": d[1], "files": [{"url": d[2]}], "legacy_kind": d[0]} for d in saved.get("documents", [])]
+        elif saved.get("documents"):
+            alias_legacy_documents(context, key, saved, groups, owners)
         enbloc, enbloc_evidence, document_materials = {}, {}, {}
         for i, group in enumerate(groups):
             if group.get("active", True) is False:
                 continue
+            for file_index, file in enumerate(group.get("files", [])):
+                if file.get("active", True) and file.get("url") and not web_url(file["url"]):
+                    selector = f"/evidence/document_groups/{i}/files/{file_index}/url" if rich.get("document_groups") is not None else f"/documents/{i}/2"
+                    yield DataIssue(id=context.ids("data_issue", key + "|invalid-file-url|" + digest(file["url"])), subject=ref(source), category="incorrect",
+                                    summary="A House source file URL is malformed", detected_at=context.now,
+                                    explanation="The original value remains in source evidence. It cannot be offered as an absolute HTTP(S) download URL without a verified correction.",
+                                    provenance=context.evidence(source, selector=selector))
             urls = sorted({f["url"] for f in group.get("files", []) if f.get("active", True) and web_url(f.get("url"))})
             meta = group.get("metadata", {})
-            stable = meta.get("attributes", {}).get("add-date")
-            owner = owners.get(group.get("owning_witness_selector"))
-            dkey = key + "|document|" + (stable + "|" + group.get("source", "") + "|" + (owner.id if owner else "") if stable else "|".join(urls) or digest(group))
+            dkey = document_key(key, group, owners)
             ev = context.evidence(source, basis="derived", method="congress_api.house.retained-output", selector=f"/evidence/document_groups/{i}" if rich.get("document_groups") is not None else f"/documents/{i}")
             code = group.get("type")
-            cat = {"CA": "amendment", "HA": "amendment", "FA": "amendment", "CV": "vote", "BR": "bill_text", "WS": "statement"}.get(code) or category({"kind": group.get("legacy_kind"), "name": group.get("description")})
+            cat = DOCUMENT_CATEGORIES.get(code) or category({"kind": group.get("legacy_kind"), "name": group.get("description")})
+            if cat == "unknown":
+                cat = next((kind for word, kind in (("notice", "notice"), ("agenda", "agenda")) if re.search(r"\b" + word + r"\b", group.get("description", ""), re.I)), cat)
+            if cat == "unknown" and code == "SD":
+                cat = "supporting"
             subject = owners.get(group.get("owning_witness_selector")) or meeting
-            role = "vote_record" if cat == "vote" else cat if cat in ("amendment", "transcript", "statement", "biography", "disclosure") else "supporting"
+            role = "vote_record" if cat == "vote" else cat if cat in ("amendment", "transcript", "statement", "biography", "disclosure", "questions_for_record", "notice", "agenda") else "supporting"
             mapped = material_records(context, ev, dkey, title=group.get("description"), urls=urls, details=DocumentDetails(category=cat), subject=subject, role=role)
             yield from mapped
             for url in urls:
@@ -135,7 +181,8 @@ def records(state, context, *, meetings):
             target = None
             bill = value(meta, "legis-num") or value(meta, "filename-metadata/legis-num")
             if re.fullmatch(r"(?:H\.?\s*R\.?|H\.?\s*(?:J\.?|Con\.?)?\s*Res\.?|S\.?\s*(?:(?:J\.?|Con\.?)?\s*Res\.?)?)\s*\d+", bill, re.I):
-                item = LegislativeItem(id=context.ids("legislative_item", f"house|{congress}|{bill}"), congress=congress, designation=bill, item_type="bill", provenance=ev)
+                item = LegislativeItem(id=context.ids("legislative_item", f"house|{congress}|{bill}"), congress=congress, designation=bill,
+                                       item_type="resolution" if re.search("res", bill, re.I) else "bill", provenance=ev)
                 yield item
                 target = ref(item)
             action_key = dkey + "|action"

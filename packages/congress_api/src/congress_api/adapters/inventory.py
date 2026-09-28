@@ -6,7 +6,8 @@ native or committee-source appearances. Convert a separate recovered CSV with
 its own AdapterContext so its input_snapshot_id names that artifact.
 """
 from collections import defaultdict
-from datetime import date
+from datetime import date, datetime
+import json
 
 from committee_meeting.assessments import Assessment
 from committee_meeting.common import ReportedTime
@@ -16,7 +17,7 @@ from committee_meeting.provenance import Method
 
 from congress_api.senate.isvp import LIVE_ID, STREAM, archive_url, live_url, parse_player_url
 
-from .common import digest, ref, web_url, witness_roles
+from .common import digest, observed_time, ref, web_url, witness_roles
 
 
 def records(state, context, *, meetings, materials=None, recovered_witnesses=()):
@@ -48,24 +49,63 @@ def records(state, context, *, meetings, materials=None, recovered_witnesses=())
         )
 
     for provider in ("youtube", "senate"):
-        for native_id, kind in sorted((state.get(provider) or {}).items()):
-            source = context.source(f"captions|{provider}|{native_id}", {"provider": provider, "recording_id": native_id, "kind": kind})
+        kinds = state.get(provider) or {}
+        observations = (state.get('caption_observations') or {}).get(provider) or {}
+        for native_id in sorted(set(kinds) | set(observations)):
+            kind = kinds.get(native_id)
+            receipt = observations.get(native_id)
+            payload = {"provider": provider, "recording_id": native_id, "kind": kind}
+            if receipt is not None:
+                payload['receipt'] = receipt
+            source = context.source(f"captions|{provider}|{native_id}", payload)
             yield source
             target = materials.get((provider, native_id))
-            yield issue(source, "undated-caption-observation", "unverified", "The caption observation has no retained observation date.",
-                        "A positive index entry reports availability. A negative entry cannot establish a dated absence; neither proves a caption file was downloaded.")
             if target is None:
                 yield issue(source, "unlinked-caption-observation", "unlinked", "This caption observation has no known recording identity.")
-                continue
-            positive = isinstance(kind, str) and kind in ({"manual", "auto"} if provider == "youtube" else {"webvtt"})
-            yield Assessment(
-                id=context.ids("assessment", f"captions|{provider}|{native_id}"), subject=target,
-                aspect="captions", status="available" if positive else "unknown", evaluated_at=context.now,
-                provider=provider, scope=f"Retained caption index for {provider}:{native_id}",
-                explanation=f"The retained index reports {kind} captions; observation time and track contents are not retained." if positive
-                            else "The retained value does not establish a dated negative caption check.",
-                provenance=context.evidence(source),
-            )
+            checks = [(receipt, '', '/receipt')]
+            if isinstance(receipt, dict) and isinstance(receipt.get('last_successful'), dict):
+                checks.append((receipt['last_successful'], '|last-successful', '/receipt/last_successful'))
+            for check, suffix, selector in checks:
+                checked, scope = None, None
+                if isinstance(check, dict):
+                    try:
+                        parsed = datetime.fromisoformat(check.get('observed_at', '').replace('Z', '+00:00'))
+                        if parsed.tzinfo is not None and parsed <= context.now:
+                            checked = parsed
+                    except (TypeError, ValueError, AttributeError):
+                        pass
+                    raw_scope = check.get('scope')
+                    if isinstance(raw_scope, dict) and raw_scope:
+                        scope = json.dumps(raw_scope, sort_keys=True, ensure_ascii=False)
+                    elif isinstance(raw_scope, str) and raw_scope.strip():
+                        scope = raw_scope
+                    reported = check.get('outcome') or check.get('kind')
+                    positive = reported in ('available', 'manual', 'auto', 'webvtt')
+                    status = ('error' if reported == 'error' else 'available' if positive else
+                              'not_found' if reported in ('none', 'not_found') and checked and scope else 'unknown')
+                else:
+                    positive = isinstance(kind, str) and kind in ({'manual', 'auto'} if provider == 'youtube' else {'webvtt'})
+                    status = 'available' if positive else 'unknown'
+                if checked is None:
+                    yield issue(source, 'undated-caption-observation' + suffix, 'unverified',
+                        'The caption observation has no supported observation date.',
+                        'Index-only observations remain undated. Import time and file modification time are not capture times.')
+                if target is None:
+                    continue
+                explanation = ('The latest caption check failed; its error is retained separately from any earlier successful capture.' if status == 'error'
+                    else 'The retained receipt reports captions within its recorded source scope.' if status == 'available' and checked
+                    else 'The retained check found no captions within its recorded source scope.' if status == 'not_found'
+                    else 'The retained index reports captions, but its original observation time and track contents are not retained.' if positive
+                    else 'The retained value does not establish a dated negative caption check.')
+                if suffix:
+                    explanation = 'Earlier successful observation retained after a failed refresh. ' + explanation
+                yield Assessment(
+                    id=context.ids('assessment', f'captions|{provider}|{native_id}' + suffix), subject=target,
+                    aspect='captions', status=status, evaluated_at=context.now, observed_at=checked,
+                    provider=provider, scope=scope or f'Retained caption index for {provider}:{native_id}',
+                    explanation=explanation,
+                    provenance=context.evidence(source, selector=selector if isinstance(check, dict) else None),
+                )
 
     for native_key, observation in sorted((state.get("probes") or {}).items()):
         source = context.source("probe|" + native_key, observation if observation is not None else {"unparsed_value": None})
@@ -122,10 +162,20 @@ def records(state, context, *, meetings, materials=None, recovered_witnesses=())
     for family in ("mods", "witness_lists"):
         for native_key, observation in sorted((state.get(family) or {}).items()):
             source = context.source(f"{family}|{native_key}", observation if observation is not None else {"unparsed_value": None}, observation.get("url") if isinstance(observation, dict) else None)
+            check = (observation.get("observation_check") or observation.get("last_check") or {}) if isinstance(observation, dict) else {}
+            checked = observed_time(check.get("completed_at"), context.now) if isinstance(check, dict) and check.get("mode") == "live" and check.get("url") == source.url else None
+            successful = checked is not None and (check.get("status_code"), check.get("outcome")) in ((200, "present"), (404, "not_found"))
+            if successful and check["status_code"] == 200:
+                source = source.model_copy(update={"retrieved_at": checked})
             retained_people[family, native_key] = source
             yield source
-            yield issue(source, "unverified-retrieval", "unverified", "The retained witness source does not distinguish live checks from cache imports.",
-                        "Its checked day is preserved in the payload and is not promoted to a retrieval timestamp.")
+            if not successful:
+                yield issue(source, "unverified-retrieval", "unverified", "The retained witness source has no supported live retrieval check.",
+                            "Its checked day and any import time are preserved in the payload and are not promoted to retrieval timestamps.")
+            latest = observation.get("last_check") if isinstance(observation, dict) else None
+            if isinstance(latest, dict) and latest.get("outcome") == "error":
+                yield issue(source, "witness-source-check-failed", "unverified", "The latest witness source check failed.",
+                            "Earlier successful witness data is retained when available; the failure is preserved separately in last_check.")
             if (not isinstance(observation, dict) or observation.get("people")) and (family, native_key) not in owned_sources:
                 yield issue(source, "unlinked-witness-source", "unlinked", "Witness rows have no meeting ownership in this source record.",
                             "A recovered row with an explicit, unique event association is required before creating an appearance.")

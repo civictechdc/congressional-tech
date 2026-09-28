@@ -134,7 +134,21 @@ def _retain_senate_meeting_ids(rows, senate_state, ids):
     return aliases
 
 
-def export(*, meetings, output_dir, state_dir, gpo_path=None, house_state=None, senate_state=None,
+def _recording_urls(records):
+    """Exact player URLs identify an existing recording for retained matcher rows."""
+    recordings = {r.id for r in records if r.kind == 'material' and r.details.type == 'recording'}
+    versions = {r.id: r.material for r in records if r.kind == 'material_version' and r.material.id in recordings}
+    urls = defaultdict(dict)
+    for record in records:
+        if record.kind == 'representation' and record.version.id in versions:
+            for location in record.locations:
+                if location.role == 'player':
+                    urls[location.url][record.version.id] = (versions[record.version.id], record.version)
+    # Conflicting versions need review; never choose one by iteration order.
+    return {url: next(iter(matches.values())) for url, matches in urls.items() if len(matches) == 1}
+
+
+def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=None, house_state=None, senate_state=None,
            youtube_dir=None, inventory_state=None, recovered_witnesses=None, video_matches_path=None, recordings_path=None,
            transcript_files=(), issue_decisions=None, attempts=None, limit=None, as_of=None, revision=None, format="json", reuse_from=None, committees_path=None):
     if format not in ("json", "parquet"):
@@ -160,7 +174,7 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, house_state=None, 
         if reuse_from is not None:
             from .reuse import request_key, try_reuse, save_receipt
             reuse_key = request_key(files={
-                'meetings': meetings, 'gpo': gpo_path, 'house': house_state, 'senate': senate_state,
+                'meetings': meetings, 'gpo': gpo_path, 'gpo_evidence': gpo_evidence_path, 'house': house_state, 'senate': senate_state,
                 'inventory': inventory_state, 'recovered_witnesses': recovered_witnesses,
                 'video_matches': video_matches_path, 'recordings': recordings_path,
                 'issue_decisions': issue_decisions, 'attempts': attempts, 'committees': committees_path,
@@ -230,6 +244,14 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, house_state=None, 
         # Load document metadata before supplemental events so every explicitly
         # identified committee can be linked without requiring a meeting match.
         gpo_context, gpo_review_context, gpo_rows, all_gpo = None, None, [], []
+        gpo_evidence = {}
+        if gpo_evidence_path:
+            from congress_api.gpo.evidence import read as read_gpo_evidence
+            evidence_context, _ = context(gpo_evidence_path, "govinfo:upstream")
+            gpo_evidence = read_gpo_evidence(gpo_evidence_path)
+            scopes.append(SourceScope(provider="govinfo:upstream", scope="retained MODS and transcript observations",
+                status="included", input_snapshot_ids=(evidence_context.input_id,),
+                explanation="Original bytes and acquisition metadata; cached replay is not a new upstream retrieval."))
         if gpo_path:
             gpo_context, content = context(gpo_path, "govinfo", ("CSV does not preserve all raw MODS metadata or downloaded transcript bytes.",))
             gpo_review_context, _ = context(reviewed_committees.__file__, 'gpo.committee-review')
@@ -239,7 +261,7 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, house_state=None, 
                 selected = [r for r in all_gpo if (int(r["congress"]), native.chamber(r["chamber"]), r["event_id"]) in lookup]
                 selected_ids = {r["package_id"] for r in selected}
                 gpo_rows = selected + [r for r in all_gpo if r["package_id"] not in selected_ids][:limit]
-            assembly.add(gpo.committee_records(gpo_rows, gpo_context, existing=assembly.records, review_context=gpo_review_context))
+            assembly.add(gpo.committee_records(gpo_rows, gpo_context, existing=assembly.records, review_context=gpo_review_context, evidence_by_package=gpo_evidence))
 
         sources = (("docs.house.gov", house_state, house, "House parsed source state"),)
         if senate_state:
@@ -289,7 +311,12 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, house_state=None, 
                                   input_snapshot_ids=(adjustment_context.input_id,),
                                   explanation='Cited corrections preserve original source names and classifications.'))
         committees = committee_lookup(assembly.records.values())
+        assembled_gpo = list(gpo.records(gpo_rows, gpo_context, meetings=lookup, committees=committees,
+            review_context=gpo_review_context, evidence_by_package=gpo_evidence)) if gpo_path else []
+        assembly.add(assembled_gpo)
+        known_gpo_files = gpo.primary_rendition_index(assembled_gpo)
         for provider, adapter, data, c in supplemental:
+            c.known_materials = known_gpo_files
             options = {'meetings': lookup}
             if provider == 'senate.committees':
                 options.update(committee_terms=committees,
@@ -300,8 +327,7 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, house_state=None, 
         print_decisions = []
         if gpo_path:
             c, data = gpo_context, gpo_rows
-            assembled = list(gpo.records(data, c, meetings=lookup, committees=committees, review_context=gpo_review_context))
-            assembly.add(assembled)
+            assembled = assembled_gpo
             reconciliation.append({"provider": "govinfo", "input_records": len(all_gpo), "selected_records": len(data),
                                    "distinct_selected_identities": len({r['package_id'] for r in data})})
             mats = {r.id: r for r in assembled if r.kind == "material"}
@@ -343,6 +369,8 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, house_state=None, 
                 c, content = context(path, "youtube")
                 data = json.loads(content)
                 videos = [v for table, entries in data.items() if table.startswith("youtube_videos_") for v in entries.values()]
+                for channel in data.get("youtube_channels", {}).values():
+                    assembly.add([c.source("youtube-channel|" + str(channel.get("handle") or channel.get("channelId")), channel)])
                 input_videos = len(videos)
                 if limit:
                     videos = sorted(videos, key=lambda v: v["videoId"])[:limit]
@@ -388,6 +416,7 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, house_state=None, 
                     if material.id in material_versions:
                         recordings[identifier.value] = (Ref(kind="material", id=material.id), material_versions[material.id])
                         versions[(provider, identifier.value)] = material_versions[material.id]
+        recordings.update(_recording_urls(assembly.records.values()))
         if video_matches_path:
             c, content = context(video_matches_path, "gpo-video-matches")
             decisions = list(csv.DictReader(io.StringIO(content.decode())))
@@ -422,23 +451,10 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, house_state=None, 
         if recovered_witnesses:
             c, content = context(recovered_witnesses, "recovered-witnesses")
             data = list(csv.DictReader(io.StringIO(content.decode())))
-            # Exact repeated descriptions of one meeting appearance can share
-            # identity. Different descriptions remain separate, inspectable claims.
-            def appearance_key(r):
-                return (r.meeting.id, r.name.display, r.affiliation.model_dump_json() if r.affiliation else None, r.roles)
-            known_appearances = {appearance_key(r): r.id for r in assembly.records.values() if r.kind == "appearance"}
-            def recovered():
-                for r in inventory.records({}, c, meetings=lookup, recovered_witnesses=data):
-                    if r.kind == "appearance":
-                        key = appearance_key(r)
-                        if key in known_appearances:
-                            r = r.model_copy(update={"id": known_appearances[key]})
-                        else:
-                            known_appearances[key] = r.id
-                    yield r
-            assembly.add(recovered())
+            from .recovered import reuse_appearances
+            assembly.add(reuse_appearances(inventory.records({}, c, meetings=lookup, recovered_witnesses=data), assembly))
             reconciliation.append({"provider": "recovered-witnesses", "input_records": len(data), "selected_records": len(data), "distinct_rows": len({json.dumps(r,sort_keys=True) for r in data})})
-            scopes.append(SourceScope(provider="recovered-witnesses", scope="retained recovered witness rows", status="included", input_snapshot_ids=(c.input_id,), explanation="Unique explicit event associations supply listed appearances; title-derived nominees remain inferred. Exact repeated appearance descriptions share identity."))
+            scopes.append(SourceScope(provider="recovered-witnesses", scope="retained recovered witness rows", status="included", input_snapshot_ids=(c.input_id,), explanation="Unique explicit event associations supply listed appearances; title-derived nominees remain inferred. Unique matching originating appearances retain their identity and richer fields."))
         else:
             scopes.append(SourceScope(provider="recovered-witnesses", scope="recovered witness rows", status="not_collected", explanation="No recovered witness table supplied."))
         for path in transcript_files:
@@ -603,6 +619,7 @@ def main():
     p.add_argument("--output-dir", type=Path, required=True)
     p.add_argument("--state-dir", type=Path, required=True)
     p.add_argument("--gpo-path", type=Path)
+    p.add_argument("--gpo-evidence-path", type=Path)
     p.add_argument("--house-state", type=Path)
     p.add_argument("--senate-state", type=Path)
     p.add_argument("--youtube-dir", type=Path)

@@ -159,3 +159,21 @@ class VideoMatchTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_exact_player_url_reuses_native_senate_recording_and_rejects_ambiguous_versions():
+    from committee_explorer.export import _recording_urls
+    from committee_meeting.materials import Representation, MaterialLocation
+    ctx = context()
+    source = ctx.source('native', {})
+    evidence = ctx.evidence(source)
+    material = Material(id='senate', details=RecordingDetails(medium='video', provider='senate'), provenance=evidence)
+    version = MaterialVersion(id='native-version', material=Ref(kind='material', id='senate'), provenance=evidence)
+    url = 'https://www.senate.gov/isvp/?comm=epw&filename=epw120623'
+    representation = Representation(id='native-player', version=Ref(kind='material_version', id=version.id),
+        locations=(MaterialLocation(url=url, role='player'),), provenance=evidence)
+    known = _recording_urls([material, version, representation])
+    assert known[url] == (Ref(kind='material', id=material.id), Ref(kind='material_version', id=version.id))
+    other_version = version.model_copy(update={'id': 'other'})
+    other_rep = representation.model_copy(update={'id': 'other-player', 'version': Ref(kind='material_version', id='other')})
+    assert url not in _recording_urls([material, version, representation, other_version, other_rep])

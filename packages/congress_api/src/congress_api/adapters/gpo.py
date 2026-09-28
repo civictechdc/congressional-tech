@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 from collections.abc import Iterable, Mapping
 from typing import Any
+from urllib.parse import urlsplit
 
 from committee_meeting.common import Identifier, Ref
 from committee_meeting.issues import DataIssue
@@ -33,7 +34,7 @@ def _committee_evidence(row, context, source, review_context):
     return None, evidence
 
 
-def committee_records(rows, context, *, existing, review_context=None):
+def committee_records(rows, context, *, existing, review_context=None, evidence_by_package=None):
     """Retain missing terms explicitly identified by document metadata.
 
     Official committee lists take precedence. A transcript can establish that a
@@ -49,7 +50,10 @@ def committee_records(rows, context, *, existing, review_context=None):
             if identity in known:
                 continue
             congress, code = identity
-            source = context.source(f'govinfo:{package}', dict(row))
+            payload = dict(row)
+            if evidence_by_package and package in evidence_by_package:
+                payload["upstream"] = evidence_by_package[package]
+            source = context.source(f'govinfo:{package}', payload)
             review_source, evidence = _committee_evidence(row, context, source, review_context)
             # A single retained name cannot name every member of a joint body.
             name = row.get('committee_name') if code == row.get('committee_code') else None
@@ -68,6 +72,35 @@ def committee_records(rows, context, *, existing, review_context=None):
             known[identity] = Ref(kind='committee_term', id=term.id)
 
 
+
+def primary_rendition_index(records):
+    """Only exact known package-level renditions can identify a repeated listing.
+
+    A supplemental/part URL does not identify the complete package, and multiple
+    candidate versions are left unresolved. No URL is generated from an ID.
+    """
+    materials = {r.id: r for r in records if r.kind == 'material'}
+    versions = {r.id: r for r in records if r.kind == 'material_version'}
+    candidates = {}
+    for item in records:
+        if item.kind != 'representation' or item.version.id not in versions:
+            continue
+        version = versions[item.version.id]
+        material = materials.get(version.material.id)
+        if material is None or material.details.type != 'document':
+            continue
+        packages = {i.value for i in material.identifiers if i.scheme == 'govinfo.package'}
+        for location in item.locations:
+            url = urlsplit(location.url)
+            # Supplements and part-specific files are deliberately excluded.
+            if url.hostname != 'www.govinfo.gov' or url.query or url.fragment or not any(
+                url.path in (f'/content/pkg/{package}/pdf/{package}.pdf',
+                             f'/content/pkg/{package}/html/{package}.htm') for package in packages):
+                continue
+            candidates.setdefault(location.url, {})[(material.id, version.id)] = (material, version)
+    return {url: next(iter(values.values())) for url, values in candidates.items() if len(values) == 1}
+
+
 def records(
     rows: Iterable[Mapping[str, Any]],
     context: AdapterContext,
@@ -75,6 +108,7 @@ def records(
     meetings: Mapping[tuple[int, str, str], Ref] | None = None,
     committees: Mapping[tuple[int, str], Ref] | None = None,
     review_context: AdapterContext | None = None,
+    evidence_by_package: Mapping[str, Any] | None = None,
 ):
     """Yield source observations and materials for every package, including errata.
 
@@ -93,7 +127,10 @@ def records(
         if not package:
             raise ValueError("a retained GPO row requires package_id")
         key = f"govinfo:{package}"
-        source = context.source(key, row)
+        payload = dict(row)
+        if evidence_by_package and package in evidence_by_package:
+            payload["upstream"] = evidence_by_package[package]
+        source = context.source(key, payload)
         evidence = context.evidence(source)
         material_id = context.ids("material", key)
         material_ref = Ref(kind="material", id=material_id)
@@ -119,21 +156,27 @@ def records(
                 return None
 
         held = date_value(row.get("held_date"), "held_date")
-        header_dates = []
-        for value in str(row.get("hearing_dates") or "").split(";"):
-            if value.strip():
-                parsed = date_value(value.strip(), "hearing_dates")
-                if parsed and parsed.date not in {d.date for d in header_dates}:
-                    header_dates.append(parsed)
-        dates = tuple(header_dates or ([held] if held else []))
+        def dates_from(field):
+            dates = []
+            for value in str(row.get(field) or "").split(";"):
+                if value.strip():
+                    parsed = date_value(value.strip(), field)
+                    if parsed and parsed.date not in {d.date for d in dates}:
+                        dates.append(parsed)
+            return dates
+
+        header_dates = dates_from('hearing_dates')
+        native_dates = dates_from('held_dates') or ([held] if held else [])
+        native_selector = '/held_dates' if row.get('held_dates') else '/held_date'
+        dates = tuple(header_dates or native_dates)
         date_evidence = ()
-        if header_dates:
-            selected = context.evidence(source, selector="/hearing_dates")
+        if header_dates or row.get('held_dates'):
+            selected = context.evidence(source, selector='/hearing_dates' if header_dates else native_selector)
             alternatives = ()
-            if held and held.date not in {d.date for d in header_dates}:
+            if header_dates and any(d.date not in {h.date for h in header_dates} for d in native_dates):
                 alternatives = (AlternativeValue(
-                    value=[held.model_dump(mode="json")],
-                    provenance=context.evidence(source, selector="/held_date"),
+                    value=[d.model_dump(mode="json") for d in native_dates],
+                    provenance=context.evidence(source, selector=native_selector),
                 ),)
                 issues.append(issue(
                     "date-disagreement", "conflicting",
@@ -143,7 +186,7 @@ def records(
                 ))
             date_evidence = (FieldEvidence(
                 path="/proceeding_dates", selected=selected, alternatives=alternatives,
-                selection_reason="Use the retained transcript day headers when supplied; otherwise use held_date.",
+                selection_reason="Use the retained transcript day headers when supplied; otherwise use the native held dates.",
             ),)
         modified = date_value(row.get("last_modified"), "last_modified")
         if modified:

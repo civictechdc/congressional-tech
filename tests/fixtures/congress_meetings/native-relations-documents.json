@@ -1,0 +1,410 @@
+[
+  {
+    "_url": "https://api.congress.gov/v3/committee-meeting/117/senate/328584",
+    "chamber": "Senate",
+    "committees": [
+      {
+        "name": "Senate Foreign Relations",
+        "systemCode": "ssfr00",
+        "url": "https://api.congress.gov/v3/committee/senate/ssfr00?format=json"
+      }
+    ],
+    "congress": 117,
+    "date": "2021-01-27T15:00:00Z",
+    "eventId": "328584",
+    "location": {
+      "building": "Dirksen Senate Office Building",
+      "room": "G50/VTC"
+    },
+    "meetingStatus": "Scheduled",
+    "relatedItems": {
+      "nominations": [
+        {
+          "congress": 117,
+          "number": 78,
+          "part": "20",
+          "url": "https://api.congress.gov/v3/nomination/117/78?format=json"
+        },
+        {
+          "congress": 117,
+          "number": 78,
+          "part": "21",
+          "url": "https://api.congress.gov/v3/nomination/117/78?format=json"
+        }
+      ]
+    },
+    "title": "Hearings to examine the nomination of Linda Thomas-Greenfield, of Louisiana, to be the Representative of the United States of America to the United Nations, with the rank and status of the Ambassador, and the Representative of the United States of America in the Security Council of the United Nations, and to be Representative of the United States of America to the Sessions of the General Assembly of the United Nations during her tenure of service as Representative of the United States of America to the United Nations.",
+    "type": "Meeting",
+    "updateDate": "2022-01-05T14:58:26Z"
+  },
+  {
+    "_url": "https://api.congress.gov/v3/committee-meeting/116/senate/326051",
+    "chamber": "Senate",
+    "committees": [
+      {
+        "name": "Senate Foreign Relations",
+        "systemCode": "ssfr00",
+        "url": "https://api.congress.gov/v3/committee/senate/ssfr00?format=json"
+      }
+    ],
+    "congress": 116,
+    "date": "2019-06-25T18:15:00Z",
+    "eventId": "326051",
+    "location": {
+      "building": "Capitol (Senate side)",
+      "room": "116"
+    },
+    "meetingStatus": "Scheduled",
+    "relatedItems": {
+      "bills": [
+        {
+          "congress": 116,
+          "number": "1102",
+          "type": "S",
+          "url": "https://api.congress.gov/v3/bill/116/s/1102?format=json"
+        },
+        {
+          "congress": 116,
+          "number": "1309",
+          "type": "S",
+          "url": "https://api.congress.gov/v3/bill/116/s/1309?format=json"
+        },
+        {
+          "congress": 116,
+          "number": "727",
+          "type": "S",
+          "url": "https://api.congress.gov/v3/bill/116/s/727?format=json"
+        },
+        {
+          "congress": 116,
+          "number": "10",
+          "type": "SCONRES",
+          "url": "https://api.congress.gov/v3/bill/116/sconres/10?format=json"
+        },
+        {
+          "congress": 116,
+          "number": "198",
+          "type": "SRES",
+          "url": "https://api.congress.gov/v3/bill/116/sres/198?format=json"
+        },
+        {
+          "congress": 116,
+          "number": "206",
+          "type": "SRES",
+          "url": "https://api.congress.gov/v3/bill/116/sres/206?format=json"
+        },
+        {
+          "congress": 116,
+          "number": "34",
+          "type": "SRES",
+          "url": "https://api.congress.gov/v3/bill/116/sres/34?format=json"
+        },
+        {
+          "congress": 116,
+          "number": "1945",
+          "type": "S",
+          "url": "https://api.congress.gov/v3/bill/116/s/1945?format=json"
+        }
+      ],
+      "nominations": [
+        {
+          "congress": 116,
+          "number": 5,
+          "part": "00",
+          "url": "https://api.congress.gov/v3/nomination/116/5?format=json"
+        }
+      ],
+      "treaties": [
+        {
+          "congress": 114,
+          "number": 1,
+          "url": "https://api.congress.gov/v3/treaty/114/1?format=json"
+        },
+        {
+          "congress": 111,
+          "number": 8,
+          "url": "https://api.congress.gov/v3/treaty/111/8?format=json"
+        },
+        {
+          "congress": 112,
+          "number": 1,
+          "url": "https://api.congress.gov/v3/treaty/112/1?format=json"
+        },
+        {
+          "congress": 113,
+          "number": 4,
+          "url": "https://api.congress.gov/v3/treaty/113/4?format=json"
+        }
+      ]
+    },
+    "title": "Business meeting to consider S.727, to combat international extremism by addressing global fragility and violence and stabilizing conflict-affected areas, S.1102, to promote security and energy partnerships in the Eastern Mediterranean, S.1309, to identify and combat corruption in countries, to establish a tiered system of countries with respect to levels of corruption by their governments and their efforts to combat such corruption, and to assess United States assistance to designated countries in order to advance anti-corruption efforts in those countries and better serve United States taxpayers, S.1945, to amend section 36 of the Arms Export Control Act (22 U.S.C. 2776) to preserve congressional review and oversight of foreign arms sales, S.Res.34, expressing the sense of the Senate that the Governments of Burma and Bangladesh ensure the safe, dignified, voluntary, and sustainable return of the Rohingya refugees who have been displaced by the campaign of ethnic cleansing conducted by the Burmese military and to immediately release unjustly imprisoned journalists, Wa Lone and Kyaw Soe Oo, S.Res.198, condemning Brunei's dramatic human rights backsliding, S.Res.206, marking the 70th anniversary of the four Geneva Conventions of 1949, expressing concern about significant violations of international humanitarian law on contemporary battlefields, and encouraging United States leadership in ensuring greater respect for international humanitarian law in current conflicts, particularly with its security partners, S.Con.Res.10, recognizing that Chinese telecommunications companies such as Huawei and ZTE pose serious threats to the national security of the United States and its allies, the Protocol Amending the Convention between the United States of America and the Kingdom of Spain for the Avoidance of Double Taxation and the Prevention of Fiscal Evasion with Respect to Taxes on Income and its Protocol, signed at Madrid on February 22, 1990 (Treaty Doc.113-04), protocol Amending the Convention between the United States of America and the Swiss Confederation for the Avoidance of Double Taxation with Respect to Taxes on Income, signed at Washington on October 2, 1996, signed on September 23, 2009, at Washington, as corrected by an exchange of notes effected November 16, 2010 and a related agreement effected by an exchange of notes on September 23, 2009 (Treaty Doc.112-01), the Protocol Amending the Convention between the Government of the United States of America and the Government of Japan for the Avoidance of Double Taxation and the Prevention of Fiscal Evasion with respect to Taxes on Income and a related agreement entered into by an exchange of notes (together the \"proposed Protocol\"), both signed on January 24,  2013, at Washington, together with correcting notes exchanged March 9 and March 29, 2013 (Treaty Doc.114-01), protocol Amending the Convention between the Government of the United States of America and the Government of the Grand Duchy of Luxembourg for the Avoidance of Double Taxation and the Prevention of Fiscal Evasion with Respect to Taxes on Income and Capital, signed on May 20, 2009, at Luxembourg (the \"proposed Protocol\") and a related agreement effected by the exchange of notes also signed on May 20, 2009 (Treaty Doc.111-08), the nomination of Eliot Pedrosa, of Florida, to be United States Executive Director of the Inter-American Development Bank, and other pending calendar business.",
+    "type": "Meeting",
+    "updateDate": "2020-09-17T16:33:45Z"
+  },
+  {
+    "_url": "https://api.congress.gov/v3/committee-meeting/118/house/115635",
+    "chamber": "House",
+    "committees": [
+      {
+        "systemCode": "hsii00",
+        "url": "https://api.congress.gov/v3/committee/house/hsii00?format=json"
+      }
+    ],
+    "congress": 118,
+    "continuations": [
+      {
+        "continuationDate": "2023-04-27T16:15:00Z"
+      },
+      {
+        "continuationDate": "2023-04-28T13:15:00Z"
+      }
+    ],
+    "date": "2023-04-27T13:45:00Z",
+    "eventId": "115635",
+    "location": {
+      "building": "Longworth House Office Building",
+      "room": "1324"
+    },
+    "meetingStatus": "Scheduled",
+    "title": "FC Mark-up of:\r\n\u2022 H.J. Res. 29 (Mann), Providing for congressional disapproval under chapter 8 of title 5, United States Code, of the rule submitted by the United States Fish and Wildlife Service relating to \u201cEndangered and Threatened Wildlife and Plants; Lesser Prairie-Chicken; Threatened Status With Section 4(d) Rule for the Northern Distinct Population Segment and Endangered Status for the Southern Distinct Population Segment\u201d;\r\n\u2022 H.J. Res. 46 (Bentz), Providing for congressional disapproval under chapter 8 of title 5, United States Code, of the rule submitted by the National Marine Fisheries Service relating to \u201cEndangered and Threatened Wildlife and Plants; Regulations for Listing Endangered and Threatened Species and Designating Critical Habitat\u201d;\r\n\u2022 H.J. Res. 49 (Stauber), Providing for congressional disapproval under chapter 8 of title 5, United States Code, of the rule submitted by the United States Fish and Wildlife Service relating to \u201cEndangered and Threatened Wildlife and Plants; Endangered Species Status for Northern Long-Eared Bat\u201d;\r\n\u2022 H.R. 215 (Valadao), \u201cWorking to Advance Tangible and Effective Reforms for California Act\u201d or the \u201cWATER for California Act\u201d;\r\n\u2022 H.R. 764 (Boebert), \u201cTrust the Science Act\u201d;\r\n\u2022 H.R. 1245 (Hageman), \u201cGrizzly Bear State Management Act of 2023\u201d;\r\n\u2022 H.R. 1319 (Neguse), \u201cBiking on Long-Distance Trails Act\u201d;\r\n\u2022 H.R. 1419 (Rosendale), \u201cComprehensive Grizzly Bear Management Act of 2023\u201d; and\r\n\u2022 H.R. 1567 (Tiffany), \u201cAccurately Counting Risk Elimination Solutions Act\u201d or the \u201cACRES Act\u201d.",
+    "type": "Markup",
+    "updateDate": "2025-01-02T04:58:34Z"
+  },
+  {
+    "_url": "https://api.congress.gov/v3/committee-meeting/112/house/100031",
+    "chamber": "House",
+    "committees": [
+      {
+        "name": "House Homeland Security",
+        "systemCode": "hshm00",
+        "url": "https://api.congress.gov/v3/committee/house/hshm00?format=json"
+      }
+    ],
+    "congress": 112,
+    "date": "2011-02-09T15:00:00Z",
+    "eventId": "100031",
+    "location": {
+      "building": "Cannon House Office Building",
+      "room": "311"
+    },
+    "meetingStatus": "Scheduled",
+    "title": "\u201cUnderstanding the Homeland Threat Landscape - Considerations for the 112th Congress.\u201d",
+    "type": "Hearing",
+    "updateDate": "2025-09-16T13:01:32Z",
+    "meetingDocuments": [
+      {
+        "documentType": "Support Document",
+        "format": "PDF",
+        "name": "Printed Hearing Record",
+        "url": "https://www.congress.gov/112/meeting/house/100031/documents/CHRG-112hhrg72212.pdf"
+      }
+    ]
+  },
+  {
+    "_url": "https://api.congress.gov/v3/committee-meeting/112/house/100056",
+    "chamber": "House",
+    "committees": [
+      {
+        "name": "House Homeland Security",
+        "systemCode": "hshm00",
+        "url": "https://api.congress.gov/v3/committee/house/hshm00?format=json"
+      }
+    ],
+    "congress": 112,
+    "date": "2011-10-12T14:00:00Z",
+    "eventId": "100056",
+    "location": {
+      "building": "Cannon House Office Building",
+      "room": "311"
+    },
+    "meetingStatus": "Scheduled",
+    "title": "H.R. 3116, To authorize certain programs of the Department of Homeland Security, and for other purposes. The \u201cDepartment of Homeland Security Authorization Act for Fiscal Year 2012.\u201d",
+    "type": "Markup",
+    "updateDate": "2024-05-17T14:52:46Z",
+    "meetingDocuments": [
+      {
+        "documentType": "Committee Report",
+        "format": "PDF",
+        "name": "Committee Report",
+        "url": "https://www.congress.gov/112/meeting/house/100056/documents/CRPT-112hrpt717-pt1.pdf"
+      }
+    ]
+  },
+  {
+    "_url": "https://api.congress.gov/v3/committee-meeting/113/house/100052",
+    "chamber": "House",
+    "committees": [
+      {
+        "name": "House Rules",
+        "systemCode": "hsru00",
+        "url": "https://api.congress.gov/v3/committee/house/hsru00?format=json"
+      }
+    ],
+    "congress": 113,
+    "date": "2013-01-04T15:30:00Z",
+    "eventId": "100052",
+    "location": {
+      "building": "Capitol",
+      "room": "H-313"
+    },
+    "meetingStatus": "Scheduled",
+    "title": "Organizational Meeting for the 113th Congress",
+    "type": "Meeting",
+    "updateDate": "2025-09-16T13:02:02Z",
+    "meetingDocuments": [
+      {
+        "documentType": "Committee Recorded Vote",
+        "format": "PDF",
+        "name": "Rules Committee Vote No. 1",
+        "url": "https://www.congress.gov/113/meeting/house/100052/documents/CRPT-113-RU00-Vote001-20130104.pdf"
+      }
+    ]
+  },
+  {
+    "_url": "https://api.congress.gov/v3/committee-meeting/114/house/103428",
+    "chamber": "House",
+    "committees": [
+      {
+        "name": "House Rules",
+        "systemCode": "hsru00",
+        "url": "https://api.congress.gov/v3/committee/house/hsru00?format=json"
+      }
+    ],
+    "congress": 114,
+    "date": "2015-04-29T19:00:00Z",
+    "eventId": "103428",
+    "location": {
+      "building": "Capitol",
+      "room": "H-313"
+    },
+    "meetingStatus": "Scheduled",
+    "title": "H.R. 1732\u2014Regulatory Integrity Protection Act of 2015; Conference Report to accompany S. Con. Res. 11; H.J. Res. 43\u2014Disapproving the action of the District of Columbia Council in approving the Reproductive Health Non-Discrimination Amendment Act of 2014.",
+    "type": "Meeting",
+    "updateDate": "2021-01-13T16:10:11Z",
+    "meetingDocuments": [
+      {
+        "documentType": "Conference Report",
+        "format": "PDF",
+        "name": "Conference Report to accompany S. Con. Res. 11\u2013Concurrent resolution setting forth the congressional budget for the United States Government for fiscal year 2016 and setting forth the appropriate budgetary levels for fiscal years 2017 through 2025.",
+        "url": "https://www.congress.gov/114/meeting/house/103428/documents/CRPT-114hrpt-SConRes11NS.pdf"
+      }
+    ]
+  },
+  {
+    "_url": "https://api.congress.gov/v3/committee-meeting/114/house/103999",
+    "chamber": "House",
+    "committees": [
+      {
+        "systemCode": "hsif17",
+        "url": "https://api.congress.gov/v3/committee/house/hsif17?format=json"
+      }
+    ],
+    "congress": 114,
+    "date": "2015-09-29T14:15:00Z",
+    "eventId": "103999",
+    "location": {
+      "building": "Rayburn House Office Building",
+      "room": "2322"
+    },
+    "meetingStatus": "Scheduled",
+    "title": "The Disrupter Series: How the Sharing Economy Creates Jobs, Benefits Consumers, and Raises Policy Questions",
+    "type": "Hearing",
+    "updateDate": "2024-05-17T16:19:59Z",
+    "meetingDocuments": [
+      {
+        "documentType": "Hearing: Member Roster",
+        "format": "PDF",
+        "name": "Hearing Attendance",
+        "url": "https://www.congress.gov/114/meeting/house/103999/documents/HHRG-114-IF17-20150929-MbrRoster.pdf"
+      }
+    ]
+  },
+  {
+    "_url": "https://api.congress.gov/v3/committee-meeting/114/house/104046",
+    "chamber": "House",
+    "committees": [
+      {
+        "name": "House Energy and Commerce Subcommittee on Oversight and Investigations",
+        "systemCode": "hsif02",
+        "url": "https://api.congress.gov/v3/committee/house/hsif02?format=json"
+      }
+    ],
+    "congress": 114,
+    "date": "2015-10-08T14:00:00Z",
+    "eventId": "104046",
+    "location": {
+      "building": "Rayburn House Office Building",
+      "room": "2123"
+    },
+    "meetingStatus": "Scheduled",
+    "title": "Volkswagen Emissions Cheating Allegations: Initial Questions.",
+    "type": "Hearing",
+    "updateDate": "2021-01-13T16:22:44Z",
+    "meetingDocuments": [
+      {
+        "documentType": "Hearing: Questions for the Record",
+        "format": "PDF",
+        "name": "Response to Questions for the Record - VW",
+        "url": "https://www.congress.gov/114/meeting/house/104046/documents/HHRG-114-IF02-20151008-QFR005.pdf"
+      }
+    ]
+  },
+  {
+    "_url": "https://api.congress.gov/v3/committee-meeting/114/house/104356",
+    "chamber": "House",
+    "committees": [
+      {
+        "systemCode": "hssm24",
+        "url": "https://api.congress.gov/v3/committee/house/hssm24?format=json"
+      }
+    ],
+    "congress": 114,
+    "date": "2016-02-10T18:00:00Z",
+    "eventId": "104356",
+    "location": {
+      "building": "Rayburn House Office Building",
+      "room": "2360"
+    },
+    "meetingStatus": "Rescheduled",
+    "title": "RESCHEDULED: Oversight of the Office of Advocacy and the Office of the National Ombudsman at the SBA",
+    "type": "Hearing",
+    "updateDate": "2024-05-17T16:30:33Z",
+    "meetingDocuments": [
+      {
+        "documentType": "Hearing: Cover Page",
+        "format": "PDF",
+        "name": "2-10-2016 IOR Hearing Notice",
+        "url": "https://www.congress.gov/114/meeting/house/104356/documents/HHRG-114-SM24-20160210-CPg.pdf"
+      }
+    ]
+  },
+  {
+    "_url": "https://api.congress.gov/v3/committee-meeting/115/house/108415",
+    "chamber": "House",
+    "committees": [
+      {
+        "systemCode": "hssm27",
+        "url": "https://api.congress.gov/v3/committee/house/hssm27?format=json"
+      }
+    ],
+    "congress": 115,
+    "date": "2018-06-14T14:00:00Z",
+    "eventId": "108415",
+    "location": {
+      "building": "Rayburn House Office Building",
+      "room": "2360"
+    },
+    "meetingStatus": "Scheduled",
+    "title": "Shrinking the Skills Gap: Solutions to the Small Business Workforce Shortage",
+    "type": "Hearing",
+    "updateDate": "2024-05-17T18:53:12Z",
+    "meetingDocuments": [
+      {
+        "documentType": "Hearing: Table of Contents",
+        "format": "PDF",
+        "name": "6-14-18 Witness List",
+        "url": "https://www.congress.gov/115/meeting/house/108415/documents/HHRG-115-SM27-20180614-TOC.pdf"
+      }
+    ]
+  }
+]

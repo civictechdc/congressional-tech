@@ -1,12 +1,40 @@
 import csv
+import json
 import logging
 import os
+import tempfile
 
 from pathlib import Path
 from tinydb import TinyDB
+from tinydb.storages import Storage
 from typing import TypedDict
 
 from congress_shared.globals import DEFAULT_CHANNELS_CSV, DEFAULT_TINYDB_DIR
+
+
+class AtomicJSONStorage(Storage):
+    """Keep the previous capture intact until its replacement is fully written."""
+
+    def __init__(self, path):
+        self.path = Path(path)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+
+    def read(self):
+        if not self.path.exists() or self.path.stat().st_size == 0:
+            return None
+        return json.loads(self.path.read_text(encoding="utf-8"))
+
+    def write(self, data):
+        encoded = json.dumps(data, ensure_ascii=False).encode("utf-8")
+        with tempfile.NamedTemporaryFile(dir=self.path.parent, prefix="." + self.path.name, delete=False) as stream:
+            temporary = Path(stream.name)
+            try:
+                stream.write(encoded)
+                stream.flush()
+                os.fsync(stream.fileno())
+                temporary.replace(self.path)
+            finally:
+                temporary.unlink(missing_ok=True)
 
 
 class YoutubeChannelMetadata(TypedDict):
@@ -98,4 +126,4 @@ def open_tinydb_for_committee(
         raise ValueError(
             f"No existing tinydb file for index {committee_name_or_index} at {path}"
         )
-    return TinyDB(path)
+    return TinyDB(path, storage=AtomicJSONStorage)

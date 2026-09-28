@@ -1,0 +1,95 @@
+<?xml-stylesheet type='text/xsl' href='/xslt/cr-public.xslt'?>
+<committee-meeting congress-num="113" session-num="1" meeting-id="HMTG100431" meeting-type="HMTG" create-date="2013-03-04T14:32:51.697" orig-publish-date="2013-03-04T14:33:56.897" update-date="2013-03-06T09:23:13.757">
+  <current-status>S</current-status>
+  <language>en-us</language>
+  <copyright>Pursuant to Title 17 Section 105 of the United States Code, this file is not subject to copyright protection and is in the public domain.</copyright>
+  <publish-dates>
+    <publish-date date="2013-03-04T14:33:56.897" />
+    <publish-date date="2013-03-04T14:34:26.097" />
+    <publish-date date="2013-03-04T14:54:38.280" />
+    <publish-date date="2013-03-06T09:21:27.390" />
+    <publish-date date="2013-03-06T09:23:13.757" />
+  </publish-dates>
+  <meeting-details>
+    <committees>
+      <committee-name id="RU00">Committee on Rules</committee-name>
+    </committees>
+    <meeting-date>
+      <calendar-date>2013-03-05</calendar-date>
+      <start-time>15:00:00</start-time>
+    </meeting-date>
+    <meeting-location>
+      <capitol-complex>
+        <room>H-313</room>
+        <building>CAPITOL</building>
+      </capitol-complex>
+    </meeting-location>
+    <meeting-title>H.R. 933—Department of Defense, Military Construction and Veterans Affairs, and Full-Year Continuing Appropriations Act, 2013</meeting-title>
+  </meeting-details>
+  <meeting-documents>
+    <meeting-document type="BR" add-date="2013-03-04T14:33:35.403" remove-date="" publish-date="2013-03-04T14:33:56.897">
+      <description>H.R. 933—Department of Defense, Military Construction and Veterans Affairs, and Full-Year Continuing Appropriations Act, 2013</description>
+      <legis-num>933</legis-num>
+      <filename-metadata>
+        <legis-num>933</legis-num>
+        <legis-stage>ih</legis-stage>
+        <doc-type>BR</doc-type>
+      </filename-metadata>
+      <files>
+        <file doc-url="http://docs.house.gov/billsthisweek/20130304/BILLS-113hr933ih.pdf" doc-type="PDF" add-date="2013-03-04T14:33:35.420" publish-date="2013-03-04T14:33:56.897" />
+        <file doc-url="http://docs.house.gov/billsthisweek/20130304/BILLS-113hr933ih.xml" doc-type="XML" add-date="2013-03-04T14:33:35.420" publish-date="2013-03-04T14:33:56.897" />
+      </files>
+    </meeting-document>
+    <meeting-document type="SD" add-date="2013-03-04T14:54:26.997" remove-date="" publish-date="2013-03-04T14:54:38.280">
+      <description>Explanatory Statement referred to in Section 4 of H.R. 933</description>
+      <updates>
+        <update-date date="2013-03-06T09:15:28.720" publish-date="">
+          <explanatory-notes doc-modified="False" />
+        </update-date>
+      </updates>
+      <filename-metadata>
+        <legis-stage>ih</legis-stage>
+        <doc-type>SD</doc-type>
+        <version-num>2</version-num>
+      </filename-metadata>
+      <files>
+        <file doc-url="http://docs.house.gov/billsthisweek/20130304/113-HR933-ExState.pdf" doc-type="PDF" add-date="2013-03-04T14:54:27.043" publish-date="2013-03-04T14:54:38.280" />
+      </files>
+    </meeting-document>
+    <meeting-document type="CR" add-date="2013-03-06T09:15:08.530" remove-date="" publish-date="2013-03-06T09:21:27.390">
+      <description>H. Rept. 113-12, to accompany H. Res. 99</description>
+      <legis-num>113-12</legis-num>
+      <filename-metadata>
+        <legis-num>113-12</legis-num>
+        <legis-stage>ih</legis-stage>
+        <doc-type>CR</doc-type>
+      </filename-metadata>
+      <files>
+        <file doc-url="http://www.gpo.gov/fdsys/pkg/CRPT-113hrpt12/pdf/CRPT-113hrpt12.pdf" doc-type="PDF" add-date="2013-03-06T09:15:08.610" publish-date="2013-03-06T09:21:27.390" />
+      </files>
+    </meeting-document>
+    <meeting-document type="SD" add-date="2013-03-06T09:16:10.930" remove-date="" publish-date="2013-03-06T09:21:27.390">
+      <description>H. Res. 99</description>
+      <filename-metadata>
+        <legis-stage>ih</legis-stage>
+        <doc-type>SD</doc-type>
+        <version-num>1</version-num>
+      </filename-metadata>
+      <files>
+        <file doc-url="http://www.gpo.gov/fdsys/pkg/BILLS-113hres99rh/pdf/BILLS-113hres99rh.pdf" doc-type="PDF" add-date="2013-03-06T09:16:11" publish-date="2013-03-06T09:21:27.390" />
+        <file doc-url="http://thomas.loc.gov/home/gpoxmlc113/hr99_rh.xml" doc-type="XML" add-date="2013-03-06T09:16:11.010" publish-date="2013-03-06T09:21:27.390" />
+      </files>
+    </meeting-document>
+    <meeting-document type="CV" add-date="2013-03-06T09:21:08.157" remove-date="" publish-date="2013-03-06T09:21:27.390">
+      <description>Rules Committee Votes #15-16</description>
+      <filename-metadata>
+        <legis-stage>ih</legis-stage>
+        <doc-type>CV</doc-type>
+        <vote-num>15</vote-num>
+      </filename-metadata>
+      <files>
+        <file doc-url="http://docs.house.gov/meetings/RU/RU00/20130305/100431/CRPT-113-RU00-Vote015-20130305.pdf" doc-type="PDF" add-date="2013-03-06T09:21:08.173" publish-date="2013-03-06T09:21:27.390" />
+      </files>
+    </meeting-document>
+  </meeting-documents>
+</committee-meeting>

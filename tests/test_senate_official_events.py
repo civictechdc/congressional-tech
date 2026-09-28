@@ -77,7 +77,8 @@ def test_unmatched_official_event_is_admitted_without_inventing_congress_id(name
     assert meeting.identifiers[0].value == URLS[name]
     assert occurrence.scheduled_start.date.isoformat() == day
     assert occurrence.status == 'unknown'  # Passage of time does not prove it occurred.
-    assert all(row.subject.id == meeting.id for row in rows if row.kind == 'material_link')
+    appearances = {row.id for row in rows if row.kind == 'appearance' and row.meeting.id == meeting.id}
+    assert all(row.subject.id == meeting.id or row.subject.id in appearances for row in rows if row.kind == 'material_link')
     assert len([row for row in rows if row.kind == 'appearance']) == (0 if name == 'indian-2011' else 4 if name == 'drug-2011' else 5)
     # Changing the input snapshot/date cannot rename the proceeding.
     other = context(); other.input_id = 'next-refresh'

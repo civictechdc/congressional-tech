@@ -44,6 +44,7 @@ jobs:
         run: pip install -e packages/committee_meeting -e packages/congress_shared -e packages/youtube_api -e packages/congress_api
 
       - name: Fetch YouTube channels
+        id: youtube_fetch
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_DATA_API_KEY }}
         run: youtube-fetch --channels-csv-path "$CHANNELS_CSV" --tinydb_dir pipeline-data/youtube
@@ -56,6 +57,9 @@ jobs:
           cp "$DATA_DIR/youtube_event_id_report.csv" apps/site/public/data/youtube/youtube_event_id_report.csv
 
       - name: Save pipeline data snapshot
+        # Preserve completed channel captures and incomplete scan markers even
+        # when another channel or a later report fails.
+        if: ${{ !cancelled() && (steps.youtube_fetch.outcome == 'success' || steps.youtube_fetch.outcome == 'failure') }}
         run: .github/scripts/save-pipeline-data.sh "YouTube fetch"
 
       - name: Commit outputs to ${{ github.ref_name }}
@@ -84,11 +88,15 @@ jobs:
         run: pip install -e packages/committee_meeting -e packages/congress_shared -e packages/youtube_api -e packages/congress_api
 
       - name: Fetch GPO hearing transcripts
+        id: gpo
         env:
           DATA_GOV_API_KEY: ${{ secrets.DATA_GOV_API_KEY }}
-        run: gpo-fetch --output-path "$DATA_DIR/gpo_hearings.csv"
+        run: gpo-fetch --output-path "$DATA_DIR/gpo_hearings.csv" --evidence-path pipeline-data/gpo-evidence.jsonl.gz --refresh-limit 100
 
       - name: Fetch Congress.gov meeting records
+        id: meetings
+        # A GPO package failure must not stop independent meeting captures.
+        if: ${{ !cancelled() && (steps.gpo.outcome == 'success' || steps.gpo.outcome == 'failure') }}
         env:
           DATA_GOV_API_KEY: ${{ secrets.DATA_GOV_API_KEY }}
         run: congress-meetings --output-path pipeline-data/congress_meetings.jsonl.gz
@@ -101,7 +109,8 @@ jobs:
             --output-path "$DATA_DIR/gpo_hearing_videos.csv"
 
       - name: Save pipeline data snapshot
-        run: .github/scripts/save-pipeline-data.sh "Congress.gov meetings"
+        if: ${{ !cancelled() && (steps.gpo.outcome == 'success' || steps.gpo.outcome == 'failure') }}
+        run: .github/scripts/save-pipeline-data.sh "Congress.gov meetings and retained evidence"
 
       - name: Commit outputs to ${{ github.ref_name }}
         run: |
@@ -140,11 +149,14 @@ jobs:
             --output-dir "$DATA_DIR" --refresh-limit 400
 
       - name: Read Senate committee pages
+        id: senate_records
+        if: ${{ !cancelled() && (steps.house_records.outcome == 'success' || steps.house_records.outcome == 'failure') }}
         run: |
           senate-meeting-records --meetings pipeline-data/congress_meetings.jsonl.gz \
             --state-dir pipeline-data/meeting-inventory --output-dir "$DATA_DIR" --refresh-limit 450
 
       - name: Build meeting inventory
+        if: ${{ !cancelled() && (steps.senate_records.outcome == 'success' || steps.senate_records.outcome == 'failure') }}
         run: |
           meeting-inventory --meetings pipeline-data/congress_meetings.jsonl.gz \
             --gpo-path "$DATA_DIR/gpo_hearings.csv" --videos-path "$DATA_DIR/gpo_hearing_videos.csv" \

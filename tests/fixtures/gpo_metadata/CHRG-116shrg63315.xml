@@ -1,0 +1,968 @@
+<mods xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:exslt="http://exslt.org/common" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.loc.gov/mods/v3" version="3.3" xsi:schemaLocation="http://www.loc.gov/mods/v3 http://www.loc.gov/standards/mods/v3/mods-3-3.xsd" ID="P0b002ee1e79f7494">
+    <name type="corporate">
+         <namePart>United States Government Publishing Office</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">publisher</roleTerm>
+              <roleTerm authority="marcrelator" type="code">pbl</roleTerm>
+        </role>
+         <role>
+              <roleTerm authority="marcrelator" type="text">distributor</roleTerm>
+              <roleTerm authority="marcrelator" type="code">dst</roleTerm>
+        </role>
+    </name>
+    <name type="corporate">
+         <namePart>United States</namePart>
+         <namePart>Congress</namePart>
+         <namePart>Senate</namePart>
+         <role>
+              <roleTerm authority="marcrelator" type="text">author</roleTerm>
+              <roleTerm authority="marcrelator" type="code">aut</roleTerm>
+        </role>
+         <description>Government Organization</description>
+    </name>
+    <typeOfResource>text</typeOfResource>
+    <genre authority="marcgt">government publication</genre>
+    <language>
+         <languageTerm type="code" authority="iso639-2b">eng</languageTerm>
+    </language>
+    <extension>
+         <collectionCode>CHRG</collectionCode>
+         <category>Congressional Committee Materials</category>
+         <waisDatabaseName>116_senate_hearings</waisDatabaseName>
+         <branch>legislative</branch>
+         <dateIngested>2026-08-28</dateIngested>
+    </extension>
+    <titleInfo>
+         <title>OVERSIGHT OF THE CROSSFIRE HURRICANE INVESTIGATION: DAY 2</title>
+    </titleInfo>
+    <titleInfo type="alternative"></titleInfo>
+    <location>
+         <url displayLabel="Content Detail" access="object in context">https://www.govinfo.gov/app/details/CHRG-116shrg63315</url>
+         <url displayLabel="HTML rendition" access="raw object">https://www.govinfo.gov/content/pkg/CHRG-116shrg63315/html/CHRG-116shrg63315.htm</url>
+         <url displayLabel="PDF rendition" access="raw object">https://www.govinfo.gov/content/pkg/CHRG-116shrg63315/pdf/CHRG-116shrg63315.pdf</url>
+    </location>
+    <originInfo>
+         <publisher>U.S. Government Publishing Office</publisher>
+         <dateIssued encoding="w3cdtf">2020-08-05</dateIssued>
+         <issuance>monographic</issuance>
+    </originInfo>
+    <physicalDescription>
+         <note type="source content type">deposited</note>
+         <digitalOrigin>born digital</digitalOrigin>
+         <extent>73 digital object pages</extent>
+    </physicalDescription>
+    <classification authority="sudocs">Y 4.J 89/2:</classification>
+    <identifier type="uri">https://www.govinfo.gov/app/details/CHRG-116shrg63315</identifier>
+    <identifier type="local">P0b002ee1e79f7494</identifier>
+    <identifier type="ILS system id">001478982</identifier>
+    <identifier type="former package identifier">f:63315.txt</identifier>
+    <recordInfo>
+         <recordContentSource authority="marcorg">DGPO</recordContentSource>
+         <recordCreationDate encoding="w3cdtf">2026-08-28</recordCreationDate>
+         <recordChangeDate encoding="w3cdtf">2026-08-29</recordChangeDate>
+         <recordIdentifier source="DGPO">CHRG-116shrg63315</recordIdentifier>
+         <recordOrigin>machine generated</recordOrigin>
+         <languageOfCataloging>
+              <languageTerm type="code" authority="iso639-2b">eng</languageTerm>
+        </languageOfCataloging>
+    </recordInfo>
+    <accessCondition type="GPO scope determination">fdlp</accessCondition>
+    <extension>
+         <docClass>SHRG</docClass>
+         <accessId>CHRG-116shrg63315</accessId>
+         <type>O</type>
+         <chamber>SENATE</chamber>
+         <congress years="2019-2020">116</congress>
+         <session>2</session>
+         <number>728</number>
+         <heldDate>2020-08-05</heldDate>
+         <preferredCitation>S. Hrg. 116-728</preferredCitation>
+    </extension>
+    <relatedItem type="constituent" ID="id-63315" xlink:href="https://www.govinfo.gov/metadata/granule/CHRG-116shrg63315/CHRG-116shrg63315/mods.xml">
+         <titleInfo>
+              <title>OVERSIGHT OF THE CROSSFIRE HURRICANE INVESTIGATION: DAY 2</title>
+        </titleInfo>
+         <identifier type="uri">https://www.govinfo.gov/app/details/CHRG-116shrg63315/CHRG-116shrg63315</identifier>
+         <identifier type="former granule identifier">f:63315.txt</identifier>
+         <location>
+              <url displayLabel="Content Detail" access="object in context">https://www.govinfo.gov/app/details/CHRG-116shrg63315/CHRG-116shrg63315</url>
+              <url access="raw object" displayLabel="PDF rendition">https://www.govinfo.gov/content/pkg/CHRG-116shrg63315/pdf/CHRG-116shrg63315.pdf</url>
+              <url access="raw object" displayLabel="HTML rendition">https://www.govinfo.gov/content/pkg/CHRG-116shrg63315/html/CHRG-116shrg63315.htm</url>
+        </location>
+         <identifier type="preferred citation">S. Hrg. 116-728</identifier>
+         <extension>
+              <searchTitle>OVERSIGHT OF THE CROSSFIRE HURRICANE INVESTIGATION: DAY 2</searchTitle>
+              <granuleClass>OTHERPART</granuleClass>
+              <accessId>CHRG-116shrg63315</accessId>
+              <graphicsInPDF>true</graphicsInPDF>
+              <witness>Yates, Sally Q</witness>
+              <isAppropriation>false</isAppropriation>
+              <jacketId>63-315</jacketId>
+              <congCommittee authorityId="ssju00" chamber="S" congress="116" type="S">
+                                        
+                   <name type="authority-standard">Committee on the Judiciary</name>
+                                        
+                   <name type="authority-short">Judiciary</name>
+                                    
+            </congCommittee>
+              <congMember bioGuideId="B001243" chamber="S" congress="116" party="R" role="COMMMEMBER" state="TN">
+                                        
+                   <name type="parsed">MARSHA BLACKBURN of Tennessee</name>
+                                        
+                   <name type="authority-fnf">Marsha Blackburn</name>
+                                        
+                   <name type="authority-lnf">Blackburn, Marsha</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="B001277" chamber="S" congress="116" party="D" role="COMMMEMBER" state="CT">
+                                        
+                   <name type="parsed">RICHARD BLUMENTHAL of Connecticut</name>
+                                        
+                   <name type="authority-fnf">Richard Blumenthal</name>
+                                        
+                   <name type="authority-lnf">Blumenthal, Richard</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="B001288" chamber="S" congress="116" party="D" role="COMMMEMBER" state="NJ">
+                                        
+                   <name type="parsed">CORY A. BOOKER of New Jersey</name>
+                                        
+                   <name type="authority-fnf">Cory A. Booker</name>
+                                        
+                   <name type="authority-lnf">Booker, Cory A.</name>
+                                        
+                   <name type="authority-other">Cory Booker</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="C000880" chamber="S" congress="116" party="R" role="COMMMEMBER" state="ID">
+                                        
+                   <name type="parsed">MIKE CRAPO of Idaho</name>
+                                        
+                   <name type="authority-fnf">Mike Crapo</name>
+                                        
+                   <name type="authority-lnf">Crapo, Mike</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="C001056" chamber="S" congress="116" party="R" role="COMMMEMBER" state="TX">
+                                        
+                   <name type="parsed">JOHN CORNYN of Texas</name>
+                                        
+                   <name type="authority-fnf">John Cornyn</name>
+                                        
+                   <name type="authority-lnf">Cornyn, John</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="C001088" chamber="S" congress="116" party="D" role="COMMMEMBER" state="DE">
+                                        
+                   <name type="parsed">CHRISTOPHER A. COONS of Delaware</name>
+                                        
+                   <name type="authority-fnf">Christopher A. Coons</name>
+                                        
+                   <name type="authority-lnf">Coons, Christopher A.</name>
+                                        
+                   <name type="authority-other">Christopher Coons</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="C001098" chamber="S" congress="116" party="R" role="COMMMEMBER" state="TX">
+                                        
+                   <name type="parsed">TED CRUZ of Texas</name>
+                                        
+                   <name type="authority-fnf">Ted Cruz</name>
+                                        
+                   <name type="authority-lnf">Cruz, Ted</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="D000563" chamber="S" congress="116" party="D" role="COMMMEMBER" state="IL">
+                                        
+                   <name type="parsed">RICHARD J. DURBIN of Illinois</name>
+                                        
+                   <name type="authority-fnf">Richard J. Durbin</name>
+                                        
+                   <name type="authority-lnf">Durbin, Richard J.</name>
+                                        
+                   <name type="authority-other">Richard Durbin</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="E000295" chamber="S" congress="116" party="R" role="COMMMEMBER" state="IA">
+                                        
+                   <name type="parsed">JONI ERNST of Iowa</name>
+                                        
+                   <name type="authority-fnf">Joni Ernst</name>
+                                        
+                   <name type="authority-lnf">Ernst, Joni</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="F000062" chamber="S" congress="116" party="D" role="COMMMEMBER" state="CA">
+                                        
+                   <name type="parsed">DIANNE FEINSTEIN of California</name>
+                                        
+                   <name type="authority-fnf">Dianne Feinstein</name>
+                                        
+                   <name type="authority-lnf">Feinstein, Dianne</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="G000359" chamber="S" congress="116" party="R" role="COMMMEMBER" state="SC">
+                                        
+                   <name type="parsed">LINDSEY O. GRAHAM of South Carolina</name>
+                                        
+                   <name type="authority-fnf">Lindsey Graham</name>
+                                        
+                   <name type="authority-lnf">Graham, Lindsey</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="G000386" chamber="S" congress="116" party="R" role="COMMMEMBER" state="IA">
+                                        
+                   <name type="parsed">CHARLES E. GRASSLEY of Iowa</name>
+                                        
+                   <name type="authority-fnf">Chuck Grassley</name>
+                                        
+                   <name type="authority-lnf">Grassley, Chuck</name>
+                                        
+                   <name type="authority-other">Chuck E. Grassley</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="H001042" chamber="S" congress="116" party="D" role="COMMMEMBER" state="HI">
+                                        
+                   <name type="parsed">MAZIE K. HIRONO of Hawaii</name>
+                                        
+                   <name type="authority-fnf">Mazie K. Hirono</name>
+                                        
+                   <name type="authority-lnf">Hirono, Mazie K.</name>
+                                        
+                   <name type="authority-other">Mazie Hirono</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="H001075" chamber="S" congress="116" party="D" role="COMMMEMBER" state="CA">
+                                        
+                   <name type="parsed">KAMALA D. HARRIS of California</name>
+                                        
+                   <name type="authority-fnf">Kamala D. Harris</name>
+                                        
+                   <name type="authority-lnf">Harris, Kamala D.</name>
+                                        
+                   <name type="authority-other">Kamala Harris</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="H001089" chamber="S" congress="116" party="R" role="COMMMEMBER" state="MO">
+                                        
+                   <name type="parsed">JOSH HAWLEY of Missouri</name>
+                                        
+                   <name type="authority-fnf">Josh Hawley</name>
+                                        
+                   <name type="authority-lnf">Hawley, Josh</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="K000367" chamber="S" congress="116" party="D" role="COMMMEMBER" state="MN">
+                                        
+                   <name type="parsed">AMY KLOBUCHAR of Minnesota</name>
+                                        
+                   <name type="authority-fnf">Amy Klobuchar</name>
+                                        
+                   <name type="authority-lnf">Klobuchar, Amy</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="K000393" chamber="S" congress="116" party="R" role="COMMMEMBER" state="LA">
+                                        
+                   <name type="parsed">JOHN KENNEDY of Louisiana</name>
+                                        
+                   <name type="authority-fnf">John Kennedy</name>
+                                        
+                   <name type="authority-lnf">Kennedy, John</name>
+                                        
+                   <name type="authority-other">John Neely Kennedy</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="L000174" chamber="S" congress="116" party="D" role="COMMMEMBER" state="VT">
+                                        
+                   <name type="parsed">PATRICK J. LEAHY of Vermont</name>
+                                        
+                   <name type="authority-fnf">Patrick J. Leahy</name>
+                                        
+                   <name type="authority-lnf">Leahy, Patrick J.</name>
+                                        
+                   <name type="authority-other">Patrick Leahy</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="L000577" chamber="S" congress="116" party="R" role="COMMMEMBER" state="UT">
+                                        
+                   <name type="parsed">MICHAEL S. LEE of Utah</name>
+                                        
+                   <name type="authority-fnf">Mike Lee</name>
+                                        
+                   <name type="authority-lnf">Lee, Mike</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="S001197" chamber="S" congress="116" party="R" role="COMMMEMBER" state="NE">
+                                        
+                   <name type="parsed">BEN SASSE of Nebraska</name>
+                                        
+                   <name type="authority-fnf">Ben Sasse</name>
+                                        
+                   <name type="authority-lnf">Sasse, Ben</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="T000476" chamber="S" congress="116" party="R" role="COMMMEMBER" state="NC">
+                                        
+                   <name type="parsed">THOM TILLIS of North Carolina</name>
+                                        
+                   <name type="authority-fnf">Thom Tillis</name>
+                                        
+                   <name type="authority-lnf">Tillis, Thomas</name>
+                                        
+                   <name type="authority-other">Thomas Tillis</name>
+                                        
+                   <name type="authority-other">Thomas Roland Tillis</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="W000802" chamber="S" congress="116" party="D" role="COMMMEMBER" state="RI">
+                                        
+                   <name type="parsed">SHELDON WHITEHOUSE of Rhode Island</name>
+                                        
+                   <name type="authority-fnf">Sheldon Whitehouse</name>
+                                        
+                   <name type="authority-lnf">Whitehouse, Sheldon</name>
+                                    
+            </congMember>
+              <isNomination>false</isNomination>
+              <isErrata>false</isErrata>
+        </extension>
+         <name type="corporate">
+              <namePart>United States</namePart>
+              <namePart>Congress</namePart>
+              <namePart>Senate</namePart>
+              <namePart>Committee on the Judiciary</namePart>
+              <role>
+                   <roleTerm authority="marcrelator" type="text">associated name</roleTerm>
+                   <roleTerm authority="marcrelator" type="code">asn</roleTerm>
+            </role>
+              <description>Government Organization</description>
+        </name>
+         <name type="personal">
+              <namePart>Marsha Blackburn</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Richard Blumenthal</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Cory A. Booker</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Mike Crapo</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>John Cornyn</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Christopher A. Coons</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Ted Cruz</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Richard J. Durbin</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Joni Ernst</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Dianne Feinstein</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Lindsey Graham</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Chuck Grassley</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Mazie K. Hirono</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Kamala D. Harris</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Josh Hawley</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Amy Klobuchar</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>John Kennedy</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Patrick J. Leahy</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Mike Lee</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Ben Sasse</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Thom Tillis</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Sheldon Whitehouse</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Yates, Sally Q</namePart>
+              <role>
+                   <roleTerm authority="marcrelator" type="text">witness</roleTerm>
+                   <roleTerm authority="marcrelator" type="code">wit</roleTerm>
+            </role>
+              <description>Hearing Witness</description>
+        </name>
+         <relatedItem type="isReferencedBy">
+              <identifier type="Jacket citation"></identifier>
+        </relatedItem>
+    </relatedItem>
+    <relatedItem type="constituent" ID="id-63315add1" xlink:href="https://www.govinfo.gov/metadata/granule/CHRG-116shrg63315/CHRG-116shrg63315-add1/mods.xml">
+         <titleInfo>
+              <title>OVERSIGHT OF THE CROSSFIRE HURRICANE INVESTIGATION: DAY 2</title>
+              <partName>Addendum 1</partName>
+        </titleInfo>
+         <identifier type="uri">https://www.govinfo.gov/app/details/CHRG-116shrg63315/CHRG-116shrg63315-add1</identifier>
+         <identifier type="former granule identifier">f:63315add1.txt</identifier>
+         <location>
+              <url displayLabel="Content Detail" access="object in context">https://www.govinfo.gov/app/details/CHRG-116shrg63315/CHRG-116shrg63315-add1</url>
+              <url access="raw object" displayLabel="PDF rendition">https://www.govinfo.gov/content/pkg/CHRG-116shrg63315/pdf/CHRG-116shrg63315-add1.pdf</url>
+              <url access="raw object" displayLabel="HTML rendition">https://www.govinfo.gov/content/pkg/CHRG-116shrg63315/html/CHRG-116shrg63315-add1.htm</url>
+        </location>
+         <identifier type="preferred citation">S. Hrg. 116-728,Addendum 1</identifier>
+         <extension>
+              <searchTitle>OVERSIGHT OF THE CROSSFIRE HURRICANE INVESTIGATION: DAY 2</searchTitle>
+              <granuleClass>OTHERPART</granuleClass>
+              <accessId>CHRG-116shrg63315-add1</accessId>
+              <heading>Addendum 1</heading>
+              <addendumNumber>1</addendumNumber>
+              <isAppropriation>false</isAppropriation>
+              <jacketId>63-315</jacketId>
+              <congCommittee authorityId="ssju00" chamber="S" congress="116" type="S">
+                                        
+                   <name type="authority-standard">Committee on the Judiciary</name>
+                                        
+                   <name type="authority-short">Judiciary</name>
+                                    
+            </congCommittee>
+              <congMember bioGuideId="B001243" chamber="S" congress="116" party="R" role="COMMMEMBER" state="TN">
+                                        
+                   <name type="parsed">MARSHA BLACKBURN of Tennessee</name>
+                                        
+                   <name type="authority-fnf">Marsha Blackburn</name>
+                                        
+                   <name type="authority-lnf">Blackburn, Marsha</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="B001277" chamber="S" congress="116" party="D" role="COMMMEMBER" state="CT">
+                                        
+                   <name type="parsed">RICHARD BLUMENTHAL of Connecticut</name>
+                                        
+                   <name type="authority-fnf">Richard Blumenthal</name>
+                                        
+                   <name type="authority-lnf">Blumenthal, Richard</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="B001288" chamber="S" congress="116" party="D" role="COMMMEMBER" state="NJ">
+                                        
+                   <name type="parsed">CORY A. BOOKER of New Jersey</name>
+                                        
+                   <name type="authority-fnf">Cory A. Booker</name>
+                                        
+                   <name type="authority-lnf">Booker, Cory A.</name>
+                                        
+                   <name type="authority-other">Cory Booker</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="C000880" chamber="S" congress="116" party="R" role="COMMMEMBER" state="ID">
+                                        
+                   <name type="parsed">MIKE CRAPO of Idaho</name>
+                                        
+                   <name type="authority-fnf">Mike Crapo</name>
+                                        
+                   <name type="authority-lnf">Crapo, Mike</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="C001056" chamber="S" congress="116" party="R" role="COMMMEMBER" state="TX">
+                                        
+                   <name type="parsed">JOHN CORNYN of Texas</name>
+                                        
+                   <name type="authority-fnf">John Cornyn</name>
+                                        
+                   <name type="authority-lnf">Cornyn, John</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="C001088" chamber="S" congress="116" party="D" role="COMMMEMBER" state="DE">
+                                        
+                   <name type="parsed">CHRISTOPHER A. COONS of Delaware</name>
+                                        
+                   <name type="authority-fnf">Christopher A. Coons</name>
+                                        
+                   <name type="authority-lnf">Coons, Christopher A.</name>
+                                        
+                   <name type="authority-other">Christopher Coons</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="C001098" chamber="S" congress="116" party="R" role="COMMMEMBER" state="TX">
+                                        
+                   <name type="parsed">TED CRUZ of Texas</name>
+                                        
+                   <name type="authority-fnf">Ted Cruz</name>
+                                        
+                   <name type="authority-lnf">Cruz, Ted</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="D000563" chamber="S" congress="116" party="D" role="COMMMEMBER" state="IL">
+                                        
+                   <name type="parsed">RICHARD J. DURBIN of Illinois</name>
+                                        
+                   <name type="authority-fnf">Richard J. Durbin</name>
+                                        
+                   <name type="authority-lnf">Durbin, Richard J.</name>
+                                        
+                   <name type="authority-other">Richard Durbin</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="E000295" chamber="S" congress="116" party="R" role="COMMMEMBER" state="IA">
+                                        
+                   <name type="parsed">JONI ERNST of Iowa</name>
+                                        
+                   <name type="authority-fnf">Joni Ernst</name>
+                                        
+                   <name type="authority-lnf">Ernst, Joni</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="F000062" chamber="S" congress="116" party="D" role="COMMMEMBER" state="CA">
+                                        
+                   <name type="parsed">DIANNE FEINSTEIN of California</name>
+                                        
+                   <name type="authority-fnf">Dianne Feinstein</name>
+                                        
+                   <name type="authority-lnf">Feinstein, Dianne</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="G000359" chamber="S" congress="116" party="R" role="COMMMEMBER" state="SC">
+                                        
+                   <name type="parsed">LINDSEY O. GRAHAM of South Carolina</name>
+                                        
+                   <name type="authority-fnf">Lindsey Graham</name>
+                                        
+                   <name type="authority-lnf">Graham, Lindsey</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="G000386" chamber="S" congress="116" party="R" role="COMMMEMBER" state="IA">
+                                        
+                   <name type="parsed">CHARLES E. GRASSLEY of Iowa</name>
+                                        
+                   <name type="authority-fnf">Chuck Grassley</name>
+                                        
+                   <name type="authority-lnf">Grassley, Chuck</name>
+                                        
+                   <name type="authority-other">Chuck E. Grassley</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="H001042" chamber="S" congress="116" party="D" role="COMMMEMBER" state="HI">
+                                        
+                   <name type="parsed">MAZIE K. HIRONO of Hawaii</name>
+                                        
+                   <name type="authority-fnf">Mazie K. Hirono</name>
+                                        
+                   <name type="authority-lnf">Hirono, Mazie K.</name>
+                                        
+                   <name type="authority-other">Mazie Hirono</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="H001075" chamber="S" congress="116" party="D" role="COMMMEMBER" state="CA">
+                                        
+                   <name type="parsed">KAMALA D. HARRIS of California</name>
+                                        
+                   <name type="authority-fnf">Kamala D. Harris</name>
+                                        
+                   <name type="authority-lnf">Harris, Kamala D.</name>
+                                        
+                   <name type="authority-other">Kamala Harris</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="H001089" chamber="S" congress="116" party="R" role="COMMMEMBER" state="MO">
+                                        
+                   <name type="parsed">JOSH HAWLEY of Missouri</name>
+                                        
+                   <name type="authority-fnf">Josh Hawley</name>
+                                        
+                   <name type="authority-lnf">Hawley, Josh</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="K000367" chamber="S" congress="116" party="D" role="COMMMEMBER" state="MN">
+                                        
+                   <name type="parsed">AMY KLOBUCHAR of Minnesota</name>
+                                        
+                   <name type="authority-fnf">Amy Klobuchar</name>
+                                        
+                   <name type="authority-lnf">Klobuchar, Amy</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="K000393" chamber="S" congress="116" party="R" role="COMMMEMBER" state="LA">
+                                        
+                   <name type="parsed">JOHN KENNEDY of Louisiana</name>
+                                        
+                   <name type="authority-fnf">John Kennedy</name>
+                                        
+                   <name type="authority-lnf">Kennedy, John</name>
+                                        
+                   <name type="authority-other">John Neely Kennedy</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="L000174" chamber="S" congress="116" party="D" role="COMMMEMBER" state="VT">
+                                        
+                   <name type="parsed">PATRICK J. LEAHY of Vermont</name>
+                                        
+                   <name type="authority-fnf">Patrick J. Leahy</name>
+                                        
+                   <name type="authority-lnf">Leahy, Patrick J.</name>
+                                        
+                   <name type="authority-other">Patrick Leahy</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="L000577" chamber="S" congress="116" party="R" role="COMMMEMBER" state="UT">
+                                        
+                   <name type="parsed">MICHAEL S. LEE of Utah</name>
+                                        
+                   <name type="authority-fnf">Mike Lee</name>
+                                        
+                   <name type="authority-lnf">Lee, Mike</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="S001197" chamber="S" congress="116" party="R" role="COMMMEMBER" state="NE">
+                                        
+                   <name type="parsed">BEN SASSE of Nebraska</name>
+                                        
+                   <name type="authority-fnf">Ben Sasse</name>
+                                        
+                   <name type="authority-lnf">Sasse, Ben</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="T000476" chamber="S" congress="116" party="R" role="COMMMEMBER" state="NC">
+                                        
+                   <name type="parsed">THOM TILLIS of North Carolina</name>
+                                        
+                   <name type="authority-fnf">Thom Tillis</name>
+                                        
+                   <name type="authority-lnf">Tillis, Thomas</name>
+                                        
+                   <name type="authority-other">Thomas Tillis</name>
+                                        
+                   <name type="authority-other">Thomas Roland Tillis</name>
+                                    
+            </congMember>
+              <congMember bioGuideId="W000802" chamber="S" congress="116" party="D" role="COMMMEMBER" state="RI">
+                                        
+                   <name type="parsed">SHELDON WHITEHOUSE of Rhode Island</name>
+                                        
+                   <name type="authority-fnf">Sheldon Whitehouse</name>
+                                        
+                   <name type="authority-lnf">Whitehouse, Sheldon</name>
+                                    
+            </congMember>
+              <isNomination>false</isNomination>
+              <isErrata>false</isErrata>
+        </extension>
+         <name type="corporate">
+              <namePart>United States</namePart>
+              <namePart>Congress</namePart>
+              <namePart>Senate</namePart>
+              <namePart>Committee on the Judiciary</namePart>
+              <role>
+                   <roleTerm authority="marcrelator" type="text">associated name</roleTerm>
+                   <roleTerm authority="marcrelator" type="code">asn</roleTerm>
+            </role>
+              <description>Government Organization</description>
+        </name>
+         <name type="personal">
+              <namePart>Marsha Blackburn</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Richard Blumenthal</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Cory A. Booker</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Mike Crapo</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>John Cornyn</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Christopher A. Coons</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Ted Cruz</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Richard J. Durbin</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Joni Ernst</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Dianne Feinstein</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Lindsey Graham</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Chuck Grassley</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Mazie K. Hirono</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Kamala D. Harris</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Josh Hawley</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Amy Klobuchar</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>John Kennedy</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Patrick J. Leahy</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Mike Lee</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Ben Sasse</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Thom Tillis</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <name type="personal">
+              <namePart>Sheldon Whitehouse</namePart>
+              <affiliation>United States Senate</affiliation>
+              <role>
+                   <roleTerm type="text">committee member</roleTerm>
+            </role>
+              <description>United States Congressional Member</description>
+        </name>
+         <relatedItem type="isReferencedBy">
+              <identifier type="Jacket citation"></identifier>
+        </relatedItem>
+    </relatedItem>
+</mods>

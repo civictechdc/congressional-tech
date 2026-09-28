@@ -9,12 +9,15 @@ Recordings since about mid-2023 carry an English WebVTT subtitle track (the live
 recordings (the archive path) have captions only inside the video stream, which this tool
 doesn't decode. A confirmed absence from the live WebVTT path is recorded as
 `none`; failed or incomplete checks are not indexed. Appends to <out-dir>/captions_index.csv:
-filename, comm, kind (webvtt | none), characters. Recordings already in the index are skipped.
+filename, comm, kind (webvtt | none), characters. Current complete captures are skipped;
+legacy entries without retained timing are rechecked when requested. Playlist and
+segment text is retained in <filename>.captions.json.gz.
 New checks also write caption_receipts/<record-key>.json with their observation
 time and exact scope. Legacy index rows without receipts retain unknown check times.
 """
 import argparse
 import csv
+import gzip
 from datetime import datetime, timezone
 from hashlib import sha256
 import json
@@ -28,8 +31,10 @@ from urllib.parse import urljoin
 import requests
 
 from congress_api.senate.isvp import STREAM, live_url, parse_player_url
+from congress_shared.webvtt import cue_lines
 
 INDEX = "captions_index.csv"
+CAPTURE_VERSION = "2"
 RECEIPTS = "caption_receipts"
 HDR = {"User-Agent": "Mozilla/5.0"}
 sess = requests.Session()
@@ -85,6 +90,11 @@ def _write_receipt(out_dir: Path, url: str, receipt: dict) -> None:
     path = receipt_path(out_dir, url)
     path.parent.mkdir(parents=True, exist_ok=True)
     receipt["observed_at"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    if receipt.get('outcome') == 'error' and path.exists():
+        previous = json.loads(path.read_text())
+        successful = previous.get('last_successful') if previous.get('outcome') == 'error' else previous
+        if successful and successful.get('outcome') in ('available', 'not_found'):
+            receipt['last_successful'] = {k: v for k, v in successful.items() if k != 'last_successful'}
     _write_text(path, json.dumps(receipt, ensure_ascii=False, indent=2) + "\n")
 
 
@@ -128,16 +138,8 @@ def _segment(url: str) -> str:
 
 
 def cues(vtt: str) -> list[list[str]]:
-    """Each cue's lines, tags stripped."""
-    out, cur = [], []
-    for raw in vtt.splitlines() + [""]:
-        if raw.strip() and not raw.startswith(("WEBVTT", "X-TIMESTAMP-MAP", "NOTE")) and "-->" not in raw:
-            line = re.sub(r"<[^>]+>", "", raw).strip()
-            if line:
-                cur.append(line)
-        elif cur:
-            out.append(cur); cur = []
-    return out
+    """Each cue's text lines, retaining numeric speech and excluding cue IDs."""
+    return cue_lines(vtt)
 
 
 def merge_rollup(cue_lines: list[list[str]]) -> str:
@@ -164,7 +166,7 @@ def fetch_one(url: str, out_dir: Path, nthreads: int = 16) -> tuple[str, str, st
     parsed = parse_player_url(url)
     comm, fn = parsed or ("", "")
     receipt = {
-        "schema_version": "1.0", "filename": fn, "comm": comm, "player_url": url,
+        "schema_version": "1.0", "capture_version": CAPTURE_VERSION, "filename": fn, "comm": comm, "player_url": url,
         "scope": {"kind": "senate_live_webvtt", "master_url": None, "playlist_url": None,
                   "segment_urls": [], "includes_embedded_archive_captions": False},
     }
@@ -197,6 +199,17 @@ def fetch_one(url: str, out_dir: Path, nthreads: int = 16) -> tuple[str, str, st
                     raise IncompleteCaptionsError("Subtitle playlist contains no segments")
                 with ThreadPoolExecutor(nthreads) as pool:
                     parts = list(pool.map(_segment, segments))
+                # One retained source file keeps timestamps, segment boundaries
+                # and X-TIMESTAMP-MAP values that the text views cannot preserve.
+                raw = {'master': {'url': master_url, 'text': master},
+                       'playlist': {'url': playlist_url, 'text': playlist},
+                       'segments': [{'url': url, 'text': part} for url, part in zip(segments, parts)]}
+                out_dir.mkdir(parents=True, exist_ok=True)
+                raw_path = out_dir / f"{fn}.captions.json.gz"
+                temporary = raw_path.with_suffix(raw_path.suffix + '.tmp')
+                temporary.write_bytes(gzip.compress(json.dumps(raw, ensure_ascii=False).encode('utf-8'), mtime=0))
+                temporary.replace(raw_path)
+                receipt['source_file'] = raw_path.name
                 all_cues = [cue for part in parts for cue in cues(part)]
                 text = merge_rollup(all_cues) if all_cues else ""
                 out_dir.mkdir(parents=True, exist_ok=True)
@@ -216,24 +229,25 @@ def main(out_dir, urls, nthreads=4):
     out_dir = Path(out_dir).expanduser()
     out_dir.mkdir(parents=True, exist_ok=True)
     index = out_dir / INDEX
-    done = set()
-    if index.exists():
-        with open(index) as existing:
-            done = {r["filename"] for r in csv.DictReader(existing)}
+    saved = {(r['comm'], r['filename']): r for r in csv.DictReader(index.open())} if index.exists() else {}
     unique = {}
     for url in urls:
-        key = parse_player_url(url) or ("", url)
-        if key[1] not in done:
+        key = parse_player_url(url) or ('', url)
+        path = receipt_path(out_dir, url)
+        receipt = json.loads(path.read_text()) if path.exists() else {}
+        current = receipt.get('capture_version') == CAPTURE_VERSION and receipt.get('outcome') in ('available', 'not_found')
+        if current and receipt.get('kind') == 'webvtt':
+            current = bool(receipt.get('source_file') and (out_dir / receipt['source_file']).exists()
+                           and (out_dir / f"{key[1]}.txt").exists())
+        if current:
+            saved[key] = dict(filename=key[1], comm=key[0], kind=receipt['kind'], characters=receipt['characters'])
+        else:
             unique.setdefault(key, url)
     todo = list(unique.values())
-    logging.info(f"{len(todo)} recordings to fetch ({len(done)} already in {index})")
+    logging.info(f"{len(todo)} recordings need caption capture, including legacy rows without retained timing")
     counts = {"webvtt": 0, "none": 0}
     failures = []
-    needs_header = not index.exists() or index.stat().st_size == 0
-    with open(index, "a", newline="") as f:
-        w = csv.writer(f)
-        if needs_header:
-            w.writerow(["filename", "comm", "kind", "characters"])
+    try:
         with ThreadPoolExecutor(nthreads) as pool:
             futures = [pool.submit(fetch_one, url, out_dir) for url in todo]
             for n, (url, future) in enumerate(zip(todo, futures), 1):
@@ -243,10 +257,17 @@ def main(out_dir, urls, nthreads=4):
                     failures.append((url, exc))
                     logging.error(f"Caption acquisition failed for {url}: {exc}")
                     continue
-                w.writerow([fn, comm, kind, chars]); f.flush()
+                saved[(comm, fn)] = dict(filename=fn, comm=comm, kind=kind, characters=chars)
                 counts[kind] += 1
                 if n % 50 == 0:
                     logging.info(f"{n}/{len(todo)}: {counts}")
+    finally:
+        temporary = index.with_suffix('.csv.tmp')
+        with temporary.open('w', newline='') as stream:
+            writer = csv.DictWriter(stream, fieldnames=['filename', 'comm', 'kind', 'characters'])
+            writer.writeheader()
+            writer.writerows(saved.values())
+        temporary.replace(index)
     logging.info(f"done: {counts}")
     if failures:
         raise RuntimeError(f"{len(failures)} Senate caption acquisition(s) failed; see {out_dir / RECEIPTS}") from failures[0][1]

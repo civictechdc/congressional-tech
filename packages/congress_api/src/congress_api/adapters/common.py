@@ -4,7 +4,7 @@ from datetime import date, datetime
 import hashlib
 import json
 import re
-from typing import Callable
+from typing import Callable, Mapping
 from urllib.parse import urlsplit
 
 from committee_meeting.common import Identifier, Ref, ReportedTime
@@ -47,12 +47,23 @@ def reported_time(value):
                         precision="second" if len(value.split("T")[-1].split("+")[0]) >= 8 else "minute", original=value)
 
 
+def observed_time(raw, now):
+    """Use an explicit, zoned source acquisition time; never infer freshness."""
+    try:
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        return parsed if parsed.tzinfo is not None and parsed <= now else None
+    except (AttributeError, TypeError, ValueError):
+        return None
+
+
 @dataclass
 class AdapterContext:
     now: datetime
     input_id: str
     provider: str
     ids: Callable[[str, str], str]
+    # Exact, unambiguous publisher files already imported by the application.
+    known_materials: Mapping[str, tuple[Material, MaterialVersion]] | None = None
 
     def source(self, native_key, payload, url=None):
         key = f"{self.provider}|{self.input_id}|{native_key}|{digest(payload)}"
@@ -69,7 +80,23 @@ class AdapterContext:
 
 
 def material_records(context, evidence, key, *, title=None, urls=(), details=None, subject=None, role="supporting", identifiers=()):
-    """One source-described material; identity across independent listings is not inferred."""
+    """Keep source identities unless an exact publisher file has a known identity."""
+    urls = tuple(dict.fromkeys(urls))
+    known = (getattr(context, 'known_materials', None) or {}).get(urls[0]) if len(urls) == 1 else None
+    if known and (details is None or details.type == 'document'):
+        material, version = known
+        # A link label is not a competing official document title or edition.
+        # Keep the publisher fields and both observations; the label stays in
+        # the source payload addressed by this additional citation.
+        def cited(record):
+            citations = {c.model_dump_json(): c for c in (*record.provenance.citations, *evidence.citations)}
+            return record.model_copy(update={'provenance': record.provenance.model_copy(
+                update={'citations': tuple(citations.values())})})
+        out = [cited(material), cited(version)]
+        if subject is not None:
+            out.append(MaterialLink(id=context.ids('material_link', key + '|' + subject.kind + '|' + subject.id + '|' + role),
+                material=ref(material), version=ref(version), subject=subject, role=role, provenance=evidence))
+        return out
     material = Material(id=context.ids("material", key), title=title or None,
                         details=details or DocumentDetails(category="unknown"), identifiers=identifiers, provenance=evidence)
     version = MaterialVersion(id=context.ids("material_version", key + "|reported-edition"), material=ref(material),
@@ -79,7 +106,8 @@ def material_records(context, evidence, key, *, title=None, urls=(), details=Non
         if not web_url(url):
             continue
         suffix = urlsplit(url).path.rsplit(".", 1)[-1].lower()
-        media = {"pdf": "application/pdf", "xml": "application/xml", "html": "text/html", "txt": "text/plain", "vtt": "text/vtt"}.get(suffix)
+        media = {"pdf": "application/pdf", "xml": "application/xml", "html": "text/html", "htm": "text/html", "csv": "text/csv", "txt": "text/plain", "vtt": "text/vtt", "doc": "application/msword", "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                 "xls": "application/vnd.ms-excel", "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "rtf": "application/rtf"}.get(suffix)
         out.append(Representation(id=context.ids("representation", key + "|" + url), version=ref(version),
                                   locations=(MaterialLocation(url=url, role="player" if details and details.type == "recording" else "download"),),
                                   media_type=media, format_label=suffix if media else None, provenance=evidence))

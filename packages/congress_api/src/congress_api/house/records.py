@@ -21,14 +21,49 @@ from pathlib import Path
 
 from congress_api import http
 from congress_api.house.evidence import SCHEMA_VERSION, retained_evidence
-from congress_api.house.repository import (AMENDMENT_FIELDS, WITNESS_FIELDS, addresses, cached_xml, documents,
+from congress_api.house.repository import (AMENDMENT_FIELDS, WITNESS_FIELDS, addresses, cached_xml, document_kind, documents,
     read_xml, witness_area, witness_rows, witnesses)
 from congress_api.inventory.common import (NOT_HELD, TRANSCRIPT, due, kind, nonnegative, read_csv, read_meetings,
     read_state, source_args, write_csv, write_state)
 from congress_api.inventory.prints import attached_prints, match_prints
 from congress_api.xml import parse_xml
 
-DOCUMENT_FIELDS = "event_id kind name url".split()
+DOCUMENT_FIELDS = "event_id kind name url document_type source_group source_selector owning_witness_selector add_date publish_date".split()
+
+
+def document_rows(saved, event, have=()):
+    """Compact recovery report: one row per file missing from the API listing.
+
+    Congress.gov mirrors House files under a different URL, so this report uses
+    filenames within the same meeting to suppress already-listed renditions.
+    Compare each format separately: a listed PDF cannot suppress its XML. Full
+    source URLs, metadata, removed entries and grouping remain in gzip state;
+    this report's overlap check does not merge material identities.
+    """
+    normalize = lambda url: url.replace("http://", "https://")
+    have = {normalize(url).rsplit("/", 1)[-1] for url in have}
+    groups = saved.get("evidence", {}).get("document_groups")
+    if groups is None:
+        groups = [{"legacy_kind": kind, "description": name, "files": [{"url": url}]}
+                  for kind, name, url, _ in saved.get("documents", [])]
+    owners = {w.get("selector"): w.get("name", "") for w in saved.get("evidence", {}).get("witness_observations", []) if w.get("selector")}
+    for group in groups:
+        if not group.get("active", True):
+            continue
+        files = [file for file in group.get("files", []) if file.get("active", True) and file.get("url")]
+        code, description = group.get("type", ""), group.get("description", "")
+        owner = owners.get(group.get("owning_witness_selector"))
+        attributes = group.get("metadata", {}).get("attributes", {})
+        for file in files:
+            url = normalize(file["url"])
+            if url.rsplit("/", 1)[-1] in have:
+                continue
+            kind = group.get("legacy_kind") or document_kind(code, description, url)
+            yield {"event_id": event, "kind": kind,
+                   "name": description or (f"{kind}: {owner}" if owner else url.rsplit("/", 1)[-1]), "url": url,
+                   "document_type": code, "source_group": group.get("source", ""),
+                   "source_selector": group.get("selector", ""), "owning_witness_selector": group.get("owning_witness_selector") or "",
+                   "add_date": attributes.get("add-date", ""), "publish_date": attributes.get("publish-date", "")}
 
 
 def lacking(m, packages):
@@ -202,8 +237,8 @@ def main(meetings, gpo_path, state_dir, output_dir, seed_cache=None, offline=Fal
         if not lacking(m, prints[e]):
             continue
         saved = state[e]
-        have = {d["url"].rsplit("/", 1)[-1] for d in (m.get("meetingDocuments") or []) + (m.get("witnessDocuments") or []) if d.get("url")}
-        found_docs += [dict(zip(DOCUMENT_FIELDS, (e, k, n, u))) for k, n, u, files in saved["documents"] if not set(files) & have]
+        have = {d["url"] for d in (m.get("meetingDocuments") or []) + (m.get("witnessDocuments") or []) if d.get("url")}
+        found_docs += list(document_rows(saved, e, have))
         if not m.get("witnesses"):
             found_witnesses += [{"event_id": e, **w} for w in saved["witnesses"]]
         found_amendments += [{"event_id": e, **a} for a in saved["amendments"]]

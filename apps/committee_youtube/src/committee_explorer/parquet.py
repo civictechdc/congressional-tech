@@ -70,12 +70,28 @@ def sources_of(record):
 def write_tables(records, sources, query_rows, stage, descriptor):
     """Accept iterables so a retained JSON publication can migrate without reassembly."""
     source_rows, native_documents, native_meetings, reviewed_document_types = [], {}, {}, {}
+    committee_documents = {}
     for source in sources:
         if source['provider'] == 'congress.gov' and isinstance(source.get('payload'), dict):
             native_meetings[source['id']] = {k: source['payload'].get(k) for k in ('type', 'title')}
             for group in ('meetingDocuments', 'witnessDocuments'):
                 for i, document in enumerate(source['payload'].get(group) or []):
                     native_documents[(source['id'], f'/{group}/{i}')] = (group, document)
+        payload = source.get('payload') or {}
+        if source['provider'] == 'docs.house.gov':
+            from congress_api.house.repository import XML_KINDS
+            for i, group in enumerate((payload.get('evidence') or {}).get('document_groups', [])):
+                code = group.get('type')
+                label = XML_KINDS.get(code, code)
+                if label: label = label[:1].upper() + label[1:]
+                origin = {'meeting_xml': 'Meeting documents', 'witness_xml': 'Witness documents'}.get(group.get('source'))
+                committee_documents[source['id'], f'/evidence/document_groups/{i}'] = (label, origin, code, [])
+        if source['provider'] == 'senate.committees':
+            for url, metadata in (payload.get('document_metadata') or {}).items():
+                selector = '/document_metadata/' + url.replace('~', '~0').replace('/', '~1')
+                labels = metadata.get('labels') or []
+                committee_documents[source['id'], selector] = (
+                    None, 'Witness documents' if metadata.get('witness_indexes') else None, None, labels)
         if source['provider'] == 'gpo.committee-review' and isinstance(source.get('payload'), dict):
             label = source['payload'].get('source_document_type')
             if isinstance(label, str) and label: reviewed_document_types[source['id']] = label
@@ -176,6 +192,14 @@ def write_tables(records, sources, query_rows, stage, descriptor):
                     row['title'] = document_title(document) or row['title']
                     row['category'] = category(document)
                     if isinstance(document.get('documentType'), str): row['document_type'] = document['documentType']
+                for citation in provenance.get('citations', []):
+                    metadata = committee_documents.get((citation['source']['id'], citation.get('selector')))
+                    if metadata:
+                        label, origin, code, labels = metadata
+                        if label and not row.get('document_type'): row['document_type'] = label
+                        if origin: row['source_document_groups'].append(origin)
+                        if code: row['facts'].append({'label': 'Source document type code', 'value': code})
+                        for source_label in labels: row['facts'].append({'label': 'Source link label', 'value': source_label})
                 if not row.get('title') or row['title'] == '(Untitled source record)':
                     row['title'] = (row.get('category') if row.get('category') not in (None, 'unknown') else row.get('type') or 'Document').replace('_', ' ').capitalize()
             if kind == 'appearance':
