@@ -9,10 +9,11 @@ The monorepo package name is `@ct/youtube-api`. The Python package name is `yout
 From the repository root:
 
 ```bash
-uv pip install -e packages/youtube_api
+uv pip install -e packages/committee_meeting -e packages/congress_shared \
+  -e packages/youtube_api
 ```
 
-`pyproject.toml` declares `congress-shared`, `google-api-python-client`, `tinydb`, `yt-dlp`, and `curl_cffi`. `[tool.uv.sources]` points `congress-shared` at `../congress_shared`. `curl_cffi` lets `yt-dlp` impersonate a browser, which YouTube's bot check usually accepts.
+`pyproject.toml` declares `committee-meeting`, `congress-shared`, `google-api-python-client`, `tinydb`, `yt-dlp`, and `curl_cffi`. The editable install above resolves both sibling packages from this checkout. `curl_cffi` lets `yt-dlp` impersonate a browser, which YouTube's bot check usually accepts.
 
 `congress-shared` supplies the channel CSV, the default TinyDB directory, congress date ranges, and YouTube API-key loading.
 
@@ -125,8 +126,6 @@ Empty `__init__.py` files mark packages and define no API.
 - `pyproject.toml` defines `youtube-api` 0.1.0, the dependency list, the uv path source, and the three console scripts.
 - `package.json` names the workspace package `@ct/youtube-api`, version `0.1.0`, private, with no npm scripts.
 - `turbo.json` extends the repo Turborepo config and defines no local tasks.
-- `uv.lock` is a uv lockfile, and the repo gitignore excludes `**/uv.lock`. This copy requires Python `>=3.13` and pins `youtube-api` to `google-api-python-client` 2.187.0 only, plus that client's stack (`google-api-core`, `google-auth`, `google-auth-httplib2`, `googleapis-common-protos`, `httplib2`, `cachetools`, `certifi`, `charset-normalizer`, `idna`, `proto-plus`, `protobuf`, `pyasn1`, `pyasn1-modules`, `pyparsing`, `requests`, `rsa`, `uritemplate`, `urllib3`). `congress-shared`, `tinydb`, `yt-dlp`, and `curl_cffi` are absent. `pyproject.toml` is the dependency list.
-- `src/youtube_api.egg-info/` is setuptools metadata from an editable install, and `*.egg-info/` is gitignored. `PKG-INFO` records the name, version `0.1.0`, the summary "YouTube API Client for Congressional Tech", Python `>=3.12`, and `Requires-Dist` lines for `congress-shared`, `google-api-python-client`, `tinydb`, and `yt-dlp`. `requires.txt` lists those same four. `curl_cffi` is absent from both. `entry_points.txt` lists the three console scripts. `top_level.txt` contains `youtube_api`. `SOURCES.txt` lists the modules setuptools saw. `dependency_links.txt` is empty.
 - `src/youtube_api/__init__.py` is empty.
 
 ### Shared tables
@@ -148,3 +147,9 @@ Empty `__init__.py` files mark packages and define no API.
 
 - `src/youtube_api/captions/__init__.py` is empty.
 - `src/youtube_api/captions/main.py` is `youtube-captions`. `fetch_one` returns `(video_id, kind, characters)`. `vtt_to_text` strips the WebVTT. `YDL_OPTS` holds the proxy and sleep settings for the run. The command imports neither `tables.py` nor `congress_shared`.
+
+### Explorer adapter
+
+`src/youtube_api/adapters.py` translates retained channel and video metadata into
+the committee-meeting model without downloading new data. Publication belongs
+to the application exporter.

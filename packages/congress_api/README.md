@@ -1,6 +1,6 @@
 # congress-api
 
-`congress-api` collects congressional hearing records and writes them to local files. The package talks to Congress.gov, GovInfo, and the Senate ISVP player, and it reads committee YouTube archives through `youtube-api`. Eight console scripts are the interface. The modules under `src/congress_api/` implement those scripts.
+`congress-api` collects congressional hearing records and writes them to local files. The package talks to Congress.gov, GovInfo, and the Senate ISVP player, and it reads committee YouTube archives through `youtube-api`. Twelve console scripts are the interface. The modules under `src/congress_api/` implement those scripts.
 
 The monorepo package name is `@ct/congress-api`. The Python package name is `congress-api`. It requires Python 3.12 or newer.
 
@@ -9,10 +9,11 @@ The monorepo package name is `@ct/congress-api`. The Python package name is `con
 From the repository root:
 
 ```bash
-uv pip install -e packages/congress_api
+uv pip install -e packages/committee_meeting -e packages/congress_shared \
+  -e packages/youtube_api -e packages/congress_api
 ```
 
-`pyproject.toml` declares `congress-shared`, `youtube-api`, `lxml`, `requests`, `tinydb`, `google-genai`, and `yt-dlp`. `[tool.uv.sources]` points `congress-shared` and `youtube-api` at the sibling packages in this repo.
+`pyproject.toml` declares `committee-meeting`, `congress-shared`, `youtube-api`, `lxml`, `requests`, `pypdf[fonts]`, `tinydb`, `google-genai`, and `yt-dlp`. The editable install above resolves the three sibling packages from this checkout.
 
 `congress-shared` loads the data.gov API key, default file paths, and `congress_metadata.json`. `youtube-api` opens committee YouTube TinyDB files and maps a committee `systemCode` to a channel.
 
@@ -32,6 +33,10 @@ Congress.gov and the GovInfo collection API share one data.gov key. `congress_sh
 
 | Script | Module | What it writes |
 | --- | --- | --- |
+| `congress-committees` | `congress_api.committee_metadata` | Congress-scoped committee JSONL at `--output-path` |
+| `house-meeting-records` | `congress_api.house.records` | House documents, witnesses and amendments CSVs; retained parsed state |
+| `senate-meeting-records` | `congress_api.senate.records` | Senate pages, documents and witnesses CSVs; retained parsed state |
+| `meeting-inventory` | `congress_api.inventory.main` | Text-source, completeness, missing-record and witness CSVs |
 | `congress-meetings` | `congress_api.meetings` | `congress_meetings.jsonl.gz` |
 | `congress-fetch` | `congress_api.fetch.main` | committee TinyDB files, plus an in-memory meeting-URL list |
 | `congress-analyze` | `congress_api.analyze.main` | stdout: YouTube TinyDB handles for committees that have events |
@@ -55,7 +60,28 @@ The first run lists meetings from the 112th Congress on (about 13,600 detail cal
 
 `meetings.py` uses its own HTTP client, with retries on HTTP 429 and 5xx. `api.py` is the client for the TinyDB fetch and analyze path below.
 
-### Committees and events
+### Official committee metadata and source records
+
+`congress-committees` retains official committee lists for Congresses present in
+`--meetings-path` and optional `--gpo-path`. It refreshes the newest two Congresses
+and any missing Congresses, writing gzip JSONL to `--output-path` only after the
+collection succeeds. Each row preserves the Congress, committee object, source
+URL and retrieval time. Use `DATA_GOV_API_KEY` or the key file for this command.
+
+The weekly source commands run in order: `house-meeting-records`,
+`senate-meeting-records`, then `meeting-inventory`. All accept `--meetings`,
+`--state-dir` and `--output-dir`; `--offline` requires retained results and makes
+no requests. Parsed state lives on `pipeline-data`, separate from the small CSV
+outputs. See [meeting state and refresh rules](../../docs/youtube-coverage/meeting-state.md)
+and each command's `--help` for its additional inputs.
+
+The `adapters/` modules translate retained source records into the
+[`committee-meeting` model](../committee_meeting/README.md), preserving source
+citations and native payloads. The application-owned
+[`committee_explorer` exporter](../../apps/committee_youtube/README.md)
+publishes the browser data. Collectors and adapters do not publish the site.
+
+### Legacy TinyDB committees and events
 
 `congress-fetch` runs two steps.
 
@@ -136,12 +162,10 @@ JSON `schema_version` is `1.0`. `Source.kind` on these outputs is `gpo_print` or
 
 ### Package root
 
-- `pyproject.toml` defines the package, the dependency list, the uv path sources, and the eight console scripts. `readme = "README.md"` points here.
+- `pyproject.toml` defines the package, the dependency list, the uv path sources, and the console scripts. `readme = "README.md"` points here.
 - `package.json` names the workspace package `@ct/congress-api`. It has no npm scripts. Python packaging is authoritative.
 - `turbo.json` extends the repo Turborepo config and defines no local tasks.
-- `main.py` (package root, beside `pyproject.toml`) prints `Hello from congress-api!` when run as a script. The installed commands are the eight scripts in `pyproject.toml`.
-- `uv.lock` is a uv lockfile, and the repo gitignore excludes `**/uv.lock`. This copy requires Python `>=3.13` and pins `congress-api` to `lxml` 6.0.2 and `requests` 2.32.5, plus `certifi`, `charset-normalizer`, `idna`, and `urllib3`. `congress-shared`, `youtube-api`, `tinydb`, `google-genai`, and `yt-dlp` are absent from the lock. `pyproject.toml` is the dependency list.
-- `src/congress_api.egg-info/` is setuptools metadata from an editable install, and `*.egg-info/` is gitignored. `PKG-INFO` repeats the name, version `0.1.0`, the summary "API Client for Congress.gov API", and the `Requires-Dist` lines. `entry_points.txt` lists the eight console scripts. `requires.txt` lists the same dependencies. `top_level.txt` contains `congress_api`. `SOURCES.txt` lists the modules setuptools saw. `dependency_links.txt` is empty.
+- `main.py` (package root, beside `pyproject.toml`) prints `Hello from congress-api!` when run as a script. The installed commands are the console scripts in `pyproject.toml`.
 
 ### Shared client
 
@@ -150,6 +174,11 @@ JSON `schema_version` is `1.0`. `Source.kind` on these outputs is `gpo_print` or
 - `src/congress_api/xml_to_dict.py` turns an XML string into a nested dict. Repeated child tags become lists. `api.py` calls `parse_xml_string` on XML responses.
 - `src/congress_api/json_to_tinydb.py` is a one-off loader. Run it as `python -m congress_api.json_to_tinydb`. It reads `./congress_events_output.json` and inserts missing rows into `./congress_youtube_db.json`, table `committee_meetings`. `pyproject.toml` leaves it unregistered.
 - `src/congress_api/meetings.py` is the `congress-meetings` implementation described above.
+- `src/congress_api/committee_metadata.py` retains Congress-scoped committee lists.
+- `src/congress_api/http.py` provides retry and host pacing for source readers; `zyte.py` supplies the optional metered fetch path.
+- `src/congress_api/xml.py`, `witnesses.py`, and `committees.py` share XML, witness-name and committee-code handling across collectors and the transcriber.
+- `src/congress_api/house/`, `senate/records.py`, and `inventory/` implement the weekly source commands.
+- `src/congress_api/adapters/` contains the source-to-model adapters, including curated committee adjustments.
 
 ### `fetch/`
 

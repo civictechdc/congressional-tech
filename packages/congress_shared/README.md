@@ -83,7 +83,6 @@ Row order is the TinyDB index. The first data row is `youtube_00.json`. Append n
 
 - `pyproject.toml` defines `congress-shared` 0.1.0, Python `>=3.12`, an empty dependency list, setuptools package discovery under `src`, and package data `data/*.json` and `youtube/*.csv`. It declares no console scripts.
 - `src/congress_shared/__init__.py` is empty.
-- `src/congress_shared.egg-info/` is setuptools metadata from an editable install, and `*.egg-info/` is gitignored. `PKG-INFO` repeats the name, version `0.1.0`, the summary from `pyproject.toml`, and `Requires-Python: >=3.12`. It lists no `Requires-Dist` lines. `top_level.txt` contains `congress_shared`. `dependency_links.txt` is empty. `SOURCES.txt` lists `pyproject.toml`, `__init__.py`, `auth.py`, `globals.py`, `data/congress_metadata.json`, `youtube/youtube-accounts.csv`, and the egg-info files. There is no `entry_points.txt`.
 
 ### Library
 
