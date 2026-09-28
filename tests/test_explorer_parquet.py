@@ -380,3 +380,16 @@ def test_reviewed_gpo_document_type_survives_without_replacing_category_or_title
     published_sources = {r['id']: json.loads(r['payload']) for r in pq.read_table(tmp_path/'sources.parquet').to_pylist()}
     assert published_sources[review['id']]['source_document_type'] == source_type
     assert published_sources[review['id']]['source_urls']
+
+
+def test_each_browser_table_has_its_own_schema_and_rejects_silent_data_loss(tmp_path):
+    from committee_explorer.parquet import TABLE_SCHEMAS, write_tables
+    assert 'files' in TABLE_SCHEMAS['material'].names
+    assert 'appearance_ids' in TABLE_SCHEMAS['material'].names
+    assert 'files' not in TABLE_SCHEMAS['appearance'].names
+    assert 'position' not in TABLE_SCHEMAS['material'].names
+    assert 'evidence_states' in TABLE_SCHEMAS['meeting'].names
+    assert all('source_ids' in schema.names for schema in TABLE_SCHEMAS.values())
+    with pytest.raises(ValueError, match='populated fields outside its table schema.*position'):
+        write_tables([], [], [dict(kind='material', id='doc', title='Document', type='document', position='Must not disappear')],
+                     tmp_path, lambda *a, **k: None)

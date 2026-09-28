@@ -86,3 +86,10 @@ Run `npm run test:explorer` from `apps/site`. The tests build a small real Parqu
 fixture with the Python exporter, then exercise range reads, filtering, detail
 links, coverage, source retrieval, cancellation and bad HTTP responses. They use
 the repo's `.venv` when present, or `EXPLORER_PYTHON` / `COMMITTEE_PYTHON`.
+
+Each Parquet table has an explicit schema for its record kind. Shared field types
+keep IDs, scope and provenance consistent; document files, witness affiliations,
+meeting coverage and committee hierarchy stay in their respective tables. Export
+rejects populated fields excluded by a table schema. The reader intersects query
+columns with the physical schema, supporting both older wide tables and the
+current table-specific schemas.

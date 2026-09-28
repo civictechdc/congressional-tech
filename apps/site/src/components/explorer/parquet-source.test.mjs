@@ -392,7 +392,8 @@ test('a canceled lookup releases shared work and a later navigation can retry', 
     }
     return fetcher(url,options);
   }});
-  const meeting = (await reader.search({kind:'meeting',congress:117})).rows[0];
+  const finder = await openPublicationReader({pointerUrl:'https://example.org/CURRENT.json',fetcher});
+  const meeting = (await finder.search({kind:'meeting',congress:117})).rows[0];
   pause=true;
   const controller = new AbortController();
   const canceled = reader.getRecord(meeting,{signal:controller.signal});

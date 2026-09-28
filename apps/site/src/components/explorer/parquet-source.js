@@ -1,4 +1,4 @@
-import { parquetMetadataAsync, parquetReadObjects, parquetScan, rowIndex } from 'hyparquet';
+import { parquetMetadataAsync, parquetReadObjects, parquetScan, parquetSchema, rowIndex } from 'hyparquet';
 import { presentRecord, recordingDue, recordingVisible } from './record-presentation.js';
 import { groupCommitteeTerms, matches, pageBounds, summarizeCoverage } from './query-utils.js';
 import { selectRelatedMaterials } from './related-materials.js';
@@ -107,13 +107,17 @@ export function createParquetReader(publication, fetcher) {
         if (Number(metadata.num_rows) !== part.record_count) throw new Error('Parquet row count differs from its manifest.');
         metadataCache.set(part.path, metadata);
       }
-      const options = { file: buffer, metadata, columns, filter, includeRowIndex: true,
+      // Older publications share a wide schema; newer tables carry only their
+      // own fields. Never request a column absent from this physical table.
+      const available = new Set(parquetSchema(metadata).children.map(child => child.element.name));
+      const selectedColumns = columns?.filter(column => available.has(column));
+      const options = { file: buffer, metadata, columns: selectedColumns, filter, includeRowIndex: true,
         ...(position ? { rowStart: position.index, rowEnd: position.end ?? position.index + 1 } : {}) };
       let batch;
       if (pruningFilter) {
         // List membership statistics use the physical leaf path. Keep that
         // separate from the logical filter used to test assembled rows.
-        const scan = await parquetScan({ file: buffer, metadata, columns, pruningFilter });
+        const scan = await parquetScan({ file: buffer, metadata, columns: selectedColumns, pruningFilter });
         const membershipPath = Object.keys(pruningFilter)[0];
         let groupStart = 0;
         const emptyGroups = metadata.row_groups.flatMap(group => {
