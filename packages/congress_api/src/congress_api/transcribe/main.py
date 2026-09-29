@@ -17,12 +17,11 @@ was dropped.
 Writes <id>.json (the schema) and <id>.gpo.txt (the print's layout). Needs GEMINI_API_KEY;
 YOUTUBE_API_KEY lets the video's length come from the Data API instead of yt-dlp, and --proxy
 is passed to yt-dlp when YouTube asks for a sign-in.
+New GovInfo HTML and Gemini responses are retained under source/ before parsing.
 """
 import argparse
 import csv
-import dataclasses
 import datetime as dt
-import html
 import logging
 import re
 import sys
@@ -36,26 +35,36 @@ from congress_api.transcribe import audio as A
 from congress_api.transcribe import metadata, names
 from congress_api.transcribe.metadata import HearingContext, context_for_event, mods_people
 from congress_api.transcribe.schema import Header, Person, Source, Transcript, Turn, person_key, render_gpo
+from congress_api.models.transcription import YoutubeVideoResponse, YtdlpVideoInfo
+from congress_api.gpo.source import parse_transcript_html
+from congress_api.gpo.evidence import write_observation
+from congress_api.models.gpo import GpoEvidenceObservation
 
 
 
 def roster_json(participants: dict[str, Person]) -> list[dict]:
-    return [{k: v for k, v in dataclasses.asdict(p).items() if v and k not in ("speaker_label", "confidence", "honorific")} for p in participants.values()]
+    return [{k: v for k, v in p.model_dump(mode='json').items() if v and k not in ("speaker_label", "confidence", "honorific")} for p in participants.values()]
 
 
 def meeting_json(h: Header) -> dict:
     return {"title": h.title, "committee": h.committee, "subcommittee": h.subcommittee, "date": h.date, "chamber": h.chamber}
 
 
-def from_gpo(package_id: str, gpo_path=DEFAULT_GPO_HEARINGS_FILE) -> Transcript:
+def from_gpo(package_id: str, gpo_path=DEFAULT_GPO_HEARINGS_FILE, *, source_dir: Path | None = None) -> Transcript:
     from congress_api.transcribe.gpo_parse import parse_gpo_text
     row = {r["package_id"]: r for r in csv.DictReader(open(gpo_path))}[package_id]
     people, facts = mods_people(package_id)
     header = Header(title=facts["title"], chamber=row["chamber"], congress=int(facts["congress"] or 0) or None, session=int(facts["session"] or 0) or None,
                     committee=facts["committee"], committee_code=facts["committee_code"], subcommittee=facts["subcommittee"], date=facts["held_date"],
                     serial=facts["serial"], package_id=package_id, event_id=row["event_id"])
-    text = html.unescape(re.sub(r"<[^>]+>", "", requests.get(row["html_url"], timeout=60, headers={"User-Agent": "Mozilla/5.0"}).text))
-    return parse_gpo_text(text, header, people, source_url=row["html_url"])
+    response = requests.get(row["html_url"], timeout=60, headers={"User-Agent": "Mozilla/5.0"})
+    response.raise_for_status()
+    source = parse_transcript_html(response.content, decoded_text=response.text)
+    if source_dir is not None:
+        write_observation(GpoEvidenceObservation(**source.source.source_dict(), url=row['html_url'],
+            retrieved_at=dt.datetime.now(dt.timezone.utc).isoformat(), acquisition='http'),
+            source_dir / f'{package_id}.json')
+    return parse_gpo_text(source, header, people, source_url=row["html_url"])
 
 
 def place(participants: dict[str, Person], name: str, role: str, confidence) -> str:
@@ -93,14 +102,15 @@ def video_duration(video_id: str, proxy: str | None = None) -> float:
     import os
     key = os.environ.get("YOUTUBE_API_KEY")
     if key:
-        d = requests.get("https://www.googleapis.com/youtube/v3/videos", params={"part": "contentDetails", "id": video_id, "key": key}, timeout=30).json()
-        if d.get("items"):
-            m = re.fullmatch(r"PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?", d["items"][0]["contentDetails"]["duration"])
+        d = YoutubeVideoResponse.model_validate(requests.get("https://www.googleapis.com/youtube/v3/videos", params={"part": "contentDetails", "id": video_id, "key": key}, timeout=30).json())
+        if d.items:
+            m = re.fullmatch(r"PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?", d.items[0].content_details.duration)
             if m:
                 return sum(int(x or 0) * k for x, k in zip(m.groups(), (3600, 60, 1)))
     import yt_dlp
     with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True, "logger": logging.getLogger("yt_dlp"), **({"proxy": proxy, "nocheckcertificate": True} if proxy else {})}) as ydl:
-        return ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False).get("duration") or 4 * 3600
+        source = YtdlpVideoInfo.model_validate(ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False))
+        return source.duration or 4 * 3600
 
 
 def merge_turns(turns: list[Turn]) -> list[Turn]:
@@ -130,7 +140,8 @@ def transcribe(ctx: HearingContext, out_dir: Path, video_id: str = "", senate_ur
         path = A.get_audio(out_dir / "audio", senate_url=senate_url, local=local)
         windows = [(piece, offset, offset + A.duration(piece)) for piece, offset in A.chunks(path, minutes=G.WINDOW_SECONDS / 60)]
     for piece, start, end in windows:
-        d = G.transcribe_window(roster, meeting, start, end, youtube_id=video_id, audio=piece)
+        d = G.transcribe_window(roster, meeting, start, end, youtube_id=video_id, audio=piece,
+                                capture_dir=out_dir / 'source' / (video_id or (Path(local).stem if local else 'senate')))
         events += d.get("events", [])
         for k in usage:
             usage[k] += d.get("usage", {}).get(k, 0)
@@ -167,7 +178,7 @@ def parse_args_and_run():
     logging.getLogger("google_genai").setLevel(logging.WARNING); logging.getLogger("httpx").setLevel(logging.WARNING)
     a.out_dir.mkdir(parents=True, exist_ok=True)
     if a.gpo_package and not (a.video_id or a.senate_url or a.audio or a.event_id):
-        t = from_gpo(a.gpo_package, a.gpo_path); stem = a.gpo_package
+        t = from_gpo(a.gpo_package, a.gpo_path, source_dir=a.out_dir / 'source'); stem = a.gpo_package
     else:
         if not (a.event_id or a.gpo_package):
             sys.exit("give --event-id or --gpo-package so the participants are known")

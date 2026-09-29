@@ -29,6 +29,8 @@ from congress_shared.globals import DEFAULT_GPO_HEARINGS_FILE, DEFAULT_MEETINGS_
 
 from congress_api.transcribe import names
 from congress_api.transcribe.schema import Header, Person, person_key
+from congress_api.models.congress import CommitteeMeeting
+from congress_api.models.legislators import parse_legislators
 
 MODS_URL = "https://www.govinfo.gov/metadata/pkg/{pkg}/mods.xml"
 LEGISLATORS_URL = "https://unitedstates.github.io/congress-legislators/legislators-current.json"
@@ -64,7 +66,7 @@ def meetings() -> dict[str, dict]:
     if Path(path).exists():
         with gzip.open(path, "rt", encoding="utf-8") as f:
             for line in f:
-                m = json.loads(line); out[m["eventId"]] = m
+                m = CommitteeMeeting.model_validate_json(line); out[m.eventId] = m.source_dict()
     else:
         logging.warning(f"no meetings file at {path}; pass --meetings")
     return out
@@ -86,35 +88,43 @@ def mods_people(package_id: str) -> tuple[dict[str, Person], dict]:
 
 def people_in_mods(x: str) -> tuple[dict[str, Person], dict]:
     """Members and witnesses named in a MODS record, plus header facts."""
+    from congress_api.gpo.source import parse_mods_document
+    from congress_api.gpo.fetch import mods_title, mods_witnesses
+    document = parse_mods_document(x)
     people: dict[str, Person] = {}
-    for m in re.finditer(r'<congMember\b([^>]*)>(.*?)</congMember>', x, re.S):
-        attrs = dict(re.findall(r'(\w+)="([^"]*)"', m.group(1)))
-        name = re.search(r'<name type="authority-fnf">([^<]+)</name>', m.group(2))
+    for member in document.members:
+        name = next(((n.text or "").strip() for n in member.names if n.type == "authority-fnf"), "")
         if not name:
             continue
-        p = Person(name=name.group(1).strip(), role="member", surname=names.surname(name.group(1).strip()), party=attrs.get("party", ""), state=attrs.get("state", ""), bioguide_id=attrs.get("bioGuideId", ""))
-        p.honorific = "Senator" if attrs.get("chamber") == "S" else ""
+        p = Person(name=name, role="member", surname=names.surname(name),
+                   party=member.party or "", state=member.state or "", bioguide_id=member.bio_guide_id or "",
+                   honorific="Senator" if member.chamber == "S" else "")
         people[person_key(p.name)] = p
-    from congress_api.gpo.fetch import mods_witnesses
-    for fields in mods_witnesses(x):
+    for fields in mods_witnesses(document):
         p = Person(**fields, role="witness", surname=names.surname(fields["name"]))
         people[person_key(p.name)] = p
-    g = lambda pat: (re.search(pat, x, re.S).group(1).strip() if re.search(pat, x, re.S) else "")
-    facts = {"title": g(r"<searchTitle>([^<]+)</searchTitle>"), "serial": g(r"<preferredCitation>([^<]+)</preferredCitation>"), "held_date": g(r"<heldDate>([^<]+)</heldDate>"),
-             "congress": g(r"<congress>(\d+)</congress>"), "session": g(r"<session>(\d+)</session>"),
-             "committee": g(r'<congCommittee[^>]*>.*?<name type="authority-standard">([^<]+)</name>'), "committee_code": g(r'<congCommittee authorityId="([^"]+)"'),
-             "subcommittee": g(r'<subCommittee>\s*<name type="parsed">([^<]+)</name>')}
+    scopes = [document.root, *document.related_items]
+    def first(field):
+        return next((scope.first(field) for scope in scopes if scope.first(field)), "")
+    committee = next((c for scope in scopes for c in scope.committees), None)
+    facts = {"title": next((title for scope in scopes if (title := mods_title(scope))), ""), "serial": first("preferred_citations"),
+             "held_date": first("held_dates"), "congress": first("congresses"), "session": first("sessions"),
+             "chamber": {"HOUSE": "house", "SENATE": "senate", "JOINT": "joint"}.get(first("chambers").upper(), "unknown"),
+             "committee": next(((n.text or "").strip() for n in committee.names if n.type == "authority-standard"), "") if committee else "",
+             "committee_code": (committee.authority_id or "") if committee else "",
+             "subcommittee": next(((n.text or "").strip() for sub in committee.subcommittees for n in sub.names if n.type == "parsed"), "") if committee else ""}
     return people, facts
 
 
 @lru_cache(maxsize=None)
 def legislators_current() -> dict[str, dict]:
     try:
-        data = json.loads(fetch(LEGISLATORS_URL))
+        data = parse_legislators(fetch(LEGISLATORS_URL))
     except Exception:
         return {}
     out = {}
-    for l in data:
+    for native in data:
+        l = native.source_dict()
         term = l["terms"][-1]
         out[l["id"]["bioguide"]] = {"name": f"{l['name'].get('first', '')} {l['name'].get('last', '')}".strip(), "last": l["name"].get("last", ""), "party": {"Democrat": "D", "Republican": "R", "Independent": "I"}.get(term.get("party"), term.get("party", "")[:1]), "state": term.get("state", ""), "chamber": "sen" if term["type"] == "sen" else "rep", "gender": l.get("bio", {}).get("gender", "")}
     return out
@@ -152,7 +162,7 @@ def context_for_event(event_id: str, package_id: str = "") -> HearingContext:
         raise KeyError(f"no meeting record for event {event_id}; pass --gpo-package or --video-id")
     m = m or {}
     codes = [c["systemCode"][:4] + "00" for c in m.get("committees", [])]
-    chamber = {"House": "house", "Senate": "senate"}.get(m.get("chamber", ""), "joint")
+    chamber = {"House": "house", "Senate": "senate", "Joint": "joint", "NoChamber": "joint"}.get(m.get("chamber", ""), "unknown")
     header = Header(title=(m.get("title") or "").strip(), chamber=chamber, congress=int(m["congress"]) if m.get("congress") else None,
                     committee=(m.get("committees") or [{}])[0].get("name", ""), committee_code=codes[0] if codes else "", date=m.get("date", "")[:10], event_id=event_id,
                     location=(m.get("location") or {}).get("room", "") and f"Room {m['location']['room']}, {m['location'].get('building', '')}".strip(", "))
@@ -167,6 +177,8 @@ def context_for_event(event_id: str, package_id: str = "") -> HearingContext:
         people, facts = mods_people(package_id)
         participants.update({k: v for k, v in people.items() if k not in participants or not participants[k].organization})
         header.title = header.title or facts["title"]; header.serial = facts["serial"]; header.package_id = package_id
+        if header.chamber == "unknown":
+            header.chamber = facts.get("chamber", "unknown")
         header.date = header.date or facts["held_date"]; header.congress = header.congress or (int(facts["congress"]) if facts["congress"] else None)
         header.session = int(facts["session"]) if facts["session"] else None
         header.committee = facts["committee"] or header.committee; header.committee_code = facts["committee_code"] or header.committee_code; header.subcommittee = facts["subcommittee"]

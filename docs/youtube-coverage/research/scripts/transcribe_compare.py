@@ -11,7 +11,7 @@ the audio plus a speaker resolver; its outputs are kept as routeA_*.json in
 research/data/transcribe_compare/ but that code was removed from the package after it
 lost on attribution (66-74% against 85%). Needs `pip install jiwer`.
 """
-import csv, dataclasses, html, json, os, re, sys, time
+import csv, html, json, os, re, sys, time
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT / "packages/congress_api/src")); sys.path.insert(0, str(ROOT / "packages/congress_shared/src")); sys.path.insert(0, str(ROOT / "packages/youtube_api/src"))
@@ -46,7 +46,7 @@ def shares(t: Transcript) -> dict:
 
 
 def roster_json(participants):
-    return [{k: v for k, v in dataclasses.asdict(p).items() if v and k not in ("speaker_label", "confidence", "honorific")} for p in participants.values()]
+    return [{k: v for k, v in p.model_dump(mode="json").items() if v and k not in ("speaker_label", "confidence", "honorific")} for p in participants.values()]
 
 
 def main(package_id, video_id, out_dir):
@@ -79,9 +79,9 @@ def main(package_id, video_id, out_dir):
     for u in B_turns:
         k = person_key(u["speaker"]) if u["speaker"] != "Unknown" else "unknown"
         if k not in B_participants:
-            base = participants.get(k) or Person(name=u["speaker"], role=u.get("role", "unknown")); B_participants[k] = dataclasses.replace(base, confidence=u.get("confidence"))
+            base = participants.get(k) or Person(name=u["speaker"], role=u.get("role", "unknown")); B_participants[k] = base.model_copy(update={"confidence": u.get("confidence")})
         turns.append(Turn(speaker=k, text=u["text"], start=u.get("start"), end=u.get("end")))
-    routeB = Transcript(header=dataclasses.replace(header, package_id=""), participants=B_participants, turns=turns, source=Source(kind="gemini_transcription", video_id=video_id, model=G.MODEL + " (video)", notes=f"{tb:.0f}s, tokens {usage}"))
+    routeB = Transcript(header=header.model_copy(update={"package_id": ""}), participants=B_participants, turns=turns, source=Source(kind="gemini_transcription", video_id=video_id, model=G.MODEL + " (video)", notes=f"{tb:.0f}s, tokens {usage}"))
     (out / "routeB.json").write_text(routeB.to_json())
     ## scores
     ref = norm(spoken_text(gpo))

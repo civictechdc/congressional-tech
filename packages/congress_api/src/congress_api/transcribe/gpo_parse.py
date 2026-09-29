@@ -29,6 +29,7 @@ from collections import Counter, defaultdict
 
 from congress_api.transcribe import names
 from congress_api.transcribe.schema import Header, Insert, Person, Source, Transcript, Turn, person_key
+from congress_api.models.gpo import GpoTranscriptText
 
 TIME_RE = r"(\d{1,2}(?::\d{2})?\s?[ap]\.?\s?m\.?)"
 CONVENED = re.compile(rf"\b(?:met|convened|called to order|reconvened)\b.{{0,80}}?\bat {TIME_RE}(.{{0,500}}?)\bpresiding\b", re.I | re.S)
@@ -153,7 +154,9 @@ def roster(lines: list[str]) -> tuple[list[Person], set[str]]:
     return people, sub
 
 
-def parse_gpo_text(text: str, header: Header, mods_people: dict[str, Person] | None = None, source_url: str = "") -> Transcript:
+def parse_gpo_text(text: str | GpoTranscriptText, header: Header, mods_people: dict[str, Person] | None = None, source_url: str = "") -> Transcript:
+    """Normalize a typed source extraction; plain text remains a legacy input."""
+    text = text.text if isinstance(text, GpoTranscriptText) else text
     lines = text.replace("\r", "").splitlines()
     indent = paragraph_indent(lines)
     offsets, parts, pos = [], [], 0

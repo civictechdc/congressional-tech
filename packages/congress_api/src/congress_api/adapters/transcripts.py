@@ -1,9 +1,9 @@
 """Import existing transcript JSON bytes; never fetch or generate transcript text.
 
 Validation reuses ``Transcript.from_json`` and checks its schema version. The
-dataclass reader checks constructor shape, not the full owner JSON Schema: it
-does not enforce scalar types, enumerated values or every required field. It
-also does not establish speaker-reference integrity, attendance or actual times.
+typed reader checks declared fields and scalar types while preserving unknown
+fields and labels. It does not establish speaker-reference integrity, attendance
+or actual times.
 ``ContentSchema`` names the declared format; it is not a validation certificate.
 Each otherwise-readable representation carries this explicit validation limit.
 """
@@ -83,7 +83,7 @@ def records(
         if error is None:
             try:
                 # Reuse the body owner's deserializer; preserve the original
-                # bytes rather than reserializing its dataclass interpretation.
+                # bytes rather than reserializing its typed interpretation.
                 Transcript.from_json(data.decode("utf-8-sig"))
                 if payload.get("schema_version") != SCHEMA_VERSION:
                     raise ValueError(f"unsupported transcript schema version: {payload.get('schema_version')!r}")
@@ -176,8 +176,8 @@ def records(
             yield DataIssue(
                 id=context.ids("data_issue", f"{key}:{digest}:validation-limits"),
                 subject=representation_ref, category="unverified", field_path="/content_schema",
-                summary="The transcript body has not undergone full JSON Schema validation.",
-                explanation="The owner's dataclass reader accepted its constructor shape and the importer checked schema_version. Scalar types, enums and every schema-required field were not independently validated. The declared content schema does not certify those checks or local speaker-reference integrity.",
+                summary="Transcript structure is validated; speaker references and source claims remain unverified.",
+                explanation="The owner's typed reader validated declared fields and scalar types, and the importer checked schema_version. Unknown fields and role labels are retained. These checks do not establish local speaker-reference integrity, attendance or actual meeting times.",
                 detected_at=context.now, provenance=evidence,
             )
         if isinstance(payload.get("participants"), dict) and payload["participants"]:

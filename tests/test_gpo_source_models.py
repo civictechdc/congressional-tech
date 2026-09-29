@@ -93,6 +93,16 @@ def test_html_model_keeps_full_source_and_existing_text_extraction():
     assert model.source.body_bytes() == latin
 
 
+def test_typed_html_reaches_transcript_normalizer_without_csv():
+    from congress_api.transcribe.gpo_parse import parse_gpo_text
+    from congress_api.models.transcription import Header
+    source = parse_transcript_html((FIXTURES / 'CHRG-119hhrg64429.htm').read_bytes())
+    header = Header(title='Retained errata', chamber='house')
+    typed = parse_gpo_text(source, header.model_copy(deep=True))
+    legacy = parse_gpo_text(source.text, header.model_copy(deep=True))
+    assert typed.model_dump() == legacy.model_dump()
+
+
 def test_transcript_download_retains_short_source_even_when_no_text_is_published(tmp_path, monkeypatch):
     package = 'CHRG-119hhrg64429'
     row = tmp_path / 'rows.csv'

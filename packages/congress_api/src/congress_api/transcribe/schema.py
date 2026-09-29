@@ -12,100 +12,10 @@ Schema for validation or for other tools.
 """
 from __future__ import annotations
 
-import dataclasses
-import json
 import textwrap
-from dataclasses import dataclass, field
-from typing import Optional
 
 from congress_api.witnesses import person_key
-
-SCHEMA_VERSION = "1.0"
-
-
-@dataclass
-class Person:
-    """A member, witness or other participant. `role` follows the print's conventions."""
-    name: str                       # as printed / spoken: "Ben Cline", "Martha Williams"
-    role: str                       # chair | ranking_member | member | witness | staff | clerk | other | unknown
-    honorific: str = ""             # Mr. | Ms. | Mrs. | Dr. | Senator | The Chairman ...
-    surname: str = ""               # the print attributes turns by surname: "Cline"
-    party: str = ""                 # R | D | I, members only
-    state: str = ""                 # members only
-    bioguide_id: str = ""           # members only, when resolved
-    organization: str = ""          # witnesses
-    position: str = ""              # witnesses
-    speaker_label: str = ""         # the diarization label this person was mapped from (machine transcripts)
-    confidence: float | None = None  # how sure the mapping is, 0-1 (machine transcripts)
-
-
-@dataclass
-class Turn:
-    """One speaker turn. Times are seconds into the recording (machine transcripts only)."""
-    speaker: str                    # key into Transcript.participants, or a raw label ("spk:3") when unresolved
-    text: str
-    start: float | None = None
-    end: float | None = None
-    kind: str = "speech"            # speech | statement (a witness's opening statement) | direction (bracketed stage direction)
-
-
-@dataclass
-class Insert:
-    """Material the print includes that wasn't spoken: prepared statements, letters, questions for the record."""
-    kind: str                       # prepared_statement | submission | questions_for_the_record | graphic | other
-    title: str
-    text: str = ""
-    for_person: str = ""            # key into participants when the insert belongs to someone
-
-
-@dataclass
-class Header:
-    title: str
-    chamber: str                    # house | senate | joint
-    congress: int | None = None
-    session: int | None = None
-    committee: str = ""             # "Committee on the Judiciary"
-    committee_code: str = ""        # hsju00
-    subcommittee: str = ""
-    date: str = ""                  # ISO date
-    time_convened: str = ""         # "2:02 p.m."
-    time_adjourned: str = ""
-    location: str = ""              # "Room 2141, Rayburn House Office Building"
-    presiding: str = ""             # key into participants
-    present: list[str] = field(default_factory=list)   # keys into participants
-    serial: str = ""                # print citation, when there is one
-    package_id: str = ""            # GPO package, when there is one
-    event_id: str = ""              # Congress.gov event ID
-
-
-@dataclass
-class Source:
-    kind: str                       # gpo_print | gemini_transcription | youtube_captions | senate_captions
-    url: str = ""
-    video_id: str = ""
-    model: str = ""
-    generated_at: str = ""
-    notes: str = ""
-
-
-@dataclass
-class Transcript:
-    header: Header
-    participants: dict[str, Person]  # key: a slug like "cline", "williams-martha"
-    turns: list[Turn]
-    inserts: list[Insert] = field(default_factory=list)
-    source: Source = field(default_factory=lambda: Source(kind="unknown"))
-    schema_version: str = SCHEMA_VERSION
-
-    def to_json(self, **kw) -> str:
-        return json.dumps(dataclasses.asdict(self), ensure_ascii=False, indent=kw.pop("indent", 1), **kw)
-
-    @classmethod
-    def from_json(cls, text: str) -> "Transcript":
-        d = json.loads(text)
-        return cls(header=Header(**d["header"]), participants={k: Person(**v) for k, v in d["participants"].items()},
-                   turns=[Turn(**t) for t in d["turns"]], inserts=[Insert(**i) for i in d.get("inserts", [])],
-                   source=Source(**d.get("source", {"kind": "unknown"})), schema_version=d.get("schema_version", SCHEMA_VERSION))
+from congress_api.models.transcription import Header, Insert, Person, Source, Transcript, Turn, SCHEMA_VERSION
 
 
 def attribution(p: Person) -> str:
@@ -172,32 +82,6 @@ def ordinal(n: int) -> str:
 
 TRANSCRIPT_JSON_SCHEMA = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
+    **Transcript.model_json_schema(),
     "title": "Committee proceeding transcript",
-    "type": "object",
-    "required": ["header", "participants", "turns", "source", "schema_version"],
-    "properties": {
-        "schema_version": {"const": SCHEMA_VERSION},
-        "header": {"type": "object", "required": ["title", "chamber"], "properties": {
-            "title": {"type": "string"}, "chamber": {"enum": ["house", "senate", "joint"]},
-            "congress": {"type": ["integer", "null"]}, "session": {"type": ["integer", "null"]},
-            "committee": {"type": "string"}, "committee_code": {"type": "string"}, "subcommittee": {"type": "string"},
-            "date": {"type": "string"}, "time_convened": {"type": "string"}, "time_adjourned": {"type": "string"},
-            "location": {"type": "string"}, "presiding": {"type": "string"},
-            "present": {"type": "array", "items": {"type": "string"}},
-            "serial": {"type": "string"}, "package_id": {"type": "string"}, "event_id": {"type": "string"}}},
-        "participants": {"type": "object", "additionalProperties": {"type": "object", "required": ["name", "role"], "properties": {
-            "name": {"type": "string"}, "role": {"enum": ["chair", "ranking_member", "member", "witness", "staff", "clerk", "other", "unknown"]},
-            "honorific": {"type": "string"}, "surname": {"type": "string"}, "party": {"type": "string"}, "state": {"type": "string"},
-            "bioguide_id": {"type": "string"}, "organization": {"type": "string"}, "position": {"type": "string"},
-            "speaker_label": {"type": "string"}, "confidence": {"type": ["number", "null"]}}}},
-        "turns": {"type": "array", "items": {"type": "object", "required": ["speaker", "text"], "properties": {
-            "speaker": {"type": "string"}, "text": {"type": "string"}, "start": {"type": ["number", "null"]}, "end": {"type": ["number", "null"]},
-            "kind": {"enum": ["speech", "statement", "direction"]}}}},
-        "inserts": {"type": "array", "items": {"type": "object", "required": ["kind", "title"], "properties": {
-            "kind": {"enum": ["prepared_statement", "submission", "questions_for_the_record", "graphic", "other"]},
-            "title": {"type": "string"}, "text": {"type": "string"}, "for_person": {"type": "string"}}}},
-        "source": {"type": "object", "required": ["kind"], "properties": {
-            "kind": {"enum": ["gpo_print", "gemini_transcription", "youtube_captions", "senate_captions", "unknown"]},
-            "url": {"type": "string"}, "video_id": {"type": "string"}, "model": {"type": "string"}, "generated_at": {"type": "string"}, "notes": {"type": "string"}}},
-    },
 }

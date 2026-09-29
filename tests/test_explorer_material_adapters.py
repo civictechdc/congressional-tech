@@ -195,17 +195,17 @@ class TranscriptAdapterTests(unittest.TestCase):
         self.assertEqual(source.payload["source"]["notes"], data["source"]["notes"])
         self.assertFalse(kind(result, "occurrence") or kind(result, "appearance") or kind(result, "person"))
 
-    def test_owner_reader_scalar_validation_limit_is_explicit(self):
+    def test_owner_reader_rejects_bad_scalar_without_losing_source_data(self):
         data = body(participants={}, turns=[{"speaker": "unresolved", "text": 123}])
         result = list(transcripts.records([self.write("untyped.json", data)], context("transcript-artifacts")))
         catalog(result)
         source = kind(result, "source_record")[0]
         representation = kind(result, "representation")[0]
-        limitation = next(i for i in kind(result, "data_issue") if i.field_path == "/content_schema")
+        issue = next(i for i in kind(result, "data_issue") if i.impact == "blocks_use")
         self.assertEqual(source.payload["turns"][0]["text"], 123)
-        self.assertEqual(limitation.subject.id, representation.id)
-        self.assertIn("not undergone full JSON Schema validation", limitation.summary)
-        self.assertIn("Scalar types", limitation.explanation)
+        self.assertEqual(issue.subject.id, representation.id)
+        self.assertIsNone(representation.content_schema)
+        self.assertIn("valid string", issue.explanation)
         self.assertFalse(any(i.field_path == "/payload/participants" for i in kind(result, "data_issue")))
 
     def test_changed_bytes_keep_one_work_and_distinct_versions(self):
