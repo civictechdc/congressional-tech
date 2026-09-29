@@ -23,9 +23,20 @@ def token():
     return tok
 
 
+def request(url, session=None, timeout=120):
+    """Return the complete API response so capture callers can retain its evidence.
+
+    Request binary-safe native bytes and publisher headers. Callers must keep
+    Zyte's HTTP status separate from the publisher status inside successful JSON.
+    Authentication stays on the request and must not be written into receipts.
+    """
+    return (session or requests).post(API, auth=(token(), ""), timeout=timeout,
+        json={"url": url, "httpResponseBody": True, "httpResponseHeaders": True})
+
+
 def get(url, session=None, timeout=120):
     """(the site's status, its body); when Zyte itself fails (429, 503, 520 ...), (Zyte's status, b"")."""
-    r = (session or requests).post(API, auth=(token(), ""), timeout=timeout, json={"url": url, "httpResponseBody": True})
+    r = request(url, session, timeout)
     if r.status_code != 200:
         return r.status_code, b""
     d = ZyteResponse.model_validate(r.json())

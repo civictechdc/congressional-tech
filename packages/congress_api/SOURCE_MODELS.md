@@ -43,7 +43,7 @@ that model is `ModsDocument`.
 | MODS witness extraction | `ModsWitnessObservation` | `inventory.witness_lists.parse_mods_observation` |
 | Senate player query, HLS playlists and WebVTT | `SenatePlayerQuery`, `HLSRendition`, `SenateCaptionSources`, `WebVTTCue` | `senate.isvp`, `senate.captions` |
 | unitedstates/congress-legislators JSON | `Legislator` and nested identifiers, terms and names | `models.legislators.parse_legislators` |
-| Zyte response JSON | `ZyteResponse` | `zyte.get` |
+| Zyte response JSON | `ZyteResponse` | `zyte.request` / `zyte.get` |
 | Gemini transcription JSON | `GeminiTranscriptResponse`, `GeminiResponseCapture` | `transcribe.gemini` |
 | YouTube duration response | `YoutubeVideoResponse` | `transcribe.main.video_duration` |
 | yt-dlp video metadata used for duration and caption discovery | `YtdlpVideoInfo` | `transcribe.main.video_duration`; retained caption metadata |
