@@ -29,7 +29,7 @@ Native document classifications are preserved separately from file formats and n
 
 ## Limits that remain visible
 
-- **No real retained upstream Gemini response or complete Zyte response was available for manual qualification.** Their models and capture/error paths have constructed regression coverage. The subsequent recovery now retains real yt-dlp metadata and complete YouTube API list responses; their validation is described below.
+- **No real retained upstream Gemini response was available for manual qualification.** Its model and capture/error paths have constructed regression coverage. Zyte now has real retained responses qualified in the September 29 follow-up below. The subsequent recovery now retains real yt-dlp metadata and complete YouTube API list responses; their validation is described below.
 - Unreviewed scans still need OCR or visual reading. Some Senate JEC witnesses occur in running prose retained as source text without structured witness extraction. Abbreviated member schedules are not expanded into invented names.
 - The initial manual review read two actual WebVTT segments. The subsequent complete capture retained all 553 segments of `jec011724` and validated 17,855 cues, original bytes, playlist order and regenerated text. A complete YouTube capture retained five English tracks and verified the selected manual track. It exposed and fixed our handling of space-only cue payload lines; the source was valid. Original captures and per-track checks are in `.cache/raw-source-backfill-20260928/captions/`. These checks establish source retention and parsing, not speech or timestamp accuracy.
 - Publisher disagreements remain evidence. For example, one HTML errata notice conflicts with its MODS `isErrata=false`. Old meetings may still have a source status of Scheduled. No silent source correction was made.
@@ -87,3 +87,40 @@ Evidence and running download status are under
 catalog gap inventory from new recovery evidence. Bulk caption/document captures
 remain in progress. Full video files are deferred by the user's choice. No new
 site catalog has been published, and changes remain local.
+
+## September 29: Zyte refused-document recovery
+
+The authorized Zyte fallback now retains complete API response bytes and headers,
+including error responses, separately from the decoded publisher body. Five
+actual recovered PDFs from Finance, Rules and GAO were checked directly: exact
+Zyte model round-trip, base64 decoding, content digests, PDF page trees and first
+page text. Repeated publisher headers and unknown API fields survive. A Zyte
+API success with an upstream refusal remains a failure; a missing upstream
+status remains unknown. Intermediate redirect history is not supplied and is
+marked unavailable.
+
+Evidence is in `.cache/raw-source-backfill-20260928/documents/zyte/`, especially
+`initial-validation.json`, `local-check.json` and the append-only receipts. The
+focused HTTP/Zyte/House source suite passes 29 tests. The normal download jobs
+continue independently. These checks establish capture fidelity for the samples,
+not semantic correctness of every recovered document or published explorer data.
+
+### Failure retries and source timing
+
+The failed Senate captures exposed zero-duration WebVTT cues, not backwards
+timestamps. The model now preserves equal start/end values and continues to
+reject an end before its start. Capture receipts count zero-duration cues
+separately. Replaying all 15 affected recordings retained 7,707 such cues and
+completed their caption captures without changing publisher timestamps. A real
+segment with 51 zero-duration cues is now a regression fixture. The caption
+collector also checks the official archive path for `intlnarc`, whose published
+player table has no corresponding live stream ID.
+
+The targeted caption/model/HTTP/Zyte suite passes 51 tests and 14 subtests.
+Failure recovery receipts, direct source samples, public replacement URL
+associations, document integrity checks and remaining gaps are recorded under
+`.cache/raw-source-backfill-20260928/failure-recovery/`. New captures remain
+separate from original failures. A working alternative URL establishes a current
+published copy; it does not establish equality with an unavailable historical
+body. Where GovInfo PREMIS metadata supplies a SHA-256, recovery compares that
+publisher digest with the retained PDF bytes. No site catalog was rebuilt.
