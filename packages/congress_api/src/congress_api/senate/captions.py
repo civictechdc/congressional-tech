@@ -30,7 +30,7 @@ from urllib.parse import urljoin
 
 import requests
 
-from congress_api.senate.isvp import STREAM, archive_url, live_url, parse_player_url
+from congress_api.senate.isvp import LIVE_ID, STREAM, archive_url, live_url, parse_player_url
 from congress_shared.webvtt import cue_lines
 from congress_api.models.content import RawContent
 from congress_api.models.media import CaptionReceipt, HLSRendition, MediaTextSource, SenateCaptionSources, WebVTTCue
@@ -210,7 +210,8 @@ def fetch_one(url: str, out_dir: Path, nthreads: int = 16) -> tuple[str, str, st
         master_checks = []
         candidate_errors = []
         selected = None
-        for master_url in (live_url(comm, fn), archive_url(comm, fn)):
+        master_urls = ([live_url(comm, fn)] if comm in LIVE_ID else []) + [archive_url(comm, fn)]
+        for master_url in master_urls:
             receipt["scope"]["master_url"] = master_url
             try:
                 master_source = get_source(master_url, sources=sources)
@@ -244,7 +245,7 @@ def fetch_one(url: str, out_dir: Path, nthreads: int = 16) -> tuple[str, str, st
                 raise candidate_errors[-1]
             raw = SenateCaptionSources(master=master_source, master_checks=master_checks)
             receipt.update(outcome="not_found", kind="none", characters=0,
-                           reason="Neither live nor archive master declares a subtitle track; embedded video captions were not checked.")
+                           reason="No checked master declares a subtitle track; embedded video captions were not checked.")
             result = (fn, comm, "none", 0)
         else:
             master_source, playlist_source, segment_sources = selected
@@ -258,6 +259,9 @@ def fetch_one(url: str, out_dir: Path, nthreads: int = 16) -> tuple[str, str, st
             all_cues = [cue for source in segment_sources for cue in cues(source.text)]
             text = merge_rollup(all_cues) if all_cues else ""
             receipt.update(outcome="available", kind="webvtt", characters=len(text))
+            zero_duration = sum(cue.start == cue.end for source in segment_sources for cue in parsed_cues(source.text))
+            if zero_duration:
+                receipt['zero_duration_cues'] = zero_duration
             result = (fn, comm, "webvtt", len(text))
         # Retain complete source responses for positive and negative checks.
         out_dir.mkdir(parents=True, exist_ok=True)

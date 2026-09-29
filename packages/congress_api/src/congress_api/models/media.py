@@ -58,10 +58,12 @@ class WebVTTCue(SourceModel):
     settings: str = ""
 
     @model_validator(mode="after")
-    def positive_duration(self):
+    def nonnegative_duration(self):
         def seconds(value):
             return sum(float(part) * 60 ** index for index, part in enumerate(reversed(value.split(":"))))
-        if seconds(self.end) <= seconds(self.start):
+        # Some native Senate segments contain zero-duration roll-up updates.
+        # Retain those timestamps and report their count in the capture receipt.
+        if seconds(self.end) < seconds(self.start):
             raise ValueError("WebVTT cue ends before it starts")
         return self
 
@@ -94,6 +96,7 @@ class CaptionReceipt(SourceModel):
     outcome: str | None = None
     kind: str | None = None
     characters: Annotated[int, Field(ge=0)] | None = None
+    zero_duration_cues: Annotated[int, Field(ge=0)] | None = None
     source_file: str | None = None
     metadata_file: str | None = None
     source_responses: list[MediaTextSource] = Field(default_factory=list)
