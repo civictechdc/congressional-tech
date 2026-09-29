@@ -16,6 +16,7 @@ from committee_meeting.meetings import Affiliation, Appearance, RecordedName
 from committee_meeting.provenance import Method
 
 from congress_api.senate.isvp import LIVE_ID, STREAM, archive_url, live_url, parse_player_url
+from congress_api.models.base import SourceModel
 
 from .common import digest, observed_time, ref, web_url, witness_roles
 
@@ -54,6 +55,8 @@ def records(state, context, *, meetings, materials=None, recovered_witnesses=())
         for native_id in sorted(set(kinds) | set(observations)):
             kind = kinds.get(native_id)
             receipt = observations.get(native_id)
+            if isinstance(receipt, SourceModel):
+                receipt = receipt.source_dict()
             payload = {"provider": provider, "recording_id": native_id, "kind": kind}
             if receipt is not None:
                 payload['receipt'] = receipt
@@ -108,6 +111,8 @@ def records(state, context, *, meetings, materials=None, recovered_witnesses=())
                 )
 
     for native_key, observation in sorted((state.get("probes") or {}).items()):
+        if isinstance(observation, SourceModel):
+            observation = observation.source_dict()
         source = context.source("probe|" + native_key, observation if observation is not None else {"unparsed_value": None})
         yield source
         if not isinstance(observation, dict):
@@ -161,6 +166,8 @@ def records(state, context, *, meetings, materials=None, recovered_witnesses=())
     retained_people = {}
     for family in ("mods", "witness_lists"):
         for native_key, observation in sorted((state.get(family) or {}).items()):
+            if isinstance(observation, SourceModel):
+                observation = observation.source_dict()
             source = context.source(f"{family}|{native_key}", observation if observation is not None else {"unparsed_value": None}, observation.get("url") if isinstance(observation, dict) else None)
             check = (observation.get("observation_check") or observation.get("last_check") or {}) if isinstance(observation, dict) else {}
             checked = observed_time(check.get("completed_at"), context.now) if isinstance(check, dict) and check.get("mode") == "live" and check.get("url") == source.url else None

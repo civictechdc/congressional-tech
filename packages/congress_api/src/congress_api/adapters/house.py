@@ -8,6 +8,7 @@ from committee_meeting.materials import DocumentDetails, MaterialLink
 from committee_meeting.meetings import Affiliation, Appearance, Panel, Person, RecordedName
 from .common import digest, material_records, ref, web_url, observed_time
 from .meetings import category
+from congress_api.models.house import HouseParsedRecord
 
 DOCUMENT_CATEGORIES = {
     "WS": "statement", "WT": "disclosure", "WB": "biography", "WD": "supporting",
@@ -67,6 +68,10 @@ def alias_legacy_documents(context, key, saved, groups, owners):
 
 def records(state, context, *, meetings):
     for event, saved in sorted(state.items()):
+        # Typed parser output and historical dictionary imports share the same
+        # source fields; neither normalization path depends on a storage format.
+        if isinstance(saved, HouseParsedRecord):
+            saved = saved.source_dict()
         matches = [(k, v) for k, v in meetings.items() if k[2] == str(event) and k[1] in ("house", "joint")]
         meeting = matches[0][1] if len(matches) == 1 else None
         congress = matches[0][0][0] if len(matches) == 1 else None

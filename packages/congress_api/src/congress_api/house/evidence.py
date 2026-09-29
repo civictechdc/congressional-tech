@@ -10,6 +10,9 @@ from lxml import html
 
 from congress_api.house.repository import NAME, active, document_kind, documents, value, witnesses as page_witnesses
 from congress_api.inventory.common import text
+from congress_api.models.house import HouseEvidence
+from congress_api.house.source import parse_house_meeting, parse_house_witnesses
+from congress_api.models.xml import XmlElement
 
 SCHEMA_VERSION = "1.1"
 
@@ -39,7 +42,7 @@ def metadata(element, *, omit=()):
         "attributes": dict(element.attrib),
         "text": element.text or "",
         "tail": element.tail or "",
-        "children": [metadata(child) for child in element if child.tag not in omit],
+        "children": [metadata(child) for child in (element.children if isinstance(element, XmlElement) else element) if child.tag not in omit],
     }
 
 
@@ -66,8 +69,10 @@ def document_group(element, source, selector, order, owner=None, owner_active=Tr
     }
 
 
-def retained_evidence(root, wlist, page=""):
+def parse_retained_evidence(root, wlist, page="") -> HouseEvidence:
     """All XML observations, including removed rows omitted from current CSVs."""
+    root = parse_house_meeting(root) if root is not None else None
+    wlist = parse_house_witnesses(wlist) if wlist is not None else None
     groups, panels, witnesses = [], [], []
     if root is not None:
         for index, document in enumerate(root.findall("meeting-documents/meeting-document"), 1):
@@ -97,7 +102,7 @@ def retained_evidence(root, wlist, page=""):
         for index, (name, position, organization, panel) in enumerate(page_witnesses(page), 1):
             witnesses.append({"name": name, "position": position, "organization": organization,
                               "panel": panel, "source_order": index, "active": True, "source": "html"})
-    return {
+    return HouseEvidence.model_validate({
         "schema_version": SCHEMA_VERSION,
         "meeting_metadata": metadata(root, omit=("meeting-documents",)) if root is not None else None,
         "witness_list_metadata": metadata(wlist, omit=("panel",)) if wlist is not None else None,
@@ -107,4 +112,8 @@ def retained_evidence(root, wlist, page=""):
         **({"html": page} if page else {}),
         "limitations": (["HTML fallback retains its body and extracted rows; XML grouping and witness-document ownership are unavailable."]
                         if page and (root is None or wlist is None) else []),
-    }
+    })
+
+
+def retained_evidence(root, wlist, page=""):
+    return parse_retained_evidence(root, wlist, page).source_dict()

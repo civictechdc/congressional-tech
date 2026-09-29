@@ -5,33 +5,31 @@ being named in MODS is not an assertion of attendance at a hearing.
 """
 from __future__ import annotations
 
-import base64
 import gzip
-import hashlib
 import json
 from pathlib import Path
 
+from congress_api.models.content import RawContent
+from congress_api.models.gpo import GpoEvidenceObservation, GpoEvidenceRecord
+
 
 def observation(data: bytes, url: str, media_type: str, *, retrieved_at=None):
-    try:
-        body, encoding = data.decode('utf-8'), 'utf-8'
-    except UnicodeDecodeError:
-        body, encoding = base64.b64encode(data).decode('ascii'), 'base64'
-    return {
-        'url': url, 'media_type': media_type, 'sha256': hashlib.sha256(data).hexdigest(),
-        'body': body, 'body_encoding': encoding, 'retrieved_at': retrieved_at,
-        'acquisition': 'http' if retrieved_at else 'cached-replay',
-    }
+    content = RawContent.from_bytes(data, media_type)
+    return GpoEvidenceObservation(**content.source_dict(), url=url, retrieved_at=retrieved_at,
+        acquisition='http' if retrieved_at else 'cached-replay').source_dict()
 
 
 def body_bytes(value):
-    body = value['body']
-    if value['body_encoding'] not in ('utf-8', 'base64'):
-        raise ValueError(f"Unsupported upstream body encoding: {value['body_encoding']}")
-    data = body.encode('utf-8') if value['body_encoding'] == 'utf-8' else base64.b64decode(body, validate=True)
-    if hashlib.sha256(data).hexdigest() != value['sha256']:
-        raise ValueError(f"Retained upstream digest mismatch: {value['url']}")
-    return data
+    return GpoEvidenceObservation.model_validate(value).body_bytes()
+
+
+def write_observation(value: GpoEvidenceObservation, path: Path):
+    """Atomically retain one source response beside a local extracted transcript."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + '.tmp')
+    temporary.write_text(value.model_dump_json(by_alias=True, exclude_unset=True), encoding='utf-8')
+    temporary.replace(path)
 
 
 def read(path: Path | None):
@@ -40,15 +38,10 @@ def read(path: Path | None):
     with gzip.open(path, 'rt', encoding='utf-8') as stream:
         result = {}
         for line in stream:
-            value = json.loads(line)
+            value = GpoEvidenceRecord.model_validate_json(line).source_dict()
             package = value['package_id']
             if package in result:
                 raise ValueError(f'Duplicate GPO evidence package: {package}')
-            for field in ('mods', 'failed_mods'):
-                if value.get(field):
-                    body_bytes(value[field])
-            for item in value.get('transcripts', {}).values():
-                body_bytes(item)
             result[package] = value
         return result
 

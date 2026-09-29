@@ -1,0 +1,2 @@
+# Native fixtures preserve publisher bytes, including line endings and spaces.
+** -text -whitespace

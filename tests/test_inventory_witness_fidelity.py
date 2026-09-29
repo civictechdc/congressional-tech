@@ -50,6 +50,23 @@ def test_member_day_schedule_stays_unparsed_without_inventing_people():
     assert "Time Slot" in result["source_text"]
 
 
+@pytest.mark.parametrize('filename,names,pages,text_present', [
+    ('witness-scan-immigration.pdf', ['Vivek Wadhwa', 'Michael Teitelbaum', 'Puneet S. Arora', 'Julian Castro',
+                                    'Julie Myers Wood', 'Chris Crane', 'Jessica Vaughan', 'Muzaffar Chishti'], [1], False),
+    ('witness-helium-multipage.pdf', ['Tim Spisak', 'Daniel Garcia-Diaz', 'Kimberly Elmore', 'Rodney Morgan',
+                                   'Brad Boersen', 'Gary Page', 'Sam Aronson', 'David Joyner', 'Tom Thoman',
+                                   'Kevin Lynch', 'Walter Nelson', 'Nick Haines', 'Scott Kaltrider'], [1, 2], True),
+])
+def test_visually_reviewed_column_and_unprefixed_names(filename, names, pages, text_present):
+    data = (FIXTURES / filename).read_bytes()
+    result = pdf_observation(data)
+    assert [person['name'] for person in result['people']] == names
+    assert result['text_present'] == text_present
+    assert (result['reviewed_reading'].get('pages') or [result['reviewed_reading']['page']]) == pages
+    assert len(result['pages']) == len(pages)
+    assert 'reviewed_reading' not in pdf_observation(data + b'\n')
+
+
 def test_mods_credentials_do_not_erase_later_location_or_organization_suffix():
     actual = witness("O'Malia, Hon. Scott D., Commissioner, U.S. Commodity Futures Trading Commission, Washington, D.C")
     assert actual["organization"] == "U.S. Commodity Futures Trading Commission, Washington, D.C"

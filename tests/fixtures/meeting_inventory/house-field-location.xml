@@ -1,0 +1,41 @@
+<?xml-stylesheet type='text/xsl' href='/xslt/cr-public.xslt'?>
+<committee-meeting congress-num="116" session-num="1" meeting-id="HMTG110745" meeting-type="HMTG" create-date="2020-04-23T10:13:56.793" orig-publish-date="2020-04-24T10:42:22.467" update-date="2020-04-24T10:42:22.467">
+  <current-status>S</current-status>
+  <language>en-us</language>
+  <copyright>Pursuant to Title 17 Section 105 of the United States Code, this file is not subject to copyright protection and is in the public domain.</copyright>
+  <publish-dates>
+    <publish-date date="2020-04-24T10:42:22.467" />
+  </publish-dates>
+  <meeting-details>
+    <subcommittees>
+      <committee-name id="PW02" parent-id="PW00" parent-name="Committee on Transportation and Infrastructure">Subcommittee on Water Resources and Environment</committee-name>
+    </subcommittees>
+    <meeting-date>
+      <calendar-date>2019-10-19</calendar-date>
+      <start-time>10:00:00</start-time>
+    </meeting-date>
+    <meeting-location>
+      <field>
+        <building-name>Founders Park</building-name>
+        <city>Islamorada</city>
+        <state postal-code="FL">
+          <state-fullname>Florida</state-fullname>
+        </state>
+      </field>
+    </meeting-location>
+    <meeting-title>Roundtable "America's Water Resources Infrastructure" Concepts for the Next Water Resources Development Act."</meeting-title>
+  </meeting-details>
+  <meeting-documents>
+    <meeting-document type="SD" add-date="2020-04-23T10:14:24.390" remove-date="" publish-date="2020-04-24T10:42:22.467">
+      <description>Particpants</description>
+      <filename-metadata>
+        <legis-stage>ih</legis-stage>
+        <doc-type>SD</doc-type>
+        <version-num>1</version-num>
+      </filename-metadata>
+      <files>
+        <file doc-url="http://docs.house.gov/meetings/PW/PW02/20191019/110745/HMTG-116-PW02-20191019-SD001.pdf" doc-type="PDF" add-date="2020-04-23T10:14:24.397" publish-date="2020-04-24T10:42:22.467" />
+      </files>
+    </meeting-document>
+  </meeting-documents>
+</committee-meeting>

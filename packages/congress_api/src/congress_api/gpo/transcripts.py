@@ -10,12 +10,16 @@ command can be re-run to top up. Transcripts are large (all House and joint
 hearings since 2013 are about 2 GB), so they are meant for a local folder, not
 the repository.
 
+New requests retain the original HTML and retrieval details in
+source/<package_id>.json, including short responses excluded from plain text.
+Existing text-only files are skipped without inventing their original HTML.
+
 About 1 in 4 multi-hearing Appropriations volumes are scanned PDFs with no
 text on GovInfo; those are reported and skipped.
 """
 import argparse
 import csv
-import html
+from datetime import datetime, timezone
 import logging
 import re
 import sys
@@ -26,13 +30,22 @@ import requests
 
 from congress_shared.globals import DEFAULT_GPO_HEARINGS_FILE
 from congress_api.gpo.fetch import get_with_retry
+from congress_api.gpo.source import parse_transcript_html
+from congress_api.gpo.evidence import write_observation
+from congress_api.models.gpo import GpoEvidenceObservation
 
-MIN_TEXT_CHARS = 10000  # shorter pages are title pages only (scanned PDF packages, errata)
+MIN_TEXT_CHARS = 10000
+
+
+def has_proceeding_text(text: str) -> bool:
+    """A brief meeting can contain a complete proceeding below the size cutoff."""
+    return bool(re.search(r'\b(?:committee|subcommittee)\s+met\b', text, re.I)
+                and re.search(r'\bWhereupon,.*?\b(?:adjourned|recessed)\b', text, re.I | re.S))
 
 
 def to_text(page: str) -> str:
     """GPO transcript HTML is one <pre> block; strip tags and entities."""
-    return html.unescape(re.sub(r"<[^>]+>", "", page)).strip() + "\n"
+    return parse_transcript_html(page).text.strip() + "\n"
 
 
 def main(out_dir, gpo_path, congress=None, committee=None, chamber=None, package_ids=None, nthreads=4):
@@ -56,8 +69,13 @@ def main(out_dir, gpo_path, congress=None, committee=None, chamber=None, package
 
     def fetch(row):
         try:
-            text = to_text(get_with_retry(session, row["html_url"]).text)
-            if len(text) < MIN_TEXT_CHARS:
+            response = get_with_retry(session, row["html_url"])
+            source = parse_transcript_html(response.content, decoded_text=response.text)
+            write_observation(GpoEvidenceObservation(**source.source.source_dict(),
+                url=row['html_url'], retrieved_at=datetime.now(timezone.utc).isoformat(), acquisition='http'),
+                out_dir / 'source' / f"{row['package_id']}.json")
+            text = source.text.strip() + "\n"
+            if len(text) < MIN_TEXT_CHARS and not has_proceeding_text(text):
                 no_text.append(row["package_id"])
                 return
             (out_dir / f"{row['package_id']}.txt").write_text(text, encoding="utf-8")
@@ -68,7 +86,7 @@ def main(out_dir, gpo_path, congress=None, committee=None, chamber=None, package
         list(pool.map(fetch, todo))
 
     if no_text:
-        logging.warning(f"{len(no_text)} package(s) have only a title page on GovInfo (scanned PDF or errata): {', '.join(no_text[:20])}")
+        logging.warning(f"{len(no_text)} short page(s) have no confirmed proceeding text; original HTML retained: {', '.join(no_text[:20])}")
     if failures:
         logging.error(f"{len(failures)} download(s) failed:\n  " + "\n  ".join(failures[:50]))
         sys.exit(1)

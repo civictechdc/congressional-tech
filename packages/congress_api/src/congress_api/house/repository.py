@@ -10,6 +10,8 @@ import xml.etree.ElementTree as ET
 
 from congress_api.xml import parse_xml
 from congress_api.inventory.common import text
+from congress_api.models.house import HouseMeetingXML, HouseWitnessListXML
+from congress_api.house.source import parse_house_meeting, parse_house_witnesses
 
 FAILED = "There was an error retrieving data for this meeting"
 ## the repository names its files by what they are: HHRG-115-VR09-Wstate-MurphyT-20170214.pdf. A hearing's print is
@@ -77,16 +79,16 @@ def addresses(m, root=None, page=""):
 def cached_xml(path):
     if path.exists() and path.stat().st_size:
         try:
-            root = parse_xml(path.read_bytes())
-            if root.tag == ("committee-meeting" if path.parent.name == "meeting" else "witness-list"):
-                return root
-        except ET.ParseError:
+            parser = parse_house_meeting if path.parent.name == "meeting" else parse_house_witnesses
+            return parser(path.read_bytes())
+        except (ET.ParseError, ValueError):
             pass
     return None
 
 
-def witness_rows(root):
+def witness_rows(root: ET.Element | HouseWitnessListXML):
     """Page-compatible names, with the XML's separate fields and numeric panel/display ordering."""
+    root = parse_house_witnesses(root)
     out = []
     for panel in sorted(root.findall("panel"), key=lambda p: number(p.get("sort-order", ""))):
         if not active(panel):
@@ -122,9 +124,11 @@ def document_kind(code, description, url):
             or next((k for k, pattern in NAMED if re.search(pattern, description, re.I)), "") or "support document")
 
 
-def read_xml(root, wlist):
+def read_xml(root: ET.Element | HouseMeetingXML, wlist: ET.Element | HouseWitnessListXML | None):
     """(kind, name, url, every file's name) per document, and the amendments and votes. A document's files are one
     document in several formats (a bill's PDF and its XML); the record has the document when it has any of them."""
+    root = parse_house_meeting(root)
+    wlist = parse_house_witnesses(wlist) if wlist is not None else None
     docs, amendments = [], []
     for d, witness in xml_documents(root, wlist):
         code = d.get("type") or value(d, "type") or value(d, "filename-metadata/doc-type") or value(d, "filename-metadata/type")

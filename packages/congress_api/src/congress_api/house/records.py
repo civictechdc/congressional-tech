@@ -3,7 +3,7 @@
 Read the meeting export and GPO table, then meeting XML and witness-list XML
 (page fallback). Write house_documents_found.csv, house_witnesses_found.csv and
 house_amendments_found.csv to --output-dir. Keep parsed results, source URLs,
-XML update-date, Congress.gov updateDate, fetch date and confirmed absences in
+XML update-date, exact source bodies, Congress.gov updateDate, fetch date and confirmed absences in
 --state-dir/house.json.gz. --seed-cache imports the research cache read-only.
 
 Readers select from source inputs; the inventory is not an input. An attached
@@ -20,13 +20,15 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from congress_api import http
-from congress_api.house.evidence import SCHEMA_VERSION, retained_evidence
+from congress_api.house.evidence import SCHEMA_VERSION, parse_retained_evidence
+from congress_api.models.content import RawContent
+from congress_api.models.house import HouseParsedRecord
+from congress_api.house.source import parse_house_meeting, parse_house_witnesses
 from congress_api.house.repository import (AMENDMENT_FIELDS, WITNESS_FIELDS, addresses, cached_xml, document_kind, documents,
     read_xml, witness_area, witness_rows, witnesses)
 from congress_api.inventory.common import (NOT_HELD, TRANSCRIPT, due, kind, nonnegative, read_csv, read_meetings,
     read_state, source_args, write_csv, write_state)
 from congress_api.inventory.prints import attached_prints, match_prints
-from congress_api.xml import parse_xml
 
 DOCUMENT_FIELDS = "event_id kind name url document_type source_group source_selector owning_witness_selector add_date publish_date".split()
 
@@ -73,17 +75,27 @@ def lacking(m, packages):
         or (kind(m) == "hearing" and not m.get("witnesses")) or not (packages or transcript))
 
 
-def parsed(root, wlist, page, wstatus):
+def parse_house_record(root, wlist, page, wstatus) -> HouseParsedRecord:
+    root = parse_house_meeting(root) if root is not None else None
+    wlist = parse_house_witnesses(wlist) if wlist is not None else None
     docs, amendments = read_xml(root, wlist) if root is not None else ([], [])
     listed = witness_rows(wlist) if wlist is not None else []
     fallback = page if root is None else witness_area(page) if wstatus == "unfetched" else ""
     if fallback:
         docs += [(k, n, u, {u.rsplit("/", 1)[-1]}) for k, n, u in documents(fallback)]
         listed = [dict(zip(WITNESS_FIELDS[1:5], w)) for w in witnesses(page)]
-    return {"documents": [[k, n, u, sorted(files)] for k, n, u, files in docs], "witnesses": listed,
+    bodies = {name: node.raw_content for name, node in (("meeting_xml", root), ("witness_xml", wlist))
+              if node is not None and node.raw_content is not None}
+    if page:
+        bodies['page_html'] = RawContent.from_bytes(page.encode('utf-8'), 'text/html')
+    return HouseParsedRecord.model_validate({"documents": [[k, n, u, sorted(files)] for k, n, u, files in docs], "witnesses": listed,
             "amendments": amendments, "xml_update": root.get("update-date", "") if root is not None else "",
             "status": "xml" if root is not None else "page" if page else "absent", "witness_status": wstatus,
-            "evidence": retained_evidence(root, wlist, fallback)}
+            "evidence": parse_retained_evidence(root, wlist, fallback), **({"source_bodies": bodies} if bodies else {})})
+
+
+def parsed(root, wlist, page, wstatus):
+    return parse_house_record(root, wlist, page, wstatus).source_dict()
 
 
 def seed(m, cache):
@@ -96,6 +108,10 @@ def seed(m, cache):
     page = page_path.read_text(errors="replace") if page_path.exists() else ""
     wstatus = "present" if wlist is not None else "absent" if wpath.with_suffix(".none").exists() else "unfetched"
     result = parsed(root, wlist, page, wstatus)
+    result["source_bodies"] = {name: RawContent.from_bytes(source.read_bytes(), media).source_dict()
+                               for name, source, media in (("meeting_xml", path, "application/xml"),
+                                   ("witness_xml", wpath, "application/xml"), ("page_html", page_path, "text/html"))
+                               if source.exists() and source.stat().st_size}
     result["urls"] = addresses(m, root, page) if root is not None else addresses(m, page=page)
     result["seed"] = "research cache"
     result["imported_at"] = timestamp()
@@ -117,6 +133,8 @@ def request(url, through_zyte, receipts, allowed=(200, 404)):
         raise
     receipt.update(completed_at=timestamp(), status_code=response.status_code,
                    outcome="not_found" if response.status_code == 404 else "retrieved")
+    if response.status_code == 200:
+        receipt["content"] = RawContent.from_bytes(response.content, "application/xml" if url.lower().endswith(".xml") else "text/html").source_dict()
     return response
 
 
@@ -128,11 +146,12 @@ def fetch_xml(urls, expected, through_zyte, receipts=None):
             continue
         for attempt in range(3):
             try:
-                root = parse_xml(response.content)
+                parser = parse_house_meeting if expected == "committee-meeting" else parse_house_witnesses
+                root = parser(response.content)
                 if root.tag != expected:
                     raise ET.ParseError(f"unexpected root {root.tag}")
                 break
-            except ET.ParseError:
+            except (ET.ParseError, ValueError):
                 receipts[-1]["outcome"] = "invalid_xml"
                 if attempt == 2:
                     raise
@@ -178,6 +197,17 @@ def _fetch(m, previous, through_zyte, receipts):
         bases = [url] + [u for u in candidates if f"/{root.get('meeting-type')}-" in u] + addresses(m, root)
         wlist, wurl = fetch_xml([re.sub(r"-(\d{8})\.xml$", r"-WList-\1.xml", u) for u in bases if u], "witness-list", through_zyte, receipts)
     result = parsed(root, wlist, page, "present" if wlist is not None else "absent")
+    if page:
+        # ``page`` was decoded for extraction; retain the original response
+        # bytes, including a non-UTF-8 encoding, rather than the decoded copy.
+        receipt = next(r for r in reversed(receipts) if r["url"] == page_url and r.get("content"))
+        result.setdefault("source_bodies", {})["page_html"] = receipt["content"]
+    retained = {body["sha256"] for body in result.get("source_bodies", {}).values()}
+    for receipt in receipts:
+        content = receipt.get("content")
+        if content and content["sha256"] in retained:
+            receipt["sha256"] = content["sha256"]
+            del receipt["content"]  # One exact body; receipts identify it by digest.
     result["urls"] = [url] if url else candidates
     result["witness_url"], result["page_url"] = wurl, page_url if page else ""
     result["page_status"] = "no_meeting_data" if "No meeting data is available" in page else "present" if page else "not_retrieved"
