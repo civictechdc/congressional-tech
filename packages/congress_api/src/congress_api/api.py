@@ -1,5 +1,8 @@
 import requests
 from .xml_to_dict import parse_xml_string
+from .models.congress import parse_response
+from .models.congress_xml import CongressXmlDocument
+from .congress_source import CongressResponse, parse_congress_xml
 
 CONGRESS_API_BASE_URL = "https://api.congress.gov/v3/"
 
@@ -64,15 +67,25 @@ def congress_api_get(endpoint: str, pagination=True, **kwargs):
 
 
 def generic_request(url: str, **params) -> dict:
+    """Compatibility dictionaries; new consumers can use ``request_source``."""
+    source = request_source(url, **params)
+    if isinstance(source, CongressXmlDocument):
+        value = parse_xml_string(source.content.body_bytes())
+        # XML-to-dict is a legacy interpretation. Retain its full input as well.
+        value["_source_xml"] = source.content.source_dict()
+        return value
+    return source.source_dict()
+
+
+def request_source(url: str, **params) -> CongressResponse:
+    """Fetch and parse a canonical source model, without writing a cache."""
     response = requests.get(url, params=params)
     response.raise_for_status()
     try:
-        return response.json()
+        value = response.json()
     except ValueError:
         try:
-            return_value = parse_xml_string(response.text)
-            if "api-root" not in return_value.keys():
-                raise ValueError(f"Invalid XML with keys: {return_value.keys()}")
+            return parse_congress_xml(response.content)
         except Exception as e:
-            raise ValueError(f"Failed to parse XML {e.message}")
-        return return_value
+            raise ValueError(f"Failed to parse Congress.gov XML: {type(e).__name__}") from e
+    return parse_response(value)

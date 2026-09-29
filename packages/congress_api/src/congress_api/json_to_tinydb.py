@@ -1,15 +1,22 @@
 from tinydb import TinyDB
 from tinydb.table import Document
 import json
+from congress_api.models.congress import CommitteeMeeting
 
 
 def convert_event_to_document(event_id, event):
     ## i think this is one of the ones where the
     ##  JSON api fails but the XML worked
-    if "api-root" in event.keys():
+    raw_xml = event.get("_source_xml")
+    is_xml = "api-root" in event
+    if is_xml:
         event = event["api-root"]
     try:
         value = event["committeeMeeting"]
+        if not is_xml:
+            value = CommitteeMeeting.model_validate(value).source_dict()
+        elif raw_xml:
+            value = {**value, "_source_xml": raw_xml}
     except Exception as e:
         print(event["api-root"].keys(), e)
         raise e

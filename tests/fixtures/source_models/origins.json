@@ -1,0 +1,20 @@
+{
+  "captured_date_utc": "2026-09-29",
+  "sources": {
+    "committee-house-hsju00.json": "https://api.congress.gov/v3/committee/house/hsju00?format=json",
+    "committee-senate-ssju00.json": "https://api.congress.gov/v3/committee/senate/ssju00?format=json",
+    "committee-meeting-119-house.json": "https://api.congress.gov/v3/committee-meeting/119/house?format=json&limit=1",
+    "legislators.json": "https://unitedstates.github.io/congress-legislators/legislators-current.json",
+    "meeting-field-address-and-joint.json": [
+      "https://api.congress.gov/v3/committee-meeting/112/house/100094",
+      "https://api.congress.gov/v3/committee-meeting/114/house/102829"
+    ],
+    "meeting-116-senate-326051.xml": "https://api.congress.gov/v3/committee-meeting/116/senate/326051?format=xml",
+    "committee-house-hsju00.xml": "https://api.congress.gov/v3/committee/house/hsju00?format=xml",
+    "committees-119.json": "https://api.congress.gov/v3/committee/119?format=json&limit=10"
+  },
+  "selection": {
+    "legislators.json": "Nine unmodified records selected to cover every field observed in the 539-record response; other files are complete response objects.",
+    "meeting-field-address-and-joint.json": "Two unmodified retained meeting records, selected for a JSON-encoded field-hearing address and committees from both chambers. Historical acquisition time is unknown."
+  }
+}

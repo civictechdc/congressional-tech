@@ -11,6 +11,7 @@ anywhere. Zyte charges per request.
 import base64, os
 
 import requests
+from .models.transport import ZyteResponse
 
 API = "https://api.zyte.com/v1/extract"
 
@@ -27,5 +28,5 @@ def get(url, session=None, timeout=120):
     r = (session or requests).post(API, auth=(token(), ""), timeout=timeout, json={"url": url, "httpResponseBody": True})
     if r.status_code != 200:
         return r.status_code, b""
-    d = r.json()
-    return d.get("statusCode", 200), base64.b64decode(d["httpResponseBody"])
+    d = ZyteResponse.model_validate(r.json())
+    return d.statusCode, base64.b64decode(d.httpResponseBody)

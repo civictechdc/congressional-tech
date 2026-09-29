@@ -1,6 +1,6 @@
 """Small file and meeting helpers for the source readers and final inventory.
 
-State is parsed JSON, compressed deterministically, never raw HTML/XML. A new
+State is parsed JSON with retained source bodies, compressed deterministically. A new
 Congress.gov update is due immediately. Otherwise check recent meetings weekly,
 meetings up to two years old every 28 days, and older meetings annually. Among
 6,155 cached House XML records the 95th-percentile update lag was 330 days;
@@ -17,9 +17,43 @@ import json
 import re
 from pathlib import Path
 
+from congress_api.models.congress import CommitteeMeeting
+
 CLOSED = re.compile(r"closed|briefing|deposition|executive session", re.I)
 NOT_HELD = re.compile(r"^\s*(postponed|cancel+ed|rescheduled|test)\b", re.I)
 TRANSCRIPT = re.compile(r"transcript", re.I)
+
+
+def meeting_access(row):
+    """Keep explicit native access, otherwise use explicit title phrases only."""
+    native = str(row.get('type') or '').lower()
+    reported = {value for value in ('open', 'closed') if re.search(r'\b' + value + r'\b', native)}
+    if reported:
+        return ('partly_closed' if len(reported) == 2 else reported.pop()), '/type'
+    title = ' '.join(str(row.get('title') or '').lower().split())
+    # Possibility is not a declaration that a closed portion will occur.
+    title = re.sub(r'\b(?:possibility of|possibly|may (?:be|go into|hold))\s+(?:an?\s+)?(?:closed|open)\s+(?:session|hearing|meeting)\b', '', title)
+    event = r'(?:hearings?|briefings?|(?:business\s+)?meetings?|mark[ -]?up(?:\s+sessions?)?|sessions?|panels?|roundtables?)'
+    if re.search(r'\b(?:open\s*(?:and|&|/)\s*closed|closed\s*(?:and|&|/)\s*open)(?=\s*(?:[\])]|' + event + r'\b))', title):
+        return 'partly_closed', '/title'
+    found, primary = set(), set()
+    subsequent = re.search(r'\b(?:followed|preceded)\s+by\b', title)
+    for access in ('open', 'closed'):
+        marker = r'[\[(]\s*' + access + r'\s*(?:[\])]|(?:session|hearing|briefing)\b|in a closed space\b|-\s*possibility of closing\b)'
+        phrase = r'\b' + access + r'\s+(?:joint\s+)?' + event + r'\b'
+        declaration = r'\b' + event + r'\s+(?:is\s+|will be\s+)?' + access + r'\b|^\W*' + access + r'\s+to (?:the )?public\b'
+        matches = [match for pattern in (marker, phrase, declaration) for match in re.finditer(pattern, title)]
+        if matches:
+            found.add(access)
+            if subsequent is None or any(match.start() < subsequent.start() for match in matches):
+                primary.add(access)
+    if len(found) == 2:
+        return 'partly_closed', '/title'
+    # A later closed session alone does not establish access to the main event.
+    if primary:
+        return primary.pop(), '/title'
+    return 'unknown', None
+
 
 
 def text(value):
@@ -59,7 +93,8 @@ def write_state(path, state):
 
 def read_meetings(path):
     with gzip.open(path, "rt", encoding="utf-8") as f:
-        return [m for m in map(json.loads, f) if m.get("meetingStatus") in ("Scheduled", "Rescheduled") and int(m.get("congress", 0)) >= 113]
+        records = (CommitteeMeeting.model_validate_json(line) for line in f)
+        return [m.source_dict() for m in records if m.meetingStatus in ("Scheduled", "Rescheduled") and m.congress >= 113]
 
 
 def kind(m):

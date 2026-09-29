@@ -10,6 +10,8 @@ import requests
 
 from congress_shared.auth import load_congress_api_key
 from .meetings import API, get, read, write
+from .models.congress import CommitteeRecord, CommitteeSnapshot
+from .fetch.rejected import retain_rejected_page
 
 
 def collect(meetings_path, output_path, *, api_key, session=None, gpo_path=None):
@@ -24,7 +26,7 @@ def collect(meetings_path, output_path, *, api_key, session=None, gpo_path=None)
     existing = []
     if output.exists():
         with gzip.open(output, 'rt') as stream:
-            existing = [json.loads(line) for line in stream if line.strip()]
+            existing = [CommitteeSnapshot.model_validate_json(line).source_dict() for line in stream if line.strip()]
     have = {row['congress'] for row in existing}
     refresh = set(congresses[-2:]) | (set(congresses) - have)
     rows = {f"{row['congress']}|{row['committee']['systemCode']}": row for row in existing if row['congress'] not in refresh}
@@ -35,7 +37,11 @@ def collect(meetings_path, output_path, *, api_key, session=None, gpo_path=None)
         while True:
             page = get(session, url, api_key, {'limit': 250, 'offset': offset})
             retrieved = datetime.now(timezone.utc).isoformat()
-            committees = page['committees']
+            try:
+                committees = [CommitteeRecord.model_validate(native).source_dict() for native in page['committees']]
+            except (ValueError, TypeError, KeyError):
+                retain_rejected_page(output_path, page, url=url, offset=offset)
+                raise
             for committee in committees:
                 code = committee['systemCode']
                 if code in seen_codes:

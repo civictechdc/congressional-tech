@@ -5,6 +5,7 @@ from tinydb import TinyDB, Query
 from typing import TypedDict, Literal, Dict, List, Optional
 
 from ..api import congress_api_get
+from ..models.congress import CommitteeDetail
 from congress_shared.globals import DEFAULT_TINYDB_DIR
 
 DETAILS_TB = None
@@ -55,6 +56,7 @@ _DB_MEMO = _TinyDBMemoizer()
 
 @dataclass(slots=True)
 class CommitteeDetails:
+    source_record: Optional[CommitteeDetail] = field(default=None, repr=False)
     bills: Optional[DocCount] = field(default_factory=lambda: {"count": 0, "url": ""})
     communications: Optional[DocCount] = field(
         default_factory=lambda: {"count": 0, "url": ""}
@@ -110,7 +112,10 @@ class CommitteeDetails:
 
     def to_dict(self) -> Dict:
         """Controlled serialization (don't persist transient attrs / __dict__)."""
+        if self.source_record is not None:
+            return self.source_record.source_dict()
         d = asdict(self)
+        d.pop("source_record")
         d["updateDate"] = self._format_dt(self.updateDate)
         # map internal key back to API field name if needed elsewhere
         d["type"] = d.pop("ctype")
@@ -118,7 +123,8 @@ class CommitteeDetails:
 
     @classmethod
     def from_dict(cls, data: Dict) -> "CommitteeDetails":
-        inst_data = dict(data)
+        native = CommitteeDetail.model_validate(data)
+        inst_data = native.source_dict()
 
         ## make a copy
         new_dict = {**inst_data}
@@ -128,7 +134,8 @@ class CommitteeDetails:
         # parse updateDate to datetime in-memory
         if "updateDate" in new_dict:
             new_dict["updateDate"] = cls._parse_dt(new_dict["updateDate"])  # type: ignore[assignment]
-        return cls(**new_dict)  # type: ignore[arg-type]
+        known = {key: value for key, value in new_dict.items() if key in cls.__dataclass_fields__ and key != "source_record"}
+        return cls(**known, source_record=native)
 
     @classmethod
     def from_system_code(cls, system_code):

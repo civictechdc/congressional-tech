@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, List, Optional
+from ..models.congress import CommitteeRecord
 
 
 ISO_FMT = "%Y-%m-%dT%H:%M:%SZ"
@@ -18,6 +19,7 @@ class CommitteeSummary:
     systemCode: str
     url: str
     updateDate: datetime
+    source_record: Optional[CommitteeRecord] = field(default=None, repr=False)
 
     # Relations (not included in dataclass-generated __repr__ to avoid cycles)
     parent: Optional[CommitteeSummary] = field(default=None, repr=False)
@@ -95,6 +97,8 @@ class CommitteeSummary:
         If an `index` is provided, instances are deduped by systemCode and
         parent/child links are established bidirectionally.
         """
+        native = CommitteeRecord.model_validate(data)
+        data = native.source_dict()
         # Extract fields, allowing partial payloads
         chamber = data.get("chamber")
         ctype = data.get("committeeTypeCode")
@@ -173,6 +177,7 @@ class CommitteeSummary:
         else:
             parent = None
 
+        inst.source_record = native
         inst.set_parent(parent)
 
         return inst
@@ -183,6 +188,8 @@ class CommitteeSummary:
         return [cls.from_dict(data) for data in data_list]
 
     def to_dict(self, include_tree: bool = False) -> Dict:
+        if self.source_record is not None and not include_tree:
+            return self.source_record.source_dict()
         d = {
             "chamber": self.chamber,
             "committeeTypeCode": self.committeeTypeCode,
@@ -207,7 +214,7 @@ class CommitteeSummary:
                     }
                     for c in self.children
                 ]
-        return d
+        return {**(self.source_record.source_dict() if self.source_record else {}), **d}
 
 
 class _CommitteeSummaryIndex:

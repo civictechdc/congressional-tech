@@ -62,6 +62,21 @@ def test_failed_refresh_preserves_previous_bytes(tmp_path, monkeypatch, failure)
     assert output.read_bytes() == before
 
 
+def test_rejected_committee_page_is_retained_without_replacing_snapshot(tmp_path, monkeypatch):
+    meetings = write_meetings(tmp_path, [native()])
+    output = save(tmp_path / 'committees.jsonl.gz', [metadata()])
+    before = output.read_bytes()
+    response = {'committees': [{'systemCode': 123, 'futureField': ['unchanged', None]}]}
+    monkeypatch.setattr(collector, 'get', lambda *args: response)
+    with pytest.raises(ValueError):
+        collector.collect(meetings, output, api_key='test-key')
+    assert output.read_bytes() == before
+    rejected = json.loads(output.with_suffix(output.suffix + '.rejected.json').read_text())
+    assert rejected[0]['response'] == response
+    assert rejected[0]['offset'] == 0
+    assert 'test-key' not in rejected[0]['url']
+
+
 def test_metadata_enriches_existing_ids_and_preserves_native_evidence(tmp_path):
     meetings = write_meetings(tmp_path, [native()])
     options = dict(meetings=meetings, output_dir=tmp_path / 'public', state_dir=tmp_path / 'state', as_of=NOW)

@@ -74,7 +74,9 @@ def adjustment_records(context, existing, *, congresses=None):
 
 
 def records(rows, context, existing):
-    for row in rows:
+    from congress_api.models.congress import CommitteeSnapshot
+    for raw in rows:
+        row = CommitteeSnapshot.model_validate(raw).source_dict()
         congress, native = int(row['congress']), row['committee']
         code = native['systemCode']
         key = f'congress.gov|{congress}|{code}'

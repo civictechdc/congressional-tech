@@ -1,0 +1,83 @@
+[
+  {
+    "_url": "https://api.congress.gov/v3/committee-meeting/112/house/100094",
+    "chamber": "House",
+    "committees": [
+      {
+        "systemCode": "hshm09",
+        "url": "https://api.congress.gov/v3/committee/house/hshm09?format=json"
+      }
+    ],
+    "congress": 112,
+    "date": "2011-10-17T14:00:00Z",
+    "eventId": "100094",
+    "hearingTranscript": [
+      {
+        "jacketNumber": 73739,
+        "url": "https://api.congress.gov/v3/hearing/112/house/73739?format=json"
+      }
+    ],
+    "location": {
+      "address": "{\"building_name\": \"Texas State Capitol\", \"street-address\": \"1100 Congress Avenue, Room E1.010\", \"city\": \"Austin\", \"state\": \"TX\", \"postal_code\": \"78701\"}"
+    },
+    "meetingDocuments": [
+      {
+        "documentType": "Support Document",
+        "format": "PDF",
+        "name": "Printed Hearing Record",
+        "url": "https://www.congress.gov/112/meeting/house/100094/documents/CHRG-112hhrg73739.pdf"
+      }
+    ],
+    "meetingStatus": "Scheduled",
+    "title": "“Texas Wildfire Review: Did Bureaucracy Prevent a Timely Response?”",
+    "type": "Hearing",
+    "updateDate": "2024-05-17T14:53:52Z"
+  },
+  {
+    "_url": "https://api.congress.gov/v3/committee-meeting/114/house/102829",
+    "chamber": "House",
+    "committees": [
+      {
+        "name": "House Transportation and Infrastructure",
+        "systemCode": "hspw00",
+        "url": "https://api.congress.gov/v3/committee/house/hspw00?format=json"
+      },
+      {
+        "name": "Senate Environment and Public Works",
+        "systemCode": "ssev00",
+        "url": "https://api.congress.gov/v3/committee/house/ssev00?format=json"
+      }
+    ],
+    "congress": 114,
+    "date": "2015-02-04T15:00:00Z",
+    "eventId": "102829",
+    "hearingTranscript": [
+      {
+        "jacketNumber": 93070,
+        "url": "https://api.congress.gov/v3/hearing/114/joint/93070?format=json"
+      },
+      {
+        "jacketNumber": 93070,
+        "url": "https://api.congress.gov/v3/hearing/114/house/93070?format=json"
+      }
+    ],
+    "meetingDocuments": [
+      {
+        "documentType": "Support Document",
+        "format": "PDF",
+        "name": "Agenda",
+        "url": "https://www.congress.gov/114/meeting/house/102829/documents/HHRG-114-PW00-20150204-SD002.pdf"
+      },
+      {
+        "documentType": "Support Document",
+        "format": "PDF",
+        "name": "Summary of Subject Matter",
+        "url": "https://www.congress.gov/114/meeting/house/102829/documents/HHRG-114-PW00-20150204-SD001.pdf"
+      }
+    ],
+    "meetingStatus": "Scheduled",
+    "title": "Impacts of the Proposed Waters of the United States Rule on State and Local Governments",
+    "type": "Hearing",
+    "updateDate": "2021-01-13T15:59:45Z"
+  }
+]

@@ -1,0 +1,117 @@
+{
+  "committee": {
+    "bills": {
+      "count": 74379,
+      "url": "https://api.congress.gov/v3/committee/house/hsju00/bills?format=json"
+    },
+    "committeeWebsiteUrl": "https://judiciary.house.gov/",
+    "communications": {
+      "count": 2019,
+      "url": "https://api.congress.gov/v3/committee/house/hsju00/house-communication?format=json"
+    },
+    "history": [
+      {
+        "committeeTypeCode": "Standing",
+        "establishingAuthority": "13 House Journal 19",
+        "libraryOfCongressName": "Judiciary",
+        "locLinkedDataId": "n79036854",
+        "naraId": "10521482",
+        "officialName": "Committee on the Judiciary",
+        "startDate": "1813-06-03T04:56:00Z",
+        "superintendentDocumentNumber": "Y 4.J 89/1:",
+        "updateDate": "2024-08-13T15:22:50Z"
+      }
+    ],
+    "isCurrent": true,
+    "reports": {
+      "count": 1230,
+      "url": "https://api.congress.gov/v3/committee/house/hsju00/reports?format=json"
+    },
+    "subcommittees": [
+      {
+        "name": "Select Subcommittee to Investigate the Remaining Questions Surrounding January 6, 2021",
+        "systemCode": "hlqj00",
+        "url": "https://api.congress.gov/v3/committee/house/hlqj00?format=json"
+      },
+      {
+        "name": "Antitrust (Full Committee Task Force) Subcommittee",
+        "systemCode": "hsju11",
+        "url": "https://api.congress.gov/v3/committee/house/hsju11?format=json"
+      },
+      {
+        "name": "Civil and Constitutional Rights Subcommittee",
+        "systemCode": "hsju04",
+        "url": "https://api.congress.gov/v3/committee/house/hsju04?format=json"
+      },
+      {
+        "name": "Criminal Justice Subcommittee",
+        "systemCode": "hsju07",
+        "url": "https://api.congress.gov/v3/committee/house/hsju07?format=json"
+      },
+      {
+        "name": "Commercial and Administrative Law Subcommittee",
+        "systemCode": "hsju09",
+        "url": "https://api.congress.gov/v3/committee/house/hsju09?format=json"
+      },
+      {
+        "name": "Over-Criminalization Task Force Subcommittee",
+        "systemCode": "hsju12",
+        "url": "https://api.congress.gov/v3/committee/house/hsju12?format=json"
+      },
+      {
+        "name": "Courts, Intellectual Property, Artificial Intelligence, and the Internet Subcommittee",
+        "systemCode": "hsju03",
+        "url": "https://api.congress.gov/v3/committee/house/hsju03?format=json"
+      },
+      {
+        "name": "Crime and Federal Government Surveillance Subcommittee",
+        "systemCode": "hsju08",
+        "url": "https://api.congress.gov/v3/committee/house/hsju08?format=json"
+      },
+      {
+        "name": "Immigration Integrity, Security, and Enforcement Subcommittee",
+        "systemCode": "hsju01",
+        "url": "https://api.congress.gov/v3/committee/house/hsju01?format=json"
+      },
+      {
+        "name": "Administrative Law and Governmental Relations Subcommittee",
+        "systemCode": "hsju02",
+        "url": "https://api.congress.gov/v3/committee/house/hsju02?format=json"
+      },
+      {
+        "name": "Crime Subcommittee",
+        "systemCode": "hsju06",
+        "url": "https://api.congress.gov/v3/committee/house/hsju06?format=json"
+      },
+      {
+        "name": "Constitution and Limited Government Subcommittee",
+        "systemCode": "hsju10",
+        "url": "https://api.congress.gov/v3/committee/house/hsju10?format=json"
+      },
+      {
+        "name": "Select Subcommittee on the Weaponization of the Federal Government",
+        "systemCode": "hlfd00",
+        "url": "https://api.congress.gov/v3/committee/house/hlfd00?format=json"
+      },
+      {
+        "name": "Administrative State, Regulatory Reform, and Antitrust Subcommittee",
+        "systemCode": "hsju05",
+        "url": "https://api.congress.gov/v3/committee/house/hsju05?format=json"
+      },
+      {
+        "name": "Oversight Subcommittee",
+        "systemCode": "hsju13",
+        "url": "https://api.congress.gov/v3/committee/house/hsju13?format=json"
+      }
+    ],
+    "systemCode": "hsju00",
+    "type": "Standing",
+    "updateDate": "2024-01-16T20:39:17Z"
+  },
+  "request": {
+    "chamber": "house",
+    "contentType": "application/json",
+    "format": "json",
+    "systemCode": "hsju00"
+  }
+}

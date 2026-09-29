@@ -74,7 +74,10 @@ class CongressEventFetcher(object):
                         url = url.replace("json", "xml")
                         print("Trying XML instead...")
                         event = generic_request(url, api_key=self.api_key)
+                        raw_xml = event.get("_source_xml")
                         event = event["api-root"]
+                        if raw_xml:
+                            event["committeeMeeting"]["_source_xml"] = raw_xml
                     else:
                         event = generic_request(url, api_key=self.api_key)
 
@@ -98,7 +101,7 @@ class CongressEventFetcher(object):
                     else:
                         raise RuntimeError(f"Failed to fetch {eventId}: {e}")
                 except Exception as e:
-                    message = f"Unexpected error while fetching {eventId}: {e}, try: {url}&api_key={self.api_key}"
+                    message = f"Unexpected error while fetching {eventId}: {type(e).__name__}"
                     print(message)
             i += 1
             retried = False

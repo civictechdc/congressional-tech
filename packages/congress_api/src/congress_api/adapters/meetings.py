@@ -1,6 +1,7 @@
 """Full Congress.gov meeting records, including statuses omitted by inventory reports."""
 from collections import Counter
 from urllib.parse import urlsplit
+import json
 import re
 
 from committee_meeting.common import Identifier, Location
@@ -11,6 +12,8 @@ from committee_meeting.materials import DocumentDetails, RecordingDetails
 from committee_meeting.meetings import Affiliation, Appearance, ConveningCommittee, Meeting, MeetingOccurrence, RecordedName
 from committee_meeting.provenance import FieldEvidence
 
+from congress_api.inventory.common import meeting_access
+
 from .common import digest, material_records, ref, reported_time, web_url, observed_time
 
 
@@ -20,6 +23,31 @@ def chamber(value):
 
 def meeting_key(row):
     return f"congress.gov|{row['congress']}|{chamber(row.get('chamber'))}|{row['eventId']}"
+
+
+def meeting_location(location):
+    """Interpret a field-hearing address without changing its native JSON string."""
+    if not location:
+        return None
+    values = {key: location[key] for key in ("building", "room", "city", "region", "country")
+              if isinstance(location.get(key), str) and location[key]}
+    address = location.get("address")
+    if address:
+        try:
+            parts = json.loads(address)
+        except ValueError:
+            parts = None
+        if isinstance(parts, dict):
+            for native, normalized in (("building_name", "building"), ("city", "city"), ("state", "region")):
+                if isinstance(parts.get(native), str) and parts[native]:
+                    values.setdefault(normalized, parts[native])
+            label = ", ".join(parts[key] for key in ("building_name", "street-address", "city", "state", "postal_code")
+                              if isinstance(parts.get(key), str) and parts[key])
+            if label:
+                values["label"] = label
+        else:
+            values["label"] = address
+    return Location(**values) if values else None
 
 
 def meeting_type(row):
@@ -46,37 +74,6 @@ def meeting_type(row):
     if text == 'meeting':
         return 'meeting', '/type'
     return 'unknown', '/type'
-
-
-def meeting_access(row):
-    """Keep explicit native access, otherwise use explicit title phrases only."""
-    native = str(row.get('type') or '').lower()
-    reported = {value for value in ('open', 'closed') if re.search(r'\b' + value + r'\b', native)}
-    if reported:
-        return ('partly_closed' if len(reported) == 2 else reported.pop()), '/type'
-    title = ' '.join(str(row.get('title') or '').lower().split())
-    # Possibility is not a declaration that a closed portion will occur.
-    title = re.sub(r'\b(?:possibility of|possibly|may (?:be|go into|hold))\s+(?:an?\s+)?(?:closed|open)\s+(?:session|hearing|meeting)\b', '', title)
-    event = r'(?:hearings?|briefings?|(?:business\s+)?meetings?|mark[ -]?up(?:\s+sessions?)?|sessions?|panels?|roundtables?)'
-    if re.search(r'\b(?:open\s*(?:and|&|/)\s*closed|closed\s*(?:and|&|/)\s*open)(?=\s*(?:[\])]|' + event + r'\b))', title):
-        return 'partly_closed', '/title'
-    found, primary = set(), set()
-    subsequent = re.search(r'\b(?:followed|preceded)\s+by\b', title)
-    for access in ('open', 'closed'):
-        marker = r'[\[(]\s*' + access + r'\s*(?:[\])]|(?:session|hearing|briefing)\b|in a closed space\b|-\s*possibility of closing\b)'
-        phrase = r'\b' + access + r'\s+(?:joint\s+)?' + event + r'\b'
-        declaration = r'\b' + event + r'\s+(?:is\s+|will be\s+)?' + access + r'\b|^\W*' + access + r'\s+to (?:the )?public\b'
-        matches = [match for pattern in (marker, phrase, declaration) for match in re.finditer(pattern, title)]
-        if matches:
-            found.add(access)
-            if subsequent is None or any(match.start() < subsequent.start() for match in matches):
-                primary.add(access)
-    if len(found) == 2:
-        return 'partly_closed', '/title'
-    # A later closed session alone does not establish access to the main event.
-    if primary:
-        return primary.pop(), '/title'
-    return 'unknown', None
 
 
 def document_title(row):
@@ -131,7 +128,9 @@ def related_item_identity(family, item, congress):
 
 
 def records(rows, context):
-    for row in rows:
+    from congress_api.models.congress import CommitteeMeeting
+    for raw in rows:
+        row = CommitteeMeeting.model_validate(raw).source_dict()
         key = meeting_key(row)
         source = context.source(key, row, row.get("_url"))
         captured_at = observed_time(row.get("_retrieved_at"), context.now)
@@ -156,7 +155,7 @@ def records(rows, context):
             ckey = f"congress.gov|{congress}|{code}"
             committee = Committee(id=context.ids("committee", ckey), label=c.get("name") or code, provenance=evidence)
             term = CommitteeTerm(id=context.ids("committee_term", ckey), committee=ref(committee), congress=congress,
-                                 name=c.get("name") or None, chamber=chamber(row.get("chamber")),
+                                 name=c.get("name") or None, chamber={"h": "house", "s": "senate", "j": "joint"}.get(code[:1].lower(), "unknown"),
                                  identifiers=(Identifier(scheme="congress.gov:committee", value=code, scope=str(congress)),), provenance=evidence)
             yield committee
             yield term
@@ -175,8 +174,7 @@ def records(rows, context):
         except (ValueError, TypeError):
             yield DataIssue(id=context.ids("data_issue", key + "|invalid-date"), subject=ref(source), category="unverified",
                             summary="Meeting date could not be interpreted", detected_at=context.now, provenance=evidence)
-        location = row.get("location") or {}
-        loc = Location(**{k: str(location[k]) for k in ("building", "room", "city", "region", "country") if location.get(k)}) if isinstance(location, dict) and location else None
+        loc = meeting_location(row.get("location"))
         status = {"Scheduled": "scheduled", "Rescheduled": "rescheduled", "Postponed": "postponed", "Canceled": "canceled", "Cancelled": "canceled", "Held": "held"}.get(row.get("meetingStatus"), "unknown")
         access, access_field = meeting_access(row)
         access_evidence = (FieldEvidence(path='/access', selected=context.evidence(source, selector=access_field,

@@ -24,6 +24,8 @@ from pathlib import Path
 import requests
 
 from congress_api.http import get_with_retry
+from congress_api.models.congress import CommitteeMeeting, MeetingSummary
+from congress_api.fetch.rejected import retain_rejected_page
 from congress_shared.auth import load_congress_api_key
 from congress_shared.globals import CONGRESS_METADATA, DEFAULT_MEETINGS_FILE
 
@@ -53,6 +55,7 @@ def main(output_path: Path = DEFAULT_MEETINGS_FILE, nthreads: int = 5) -> None:
     have = {(r.get("chamber") or "").lower() for r in records.values()}  # "house", "nochamber", "senate"
     pending_path = output_path.with_suffix(output_path.suffix + ".pending.json")
     pending = json.loads(pending_path.read_text()) if pending_path.exists() else {"urls": []}
+    failed_responses = dict(pending.get("responses", {}))
     urls = list(pending["urls"])
     for chamber in CHAMBERS:
         new_chamber = since is None or chamber not in have
@@ -64,8 +67,12 @@ def main(output_path: Path = DEFAULT_MEETINGS_FILE, nthreads: int = 5) -> None:
                 params.update(fromDateTime=since, toDateTime="2100-01-01T00:00:00Z")
             while True:
                 page = get(session, f"{API}/committee-meeting/{congress}/{chamber}", api_key, params)
-                meetings = page["committeeMeetings"]
-                page_urls = [m["url"].split("?")[0] for m in meetings]
+                try:
+                    meetings = [MeetingSummary.model_validate(m) for m in page["committeeMeetings"]]
+                except (ValueError, TypeError, KeyError):
+                    retain_rejected_page(output_path, page, url=f"{API}/committee-meeting/{congress}/{chamber}", offset=params['offset'])
+                    raise
+                page_urls = [m.url.split("?")[0] for m in meetings]
                 if page_urls and not set(page_urls) - listed:
                     raise ValueError(f"Meeting pagination repeated a page: {congress}/{chamber}")
                 listed.update(page_urls)
@@ -79,31 +86,41 @@ def main(output_path: Path = DEFAULT_MEETINGS_FILE, nthreads: int = 5) -> None:
     logging.info(f"Fetching {len(urls)} new or updated meeting records")
     # Save work before beginning detail requests. A crash may repeat completed
     # requests, but a later global updateDate can never skip unfinished URLs.
-    write_pending(pending_path, urls)
+    write_pending(pending_path, urls, failed_responses)
 
     failures, failed_urls, lock = [], [], threading.Lock()
 
     def fetch(url):
+        response = None
         try:
             if not url.startswith(f"{API}/committee-meeting/"):
                 raise ValueError("Meeting detail URL is not on the Congress.gov API")
-            record = dict(get(session, url, api_key)["committeeMeeting"])
+            response = get(session, url, api_key)
+            record = CommitteeMeeting.model_validate(response["committeeMeeting"]).source_dict()
             if any(record.get(field) in (None, "") for field in ("eventId", "congress", "chamber")):
                 raise ValueError("Meeting detail lacks eventId, congress or chamber")
             record["_url"] = url
             record["_retrieved_at"] = datetime.now(UTC).isoformat()
             with lock:
                 records[url] = record
+                failed_responses.pop(url, None)
         except Exception as ex:
             with lock:
                 failures.append(f"{url}: {type(ex).__name__}")
                 failed_urls.append(url)
+                if response is not None:
+                    # Keep the source JSON if interpretation failed. A strict
+                    # model must never turn a new publisher shape into data loss.
+                    failed_responses[url] = response
 
     with ThreadPoolExecutor(nthreads) as pool:
         list(pool.map(fetch, urls))
 
+    if failed_responses:
+        # Keep the full retry set until the parsed snapshot is safely written.
+        write_pending(pending_path, urls, failed_responses)
     write(records, output_path)
-    write_pending(pending_path, failed_urls)
+    write_pending(pending_path, failed_urls, failed_responses)
     logging.info(f"Wrote {len(records)} meetings to {output_path}")
     if failures:
         logging.error(f"{len(failures)} meeting(s) failed:\n  " + "\n  ".join(failures[:50]))
@@ -115,10 +132,21 @@ def get(session, url, api_key, params=None, attempts=5):
 
 
 def read(path: Path) -> dict[str, dict]:
+    return {url: row.source_dict() for url, row in read_models(path).items()}
+
+
+def read_models(path: Path) -> dict[str, CommitteeMeeting]:
+    """Read native meeting models; ``read`` retains the existing dict interface."""
     if not Path(path).exists():
         return {}
     with gzip.open(path, "rt", encoding="utf-8") as f:
-        return {r["_url"]: r for r in map(json.loads, f)}
+        rows = (CommitteeMeeting.model_validate_json(line) for line in f)
+        result = {}
+        for row in rows:
+            if row.source_url is None:
+                raise ValueError("Retained meeting lacks _url")
+            result[row.source_url] = row
+        return result
 
 
 def write(records: dict[str, dict], path: Path) -> None:
@@ -135,11 +163,14 @@ def write(records: dict[str, dict], path: Path) -> None:
         temporary.unlink(missing_ok=True)
 
 
-def write_pending(path, urls):
+def write_pending(path, urls, responses=None):
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".tmp")
     try:
-        temporary.write_text(json.dumps({"urls": sorted(set(urls))}, indent=2) + "\n")
+        payload = {"urls": sorted(set(urls))}
+        if responses:
+            payload["responses"] = responses
+        temporary.write_text(json.dumps(payload, indent=2) + "\n")
         temporary.replace(path)
     finally:
         temporary.unlink(missing_ok=True)

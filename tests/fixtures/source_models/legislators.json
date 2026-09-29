@@ -1,0 +1,1151 @@
+[
+  {
+    "id": {
+      "bioguide": "C000127",
+      "thomas": "00172",
+      "lis": "S275",
+      "govtrack": 300018,
+      "opensecrets": "N00007836",
+      "votesmart": 27122,
+      "fec": [
+        "S8WA00194",
+        "H2WA01054"
+      ],
+      "cspan": 26137,
+      "wikipedia": "Maria Cantwell",
+      "house_history": 10608,
+      "ballotpedia": "Maria Cantwell",
+      "maplight": 544,
+      "icpsr": 39310,
+      "wikidata": "Q22250",
+      "google_entity_id": "kg:/m/01x68t",
+      "pictorial": 13398
+    },
+    "name": {
+      "first": "Maria",
+      "last": "Cantwell",
+      "official_full": "Maria Cantwell"
+    },
+    "bio": {
+      "birthday": "1958-10-13",
+      "gender": "F"
+    },
+    "terms": [
+      {
+        "type": "rep",
+        "start": "1993-01-05",
+        "end": "1995-01-03",
+        "state": "WA",
+        "district": 1,
+        "party": "Democrat"
+      },
+      {
+        "type": "sen",
+        "start": "2001-01-03",
+        "end": "2007-01-03",
+        "state": "WA",
+        "class": 1,
+        "party": "Democrat",
+        "url": "http://cantwell.senate.gov"
+      },
+      {
+        "type": "sen",
+        "start": "2007-01-04",
+        "end": "2013-01-03",
+        "state": "WA",
+        "class": 1,
+        "party": "Democrat",
+        "url": "http://cantwell.senate.gov",
+        "address": "311 HART SENATE OFFICE BUILDING WASHINGTON DC 20510",
+        "phone": "202-224-3441",
+        "fax": "202-228-0514",
+        "contact_form": "http://www.cantwell.senate.gov/contact/",
+        "office": "311 Hart Senate Office Building"
+      },
+      {
+        "type": "sen",
+        "start": "2013-01-03",
+        "end": "2019-01-03",
+        "state": "WA",
+        "party": "Democrat",
+        "class": 1,
+        "url": "https://www.cantwell.senate.gov",
+        "address": "511 Hart Senate Office Building Washington DC 20510",
+        "phone": "202-224-3441",
+        "fax": "202-228-0514",
+        "contact_form": "http://www.cantwell.senate.gov/public/index.cfm/email-maria",
+        "office": "511 Hart Senate Office Building",
+        "state_rank": "junior",
+        "rss_url": "http://www.cantwell.senate.gov/public/index.cfm/rss/feed"
+      },
+      {
+        "type": "sen",
+        "start": "2019-01-03",
+        "end": "2025-01-03",
+        "state": "WA",
+        "class": 1,
+        "party": "Democrat",
+        "state_rank": "junior",
+        "url": "https://www.cantwell.senate.gov",
+        "rss_url": "http://www.cantwell.senate.gov/public/index.cfm/rss/feed",
+        "contact_form": "https://www.cantwell.senate.gov/public/index.cfm/email-maria",
+        "address": "511 Hart Senate Office Building Washington DC 20510",
+        "office": "511 Hart Senate Office Building",
+        "phone": "202-224-3441"
+      },
+      {
+        "type": "sen",
+        "start": "2025-01-03",
+        "end": "2031-01-03",
+        "state": "WA",
+        "class": 1,
+        "state_rank": "junior",
+        "party": "Democrat",
+        "url": "https://www.cantwell.senate.gov",
+        "rss_url": "http://www.cantwell.senate.gov/public/index.cfm/rss/feed",
+        "contact_form": "https://www.cantwell.senate.gov/public/index.cfm/email-maria",
+        "address": "511 Hart Senate Office Building Washington DC 20510",
+        "office": "511 Hart Senate Office Building",
+        "phone": "202-224-3441"
+      }
+    ]
+  },
+  {
+    "id": {
+      "bioguide": "K000367",
+      "thomas": "01826",
+      "lis": "S311",
+      "govtrack": 412242,
+      "opensecrets": "N00027500",
+      "votesmart": 65092,
+      "fec": [
+        "S6MN00267"
+      ],
+      "cspan": 83701,
+      "wikipedia": "Amy Klobuchar",
+      "house_history": 16558,
+      "ballotpedia": "Amy Klobuchar",
+      "maplight": 724,
+      "icpsr": 40700,
+      "wikidata": "Q22237",
+      "google_entity_id": "kg:/m/05fbpt",
+      "pictorial": 13431
+    },
+    "name": {
+      "first": "Amy",
+      "middle": "Jean",
+      "last": "Klobuchar",
+      "official_full": "Amy Klobuchar"
+    },
+    "bio": {
+      "birthday": "1960-05-25",
+      "gender": "F"
+    },
+    "leadership_roles": [
+      {
+        "title": "Senate Democratic Steering Committee Chair",
+        "chamber": "senate",
+        "start": "2019-01-03",
+        "end": "2021-01-03"
+      },
+      {
+        "title": "Senate Democratic Steering Committee Chair",
+        "chamber": "senate",
+        "start": "2021-01-03",
+        "end": "2023-01-03"
+      },
+      {
+        "title": "Senate Democratic Steering Committee Chair",
+        "chamber": "senate",
+        "start": "2023-01-03",
+        "end": "2025-01-03"
+      },
+      {
+        "title": "Senate Democratic Steering Committee Chair",
+        "chamber": "senate",
+        "start": "2025-01-03"
+      }
+    ],
+    "terms": [
+      {
+        "type": "sen",
+        "start": "2007-01-04",
+        "end": "2013-01-03",
+        "state": "MN",
+        "class": 1,
+        "party": "Democrat",
+        "url": "http://klobuchar.senate.gov/",
+        "address": "302 HART SENATE OFFICE BUILDING WASHINGTON DC 20510",
+        "phone": "202-224-3244",
+        "fax": "202-228-2186",
+        "contact_form": "http://www.klobuchar.senate.gov/emailamy.cfm",
+        "office": "302 Hart Senate Office Building"
+      },
+      {
+        "type": "sen",
+        "start": "2013-01-03",
+        "end": "2019-01-03",
+        "state": "MN",
+        "party": "Democrat",
+        "class": 1,
+        "url": "https://www.klobuchar.senate.gov",
+        "address": "302 Hart Senate Office Building Washington DC 20510",
+        "phone": "202-224-3244",
+        "fax": "202-228-2186",
+        "contact_form": "http://www.klobuchar.senate.gov/public/index.cfm/contact",
+        "office": "302 Hart Senate Office Building",
+        "state_rank": "senior"
+      },
+      {
+        "type": "sen",
+        "start": "2019-01-03",
+        "end": "2025-01-03",
+        "state": "MN",
+        "class": 1,
+        "party": "Democrat",
+        "state_rank": "senior",
+        "url": "https://www.klobuchar.senate.gov",
+        "contact_form": "https://www.klobuchar.senate.gov/public/index.cfm/contact",
+        "address": "425 Dirksen Senate Office Building Washington DC 20510",
+        "office": "425 Dirksen Senate Office Building",
+        "phone": "202-224-3244"
+      },
+      {
+        "type": "sen",
+        "start": "2025-01-03",
+        "end": "2031-01-03",
+        "state": "MN",
+        "class": 1,
+        "state_rank": "senior",
+        "party": "Democrat",
+        "url": "https://www.klobuchar.senate.gov",
+        "contact_form": "https://www.klobuchar.senate.gov/public/index.cfm/contact",
+        "address": "425 Dirksen Senate Office Building Washington DC 20510",
+        "office": "425 Dirksen Senate Office Building",
+        "phone": "202-224-3244"
+      }
+    ]
+  },
+  {
+    "id": {
+      "bioguide": "S000033",
+      "thomas": "01010",
+      "lis": "S313",
+      "govtrack": 400357,
+      "opensecrets": "N00000528",
+      "votesmart": 27110,
+      "fec": [
+        "H8VT01016",
+        "S4VT00033"
+      ],
+      "cspan": 994,
+      "wikipedia": "Bernie Sanders",
+      "ballotpedia": "Bernie Sanders",
+      "maplight": 450,
+      "icpsr": 29147,
+      "house_history": 21173,
+      "wikidata": "Q359442",
+      "google_entity_id": "kg:/m/01_gbv",
+      "pictorial": 13382
+    },
+    "name": {
+      "first": "Bernard",
+      "last": "Sanders",
+      "nickname": "Bernie",
+      "official_full": "Bernard Sanders"
+    },
+    "bio": {
+      "birthday": "1941-09-08",
+      "gender": "M"
+    },
+    "leadership_roles": [
+      {
+        "title": "Senate Democratic Outreach Chair",
+        "chamber": "senate",
+        "start": "2023-01-03",
+        "end": "2025-01-03"
+      },
+      {
+        "title": "Senate Democratic Outreach Chair",
+        "chamber": "senate",
+        "start": "2025-01-03"
+      }
+    ],
+    "terms": [
+      {
+        "type": "rep",
+        "start": "1991-01-03",
+        "end": "1993-01-03",
+        "state": "VT",
+        "district": 0,
+        "party": "Independent",
+        "caucus": "Democrat"
+      },
+      {
+        "type": "rep",
+        "start": "1993-01-05",
+        "end": "1995-01-03",
+        "state": "VT",
+        "district": 0,
+        "party": "Independent",
+        "caucus": "Democrat"
+      },
+      {
+        "type": "rep",
+        "start": "1995-01-04",
+        "end": "1997-01-03",
+        "state": "VT",
+        "district": 0,
+        "party": "Independent",
+        "caucus": "Democrat"
+      },
+      {
+        "type": "rep",
+        "start": "1997-01-07",
+        "end": "1999-01-03",
+        "state": "VT",
+        "district": 0,
+        "party": "Independent",
+        "caucus": "Democrat"
+      },
+      {
+        "type": "rep",
+        "start": "1999-01-06",
+        "end": "2001-01-03",
+        "state": "VT",
+        "district": 0,
+        "party": "Independent",
+        "caucus": "Democrat"
+      },
+      {
+        "type": "rep",
+        "start": "2001-01-03",
+        "end": "2003-01-03",
+        "state": "VT",
+        "district": 0,
+        "party": "Independent",
+        "caucus": "Democrat"
+      },
+      {
+        "type": "rep",
+        "start": "2003-01-07",
+        "end": "2005-01-03",
+        "state": "VT",
+        "district": 0,
+        "party": "Independent",
+        "caucus": "Democrat",
+        "url": "http://bernie.house.gov"
+      },
+      {
+        "type": "rep",
+        "start": "2005-01-04",
+        "end": "2007-01-03",
+        "state": "VT",
+        "district": 0,
+        "party": "Independent",
+        "caucus": "Democrat",
+        "url": "http://bernie.house.gov"
+      },
+      {
+        "type": "sen",
+        "start": "2007-01-04",
+        "end": "2013-01-03",
+        "state": "VT",
+        "class": 1,
+        "party": "Independent",
+        "caucus": "Democrat",
+        "url": "http://sanders.senate.gov/",
+        "address": "332 DIRKSEN SENATE OFFICE BUILDING WASHINGTON DC 20510",
+        "phone": "202-224-5141",
+        "fax": "202-228-0776",
+        "contact_form": "http://www.sanders.senate.gov/contact/",
+        "office": "332 Dirksen Senate Office Building"
+      },
+      {
+        "type": "sen",
+        "start": "2013-01-03",
+        "end": "2019-01-03",
+        "state": "VT",
+        "party": "Independent",
+        "caucus": "Democrat",
+        "class": 1,
+        "url": "https://www.sanders.senate.gov",
+        "address": "332 Dirksen Senate Office Building Washington DC 20510",
+        "phone": "202-224-5141",
+        "fax": "202-228-0776",
+        "contact_form": "http://www.sanders.senate.gov/contact/",
+        "office": "332 Dirksen Senate Office Building",
+        "state_rank": "junior",
+        "rss_url": "http://www.sanders.senate.gov/rss/"
+      },
+      {
+        "type": "sen",
+        "start": "2019-01-03",
+        "end": "2025-01-03",
+        "state": "VT",
+        "class": 1,
+        "party": "Independent",
+        "caucus": "Democrat",
+        "state_rank": "senior",
+        "url": "https://www.sanders.senate.gov",
+        "rss_url": "http://www.sanders.senate.gov/rss/",
+        "contact_form": "https://www.sanders.senate.gov/contact/",
+        "address": "332 Dirksen Senate Office Building Washington DC 20510",
+        "office": "332 Dirksen Senate Office Building",
+        "phone": "202-224-5141"
+      },
+      {
+        "type": "sen",
+        "start": "2025-01-03",
+        "end": "2031-01-03",
+        "state": "VT",
+        "class": 1,
+        "state_rank": "senior",
+        "party": "Independent",
+        "caucus": "Democrat",
+        "url": "https://www.sanders.senate.gov",
+        "rss_url": "http://www.sanders.senate.gov/rss/",
+        "contact_form": "https://www.sanders.senate.gov/contact/",
+        "address": "332 Dirksen Senate Office Building Washington DC 20510",
+        "office": "332 Dirksen Senate Office Building",
+        "phone": "202-224-5141"
+      }
+    ]
+  },
+  {
+    "id": {
+      "bioguide": "B001261",
+      "thomas": "01881",
+      "lis": "S317",
+      "govtrack": 412251,
+      "opensecrets": "N00006236",
+      "votesmart": 52662,
+      "fec": [
+        "S6WY00068"
+      ],
+      "cspan": 1024777,
+      "wikipedia": "John Barrasso",
+      "ballotpedia": "John Barrasso",
+      "maplight": 732,
+      "icpsr": 40707,
+      "wikidata": "Q720521",
+      "google_entity_id": "kg:/m/02rsm32",
+      "pictorial": 13410
+    },
+    "name": {
+      "first": "John",
+      "middle": "A.",
+      "last": "Barrasso",
+      "official_full": "John Barrasso"
+    },
+    "bio": {
+      "birthday": "1952-07-21",
+      "gender": "M"
+    },
+    "leadership_roles": [
+      {
+        "title": "Senate Republican Conference Chair",
+        "chamber": "senate",
+        "start": "2019-01-03",
+        "end": "2021-01-03"
+      },
+      {
+        "title": "Senate Republican Conference Chair",
+        "chamber": "senate",
+        "start": "2021-01-03",
+        "end": "2023-01-03"
+      },
+      {
+        "title": "Senate Republican Conference Chair",
+        "chamber": "senate",
+        "start": "2023-01-03",
+        "end": "2025-01-03"
+      },
+      {
+        "title": "Senate Majority Whip",
+        "chamber": "senate",
+        "start": "2025-01-03"
+      }
+    ],
+    "terms": [
+      {
+        "type": "sen",
+        "start": "2007-06-25",
+        "end": "2013-01-03",
+        "state": "WY",
+        "class": 1,
+        "party": "Republican",
+        "url": "http://barrasso.senate.gov",
+        "address": "307 DIRKSEN SENATE OFFICE BUILDING WASHINGTON DC 20510",
+        "phone": "202-224-6441",
+        "fax": "202-224-1724",
+        "contact_form": "http://www.barrasso.senate.gov/public/index.cfm?FuseAction=ContactUs.ContactForm",
+        "office": "307 Dirksen Senate Office Building",
+        "how": "appointment"
+      },
+      {
+        "type": "sen",
+        "start": "2013-01-03",
+        "end": "2019-01-03",
+        "state": "WY",
+        "party": "Republican",
+        "class": 1,
+        "url": "https://www.barrasso.senate.gov",
+        "address": "307 Dirksen Senate Office Building Washington DC 20510",
+        "phone": "202-224-6441",
+        "fax": "202-224-1724",
+        "contact_form": "https://www.barrasso.senate.gov/public/index.cfm/contact-form",
+        "office": "307 Dirksen Senate Office Building",
+        "state_rank": "junior",
+        "rss_url": "http://www.barrasso.senate.gov/public/index.cfm?FuseAction=Rss.Feed"
+      },
+      {
+        "type": "sen",
+        "start": "2019-01-03",
+        "end": "2025-01-03",
+        "state": "WY",
+        "class": 1,
+        "party": "Republican",
+        "state_rank": "senior",
+        "url": "https://www.barrasso.senate.gov",
+        "rss_url": "http://www.barrasso.senate.gov/public/index.cfm?FuseAction=Rss.Feed",
+        "contact_form": "https://www.barrasso.senate.gov/public/index.cfm/contact-form",
+        "address": "307 Dirksen Senate Office Building Washington DC 20510",
+        "office": "307 Dirksen Senate Office Building",
+        "phone": "202-224-6441"
+      },
+      {
+        "type": "sen",
+        "start": "2025-01-03",
+        "end": "2031-01-03",
+        "state": "WY",
+        "class": 1,
+        "state_rank": "senior",
+        "party": "Republican",
+        "url": "https://www.barrasso.senate.gov",
+        "rss_url": "http://www.barrasso.senate.gov/public/index.cfm?FuseAction=Rss.Feed",
+        "contact_form": "https://www.barrasso.senate.gov/public/index.cfm/contact-form",
+        "address": "307 Dirksen Senate Office Building Washington DC 20510",
+        "office": "307 Dirksen Senate Office Building",
+        "phone": "202-224-6441"
+      }
+    ]
+  },
+  {
+    "id": {
+      "bioguide": "B001257",
+      "thomas": "01838",
+      "govtrack": 412250,
+      "opensecrets": "N00027462",
+      "votesmart": 17318,
+      "fec": [
+        "H6FL09070"
+      ],
+      "cspan": 1022873,
+      "wikipedia": "Gus Bilirakis",
+      "house_history": 10413,
+      "ballotpedia": "Gus M. Bilirakis",
+      "maplight": 731,
+      "icpsr": 20758,
+      "wikidata": "Q1555314",
+      "google_entity_id": "kg:/m/0dy3z1",
+      "pictorial": 12993
+    },
+    "name": {
+      "first": "Gus",
+      "last": "Bilirakis",
+      "official_full": "Gus M. Bilirakis",
+      "middle": "M."
+    },
+    "bio": {
+      "birthday": "1963-02-08",
+      "gender": "M"
+    },
+    "terms": [
+      {
+        "type": "rep",
+        "start": "2007-01-04",
+        "end": "2009-01-03",
+        "state": "FL",
+        "district": 9,
+        "party": "Republican",
+        "url": "http://bilirakis.house.gov"
+      },
+      {
+        "type": "rep",
+        "start": "2009-01-06",
+        "end": "2011-01-03",
+        "state": "FL",
+        "district": 9,
+        "party": "Republican",
+        "url": "http://bilirakis.house.gov"
+      },
+      {
+        "type": "rep",
+        "start": "2011-01-05",
+        "end": "2013-01-03",
+        "state": "FL",
+        "district": 9,
+        "party": "Republican",
+        "url": "http://bilirakis.house.gov",
+        "address": "407 Cannon HOB; Washington DC 20515-0909",
+        "phone": "202-225-5755",
+        "fax": "202-225-4085",
+        "contact_form": "http://bilirakis.house.gov/index.php?option=com_content&amp;task=view&amp;id=212&amp;Itemid=44",
+        "office": "407 Cannon House Office Building"
+      },
+      {
+        "type": "rep",
+        "start": "2013-01-03",
+        "end": "2015-01-03",
+        "state": "FL",
+        "party": "Republican",
+        "district": 12,
+        "url": "http://bilirakis.house.gov",
+        "address": "2313 Rayburn HOB; Washington DC 20515-0912",
+        "phone": "202-225-5755",
+        "fax": "202-225-4085",
+        "contact_form": "https://bilirakis.house.gov/email-congressman-bilirakis/",
+        "office": "2313 Rayburn House Office Building",
+        "rss_url": "http://bilirakis.house.gov/index.php?format=feed&amp;type=rss"
+      },
+      {
+        "type": "rep",
+        "start": "2015-01-06",
+        "end": "2017-01-03",
+        "state": "FL",
+        "party": "Republican",
+        "district": 12,
+        "url": "https://bilirakis.house.gov",
+        "address": "2112 Rayburn HOB; Washington DC 20515-0912",
+        "phone": "202-225-5755",
+        "fax": "202-225-4085",
+        "contact_form": "https://bilirakis.house.gov/email-congressman-bilirakis/",
+        "office": "2112 Rayburn House Office Building",
+        "rss_url": "http://bilirakis.house.gov/index.php?format=feed&amp;type=rss"
+      },
+      {
+        "type": "rep",
+        "start": "2017-01-03",
+        "end": "2019-01-03",
+        "state": "FL",
+        "district": 12,
+        "party": "Republican",
+        "phone": "202-225-5755",
+        "url": "https://bilirakis.house.gov",
+        "rss_url": "http://bilirakis.house.gov/index.php?format=feed&amp;type=rss",
+        "address": "2112 Rayburn House Office Building; Washington DC 20515-0912",
+        "office": "2112 Rayburn House Office Building",
+        "fax": "202-225-4085"
+      },
+      {
+        "type": "rep",
+        "start": "2019-01-03",
+        "end": "2021-01-03",
+        "state": "FL",
+        "district": 12,
+        "party": "Republican",
+        "phone": "202-225-5755",
+        "address": "2227 Rayburn House Office Building Washington DC 20515-0912",
+        "office": "2227 Rayburn House Office Building",
+        "url": "https://bilirakis.house.gov",
+        "rss_url": "http://bilirakis.house.gov/index.php?format=feed&amp;type=rss"
+      },
+      {
+        "type": "rep",
+        "start": "2021-01-03",
+        "end": "2023-01-03",
+        "state": "FL",
+        "district": 12,
+        "party": "Republican",
+        "url": "https://bilirakis.house.gov",
+        "rss_url": "http://bilirakis.house.gov/index.php?format=feed&amp;type=rss",
+        "address": "2354 Rayburn House Office Building Washington DC 20515-0912",
+        "office": "2354 Rayburn House Office Building",
+        "phone": "202-225-5755"
+      },
+      {
+        "type": "rep",
+        "start": "2023-01-03",
+        "end": "2025-01-03",
+        "state": "FL",
+        "district": 12,
+        "party": "Republican",
+        "url": "https://bilirakis.house.gov",
+        "rss_url": "http://bilirakis.house.gov/index.php?format=feed&amp;type=rss",
+        "address": "2306 Rayburn House Office Building Washington DC 20515-0912",
+        "office": "2306 Rayburn House Office Building",
+        "phone": "202-225-5755"
+      },
+      {
+        "type": "rep",
+        "start": "2025-01-03",
+        "end": "2027-01-03",
+        "state": "FL",
+        "district": 12,
+        "party": "Republican",
+        "url": "https://bilirakis.house.gov",
+        "rss_url": "http://bilirakis.house.gov/index.php?format=feed&amp;type=rss",
+        "address": "2306 Rayburn House Office Building Washington DC 20515-0912",
+        "office": "2306 Rayburn House Office Building",
+        "phone": "202-225-5755"
+      }
+    ],
+    "family": [
+      {
+        "name": "Michael Bilirakis",
+        "relation": "son"
+      }
+    ]
+  },
+  {
+    "id": {
+      "bioguide": "B000490",
+      "thomas": "00091",
+      "govtrack": 400030,
+      "opensecrets": "N00002674",
+      "votesmart": 26817,
+      "fec": [
+        "H2GA02031"
+      ],
+      "cspan": 26194,
+      "wikipedia": "Sanford Bishop",
+      "maplight": 148,
+      "icpsr": 29339,
+      "house_history": 7697,
+      "wikidata": "Q983428",
+      "google_entity_id": "kg:/m/02554k",
+      "ballotpedia": "Sanford Bishop Jr.",
+      "pictorial": 13011
+    },
+    "name": {
+      "first": "Sanford",
+      "middle": "D.",
+      "last": "Bishop",
+      "suffix": "Jr.",
+      "official_full": "Sanford D. Bishop, Jr."
+    },
+    "bio": {
+      "birthday": "1947-02-04",
+      "gender": "M"
+    },
+    "terms": [
+      {
+        "type": "rep",
+        "start": "1993-01-05",
+        "end": "1995-01-03",
+        "state": "GA",
+        "district": 2,
+        "party": "Democrat"
+      },
+      {
+        "type": "rep",
+        "start": "1995-01-04",
+        "end": "1997-01-03",
+        "state": "GA",
+        "district": 2,
+        "party": "Democrat"
+      },
+      {
+        "type": "rep",
+        "start": "1997-01-07",
+        "end": "1999-01-03",
+        "state": "GA",
+        "district": 2,
+        "party": "Democrat"
+      },
+      {
+        "type": "rep",
+        "start": "1999-01-06",
+        "end": "2001-01-03",
+        "state": "GA",
+        "district": 2,
+        "party": "Democrat"
+      },
+      {
+        "type": "rep",
+        "start": "2001-01-03",
+        "end": "2003-01-03",
+        "state": "GA",
+        "district": 2,
+        "party": "Democrat"
+      },
+      {
+        "type": "rep",
+        "start": "2003-01-07",
+        "end": "2005-01-03",
+        "state": "GA",
+        "district": 2,
+        "party": "Democrat",
+        "url": "http://www.house.gov/bishop"
+      },
+      {
+        "type": "rep",
+        "start": "2005-01-04",
+        "end": "2007-01-03",
+        "state": "GA",
+        "district": 2,
+        "party": "Democrat",
+        "url": "http://www.house.gov/bishop"
+      },
+      {
+        "type": "rep",
+        "start": "2007-01-04",
+        "end": "2009-01-03",
+        "state": "GA",
+        "district": 2,
+        "party": "Democrat",
+        "url": "http://bishop.house.gov"
+      },
+      {
+        "type": "rep",
+        "start": "2009-01-06",
+        "end": "2011-01-03",
+        "state": "GA",
+        "district": 2,
+        "party": "Democrat",
+        "url": "http://bishop.house.gov"
+      },
+      {
+        "type": "rep",
+        "start": "2011-01-05",
+        "end": "2013-01-03",
+        "state": "GA",
+        "district": 2,
+        "party": "Democrat",
+        "url": "http://bishop.house.gov",
+        "address": "2429 Rayburn HOB; Washington DC 20515-1002",
+        "phone": "202-225-3631",
+        "fax": "202-225-2203",
+        "contact_form": "http://bishop.house.gov/display.cfm?section_id=13",
+        "office": "2429 Rayburn House Office Building"
+      },
+      {
+        "type": "rep",
+        "start": "2013-01-03",
+        "end": "2015-01-03",
+        "state": "GA",
+        "party": "Democrat",
+        "district": 2,
+        "url": "http://bishop.house.gov",
+        "address": "2429 Rayburn HOB; Washington DC 20515-1002",
+        "phone": "202-225-3631",
+        "fax": "202-225-2203",
+        "contact_form": "http://bishop.house.gov/contact",
+        "office": "2429 Rayburn House Office Building",
+        "rss_url": "http://bishop.house.gov/rss.xml"
+      },
+      {
+        "type": "rep",
+        "start": "2015-01-06",
+        "end": "2017-01-03",
+        "state": "GA",
+        "party": "Democrat",
+        "district": 2,
+        "url": "http://bishop.house.gov",
+        "address": "2407 Rayburn HOB; Washington DC 20515-1002",
+        "phone": "202-225-3631",
+        "fax": "202-225-2203",
+        "contact_form": "http://bishop.house.gov/contact",
+        "office": "2407 Rayburn House Office Building",
+        "rss_url": "http://bishop.house.gov/rss.xml"
+      },
+      {
+        "type": "rep",
+        "start": "2017-01-03",
+        "end": "2019-01-03",
+        "state": "GA",
+        "district": 2,
+        "party": "Democrat",
+        "phone": "202-225-3631",
+        "url": "https://bishop.house.gov",
+        "rss_url": "http://bishop.house.gov/rss.xml",
+        "address": "2407 Rayburn House Office Building; Washington DC 20515-1002",
+        "office": "2407 Rayburn House Office Building",
+        "fax": "202-225-2203"
+      },
+      {
+        "type": "rep",
+        "start": "2019-01-03",
+        "end": "2021-01-03",
+        "state": "GA",
+        "district": 2,
+        "party": "Democrat",
+        "phone": "202-225-3631",
+        "address": "2407 Rayburn House Office Building Washington DC 20515-1002",
+        "office": "2407 Rayburn House Office Building",
+        "url": "https://bishop.house.gov",
+        "rss_url": "http://bishop.house.gov/rss.xml"
+      },
+      {
+        "type": "rep",
+        "start": "2021-01-03",
+        "end": "2023-01-03",
+        "state": "GA",
+        "district": 2,
+        "party": "Democrat",
+        "url": "https://bishop.house.gov",
+        "rss_url": "http://bishop.house.gov/rss.xml",
+        "address": "2407 Rayburn House Office Building Washington DC 20515-1002",
+        "office": "2407 Rayburn House Office Building",
+        "phone": "202-225-3631"
+      },
+      {
+        "type": "rep",
+        "start": "2023-01-03",
+        "end": "2025-01-03",
+        "state": "GA",
+        "district": 2,
+        "party": "Democrat",
+        "url": "https://bishop.house.gov",
+        "rss_url": "http://bishop.house.gov/rss.xml",
+        "address": "2407 Rayburn House Office Building Washington DC 20515-1002",
+        "office": "2407 Rayburn House Office Building",
+        "phone": "202-225-3631"
+      },
+      {
+        "type": "rep",
+        "start": "2025-01-03",
+        "end": "2027-01-03",
+        "state": "GA",
+        "district": 2,
+        "party": "Democrat",
+        "url": "https://bishop.house.gov",
+        "rss_url": "http://bishop.house.gov/rss.xml",
+        "address": "2407 Rayburn House Office Building Washington DC 20515-1002",
+        "office": "2407 Rayburn House Office Building",
+        "phone": "202-225-3631"
+      }
+    ]
+  },
+  {
+    "id": {
+      "bioguide": "S001203",
+      "lis": "S394",
+      "govtrack": 412742,
+      "votesmart": 152968,
+      "fec": [
+        "S8MN00578"
+      ],
+      "cspan": 111313,
+      "icpsr": 41706,
+      "wikipedia": "Tina Smith",
+      "ballotpedia": "Tina Smith",
+      "wikidata": "Q18631509",
+      "google_entity_id": "kg:/m/0127xvy3",
+      "maplight": 2253,
+      "opensecrets": "N00042353",
+      "pictorial": 13389
+    },
+    "name": {
+      "first": "Tina",
+      "middle": "Flint",
+      "last": "Smith",
+      "official_full": "Tina Smith"
+    },
+    "bio": {
+      "birthday": "1958-03-04",
+      "gender": "F"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "start": "2018-01-03",
+        "end": "2018-11-06",
+        "how": "appointment",
+        "end-type": "special-election",
+        "state": "MN",
+        "class": 2,
+        "party": "Democrat",
+        "state_rank": "junior",
+        "address": "309 Hart Senate Office Building Washington DC 20510",
+        "office": "309 Hart Senate Office Building",
+        "phone": "202-224-5641",
+        "url": "https://www.smith.senate.gov",
+        "contact_form": "https://www.smith.senate.gov/content/contact-senator"
+      },
+      {
+        "type": "sen",
+        "start": "2018-11-07",
+        "end": "2021-01-03",
+        "state": "MN",
+        "class": 2,
+        "party": "Democrat",
+        "state_rank": "junior",
+        "address": "720 Hart Senate Office Building Washington DC 20510",
+        "office": "720 Hart Senate Office Building",
+        "phone": "202-224-5641",
+        "url": "https://www.smith.senate.gov",
+        "contact_form": "https://www.smith.senate.gov/contact-tina"
+      },
+      {
+        "type": "sen",
+        "start": "2021-01-03",
+        "end": "2027-01-03",
+        "state": "MN",
+        "class": 2,
+        "state_rank": "junior",
+        "party": "Democrat",
+        "url": "https://www.smith.senate.gov",
+        "contact_form": "https://www.smith.senate.gov/share-your-opinion/",
+        "address": "720 Hart Senate Office Building Washington DC 20510",
+        "office": "720 Hart Senate Office Building",
+        "phone": "202-224-5641"
+      }
+    ]
+  },
+  {
+    "id": {
+      "bioguide": "V000133",
+      "fec": [
+        "H8NJ02166"
+      ],
+      "govtrack": 412796,
+      "wikipedia": "Jeff Van Drew",
+      "wikidata": "Q6175202",
+      "opensecrets": "N00042164",
+      "google_entity_id": "kg:/m/08h3sl",
+      "votesmart": 24685,
+      "icpsr": 21980,
+      "ballotpedia": "Jeff Van Drew",
+      "pictorial": 13151
+    },
+    "name": {
+      "first": "Jefferson",
+      "last": "Van Drew",
+      "official_full": "Jefferson Van Drew"
+    },
+    "bio": {
+      "gender": "M",
+      "birthday": "1953-02-23"
+    },
+    "terms": [
+      {
+        "type": "rep",
+        "start": "2019-01-03",
+        "end": "2021-01-03",
+        "state": "NJ",
+        "district": 2,
+        "party": "Republican",
+        "party_affiliations": [
+          {
+            "start": "2019-01-03",
+            "end": "2019-12-18",
+            "party": "Democrat"
+          },
+          {
+            "start": "2019-12-19",
+            "end": "2021-01-03",
+            "party": "Republican"
+          }
+        ],
+        "phone": "202-225-6572",
+        "address": "331 Cannon House Office Building Washington DC 20515-3002",
+        "office": "331 Cannon House Office Building",
+        "url": "https://vandrew.house.gov"
+      },
+      {
+        "type": "rep",
+        "start": "2021-01-03",
+        "end": "2023-01-03",
+        "state": "NJ",
+        "district": 2,
+        "party": "Republican",
+        "url": "https://vandrew.house.gov",
+        "address": "2447 Rayburn House Office Building Washington DC 20515-3002",
+        "office": "2447 Rayburn House Office Building",
+        "phone": "202-225-6572"
+      },
+      {
+        "type": "rep",
+        "start": "2023-01-03",
+        "end": "2025-01-03",
+        "state": "NJ",
+        "district": 2,
+        "party": "Republican",
+        "url": "https://vandrew.house.gov",
+        "address": "2447 Rayburn House Office Building Washington DC 20515-3002",
+        "office": "2447 Rayburn House Office Building",
+        "phone": "202-225-6572"
+      },
+      {
+        "type": "rep",
+        "start": "2025-01-03",
+        "end": "2027-01-03",
+        "state": "NJ",
+        "district": 2,
+        "party": "Republican",
+        "url": "https://vandrew.house.gov",
+        "address": "2447 Rayburn House Office Building Washington DC 20515-3002",
+        "office": "2447 Rayburn House Office Building",
+        "phone": "202-225-6572"
+      }
+    ]
+  },
+  {
+    "id": {
+      "bioguide": "K000401",
+      "fec": [
+        "H2CA03157"
+      ],
+      "govtrack": 456881,
+      "opensecrets": "N00050259",
+      "wikidata": "Q27987136",
+      "wikipedia": "Kevin Kiley (politician)",
+      "google_entity_id": "kg:/g/11c5qpst__",
+      "votesmart": 169303,
+      "ballotpedia": "Kevin Kiley",
+      "pictorial": 12917
+    },
+    "name": {
+      "first": "Kevin",
+      "middle": "Patrick",
+      "last": "Kiley",
+      "official_full": "Kevin Kiley"
+    },
+    "bio": {
+      "gender": "M",
+      "birthday": "1985-01-30"
+    },
+    "terms": [
+      {
+        "type": "rep",
+        "start": "2023-01-03",
+        "end": "2025-01-03",
+        "state": "CA",
+        "district": 3,
+        "party": "Republican",
+        "url": "https://kiley.house.gov",
+        "address": "1032 Longworth House Office Building Washington DC 20515-0503",
+        "office": "1032 Longworth House Office Building",
+        "phone": "202-225-2523"
+      },
+      {
+        "type": "rep",
+        "start": "2025-01-03",
+        "end": "2027-01-03",
+        "state": "CA",
+        "district": 3,
+        "party": "Independent",
+        "caucus": "Republican",
+        "party_affiliations": [
+          {
+            "start": "2025-01-03",
+            "end": "2026-03-08",
+            "party": "Republican"
+          },
+          {
+            "start": "2026-03-09",
+            "end": "2027-01-03",
+            "party": "Independent",
+            "caucus": "Republican"
+          }
+        ],
+        "url": "https://kiley.house.gov",
+        "address": "2445 Rayburn House Office Building Washington DC 20515-0503",
+        "office": "2445 Rayburn House Office Building",
+        "phone": "202-225-2523"
+      }
+    ]
+  }
+]

@@ -1,0 +1,166 @@
+{
+  "committee": {
+    "bills": {
+      "count": 41081,
+      "url": "https://api.congress.gov/v3/committee/senate/ssju00/bills?format=json"
+    },
+    "committeeWebsiteUrl": "https://www.judiciary.senate.gov/",
+    "communications": {
+      "count": 9172,
+      "url": "https://api.congress.gov/v3/committee/senate/ssju00/senate-communication?format=json"
+    },
+    "history": [
+      {
+        "committeeTypeCode": "Standing",
+        "establishingAuthority": "14 Senate Journal 38",
+        "libraryOfCongressName": "Judiciary",
+        "locLinkedDataId": "n82209587",
+        "naraId": "10676863",
+        "officialName": "Committee on the Judiciary",
+        "startDate": "1816-12-10T04:56:00Z",
+        "superintendentDocumentNumber": "Y 4.J 89/2:",
+        "updateDate": "2025-07-21T19:32:24Z"
+      }
+    ],
+    "isCurrent": true,
+    "nominations": {
+      "count": 5579,
+      "url": "https://api.congress.gov/v3/committee/senate/ssju00/nominations?format=json"
+    },
+    "reports": {
+      "count": 180,
+      "url": "https://api.congress.gov/v3/committee/senate/ssju00/reports?format=json"
+    },
+    "subcommittees": [
+      {
+        "name": "Terrorism, Technology, and Government Information Subcommittee",
+        "systemCode": "ssju05",
+        "url": "https://api.congress.gov/v3/committee/senate/ssju05?format=json"
+      },
+      {
+        "name": "Patents, Copyrights and Trademarks Subcommittee",
+        "systemCode": "ssju06",
+        "url": "https://api.congress.gov/v3/committee/senate/ssju06?format=json"
+      },
+      {
+        "name": "Criminal Justice Oversight Subcommittee",
+        "systemCode": "ssju11",
+        "url": "https://api.congress.gov/v3/committee/senate/ssju11?format=json"
+      },
+      {
+        "name": "Crime, Corrections and Victims' Rights Subcommittee",
+        "systemCode": "ssju12",
+        "url": "https://api.congress.gov/v3/committee/senate/ssju12?format=json"
+      },
+      {
+        "name": "Crime and Drugs Subcommittee",
+        "systemCode": "ssju15",
+        "url": "https://api.congress.gov/v3/committee/senate/ssju15?format=json"
+      },
+      {
+        "name": "Intellectual Property Subcommittee",
+        "systemCode": "ssju17",
+        "url": "https://api.congress.gov/v3/committee/senate/ssju17?format=json"
+      },
+      {
+        "name": "Human Rights and the Law Subcommittee",
+        "systemCode": "ssju19",
+        "url": "https://api.congress.gov/v3/committee/senate/ssju19?format=json"
+      },
+      {
+        "name": "Antitrust, Competition Policy, and Consumer Rights Subcommittee",
+        "systemCode": "ssju01",
+        "url": "https://api.congress.gov/v3/committee/senate/ssju01?format=json"
+      },
+      {
+        "name": "Border Security and Immigration Subcommittee",
+        "systemCode": "ssju04",
+        "url": "https://api.congress.gov/v3/committee/senate/ssju04?format=json"
+      },
+      {
+        "name": "Administrative Oversight and the Courts Subcommittee",
+        "systemCode": "ssju02",
+        "url": "https://api.congress.gov/v3/committee/senate/ssju02?format=json"
+      },
+      {
+        "name": "Terrorism and Homeland Security Subcommittee",
+        "systemCode": "ssju09",
+        "url": "https://api.congress.gov/v3/committee/senate/ssju09?format=json"
+      },
+      {
+        "name": "Constitution Subcommittee",
+        "systemCode": "ssju18",
+        "url": "https://api.congress.gov/v3/committee/senate/ssju18?format=json"
+      },
+      {
+        "name": "Bankruptcy and the Courts Subcommittee",
+        "systemCode": "ssju24",
+        "url": "https://api.congress.gov/v3/committee/senate/ssju24?format=json"
+      },
+      {
+        "name": "Constitution, Civil Rights and Property Rights Subcommittee",
+        "systemCode": "ssju03",
+        "url": "https://api.congress.gov/v3/committee/senate/ssju03?format=json"
+      },
+      {
+        "name": "Youth Violence Subcommittee",
+        "systemCode": "ssju07",
+        "url": "https://api.congress.gov/v3/committee/senate/ssju07?format=json"
+      },
+      {
+        "name": "Corrections and Rehabilitation Subcommittee",
+        "systemCode": "ssju14",
+        "url": "https://api.congress.gov/v3/committee/senate/ssju14?format=json"
+      },
+      {
+        "name": "Human Rights and the Law Subcommittee",
+        "systemCode": "ssju20",
+        "url": "https://api.congress.gov/v3/committee/senate/ssju20?format=json"
+      },
+      {
+        "name": "Privacy, Technology and the Law Subcommittee",
+        "systemCode": "ssju23",
+        "url": "https://api.congress.gov/v3/committee/senate/ssju23?format=json"
+      },
+      {
+        "name": "Privacy, Technology, and the Law Subcommittee",
+        "systemCode": "ssju28",
+        "url": "https://api.congress.gov/v3/committee/senate/ssju28?format=json"
+      },
+      {
+        "name": "Federal Courts, Oversight, Agency Action, and Federal Rights Subcommittee",
+        "systemCode": "ssju25",
+        "url": "https://api.congress.gov/v3/committee/senate/ssju25?format=json"
+      },
+      {
+        "name": "Intellectual Property Subcommittee",
+        "systemCode": "ssju26",
+        "url": "https://api.congress.gov/v3/committee/senate/ssju26?format=json"
+      },
+      {
+        "name": "Human Rights and the Law Subcommittee",
+        "systemCode": "ssju27",
+        "url": "https://api.congress.gov/v3/committee/senate/ssju27?format=json"
+      },
+      {
+        "name": "Constitution Subcommittee",
+        "systemCode": "ssju21",
+        "url": "https://api.congress.gov/v3/committee/senate/ssju21?format=json"
+      },
+      {
+        "name": "Crime and Counterterrorism Subcommittee",
+        "systemCode": "ssju22",
+        "url": "https://api.congress.gov/v3/committee/senate/ssju22?format=json"
+      }
+    ],
+    "systemCode": "ssju00",
+    "type": "Standing",
+    "updateDate": "2026-08-10T11:51:27Z"
+  },
+  "request": {
+    "chamber": "senate",
+    "contentType": "application/json",
+    "format": "json",
+    "systemCode": "ssju00"
+  }
+}

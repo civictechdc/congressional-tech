@@ -1,0 +1,220 @@
+{
+    "committees": [
+        {
+            "chamber": "House",
+            "committeeTypeCode": "Standing",
+            "name": "Budget Committee",
+            "systemCode": "hsbu00",
+            "updateDate": "2026-09-08T19:24:14Z",
+            "url": "https://api.congress.gov/v3/committee/house/hsbu00?format=json"
+        },
+        {
+            "chamber": "Senate",
+            "committeeTypeCode": "Select",
+            "name": "Ethics (Select) Committee",
+            "systemCode": "slet00",
+            "updateDate": "2026-09-08T18:08:24Z",
+            "url": "https://api.congress.gov/v3/committee/senate/slet00?format=json"
+        },
+        {
+            "chamber": "Senate",
+            "committeeTypeCode": "Standing",
+            "name": "Small Business and Entrepreneurship Committee",
+            "systemCode": "sssb00",
+            "updateDate": "2026-09-08T18:07:00Z",
+            "url": "https://api.congress.gov/v3/committee/senate/sssb00?format=json"
+        },
+        {
+            "chamber": "Senate",
+            "committeeTypeCode": "Standing",
+            "name": "Environment and Public Works Committee",
+            "subcommittees": [
+                {
+                    "name": "Transportation and Infrastructure Subcommittee",
+                    "systemCode": "ssev08",
+                    "url": "https://api.congress.gov/v3/committee/senate/ssev08?format=json"
+                },
+                {
+                    "name": "Chemical Safety, Waste Management, Environmental Justice, and Regulatory Oversight Subcommittee",
+                    "systemCode": "ssev09",
+                    "url": "https://api.congress.gov/v3/committee/senate/ssev09?format=json"
+                },
+                {
+                    "name": "Fisheries, Water, and Wildlife Subcommittee",
+                    "systemCode": "ssev15",
+                    "url": "https://api.congress.gov/v3/committee/senate/ssev15?format=json"
+                },
+                {
+                    "name": "Clean Air, Climate, and Nuclear Innovation and Safety Subcommittee Subcommittee",
+                    "systemCode": "ssev10",
+                    "url": "https://api.congress.gov/v3/committee/senate/ssev10?format=json"
+                }
+            ],
+            "systemCode": "ssev00",
+            "updateDate": "2026-09-08T18:05:35Z",
+            "url": "https://api.congress.gov/v3/committee/senate/ssev00?format=json"
+        },
+        {
+            "chamber": "Senate",
+            "committeeTypeCode": "Standing",
+            "name": "Energy and Natural Resources Committee",
+            "subcommittees": [
+                {
+                    "name": "Public Lands, Forests, and Mining Subcommittee",
+                    "systemCode": "sseg03",
+                    "url": "https://api.congress.gov/v3/committee/senate/sseg03?format=json"
+                },
+                {
+                    "name": "National Parks Subcommittee",
+                    "systemCode": "sseg04",
+                    "url": "https://api.congress.gov/v3/committee/senate/sseg04?format=json"
+                },
+                {
+                    "name": "Energy Subcommittee",
+                    "systemCode": "sseg01",
+                    "url": "https://api.congress.gov/v3/committee/senate/sseg01?format=json"
+                },
+                {
+                    "name": "Water and Power Subcommittee",
+                    "systemCode": "sseg07",
+                    "url": "https://api.congress.gov/v3/committee/senate/sseg07?format=json"
+                }
+            ],
+            "systemCode": "sseg00",
+            "updateDate": "2026-09-08T17:45:24Z",
+            "url": "https://api.congress.gov/v3/committee/senate/sseg00?format=json"
+        },
+        {
+            "chamber": "Senate",
+            "committeeTypeCode": "Standing",
+            "name": "Commerce, Science, and Transportation Committee",
+            "subcommittees": [
+                {
+                    "name": "Coast Guard, Maritime, and Fisheries Subcommittee",
+                    "systemCode": "sscm36",
+                    "url": "https://api.congress.gov/v3/committee/senate/sscm36?format=json"
+                },
+                {
+                    "name": "Science, Manufacturing, and Competitiveness Subcommittee",
+                    "systemCode": "sscm37",
+                    "url": "https://api.congress.gov/v3/committee/senate/sscm37?format=json"
+                },
+                {
+                    "name": "Aviation, Space, and Innovation Subcommittee",
+                    "systemCode": "sscm33",
+                    "url": "https://api.congress.gov/v3/committee/senate/sscm33?format=json"
+                },
+                {
+                    "name": "Telecommunications and Media Subcommittee",
+                    "systemCode": "sscm34",
+                    "url": "https://api.congress.gov/v3/committee/senate/sscm34?format=json"
+                },
+                {
+                    "name": "Consumer Protection, Technology, and Data Privacy Subcommittee",
+                    "systemCode": "sscm35",
+                    "url": "https://api.congress.gov/v3/committee/senate/sscm35?format=json"
+                },
+                {
+                    "name": "Surface Transportation, Freight, Pipelines, and Safety Subcommittee",
+                    "systemCode": "sscm38",
+                    "url": "https://api.congress.gov/v3/committee/senate/sscm38?format=json"
+                },
+                {
+                    "name": "Tourism, Trade, and Export",
+                    "systemCode": "sscm39",
+                    "url": "https://api.congress.gov/v3/committee/senate/sscm39?format=json"
+                }
+            ],
+            "systemCode": "sscm00",
+            "updateDate": "2026-09-08T17:38:24Z",
+            "url": "https://api.congress.gov/v3/committee/senate/sscm00?format=json"
+        },
+        {
+            "chamber": "Senate",
+            "committeeTypeCode": "Standing",
+            "name": "Judiciary Committee",
+            "subcommittees": [
+                {
+                    "name": "Antitrust, Competition Policy, and Consumer Rights Subcommittee",
+                    "systemCode": "ssju01",
+                    "url": "https://api.congress.gov/v3/committee/senate/ssju01?format=json"
+                },
+                {
+                    "name": "Border Security and Immigration Subcommittee",
+                    "systemCode": "ssju04",
+                    "url": "https://api.congress.gov/v3/committee/senate/ssju04?format=json"
+                },
+                {
+                    "name": "Privacy, Technology, and the Law Subcommittee",
+                    "systemCode": "ssju28",
+                    "url": "https://api.congress.gov/v3/committee/senate/ssju28?format=json"
+                },
+                {
+                    "name": "Federal Courts, Oversight, Agency Action, and Federal Rights Subcommittee",
+                    "systemCode": "ssju25",
+                    "url": "https://api.congress.gov/v3/committee/senate/ssju25?format=json"
+                },
+                {
+                    "name": "Intellectual Property Subcommittee",
+                    "systemCode": "ssju26",
+                    "url": "https://api.congress.gov/v3/committee/senate/ssju26?format=json"
+                },
+                {
+                    "name": "Human Rights and the Law Subcommittee",
+                    "systemCode": "ssju27",
+                    "url": "https://api.congress.gov/v3/committee/senate/ssju27?format=json"
+                },
+                {
+                    "name": "Constitution Subcommittee",
+                    "systemCode": "ssju21",
+                    "url": "https://api.congress.gov/v3/committee/senate/ssju21?format=json"
+                },
+                {
+                    "name": "Crime and Counterterrorism Subcommittee",
+                    "systemCode": "ssju22",
+                    "url": "https://api.congress.gov/v3/committee/senate/ssju22?format=json"
+                }
+            ],
+            "systemCode": "ssju00",
+            "updateDate": "2026-08-10T11:51:27Z",
+            "url": "https://api.congress.gov/v3/committee/senate/ssju00?format=json"
+        },
+        {
+            "chamber": "Joint",
+            "committeeTypeCode": "Commission or Caucus",
+            "name": "U.S.-China Economic and Security Review Commission",
+            "systemCode": "jcuc00",
+            "updateDate": "2026-07-09T10:55:50Z",
+            "url": "https://api.congress.gov/v3/committee/joint/jcuc00?format=json"
+        },
+        {
+            "chamber": "Joint",
+            "committeeTypeCode": "Joint",
+            "name": "Joint Economic Committee",
+            "systemCode": "jjec00",
+            "updateDate": "2026-05-13T17:49:00Z",
+            "url": "https://api.congress.gov/v3/committee/joint/jjec00?format=json"
+        },
+        {
+            "chamber": "House",
+            "committeeTypeCode": "Task Force",
+            "name": "Task Force on the Declassification of Federal Secrets Subcommittee",
+            "parent": {
+                "name": "Oversight and Government Reform Committee",
+                "systemCode": "hsgo00",
+                "url": "https://api.congress.gov/v3/committee/house/hsgo00?format=json"
+            },
+            "systemCode": "hzgo34",
+            "updateDate": "2026-01-22T19:34:38Z",
+            "url": "https://api.congress.gov/v3/committee/house/hzgo34?format=json"
+        }
+    ],
+    "pagination": {
+        "count": 238,
+        "next": "https://api.congress.gov/v3/committee/119?offset=10&limit=10&format=json"
+    },
+    "request": {
+        "contentType": "application/json",
+        "format": "json"
+    }
+}

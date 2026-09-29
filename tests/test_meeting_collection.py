@@ -98,6 +98,8 @@ def test_missing_collection_field_is_an_error_not_confirmed_empty(tmp_path, monk
     with pytest.raises(KeyError, match="committeeMeetings"):
         meetings.main(path, nthreads=1)
     assert path.read_bytes() == before
+    rejected = json.loads(path.with_suffix(path.suffix + '.rejected.json').read_text())
+    assert rejected[0]['response'] == {}
 
 
 def test_repeating_pagination_fails_without_replacing_snapshot(tmp_path, monkeypatch):
@@ -116,3 +118,19 @@ def test_incomplete_detail_does_not_replace_previously_saved_record(tmp_path, mo
         meetings.main(path, nthreads=1)
     assert meetings.read(path)[url] == old
     assert pending(path) == [url]
+    retained = json.loads(path.with_suffix(path.suffix + ".pending.json").read_text())
+    assert retained['responses'][url] == {'committeeMeeting': {}}
+
+
+def test_rejected_source_survives_a_later_snapshot_write_failure(tmp_path, monkeypatch):
+    path, url, old = setup(monkeypatch, tmp_path)
+    raw = {'committeeMeeting': {**old, 'congress': 'unexpected publisher value'}}
+    monkeypatch.setattr(meetings, 'get', lambda session, address, key, params=None:
+                        {'committeeMeetings': [{'url': url}]} if params else raw)
+    monkeypatch.setattr(meetings, 'write', lambda *args: (_ for _ in ()).throw(OSError('disk full')))
+    with pytest.raises(OSError):
+        meetings.main(path, nthreads=1)
+    retained = json.loads(path.with_suffix(path.suffix + '.pending.json').read_text())
+    assert retained['responses'][url] == raw
+    assert retained['urls'] == [url]
+    assert meetings.read(path)[url] == old
