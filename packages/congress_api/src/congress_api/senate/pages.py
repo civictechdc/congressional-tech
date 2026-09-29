@@ -178,6 +178,19 @@ def event_details(page_html, url):
     # Caucus uses an unlabeled date immediately before the hearing heading.
     candidates = [text(value) for value in re.findall(r'<(?:div|p)[^>]*class="jet-listing-dynamic-field__content"[^>]*>(.*?)</(?:div|p)>', page_html, re.S)]
     date_text = next((value for value in candidates if re.match(r"^Date:\s*", value, re.I)), None)
+    displayed_type = None
+    if date_text is None and host.removeprefix("www.") == "help.senate.gov":
+        # The older HELP template labels its event date inside Hearing__details.
+        # Keep its displayed type, rather than inferring one from the bill list.
+        root = dom.fromstring(page_html)
+        details = root.xpath('//*[contains(concat(" ", normalize-space(@class), " "), " Hearing__details ")]')
+        if details:
+            dates = details[0].xpath('.//time')
+            if len(dates) == 1:
+                date_text = text(dom.tostring(dates[0], encoding="unicode", with_tail=False))
+                labels = root.xpath('//*[contains(concat(" ", normalize-space(@class), " "), " PageContent--pageTop ")]//*[contains(concat(" ", normalize-space(@class), " "), " Heading--overline ")]')
+                if len(labels) == 1:
+                    displayed_type = text(dom.tostring(labels[0], encoding="unicode", with_tail=False)) or None
     if date_text is None and host.removeprefix("www.") == "drugcaucus.senate.gov":
         before = page_html[max(0, heading.start() - 3000):heading.start()]
         values = re.findall(r'<(?:div|p)[^>]*class="jet-listing-dynamic-field__content"[^>]*>(.*?)</(?:div|p)>', before, re.S)
@@ -186,7 +199,7 @@ def event_details(page_html, url):
     date = written_day(match) if match else None
     if not title or date is None:
         return None
-    native_type = event_type(title) or "Meeting"
+    native_type = displayed_type or event_type(title) or "Meeting"
     if native_type == "Meeting" and re.search(r'\b(?:hold|held)\s+(?:a\s+)?field hearing titled', text(page_html[heading.end():heading.end() + 18000]), re.I):
         native_type = "Field Hearing"
     if native_type == "Meeting" and re.search(r'<body[^>]*class="[^"]*\bsingle-hearings\b', page_html):

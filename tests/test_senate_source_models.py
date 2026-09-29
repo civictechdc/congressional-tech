@@ -46,6 +46,22 @@ def test_html_bytes_that_are_not_utf8_remain_exact_through_model_and_adapter():
     assert RawContent.model_validate(source.payload['raw_html']).body_bytes() == raw
 
 
+def test_archived_help_page_keeps_displayed_event_date_and_type():
+    raw = (SOURCES / 'senate-help-executive-session-20230615.html').read_bytes()
+    url = 'https://www.help.senate.gov/hearings/s-133-s-134-s-265-s-1844-s-1852-and-s-1855'
+    page = records.parse_page(raw, url)
+    assert page.event.date == '2023-06-15'
+    assert page.event.date_text == 'Thursday, June 15th, 2023'
+    assert page.event.type == 'Executive Session'
+    assert page.event.title == 'S. 133, S. 134, S. 265, S. 1844, S. 1852, and S. 1855'
+    assert len(page.documents) == 3
+    assert SenatePage.model_validate(page.source_dict()).source_dict() == page.source_dict()
+    assert page.raw_html.body_bytes() == raw
+    # An unrelated date outside the recognized hearing details cannot admit an event.
+    unrelated = raw.replace(b'Hearing__details', b'Unrelated__details')
+    assert records.parse_page(unrelated, url).event is None
+
+
 def test_native_site_and_page_models_have_the_same_normalization_as_dictionaries():
     page = records.parse_page(HTML, PAGE)
     state = {HOST: {'pages': {PAGE: page.source_dict()}}}
