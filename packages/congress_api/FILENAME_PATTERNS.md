@@ -45,8 +45,14 @@ in [GovInfo's Congressional Bills help](https://www.govinfo.gov/help/bills),
 checked September 29, 2026. Recognized fields carry a normalized `code`, the
 published `label`, and `vocabulary_url` alongside the unchanged `raw` text and
 offsets. This table is a vocabulary, not an exhaustive list of valid filenames.
-Unlisted source tokens such as `pih`, `pis`, `or`, `SA` and `SUS` remain available
-without an invented official label.
+The House's [Document Naming Conventions, page 6](https://www.govinfo.gov/content/pkg/GOVPUB-Y1_2-PURL-gpo156119/pdf/GOVPUB-Y1_2-PURL-gpo156119.pdf#page=6)
+separately defines `PIH` as a pre-introduced measure. It receives that label and
+the House guide's source URL, without changing the 53-code GovInfo vocabulary.
+The guide describes unnumbered measures, but actual House names such as
+`BILLS-115hres5-PIH-FINAL.pdf` also print a number. Both claims survive; this parser
+does not erase the number or infer current bill status. `PIS` is not assigned the
+same meaning by analogy. Other tokens without an implemented vocabulary mapping
+remain available without an invented label.
 
 | Filename | Extracted parts |
 | --- | --- |
@@ -54,6 +60,10 @@ without an invented official label.
 | `BILLS-113-HR4660ih(asfiled).pdf` | Congress `113`, bill type `HR`, number `4660`, version `ih`, annotation `asfiled`. |
 | `BILLS-1172126r4ih.pdf` | Congress `117`, number `2126`, prefix `r4`, version `ih`; no bill type supplied. |
 | `BILLS-119HR2162HoneyIntegrityActih.pdf` | Number `2162`, descriptor `HoneyIntegrityAct`, version-shaped suffix `ih`. |
+| `BILLS-118 hres_44HR277HR288HR1615HR1640_xml.pdf` | Resolution type `hres`, number `44`, all four following measure references, filename format marker `xml`; actual extension `pdf`. |
+| `BILLS-118 hres_HR2670_2_xml.pdf` | Resolution type `hres` without a number, reference `HR2670`, unexplained numeric suffix `2`, filename format marker `xml`. |
+| `BILLS-115HR__-RCP115-77.pdf` | Type `HR`, number placeholder `__`, print Congress `115` and print number `77`; no bill number invented. |
+| `BILLS-113hrFARMEXT-SUS.pdf` | Type `hr`, literal title `FARMEXT`, local code `SUS`; no official version label inferred. |
 
 GovInfo labels the actual `BILLS-115hr1892eas2` package as Engrossed Amendment
 (Senate), confirming the `eas` base code. The help page does not define the
@@ -68,6 +78,15 @@ user-reviewed exception `Interiorih` splits into `Interior` + `ih`; it does not
 change how a bare `rih` code is read. Consecutive digits without a separator remain
 one literal numeric field; this parser does not resolve bill identity from an
 ambiguous concatenated number.
+
+A dictionary hit alone does not establish a version boundary. `ANSServices`
+and `HR1Services` keep the whole `Services` descriptor; `es` remains only a
+candidate, without an official code/label. The parser accepts explicit separated
+versions, numeric boundaries, explicit marker/version slots, visible acronym/code
+case boundaries, and the reviewed joined `ih`/`pih`/`pis` conventions. A separated
+version wins over an earlier word ending: `ANSServices-ES` retains `Services-`
+and the printed `ES`. Mixed-case `OAWPih` retains both `ih` and `pih` as candidates
+alongside the whole descriptor. These conventions extract syntax, not bill status.
 
 Multiple references such as `HR6147HR6258` remain a measure list, not a version
 and numeric modifier. Case, parentheses, hyphens and all remaining text survive
@@ -104,6 +123,12 @@ The generated patterns and Congress scopes appear in `member-title-rules.json`.
 This is a reference-assisted boundary reading, not proof of a person's identity.
 Two members sharing a surname are not resolved to a particular member.
 
+The same supplied surname vocabulary handles suffixes such as `-RepMoylanih`.
+It retains the original suffix and adds member/version fields; no number or
+title is invented. Without a supplied surname match the suffix remains raw.
+When a title excludes an ambiguous version candidate, its note says so and the
+whole descriptive text remains available.
+
 `RepRadewagen` supplies a name without an invented title. The literal `Rep`
 marker is retained even for `RepHoeven`; it does not verify chamber or
 sponsorship. Title text stays verbatim:
@@ -118,7 +143,7 @@ From the repository root, with the project's Python environment:
 .venv/bin/python -m congress_api.filename_corpus \
   output/filename-clustering/filenames.parquet output/filename-regex \
   --legislators .cache/source-models/legislators-current.json
-.venv/bin/python -m pytest tests/test_filename_patterns.py -q
+.venv/bin/python -m pytest tests/test_filename_patterns.py tests/test_filename_families.py tests/test_filename_residuals.py tests/test_filename_audit_fixes.py -q
 ```
 
 The inventory reader includes both representative `filename` values and every
@@ -137,6 +162,13 @@ names remain unsplit. The audit records every supplied reference file's hash.
 | `coverage.json` | Input/code hashes, complete audit counts and the limits of those measurements. |
 | `collisions.json` | Competing full-layout or payload interpretations; field-level overlap is intentional. |
 | `review.jsonl.gz` | Every name without a full layout, with an unparsed structured payload, or without recurring lexical tokens; includes the fields that were extracted. |
+| `residual-fields.jsonl.gz` | Every nonempty `descriptor`/`suffix`, the specific fields already extracted inside it, and exact remaining text spans. Includes fully explained suffixes with empty residual spans. |
+| `residual-patterns.jsonl.gz` | All remaining text shapes, ranked by distinct literal filename count, with original examples. |
+| `residual-summary.json` | Residual counts by rule/field and recurring shapes, separate from layout coverage. |
+| `other-text-fields.jsonl.gz` | Other opaque fields and stems without a complete outer layout, with exact remaining spans. Structured enclosing payloads and simple numeric amendment/document identifiers are excluded from this text backlog. |
+| `other-text-patterns.jsonl.gz` | All remaining shapes in those other fields, ranked with examples and distinct-stem counts. |
+| `other-text-summary.json` | Counts for other text by rule and field; retained names, identifiers and descriptions are not automatically errors. |
+| `capture-review.json` | Counts and up to three raw examples per rule/field/status/code group, including vocabulary labels, candidate interpretations, unlisted codes, dates without valid readings and literal syntax. |
 | `unmatched-rules.json` | Ordered date/time patterns followed by identifier/name fallback regexes. |
 | `unmatched-resolutions.jsonl` | Every originally unmatched name and its assumed interpretation, or ZIP exclusion. |
 | `unmatched-names.txt` | Names still unresolved after the user assumptions; regenerated on every run. |
@@ -151,6 +183,93 @@ Structural rules use `re.fullmatch` for `stem` and nested payload scopes, and
 `re.finditer` for `search` scope. Payload offsets are relative to the original
 filename. `parse_filename` implements this dispatch; use it instead of treating
 all exported patterns as interchangeable searches.
+
+Scoped `published-suffix-search` rules inspect only published-package suffixes;
+`legislative-text-search` rules inspect legislative descriptors and suffixes.
+They recover literal `add`, `err`, volume/part markers, `ANS` and `HAmdt` without
+assigning official expansions. Existing numeric part captures are reused.
+`REVISED` and mixed print separators such as `RCP115- 13` have general bounded
+search rules. Overlap between field searches is not a competing full layout.
+
+Additional legislative families apply only when the existing inner layouts do
+not match. The exported `fallback` value specifies their order: `0` is the
+existing parser, `1` is explicit committee/amendment/print/type notation, `2`
+is local identifiers or type-plus-title drafts, and `3` is an introduced-draft
+suffix after descriptive text. Stop after the first tier with matches. Multiple
+matches within that tier remain visible and fail the collision audit.
+
+These rules preserve empty appropriations slots, absent bill numbers, literal
+placeholders, compound local IDs, malformed sponsor slots and print/division
+markers. `KOOO395` is retained as `sponsor_identifier_token`, not converted into
+a Bioguide identifier. `PIH`/`PIS` remain whole; only `PIH` has a verified House
+definition. Optional identifier
+letters cannot consume their first character and produce an invented IH/IS
+interpretation. An opaque descriptor still indicates uninterpreted text even
+when the outer naming family is recognized.
+
+The joined-title/local-code rule requires a visible lowercase-to-uppercase
+boundary, such as `hrFARMEXT-SUS`. It does not guess where a type ends inside
+an entirely uppercase string. Combined resolution/measure-list rules retain
+each measure through the existing reference extraction. Neither a filename's
+`_xml` marker nor an unexplained numeric suffix changes its extension or
+establishes the document format, bill version, or amendment number.
+
+## Measure text remaining inside matched layouts
+
+Layout coverage and shared-token coverage do not measure how much text has
+been separated into useful fields. The residual audit runs on every filename,
+including names whose layouts already match. It subtracts specific captures
+from each nonempty `descriptor` and `suffix`. For example, `-U1` is already
+explained by its revision marker/number, while `-FreeText-U1` leaves `FreeText`.
+Enclosing payloads and other broad text captures cannot hide those residuals.
+
+Residuals retain exact source spelling and offsets. Their review shapes fold
+case and replace digit runs with `<number>` to reveal repeated conventions;
+these shapes are not new extraction regexes or document classifications.
+Every shape, including singletons, remains available in the compressed output.
+Recurrence counts literal filenames, so PDF/XML variants may count separately.
+
+A title that remains free text is useful retained information, not necessarily
+a missing field. Other opaque fields and unstructured stems are now audited in
+separate artifacts. All residual spans have exact substring checks and complete,
+nonoverlapping accounting of alphanumeric characters. Ambiguous version candidates
+cannot hide residual words. Candidate dates and identifiers count as extracted
+syntax without establishing their roles; `capture-review.json` exposes those
+interpretations for review. Distinct stems collapse case/format variants for
+recurrence analysis without asserting document identity.
+
+## Frozen parser comparisons
+
+The bounded comparison and its retained failed candidates are documented in
+`tests/filename-family-experiment.md`. Replay with
+`tests/compare_filename_families.py`; it uses the same parser on frozen and current
+source, counts new useful fields separately from new layout matches, and checks
+that every old capture survives unchanged.
+
+The subsequent nine-name correction and residual audit are retained separately
+under `output/filename-regex/residual-audit-20260929/`. Replay that comparison with:
+
+```bash
+.venv/bin/python tests/compare_filename_families.py replay \
+  --root output/filename-regex/residual-audit-20260929 --minimum-useful 9
+```
+
+The output subdirectory must not already exist. This comparison requires all
+previous matches and fields to survive and rejects changes outside the declared
+nine filenames. The older experiment keeps its original baseline and results.
+
+The subsequent combined-review fixes use the frozen parser and vocabulary in
+`output/filename-regex/findings-fix-20260929/`. Comparison loads both frozen files;
+it does not silently substitute the current bill-code vocabulary for the baseline.
+Both audit commands record source/input hashes before work, verify them afterward,
+retain their artifacts and exit nonzero when their acceptance checks fail.
+
+For deliberate interpretation corrections, `--expected-changes` accepts reviewed
+exact before/after match hashes keyed by filename. A different result, a stale
+entry, a collision, or an input/code change during execution fails the comparison.
+An initial comparison without that file intentionally fails on undeclared changes
+and saves them for inspection; it is not an accepted run. This permits correction
+of a wrong label without weakening unrelated regression checks.
 
 ## Assumptions for the unmatched remainder
 
