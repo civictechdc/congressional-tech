@@ -59,3 +59,36 @@ def test_transient_failure_is_not_absence(monkeypatch):
     with pytest.raises(RuntimeError, match="request error") as error:
         http.get_with_retry(Session(), "https://example.org/item?api_key=secret", allowed=(200, 404))
     assert "secret" not in str(error.value)
+
+
+def test_http_same_host_requests_overlap_and_keep_start_spacing(monkeypatch):
+    from collections import defaultdict
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+    import time
+    import requests
+    from congress_api import http
+
+    monkeypatch.setattr(http, "_next", defaultdict(float))
+    first_started, second_started = Event(), Event()
+    starts = []
+
+    class Session:
+        def request(self, method, url, **kwargs):
+            starts.append(time.monotonic())
+            if url.endswith('/first'):
+                first_started.set()
+                assert second_started.wait(3), 'First response blocked the second request'
+            else:
+                second_started.set()
+            response = requests.Response()
+            response.status_code = 200
+            return response
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(http.get_with_retry, Session(), 'https://parallel.test/first')
+        assert first_started.wait(3)
+        second = pool.submit(http.get_with_retry, Session(), 'https://parallel.test/second')
+        assert first.result(timeout=4).status_code == 200
+        assert second.result(timeout=4).status_code == 200
+    assert starts[1] - starts[0] >= .19
