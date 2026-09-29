@@ -16,7 +16,7 @@ from pathlib import Path
 import re
 
 from congress_api.filenames import (
-    EXTENSION, RULES, UNMATCHED_RULES, resolve_unmatched_filename, filename_tokens, parse_filename, registry,
+    EXTENSION, RULES, UNMATCHED_RULES, ParsedFilename, FilenameField, resolve_unmatched_filename, filename_tokens, parse_filename, registry,
     shared_token_pattern,
     member_title_pattern,
 )
@@ -51,6 +51,77 @@ def _line(stream, value):
     stream.write(json.dumps(value, ensure_ascii=False, separators=(',', ':')) + '\n')
 
 
+# These fields retain descriptive text or enclosing strings. They must not mask
+# a descriptor/suffix merely because another broad capture covers the same text.
+DESCRIPTIVE_FIELDS = frozenset({
+    'payload', 'descriptor', 'suffix', 'subject_token', 'title_token',
+    'context_token', 'recipient_token', 'annotation',
+})
+OTHER_TEXT_FIELDS = DESCRIPTIVE_FIELDS - {'descriptor', 'suffix'} | {'amendment_token', 'document_number'}
+SOURCE_FILES = ('filenames.py', 'filename_corpus.py', 'bill_codes.py', 'models/legislators.py', 'models/base.py')
+
+
+def file_hashes(paths):
+    return {str(path.resolve()): hashlib.sha256(path.read_bytes()).hexdigest() for path in paths}
+
+
+def uncertain_capture(field):
+    return bool(field.candidates and field.code is None)
+
+
+def residual_fields(parsed: ParsedFilename, *, field_names=frozenset({'descriptor', 'suffix'}),
+                    include_unstructured=False) -> list[dict]:
+    """Inspect descriptor/suffix text after subtracting specific field spans.
+
+    A date candidate or literal identifier counts as extracted syntax, not as
+    verified meaning. Residual text is retained information, not necessarily a
+    parser defect: titles and ordinary prose can properly remain free text.
+    """
+    specific = [(match.rule, field) for match in parsed.matches for field in match.fields
+                if field.name not in DESCRIPTIVE_FIELDS | field_names and field.raw
+                and not (field.name == 'version_token' and uncertain_capture(field))]
+    targets = [(match.rule, field) for match in parsed.matches for field in match.fields
+               if field.name in field_names and field.raw
+               and not (field.name in {'amendment_token', 'document_number'} and re.fullmatch(r'[0-9]+[A-Za-z]?', field.raw))]
+    scopes = {r.id: r.scope for r in RULES}
+    if include_unstructured and not any(scopes.get(m.rule) == 'stem' for m in parsed.matches):
+        targets.append(('unstructured-stem', FilenameField(name='unstructured_stem',
+                        raw=parsed.filename[:parsed.stem_end], start=0, end=parsed.stem_end)))
+    rows = []
+    for rule, field in targets:
+        # An inner layout already describes this enclosing payload. Audit
+        # its individual text fields rather than counting the wrapper twice.
+        if field.name == 'payload' and any(scopes.get(m.rule, '').endswith('-payload')
+                and m.start == field.start and m.end == field.end for m in parsed.matches):
+            continue
+        covered = [(rule, f) for rule, f in specific if f.start < field.end and f.end > field.start]
+        intervals = sorted((max(field.start, f.start), min(field.end, f.end)) for _, f in covered)
+        spans = []
+        cursor = field.start
+        for start, end in [*intervals, (field.end, field.end)]:
+            left, right = cursor, start
+            # Keep internal punctuation and exact source offsets; ignore
+            # delimiter-only gaps between already extracted fields.
+            while left < right and not parsed.filename[left].isalnum():
+                left += 1
+            while right > left and not parsed.filename[right - 1].isalnum():
+                right -= 1
+            if left < right:
+                spans.append({'raw': parsed.filename[left:right], 'start': left, 'end': right})
+            cursor = max(cursor, end)
+        # Account for every alphanumeric character independently of the
+        # interval subtraction. This also checks overlapping captures.
+        source_positions = {i for i in range(field.start, field.end) if parsed.filename[i].isalnum()}
+        covered_positions = {i for start, end in intervals for i in range(start, end) if parsed.filename[i].isalnum()}
+        residual_positions = {i for span in spans for i in range(span['start'], span['end']) if parsed.filename[i].isalnum()}
+        assert source_positions == covered_positions | residual_positions
+        assert not covered_positions & residual_positions
+        rows.append({'rule': rule, 'field': field.model_dump(),
+                     'covered_by': [{'rule': rule, 'field': f.model_dump()} for rule, f in covered],
+                     'residual_spans': spans})
+    return rows
+
+
 def build_corpus(filenames, output: Path, *, member_surnames: dict[str, tuple[str, ...]] | None = None) -> dict:
     """Validate all literal spellings; export shared rules and reviewable gaps.
 
@@ -68,6 +139,13 @@ def build_corpus(filenames, output: Path, *, member_surnames: dict[str, tuple[st
     counts = Counter()
     assumption_counts = Counter()
     date_resolution_counts = Counter()
+    residual_counts = Counter(opaque_fields_audited=0, fields_with_residual_text=0,
+                              filenames_with_opaque_fields=0, filenames_with_residual_text=0)
+    residual_groups = defaultdict(Counter)
+    residual_patterns = {}
+    other_groups = defaultdict(Counter)
+    other_patterns = {}
+    capture_groups = {}
     input_digest = hashlib.sha256()
     for name in names:
         input_digest.update((json.dumps(name, ensure_ascii=False) + '\n').encode())
@@ -89,6 +167,15 @@ def build_corpus(filenames, output: Path, *, member_surnames: dict[str, tuple[st
                 assert 0 <= match.start <= field.start <= field.end <= match.end <= len(name)
                 assert name[field.start:field.end] == field.raw
                 counts['field_spans_checked'] += 1
+                if field.name not in DESCRIPTIVE_FIELDS:
+                    status = ('uncertain' if uncertain_capture(field) else 'unresolved_date' if field.name == 'date_token'
+                              else 'vocabulary_label' if field.label
+                              else 'unlisted_code' if field.name in {'version_token', 'measure_token'} else 'literal_syntax')
+                    value = field.raw.casefold() if field.name in {'version_token', 'measure_token', 'document_token'} else field.code
+                    group = capture_groups.setdefault((match.rule, field.name, status, value), {'occurrences': 0, 'examples': []})
+                    group['occurrences'] += 1
+                    if len(group['examples']) < 3:
+                        group['examples'].append({'filename': name, 'field': field.model_dump()})
                 if field.name == 'member_surname_token':
                     counts['member_title_matches'] += 1
                 if field.name == 'date_token':
@@ -97,7 +184,7 @@ def build_corpus(filenames, output: Path, *, member_surnames: dict[str, tuple[st
                            'date_occurrences_one_reading' if field.candidates else
                            'date_occurrences_without_calendar_reading'] += 1
         for scope, ids in per_scope.items():
-            if scope not in {'search', 'extension'} and len(ids) > 1:
+            if scope not in {'search', 'extension'} and not scope.endswith('-search') and len(ids) > 1:
                 collisions.append({'filename': name, 'scope': scope, 'rules': ids})
         seen = set()
         for token in filename_tokens(parsed):
@@ -128,10 +215,48 @@ def build_corpus(filenames, output: Path, *, member_surnames: dict[str, tuple[st
 
     output.mkdir(parents=True, exist_ok=True)
     with (_gzip_text(output / 'review.jsonl.gz') as gaps,
+          _gzip_text(output / 'residual-fields.jsonl.gz') as residuals,
+          _gzip_text(output / 'other-text-fields.jsonl.gz') as other_text,
           (output / 'unmatched-resolutions.jsonl').open('w', encoding='utf-8') as resolutions,
           (output / 'unmatched-names.txt').open('w', encoding='utf-8') as unmatched):
         for name in names:
             parsed = parse_filename(name, member_surnames=member_surnames)
+            other = residual_fields(parsed, field_names=OTHER_TEXT_FIELDS, include_unstructured=True)
+            if other:
+                _line(other_text, {'filename': name, 'fields': other})
+            for row in other:
+                key = (row['rule'], row['field']['name'])
+                other_groups[key]['fields_audited'] += 1
+                other_groups[key]['fields_with_residual_text'] += bool(row['residual_spans'])
+                if row['residual_spans']:
+                    shape = ' … '.join(re.sub(r'[0-9]+', '<number>', span['raw'].casefold()) for span in row['residual_spans'])
+                    group = other_patterns.setdefault((*key, shape), {'filenames': 0, 'stems': set(), 'examples': []})
+                    group['filenames'] += 1
+                    group['stems'].add(name[:parsed.stem_end].casefold())
+                    if len(group['examples']) < 3:
+                        group['examples'].append({'filename': name, 'spans': row['residual_spans']})
+            opaque = residual_fields(parsed)
+            residual_counts['filenames_with_opaque_fields'] += bool(opaque)
+            residual_counts['filenames_with_residual_text'] += any(row['residual_spans'] for row in opaque)
+            if opaque:
+                _line(residuals, {'filename': name, 'fields': opaque})
+            for row in opaque:
+                key = (row['rule'], row['field']['name'])
+                group = residual_groups[key]
+                group['fields_audited'] += 1
+                residual_counts['opaque_fields_audited'] += 1
+                has_residual = bool(row['residual_spans'])
+                group['fields_with_residual_text'] += has_residual
+                residual_counts['fields_with_residual_text'] += has_residual
+                if has_residual:
+                    # A review grouping, not an extraction rule or inferred type.
+                    shape = ' … '.join(re.sub(r'[0-9]+', '<number>', span['raw'].casefold())
+                                       for span in row['residual_spans'])
+                    pattern = residual_patterns.setdefault((*key, shape), {'names': set(), 'stems': set(), 'examples': []})
+                    pattern['names'].add(name)
+                    pattern['stems'].add(name[:parsed.stem_end].casefold())
+                    if len(pattern['examples']) < 3:
+                        pattern['examples'].append({'filename': name, 'spans': row['residual_spans']})
             expected = defaultdict(list)
             for token in filename_tokens(parsed):
                 key = (token.kind, token.raw.casefold())
@@ -177,6 +302,41 @@ def build_corpus(filenames, output: Path, *, member_surnames: dict[str, tuple[st
                              'unmatched_interpretation': interpretation.model_dump() if interpretation else None,
                              'matches': [m.model_dump() for m in parsed.matches if m.rule != 'extension']})
                 counts['review_rows'] += 1
+    ranked_residuals = sorted([
+        {'rule': rule, 'field': field, 'shape': shape, 'filenames': len(row['names']), 'distinct_stems': len(row['stems']), 'examples': row['examples']}
+        for (rule, field, shape), row in residual_patterns.items()
+    ], key=lambda row: (-row['filenames'], row['rule'], row['field'], row['shape']))
+    with _gzip_text(output / 'residual-patterns.jsonl.gz') as stream:
+        for row in ranked_residuals:
+            _line(stream, row)
+    with _gzip_text(output / 'other-text-patterns.jsonl.gz') as stream:
+        for (rule, field, shape), row in sorted(other_patterns.items(), key=lambda item: (-item[1]['filenames'], item[0])):
+            _line(stream, dict(rule=rule, field=field, shape=shape, filenames=row['filenames'], distinct_stems=len(row['stems']), examples=row['examples']))
+    _write_json(output / 'other-text-summary.json', {
+        'by_rule_and_field': [dict(rule=rule, field=field, **values) for (rule, field), values in sorted(other_groups.items())],
+        'scope': 'Other opaque fields and stems without a full outer layout; structured enclosing payloads are skipped.',
+        'limits': 'Residual text can be useful names, identifiers or prose. Plain numeric/letter-suffixed amendment and document IDs are already captured syntax and remain in capture-review rather than this text review. Distinct stems are not resolved document identities.',
+    })
+    _write_json(output / 'capture-review.json', [
+        dict(rule=rule, field=field, status=status, value=value, **row)
+        for (rule, field, status, value), row in sorted(capture_groups.items(), key=lambda item: str(item[0]))
+    ])
+    _write_json(output / 'residual-summary.json', {
+        **dict(residual_counts),
+        'by_rule_and_field': [dict(rule=rule, field=field, **values)
+                              for (rule, field), values in sorted(residual_groups.items())],
+        'distinct_residual_shapes': len(ranked_residuals),
+        'recurring_residual_shapes': sum(row['filenames'] >= 2 for row in ranked_residuals),
+        'top_recurring_shapes': [row for row in ranked_residuals if row['filenames'] >= 2][:50],
+        'scope': 'Nonempty descriptor and suffix fields, after subtracting specific captures; delimiters alone are excluded.',
+        'limits': [
+            'Residual text can be an appropriate free-text title, not missing structured metadata.',
+            'Extracted syntax includes uncertain dates and literal identifiers; it does not prove their meaning.',
+            'Other opaque fields and unstructured stems are reported separately in other-text artifacts; inferred fields are sampled in capture-review.json.',
+            'Shapes fold case and replace digit runs only to rank review work; they are not parser rules.',
+            'Counts refer to literal filenames; PDF/XML spellings can refer to the same document.',
+        ],
+    })
     with _gzip_text(output / 'shared-tokens.jsonl.gz') as stream:
         for (kind, token), row in sorted(shared.items()):
             _line(stream, {'id': f'{kind}:{token}', 'kind': kind, 'token': token,
@@ -205,6 +365,7 @@ def build_corpus(filenames, output: Path, *, member_surnames: dict[str, tuple[st
         'per_assumption_rule_matches': dict(assumption_counts),
         'per_unmatched_date_rule_matches': dict(date_resolution_counts),
         **dict(counts),
+        'residual_text_audit': dict(residual_counts),
         'per_rule_matches': dict(rule_counts),
         'top_shared_words': [dict(kind=k[0], token=k[1], filenames=v['filenames'])
                              for k, v in sorted(shared.items(), key=lambda kv: (-kv[1]['filenames'], kv[0]))
@@ -240,22 +401,28 @@ def main():
     parser.add_argument('--legislators', nargs='+', type=Path, default=[],
                         help='Optional retained current/historical legislator JSON; no names are fetched by this command.')
     args = parser.parse_args()
+    source_paths = [Path(__file__).parent / name for name in SOURCE_FILES]
+    paths = [*source_paths, args.inventory, *args.legislators]
+    before = file_hashes(paths)
     import pyarrow.parquet as pq
     rows = pq.read_table(args.inventory, columns=['filename', 'variants']).to_pylist()
     filenames = {name for row in rows for name in [row['filename'], *(row['variants'] or [])]}
     legislators = [member for path in args.legislators for member in parse_legislators(path.read_bytes())]
     summary = build_corpus(filenames, args.output, member_surnames=member_surnames_by_congress(legislators))
-    summary['member_reference_inputs'] = [{'path': str(path.resolve()), 'sha256': hashlib.sha256(path.read_bytes()).hexdigest()}
+    summary['member_reference_inputs'] = [{'path': str(path.resolve()), 'sha256': before[str(path.resolve())]}
                                          for path in args.legislators]
     summary['input'] = {'path': str(args.inventory.resolve()), 'rows': len(rows),
-                        'sha256': hashlib.sha256(args.inventory.read_bytes()).hexdigest()}
+                        'sha256': before[str(args.inventory.resolve())]}
     summary['implementation_sha256'] = {
-        name: hashlib.sha256((Path(__file__).parent / name).read_bytes()).hexdigest()
-        for name in ('filenames.py', 'filename_corpus.py', 'bill_codes.py', 'models/legislators.py', 'models/base.py')
+        name: before[str((Path(__file__).parent / name).resolve())] for name in SOURCE_FILES
     }
+    after = file_hashes(paths)
+    summary['changed_during_run'] = [name for name in before if before[name] != after[name]]
+    summary['mechanical_gate'] = not summary['structural_collisions'] and not summary['changed_during_run']
     _write_json(args.output / 'coverage.json', summary)
     print(json.dumps({k: v for k, v in summary.items() if k not in {'per_rule_matches', 'top_shared_words', 'checks', 'limits'}}, indent=2))
+    return 0 if summary['mechanical_gate'] else 1
 
 
 if __name__ == '__main__':
-    main()
+    raise SystemExit(main())
