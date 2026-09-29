@@ -1,0 +1,38 @@
+{
+  "url": "https://www.armed-services.senate.gov/hearings/to-receive-testimony-on-united-states-strategic-command-and-united-states-space-command-in-review-of-the-defense-authorization-request-for-fiscal-year-2026-and-the-future-years-defense-program",
+  "native": {
+    "_url": "https://api.congress.gov/v3/committee-meeting/119/senate/336743",
+    "chamber": "Senate",
+    "committees": [
+      {
+        "name": "Senate Armed Services Subcommittee on Strategic Forces",
+        "systemCode": "ssas16",
+        "url": "https://api.congress.gov/v3/committee/senate/ssas16?format=json"
+      }
+    ],
+    "congress": 119,
+    "date": "2025-03-26T13:30:00Z",
+    "eventId": "336743",
+    "hearingTranscript": [
+      {
+        "jacketNumber": 61564,
+        "url": "https://api.congress.gov/v3/hearing/119/senate/61564?format=json"
+      },
+      {
+        "jacketNumber": 61985,
+        "url": "https://api.congress.gov/v3/hearing/119/senate/61985?format=json"
+      }
+    ],
+    "location": {
+      "building": "Dirksen Senate Office Building",
+      "room": "106"
+    },
+    "meetingStatus": "Scheduled",
+    "title": "Open hearings to examine the United States Strategic Command and United States Space Command in review of the Defense Authorization Request for fiscal year 2026 and Future Years Defense Program; to be immediately followed by a closed session in SVC-217.",
+    "type": "Meeting",
+    "updateDate": "2025-03-25T22:08:18Z"
+  },
+  "source_sha256": "e91bf1b738ac4a1034c0f5fa4c722e147ad9336608a0ff5eed2072df5e730235",
+  "trimmed_to": "Original title, h1 and Hearing main content; synthesized HTML wrapper only",
+  "source_cache_name": "estimony_on_united_states_strategic_command_and_united_states_space_command_in_review_of_the_defense_authorization_request_for_fiscal_year_2026_and_the_future_years_defense_program.html"
+}

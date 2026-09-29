@@ -22,6 +22,18 @@ def test_text_parsers_keep_numeric_speech_and_decode_entities_without_cue_ids():
         cue_lines('WEBVTT\n00:00:00.000 --> 00:00:01.000\ninvalid header')
 
 
+def test_real_youtube_space_payload_line_is_not_a_cue_separator():
+    # First two complete cues of the English track acquired for kZ849HjjWwo.
+    raw = (Path(__file__).parent / 'fixtures/captions/youtube-kZ849HjjWwo-space-payload.vtt').read_text()
+    parsed = senate.parsed_cues(raw)
+    assert len(parsed) == 2
+    assert parsed[0].start == '00:16:09.268'
+    assert parsed[0].text[0] == ' '
+    assert parsed[1].text == ['THE TO COMMITTEE RULES. MEMBERS', ' ']
+    assert cue_lines(raw) == [['THE TO COMMITTEE RULES. MEMBERS']] * 2
+    assert youtube.vtt_to_text(raw) == 'THE TO COMMITTEE RULES. MEMBERS\n'
+
+
 def fake_ydl(monkeypatch, *, info=None, tracks=None, error=None):
     class Downloader:
         def __init__(self, opts): self.opts = opts
@@ -62,6 +74,20 @@ def test_declared_track_without_download_is_error_not_none(tmp_path, monkeypatch
     assert youtube.fetch_one(VIDEO, tmp_path) == (VIDEO, 'error', 0)
     fake_ydl(monkeypatch, info={})
     assert youtube.fetch_one(VIDEO, tmp_path) == (VIDEO, 'none', 0)
+
+
+def test_youtube_negative_retains_discovery_metadata_and_unknown_source_fields(tmp_path, monkeypatch):
+    info = {'id': VIDEO, 'subtitles': {}, 'automatic_captions': {},
+            'upstream_extension': {'missing': None, 'empty': [], 'enabled': False}}
+    fake_ydl(monkeypatch, info=info)
+    assert youtube.fetch_one(VIDEO, tmp_path) == (VIDEO, 'none', 0)
+    receipt = json.loads((tmp_path / youtube.RECEIPTS / f'{VIDEO}.json').read_text())
+    captured = tmp_path / receipt['metadata_file']
+    assert json.loads(gzip.decompress(captured.read_bytes())) == info
+    first = captured.read_bytes()
+    fake_ydl(monkeypatch, info={'id': VIDEO, 'subtitles': {'fr': []}})
+    youtube.fetch_one(VIDEO, tmp_path)
+    assert captured.read_bytes() == first
 
 
 def test_senate_capture_retains_playlists_segments_and_timestamps(tmp_path, monkeypatch):

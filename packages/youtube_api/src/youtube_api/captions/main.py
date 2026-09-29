@@ -17,6 +17,8 @@ Uses yt-dlp, which fetches the caption track without downloading the video.
 import argparse
 import csv
 from datetime import datetime, timezone
+import gzip
+from hashlib import sha256
 import json
 import logging
 import sys
@@ -25,6 +27,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import yt_dlp
+from yt_dlp import YoutubeDL
 
 from congress_shared.webvtt import cue_lines
 
@@ -53,6 +56,7 @@ def fetch_one(video_id: str, out_dir: Path) -> tuple[str, str, int]:
     kind is manual, auto, none (no English track) or error (blocked or failed; retry later)."""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    metadata_file = None
     def result(kind, characters=0, *, selected=None, tracks=(), error=None):
         receipt = {'capture_version': CAPTURE_VERSION, 'video_id': video_id, 'kind': kind,
                    'characters': characters, 'observed_at': datetime.now(timezone.utc).isoformat(),
@@ -60,6 +64,8 @@ def fetch_one(video_id: str, out_dir: Path) -> tuple[str, str, int]:
                    'scope': {'kind': 'youtube_english_webvtt',
                              'video_url': f'https://www.youtube.com/watch?v={video_id}',
                              'includes_manual': True, 'includes_automatic': True}}
+        if metadata_file:
+            receipt['metadata_file'] = metadata_file
         if error:
             receipt['error'] = error
         directory = out_dir / RECEIPTS
@@ -85,6 +91,17 @@ def fetch_one(video_id: str, out_dir: Path) -> tuple[str, str, int]:
             kind = "error"  # A failed request never establishes absence of captions.
             logging.warning(f"{video_id}: {msg[:120]}")
             return result(kind, error=msg[:500])  # failures never establish a negative index row
+        # Preserve the discovery result as well as the downloaded tracks. A
+        # negative caption finding can then be checked against its source data.
+        # This is yt-dlp's extracted metadata, not a raw YouTube HTTP response.
+        metadata_dir = out_dir / 'metadata'
+        metadata_dir.mkdir(exist_ok=True)
+        metadata_bytes = json.dumps(YoutubeDL.sanitize_info(info), ensure_ascii=False).encode('utf-8')
+        metadata_path = metadata_dir / f'{video_id}.{sha256(metadata_bytes).hexdigest()}.info.json.gz'
+        metadata_temporary = metadata_path.with_suffix('.gz.tmp')
+        metadata_temporary.write_bytes(gzip.compress(metadata_bytes, mtime=0))
+        metadata_temporary.replace(metadata_path)
+        metadata_file = str(metadata_path.relative_to(out_dir))
         files = sorted(Path(tmp).glob(f"{video_id}*.vtt"))
         manual = {k for k in (info.get("subtitles") or {}) if k == 'en' or k.startswith('en-')}
         automatic = {k for k in (info.get("automatic_captions") or {}) if k == 'en' or k.startswith('en-')}

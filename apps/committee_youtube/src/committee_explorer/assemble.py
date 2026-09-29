@@ -90,6 +90,8 @@ class Assembly:
                         if name == "identifiers":
                             updates[name] = tuple({v.model_dump_json(): v for v in (*before, *after)}.values())
                         elif not isinstance(item, DataIssue):
+                            if item.kind == "occurrence" and name == "access" and before == "unknown":
+                                continue  # Filling absent access is not a source disagreement.
                             path = "/" + name
                             alternatives = list(fields[path].alternatives) if path in fields else []
                             alt = AlternativeValue(value=old.model_dump(mode="json")[name],

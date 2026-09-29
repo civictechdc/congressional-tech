@@ -1,0 +1,144 @@
+{
+  "description": "",
+  "hierarchical": false,
+  "has_archive": false,
+  "name": "Posts",
+  "slug": "post",
+  "icon": "dashicons-admin-post",
+  "taxonomies": [
+    "category",
+    "post_tag"
+  ],
+  "rest_base": "posts",
+  "rest_namespace": "wp/v2",
+  "template": [],
+  "template_lock": false,
+  "yoast_head": "<!-- This site is optimized with the Yoast SEO plugin v24.7 - https://yoast.com/wordpress/plugins/seo/ -->\n<title>Indian Affairs Committee -</title>\n<meta name=\"robots\" content=\"noindex, follow\" />\n<meta property=\"og:locale\" content=\"en_US\" />\n<meta property=\"og:type\" content=\"website\" />\n<meta property=\"og:title\" content=\"Indian Affairs Committee\" />\n<meta property=\"og:url\" content=\"https://www.indian.senate.gov/\" />\n<meta property=\"og:site_name\" content=\"Indian Affairs Committee\" />\n<meta property=\"og:image\" content=\"https://www.indian.senate.gov/wp-content/uploads/IndianAffairs_Logo_Social.jpg\" />\n\t<meta property=\"og:image:width\" content=\"1200\" />\n\t<meta property=\"og:image:height\" content=\"630\" />\n\t<meta property=\"og:image:type\" content=\"image/jpeg\" />\n<meta name=\"twitter:card\" content=\"summary_large_image\" />\n<meta name=\"twitter:site\" content=\"@IndianCommittee\" />\n<script type=\"application/ld+json\" class=\"yoast-schema-graph\">{\"@context\":\"https://schema.org\",\"@graph\":[{\"@type\":\"CollectionPage\",\"@id\":\"https://www.indian.senate.gov/\",\"url\":\"https://www.indian.senate.gov/\",\"name\":\"Indian Affairs Committee -\",\"isPartOf\":{\"@id\":\"https://www.indian.senate.gov/#website\"},\"breadcrumb\":{\"@id\":\"https://www.indian.senate.gov/#breadcrumb\"},\"inLanguage\":\"en-US\"},{\"@type\":\"BreadcrumbList\",\"@id\":\"https://www.indian.senate.gov/#breadcrumb\",\"itemListElement\":[{\"@type\":\"ListItem\",\"position\":1,\"name\":\"Home\",\"item\":\"https://www.indian.senate.gov/\"},{\"@type\":\"ListItem\",\"position\":2,\"name\":\"Home\"}]},{\"@type\":\"WebSite\",\"@id\":\"https://www.indian.senate.gov/#website\",\"url\":\"https://www.indian.senate.gov/\",\"name\":\"The United States Senate Committee on Indian Affairs\",\"description\":\"\",\"publisher\":{\"@id\":\"https://www.indian.senate.gov/#organization\"},\"alternateName\":\"Senate Committee on Indian Affairs\",\"potentialAction\":[{\"@type\":\"SearchAction\",\"target\":{\"@type\":\"EntryPoint\",\"urlTemplate\":\"https://www.indian.senate.gov/?s={search_term_string}\"},\"query-input\":{\"@type\":\"PropertyValueSpecification\",\"valueRequired\":true,\"valueName\":\"search_term_string\"}}],\"inLanguage\":\"en-US\"},{\"@type\":\"Organization\",\"@id\":\"https://www.indian.senate.gov/#organization\",\"name\":\"The United States Senate Committee on Indian Affairs\",\"url\":\"https://www.indian.senate.gov/\",\"logo\":{\"@type\":\"ImageObject\",\"inLanguage\":\"en-US\",\"@id\":\"https://www.indian.senate.gov/#/schema/logo/image/\",\"url\":\"https://www.indian.senate.gov/wp-content/uploads/IndianAffairs_Logo_Primary.png\",\"contentUrl\":\"https://www.indian.senate.gov/wp-content/uploads/IndianAffairs_Logo_Primary.png\",\"width\":1200,\"height\":400,\"caption\":\"The United States Senate Committee on Indian Affairs\"},\"image\":{\"@id\":\"https://www.indian.senate.gov/#/schema/logo/image/\"},\"sameAs\":[\"https://www.facebook.com/IndianCommittee/\",\"https://x.com/IndianCommittee\",\"http://www.youtube.com/user/SenateIndianAffairs\",\"https://www.flickr.com/photos/131671645@N03/albums\"]}]}</script>\n<!-- / Yoast SEO plugin. -->",
+  "yoast_head_json": {
+    "title": "Indian Affairs Committee -",
+    "robots": {
+      "index": "noindex",
+      "follow": "follow"
+    },
+    "og_locale": "en_US",
+    "og_type": "website",
+    "og_title": "Indian Affairs Committee",
+    "og_url": "https://www.indian.senate.gov/",
+    "og_site_name": "Indian Affairs Committee",
+    "og_image": [
+      {
+        "width": 1200,
+        "height": 630,
+        "url": "https://www.indian.senate.gov/wp-content/uploads/IndianAffairs_Logo_Social.jpg",
+        "type": "image/jpeg"
+      }
+    ],
+    "twitter_card": "summary_large_image",
+    "twitter_site": "@IndianCommittee",
+    "schema": {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "CollectionPage",
+          "@id": "https://www.indian.senate.gov/",
+          "url": "https://www.indian.senate.gov/",
+          "name": "Indian Affairs Committee -",
+          "isPartOf": {
+            "@id": "https://www.indian.senate.gov/#website"
+          },
+          "breadcrumb": {
+            "@id": "https://www.indian.senate.gov/#breadcrumb"
+          },
+          "inLanguage": "en-US"
+        },
+        {
+          "@type": "BreadcrumbList",
+          "@id": "https://www.indian.senate.gov/#breadcrumb",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Home",
+              "item": "https://www.indian.senate.gov/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Home"
+            }
+          ]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://www.indian.senate.gov/#website",
+          "url": "https://www.indian.senate.gov/",
+          "name": "The United States Senate Committee on Indian Affairs",
+          "description": "",
+          "publisher": {
+            "@id": "https://www.indian.senate.gov/#organization"
+          },
+          "alternateName": "Senate Committee on Indian Affairs",
+          "potentialAction": [
+            {
+              "@type": "SearchAction",
+              "target": {
+                "@type": "EntryPoint",
+                "urlTemplate": "https://www.indian.senate.gov/?s={search_term_string}"
+              },
+              "query-input": {
+                "@type": "PropertyValueSpecification",
+                "valueRequired": true,
+                "valueName": "search_term_string"
+              }
+            }
+          ],
+          "inLanguage": "en-US"
+        },
+        {
+          "@type": "Organization",
+          "@id": "https://www.indian.senate.gov/#organization",
+          "name": "The United States Senate Committee on Indian Affairs",
+          "url": "https://www.indian.senate.gov/",
+          "logo": {
+            "@type": "ImageObject",
+            "inLanguage": "en-US",
+            "@id": "https://www.indian.senate.gov/#/schema/logo/image/",
+            "url": "https://www.indian.senate.gov/wp-content/uploads/IndianAffairs_Logo_Primary.png",
+            "contentUrl": "https://www.indian.senate.gov/wp-content/uploads/IndianAffairs_Logo_Primary.png",
+            "width": 1200,
+            "height": 400,
+            "caption": "The United States Senate Committee on Indian Affairs"
+          },
+          "image": {
+            "@id": "https://www.indian.senate.gov/#/schema/logo/image/"
+          },
+          "sameAs": [
+            "https://www.facebook.com/IndianCommittee/",
+            "https://x.com/IndianCommittee",
+            "http://www.youtube.com/user/SenateIndianAffairs",
+            "https://www.flickr.com/photos/131671645@N03/albums"
+          ]
+        }
+      ]
+    }
+  },
+  "_links": {
+    "collection": [
+      {
+        "href": "https://www.indian.senate.gov/wp-json/wp/v2/types"
+      }
+    ],
+    "wp:items": [
+      {
+        "href": "https://www.indian.senate.gov/wp-json/wp/v2/posts"
+      }
+    ],
+    "curies": [
+      {
+        "name": "wp",
+        "href": "https://api.w.org/{rel}",
+        "templated": true
+      }
+    ]
+  }
+}

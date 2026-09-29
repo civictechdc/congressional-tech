@@ -238,6 +238,11 @@ def source_details(page_html, url, people):
              if node.tag in ("iframe", "video", "audio", "source", "track", "object", "embed")]
     if media:
         page_metadata["media"] = media
+    for field, class_name in (("video_messages", "Hearing__videoMessageContent"),
+                              ("heading_prefixes", "Hearing__headingPrefix")):
+        values = [{"text": value(node), "attributes": dict(node.attrib)} for node in nodes(root, class_name)]
+        if values:
+            page_metadata[field] = values
     # Non-visible descriptions and structured data can contain meeting facts.
     meta = [dict(node.attrib) for node in root.xpath(".//meta") if
             "description" in (node.get("name") or node.get("property") or "").lower()

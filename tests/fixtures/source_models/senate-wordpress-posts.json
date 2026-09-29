@@ -1,0 +1,239 @@
+[
+  {
+    "link": "https://www.commerce.senate.gov/meetings/executive-session-25-09-16-2026/",
+    "title": {
+      "rendered": "Executive Session 25"
+    },
+    "acf": []
+  },
+  {
+    "link": "https://www.hsgac.senate.gov/subcommittees/investigations/hearings/the-pga-liv-deal-implications-for-the-future-of-golf-and-saudi-arabias-influence-in-the-united-states/",
+    "title": {
+      "rendered": "The PGA-LIV Deal: Implications for the Future of Golf and Saudi Arabia’s Influence in the United States"
+    },
+    "acf": {
+      "status": "scheduled",
+      "committee_type": "sub",
+      "committee": "Permanent Subcommittee on Investigations",
+      "hearing_date_time": "2023-07-11 10:00:00",
+      "hearing_date_override": false,
+      "hearing_date_override_text": "",
+      "hearing_end_date_time": "2023-07-11 14:00:00",
+      "hearing_location": "SH-216, Hart Senate Office Building",
+      "hearing_agenda": "",
+      "live_start": "2023-07-11 09:45:00",
+      "live_end": "2023-07-11 13:00:00",
+      "archive_stream_name": "govtaff071123",
+      "archive_offset": "1120",
+      "show_member_list": true,
+      "member_statements": [
+        {
+          "member_name": "Richard Blumenthal",
+          "member_title": "Chair Richard Blumenthal",
+          "member_state": "CT",
+          "member_party": "D",
+          "member_statement": 178716,
+          "member_statement_2": "",
+          "member_first_name": "",
+          "member_last_name": "",
+          "member_file_path": "",
+          "testimony": "",
+          "testimony_2": ""
+        },
+        {
+          "member_name": "Ron Johnson",
+          "member_title": "Ranking Member Ron Johnson",
+          "member_state": "WI",
+          "member_party": "R",
+          "member_statement": 177934,
+          "member_statement_2": "",
+          "member_first_name": "",
+          "member_last_name": "",
+          "member_file_path": "",
+          "testimony": "",
+          "testimony_2": ""
+        }
+      ],
+      "show_witness_list": true,
+      "show_panel_labels": false,
+      "show_panel_1": true,
+      "witness_1": [
+        {
+          "witness_name": "Ron Price",
+          "witness_title": "Chief Operating Officer",
+          "witness_agency": "PGA TOUR",
+          "testimony_file": 177924,
+          "testimony_file_2": "",
+          "testimony_file_3": "",
+          "testimony_file_4": "",
+          "witness_note": "",
+          "testimony": "",
+          "testimony_2": "",
+          "testimony_3": "",
+          "testimony_4": ""
+        },
+        {
+          "witness_name": "Jimmy Dunne",
+          "witness_title": "Board Member",
+          "witness_agency": "PGA TOUR",
+          "testimony_file": 177926,
+          "testimony_file_2": "",
+          "testimony_file_3": "",
+          "testimony_file_4": "",
+          "witness_note": "",
+          "testimony": "",
+          "testimony_2": "",
+          "testimony_3": "",
+          "testimony_4": ""
+        }
+      ],
+      "show_panel_2": false,
+      "witness_2": null,
+      "show_files": true,
+      "related_files_list_embargoed": null,
+      "related_files_list": [
+        {
+          "file_link": 177906
+        },
+        {
+          "file_link": 180286
+        }
+      ],
+      "related_files": "",
+      "import_id": "",
+      "hearing_room": "",
+      "show_links": true,
+      "related_links": [
+        {
+          "link": {
+            "title": "PSI Majority Staff Memorandum Regarding Preliminary Information on Agreement Between PGA Tour and Saudi Arabian Public Investment Fund",
+            "url": "https://www.hsgac.senate.gov/subcommittees/investigations/library/files/psi-majority-staff-memorandum-regarding-preliminary-information-on-agreement-between-pga-tour-and-saudi-arabian-public-investment-fund/",
+            "target": ""
+          }
+        }
+      ]
+    }
+  },
+  {
+    "link": "https://www.indian.senate.gov/hearings/legislative-hearing-to-receive-testimony-on-s-1750-s-3859-s-4053-h-r-226/",
+    "title": {
+      "rendered": "Business Meeting is to consider S.5354 &amp; Legislative Hearing to receive testimony on S. 1750, S. 3859, S. 4053, &amp; H.R. 226"
+    },
+    "acf": {
+      "status": "scheduled",
+      "committee_type": [
+        "Legislative Hearing",
+        "business meeting"
+      ],
+      "committee": false,
+      "hearing_date_time": "2026-09-23 14:30:00",
+      "show_local_time": false,
+      "local_time": "",
+      "hearing_end_date_time": "2026-09-23 17:00:00",
+      "hearing_location": "Dirksen",
+      "hearing_room": "628",
+      "hearing_agenda": "Legislative Hearing to receive testimony on several bills:\r\n<ul>\r\n \t<li><strong>S. 1750</strong> – Poarch Band of Creek Indians Parity Act (Britt)</li>\r\n \t<li><strong>S. 3859 </strong>– A bill to amend the Catawba Indian Tribe of South Carolina Land Claims Settlement Act of 1993 with respect to future membership in the Catawba Indian Nation (L. Graham)</li>\r\n \t<li><strong>S. 4053</strong> – A bill to take certain land in the State of California into trust for the benefit of the Pechanga Band of Indians, and for other purposes (Padilla)</li>\r\n \t<li><strong>H.R. 226</strong> – Eastern Band of Cherokee Historic Lands Reacquisition Act (Fleischmann)</li>\r\n</ul>\r\n&nbsp;\r\n\r\nBusiness Meeting to consider:\r\n<ul>\r\n \t<li><strong>S.5354 </strong>- Native American Housing Assistance and Self-Determination Modernization Act of 2026</li>\r\n</ul>",
+      "hearing_transcript": "",
+      "live_start": "2026-09-23 14:15:00",
+      "live_end": "2026-09-23 17:00:00",
+      "archive_stream_name": "indian092326",
+      "archive_offset": "",
+      "archive_stt": "",
+      "show_member_list": false,
+      "member_statements": null,
+      "show_witness_list": true,
+      "show_panel_labels": true,
+      "show_panel_1": true,
+      "witness_1": [
+        {
+          "witness_name": "Mr. Bryan Mercier",
+          "witness_title": "Director, Bureau of Indian Affairs",
+          "witness_agency": "Department of the Interior",
+          "witness_location": "Washington, D.C.",
+          "testimony_file": 11710,
+          "testimony_file_2": "",
+          "testimony_file_3": "",
+          "testimony_file_4": "",
+          "testimony": "",
+          "testimony_2": "",
+          "testimony_3": "",
+          "testimony_4": ""
+        },
+        {
+          "witness_name": "The Honorable Stephanie Bryan",
+          "witness_title": "Chairwoman",
+          "witness_agency": "Poarch Band of Creek Indians",
+          "witness_location": "Atmore, AL",
+          "testimony_file": 11711,
+          "testimony_file_2": "",
+          "testimony_file_3": "",
+          "testimony_file_4": "",
+          "testimony": "",
+          "testimony_2": "",
+          "testimony_3": "",
+          "testimony_4": ""
+        },
+        {
+          "witness_name": "The Honorable Patricia Leach",
+          "witness_title": "Assistant Chief",
+          "witness_agency": "Catawba Nation",
+          "witness_location": "Rock Hill, SC",
+          "testimony_file": 11712,
+          "testimony_file_2": "",
+          "testimony_file_3": "",
+          "testimony_file_4": "",
+          "testimony": "",
+          "testimony_2": "",
+          "testimony_3": "",
+          "testimony_4": ""
+        },
+        {
+          "witness_name": "The Honorable Mark Macarro",
+          "witness_title": "Chairman",
+          "witness_agency": "Pechanga Band of Indians",
+          "witness_location": "Temecula, CA",
+          "testimony_file": 11713,
+          "testimony_file_2": "",
+          "testimony_file_3": "",
+          "testimony_file_4": "",
+          "testimony": "",
+          "testimony_2": "",
+          "testimony_3": "",
+          "testimony_4": ""
+        },
+        {
+          "witness_name": "The Honorable Michell Hicks",
+          "witness_title": "Principal Chief",
+          "witness_agency": "Eastern Band of Cherokee Indians",
+          "witness_location": "Cherokee, NC",
+          "testimony_file": 11715,
+          "testimony_file_2": "",
+          "testimony_file_3": "",
+          "testimony_file_4": "",
+          "testimony": "",
+          "testimony_2": "",
+          "testimony_3": "",
+          "testimony_4": ""
+        }
+      ],
+      "show_panel_2": false,
+      "witness_2": null,
+      "show_panel_3": false,
+      "witness_3": null,
+      "show_panel_4": false,
+      "witness_4": null,
+      "show_files": false,
+      "related_files_list_embargoed": null,
+      "related_files_list": null,
+      "related_files": "",
+      "import_id": "",
+      "show_links": false,
+      "related_links": null,
+      "panel_1_legacy_data": "",
+      "panel_2_legacy_data": "",
+      "panel_3_legacy_data": "",
+      "panel_4_legacy_data": "",
+      "hearing_transcript_import": ""
+    }
+  }
+]

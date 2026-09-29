@@ -11,6 +11,7 @@ from congress_api.adapters.common import AdapterContext
 from congress_api.adapters.senate import records as adapted_records
 from congress_api.inventory.common import read_state, write_state
 from congress_api.senate import records
+from congress_api.models.content import RawContent
 
 
 HOST = "budget.senate.gov"
@@ -61,7 +62,7 @@ def test_live_page_receipt_uses_actual_time_and_preserves_existing_result(status
     assert check["mode"] == "live" and check["outcome"] == expected and check["completed_at"] == STAMP
     assert check["receipts"] == [{"url": PAGE, "started_at": STAMP, "completed_at": STAMP, "status_code": status, "outcome": "retrieved" if status == 200 else "not_found"}]
     legacy = {k: value for k, value in result.items() if k not in ("last_check", "observation_check", "retrieved_at", "checked", "events", "version", "parser_version")}
-    assert legacy == (records.parsed(HTML.decode(), PAGE) if status == 200 else {"title": "", "lines": [], "witnesses": [], "documents": [], "absent": True})
+    assert legacy == (records.parsed(HTML.decode(), PAGE) if status == 200 else {"title": "", "lines": [], "witnesses": [], "documents": [], "absent": True, "raw_html": RawContent.from_bytes(HTML, "text/html").source_dict()})
 
 
 def test_failed_page_refresh_keeps_good_result_and_exports_error(tmp_path, monkeypatch):

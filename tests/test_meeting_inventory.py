@@ -129,6 +129,13 @@ def test_listing_date_is_not_hearing_evidence():
     assert pages.written_day(next(pages.DATE.finditer("Wednesday, March 11th, 2026"))) == dt.date(2026, 3, 11)
 
 
+def test_listing_decodes_html_entities_in_source_urls():
+    # The Veterans listing publishes a literal ampersand inside the event path.
+    page = '<div>June 7, 2022</div><a href="/2022/6/organizations &amp; advocates">Press conference</a>'
+    rows = records.listing_page("veterans.senate.gov", "/hearings?page={}", 1, lambda _: page)
+    assert rows == [(dt.date(2022, 6, 7), "https://www.veterans.senate.gov/2022/6/organizations & advocates", "Press conference")]
+
+
 def test_house_refusal_is_not_saved_as_absence(monkeypatch):
     from congress_api.house.records import fetch_xml
     def refusal(*args, **kwargs):

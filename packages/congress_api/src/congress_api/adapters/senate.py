@@ -6,14 +6,16 @@ from urllib.parse import urlsplit
 from committee_meeting.assessments import Assessment
 from committee_meeting.common import Identifier, Ref
 from committee_meeting.issues import DataIssue
-from committee_meeting.materials import DocumentDetails, MaterialLink
+from committee_meeting.materials import DocumentDetails, MaterialLink, RecordingDetails
 from committee_meeting.meetings import Affiliation, Appearance, RecordedName, ConveningCommittee, Meeting, MeetingOccurrence
 from committee_meeting.provenance import AlternativeValue, FieldEvidence, Method
 
-from congress_api.senate.pages import OWN, SITE, attachment_page
+from congress_api.models.senate import SenatePage, SenateSite
+from congress_api.senate.pages import DATE, OWN, SITE, attachment_page, written_day
 from congress_api.senate.corrections import DATE_CORRECTIONS, selected_date
 
 from .common import digest, material_records, ref, web_url, reported_time, witness_roles
+from .recordings import recording_reference
 from .meetings import category, meeting_type, meeting_access
 
 
@@ -79,10 +81,20 @@ def _live_receipt(page, url, now):
 
 
 
+def _site_data(site):
+    if isinstance(site, SenateSite):
+        return site.source_dict()
+    pages = site.get("pages") or {}
+    if any(isinstance(page, SenatePage) for page in pages.values()):
+        return {**site, "pages": {url: page.source_dict() if isinstance(page, SenatePage) else page for url, page in pages.items()}}
+    return site
+
+
 def official_events(state):
     """Validated source-owned events for metadata discovery and offline admission."""
     codes = {host: code for code, host in SITE.items()}
     for host, site in sorted(state.items()):
+        site = _site_data(site)
         if host not in codes:
             continue
         for url, page in sorted((site.get("pages") or {}).items()):
@@ -104,14 +116,17 @@ def official_events(state):
             yield {"host": host, "url": url, "page": page, "event": event,
                    "congress": congress, "committee_code": codes[host]}
 
-def records(state, context, *, meetings, committee_terms=None, meeting_records=None):
-    """Yield every page and document, with only saved, unambiguous associations.
+def records(state, context, *, meetings, committee_terms=None, meeting_records=None, occurrence_records=None):
+    """Normalize native SenatePage/SenateSite models or legacy saved dictionaries.
+
+    Yield every page and document, with only saved, unambiguous associations.
 
     Lookup keys are (Congress, chamber, eventId). Senate state retains only the
     eventId, so a repeated eventId across those keys cannot establish a link.
     The producer's page match is derived evidence; a listing date is not used.
     """
     committee_terms, meeting_records = committee_terms or {}, meeting_records or {}
+    occurrences = dict(occurrence_records or {})
     events = {event["url"]: event for event in official_events(state)}
     by_event = defaultdict(list)
     for (_, _, event), meeting in meetings.items():
@@ -119,9 +134,13 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
             raise ValueError("Senate meeting lookup must contain meeting references")
         by_event[str(event)].append(meeting)
     for host, site in sorted(state.items()):
+        site = _site_data(site)
         listing_check = site.get("last_check") or {}
-        if isinstance(listing_check, dict) and listing_check.get("mode") == "live":
-            listing_source = context.source(f"senate-listing-check|{host}", {"host": host, "last_check": listing_check})
+        if (isinstance(listing_check, dict) and listing_check.get("mode") == "live") or site.get("source_bodies"):
+            payload = {"host": host, "last_check": listing_check}
+            if site.get("source_bodies"):
+                payload["source_bodies"] = site["source_bodies"]
+            listing_source = context.source(f"senate-listing-check|{host}", payload)
             yield listing_source
             if listing_check.get("outcome") == "error":
                 yield DataIssue(
@@ -139,6 +158,11 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
             for document in page.get("documents") or []
             if isinstance(document, (list, tuple)) and len(document) == 3 and isinstance(document[2], str)
         )
+        shared_media = Counter()
+        for saved_page in pages.values():
+            references = [recording_reference((media.get("attributes") or {}).get("src") or "")
+                          for media in (saved_page.get("page_metadata") or {}).get("media") or []]
+            shared_media.update({reference[0] for reference in references if reference})
         for url, page in sorted(pages.items()):
             key = f"senate-page|{host}|{url}"
             source = context.source(key, page, url)
@@ -260,6 +284,82 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                 yield issue("unlinked-page", "unlinked", "This retained committee page has no supported meeting association.",
                             explanation="Documents remain discoverable. Witness rows remain in the source payload until their meeting is established.")
 
+            # Only explicit publisher access labels and the event's own date
+            # can fill an existing sitting. Generic hearing types prove neither.
+            labels = {item.get("text", "").strip(" :").casefold(): index
+                      for index, item in enumerate((page.get("page_metadata") or {}).get("heading_prefixes") or [])}
+            access_labels = {"open": "open", "closed": "closed", "open/closed": "partly_closed", "open and closed": "partly_closed"}
+            stated = {access_labels[label] for label in labels if label in access_labels}
+            dated_lines = [(index, written_day(found)) for index, line in enumerate(page.get("lines") or [])
+                           if line.strip().casefold().startswith("date:") and (found := DATE.search(line))]
+            page_days = {date.fromisoformat(selected_date(url, event))} if event else {day for _, day in dated_lines if day}
+            if len(stated) == 1 and len(page_days) == 1:
+                access = next(iter(stated))
+                label_index = next(index for label, index in labels.items() if access_labels.get(label) == access)
+                label_evidence = context.evidence(source, selector=f"/page_metadata/heading_prefixes/{label_index}")
+                date_evidence = context.evidence(source, selector="/event/date" if event else f"/lines/{dated_lines[0][0]}")
+                for meeting, match_evidence in matched.values():
+                    sittings = [item for item in occurrences.values() if item.meeting.id == meeting.id
+                                and item.scheduled_start and item.scheduled_start.date in page_days]
+                    if len(sittings) != 1:
+                        continue
+                    original = sittings[0]
+                    selected = label_evidence.model_copy(update={"citations": label_evidence.citations + date_evidence.citations + match_evidence.citations})
+                    field = next((field for field in original.field_evidence if field.path == "/access"), None)
+                    previous = field.selected if field else original.provenance
+                    if original.access == "unknown":
+                        field = FieldEvidence(path="/access", selected=selected,
+                                              alternatives=field.alternatives if field else (),
+                                              selection_reason="The matched committee page explicitly labels access for this dated sitting.")
+                        updated = original.model_copy(update={"access": access})
+                    elif original.access != access:
+                        alternative = AlternativeValue(value=access, provenance=selected)
+                        field = FieldEvidence(path="/access", selected=previous,
+                                              alternatives=(field.alternatives if field else ()) + (alternative,),
+                                              selection_reason="Keep the existing explicit access value; the committee page provides conflicting evidence.")
+                        updated = original
+                    else:
+                        continue
+                    updated = updated.model_copy(update={"field_evidence": tuple(f for f in original.field_evidence if f.path != "/access") + (field,)})
+                    occurrences[updated.id] = updated
+                    yield updated
+
+            for message_index, message in enumerate((page.get("page_metadata") or {}).get("video_messages") or []):
+                if message.get("text", "").strip().casefold() != "there is no video broadcast for this event.":
+                    continue
+                notice_evidence = context.evidence(source, selector=f"/page_metadata/video_messages/{message_index}")
+                for meeting, match_evidence in matched.values():
+                    yield Assessment(id=context.ids("assessment", key + "|no-video-broadcast|" + meeting.id),
+                        subject=meeting, aspect="recording", status="not_applicable", evaluated_at=context.now,
+                        observed_at=live[0] if live else previous_retrieval, provider=context.provider,
+                        scope="Video broadcast by the committee for the event on " + url,
+                        explanation=message["text"],
+                        provenance=notice_evidence.model_copy(update={"citations": notice_evidence.citations + match_evidence.citations}))
+
+            # Embedded publishers identify recordings more precisely than a
+            # same-committee/day archive probe. Keep the native URL and selector.
+            seen_media = set()
+            for media_index, media in enumerate((page.get("page_metadata") or {}).get("media") or []):
+                attributes = media.get("attributes") or {}
+                recording = recording_reference(attributes.get("src") or "")
+                if recording is None:
+                    continue
+                recording_key, recording_url, provider, identifiers = recording
+                if not provider and media.get("tag") not in ("audio", "video", "source"):
+                    continue  # An arbitrary iframe can be a map or another widget.
+                if recording_key in seen_media:
+                    continue
+                seen_media.add(recording_key)
+                ev = context.evidence(source, selector=f"/page_metadata/media/{media_index}")
+                built = material_records(context, ev, recording_key, title=attributes.get("title"), urls=[recording_url],
+                    details=RecordingDetails(medium="audio" if media.get("tag") == "audio" else "unknown" if media.get("tag") == "source" else "video", provider=provider), identifiers=identifiers)
+                yield from built
+                material, version = built[:2]
+                for meeting, match_evidence in (matched.values() if shared_media[recording_key] <= OWN else ()):
+                    yield MaterialLink(id=context.ids("material_link", recording_key + "|" + meeting.id),
+                        material=ref(material), version=ref(version), subject=meeting, role="recording",
+                        provenance=match_evidence.model_copy(update={"citations": match_evidence.citations + ev.citations}))
+
             witness_counts = Counter(digest(w) for w in page.get("witnesses") or [])
             seen_witnesses = Counter()
             appearance_keys = {}
@@ -301,6 +401,17 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                 urls = [document_url, *resolved, *(alias_document[2] for _, alias_document in aliases.get(index, []))]
                 if title.strip().lower() in ("here", "download", "view", "read") and len(aliases.get(index, [])) == 1:
                     title = aliases[index][0][1][1]
+                # Some vcard templates put names in spans, so the older document
+                # reader selected the section heading instead of the file's owner.
+                owners = metadata.get("witness_indexes") or []
+                if title.strip().lower() in ("witnesses", "nominees", "panel") and len(owners) == 1:
+                    owner_index = owners[0]
+                    people = page.get("witnesses") or []
+                    if type(owner_index) is int and 0 <= owner_index < len(people):
+                        owner = people[owner_index].get("name")
+                        if owner:
+                            label = kind.capitalize() if kind != "other" else "Document"
+                            title = f"{owner} — {label}"
                 built = material_records(context, ev, document_key, title=title, urls=urls, details=DocumentDetails(category=cat))
                 media_types = {attributes.get("type") for attributes in metadata.get("attributes", []) if isinstance(attributes, dict) and attributes.get("type")}
                 if len(media_types) == 1:

@@ -1,0 +1,249 @@
+<!doctype html><html><head><title>Business Meeting  | Senate Committee On Agriculture, Nutrition &amp; Forestry</title>
+
+      </head><body><h1 class="Hearing__headingTitle Heading__title">
+Business Meeting 
+        </h1>
+      <div class="Hearing container pt-0 PageContent">
+    <div class="ReadingWidth PageContent__bgContent">
+      <div class="Hearing__content">
+        <div class="Hearing__details Hearing__noStream">
+
+            
+
+
+
+                
+                  <div class="Hearing__detail">
+                    <span class="bold">Date:</span>
+                    <time class="" datetime="Monday, June 8, 2026">
+                      Monday, June 8, 2026
+                    </time>
+                  </div>
+
+                  <div class="Hearing__detail">
+                    <span class="bold">Time:</span>
+                    In conjunction with the 5:30pm floor vote
+                  </div>
+
+              <div class="Hearing__detail">
+                <span class="Hearing__detailLabel bold">Location:</span>
+                <span class="Hearing__detailLocation">S-216, President&#8217;s Room</span>
+              </div>
+
+
+
+
+            <div class="mt-4 mb-5">
+                          <div class="RawHTML">
+              
+            </div>
+
+            </div>
+        </div>
+
+          <div class="Hearing__video">
+              <div class="RawHTML mt-5">
+                <div id="video-frame" class="embedded-video">
+                  <div class="Hearing__videoMessage">
+                    <div class="Hearing__videoMessageBackground" style="background-image:url('https://www.agriculture.senate.gov/assets/images/no-video-background.png')"></div>
+                    <div class="Hearing__videoMessageContent">
+                      There is no video broadcast for this event.
+                    </div>
+                  </div>
+                </div>
+              </div>
+          </div>
+      </div>
+
+
+      
+      
+
+
+        <div class="Hearing__additionalContent AdditionalContent">
+
+  
+    <div class="Hearing__additionalContentSection Hearing__additionalContentSection--legislation">
+    </div>
+
+  <script>
+    if (typeof initAccordion === 'undefined') {
+      // Create initAccordion function only once, use existing otherwise
+      var initAccordion = function (container) {
+
+        // Get all accordions on page
+        var accordions = document.querySelectorAll(container);
+        $(accordions).each(function (index, accordion) {
+          // Don't re-run this function on the same accordion twice
+          if (accordion.initialized)
+            return;
+
+          // Find all items in THIS accordion
+          // Keep logic from interfering with other accordions on page
+          var items = $(accordion).find(container + '-item');
+          $(items).each(function (index, item) {
+            var content = $(item).find(container + '-content');
+
+            // Setup click action on all the items in THIS accordion
+            $(item)
+              .find(container + '-trigger')
+              .on('click', function () {
+                var $this = $(this);
+                // If clicked item was open, close it
+                if ($(item).hasClass('expand')) {
+                  $(item).removeClass('expand');
+                  $(content).css('height', 0);
+                  $this.html($this.html().replace(/^- Hide/, '\+ View'));
+                } else {
+                  // If it wasn't open, expand the clicked item
+
+                  // Scroll the window to the top on expanding an item
+                 /*if (index > 0) {
+                    // Only items after the first would need the window scrolled
+
+                    // Compute the scroll position of where the newly expanded item WILL be
+                    // First we get this item's top so we can use it below
+                    var thisItemTop = $(item)
+                      .offset()
+                      .top;
+                    // Then we get the open content container so we can compare and measure it
+                    var expandedContent = $(accordion)
+                      .find('.expand')
+                      .first();
+
+                    // If we clicked on an item above the expanded one then we don't need to scroll
+                    if (expandedContent.length && thisItemTop > $(expandedContent).offset().top) {
+                      // Then we get the open content's height since the page is about to collapse by that much
+                      var expandedContentHeight = $(expandedContent)
+                        .find('.js-accordion-content')
+                        .outerHeight();
+                      // The we get header's height, but only what's currently fixed to the top (not the news alert)
+                      var headerHeight = $('.SiteHeader').outerHeight() || 0;
+                      // Now we take the top of this item which we want to scroll to,
+                      // and subtract the expandedContentHeight and headerHeight so our new position
+                      // is perfectly at the top just below the fixed header
+                      var newItemTop = $(item)
+                        .offset()
+                        .top - expandedContentHeight - headerHeight;
+
+                      // Last check, don't bother scrolling if our new top is already in view
+                      if (window.getScrollTop && newItemTop < window.getScrollTop()) {
+                        $('html').animate({
+                          scrollTop: newItemTop
+                        }, 250, 'linear')
+                      }
+                    }
+                  }*/
+
+                  // CSS transitions can't animate between height 0 and auto
+                  // so we need to find the height of the content
+                  var newHeight = $(content)
+                    .children()
+                    .first()
+                    .outerHeight() + 10;
+
+                  // Collapse all open items in THIS accordion only
+                  $(items)
+                    .removeClass('expand')
+                    .find(container + '-content')
+                    .css('height', 0);
+
+                  // Expand the clicked item with the content's height from above
+                  $(item).addClass('expand');
+                  $(content).css('height', newHeight);
+
+                  $this.html($this.html().replace(/^\+ View/, '- Hide'));
+                }
+              });
+          })
+
+          // Set initialized flag so this accordion doesn't get duplicate click handlers added
+          accordion.initialized = true;
+        })
+      }
+    }
+
+    $(function () {
+      initAccordion('.js-accordion');
+    });
+  </script>
+
+          <div class="Hearing__additionalContentSection Hearing__additionalContentSection--treaties">
+          </div>
+
+          <div class="Hearing__additionalContentSection Hearing__additionalContentSection--witnesses">
+          </div>
+
+            <div class="Hearing__additionalContentSection Hearing__additionalContentSection--panels">
+                  <div class="Hearing__panelSection">
+                          <div class="Hearing__panelName Heading--h1 mb-5">
+                            <h2 class="Hearing__panelNameTitle Heading__title">Nominees</h2>
+                          </div>
+
+<ul class="Hearing__orderedList row m-n2">                        
+                          <li class="col-12 col-md-6 p-2">
+                            <div class="Hearing__orderedListBullet Box d-flex flex-column h-100">
+                              <div class="Heading--h5 mb-2">
+                                <h3 class="Heading__title">
+                                  <span>Glen  Smith</span>
+                                </h3>
+                              </div>
+
+                              
+                              <div class="witness-content flex-grow-1">
+                                  <div><p>The Honorable Glen Smith, of Iowa, to be Under Secretary of Agriculture for Rural Development</p></div>
+
+                              </div>
+
+                            </div>
+                          </li>
+</ul>                  </div>
+            </div>
+
+          
+        </div>
+
+        <div class="Hearing__additionalContentSection Hearing__additionalContentSection--legislation">
+        </div>
+
+
+
+          <div class="Hearing__additionalContent AdditionalContent">
+            <div class="Heading--h1 mb-5">
+              <h2 class="Heading__title">Related Transcripts</h2>
+            </div>
+
+            <div class="row align-items-end">
+              <div class="col-12 col-md-12 pr-0">
+                <ol>
+                    <li class="RelatedIssuesLink mb-2">
+                        <a class="Button Button--link h-100" href="https://www.agriculture.senate.gov/download/business-meeting-transcript_682026pdf" target="_blank">
+                          <span style="background-image: url('https://www.agriculture.senate.gov/assets/images/pdficon_large.png')" class="file-icon"></span>
+                          <span class="Button__label">Business Meeting Transcript_6.8.2026.pdf</span>
+                        </a>
+                    </li>
+                </ol>
+              </div>
+            </div>
+          </div>
+
+
+
+
+
+      <div class="alert alert-info text-center rounded-0 py-2 mt-5">
+        <small>
+          <a id="cachebust-link" style="cursor:pointer;" data-no-transition>To see the latest version of this page, please click here.</a>
+        </small>
+      </div>
+
+      <script>
+        document.querySelector('#cachebust-link').addEventListener('click', (e) => {
+          const url = new URL(window.location.href);
+          url.searchParams.set('_cb', Date.now());
+          window.location.replace(url.toString());
+        });
+      </script>
+    </div>
+  </div>
+                  </body></html>

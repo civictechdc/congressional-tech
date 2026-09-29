@@ -4,10 +4,10 @@ Download the captions of Senate hearing recordings from the Senate's own player,
     senate-captions --out-dir ~/hearing-text/senate --urls "https://www.senate.gov/isvp/?comm=epw&filename=epw120623" ...
     senate-captions --out-dir ~/hearing-text/senate --urls-file links.txt
 
-Recordings since about mid-2023 carry an English WebVTT subtitle track (the live path in
-`isvp.py`); its segments are fetched concurrently and joined into <filename>.txt. Older
-recordings (the archive path) have captions only inside the video stream, which this tool
-doesn't decode. A confirmed absence from the live WebVTT path is recorded as
+Recordings since about mid-2023 commonly carry an English WebVTT subtitle track;
+both live and archive paths can provide one. Its segments are fetched concurrently
+and joined into <filename>.txt. Older recordings may carry captions only inside
+the video stream, which this tool doesn't decode. Absence from both WebVTT paths is recorded as
 `none`; failed or incomplete checks are not indexed. Appends to <out-dir>/captions_index.csv:
 filename, comm, kind (webvtt | none), characters. Current complete captures are skipped;
 legacy entries without retained timing are rechecked when requested. Playlist and
@@ -30,19 +30,21 @@ from urllib.parse import urljoin
 
 import requests
 
-from congress_api.senate.isvp import STREAM, live_url, parse_player_url
+from congress_api.senate.isvp import STREAM, archive_url, live_url, parse_player_url
 from congress_shared.webvtt import cue_lines
+from congress_api.models.content import RawContent
+from congress_api.models.media import CaptionReceipt, HLSRendition, MediaTextSource, SenateCaptionSources, WebVTTCue
 
 INDEX = "captions_index.csv"
-CAPTURE_VERSION = "2"
+CAPTURE_VERSION = "3"
 RECEIPTS = "caption_receipts"
 HDR = {"User-Agent": "Mozilla/5.0"}
 sess = requests.Session()
 sess.mount("https://", requests.adapters.HTTPAdapter(pool_maxsize=32))
 
 
-def get(url: str, attempts: int = 3) -> str:
-    """Return a successful body, or empty only for a confirmed HTTP 404.
+def get_source(url: str, attempts: int = 3, *, sources: list[MediaTextSource] | None = None) -> MediaTextSource:
+    """Return the complete response and its status for HTTP 200 or 404.
 
     Exhausted errors must remain errors: converting them to empty text turns a
     temporary outage into a permanent negative row in the incremental index.
@@ -53,17 +55,31 @@ def get(url: str, attempts: int = 3) -> str:
     for i in range(attempts):
         try:
             r = sess.get(url, headers=HDR, timeout=30)
+            if r.status_code in (200, 404):
+                source = {"url": url, "text": r.text, "status_code": r.status_code}
+                if isinstance(getattr(r, "content", None), bytes):
+                    media_type = getattr(r, "headers", {}).get("Content-Type", "text/vtt" if url.split("?", 1)[0].endswith(".vtt") else "application/vnd.apple.mpegurl")
+                    source["raw_body"] = RawContent.from_bytes(r.content, media_type)
+                captured = MediaTextSource.model_validate(source)
+                if sources is not None:
+                    sources.append(captured)
             if r.status_code == 200:
                 if r.text.strip():
-                    return r.text
+                    return captured
                 error = requests.RequestException(f"Empty HTTP 200 response for {url}")
             if r.status_code == 404:
-                return ""
+                return captured
             elif r.status_code != 200:
                 error = requests.HTTPError(f"HTTP {r.status_code} for {url}", response=r)
         except requests.RequestException as exc:
             error = exc
     raise error
+
+
+def get(url: str, attempts: int = 3) -> str:
+    """Compatibility text reader; typed acquisition retains original bytes."""
+    result = get_source(url, attempts)
+    return result.text if result.status_code == 200 else ""
 
 
 class IncompleteCaptionsError(RuntimeError):
@@ -95,7 +111,7 @@ def _write_receipt(out_dir: Path, url: str, receipt: dict) -> None:
         successful = previous.get('last_successful') if previous.get('outcome') == 'error' else previous
         if successful and successful.get('outcome') in ('available', 'not_found'):
             receipt['last_successful'] = {k: v for k, v in successful.items() if k != 'last_successful'}
-    _write_text(path, json.dumps(receipt, ensure_ascii=False, indent=2) + "\n")
+    _write_text(path, json.dumps(CaptionReceipt.model_validate(receipt).source_dict(), ensure_ascii=False, indent=2) + "\n")
 
 
 def _require_playlist(body: str, url: str) -> None:
@@ -107,38 +123,53 @@ def _require_playlist(body: str, url: str) -> None:
 def _subtitle_uri(master: str) -> str | None:
     for line in master.splitlines():
         if line.strip().startswith("#EXT-X-MEDIA:"):
-            attrs = dict((name, value.strip('"')) for name, value in re.findall(r'([A-Z0-9-]+)=("[^"]*"|[^,]*)', line))
-            if attrs.get("TYPE") == "SUBTITLES":
-                if not attrs.get("URI"):
+            attrs = HLSRendition.model_validate(dict((name, value.strip('"')) for name, value in re.findall(r'([A-Z0-9-]+)=("[^"]*"|[^,]*)', line)))
+            if attrs.type == "SUBTITLES":
+                if not attrs.uri:
                     raise IncompleteCaptionsError("Declared subtitle track has no playlist URI")
-                return attrs["URI"]
+                return attrs.uri
     return None
 
 
+def _segment_source(url: str, sources: list[MediaTextSource] | None = None) -> MediaTextSource:
+    source = get_source(url, sources=sources)
+    parsed_cues(source.text if source.status_code == 200 else "", url)
+    return source
+
+
 def _segment(url: str) -> str:
-    body = get(url)
+    return _segment_source(url).text
+
+
+def parsed_cues(body: str, url: str = "retained WebVTT") -> list[WebVTTCue]:
+    """Typed cue extraction; retained source text still includes all metadata."""
     if not re.match(r"\A\ufeff?WEBVTT(?:[ \t\r\n]|$)", body):
         raise IncompleteCaptionsError(f"Missing or invalid WebVTT segment: {url}")
-    blocks = re.split(r"\n[ \t]*\n", body.replace("\r\n", "\n").replace("\r", "\n"))
+    # Whitespace-only payload lines are valid; only empty lines separate cues.
+    blocks = re.split(r"\n{2,}", body.replace("\r\n", "\n").replace("\r", "\n"))
     if "-->" in blocks[0]:
         raise IncompleteCaptionsError(f"WebVTT header is not separated from its cues: {url}")
+    result = []
     for block in blocks[1:]:
-        lines = block.strip().splitlines()
+        lines = block.strip("\n").splitlines()
         if not lines or re.match(r"^(?:NOTE|STYLE|REGION)(?:\s|$)", lines[0]):
             continue
         timing = lines[0] if "-->" in lines[0] else lines[1] if len(lines) > 1 else ""
         match = re.fullmatch(r"((?:\d{2,}:)?[0-5]\d:[0-5]\d\.\d{3})[ \t]+-->[ \t]+((?:\d{2,}:)?[0-5]\d:[0-5]\d\.\d{3})(?:[ \t]+.*)?", timing)
         if not match:
             raise IncompleteCaptionsError(f"Invalid WebVTT cue timing: {url}")
-        times = [sum(float(part) * 60 ** index for index, part in enumerate(reversed(value.split(":"))))
-                 for value in match.groups()]
-        if times[1] <= times[0]:
-            raise IncompleteCaptionsError(f"WebVTT cue ends before it starts: {url}")
-    return body
+        try:
+            after = timing.split("-->", 1)[1].strip().split(maxsplit=1)
+            result.append(WebVTTCue(start=match[1], end=match[2], text=lines[1 if timing == lines[0] else 2:],
+                                   identifier=None if timing == lines[0] else lines[0], settings=after[1] if len(after) > 1 else ""))
+        except ValueError as error:
+            raise IncompleteCaptionsError(f"WebVTT cue ends before it starts: {url}") from error
+    return result
 
 
 def cues(vtt: str) -> list[list[str]]:
     """Each cue's text lines, retaining numeric speech and excluding cue IDs."""
+    parsed_cues(vtt)
     return cue_lines(vtt)
 
 
@@ -167,30 +198,33 @@ def fetch_one(url: str, out_dir: Path, nthreads: int = 16) -> tuple[str, str, st
     comm, fn = parsed or ("", "")
     receipt = {
         "schema_version": "1.0", "capture_version": CAPTURE_VERSION, "filename": fn, "comm": comm, "player_url": url,
-        "scope": {"kind": "senate_live_webvtt", "master_url": None, "playlist_url": None,
+        "scope": {"kind": "senate_live_and_archive_webvtt", "master_url": None, "playlist_url": None,
                   "segment_urls": [], "includes_embedded_archive_captions": False},
     }
+    sources = []
     try:
         if not parsed or comm not in STREAM:
             raise ValueError("Unsupported Senate player URL or committee")
         if not re.fullmatch(r"[A-Za-z0-9_-]+", fn):
             raise ValueError("Unsupported recording filename")
-        master_url = live_url(comm, fn)
-        receipt["scope"]["master_url"] = master_url
-        master = get(master_url)
-        if not master:
-            receipt.update(outcome="not_found", kind="none", characters=0, reason="The live WebVTT master returned HTTP 404.")
-            result = (fn, comm, "none", 0)
-        else:
-            _require_playlist(master, master_url)
-            subtitle_uri = _subtitle_uri(master)
-            if subtitle_uri is None:
-                receipt.update(outcome="not_found", kind="none", characters=0, reason="The live master has no declared subtitle track.")
-                result = (fn, comm, "none", 0)
-            else:
+        master_checks = []
+        candidate_errors = []
+        selected = None
+        for master_url in (live_url(comm, fn), archive_url(comm, fn)):
+            receipt["scope"]["master_url"] = master_url
+            try:
+                master_source = get_source(master_url, sources=sources)
+                master_checks.append(master_source)
+                if master_source.status_code != 200:
+                    continue
+                _require_playlist(master_source.text, master_url)
+                subtitle_uri = _subtitle_uri(master_source.text)
+                if subtitle_uri is None:
+                    continue
                 playlist_url = urljoin(master_url, subtitle_uri)
                 receipt["scope"]["playlist_url"] = playlist_url
-                playlist = get(playlist_url)
+                playlist_source = get_source(playlist_url, sources=sources)
+                playlist = playlist_source.text if playlist_source.status_code == 200 else ""
                 _require_playlist(playlist, playlist_url)
                 segments = [urljoin(playlist_url, line.strip()) for line in playlist.splitlines()
                             if line.strip() and not line.strip().startswith("#")]
@@ -198,26 +232,46 @@ def fetch_one(url: str, out_dir: Path, nthreads: int = 16) -> tuple[str, str, st
                 if not segments:
                     raise IncompleteCaptionsError("Subtitle playlist contains no segments")
                 with ThreadPoolExecutor(nthreads) as pool:
-                    parts = list(pool.map(_segment, segments))
-                # One retained source file keeps timestamps, segment boundaries
-                # and X-TIMESTAMP-MAP values that the text views cannot preserve.
-                raw = {'master': {'url': master_url, 'text': master},
-                       'playlist': {'url': playlist_url, 'text': playlist},
-                       'segments': [{'url': url, 'text': part} for url, part in zip(segments, parts)]}
-                out_dir.mkdir(parents=True, exist_ok=True)
-                raw_path = out_dir / f"{fn}.captions.json.gz"
-                temporary = raw_path.with_suffix(raw_path.suffix + '.tmp')
-                temporary.write_bytes(gzip.compress(json.dumps(raw, ensure_ascii=False).encode('utf-8'), mtime=0))
-                temporary.replace(raw_path)
-                receipt['source_file'] = raw_path.name
-                all_cues = [cue for part in parts for cue in cues(part)]
-                text = merge_rollup(all_cues) if all_cues else ""
-                out_dir.mkdir(parents=True, exist_ok=True)
-                _write_text(out_dir / f"{fn}.cues.txt", "\n".join(" | ".join(cue) for cue in all_cues) + "\n")
-                _write_text(out_dir / f"{fn}.txt", text)
-                receipt.update(outcome="available", kind="webvtt", characters=len(text))
-                result = (fn, comm, "webvtt", len(text))
+                    segment_sources = list(pool.map(lambda segment: _segment_source(segment, sources), segments))
+                selected = (master_source, playlist_source, segment_sources)
+                break
+            except (requests.RequestException, IncompleteCaptionsError) as exc:
+                # An archived copy can remain complete when a live playlist or
+                # segment disappears. An unsuccessful fallback stays an error.
+                candidate_errors.append(exc)
+        if selected is None:
+            if candidate_errors:
+                raise candidate_errors[-1]
+            raw = SenateCaptionSources(master=master_source, master_checks=master_checks)
+            receipt.update(outcome="not_found", kind="none", characters=0,
+                           reason="Neither live nor archive master declares a subtitle track; embedded video captions were not checked.")
+            result = (fn, comm, "none", 0)
+        else:
+            master_source, playlist_source, segment_sources = selected
+            selected_responses = {id(source) for source in [*master_checks, playlist_source, *segment_sources]}
+            prior_responses = [source for source in sources if id(source) not in selected_responses]
+            # Keep failed-path responses too, so an archive fallback can be
+            # checked without repeating requests or discarding captured bytes.
+            raw = SenateCaptionSources(master=master_source, master_checks=master_checks,
+                                       playlist=playlist_source, segments=segment_sources,
+                                       prior_responses=prior_responses)
+            all_cues = [cue for source in segment_sources for cue in cues(source.text)]
+            text = merge_rollup(all_cues) if all_cues else ""
+            receipt.update(outcome="available", kind="webvtt", characters=len(text))
+            result = (fn, comm, "webvtt", len(text))
+        # Retain complete source responses for positive and negative checks.
+        out_dir.mkdir(parents=True, exist_ok=True)
+        raw_path = out_dir / f"{fn}.captions.json.gz"
+        temporary = raw_path.with_suffix(raw_path.suffix + '.tmp')
+        temporary.write_bytes(gzip.compress(json.dumps(raw.source_dict(), ensure_ascii=False).encode('utf-8'), mtime=0))
+        temporary.replace(raw_path)
+        receipt['source_file'] = raw_path.name
+        if result[2] == "webvtt":
+            _write_text(out_dir / f"{fn}.cues.txt", "\n".join(" | ".join(cue) for cue in all_cues) + "\n")
+            _write_text(out_dir / f"{fn}.txt", text)
     except Exception as exc:
+        if sources:
+            receipt["source_responses"] = sources
         receipt.update(outcome="error", error={"type": type(exc).__name__, "message": str(exc)})
         _write_receipt(out_dir, url, receipt)
         raise
@@ -234,8 +288,10 @@ def main(out_dir, urls, nthreads=4):
     for url in urls:
         key = parse_player_url(url) or ('', url)
         path = receipt_path(out_dir, url)
-        receipt = json.loads(path.read_text()) if path.exists() else {}
-        current = receipt.get('capture_version') == CAPTURE_VERSION and receipt.get('outcome') in ('available', 'not_found')
+        receipt = CaptionReceipt.model_validate_json(path.read_text()).source_dict() if path.exists() else {}
+        current = (receipt.get('capture_version') == CAPTURE_VERSION
+                   or receipt.get('capture_version') == '2' and receipt.get('outcome') == 'available')
+        current = current and receipt.get('outcome') in ('available', 'not_found')
         if current and receipt.get('kind') == 'webvtt':
             current = bool(receipt.get('source_file') and (out_dir / receipt['source_file']).exists()
                            and (out_dir / f"{key[1]}.txt").exists())

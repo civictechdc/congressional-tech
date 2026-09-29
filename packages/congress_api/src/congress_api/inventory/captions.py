@@ -30,6 +30,7 @@ from pathlib import Path
 from congress_api import http
 from congress_api.inventory.common import read_csv
 from congress_api.senate.isvp import LIVE_ID, archive_url, live_url, parse_player_url, player_url
+from congress_api.models.media import ArchiveProbe, CaptionReceipt
 
 
 def import_observations(state, seed_cache=None, youtube_index=None, senate_index=None):
@@ -46,12 +47,13 @@ def import_observations(state, seed_cache=None, youtube_index=None, senate_index
                 native_id = receipt.get(key)
                 if not isinstance(native_id, str) or not native_id:
                     continue
+                receipt = CaptionReceipt.model_validate(receipt).source_dict()
                 state.setdefault('caption_observations', {}).setdefault(source, {})[native_id] = receipt
     if seed_cache and not state.get("probes"):
         path = seed_cache / "senate/probe_cache.json"
         if path.exists():
-            state["probes"] = {key: {"urls": urls, "checked": dt.datetime.fromtimestamp(path.stat().st_mtime, dt.UTC).date().isoformat(),
-                                     "source": "research HEAD cache"} for key, urls in json.loads(path.read_text()).items()}
+            state["probes"] = {key: ArchiveProbe(urls=urls, checked=dt.datetime.fromtimestamp(path.stat().st_mtime, dt.UTC).date().isoformat(),
+                                     source="research HEAD cache").source_dict() for key, urls in json.loads(path.read_text()).items()}
 
 
 def senate_caption(url, observations):

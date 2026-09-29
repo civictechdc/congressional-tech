@@ -1,0 +1,27 @@
+[
+  {
+    "fixture": "senate-wordpress-post-response.json",
+    "cache": "/Users/mikewolfd/hearing-text/senate_pages/https_www_hsgac_senate_gov_wp_json_wp_v2_hearings_bmfwra_per_page_100_page_1__fields_link_title_acf.html",
+    "selection": "complete unmodified response bytes"
+  },
+  {
+    "fixture": "senate-wordpress-posts.json",
+    "cache": "/Users/mikewolfd/hearing-text/senate_pages/https_www_commerce_senate_gov_wp_json_wp_v2_meeting_per_page_100_page_1__fields_link_title_acf.html",
+    "link": "https://www.commerce.senate.gov/meetings/executive-session-25-09-16-2026/"
+  },
+  {
+    "fixture": "senate-wordpress-posts.json",
+    "cache": "/Users/mikewolfd/hearing-text/senate_pages/https_www_hsgac_senate_gov_wp_json_wp_v2_hearings_invest_per_page_100_page_1__fields_link_title_acf.html",
+    "link": "https://www.hsgac.senate.gov/subcommittees/investigations/hearings/the-pga-liv-deal-implications-for-the-future-of-golf-and-saudi-arabias-influence-in-the-united-states/"
+  },
+  {
+    "fixture": "senate-wordpress-posts.json",
+    "cache": "/Users/mikewolfd/hearing-text/senate_pages/https_www_indian_senate_gov_wp_json_wp_v2_hearings_per_page_100_page_1__fields_link_title_acf.html",
+    "link": "https://www.indian.senate.gov/hearings/legislative-hearing-to-receive-testimony-on-s-1750-s-3859-s-4053-h-r-226/"
+  },
+  {
+    "fixture": "senate-wordpress-type.json",
+    "cache": "/Users/mikewolfd/hearing-text/senate_pages/https_www_indian_senate_gov_wp_json_wp_v2_types.html",
+    "selector": "post"
+  }
+]

@@ -1,5 +1,6 @@
 """Caption acquisition failures must never become permanent negative index rows."""
 import csv
+import gzip
 from datetime import datetime, timezone
 import json
 from pathlib import Path
@@ -11,7 +12,7 @@ from unittest.mock import patch
 import requests
 
 from congress_api.senate import captions
-from congress_api.senate.isvp import live_url
+from congress_api.senate.isvp import archive_url, live_url
 
 
 PLAYER = "https://www.senate.gov/isvp/?comm=epw&filename=epw120623"
@@ -31,7 +32,7 @@ def response(status, body=""):
 
 def responses(changes=None):
     values = {
-        MASTER: response(200, MASTER_BODY), PLAYLIST: response(200, PLAYLIST_BODY),
+        MASTER: response(200, MASTER_BODY), archive_url("epw", "epw120623"): response(404), PLAYLIST: response(200, PLAYLIST_BODY),
         SEGMENT1: response(200, VTT1), SEGMENT2: response(200, VTT2),
     }
     values.update(changes or {})
@@ -95,9 +96,44 @@ class AcquisitionTests(unittest.TestCase):
                 with patch.object(captions.sess, "get", return_value=master) as request:
                     result = captions.fetch_one(PLAYER, self.out)
                 self.assertEqual(result, ("epw120623", "epw", "none", 0))
-                self.assertEqual(request.call_count, 1)
+                self.assertEqual(request.call_count, 2)
                 self.assertEqual(self.receipt()["outcome"], "not_found")
                 self.assertFalse((self.out / "epw120623.txt").exists())
+
+    def test_archive_subtitles_are_captured_when_live_master_is_missing(self):
+        archive = archive_url("epw", "epw120623")
+        body = f'#EXTM3U\n#EXT-X-MEDIA:TYPE=SUBTITLES,URI="{PLAYLIST}"\n'
+        with patch.object(captions.sess, 'get', side_effect=responses({
+            MASTER: response(404), archive: response(200, body),
+        })):
+            self.assertEqual(captions.fetch_one(PLAYER, self.out)[2], 'webvtt')
+        raw = json.loads(gzip.decompress((self.out / 'epw120623.captions.json.gz').read_bytes()))
+        self.assertEqual([source['status_code'] for source in raw['master_checks']], [404, 200])
+        self.assertEqual(raw['master']['url'], archive)
+        self.assertEqual(self.receipt()['scope']['master_url'], archive)
+        self.assertEqual(len(raw['segments']), 2)
+
+    def test_archive_error_does_not_convert_live_absence_to_negative(self):
+        with patch.object(captions.sess, 'get', side_effect=responses({
+            MASTER: response(404), archive_url('epw', 'epw120623'): response(503),
+        })):
+            with self.assertRaises(requests.RequestException):
+                captions.fetch_one(PLAYER, self.out)
+        self.assertEqual(self.receipt()['outcome'], 'error')
+
+    def test_broken_live_playlist_falls_back_to_archive_and_retains_failed_response(self):
+        archive = archive_url('epw', 'epw120623')
+        archive_playlist = archive.rsplit('/', 1)[0] + '/text/main.m3u8'
+        master = f'#EXTM3U\n#EXT-X-MEDIA:TYPE=SUBTITLES,URI="{archive_playlist}"\n'
+        playlist = f'#EXTM3U\n{SEGMENT1}\n{SEGMENT2}\n#EXT-X-ENDLIST\n'
+        with patch.object(captions.sess, 'get', side_effect=responses({
+            PLAYLIST: response(404), archive: response(200, master),
+            archive_playlist: response(200, playlist),
+        })):
+            self.assertEqual(captions.fetch_one(PLAYER, self.out)[2], 'webvtt')
+        raw = json.loads(gzip.decompress((self.out / 'epw120623.captions.json.gz').read_bytes()))
+        self.assertEqual(raw['master']['url'], archive)
+        self.assertEqual([(s['url'], s['status_code']) for s in raw['prior_responses']], [(PLAYLIST, 404)])
 
     def test_missing_or_invalid_segment_never_writes_partial_text(self):
         for failed in (response(404), response(200, "<html>error</html>"), response(503),
@@ -142,7 +178,7 @@ class AcquisitionTests(unittest.TestCase):
     def test_failed_record_not_indexed_while_independent_success_is_saved(self):
         second = "https://www.senate.gov/isvp/?comm=epw&filename=epw120723"
         second_master = live_url("epw", "epw120723")
-        with patch.object(captions.sess, "get", side_effect=responses({MASTER: response(503), second_master: response(404)})):
+        with patch.object(captions.sess, "get", side_effect=responses({MASTER: response(503), second_master: response(404), archive_url("epw", "epw120723"): response(404)})):
             with self.assertRaisesRegex(RuntimeError, "1 Senate caption acquisition"):
                 captions.main(self.out, [PLAYER, second], nthreads=2)
         with (self.out / captions.INDEX).open() as f:
@@ -157,7 +193,7 @@ class AcquisitionTests(unittest.TestCase):
         index.write_text(original)
         with patch.object(captions.sess, "get", return_value=response(404)) as request:
             self.assertEqual(captions.main(self.out, [PLAYER]), {"webvtt": 0, "none": 1})
-        self.assertEqual(request.call_count, 1)
+        self.assertEqual(request.call_count, 2)
         self.assertEqual(index.read_text(), original)
         self.assertEqual(self.receipt()['capture_version'], captions.CAPTURE_VERSION)
         with patch.object(captions.sess, 'get', side_effect=AssertionError('confirmed capture is current')):
@@ -167,7 +203,7 @@ class AcquisitionTests(unittest.TestCase):
         alternative = "https://www.senate.gov/isvp/?filename=epw120623&comm=epw&autoplay=false"
         with patch.object(captions.sess, "get", return_value=response(404)) as request:
             captions.main(self.out, [PLAYER, alternative])
-        self.assertEqual(request.call_count, 1)
+        self.assertEqual(request.call_count, 2)
         self.assertEqual(captions.receipt_path(self.out, PLAYER), captions.receipt_path(self.out, alternative))
 
 

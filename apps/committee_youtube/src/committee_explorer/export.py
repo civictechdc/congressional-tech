@@ -320,7 +320,8 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=
             options = {'meetings': lookup}
             if provider == 'senate.committees':
                 options.update(committee_terms=committees,
-                               meeting_records={r.id: r for r in assembly.records.values() if r.kind == 'meeting'})
+                               meeting_records={r.id: r for r in assembly.records.values() if r.kind == 'meeting'},
+                               occurrence_records={r.id: r for r in assembly.records.values() if r.kind == 'occurrence'})
             assembly.add(adapter.records(data, c, **options))
 
         versions, print_versions = {}, {}

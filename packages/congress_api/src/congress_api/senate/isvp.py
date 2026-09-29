@@ -5,13 +5,15 @@ hearing video and the video of joint bodies the Senate records.
 A recording is named <comm><MMDDYY> (a second hearing that day is <comm>A<MMDDYY>, then B).
 The player at https://www.senate.gov/isvp/?comm=<comm>&filename=<name> loads one of:
 - the archive, https://www-senate-gov-msl3archive.akamaized.net/<stream>/<name>_1/master.m3u8,
-  for recordings up to about mid-2023 (video only; captions are embedded in the video);
+  where older recordings may embed captions in video and some recordings declare
+  separate WebVTT tracks, including recordings moved from the live path;
 - the live path, https://www-senate-gov-media-srs.akamaized.net/hls/live/<id>/<comm>/<name>/master.m3u8,
-  for recordings since then, which carry an English WebVTT subtitle track.
+  commonly used since mid-2023, which can carry an English WebVTT subtitle track.
 The tables below come from the player page's own stream table (September 2026).
 """
 import re
 import urllib.parse
+from congress_api.models.media import SenatePlayerQuery
 
 ## GPO committee code -> the player's `comm` value (from Congress.gov's senate.gov links)
 COMM = {"ssaf00": "ag", "ssap00": "approps", "ssas00": "armed", "ssbk00": "banking", "ssbu00": "budget", "sscm00": "commerce",
@@ -27,10 +29,15 @@ ARCHIVE = "https://www-senate-gov-msl3archive.akamaized.net/{stream}/{fn}_1/mast
 LIVE = "https://www-senate-gov-media-srs.akamaized.net/hls/live/{sid}/{comm}/{fn}/master.m3u8"
 
 
+def parse_player_query(url: str) -> SenatePlayerQuery:
+    """Preserve the publisher's query values, including explicit empty strings."""
+    return SenatePlayerQuery.model_validate(dict(urllib.parse.parse_qsl(urllib.parse.urlparse(url).query, keep_blank_values=True)))
+
+
 def parse_player_url(url: str) -> tuple[str, str] | None:
     """(comm, filename) from a player URL, or None."""
-    q = dict(urllib.parse.parse_qsl(urllib.parse.urlparse(url).query))
-    return (q["comm"], q["filename"]) if q.get("comm") and q.get("filename") else None
+    q = parse_player_query(url)
+    return (q.comm, q.filename) if q.comm and q.filename else None
 
 
 def player_url(comm: str, fn: str) -> str:
