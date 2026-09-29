@@ -118,7 +118,7 @@ def test_published_labels_preserve_bill_origin_and_version_separately(name, type
             assert name[fs[modifier].start:fs[modifier].end] == fs[modifier].raw
 
 
-@pytest.mark.parametrize('token', ['pih', 'pis', 'or', 'SA', 'SUS'])
+@pytest.mark.parametrize('token', ['pis', 'or', 'SA', 'SUS'])
 def test_unlisted_tokens_survive_without_fabricated_official_labels(token):
     parsed = parse_filename(f'BILLS-119HR42{token}.pdf')
     versions = [f for m in parsed.matches for f in m.fields if f.name == 'version_token']
@@ -167,7 +167,10 @@ def test_congress_member_and_title_are_separate_lossless_fields(name, surname, t
     assert fs['member_marker'] == 'Rep'
     assert fs['member_surname_token'] == surname
     assert fs['title_token'] == title
-    assert fs['descriptor'] == 'Rep' + surname + title
+    # Joined ATS is a candidate, so preserve it in the whole descriptor even
+    # though the candidate title reading stops before it.
+    trailing_candidate = 'ats' if name.endswith('LibraryActats.pdf') else ''
+    assert fs['descriptor'] == 'Rep' + surname + title + trailing_candidate
     for match in parsed.matches:
         for field in match.fields:
             assert name[field.start:field.end] == field.raw

@@ -15,7 +15,7 @@ from collections.abc import Mapping
 
 from pydantic import BaseModel, ConfigDict
 
-from congress_api.bill_codes import BILL_TYPES, BILL_VERSIONS, BILLS_HELP_URL
+from congress_api.bill_codes import BILL_TYPES, BILL_VERSIONS, BILLS_HELP_URL, HOUSE_BILL_STAGES, HOUSE_NAMING_URL
 
 
 class FilenameField(BaseModel):
@@ -62,14 +62,15 @@ class FilenameRule:
     scope: str
     description: str
     flags: int = re.IGNORECASE
+    fallback: int = 0
 
 
 # Separate an outer layout from its inner payload so unusual suffixes are retained.
 # "subject_token" is literal: it may be a name, an identifier, or something else.
 UNSPONSORED = r'(?!.*-[A-Z][0-9]{6}-Amdt-)'
 MEASURE_CODES = '|'.join(sorted(BILL_TYPES, key=lambda v: (-len(v), v)))
-# Preserve the existing PIH/PIS committee tokens without labeling them as codes
-# from GovInfo's common-version table or shortening them to IH/IS.
+# PIH is defined by the House naming guide, separately from GovInfo's common
+# versions. PIS remains an unverified source token; neither is shortened to IH/IS.
 VERSION_CODES = '|'.join(sorted(set(BILL_VERSIONS) | {'pih', 'pis'}, key=lambda v: (-len(v), v)))
 MEASURE_START = rf'-?(?P<measure_token>{MEASURE_CODES}|h)?(?P<measure_number>[0-9]+)'
 VERSION_END = rf'(?P<version_token>{VERSION_CODES})(?P<version_number_token>[0-9]+)?(?:\((?P<annotation>[^()]*)\))?'
@@ -128,16 +129,100 @@ RULES = (
     FilenameRule('day-named-month-date', r'(?<![0-9])(?P<day_token>[0-9]{1,2})[ _-]*(?P<month_token>January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sept|Sep|Oct|Nov|Dec)[ _-]*(?P<year_token>[0-9]{4}|[0-9]{2})(?![0-9])', 'search', 'Printed day/month/year tokens, preserving an unspecified century.'),
     FilenameRule('bioguide-token', r'(?<![A-Za-z0-9])(?P<bioguide_token>[A-Z][0-9]{6})(?![A-Za-z0-9])', 'search', 'Bioguide-shaped token; not verified as an assigned identifier.'),
     FilenameRule('measure-reference', r'(?<![A-Za-z])(?P<measure_token>H\.?\s*CON\.?\s*RES\.?|S\.?\s*CON\.?\s*RES\.?|H\.?\s*J\.?\s*RES\.?|S\.?\s*J\.?\s*RES\.?|H\.?\s*RES\.?|S\.?\s*RES\.?|H\.?\s*R\.?|S\.?)[ _-]*(?P<measure_number>[0-9]+)', 'search', 'Measure-shaped notation; all occurrences are retained, without resolving a measure or Congress.'),
-    FilenameRule('print-reference', r'(?<![A-Za-z])(?P<print_token>RCP)[ _-]?(?P<print_congress>[0-9]{3})[ _-](?P<print_number>[0-9]+)', 'search', 'Rules Committee Print reference.'),
+    FilenameRule('print-reference', r'(?<![A-Za-z])(?P<print_token>RCP)[ _-]*(?P<print_congress>[0-9]{3})[ _-]+(?P<print_number>[0-9]+)', 'search', 'Rules Committee Print reference, including mixed whitespace/hyphen separators.'),
     FilenameRule('fiscal-year', r'(?<![A-Za-z])(?P<fiscal_marker>FY)[ _-]?(?P<fiscal_year_token>[0-9]{4}|[0-9]{2})(?![0-9])', 'search', 'Fiscal-year token, preserving an unspecified century.'),
     FilenameRule('revision-token', r'(?<![A-Za-z0-9])(?P<revision_marker>Revision|Rev|Update|Version|U|V)[ _.-]?(?P<revision_number>[0-9]+)(?![A-Za-z0-9])', 'search', 'Explicit revision/update-looking token; no chronological ordering inferred.'),
+    FilenameRule('revised-token', r'(?<![A-Za-z0-9])(?P<revision_marker>Revised)(?:[ _.-]?(?P<revision_number>[0-9]+))?(?![A-Za-z0-9])', 'search', 'Literal revised wording, with or without a printed number.'),
     FilenameRule('part-token', r'(?<![A-Za-z0-9])(?P<part_marker>Part|Pt)[ _.-]?(?P<part_number>[0-9]+)(?![A-Za-z0-9])', 'search', 'Explicit part marker and number.'),
     FilenameRule('amendment-reference', r'(?<![A-Za-z])(?P<amendment_marker>Amendment|Amdt|Amnt)[ _#.-]*(?P<amendment_token>[0-9]+[A-Za-z]?)(?![A-Za-z0-9])', 'search', 'Printed amendment marker and identifier; does not determine the contents of the file.'),
     FilenameRule('exhibit-reference', r'(?<![A-Za-z])(?P<exhibit_marker>Exhibit|Attachment|Agenda[ _-]+Item)[ _#.-]+(?P<item_token>[0-9]+[A-Za-z]?)(?![A-Za-z0-9])', 'search', 'Printed exhibit, attachment or agenda item identifier.'),
     FilenameRule('document-suffix', r'(?<![A-Za-z0-9])(?P<document_marker>SD|QFR|Vote|RCP)(?P<document_identifier>[0-9]+)(?![A-Za-z0-9])', 'search', 'Numbered document marker, including markers after a subject or date.'),
     FilenameRule('appropriation-routing', r'(?<![A-Za-z])(?P<scope_token>FC|SC)-(?P<committee_token>AP)-(?:(?P<fiscal_marker>FY)(?P<fiscal_year_token>[0-9]{4}|[0-9]{2})(?![0-9]))?(?:-(?P<committee_code>AP[0-9]{2}))?', 'search', 'Literal FC/SC, AP, fiscal-year and routing-code slots; unassigned slots stay empty.'),
+    FilenameRule('publication-suffix-marker',
+        r'(?<![A-Za-z0-9])(?!(?:part|pt)[ _.-]?[0-9]+(?![A-Za-z0-9]))'
+        r'(?P<publication_marker>add|err|vol|v|part|pt)[ _.-]?(?P<publication_identifier>[0-9]+|[IVXLCDM]+|[A-Z])?(?![A-Za-z0-9])',
+        'published-suffix-search', 'Literal publication suffix marker and identifier; Roman numerals and letters stay verbatim.'),
+    FilenameRule('legislative-amendment-marker',
+        r'(?<![A-Za-z0-9])(?P<amendment_marker>HAmdt|SAmdts?|ANS|AINS)(?P<amendment_token>[0-9]+[A-Za-z]?)?(?![A-Za-z0-9])',
+        'legislative-text-search', 'Literal amendment-looking notation inside a legislative descriptor or suffix; no code expansion inferred.'),
+    FilenameRule('filename-format-marker',
+        r'(?<=[_-])(?P<filename_format_token>xml)(?![A-Za-z0-9])',
+        'legislative-text-search', 'Separated XML wording inside a legislative filename, without inferring its content format.'),
+    FilenameRule('house-stage-marker',
+        r'(?<=[_-])(?P<version_token>PIH)(?=[_-]|$)',
+        'legislative-text-search', 'Separated House pre-introduction stage retained inside a legislative descriptor or suffix.'),
 )
-COMPILED = tuple((r, re.compile(r.pattern, r.flags)) for r in RULES)
+# Additional families run only when the existing inner layouts do not match.
+# Tier 1 has explicit structural markers; tier 2 has local identifiers;
+# tier 3 retains less-specific descriptive drafts.
+# Empty slots and local identifiers are observations, never invented bill numbers.
+VERSION_SUFFIX = VERSION_END + r'(?P<suffix>(?:[-_].*)?)'
+RULES += (
+    FilenameRule('resolution-measure-list',
+        r'\s*-?(?P<measure_token>HCONRES|SCONRES|HJRES|SJRES|HRES|SRES)_(?P<measure_number>[0-9]+)?'
+        + rf'(?P<measure_list>(?:(?:{MEASURE_CODES})[0-9]+)+)'
+        + r'(?:_(?P<numeric_suffix_token>[0-9]+))?(?:_(?P<filename_format_token>xml))?',
+        'legislative-payload', 'Resolution notation followed by one or more measures; optional local numeric and format markers remain literal.', fallback=1),
+    FilenameRule('placeholder-print-reference',
+        rf'-?(?P<measure_token>{MEASURE_CODES})(?P<number_placeholder>_+|X{{2,}})-'
+        r'(?P<print_token>RCP)(?P<print_congress>[0-9]{3})-(?P<print_number>[0-9]+)',
+        'legislative-payload', 'An unnumbered measure referring to a numbered committee print; the print number is not a bill number.', fallback=1),
+    FilenameRule('joined-title-local-code',
+        rf'-?(?P<measure_token>(?-i:{MEASURE_CODES}))(?!(?:{VERSION_CODES})-)(?P<descriptor>(?-i:[A-Z][A-Z0-9]*))-(?P<local_code_token>(?-i:[A-Z]+))',
+        'legislative-payload', 'Lowercase bill type joined to an uppercase local title and a separated uppercase code; no code expansion inferred.', fallback=1),
+    FilenameRule('appropriations-file',
+        rf'-?(?P<subject_token>(?:(?P<measure_token>{MEASURE_CODES})(?P<number_placeholder>_+)?|.*?))-(?P<scope_token>[A-Za-z]*)-(?P<committee_token>AP)-'
+        r'(?:(?P<fiscal_marker>FY)(?P<fiscal_year_token>[0-9]{4}|[0-9]{2})(?![0-9]))?'
+        r'(?:-(?P<committee_code>AP[0-9]{2})(?=-|$))?(?:-(?P<descriptor>.*))?',
+        'legislative-payload', 'Appropriations routing slots, including blanks and literal unknown scope markers.', fallback=1),
+    FilenameRule('house-amendment-file',
+        r'(?P<subject_token>.+)-(?P<amendment_marker>HAmdt)(?P<amendment_token>[0-9]*)(?P<suffix>(?:[-_].*)?)',
+        'legislative-payload', 'Subject followed by a House-amendment marker and optional number; no sponsor slot required.', fallback=1),
+    FilenameRule('unverified-sponsor-amendment',
+        r'(?!.*-AP-)-?(?P<subject_token>.+)-(?P<sponsor_identifier_token>[A-Z][A-Za-z0-9]{6})-(?P<amendment_marker>Amdt)-(?P<amendment_token>.+)',
+        'legislative-payload', 'Preserve the sponsor-shaped slot without labeling a malformed token as a Bioguide identifier.', fallback=1),
+    FilenameRule('substitute-file',
+        r'(?P<subject_token>[A-Za-z]+[0-9]+)?(?P<amendment_marker>AnAmendmentintheNatureofaSubstitute|AmendmentintheNatureofaSubstitute|AINS|ANS)'
+        r'(?P<target_marker>to)?' + rf'(?:(?P<measure_token>{MEASURE_CODES})?(?P<measure_number>[0-9]+))?'
+        + r'(?P<descriptor>.*?)' + VERSION_SUFFIX,
+        'legislative-payload', 'Explicit substitute marker, optional target reference, descriptive text and text version.', fallback=1),
+    FilenameRule('numberless-versioned-file',
+        rf'(?!.*-AP-)(?!-?(?:{MEASURE_CODES})[-_][A-Za-z])-?(?P<measure_token>{MEASURE_CODES})?'
+        + r'(?P<number_placeholder>[_X-]+(?:[0-9]+|[A-Z][0-9]*)??)?' + VERSION_SUFFIX,
+        'legislative-payload', 'An absent bill number or literal placeholder; neither becomes a numeric bill identifier.', fallback=1),
+    FilenameRule('compound-local-file',
+        r'-?(?P<local_identifier>[0-9]+(?:-[0-9X_]+)+|(?-i:[A-Z][A-Z0-9_]*?(?:-[A-Z0-9_]+?)+?)|[A-Za-z]{1,8}[0-9]+[A-Za-z]??)'
+        + VERSION_SUFFIX,
+        'legislative-payload', 'Compound or short local identifier, retained without resolving it as a bill or print number.', fallback=2),
+    FilenameRule('committee-print-payload',
+        r'-?(?P<print_token>CmtePrint|CommitteePrint|RCP)'
+        r'(?:(?P<print_identifier>[0-9]+(?:(?!-JES(?:-|$))-(?:[0-9]+|[A-Z_]+?))?)|(?P<draft_label>Subtitle)(?P<local_identifier>[A-Z]))?'
+        + '(?:' + VERSION_END + ')?'
+        + r'(?:-(?P<explanation_token>JES)(?:-(?P<division_marker>DIVISION)-(?P<division_token>[A-Z]))?)?'
+        r'(?P<suffix>(?:[-_].*)?)',
+        'legislative-payload', 'Committee-print notation, local print ID, optional version and division markers.', fallback=1),
+    FilenameRule('subtitle-file',
+        r'(?P<draft_label>Subtitle)(?P<local_identifier>[A-Z])' + VERSION_SUFFIX,
+        'legislative-payload', 'A subtitle letter and version, kept distinct from a bill number.', fallback=1),
+    FilenameRule('text-of-measure',
+        r'(?P<reference_marker>Textof)' + MEASURE_START + VERSION_SUFFIX,
+        'legislative-payload', 'Explicit text-of wording before a bill reference and version.', fallback=1),
+    FilenameRule('type-version-draft',
+        rf'(?!.*-AP-)(?P<measure_token>{MEASURE_CODES})[-_]' + VERSION_SUFFIX,
+        'legislative-payload', 'Bill type and separated version followed by an optional title; no bill number supplied.', fallback=1),
+    FilenameRule('type-title-version-draft',
+        rf'(?!.*-AP-)(?P<measure_token>{MEASURE_CODES})[-_](?P<descriptor>[A-Za-z].*?)[-_]' + VERSION_SUFFIX,
+        'legislative-payload', 'Bill type, local title and separated terminal version.', fallback=1),
+    FilenameRule('type-title-draft',
+        rf'(?P<measure_token>{MEASURE_CODES})[-_](?P<descriptor>[A-Za-z].*)',
+        'legislative-payload', 'Bill type and a title/description without an interpreted version or number.', fallback=2),
+    FilenameRule('titled-introduced-draft',
+        rf'(?!(?:{MEASURE_CODES})[-_])(?P<descriptor>[A-Za-z].*?)(?P<version_token>pih|pis|ih)(?P<suffix>(?:[-_].*)?)',
+        'legislative-payload', 'Descriptive or local draft text ending in IH/PIH/PIS. Avoid arbitrary word endings such as Services/ES.', fallback=3),
+)
+COMPILED = tuple((r, re.compile(r.pattern, r.flags)) for r in RULES if not r.fallback)
+FALLBACK_COMPILED = tuple((r, re.compile(r.pattern, r.flags)) for r in RULES if r.fallback)
+PRIMARY_LEGISLATIVE_IDS = frozenset(r.id for r, _ in COMPILED if r.scope == 'legislative-payload')
 EXTENSION = re.compile(r'\.(?P<extension>pdf|xml|html?|docx?|xlsx?|pptx?|txt|rtf|zip|csv|tsv|xsd)\Z', re.I)
 TOKEN = re.compile(r'(?P<word>[^\W\d_]+)|(?P<number>[0-9]+)|(?P<separator>[\s\S])')
 WORD = re.compile(r'[^\W\d_]+')
@@ -214,31 +299,71 @@ def date_readings(raw: str) -> tuple[tuple[str, ...], str]:
 
 def _match(rule: FilenameRule, match: re.Match[str], offset: int) -> FilenameMatch:
     fields = []
-    for name, raw in match.groupdict().items():
+    groups = match.groupdict()
+    spans = {name: match.span(name) for name in groups}
+    descriptor = groups.get('descriptor')
+    version = groups.get('version_token')
+    # A vocabulary hit is not evidence that a word ending is a version. Keep
+    # reviewed joined introduction conventions; all other free-text joins need
+    # a separator, digit, or visible uppercase-to-lowercase boundary.
+    joined_introduction = bool(version and version.lower() in {'ih', 'pih', 'pis'}
+                               and (version.islower() or version.isupper()))
+    word_ending = bool(descriptor and version and spans['version_token'][0] == spans['descriptor'][1]
+                       and descriptor[-1].isalpha() and not joined_introduction
+                       and not (len(descriptor) >= 2 and descriptor[-2:].isupper() and version[0].islower()))
+    # Prefer an explicit separated version over a possible ending of the word
+    # immediately before it: ANSServices-ES means Services + ES, not Servic + es.
+    if word_ending and groups.get('suffix'):
+        separated = re.fullmatch(r'[-_]' + VERSION_SUFFIX, groups['suffix'], re.I)
+        if separated:
+            suffix_start = spans['suffix'][0]
+            spans['descriptor'] = (spans['descriptor'][0], suffix_start + separated.start('version_token'))
+            groups['descriptor'] = match.string[slice(*spans['descriptor'])]
+            for name, raw in separated.groupdict().items():
+                groups[name] = raw
+                spans[name] = tuple(pos + suffix_start for pos in separated.span(name)) if raw is not None else (-1, -1)
+            word_ending = False
+    for name, raw in groups.items():
         if raw is None:
             continue
-        start, end = match.span(name)
+        start, end = spans[name]
         candidates, note = date_readings(raw) if name == 'date_token' else ((), None)
         if rule.scope == 'unmatched-stem' or rule.scope == 'unmatched-date' and name in {'name_token', 'ignored_suffix'}:
             note = 'User-specified assumption for otherwise unmatched filenames.'
         vocabulary = BILL_VERSIONS if name == 'version_token' else BILL_TYPES if name == 'measure_token' else {}
         code = raw.lower() if raw.lower() in vocabulary else None
         label = vocabulary.get(code)
+        vocabulary_url = BILLS_HELP_URL if label else None
+        if name == 'version_token' and raw.lower() in HOUSE_BILL_STAGES:
+            code = raw.lower()
+            label = HOUSE_BILL_STAGES[code]
+            vocabulary_url = HOUSE_NAMING_URL
         if name == 'version_token' and rule.id == 'described-legislation':
-            candidates = tuple(v for v in sorted(BILL_VERSIONS) if raw.lower().endswith(v))
+            candidates = (code,) if code else ()
             note = 'Version-shaped suffix after descriptive text; its boundary is inferred from the filename.'
-            if len(candidates) > 1:
-                code, label = None, None
-                note = 'Ambiguous suffix boundary after descriptive text; candidates end at this field end. No official label selected.'
+        if word_ending and name == 'version_token':
+            candidates = tuple(sorted({raw.lower(), *(v for v in BILL_VERSIONS if raw.lower().endswith(v))}))
+            code, label, vocabulary_url = None, None, None
+            note = 'Possible ordinary word ending, not an established version boundary; the full text remains in descriptor.'
+        if word_ending and name == 'descriptor':
+            end = spans['version_token'][1]
+            raw = match.string[start:end]
+            note = 'Whole descriptive text retained across a possible version-shaped word ending.'
         if name == 'version_token' and not label and not candidates:
-            note = 'Not listed in the checked GovInfo common-version table; original token retained without an official label.'
+            note = 'No vocabulary mapping is implemented for this token; original spelling retained.'
         if name in {'version_prefix', 'version_number_token'}:
             note = 'Literal version modifier; its meaning is not defined by the GovInfo help-page vocabulary.'
+        if name == 'numeric_suffix_token':
+            note = 'Literal numeric filename suffix; its role is unspecified.'
+        if name == 'filename_format_token':
+            note = 'Format wording inside the filename; neither an extension nor a verified content format.'
+        if name == 'local_code_token':
+            note = 'Literal local code; no official version label or expansion inferred.'
         if name in {'member_marker', 'member_surname_token', 'title_token'}:
             note = 'Split using the longest supplied surname for this Congress; no member identity or sponsorship verified.'
         fields.append(FilenameField(name=name, raw=raw, start=start+offset, end=end+offset,
                                     candidates=candidates, note=note, code=code, label=label,
-                                    vocabulary_url=BILLS_HELP_URL if label else None))
+                                    vocabulary_url=vocabulary_url))
     return FilenameMatch(rule=rule.id, start=match.start()+offset, end=match.end()+offset, fields=tuple(fields))
 
 
@@ -287,16 +412,48 @@ def parse_filename(filename: str, *, member_surnames: Mapping[str, tuple[str, ..
         for scope, payload, offset in payloads:
             if rule.scope == scope and (m := regex.fullmatch(payload)):
                 matched = _match(rule, m, offset)
-                descriptor = m.groupdict().get('descriptor')
+                descriptor_field = next((f for f in matched.fields if f.name == 'descriptor'), None)
+                uncertain_version = next((f for f in matched.fields if f.name == 'version_token' and f.candidates and f.code is None), None)
+                descriptor = (descriptor_field.raw[:uncertain_version.start - descriptor_field.start] if uncertain_version
+                              else descriptor_field.raw) if descriptor_field else None
                 surnames = member_surnames.get(congress, ()) if member_surnames else ()
                 if surnames and descriptor and descriptor.lower().startswith('rep'):
                     member = re.fullmatch(member_title_pattern(tuple(surnames)), descriptor, re.I)
                     if member:
-                        fields = _match(rule, member, offset + m.start('descriptor')).fields
+                        fields = _match(rule, member, descriptor_field.start).fields
+                        if uncertain_version:
+                            fields = tuple(f.model_copy(update={'note': 'Title excludes a candidate version suffix; the full text remains in descriptor.'})
+                                           if f.name == 'title_token' else f for f in fields)
+                        matched = matched.model_copy(update={'fields': matched.fields + fields})
+                suffix = m.groupdict().get('suffix')
+                if surnames and suffix and suffix.lower().startswith(('-rep', '_rep')):
+                    member = re.fullmatch(r'[-_]' + member_title_pattern(tuple(surnames))
+                                          + r'(?P<version_token>pih|pis|ih)', suffix, re.I)
+                    if member:
+                        fields = _match(rule, member, offset + m.start('suffix')).fields
                         matched = matched.model_copy(update={'fields': matched.fields + fields})
                 matches.append(matched)
         if rule.scope == 'search':
             matches.extend(_match(rule, m, 0) for m in regex.finditer(stem))
+    for scope, payload, offset in payloads:
+        if scope != 'legislative-payload' or any(m.rule in PRIMARY_LEGISLATIVE_IDS for m in matches):
+            continue
+        for tier in (1, 2, 3):
+            recovered = [_match(rule, m, offset) for rule, regex in FALLBACK_COMPILED
+                         if rule.fallback == tier and (m := regex.fullmatch(payload))]
+            if recovered:
+                matches.extend(recovered)
+                break
+    # Scoped searches refine retained text without changing the outer layout.
+    legislative_ids = {r.id for r in RULES if r.scope == 'legislative-payload'}
+    for parent in tuple(matches):
+        for field in parent.fields:
+            scope = ('published-suffix-search' if parent.rule in {'published-hearing', 'published-report', 'published-print'} and field.name == 'suffix'
+                     else 'legislative-text-search' if parent.rule in legislative_ids and field.name in {'descriptor', 'suffix'} else None)
+            if scope:
+                for rule, regex in COMPILED:
+                    if rule.scope == scope:
+                        matches.extend(_match(rule, m, field.start) for m in regex.finditer(field.raw))
     pieces = tuple(FilenamePiece(kind=m.lastgroup, raw=m[0], start=m.start(), end=m.end()) for m in TOKEN.finditer(filename))
     return ParsedFilename(filename=filename, stem_end=stem_end, matches=tuple(matches), pieces=pieces)
 
@@ -358,4 +515,4 @@ def filename_tokens(parsed: ParsedFilename) -> tuple[FilenamePiece, ...]:
 
 def registry(rules: tuple[FilenameRule, ...] = RULES) -> list[dict]:
     return [dict(id=r.id, pattern=r.pattern, scope=r.scope, flags=['IGNORECASE'] if r.flags else [],
-                 description=r.description) for r in rules]
+                 description=r.description, fallback=r.fallback) for r in rules]
