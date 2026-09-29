@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?><mets xmlns="http://www.loc.gov/METS/" xmlns:utils="xalan://gov.gpo.fdsys.utils" xmlns:datetime="http://exslt.org/dates-and-times" xmlns:xalan="http://xml.apache.org/xalan" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xlink="http://www.w3.org/1999/xlink" xsi:schemaLocation="http://www.loc.gov/METS/ http://www.loc.gov/standards/mets/mets.xsd" ID="P0b002ee1ad64bc7e" LABEL="ADDENDUM 2 TO HEARING &quot;BROWN V. BOARD OF EDUCATION AT 65: A PROMISE UNFULFILLED&quot; HELD APRIL 30, 2019" OBJID="CHRG-116hhrg43625">
+<metsHdr CREATEDATE="2026-09-28T17:19:56Z" LASTMODDATE="2026-09-28T17:19:56Z">
+<agent ROLE="CREATOR" TYPE="ORGANIZATION">
+<name>United States Government Publishing Office</name>
+</agent>
+</metsHdr>
+<dmdSec ID="descriptive-metadata-mods-id-43625">
+<mdRef ID="id-43625" MIMETYPE="text/xml" XPTR="/mods/relatedItem[@ID='id-43625']" LOCTYPE="URL" xlink:href="file://mods.xml" MDTYPE="MODS"/>
+</dmdSec>
+<amdSec>
+<digiprovMD ID="provenance-metadata-premis">
+<mdRef MIMETYPE="text/xml" LOCTYPE="URL" xlink:href="file://premis.xml" MDTYPE="PREMIS"/>
+</digiprovMD>
+</amdSec>
+<fileSec><fileGrp USE="text/html"><file ID="FID1" MIMETYPE="text/html" SIZE="1201" DMDID="id-43625">
+<FLocat LOCTYPE="URL" xlink:href="file://html/CHRG-116hhrg43625-add2.htm"/>
+<FLocat LOCTYPE="URL" xlink:href="https://www.govinfo.gov/content/pkg/CHRG-116hhrg43625/html/CHRG-116hhrg43625-add2.htm"/>
+</file></fileGrp><fileGrp USE="application/pdf"><file ID="FID2" MIMETYPE="application/pdf" SIZE="5648974" DMDID="id-43625">
+<FLocat LOCTYPE="URL" xlink:href="file://pdf/CHRG-116hhrg43625-add2.pdf"/>
+<FLocat LOCTYPE="URL" xlink:href="https://www.govinfo.gov/content/pkg/CHRG-116hhrg43625/pdf/CHRG-116hhrg43625-add2.pdf"/>
+</file></fileGrp></fileSec>
+<structMap>
+<div>
+<div DMDID="id-43625" ADMID="provenance-metadata-premis">
+<fptr FILEID="FID1"/>
+</div>
+<div DMDID="id-43625" ADMID="provenance-metadata-premis">
+<fptr FILEID="FID2"/>
+</div>
+</div>
+</structMap>
+</mets>

@@ -10,6 +10,7 @@ dependencies = [
     "youtube-api",
     "lxml",
     "requests",
+    "pydantic>=2.11,<3",
     "pypdf[fonts]>=6,<7",
     "tinydb",
   "google-genai",

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?><mets xmlns="http://www.loc.gov/METS/" xmlns:utils="xalan://gov.gpo.fdsys.utils" xmlns:datetime="http://exslt.org/dates-and-times" xmlns:xalan="http://xml.apache.org/xalan" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xlink="http://www.w3.org/1999/xlink" xsi:schemaLocation="http://www.loc.gov/METS/ http://www.loc.gov/standards/mets/mets.xsd" ID="P0b002ee1c2e3bb3a" LABEL="Russia's Swiss Enablers" OBJID="CHRG-117jhrg54192">
+<metsHdr CREATEDATE="2026-09-28T12:24:59Z" LASTMODDATE="2026-09-28T12:24:59Z">
+<agent ROLE="CREATOR" TYPE="ORGANIZATION">
+<name>United States Government Publishing Office</name>
+</agent>
+</metsHdr>
+<dmdSec ID="descriptive-metadata-mods-id-54192">
+<mdRef ID="id-54192" MIMETYPE="text/xml" XPTR="/mods/relatedItem[@ID='id-54192']" LOCTYPE="URL" xlink:href="file://mods.xml" MDTYPE="MODS"/>
+</dmdSec>
+<amdSec>
+<digiprovMD ID="provenance-metadata-premis">
+<mdRef MIMETYPE="text/xml" LOCTYPE="URL" xlink:href="file://premis.xml" MDTYPE="PREMIS"/>
+</digiprovMD>
+</amdSec>
+<fileSec><fileGrp USE="text/html"><file ID="FID1" MIMETYPE="text/html" SIZE="58684" DMDID="id-54192">
+<FLocat LOCTYPE="URL" xlink:href="file://html/CHRG-117hhrg54192.htm"/>
+<FLocat LOCTYPE="URL" xlink:href="https://www.govinfo.gov/content/pkg/CHRG-117jhrg54192/html/CHRG-117hhrg54192.htm"/>
+</file></fileGrp><fileGrp USE="application/pdf"><file ID="FID2" MIMETYPE="application/pdf" SIZE="715431" DMDID="id-54192">
+<FLocat LOCTYPE="URL" xlink:href="file://pdf/CHRG-117hhrg54192.pdf"/>
+<FLocat LOCTYPE="URL" xlink:href="https://www.govinfo.gov/content/pkg/CHRG-117jhrg54192/pdf/CHRG-117hhrg54192.pdf"/>
+</file></fileGrp></fileSec>
+<structMap>
+<div>
+<div DMDID="id-54192" ADMID="provenance-metadata-premis">
+<fptr FILEID="FID1"/>
+</div>
+<div DMDID="id-54192" ADMID="provenance-metadata-premis">
+<fptr FILEID="FID2"/>
+</div>
+</div>
+</structMap>
+</mets>
