@@ -4,6 +4,10 @@
 
 The monorepo package name is `@ct/congress-api`. The Python package name is `congress-api`. It requires Python 3.12 or newer.
 
+Canonical Pydantic [source models](SOURCE_MODELS.md) preserve publisher records
+before normalization. Parsers return source models independently of CSV or
+Parquet storage; normalization remains in `adapters/`.
+
 ## Install
 
 From the repository root:
@@ -13,7 +17,7 @@ uv pip install -e packages/committee_meeting -e packages/congress_shared \
   -e packages/youtube_api -e packages/congress_api
 ```
 
-`pyproject.toml` declares `committee-meeting`, `congress-shared`, `youtube-api`, `lxml`, `requests`, `pypdf[fonts]`, `tinydb`, `google-genai`, and `yt-dlp`. The editable install above resolves the three sibling packages from this checkout.
+`pyproject.toml` declares `committee-meeting`, `congress-shared`, `youtube-api`, `pydantic`, `lxml`, `requests`, `pypdf[fonts]`, `tinydb`, `google-genai`, and `yt-dlp`. The editable install above resolves the three sibling packages from this checkout.
 
 `congress-shared` loads the data.gov API key, default file paths, and `congress_metadata.json`. `youtube-api` opens committee YouTube TinyDB files and maps a committee `systemCode` to a channel.
 
