@@ -23,6 +23,37 @@ _next = collections.defaultdict(float)
 _local = threading.local()
 
 
+def response_metadata(response: requests.Response) -> dict:
+    """Retain all received headers, including repeated fields, without reading the body.
+
+    The mapping is convenient for callers; the ordered list preserves fields such
+    as repeated Link headers that requests combines in its mapping. These are
+    parsed HTTP headers, not a byte-for-byte copy of the wire protocol.
+    """
+    original = getattr(response.raw, "_original_response", None)
+    message = getattr(original, "msg", None)
+    raw_headers = getattr(response.raw, "headers", None)
+    if message is not None and hasattr(message, "raw_items"):
+        items = list(message.raw_items())
+        fidelity = "ordered_fields"
+    elif raw_headers is not None and hasattr(raw_headers, "iteritems"):
+        items = list(raw_headers.iteritems())
+        fidelity = "repeated_fields"
+    else:
+        items = list(response.headers.items())
+        fidelity = "combined_mapping_only"
+    return {
+        "http_status": response.status_code,
+        "final_url": response.url,
+        "response_headers": dict(response.headers),
+        "response_header_items": [{"name": k, "value": v} for k, v in items],
+        "response_header_fidelity": fidelity,
+        "response_reason": response.reason,
+        "http_version": getattr(response.raw, "version", None),
+        "response_metadata_version": 2,
+    }
+
+
 def get_with_retry(session, url, params=None, attempts=3, *, method="GET", allowed=(200,), through_zyte=False):
     """Return a response or raise, without putting API keys from query strings in errors."""
     if session is None:
