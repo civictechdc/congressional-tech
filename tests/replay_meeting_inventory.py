@@ -21,6 +21,7 @@ from urllib.parse import parse_qs, urlsplit
 import requests
 from congress_api.acquisition import house as house
 from congress_api.acquisition import senate as senate
+from congress_api.models.senate import workflow_record
 from congress_api.retention.senate import seed_fetch as senate_seed_fetch
 from congress_api.retention.tables import read_meetings, read_state, write_state
 from congress_api.transport import http
@@ -48,8 +49,9 @@ def main(args):
         for event in recent:
             saved["versions"].pop(event, None)
         for url, page in list(saved["pages"].items()):
-            if set(page.get("events", [])) & recent:
+            if set(workflow_record(saved, url, page).get("events") or []) & recent:
                 del saved["pages"][url]
+                (saved.get("workflow") or {}).pop(url, None)
                 del saved["listings"][url]
                 removed_pages += 1
     write_state(state_dir / "senate.json.gz", ss)

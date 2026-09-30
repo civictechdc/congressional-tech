@@ -19,7 +19,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from congress_api.acquisition.senate import DOCUMENT_FIELDS, PAGE_FIELDS, WITNESS_FIELDS
-from congress_api.matching.senate_pages import mark_possible_matches, retained_matches
+from congress_api.matching.senate_pages import mark_possible_matches, normalize_senate_state, retained_matches
 from congress_api.parsers.senate import PARSER_VERSION, parsed
 from congress_api.parsers.senate_page import source_details
 from congress_api.retention.senate import cached_html_path
@@ -28,13 +28,15 @@ from congress_api.retention.tables import read_state, write_csv, write_state
 
 def replay(state, cache, *, meetings, parsed_at=None):
     result, counts, pages = deepcopy(state), Counter(), []
+    normalize_senate_state(result)
     parsed_at = parsed_at or datetime.now(UTC).isoformat()
     for host, site in result.items():
         for url, page in site.get("pages", {}).items():
             counts["pages"] += 1
             path = cached_html_path(cache, url)
+            record = (site.get("workflow") or {}).get(url) or {}
             reason = None
-            if page.get("retrieved_at") or page.get("observation_check") or (page.get("last_check") or {}).get("mode") == "live":
+            if page.get("retrieved_at") or record.get("observation_check") or (record.get("last_check") or {}).get("mode") == "live":
                 reason = "protected_live_observation"
             elif page.get("parser_version", 0) >= PARSER_VERSION:
                 reason = "current_parser"
@@ -64,16 +66,17 @@ def replay(state, cache, *, meetings, parsed_at=None):
                 page["event"] = fresh["event"]
                 counts["event_headers_added"] += 1
             page["parser_version"] = PARSER_VERSION
-            page["cache_replay"] = {"cache_file": path.name, "raw_sha256": hashlib.sha256(body).hexdigest(),
-                                    "parsed_at": parsed_at, "parser_version": PARSER_VERSION,
-                                    "acquisition_time": None, "basis": "retained HTML with identical saved text lines"}
+            record = site.setdefault("workflow", {}).setdefault(url, {})
+            record["cache_replay"] = {"cache_file": path.name, "raw_sha256": hashlib.sha256(body).hexdigest(),
+                                      "parsed_at": parsed_at, "parser_version": PARSER_VERSION,
+                                      "acquisition_time": None, "basis": "retained HTML with identical saved text lines"}
             counts["replayed_pages"] += 1
             counts["documents_with_witness_ownership"] += sum(bool(value["witness_indexes"]) for value in metadata.values())
             counts["witness_cards"] += len(people)
             counts["witness_locations"] += sum(bool(value.get("location")) for value in people.values())
             counts["witness_panels"] += sum(bool(value.get("panel")) for value in people.values())
             counts["pages_with_embedded_media"] += bool(content.get("media"))
-            pages.append({"url": url, "status": "replayed", "raw_sha256": page["cache_replay"]["raw_sha256"],
+            pages.append({"url": url, "status": "replayed", "raw_sha256": record["cache_replay"]["raw_sha256"],
                           "added_document_urls": [document[2] for document in additions],
                           "owned_documents": sum(bool(value["witness_indexes"]) for value in metadata.values())})
     # New structured event headers must retain the same native-duplicate guard

@@ -37,7 +37,6 @@ def test_every_retained_page_layout_is_a_lossless_native_model(fixture):
     assert isinstance(model, SenatePage)
     assert model.raw_html.body_bytes() == original
     assert model.raw_html.sha256 == RawContent.from_bytes(original, 'text/html').sha256
-    model.events = ['12']
     expected = model.source_dict()
     source, = of_kind(adapt(model), 'source_record')
     assert source.payload == expected
@@ -171,9 +170,11 @@ def test_rejected_senate_response_preserves_exact_attempt_without_replacing_prio
     monkeypatch.setattr(records_http, 'get_with_retry', lambda *args, **kwargs: SimpleNamespace(status_code=200, content=body, headers={}))
     with pytest.raises(RuntimeError):
         records.main(**args)
-    saved = read_state(tmp_path / 'senate.json.gz')[HOST]['pages'][PAGE]
-    assert all(saved[key] == value for key, value in original.items())
-    receipt, = saved['last_check']['receipts']
+    host = read_state(tmp_path / 'senate.json.gz')[HOST]
+    saved = host['pages'][PAGE]
+    assert all(saved[key] == value for key, value in original.items() if key not in ('events', 'candidate_events', 'match_details', 'last_check', 'observation_check', 'cache_replay'))
+    assert 'events' not in saved and host['workflow'][PAGE]['events'] == original['events']
+    receipt, = host['workflow'][PAGE]['last_check']['receipts']
     assert RawContent.model_validate(receipt['raw_body']).body_bytes() == body
     source, = of_kind(list(adapt_records({HOST: {'pages': {PAGE: SenatePage.model_validate(saved)}}}, context(), meetings={})), 'source_record')
     assert source.payload == saved
@@ -195,15 +196,16 @@ def test_rejected_caption_body_is_retained_with_failure_receipt(tmp_path, monkey
 
 def test_real_appropriations_section_heading_is_not_the_testimony_title():
     page = records_parse_page((FIXTURES / 'meeting_inventory/senate-2.html').read_bytes(), PAGE)
-    page.events = ['12']
+    saved = page.source_dict()
+    saved['events'] = ['12']
     assert page.documents[0][1] == 'Witnesses'
     assert page.document_metadata[page.documents[0][2]].labels == ['Download Testimony']
-    result = adapt(page)
+    result = adapt(saved)
     material, = of_kind(result, 'material')
     assert material.title == 'Deb Haaland — Witness statement'
     # Normalized presentation does not mutate source triples, hash-based IDs or labels.
     source, = of_kind(result, 'source_record')
-    assert source.payload == page.source_dict()
+    assert source.payload == saved == page.source_dict()
     previous = page.source_dict()
     previous.pop('document_metadata')  # Same source document, without the explicit owner correction.
     material_again, = of_kind(adapt(previous), 'material')
@@ -253,9 +255,11 @@ def test_real_forbidden_html_does_not_replace_a_good_hearing_under_http200(tmp_p
     monkeypatch.setattr(records_http, 'get_with_retry', lambda *args, **kwargs: SimpleNamespace(status_code=200, content=raw))
     with pytest.raises(RuntimeError, match='Unrecognized'):
         records.main(**args)
-    retained = read_state(tmp_path / 'senate.json.gz')[HOST]['pages'][PAGE]
-    assert all(retained[key] == value for key, value in previous.items())
-    receipt, = retained['last_check']['receipts']
+    host = read_state(tmp_path / 'senate.json.gz')[HOST]
+    retained = host['pages'][PAGE]
+    assert all(retained[key] == value for key, value in previous.items() if key not in ('events', 'candidate_events', 'match_details', 'last_check', 'observation_check', 'cache_replay'))
+    assert host['workflow'][PAGE]['events'] == previous['events']
+    receipt, = host['workflow'][PAGE]['last_check']['receipts']
     assert receipt['outcome'] == 'unrecognized_page'
     assert RawContent.model_validate(receipt['raw_body']).body_bytes() == raw
 
@@ -271,7 +275,10 @@ def test_real_coldfusion_listing_error_retains_old_listing_and_error_body(tmp_pa
     with pytest.raises(RuntimeError, match='returned no hearings'):
         records.main(**args)
     retained = read_state(tmp_path / 'senate.json.gz')[HOST]
-    assert retained['pages'] == previous['pages'] and retained['listings'] == previous['listings']
+    assert retained['listings'] == previous['listings']
+    assert {url: {key: value for key, value in page.items() if key != 'events'} for url, page in retained['pages'].items()} == {
+        url: {key: value for key, value in page.items() if key != 'events'} for url, page in previous['pages'].items()}
+    assert retained['workflow'][PAGE]['events'] == ['1'] and 'events' not in retained['pages'][PAGE]
     assert retained['checked'] == previous['checked']
     assert retained['last_check']['outcome'] == 'error'
     assert RawContent.model_validate(retained['source_bodies'][url]).body_bytes() == raw

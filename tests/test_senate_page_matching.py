@@ -72,4 +72,5 @@ def test_associate_pages_checkpoints_fuzzy_details_and_exact_replacement():
     updates = associate_pages([meeting], [meeting], state)
     assert updates[PAGE_A]["events"] == ["336743"]
     assert updates[PAGE_A]["match_details"]["336743"]["method"] == "senate.records.match_identifiers"
-    assert updates[PAGE_A]["events"] == state[HOST]["pages"][PAGE_A]["events"]
+    assert updates[PAGE_A]["events"] == state[HOST]["workflow"][PAGE_A]["events"]
+    assert "events" not in state[HOST]["pages"][PAGE_A]

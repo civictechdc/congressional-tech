@@ -117,13 +117,14 @@ def _retain_senate_meeting_ids(rows, senate_state, ids):
     from collections import defaultdict
 
     from congress_api.adapters.senate import official_events
+    from congress_api.models.senate import workflow_record
 
     native_by_event = defaultdict(list)
     for row in rows:
         native_by_event[str(row['eventId'])].append(row)
     matches = defaultdict(set)
     for event in official_events(senate_state):
-        saved = set(map(str, event['page'].get('events') or ()))
+        saved = set(map(str, workflow_record(senate_state.get(event['host']) or {}, event['url'], event['page']).get('events') or ()))
         if len(saved) != 1:
             continue
         candidates = native_by_event.get(next(iter(saved)), ())
@@ -281,6 +282,7 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=
         sources = (("docs.house.gov", house_state, house, "House parsed source state"),)
         if senate_state:
             from congress_api.adapters import senate
+            from congress_api.models.senate import workflow_record
             sources += (("senate.committees", senate_state, senate, "Senate parsed source state"),)
         supplemental = []
         for provider, path, adapter, label in sources:
@@ -298,7 +300,7 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=
                         # historical event in the full retained Senate cache.
                         selected_events = {key[2] for key in lookup}
                         data = {host: {**site, 'pages': {url: page for url, page in site.get('pages', {}).items()
-                                if selected_events.intersection(map(str, page.get('events') or ()))}}
+                                if selected_events.intersection(map(str, workflow_record(site, url, page).get('events') or ()))}}
                                 for host, site in data.items()}
                     for event in senate.official_events(data):
                         source = c.source(f"senate-page|{event['host']}|{event['url']}", event['page'], event['url'])

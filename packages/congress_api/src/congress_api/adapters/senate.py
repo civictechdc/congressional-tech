@@ -23,7 +23,7 @@ from congress_api.adapters.meetings import category
 from congress_api.adapters.recordings import recording_reference
 from congress_api.matching.meetings import meeting_access, meeting_type
 from congress_api.matching.senate_corrections import DATE_CORRECTIONS, selected_date
-from congress_api.models.senate import SenatePage, SenateSite
+from congress_api.models.senate import SenatePage, SenateSite, normalize_senate_state
 from congress_api.parsers.senate_page import DATE, OWN, SITE, attachment_page, written_day
 
 MATCH_METHOD = Method(name="senate.records.match_pages", version="1")
@@ -56,9 +56,9 @@ def _attachment_aliases(page):
     return aliases, skipped
 
 
-def _live_receipt(page, url, now):
+def _live_receipt(record, url, now):
     """Legacy checked dates are scheduling state, not retrieval evidence."""
-    check = page.get("observation_check") or page.get("last_check") or {}
+    check = record.get("observation_check") or record.get("last_check") or {}
     if not isinstance(check, dict) or check.get("mode") != "live":
         return None
     for receipt in reversed(check.get("receipts") or []):
@@ -82,9 +82,18 @@ def _site_data(site):
     return site
 
 
+def _prepared(state):
+    """Dict state with workflow lifted off pages. Page objects stay the source payloads."""
+    prepared = {}
+    for host, site in state.items():
+        prepared[host] = _site_data(site)
+    return normalize_senate_state(prepared)
+
+
 def official_events(state):
     """Validated source-owned events for metadata discovery and offline admission."""
     codes = {host: code for code, host in SITE.items()}
+    state = _prepared(state)
     for host, site in sorted(state.items()):
         site = _site_data(site)
         if host not in codes:
@@ -120,6 +129,7 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
     """
     committee_terms, meeting_records = committee_terms or {}, meeting_records or {}
     occurrences = dict(occurrence_records or {})
+    state = _prepared(state)
     events = {event["url"]: event for event in official_events(state)}
     by_event = defaultdict(list)
     for (_, _, event), meeting in meetings.items():
@@ -157,10 +167,11 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                           for media in (saved_page.get("page_metadata") or {}).get("media") or []]
             shared_media.update({reference[0] for reference in references if reference})
         for url, page in sorted(pages.items()):
+            record = (site.get("workflow") or {}).get(url) or {}
             key = f"senate-page|{host}|{url}"
             source = context.source(key, page, url)
-            live = _live_receipt(page, url, context.now)
-            check = page.get("last_check") or {}
+            live = _live_receipt(record, url, context.now)
+            check = record.get("last_check") or {}
             failed = isinstance(check, dict) and check.get("mode") == "live" and check.get("outcome") == "error"
             previous_retrieval = observed_time(page.get("retrieved_at"), context.now) if isinstance(check, dict) and check.get("mode") == "live" else None
             if live or previous_retrieval:
@@ -203,14 +214,14 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                 yield issue("unverified-retrieval", "unverified", "This page has no retained live retrieval receipt.",
                             explanation="The saved checked day may be a cache import or scheduling date. It does not establish when the source was observed.")
             matched, seen_events = {}, set()
-            for index, event in enumerate(page.get("events") or []):
+            for index, event in enumerate(record.get("events") or []):
                 if str(event) in seen_events:
                     continue
                 seen_events.add(str(event))
                 candidates = by_event.get(str(event), [])
                 if len(candidates) == 1:
                     meeting = candidates[0]
-                    details = (page.get("match_details") or {}).get(str(event))
+                    details = (record.get("match_details") or {}).get(str(event))
                     if details and details.get("method") in ("senate.records.match_identifiers", "senate.records.match_pages"):
                         match_evidence = context.evidence(source, basis="derived", method=Method(name=details["method"], version=details["version"]), selector=f"/match_details/{event}")
                     else:
@@ -223,7 +234,7 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                                 explanation=f"Event {event} resolves to {len(candidates)} entries in the supplied meeting lookup.", selector=f"/events/{index}")
             official = events.get(url)
             event = official["event"] if official else None
-            if official and not matched and not seen_events and not page.get("candidate_events"):
+            if official and not matched and not seen_events and not record.get("candidate_events"):
                 # The official URL is the provider identity. Congress numbers
                 # organize the proceeding; no Congress.gov event ID is invented.
                 term = committee_terms.get((official["congress"], official["committee_code"]))
@@ -270,7 +281,7 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                         fields = tuple(field for field in fields if field.path != "/meeting_type") + (field,)
                         kind = "roundtable"
                     yield original.model_copy(update={"meeting_type": kind, "field_evidence": fields, "identifiers": identifiers, "provenance": evidence})
-            if not matched and page.get("candidate_events"):
+            if not matched and record.get("candidate_events"):
                 yield issue("possible-native-event", "unlinked", "The official event may already have a Congress.gov meeting.",
                             explanation="The same committee has a retained meeting on this date, but the page match is not established; a duplicate meeting was not created.", selector="/candidate_events")
             if not matched:

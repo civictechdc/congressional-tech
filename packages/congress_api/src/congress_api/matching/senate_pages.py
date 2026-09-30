@@ -11,6 +11,7 @@ from congress_api.matching.gpo_videos import words
 from congress_api.matching.meetings import HEARING_TYPES, meeting_access, meeting_type
 from congress_api.matching.senate import match_identifiers
 from congress_api.matching.senate_corrections import DATE_CORRECTIONS, selected_date
+from congress_api.models.senate import ensure_workflow, normalize_senate_state, workflow_record
 from congress_api.parsers.senate_page import BUSINESS, DATE, NEAR, OWN, SITE, topic, written_day
 
 
@@ -96,32 +97,39 @@ def associate_pages(meetings, native_meetings, state):
     fuzzy-only list (``matching.senate.match_identifiers``). A saved association
     whose page date now contradicts the native meeting is dropped first. Method
     labels stay ``senate.records.match_pages`` / ``senate.records.match_identifiers``.
-    The caller checkpoints the returned fields; this function also writes them
-    onto ``state`` so identifier matching sees the fuzzy pass.
+    The caller checkpoints the returned fields. This function also writes them
+    onto each site's ``workflow`` map, keyed by page URL, so identifier matching
+    sees the fuzzy pass. Fields still stored on an old page dict are lifted first.
     """
+    normalize_senate_state(state)
     found, _, _ = match_pages(meetings, state)
     native_by_id = collections.defaultdict(list)
     for meeting in native_meetings:
         native_by_id[str(meeting["eventId"])].append(meeting)
     for host, site in state.items():
         for url, page in site.get("pages", {}).items():
+            record = ensure_workflow(site, url)
             event = page.get("event")
-            page["events"] = [identifier for identifier in list(page.get("events") or [])
-                              if _date_still_supports(host, url, event, identifier, native_by_id)]
+            record["events"] = [identifier for identifier in list(record.get("events") or [])
+                                if _date_still_supports(host, url, event, identifier, native_by_id)]
     for row in found:
         for site in state.values():
             page = site.get("pages", {}).get(row["page"])
-            if page is None or row["event_id"] in page["events"]:
+            if page is None:
                 continue
-            page["events"].append(row["event_id"])
-            page.setdefault("match_details", {})[row["event_id"]] = {"method": "senate.records.match_pages", "version": "2"}
+            record = ensure_workflow(site, row["page"])
+            if row["event_id"] in record["events"]:
+                continue
+            record.setdefault("events", []).append(row["event_id"])
+            record.setdefault("match_details", {})[row["event_id"]] = {"method": "senate.records.match_pages", "version": "2"}
     match_identifiers(native_meetings, state)
     associations = {}
     for site in state.values():
         for url, page in site.get("pages", {}).items():
-            update = {"events": list(page.get("events") or [])}
-            if page.get("match_details"):
-                update["match_details"] = dict(page["match_details"])
+            record = workflow_record(site, url, page)
+            update = {"events": list(record.get("events") or [])}
+            if record.get("match_details"):
+                update["match_details"] = dict(record["match_details"])
             associations[url] = update
     return associations
 
@@ -134,7 +142,7 @@ def retained_matches(state):
         for url, page in site.get("pages", {}).items():
             files = [document for document in page.get("documents", []) if shared[document[2]] <= OWN]
             people = page.get("witnesses", [])
-            for event in page.get("events", []):
+            for event in workflow_record(site, url, page).get("events") or []:
                 pages.append({"event_id": event, "page": url, "title": page.get("title", ""), "witnesses": len(people), "documents": len(files)})
                 for index, person in enumerate(people):
                     metadata = (page.get("witness_metadata") or {}).get(str(index), {})
@@ -155,6 +163,7 @@ def mark_possible_matches(meetings, state):
     A date/committee collision alone never establishes a match. Keep the source
     event and its evidence, and expose the unresolved association for review.
     """
+    normalize_senate_state(state)
     native = collections.defaultdict(set)
     for meeting in meetings:
         if meeting.get("chamber") == "House" or not meeting.get("date"):
@@ -166,4 +175,5 @@ def mark_possible_matches(meetings, state):
     for host, site in state.items():
         for url, page in site.get("pages", {}).items():
             if event := page.get("event"):
-                page["candidate_events"] = sorted(native[host, selected_date(url, event)] - set(map(str, page.get("events") or [])))
+                record = ensure_workflow(site, url)
+                record["candidate_events"] = sorted(native[host, selected_date(url, event)] - set(map(str, record.get("events") or [])))

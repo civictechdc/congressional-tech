@@ -14,8 +14,10 @@ HOST='indian.senate.gov'
 def test_manually_reviewed_abbreviated_and_split_agendas(case):
     page=deepcopy(case['page']);state={HOST:{'pages':{case['page_url']:page}}}
     assert match_identifiers([case['native']],state)==[(case['page_url'],case['expected_event_id'])]
-    assert page['events']==[case['expected_event_id']]
-    proof=page['match_details'][case['expected_event_id']]
+    record = state[HOST]['workflow'][case['page_url']]
+    assert record['events']==[case['expected_event_id']]
+    assert 'events' not in page and 'match_details' not in page
+    proof=record['match_details'][case['expected_event_id']]
     assert proof['event_date']==case['page']['event']['date']
     assert proof['native_api_url']==case['native']['_url']
     assert proof['native_title']==case['native']['title']
@@ -32,8 +34,10 @@ def test_rejects_unestablished_associations(mutation):
     elif mutation=='ambiguous':meetings.append({**native,'eventId':'another'})
     elif mutation=='no_identifiers':page['documents']=[]
     elif mutation=='wrong_transcript_congress':native['congress']=117
-    assert match_identifiers(meetings,{HOST:{'pages':{case['page_url']:page}}})==[]
-    assert page['events']==[]
+    state={HOST:{'pages':{case['page_url']:page}}}
+    assert match_identifiers(meetings,state)==[]
+    assert (state[HOST]['workflow'][case['page_url']].get('events') or []) == []
+    assert 'events' not in page
 
 
 def test_business_and_hearing_pages_can_link_to_one_combined_native_event():
@@ -45,8 +49,10 @@ def test_business_and_hearing_pages_can_link_to_one_combined_native_event():
 
 def test_preserves_existing_supported_match_even_if_new_identifiers_point_elsewhere():
     case=deepcopy(CASES[0]);case['page']['events']=['previous']
-    assert match_identifiers([case['native']],{HOST:{'pages':{case['page_url']:case['page']}}})==[]
-    assert case['page']['events']==['previous']
+    state={HOST:{'pages':{case['page_url']:case['page']}}}
+    assert match_identifiers([case['native']],state)==[]
+    assert state[HOST]['workflow'][case['page_url']]['events']==['previous']
+    assert 'events' not in case['page']
 
 
 def test_exact_identifier_replaces_fuzzy_only_association():
@@ -54,11 +60,14 @@ def test_exact_identifier_replaces_fuzzy_only_association():
     page = case['page']
     page['events'] = ['wrong-fuzzy']
     page['match_details'] = {'wrong-fuzzy': {'method': 'senate.records.match_pages', 'version': '2'}}
-    assert match_identifiers([case['native']], {HOST: {'pages': {case['page_url']: page}}}) == [
+    state = {HOST: {'pages': {case['page_url']: page}}}
+    assert match_identifiers([case['native']], state) == [
         (case['page_url'], case['expected_event_id'])]
-    assert page['events'] == [case['expected_event_id']]
-    assert page['match_details'][case['expected_event_id']]['method'] == 'senate.records.match_identifiers'
-    assert 'wrong-fuzzy' not in page['match_details']
+    record = state[HOST]['workflow'][case['page_url']]
+    assert record['events'] == [case['expected_event_id']]
+    assert record['match_details'][case['expected_event_id']]['method'] == 'senate.records.match_identifiers'
+    assert 'wrong-fuzzy' not in record['match_details']
+    assert 'events' not in page and 'match_details' not in page
 
 
 def test_adapter_exposes_exact_identifier_match_evidence_inline():
@@ -77,4 +86,5 @@ def test_adapter_exposes_exact_identifier_match_evidence_inline():
     assert appearance.provenance.method.name=='senate.records.match_identifiers'
     assert appearance.provenance.citations[0].selector=='/match_details/326221'
     source,=[row for row in rows if row.kind=='source_record']
-    assert source.payload['match_details']['326221']['shared_transcript_packages']==['CHRG-116shrg37479']
+    assert 'match_details' not in source.payload
+    assert state[HOST]['workflow'][case['page_url']]['match_details']['326221']['shared_transcript_packages']==['CHRG-116shrg37479']

@@ -143,6 +143,8 @@ class MatchDetail(SourceModel):
 
 
 class SenatePage(SourceModel):
+    """Parsed publisher page. Match decisions and check receipts live on ``SenatePageWorkflow``."""
+
     title: str
     lines: list[str]
     witnesses: list[SenateWitness]
@@ -160,11 +162,20 @@ class SenatePage(SourceModel):
     checked: str | None = None
     version: str = ""
     parser_version: int | None = None
+    retrieved_at: str | None = None
+    imported_at: str | None = None
+
+
+class SenatePageWorkflow(SourceModel):
+    """Collection state for one page URL: matches, checks, and replay receipts.
+
+    ``retrieved_at`` stays on ``SenatePage``. Older files may still carry these
+    fields on the page dict; ``normalize_senate_state`` lifts them here.
+    """
+
     events: list[str] = Field(default_factory=list)
     candidate_events: list[str] = Field(default_factory=list)
     match_details: dict[str, MatchDetail] = Field(default_factory=dict)
-    retrieved_at: str | None = None
-    imported_at: str | None = None
     last_check: SenateCheck | None = None
     observation_check: SenateCheck | None = None
     cache_replay: CacheReplay | None = None
@@ -184,6 +195,8 @@ class CollectionScope(SourceModel):
 
 class SenateSite(SourceModel):
     pages: dict[str, SenatePage] = Field(default_factory=dict)
+    # Keyed by the same page URL as ``pages``. Not a publisher record.
+    workflow: dict[str, SenatePageWorkflow] = Field(default_factory=dict)
     listings: dict[str, ListingValue] = Field(default_factory=dict)
     versions: dict[str, str] = Field(default_factory=dict)
     source_bodies: dict[str, RawContent] = Field(default_factory=dict)
@@ -389,3 +402,100 @@ class WordPressPost(SourceModel):
 WORDPRESS_TYPES = TypeAdapter(dict[str, WordPressType])
 WORDPRESS_POSTS = TypeAdapter(list[WordPressPost])
 SENATE_SITES = TypeAdapter(dict[str, SenateSite])
+
+PAGE_WORKFLOW_FIELDS = ("events", "candidate_events", "match_details", "last_check", "observation_check", "cache_replay")
+_WORKFLOW_LISTS = ("events", "candidate_events")
+_WORKFLOW_RECEIPTS = ("last_check", "observation_check", "cache_replay")
+
+
+def merged_workflow(stored, page) -> dict | None:
+    """Combine an envelope record with workflow fields still stored on a page.
+
+    Envelope values win when the same match id or receipt is in both places.
+    A list or detail that exists on only one side is kept. Returns None when
+    neither side has any of these fields.
+    """
+    stored = stored if isinstance(stored, dict) else {}
+    page = page if isinstance(page, dict) else {}
+    if not any(key in stored or key in page for key in PAGE_WORKFLOW_FIELDS):
+        return None
+    merged = {}
+    for key in _WORKFLOW_LISTS:
+        if key not in stored and key not in page:
+            continue
+        left = list(stored.get(key) or []) if key in stored else None
+        right = list(page.get(key) or []) if key in page else None
+        if left is None:
+            merged[key] = right
+        elif right is None:
+            merged[key] = left
+        else:
+            merged[key] = left + [item for item in right if item not in left]
+    if "match_details" in stored or "match_details" in page:
+        details = {}
+        if isinstance(page.get("match_details"), dict):
+            details.update(page["match_details"])
+        if isinstance(stored.get("match_details"), dict):
+            details.update(stored["match_details"])
+        merged["match_details"] = details
+    for key in _WORKFLOW_RECEIPTS:
+        if key not in stored and key not in page:
+            continue
+        if key in stored and stored.get(key) is not None:
+            merged[key] = stored[key]
+        elif key in page:
+            merged[key] = page.get(key)
+    return merged
+
+
+def workflow_record(site, url, page=None) -> dict:
+    """Read one page's workflow without removing it from an old page dict."""
+    if not isinstance(site, dict):
+        site = {}
+    if page is None:
+        page = (site.get("pages") or {}).get(url)
+    stored = (site.get("workflow") or {}).get(url)
+    merged = merged_workflow(stored, page) or {}
+    return {
+        "events": list(merged.get("events") or []),
+        "candidate_events": list(merged.get("candidate_events") or []),
+        "match_details": dict(merged.get("match_details") or {}),
+        **{key: merged[key] for key in _WORKFLOW_RECEIPTS if key in merged},
+    }
+
+
+def ensure_workflow(site, url) -> dict:
+    """Return the mutable envelope record for ``url`` and take those fields off the page."""
+    page = (site.get("pages") or {}).get(url)
+    workflow = site.setdefault("workflow", {})
+    stored = workflow.get(url)
+    merged = merged_workflow(stored, page)
+    record = merged if merged is not None else (stored if isinstance(stored, dict) else {})
+    workflow[url] = record
+    if isinstance(page, dict):
+        for key in PAGE_WORKFLOW_FIELDS:
+            page.pop(key, None)
+    return record
+
+
+def normalize_senate_state(state):
+    """Lift page workflow onto ``site['workflow'][url]``. Writers then emit only that shape.
+
+    A saved match, check, or replay receipt that exists only on the page is copied
+    before the page key is removed. Calling this twice does not drop those values.
+    """
+    if not isinstance(state, dict):
+        return state
+    for site in state.values():
+        if not isinstance(site, dict) or not isinstance(site.get("pages"), dict):
+            continue
+        for url, page in list(site["pages"].items()):
+            if not isinstance(page, dict):
+                continue
+            stored = (site.get("workflow") or {}).get(url)
+            merged = merged_workflow(stored, page)
+            if merged is not None:
+                site.setdefault("workflow", {})[url] = merged
+            for key in PAGE_WORKFLOW_FIELDS:
+                page.pop(key, None)
+    return state

@@ -6,6 +6,7 @@ from collections import defaultdict
 from congress_api.matching.committees import codes_of
 from congress_api.matching.recordings import bills
 from congress_api.matching.senate_corrections import selected_date
+from congress_api.models.senate import ensure_workflow
 from congress_api.parsers.senate_page import SITE
 
 PACKAGE = re.compile(r'\bCHRG-(\d+)shrg(\d+)\b', re.I)
@@ -14,14 +15,14 @@ EXACT_METHOD = 'senate.records.match_identifiers'
 FUZZY_METHOD = 'senate.records.match_pages'
 
 
-def _event_method(page, event_id):
-    return ((page.get('match_details') or {}).get(str(event_id)) or {}).get('method')
+def _event_method(record, event_id):
+    return ((record.get('match_details') or {}).get(str(event_id)) or {}).get('method')
 
 
-def _only_fuzzy_events(page):
+def _only_fuzzy_events(record):
     """True when every listed association is a fuzzy page match (safe to replace with exact)."""
-    events = [str(event) for event in page.get('events') or []]
-    return bool(events) and all(_event_method(page, event) == FUZZY_METHOD for event in events)
+    events = [str(event) for event in record.get('events') or []]
+    return bool(events) and all(_event_method(record, event) == FUZZY_METHOD for event in events)
 
 
 def match_identifiers(meetings, state):
@@ -43,12 +44,13 @@ def match_identifiers(meetings, state):
     added = []
     for host, site in state.items():
         for url, page in site.get('pages', {}).items():
+            record = ensure_workflow(site, url)
             event = page.get('event')
             if not event or page.get('absent') or page.get('status') == 'error':
                 continue
-            existing = [str(item) for item in page.get('events') or []]
+            existing = [str(item) for item in record.get('events') or []]
             # Empty: add. Fuzzy-only: replace. Exact/unknown: leave alone (preserve-existing).
-            if existing and not _only_fuzzy_events(page):
+            if existing and not _only_fuzzy_events(record):
                 continue
             page_bills = bills(event.get('title', ''))
             page_packages = {(int(match[0]), int(match[1])) for document in page.get('documents', []) for match in PACKAGE.findall(document[2])}
@@ -67,10 +69,10 @@ def match_identifiers(meetings, state):
             meeting, packages, native_bills = matches[0]
             identifier = str(meeting['eventId'])
             reason = 'An exact Congress-specific transcript package appears in both sources.' if packages else 'Every bill identifier in the official page title appears in the native meeting agenda.'
-            details = page.setdefault('match_details', {})
+            details = record.setdefault('match_details', {})
             for prior in existing:
                 details.pop(prior, None)
-            page['events'] = [identifier]
+            record['events'] = [identifier]
             details[identifier] = {
                 'method': EXACT_METHOD, 'version': '1',
                 'reason': reason, 'event_date': selected_date(url, event),

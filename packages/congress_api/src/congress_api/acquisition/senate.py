@@ -8,7 +8,8 @@ ranking hints, never evidence of a proceeding's date.
 
 Page associations use the page's own date and at least half the native title's
 rarity-weighted subject. ``matching.senate_pages.associate_pages`` returns the
-events and match details; this collector only checkpoints them. Shared menu lines
+events and match details; this collector checkpoints them on each site's
+``workflow`` map, keyed by page URL. Shared menu lines
 and files are excluded from matching; ambiguous ties remain unlinked. Existing
 associations survive changes in rarity weights unless a newly explicit event date
 contradicts the native record.
@@ -40,7 +41,15 @@ from congress_api.matching.committees import codes_of
 from congress_api.matching.meetings import in_inventory_scope
 from congress_api.matching.senate_pages import associate_pages, mark_possible_matches, retained_matches
 from congress_api.models.content import RawContent
-from congress_api.models.senate import WORDPRESS_POSTS, WORDPRESS_TYPES, SenatePage, WordPressHearingFields
+from congress_api.models.senate import (
+    PAGE_WORKFLOW_FIELDS,
+    WORDPRESS_POSTS,
+    WORDPRESS_TYPES,
+    SenatePage,
+    WordPressHearingFields,
+    merged_workflow,
+    normalize_senate_state,
+)
 from congress_api.parsers.senate import PARSER_VERSION, parse_listing_page, parsed
 from congress_api.parsers.senate_page import FIRST_RECORD, LISTINGS, SITE, attachment_page, documents
 from congress_api.parsers.text import text
@@ -154,9 +163,19 @@ def decoded_page(response, url, receipt):
         receipt.update(outcome="error", error=f"invalid UTF-8 from {url}")
         raise
 
-def fetch_page(url, previous, today, *, cache=None, check=None):
-    """Read one page, retaining schedule dates separately from actual receipts."""
+def fetch_page(url, previous, today, *, cache=None, check=None, activity=None):
+    """Read one page, retaining schedule dates separately from actual receipts.
+
+    Returns ``(page, workflow)``. Associations and receipts stay on ``workflow``;
+    ``retrieved_at`` stays on the page. ``previous`` may still be an old page dict
+    that carries those workflow fields.
+    """
     check = check if check is not None else {}
+    # A successful read keeps associations. It does not keep a replay receipt or
+    # possible-match list; those are recomputed or replaced by the new capture.
+    activity = merged_workflow(activity, previous) or {}
+    activity.pop("cache_replay", None)
+    activity.pop("candidate_events", None)
     if cache is not None:
         result = parsed(seed_fetch(cache, url), url)
         path = cached_html_path(cache, url)
@@ -194,8 +213,8 @@ def fetch_page(url, previous, today, *, cache=None, check=None):
                     page_receipt["outcome"] = "unrecognized_page"
                     raise ValueError(f"Unrecognized Senate hearing page {url}")
             check.update(completed_at=timestamp(), outcome="not_found" if result.get("absent") else "present")
-            result["last_check"] = check
-            result["observation_check"] = check  # Retain this evidence if a later refresh fails.
+            activity["last_check"] = check
+            activity["observation_check"] = check  # Retain this evidence if a later refresh fails.
             if response.status_code == 200:
                 result["retrieved_at"] = next(receipt["completed_at"] for receipt in check["receipts"] if receipt["url"] == url)
         except (ValueError, RuntimeError, OSError) as error:
@@ -205,7 +224,11 @@ def fetch_page(url, previous, today, *, cache=None, check=None):
                 receipt["raw_body"] = body.source_dict()
             check.update(completed_at=timestamp(), outcome="error", error=str(error))
             raise
-    return SenatePage.model_validate({**result, "checked": today.isoformat(), "version": "", "parser_version": PARSER_VERSION, "events": previous.get("events", []), **({"match_details": previous["match_details"]} if previous.get("match_details") else {})}).model_dump(mode="python", by_alias=True, exclude_unset=True)
+    page = SenatePage.model_validate({key: value for key, value in result.items() if key not in PAGE_WORKFLOW_FIELDS}
+                                     | {"checked": today.isoformat(), "version": "", "parser_version": PARSER_VERSION}).model_dump(mode="python", by_alias=True, exclude_unset=True)
+    for key in PAGE_WORKFLOW_FIELDS:
+        page.pop(key, None)
+    return page, activity
 
 
 def refresh_urls(state, versions, today, limit, sites=None):
@@ -218,7 +241,8 @@ def refresh_urls(state, versions, today, limit, sites=None):
         for url, page in saved["pages"].items():
             if page.get("status") == "error":
                 continue  # No successful observation exists; the main pass retries it as urgent.
-            if url in saved["listings"] and not changed.intersection(page.get("events", [])) and (page.get("parser_version", 0) < PARSER_VERSION or due(page, saved["listings"][url][0], page.get("version"), today)):
+            events = (saved.get("workflow") or {}).get(url, {}).get("events", [])
+            if url in saved["listings"] and not changed.intersection(events) and (page.get("parser_version", 0) < PARSER_VERSION or due(page, saved["listings"][url][0], page.get("version"), today)):
                 aged.append((page.get("parser_version", 0) >= PARSER_VERSION, page.get("checked", ""), url))
     return {url for _, _, url in sorted(aged)[:limit]}
 
@@ -243,7 +267,7 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
     ms = [meeting for meeting in native_meetings if any(code in ("slia00", "scnc00") for code in codes_of(meeting)) or
           in_inventory_scope(meeting)]
     path = state_dir / "senate.json.gz"
-    state, totals = read_state(path), collections.Counter()
+    state, totals = normalize_senate_state(read_state(path)), collections.Counter()
     versions = collections.defaultdict(dict)
     for m in ms:
         codes = codes_of(m)
@@ -310,7 +334,8 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
             urgent, aged = [], []
             for url, (day, _) in saved["listings"].items():
                 previous = pages.get(url)
-                if not previous or previous.get("status") == "error" or (host in ("indian.senate.gov", "drugcaucus.senate.gov") and previous.get("parser_version", 0) < 2) or changed.intersection(previous.get("events", [])):
+                previous_events = (saved.get("workflow") or {}).get(url, {}).get("events", [])
+                if not previous or previous.get("status") == "error" or (host in ("indian.senate.gov", "drugcaucus.senate.gov") and previous.get("parser_version", 0) < 2) or changed.intersection(previous_events):
                     urgent.append(url)
                 elif url in maintenance:
                     aged.append(url)
@@ -320,18 +345,20 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
                     break
                 page_check = {}
                 try:
-                    pages[url] = fetch_page(url, pages.get(url, {}), as_of, cache=seed_cache if importing else None, check=page_check)
+                    pages[url], activity = fetch_page(url, pages.get(url, {}), as_of, cache=seed_cache if importing else None, check=page_check, activity=(saved.get("workflow") or {}).get(url))
+                    if activity:
+                        saved.setdefault("workflow", {})[url] = activity
                 except (ValueError, RuntimeError, OSError):
                     if not importing:
-                        previous = pages.setdefault(url, {"title": "", "lines": [], "witnesses": [], "documents": [], "events": [], "status": "error"})
-                        previous["last_check"] = page_check
+                        pages.setdefault(url, {"title": "", "lines": [], "witnesses": [], "documents": [], "status": "error"})
+                        saved.setdefault("workflow", {}).setdefault(url, {})["last_check"] = page_check
                     raise
                 totals["pages seeded" if importing else "pages fetched"] += 1
                 if not importing and totals["pages fetched"] % 25 == 0:
                     print(f"{host}: {totals['pages fetched']} pages refreshed; checkpoint saved", flush=True)
-                    state[host] = saved
-                    mark_possible_matches(native_meetings, state)
-                    write_state(path, state)
+                state[host] = saved
+                mark_possible_matches(native_meetings, state)
+                write_state(path, normalize_senate_state(state))
                 if not importing:
                     live_pages += 1
             if limit is None or live_pages < limit:
@@ -348,20 +375,21 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
         if saved and source_bodies:
             saved["source_bodies"] = source_bodies
     mark_possible_matches(native_meetings, state)
-    write_state(path, state)
+    write_state(path, normalize_senate_state(state))
     missing = [host for host in versions if (not site or host in site) and (host not in state or state[host].get("status") == "error" or any(
         u not in state[host]["pages"] or state[host]["pages"][u].get("status") == "error" for u in state[host]["listings"]))]
     if errors or missing:
         raise RuntimeError(f"Senate source incomplete: {errors[:5] or missing}")
     associations = associate_pages(ms, native_meetings, state)
     for saved in state.values():
-        for url, page in saved["pages"].items():
+        for url in saved["pages"]:
             update = associations[url]
-            page["events"] = update["events"]
+            record = saved.setdefault("workflow", {}).setdefault(url, {})
+            record["events"] = update["events"]
             if "match_details" in update:
-                page["match_details"] = update["match_details"]
+                record["match_details"] = update["match_details"]
     mark_possible_matches(native_meetings, state)
-    write_state(path, state)
+    write_state(path, normalize_senate_state(state))
     found = retained_matches(state)
     for name, rows, fields in zip(("senate_hearing_pages_found", "senate_witnesses_found", "senate_documents_found"), found, (PAGE_FIELDS, WITNESS_FIELDS, DOCUMENT_FIELDS)):
         write_csv(output_dir / f"{name}.csv", rows, fields)

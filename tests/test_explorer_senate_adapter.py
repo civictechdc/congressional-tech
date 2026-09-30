@@ -95,8 +95,9 @@ def test_live_404_receipt_supports_bounded_absence():
     assessment, = of_kind(rows, "assessment")
     assert assessment.status == "not_found" and assessment.observed_at == datetime(2026, 9, 26, 11, tzinfo=UTC)
     assert of_kind(rows, "source_record")[0].retrieved_at == assessment.observed_at
-    saved["last_check"]["receipts"][0]["url"] = PAGE + "/other"
-    assert of_kind(adapt(saved), "assessment")[0].status == "unknown"
+    other = page(absent=True, witnesses=[], documents=[], last_check={"mode": "live", "receipts": [
+        {"url": PAGE + "/other", "status_code": 404, "outcome": "not_found", "completed_at": "2026-09-26T11:00:00+00:00"}]})
+    assert of_kind(adapt(other), "assessment")[0].status == "unknown"
 
 
 def test_site_wide_files_stay_unlinked_like_producer_filter():
@@ -115,6 +116,7 @@ def test_same_name_witness_rows_remain_separate_appearances():
     assert len(appearances) == 2 and appearances[0].id != appearances[1].id
     assert {row.affiliation.organization_name for row in appearances} == {"One", "Two"}
     assert all(row.person is None for row in appearances)
+    saved["events"] = ["12"]
     saved["witnesses"].reverse()
     reordered = of_kind(adapt(saved), "appearance")
     assert {row.affiliation.organization_name: row.id for row in appearances} == {row.affiliation.organization_name: row.id for row in reordered}

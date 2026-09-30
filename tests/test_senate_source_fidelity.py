@@ -97,17 +97,17 @@ def test_aging_card_retains_ownership_location_and_source_words_to_output():
     assert saved["witness_metadata"]["0"]["location"] == "Chicago, IL"
     assert saved["document_metadata"][FILE]["witness_indexes"] == [0]
     assert saved["document_metadata"][FILE]["labels"] == ["SCA_Ai-jen_Poo_6_17_21"]
+    legacy = {key: value for key, value in saved.items() if key not in ("document_metadata", "witness_metadata")}
     rows = adapt(saved)
     appearance, = of_kind(rows, "appearance")
     assert appearance.affiliation.location == "Chicago, IL"
     links = of_kind(rows, "material_link")
     assert {link.subject.kind for link in links} == {"meeting", "appearance"}
     assert next(link for link in links if link.subject.kind == "appearance").subject.id == appearance.id
-    legacy = {key: value for key, value in saved.items() if key not in ("document_metadata", "witness_metadata")}
     assert of_kind(adapt(legacy), "appearance")[0].id == appearance.id
     assert of_kind(adapt(legacy), "material")[0].id == of_kind(rows, "material")[0].id
     assert of_kind(rows, "source_record")[0].payload == saved
-    _, witnesses, documents = retained_matches({"aging.senate.gov": {"pages": {URL: saved}}})
+    _, witnesses, documents = retained_matches({"aging.senate.gov": {"pages": {URL: saved}, "workflow": {URL: {"events": ["12"]}}}})
     assert witnesses[0]["location"] == "Chicago, IL"
     assert documents[0]["witness_names"] == '["Ai-jen Poo"]'
 
@@ -137,15 +137,25 @@ def test_replay_is_additive_and_protects_live_receipts(tmp_path):
     before = deepcopy(state)
     output, report = replay(state, tmp_path, meetings=[], parsed_at="2026-09-28T00:00:00Z")
     page = output["aging.senate.gov"]["pages"][URL]
+    workflow = output["aging.senate.gov"]["workflow"][URL]
     assert state == before
     for key, value in saved.items():
-        assert page[key] == value
+        if key in ("events", "match_details"):
+            assert key not in page and workflow[key] == value
+        else:
+            assert page[key] == value
     assert report["counts"]["replayed_pages"] == 1
-    assert page["cache_replay"]["acquisition_time"] is None
-    assert "retrieved_at" not in page and "last_check" not in page
+    assert workflow["cache_replay"]["acquisition_time"] is None
+    assert "cache_replay" not in page and "retrieved_at" not in page and "last_check" not in page
     assert replay(output, tmp_path, meetings=[])[0] == output
     saved["last_check"] = {"mode": "live", "completed_at": "2026-09-27T00:00:00Z"}
-    assert replay(state, tmp_path, meetings=[])[0] == state
+    protected, protected_report = replay(state, tmp_path, meetings=[])
+    protected_page = protected["aging.senate.gov"]["pages"][URL]
+    protected_workflow = protected["aging.senate.gov"]["workflow"][URL]
+    assert protected_report["counts"]["protected_live_observation"] == 1
+    assert "cache_replay" not in protected_workflow and protected_workflow["last_check"]["mode"] == "live"
+    assert protected_workflow["events"] == ["12"] and "last_check" not in protected_page
+    assert protected_page.get("parser_version") == saved.get("parser_version")
 
 
 def test_replay_rejects_changed_source_text(tmp_path):
@@ -172,8 +182,9 @@ def test_replayed_event_header_keeps_native_duplicate_guard(tmp_path):
     cached.write_text(raw)
     meetings = [{"eventId": "321", "chamber": "Senate", "date": "2021-01-26", "committees": [{"systemCode": "ssga00"}]}]
     output, _ = replay(state, tmp_path, meetings=meetings)
-    assert output["hsgac.senate.gov"]["pages"][url]["candidate_events"] == ["321"]
+    assert output["hsgac.senate.gov"]["workflow"][url]["candidate_events"] == ["321"]
     assert not output["hsgac.senate.gov"]["pages"][url].get("events")
+    assert not output["hsgac.senate.gov"]["workflow"][url].get("events")
 
 
 def test_actual_drug_caucus_attachment_aliases_keep_direct_identity_and_both_sources():

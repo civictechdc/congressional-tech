@@ -138,7 +138,7 @@ def test_explicit_attachment_follow_retains_original_url_label_and_pdf(monkeypat
         calls.append(target)
         return SimpleNamespace(status_code=200, content=(html if target == url else fixture('drug-attachment')).encode())
     monkeypatch.setattr(records_http, 'get_with_retry', get)
-    page = records.fetch_page(url, {}, date(2026, 9, 28))
+    page, _activity = records.fetch_page(url, {}, date(2026, 9, 28))
     assert calls == [url, attachment]
     assert page['document_labels'][attachment] == 'DOWNLOAD TESTIMONY'
     assert len(page['attachments'][attachment]) == 1
@@ -221,7 +221,8 @@ def test_failed_backfill_keeps_candidate_guard_for_already_collected_native_even
     with pytest.raises(RuntimeError, match='503'):
         records.main(path, tmp_path, tmp_path, as_of=date(2026,9,28), site=[host])
     saved = records_read_state(tmp_path/'senate.json.gz')
-    assert saved[host]['pages'][url]['candidate_events'] == ['12']
+    assert saved[host]['workflow'][url]['candidate_events'] == ['12']
+    assert 'candidate_events' not in saved[host]['pages'][url]
     rows = list(adapt(saved, context(), meetings={(119,'senate','12'): Ref(kind='meeting',id='known')}, committee_terms={(119,'slia00'): Ref(kind='committee_term',id='term')}))
     assert not any(row.kind == 'meeting' for row in rows)
     assert any(row.kind == 'data_issue' and row.id.endswith('possible-native-event') for row in rows)
@@ -240,8 +241,9 @@ def test_offline_rematch_preserves_supported_association_despite_changed_rarity_
     monkeypatch.setattr("congress_api.matching.senate_pages.match_pages", lambda *a: ([], [], []))
     records.main(path,tmp_path,tmp_path,offline=True,as_of=date(2026,9,28),site=[host],refresh_limit=0)
     saved=records_read_state(tmp_path/'senate.json.gz')
-    assert saved[host]['pages'][url]['events'] == ['12']
-    assert saved[host]['pages'][url]['candidate_events'] == []
+    assert saved[host]['workflow'][url]['events'] == ['12']
+    assert saved[host]['workflow'][url]['candidate_events'] == []
+    assert 'events' not in saved[host]['pages'][url]
     assert '12,' in (tmp_path/'senate_hearing_pages_found.csv').read_text()
     assert '12,' in (tmp_path/'senate_witnesses_found.csv').read_text()
 
