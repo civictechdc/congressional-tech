@@ -7,12 +7,10 @@ requires-python = ">=3.12"
 dependencies = [
     "committee-meeting",
     "congress-shared",
-    "youtube-api",
     "lxml",
     "requests",
     "pydantic>=2.11,<3",
     "pypdf[fonts]>=6,<7",
-    "tinydb",
   "google-genai",
   "yt-dlp",
 ]
@@ -24,8 +22,6 @@ test = ["pytest>=9,<10"]
 house-meeting-records = "congress_api.house.records:parse_args_and_run"
 senate-meeting-records = "congress_api.senate.records:parse_args_and_run"
 meeting-inventory = "congress_api.inventory.main:parse_args_and_run"
-congress-fetch = "congress_api.legacy.fetch.main:parse_args_and_run"
-congress-analyze = "congress_api.legacy.analyze.main:parse_args_and_run"
 gpo-fetch = "congress_api.gpo.fetch:parse_args_and_run"
 gpo-match = "congress_api.gpo.match:parse_args_and_run"
 senate-captions = "congress_api.senate.captions:parse_args_and_run"
@@ -46,4 +42,3 @@ where = ["src"]
 [tool.uv.sources]
 committee-meeting = { path = "../committee_meeting", editable = true }
 congress-shared = { path = "../congress_shared", editable = true }
-youtube-api = { path = "../youtube_api", editable = true }

@@ -8,8 +8,8 @@ The pacing lock controls request starts, not requests already in flight.
 
 The authoritative policy matrix is in packages/congress_api/README.md, under
 "HTTP policy". meetings.get delegates here with five attempts instead of three.
-The legacy api.request_source, Senate captions sess, and transcribe HTTP calls
-remain separate clients with characterized behavior; this module does not
+Senate captions sess and transcribe HTTP calls remain separate clients with
+characterized behavior; this module does not
 silently replace their retry, pooling or parsing policies. response_metadata
 describes received headers; callers decide whether to retain that metadata.
 """

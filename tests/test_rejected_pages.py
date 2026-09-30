@@ -33,8 +33,3 @@ def test_failed_atomic_replace_keeps_prior_evidence(tmp_path, monkeypatch):
     with pytest.raises(OSError, match='replace failed'):
         retain_rejected_page(tmp_path / 'committees.gz', {'after': 2}, url='https://example.gov', offset=1)
     assert path.read_bytes() == before
-
-
-def test_original_retention_import_is_same_function():
-    from congress_api.fetch.rejected import retain_rejected_page as old
-    assert old is retain_rejected_page

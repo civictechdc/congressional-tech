@@ -8,10 +8,8 @@ from pathlib import Path
 from pydantic import BaseModel, ValidationError
 import pytest
 
-from congress_api import api
 from congress_api import models
 from congress_api.adapters import meetings as adapter
-from congress_api.analyze.committee_details import CommitteeDetails
 from congress_api.congress_source import parse_congress_xml
 from congress_api.models.congress import CommitteeMeeting, parse_response
 from congress_api.models.legislators import parse_legislators
@@ -95,34 +93,12 @@ def test_legislator_native_fields_all_declared_and_literal():
     assert_declared(records)
 
 
-def test_legacy_committee_cache_retains_full_native_detail():
-    raw = json.loads((FIXTURES / 'source_models/committee-senate-ssju00.json').read_text())['committee']
-    detail = CommitteeDetails.from_dict(raw)
-    assert detail.source_record.source_dict() == raw
-    assert detail.to_dict() == raw
-    assert detail.to_dict()['nominations'] == raw['nominations']
-    assert detail.to_dict()['committeeWebsiteUrl'] == raw['committeeWebsiteUrl']
-    assert CommitteeDetails.from_dict({'systemCode': 'ssju00', 'updateDate': None}).to_dict() == {'systemCode': 'ssju00', 'updateDate': None}
-
-
-def test_xml_fallback_keeps_every_byte_attribute_and_repeated_element(monkeypatch):
+def test_xml_parser_keeps_every_byte_attribute_and_repeated_element():
     raw = b'<?xml version="1.0"?><api-root><committeeMeeting source="x"><eventId>00012</eventId><extra a="1">A</extra><extra a="2">B</extra></committeeMeeting></api-root>'
     parsed = parse_congress_xml(raw)
     assert parsed.content.body_bytes() == raw
     assert parsed.xml.children[0].attrib == {'source': 'x'}
     assert [node.text for node in parsed.xml.children[0].findall('extra')] == ['A', 'B']
-
-    class Response:
-        content = raw
-        def raise_for_status(self):
-            pass
-        def json(self):
-            raise ValueError('XML')
-
-    monkeypatch.setattr(api.requests, 'get', lambda *args, **kwargs: Response())
-    result = api.generic_request('https://api.congress.gov/v3/committee-meeting/119/house/00012')
-    assert result['_source_xml']['body'].encode() == raw
-    assert result['api-root']['committeeMeeting']['extra'] == ['A', 'B']
 
 
 def test_real_xml_keeps_native_text_types_and_distinct_list_element_names():

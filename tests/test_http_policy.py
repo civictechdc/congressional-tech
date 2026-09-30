@@ -1,4 +1,4 @@
-"""Characterize the production gateway and legacy API fork without network I/O."""
+"""Characterize the production HTTP clients without network I/O."""
 import json
 from collections import defaultdict
 from types import SimpleNamespace
@@ -6,9 +6,7 @@ from types import SimpleNamespace
 import pytest
 import requests
 
-from congress_api import api, http, meetings
-from congress_api.models.congress import CommitteesPage
-from congress_api.models.congress_xml import CongressXmlDocument
+from congress_api import http, meetings
 
 URL = 'https://api.congress.gov/v3/committee/119'
 
@@ -23,32 +21,6 @@ def response(status=200, body=b'{"committees": []}'):
 def unpaced(monkeypatch):
     monkeypatch.setattr(http.time, 'sleep', lambda *_: None)
     monkeypatch.setattr(http, '_next', defaultdict(float))
-
-
-def test_legacy_client_makes_one_unconfigured_json_request(monkeypatch):
-    calls = []
-    def get(url, **kwargs):
-        calls.append((url, kwargs))
-        return response()
-    monkeypatch.setattr(api.requests, 'get', get)
-    assert isinstance(api.request_source(URL, api_key='test-key'), CommitteesPage)
-    assert calls == [(URL, {'params': {'api_key': 'test-key'}})]
-
-
-def test_legacy_http_failure_does_not_retry_or_parse(monkeypatch):
-    calls = []
-    monkeypatch.setattr(api.requests, 'get', lambda *a, **k: calls.append(a) or response(503))
-    with pytest.raises(requests.HTTPError):
-        api.request_source(URL)
-    assert len(calls) == 1
-
-
-def test_legacy_client_keeps_xml_fallback(monkeypatch):
-    body = b'<api-root><committees/><request><format>xml</format></request></api-root>'
-    monkeypatch.setattr(api.requests, 'get', lambda *a, **k: response(body=body))
-    native = api.request_source(URL)
-    assert isinstance(native, CongressXmlDocument)
-    assert native.content.body_bytes() == body
 
 
 def test_production_wrapper_retries_five_times_and_preserves_parameters(unpaced):

@@ -4,6 +4,8 @@ import ast
 import hashlib
 from pathlib import Path
 import re
+import subprocess
+import sys
 import tomllib
 
 from congress_api.adapters.common import AdapterContext, digest
@@ -13,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / 'packages/congress_api/src/congress_api'
 SCRIPTS = {
     'house-meeting-records', 'senate-meeting-records', 'meeting-inventory',
-    'congress-fetch', 'congress-analyze', 'gpo-fetch', 'gpo-match',
+    'gpo-fetch', 'gpo-match',
     'senate-captions', 'hearing-transcribe', 'gpo-transcripts',
     'congress-meetings', 'congress-committees',
 }
@@ -91,8 +93,6 @@ def test_production_imports_do_not_reenter_legacy_exploration():
     from importlib.util import resolve_name
     for path in SOURCE.rglob('*.py'):
         relative = path.relative_to(SOURCE)
-        if relative.parts[0] in {'legacy', 'fetch', 'analyze'} or relative.name == 'json_to_tinydb.py':
-            continue  # These are the quarantined code and compatibility aliases.
         package = 'congress_api' + ('.' + '.'.join(relative.parts[:-1]) if len(relative.parts) > 1 else '')
         for node in ast.walk(ast.parse(path.read_text())):
             if isinstance(node, ast.ImportFrom):
@@ -100,26 +100,37 @@ def test_production_imports_do_not_reenter_legacy_exploration():
                 modules = [module] + [module + '.' + alias.name for alias in node.names]
             else:
                 modules = [a.name for a in node.names] if isinstance(node, ast.Import) else []
-            assert not any(m.startswith(('congress_api.legacy', 'congress_api.fetch', 'congress_api.analyze')) for m in modules), path
+            assert not any(m.startswith(('congress_legacy', 'youtube_api', 'tinydb', 'congress_api.legacy',
+                'congress_api.fetch', 'congress_api.analyze', 'congress_api.api', 'congress_api.xml_to_dict',
+                'congress_api.json_to_tinydb')) for m in modules), path
 
 
-def test_legacy_modules_share_implementations_and_mutable_caches():
-    from importlib import import_module
-    aliases = {
-        'fetch.main': 'legacy.fetch.main',
-        'fetch.congress_committee_fetcher': 'legacy.fetch.congress_committee_fetcher',
-        'fetch.congress_event_fetcher': 'legacy.fetch.congress_event_fetcher',
-        'analyze.main': 'legacy.analyze.main',
-        'analyze.committee': 'legacy.committee',
-        'analyze.committee_summary': 'legacy.committee_summary',
-        'analyze.committee_details': 'legacy.committee_details',
-        'json_to_tinydb': 'legacy.json_to_tinydb',
-    }
-    for old, owner in aliases.items():
-        assert import_module('congress_api.' + old) is import_module('congress_api.' + owner)
-    # Fetch may share committee objects, but cannot import the analyze command.
-    for path in (SOURCE / 'legacy/fetch').glob('*.py'):
-        assert not re.search(r'\b(?:from|import)\s+[^\n]*analyze', path.read_text())
+def test_production_commands_do_not_require_legacy_dependencies():
+    project = tomllib.loads((SOURCE.parents[1] / 'pyproject.toml').read_text())['project']
+    assert not {'congress-legacy', 'youtube-api', 'tinydb'} & set(project['dependencies'])
+    # A fresh interpreter cannot inherit optional modules imported by other tests.
+    program = '''
+import importlib
+import importlib.abc
+import sys
+
+class NoLegacy(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname.split('.')[0] in {'congress_legacy', 'youtube_api', 'tinydb'}:
+            raise ImportError('Production attempted optional dependency: ' + fullname)
+
+sys.meta_path.insert(0, NoLegacy())
+for entry in sys.argv[1:]:
+    module, function = entry.split(':')
+    sys.argv = [module, '--help']
+    try:
+        getattr(importlib.import_module(module), function)()
+    except SystemExit as result:
+        assert result.code == 0, (entry, result.code)
+'''
+    result = subprocess.run([sys.executable, '-c', program, *project['scripts'].values()],
+                            text=True, capture_output=True)
+    assert result.returncode == 0, result.stderr
 
 
 def test_committee_entrypoint_delegates_without_changing_main(monkeypatch):
