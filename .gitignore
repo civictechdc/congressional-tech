@@ -377,3 +377,4 @@ vite.config.ts.timestamp-*
 apps/site/public/data/explorer/
 docs/youtube-coverage/research/scripts/as_run/cache/
 docs/youtube-coverage/research/scripts/as_run/.ratelimit.*
+output/
