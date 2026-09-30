@@ -75,6 +75,11 @@ class CommitteeSnapshot(SourceModel):
     committee: CommitteeRecord
     source_url: str | None = Field(None, alias="_url")
     retrieved_at: str | None = None
+    # Detail endpoints describe the committee across Congresses. Keep that
+    # observation separate from the Congress-specific list and its timestamp.
+    detail: CommitteeDetail | None = None
+    detail_url: str | None = None
+    detail_retrieved_at: str | None = None
 
 
 class MeetingLocation(SourceModel):

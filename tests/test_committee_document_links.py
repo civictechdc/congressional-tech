@@ -135,7 +135,9 @@ def test_collector_includes_document_only_historical_congresses(tmp_path, monkey
         writer.writerows([{'congress': 106}, {'congress': 111}])
     calls = []
 
-    def get(session, url, api_key, params):
+    def get(session, url, api_key, params=None):
+        if params is None:
+            return {'committee': {'systemCode': 'hsru00', 'history': []}}
         congress = int(url.rsplit('/', 1)[1])
         calls.append(congress)
         return {'committees': [metadata(congress)['committee']], 'pagination': {}}

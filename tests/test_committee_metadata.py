@@ -10,7 +10,8 @@ from test_explorer_export import NOW, native, write_meetings
 
 
 def metadata(congress=115, code='hsru00', kind='Standing', parent=None):
-    committee = {'systemCode': code, 'name': f'Committee {code}', 'chamber': 'House', 'committeeTypeCode': kind}
+    committee = {'systemCode': code, 'name': f'Committee {code}', 'chamber': 'House', 'committeeTypeCode': kind,
+                 'url': f'https://api.congress.gov/v3/committee/house/{code}?format=json'}
     if parent:
         committee['parent'] = {'systemCode': parent}
     return {'congress': congress, 'committee': committee,
@@ -28,7 +29,9 @@ def test_collector_paginates_and_keeps_historical_snapshot(tmp_path, monkeypatch
     output = save(tmp_path / 'committees.jsonl.gz', [historical, metadata(114), metadata(115)])
     calls = []
 
-    def get(session, url, key, params):
+    def get(session, url, key, params=None):
+        if params is None:
+            return {'committee': {'systemCode': url.rsplit('/', 1)[1], 'history': []}}
         calls.append((url, params['offset']))
         congress = int(url.rsplit('/', 1)[1])
         offset = params['offset']
@@ -37,7 +40,8 @@ def test_collector_paginates_and_keeps_historical_snapshot(tmp_path, monkeypatch
 
     monkeypatch.setattr(collector, 'get', get)
     rows = collector.collect(meetings, output, api_key='test-key')
-    assert rows['113|hsru00'] == historical
+    assert {key: rows['113|hsru00'][key] for key in historical} == historical
+    assert rows['113|hsru00']['detail']['systemCode'] == 'hsru00'
     assert len(rows) == 5
     assert calls == [(f'{collector.API}/committee/{c}', o) for c in (114, 115) for o in (0, 1)]
     assert all('test-key' not in row['_url'] for row in rows.values())
