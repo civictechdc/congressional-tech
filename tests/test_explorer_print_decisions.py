@@ -39,7 +39,8 @@ def test_each_accepted_branch_explains_unchanged_results(rule, meetings, package
     assert plain == explained == expected
     assert serialized_matches(plain) == serialized_matches(explained)
     assert rule in {decision["rule"] for decision in decisions}
-    assert all(decision["rule_version"] == "1" for decision in decisions)
+    assert all(decision["rule_version"] == ("2" if decision["rule"] in ("markup_print_day", "unique_committee_day") else "1")
+               for decision in decisions)
     assert all(decision["package_id"] in expected[decision["event_id"]] for decision in decisions)
     for decision in decisions:
         assert decision["evidence"]["meeting"]["eventId"] == decision["event_id"]
@@ -84,6 +85,23 @@ def test_attached_package_still_requires_existing_committee_day_candidate():
     decisions = []
     assert match_prints(meetings, packages, {"1": {PACKAGE}}, decisions=decisions) == {"1": set()}
     assert decisions == []
+
+
+@pytest.mark.parametrize('row', [
+    meeting(type='Markup'),
+    meeting(type='Closed Markup Session'),
+    meeting(type='Meeting', title='Full Committee Markup'),
+])
+def test_all_markup_spellings_use_the_same_print_rules(row):
+    assert match_prints([row], [package()]) == {'1': set()}
+    decisions = []
+    assert match_prints([row], [package(title='Markup of agricultural insurance commodity programs')],
+                        decisions=decisions) == {'1': {PACKAGE}}
+    reason = next(d for d in decisions if d['rule'] == 'markup_print_day')
+    assert reason['rule_version'] == '2'
+    assert reason['evidence']['meeting_type'] == 'markup'
+    assert reason['evidence']['meeting_type_source'] == ('/title' if row['type'] == 'Meeting' else '/type')
+    assert not any(d['rule'] == 'unique_committee_day' for d in decisions)
 
 
 def test_multiple_committee_paths_keep_native_codes_and_matching_alias():

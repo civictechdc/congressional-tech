@@ -10,6 +10,7 @@ import re
 
 from congress_api.committees import codes_of
 from congress_api.gpo.match import matching_days, similarity, words
+from congress_api.meeting_rules import meeting_type
 
 PRINT_FILE = re.compile(r"/(CHRG-\d{3}[hsj]hrg[\w\-]+?)(?:\.\w+)?$", re.I)
 COLLECTION = re.compile(r"APPROPRIATIONS FOR (FISCAL YEAR )?\d{4}|AUTHORIZATION FOR APPROPRIATIONS|NOMINATIONS OF THE \d+\w* CONGRESS|NOMINATIONS BEFORE THE", re.I)
@@ -18,6 +19,15 @@ COLLECTION = re.compile(r"APPROPRIATIONS FOR (FISCAL YEAR )?\d{4}|AUTHORIZATION 
 def title_key(title):
     distinct = words(title)
     return " ".join(sorted(distinct)) if len(distinct) >= 4 else ""
+
+
+def same_day_title_groups(rows):
+    """One sharing rule for prints and recordings; never merge meeting IDs."""
+    groups = collections.defaultdict(list)
+    for row in rows:
+        if key := title_key(row.get("title") or ""):
+            groups[row["date"][:10], key].append(row)
+    return groups
 
 
 def attached_prints(urls):
@@ -48,9 +58,10 @@ def match_prints(meetings, gpo, attached=None, *, share=True, decisions=None):
         for day in matching_days(r):
             by_day[r["committee_code"], day].add(r["package_id"])
     meetings_that_day = collections.Counter((c, m["date"][:10]) for m in meetings for c in codes_of(m))
-    out, twins, meeting_evidence = {}, collections.defaultdict(list), {}
+    out, meeting_evidence = {}, {}
     for m in meetings:
         event, day = m["eventId"], m["date"][:10]
+        kind, type_field = meeting_type(m)
         if decisions is not None:
             meeting_evidence[event] = {k: m.get(k) for k in ("eventId", "congress", "date", "type", "title", "committees")}
         tw = words(m.get("title") or "")
@@ -59,7 +70,8 @@ def match_prints(meetings, gpo, attached=None, *, share=True, decisions=None):
         def decision(package, rule, basis, **details):
             if decisions is not None:
                 decisions.append({
-                    "event_id": event, "package_id": package, "rule": rule, "rule_version": "1", "basis": basis,
+                    "event_id": event, "package_id": package, "rule": rule,
+                    "rule_version": "2" if rule in ("markup_print_day", "unique_committee_day") else "1", "basis": basis,
                     "evidence": {
                         "meeting": meeting_evidence[event],
                         "packages": evidence_rows[package],
@@ -77,8 +89,8 @@ def match_prints(meetings, gpo, attached=None, *, share=True, decisions=None):
                     (score >= 0.4, "title_similarity", "inferred"),
                     (p in collection, "collection_day", "inferred"),
                     (p in held, "attached_file", "derived"),
-                    (m.get("type") == "Markup" and p in markup_print, "markup_print_day", "inferred"),
-                    (m.get("type") != "Markup" and meetings_that_day[c, day] == 1 and len(by_day[c, day]) == 1, "unique_committee_day", "inferred"),
+                    (kind == "markup" and p in markup_print, "markup_print_day", "inferred"),
+                    (kind != "markup" and meetings_that_day[c, day] == 1 and len(by_day[c, day]) == 1, "unique_committee_day", "inferred"),
                 )
                 if any(accepted for accepted, _, _ in reasons):
                     out[event].add(p)
@@ -87,6 +99,8 @@ def match_prints(meetings, gpo, attached=None, *, share=True, decisions=None):
                         if not accepted:
                             continue
                         details = {"matching_committee_code": c, "matching_day": day}
+                        if rule in ("markup_print_day", "unique_committee_day"):
+                            details.update(meeting_type=kind, meeting_type_source=type_field)
                         if rule == "title_similarity":
                             details.update(score=score, threshold=0.4,
                                            meeting_words=sorted(tw), package_words=sorted(print_words[p]))
@@ -96,11 +110,9 @@ def match_prints(meetings, gpo, attached=None, *, share=True, decisions=None):
                         elif rule == "unique_committee_day":
                             details.update(meeting_count=meetings_that_day[c, day], package_count=len(by_day[c, day]))
                         decision(p, rule, basis, **details)
-        key = title_key(m.get("title") or "")
-        if key:
-            twins[day, key].append(event)
     ## A joint hearing entered once per committee shares its prints across those entries.
-    for (day, key), events in twins.items() if share else ():
+    for (day, key), group in same_day_title_groups(meetings).items() if share else ():
+        events = [m["eventId"] for m in group]
         packages = set().union(*(out[e] for e in events))
         before = {event: set(out[event]) for event in events} if decisions is not None else None
         for event in events:

@@ -11,11 +11,10 @@ from congress_api.committees import codes_of
 from congress_api.gpo.match import EVENT_ID, VIDEO_ID, similarity, words
 from congress_api.senate.isvp import COMM, STREAM, parse_player_url
 from congress_api.inventory.common import NOT_HELD, TRANSCRIPT
-from congress_api.inventory.prints import attached_prints, match_prints, title_key
+from congress_api.inventory.prints import attached_prints, match_prints, same_day_title_groups, title_key
 from congress_api.inventory.captions import text_source
+from congress_api.meeting_rules import HEARING_TYPES, meeting_access, meeting_type
 
-## Executive-session wording only excludes witness-page selection, not the original rescheduling rule.
-CLOSED = re.compile(r"closed|briefing|deposition", re.I)
 ## House committees whose joint hearings with their Senate counterpart the Senate studio records
 SENATE_COUNTERPART = {"hsvr00": "vetaff", "hsas00": "armed", "hsfa00": "foreign", "hsju00": "judiciary", "hsap00": "approps", "hsag00": "ag", "hsbu00": "budget", "hssm00": "smbiz"}
 JOINT_WITH_SENATE = re.compile(r"\bjoint\b.*\bsenate\b|\bsenate\b.*\bjoint\b", re.I | re.S)
@@ -29,6 +28,7 @@ NR_UNITS = {"FC": "hsii00", "EMR": "hsii06", "FL": "hsii10", "WPO": "hsii13", "O
 ## session uploads under generic titles ("Full Committee Markup", "Business Meeting", "Legislative Hearing | Federal Lands Subcommittee")
 HEARING_WORDS = re.compile(r"\bhearing\b", re.I)
 MARKUP_WORDS = re.compile(r"\b(markup|mark-up|business meeting|organizational|organizing)\b", re.I)
+SESSION_RECAP = re.compile(r"\b(highlights?|takeaways?|recap|reactions?)\b", re.I)
 NAME_STOP = set("house senate committee subcommittee on the and of for".split())
 ET = ZoneInfo("America/New_York")
 
@@ -48,11 +48,34 @@ def bills(title):
     return {(re.sub(r"[\s.]", "", kind).upper(), num) for kind, num in BILL.findall(title)}
 
 
-def session_kind_fits(meeting_type, title):
-    """Does an upload's generic title agree with the meeting's type: a hearing for a Hearing, a markup or business
-    meeting for a Markup, either for a Meeting?"""
+def session_family(kind):
+    """Recording matching groups business with markup and field with hearing.
+
+    These compatibility groups never replace the meeting's actual type.
+    """
+    return "hearing" if kind in HEARING_TYPES else "markup" if kind in ("markup", "business") else kind
+
+
+def session_kind_fits(meeting, title):
+    """Upload-title hints constrain weak matches; they do not classify meetings."""
+    # A long reaction video can mention a hearing without recording it. Exact
+    # IDs and topic/bill matches are evaluated separately from this fallback.
+    if SESSION_RECAP.search(title):
+        return False
+    family = session_family(meeting_type(meeting)[0])
     hearing, markup = bool(HEARING_WORDS.search(title)), bool(MARKUP_WORDS.search(title))
-    return (hearing and not markup) if meeting_type == "Hearing" else markup if meeting_type == "Markup" else (hearing or markup) if meeting_type == "Meeting" else False
+    return (hearing and not markup) if family == "hearing" else markup if family == "markup" else (hearing or markup) if family == "meeting" else False
+
+
+def reschedule_candidate(row):
+    """Missing video alone cannot move a closed session or recurring briefing.
+
+    Briefing/deposition exclusions are conservative matching policy, not evidence
+    of closed access. Explicit open access still wins over words in the topic.
+    """
+    return (meeting_access(row)[0] not in ("closed", "partly_closed")
+            and meeting_type(row)[0] != "briefing"
+            and not re.search(r"\bdeposition\b", row.get("title") or "", re.I))
 
 
 def title_dates(title):
@@ -116,7 +139,7 @@ def build(meetings, gpo, videos, documents, pages, recordings, probed, yt_caps, 
                     if similarity(tw, words(vt)) >= 0.5 or (tb and tb & bills(vt)):
                         out.append(vid)
                     elif (k == 0 or (k == 1 and ("markup" if MARKUP_WORDS.search(vt) else "hearing") not in kinds_that_day[(code, d)])) and not tagged and all((t.month, t.day) == (d0.month, d0.day) for t in title_dates(vt)) \
-                            and session_kind_fits(m.get("type"), vt) and (meetings_that_day[(code, day)] == 1 or any(sw and sw <= set(words(vt)) for sw in sub_words)):
+                            and session_kind_fits(m, vt) and (meetings_that_day[(code, day)] == 1 or any(sw and sw <= set(words(vt)) for sw in sub_words)):
                         out.append(vid)
             same_day = [(vid, minutes) for vid, unit, minutes in dated.get((code, day), []) if unit in units or (unit is None and meetings_that_day[(code, day)] == 1)]
             if same_day and start and any(minutes is not None for _, minutes in same_day):
@@ -128,7 +151,7 @@ def build(meetings, gpo, videos, documents, pages, recordings, probed, yt_caps, 
     kinds_that_day = collections.defaultdict(set)
     for m in meetings:
         for c in codes_of(m):
-            kinds_that_day[(c, m["date"][:10])].add("markup" if m.get("type") == "Markup" else "hearing" if m.get("type") == "Hearing" else "meeting")
+            kinds_that_day[(c, m["date"][:10])].add(session_family(meeting_type(m)[0]))
     units_that_day = collections.Counter((c["systemCode"], m["date"][:10]) for m in meetings for c in m.get("committees", []))
     parent_words = {c["systemCode"]: set(words(c["name"])) for m in meetings for c in m.get("committees", []) if c["systemCode"].endswith("00") and c.get("name")}
     ## every name a subcommittee has carried, as its distinctive words: Congress.gov leaves the name blank on many records
@@ -167,11 +190,7 @@ def build(meetings, gpo, videos, documents, pages, recordings, probed, yt_caps, 
                      "text_source": "", "documents": "yes" if m["eventId"] in found_documents or any(d.get("url") for d in (m.get("witnessDocuments") or []) + (m.get("meetingDocuments") or [])) else "no",
                      "rescheduled_to": "", "not_held": "yes" if NOT_HELD.match(m.get("title") or "") else ""})
     ## a joint hearing is entered once per committee: same day, same title, one set of records
-    twins = collections.defaultdict(list)
-    for r in rows:
-        if title_key(r["title"]):
-            twins[(r["date"], title_key(r["title"]))].append(r)
-    for group in twins.values():
+    for group in same_day_title_groups(rows).values():
         if len(group) > 1:
             packages = set().union(*(r["gpo_packages"] for r in group))
             youtube = list(dict.fromkeys(v for r in group for v in r["youtube_ids"]))
@@ -189,7 +208,7 @@ def build(meetings, gpo, videos, documents, pages, recordings, probed, yt_caps, 
         if title_key(r["title"]) and r["text_source"] != "no_video":
             same_title[(r["committees"], title_key(r["title"]))].append(r)
     for r in rows:
-        if r["text_source"] == "no_video" and title_key(r["title"]) and not CLOSED.search(r["title"]) and not r["type"].startswith("Closed"):
+        if r["text_source"] == "no_video" and title_key(r["title"]) and reschedule_candidate(r):
             later = [o for o in same_title[(r["committees"], title_key(r["title"]))] if 0 < (dt.date.fromisoformat(o["date"]) - dt.date.fromisoformat(r["date"])).days <= 60]
             if later:
                 r["rescheduled_to"] = min(later, key=lambda o: o["date"])["event_id"]

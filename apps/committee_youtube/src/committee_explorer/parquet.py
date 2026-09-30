@@ -9,7 +9,8 @@ import json
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from congress_api.adapters.meetings import category, document_title, event_page, meeting_access, meeting_type
+from congress_api.adapters.meetings import category, document_title, event_page
+from congress_api.meeting_rules import meeting_access, meeting_type
 from congress_api.adapters.committees import HIERARCHY_SOURCE, hierarchy_from_code
 
 import pyarrow as pa

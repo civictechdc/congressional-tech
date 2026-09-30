@@ -26,7 +26,8 @@ from congress_api.models.house import HouseParsedRecord
 from congress_api.house.source import parse_house_meeting, parse_house_witnesses
 from congress_api.house.repository import (AMENDMENT_FIELDS, WITNESS_FIELDS, addresses, cached_xml, document_kind, documents,
     read_xml, witness_area, witness_rows, witnesses)
-from congress_api.inventory.common import (NOT_HELD, TRANSCRIPT, due, kind, nonnegative, read_csv, read_meetings,
+from congress_api.meeting_rules import is_hearing
+from congress_api.inventory.common import (NOT_HELD, TRANSCRIPT, due, nonnegative, read_csv, read_meetings,
     read_state, source_args, write_csv, write_state)
 from congress_api.inventory.prints import attached_prints, match_prints
 
@@ -72,7 +73,7 @@ def lacking(m, packages):
     transcript = any(d.get("url") and TRANSCRIPT.search(f"{d.get('documentType')} {d.get('name')}") for d in m.get("meetingDocuments") or [])
     return m.get("chamber") != "Senate" and not NOT_HELD.match(m.get("title") or "") and (
         not (m.get("meetingDocuments") or m.get("witnessDocuments"))
-        or (kind(m) == "hearing" and not m.get("witnesses")) or not (packages or transcript))
+        or (is_hearing(m) and not m.get("witnesses")) or not (packages or transcript))
 
 
 def parse_house_record(root, wlist, page, wstatus) -> HouseParsedRecord:

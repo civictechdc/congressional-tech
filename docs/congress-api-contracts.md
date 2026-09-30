@@ -14,6 +14,38 @@ transcript representation. Invalid bodies still retain their digest, location
 and validation issue. Inventory matching accepts `(committee_code, video_row)`
 pairs; `read_youtube_videos` reads the generated channel caches separately.
 
+## Meeting interpretation and matching
+
+`meeting_rules.py` owns meeting type, access and hearing eligibility for inventory,
+House/Senate collection, adapters and Parquet conversion. Explicit publisher types
+take precedence over title inference. Generic meetings stay generic, and a briefing
+does not establish closed access. Both ordinary and field hearings can have witnesses.
+The returned source field preserves the distinction between reported and inferred values.
+
+`meeting_completeness.csv` uses these types in `kind` and includes `access`:
+`open`, `closed`, `partly_closed`, or `unknown`. Its retained `closed` column is `yes`
+only for a fully closed meeting; blank does not mean open. Native source fields
+and the inventory's raw `type` column remain unchanged.
+
+| Rule | Owner and intentional limits |
+| --- | --- |
+| Inventory population | `inventory.common.in_inventory_scope`; the exporter uses the same population for print matching. Senate's explicit Indian Affairs/Drug Caucus exceptions remain in its collector. |
+| Print associations and same-day title sharing | `inventory.prints`; inventory and explorer use the same matcher. Print and recording sharing use the same grouping rule without merging meeting IDs. |
+| Generic recording matches | `inventory.text_sources`; shared meeting classification feeds recording compatibility groups. Business meetings can match markup uploads; field hearings can match hearing uploads. Recaps and reactions cannot establish this weak match. Upload-title keywords never relabel the meeting. |
+| Possible rescheduling | `inventory.text_sources.reschedule_candidate`; closed/partly closed sessions and recurring briefings/depositions are excluded. This is a matching restriction, not an access determination. |
+| Senate page associations | `senate.records` / `senate.matching`; committee/date restrictions, weighted titles and exact identifiers remain distinct from print and recording rules. Adapters consume retained decisions. |
+
+Publisher page-heading labels still require their source-specific layout and a
+matching dated sitting. Reported status remains distinct from a title-based
+`not_held` or possible-rescheduling indication. Neither missing recordings nor a
+past date proves that a meeting occurred.
+
+The two print rules that depend on meeting type (`markup_print_day` and
+`unique_committee_day`) now emit rule version `2` and the classification field used.
+New Senate page associations record matcher version `2`; retained unversioned
+associations keep their prior version `1`. These changes do not require refetching
+source files or changing source-parser versions.
+
 ## Commands and artifacts
 
 These ten production console script names are stable. Default data paths are relative

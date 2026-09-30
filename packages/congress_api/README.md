@@ -268,6 +268,7 @@ From `congress_shared.globals` (package-relative, not cwd-relative):
 - **`witnesses.py`** — `witness`, `person_key`, `is_name` for GPO and page lines.
 - **`committee_metadata.py`** — `collect`, `congress-committees`.
 - **`xml.py`** — BOM-safe parse and MODS helpers.
+- **`meeting_rules.py`** — shared meeting type, access and hearing eligibility for collectors, inventory and explorer adapters; retains which source field supplied the classification.
 
 ### Filename parsing
 

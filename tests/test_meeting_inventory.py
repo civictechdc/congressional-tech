@@ -100,6 +100,33 @@ def test_dates_bill_names_nominees_and_natural_resources_time():
     assert completeness.nominees("Hearings to examine the nominations of Thomas Peter Feddo, of Virginia, to be Assistant Secretary of the Treasury for Investment Security.") == [("Thomas Peter Feddo", "Assistant Secretary of the Treasury for Investment Security")]
 
 
+@pytest.mark.parametrize('native,title,upload,expected', [
+    ('Meeting', 'Hearings to examine policy', 'Full Committee Markup', False),
+    ('Meeting', 'Hearings to examine policy', 'Legislative Hearing', True),
+    ('Meeting', 'Closed business meeting to consider nominations', 'Business Meeting', True),
+    ('Field Hearing', 'Rural access', 'Oversight Hearing', True),
+    ('Markup', 'Budget', 'Full Committee Markup', True),
+    ('Briefing', 'Budget', 'Oversight Hearing', False),
+    ('Meeting', 'Budget', 'Business Meeting', True),
+    ('Open Hearing', 'Hearings to examine the nomination of Todd Blanche',
+     'Senate Judiciary Democrats Offer Takeaways from Todd Blanche Hearing', False),
+])
+def test_generic_recording_matches_use_normalized_meeting_type(native, title, upload, expected):
+    assert text_sources.session_kind_fits({'type': native, 'title': title}, upload) is expected
+
+
+@pytest.mark.parametrize('title,expected', [
+    ('Business Meeting (Open in a Closed Space)', True),
+    ('Hearings on closed-door settlements', True),
+    ('Closed business meeting to consider nominations', False),
+    ('Open and closed hearings to examine worldwide threats', False),
+    ('A briefing on the annual budget', False),
+    ('The deposition of Mark Miller', False),
+])
+def test_rescheduling_exclusions_do_not_invent_closed_access(title, expected):
+    assert text_sources.reschedule_candidate({'type': 'Meeting', 'title': title}) is expected
+
+
 @pytest.mark.parametrize("caption,expected", [(True, "youtube_captions"), (False, "video_no_captions"), (None, "video_no_captions")])
 def test_video_cache_reading_is_separate_from_matching(tmp_path, monkeypatch, caption, expected):
     from congress_api.inventory.common import read_youtube_videos

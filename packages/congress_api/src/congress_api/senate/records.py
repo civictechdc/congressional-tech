@@ -36,7 +36,8 @@ from lxml import html as dom
 from congress_api import http
 from congress_api.committees import codes_of
 from congress_api.gpo.match import words
-from congress_api.inventory.common import meeting_access, due, kind, nonnegative, read_state, source_args, write_csv, write_state, text
+from congress_api.meeting_rules import HEARING_TYPES, meeting_access, meeting_type
+from congress_api.inventory.common import due, in_inventory_scope, nonnegative, read_state, source_args, write_csv, write_state, text
 from congress_api.senate.pages import (SITE, LISTINGS, HEARING_LINK, FIRST_RECORD, OWN, NEAR, BUSINESS, DATE,
     documents, witnesses, lines, written_day, topic, attachment_page, event_details, document_labels, source_details, KINDS)
 from congress_api.senate.corrections import DATE_CORRECTIONS, selected_date
@@ -141,7 +142,7 @@ def match_pages(meetings, state):
             c = codes[0]
             titles[c].append(set(words(topic(m.get("title") or ""))))
             if c in SITE and m.get("date") and (meeting_access(m)[0] != "closed" or c in ("slia00", "scnc00")):
-                hearings.append({"event_id": m["eventId"], "date": m["date"][:10], "title": (m.get("title") or "").strip(), "committees": ";".join(codes), "kind": kind(m)})
+                hearings.append({"event_id": m["eventId"], "date": m["date"][:10], "title": (m.get("title") or "").strip(), "committees": ";".join(codes), "kind": meeting_type(m)[0]})
     ## a subject word weighs by how few of the committee's titles hold it
     held_in = {c: collections.Counter(w for t in ts for w in t) for c, ts in titles.items()}
     weight = lambda c, w: math.log(len(titles[c]) / held_in[c][w])
@@ -176,7 +177,7 @@ def match_pages(meetings, state):
     for r in hearings:
         e, c, day = r["event_id"], code(r), dt.date.fromisoformat(r["date"])
         named = lambda u: f"{u.rstrip('/').rsplit('/', 1)[-1]} {listings[SITE[c]][u][1]}"
-        its = [(abs((listings[SITE[c]][u][0] - day).days), u) for u in on_day[SITE[c], day] if r["kind"] != "hearing" or not BUSINESS.search(named(u)) or re.search(r"hearing|nominat", named(u), re.I)]
+        its = [(abs((listings[SITE[c]][u][0] - day).days), u) for u in on_day[SITE[c], day] if r["kind"] not in HEARING_TYPES or not BUSINESS.search(named(u)) or re.search(r"hearing|nominat", named(u), re.I)]
         stats["with a page that names the day"] += bool(its)
         subject = set(words(topic(r["title"])))
         whole = sum(weight(c, w) for w in sorted(subject))
@@ -390,7 +391,7 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
     # Preserve the established refresh scope for other sites. Full native input
     # still informs duplicate guards, including canceled or historical records.
     ms = [meeting for meeting in native_meetings if any(code in ("slia00", "scnc00") for code in codes_of(meeting)) or
-          (meeting.get("meetingStatus") in ("Scheduled", "Rescheduled") and int(meeting.get("congress", 0)) >= 113)]
+          in_inventory_scope(meeting)]
     path = state_dir / "senate.json.gz"
     state, totals = read_state(path), collections.Counter()
     versions = collections.defaultdict(dict)
@@ -521,6 +522,9 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
                 page = saved["pages"][row["page"]]
                 if row["event_id"] not in page["events"]:
                     page["events"].append(row["event_id"])
+                    page.setdefault("match_details", {})[row["event_id"]] = {
+                        "method": "senate.records.match_pages", "version": "2",
+                    }
     match_identifiers(native_meetings, state)
     mark_possible_matches(native_meetings, state)
     write_state(path, state)

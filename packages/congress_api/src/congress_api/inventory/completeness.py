@@ -6,11 +6,11 @@ identify one meeting's witnesses. Only documents with URLs count. The matcher
 supplies recording coverage for printed hearings independently of text source.
 """
 import collections, html, re
-from congress_api.inventory.common import CLOSED, kind
+from congress_api.meeting_rules import is_hearing, meeting_access, meeting_type
 from congress_api.gpo.fetch import GOVINFO_CONTENT
 from congress_api.inventory import acquisition
 
-FIELDS = ['event_id', 'congress', 'chamber', 'kind', 'closed', 'date', 'committees', 'title', 'recording', 'text_source', 'witnesses', 'witness_source', 'witness_list_document', 'print_shared_with_other_meetings', 'witness_documents', 'meeting_documents', 'documents_found_elsewhere', 'location', 'related_items', 'rescheduled_to', 'not_held']
+FIELDS = ['event_id', 'congress', 'chamber', 'kind', 'access', 'closed', 'date', 'committees', 'title', 'recording', 'text_source', 'witnesses', 'witness_source', 'witness_list_document', 'print_shared_with_other_meetings', 'witness_documents', 'meeting_documents', 'documents_found_elsewhere', 'location', 'related_items', 'rescheduled_to', 'not_held']
 WITNESS_FIELDS = ['event_id', 'name', 'position', 'organization', 'source', 'from']
 
 NOMINEE = re.compile(r"(?:nominations? of |, (?:and )?)((?:[A-Z][\w.'\u2019\-]*\.? ){1,5}[A-Z][\w'\u2019\-]+(?:,? (?:Jr|Sr|II|III|IV)\.?)?), of (?:the )?[A-Z][\w. ]+?, to be ([^,;.]+(?:, [^,;.]+)??)(?=[,;.]| and )")
@@ -33,7 +33,7 @@ def build(meetings, index, recorded, house_witnesses, senate_witnesses, document
     for rows, into in ((house_witnesses, from_house), (senate_witnesses, from_senate), (documents, documents_found)):
         for row in rows:
             into[row["event_id"]].append(row)
-    lacking = [m for m in meetings if kind(m) == "hearing" and not m.get("witnesses") and not from_house[m["eventId"]]]
+    lacking = [m for m in meetings if is_hearing(m) and not m.get("witnesses") and not from_house[m["eventId"]]]
     ## a print that is one meeting's only print, and matched to no other meeting, names that meeting's witnesses
     own_print = {m["eventId"]: prints_of[m["eventId"]][0] for m in lacking if len(prints_of[m["eventId"]]) == 1 and len(meetings_of[prints_of[m["eventId"]][0]]) == 1}
     witness_list = {m["eventId"]: d["url"] for m in lacking for d in m.get("meetingDocuments") or [] if "witness list" in (d.get("name") or "").lower() and d.get("url")}
@@ -65,12 +65,13 @@ def build(meetings, index, recorded, house_witnesses, senate_witnesses, document
         elif not listed and from_senate[e]:
             source, count = "senate committee page", len(from_senate[e])
             filled += [{"event_id": e, "name": w["name"], "position": w["position"], "organization": w["organization"], "source": "senate committee page", "from": w["page"]} for w in from_senate[e]]
-        elif not listed and kind(m) == "hearing" and nominees(m.get("title") or ""):
+        elif not listed and is_hearing(m) and nominees(m.get("title") or ""):
             named = nominees(m["title"])
             source, count = "meeting title (nominees)", len(named)
             filled += [{"event_id": e, "name": n, "position": f"nominee to be {office}", "organization": "", "source": "meeting title (nominees)", "from": m["_url"]} for n, office in named]
         shared = [p for p in prints_of[e] if p not in own_print.values()]
-        rows.append({"event_id": e, "congress": m["congress"], "chamber": m.get("chamber", ""), "kind": kind(m), "closed": "yes" if m.get("type", "").startswith("Closed") or CLOSED.search(m.get("title") or "") else "",
+        rows.append({"event_id": e, "congress": m["congress"], "chamber": m.get("chamber", ""), "kind": meeting_type(m)[0], "access": meeting_access(m)[0],
+                     "closed": "yes" if meeting_access(m)[0] == "closed" else "",
                      "date": m["date"][:10], "committees": r["committees"], "title": r["title"].replace("\r\n", "\n").replace("\r", "\n"),
                      ## a printed hearing's recording is matched to its print by the weekly matcher
                      "recording": "yes" if r["youtube_ids"] or r["senate_urls"] or r["other_recordings"] or recorded & set(prints_of[e]) else "", "text_source": r["text_source"],

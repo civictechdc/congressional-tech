@@ -12,7 +12,7 @@ from committee_meeting.materials import DocumentDetails, RecordingDetails
 from committee_meeting.meetings import Affiliation, Appearance, ConveningCommittee, Meeting, MeetingOccurrence, RecordedName
 from committee_meeting.provenance import FieldEvidence
 
-from congress_api.inventory.common import meeting_access
+from congress_api.meeting_rules import meeting_access, meeting_type
 
 from .common import digest, material_records, ref, reported_time, web_url, observed_time
 
@@ -48,32 +48,6 @@ def meeting_location(location):
         else:
             values["label"] = address
     return Location(**values) if values else None
-
-
-def meeting_type(row):
-    text = ' '.join(str(row.get('type') or '').lower().split())
-    for label, kind in (('field hearing', 'field_hearing'), ('business meeting', 'business'),
-                        ('hearing', 'hearing'), ('markup', 'markup'), ('briefing', 'briefing')):
-        if label in text: return kind, '/type'
-    if text in ('', 'meeting'):
-        title = ' '.join(str(row.get('title') or '').lower().split())
-        # Classify the proceeding named at the beginning, not a later agenda
-        # item or a second event following a semicolon.
-        prefix = (r'^\W*(?:(?:rescheduled|postponed|cancell?ed)\s*:\s*)?'
-                  r'(?:(?:to\s+)?(?:receive|received|hold)\s+)?(?:(?:an?|the)\s+)?'
-                  r'(?:(?:open|closed|joint|oversight|legislative|public|full|committee|subcommittee|members?|and)\s+)*')
-        hearing = r'hearings?(?=\s*(?:$|[:“"\']|\b(?:on|to|with|of|entitled|titled)\b))'
-        for pattern, kind in ((r'field\s+' + hearing, 'field_hearing'),
-                              (r'business\s+meeting\b', 'business'), (r'briefings?\b', 'briefing'),
-                              (r'mark[\s-]?up\b', 'markup'), (hearing, 'hearing')):
-            if re.search(prefix + pattern, title): return kind, '/title'
-        # Committee names sometimes precede the business-meeting label.
-        # A resolution merely authorizing a later event is not that event.
-        if not re.match(r'^(?:to\s+)?(?:consider|resolution)\b', title) and re.search(r'\bbusiness meeting\b', title.split(';', 1)[0]):
-            return 'business', '/title'
-    if text == 'meeting':
-        return 'meeting', '/type'
-    return 'unknown', '/type'
 
 
 def document_title(row):

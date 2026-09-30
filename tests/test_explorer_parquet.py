@@ -121,6 +121,38 @@ def test_access_is_separate_from_meeting_type_and_survives_export(tmp_path):
     assert 'access' in json.loads((root/'queries.json').read_text())['query_columns']
 
 
+@pytest.mark.parametrize('raw_type,title,kind,access', [
+    ('Meeting', 'A briefing on the annual budget', 'briefing', 'unknown'),
+    ('Meeting', 'To receive a closed briefing on intelligence', 'briefing', 'closed'),
+    ('Hearing', 'Open Borders, Closed Case: oversight', 'hearing', 'unknown'),
+    ('Meeting', 'Business Meeting (Open in a Closed Space)', 'business', 'open'),
+    ('Meeting', 'Small business lending', 'meeting', 'unknown'),
+    ('Meeting', 'Open and closed hearings to examine worldwide threats', 'hearing', 'partly_closed'),
+    ('Field Hearing', 'Rural access', 'field_hearing', 'unknown'),
+    ('Roundtable', 'Housing supply', 'roundtable', 'unknown'),
+    ('Markup', 'Full Committee Business Meeting', 'markup', 'unknown'),
+    ('Hearing', 'Markup of the annual budget', 'hearing', 'unknown'),
+])
+def test_inventory_adapter_and_browser_use_the_same_meeting_rules(tmp_path, raw_type, title, kind, access):
+    from congress_api.inventory import completeness, text_sources
+
+    row = {**native(), 'type': raw_type, 'title': title}
+    index = {r['event_id']: r for r in text_sources.build([row], [], [], [], [], [], {}, {}, {})}
+    inventory, _ = completeness.build([row], index, set(), [], [], [], {}, {}, NOW.date(), True, None)
+    assert inventory[0]['kind'] == kind
+    assert inventory[0]['access'] == access
+    assert inventory[0]['closed'] == ('yes' if access == 'closed' else '')
+    _, catalog = export(meetings=write_meetings(tmp_path, [row]), output_dir=tmp_path/'public',
+                        state_dir=tmp_path/'state', as_of=NOW, format='parquet')
+    assert next(r for r in catalog.records if r.kind == 'meeting').meeting_type == kind
+    assert next(r for r in catalog.records if r.kind == 'occurrence').access == access
+    _, root, _ = verify(tmp_path/'public')
+    published, = pq.read_table(root/'meetings.parquet').to_pylist()
+    assert (published['type'], published['access']) == (kind, access)
+    source = next(s for s in catalog.sources if s.provider == 'congress.gov' and s.payload.get('eventId') == row['eventId'])
+    assert source.payload == row
+
+
 def test_parquet_export_preserves_browse_population_files_and_raw_evidence(tmp_path):
     row = native()
     row['meetingDocuments'].append({'name': 'Printed hearing', 'documentType': 'Transcript', 'format': 'PDF',

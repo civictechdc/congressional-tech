@@ -63,6 +63,16 @@ def test_ambiguous_event_cannot_link_or_create_fictional_appearances():
     assert any(issue.category == "unlinked" for issue in of_kind(rows, "data_issue"))
 
 
+def test_recorded_page_match_version_is_preserved():
+    saved = page(match_details={"12": {"method": "senate.records.match_pages", "version": "2"}})
+    rows = adapt(saved)
+    link, = of_kind(rows, "material_link")
+    assert link.provenance.method.name == "senate.records.match_pages"
+    assert link.provenance.method.version == "2"
+    assert link.provenance.citations[0].selector == "/match_details/12"
+    assert of_kind(rows, "source_record")[0].payload == saved
+
+
 def test_unmatched_document_is_retained():
     rows = adapt(page(events=[]))
     assert len(of_kind(rows, "material")) == len(of_kind(rows, "representation")) == 1

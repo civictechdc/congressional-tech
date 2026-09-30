@@ -342,9 +342,10 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=
                             versions[("govinfo", identifier.value)] = Ref(kind=r.kind, id=r.id)
                             print_versions[identifier.value] = (Ref(kind="material", id=r.material.id), Ref(kind=r.kind, id=r.id))
             from congress_api.inventory.prints import match_prints
+            from congress_api.inventory.common import in_inventory_scope
             # The matcher owns its existing scope/rules. Ambiguous unscoped IDs
             # are excluded from association output rather than merged.
-            eligible = [r for r in all_meetings if r.get("meetingStatus") in ("Scheduled", "Rescheduled") and int(r["congress"]) >= 113]
+            eligible = [r for r in all_meetings if in_inventory_scope(r)]
             match_prints(eligible, all_gpo, decisions=print_decisions)
             selected_events = {key[2] for key in lookup}
             print_decisions = [d for d in print_decisions if d["event_id"] in selected_events and d["package_id"] in print_versions]

@@ -16,7 +16,8 @@ from congress_api.senate.corrections import DATE_CORRECTIONS, selected_date
 
 from .common import digest, material_records, ref, web_url, reported_time, witness_roles
 from .recordings import recording_reference
-from .meetings import category, meeting_type, meeting_access
+from .meetings import category
+from congress_api.meeting_rules import meeting_type, meeting_access
 
 
 MATCH_METHOD = Method(name="senate.records.match_pages", version="1")
@@ -218,7 +219,7 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                 if len(candidates) == 1:
                     meeting = candidates[0]
                     details = (page.get("match_details") or {}).get(str(event))
-                    if details and details.get("method") == "senate.records.match_identifiers":
+                    if details and details.get("method") in ("senate.records.match_identifiers", "senate.records.match_pages"):
                         match_evidence = context.evidence(source, basis="derived", method=Method(name=details["method"], version=details["version"]), selector=f"/match_details/{event}")
                     else:
                         match_evidence = context.evidence(source, basis="derived", method=MATCH_METHOD, selector=f"/events/{index}")
@@ -239,7 +240,7 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                     yield issue("unresolved-event-committee", "unlinked", "The official event has no retained committee term.",
                                 explanation=f"Committee {official['committee_code']} in Congress {official['congress']} is missing.", selector="/event")
                 else:
-                    kind = "roundtable" if event.get("type") == "Roundtable" else meeting_type(event)[0]
+                    kind = meeting_type(event)[0]
                     native_key = f"senate.committee|{url}"
                     meeting = Meeting(id=context.ids("meeting", native_key), title=event["title"], congress=official["congress"],
                                       chamber="joint" if official["committee_code"].startswith("j") else "senate", meeting_type=kind,
