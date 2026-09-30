@@ -1,6 +1,5 @@
 """Real retained HTML keeps witness-card ownership through state and adaptation."""
 import json
-import re
 from copy import deepcopy
 from pathlib import Path
 
@@ -8,6 +7,7 @@ import pytest
 from congress_api.matching.senate_pages import retained_matches
 from congress_api.parsers.senate import parsed
 from congress_api.replay.senate import replay
+from congress_api.retention.senate import cached_html_path
 from test_explorer_senate_adapter import adapt, of_kind
 
 FIXTURES = Path(__file__).parent / "fixtures" / "meeting_inventory"
@@ -127,7 +127,9 @@ def test_unsupported_name_only_proximity_does_not_create_ownership():
 
 def test_replay_is_additive_and_protects_live_receipts(tmp_path):
     raw = (FIXTURES / "senate-aging-witness-card.html").read_text()
-    (tmp_path / (re.sub(r"\W+", "_", URL)[-180:] + ".html")).write_text(raw)
+    cached = cached_html_path(tmp_path, URL)
+    cached.parent.mkdir()
+    cached.write_text(raw)
     saved = parsed(raw, URL)
     del saved["document_metadata"], saved["witness_metadata"]
     saved.update(events=["12"], checked="2025-04-03", imported_at="2025-04-03T10:00:00Z", match_details={"12": {"method": "kept"}})
@@ -148,7 +150,9 @@ def test_replay_is_additive_and_protects_live_receipts(tmp_path):
 
 def test_replay_rejects_changed_source_text(tmp_path):
     raw = (FIXTURES / "senate-aging-witness-card.html").read_text()
-    (tmp_path / (re.sub(r"\W+", "_", URL)[-180:] + ".html")).write_text(raw)
+    cached = cached_html_path(tmp_path, URL)
+    cached.parent.mkdir()
+    cached.write_text(raw)
     saved = parsed(raw, URL)
     saved["lines"].append("A newer observation")
     state = {"aging.senate.gov": {"pages": {URL: saved}}}
@@ -163,7 +167,9 @@ def test_replayed_event_header_keeps_native_duplicate_guard(tmp_path):
     saved = parsed(raw, url)
     del saved["event"]
     state = {"hsgac.senate.gov": {"pages": {url: saved}}}
-    (tmp_path / (re.sub(r"\W+", "_", url)[-180:] + ".html")).write_text(raw)
+    cached = cached_html_path(tmp_path, url)
+    cached.parent.mkdir()
+    cached.write_text(raw)
     meetings = [{"eventId": "321", "chamber": "Senate", "date": "2021-01-26", "committees": [{"systemCode": "ssga00"}]}]
     output, _ = replay(state, tmp_path, meetings=meetings)
     assert output["hsgac.senate.gov"]["pages"][url]["candidate_events"] == ["321"]

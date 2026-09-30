@@ -45,7 +45,7 @@ from congress_api.parsers.senate import PARSER_VERSION, parse_listing_page, pars
 from congress_api.parsers.senate_page import FIRST_RECORD, LISTINGS, SITE, attachment_page, documents
 from congress_api.parsers.text import text
 from congress_api.retention.meetings import all_meetings, read_meetings
-from congress_api.retention.senate import seed_fetch
+from congress_api.retention.senate import cached_html_path, seed_fetch
 from congress_api.retention.tables import read_state, write_csv, write_state
 from congress_api.transport import http
 
@@ -159,7 +159,7 @@ def fetch_page(url, previous, today, *, cache=None, check=None):
     check = check if check is not None else {}
     if cache is not None:
         result = parsed(seed_fetch(cache, url), url)
-        path = cache / "senate_pages" / (re.sub(r"\W+", "_", url)[-180:] + ".html")
+        path = cached_html_path(cache, url)
         if path.exists():
             result["raw_html"] = RawContent.from_bytes(path.read_bytes(), "text/html").source_dict()
         result["imported_at"] = timestamp()
@@ -272,7 +272,7 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
         def get(url):
             if importing:
                 body = seed_fetch(seed_cache, url)
-                raw_path = seed_cache / "senate_pages" / (re.sub(r"\W+", "_", url)[-180:] + ".html")
+                raw_path = cached_html_path(seed_cache, url)
                 if raw_path.exists():
                     source_bodies[url] = RawContent.from_bytes(raw_path.read_bytes(), "application/json" if "/wp-json/" in url else "text/html").source_dict()
                 return body

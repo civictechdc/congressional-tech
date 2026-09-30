@@ -13,7 +13,6 @@ import argparse
 import gzip
 import hashlib
 import json
-import re
 from collections import Counter
 from copy import deepcopy
 from datetime import UTC, datetime
@@ -23,6 +22,7 @@ from congress_api.acquisition.senate import DOCUMENT_FIELDS, PAGE_FIELDS, WITNES
 from congress_api.matching.senate_pages import mark_possible_matches, retained_matches
 from congress_api.parsers.senate import PARSER_VERSION, parsed
 from congress_api.parsers.senate_page import source_details
+from congress_api.retention.senate import cached_html_path
 from congress_api.retention.tables import read_state, write_csv, write_state
 
 
@@ -32,7 +32,7 @@ def replay(state, cache, *, meetings, parsed_at=None):
     for host, site in result.items():
         for url, page in site.get("pages", {}).items():
             counts["pages"] += 1
-            path = Path(cache) / (re.sub(r"\W+", "_", url)[-180:] + ".html")
+            path = cached_html_path(cache, url)
             reason = None
             if page.get("retrieved_at") or page.get("observation_check") or (page.get("last_check") or {}).get("mode") == "live":
                 reason = "protected_live_observation"
@@ -85,7 +85,7 @@ def replay(state, cache, *, meetings, parsed_at=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", type=Path, required=True)
-    parser.add_argument("--cache", type=Path, required=True, help="directory containing the retained Senate HTML files")
+    parser.add_argument("--cache", type=Path, required=True, help="seed cache root; HTML is read from senate_pages/")
     parser.add_argument("--meetings", type=Path, required=True, help="native meeting JSONL.gz for the same-day duplicate guard")
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
