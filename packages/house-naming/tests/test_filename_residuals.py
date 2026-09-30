@@ -4,8 +4,8 @@ import json
 
 import pytest
 
-from congress_api.filename_corpus import build_corpus, residual_fields
-from congress_api.filenames import RULES, parse_filename
+from house_naming.filename_corpus import build_corpus, residual_fields
+from house_naming.filenames import registry, parse_filename
 
 
 @pytest.mark.parametrize(('name', 'rule', 'expected'), [
@@ -30,7 +30,7 @@ from congress_api.filenames import RULES, parse_filename
 ])
 def test_remaining_nine_have_single_layout_and_exact_fields(name, rule, expected):
     parsed = parse_filename(name)
-    inner_ids = {r.id for r in RULES if r.scope == 'legislative-payload'}
+    inner_ids = {r['id'] for r in registry() if r['scope'] == 'legislative-payload'}
     inner = [m for m in parsed.matches if m.rule in inner_ids]
     assert [m.rule for m in inner] == [rule]
     fields = {f.name: f.raw for f in inner[0].fields}
@@ -45,7 +45,7 @@ def test_remaining_nine_have_single_layout_and_exact_fields(name, rule, expected
 
 def test_combined_resolution_keeps_all_individual_references():
     parsed = parse_filename('BILLS-118 hres_44HR3564HR3799HRes461_xml.pdf')
-    refs = [{f.name: f.raw for f in m.fields} for m in parsed.matches if m.rule == 'measure-reference']
+    refs = [{f.name: f.raw for f in m.fields} for m in parsed.matches if m.rule in {'measure-reference', 'resolution-measure-list'}]
     assert [(r['measure_token'], r['measure_number']) for r in refs] == [
         ('hres', '44'), ('HR', '3564'), ('HR', '3799'), ('HRes', '461')]
 
@@ -58,7 +58,7 @@ def test_local_markers_are_not_versions_or_content_format():
     assert all(f.label is None for f in fields if f.name in {'numeric_suffix_token', 'filename_format_token'})
     parsed = parse_filename('BILLS-113hrFARMEXT-SUS.pdf')
     assert not any(f.name == 'version_token' for m in parsed.matches for f in m.fields)
-    assert next(f for m in parsed.matches for f in m.fields if f.name == 'local_code_token').label is None
+    assert next(f for m in parsed.matches for f in m.fields if f.name == 'local_code_token').label == 'Measure considered under suspension'
 
 
 @pytest.mark.parametrize(('payload', 'rule'), [
@@ -110,6 +110,16 @@ def test_reference_assisted_title_is_still_free_text_in_the_audit():
     parsed = parse_filename('BILLS-119HR2RepClyburnFreeTextih.pdf', member_surnames={'119': ('Clyburn',)})
     row, = residual_fields(parsed)
     assert [s['raw'] for s in row['residual_spans']] == ['FreeText']
+
+
+def test_unstructured_review_field_keeps_the_saved_typed_shape():
+    parsed = parse_filename('UnfamiliarWord.pdf')
+    row, = residual_fields(parsed, field_names=frozenset(), include_unstructured=True)
+    assert row['field'] == {
+        'name': 'unstructured_stem', 'raw': 'UnfamiliarWord', 'start': 0, 'end': 14,
+        'candidates': (), 'note': None, 'code': None, 'label': None,
+        'context': None, 'vocabulary_url': None,
+    }
 
 
 def test_residual_audit_reports_titles_separately_from_already_extracted_suffixes(tmp_path):

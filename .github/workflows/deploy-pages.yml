@@ -45,7 +45,7 @@ jobs:
           python-version: "3.12"
       - name: Install publication verifier
         run: >-
-          pip install -e packages/committee_meeting -e packages/congress_shared
+          pip install -e packages/house-naming -e packages/committee_meeting -e packages/congress_shared
           -e packages/youtube_api -e packages/congress_api -e apps/committee_youtube
       - name: Verify and stage only published browser files
         run: |

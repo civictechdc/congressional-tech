@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "house-naming-guide"
+dynamic = ["version"]
+description = "Offline JSON catalog, validation and filename tooling for the 2012 House naming guide"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE", "NOTICE"]
+dependencies = ["jsonschema>=4.18,<5"]
+
+[project.optional-dependencies]
+test = ["pytest>=8,<10", "pydantic>=2.11,<3", "pyarrow"]
+typed = ["pydantic>=2.11,<3"]
+corpus = ["pydantic>=2.11,<3", "pyarrow"]
+
+[project.scripts]
+house-naming = "house_naming.cli:main"
+house-naming-corpus = "house_naming.filename_corpus:main"
+
+[tool.setuptools.dynamic]
+version = {attr = "house_naming.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = false
+
+[tool.setuptools.package-data]
+house_naming = ["py.typed", "data/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra"

@@ -1,7 +1,7 @@
 """Declared filename-family examples; syntax labels, not document-content truth."""
 import pytest
 
-from congress_api.filenames import parse_filename, RULES
+from house_naming.filenames import parse_filename, registry
 
 
 @pytest.mark.parametrize(('filename', 'expected'), [
@@ -30,7 +30,7 @@ from congress_api.filenames import parse_filename, RULES
     ('BILLS-113TextofHR3981ih.pdf', {'reference_marker': 'Textof', 'measure_token': 'HR', 'measure_number': '3981', 'version_token': 'ih'}),
 ])
 def test_declared_family_fields(filename, expected):
-    scopes = {r.id: r.scope for r in RULES}
+    scopes = {r['id']: r['scope'] for r in registry()}
     parsed = parse_filename(filename)
     matches = [m for m in parsed.matches if scopes.get(m.rule) == 'legislative-payload']
     assert len(matches) == 1
@@ -89,4 +89,4 @@ def test_optional_identifier_letters_do_not_shorten_version_codes(payload):
     if expected == 'pis':
         assert versions[0].label is None
     elif expected == 'pih':
-        assert versions[0].label == 'Pre-introduced measure'
+        assert versions[0].label == 'Pre-introduced measure; no bill number'

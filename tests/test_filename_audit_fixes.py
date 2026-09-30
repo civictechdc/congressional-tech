@@ -10,8 +10,8 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from congress_api import filenames
-from congress_api.filename_corpus import OTHER_TEXT_FIELDS, build_corpus, residual_fields
+from house_naming import filenames
+from house_naming.filename_corpus import OTHER_TEXT_FIELDS, build_corpus, residual_fields
 
 
 @pytest.mark.parametrize('payload', ['ANSServices', 'AINSServices', 'ANSEarth', 'ANSCats',
@@ -52,12 +52,13 @@ def test_separated_version_and_joined_house_stage_remain_whole():
     ('BILLS-119HR42Pih.pdf', '42'),
 ])
 def test_documented_house_pih_stage_has_its_own_source(name, number):
-    from congress_api.bill_codes import BILL_VERSIONS, HOUSE_NAMING_URL
+    from house_naming.bill_codes import BILL_VERSIONS
+    from house_naming.naming import HOUSE_NAMING_URL
     assert 'pih' not in BILL_VERSIONS  # Not part of GovInfo's common-version table.
     parsed = filenames.parse_filename(name)
     version, = [f for m in parsed.matches for f in m.fields if f.name == 'version_token']
-    assert version.code == 'pih' and version.label == 'Pre-introduced measure'
-    assert version.vocabulary_url == HOUSE_NAMING_URL
+    assert version.code == 'pih' and version.label == 'Pre-introduced measure; no bill number'
+    assert version.vocabulary_url == HOUSE_NAMING_URL + "#page=6"
     assert name[version.start:version.end] == version.raw
     numbers = {f.raw for m in parsed.matches for f in m.fields if f.name == 'measure_number'}
     assert numbers == ({number} if number else set())
@@ -65,11 +66,19 @@ def test_documented_house_pih_stage_has_its_own_source(name, number):
 
 def test_mixed_case_joined_pih_keeps_both_possible_boundaries():
     parsed = filenames.parse_filename('BILLS-117OAWPih.pdf')
-    fields = {f.name: f for m in parsed.matches for f in m.fields}
+    original, = [m for m in parsed.matches if m.rule == 'titled-introduced-draft']
+    fields = {f.name: f for f in original.fields}
     assert fields['descriptor'].raw == 'OAWPih'
     assert fields['version_token'].raw == 'Pih'
     assert fields['version_token'].candidates == ('ih', 'pih')
     assert fields['version_token'].code is None and fields['version_token'].label is None
+    # Repeated field names are separate observations, not last-value-wins data.
+    local, = [m for m in parsed.matches if m.rule == 'local-introduction-component']
+    local_fields = {f.name: f for f in local.fields}
+    assert local_fields['local_identifier'].raw == 'OAWP'
+    assert local_fields['local_identifier'].code is None
+    assert local_fields['version_token'].raw == local_fields['version_token'].code == 'ih'
+    assert local_fields['version_token'].label == 'Introduced in House'
 
 
 @pytest.mark.parametrize('name', ['Biography-PIH.pdf', 'BILLS-119hr5-PiHome.pdf', 'BILLS-119hr5-Topih-final.pdf'])
@@ -130,7 +139,10 @@ def test_other_text_audit_covers_unhandled_payloads_and_unstructured_stems(tmp_p
     assert (names[3], 'payload') not in fields  # Already has a complete inner layout.
     captures = json.loads((tmp_path / 'capture-review.json').read_text())
     assert any(r['field'] == 'version_token' and r['status'] == 'uncertain' and r['value'] == 'es' for r in captures)
-    assert any(r['field'] == 'date_token' and r['status'] == 'unresolved_date' for r in captures)
+    # An invalid date-shaped number remains inspectable as a rejected candidate.
+    review = list(map(json.loads, gzip.open(tmp_path / 'review.jsonl.gz', 'rt')))
+    assert any(s['raw'] == '20261340' and s['reason'] == 'No valid supported calendar reading.'
+               for row in review for s in row['suppressed'])
 
 
 def test_plain_amendment_ids_are_already_literal_syntax():
@@ -143,8 +155,11 @@ def test_plain_amendment_ids_are_already_literal_syntax():
 def command_inputs(tmp_path):
     baseline = tmp_path / 'baseline'
     baseline.mkdir()
-    for name in ('filenames.py', 'bill_codes.py'):
+    for name in ('filenames.py', 'bill_codes.py', 'naming.py'):
         shutil.copy2(Path(filenames.__file__).parent / name, baseline / name)
+    import house_naming
+    shutil.copytree(Path(house_naming.__file__).parent, baseline / 'house_naming',
+                    ignore=shutil.ignore_patterns('__pycache__'))
     (baseline / 'baseline-remaining-legislative-payloads.json').write_text('[]')
     inventory = tmp_path / 'inventory.parquet'
     pq.write_table(pa.Table.from_pylist([{'filename': 'BILLS-119hr1ih.pdf', 'variants': []}]), inventory)
@@ -163,8 +178,10 @@ def test_comparison_command_exit_status_and_frozen_vocabulary(command_inputs):
     baseline, _, _ = command_inputs
     passed = run_comparison(command_inputs, 'passing')
     assert passed.returncode == 0, passed.stderr
-    vocabulary = baseline / 'bill_codes.py'
-    vocabulary.write_text(vocabulary.read_text().replace("'Introduced (House)'", "'Frozen baseline label'"))
+    vocabulary = baseline / 'house_naming/data/guide.json'
+    guide = json.loads(vocabulary.read_text())
+    guide['codes']['version']['ih']['label'] = 'Frozen baseline label'
+    vocabulary.write_text(json.dumps(guide))
     failed = run_comparison(command_inputs, 'failing')
     assert failed.returncode == 1, failed.stderr
     report = json.loads((baseline / 'failing/comparison.json').read_text())
@@ -186,15 +203,18 @@ def test_comparison_command_exit_status_and_frozen_vocabulary(command_inputs):
 @pytest.mark.parametrize('failure', ['none', 'collision', 'changed_input'])
 def test_corpus_command_fails_collisions_and_input_changes(command_inputs, tmp_path, failure):
     _, inventory, ref = command_inputs
+    ref.write_text('{}')
     out = tmp_path / failure
     script = '''import sys, re
 from pathlib import Path
-from congress_api import filenames as f, filename_corpus as c
+from house_naming import filenames as f, filename_corpus as c
 mode = sys.argv.pop(1)
 if mode == 'collision':
-    rule = f.FilenameRule('duplicate-bills', r'BILLS-.+', 'stem', 'Test collision')
-    f.RULES = c.RULES = (*f.RULES, rule)
-    f.COMPILED = (*f.COMPILED, (rule, re.compile(rule.pattern)))
+    from house_naming.extraction import Extractor
+    guide = f.HOUSE_NAMING.guide
+    guide['extraction_rules'].append(dict(id='duplicate-bills', pattern=r'(?P<payload>BILLS-.+)',
+        scope='stem', description='Test collision', priority=0))
+    f.HOUSE_NAMING._extractor = Extractor(guide)
 if mode == 'changed_input':
     original = c.build_corpus
     def changed(*args, **kwargs):
@@ -205,7 +225,7 @@ if mode == 'changed_input':
 raise SystemExit(c.main())
 '''
     result = subprocess.run([sys.executable, '-c', script, failure, str(inventory), str(out),
-                             '--legislators', str(ref)], text=True, capture_output=True)
+                             '--member-surnames', str(ref)], text=True, capture_output=True)
     assert result.returncode == (0 if failure == 'none' else 1), result.stderr
     report = json.loads((out / 'coverage.json').read_text())
     assert report['mechanical_gate'] == (failure == 'none')
@@ -213,3 +233,26 @@ raise SystemExit(c.main())
         assert report['structural_collisions'] == 1
     if failure == 'changed_input':
         assert report['changed_during_run'] == [str(ref)]
+
+
+def test_comparison_freezes_the_house_catalog(command_inputs):
+    baseline, inventory, _ = command_inputs
+    pq.write_table(pa.Table.from_pylist([{'filename': 'BILLS-119hr1-SUS.pdf', 'variants': []}]), inventory)
+    guide = baseline / 'house_naming/data/guide.json'
+    value = json.loads(guide.read_text())
+    value['codes']['consideration']['sus']['label'] = 'Frozen source label'
+    guide.write_text(json.dumps(value))
+    failed = run_comparison(command_inputs, 'frozen-house')
+    assert failed.returncode == 1, failed.stderr
+    report = json.loads((baseline / 'frozen-house/comparison.json').read_text())
+    assert report['counts']['changed_outputs'] == 1
+    assert any('house_naming/data/guide.json' in path for path in report['hashes'])
+    assert report['changed_during_run'] == []
+
+
+def test_comparison_requires_the_baseline_dependency(command_inputs):
+    baseline, _, _ = command_inputs
+    (baseline / 'house_naming/naming.py').unlink()
+    failed = run_comparison(command_inputs, 'missing-dependency')
+    assert failed.returncode != 0
+    assert 'requires frozen naming.py' in failed.stderr

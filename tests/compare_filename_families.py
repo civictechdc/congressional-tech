@@ -8,6 +8,7 @@ from collections import Counter
 import gzip
 import hashlib
 import importlib.util
+import importlib
 import json
 from pathlib import Path
 import shutil
@@ -16,26 +17,59 @@ from time import perf_counter
 
 import pyarrow.parquet as pq
 
-from congress_api import filenames as current
-from congress_api.filename_corpus import member_surnames_by_congress, file_hashes, SOURCE_FILES
+from house_naming import filenames as current
+from congress_api.models.legislators import member_surnames_by_congress
+from house_naming.filename_corpus import file_hashes, parser_source_paths
 from congress_api.models.legislators import parse_legislators
 
 
 def load_baseline(root):
     """Use the frozen vocabulary as well as the frozen regex implementation."""
+    package = root / 'house_naming'
+    if not (root / 'filenames.py').is_file():
+        source = root / 'source' / 'packages'
+        root = source / 'congress_api/src/congress_api'
+        package = source / 'house-naming/src/house_naming'
     def load(name, path):
         spec = importlib.util.spec_from_file_location(name, path)
         module = importlib.util.module_from_spec(spec)
         sys.modules[name] = module
         spec.loader.exec_module(module)
         return module
-    vocabulary = load('filename_baseline_bill_codes', root / 'bill_codes.py')
-    current_vocabulary = sys.modules['congress_api.bill_codes']
+    def dependency(name):
+        return name in {'congress_api.bill_codes', 'congress_api.naming'} or name == 'house_naming' or name.startswith('house_naming.')
+    saved = {name: module for name, module in sys.modules.items() if dependency(name)}
     try:
-        sys.modules['congress_api.bill_codes'] = vocabulary
+        # New snapshots contain the entire standalone owner. Old native
+        # snapshots below remain readable as independent comparison evidence.
+        if (package / 'filenames.py').is_file():
+            if not (package / 'naming.py').is_file():
+                raise ValueError('Baseline requires frozen naming.py and house_naming package data.')
+            for name in list(sys.modules):
+                if dependency(name):
+                    del sys.modules[name]
+            load('house_naming', package / '__init__.py')
+            module = importlib.import_module('house_naming.filenames')
+            module.parse_filename('baseline-initialization.pdf')
+            return module
+        sources = (root / 'filenames.py').read_text() + (root / 'bill_codes.py').read_text()
+        if 'congress_api.naming' in sources:
+            if not (root / 'naming.py').is_file() or not (package / '__init__.py').is_file():
+                raise ValueError('Baseline requires frozen naming.py and house_naming package data.')
+            for name in list(sys.modules):
+                if dependency(name):
+                    del sys.modules[name]
+            load('house_naming', package / '__init__.py')
+            naming = load('congress_api.naming', root / 'naming.py')
+            if hasattr(naming.HOUSE_NAMING, 'extract'):
+                naming.HOUSE_NAMING.extract('baseline-initialization.pdf')
+        sys.modules['congress_api.bill_codes'] = load('filename_baseline_bill_codes', root / 'bill_codes.py')
         return load('filename_family_baseline', root / 'filenames.py')
     finally:
-        sys.modules['congress_api.bill_codes'] = current_vocabulary
+        for name in list(sys.modules):
+            if dependency(name):
+                del sys.modules[name]
+        sys.modules.update(saved)
 
 
 def matches_digest(matches):
@@ -58,8 +92,12 @@ def main():
     out.mkdir(exist_ok=False)
     source = Path(current.__file__)
     ref, inventory = args.legislators, args.inventory
-    paths = [*(source.parent / name for name in SOURCE_FILES), root / 'filenames.py', root / 'bill_codes.py',
+    paths = [*parser_source_paths(), root / 'filenames.py', root / 'bill_codes.py',
              root / 'baseline-remaining-legislative-payloads.json', inventory, ref, Path(__file__)]
+    if (root / 'naming.py').exists():
+        paths.append(root / 'naming.py')
+        paths.extend(sorted((root / 'house_naming').glob('*.py')))
+        paths.extend(sorted((root / 'house_naming/data').glob('*.json')))
     if args.expected_changes:
         paths.append(args.expected_changes)
     before_hashes = file_hashes(paths)
@@ -71,7 +109,7 @@ def main():
     expected_changes = json.loads(args.expected_changes.read_text()) if args.expected_changes else {}
     rows = pq.read_table(inventory, columns=['filename', 'variants']).to_pylist()
     names = sorted(gaps if args.gaps_only else {n for r in rows for n in [r['filename'], *(r['variants'] or [])]})
-    scopes = {r.id: r.scope for r in current.RULES}
+    scopes = {r['id']: r['scope'] for r in current.registry()}
     counts = Counter(); by_group = {}; problems = []; remaining = []; opaque_only = []
     changed = {}
     excluded = {'payload', 'descriptor', 'subject_token', 'suffix', 'annotation'}

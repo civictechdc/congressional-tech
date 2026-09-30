@@ -9,6 +9,7 @@ on:
       - "apps/committee_youtube/**"
       - "packages/committee_meeting/**"
       - "packages/congress_api/**"
+      - "packages/house-naming/**"
       - "packages/congress_shared/**"
       - "packages/youtube_api/**"
       - ".github/scripts/**"
@@ -48,7 +49,7 @@ jobs:
           python-version: "3.12"
       - name: Install local model, source packages and exporter
         run: >-
-          pip install -e packages/committee_meeting -e packages/congress_shared
+          pip install -e packages/house-naming -e packages/committee_meeting -e packages/congress_shared
           -e packages/youtube_api -e packages/congress_api -e apps/committee_youtube
 
       - name: Retain completed collection-job outcomes

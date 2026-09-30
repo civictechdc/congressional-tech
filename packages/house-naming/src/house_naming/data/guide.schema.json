@@ -1,0 +1,970 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:house-naming:guide",
+  "title": "House naming semantic catalog",
+  "description": "Closed-object catalog schema. Run check_catalog as well for cross-reference, index and template integrity.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "catalog_version",
+    "document",
+    "field_types",
+    "patterns",
+    "codes",
+    "code_index",
+    "examples",
+    "example_index",
+    "committees",
+    "footnotes",
+    "sections",
+    "source_nodes",
+    "policies"
+  ],
+  "properties": {
+    "id": {
+      "const": "house-document-naming"
+    },
+    "catalog_version": {
+      "const": "3.0.0"
+    },
+    "document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "version",
+        "publication_date",
+        "updated_date",
+        "issuing_office",
+        "issuing_unit",
+        "page_count",
+        "directory_congress",
+        "pdf_sha256",
+        "scope",
+        "text_policy",
+        "coverage",
+        "provenance_policy",
+        "omitted_content"
+      ],
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "publication_date": {
+          "type": "string",
+          "minLength": 1
+        },
+        "updated_date": {
+          "type": "string",
+          "minLength": 1
+        },
+        "issuing_office": {
+          "type": "string",
+          "minLength": 1
+        },
+        "issuing_unit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "page_count": {
+          "const": 40
+        },
+        "directory_congress": {
+          "const": 112,
+          "description": "Congress represented by the retained historical committee/subcommittee directory; no member roster is included."
+        },
+        "pdf_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "scope": {
+          "type": "string",
+          "minLength": 1
+        },
+        "text_policy": {
+          "type": "string",
+          "minLength": 1
+        },
+        "coverage": {
+          "type": "string",
+          "minLength": 1
+        },
+        "provenance_policy": {
+          "type": "string",
+          "minLength": 1
+        },
+        "omitted_content": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "content",
+              "source_section",
+              "first_page",
+              "last_page",
+              "reason"
+            ],
+            "properties": {
+              "content": {
+                "const": "member-directory"
+              },
+              "source_section": {
+                "const": "section-46"
+              },
+              "first_page": {
+                "const": 30
+              },
+              "last_page": {
+                "const": 40
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "field_types": {
+      "type": "object",
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/scalar"
+          },
+          {
+            "$ref": "#/$defs/reference_array"
+          }
+        ]
+      },
+      "minProperties": 1
+    },
+    "patterns": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/pattern"
+      },
+      "minProperties": 1,
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9-]+$"
+      }
+    },
+    "codes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "$ref": "#/$defs/code"
+        },
+        "minProperties": 1,
+        "propertyNames": {
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        }
+      },
+      "minProperties": 1
+    },
+    "code_index": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        },
+        "minItems": 1,
+        "uniqueItems": true
+      },
+      "minProperties": 1
+    },
+    "examples": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/example"
+      },
+      "minProperties": 1
+    },
+    "example_index": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        },
+        "minItems": 1,
+        "uniqueItems": true
+      },
+      "minProperties": 1
+    },
+    "committees": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "folder_code",
+          "website",
+          "indent",
+          "source"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "folder_code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "website": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "indent": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "source": {
+            "$ref": "#/$defs/source"
+          }
+        }
+      },
+      "minProperties": 1
+    },
+    "footnotes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "number",
+          "text",
+          "source"
+        ],
+        "properties": {
+          "number": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source": {
+            "$ref": "#/$defs/source"
+          }
+        }
+      },
+      "minProperties": 1
+    },
+    "sections": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title",
+          "page",
+          "level",
+          "parent_id",
+          "child_ids",
+          "source_ids",
+          "conventions"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "level": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "parent_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "child_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 0,
+            "uniqueItems": true
+          },
+          "source_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 0,
+            "uniqueItems": true
+          },
+          "conventions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/statement"
+            },
+            "minItems": 0
+          }
+        }
+      },
+      "minProperties": 1
+    },
+    "source_nodes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "page",
+          "section_id",
+          "text"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "section",
+              "row",
+              "p",
+              "item-body",
+              "footnote"
+            ]
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 40
+          },
+          "section_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "text": {
+            "type": "string"
+          },
+          "cells": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "table_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "row_role": {
+            "type": "string",
+            "minLength": 1
+          },
+          "indent": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "minProperties": 1
+    },
+    "policies": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    },
+    "extraction_rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "pattern",
+          "scope",
+          "description",
+          "priority"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "pattern": {
+            "type": "string",
+            "minLength": 1
+          },
+          "scope": {
+            "enum": [
+              "amendment-text-search",
+              "appropriation-text-search",
+              "collection-prefix",
+              "committee-payload",
+              "committee-print-search",
+              "document-wording-search",
+              "legislative-payload",
+              "legislative-payload-search",
+              "legislative-subject-search",
+              "legislative-text-search",
+              "meeting-suffix-search",
+              "published-suffix-search",
+              "report-text-search",
+              "search",
+              "stem",
+              "transport-search",
+              "unmatched-date",
+              "unmatched-stem",
+              "witness-suffix-search"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "priority": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_id",
+        "page"
+      ],
+      "properties": {
+        "source_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "page": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 40
+        }
+      }
+    },
+    "statement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text",
+        "source"
+      ],
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        }
+      }
+    },
+    "scalar": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "string",
+            "integer"
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string",
+          "minLength": 1
+        },
+        "format": {
+          "enum": [
+            "uri"
+          ]
+        },
+        "minLength": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxLength": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "minimum": {
+          "type": "integer"
+        },
+        "maximum": {
+          "type": "integer"
+        },
+        "const": {
+          "type": [
+            "integer",
+            "string"
+          ]
+        },
+        "enum": {
+          "type": "array",
+          "items": {
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "not": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "pattern"
+          ],
+          "properties": {
+            "pattern": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "default": {
+          "type": [
+            "integer",
+            "string"
+          ]
+        }
+      }
+    },
+    "pattern": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "action",
+        "fields",
+        "required",
+        "requires_interpretation",
+        "decisions",
+        "sources",
+        "conventions",
+        "footnote_ids",
+        "source_example_ids",
+        "source_examples_relation"
+      ],
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "action": {
+          "enum": [
+            "filename",
+            "reference"
+          ]
+        },
+        "fields": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minProperties": 1,
+          "propertyNames": {
+            "pattern": "^[A-Za-z][A-Za-z0-9]*$"
+          }
+        },
+        "required": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "requires_interpretation": {
+          "type": "boolean"
+        },
+        "decisions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 0
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/source"
+          },
+          "minItems": 0
+        },
+        "conventions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/statement"
+          },
+          "minItems": 0
+        },
+        "footnote_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "source_example_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "source_examples_relation": {
+          "const": "same-source-section-not-a-validity-assertion"
+        },
+        "stem_template": {
+          "type": "string",
+          "minLength": 1
+        },
+        "components": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "printed",
+              "source_example_ids"
+            ],
+            "properties": {
+              "printed": {
+                "type": "string",
+                "minLength": 1
+              },
+              "source_example_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "minItems": 0,
+                "uniqueItems": true
+              }
+            }
+          },
+          "minProperties": 1
+        },
+        "parse_templates": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "observed_examples": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "derived_fields": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "parse_as": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parse_priority": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2,
+          "description": "Try lower priorities first, and retain all validated candidates at the first matching priority. Default zero preserves original convention recognition."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "filename"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "stem_template"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "stem_template"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "sources": {
+                "maxItems": 0
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "observed_examples"
+            ]
+          }
+        }
+      ]
+    },
+    "example": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "raw_text",
+        "placeholders",
+        "extension",
+        "form",
+        "source",
+        "section_id",
+        "gloss",
+        "issues"
+      ],
+      "properties": {
+        "value": {
+          "type": "string",
+          "minLength": 1
+        },
+        "raw_text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "placeholders": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "extension": {
+          "enum": [
+            "pdf",
+            "xml",
+            null
+          ]
+        },
+        "form": {
+          "enum": [
+            "filename",
+            "template",
+            "fragment"
+          ]
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "section_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "gloss": {
+          "type": "string"
+        },
+        "issues": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "cell_column": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "context": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 0
+        },
+        "scenario": {
+          "type": "string"
+        },
+        "stage": {
+          "enum": [
+            "sc",
+            "fc",
+            "orh"
+          ]
+        },
+        "continuation_sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/source"
+          },
+          "minItems": 1
+        }
+      }
+    },
+    "code": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "printed",
+        "label",
+        "statements",
+        "chambers",
+        "example_ids",
+        "sources",
+        "conventions",
+        "footnote_ids"
+      ],
+      "properties": {
+        "printed": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "statements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/statement"
+          },
+          "minItems": 0
+        },
+        "chambers": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "House",
+              "Senate",
+              "Joint"
+            ]
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "example_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/source"
+          },
+          "minItems": 1
+        },
+        "conventions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/statement"
+          },
+          "minItems": 0
+        },
+        "footnote_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      }
+    },
+    "reference_array": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "items",
+        "minItems",
+        "maxItems",
+        "description"
+      ],
+      "properties": {
+        "type": {
+          "const": "array"
+        },
+        "description": {
+          "type": "string"
+        },
+        "items": {
+          "type": "object"
+        },
+        "minItems": {
+          "const": 1
+        },
+        "maxItems": {
+          "const": 64
+        }
+      }
+    }
+  }
+}

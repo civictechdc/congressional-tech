@@ -1,12 +1,15 @@
 # Filename regex corpus
 
-`congress_api.filenames` extracts the information **written in a filename**.
-`congress_api.filename_corpus` builds a searchable set of recurring-token regexes
+`house_naming.filenames.parse_filename` is a typed adapter over
+`house_naming.Engine.extract`, which reads information **written in a filename**.
+All literal extraction rules live in the package's `guide.json`; there is no
+second application rule list. The corpus command uses this shared reader.
+`house_naming.filename_corpus` builds a searchable set of recurring-token regexes
 and checks the parser against every literal spelling in a saved inventory.
 Neither command downloads documents or modifies publisher metadata.
 
 ```python
-from congress_api.filenames import parse_filename
+from house_naming.filenames import parse_filename
 
 parsed = parse_filename('HHRG-113-AG00-Wstate-ColbyJ-20130314.pdf')
 for match in parsed.matches:
@@ -16,8 +19,9 @@ for match in parsed.matches:
 The named captures include the Congress (`113`), committee routing code (`AG00`),
 document marker (`Wstate`), subject token (`ColbyJ`), date token (`20130314`), and
 extension (`pdf`). Every capture retains its original spelling and start/end
-character offsets. Calendar validation supplies candidate date readings without
-assigning a role such as hearing date or publication date.
+character offsets. Calendar validation supplies candidate date readings. A date
+role is supplied only where the naming convention establishes it, such as the
+Monday start date in a `Weekof` notice.
 
 ## What is preserved
 
@@ -63,7 +67,87 @@ remain available without an invented label.
 | `BILLS-118 hres_44HR277HR288HR1615HR1640_xml.pdf` | Resolution type `hres`, number `44`, all four following measure references, filename format marker `xml`; actual extension `pdf`. |
 | `BILLS-118 hres_HR2670_2_xml.pdf` | Resolution type `hres` without a number, reference `HR2670`, unexplained numeric suffix `2`, filename format marker `xml`. |
 | `BILLS-115HR__-RCP115-77.pdf` | Type `HR`, number placeholder `__`, print Congress `115` and print number `77`; no bill number invented. |
-| `BILLS-113hrFARMEXT-SUS.pdf` | Type `hr`, literal title `FARMEXT`, local code `SUS`; no official version label inferred. |
+| `BILLS-113hrFARMEXT-SUS.pdf` | Type `hr`, literal title `FARMEXT`, House consideration code `SUS` (suspension of the rules); distinct from a text version. |
+
+## House guide definitions and worked examples
+
+The local [`house-naming-guide` package](README.md)
+provides the JSON catalog, schemas, definitions, source examples and validation.
+`house_naming.naming.HOUSE_NAMING` uses the bundled conventions through `Engine()`.
+There is no separate generated Python reference catalog or application schema.
+The package represents the Clerk's naming guide, version 1.2.1 (April 24, 2012);
+we use its naming conventions, not its historical committee directory.
+
+`HOUSE_NAMING.lookup(context, code)` returns the source label, individual
+attributed definition statements, examples and source anchors. Context matters:
+`SC` means subcommittee consideration in appropriations routing and sponsor
+change in a bill-version slot. `HOUSE_NAMING.source(id)` resolves those anchors
+inside the same JSON catalog. Section anchors identify the section; its child
+source nodes contain the paragraphs. The current 53-code GovInfo vocabulary in
+`bill_codes.py` remains separate, including the additional `rhuc` code.
+
+| Filename fragment and context | Extracted meaning |
+| --- | --- |
+| `HRPT-112-HR123-p2` | Congress 112, referenced measure HR123, **report part 2**; no report number supplied. |
+| `BILLS-112s365-HAmdt2` | Second-degree House amendment to the referenced Senate measure; `2` is an amendment degree. |
+| `Amdt-001-Enbloc-002` | Individual amendment identifier `001`, en bloc group `002`. `Amdt-Enbloc-001` supplies only the group. |
+| `HR-SC-AP-FY13-suppl-02` | Subcommittee consideration, literal fiscal year `13`, supplemental sequence `02`; no century or bill number invented. |
+| `HRes-ORH-Rule-HR10` | Originally reported Rules resolution covering HR10; HR10 is not the resolution number. |
+| `CRPT-112hrpt-HR2055-DivisonA-som` | Report division A and joint statement of managers; printed `Divison` spelling preserved. |
+| `HMTG-112-HMKP-BU-20110215-2-SD001` | Markup, second meeting on that date, general meeting supporting document `001`. |
+| `WState-IveyB-20110922-SD001` | Witness statement and its supporting document `001`; distinct from a general meeting attachment. |
+| `CPRT-112hrpt-activities-Q4-RU` | Committee activity report for quarter 4, routed to RU. |
+| terminal `-U1` | First update since the document's original posting. |
+
+Use the package directly for normalized naming records:
+
+```python
+from house_naming.naming import HOUSE_NAMING
+
+name = 'HRPT-112-HR123-p2.pdf'
+result = HOUSE_NAMING.parse(name)
+record = result['matches'][0]['record']
+assert record['partNumber'] == 2
+assert HOUSE_NAMING.render(record) == name
+source_examples = HOUSE_NAMING.examples(name)
+```
+
+`validate(record)` checks required fields, enums, real dates and filename safety;
+`render(record)` validates and returns a filename or a URL for link-only kinds.
+`parse(name)` returns validated interpretations at the first priority that
+produces a valid candidate, including ambiguity and source issues. A structural
+match that fails validation does not prevent a later priority from succeeding.
+`rejected_candidates` retains the matched kind, priority, validation code and
+details; `issues` includes those codes. An empty rejection list distinguishes
+no layout match from a layout rejected by validation. The package includes 56 kinds and explicitly documented decisions
+for interpretations of source conventions and layouts observed in the corpus.
+
+`HOUSE_NAMING.parse` returns typed metadata for supported layouts, accepts case
+variants, preserves the original `input`, and includes `canonical_filename` on
+each match. It recognizes common date-first committee documents, committee votes,
+transcripts and GPO hearing identifiers as well as the guide conventions.
+`HOUSE_NAMING.extract` retains actual published spellings, malformed examples,
+offsets, empty slots and unrecognized text. `parse_filename` exposes those same
+observations as typed `matches`, including their scopes and vocabulary contexts.
+It also retains suppressed candidates, their reasons and convention-validation
+diagnostics. `resolve_unmatched_filename` selects an already extracted fallback;
+it does not run another parser. Names outside strict convention layouts remain
+available to corpus users.
+Witness identifiers remain opaque; neither parser resolves people or committees.
+The package supplies House-guide source wording for labels and their source
+page links. GovInfo's common-version vocabulary remains separately available
+in `bill_codes.py`. Concise labels for report parts, amendment
+degrees and report components describe the specific captured field.
+
+```bash
+.venv/bin/python -m pytest packages/house-naming/tests tests/test_filename*.py -q
+```
+
+Tests check the retained definitions and all concrete source examples, plus
+explicit field/span expectations and negative controls. The corpus hashes the
+installed package's Python and JSON inputs. Frozen comparisons retain their
+own reader and dependencies so later catalog changes cannot silently change
+their baseline.
 
 GovInfo labels the actual `BILLS-115hr1892eas2` package as Engrossed Amendment
 (Senate), confirming the `eas` base code. The help page does not define the
@@ -109,8 +193,9 @@ version_token:        ih
 ```
 
 The full descriptor also remains available. Name boundaries come from optional
-legislator data, not a surname list in the parser. The builder reads existing
-`Legislator` models and groups surnames by service-date overlap with each Congress.
+legislator data, not a surname list in the parser. The source-data application
+groups surname spellings by service-date overlap with each Congress and supplies
+that mapping to the corpus builder.
 The parser accepts this Congress-keyed mapping through `member_surnames` and
 performs no file or network I/O. Without a reference match, it leaves the
 combined descriptor intact.
@@ -140,19 +225,20 @@ CamelCase alone cannot restore every missing space in strings such as
 From the repository root, with the project's Python environment:
 
 ```bash
-.venv/bin/python -m congress_api.filename_corpus \
+.venv/bin/python -m house_naming.filename_corpus \
   output/filename-clustering/filenames.parquet output/filename-regex \
-  --legislators .cache/source-models/legislators-current.json
-.venv/bin/python -m pytest tests/test_filename_patterns.py tests/test_filename_families.py tests/test_filename_residuals.py tests/test_filename_audit_fixes.py -q
+  --member-surnames member-surnames.json
+.venv/bin/python -m pytest packages/house-naming/tests tests/test_filename_patterns.py tests/test_filename_audit_fixes.py -q
 ```
 
 The inventory reader includes both representative `filename` values and every
 original `variants` spelling. Only the Parquet reader requires `pyarrow`;
 `build_corpus(filenames, output_directory)` accepts literal names directly.
-`--legislators` is optional and accepts multiple retained JSON files, including
-historical records when available. A current-member file contains prior terms
-for those members, but is not a complete historical roster. Missing reference
-names remain unsplit. The audit records every supplied reference file's hash.
+`--member-surnames` accepts one optional JSON object mapping Congress numbers to
+lists of surname spellings, such as `{"119": ["Clyburn"]}`. The source-data
+application prepares this vocabulary; raw legislator ingestion is separate.
+Missing reference names remain unsplit. The audit records the reference file's
+hash. Install `house-naming-guide[corpus]` from the local package for these tools.
 
 | Output | Contents |
 | --- | --- |
@@ -181,19 +267,21 @@ The audit compares that lookup's expected spans against the actual regexes.
 
 Structural rules use `re.fullmatch` for `stem` and nested payload scopes, and
 `re.finditer` for `search` scope. Payload offsets are relative to the original
-filename. `parse_filename` implements this dispatch; use it instead of treating
-all exported patterns as interchangeable searches.
+filename. `Engine.extract` implements this dispatch and `parse_filename` adapts
+its results; use those APIs instead of treating all exported patterns as
+interchangeable searches.
 
 Scoped `published-suffix-search` rules inspect only published-package suffixes;
 `legislative-text-search` rules inspect legislative descriptors and suffixes.
-They recover literal `add`, `err`, volume/part markers, `ANS` and `HAmdt` without
-assigning official expansions. Existing numeric part captures are reused.
+They recover literal `addendum`/`add`, `ERRATA`/`err`, volume/part markers, `ANS`
+and `HAmdt`. Existing numeric part captures are reused. Publication component
+numbers reserve their source spans before generic date scans.
 `REVISED` and mixed print separators such as `RCP115- 13` have general bounded
 search rules. Overlap between field searches is not a competing full layout.
 
 Additional legislative families apply only when the existing inner layouts do
-not match. The exported `fallback` value specifies their order: `0` is the
-existing parser, `1` is explicit committee/amendment/print/type notation, `2`
+not match. The catalog's `priority` value specifies their order: `0` is the
+primary layouts, `1` is explicit committee/amendment/print/type notation, `2`
 is local identifiers or type-plus-title drafts, and `3` is an introduced-draft
 suffix after descriptive text. Stop after the first tier with matches. Multiple
 matches within that tier remain visible and fail the collision audit.

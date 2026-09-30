@@ -1,0 +1,3238 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:house-naming:record",
+  "title": "House and GPO filename metadata records",
+  "description": "Guide conventions and observed filename layouts. Metadata validation only; calendar dates, URL structure and UTF-8 filename length also require the runtime. This is not certification of current House requirements.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/rule_bill-numbered"
+    },
+    {
+      "$ref": "#/$defs/rule_bill-preintroduced"
+    },
+    {
+      "$ref": "#/$defs/rule_bill-suspension-numbered"
+    },
+    {
+      "$ref": "#/$defs/rule_bill-suspension-unnumbered"
+    },
+    {
+      "$ref": "#/$defs/rule_bill-unanimous-consent"
+    },
+    {
+      "$ref": "#/$defs/rule_rules-original"
+    },
+    {
+      "$ref": "#/$defs/rule_appropriation-described"
+    },
+    {
+      "$ref": "#/$defs/rule_appropriation-annual"
+    },
+    {
+      "$ref": "#/$defs/rule_appropriation-supplemental"
+    },
+    {
+      "$ref": "#/$defs/rule_continuing-resolution-reported"
+    },
+    {
+      "$ref": "#/$defs/rule_continuing-resolution-committee"
+    },
+    {
+      "$ref": "#/$defs/rule_interchamber-amendment"
+    },
+    {
+      "$ref": "#/$defs/rule_floor-amendment"
+    },
+    {
+      "$ref": "#/$defs/rule_committee-amendment"
+    },
+    {
+      "$ref": "#/$defs/rule_committee-enbloc-numbered"
+    },
+    {
+      "$ref": "#/$defs/rule_committee-enbloc"
+    },
+    {
+      "$ref": "#/$defs/rule_appropriation-amendment"
+    },
+    {
+      "$ref": "#/$defs/rule_conference-numbered"
+    },
+    {
+      "$ref": "#/$defs/rule_conference-unnumbered"
+    },
+    {
+      "$ref": "#/$defs/rule_conference-legislation-part"
+    },
+    {
+      "$ref": "#/$defs/rule_conference-statement"
+    },
+    {
+      "$ref": "#/$defs/rule_conference-statement-part"
+    },
+    {
+      "$ref": "#/$defs/rule_weekly-meeting-notice"
+    },
+    {
+      "$ref": "#/$defs/rule_meeting-notice"
+    },
+    {
+      "$ref": "#/$defs/rule_witness-list"
+    },
+    {
+      "$ref": "#/$defs/rule_witness-statement"
+    },
+    {
+      "$ref": "#/$defs/rule_witness-support"
+    },
+    {
+      "$ref": "#/$defs/rule_testimony-disclosure"
+    },
+    {
+      "$ref": "#/$defs/rule_witness-biography"
+    },
+    {
+      "$ref": "#/$defs/rule_committee-vote"
+    },
+    {
+      "$ref": "#/$defs/rule_member-statement"
+    },
+    {
+      "$ref": "#/$defs/rule_meeting-support"
+    },
+    {
+      "$ref": "#/$defs/rule_committee-rules"
+    },
+    {
+      "$ref": "#/$defs/rule_committee-report-unnumbered"
+    },
+    {
+      "$ref": "#/$defs/rule_committee-report-part"
+    },
+    {
+      "$ref": "#/$defs/rule_activity-report"
+    },
+    {
+      "$ref": "#/$defs/rule_committee-print-link"
+    },
+    {
+      "$ref": "#/$defs/rule_hearing-transcript-link"
+    },
+    {
+      "$ref": "#/$defs/rule_committee-document-numbered"
+    },
+    {
+      "$ref": "#/$defs/rule_committee-document"
+    },
+    {
+      "$ref": "#/$defs/rule_committee-transcript"
+    },
+    {
+      "$ref": "#/$defs/rule_published-hearing"
+    },
+    {
+      "$ref": "#/$defs/rule_published-report"
+    },
+    {
+      "$ref": "#/$defs/rule_published-print"
+    },
+    {
+      "$ref": "#/$defs/rule_committee-amendment-described"
+    },
+    {
+      "$ref": "#/$defs/rule_committee-enbloc-described"
+    },
+    {
+      "$ref": "#/$defs/rule_committee-print"
+    },
+    {
+      "$ref": "#/$defs/rule_bill-untyped-numbered"
+    },
+    {
+      "$ref": "#/$defs/rule_bill-untyped-draft"
+    },
+    {
+      "$ref": "#/$defs/rule_appropriation-routed"
+    },
+    {
+      "$ref": "#/$defs/rule_bill-unnumbered"
+    },
+    {
+      "$ref": "#/$defs/rule_bill-named-draft"
+    },
+    {
+      "$ref": "#/$defs/rule_bill-measure-list"
+    },
+    {
+      "$ref": "#/$defs/rule_bill-numbered-described"
+    },
+    {
+      "$ref": "#/$defs/rule_bill-titled-draft"
+    },
+    {
+      "$ref": "#/$defs/rule_bill-house-amendment"
+    }
+  ],
+  "$defs": {
+    "field_congress": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2147483647
+    },
+    "field_positiveInteger": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2147483647
+    },
+    "field_measureTypeLower": {
+      "type": "string",
+      "enum": [
+        "hr",
+        "s",
+        "hjres",
+        "sjres",
+        "hconres",
+        "sconres",
+        "hres",
+        "sres"
+      ],
+      "description": "Selected output spelling: lowercase, matching numbered-measure samples. Not a source-wide rule about case.",
+      "minLength": 1,
+      "maxLength": 7
+    },
+    "field_measureTypePrinted": {
+      "type": "string",
+      "enum": [
+        "HR",
+        "S",
+        "HJRes",
+        "SJRes",
+        "HConRes",
+        "SConRes",
+        "HRes",
+        "SRes"
+      ],
+      "minLength": 1,
+      "maxLength": 7
+    },
+    "field_legislativeStage": {
+      "type": "string",
+      "enum": [
+        "ih",
+        "rh",
+        "as",
+        "ash",
+        "ath",
+        "ats",
+        "cdh",
+        "cds",
+        "cph",
+        "cps",
+        "eah",
+        "eas",
+        "eh",
+        "eph",
+        "enr",
+        "es",
+        "fah",
+        "fph",
+        "fps",
+        "hdh",
+        "hds",
+        "iph",
+        "ips",
+        "is",
+        "lth",
+        "lts",
+        "oph",
+        "ops",
+        "pav",
+        "pch",
+        "pcs",
+        "pp",
+        "pap",
+        "pwah",
+        "rah",
+        "ras",
+        "rch",
+        "rcs",
+        "rdh",
+        "rds",
+        "reah",
+        "res",
+        "renr",
+        "rfh",
+        "rfs",
+        "rih",
+        "ris",
+        "rs",
+        "rth",
+        "rts",
+        "sas",
+        "sc"
+      ],
+      "description": "Stage codes printed in the 2012 appendix; no current completeness or type/chamber compatibility claim.",
+      "minLength": 1,
+      "maxLength": 4
+    },
+    "field_committeeCode": {
+      "type": "string",
+      "pattern": "^[A-Z]{2}(?:[0-9]{2})?$(?![\\s\\S])",
+      "description": "Filename code syntax only. Two-character committee examples and four-character subcommittee examples are both represented. The appendix labels its four-character codes as folder codes; no folder-to-filename alias is inferred.",
+      "minLength": 1,
+      "maxLength": 32
+    },
+    "field_bioguideId": {
+      "type": "string",
+      "pattern": "^[A-Z][0-9]{6}$(?![\\s\\S])",
+      "description": "Syntax only. Does not require membership in the 112th-Congress directory.",
+      "minLength": 1,
+      "maxLength": 32
+    },
+    "field_filenameToken": {
+      "type": "string",
+      "pattern": "^[^\\s/\\\\<>:\"|?*\\x00-\\x1F\\x7F\\u0085\\uFEFF]+$(?![\\s\\S])",
+      "description": "Selected safe single filename value: no whitespace, path separators or control characters. No transliteration, case conversion or punctuation cleanup is performed. Resource and portability bounds are implementation constraints. A trailing -U<digits> is reserved; no Unicode normalization is performed.",
+      "minLength": 1,
+      "maxLength": 160,
+      "not": {
+        "pattern": "-[Uu][0-9]+$(?![\\s\\S])"
+      }
+    },
+    "field_witnessId": {
+      "type": "string",
+      "pattern": "^[^\\s/\\\\<>:\"|?*\\x00-\\x1F\\x7F\\u0085\\uFEFF]+$(?![\\s\\S])",
+      "description": "Supply the prepared last-name-plus-first-initial token or a member Bioguide ID. The schema cannot establish that this token matches a real person or that a name was prepared correctly. Resource and portability bounds are implementation constraints. A trailing -U<digits> is reserved; no Unicode normalization is performed.",
+      "minLength": 1,
+      "maxLength": 160,
+      "not": {
+        "pattern": "-[Uu][0-9]+$(?![\\s\\S])"
+      }
+    },
+    "field_date8": {
+      "type": "string",
+      "pattern": "^[0-9]{4}(?:0[1-9]|1[0-2])(?:0[1-9]|[12][0-9]|3[01])$(?![\\s\\S])",
+      "description": "YYYYMMDD lexical check. Calendar validity is checked by the included adapter, not this regular expression.",
+      "minLength": 1,
+      "maxLength": 32
+    },
+    "field_fiscalYear": {
+      "type": "string",
+      "pattern": "^(?:[0-9]{2}|[0-9]{4})$(?![\\s\\S])",
+      "description": "Printed two- or four-digit fiscal year. No century is inferred for a two-digit year.",
+      "minLength": 1,
+      "maxLength": 32
+    },
+    "field_sequenceId": {
+      "type": "string",
+      "pattern": "^[0-9]+$(?![\\s\\S])",
+      "description": "Digits preserved exactly. No fixed padding width is inferred from a sample.",
+      "minLength": 1,
+      "maxLength": 32
+    },
+    "field_amendmentId": {
+      "type": "string",
+      "pattern": "^(?=[A-Za-z0-9_.-]*[A-Za-z0-9])[A-Za-z0-9_][A-Za-z0-9_.-]*$(?![\\s\\S])",
+      "description": "Literal local amendment identifier, including letters and underscores. Enbloc and terminal revision suffixes are separate fields.",
+      "minLength": 1,
+      "maxLength": 80,
+      "not": {
+        "pattern": "(?:-[Ee][Nn][Bb][Ll][Oo][Cc]-|^[Ee][Nn][Bb][Ll][Oo][Cc]-|-[Uu][0-9]+$(?![\\s\\S]))"
+      }
+    },
+    "field_meetingType": {
+      "type": "string",
+      "enum": [
+        "HMKP",
+        "HHRG",
+        "HMTG"
+      ],
+      "minLength": 1,
+      "maxLength": 4
+    },
+    "field_appropriationStage": {
+      "type": "string",
+      "enum": [
+        "ORH",
+        "FC",
+        "SC"
+      ],
+      "minLength": 1,
+      "maxLength": 3
+    },
+    "field_extension": {
+      "type": "string",
+      "enum": [
+        "pdf",
+        "xml"
+      ],
+      "description": "Deliberately bounded output convention: PDF and XML extensions observed in this source. Not a claim that the source prohibits every other extension.",
+      "minLength": 1,
+      "maxLength": 3
+    },
+    "field_revision": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Omit for the initial posting. The adapter appends -U followed by this number before the extension.",
+      "maximum": 2147483647
+    },
+    "field_meetingOccurrence": {
+      "type": "integer",
+      "minimum": 2,
+      "description": "Omit for the first meeting that day; subsequent occurrences become a -2, -3, ... suffix.",
+      "maximum": 2147483647
+    },
+    "field_continuing_resolution_committee_stage": {
+      "type": "string",
+      "enum": [
+        "SC",
+        "FC"
+      ],
+      "maxLength": 64,
+      "minLength": 1
+    },
+    "field_interchamber_amendment_amendmentType": {
+      "type": "string",
+      "enum": [
+        "HAmdt",
+        "HAmdt2",
+        "HAmdt3",
+        "SAmdt",
+        "SAmdt2",
+        "SAmdt3"
+      ],
+      "maxLength": 64,
+      "minLength": 1
+    },
+    "field_appropriation_amendment_stage": {
+      "type": "string",
+      "enum": [
+        "SC",
+        "FC"
+      ],
+      "maxLength": 64,
+      "minLength": 1
+    },
+    "field_activity_report_quarter": {
+      "type": "integer",
+      "enum": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "maximum": 2147483647
+    },
+    "field_committee_print_link_url": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https?://[^\\s]+$(?![\\s\\S])",
+      "maxLength": 2048,
+      "minLength": 1,
+      "description": "Absolute HTTP(S) URL. The runtime applies deterministic structural checks, including prepared ASCII URI spelling and percent escapes; format is an annotation for external consumers. No URL is fetched and no publisher is authenticated."
+    },
+    "field_hearing_transcript_link_url": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https?://[^\\s]+$(?![\\s\\S])",
+      "maxLength": 2048,
+      "minLength": 1,
+      "description": "Absolute HTTP(S) URL. The runtime applies deterministic structural checks, including prepared ASCII URI spelling and percent escapes; format is an annotation for external consumers. No URL is fetched and no publisher is authenticated."
+    },
+    "field_witnessMeetingType": {
+      "type": "string",
+      "enum": [
+        "HMKP",
+        "HHRG",
+        "HMTG"
+      ],
+      "minLength": 1,
+      "maxLength": 4,
+      "default": "HHRG",
+      "description": "Original collection prefix. Defaults to HHRG for existing witness records; observed HMTG and HMKP prefixes are preserved."
+    },
+    "field_numberedDocumentType": {
+      "type": "string",
+      "enum": [
+        "SD",
+        "QFR"
+      ],
+      "description": "Printed document marker: supporting document or questions for the record."
+    },
+    "field_unnumberedDocumentType": {
+      "type": "string",
+      "enum": [
+        "MbrRoster",
+        "CPg",
+        "TOC"
+      ],
+      "description": "Printed document markers MbrRoster, CPg, and TOC are preserved as metadata."
+    },
+    "field_hearingPublicationType": {
+      "type": "string",
+      "enum": [
+        "hhrg",
+        "shrg",
+        "jhrg"
+      ],
+      "description": "GPO hearing publication type printed in the package identifier."
+    },
+    "field_hearingPublicationSuffix": {
+      "type": "string",
+      "pattern": "^(?:-[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*|[vV][0-9]+|\\([0-9]+\\))?$(?![\\s\\S])",
+      "default": "",
+      "maxLength": 80,
+      "description": "Printed publication suffix retained verbatim, alongside separately extracted explicit part, volume, addendum and errata tokens.",
+      "not": {
+        "pattern": "-[Uu][0-9]+$(?![\\s\\S])"
+      }
+    },
+    "field_publicationExtension": {
+      "type": "string",
+      "enum": [
+        "pdf",
+        "xml",
+        "htm",
+        "html"
+      ],
+      "minLength": 1,
+      "maxLength": 4,
+      "description": "Observed government publication filename extensions; no content format validation."
+    },
+    "field_publicationPartId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9]*$(?![\\s\\S])",
+      "description": "Printed part, volume, addendum or errata identifier. Empty means an unnumbered marker is present; omission means absent.",
+      "maxLength": 32
+    },
+    "field_witnessIdType": {
+      "type": "string",
+      "const": "bioguide",
+      "description": "The entire witness identifier has Bioguide syntax; identity is not verified."
+    },
+    "field_reportDocumentType": {
+      "type": "string",
+      "const": "report",
+      "description": "A congressional report. Conference status is not established by the filename."
+    },
+    "field_reportPublicationType": {
+      "type": "string",
+      "enum": [
+        "hrpt",
+        "srpt",
+        "erpt"
+      ],
+      "description": "Printed House, Senate, or Senate executive report code."
+    },
+    "field_printPublicationType": {
+      "type": "string",
+      "enum": [
+        "hprt",
+        "sprt",
+        "jprt"
+      ],
+      "description": "Printed committee print publication code."
+    },
+    "field_versionSuffix": {
+      "type": "string",
+      "pattern": "^[0-9]*(?:\\([^()\\s/\\\\<>:\"|?*]+\\))?(?:[-_][^\\s/\\\\<>:\"|?*\\x00-\\x1f\\x7f]+)?$(?![\\s\\S])",
+      "description": "Literal suffix after the legislative stage; retains occurrence, annotation and local descriptive text.",
+      "default": "",
+      "maxLength": 160,
+      "not": {
+        "pattern": "-[Uu][0-9]+$(?![\\s\\S])"
+      }
+    },
+    "field_stageOccurrence": {
+      "type": "string",
+      "pattern": "^[0-9]+$(?![\\s\\S])",
+      "description": "Printed occurrence following a version code; distinct from a document revision.",
+      "maxLength": 32
+    },
+    "field_annotation": {
+      "type": "string",
+      "pattern": "^[^()\\s/\\\\<>:\"|?*]+$(?![\\s\\S])",
+      "description": "Text inside a printed parenthetical annotation.",
+      "maxLength": 160
+    },
+    "field_appropriationType": {
+      "type": "string",
+      "enum": [
+        "supplemental",
+        "continuing-resolution"
+      ],
+      "description": "Explicit suppl or CR marker within the AP/FY description; no annual status is inferred from its absence."
+    },
+    "field_voteIdentifier": {
+      "type": "string",
+      "pattern": "^(?=[A-Za-z0-9_.-]*[A-Za-z0-9])[A-Za-z0-9_][A-Za-z0-9_.-]*$(?![\\s\\S])",
+      "description": "Literal vote identifier, range or label; no range expansion or vote count is inferred.",
+      "minLength": 1,
+      "maxLength": 80,
+      "not": {
+        "pattern": "-[Uu][0-9]+$(?![\\s\\S])"
+      }
+    },
+    "field_amendmentSubject": {
+      "type": "string",
+      "pattern": "^[^\\s/\\\\<>:\"|?*\\x00-\\x1F\\x7F\\u0085\\uFEFF]+$(?![\\s\\S])",
+      "description": "Selected safe single filename value: no whitespace, path separators or control characters. No transliteration, case conversion or punctuation cleanup is performed. Resource and portability bounds are implementation constraints. A trailing -U<digits> is reserved; no Unicode normalization is performed.",
+      "minLength": 1,
+      "maxLength": 160,
+      "not": {
+        "pattern": "(?:-[Uu][0-9]+$(?![\\s\\S])|^(?:[hH][rR]|[sS]|[hH][jJ][rR][eE][sS]|[sS][jJ][rR][eE][sS]|[hH][cC][oO][nN][rR][eE][sS]|[sS][cC][oO][nN][rR][eE][sS]|[hH][rR][eE][sS]|[sS][rR][eE][sS])[1-9][0-9]{0,9}$(?![\\s\\S]))"
+      }
+    },
+    "field_references": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "description": "Literal references found within known filename fields. Offsets are zero-based character positions [start,end) in sourceField. Related mentions never replace primary metadata, establish document relationships, or supply a missing source slot.",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "raw",
+              "sourceField",
+              "start",
+              "end",
+              "measureType",
+              "measureNumber"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "measure"
+              },
+              "raw": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 240
+              },
+              "sourceField": {
+                "type": "string",
+                "enum": [
+                  "subject",
+                  "descriptionRemainder",
+                  "description",
+                  "versionSuffix",
+                  "voteId",
+                  "amendmentId",
+                  "measureList"
+                ]
+              },
+              "start": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 240
+              },
+              "end": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 240
+              },
+              "measureType": {
+                "type": "string",
+                "enum": [
+                  "hr",
+                  "s",
+                  "hjres",
+                  "sjres",
+                  "hconres",
+                  "sconres",
+                  "hres",
+                  "sres"
+                ],
+                "description": "Selected output spelling: lowercase, matching numbered-measure samples. Not a source-wide rule about case.",
+                "minLength": 1,
+                "maxLength": 7
+              },
+              "measureNumber": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2147483647
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "raw",
+              "sourceField",
+              "start",
+              "end",
+              "congress",
+              "number"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "rules-committee-print"
+              },
+              "raw": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 240
+              },
+              "sourceField": {
+                "type": "string",
+                "enum": [
+                  "subject",
+                  "descriptionRemainder",
+                  "description",
+                  "versionSuffix",
+                  "voteId",
+                  "amendmentId",
+                  "measureList"
+                ]
+              },
+              "start": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 240
+              },
+              "end": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 240
+              },
+              "congress": {
+                "type": "integer",
+                "minimum": 100,
+                "maximum": 999
+              },
+              "number": {
+                "type": "string",
+                "pattern": "^[0-9]{1,10}$(?![\\s\\S])"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "raw",
+              "sourceField",
+              "start",
+              "end",
+              "year"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "fiscal-year"
+              },
+              "raw": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 240
+              },
+              "sourceField": {
+                "type": "string",
+                "enum": [
+                  "subject",
+                  "descriptionRemainder",
+                  "description",
+                  "versionSuffix",
+                  "voteId",
+                  "amendmentId",
+                  "measureList"
+                ]
+              },
+              "start": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 240
+              },
+              "end": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 240
+              },
+              "year": {
+                "type": "string",
+                "pattern": "^(?:[0-9]{2}|[0-9]{4})$(?![\\s\\S])",
+                "description": "Printed two- or four-digit fiscal year. No century is inferred for a two-digit year.",
+                "minLength": 1,
+                "maxLength": 32
+              }
+            }
+          }
+        ]
+      }
+    },
+    "field_observedCongress": {
+      "type": "integer",
+      "minimum": 100,
+      "maximum": 999,
+      "description": "Three-digit Congress slot in observed incomplete layouts; fixes the boundary before an adjacent untyped numeric token."
+    },
+    "field_untypedNumberToken": {
+      "type": "string",
+      "pattern": "^[0-9]{1,10}$(?![\\s\\S])",
+      "description": "Printed numeric slot with no measure type. Leading zeros and zero placeholders survive; no bill identity is inferred."
+    },
+    "field_observedDraftStage": {
+      "type": "string",
+      "enum": [
+        "pih"
+      ],
+      "description": "Literal House pre-introduction marker in observed drafts without a measure-type slot; not added to the GovInfo version vocabulary."
+    },
+    "field_draftDescription": {
+      "type": "string",
+      "pattern": "^[^\\s/\\\\<>:\"|?*\\x00-\\x1F\\x7F\\u0085\\uFEFF]+$(?![\\s\\S])",
+      "description": "Selected safe single filename value: no whitespace, path separators or control characters. No transliteration, case conversion or punctuation cleanup is performed. Resource and portability bounds are implementation constraints. A trailing -U<digits> is reserved; no Unicode normalization is performed.",
+      "minLength": 1,
+      "maxLength": 240,
+      "not": {
+        "pattern": "-[Uu][0-9]+$(?![\\s\\S])"
+      }
+    },
+    "field_incompleteAppropriationRouting": {
+      "type": "string",
+      "pattern": "^(?!(?:[hH][cC][oO][nN][rR][eE][sS]|[sS][cC][oO][nN][rR][eE][sS]|[hH][jJ][rR][eE][sS]|[sS][jJ][rR][eE][sS]|[hH][rR][eE][sS]|[sS][rR][eE][sS]|[hH][rR]|[sS])-(?:[fF][cC]|[sS][cC]|[oO][rR][hH])-[aA][pP]-)(?:[A-Za-z0-9_]+-)?(?:[fF][cC]|[sS][cC]|[oO][rR][hH])?-[aA][pP]-[^\\s/\\\\<>:\"|?*\\x00-\\x1F\\x7F\\u0085\\uFEFF]+$(?![\\s\\S])",
+      "minLength": 1,
+      "maxLength": 240,
+      "not": {
+        "pattern": "-[Uu][0-9]+$(?![\\s\\S])"
+      },
+      "description": "Observed incomplete AP routing: optional literal prefix, optional FC/SC/ORH, then AP description. Complete measure-type/stage layouts are excluded. Unknown prefix text is retained without assigning a measure or person."
+    },
+    "field_untypedLegislativeStage": {
+      "type": "string",
+      "enum": [
+        "ih",
+        "rh",
+        "as",
+        "ash",
+        "ath",
+        "ats",
+        "cdh",
+        "cds",
+        "cph",
+        "cps",
+        "eah",
+        "eas",
+        "eh",
+        "eph",
+        "enr",
+        "es",
+        "fah",
+        "fph",
+        "fps",
+        "hdh",
+        "hds",
+        "iph",
+        "ips",
+        "is",
+        "lth",
+        "lts",
+        "oph",
+        "ops",
+        "pav",
+        "pch",
+        "pcs",
+        "pp",
+        "pap",
+        "pwah",
+        "rah",
+        "ras",
+        "rch",
+        "rcs",
+        "rdh",
+        "rds",
+        "reah",
+        "res",
+        "renr",
+        "rfh",
+        "rfs",
+        "rih",
+        "ris",
+        "rs",
+        "rth",
+        "rts",
+        "sas",
+        "sc",
+        "pih"
+      ],
+      "description": "Observed legislative stages: the version vocabulary plus House PIH. PIH remains a House marker, not a GovInfo version.",
+      "minLength": 1,
+      "maxLength": 4
+    },
+    "field_optionalMeasureToken": {
+      "type": "string",
+      "enum": [
+        "",
+        "hr",
+        "s",
+        "hjres",
+        "sjres",
+        "hconres",
+        "sconres",
+        "hres",
+        "sres"
+      ],
+      "default": "",
+      "description": "Explicit measure-type slot, or the empty string when absent. An absent type is not inferred."
+    },
+    "field_numberPlaceholder": {
+      "type": "string",
+      "pattern": "^(?:_+|[Xx]{2,}|-+)?$(?![\\s\\S])",
+      "description": "Literal placeholder or empty number slot; not a zero, bill number, or missing-value substitute.",
+      "maxLength": 160,
+      "default": ""
+    },
+    "field_namedDraftLabel": {
+      "type": "string",
+      "enum": [
+        "DiscussionDraft",
+        "Draft",
+        "CommitteeRules",
+        "CommitteeResolution",
+        "CommitteeRes",
+        "CommRes",
+        "TFITFR"
+      ],
+      "description": "Observed printed label. No acronym expansion or document-content assertion."
+    },
+    "field_draftIdentifier": {
+      "type": "string",
+      "pattern": "^[_0-9Xx-]*$(?![\\s\\S])",
+      "description": "Printed local draft identifier, including placeholders and leading zeros.",
+      "maxLength": 160,
+      "default": ""
+    },
+    "field_introducedDraftStage": {
+      "type": "string",
+      "enum": [
+        "pih",
+        "ih"
+      ],
+      "description": "Explicit IH/PIH suffix in descriptive legislative filenames. Restriction avoids stripping arbitrary short version-looking endings from words."
+    },
+    "field_draftDescriptor": {
+      "type": "string",
+      "pattern": "^[A-Za-z][^\\s/\\\\<>:\"|?*\\x00-\\x1f\\x7f\\u0085\\uFEFF]*?$(?![\\s\\S])",
+      "description": "Literal descriptive text ending before an explicit IH/PIH stage. No person-name splitting or expansion.",
+      "maxLength": 160
+    },
+    "field_numberedSubject": {
+      "type": "string",
+      "pattern": "^(?:[hH][cC][oO][nN][rR][eE][sS]|[sS][cC][oO][nN][rR][eE][sS]|[hH][jJ][rR][eE][sS]|[sS][jJ][rR][eE][sS]|[hH][rR][eE][sS]|[sS][rR][eE][sS]|[hH][rR]|[sS])?[0-9]{1,10}$(?![\\s\\S])",
+      "description": "Retained numbered subject. Only an explicit known measure type permits deriving a measure identity.",
+      "maxLength": 160
+    },
+    "field_measureList": {
+      "type": "string",
+      "pattern": "^(?:(?:[hH][cC][oO][nN][rR][eE][sS]|[sS][cC][oO][nN][rR][eE][sS]|[hH][jJ][rR][eE][sS]|[sS][jJ][rR][eE][sS]|[hH][rR][eE][sS]|[sS][rR][eE][sS]|[hH][rR]|[sS])[1-9][0-9]{0,9})+$(?![\\s\\S])",
+      "description": "One or more adjacent explicit measure references. Each occurrence is extracted independently; no primary measure is selected.",
+      "maxLength": 160
+    },
+    "field_measureListPrefix": {
+      "type": "string",
+      "enum": [
+        "",
+        "SA"
+      ],
+      "default": "",
+      "description": "Literal optional SA prefix before the reference list. No legislative-version label is assigned."
+    },
+    "field_measureListSuffix": {
+      "type": "string",
+      "pattern": "^(?![\\s\\S]*-[Aa][Mm][Dd][Tt]-)(?![\\s\\S]*-[Hh][Aa][Mm][Dd][Tt])[0-9]*(?:\\([^()\\s/\\\\<>:\"|?*]+\\))?(?:[-_][^\\s/\\\\<>:\"|?*\\x00-\\x1f\\x7f]+)?$(?![\\s\\S])",
+      "description": "Literal suffix after the legislative stage; retains occurrence, annotation and local descriptive text.",
+      "default": "",
+      "maxLength": 160,
+      "not": {
+        "pattern": "-[Uu][0-9]+$(?![\\s\\S])"
+      }
+    },
+    "field_numberedDraftDescriptor": {
+      "type": "string",
+      "pattern": "^(?:[A-Za-z][^\\s/\\\\<>:\"|?*\\x00-\\x1f\\x7f\\u0085\\uFEFF]*?)?$(?![\\s\\S])",
+      "description": "Literal descriptive text ending before an explicit IH/PIH stage. No person-name splitting or expansion.",
+      "maxLength": 160,
+      "default": ""
+    },
+    "field_unnumberedVersionSuffix": {
+      "type": "string",
+      "pattern": "^(?![0-9])[0-9]*(?:\\([^()\\s/\\\\<>:\"|?*]+\\))?(?:[-_][^\\s/\\\\<>:\"|?*\\x00-\\x1f\\x7f]+)?$(?![\\s\\S])",
+      "description": "Literal suffix after the legislative stage; retains occurrence, annotation and local descriptive text.",
+      "default": "",
+      "maxLength": 160,
+      "not": {
+        "pattern": "-[Uu][0-9]+$(?![\\s\\S])"
+      }
+    },
+    "field_amendmentSuffix": {
+      "type": "string",
+      "pattern": "^[0-9]*$(?![\\s\\S])",
+      "description": "Literal suffix after HAmdt, not an amendment number. The guide identifies empty, 2 and 3 as first, second and third degree; other spellings remain uninterpreted.",
+      "maxLength": 160,
+      "default": ""
+    },
+    "field_amendmentDegree": {
+      "type": "integer",
+      "enum": [
+        1,
+        2,
+        3
+      ],
+      "description": "Interchamber amendment degree identified by HAmdt/SAmdt, HAmdt2/SAmdt2, or HAmdt3/SAmdt3. Not an amendment sequence number."
+    },
+    "field_govinfoPrintPublicationType": {
+      "type": "string",
+      "enum": [
+        "hprt",
+        "sprt",
+        "jprt",
+        "wprt"
+      ],
+      "description": "GovInfo committee print codes: hprt (House), sprt (Senate), jprt (joint), wprt (House Ways and Means). See https://www.govinfo.gov/help/cprt."
+    },
+    "rule_bill-numbered": {
+      "title": "Bills and Resolutions with measure numbers",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "measureType",
+        "measureNumber",
+        "stage",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "bill-numbered"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "measureType": {
+          "$ref": "#/$defs/field_measureTypeLower"
+        },
+        "measureNumber": {
+          "$ref": "#/$defs/field_positiveInteger"
+        },
+        "stage": {
+          "$ref": "#/$defs/field_untypedLegislativeStage"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        },
+        "versionSuffix": {
+          "$ref": "#/$defs/field_versionSuffix"
+        },
+        "stageOccurrence": {
+          "$ref": "#/$defs/field_stageOccurrence"
+        },
+        "annotation": {
+          "$ref": "#/$defs/field_annotation"
+        },
+        "references": {
+          "$ref": "#/$defs/field_references"
+        }
+      }
+    },
+    "rule_bill-preintroduced": {
+      "title": "Bills and Resolutions without measure numbers",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "measureType",
+        "description",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "bill-preintroduced"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "measureType": {
+          "$ref": "#/$defs/field_measureTypeLower"
+        },
+        "description": {
+          "$ref": "#/$defs/field_filenameToken"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        },
+        "references": {
+          "$ref": "#/$defs/field_references"
+        }
+      }
+    },
+    "rule_bill-suspension-numbered": {
+      "title": "Bills and Resolutions being considered under suspension — numbered",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "measureType",
+        "measureNumber",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "bill-suspension-numbered"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "measureType": {
+          "$ref": "#/$defs/field_measureTypeLower"
+        },
+        "measureNumber": {
+          "$ref": "#/$defs/field_positiveInteger"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        }
+      }
+    },
+    "rule_bill-suspension-unnumbered": {
+      "title": "Bills and Resolutions being considered under suspension — unnumbered",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "measureType",
+        "description",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "bill-suspension-unnumbered"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "measureType": {
+          "$ref": "#/$defs/field_measureTypeLower"
+        },
+        "description": {
+          "$ref": "#/$defs/field_filenameToken"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        },
+        "references": {
+          "$ref": "#/$defs/field_references"
+        }
+      }
+    },
+    "rule_bill-unanimous-consent": {
+      "title": "Bills and Resolutions being considered under unanimous consent",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "measureType",
+        "measureNumber",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "bill-unanimous-consent"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "measureType": {
+          "$ref": "#/$defs/field_measureTypeLower"
+        },
+        "measureNumber": {
+          "$ref": "#/$defs/field_positiveInteger"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        }
+      }
+    },
+    "rule_rules-original": {
+      "title": "Original Bills and Resolutions being reported from the Committee on Rules",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "measureOrDescription",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "rules-original"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "measureOrDescription": {
+          "$ref": "#/$defs/field_filenameToken"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        }
+      }
+    },
+    "rule_appropriation-described": {
+      "title": "Original Appropriations measures — generic description",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "measureType",
+        "stage",
+        "description",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "appropriation-described"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "measureType": {
+          "$ref": "#/$defs/field_measureTypePrinted"
+        },
+        "stage": {
+          "$ref": "#/$defs/field_appropriationStage"
+        },
+        "description": {
+          "$ref": "#/$defs/field_filenameToken"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        },
+        "fiscalYear": {
+          "$ref": "#/$defs/field_fiscalYear"
+        },
+        "committeeCode": {
+          "$ref": "#/$defs/field_committeeCode"
+        },
+        "subject": {
+          "$ref": "#/$defs/field_filenameToken"
+        },
+        "descriptionRemainder": {
+          "$ref": "#/$defs/field_filenameToken"
+        },
+        "sequence": {
+          "$ref": "#/$defs/field_sequenceId"
+        },
+        "appropriationType": {
+          "$ref": "#/$defs/field_appropriationType"
+        },
+        "references": {
+          "$ref": "#/$defs/field_references"
+        }
+      }
+    },
+    "rule_appropriation-annual": {
+      "title": "Appropriation Measures — fiscal year and subject",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "stage",
+        "fiscalYear",
+        "subject",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "appropriation-annual"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "stage": {
+          "$ref": "#/$defs/field_appropriationStage"
+        },
+        "fiscalYear": {
+          "$ref": "#/$defs/field_fiscalYear"
+        },
+        "subject": {
+          "$ref": "#/$defs/field_filenameToken"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        },
+        "references": {
+          "$ref": "#/$defs/field_references"
+        }
+      }
+    },
+    "rule_appropriation-supplemental": {
+      "title": "Supplemental Appropriations Measures",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "stage",
+        "fiscalYear",
+        "sequence",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "appropriation-supplemental"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "stage": {
+          "$ref": "#/$defs/field_appropriationStage"
+        },
+        "fiscalYear": {
+          "$ref": "#/$defs/field_fiscalYear"
+        },
+        "sequence": {
+          "$ref": "#/$defs/field_sequenceId"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        }
+      }
+    },
+    "rule_continuing-resolution-reported": {
+      "title": "Continuing resolutions — reported to the House",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "fiscalYear",
+        "sequence",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "continuing-resolution-reported"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "fiscalYear": {
+          "$ref": "#/$defs/field_fiscalYear"
+        },
+        "sequence": {
+          "$ref": "#/$defs/field_sequenceId"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        }
+      }
+    },
+    "rule_continuing-resolution-committee": {
+      "title": "Continuing resolutions — committee sample convention",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "stage",
+        "fiscalYear",
+        "sequence",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "continuing-resolution-committee"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "stage": {
+          "$ref": "#/$defs/field_continuing_resolution_committee_stage"
+        },
+        "fiscalYear": {
+          "$ref": "#/$defs/field_fiscalYear"
+        },
+        "sequence": {
+          "$ref": "#/$defs/field_sequenceId"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        }
+      }
+    },
+    "rule_interchamber-amendment": {
+      "title": "House and Senate Amendments",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "measureType",
+        "measureNumber",
+        "amendmentType",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "interchamber-amendment"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "measureType": {
+          "$ref": "#/$defs/field_measureTypeLower"
+        },
+        "measureNumber": {
+          "$ref": "#/$defs/field_positiveInteger"
+        },
+        "amendmentType": {
+          "$ref": "#/$defs/field_interchamber_amendment_amendmentType"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        },
+        "amendmentDegree": {
+          "$ref": "#/$defs/field_amendmentDegree"
+        }
+      }
+    },
+    "rule_floor-amendment": {
+      "title": "Floor Amendments — prose-based convention",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "measureType",
+        "measureNumber",
+        "sponsorBioguideId",
+        "amendmentId",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "floor-amendment"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "measureType": {
+          "$ref": "#/$defs/field_measureTypeLower"
+        },
+        "measureNumber": {
+          "$ref": "#/$defs/field_positiveInteger"
+        },
+        "sponsorBioguideId": {
+          "$ref": "#/$defs/field_bioguideId"
+        },
+        "amendmentId": {
+          "$ref": "#/$defs/field_amendmentId"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        },
+        "references": {
+          "$ref": "#/$defs/field_references"
+        }
+      }
+    },
+    "rule_committee-amendment": {
+      "title": "Committee/Subcommittee Amendments",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "measureType",
+        "measureNumber",
+        "sponsorBioguideId",
+        "amendmentId",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "committee-amendment"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "measureType": {
+          "$ref": "#/$defs/field_measureTypePrinted"
+        },
+        "measureNumber": {
+          "$ref": "#/$defs/field_positiveInteger"
+        },
+        "sponsorBioguideId": {
+          "$ref": "#/$defs/field_bioguideId"
+        },
+        "amendmentId": {
+          "$ref": "#/$defs/field_amendmentId"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        },
+        "references": {
+          "$ref": "#/$defs/field_references"
+        }
+      }
+    },
+    "rule_committee-enbloc-numbered": {
+      "title": "Amendments en bloc — with amendment identifier",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "measureType",
+        "measureNumber",
+        "sponsorBioguideId",
+        "amendmentId",
+        "enblocId",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "committee-enbloc-numbered"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "measureType": {
+          "$ref": "#/$defs/field_measureTypePrinted"
+        },
+        "measureNumber": {
+          "$ref": "#/$defs/field_positiveInteger"
+        },
+        "sponsorBioguideId": {
+          "$ref": "#/$defs/field_bioguideId"
+        },
+        "amendmentId": {
+          "$ref": "#/$defs/field_amendmentId"
+        },
+        "enblocId": {
+          "$ref": "#/$defs/field_sequenceId"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        },
+        "references": {
+          "$ref": "#/$defs/field_references"
+        }
+      }
+    },
+    "rule_committee-enbloc": {
+      "title": "Amendments en bloc — without separate amendment identifier",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "measureType",
+        "measureNumber",
+        "sponsorBioguideId",
+        "enblocId",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "committee-enbloc"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "measureType": {
+          "$ref": "#/$defs/field_measureTypePrinted"
+        },
+        "measureNumber": {
+          "$ref": "#/$defs/field_positiveInteger"
+        },
+        "sponsorBioguideId": {
+          "$ref": "#/$defs/field_bioguideId"
+        },
+        "enblocId": {
+          "$ref": "#/$defs/field_sequenceId"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        }
+      }
+    },
+    "rule_appropriation-amendment": {
+      "title": "Sample Amendments for Appropriations measures",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "stage",
+        "fiscalYear",
+        "subject",
+        "sponsorBioguideId",
+        "amendmentId",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "appropriation-amendment"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "stage": {
+          "$ref": "#/$defs/field_appropriation_amendment_stage"
+        },
+        "fiscalYear": {
+          "$ref": "#/$defs/field_fiscalYear"
+        },
+        "subject": {
+          "$ref": "#/$defs/field_filenameToken"
+        },
+        "sponsorBioguideId": {
+          "$ref": "#/$defs/field_bioguideId"
+        },
+        "amendmentId": {
+          "$ref": "#/$defs/field_amendmentId"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        },
+        "references": {
+          "$ref": "#/$defs/field_references"
+        }
+      }
+    },
+    "rule_conference-numbered": {
+      "title": "Conference Reports with Report Numbers",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "reportNumber",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "conference-numbered"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "reportNumber": {
+          "$ref": "#/$defs/field_positiveInteger"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        }
+      }
+    },
+    "rule_conference-unnumbered": {
+      "title": "Conference Reports without Report Numbers",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "measureType",
+        "measureNumber",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "conference-unnumbered"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "measureType": {
+          "$ref": "#/$defs/field_measureTypePrinted"
+        },
+        "measureNumber": {
+          "$ref": "#/$defs/field_positiveInteger"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        }
+      }
+    },
+    "rule_conference-legislation-part": {
+      "title": "Conference Reports — multiple files, text of legislation",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "measureType",
+        "measureNumber",
+        "part",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "conference-legislation-part"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "measureType": {
+          "$ref": "#/$defs/field_measureTypePrinted"
+        },
+        "measureNumber": {
+          "$ref": "#/$defs/field_positiveInteger"
+        },
+        "part": {
+          "$ref": "#/$defs/field_filenameToken"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        }
+      }
+    },
+    "rule_conference-statement": {
+      "title": "Conference Reports — joint statement, full document",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "measureType",
+        "measureNumber",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "conference-statement"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "measureType": {
+          "$ref": "#/$defs/field_measureTypePrinted"
+        },
+        "measureNumber": {
+          "$ref": "#/$defs/field_positiveInteger"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        }
+      }
+    },
+    "rule_conference-statement-part": {
+      "title": "Conference Reports — joint statement, multiple files",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "measureType",
+        "measureNumber",
+        "part",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "conference-statement-part"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "measureType": {
+          "$ref": "#/$defs/field_measureTypePrinted"
+        },
+        "measureNumber": {
+          "$ref": "#/$defs/field_positiveInteger"
+        },
+        "part": {
+          "$ref": "#/$defs/field_filenameToken"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        }
+      }
+    },
+    "rule_weekly-meeting-notice": {
+      "title": "Multiple Meetings in One Week Notice",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "committeeCode",
+        "weekOf",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "weekly-meeting-notice"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "committeeCode": {
+          "$ref": "#/$defs/field_committeeCode"
+        },
+        "weekOf": {
+          "$ref": "#/$defs/field_date8"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        }
+      }
+    },
+    "rule_meeting-notice": {
+      "title": "Single Meeting Notice by Meeting Type",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "meetingType",
+        "committeeCode",
+        "meetingDate",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "meeting-notice"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "meetingType": {
+          "$ref": "#/$defs/field_meetingType"
+        },
+        "committeeCode": {
+          "$ref": "#/$defs/field_committeeCode"
+        },
+        "meetingDate": {
+          "$ref": "#/$defs/field_date8"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        },
+        "meetingOccurrence": {
+          "$ref": "#/$defs/field_meetingOccurrence"
+        }
+      }
+    },
+    "rule_witness-list": {
+      "title": "Witness List",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "committeeCode",
+        "meetingDate",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "witness-list"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "committeeCode": {
+          "$ref": "#/$defs/field_committeeCode"
+        },
+        "meetingDate": {
+          "$ref": "#/$defs/field_date8"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        },
+        "meetingType": {
+          "$ref": "#/$defs/field_witnessMeetingType"
+        }
+      }
+    },
+    "rule_witness-statement": {
+      "title": "Written Witness Testimony or Witness Statement",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "committeeCode",
+        "meetingDate",
+        "witnessId",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "witness-statement"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "committeeCode": {
+          "$ref": "#/$defs/field_committeeCode"
+        },
+        "meetingDate": {
+          "$ref": "#/$defs/field_date8"
+        },
+        "witnessId": {
+          "$ref": "#/$defs/field_witnessId"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        },
+        "meetingType": {
+          "$ref": "#/$defs/field_witnessMeetingType"
+        },
+        "witnessIdType": {
+          "$ref": "#/$defs/field_witnessIdType"
+        }
+      }
+    },
+    "rule_witness-support": {
+      "title": "Documents that may accompany a witness statement",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "committeeCode",
+        "meetingDate",
+        "witnessId",
+        "supportId",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "witness-support"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "committeeCode": {
+          "$ref": "#/$defs/field_committeeCode"
+        },
+        "meetingDate": {
+          "$ref": "#/$defs/field_date8"
+        },
+        "witnessId": {
+          "$ref": "#/$defs/field_witnessId"
+        },
+        "supportId": {
+          "$ref": "#/$defs/field_sequenceId"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        },
+        "meetingType": {
+          "$ref": "#/$defs/field_witnessMeetingType"
+        },
+        "witnessIdType": {
+          "$ref": "#/$defs/field_witnessIdType"
+        }
+      }
+    },
+    "rule_testimony-disclosure": {
+      "title": "Truth in Testimony Disclosure Forms",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "committeeCode",
+        "meetingDate",
+        "witnessId",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "testimony-disclosure"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "committeeCode": {
+          "$ref": "#/$defs/field_committeeCode"
+        },
+        "meetingDate": {
+          "$ref": "#/$defs/field_date8"
+        },
+        "witnessId": {
+          "$ref": "#/$defs/field_witnessId"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        },
+        "meetingType": {
+          "$ref": "#/$defs/field_witnessMeetingType"
+        },
+        "witnessIdType": {
+          "$ref": "#/$defs/field_witnessIdType"
+        }
+      }
+    },
+    "rule_witness-biography": {
+      "title": "Biographies of non-governmental witnesses",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "committeeCode",
+        "meetingDate",
+        "witnessId",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "witness-biography"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "committeeCode": {
+          "$ref": "#/$defs/field_committeeCode"
+        },
+        "meetingDate": {
+          "$ref": "#/$defs/field_date8"
+        },
+        "witnessId": {
+          "$ref": "#/$defs/field_witnessId"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        },
+        "meetingType": {
+          "$ref": "#/$defs/field_witnessMeetingType"
+        },
+        "witnessIdType": {
+          "$ref": "#/$defs/field_witnessIdType"
+        }
+      }
+    },
+    "rule_committee-vote": {
+      "title": "Committee Recorded Vote",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "committeeCode",
+        "voteId",
+        "voteDate",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "committee-vote"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "committeeCode": {
+          "$ref": "#/$defs/field_committeeCode"
+        },
+        "voteId": {
+          "$ref": "#/$defs/field_voteIdentifier"
+        },
+        "voteDate": {
+          "$ref": "#/$defs/field_date8"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        },
+        "references": {
+          "$ref": "#/$defs/field_references"
+        }
+      }
+    },
+    "rule_member-statement": {
+      "title": "Member Statements",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "committeeCode",
+        "meetingDate",
+        "meetingType",
+        "memberBioguideId",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "member-statement"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "committeeCode": {
+          "$ref": "#/$defs/field_committeeCode"
+        },
+        "meetingDate": {
+          "$ref": "#/$defs/field_date8"
+        },
+        "meetingType": {
+          "$ref": "#/$defs/field_meetingType"
+        },
+        "memberBioguideId": {
+          "$ref": "#/$defs/field_bioguideId"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        }
+      }
+    },
+    "rule_meeting-support": {
+      "title": "Documents in general support of the meeting",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "committeeCode",
+        "meetingDate",
+        "meetingType",
+        "supportId",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "meeting-support"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "committeeCode": {
+          "$ref": "#/$defs/field_committeeCode"
+        },
+        "meetingDate": {
+          "$ref": "#/$defs/field_date8"
+        },
+        "meetingType": {
+          "$ref": "#/$defs/field_meetingType"
+        },
+        "supportId": {
+          "$ref": "#/$defs/field_sequenceId"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        },
+        "meetingOccurrence": {
+          "$ref": "#/$defs/field_meetingOccurrence"
+        }
+      }
+    },
+    "rule_committee-rules": {
+      "title": "Committee Rules",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "committeeCode",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "committee-rules"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "committeeCode": {
+          "$ref": "#/$defs/field_committeeCode"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        }
+      }
+    },
+    "rule_committee-report-unnumbered": {
+      "title": "Committee Report with no report number",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "measureType",
+        "measureNumber",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "committee-report-unnumbered"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "measureType": {
+          "$ref": "#/$defs/field_measureTypePrinted"
+        },
+        "measureNumber": {
+          "$ref": "#/$defs/field_positiveInteger"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        }
+      }
+    },
+    "rule_committee-report-part": {
+      "title": "Committee Report with no report number — part",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "measureType",
+        "measureNumber",
+        "partNumber",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "committee-report-part"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "measureType": {
+          "$ref": "#/$defs/field_measureTypePrinted"
+        },
+        "measureNumber": {
+          "$ref": "#/$defs/field_positiveInteger"
+        },
+        "partNumber": {
+          "$ref": "#/$defs/field_positiveInteger"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        }
+      }
+    },
+    "rule_activity-report": {
+      "title": "Activity Reports",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "quarter",
+        "committeeCode",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "activity-report"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "quarter": {
+          "$ref": "#/$defs/field_activity_report_quarter"
+        },
+        "committeeCode": {
+          "$ref": "#/$defs/field_committeeCode"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        }
+      }
+    },
+    "rule_committee-print-link": {
+      "title": "Committee Prints",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "url"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "committee-print-link"
+        },
+        "url": {
+          "$ref": "#/$defs/field_committee_print_link_url"
+        }
+      }
+    },
+    "rule_hearing-transcript-link": {
+      "title": "Hearing Transcripts",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "url"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "hearing-transcript-link"
+        },
+        "url": {
+          "$ref": "#/$defs/field_hearing_transcript_link_url"
+        }
+      }
+    },
+    "rule_committee-document-numbered": {
+      "title": "Dated numbered committee document",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "meetingType",
+        "congress",
+        "committeeCode",
+        "meetingDate",
+        "documentType",
+        "documentNumber",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "committee-document-numbered"
+        },
+        "meetingType": {
+          "$ref": "#/$defs/field_meetingType"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "committeeCode": {
+          "$ref": "#/$defs/field_committeeCode"
+        },
+        "meetingDate": {
+          "$ref": "#/$defs/field_date8"
+        },
+        "documentType": {
+          "$ref": "#/$defs/field_numberedDocumentType"
+        },
+        "documentNumber": {
+          "$ref": "#/$defs/field_sequenceId"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        }
+      }
+    },
+    "rule_committee-document": {
+      "title": "Dated committee document",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "meetingType",
+        "congress",
+        "committeeCode",
+        "meetingDate",
+        "documentType",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "committee-document"
+        },
+        "meetingType": {
+          "$ref": "#/$defs/field_meetingType"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "committeeCode": {
+          "$ref": "#/$defs/field_committeeCode"
+        },
+        "meetingDate": {
+          "$ref": "#/$defs/field_date8"
+        },
+        "documentType": {
+          "$ref": "#/$defs/field_unnumberedDocumentType"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        }
+      }
+    },
+    "rule_committee-transcript": {
+      "title": "Committee transcript",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "meetingType",
+        "congress",
+        "committeeCode",
+        "meetingDate",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "committee-transcript"
+        },
+        "meetingType": {
+          "$ref": "#/$defs/field_meetingType"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "committeeCode": {
+          "$ref": "#/$defs/field_committeeCode"
+        },
+        "meetingDate": {
+          "$ref": "#/$defs/field_date8"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        }
+      }
+    },
+    "rule_published-hearing": {
+      "title": "GPO published hearing",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "publicationType",
+        "publicationNumber",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "published-hearing"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "publicationType": {
+          "$ref": "#/$defs/field_hearingPublicationType"
+        },
+        "publicationNumber": {
+          "$ref": "#/$defs/field_sequenceId"
+        },
+        "publicationSuffix": {
+          "$ref": "#/$defs/field_hearingPublicationSuffix"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_publicationExtension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        },
+        "part": {
+          "$ref": "#/$defs/field_publicationPartId"
+        },
+        "volume": {
+          "$ref": "#/$defs/field_publicationPartId"
+        },
+        "addendum": {
+          "$ref": "#/$defs/field_publicationPartId"
+        },
+        "errata": {
+          "$ref": "#/$defs/field_publicationPartId"
+        }
+      }
+    },
+    "rule_published-report": {
+      "title": "GPO published report",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "publicationType",
+        "reportNumber",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "published-report"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "publicationType": {
+          "$ref": "#/$defs/field_reportPublicationType"
+        },
+        "reportNumber": {
+          "$ref": "#/$defs/field_positiveInteger"
+        },
+        "publicationSuffix": {
+          "$ref": "#/$defs/field_hearingPublicationSuffix"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_publicationExtension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        },
+        "part": {
+          "$ref": "#/$defs/field_publicationPartId"
+        },
+        "volume": {
+          "$ref": "#/$defs/field_publicationPartId"
+        },
+        "addendum": {
+          "$ref": "#/$defs/field_publicationPartId"
+        },
+        "errata": {
+          "$ref": "#/$defs/field_publicationPartId"
+        },
+        "documentType": {
+          "$ref": "#/$defs/field_reportDocumentType"
+        }
+      }
+    },
+    "rule_published-print": {
+      "title": "GPO published committee print",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "publicationType",
+        "publicationNumber",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "published-print"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "publicationType": {
+          "$ref": "#/$defs/field_govinfoPrintPublicationType"
+        },
+        "publicationNumber": {
+          "$ref": "#/$defs/field_sequenceId"
+        },
+        "publicationSuffix": {
+          "$ref": "#/$defs/field_hearingPublicationSuffix"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_publicationExtension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        },
+        "part": {
+          "$ref": "#/$defs/field_publicationPartId"
+        },
+        "volume": {
+          "$ref": "#/$defs/field_publicationPartId"
+        },
+        "addendum": {
+          "$ref": "#/$defs/field_publicationPartId"
+        },
+        "errata": {
+          "$ref": "#/$defs/field_publicationPartId"
+        }
+      }
+    },
+    "rule_committee-amendment-described": {
+      "title": "Amendment to a literal committee subject",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "subject",
+        "sponsorBioguideId",
+        "amendmentId",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "committee-amendment-described"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "subject": {
+          "$ref": "#/$defs/field_amendmentSubject"
+        },
+        "sponsorBioguideId": {
+          "$ref": "#/$defs/field_bioguideId"
+        },
+        "amendmentId": {
+          "$ref": "#/$defs/field_amendmentId"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        },
+        "references": {
+          "$ref": "#/$defs/field_references"
+        }
+      }
+    },
+    "rule_committee-enbloc-described": {
+      "title": "Amendment to a literal committee subject",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "subject",
+        "sponsorBioguideId",
+        "amendmentId",
+        "enblocId",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "committee-enbloc-described"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "subject": {
+          "$ref": "#/$defs/field_amendmentSubject"
+        },
+        "sponsorBioguideId": {
+          "$ref": "#/$defs/field_bioguideId"
+        },
+        "amendmentId": {
+          "$ref": "#/$defs/field_amendmentId"
+        },
+        "enblocId": {
+          "$ref": "#/$defs/field_sequenceId"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        },
+        "references": {
+          "$ref": "#/$defs/field_references"
+        }
+      }
+    },
+    "rule_committee-print": {
+      "title": "Committee-routed print",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "publicationType",
+        "committeeCode",
+        "subject",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "committee-print"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_congress"
+        },
+        "publicationType": {
+          "$ref": "#/$defs/field_printPublicationType"
+        },
+        "committeeCode": {
+          "$ref": "#/$defs/field_committeeCode"
+        },
+        "subject": {
+          "$ref": "#/$defs/field_filenameToken"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        },
+        "measureType": {
+          "$ref": "#/$defs/field_measureTypeLower"
+        },
+        "measureNumber": {
+          "$ref": "#/$defs/field_positiveInteger"
+        },
+        "references": {
+          "$ref": "#/$defs/field_references"
+        }
+      }
+    },
+    "rule_bill-untyped-numbered": {
+      "title": "Observed numbered legislative file without a measure type",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "numberToken",
+        "stage",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "bill-untyped-numbered"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_observedCongress"
+        },
+        "numberToken": {
+          "$ref": "#/$defs/field_untypedNumberToken"
+        },
+        "stage": {
+          "$ref": "#/$defs/field_untypedLegislativeStage"
+        },
+        "versionSuffix": {
+          "$ref": "#/$defs/field_versionSuffix"
+        },
+        "stageOccurrence": {
+          "$ref": "#/$defs/field_stageOccurrence"
+        },
+        "annotation": {
+          "$ref": "#/$defs/field_annotation"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        },
+        "references": {
+          "$ref": "#/$defs/field_references"
+        }
+      }
+    },
+    "rule_bill-untyped-draft": {
+      "title": "Observed pre-introduction draft without a measure type",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "stage",
+        "description",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "bill-untyped-draft"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_observedCongress"
+        },
+        "stage": {
+          "$ref": "#/$defs/field_observedDraftStage"
+        },
+        "description": {
+          "$ref": "#/$defs/field_draftDescription"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        },
+        "references": {
+          "$ref": "#/$defs/field_references"
+        }
+      }
+    },
+    "rule_appropriation-routed": {
+      "title": "Observed appropriations routing with optional measure and stage slots",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "routing",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "appropriation-routed"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_observedCongress"
+        },
+        "routing": {
+          "$ref": "#/$defs/field_incompleteAppropriationRouting"
+        },
+        "measureType": {
+          "$ref": "#/$defs/field_measureTypeLower"
+        },
+        "stage": {
+          "$ref": "#/$defs/field_appropriationStage"
+        },
+        "description": {
+          "$ref": "#/$defs/field_draftDescription"
+        },
+        "fiscalYear": {
+          "$ref": "#/$defs/field_fiscalYear"
+        },
+        "committeeCode": {
+          "$ref": "#/$defs/field_committeeCode"
+        },
+        "subject": {
+          "$ref": "#/$defs/field_filenameToken"
+        },
+        "descriptionRemainder": {
+          "$ref": "#/$defs/field_filenameToken"
+        },
+        "sequence": {
+          "$ref": "#/$defs/field_sequenceId"
+        },
+        "appropriationType": {
+          "$ref": "#/$defs/field_appropriationType"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        },
+        "references": {
+          "$ref": "#/$defs/field_references"
+        },
+        "measureNumber": {
+          "$ref": "#/$defs/field_positiveInteger"
+        }
+      }
+    },
+    "rule_bill-unnumbered": {
+      "title": "Observed legislative file with absent or placeholder number",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "stage",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "bill-unnumbered"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_observedCongress"
+        },
+        "measureToken": {
+          "$ref": "#/$defs/field_optionalMeasureToken"
+        },
+        "numberPlaceholder": {
+          "$ref": "#/$defs/field_numberPlaceholder"
+        },
+        "stage": {
+          "$ref": "#/$defs/field_untypedLegislativeStage"
+        },
+        "versionSuffix": {
+          "$ref": "#/$defs/field_unnumberedVersionSuffix"
+        },
+        "measureType": {
+          "$ref": "#/$defs/field_measureTypeLower"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        },
+        "references": {
+          "$ref": "#/$defs/field_references"
+        }
+      }
+    },
+    "rule_bill-named-draft": {
+      "title": "Observed named draft or committee resolution",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "draftLabel",
+        "stage",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "bill-named-draft"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_observedCongress"
+        },
+        "draftLabel": {
+          "$ref": "#/$defs/field_namedDraftLabel"
+        },
+        "draftIdentifier": {
+          "$ref": "#/$defs/field_draftIdentifier"
+        },
+        "stage": {
+          "$ref": "#/$defs/field_introducedDraftStage"
+        },
+        "versionSuffix": {
+          "$ref": "#/$defs/field_versionSuffix"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        },
+        "references": {
+          "$ref": "#/$defs/field_references"
+        }
+      }
+    },
+    "rule_bill-measure-list": {
+      "title": "Observed file naming one or more measures",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "measureList",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "bill-measure-list"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_observedCongress"
+        },
+        "referencePrefix": {
+          "$ref": "#/$defs/field_measureListPrefix"
+        },
+        "measureList": {
+          "$ref": "#/$defs/field_measureList"
+        },
+        "versionSuffix": {
+          "$ref": "#/$defs/field_measureListSuffix"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        },
+        "references": {
+          "$ref": "#/$defs/field_references"
+        }
+      }
+    },
+    "rule_bill-numbered-described": {
+      "title": "Observed numbered draft with intervening description",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "numberedSubject",
+        "stage",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "bill-numbered-described"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_observedCongress"
+        },
+        "numberedSubject": {
+          "$ref": "#/$defs/field_numberedSubject"
+        },
+        "description": {
+          "$ref": "#/$defs/field_numberedDraftDescriptor"
+        },
+        "stage": {
+          "$ref": "#/$defs/field_introducedDraftStage"
+        },
+        "versionSuffix": {
+          "$ref": "#/$defs/field_versionSuffix"
+        },
+        "measureType": {
+          "$ref": "#/$defs/field_measureTypeLower"
+        },
+        "measureNumber": {
+          "$ref": "#/$defs/field_positiveInteger"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        },
+        "references": {
+          "$ref": "#/$defs/field_references"
+        }
+      }
+    },
+    "rule_bill-titled-draft": {
+      "title": "Observed descriptive draft ending in IH or PIH",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "description",
+        "stage",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "bill-titled-draft"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_observedCongress"
+        },
+        "description": {
+          "$ref": "#/$defs/field_draftDescriptor"
+        },
+        "stage": {
+          "$ref": "#/$defs/field_introducedDraftStage"
+        },
+        "versionSuffix": {
+          "$ref": "#/$defs/field_versionSuffix"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        },
+        "references": {
+          "$ref": "#/$defs/field_references"
+        }
+      }
+    },
+    "rule_bill-house-amendment": {
+      "title": "Observed subject followed by House amendment marker",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "congress",
+        "subject",
+        "extension"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "bill-house-amendment"
+        },
+        "congress": {
+          "$ref": "#/$defs/field_observedCongress"
+        },
+        "subject": {
+          "$ref": "#/$defs/field_filenameToken"
+        },
+        "amendmentSuffix": {
+          "$ref": "#/$defs/field_amendmentSuffix"
+        },
+        "versionSuffix": {
+          "$ref": "#/$defs/field_versionSuffix"
+        },
+        "measureType": {
+          "$ref": "#/$defs/field_measureTypeLower"
+        },
+        "measureNumber": {
+          "$ref": "#/$defs/field_positiveInteger"
+        },
+        "extension": {
+          "$ref": "#/$defs/field_extension"
+        },
+        "revision": {
+          "$ref": "#/$defs/field_revision"
+        },
+        "references": {
+          "$ref": "#/$defs/field_references"
+        },
+        "amendmentType": {
+          "$ref": "#/$defs/field_interchamber_amendment_amendmentType"
+        },
+        "amendmentDegree": {
+          "$ref": "#/$defs/field_amendmentDegree"
+        }
+      }
+    }
+  }
+}

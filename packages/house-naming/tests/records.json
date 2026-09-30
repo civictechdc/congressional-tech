@@ -1,0 +1,606 @@
+[
+  {
+    "input": {
+      "kind": "bill-numbered",
+      "congress": 112,
+      "measureType": "hr",
+      "measureNumber": 1401,
+      "stage": "ih",
+      "extension": "pdf"
+    },
+    "output": "BILLS-112hr1401ih.pdf"
+  },
+  {
+    "input": {
+      "kind": "bill-preintroduced",
+      "congress": 112,
+      "measureType": "hres",
+      "description": "electing-sgt-at-arms",
+      "extension": "pdf"
+    },
+    "output": "BILLS-112hres-PIH-electing-sgt-at-arms.pdf"
+  },
+  {
+    "input": {
+      "kind": "bill-suspension-numbered",
+      "congress": 112,
+      "measureType": "hr",
+      "measureNumber": 123,
+      "extension": "pdf"
+    },
+    "output": "BILLS-112hr123-SUS.pdf"
+  },
+  {
+    "input": {
+      "kind": "bill-suspension-unnumbered",
+      "congress": 112,
+      "measureType": "hr",
+      "description": "description",
+      "extension": "pdf"
+    },
+    "output": "BILLS-112hr-SUS-description.pdf"
+  },
+  {
+    "input": {
+      "kind": "bill-unanimous-consent",
+      "congress": 112,
+      "measureType": "hr",
+      "measureNumber": 2887,
+      "extension": "pdf"
+    },
+    "output": "BILLS-112hr2887-UConsent.pdf"
+  },
+  {
+    "input": {
+      "kind": "rules-original",
+      "congress": 112,
+      "measureOrDescription": "HR10",
+      "extension": "pdf"
+    },
+    "output": "BILLS-112HRes-ORH-Rule-HR10.pdf"
+  },
+  {
+    "input": {
+      "kind": "appropriation-described",
+      "congress": 112,
+      "measureType": "HR",
+      "stage": "ORH",
+      "description": "AP-FY13-Agriculture",
+      "extension": "pdf"
+    },
+    "output": "BILLS-112HR-ORH-AP-FY13-Agriculture.pdf"
+  },
+  {
+    "input": {
+      "kind": "appropriation-annual",
+      "congress": 112,
+      "stage": "SC",
+      "fiscalYear": "13",
+      "subject": "Agriculture",
+      "extension": "pdf"
+    },
+    "output": "BILLS-112HR-SC-AP-FY13-Agriculture.pdf"
+  },
+  {
+    "input": {
+      "kind": "appropriation-supplemental",
+      "congress": 112,
+      "stage": "ORH",
+      "fiscalYear": "13",
+      "sequence": "01",
+      "extension": "pdf"
+    },
+    "output": "BILLS-112HR-ORH-AP-FY13-suppl-01.pdf"
+  },
+  {
+    "input": {
+      "kind": "continuing-resolution-reported",
+      "congress": 112,
+      "fiscalYear": "13",
+      "sequence": "01",
+      "extension": "pdf"
+    },
+    "output": "BILLS-112HJRes-ORH-AP-FY13-CR-01.pdf"
+  },
+  {
+    "input": {
+      "kind": "continuing-resolution-committee",
+      "congress": 112,
+      "stage": "FC",
+      "fiscalYear": "13",
+      "sequence": "01",
+      "extension": "pdf"
+    },
+    "output": "BILLS-112HR-FC-AP-FY13-CR-01.pdf"
+  },
+  {
+    "input": {
+      "kind": "interchamber-amendment",
+      "congress": 112,
+      "measureType": "s",
+      "measureNumber": 365,
+      "amendmentType": "HAmdt",
+      "extension": "pdf"
+    },
+    "output": "BILLS-112s365-HAmdt.pdf"
+  },
+  {
+    "input": {
+      "kind": "floor-amendment",
+      "congress": 112,
+      "measureType": "hr",
+      "measureNumber": 2608,
+      "sponsorBioguideId": "R000395",
+      "amendmentId": "001",
+      "extension": "pdf"
+    },
+    "output": "BILLS-112hr2608-R000395-Amdt-001.pdf"
+  },
+  {
+    "input": {
+      "kind": "committee-amendment",
+      "congress": 112,
+      "measureType": "HR",
+      "measureNumber": 2608,
+      "sponsorBioguideId": "R000395",
+      "amendmentId": "001",
+      "extension": "pdf"
+    },
+    "output": "BILLS-112-HR2608-R000395-Amdt-001.pdf"
+  },
+  {
+    "input": {
+      "kind": "committee-enbloc-numbered",
+      "congress": 112,
+      "measureType": "HR",
+      "measureNumber": 2608,
+      "sponsorBioguideId": "R000395",
+      "amendmentId": "001",
+      "enblocId": "001",
+      "extension": "pdf"
+    },
+    "output": "BILLS-112-HR2608-R000395-Amdt-001-Enbloc-001.pdf"
+  },
+  {
+    "input": {
+      "kind": "committee-enbloc",
+      "congress": 112,
+      "measureType": "HR",
+      "measureNumber": 2608,
+      "sponsorBioguideId": "R000395",
+      "enblocId": "001",
+      "extension": "pdf"
+    },
+    "output": "BILLS-112-HR2608-R000395-Amdt-Enbloc-001.pdf"
+  },
+  {
+    "input": {
+      "kind": "appropriation-amendment",
+      "congress": 112,
+      "stage": "SC",
+      "fiscalYear": "13",
+      "subject": "Agriculture",
+      "sponsorBioguideId": "R000395",
+      "amendmentId": "001",
+      "extension": "pdf"
+    },
+    "output": "BILLS-112HR-SC-AP-FY13-Agriculture-R000395-Amdt-001.pdf"
+  },
+  {
+    "input": {
+      "kind": "conference-numbered",
+      "congress": 112,
+      "reportNumber": 332,
+      "extension": "pdf"
+    },
+    "output": "CRPT-112hrpt332.pdf"
+  },
+  {
+    "input": {
+      "kind": "conference-unnumbered",
+      "congress": 112,
+      "measureType": "HR",
+      "measureNumber": 2055,
+      "extension": "pdf"
+    },
+    "output": "CRPT-112hrpt-HR2055.pdf"
+  },
+  {
+    "input": {
+      "kind": "conference-legislation-part",
+      "congress": 112,
+      "measureType": "HR",
+      "measureNumber": 2055,
+      "part": "DivisonA",
+      "extension": "pdf"
+    },
+    "output": "CRPT-112hrpt-HR2055-DivisonA.pdf"
+  },
+  {
+    "input": {
+      "kind": "conference-statement",
+      "congress": 112,
+      "measureType": "HR",
+      "measureNumber": 2055,
+      "extension": "pdf"
+    },
+    "output": "CRPT-112HRPT-HR2055-SOM.pdf"
+  },
+  {
+    "input": {
+      "kind": "conference-statement-part",
+      "congress": 112,
+      "measureType": "HR",
+      "measureNumber": 2055,
+      "part": "frontmatter",
+      "extension": "pdf"
+    },
+    "output": "CRPT-112hrpt-HR2055-frontmatter-som.pdf"
+  },
+  {
+    "input": {
+      "kind": "weekly-meeting-notice",
+      "congress": 112,
+      "committeeCode": "AG",
+      "weekOf": "20111205",
+      "extension": "pdf"
+    },
+    "output": "HMTG-112-AG-Weekof20111205.pdf"
+  },
+  {
+    "input": {
+      "kind": "meeting-notice",
+      "congress": 112,
+      "meetingType": "HMKP",
+      "committeeCode": "BU",
+      "meetingDate": "20110215",
+      "extension": "pdf"
+    },
+    "output": "HMTG-112-HMKP-BU-20110215.pdf"
+  },
+  {
+    "input": {
+      "kind": "witness-list",
+      "congress": 112,
+      "committeeCode": "ED",
+      "meetingDate": "20110922",
+      "extension": "pdf",
+      "meetingType": "HHRG"
+    },
+    "output": "HHRG-112-ED-WList-20110922.pdf"
+  },
+  {
+    "input": {
+      "kind": "witness-statement",
+      "congress": 112,
+      "committeeCode": "ED",
+      "meetingDate": "20110922",
+      "witnessId": "IveyB",
+      "extension": "pdf",
+      "meetingType": "HHRG"
+    },
+    "output": "HHRG-112-ED-WState-IveyB-20110922.pdf"
+  },
+  {
+    "input": {
+      "kind": "witness-support",
+      "congress": 112,
+      "committeeCode": "ED",
+      "meetingDate": "20110922",
+      "witnessId": "IveyB",
+      "supportId": "001",
+      "extension": "pdf",
+      "meetingType": "HHRG"
+    },
+    "output": "HHRG-112-ED-WState-IveyB-20110922-SD001.pdf"
+  },
+  {
+    "input": {
+      "kind": "testimony-disclosure",
+      "congress": 112,
+      "committeeCode": "ED",
+      "meetingDate": "20110922",
+      "witnessId": "IveyB",
+      "extension": "pdf",
+      "meetingType": "HHRG"
+    },
+    "output": "HHRG-112-ED-TTF-IveyB-20110922.pdf"
+  },
+  {
+    "input": {
+      "kind": "witness-biography",
+      "congress": 112,
+      "committeeCode": "ED",
+      "meetingDate": "20110922",
+      "witnessId": "IveyB",
+      "extension": "pdf",
+      "meetingType": "HHRG"
+    },
+    "output": "HHRG-112-ED-Bio-IveyB-20110922.pdf"
+  },
+  {
+    "input": {
+      "kind": "committee-vote",
+      "congress": 112,
+      "committeeCode": "ED",
+      "voteId": "002",
+      "voteDate": "20111026",
+      "extension": "pdf"
+    },
+    "output": "CRPT-112-HMTG-ED-Vote002-20111026.pdf"
+  },
+  {
+    "input": {
+      "kind": "member-statement",
+      "congress": 112,
+      "committeeCode": "IF03",
+      "meetingDate": "20120125",
+      "meetingType": "HMKP",
+      "memberBioguideId": "W000413",
+      "extension": "pdf"
+    },
+    "output": "HMKP-112-IF03-MState-W000413-20120125.pdf"
+  },
+  {
+    "input": {
+      "kind": "meeting-support",
+      "congress": 112,
+      "committeeCode": "BU",
+      "meetingDate": "20110215",
+      "meetingType": "HMKP",
+      "supportId": "001",
+      "extension": "pdf"
+    },
+    "output": "HMTG-112-HMKP-BU-20110215-SD001.pdf"
+  },
+  {
+    "input": {
+      "kind": "committee-rules",
+      "congress": 112,
+      "committeeCode": "AG",
+      "extension": "pdf"
+    },
+    "output": "CPRT-112-HPRT-AG-CommitteeRules.pdf"
+  },
+  {
+    "input": {
+      "kind": "committee-report-unnumbered",
+      "congress": 112,
+      "measureType": "HR",
+      "measureNumber": 123,
+      "extension": "pdf"
+    },
+    "output": "HRPT-112-HR123.pdf"
+  },
+  {
+    "input": {
+      "kind": "committee-report-part",
+      "congress": 112,
+      "measureType": "HR",
+      "measureNumber": 123,
+      "partNumber": 2,
+      "extension": "pdf"
+    },
+    "output": "HRPT-112-HR123-p2.pdf"
+  },
+  {
+    "input": {
+      "kind": "activity-report",
+      "congress": 112,
+      "quarter": 1,
+      "committeeCode": "RU",
+      "extension": "pdf"
+    },
+    "output": "CPRT-112hrpt-activities-Q1-RU.pdf"
+  },
+  {
+    "input": {
+      "kind": "committee-print-link",
+      "url": "https://example.org/published-document.pdf"
+    },
+    "output": "https://example.org/published-document.pdf"
+  },
+  {
+    "input": {
+      "kind": "hearing-transcript-link",
+      "url": "https://example.org/published-document.pdf"
+    },
+    "output": "https://example.org/published-document.pdf"
+  },
+  {
+    "input": {
+      "kind": "committee-document-numbered",
+      "meetingType": "HHRG",
+      "congress": 112,
+      "committeeCode": "HM00",
+      "meetingDate": "20110310",
+      "documentType": "SD",
+      "documentNumber": "001",
+      "extension": "pdf"
+    },
+    "output": "HHRG-112-HM00-20110310-SD001.pdf"
+  },
+  {
+    "input": {
+      "kind": "committee-document",
+      "meetingType": "HHRG",
+      "congress": 114,
+      "committeeCode": "IF02",
+      "meetingDate": "20160224",
+      "documentType": "MbrRoster",
+      "extension": "pdf"
+    },
+    "output": "HHRG-114-IF02-20160224-MbrRoster.pdf"
+  },
+  {
+    "input": {
+      "kind": "committee-transcript",
+      "meetingType": "HHRG",
+      "congress": 112,
+      "committeeCode": "JU00",
+      "meetingDate": "20110120",
+      "extension": "pdf"
+    },
+    "output": "HHRG-112-JU00-Transcript-20110120.pdf"
+  },
+  {
+    "input": {
+      "kind": "published-hearing",
+      "congress": 106,
+      "publicationType": "shrg",
+      "publicationNumber": "98240",
+      "publicationSuffix": "-pt1-err",
+      "extension": "pdf"
+    },
+    "output": "CHRG-106shrg98240-pt1-err.pdf"
+  },
+  {
+    "input": {
+      "kind": "published-report",
+      "congress": 112,
+      "publicationType": "hrpt",
+      "reportNumber": 466,
+      "publicationSuffix": "",
+      "extension": "pdf"
+    },
+    "output": "CRPT-112hrpt466.pdf"
+  },
+  {
+    "input": {
+      "kind": "published-print",
+      "congress": 115,
+      "publicationType": "hprt",
+      "publicationNumber": "24746",
+      "publicationSuffix": "",
+      "extension": "pdf"
+    },
+    "output": "CPRT-115hprt24746.pdf"
+  },
+  {
+    "input": {
+      "kind": "committee-amendment-described",
+      "congress": 112,
+      "subject": "CommitteePrint",
+      "sponsorBioguideId": "D000096",
+      "amendmentId": "10",
+      "extension": "pdf"
+    },
+    "output": "BILLS-112-CommitteePrint-D000096-Amdt-10.pdf"
+  },
+  {
+    "input": {
+      "kind": "committee-enbloc-described",
+      "congress": 114,
+      "subject": "CP",
+      "sponsorBioguideId": "L000559",
+      "amendmentId": "1",
+      "enblocId": "1",
+      "extension": "pdf"
+    },
+    "output": "BILLS-114-CP-L000559-Amdt-1-Enbloc-1.pdf"
+  },
+  {
+    "input": {
+      "kind": "committee-print",
+      "congress": 113,
+      "publicationType": "hprt",
+      "committeeCode": "RU00",
+      "subject": "HR1105",
+      "extension": "pdf"
+    },
+    "output": "CPRT-113-hprt-RU00-HR1105.pdf"
+  },
+  {
+    "input": {
+      "kind": "bill-untyped-numbered",
+      "congress": 113,
+      "numberToken": "1129",
+      "stage": "ih",
+      "extension": "pdf"
+    },
+    "output": "BILLS-1131129ih.pdf"
+  },
+  {
+    "input": {
+      "kind": "bill-untyped-draft",
+      "congress": 113,
+      "stage": "pih",
+      "description": "BACPACAct",
+      "extension": "pdf"
+    },
+    "output": "BILLS-113pih-BACPACAct.pdf"
+  },
+  {
+    "input": {
+      "kind": "appropriation-routed",
+      "congress": 113,
+      "routing": "FC-AP-FY2014-AP00-TransHUD",
+      "extension": "pdf"
+    },
+    "output": "BILLS-113-FC-AP-FY2014-AP00-TransHUD.pdf"
+  },
+  {
+    "input": {
+      "kind": "bill-unnumbered",
+      "congress": 113,
+      "measureToken": "hr",
+      "numberPlaceholder": "____",
+      "stage": "ih",
+      "extension": "pdf"
+    },
+    "output": "BILLS-113-hr____ih.pdf"
+  },
+  {
+    "input": {
+      "kind": "bill-named-draft",
+      "congress": 112,
+      "draftLabel": "CommRes",
+      "draftIdentifier": "1",
+      "stage": "pih",
+      "versionSuffix": "-CommitteeHiringResolution",
+      "extension": "pdf"
+    },
+    "output": "BILLS-112CommRes1pih-CommitteeHiringResolution.pdf"
+  },
+  {
+    "input": {
+      "kind": "bill-measure-list",
+      "congress": 115,
+      "measureList": "HR3798HR1150HR6718HR4616",
+      "versionSuffix": "-RCP115-84",
+      "extension": "pdf"
+    },
+    "output": "BILLS-115HR3798HR1150HR6718HR4616-RCP115-84.pdf"
+  },
+  {
+    "input": {
+      "kind": "bill-numbered-described",
+      "congress": 115,
+      "numberedSubject": "HR1329",
+      "description": "asamended",
+      "stage": "ih",
+      "extension": "pdf"
+    },
+    "output": "BILLS-115HR1329asamendedih.pdf"
+  },
+  {
+    "input": {
+      "kind": "bill-titled-draft",
+      "congress": 115,
+      "description": "draftbill",
+      "stage": "ih",
+      "extension": "pdf"
+    },
+    "output": "BILLS-115draftbillih.pdf"
+  },
+  {
+    "input": {
+      "kind": "bill-house-amendment",
+      "congress": 116,
+      "subject": "5245",
+      "extension": "pdf",
+      "amendmentSuffix": "2"
+    },
+    "output": "BILLS-1165245-HAmdt2.pdf"
+  }
+]

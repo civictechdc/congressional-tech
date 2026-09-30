@@ -8,13 +8,6 @@ A version describes a text edition; its chamber need not be the bill origin.
 BILLS_HELP_URL = "https://www.govinfo.gov/help/bills"
 BILLS_HELP_CHECKED_ON = "2026-09-29"
 
-# House document naming stages are separate from GovInfo's common bill versions.
-# Page 6 defines PIH for pre-introduced measures without assigned bill numbers.
-# Real filenames sometimes also print a number; retain it without reconciling
-# filename claims with the bill's identity or current status.
-HOUSE_NAMING_URL = "https://www.govinfo.gov/content/pkg/GOVPUB-Y1_2-PURL-gpo156119/pdf/GOVPUB-Y1_2-PURL-gpo156119.pdf#page=6"
-HOUSE_BILL_STAGES = {'pih': 'Pre-introduced measure'}
-
 BILL_TYPES = {
     'hr': 'House Bill',
     's': 'Senate Bill',

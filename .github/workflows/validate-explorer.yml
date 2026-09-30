@@ -7,6 +7,7 @@ on:
       - "apps/site/**"
       - "packages/committee_meeting/**"
       - "packages/congress_api/**"
+      - "packages/house-naming/**"
       - "packages/congress_shared/**"
       - "packages/youtube_api/**"
       - "tests/**"
@@ -36,10 +37,10 @@ jobs:
           python-version: "3.12"
       - name: Install local Python packages and test tools
         run: >-
-          pip install -e packages/committee_meeting -e packages/congress_shared
+          pip install -e packages/house-naming -e packages/committee_meeting -e packages/congress_shared
           -e packages/youtube_api -e 'packages/congress_api[test]' -e apps/committee_youtube
       - name: Test models, retained-source adapters and publication offline
-        run: python .github/scripts/offline-python.py -m pytest -q tests packages/committee_meeting/tests
+        run: python .github/scripts/offline-python.py -m pytest -q tests packages/committee_meeting/tests packages/house-naming/tests
       - uses: actions/setup-node@v4
         with:
           node-version: "22"

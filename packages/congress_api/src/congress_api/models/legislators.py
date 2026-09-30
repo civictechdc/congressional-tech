@@ -1,5 +1,8 @@
 """Native unitedstates/congress-legislators records; no name or party rewriting."""
 
+from collections import defaultdict
+from datetime import date
+
 from pydantic import Field, TypeAdapter
 
 from .base import SourceModel
@@ -93,3 +96,19 @@ LEGISLATORS = TypeAdapter(list[Legislator])
 
 def parse_legislators(data: str | bytes) -> list[Legislator]:
     return LEGISLATORS.validate_json(data)
+
+
+def member_surnames_by_congress(legislators: list[Legislator]) -> dict[str, tuple[str, ...]]:
+    """Use retained service dates to select surname vocabulary for each Congress."""
+    names = defaultdict(set)
+    def start_of(congress):
+        return date(1789 + 2 * (congress - 1), 1, 3) if congress >= 74 else date(1789 + 2 * (congress - 1), 3, 4)
+    for member in legislators:
+        for term in member.terms:
+            start, end = date.fromisoformat(term.start), date.fromisoformat(term.end)
+            first = max(1, (start.year - 1789) // 2)
+            last = (end.year - 1789) // 2 + 1
+            for congress in range(first, last + 1):
+                if start < start_of(congress + 1) and end > start_of(congress):
+                    names[str(congress)].add(member.name.last)
+    return {congress: tuple(sorted(surnames)) for congress, surnames in sorted(names.items(), key=lambda row: int(row[0]))}

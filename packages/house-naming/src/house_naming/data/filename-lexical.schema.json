@@ -1,0 +1,444 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:house-naming:filename-lexical",
+  "title": "House and GPO lexical filename candidate schema",
+  "description": "A candidate filter only. May accept impossible dates, out-of-range counters or a generic-description overlap. Use Engine.parse for full runtime validation. Returns validity, not parsed fields or a unique classification.",
+  "type": "string",
+  "maxLength": 255,
+  "anyOf": [
+    {
+      "$ref": "#/$defs/bill-numbered"
+    },
+    {
+      "$ref": "#/$defs/bill-preintroduced"
+    },
+    {
+      "$ref": "#/$defs/bill-suspension-numbered"
+    },
+    {
+      "$ref": "#/$defs/bill-suspension-unnumbered"
+    },
+    {
+      "$ref": "#/$defs/bill-unanimous-consent"
+    },
+    {
+      "$ref": "#/$defs/rules-original"
+    },
+    {
+      "$ref": "#/$defs/appropriation-described"
+    },
+    {
+      "$ref": "#/$defs/appropriation-annual"
+    },
+    {
+      "$ref": "#/$defs/appropriation-supplemental"
+    },
+    {
+      "$ref": "#/$defs/continuing-resolution-reported"
+    },
+    {
+      "$ref": "#/$defs/continuing-resolution-committee"
+    },
+    {
+      "$ref": "#/$defs/interchamber-amendment"
+    },
+    {
+      "$ref": "#/$defs/floor-amendment"
+    },
+    {
+      "$ref": "#/$defs/committee-amendment"
+    },
+    {
+      "$ref": "#/$defs/committee-enbloc-numbered"
+    },
+    {
+      "$ref": "#/$defs/committee-enbloc"
+    },
+    {
+      "$ref": "#/$defs/appropriation-amendment"
+    },
+    {
+      "$ref": "#/$defs/conference-numbered"
+    },
+    {
+      "$ref": "#/$defs/conference-unnumbered"
+    },
+    {
+      "$ref": "#/$defs/conference-legislation-part"
+    },
+    {
+      "$ref": "#/$defs/conference-statement"
+    },
+    {
+      "$ref": "#/$defs/conference-statement-part"
+    },
+    {
+      "$ref": "#/$defs/weekly-meeting-notice"
+    },
+    {
+      "$ref": "#/$defs/meeting-notice"
+    },
+    {
+      "$ref": "#/$defs/witness-list"
+    },
+    {
+      "$ref": "#/$defs/witness-statement"
+    },
+    {
+      "$ref": "#/$defs/witness-support"
+    },
+    {
+      "$ref": "#/$defs/testimony-disclosure"
+    },
+    {
+      "$ref": "#/$defs/witness-biography"
+    },
+    {
+      "$ref": "#/$defs/committee-vote"
+    },
+    {
+      "$ref": "#/$defs/member-statement"
+    },
+    {
+      "$ref": "#/$defs/meeting-support"
+    },
+    {
+      "$ref": "#/$defs/committee-rules"
+    },
+    {
+      "$ref": "#/$defs/committee-report-unnumbered"
+    },
+    {
+      "$ref": "#/$defs/committee-report-part"
+    },
+    {
+      "$ref": "#/$defs/activity-report"
+    },
+    {
+      "$ref": "#/$defs/committee-document-numbered"
+    },
+    {
+      "$ref": "#/$defs/committee-document"
+    },
+    {
+      "$ref": "#/$defs/committee-transcript"
+    },
+    {
+      "$ref": "#/$defs/published-hearing"
+    },
+    {
+      "$ref": "#/$defs/published-report"
+    },
+    {
+      "$ref": "#/$defs/published-print"
+    },
+    {
+      "$ref": "#/$defs/committee-amendment-described"
+    },
+    {
+      "$ref": "#/$defs/committee-enbloc-described"
+    },
+    {
+      "$ref": "#/$defs/committee-print"
+    },
+    {
+      "$ref": "#/$defs/bill-untyped-numbered"
+    },
+    {
+      "$ref": "#/$defs/bill-untyped-draft"
+    },
+    {
+      "$ref": "#/$defs/appropriation-routed"
+    },
+    {
+      "$ref": "#/$defs/bill-unnumbered"
+    },
+    {
+      "$ref": "#/$defs/bill-named-draft"
+    },
+    {
+      "$ref": "#/$defs/bill-measure-list"
+    },
+    {
+      "$ref": "#/$defs/bill-numbered-described"
+    },
+    {
+      "$ref": "#/$defs/bill-titled-draft"
+    },
+    {
+      "$ref": "#/$defs/bill-house-amendment"
+    }
+  ],
+  "$defs": {
+    "bill-numbered": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[bB][iI][lL][lL][sS]-(?:0|[1-9][0-9]{0,9})(?:[hH][cC][oO][nN][rR][eE][sS]|[sS][cC][oO][nN][rR][eE][sS]|[hH][jJ][rR][eE][sS]|[sS][jJ][rR][eE][sS]|[hH][rR][eE][sS]|[sS][rR][eE][sS]|[hH][rR]|[sS])(?:0|[1-9][0-9]{0,9})(?:[pP][wW][aA][hH]|[rR][eE][aA][hH]|[rR][eE][nN][rR]|[aA][sS][hH]|[aA][tT][hH]|[aA][tT][sS]|[cC][dD][hH]|[cC][dD][sS]|[cC][pP][hH]|[cC][pP][sS]|[eE][aA][hH]|[eE][aA][sS]|[eE][nN][rR]|[eE][pP][hH]|[fF][aA][hH]|[fF][pP][hH]|[fF][pP][sS]|[hH][dD][hH]|[hH][dD][sS]|[iI][pP][hH]|[iI][pP][sS]|[lL][tT][hH]|[lL][tT][sS]|[oO][pP][hH]|[oO][pP][sS]|[pP][aA][pP]|[pP][aA][vV]|[pP][cC][hH]|[pP][cC][sS]|[pP][iI][hH]|[rR][aA][hH]|[rR][aA][sS]|[rR][cC][hH]|[rR][cC][sS]|[rR][dD][hH]|[rR][dD][sS]|[rR][eE][sS]|[rR][fF][hH]|[rR][fF][sS]|[rR][iI][hH]|[rR][iI][sS]|[rR][tT][hH]|[rR][tT][sS]|[sS][aA][sS]|[aA][sS]|[eE][hH]|[eE][sS]|[iI][hH]|[iI][sS]|[pP][pP]|[rR][hH]|[rR][sS]|[sS][cC])(?:[0-9]*(?:\\([^()\\s/\\\\<>:\"|?*]+\\))?(?:[-_][^\\s/\\\\<>:\"|?*\\x00-\\x1f\\x7f]+)?)|[bB][iI][lL][lL][sS]-(?:0|[1-9][0-9]{0,9})-(?:[hH][cC][oO][nN][rR][eE][sS]|[sS][cC][oO][nN][rR][eE][sS]|[hH][jJ][rR][eE][sS]|[sS][jJ][rR][eE][sS]|[hH][rR][eE][sS]|[sS][rR][eE][sS]|[hH][rR]|[sS])(?:0|[1-9][0-9]{0,9})(?:[pP][wW][aA][hH]|[rR][eE][aA][hH]|[rR][eE][nN][rR]|[aA][sS][hH]|[aA][tT][hH]|[aA][tT][sS]|[cC][dD][hH]|[cC][dD][sS]|[cC][pP][hH]|[cC][pP][sS]|[eE][aA][hH]|[eE][aA][sS]|[eE][nN][rR]|[eE][pP][hH]|[fF][aA][hH]|[fF][pP][hH]|[fF][pP][sS]|[hH][dD][hH]|[hH][dD][sS]|[iI][pP][hH]|[iI][pP][sS]|[lL][tT][hH]|[lL][tT][sS]|[oO][pP][hH]|[oO][pP][sS]|[pP][aA][pP]|[pP][aA][vV]|[pP][cC][hH]|[pP][cC][sS]|[pP][iI][hH]|[rR][aA][hH]|[rR][aA][sS]|[rR][cC][hH]|[rR][cC][sS]|[rR][dD][hH]|[rR][dD][sS]|[rR][eE][sS]|[rR][fF][hH]|[rR][fF][sS]|[rR][iI][hH]|[rR][iI][sS]|[rR][tT][hH]|[rR][tT][sS]|[sS][aA][sS]|[aA][sS]|[eE][hH]|[eE][sS]|[iI][hH]|[iI][sS]|[pP][pP]|[rR][hH]|[rR][sS]|[sS][cC])(?:[0-9]*(?:\\([^()\\s/\\\\<>:\"|?*]+\\))?(?:[-_][^\\s/\\\\<>:\"|?*\\x00-\\x1f\\x7f]+)?))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "bill-preintroduced": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[bB][iI][lL][lL][sS]-(?:0|[1-9][0-9]{0,9})(?:[hH][cC][oO][nN][rR][eE][sS]|[sS][cC][oO][nN][rR][eE][sS]|[hH][jJ][rR][eE][sS]|[sS][jJ][rR][eE][sS]|[hH][rR][eE][sS]|[sS][rR][eE][sS]|[hH][rR]|[sS])-[pP][iI][hH]-(?:[^\\s/\\\\<>:\"|?*\\x00-\\x1F\\x7F\\u0085\\uFEFF]+))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "bill-suspension-numbered": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[bB][iI][lL][lL][sS]-(?:0|[1-9][0-9]{0,9})(?:[hH][cC][oO][nN][rR][eE][sS]|[sS][cC][oO][nN][rR][eE][sS]|[hH][jJ][rR][eE][sS]|[sS][jJ][rR][eE][sS]|[hH][rR][eE][sS]|[sS][rR][eE][sS]|[hH][rR]|[sS])(?:0|[1-9][0-9]{0,9})-[sS][uU][sS])(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "bill-suspension-unnumbered": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[bB][iI][lL][lL][sS]-(?:0|[1-9][0-9]{0,9})(?:[hH][cC][oO][nN][rR][eE][sS]|[sS][cC][oO][nN][rR][eE][sS]|[hH][jJ][rR][eE][sS]|[sS][jJ][rR][eE][sS]|[hH][rR][eE][sS]|[sS][rR][eE][sS]|[hH][rR]|[sS])-[sS][uU][sS]-(?:[^\\s/\\\\<>:\"|?*\\x00-\\x1F\\x7F\\u0085\\uFEFF]+))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "bill-unanimous-consent": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[bB][iI][lL][lL][sS]-(?:0|[1-9][0-9]{0,9})(?:[hH][cC][oO][nN][rR][eE][sS]|[sS][cC][oO][nN][rR][eE][sS]|[hH][jJ][rR][eE][sS]|[sS][jJ][rR][eE][sS]|[hH][rR][eE][sS]|[sS][rR][eE][sS]|[hH][rR]|[sS])(?:0|[1-9][0-9]{0,9})-[uU][cC][oO][nN][sS][eE][nN][tT])(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "rules-original": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[bB][iI][lL][lL][sS]-(?:0|[1-9][0-9]{0,9})[hH][rR][eE][sS]-[oO][rR][hH]-[rR][uU][lL][eE]-(?:[^\\s/\\\\<>:\"|?*\\x00-\\x1F\\x7F\\u0085\\uFEFF]+))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "appropriation-described": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[bB][iI][lL][lL][sS]-(?:0|[1-9][0-9]{0,9})(?:[hH][cC][oO][nN][rR][eE][sS]|[sS][cC][oO][nN][rR][eE][sS]|[hH][jJ][rR][eE][sS]|[sS][jJ][rR][eE][sS]|[hH][rR][eE][sS]|[sS][rR][eE][sS]|[hH][rR]|[sS])-(?:[oO][rR][hH]|[fF][cC]|[sS][cC])-(?:[^\\s/\\\\<>:\"|?*\\x00-\\x1F\\x7F\\u0085\\uFEFF]+)|[bB][iI][lL][lL][sS]-(?:0|[1-9][0-9]{0,9})-(?:[hH][cC][oO][nN][rR][eE][sS]|[sS][cC][oO][nN][rR][eE][sS]|[hH][jJ][rR][eE][sS]|[sS][jJ][rR][eE][sS]|[hH][rR][eE][sS]|[sS][rR][eE][sS]|[hH][rR]|[sS])-(?:[oO][rR][hH]|[fF][cC]|[sS][cC])-(?:[^\\s/\\\\<>:\"|?*\\x00-\\x1F\\x7F\\u0085\\uFEFF]+))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "appropriation-annual": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[bB][iI][lL][lL][sS]-(?:0|[1-9][0-9]{0,9})[hH][rR]-(?:[oO][rR][hH]|[fF][cC]|[sS][cC])-[aA][pP]-[fF][yY](?:(?:[0-9]{2}|[0-9]{4}))-(?:[^\\s/\\\\<>:\"|?*\\x00-\\x1F\\x7F\\u0085\\uFEFF]+))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "appropriation-supplemental": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[bB][iI][lL][lL][sS]-(?:0|[1-9][0-9]{0,9})[hH][rR]-(?:[oO][rR][hH]|[fF][cC]|[sS][cC])-[aA][pP]-[fF][yY](?:(?:[0-9]{2}|[0-9]{4}))-[sS][uU][pP][pP][lL]-(?:[0-9]+))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "continuing-resolution-reported": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[bB][iI][lL][lL][sS]-(?:0|[1-9][0-9]{0,9})[hH][jJ][rR][eE][sS]-[oO][rR][hH]-[aA][pP]-[fF][yY](?:(?:[0-9]{2}|[0-9]{4}))-[cC][rR]-(?:[0-9]+))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "continuing-resolution-committee": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[bB][iI][lL][lL][sS]-(?:0|[1-9][0-9]{0,9})[hH][rR]-(?:[fF][cC]|[sS][cC])-[aA][pP]-[fF][yY](?:(?:[0-9]{2}|[0-9]{4}))-[cC][rR]-(?:[0-9]+))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "interchamber-amendment": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[bB][iI][lL][lL][sS]-(?:0|[1-9][0-9]{0,9})(?:[hH][cC][oO][nN][rR][eE][sS]|[sS][cC][oO][nN][rR][eE][sS]|[hH][jJ][rR][eE][sS]|[sS][jJ][rR][eE][sS]|[hH][rR][eE][sS]|[sS][rR][eE][sS]|[hH][rR]|[sS])(?:0|[1-9][0-9]{0,9})-(?:[hH][aA][mM][dD][tT]2|[hH][aA][mM][dD][tT]3|[sS][aA][mM][dD][tT]2|[sS][aA][mM][dD][tT]3|[hH][aA][mM][dD][tT]|[sS][aA][mM][dD][tT]))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "floor-amendment": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[bB][iI][lL][lL][sS]-(?:0|[1-9][0-9]{0,9})(?:[hH][cC][oO][nN][rR][eE][sS]|[sS][cC][oO][nN][rR][eE][sS]|[hH][jJ][rR][eE][sS]|[sS][jJ][rR][eE][sS]|[hH][rR][eE][sS]|[sS][rR][eE][sS]|[hH][rR]|[sS])(?:0|[1-9][0-9]{0,9})-(?:[A-Za-z][0-9]{6})-[aA][mM][dD][tT]-(?:(?=[A-Za-z0-9_.-]*[A-Za-z0-9])[A-Za-z0-9_][A-Za-z0-9_.-]*))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "committee-amendment": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[bB][iI][lL][lL][sS]-(?:0|[1-9][0-9]{0,9})-(?:[hH][cC][oO][nN][rR][eE][sS]|[sS][cC][oO][nN][rR][eE][sS]|[hH][jJ][rR][eE][sS]|[sS][jJ][rR][eE][sS]|[hH][rR][eE][sS]|[sS][rR][eE][sS]|[hH][rR]|[sS])(?:0|[1-9][0-9]{0,9})-(?:[A-Za-z][0-9]{6})-[aA][mM][dD][tT]-(?:(?=[A-Za-z0-9_.-]*[A-Za-z0-9])[A-Za-z0-9_][A-Za-z0-9_.-]*))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "committee-enbloc-numbered": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[bB][iI][lL][lL][sS]-(?:0|[1-9][0-9]{0,9})-(?:[hH][cC][oO][nN][rR][eE][sS]|[sS][cC][oO][nN][rR][eE][sS]|[hH][jJ][rR][eE][sS]|[sS][jJ][rR][eE][sS]|[hH][rR][eE][sS]|[sS][rR][eE][sS]|[hH][rR]|[sS])(?:0|[1-9][0-9]{0,9})-(?:[A-Za-z][0-9]{6})-[aA][mM][dD][tT]-(?:(?=[A-Za-z0-9_.-]*[A-Za-z0-9])[A-Za-z0-9_][A-Za-z0-9_.-]*)-[eE][nN][bB][lL][oO][cC]-(?:[0-9]+))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "committee-enbloc": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[bB][iI][lL][lL][sS]-(?:0|[1-9][0-9]{0,9})-(?:[hH][cC][oO][nN][rR][eE][sS]|[sS][cC][oO][nN][rR][eE][sS]|[hH][jJ][rR][eE][sS]|[sS][jJ][rR][eE][sS]|[hH][rR][eE][sS]|[sS][rR][eE][sS]|[hH][rR]|[sS])(?:0|[1-9][0-9]{0,9})-(?:[A-Za-z][0-9]{6})-[aA][mM][dD][tT]-[eE][nN][bB][lL][oO][cC]-(?:[0-9]+))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "appropriation-amendment": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[bB][iI][lL][lL][sS]-(?:0|[1-9][0-9]{0,9})[hH][rR]-(?:[fF][cC]|[sS][cC])-[aA][pP]-[fF][yY](?:(?:[0-9]{2}|[0-9]{4}))-(?:[^\\s/\\\\<>:\"|?*\\x00-\\x1F\\x7F\\u0085\\uFEFF]+)-(?:[A-Za-z][0-9]{6})-[aA][mM][dD][tT]-(?:(?=[A-Za-z0-9_.-]*[A-Za-z0-9])[A-Za-z0-9_][A-Za-z0-9_.-]*))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "conference-numbered": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[cC][rR][pP][tT]-(?:0|[1-9][0-9]{0,9})[hH][rR][pP][tT](?:0|[1-9][0-9]{0,9}))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "conference-unnumbered": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[cC][rR][pP][tT]-(?:0|[1-9][0-9]{0,9})[hH][rR][pP][tT]-(?:[hH][cC][oO][nN][rR][eE][sS]|[sS][cC][oO][nN][rR][eE][sS]|[hH][jJ][rR][eE][sS]|[sS][jJ][rR][eE][sS]|[hH][rR][eE][sS]|[sS][rR][eE][sS]|[hH][rR]|[sS])(?:0|[1-9][0-9]{0,9}))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "conference-legislation-part": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[cC][rR][pP][tT]-(?:0|[1-9][0-9]{0,9})[hH][rR][pP][tT]-(?:[hH][cC][oO][nN][rR][eE][sS]|[sS][cC][oO][nN][rR][eE][sS]|[hH][jJ][rR][eE][sS]|[sS][jJ][rR][eE][sS]|[hH][rR][eE][sS]|[sS][rR][eE][sS]|[hH][rR]|[sS])(?:0|[1-9][0-9]{0,9})-(?:[^\\s/\\\\<>:\"|?*\\x00-\\x1F\\x7F\\u0085\\uFEFF]+))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "conference-statement": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[cC][rR][pP][tT]-(?:0|[1-9][0-9]{0,9})[hH][rR][pP][tT]-(?:[hH][cC][oO][nN][rR][eE][sS]|[sS][cC][oO][nN][rR][eE][sS]|[hH][jJ][rR][eE][sS]|[sS][jJ][rR][eE][sS]|[hH][rR][eE][sS]|[sS][rR][eE][sS]|[hH][rR]|[sS])(?:0|[1-9][0-9]{0,9})-[sS][oO][mM])(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "conference-statement-part": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[cC][rR][pP][tT]-(?:0|[1-9][0-9]{0,9})[hH][rR][pP][tT]-(?:[hH][cC][oO][nN][rR][eE][sS]|[sS][cC][oO][nN][rR][eE][sS]|[hH][jJ][rR][eE][sS]|[sS][jJ][rR][eE][sS]|[hH][rR][eE][sS]|[sS][rR][eE][sS]|[hH][rR]|[sS])(?:0|[1-9][0-9]{0,9})-(?:[^\\s/\\\\<>:\"|?*\\x00-\\x1F\\x7F\\u0085\\uFEFF]+)-[sS][oO][mM])(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "weekly-meeting-notice": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[hH][mM][tT][gG]-(?:0|[1-9][0-9]{0,9})-(?:[A-Za-z]{2}(?:[0-9]{2})?)-[wW][eE][eE][kK][oO][fF](?:[0-9]{4}(?:0[1-9]|1[0-2])(?:0[1-9]|[12][0-9]|3[01])))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "meeting-notice": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[hH][mM][tT][gG]-(?:0|[1-9][0-9]{0,9})-(?:[hH][hH][rR][gG]|[hH][mM][kK][pP]|[hH][mM][tT][gG])-(?:[A-Za-z]{2}(?:[0-9]{2})?)-(?:[0-9]{4}(?:0[1-9]|1[0-2])(?:0[1-9]|[12][0-9]|3[01]))(?:-[1-9][0-9]{0,9})?)(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "witness-list": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:(?:[hH][hH][rR][gG]|[hH][mM][kK][pP]|[hH][mM][tT][gG])-(?:0|[1-9][0-9]{0,9})-(?:[A-Za-z]{2}(?:[0-9]{2})?)-[wW][lL][iI][sS][tT]-(?:[0-9]{4}(?:0[1-9]|1[0-2])(?:0[1-9]|[12][0-9]|3[01])))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "witness-statement": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:(?:[hH][hH][rR][gG]|[hH][mM][kK][pP]|[hH][mM][tT][gG])-(?:0|[1-9][0-9]{0,9})-(?:[A-Za-z]{2}(?:[0-9]{2})?)-[wW][sS][tT][aA][tT][eE]-(?:[^\\s/\\\\<>:\"|?*\\x00-\\x1F\\x7F\\u0085\\uFEFF]+)-(?:[0-9]{4}(?:0[1-9]|1[0-2])(?:0[1-9]|[12][0-9]|3[01])))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "witness-support": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:(?:[hH][hH][rR][gG]|[hH][mM][kK][pP]|[hH][mM][tT][gG])-(?:0|[1-9][0-9]{0,9})-(?:[A-Za-z]{2}(?:[0-9]{2})?)-[wW][sS][tT][aA][tT][eE]-(?:[^\\s/\\\\<>:\"|?*\\x00-\\x1F\\x7F\\u0085\\uFEFF]+)-(?:[0-9]{4}(?:0[1-9]|1[0-2])(?:0[1-9]|[12][0-9]|3[01]))-[sS][dD](?:[0-9]+))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "testimony-disclosure": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:(?:[hH][hH][rR][gG]|[hH][mM][kK][pP]|[hH][mM][tT][gG])-(?:0|[1-9][0-9]{0,9})-(?:[A-Za-z]{2}(?:[0-9]{2})?)-[tT][tT][fF]-(?:[^\\s/\\\\<>:\"|?*\\x00-\\x1F\\x7F\\u0085\\uFEFF]+)-(?:[0-9]{4}(?:0[1-9]|1[0-2])(?:0[1-9]|[12][0-9]|3[01])))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "witness-biography": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:(?:[hH][hH][rR][gG]|[hH][mM][kK][pP]|[hH][mM][tT][gG])-(?:0|[1-9][0-9]{0,9})-(?:[A-Za-z]{2}(?:[0-9]{2})?)-[bB][iI][oO]-(?:[^\\s/\\\\<>:\"|?*\\x00-\\x1F\\x7F\\u0085\\uFEFF]+)-(?:[0-9]{4}(?:0[1-9]|1[0-2])(?:0[1-9]|[12][0-9]|3[01])))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "committee-vote": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[cC][rR][pP][tT]-(?:0|[1-9][0-9]{0,9})-[hH][mM][tT][gG]-(?:[A-Za-z]{2}(?:[0-9]{2})?)-[vV][oO][tT][eE](?:(?=[A-Za-z0-9_.-]*[A-Za-z0-9])[A-Za-z0-9_][A-Za-z0-9_.-]*)-(?:[0-9]{4}(?:0[1-9]|1[0-2])(?:0[1-9]|[12][0-9]|3[01]))|[cC][rR][pP][tT]-(?:0|[1-9][0-9]{0,9})-(?:[A-Za-z]{2}(?:[0-9]{2})?)-[vV][oO][tT][eE](?:(?=[A-Za-z0-9_.-]*[A-Za-z0-9])[A-Za-z0-9_][A-Za-z0-9_.-]*)-(?:[0-9]{4}(?:0[1-9]|1[0-2])(?:0[1-9]|[12][0-9]|3[01])))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "member-statement": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:(?:[hH][hH][rR][gG]|[hH][mM][kK][pP]|[hH][mM][tT][gG])-(?:0|[1-9][0-9]{0,9})-(?:[A-Za-z]{2}(?:[0-9]{2})?)-[mM][sS][tT][aA][tT][eE]-(?:[A-Za-z][0-9]{6})-(?:[0-9]{4}(?:0[1-9]|1[0-2])(?:0[1-9]|[12][0-9]|3[01])))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "meeting-support": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[hH][mM][tT][gG]-(?:0|[1-9][0-9]{0,9})-(?:[hH][hH][rR][gG]|[hH][mM][kK][pP]|[hH][mM][tT][gG])-(?:[A-Za-z]{2}(?:[0-9]{2})?)-(?:[0-9]{4}(?:0[1-9]|1[0-2])(?:0[1-9]|[12][0-9]|3[01]))(?:-[1-9][0-9]{0,9})?-[sS][dD](?:[0-9]+))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "committee-rules": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[cC][pP][rR][tT]-(?:0|[1-9][0-9]{0,9})-[hH][pP][rR][tT]-(?:[A-Za-z]{2}(?:[0-9]{2})?)-[cC][oO][mM][mM][iI][tT][tT][eE][eE][rR][uU][lL][eE][sS])(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "committee-report-unnumbered": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[hH][rR][pP][tT]-(?:0|[1-9][0-9]{0,9})-(?:[hH][cC][oO][nN][rR][eE][sS]|[sS][cC][oO][nN][rR][eE][sS]|[hH][jJ][rR][eE][sS]|[sS][jJ][rR][eE][sS]|[hH][rR][eE][sS]|[sS][rR][eE][sS]|[hH][rR]|[sS])(?:0|[1-9][0-9]{0,9}))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "committee-report-part": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[hH][rR][pP][tT]-(?:0|[1-9][0-9]{0,9})-(?:[hH][cC][oO][nN][rR][eE][sS]|[sS][cC][oO][nN][rR][eE][sS]|[hH][jJ][rR][eE][sS]|[sS][jJ][rR][eE][sS]|[hH][rR][eE][sS]|[sS][rR][eE][sS]|[hH][rR]|[sS])(?:0|[1-9][0-9]{0,9})-[pP](?:0|[1-9][0-9]{0,9}))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "activity-report": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[cC][pP][rR][tT]-(?:0|[1-9][0-9]{0,9})[hH][rR][pP][tT]-[aA][cC][tT][iI][vV][iI][tT][iI][eE][sS]-[qQ](?:1|2|3|4)-(?:[A-Za-z]{2}(?:[0-9]{2})?))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "committee-document-numbered": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:(?:[hH][hH][rR][gG]|[hH][mM][kK][pP]|[hH][mM][tT][gG])-(?:0|[1-9][0-9]{0,9})-(?:[A-Za-z]{2}(?:[0-9]{2})?)-(?:[0-9]{4}(?:0[1-9]|1[0-2])(?:0[1-9]|[12][0-9]|3[01]))-(?:[qQ][fF][rR]|[sS][dD])(?:[0-9]+))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "committee-document": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:(?:[hH][hH][rR][gG]|[hH][mM][kK][pP]|[hH][mM][tT][gG])-(?:0|[1-9][0-9]{0,9})-(?:[A-Za-z]{2}(?:[0-9]{2})?)-(?:[0-9]{4}(?:0[1-9]|1[0-2])(?:0[1-9]|[12][0-9]|3[01]))-(?:[mM][bB][rR][rR][oO][sS][tT][eE][rR]|[cC][pP][gG]|[tT][oO][cC]))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "committee-transcript": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:(?:[hH][hH][rR][gG]|[hH][mM][kK][pP]|[hH][mM][tT][gG])-(?:0|[1-9][0-9]{0,9})-(?:[A-Za-z]{2}(?:[0-9]{2})?)-[tT][rR][aA][nN][sS][cC][rR][iI][pP][tT]-(?:[0-9]{4}(?:0[1-9]|1[0-2])(?:0[1-9]|[12][0-9]|3[01])))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "published-hearing": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[cC][hH][rR][gG]-(?:0|[1-9][0-9]{0,9})(?:[hH][hH][rR][gG]|[jJ][hH][rR][gG]|[sS][hH][rR][gG])(?:[0-9]+)(?:(?:-[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*|[vV][0-9]+|\\([0-9]+\\))?))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[hH][tT][mM][lL]|[hH][tT][mM]|[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "published-report": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[cC][rR][pP][tT]-(?:0|[1-9][0-9]{0,9})(?:[eE][rR][pP][tT]|[hH][rR][pP][tT]|[sS][rR][pP][tT])(?:0|[1-9][0-9]{0,9})(?:(?:-[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*|[vV][0-9]+|\\([0-9]+\\))?))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[hH][tT][mM][lL]|[hH][tT][mM]|[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "published-print": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[cC][pP][rR][tT]-(?:0|[1-9][0-9]{0,9})(?:[hH][pP][rR][tT]|[jJ][pP][rR][tT]|[sS][pP][rR][tT]|[wW][pP][rR][tT])(?:[0-9]+)(?:(?:-[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*|[vV][0-9]+|\\([0-9]+\\))?))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[hH][tT][mM][lL]|[hH][tT][mM]|[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "committee-amendment-described": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[bB][iI][lL][lL][sS]-(?:0|[1-9][0-9]{0,9})-(?:[^\\s/\\\\<>:\"|?*\\x00-\\x1F\\x7F\\u0085\\uFEFF]+)-(?:[A-Za-z][0-9]{6})-[aA][mM][dD][tT]-(?:(?=[A-Za-z0-9_.-]*[A-Za-z0-9])[A-Za-z0-9_][A-Za-z0-9_.-]*))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "committee-enbloc-described": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[bB][iI][lL][lL][sS]-(?:0|[1-9][0-9]{0,9})-(?:[^\\s/\\\\<>:\"|?*\\x00-\\x1F\\x7F\\u0085\\uFEFF]+)-(?:[A-Za-z][0-9]{6})-[aA][mM][dD][tT]-(?:(?=[A-Za-z0-9_.-]*[A-Za-z0-9])[A-Za-z0-9_][A-Za-z0-9_.-]*)-[eE][nN][bB][lL][oO][cC]-(?:[0-9]+))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "committee-print": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[cC][pP][rR][tT]-(?:0|[1-9][0-9]{0,9})-(?:[hH][pP][rR][tT]|[jJ][pP][rR][tT]|[sS][pP][rR][tT])-(?:[A-Za-z]{2}(?:[0-9]{2})?)-(?:[^\\s/\\\\<>:\"|?*\\x00-\\x1F\\x7F\\u0085\\uFEFF]+))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "bill-untyped-numbered": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[bB][iI][lL][lL][sS]-[1-9][0-9]{2}(?:[0-9]{1,10})(?:[pP][wW][aA][hH]|[rR][eE][aA][hH]|[rR][eE][nN][rR]|[aA][sS][hH]|[aA][tT][hH]|[aA][tT][sS]|[cC][dD][hH]|[cC][dD][sS]|[cC][pP][hH]|[cC][pP][sS]|[eE][aA][hH]|[eE][aA][sS]|[eE][nN][rR]|[eE][pP][hH]|[fF][aA][hH]|[fF][pP][hH]|[fF][pP][sS]|[hH][dD][hH]|[hH][dD][sS]|[iI][pP][hH]|[iI][pP][sS]|[lL][tT][hH]|[lL][tT][sS]|[oO][pP][hH]|[oO][pP][sS]|[pP][aA][pP]|[pP][aA][vV]|[pP][cC][hH]|[pP][cC][sS]|[pP][iI][hH]|[rR][aA][hH]|[rR][aA][sS]|[rR][cC][hH]|[rR][cC][sS]|[rR][dD][hH]|[rR][dD][sS]|[rR][eE][sS]|[rR][fF][hH]|[rR][fF][sS]|[rR][iI][hH]|[rR][iI][sS]|[rR][tT][hH]|[rR][tT][sS]|[sS][aA][sS]|[aA][sS]|[eE][hH]|[eE][sS]|[iI][hH]|[iI][sS]|[pP][pP]|[rR][hH]|[rR][sS]|[sS][cC])(?:[0-9]*(?:\\([^()\\s/\\\\<>:\"|?*]+\\))?(?:[-_][^\\s/\\\\<>:\"|?*\\x00-\\x1f\\x7f]+)?))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "bill-untyped-draft": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[bB][iI][lL][lL][sS]-[1-9][0-9]{2}(?:[pP][iI][hH])-(?:[^\\s/\\\\<>:\"|?*\\x00-\\x1F\\x7F\\u0085\\uFEFF]+))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "appropriation-routed": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[bB][iI][lL][lL][sS]-[1-9][0-9]{2}-(?:(?!(?:[hH][cC][oO][nN][rR][eE][sS]|[sS][cC][oO][nN][rR][eE][sS]|[hH][jJ][rR][eE][sS]|[sS][jJ][rR][eE][sS]|[hH][rR][eE][sS]|[sS][rR][eE][sS]|[hH][rR]|[sS])-(?:[fF][cC]|[sS][cC]|[oO][rR][hH])-[aA][pP]-)(?:[A-Za-z0-9_]+-)?(?:[fF][cC]|[sS][cC]|[oO][rR][hH])?-[aA][pP]-[^\\s/\\\\<>:\"|?*\\x00-\\x1F\\x7F\\u0085\\uFEFF]+))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "bill-unnumbered": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[bB][iI][lL][lL][sS]-[1-9][0-9]{2}-(?:[hH][cC][oO][nN][rR][eE][sS]|[sS][cC][oO][nN][rR][eE][sS]|[hH][jJ][rR][eE][sS]|[sS][jJ][rR][eE][sS]|[hH][rR][eE][sS]|[sS][rR][eE][sS]|[hH][rR]|[sS]|)(?:(?:_+|[Xx]{2,}|-+)?)(?:[pP][wW][aA][hH]|[rR][eE][aA][hH]|[rR][eE][nN][rR]|[aA][sS][hH]|[aA][tT][hH]|[aA][tT][sS]|[cC][dD][hH]|[cC][dD][sS]|[cC][pP][hH]|[cC][pP][sS]|[eE][aA][hH]|[eE][aA][sS]|[eE][nN][rR]|[eE][pP][hH]|[fF][aA][hH]|[fF][pP][hH]|[fF][pP][sS]|[hH][dD][hH]|[hH][dD][sS]|[iI][pP][hH]|[iI][pP][sS]|[lL][tT][hH]|[lL][tT][sS]|[oO][pP][hH]|[oO][pP][sS]|[pP][aA][pP]|[pP][aA][vV]|[pP][cC][hH]|[pP][cC][sS]|[pP][iI][hH]|[rR][aA][hH]|[rR][aA][sS]|[rR][cC][hH]|[rR][cC][sS]|[rR][dD][hH]|[rR][dD][sS]|[rR][eE][sS]|[rR][fF][hH]|[rR][fF][sS]|[rR][iI][hH]|[rR][iI][sS]|[rR][tT][hH]|[rR][tT][sS]|[sS][aA][sS]|[aA][sS]|[eE][hH]|[eE][sS]|[iI][hH]|[iI][sS]|[pP][pP]|[rR][hH]|[rR][sS]|[sS][cC])(?:(?![0-9])[0-9]*(?:\\([^()\\s/\\\\<>:\"|?*]+\\))?(?:[-_][^\\s/\\\\<>:\"|?*\\x00-\\x1f\\x7f]+)?)|[bB][iI][lL][lL][sS]-[1-9][0-9]{2}(?:[hH][cC][oO][nN][rR][eE][sS]|[sS][cC][oO][nN][rR][eE][sS]|[hH][jJ][rR][eE][sS]|[sS][jJ][rR][eE][sS]|[hH][rR][eE][sS]|[sS][rR][eE][sS]|[hH][rR]|[sS]|)(?:(?:_+|[Xx]{2,}|-+)?)(?:[pP][wW][aA][hH]|[rR][eE][aA][hH]|[rR][eE][nN][rR]|[aA][sS][hH]|[aA][tT][hH]|[aA][tT][sS]|[cC][dD][hH]|[cC][dD][sS]|[cC][pP][hH]|[cC][pP][sS]|[eE][aA][hH]|[eE][aA][sS]|[eE][nN][rR]|[eE][pP][hH]|[fF][aA][hH]|[fF][pP][hH]|[fF][pP][sS]|[hH][dD][hH]|[hH][dD][sS]|[iI][pP][hH]|[iI][pP][sS]|[lL][tT][hH]|[lL][tT][sS]|[oO][pP][hH]|[oO][pP][sS]|[pP][aA][pP]|[pP][aA][vV]|[pP][cC][hH]|[pP][cC][sS]|[pP][iI][hH]|[rR][aA][hH]|[rR][aA][sS]|[rR][cC][hH]|[rR][cC][sS]|[rR][dD][hH]|[rR][dD][sS]|[rR][eE][sS]|[rR][fF][hH]|[rR][fF][sS]|[rR][iI][hH]|[rR][iI][sS]|[rR][tT][hH]|[rR][tT][sS]|[sS][aA][sS]|[aA][sS]|[eE][hH]|[eE][sS]|[iI][hH]|[iI][sS]|[pP][pP]|[rR][hH]|[rR][sS]|[sS][cC])(?:(?![0-9])[0-9]*(?:\\([^()\\s/\\\\<>:\"|?*]+\\))?(?:[-_][^\\s/\\\\<>:\"|?*\\x00-\\x1f\\x7f]+)?))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "bill-named-draft": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[bB][iI][lL][lL][sS]-[1-9][0-9]{2}(?:[cC][oO][mM][mM][iI][tT][tT][eE][eE][rR][eE][sS][oO][lL][uU][tT][iI][oO][nN]|[dD][iI][sS][cC][uU][sS][sS][iI][oO][nN][dD][rR][aA][fF][tT]|[cC][oO][mM][mM][iI][tT][tT][eE][eE][rR][uU][lL][eE][sS]|[cC][oO][mM][mM][iI][tT][tT][eE][eE][rR][eE][sS]|[cC][oO][mM][mM][rR][eE][sS]|[tT][fF][iI][tT][fF][rR]|[dD][rR][aA][fF][tT])(?:[_0-9Xx-]*)(?:[pP][iI][hH]|[iI][hH])(?:[0-9]*(?:\\([^()\\s/\\\\<>:\"|?*]+\\))?(?:[-_][^\\s/\\\\<>:\"|?*\\x00-\\x1f\\x7f]+)?))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "bill-measure-list": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[bB][iI][lL][lL][sS]-[1-9][0-9]{2}(?:[sS][aA]|)(?:(?:(?:[hH][cC][oO][nN][rR][eE][sS]|[sS][cC][oO][nN][rR][eE][sS]|[hH][jJ][rR][eE][sS]|[sS][jJ][rR][eE][sS]|[hH][rR][eE][sS]|[sS][rR][eE][sS]|[hH][rR]|[sS])[1-9][0-9]{0,9})+)(?:(?![\\s\\S]*-[Aa][Mm][Dd][Tt]-)(?![\\s\\S]*-[Hh][Aa][Mm][Dd][Tt])[0-9]*(?:\\([^()\\s/\\\\<>:\"|?*]+\\))?(?:[-_][^\\s/\\\\<>:\"|?*\\x00-\\x1f\\x7f]+)?)|[bB][iI][lL][lL][sS]-[1-9][0-9]{2}-(?:[sS][aA]|)(?:(?:(?:[hH][cC][oO][nN][rR][eE][sS]|[sS][cC][oO][nN][rR][eE][sS]|[hH][jJ][rR][eE][sS]|[sS][jJ][rR][eE][sS]|[hH][rR][eE][sS]|[sS][rR][eE][sS]|[hH][rR]|[sS])[1-9][0-9]{0,9})+)(?:(?![\\s\\S]*-[Aa][Mm][Dd][Tt]-)(?![\\s\\S]*-[Hh][Aa][Mm][Dd][Tt])[0-9]*(?:\\([^()\\s/\\\\<>:\"|?*]+\\))?(?:[-_][^\\s/\\\\<>:\"|?*\\x00-\\x1f\\x7f]+)?))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "bill-numbered-described": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[bB][iI][lL][lL][sS]-[1-9][0-9]{2}(?:(?:[hH][cC][oO][nN][rR][eE][sS]|[sS][cC][oO][nN][rR][eE][sS]|[hH][jJ][rR][eE][sS]|[sS][jJ][rR][eE][sS]|[hH][rR][eE][sS]|[sS][rR][eE][sS]|[hH][rR]|[sS])?[0-9]{1,10})(?:(?:[A-Za-z][^\\s/\\\\<>:\"|?*\\x00-\\x1f\\x7f\\u0085\\uFEFF]*?)?)(?:[pP][iI][hH]|[iI][hH])(?:[0-9]*(?:\\([^()\\s/\\\\<>:\"|?*]+\\))?(?:[-_][^\\s/\\\\<>:\"|?*\\x00-\\x1f\\x7f]+)?)|[bB][iI][lL][lL][sS]-[1-9][0-9]{2}-(?:(?:[hH][cC][oO][nN][rR][eE][sS]|[sS][cC][oO][nN][rR][eE][sS]|[hH][jJ][rR][eE][sS]|[sS][jJ][rR][eE][sS]|[hH][rR][eE][sS]|[sS][rR][eE][sS]|[hH][rR]|[sS])?[0-9]{1,10})(?:(?:[A-Za-z][^\\s/\\\\<>:\"|?*\\x00-\\x1f\\x7f\\u0085\\uFEFF]*?)?)(?:[pP][iI][hH]|[iI][hH])(?:[0-9]*(?:\\([^()\\s/\\\\<>:\"|?*]+\\))?(?:[-_][^\\s/\\\\<>:\"|?*\\x00-\\x1f\\x7f]+)?))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "bill-titled-draft": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[bB][iI][lL][lL][sS]-[1-9][0-9]{2}(?:[A-Za-z][^\\s/\\\\<>:\"|?*\\x00-\\x1f\\x7f\\u0085\\uFEFF]*?)(?:[pP][iI][hH]|[iI][hH])(?:[0-9]*(?:\\([^()\\s/\\\\<>:\"|?*]+\\))?(?:[-_][^\\s/\\\\<>:\"|?*\\x00-\\x1f\\x7f]+)?))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    },
+    "bill-house-amendment": {
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^(?:[bB][iI][lL][lL][sS]-[1-9][0-9]{2}(?:[^\\s/\\\\<>:\"|?*\\x00-\\x1F\\x7F\\u0085\\uFEFF]+)-[hH][aA][mM][dD][tT](?:[0-9]*)(?:[0-9]*(?:\\([^()\\s/\\\\<>:\"|?*]+\\))?(?:[-_][^\\s/\\\\<>:\"|?*\\x00-\\x1f\\x7f]+)?))(?:-[Uu][1-9][0-9]{0,9})?\\.(?:[pP][dD][fF]|[xX][mM][lL])$(?![\\s\\S])"
+    }
+  }
+}

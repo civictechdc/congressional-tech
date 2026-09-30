@@ -17,7 +17,7 @@
 | --- | --- |
 | [SOURCE_MODELS.md](SOURCE_MODELS.md) | Pydantic source models, parsers, and the path to `adapters/` |
 | [SOURCE_MODEL_REVIEW.md](SOURCE_MODEL_REVIEW.md) | September 2026 manual review log and test counts |
-| [FILENAME_PATTERNS.md](FILENAME_PATTERNS.md) | Regex filename parsing, corpus audits, residuals |
+| [Filename tooling](../house-naming/FILENAME_PATTERNS.md) | Regex filename parsing, corpus audits, residuals |
 | [WITNESS_PDF_DATASET.md](WITNESS_PDF_DATASET.md) | House witness-list XML ↔ PDF pairing inventory |
 | [PDF_EXTRACTOR_COMPARISON.md](PDF_EXTRACTOR_COMPARISON.md) | Witness-list PDF extractor benchmark (keeps `pypdf`) |
 | [committee-meeting](../committee_meeting/README.md) | Canonical normalized meeting model |
@@ -41,7 +41,7 @@ Runtime dependencies include `committee-meeting`, `congress-shared`, `youtube-ap
 
 `hearing-transcribe` expects `ffmpeg` and `ffprobe` on `PATH`. YouTube and Senate audio paths use `yt-dlp`.
 
-`python -m congress_api.filename_corpus` reads Parquet inventories; install **`pyarrow`** separately when you run that module (not listed in `pyproject.toml`).
+Filename parsing and corpus tooling live in the independent [house-naming package](../house-naming/README.md); they are not congress-api runtime dependencies.
 
 ## Credentials and environment
 
@@ -69,14 +69,14 @@ packages/congress_api/
 ├── package.json              # @ct/congress-api workspace marker
 ├── turbo.json                # Extends repo Turborepo config
 ├── main.py                   # Placeholder script (not a console entry)
-├── *.md                      # Source-model and filename specs (see table above)
+├── *.md                      # Source-model specs (see table above)
 └── src/congress_api/
     ├── api.py                # Congress.gov v3 client (TinyDB fetch path)
     ├── meetings.py           # congress-meetings → gzip JSONL
     ├── committee_metadata.py # congress-committees → committee snapshots
     ├── congress_source.py    # Parse Congress.gov JSON/XML bodies
     ├── http.py, zyte.py      # Retries, pacing, optional Zyte
-    ├── committees.py, witnesses.py, bill_codes.py, filenames.py, filename_corpus.py
+    ├── committees.py, witnesses.py
     ├── xml.py, xml_to_dict.py, json_to_tinydb.py
     ├── adapters/             # Offline source → committee-meeting records
     ├── analyze/              # TinyDB committee graph (legacy explore path)
@@ -118,7 +118,6 @@ Packages with an `__init__.py`: `adapters`, `house`, `senate`, `inventory`, `tra
 | `python -m congress_api.senate.replay` | Upgrade retained Senate pages from cache |
 | `python -m congress_api.gpo.replay` | Merge cached MODS/HTML into GPO CSV and evidence |
 | `python -m congress_api.senate.captions` | Same as `senate-captions` |
-| `python -m congress_api.filename_corpus` | Build regex corpus artifacts from a filename Parquet inventory |
 | `python -m congress_api.json_to_tinydb` | Legacy one-off TinyDB loader (hard-coded paths; not in `[project.scripts]`) |
 
 ## Common workflows
@@ -186,13 +185,26 @@ senate-captions --out-dir ~/hearing-text/senate --urls-file links.txt
 
 Downloads English WebVTT from ISVP HLS (archive and live paths). URL helpers live in `senate/isvp.py` (`COMM`, `STREAM`, `LIVE_ID`, `archive_url`, `live_url`).
 
-### 7. Filename regex corpus (offline)
+### 7. Filename analysis (separate package)
 
-```bash
-python -m congress_api.filename_corpus filenames.parquet output-dir/ --legislators legislators.json
+Use [house-naming](../house-naming/FILENAME_PATTERNS.md) for literal filename
+extraction, typed results and corpus analysis. `congress_api` supplies no filename
+parser or bill-code facade.
+
+When surname context is needed, prepare it from the source legislator model:
+
+```python
+import json
+from pathlib import Path
+from congress_api.models.legislators import parse_legislators, member_surnames_by_congress
+
+members = parse_legislators(Path("legislators.json").read_bytes())
+Path("member-surnames.json").write_text(json.dumps(member_surnames_by_congress(members)))
 ```
 
-See [FILENAME_PATTERNS.md](FILENAME_PATTERNS.md). Library entry points: `filenames.parse_filename`, `bill_codes.BILL_TYPES` / `BILL_VERSIONS`, `filename_corpus.build_corpus`.
+Pass that JSON to `house-naming extract --member-surnames` or
+`house-naming-corpus --member-surnames`. The naming package never imports the raw
+legislator reader.
 
 ### 8. Legacy TinyDB explore path
 
@@ -233,9 +245,9 @@ From `congress_shared.globals` (package-relative, not cwd-relative):
 
 ### Filename parsing
 
-- **`bill_codes.py`** — GovInfo bill type and version vocabulary.
-- **`filenames.py`** — `parse_filename`, `resolve_unmatched_filename`, `RULES`, token helpers.
-- **`filename_corpus.py`** — `build_corpus`, structural-rules and coverage artifacts.
+Filename extraction, GovInfo vocabulary, typed results and corpus tooling belong
+to [house-naming](../house-naming/README.md). This package only prepares the
+optional Congress-keyed surname vocabulary from raw legislator records.
 
 ### `models/`
 
@@ -331,7 +343,8 @@ Install the optional extra, then run targeted suites (paths from package docs):
 
 ```bash
 uv pip install -e "packages/congress_api[test]"
-python -m pytest tests/test_filename_patterns.py tests/test_filename_families.py tests/test_filename_residuals.py -q
+uv pip install -e "packages/house-naming[test]"
+python -m pytest packages/house-naming/tests tests/test_filename_patterns.py -q
 python -m pytest tests packages/committee_meeting/tests -q
 ```
 

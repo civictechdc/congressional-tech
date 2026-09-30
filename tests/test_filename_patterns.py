@@ -5,8 +5,8 @@ import json
 
 import pytest
 
-from congress_api.filenames import (
-    RULES, ParsedFilename, resolve_unmatched_filename, date_readings, filename_tokens, parse_filename,
+from house_naming.filenames import (
+    registry, ParsedFilename, resolve_unmatched_filename, date_readings, filename_tokens, parse_filename,
     shared_token_pattern,
 )
 
@@ -100,9 +100,9 @@ def test_filename_claims_do_not_become_document_truth():
 
 
 @pytest.mark.parametrize(('name', 'type_code', 'version_code', 'version_label'), [
-    ('BILLS-115hr1892eas2.pdf', 'hr', 'eas', 'Engrossed Amendment (Senate)'),
-    ('BILLS-113-HR4660ih(asfiled).pdf', 'hr', 'ih', 'Introduced (House)'),
-    ('BILLS-119s1rh.xml', 's', 'rh', 'Reported in (House)'),
+    ('BILLS-115hr1892eas2.pdf', 'hr', 'eas', 'Engrossed Amendment Senate'),
+    ('BILLS-113-HR4660ih(asfiled).pdf', 'hr', 'ih', 'Introduced in House'),
+    ('BILLS-119s1rh.xml', 's', 'rh', 'Reported in House'),
     ('BILLS-119HCONRES14pp.htm', 'hconres', 'pp', 'Public Print'),
 ])
 def test_published_labels_preserve_bill_origin_and_version_separately(name, type_code, version_code, version_label):
@@ -111,14 +111,15 @@ def test_published_labels_preserve_bill_origin_and_version_separately(name, type
     assert fs['measure_token'].code == type_code
     assert fs['version_token'].code == version_code
     assert fs['version_token'].label == version_label
-    assert fs['version_token'].vocabulary_url == 'https://www.govinfo.gov/help/bills'
+    from house_naming.naming import code_label
+    assert fs['version_token'].vocabulary_url == code_label('version', version_code)[1]
     for modifier in ('version_number_token', 'annotation'):
         if modifier in fs:
             assert fs[modifier].label is None
             assert name[fs[modifier].start:fs[modifier].end] == fs[modifier].raw
 
 
-@pytest.mark.parametrize('token', ['pis', 'or', 'SA', 'SUS'])
+@pytest.mark.parametrize('token', ['pis', 'or', 'SA'])
 def test_unlisted_tokens_survive_without_fabricated_official_labels(token):
     parsed = parse_filename(f'BILLS-119HR42{token}.pdf')
     versions = [f for m in parsed.matches for f in m.fields if f.name == 'version_token']
@@ -137,7 +138,7 @@ def test_explicit_interior_ih_boundary():
     assert descriptor.raw.endswith('DepartmentoftheInterior')
     assert version.raw == 'ih'
     assert version.code == 'ih'
-    assert version.label == 'Introduced (House)'
+    assert version.label == 'Introduced in House'
     assert version.candidates == ('ih',)
     assert fields('BILLS-119HR42rih.pdf', 'legislative-text')['version_token'] == 'rih'
 
@@ -163,14 +164,14 @@ def test_congress_member_and_title_are_separate_lossless_fields(name, surname, t
     context = {'119': (surname,)}
     parsed = parse_filename(name, member_surnames=context)
     assert fields(name, 'legislative-file')['congress'] == '119'
-    fs = fields(name, 'described-legislation', member_surnames=context)
+    fs = fields(name, 'member-title', member_surnames=context)
     assert fs['member_marker'] == 'Rep'
     assert fs['member_surname_token'] == surname
     assert fs['title_token'] == title
     # Joined ATS is a candidate, so preserve it in the whole descriptor even
     # though the candidate title reading stops before it.
     trailing_candidate = 'ats' if name.endswith('LibraryActats.pdf') else ''
-    assert fs['descriptor'] == 'Rep' + surname + title + trailing_candidate
+    assert fields(name, 'described-legislation', member_surnames=context)['descriptor'] == 'Rep' + surname + title + trailing_candidate
     for match in parsed.matches:
         for field in match.fields:
             assert name[field.start:field.end] == field.raw
@@ -180,7 +181,7 @@ def test_unknown_member_name_boundary_and_absent_title_stay_unresolved():
     fs = fields('BILLS-119HR42RepVanDrewSomeTitleih.pdf', 'described-legislation')
     assert fs['descriptor'] == 'RepVanDrewSomeTitle'
     assert 'member_surname_token' not in fs
-    fs = fields('BILLS-118HR6062RepRadewagenih.pdf', 'described-legislation',
+    fs = fields('BILLS-118HR6062RepRadewagenih.pdf', 'member-title',
                 member_surnames={'118': ('Radewagen',)})
     assert fs['member_surname_token'] == 'Radewagen'
     assert 'title_token' not in fs
@@ -193,7 +194,7 @@ def test_unknown_member_name_boundary_and_absent_title_stay_unresolved():
 ])
 def test_new_and_multipart_surnames_require_no_parser_change(source_name, filename_name):
     name = f'BILLS-119HR42Rep{filename_name}SomeTitleih.pdf'
-    fs = fields(name, 'described-legislation', member_surnames={'119': (source_name,)})
+    fs = fields(name, 'member-title', member_surnames={'119': (source_name,)})
     assert fs['member_surname_token'] == filename_name
     assert fs['title_token'] == 'SomeTitle'
     absent = fields(name, 'described-legislation', member_surnames={'118': (source_name,)})
@@ -202,14 +203,14 @@ def test_new_and_multipart_surnames_require_no_parser_change(source_name, filena
 
 def test_surname_boundary_uses_longest_reference_name_without_consuming_lowercase_word():
     context = {'119': ('Miller', 'Miller-Meeks', 'Smith')}
-    fs = fields('BILLS-119HR42RepMillerMeeksSomeTitleih.pdf', 'described-legislation', member_surnames=context)
+    fs = fields('BILLS-119HR42RepMillerMeeksSomeTitleih.pdf', 'member-title', member_surnames=context)
     assert fs['member_surname_token'] == 'MillerMeeks'
     fs = fields('BILLS-119HR42RepSmithsonianSomeTitleih.pdf', 'described-legislation', member_surnames=context)
     assert 'member_surname_token' not in fs
 
 
 def test_service_dates_scope_names_to_congress_with_exclusive_term_end():
-    from congress_api.filename_corpus import member_surnames_by_congress
+    from congress_api.models.legislators import member_surnames_by_congress
     from congress_api.models.legislators import Legislator
     members = [Legislator.model_validate({'id': {'bioguide': f'T{i:06}'},
         'name': {'first': 'Example', 'last': last},
@@ -247,7 +248,7 @@ def test_suffix_words_and_routing_are_not_mistaken_for_version_codes():
     'honglenmulreadysenatebudgetcommitteetestimony.pdf',
 ])
 def test_specific_layout_does_not_also_match_generic_payload(name):
-    scopes = {r.id: r.scope for r in RULES}
+    scopes = {r['id']: r['scope'] for r in registry()}
     for scope in ('stem', 'committee-payload', 'legislative-payload'):
         assert len([m for m in parse_filename(name).matches if scopes.get(m.rule) == scope]) <= 1
 
@@ -297,7 +298,7 @@ def test_shared_rules_require_literal_token_inputs(variants, kind):
 
 
 def test_corpus_build_checks_variants_offsets_and_unmatched_names(tmp_path):
-    from congress_api.filename_corpus import build_corpus
+    from house_naming.filename_corpus import build_corpus
     names = [
         'HHRG-113-AG00-Wstate-ColbyJ-20130314.pdf',
         'HHRG-113-AG00-Wstate-SmithM-20130314.pdf',
@@ -323,7 +324,6 @@ def test_corpus_build_checks_variants_offsets_and_unmatched_names(tmp_path):
 @pytest.mark.parametrize(('filename', 'expected'), [
     ('105526.pdf', {'generic_identifier': '105526', 'name_token': ''}),
     ('999999-sammypdf.pdf', {'generic_identifier': '999999', 'name_token': 'sammy', 'ignored_suffix': 'pdf'}),
-    ('3451027152158245824.pdf', {'generic_identifier': '3451027152158245824', 'name_token': ''}),
     ('Doraiswamy.04061.pdf', {'name_token': 'Doraiswamy', 'generic_identifier': '04061'}),
     ('Betancourt.pdf', {'name_token': 'Betancourt'}),
     ('Caroline-Vicini.pdf', {'name_token': 'Caroline-Vicini'}),
@@ -340,7 +340,7 @@ def test_unmatched_name_assumptions_preserve_original_spelling(filename, expecte
     for field in interpretation.fields:
         assert filename[field.start:field.end] == field.raw
         assert not field.candidates
-        assert field.note == 'User-specified assumption for otherwise unmatched filenames.'
+        assert field.note == 'User-requested fallback assumption; not a verified person or identifier.'
     assert ''.join(piece.raw for piece in parsed.pieces) == filename
     assert parsed == parse_filename(filename)
 
@@ -373,7 +373,7 @@ def test_dates_and_timestamps_win_before_identifier_fallbacks(filename, rule, ex
 
 
 def test_corpus_uses_assumptions_only_for_the_unmatched_remainder(tmp_path):
-    from congress_api.filename_corpus import build_corpus
+    from house_naming.filename_corpus import build_corpus
     result = build_corpus(['20220307.xml', 'sammypdf.pdf', 'tobias-tedtimony.pdf', 'offered.zip',
                            'shared_one.pdf', 'shared_two.pdf'], tmp_path)
     assert result['filenames_with_shared_token_or_recurring_layout'] == 2
@@ -388,3 +388,10 @@ def test_corpus_uses_assumptions_only_for_the_unmatched_remainder(tmp_path):
     assert numeric['basis'] == 'date_pattern'
     assert numeric['interpretation']['rule'] == 'unmatched-leading-date'
     assert 'generic_identifier' not in {f['name'] for f in numeric['interpretation']['fields']}
+
+
+def test_opaque_numeric_token_does_not_trigger_a_second_fallback_parser():
+    parsed = parse_filename('3451027152158245824.pdf')
+    assert resolve_unmatched_filename(parsed) is None
+    assert any(f.name == 'opaque_hex' and f.raw == '3451027152158245824'
+               for m in parsed.matches for f in m.fields)

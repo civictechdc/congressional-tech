@@ -41,7 +41,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install packages
-        run: pip install -e packages/committee_meeting -e packages/congress_shared -e packages/youtube_api -e packages/congress_api
+        run: pip install -e packages/house-naming -e packages/committee_meeting -e packages/congress_shared -e packages/youtube_api -e packages/congress_api
 
       - name: Fetch YouTube channels
         id: youtube_fetch
@@ -85,7 +85,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install packages
-        run: pip install -e packages/committee_meeting -e packages/congress_shared -e packages/youtube_api -e packages/congress_api
+        run: pip install -e packages/house-naming -e packages/committee_meeting -e packages/congress_shared -e packages/youtube_api -e packages/congress_api
 
       - name: Fetch GPO hearing transcripts
         id: gpo
@@ -136,7 +136,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install packages
-        run: pip install -e packages/committee_meeting -e packages/congress_shared -e packages/youtube_api -e 'packages/congress_api[test]' -e apps/committee_youtube
+        run: pip install -e packages/house-naming -e packages/committee_meeting -e packages/congress_shared -e packages/youtube_api -e 'packages/congress_api[test]' -e apps/committee_youtube
 
       - name: Test source parsing and refresh decisions
         run: python -m pytest -q
@@ -195,7 +195,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install packages
-        run: pip install -e packages/committee_meeting -e packages/congress_shared -e packages/youtube_api -e packages/congress_api
+        run: pip install -e packages/house-naming -e packages/committee_meeting -e packages/congress_shared -e packages/youtube_api -e packages/congress_api
       - name: Refresh official committee metadata
         env:
           DATA_GOV_API_KEY: ${{ secrets.DATA_GOV_API_KEY }}

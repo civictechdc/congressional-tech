@@ -1,0 +1,15 @@
+Source material: Document Naming Conventions, version 1.2.1, Office of the Clerk,
+Legislative Computer Systems; February 15, 2012, updated April 24, 2012.
+Source edition, dates and original PDF digest are recorded in guide.json.
+Bundled source text is a normalized semantic projection of that publication.
+
+This package is not issued, approved, or endorsed by that office. The data is a
+historical semantic projection, not a statement of current requirements.
+Original definitions, spelling, source examples and retained committee-directory values are preserved.
+The historical member directory and its source-text anchors are intentionally omitted;
+source-edition metadata and Bioguide ID filename conventions remain unchanged.
+Implementation interpretations and bounds are labeled separately.
+
+The accompanying MIT license applies to the original implementation, schemas,
+and packaging material supplied here. It does not change any rights applicable
+to the underlying source material. No XML or PDF input is required by the package.
