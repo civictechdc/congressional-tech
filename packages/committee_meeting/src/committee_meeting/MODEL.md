@@ -1,8 +1,8 @@
 # Committee Explorer data model
 
-**Status: executable proposal, schema `0.1.0-draft.2`.** These models validate
-records and relationships. They do not yet import production data, replace
-existing transcript bodies, or change the pipeline or site.
+**Status: executable model, schema `0.1.0-draft.2`.** These models validate
+records and relationships. The application exporter and its IdRegistry are
+current policy ([adapter identity policy](../../../../docs/congress-api-contracts.md#adapter-identity-policy)); this package still does not replace transcript bodies.
 
 ## Recommendation
 
@@ -337,7 +337,7 @@ JSON Schema alone does not prove cross-record integrity.
 |---|---|---|
 | Acquisition, parsing, refresh, matching | Existing source packages/helpers | Preserve current ownership. |
 | Shared metadata definitions | `committee_meeting` | Introduced by this draft. |
-| Identity persistence, joining, coverage, partitions | Application exporter | Proposed; exporter and durable ID mapping remain to implement. |
+| Identity persistence, joining, coverage, partitions | Application exporter | Current. The exporter persists IDs in its IdRegistry ([adapter identity policy](../../../../docs/congress-api-contracts.md#adapter-identity-policy)). |
 | Transcript content and parsing | Existing transcript schema/parser | Reused by reference. |
 | Search, filters, display preferences | `apps/site` | Consumes exports; does not infer identities or source freshness. |
 
