@@ -58,15 +58,15 @@ def main(meetings, state_dir, output_dir, gpo_path, videos_path, tinydb_dir, rec
         videos = read_youtube_videos(tinydb_dir, read_csv(channels_csv_path))
         rows = text_sources.build(ms, gpo, videos, documents,
             read_csv(output_dir / "senate_hearing_pages_found.csv"), read_csv(recordings),
-            {(comm, day): probes.get(f"{comm}|{day}", {}).get("urls", []) for comm, day in days}, state.get("youtube", {}), state.get("senate", {}))
+            {(comm, day): probes.get(f"{comm}|{day}", {}).get("urls", []) for comm, day in days}, state.get("youtube", {}), state.get("senate", {}),
+            hearing_videos=read_csv(videos_path))
         index = {r["event_id"]: r for r in rows}
-        recorded = {r["package_id"] for r in read_csv(videos_path) if r["status"] in ("full_recording", "full_recording_offsite")}
         house_witnesses = read_csv(output_dir / "house_witnesses_found.csv")
         senate_witnesses = read_csv(output_dir / "senate_witnesses_found.csv")
         own_print, witness_list = completeness.witness_sources(ms, index, house_witnesses)
         acquisition.collect_witnesses(own_print, witness_list, ms, {r["package_id"]: r for r in gpo},
                                       state, as_of, offline, seed_cache)
-        inventory, witnesses = completeness.build(ms, index, recorded, house_witnesses, senate_witnesses,
+        inventory, witnesses = completeness.build(ms, index, house_witnesses, senate_witnesses,
             documents, own_print, witness_list, state.get("mods", {}), state.get("witness_lists", {}))
     finally:
         ## Partial source progress and failed checks survive a local or CI failure.

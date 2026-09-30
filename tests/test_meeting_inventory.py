@@ -83,7 +83,7 @@ def test_mods_witnesses_can_live_in_granules():
 def test_completeness_preserves_legacy_title_newlines():
     m = {"eventId": "1", "congress": 119, "date": "2026-09-01", "type": "Meeting", "title": "Business\r\nmeeting"}
     r = dict(event_id="1", committees="ssju00", title=m["title"], gpo_packages="", youtube_ids="", senate_urls="", other_recordings="", text_source="no_video", rescheduled_to="", not_held="")
-    rows, people = completeness.build([m], {"1": r}, set(), [], [], [], {}, {}, {}, {})
+    rows, people = completeness.build([m], {"1": r}, [], [], [], {}, {}, {}, {})
     assert rows[0]["title"] == "Business\nmeeting" and people == []
 
 
@@ -97,26 +97,10 @@ def test_print_date_alone_does_not_assign_two_proceedings():
     assert match_prints(ms, gpo)["2"] == {"CHRG-118hhrg123"}
 
 
-def test_dates_bill_names_nominees_and_natural_resources_time():
+def test_dates_bill_names_and_nominees():
     assert text_sources.title_dates("June 28, 2013 Full Committee Business Meeting") == {dt.date(2013, 6, 28)}
-    assert text_sources.unit_and_minutes("3.2.16. EMR. 10:00 AM.") == ("hsii06", 600)
     assert text_sources.bills("H.R. 2810 and S.J.Res. 7") == {("HR", "2810"), ("SJRES", "7")}
     assert completeness.nominees("Hearings to examine the nominations of Thomas Peter Feddo, of Virginia, to be Assistant Secretary of the Treasury for Investment Security.") == [("Thomas Peter Feddo", "Assistant Secretary of the Treasury for Investment Security")]
-
-
-@pytest.mark.parametrize('native,title,upload,expected', [
-    ('Meeting', 'Hearings to examine policy', 'Full Committee Markup', False),
-    ('Meeting', 'Hearings to examine policy', 'Legislative Hearing', True),
-    ('Meeting', 'Closed business meeting to consider nominations', 'Business Meeting', True),
-    ('Field Hearing', 'Rural access', 'Oversight Hearing', True),
-    ('Markup', 'Budget', 'Full Committee Markup', True),
-    ('Briefing', 'Budget', 'Oversight Hearing', False),
-    ('Meeting', 'Budget', 'Business Meeting', True),
-    ('Open Hearing', 'Hearings to examine the nomination of Todd Blanche',
-     'Senate Judiciary Democrats Offer Takeaways from Todd Blanche Hearing', False),
-])
-def test_generic_recording_matches_use_normalized_meeting_type(native, title, upload, expected):
-    assert text_sources.session_kind_fits({'type': native, 'title': title}, upload) is expected
 
 
 @pytest.mark.parametrize('title,expected', [
@@ -152,16 +136,18 @@ def test_video_cache_reading_is_separate_from_matching(tmp_path, monkeypatch, ca
 
     monkeypatch.setattr("builtins.open", forbidden)
     monkeypatch.setattr(Path, "open", forbidden)
-    rows = text_sources.build([meeting], [], iter(videos), [], [], [], {}, {}, {})
+    # A similar title is not a second video score.
+    assert text_sources.build([meeting], [], iter(videos), [], [], [], {}, {}, {})[0]["youtube_ids"] == ""
+    # An event id in the title still attaches, and the cache caption flag selects the text label.
+    named = {**video, "title": "Hearing EventID=123456", "description": ""}
+    rows = text_sources.build([meeting], [], [("hsag00", named)], [], [], [], {}, {}, {})
     assert rows[0]["youtube_ids"] == video["videoId"]
+    assert rows[0]["gpo_packages"] == ""
     assert rows[0]["text_source"] == expected
-    # Title/date matching must stay within the supplied committee.
-    meeting["committees"] = [{"systemCode": "hsag00"}]
-    assert text_sources.build([meeting], [], videos, [], [], [], {}, {}, {})[0]["youtube_ids"] == ""
     assert videos == [("hsju00", video)]
 
 
-def test_weak_print_keeps_window_youtube_but_strong_print_suppresses_it():
+def test_title_similarity_does_not_assign_youtube_and_package_videos_do():
     meeting = {"eventId": "1", "congress": 118, "chamber": "House", "date": "2024-01-02",
                "type": "Hearing", "title": "Competition in digital markets", "committees": [{"systemCode": "hsju00"}]}
     video = ("hsju00", {"videoId": "windowvid123", "title": "Competition in digital markets", "description": "",
@@ -169,12 +155,28 @@ def test_weak_print_keeps_window_youtube_but_strong_print_suppresses_it():
     weak = [{"package_id": "CHRG-118hhrg1", "congress": "118", "event_id": "", "committee_code": "hsju00",
              "title": "Competition in digital markets", "held_date": "2024-01-02", "hearing_dates": ""}]
     strong = [{**weak[0], "event_id": "1", "title": "Unrelated agricultural commodity programs"}]
-    weak_row = text_sources.build([meeting], weak, [video], [], [], [], {}, {}, {})[0]
-    assert weak_row["gpo_packages"] == "CHRG-118hhrg1"
-    assert "windowvid123" in weak_row["youtube_ids"].split()
-    strong_row = text_sources.build([meeting], strong, [video], [], [], [], {}, {}, {})[0]
-    assert strong_row["gpo_packages"] == "CHRG-118hhrg1"
-    assert strong_row["youtube_ids"] == ""
+    assigned = [{"package_id": "CHRG-118hhrg1", "status": "full_recording", "video_ids": "windowvid123"}]
+    for prints in (weak, strong):
+        unassigned = text_sources.build([meeting], prints, [video], [], [], [], {}, {}, {})[0]
+        assert unassigned["gpo_packages"] == "CHRG-118hhrg1"
+        assert unassigned["youtube_ids"] == ""
+        attached = text_sources.build([meeting], prints, [video], [], [], [], {}, {}, {}, hearing_videos=assigned)[0]
+        assert attached["youtube_ids"] == "windowvid123"
+    offsite = "https://www.senate.gov/isvp/?comm=judiciary&filename=judiciary010224"
+    other = "https://example.org/archive/hearing"
+    mixed = [{"package_id": "CHRG-118hhrg1", "status": "full_recording_offsite", "video_ids": f"{offsite} {other}"},
+             {"package_id": "CHRG-118hhrg9", "status": "clips_only", "video_ids": "clipvid12345"},
+             {"package_id": "CHRG-118hhrg1", "status": "no_video_found", "video_ids": "ignoredvid1"}]
+    placed = text_sources.build([meeting], strong, [], [], [], [], {}, {}, {}, hearing_videos=mixed)[0]
+    assert placed["senate_urls"] == offsite
+    assert placed["other_recordings"] == other
+    assert placed["youtube_ids"] == ""
+    index = {"1": placed}
+    rows, _ = completeness.build([meeting], index, [], [], [], {}, {}, {}, {})
+    assert rows[0]["recording"] == "yes"
+    bare = {**placed, "youtube_ids": "", "senate_urls": "", "other_recordings": ""}
+    bare_rows, _ = completeness.build([meeting], {"1": bare}, [], [], [], {}, {}, {}, {})
+    assert bare_rows[0]["recording"] == ""
 
 
 def test_youtube_and_senate_urls_are_sorted_like_packages():

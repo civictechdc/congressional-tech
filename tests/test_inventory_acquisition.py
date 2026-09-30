@@ -113,7 +113,7 @@ def test_completeness_uses_saved_mods_without_acquisition(monkeypatch):
     meeting = {'eventId': '1', 'congress': 113, 'chamber': 'House', 'type': 'Hearing', 'date': '2013-07-23'}
     index = {'1': dict(gpo_packages=package, committees='', title='Hearing', youtube_ids='', senate_urls='',
                        other_recordings='', text_source='gpo', rescheduled_to='', not_held='')}
-    rows, people = completeness.build([meeting], index, set(), [], [], [],
+    rows, people = completeness.build([meeting], index, [], [], [],
         {'1': package}, {}, {package: observation}, {})
     assert people and rows[0]['witness_source'] == 'gpo'
     assert {p['name'] for p in people} == {p['name'] for p in observation['people']}

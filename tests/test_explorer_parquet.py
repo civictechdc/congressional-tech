@@ -137,7 +137,7 @@ def test_inventory_adapter_and_browser_use_the_same_meeting_rules(tmp_path, raw_
 
     row = {**native(), 'type': raw_type, 'title': title}
     index = {r['event_id']: r for r in text_sources.build([row], [], [], [], [], [], {}, {}, {})}
-    inventory, _ = completeness.build([row], index, set(), [], [], [], {}, {}, {}, {})
+    inventory, _ = completeness.build([row], index, [], [], [], {}, {}, {}, {})
     assert inventory[0]['kind'] == kind
     assert inventory[0]['access'] == access
     assert inventory[0]['closed'] == ('yes' if access == 'closed' else '')

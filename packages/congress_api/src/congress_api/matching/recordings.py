@@ -1,21 +1,21 @@
 """Build the meeting text index from weekly inputs and parsed source outputs.
 
-Recording rules retain event IDs, bill/title matches, date-labelled uploads,
-Natural Resources subcommittee/time labels, generic session uploads and joint
-hearing sharing. Twenty minutes separates weak matches from member clips.
-Print and transcript ownership is evaluated before caption availability.
+YouTube ids come from Congress.gov video URLs, event ids named in a video's
+title or description, curated non-HTTP recordings, and the ids already assigned
+to one of the meeting's packages. Senate player URLs stay on the meeting or its
+probed committee day. Package assignment, including clip length, cross-day
+exclusivity, and off-YouTube fallback, is not repeated here. Print ownership is
+evaluated before caption availability.
 """
 
 import collections
 import datetime as dt
 import re
 
-from zoneinfo import ZoneInfo
-
 from congress_api.matching.captions import text_source
-from congress_api.matching.committees import codes_of, occupancy_codes_of, parent_code
-from congress_api.matching.gpo_videos import EVENT_ID, VIDEO_ID, similarity, words
-from congress_api.matching.meetings import HEARING_TYPES, NOT_HELD, TRANSCRIPT, meeting_access, meeting_type
+from congress_api.matching.committees import codes_of
+from congress_api.matching.gpo_videos import EVENT_ID, VIDEO_ID
+from congress_api.matching.meetings import NOT_HELD, TRANSCRIPT, meeting_access, meeting_type
 from congress_api.matching.prints import attached_prints, match_prints, same_day_title_groups, title_key
 from congress_api.parsers.senate_player import COMM, STREAM, parse_player_url
 
@@ -29,8 +29,7 @@ JOINT_WITH_SENATE = re.compile(r"\bjoint\b.*\bsenate\b|\bsenate\b.*\bjoint\b", r
 BILL = re.compile(r"\b(H\.?\s?R\.?|H\.?\s?J\.?\s?Res\.?|H\.?\s?Con\.?\s?Res\.?|H\.?\s?Res\.?|S\.?\s?J\.?\s?Res\.?|S\.?\s?Con\.?\s?Res\.?|S\.?\s?Res\.?|S\.)\s?(\d{1,5})\b", re.I)
 
 
-## Dates in upload titles: "10-29-13 Full Committee Business Meeting", "June 28, 2013 Full Committee Business Meeting",
-## and Natural Resources' 2016-18 archive titles "3.2.16. EMR. 10:00 AM." (date, subcommittee, hour)
+## Dates in upload titles: "10-29-13 Full Committee Business Meeting", "June 28, 2013 Full Committee Business Meeting".
 MONTHS = "january february march april may june july august september october november december".split()
 _MONTH_NUMBERS = {name[:3]: i for i, name in enumerate(MONTHS, 1)}
 
@@ -38,26 +37,8 @@ _MONTH_NUMBERS = {name[:3]: i for i, name in enumerate(MONTHS, 1)}
 TITLE_DATE = re.compile(r"\b(\d{1,2})[./-](\d{1,2})[./-](\d{2}|\d{4})\b|\b(" + "|".join(m[:3] for m in MONTHS) + r")[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})\b", re.I)
 
 
-TITLE_UNIT_TIME = re.compile(r"^\S+\s+([A-Za-z&]+)\b.*?(\d{1,2}):(\d{2})\s*([AP])\.?M", re.I | re.S)
-
-
-NR_UNITS = {"FC": "hsii00", "EMR": "hsii06", "FL": "hsii10", "WPO": "hsii13", "OI": "hsii15", "O&I": "hsii15", "IIANA": "hsii24"}
-
-
-## session uploads under generic titles ("Full Committee Markup", "Business Meeting", "Legislative Hearing | Federal Lands Subcommittee")
-HEARING_WORDS = re.compile(r"\bhearing\b", re.I)
-
-
-MARKUP_WORDS = re.compile(r"\b(markup|mark-up|business meeting|organizational|organizing)\b", re.I)
-
-
-SESSION_RECAP = re.compile(r"\b(highlights?|takeaways?|recap|reactions?)\b", re.I)
-
-
-NAME_STOP = set("house senate committee subcommittee on the and of for".split())
-
-
-ET = ZoneInfo("America/New_York")
+## Statuses whose video_ids ``gpo_decisions`` has already accepted as a recording.
+ASSIGNED_RECORDING = frozenset({"full_recording", "full_recording_offsite"})
 
 
 def senate_comms(m, codes):
@@ -73,25 +54,6 @@ def senate_comms(m, codes):
 def bills(title):
     """Bill numbers named in a title, normalised: {("HR", "2810"), ("SJRES", "7")}."""
     return {(re.sub(r"[\s.]", "", kind).upper(), num) for kind, num in BILL.findall(title)}
-
-
-def session_family(kind):
-    """Recording matching groups business with markup and field with hearing.
-
-    These compatibility groups never replace the meeting's actual type.
-    """
-    return "hearing" if kind in HEARING_TYPES else "markup" if kind in ("markup", "business") else kind
-
-
-def session_kind_fits(meeting, title):
-    """Upload-title hints constrain weak matches; they do not classify meetings."""
-    # A long reaction video can mention a hearing without recording it. Exact
-    # IDs and topic/bill matches are evaluated separately from this fallback.
-    if SESSION_RECAP.search(title):
-        return False
-    family = session_family(meeting_type(meeting)[0])
-    hearing, markup = bool(HEARING_WORDS.search(title)), bool(MARKUP_WORDS.search(title))
-    return (hearing and not markup) if family == "hearing" else markup if family == "markup" else (hearing or markup) if family == "meeting" else False
 
 
 def reschedule_candidate(row):
@@ -122,80 +84,46 @@ def title_dates(title):
     return out
 
 
-def unit_and_minutes(title):
-    """(subcommittee code, minutes past midnight) from a Natural Resources archive title ("3.2.16. EMR. 10:00 AM."), else (None, None)."""
-    m = TITLE_UNIT_TIME.match(title)
-    if not m or m.group(1).upper() not in NR_UNITS:
-        return None, None
-    unit, hh, mm, ap = m.groups()
-    return NR_UNITS[unit.upper()], (int(hh) % 12 + (12 if ap.upper() == "P" else 0)) * 60 + int(mm)
+def assigned_by_package(hearing_videos):
+    """package id → tokens ``gpo_decisions`` already stored on an accepted recording row."""
+    by_package = collections.defaultdict(list)
+    for row in hearing_videos or ():
+        if row.get("status") not in ASSIGNED_RECORDING:
+            continue
+        package = row.get("package_id") or ""
+        if not package:
+            continue
+        for token in str(row.get("video_ids") or "").split():
+            by_package[package].append(token)
+    return by_package
 
 
-def build(meetings, gpo, videos, documents, pages, recordings, probed, yt_caps, sen_caps):
-    """Match supplied rows; ``videos`` contains (committee code, video row) pairs."""
+def _place_assigned(token, youtube, senate, other):
+    """Put one assigned token on the index field completeness already treats as a recording."""
+    if parse_player_url(token):
+        senate.append(token)
+    elif token.startswith(("http://", "https://")):
+        if match := VIDEO_ID.search(token):
+            youtube.append(match.group(1))
+        else:
+            other.append(token)
+    else:
+        youtube.append(token)
+
+
+def build(meetings, gpo, videos, documents, pages, recordings, probed, yt_caps, sen_caps, hearing_videos=()):
+    """Match supplied rows; ``videos`` contains (committee code, video row) pairs.
+
+    ``hearing_videos`` is the already written package-recording table. Its ids are
+    copied onto meetings that own those packages. This function does not score them.
+    """
     video_flags = {}
     vid_by_eid = collections.defaultdict(list)
-    by_code_day: dict = collections.defaultdict(list)  # (committee code, upload date) -> videos, for date-window matching
-    dated: dict = collections.defaultdict(list)  # (committee code, date in the title) -> uploads of 20+ minutes titled with that date
-    for code, v in videos:
+    for _code, v in videos:
         video_flags[v["videoId"]] = v.get("caption")
         for a, b in EVENT_ID.findall(v["title"] + " " + v["description"]):
             vid_by_eid[a or b].append(v["videoId"])
-        by_code_day[(code, v["publishedAt"][:10])].append((v["videoId"], v["title"], v.get("duration") or 0, bool(EVENT_ID.search(v["title"] + " " + v["description"]))))
-        if (v.get("duration") or 0) >= 1200:
-            for day in title_dates(v["title"]):
-                dated[(code, day.isoformat())].append((v["videoId"], *unit_and_minutes(v["title"])))
-
-    def window_matches(m, codes):
-        """Tracked videos of the committee at least 20 minutes long (a markup's or short hearing's full recording; a
-        few-minute clip isn't) that fit the meeting one of three ways: posted a day before to three days after it with a
-        similar title or naming one of the same bills; titled with the meeting's date, when the meeting is the
-        committee's only one that day or the title names its subcommittee (Natural Resources' 2016-18 archive uploads,
-        nearest hour when that subcommittee met twice); or a session upload, a generic hearing or markup title that
-        agrees with the meeting's type and carries no other day's date and no event ID, posted on the meeting's day (or
-        the next, when the committee held no session of that kind then), when the meeting is the committee's only one
-        that day or the title names its subcommittee (by any name it has carried) and that subcommittee met only once.
-        A title date that differs only in the year is a typo ("3-12-2012 Committee Business Meeting", posted 2014-03-13)."""
-        day, title = m["date"][:10], m.get("title") or ""
-        tw, tb, out = words(title), bills(title), []
-        d0 = dt.date.fromisoformat(day)
-        units = {c["systemCode"] for c in m.get("committees", [])}
-        start = dt.datetime.fromisoformat(m["date"].replace("Z", "+00:00")).astimezone(ET) if "T" in m["date"] else None
-        for code in codes:
-            natives = [n for n in occupancy_codes_of(m) if parent_code(n) == code]
-            alone = bool(natives) and all(meetings_that_day[n, day] == 1 for n in natives)
-            sub_words = [ws for c in m.get("committees", []) if not c["systemCode"].endswith("00") and units_that_day[(c["systemCode"], day)] == 1
-                         for ws in unit_names[c["systemCode"]]]
-            for k in range(-1, 4):
-                d = (d0 + dt.timedelta(days=k)).isoformat()
-                for vid, vt, dur, tagged in by_code_day.get((code, d), []):
-                    if dur < 1200:
-                        continue
-                    if similarity(tw, words(vt)) >= 0.5 or (tb and tb & bills(vt)):
-                        out.append(vid)
-                    elif (k == 0 or (k == 1 and ("markup" if MARKUP_WORDS.search(vt) else "hearing") not in kinds_that_day[(code, d)])) and not tagged and all((t.month, t.day) == (d0.month, d0.day) for t in title_dates(vt)) \
-                            and session_kind_fits(m, vt) and (alone or any(sw and sw <= set(words(vt)) for sw in sub_words)):
-                        out.append(vid)
-            same_day = [(vid, minutes) for vid, unit, minutes in dated.get((code, day), []) if unit in units or (unit is None and alone)]
-            if same_day and start and any(minutes is not None for _, minutes in same_day):
-                same_day = [min(same_day, key=lambda x: abs((x[1] if x[1] is not None else 10**6) - start.hour * 60 - start.minute))]
-            out.extend(vid for vid, _ in same_day)
-        return list(dict.fromkeys(out))
-    ## Native day occupancy (aliases must not merge select committees into Judiciary counts).
-    meetings_that_day = collections.Counter((c, m["date"][:10]) for m in meetings for c in occupancy_codes_of(m))
-    kinds_that_day = collections.defaultdict(set)
-    for m in meetings:
-        for c in codes_of(m):
-            kinds_that_day[(c, m["date"][:10])].add(session_family(meeting_type(m)[0]))
-    units_that_day = collections.Counter((c["systemCode"], m["date"][:10]) for m in meetings for c in m.get("committees", []))
-    parent_words = {c["systemCode"]: set(words(c["name"])) for m in meetings for c in m.get("committees", []) if c["systemCode"].endswith("00") and c.get("name")}
-    ## every name a subcommittee has carried, as its distinctive words: Congress.gov leaves the name blank on many records
-    unit_names = collections.defaultdict(list)
-    for m in meetings:
-        for c in m.get("committees", []):
-            ws = set(words(c.get("name") or "")) - parent_words.get(c["systemCode"][:4] + "00", set()) - NAME_STOP
-            if ws and not c["systemCode"].endswith("00") and ws not in unit_names[c["systemCode"]]:
-                unit_names[c["systemCode"]].append(ws)
+    assigned = assigned_by_package(hearing_videos)
     found = collections.defaultdict(list)
     for r in recordings:
         found[r["event_id"]].append(r["recording"])
@@ -206,18 +134,13 @@ def build(meetings, gpo, videos, documents, pages, recordings, probed, yt_caps, 
         if r["kind"] == "transcript":
             found_transcripts[r["event_id"]].append(r["url"])
     page_title = {r["event_id"]: r["title"] for r in pages}
-    strong_prints = {}
-    prints = match_prints(meetings, gpo, attached, share=False, strong=strong_prints)
+    prints = match_prints(meetings, gpo, attached, share=False)
     rows = []
     for m in meetings:
         codes = codes_of(m)
         packages = prints[m["eventId"]]
-        # Strong print ownership (event ID / attached file) suppresses window YouTube matching;
-        # weak title/day prints still keep packages for text_source but do not block videos.
-        allow_window = not strong_prints.get(m["eventId"])
         urls = [v.get("url", "") for v in (m.get("videos") or [])]
         youtube = list(dict.fromkeys([VIDEO_ID.search(u).group(1) for u in urls if VIDEO_ID.search(u)] + vid_by_eid.get(m["eventId"], [])
-                                     + (window_matches(m, codes) if allow_window else [])
                                      + [v for v in found[m["eventId"]] if not v.startswith("http")]))
         senate = [u for u in urls if parse_player_url(u)] or [u for comm in senate_comms(m, codes) for u in probed.get((comm, m["date"][:10]), [])]
         rows.append({"event_id": m["eventId"], "congress": m["congress"], "chamber": m.get("chamber", ""), "type": m.get("type", ""), "date": m["date"][:10],
@@ -237,6 +160,14 @@ def build(meetings, gpo, videos, documents, pages, recordings, probed, yt_caps, 
             for r in group:
                 r["gpo_packages"], r["youtube_ids"], r["senate_urls"] = packages, youtube, senate
     for r in rows:
+        youtube, senate = list(r["youtube_ids"]), list(r["senate_urls"])
+        other = r["other_recordings"].split()
+        for package in r["gpo_packages"]:
+            for token in assigned.get(package, ()):
+                _place_assigned(token, youtube, senate, other)
+        r["youtube_ids"] = list(dict.fromkeys(youtube))
+        r["senate_urls"] = list(dict.fromkeys(senate))
+        r["other_recordings"] = " ".join(dict.fromkeys(token for token in other if token))
         r["text_source"] = text_source(r, yt_caps, sen_caps, video_flags)
         if r["text_source"] == "no_video":
             r["not_held"] = r["not_held"] or ("yes" if NOT_HELD.match(re.sub(r"^\W+", "", page_title.get(r["event_id"], ""))) else "")

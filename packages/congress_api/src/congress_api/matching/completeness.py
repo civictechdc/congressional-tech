@@ -2,8 +2,9 @@
 
 Congress.gov, House repository, an exclusive GPO print, attached Witness List
 PDF, Senate page, then nominees in the meeting title. A shared print cannot
-identify one meeting's witnesses. Only documents with URLs count. The matcher
-supplies recording coverage for printed hearings independently of text source.
+identify one meeting's witnesses. Only documents with URLs count. A recording
+is listed when the text index already names a YouTube id, a Senate URL, or
+another recording.
 """
 
 import collections
@@ -45,7 +46,7 @@ def witness_sources(meetings, index, house_witnesses):
     return own_print, witness_list
 
 
-def build(meetings, index, recorded, house_witnesses, senate_witnesses, documents,
+def build(meetings, index, house_witnesses, senate_witnesses, documents,
           own_print, witness_list, mods_observations, pdf_observations):
     """Build reports from collected observations; callers own acquisition and storage."""
     prints_of = {e: r["gpo_packages"].split() for e, r in index.items()}
@@ -82,8 +83,7 @@ def build(meetings, index, recorded, house_witnesses, senate_witnesses, document
         rows.append({"event_id": e, "congress": m["congress"], "chamber": m.get("chamber", ""), "kind": meeting_type(m)[0], "access": access,
                      "closed": "yes" if access == "closed" else "",
                      "date": m["date"][:10], "committees": r["committees"], "title": r["title"].replace("\r\n", "\n").replace("\r", "\n"),
-                     ## a printed hearing's recording is matched to its print by the weekly matcher
-                     "recording": "yes" if r["youtube_ids"] or r["senate_urls"] or r["other_recordings"] or recorded & set(prints_of[e]) else "", "text_source": r["text_source"],
+                     "recording": "yes" if r["youtube_ids"] or r["senate_urls"] or r["other_recordings"] else "", "text_source": r["text_source"],
                      "witnesses": count, "witness_source": source,
                      "witness_list_document": ("yes" if from_list.get(e) else "unparsed" if pdf_observations[witness_list[e]].get("text_present") else "scan") if e in witness_list else "",
                      "print_shared_with_other_meetings": "yes" if not source and shared else "",
