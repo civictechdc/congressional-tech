@@ -23,7 +23,7 @@ This is a [Turborepo](https://turborepo.com) monorepo using npm workspaces, in t
 | Package | What it provides |
 | --- | --- |
 | **`congress_shared`** | Auth, config, and reference data shared across the tools. |
-| **`congress_api`** | Fetch and analyze committee + event data from Congress.gov. CLIs: `congress-fetch`, `congress-analyze`. |
+| **`congress_api`** | Production meeting mirror, GovInfo and committee-site capture, inventories and transcripts. Start with `congress-meetings`; TinyDB explore commands remain optional. |
 | **`youtube_api`** | Fetch and analyze committee YouTube data. CLIs: `youtube-fetch`, `youtube-analyze`. |
 | **`committee_meeting`** | Committee meeting metadata helpers. |
 
@@ -78,18 +78,25 @@ Content lives as markdown under `src/content/` (themes, proposals, projects) —
 One editable install pulls the whole package graph:
 
 ```bash
-pip install -e packages/committee_meeting -e packages/congress_shared -e packages/youtube_api -e packages/congress_api -e apps/committee_youtube
+pip install -e packages/house-naming -e packages/committee_meeting -e packages/congress_shared -e packages/youtube_api -e packages/congress_api -e apps/committee_youtube
 # or: uv pip install -e apps/committee_youtube
 ```
 
 The CLIs are then on your PATH:
 
 ```bash
-youtube-fetch --help       # needs YOUTUBE_DATA_API_KEY
+youtube-fetch --help
 youtube-analyze --help
-congress-fetch --help      # needs a Congress.gov API key
-congress-analyze --help
+congress-meetings --help
+congress-committees --help
+meeting-inventory --help
 ```
+
+The weekly production sequence and saved-data formats are documented in
+[congress-api](packages/congress_api/README.md) and its
+[compatibility reference](docs/congress-api-contracts.md). `congress-fetch` and
+`congress-analyze` remain available for legacy TinyDB exploration; they do not
+run in the production workflow. Help does not require credentials.
 
 Inflation data:
 
@@ -111,7 +118,8 @@ The repo ships a [dev container](https://containers.dev/) that installs the Pyth
 | --- | --- | --- |
 | `deploy-pages.yml` | on push to `main` | Builds `apps/site` and deploys it to GitHub Pages. |
 | `bls-cpi-update.yml` | monthly | Refreshes the CPI baseline and the multi-source inflation table. |
-| `update-youtube.yml` | weekly | Refreshes committee YouTube coverage data. |
+| `update-data.yml` | weekly | Refreshes YouTube, GovInfo, Congress.gov, committee-source and inventory data. |
+| `publish-explorer.yml` | after collection completes, source changes, or manual dispatch | Publishes and verifies Explorer data from retained inputs before deployment. |
 
 ## Contributing
 

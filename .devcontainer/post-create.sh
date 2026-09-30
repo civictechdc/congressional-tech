@@ -11,13 +11,15 @@ cd "$REPO_ROOT"
 
 # Install the Python package graph editable. Order is leaf-first so the
 # cross-package deps resolve from the local tree instead of an index:
-#   congress_shared  (auth + globals + bundled CSV/metadata)
+#   house-naming / committee_meeting / congress_shared (models and shared data)
 #     -> youtube_api  (youtube-fetch / youtube-analyze console scripts)
-#     -> congress_api (congress-fetch / congress-analyze console scripts)
+#     -> congress_api (congress-meetings and source-reader console scripts)
 #     -> committee_youtube (aggregator app; pulls both packages)
-# Installing all four registers the four console scripts into ~/.local/bin.
+# Install every local dependency so pip does not resolve it from an index.
 echo "🐍 Installing Python package graph (editable)..."
 pip install --user \
+  -e packages/house-naming \
+  -e packages/committee_meeting \
   -e packages/congress_shared \
   -e packages/youtube_api \
   -e packages/congress_api \
@@ -45,6 +47,8 @@ echo ""
 echo "🔗 Available console scripts (ensure ~/.local/bin is on PATH):"
 echo "  - youtube-fetch --help"
 echo "  - youtube-analyze --help"
-echo "  - congress-fetch --help"
-echo "  - congress-analyze --help"
+echo "  - congress-meetings --help"
+echo "  - congress-committees --help"
+echo "  - meeting-inventory --help"
+echo "Optional legacy TinyDB tools: congress-fetch / congress-analyze"
 echo ""

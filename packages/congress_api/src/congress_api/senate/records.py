@@ -376,6 +376,11 @@ def refresh_urls(state, versions, today, limit, sites=None):
 
 
 def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=None, refresh_limit=450, site=None, limit=None, since=None):
+    """Offline mode uses saved site state or local seed imports, still joins and writes
+    outputs, and raises for missing required listings. It never refreshes HTTP.
+
+    See docs/congress-api-contracts.md#offline-behavior.
+    """
     if since is not None and since < FIRST_RECORD and not site:
         raise ValueError("Historical collection before June 2019 requires an explicit --site scope")
     # Collection/admission must see canceled and historical native meetings too;

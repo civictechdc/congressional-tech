@@ -22,7 +22,8 @@
 | [PDF_EXTRACTOR_COMPARISON.md](PDF_EXTRACTOR_COMPARISON.md) | Witness-list PDF extractor benchmark (keeps `pypdf`) |
 | [committee-meeting](../committee_meeting/README.md) | Canonical normalized meeting model |
 | [Meeting state & refresh](../../docs/youtube-coverage/meeting-state.md) | Pipeline state directories and refresh rules |
-| [REFACTORING_PLAN.md](REFACTORING_PLAN.md) | Proposed incremental refactors (proposal only; execution order 0→3→1→4→2→5→6; 2026-09-29 audits merged into plan) |
+| [REFACTORING_PLAN.md](REFACTORING_PLAN.md) | Refactor scope, sequence and completion evidence |
+| [Compatibility and maintenance](../../docs/congress-api-contracts.md) | Stable commands/artifacts, CI, versions, offline behavior, identity and replay safeguards |
 
 ## Install
 
@@ -60,6 +61,27 @@ Congress.gov and the GovInfo collection API share one [data.gov](https://api.dat
 
 `hearing-transcribe --proxy` is forwarded to `yt-dlp`.
 
+## HTTP policy
+
+This is the authoritative policy matrix. No clients are merged by the refactor.
+
+| Call path / hosts | Pacing, retries and timeout | Zyte and metadata |
+| --- | --- | --- |
+| `http.get_with_retry`: House repository, GovInfo, Congress.gov and committee sites | Direct starts: 1.2 s for `docs.house.gov`, 0.2 s elsewhere; 3 attempts, 60 s timeout. Retry 202/403/408/429/500/502/503/504/520 and request exceptions; other unallowed statuses stop. Next-start backoff is 2^(attempt+1) s; direct House 403 waits 60 s. `allowed` defines caller-confirmed statuses | Explicit `through_zyte=True`, not automatic fallback. Zyte skips local pacing; returned response is synthetic. `response_metadata` retains all available parsed header fields and states fidelity; callers retain metadata separately |
+| `meetings.get` and committee snapshot collection: Congress.gov | Delegates to the same gateway with **5 attempts**, injects API key/JSON format, decodes JSON | No Zyte option on this wrapper; safe gateway errors omit query secrets |
+| `api.request_source`: legacy Congress.gov JSON/XML client | One bare `requests.get`; no explicit timeout, pacing or retry. `raise_for_status`, JSON first, XML fallback on JSON decode failure | No Zyte. Returns a source model, not a transport receipt; compatibility dictionaries retain original XML |
+| `senate.captions.sess`: ISVP playlists and WebVTT | Module-level `requests.Session`, HTTPS `pool_maxsize=32`; default 3 immediate attempts, 30 s timeout. 404 is absence, empty 200 retries, exhausted failures raise | No Zyte. Typed media captures retain status/text/raw body; not gateway response-header metadata |
+| `transcribe.main`: GPO HTML and YouTube duration | Direct requests: 60 s for GPO HTML, 30 s for YouTube JSON; no shared retry/pacing. yt-dlp is the duration fallback | No Zyte; GPO HTML is retained separately |
+| `transcribe.metadata`: GovInfo MODS and unitedstates GitHub Pages legislators | `urllib.request.urlopen`, 60 s timeout, explicit User-Agent; legislators cached in memory, MODS fetched on demand; no gateway retries | No Zyte; source bytes/models retained by the metadata path |
+| Audio / Gemini | yt-dlp/ffmpeg and google-genai own their transports; Gemini has its existing application retry loop | Not part of the shared HTTP gateway |
+
+A 200 challenge page is not automatically successful source parsing. Collector
+validation decides usability. Failed checks remain failures; they must not
+become empty source records. Host locks control request starts, not in-flight
+completion. A supplied session is used directly; `session=None` uses a thread-local
+session. See `tests/test_http_policy.py`, `test_http_response_metadata.py`,
+`test_zyte_capture.py`, and caption source tests.
+
 ## Package layout
 
 ```
@@ -68,7 +90,6 @@ packages/congress_api/
 ├── pyproject.toml            # Metadata, dependencies, console scripts
 ├── package.json              # @ct/congress-api workspace marker
 ├── turbo.json                # Extends repo Turborepo config
-├── main.py                   # Placeholder script (not a console entry)
 ├── *.md                      # Source-model specs (see table above)
 └── src/congress_api/
     ├── api.py                # Congress.gov v3 client (TinyDB fetch path)
@@ -77,10 +98,11 @@ packages/congress_api/
     ├── congress_source.py    # Parse Congress.gov JSON/XML bodies
     ├── http.py, zyte.py      # Retries, pacing, optional Zyte
     ├── committees.py, witnesses.py
-    ├── xml.py, xml_to_dict.py, json_to_tinydb.py
+    ├── xml.py, xml_to_dict.py
     ├── adapters/             # Offline source → committee-meeting records
-    ├── analyze/              # TinyDB committee graph (legacy explore path)
-    ├── fetch/                # Congress.gov → TinyDB cache
+    ├── retention/            # Production rejected-page retention
+    ├── legacy/               # Optional TinyDB fetch/analyze and conversion
+    ├── analyze/, fetch/      # Compatibility imports for legacy code
     ├── house/                # docs.house.gov gap fill
     ├── senate/               # Committee sites + ISVP captions
     ├── gpo/                  # GovInfo CHRG packages
@@ -97,8 +119,8 @@ Packages with an `__init__.py`: `adapters`, `house`, `senate`, `inventory`, `tra
 | --- | --- | --- |
 | `congress-committees` | `committee_metadata` | Gzip JSONL of `CommitteeSnapshot` rows |
 | `congress-meetings` | `meetings` | `congress_meetings.jsonl.gz` |
-| `congress-fetch` | `fetch.main` | TinyDB committee summaries + in-memory meeting URL list |
-| `congress-analyze` | `analyze.main` | stdout: YouTube handles for committees with events |
+| `congress-fetch` | `legacy.fetch.main` | TinyDB committee summaries + in-memory meeting URL list |
+| `congress-analyze` | `legacy.analyze.main` | stdout: YouTube handles for committees with events |
 | `house-meeting-records` | `house.records` | House CSVs + `house.json.gz` state |
 | `senate-meeting-records` | `senate.records` | Senate CSVs + `senate.json.gz` state |
 | `meeting-inventory` | `inventory.main` | Inventory CSVs + `inventory.json.gz` |
@@ -128,7 +150,7 @@ Packages with an `__init__.py`: `adapters`, `house`, `senate`, `inventory`, `tra
 congress-meetings --output-path congress_meetings.jsonl.gz --nthreads 5
 ```
 
-Lists House, Senate, and joint meetings from the 112th Congress onward. Joint committees use chamber `nochamber`. Incremental runs use the newest stored `updateDate` with a two-day overlap. Failures are tracked in a sibling `.pending.json` file for retry; unparseable list pages are retained via `fetch.rejected.retain_rejected_page` (also used by `congress-committees`).
+Lists House, Senate, and joint meetings from the 112th Congress onward. Joint committees use chamber `nochamber`. Incremental runs use the newest stored `updateDate` with a two-day overlap. Failures are tracked in a sibling `.pending.json` file for retry; unparseable list pages are retained via `retention.rejected_pages.retain_rejected_page` (also used by `congress-committees`).
 
 Default output path: `congress_shared` `DEFAULT_MEETINGS_FILE`.
 
@@ -163,6 +185,8 @@ Run in order (see [meeting state](../../docs/youtube-coverage/meeting-state.md))
 Shared source flags (`source_args`): `--meetings`, `--state-dir`, `--output-dir`, `--seed-cache`, `--offline`, `--as-of`.
 
 Outputs include `hearing_text_sources.csv`, `meetings_without_records.csv`, `meeting_completeness.csv`, and `meeting_witnesses.csv`. Caption probes, MODS/PDF witness parses, and Senate day checks live in `--state-dir/inventory.json.gz`.
+
+The [offline behavior matrix](../../docs/congress-api-contracts.md#offline-behavior) explains saved-state requirements and failure behavior.
 
 Offline replay (no HTTP): `python -m congress_api.house.replay`, `python -m congress_api.senate.replay`.
 
@@ -234,7 +258,7 @@ From `congress_shared.globals` (package-relative, not cwd-relative):
 ### Shared clients and utilities
 
 - **`api.py`** — `congress_api_get`, `generic_request`, `request_source` for the TinyDB fetch/analyze path (JSON preferred; XML via `xml_to_dict`).
-- **`meetings.py`** — `congress-meetings`; own retrying HTTP client (distinct from `api.py`).
+- **`meetings.py`** — `congress-meetings`; thin wrapper over `http.get_with_retry`, with five attempts (the gateway defaults to three).
 - **`congress_source.py`** — `parse_congress_xml`, `parse_response` → typed Congress.gov models.
 - **`http.py` / `zyte.py`** — `get_with_retry`, optional Zyte extract for rate-limited hosts.
 - **`committees.py`** — `parent_code`, `codes_of`, recording aliases.
@@ -277,16 +301,17 @@ Each adapter exposes a **`records(...)`** (or domain-specific) entry that return
 | `house`, `senate`, `gpo` | Retained chamber/GovInfo payloads |
 | `inventory`, `findings`, `video_matches`, `recordings`, `transcripts` | Inventory observations, print links, manual associations, on-disk transcript JSON |
 
-### `fetch/` and `analyze/`
+### `legacy/` and compatibility imports
 
-- **`fetch/main.py`** — `congress-fetch`.
-- **`fetch/congress_committee_fetcher.py`** — `CongressCommitteeFetcher`, `{tinydb_dir}/committee-summaries.json`.
-- **`fetch/congress_event_fetcher.py`** — `CongressEventFetcher`, `{tinydb_dir}/events.json`, shared `event_urls`.
-- **`fetch/rejected.py`** — `retain_rejected_page` audit sidecar.
-- **`analyze/committee_summary.py`** — `CommitteeSummary`, global `INDEX`.
-- **`analyze/committee_details.py`** — `CommitteeDetails` TinyDB cache + API fallback.
-- **`analyze/committee.py`** — joins summary, details, YouTube DB, events.
-- **`analyze/main.py`** — `congress-analyze`.
+- **`legacy/fetch/`** — TinyDB committee/event fetchers and `congress-fetch`.
+- **`legacy/analyze/main.py`** — `congress-analyze`.
+- **`legacy/committee*.py`** — shared committee objects and TinyDB details; neither command owns them.
+- **`legacy/json_to_tinydb.py`** — ad-hoc conversion with existing hard-coded paths.
+- **`fetch/`, `analyze/`, `json_to_tinydb.py`** — compatibility aliases to those implementations, preserving shared module state.
+- **`retention/rejected_pages.py`** — production `retain_rejected_page`; `fetch.rejected` keeps its old import available.
+
+These explore tools have no scheduled removal and receive no new features.
+See the [legacy decision](../../docs/adr/tinydb-explore-sunset.md).
 
 ### `house/`
 
@@ -322,9 +347,10 @@ Each adapter exposes a **`records(...)`** (or domain-specific) entry that return
 - **`common`** — CSV/state I/O, `source_args`, refresh scheduling.
 - **`text_sources`** — per-meeting text and video index.
 - **`prints`** — GPO print ↔ meeting ownership rules.
-- **`captions`** — caption availability and Senate HEAD probes.
+- **`captions`** — caption availability and saved observation imports; old probe entry delegates to acquisition.
 - **`completeness`** — witness and completeness rows.
-- **`witness_lists`** — MODS/PDF witness fetch and `pypdf` parse (`parse_pdf_observation`).
+- **`acquisition`** — MODS/PDF capture, Senate HEAD probes and day scheduling; defaulted `get=` for tests.
+- **`witness_lists`** — byte-only MODS/PDF parsing (`parse_pdf_observation`, `parse_mods_observation`); old acquisition entry delegates.
 - **`reviewed_witness_lists`** — digest-keyed manual PDF readings.
 
 ### `transcribe/`
@@ -354,5 +380,4 @@ See [SOURCE_MODEL_REVIEW.md](SOURCE_MODEL_REVIEW.md) for the combined regression
 
 - **`pyproject.toml`** — dependencies, uv path sources, `[project.scripts]`.
 - **`package.json`** / **`turbo.json`** — monorepo workspace only.
-- **`main.py`** — demo `Hello from congress-api!` (not installed as a script).
 - Editable installs may create `src/congress_api*.egg-info/` (gitignored); `entry_points.txt` mirrors console scripts.

@@ -67,3 +67,13 @@ c153d5de6900e6c65ee0f185cd728cbac1696270ec783787cfedf5b15baae4a3  house.json.gz
 The six reader tables reconstructed from the seed matched the research tables
 at `a1705b6` byte for byte. The [verification report](production-verification.md)
 records the inventory's intentional differences and replay commands.
+
+
+## Acquisition boundary
+
+`congress_api.inventory.acquisition` owns late witness PDF/MODS fetches and
+Senate day probes. The join calls these functions explicitly; source parsers stay
+in `inventory.witness_lists`. Tests pass `get=` directly without changing the CLI.
+See the [per-command offline matrix](../congress-api-contracts.md#offline-behavior)
+for saved-state requirements, seed imports and failure behavior. Offline mode
+still reads inputs and writes deterministic state and derived CSVs.

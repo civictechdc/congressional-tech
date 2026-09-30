@@ -1,11 +1,13 @@
 # Refactoring plan — `congress-api`
 
-Status: **proposal only** (no implementation in this document).  
+Status: **implemented locally, 2026-09-30** — Phases 0, 3, 1, 4, 2 and 6 verified; Phase 5 superseded by the approved complete `house-naming` migration; optional Phases 7–8 remain deferred. See [implementation and verification](REFACTORING_IMPLEMENTATION.md).
+
+The audited starting-state analysis below is retained for rationale. The checked definition of done and linked implementation record describe the current result.
 **Audits merged into plan body:** 2026-09-29 (red/green validation swarm + evolutionary-design / Fowler audit; standalone `REFACTORING_PLAN_VALIDATION.md` and `REFACTORING_PLAN_FOWLER_AUDIT.md` were deleted and **were not committed to git**).  
 **Review pass applied:** 2026-09-29 (HEAD validation of claims; Phase 3 helper, §7 CI sketch, Phase 6a caller list, and package README HTTP sentence reshaped below).  
 Scope: `/Users/mikewolfd/Work/congressional-tech/packages/congress_api/` (~99 files under package root + `src/congress_api/`).
 
-This plan assumes the architecture in [SOURCE_MODELS.md](SOURCE_MODELS.md) and [README.md](README.md): publisher bytes → source parsers → Pydantic source models → offline `adapters/` → `committee_meeting` → export/storage. Collectors fetch and retain; parsers do not open output files; adapters do not re-fetch. Sibling constraints: [SOURCE_MODEL_REVIEW.md](SOURCE_MODEL_REVIEW.md) (source-contract tests), [FILENAME_PATTERNS.md](FILENAME_PATTERNS.md) (Phase 5), [Meeting state](../../docs/youtube-coverage/meeting-state.md) (gzip inventory paths / `--offline`).
+This plan assumes the architecture in [SOURCE_MODELS.md](SOURCE_MODELS.md) and [README.md](README.md): publisher bytes → source parsers → Pydantic source models → offline `adapters/` → `committee_meeting` → export/storage. Collectors fetch and retain; parsers do not open output files; adapters do not re-fetch. Sibling constraints: [SOURCE_MODEL_REVIEW.md](SOURCE_MODEL_REVIEW.md) (source-contract tests), [house-naming/FILENAME_PATTERNS.md](../house-naming/FILENAME_PATTERNS.md) (Phase 5), [Meeting state](../../docs/youtube-coverage/meeting-state.md) (gzip inventory paths / `--offline`).
 
 ---
 
@@ -266,7 +268,7 @@ Deliverables (observable — see [§5.1](#51-definition-of-done)):
 
 ### Phase 5 — Filename submodule (when filename work is active)
 
-- Resolve **module→package collision:** today **`filenames.py`** file vs desired **`filenames/`** package — rename/shim plan required. Cite [FILENAME_PATTERNS.md](FILENAME_PATTERNS.md).
+- Resolve **module→package collision:** today **`filenames.py`** file vs desired **`filenames/`** package — rename/shim plan required. Cite [house-naming/FILENAME_PATTERNS.md](../house-naming/FILENAME_PATTERNS.md).
 - Move **`filenames.py`**, **`bill_codes.py`**, **`filename_corpus.py`** with one-release re-exports.
 - **`[project.optional-dependencies] corpus = ["pyarrow"]`** if not added in Phase 0.
 
@@ -319,52 +321,52 @@ Checklist style; evidence in PR, not “files moved.”
 
 **Phase 0**
 
-- [ ] Compatibility appendix lists 12 scripts + frozen artifact table matching CI.
-- [ ] CI inventory table lists all **four** `update-data.yml` jobs (youtube, congress, meetings including pytest, committees) plus `publish-explorer.yml`.
-- [ ] Package **README.md** no longer calls `meetings.py` an “own retrying HTTP client.”
-- [ ] `source_args` / global flags inventory matches workflows + meeting-state docs (without mixing CLI families).
-- [ ] Parser/schema version registry complete (`PARSER_VERSION`, `SCHEMA_VERSION`, `CAPTURE_VERSION`).
-- [ ] **Adapter digest / identity policy** written; ADR stub linked.
-- [ ] Replay **protection matrix** documented (three drivers).
+- [x] Compatibility appendix lists 12 scripts + frozen artifact table matching CI.
+- [x] CI inventory table lists all **four** `update-data.yml` jobs (youtube, congress, meetings including pytest, committees) plus `publish-explorer.yml`.
+- [x] Package **README.md** no longer calls `meetings.py` an “own retrying HTTP client.”
+- [x] `source_args` / global flags inventory matches workflows + meeting-state docs (without mixing CLI families).
+- [x] Parser/schema version registry complete (`PARSER_VERSION`, `SCHEMA_VERSION`, `CAPTURE_VERSION`).
+- [x] **Adapter digest / identity policy** written; ADR stub linked.
+- [x] Replay **protection matrix** documented (three drivers).
 
 **Phase 3**
 
-- [ ] `congress-committees` → `parse_args_and_run` wrapping existing `main()`; flags unchanged (no `source_args` / `add_global_args`).
-- [ ] Root placeholder `main.py` removed/relocated.
-- [ ] `congress-committees --help` smoke documented.
+- [x] `congress-committees` → `parse_args_and_run` wrapping existing `main()`; flags unchanged (no `source_args` / `add_global_args`).
+- [x] Root placeholder `main.py` removed/relocated.
+- [x] `congress-committees --help` smoke documented.
 
 **Phase 1**
 
-- [ ] No `get_with_retry` import via `gpo.fetch` in production paths.
-- [ ] Single authoritative HTTP policy matrix; README L225 corrected.
-- [ ] HTTP/Zyte tests green; any retry change accompanied by test update.
-- [ ] **`api.py` vs `http`** fork documented and covered by tests.
-- [ ] **`meetings.get`** documented as `http.get_with_retry` wrapper (`attempts=5`); captions pooling named as **`sess`**.
+- [x] No `get_with_retry` import via `gpo.fetch` in production paths.
+- [x] Single authoritative HTTP policy matrix; README L225 corrected.
+- [x] HTTP/Zyte tests green; any retry change accompanied by test update.
+- [x] **`api.py` vs `http`** fork documented and covered by tests.
+- [x] **`meetings.get`** documented as `http.get_with_retry` wrapper (`attempts=5`); captions pooling named as **`sess`**.
 
 **Phase 4**
 
-- [ ] Orchestrator vs acquisition modules documented; orchestrator does not HTTP.
-- [ ] Acquisition functions accept `get=http.get_with_retry`; tests can stub `get` without a client protocol.
-- [ ] **`--offline` matrix** published.
-- [ ] Inventory + witness fidelity tests green.
+- [x] Orchestrator vs acquisition modules documented; orchestrator does not HTTP.
+- [x] Acquisition functions accept `get=http.get_with_retry`; tests can stub `get` without a client protocol.
+- [x] **`--offline` matrix** published.
+- [x] Inventory + witness fidelity tests green.
 
 **Phase 2**
 
-- [ ] Protection matrix referenced from replay modules.
-- [ ] Optional helpers only; chamber receipts **unchanged in shape**.
-- [ ] `python -m congress_api.*.replay` paths unchanged.
-- [ ] Replay fidelity tests green.
+- [x] Protection matrix referenced from replay modules.
+- [x] Optional helpers only; chamber receipts **unchanged in shape**.
+- [x] `python -m congress_api.*.replay` paths unchanged.
+- [x] Replay fidelity tests green.
 
 **Phase 5**
 
-- [ ] `filenames.py` vs `filenames/` collision resolved with one-release shims.
-- [ ] `[corpus]` extra documented; corpus tests marked or gated if Parquet required.
+- [x] Filename collision resolved by the **later approved complete migration to `house-naming`**, superseding this plan's internal package/shim proposal. No congress-api filename facade is restored.
+- [x] `house-naming[corpus]` owns the documented PyArrow dependency; its `[test]` extra supplies corpus test dependencies. Existing filename consumer tests pass.
 
 **Phase 6**
 
-- [ ] **`retain_rejected_page`** lives outside quarantined `fetch/` (callers remain **`meetings.py`** and **`committee_metadata.py`**); **`congress-meetings`** / **`congress-committees`** unchanged at CLI level.
-- [ ] Weekly CI still runs **`congress-meetings`** (not **`congress-fetch`**); explore scripts optional/dev-only in docs.
-- [ ] **`retain_rejected_page`** unit tests; explore `--help` smoke.
+- [x] **`retain_rejected_page`** lives outside quarantined `fetch/` (callers remain **`meetings.py`** and **`committee_metadata.py`**); **`congress-meetings`** / **`congress-committees`** unchanged at CLI level.
+- [x] Weekly CI still runs **`congress-meetings`** (not **`congress-fetch`**); explore scripts optional/dev-only in docs.
+- [x] **`retain_rejected_page`** unit tests; explore `--help` smoke.
 
 ---
 
@@ -425,7 +427,7 @@ Detail: `.github/workflows/update-data.yml` (job `needs`, step `if:` continuatio
 | 8 | **House/Senate page replay abstraction** | **Defer** — validation + Fowler reject unified engine (Q closed for Phase 2). |
 | 9 | **New packages (HTTP / adapters)** | **Closed** — keep current arrows; Parameterize Method on acquisition only ([§2.1](#21-parameterize-method-not-a-container)). |
 
-**Remaining blockers:** devcontainer/root README vs package README (Phase 6 docs); **`filenames.py` vs `filenames/`** rename plan (Phase 5).
+**Current status:** no implementation blockers remain for Phases 0–6. Operator docs now agree; the independent house-naming migration replaces the earlier Phase 5 rename proposal. The questions above retain the audited starting-state context; resolved decisions are linked below.
 
 ---
 
@@ -435,9 +437,9 @@ Keep **this plan** as the single **sequencing** doc. When an open question close
 
 | ADR topic | Trigger |
 | --- | --- |
-| Adapter digest versioning | Phase 0 policy finalized |
-| TinyDB explore sunset | Phase 6 messaging / deprecation |
-| HTTP: `api.py` vs `http` fork | Phase 1 test characterization complete |
+| [Adapter digest versioning](../../docs/adr/adapter-digest-versioning.md) | Accepted: preserve layered identity; explicit migration for breaking key changes |
+| [TinyDB explore sunset](../../docs/adr/tinydb-explore-sunset.md) | Accepted: optional legacy tools, stable names/imports, no removal date |
+| [HTTP: `api.py` vs `http` fork](../../docs/adr/congress-api-http-fork.md) | Accepted: characterized clients remain separate |
 | Witness acquisition boundary | Phase 4 default challenged |
 | Unified CLI | Phase 8 requested |
 
@@ -446,11 +448,11 @@ Keep **this plan** as the single **sequencing** doc. When an open question close
 ## 10. Out of scope (separate work)
 
 - **`analyze/main.py` L22** (`elif isinstance(committee, dict)` after `committees = event["committees"]`) — real bug on legacy **`congress-analyze`**. It is a **NameError** when `committee` was never bound; otherwise it can use a **stale** `committee` from a prior list-shaped event. Track as bugfix PR, not a refactor phase.
-- Implementing refactors described here (this document is planning only).
+- Optional Phases 7–8 remain deferred; the nondeferred implementation is recorded in [REFACTORING_IMPLEMENTATION.md](REFACTORING_IMPLEMENTATION.md).
 
 ---
 
-## Recommended starting path
+## Implemented execution order
 
 1. **Phase 0** — contracts + digest policy + CI table.  
 2. **Phase 3** — `congress-committees` entrypoint rename only (low blast radius).  

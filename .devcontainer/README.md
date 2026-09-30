@@ -1,153 +1,69 @@
-# Development Container Setup
+# Development container
 
-This directory contains the configuration for a Development Container (devcontainer) that provides a consistent development environment for the Congressional Tech project.
+The container uses Ubuntu 22.04, Python 3.12, Node 20, Git and the GitHub CLI.
+VS Code runs `.devcontainer/post-create.sh` to install the local Python package
+graph and npm workspaces. The website is Astro under `apps/site`.
 
-## What's Included
-
-### Base Environment
-
-- **Ubuntu 22.04** base image
-- **Python 3.11** with pip and common development tools
-- **Node.js 20** with npm for the Next.js application
-- **Git** and **GitHub CLI** for version control and GitHub integration
-
-### Python Environment
-
-- Congressional YouTube package installed in development mode
-- Dependencies for inflation data processing (pandas, openpyxl, requests)
-- Python development tools (pylint, black formatter)
-
-### Node.js Environment
-
-- Next.js dependencies installed for the web application
-- VS Code extensions for TypeScript and Tailwind CSS
-
-### Development Tools
-
-- VS Code extensions for Python, TypeScript, and web development
-- Custom aliases for quick navigation between project directories
-- Formatted shell prompt with helpful information
-
-## Quick Start
-
-1. **Open in VS Code**: If you have the Dev Containers extension installed, VS Code will prompt you to reopen in container when you open this repository.
-
-2. **Manual Setup**: Press `Ctrl+Shift+P` (or `Cmd+Shift+P` on Mac) and select "Dev Containers: Reopen in Container"
-
-3. **First Time Setup**: The container will automatically run the setup script that:
-   - Installs Node.js dependencies for the Next.js app
-   - Installs Python packages in development mode
-   - Sets up helpful shell aliases
-
-## Available Commands
-
-After the container starts, you can use these commands:
-
-### YouTube Data Processing
-
-#### Complete Workflow
-
-**Step 1: Navigate to project**
+Open the repository in VS Code and choose **Dev Containers: Reopen in Container**.
+After setup, `~/.local/bin` contains the installed console scripts. From the
+repository root:
 
 ```bash
-ct-youtube
+congress-meetings --help
+congress-committees --help
+house-meeting-records --help
+senate-meeting-records --help
+meeting-inventory --help
+youtube-fetch --help
+youtube-analyze --help
 ```
 
-**Step 2: Fetch fresh data (requires API credentials)**
+Help needs no credentials. Actual Congress.gov/GovInfo collection uses
+`DATA_GOV_API_KEY`; see the [package credential instructions](../packages/congress_api/README.md#credentials-and-environment).
+The production mirror writes native gzip JSONL:
 
 ```bash
-# Fetch congressional committee meeting data
-congress-fetch --congress-api-key YOUR_DATA_GOV_KEY
-
-# Fetch YouTube video metadata for all committees
-youtube-fetch --youtube-api-key YOUR_YOUTUBE_KEY --channels-csv-path congress_youtube/youtube/youtube-accounts.csv
+congress-meetings --output-path output/congress_meetings.jsonl.gz
 ```
 
-**Step 3: Analyze data**
+It retains incomplete work for retry. Source readers and inventory use explicit
+state/input paths; follow the [weekly source-reader sequence](../docs/youtube-coverage/meeting-state.md)
+and [offline requirements](../docs/congress-api-contracts.md#offline-behavior).
+`congress-fetch` and `congress-analyze` remain optional **legacy TinyDB exploration**
+commands. They are not used by weekly CI and do not replace `congress-meetings`.
+
+For YouTube, the bundled channel table is the default; pass `--tinydb_dir` to
+choose cache storage. Use each command's help for credentials and output paths.
+
+If console scripts are missing, rerun the post-create installation. The meeting
+mirror also supports `python -m congress_api.meetings --help`; House/Senate reader
+and inventory modules are console entry points, not module CLIs.
+
+## Website and navigation
 
 ```bash
-# Analyze videos for missing event IDs
-youtube-analyze --channels-csv-path congress_youtube/youtube/youtube-accounts.csv
+cd apps/site
+npm run dev
+# http://localhost:4321/congressional-tech/
 ```
 
-#### Alternative: Run modules directly with Python
+`ct-root`, `ct-site`, `ct-youtube`, and `ct-inflation` navigate to the repository,
+Astro site, committee YouTube app, and inflation app respectively.
 
-If the CLI commands aren't available, you can run the modules directly:
+## Validation and CI
 
 ```bash
-cd projects/1.2-committee-youtube/python
-
-# Fetch congressional data
-python -m congress_youtube.congress.fetch.main --congress-api-key YOUR_DATA_GOV_KEY
-
-# Fetch YouTube data
-python -m congress_youtube.youtube.fetch.main --youtube-api-key YOUR_YOUTUBE_KEY --channels-csv-path congress_youtube/youtube/youtube-accounts.csv
-
-# Analyze videos
-python -m congress_youtube.youtube.analyze.main --channels-csv-path congress_youtube/youtube/youtube-accounts.csv
+python -m pip install -e 'packages/congress_api[test]' -e 'packages/house-naming[test]'
+python -m pytest tests packages/committee_meeting/tests packages/house-naming/tests -q
 ```
 
-#### Expected Behavior
+GitHub Actions installs Python directly; it does not run collection through this
+container. `update-data.yml` collects sources, `publish-explorer.yml` builds and
+verifies retained data, and `deploy-pages.yml` deploys the verified publication.
+See the [job and artifact inventory](../docs/congress-api-contracts.md#weekly-ci-and-publication).
 
-- `youtube-analyze` processes existing video metadata
-- `congress-fetch` and `youtube-fetch` add new data to existing databases
-- If data files don't exist, commands will create new databases from scratch
-
-### Next.js Web Application
-
-```bash
-# Start development server
-cd app && npm run dev
-# Then visit http://localhost:3000
-```
-
-### Quick Navigation Aliases
-
-```bash
-ct-root      # Navigate to project root
-ct-app       # Navigate to Next.js app directory
-ct-youtube   # Navigate to YouTube data project
-ct-inflation # Navigate to inflation data project
-```
-
-## CI/CD Integration
-
-The GitHub Actions workflow (`update-youtube.yml`) uses the same devcontainer environment via `devcontainers/ci@v0.3`, ensuring consistency between development and CI environments.
-
-## Customization
-
-- **VS Code settings**: Modify `.devcontainer/devcontainer.json`
-- **System packages**: Edit `.devcontainer/Dockerfile`
-- **Setup steps**: Update `.devcontainer/post-create.sh`
-- **Shell environment**: Customize `.devcontainer/bashrc`
-
-## Troubleshooting
-
-### Container Issues
-
-**Container won't start:**
-
-- Ensure Docker is running on your system
-- Try rebuilding the container: "Dev Containers: Rebuild Container"
-
-**Python packages not found:**
-
-- The post-create script installs packages in user mode (`--user`)
-- Packages are installed to `~/.local/bin` which is added to PATH
-
-**Permission issues:**
-
-- The container runs as the `vscode` user (UID 1000)
-- Files created in the container will have the correct permissions for your host system
-
-### Data Processing Issues
-
-**Commands not found:**
-
-- Ensure you're in the dev container environment
-- Try running modules directly with `python -m` as shown in the YouTube Data Processing section
-
-**Empty analysis results:**
-
-- Check that API keys are correctly configured for data fetching commands
-- Ensure data files exist or run fetch commands to generate them
+Container settings live in `devcontainer.json`, OS dependencies in `Dockerfile`,
+installation steps in `post-create.sh`, and navigation aliases in `bashrc`.
+Rebuild the container after changing its base or features. For missing commands,
+check setup output and `~/.local/bin` on `PATH`; for empty reports, check retained
+inputs and acquisition receipts before refetching.

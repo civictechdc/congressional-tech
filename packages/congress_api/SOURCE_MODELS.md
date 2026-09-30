@@ -18,6 +18,13 @@ HTTP or opening output files. Source models describe native values. The
 records. Storage readers and writers sit outside this sequence and can change
 without redefining a publisher’s data.
 
+Inventory late acquisition lives in `inventory.acquisition`: witness PDF/MODS
+capture and Senate day probes accept a defaulted `get=` function. The orchestrator
+and `completeness.build` call it explicitly. `inventory.witness_lists` retains the
+byte-only PDF/MODS parser entry points and a compatibility acquisition delegate.
+Production rejected listing pages use `retention.rejected_pages`; legacy TinyDB
+exploration cannot become a production retention dependency.
+
 Our generated CSVs, TinyDB files, caption indexes and inventory files are local
 imports, not upstream schemas. Existing compatibility readers remain available.
 A government-provided CSV would instead have its own source parser and native

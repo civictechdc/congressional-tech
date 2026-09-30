@@ -4,6 +4,9 @@ Live observations are protected. A cached page can enrich legacy state only when
 its parsed text lines exactly match the saved lines. Existing witness/document
 rows and associations are retained, so richer metadata does not change their IDs.
 Run with explicit, distinct input/output paths; nothing fetches or rematches.
+
+Compatibility and source-specific protection rules:
+/docs/congress-api-contracts.md#replay-protection-matrix
 """
 import argparse
 from collections import Counter

@@ -5,6 +5,9 @@ Run ``python -m congress_api.house.replay --state house.json.gz --cache CACHE
 when reparsing reproduces all previously retained data and its XML update date.
 Changed or incomplete observations require a live refresh instead. Cache file
 digests and replay time are recorded separately from acquisition/check times.
+
+Compatibility and source-specific protection rules:
+/docs/congress-api-contracts.md#replay-protection-matrix
 """
 import argparse
 from collections import Counter

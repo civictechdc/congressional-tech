@@ -216,6 +216,11 @@ def _fetch(m, previous, through_zyte, receipts):
 
 def main(meetings, gpo_path, state_dir, output_dir, seed_cache=None, offline=False, as_of=None,
          refresh_limit=400, limit=None, zyte=False, threads=1):
+    """Offline mode uses saved usable entries or seed inputs, still writes state/CSVs,
+    and raises for selected entries with no usable result. It never refreshes HTTP.
+
+    See docs/congress-api-contracts.md#offline-behavior.
+    """
     if threads < 1 or (threads > 1 and not zyte):
         raise ValueError("Direct House requests use one worker; parallel backfills require --zyte")
     ms, gpo = read_meetings(meetings), read_csv(gpo_path)

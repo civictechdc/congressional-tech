@@ -3,6 +3,9 @@
 Run with ``python -m congress_api.gpo.replay --help``. Existing scalar corrections,
 transcript dates and modification times win over cached inputs. Native bytes are
 retained separately, including rosters that do not prove meeting attendance.
+
+Compatibility and source-specific protection rules:
+/docs/congress-api-contracts.md#replay-protection-matrix
 """
 from __future__ import annotations
 
