@@ -452,6 +452,11 @@
             "type": "integer",
             "minimum": 0,
             "maximum": 3
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Reading for a literal label capture, such as an explicit observed spelling alias; does not verify contents."
           }
         }
       }

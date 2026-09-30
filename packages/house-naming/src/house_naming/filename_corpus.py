@@ -16,7 +16,7 @@ from pathlib import Path
 import re
 import sys
 
-from .corpus import DESCRIPTIVE_FIELDS, audit_check, residual_fields as _residual_fields
+from .corpus import DESCRIPTIVE_FIELDS, audit_check, filename_review_category, residual_fields as _residual_fields
 from .errors import NamingError
 from .io import read_json, dumps
 
@@ -84,6 +84,7 @@ def build_corpus(filenames, output: Path, *, member_surnames: dict[str, Sequence
     scopes['extension'] = 'extension'
     collisions = []
     counts = Counter()
+    review_categories = Counter()
     assumption_counts = Counter()
     date_resolution_counts = Counter()
     residual_counts = Counter(opaque_fields_audited=0, fields_with_residual_text=0,
@@ -97,6 +98,8 @@ def build_corpus(filenames, output: Path, *, member_surnames: dict[str, Sequence
     for name in names:
         input_digest.update((json.dumps(name, ensure_ascii=False) + '\n').encode())
         parsed = parse_filename(name, member_surnames=member_surnames)
+        review_categories[filename_review_category({'input': name, 'stem_end': parsed.stem_end,
+                         'observations': [m.model_dump() for m in parsed.matches]})] += 1
         audit_check(''.join(p.raw for p in parsed.pieces) == name,
                     'Parser pieces do not reconstruct the filename.', filename=name)
         end = 0
@@ -252,6 +255,8 @@ def build_corpus(filenames, output: Path, *, member_surnames: dict[str, Sequence
             counts['filenames_with_unparsed_structured_payload'] += bool(unparsed_payload)
             if not has_layout or unparsed_payload or not expected:
                 _line(gaps, {'filename': name, 'has_layout': has_layout,
+                             'review_category': filename_review_category({'input': name, 'stem_end': parsed.stem_end,
+                                 'observations': [m.model_dump() for m in parsed.matches]}),
                              'unparsed_structured_payload': bool(unparsed_payload),
                              'has_shared_token': bool(expected),
                              'unmatched_interpretation': interpretation.model_dump() if interpretation else None,
@@ -313,6 +318,7 @@ def build_corpus(filenames, output: Path, *, member_surnames: dict[str, Sequence
     _write_json(output / 'unmatched-rules.json', [dict(r, matches=assumption_counts[r['id']] + date_resolution_counts[r['id']]) for r in unmatched_rules])
     summary = {
         'literal_filenames': len(names), 'sorted_literal_filenames_sha256': input_digest.hexdigest(),
+        'filename_review_categories': dict(review_categories),
         'structural_and_field_rules': len(definitions),
         'shared_token_rules': len(shared),
         'shared_token_rules_by_kind': dict(Counter(k[0] for k in shared)),

@@ -34,6 +34,7 @@ SUPPLEMENTAL_RULES = frozenset({
     'meeting-results-suffix', 'executive-business-wording', 'bill-companion-abbreviation',
     'committee-print-wording', 'act-year-reference', 'bracketed-terminal-number',
     'budget-views-wording', 'oversight-plan-wording', 'joined-fiscal-year',
+    'possible-month-day-prefix',
 })
 # The extractor dereferences these even when a filename has no matching layout.
 REQUIRED_RULES = {
@@ -53,6 +54,9 @@ RULE_INPUTS = {
     'amendment-reference': ('search', {'amendment_token'}),
     'exhibit-reference': ('search', {'item_token'}),
     'document-suffix': ('search', {'document_identifier'}),
+    'slide-reference': ('search', {'item_token'}),
+    'partial-date': ('search', {'partial_date_token', 'partial_year_token', 'partial_month_token'}),
+    'possible-month-day-prefix': ('document-wording-search', {'possible_month_day_token'}),
     'malformed-numeric-date': ('search', {'date_token'}),
     'gsa-project-reference': ('search', {'reference_identifier_token'}),
     'printed-citation': ('search', {'citation_marker'}),
@@ -73,7 +77,7 @@ RULE_INPUTS = {
 EXTENSION = re.compile(r'\.(?P<extension>pdf|xml|html?|docx?|xlsx?|pptx?|txt|rtf|zip|csv|tsv|xsd|jpe?g|png|mp[34]|m3u8|aspx|cfm)\Z', re.I | re.ASCII)
 TOKEN = re.compile(r'(?P<word>[^\W\d_]+)|(?P<number>[0-9]+)|(?P<separator>[\s\S])')
 QUERY = re.compile(r'[?&](?:[^?&=\s]+=[^&\s]*)(?:&[^?&=\s]+=[^&\s]*)*\Z')
-FREE_FIELDS = {'payload', 'descriptor', 'suffix', 'subject_token', 'target_subject', 'title_token', 'name_token', 'filer_token', 'local_identifier'}
+FREE_FIELDS = {'payload', 'descriptor', 'suffix', 'subject_token', 'target_subject', 'title_token', 'name_token', 'filer_token', 'local_identifier', 'comparison_source', 'comparison_target'}
 MALFORMED_DATE_NOTE = 'Date-shaped text with unsupported numeric component length; source digits are not repaired and no event date is established.'
 MONTHS = {name: number for number, name in enumerate(
     ('jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'), 1)}
@@ -98,7 +102,7 @@ PUBLICATION_NUMBER_NOTES = {
 
 
 @lru_cache(maxsize=256)
-def member_title_pattern(surnames: tuple[str, ...]) -> str:
+def member_title_pattern(surnames: tuple[str, ...], *, include_title: bool = True) -> str:
     """Use supplied spellings, allowing omitted surname punctuation only."""
     alternatives = []
     for surname in sorted(set(surnames), key=lambda value: (-len(value), value)):
@@ -107,7 +111,7 @@ def member_title_pattern(surnames: tuple[str, ...]) -> str:
             alternatives.append(r"[\s'’._-]*".join(re.escape(p) for p in parts))
     return (r'(?P<member_marker>Rep)(?P<member_surname_token>'
             + ('|'.join(alternatives) or r'(?!)')
-            + r')(?P<title_token>(?-i:[A-Z]).*)?')
+            + r')' + (r'(?P<title_token>(?-i:[A-Z]).*)?' if include_title else ''))
 
 
 def date_candidates(raw: str) -> tuple[list[str], bool, str]:
@@ -169,6 +173,8 @@ def bind_extraction_rules(guide: dict) -> dict[str, tuple[dict, re.Pattern]]:
         except re.error as exc:
             raise NamingError('invalid-catalog', f'Bad extraction pattern {rid}: {exc}') from exc
         fields = set(regex.groupindex)
+        if 'label' in rule and 'label' not in fields:
+            raise NamingError('invalid-catalog', f'Extraction rule {rid} supplies a label reading without a label capture')
         if not fields:
             raise NamingError('invalid-catalog', f'Extraction pattern {rid} has no named fields')
         if rid in DATE_RULES and not fields & {'date_token', 'short_date_token'}:
@@ -259,6 +265,16 @@ class Extractor:
                     fields.extend(refined)
                     continue
             field = self._field(name, raw, start + offset, end + offset)
+            if name == 'label' and 'label' in rule:
+                field.update(label=rule['label'], note=rule['description'])
+            if rule['id'] in {
+                'short-legislative-reference', 'short-measure-format-reference', 'short-legislative-companion', 'rcp-short-measure',
+                'local-rcp-reference', 'local-formatted-file', 'local-code-prefix', 'bill-comparison',
+                'treaty-citation', 'gao-reference', 'jct-reference', 'jct-compact-reference',
+                'local-x-reference', 'drafting-identifier', 'question-component', 'outline-prefix',
+                'partial-date', 'possible-month-day-prefix', 'abbreviated-component',
+            }:
+                field['note'] = rule['description']
             if name == 'report_subject_token':
                 field['note'] = 'Literal numeric subject in a report-prefixed filename; may identify a measure, report or local item. No official number, embedded Congress or document identity is established; digits are not split or repaired.'
             if rule['id'] == 'bill-companion-abbreviation':
@@ -383,7 +399,7 @@ class Extractor:
                 context = {'activities': 'report', 'sd': 'meeting-attachment'}.get(raw.lower(), 'document')
             elif name == 'local_code_token':
                 field['note'] = 'Literal local code; no official version label or expansion inferred.'
-                if raw.lower() != 'orh' or rule['id'] == 'house-consideration-marker':
+                if rule['id'] not in {'local-code-prefix', 'updated-local-code'} and (raw.lower() != 'orh' or rule['id'] == 'house-consideration-marker'):
                     context = 'consideration'
             elif name == 'notice_marker':
                 context = 'notice'
@@ -481,6 +497,18 @@ class Extractor:
             if rule['scope'] == 'unmatched-stem' or rule['scope'] == 'unmatched-date' and name in {'name_token', 'ignored_suffix'}:
                 field['note'] = 'User-requested fallback assumption; not a verified person or identifier.'
             fields.append(field)
+        if rule['id'] == 'partial-date':
+            for field in fields:
+                if field['name'] == 'partial_date_token':
+                    month = groups['partial_month_token']
+                    field['candidates'] = ([groups['partial_year_token']] if month.lower() == 'xx'
+                                           else [groups['partial_year_token'] + '-' + month] if 1 <= int(month) <= 12 else [])
+                    if not field['candidates']:
+                        field['note'] += ' Invalid month; source components retained without repair.'
+        if rule['id'] == 'possible-month-day-prefix':
+            raw = groups['possible_month_day_token']
+            fields.append(self._field('generic_identifier', raw, hit.start() + offset, hit.end() + offset,
+                                     note='An identifier remains possible; the four digits also resemble a month/day.'))
         if rule['id'] == 'named-month-year':
             month = MONTHS[groups['month_token'][:3].lower()]
             year = int(groups['year_token'])
@@ -573,6 +601,31 @@ class Extractor:
                             if part['name'] == 'title_token' and uncertain_title:
                                 part['note'] += ' Candidate title excludes a possible version ending; the full descriptor remains available.'
                     results.append(match)
+        # A printed Rep+surname may also occur at the end or within a title.
+        # Read only roster-backed surnames and visible word boundaries, without
+        # inventing first names, sponsorship or a title after the reference.
+        reference = re.compile(member_title_pattern(tuple(surnames), include_title=False), re.I | re.ASCII)
+        reference_rule = dict(rule, id='member-reference')
+        occupied = {(f['start'], f['end']) for m in results for f in m['fields'] if f['name'] == 'member_surname_token'}
+        for parent in observations:
+            if parent['rule'] not in self.legislative_ids:
+                continue
+            for field in parent['fields']:
+                if field['name'] not in {'descriptor', 'suffix', 'subject_token', 'amendment_token'}:
+                    continue
+                for hit in reference.finditer(field['raw']):
+                    # Check after choosing the longest supplied surname. A
+                    # failed Miller-Meeks boundary must not backtrack to Miller.
+                    if hit.end() < len(field['raw']) and field['raw'][hit.end()].isalpha() and not field['raw'][hit.end()].isupper():
+                        continue
+                    a, b = hit.span('member_surname_token')
+                    span = field['start'] + a, field['start'] + b
+                    if span not in occupied:
+                        match = self._match(reference_rule, hit, field['start'])
+                        for part in match['fields']:
+                            part['note'] = rule['description']
+                        results.append(match)
+                        occupied.add(span)
         return results
 
     def _support_references(self, filename: str, start: int, stem_end: int, observations: list[dict],
@@ -815,6 +868,28 @@ class Extractor:
 
         # Only free text slots can contain additional references or dates. Known
         # person IDs and dates must not produce accidental bills or revisions.
+        # RCP uses short measure spellings that would be too broad to scan in
+        # arbitrary prose. Read them only after a printed RCP prefix.
+        if 'rcp-short-measure' in self.by_id and 'local-rcp-reference' in self.by_id:
+            owned_spans = [(f['start'], f['end']) for m in observations for f in m['fields']
+                           if f['name'] not in FREE_FIELDS
+                           or m['rule'] == 'person-document' and f['name'] == 'subject_token']
+            rcp_rule, rcp_regex = self.by_id['rcp-short-measure']
+            for prefix in self.by_id['local-rcp-reference'][1].finditer(stem):
+                if self._overlaps(start + prefix.start(), start + prefix.end(), owned_spans):
+                    continue
+                pos = prefix.end()
+                while hit := rcp_regex.match(stem, pos):
+                    if self._overlaps(start + hit.start(), start + hit.end(), owned_spans):
+                        break
+                    observations.append(self._match(rcp_rule, hit, start))
+                    # Further references must be consecutive components,
+                    # not unrelated short tokens later in prose.
+                    pos = hit.end()
+                    while pos < len(stem) and stem[pos] in '_-':
+                        pos += 1
+                    if pos == hit.end():
+                        break
         protected = []
         for match in observations:
             for field in match['fields']:
@@ -823,13 +898,21 @@ class Extractor:
 
         searches = [(r, rx) for r, rx in self.rules if r['scope'] == 'search']
         reference_numbers = {'measure-reference': 'measure_number', 'amendment-reference': 'amendment_token',
-                             'exhibit-reference': 'item_token', 'document-suffix': 'document_identifier'}
+                             'exhibit-reference': 'item_token', 'document-suffix': 'document_identifier',
+                             'slide-reference': 'item_token'}
         separated_date = self.by_id['date-separated'][1]
         measure_regex = self.by_id['measure-reference'][1]
         measure_spans = [(start + m.start(), start + m.end()) for m in measure_regex.finditer(stem)]
         # Complete identifier/date forms reserve their spans before other scans.
         order = {'timestamp-shaped': 0, 'uuid': 1, 'hex-identifier': 2, 'bioguide-token': 3,
                  'gsa-project-reference': 2,
+                 **{rid: 2 for rid in ('treaty-citation', 'gao-reference', 'jct-reference',
+                     'jct-compact-reference', 'local-x-reference',
+                     'short-legislative-reference', 'short-measure-format-reference', 'short-legislative-companion',
+                     'local-rcp-reference', 'partial-date')},
+                 'drafting-identifier': 4,
+                 'question-component': 4, 'abbreviated-component': 4, 'slide-reference': 4,
+                 'chair-mark-description': 4, 'document-list-wording': 4,
                  'revision-token': 4, 'revised-token': 4, 'part-token': 4, 'print-reference': 4,
                  'named-month-date': 4, 'day-named-month-date': 4,
                  'named-month-range': 4, 'addendum-number-date': 4, 'printed-citation': 4,
@@ -846,6 +929,11 @@ class Extractor:
         def candidates(rule, regex):
             if rule['id'] not in date_rules:
                 for hit in regex.finditer(stem):
+                    if (rule['id'] in {'document-wording', 'biographical-wording'} and 'label' in hit.groupdict()
+                            and hit.start() and stem[hit.start() - 1].isalpha()):
+                        preceding_word = re.search(r'[A-Za-z]+\Z', stem[:hit.start()])
+                        if preceding_word and not preceding_word[0][0].isupper():
+                            continue
                     # A complete malformed shape still needs a possible month
                     # in one of its first two components. Its year stays raw.
                     if rule['id'] == 'malformed-numeric-date' and min(
@@ -958,49 +1046,53 @@ class Extractor:
         document_labels = [{'start': f['start'], 'end': f['end'], 'rule': m['rule']}
                            for m in observations for f in m['fields']
                            if f['name'] == 'label' and any(rx.fullmatch(f['raw']) for rx in label_patterns)]
-        if document_labels:
-            qualifier_rule, qualifier_regex = self.by_id['document-qualifier']
-            qualifier_hits = [self._match(qualifier_rule, h, start) for h in qualifier_regex.finditer(stem)
-                              if not self._overlaps(start + h.start(), start + h.end(), protected)]
-            terminal_spans = [(f['start'], f['end']) for m in observations for f in m['fields']
-                              if f['name'] in {'opaque_uuid','opaque_hex','date_token','short_date_token','time_token','fraction_token'}]
-            terminal_end = stem_end
-            if hanging := re.search(r'pdf(?:-[0-9]+)?\Z', stem, re.I):
-                terminal_end = start + hanging.start()
-            groups = []
-            for match in sorted([*document_labels, *qualifier_hits], key=lambda m: (m['start'], m['end'])):
-                if groups and re.fullmatch(r'[ ._()\[\]-]+', filename[groups[-1][-1]['end']:match['start']]):
-                    groups[-1].append(match)
-                else:
-                    groups.append([match])
-            for group in groups:
-                terminal = (any(m['end'] <= group[-1]['start'] for m in document_labels)
-                            and all(filename[i] in ' ._()-[]0123456789'
-                                    or any(a <= i < b for a, b in terminal_spans)
-                                    for i in range(group[-1]['end'], terminal_end)))
-                for match in group:
-                    # Remarks may be followed by a topic, such as Public Health.
-                    # Only preceding or terminal qualifiers are unambiguous here.
-                    adjacent = any(m['rule'] != 'document-qualifier'
-                                   and (m['rule'] != 'remarks-wording' or match['end'] <= m['start'])
-                                   for m in group)
-                    if match['rule'] == 'document-qualifier' and (adjacent or terminal):
-                        observations.append(match)
-                        protected.append((match['start'], match['end']))
-            number_rule, number_regex = self.by_id['document-label-number']
-            label_ends = {m['end'] for m in document_labels} | {
-                m['end'] for m in observations if m['rule'] == 'document-qualifier'}
-            for hit in number_regex.finditer(stem):
-                a, b = start + hit.start(), start + hit.end()
-                if a not in label_ends:
-                    continue
-                observed = self._match(number_rule, hit, start)
-                if self._overlaps(a, b, protected):
-                    ignored.append({'rule': number_rule['id'], 'raw': hit[0], 'start': a, 'end': b,
-                                    'reason': 'Overlaps a structured or already assigned token.', 'fields': observed['fields']})
-                else:
-                    observations.append(observed)
-                    protected.append((a, b))
+        qualifier_rule, qualifier_regex = self.by_id['document-qualifier']
+        qualifier_hits = [self._match(qualifier_rule, h, start) for h in qualifier_regex.finditer(stem)
+                          if not self._overlaps(start + h.start(), start + h.end(), protected)]
+        terminal_spans = [(f['start'], f['end']) for m in observations for f in m['fields']
+                          if f['name'] in {'opaque_uuid','opaque_hex','date_token','short_date_token','time_token','fraction_token','filename_format_token'}]
+        terminal_end = stem_end
+        if hanging := re.search(r'pdf(?:-[0-9]+)?\Z', stem, re.I):
+            terminal_end = start + hanging.start()
+        groups = []
+        for match in sorted([*document_labels, *qualifier_hits], key=lambda m: (m['start'], m['end'])):
+            if groups and re.fullmatch(r'[ ._()\[\]-]*', filename[groups[-1][-1]['end']:match['start']]):
+                groups[-1].append(match)
+            else:
+                groups.append([match])
+        for group in groups:
+            terminal = (all(filename[i] in ' ._()-[]0123456789'
+                                or any(a <= i < b for a, b in terminal_spans)
+                                for i in range(group[-1]['end'], terminal_end)))
+            for match in group:
+                # Remarks may be followed by a topic, such as Public Health.
+                # Only preceding or terminal qualifiers are unambiguous here.
+                adjacent = any(m['rule'] != 'document-qualifier'
+                               and (m['rule'] != 'remarks-wording' or match['end'] <= m['start'])
+                               for m in group)
+                public = any(f['raw'].lower() == 'public' for f in match.get('fields', ()))
+                prefix = (all(c in ' ._()-[]' for c in filename[start:match['start']])
+                          and not any(f['name'] == 'label' for m in observations for f in m['fields']))
+                allowed = adjacent or terminal or prefix
+                if public:
+                    allowed = adjacent or terminal and bool(document_labels)
+                if match['rule'] == 'document-qualifier' and allowed:
+                    observations.append(match)
+                    protected.append((match['start'], match['end']))
+        number_rule, number_regex = self.by_id['document-label-number']
+        label_ends = {m['end'] for m in document_labels} | {
+            m['end'] for m in observations if m['rule'] == 'document-qualifier'}
+        for hit in number_regex.finditer(stem):
+            a, b = start + hit.start(), start + hit.end()
+            if a not in label_ends:
+                continue
+            observed = self._match(number_rule, hit, start)
+            if self._overlaps(a, b, protected):
+                ignored.append({'rule': number_rule['id'], 'raw': hit[0], 'start': a, 'end': b,
+                                'reason': 'Overlaps a structured or already assigned token.', 'fields': observed['fields']})
+            else:
+                observations.append(observed)
+                protected.append((a, b))
 
         for parent in tuple(observations):
             # A recognized container permits precise refinement of its slots,

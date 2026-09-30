@@ -16,8 +16,38 @@ CAMEL_SPLIT = re.compile(CAMEL_BOUNDARY)
 DESCRIPTIVE_FIELDS = frozenset({
     'payload', 'descriptor', 'suffix', 'subject_token', 'title_token',
     'context_token', 'recipient_token', 'annotation', 'name_token', 'target_subject',
-    'local_identifier', 'measure_list', 'filer_token',
+    'local_identifier', 'measure_list', 'filer_token', 'comparison_source', 'comparison_target',
 })
+
+
+def filename_review_category(result: dict) -> str:
+    """Route audit rows by literal syntax, without claiming document contents.
+
+    A filename alone cannot distinguish an unmarked person's name from a title.
+    Neither is counted as a demonstrated document-type parsing failure.
+    """
+    fields = [f for m in result['observations'] for f in m['fields']]
+    extensions = [f['raw'].lower() for f in fields if f['name'] == 'extension']
+    extension = extensions[0] if extensions else None
+    stem = result['input'][:result['stem_end']].strip().lower()
+    if extension == 'zip':
+        return 'container'
+    if extension in {'mp3', 'mp4', 'm3u8', 'jpg', 'jpeg', 'png'}:
+        return 'media-or-stream'
+    if extension == 'xml' and stem in {'mets', 'premis'}:
+        return 'metadata-file'
+    if extension in {'aspx', 'cfm'} or extension in {'htm', 'html'} and stem in {'index', 'default', 'error', 'waf'}:
+        return 'web-endpoint'
+    ignored = DESCRIPTIVE_FIELDS | {'extension', 'embedded_extension', 'query_text', 'ignored_suffix',
+                                   'generic_identifier', 'opaque_identifier', 'opaque_uuid', 'opaque_hex'}
+    if any(f['raw'] and f['name'] not in ignored for m in result['observations']
+           if not m['scope'].startswith('unmatched-') for f in m['fields']):
+        return 'extracted-syntax'
+    if re.fullmatch(r'[0-9]+(?:[._ -][0-9]+)*', stem):
+        return 'generic-identifier'
+    if any(f['name'] in {'opaque_identifier', 'opaque_uuid', 'opaque_hex'} for f in fields):
+        return 'opaque-identifier-or-text'
+    return 'unclassified-name-or-title'
 
 
 def audit_check(condition: bool, message: str, *, filename: str | None = None) -> None:

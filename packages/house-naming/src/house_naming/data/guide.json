@@ -20057,9 +20057,9 @@
     },
     {
       "id": "published-report",
-      "pattern": "(?P<package_family>CRPT)-(?P<congress>[0-9]{1,3})(?P<publication_code>[hse]rpt)(?P<publication_number>[0-9]+)(?P<suffix>.*)",
+      "pattern": "(?P<package_family>CRPT)-?(?P<congress>[0-9]{1,3})(?P<publication_code>[hse]rpt)(?P<publication_number>[0-9]+)(?P<suffix>.*)",
       "scope": "stem",
-      "description": "Published report package notation.",
+      "description": "Published report package notation, including an observed missing hyphen; literal extraction does not relax strict canonical validation.",
       "priority": 0
     },
     {
@@ -20344,7 +20344,7 @@
     },
     {
       "id": "measure-reference",
-      "pattern": "(?<![A-Za-z])(?P<measure_token>H\\.?[\\s_-]*CON\\.?[\\s_-]*RES\\.?|S\\.?[\\s_-]*CON\\.?[\\s_-]*RES\\.?|H\\.?[\\s_-]*J\\.?[\\s_-]*RES\\.?|S\\.?[\\s_-]*J\\.?[\\s_-]*RES\\.?|H\\.?[\\s_-]*RES\\.?|S\\.?[\\s_-]*RES\\.?|H\\.?[\\s_-]*R\\.?|S\\.?)[ _-]*(?P<measure_number>[0-9]+)",
+      "pattern": "(?:(?<![A-Za-z])|(?<=Amendmentto)|(?<=AMDto))(?P<measure_token>H\\.?[\\s_-]*CON\\.?[\\s_-]*RES\\.?|S\\.?[\\s_-]*CON\\.?[\\s_-]*RES\\.?|H\\.?[\\s_-]*J\\.?[\\s_-]*RES\\.?|S\\.?[\\s_-]*J\\.?[\\s_-]*RES\\.?|H\\.?[\\s_-]*RES\\.?|S\\.?[\\s_-]*RES\\.?|H\\.?[\\s_-]*R\\.?|S\\.?)[ _-]*(?P<measure_number>[0-9]+)",
       "scope": "search",
       "description": "Measure-shaped notation; all occurrences are retained, without resolving a measure or Congress.",
       "priority": 0
@@ -20393,9 +20393,9 @@
     },
     {
       "id": "exhibit-reference",
-      "pattern": "(?<![A-Za-z])(?P<exhibit_marker>Exhibit|Attachment|Agenda[ _-]+Item)[ _#.-]+(?P<item_token>[0-9]+[A-Za-z]?)(?![A-Za-z0-9])",
+      "pattern": "(?<![A-Za-z])(?P<exhibit_marker>Exhibit|Attachment|Appendix(?=[ _#.-]+(?:[0-9]{1,4}[A-Za-z]?|[A-Za-z][0-9]*)(?![A-Za-z0-9]))|Agenda[ _-]+Item)[ _#.-]+(?P<item_token>(?:[0-9]+[A-Za-z]?|[A-Za-z][0-9]*))(?![A-Za-z0-9])",
       "scope": "search",
-      "description": "Printed exhibit, attachment or agenda item identifier.",
+      "description": "Printed exhibit, attachment, appendix or agenda item identifier. Appendix numeric labels are limited to short identifiers so longer date-shaped suffixes remain available to the date reader.",
       "priority": 0
     },
     {
@@ -20680,14 +20680,14 @@
     },
     {
       "id": "labeled-subject",
-      "pattern": "(?P<label>Witness[ _-]+List|Opening[ _-]+Statement|Written[ _-]+Testimony|Prepared[ _-]+Statement|(?:(?:Written[ _-]+)?(?:Responses?|Answers?|Resp)[ _-]+(?:to|for)[ _-]+(?:(?:Written[ _-]+)?Questions?[ _-]+for[ _-]+(?:the[ _-]+)?Record|QFR(?:['’]?s)?)|QFR(?:['’]?s)?[ _-]*(?:Responses?|Answers?)|(?:Written[ _-]+)?Questions?[ _-]+for[ _-]+(?:the[ _-]+)?Record|QFR(?:['’]?s)?)|Official[ _-]+Hearing[ _-]+Transcript|Letter[ _-]+of[ _-]+Support|Testimony|Biography|Transcript|Statement)[ _-]+(?P<subject_token>.+)",
+      "pattern": "(?P<label>Witness[ _-]*List|Opening[ _-]*Statement|Written[ _-]*Testimony|Prepared[ _-]*Statement|(?:(?:Written[ _-]+)?(?:Responses?|Answers?|Resp)[ _-]+(?:to|for)[ _-]+(?:(?:Written[ _-]+)?Questions?[ _-]+for[ _-]+(?:the[ _-]+)?Record|QFR(?:['’]?s)?)|QFR(?:['’]?s)?[ _-]*(?:Responses?|Answers?)|(?:Written[ _-]+)?Questions?[ _-]+for[ _-]+(?:the[ _-]+)?Record|QFR(?:['’]?s)?)|Official[ _-]+Hearing[ _-]+Transcript|Letter[ _-]+of[ _-]+Support|Testimon(?:y|ies)|Biography|Transcript|Statement)[ _-]+(?P<subject_token>.+)",
       "description": "Explicit document wording and literal subject; subject does not establish a person identity.",
       "scope": "stem",
       "priority": 2
     },
     {
       "id": "subject-labeled",
-      "pattern": "(?P<subject_token>(?:[ _-](?=[ _-])|.+?(?<![ _-])))[ _-]+(?P<label>Witness[ _-]+List|Opening[ _-]+Statement|Written[ _-]+Testimony|Prepared[ _-]+Statement|(?:(?:Written[ _-]+)?(?:Responses?|Answers?|Resp)[ _-]+(?:to|for)[ _-]+(?:(?:Written[ _-]+)?Questions?[ _-]+for[ _-]+(?:the[ _-]+)?Record|QFR(?:['’]?s)?)|QFR(?:['’]?s)?[ _-]*(?:Responses?|Answers?)|(?:Written[ _-]+)?Questions?[ _-]+for[ _-]+(?:the[ _-]+)?Record|QFR(?:['’]?s)?)|Official[ _-]+Hearing[ _-]+Transcript|Letter[ _-]+of[ _-]+Support|Testimony|Biography|Transcript|Statement)",
+      "pattern": "(?P<subject_token>(?:[ _-](?=[ _-])|.+?(?<![ _-])))[ _-]+(?P<label>Witness[ _-]*List|Opening[ _-]*Statement|Written[ _-]*Testimony|Prepared[ _-]*Statement|(?:(?:Written[ _-]+)?(?:Responses?|Answers?|Resp)[ _-]+(?:to|for)[ _-]+(?:(?:Written[ _-]+)?Questions?[ _-]+for[ _-]+(?:the[ _-]+)?Record|QFR(?:['’]?s)?)|QFR(?:['’]?s)?[ _-]*(?:Responses?|Answers?)|(?:Written[ _-]+)?Questions?[ _-]+for[ _-]+(?:the[ _-]+)?Record|QFR(?:['’]?s)?)|Official[ _-]+Hearing[ _-]+Transcript|Letter[ _-]+of[ _-]+Support|Testimon(?:y|ies)|Biography|Transcript|Statement)",
       "description": "Literal subject followed by explicit document wording; document contents are not verified.",
       "scope": "stem",
       "priority": 2
@@ -20708,7 +20708,7 @@
     },
     {
       "id": "document-wording",
-      "pattern": "(?<![A-Za-z])(?P<label>Witness[ _-]+List|Opening[ _-]+Statement|Written[ _-]+Testimony|Prepared[ _-]+Statement|(?:(?:Written[ _-]+)?(?:Responses?|Answers?|Resp)[ _-]+(?:to|for)[ _-]+(?:(?:Written[ _-]+)?Questions?[ _-]+for[ _-]+(?:the[ _-]+)?Record|QFR(?:['’]?s)?)|QFR(?:['’]?s)?[ _-]*(?:Responses?|Answers?)|(?:Written[ _-]+)?Questions?[ _-]+for[ _-]+(?:the[ _-]+)?Record|QFR(?:['’]?s)?)|Official[ _-]+Hearing[ _-]+Transcript|Letter[ _-]+of[ _-]+Support|Testimony|Biography|Transcript|Statement)(?:(?![A-Za-z])|(?=pdf\\Z))",
+      "pattern": "(?:(?<![A-Za-z])|(?-i:(?<=[a-z0-9])(?=[A-Z])))(?P<label>Witness[ _-]*List|Opening[ _-]*Statement|Written[ _-]*Testimony|Prepared[ _-]*Statement|(?:(?:Written[ _-]+)?(?:Responses?|Answers?|Resp)[ _-]+(?:to|for)[ _-]+(?:(?:Written[ _-]+)?Questions?[ _-]+for[ _-]+(?:the[ _-]+)?Record|QFR(?:['’]?s)?)|QFR(?:['’]?s)?[ _-]*(?:Responses?|Answers?)|(?:Written[ _-]+)?Questions?[ _-]+for[ _-]+(?:the[ _-]+)?Record|QFR(?:['’]?s)?)|Official[ _-]+Hearing[ _-]+Transcript|Letter[ _-]+of[ _-]+Support|Testimon(?:y|ies)|Biography|Transcript|Statement)(?:(?![A-Za-z])|(?-i:(?<=[a-z])(?=[A-Z]))|(?=pdf(?:-[0-9]+)?\\Z))",
       "scope": "search",
       "priority": 0,
       "description": "Literal document-related wording; does not certify a file type or its contents."
@@ -20904,17 +20904,17 @@
     },
     {
       "id": "biographical-wording",
-      "pattern": "(?<![A-Za-z0-9])(?P<label>(?:Witness[ _-]+)?(?:Biograph(?:y|ies)|Bios?|C\\.?V\\.?|Curriculum[ _-]+Vitae|R[eé]sum[eé]))(?:(?![A-Za-z])|(?=pdf(?:-[0-9]+)?\\Z))",
+      "pattern": "(?:(?<![A-Za-z0-9])|(?-i:(?<=[a-z0-9])(?=[A-Z])))(?P<label>(?:Witness[ _-]+)?(?:Biograph(?:y|ies)|Bios?|C\\.?V\\.?|Curriculum[ _-]+Vitae|R[eé]sum[eé]))(?:(?![A-Za-z])|(?-i:(?<=[a-z])(?=[A-Z]))|(?=pdf(?:-[0-9]+)?\\Z))",
       "scope": "search",
       "priority": 0,
       "description": "Literal biography or resume wording; no person identity or file contents are verified."
     },
     {
       "id": "document-qualifier",
-      "pattern": "(?<![A-Za-z0-9])(?P<qualifier_wording>Public|Final|OCR|Redacted|Amended|Updated)(?:(?![A-Za-z])|(?=pdf(?:-[0-9]+)?\\Z))",
+      "pattern": "(?:(?<![A-Za-z0-9])|(?-i:(?<=[a-z0-9])(?=[A-Z])))(?P<qualifier_wording>As[ _-]*(?:Modified(?:[ _-]*Again)?|Amended)|Public|Final|OCR|Redacted|Amended|Updated|Modified|Signed|Cleared|Unofficial)(?:(?![A-Za-z])|(?-i:(?<=[a-z])(?=[A-Z]))|(?=pdf(?:-[0-9]+)?\\Z))",
       "scope": "document-wording-search",
       "priority": 0,
-      "description": "Printed qualifier adjacent to a recognized questionnaire/biographical label or terminal in that filename; no verified publication or access state."
+      "description": "Printed qualifier adjacent to document wording or terminal; a leading qualifier is retained when no document label gives it a conflicting topic context. Public requires a document label. No verified publication, revision or access state."
     },
     {
       "id": "document-label-number",
@@ -21025,7 +21025,7 @@
       "id": "committee-mark-wording",
       "scope": "document-wording-search",
       "priority": 0,
-      "pattern": "(?<!%)(?<!%[0-9a-f]{2})(?:(?<![A-Za-z%])|(?-i:(?=[FS][a-z])))(?P<label>(?:Full[ _-]*Committee|Subcommittee)[ _-]*Mark(?:[ _-]*up)?)(?:(?![A-Za-z])|(?=pdf(?:-[0-9]+)?\\Z))",
+      "pattern": "(?<!%)(?<!%[0-9a-f]{2})(?:(?<![A-Za-z%])|(?-i:(?=[FS][a-z])))(?P<label>(?:Full[ _-]*Committee|Subcommittee|Chair(?:man)?[\\x27’]?s)[ _-]*(?:Modified[ _-]*)?Mark(?:[ _-]*up)?)(?:(?![A-Za-z])|(?=pdf(?:-[0-9]+)?\\Z))",
       "description": "Literal full-committee or subcommittee mark/markup wording; does not establish a committee identity or completed event."
     },
     {
@@ -21039,7 +21039,7 @@
       "id": "legislative-text-wording",
       "scope": "document-wording-search",
       "priority": 0,
-      "pattern": "(?<![A-Za-z%])(?<!%[0-9a-f]{2})(?P<label>Legislative[ _-]*Text)(?:[ _-]*(?P<qualifier_wording>As[ _-]*Reported(?:[ _-]*Out[ _-]*of[ _-]*Committee)?))?(?:(?![A-Za-z])|(?=pdf(?:-[0-9]+)?\\Z))",
+      "pattern": "(?<![A-Za-z%])(?<!%[0-9a-f]{2})(?P<label>(?:Legislative|Legislation|Bill)[ _-]*Text)(?:[ _-]*(?P<qualifier_wording>As[ _-]*Reported(?:[ _-]*Out[ _-]*of[ _-]*Committee)?))?(?:(?![A-Za-z])|(?=pdf(?:-[0-9]+)?\\Z))",
       "description": "Literal legislative-text and optional as-reported wording; does not verify document contents or an official version."
     },
     {
@@ -21167,6 +21167,287 @@
       "pattern": "(?<!%[0-9a-f]{2})(?<![A-Za-z0-9%])(?P<label>(?:Preamble|Resolving[ _-]*Clause|Title|Substitute)[ _-]*Amendments?)(?:(?![A-Za-z])|(?=pdf(?:-[0-9]+)?\\Z))",
       "description": "Printed amendment-form wording; no official amendment identity, action, or document contents are established.",
       "priority": 0
+    },
+    {
+      "id": "short-legislative-reference",
+      "scope": "search",
+      "priority": 0,
+      "pattern": "(?<![A-Za-z0-9])(?P<measure_token>hc|hj|h|sc|sj|s)(?P<measure_number>[0-9]+)(?P<local_modifier>fs|nr|EW)?[_-](?P<version_token>pwah|reah|renr|ash|ath|ats|cdh|cds|cph|cps|eah|eas|enr|eph|fah|fph|fps|hdh|hds|iph|ips|lth|lts|oph|ops|pap|pav|pch|pcs|pih|pis|rah|ras|rch|rcs|rdh|rds|res|rfh|rfs|rih|ris|rth|rts|sas|as|eh|es|ih|is|pp|rh|rs|sc)(?:(?:[_-](?P<filename_format_token>xml)(?![A-Za-z0-9]))|(?=[_. -]|$))",
+      "description": "Short measure code, number and explicit text version. Congress is absent; internal xml wording does not establish the file format."
+    },
+    {
+      "id": "short-measure-format-reference",
+      "scope": "search",
+      "priority": 0,
+      "pattern": "(?<![A-Za-z0-9])(?P<measure_token>hc|hj|h|sc|sj|s)(?P<measure_number>[0-9]+)(?:[ _-]*(?P<local_modifier>etc))?[ _-]+(?P<filename_format_token>xml)(?![A-Za-z0-9])",
+      "description": "Short measure reference with internal format wording; no Congress or version inferred."
+    },
+    {
+      "id": "bill-comparison",
+      "scope": "stem",
+      "priority": 1,
+      "pattern": "(?P<label>Bill[ _-]*To[ _-]*Bill)[ _-]+(?P<comparison_source>.+?)(?<![ _-])[ _-]+(?P<comparison_relation>to)[ _-]+(?P<comparison_target>.+)",
+      "description": "Printed bill-to-bill comparison: source and target spans keep their separate references and local modifiers. No equivalence or legislative relationship verified."
+    },
+    {
+      "id": "local-rcp-reference",
+      "scope": "search",
+      "priority": 0,
+      "pattern": "(?<![A-Za-z0-9])(?P<print_token>RCP)[ _-]+(?:(?P<local_number_token>[0-9]+)(?:[_-](?P<local_modifier>[0-9]+))?[ _-]+(?P<filename_format_token>xml)|(?=xml|[HhSs][A-Za-z]*[0-9]))",
+      "description": "Printed RCP local reference; numeric-only xml identifiers are not official print numbers or a Congress."
+    },
+    {
+      "id": "rcp-short-measure",
+      "scope": "legislative-subject-search",
+      "priority": 0,
+      "pattern": "(?<![A-Za-z0-9])(?P<measure_token>hc|hj|h|sc|sj|s)(?P<measure_number>[0-9]+)(?:(?:[ _-]*(?P<local_modifier>etc))?[ _-]+(?P<filename_format_token>xml)|(?![A-Za-z0-9])(?=[_-][hHsS][A-Za-z]*[0-9]))",
+      "description": "Short measure within the consecutive RCP reference components; no Congress or version inferred."
+    },
+    {
+      "id": "local-formatted-file",
+      "scope": "stem",
+      "priority": 1,
+      "pattern": "(?!RCP_)(?P<local_prefix>[A-Za-z]{2,8})_(?P<local_number_token>[0-9]{2,3})_(?P<filename_format_token>xml)(?P<suffix>(?:[_-].*)?)",
+      "description": "Local drafting basename components; neither a person identity nor an amendment number is established."
+    },
+    {
+      "id": "local-code-prefix",
+      "scope": "stem",
+      "priority": 2,
+      "pattern": "(?P<local_code_token>TT|SFR|MGR|ANS)[_-]+(?P<subject_token>.+)",
+      "description": "Printed local abbreviation and subject; publisher context is required before expanding the code."
+    },
+    {
+      "id": "joined-testimony-suffix",
+      "scope": "stem",
+      "priority": 2,
+      "pattern": "(?P<subject_token>[a-z][a-z_ .-]*?[a-z]{2})(?P<label>testimony|testimonies)(?P<context_token>senatebudgetcommittee)?(?P<local_number_token>[0-9]{1,3})?",
+      "description": "Observed lowercase joined testimony suffix; subject and committee wording remain literal, unverified text."
+    },
+    {
+      "id": "short-biography-wording",
+      "scope": "search",
+      "priority": 0,
+      "pattern": "(?<![A-Za-z0-9])(?P<label>short[ _-]*bio)(?:(?![A-Za-z])|(?-i:(?<=[a-z])(?=[A-Z]))|(?=pdf(?:-[0-9]+)?\\Z))",
+      "description": "Printed short-biography wording; no person identity or contents verified."
+    },
+    {
+      "id": "record-answer-wording",
+      "scope": "search",
+      "priority": 0,
+      "pattern": "(?:(?<![A-Za-z0-9])|(?-i:(?<=[a-z0-9])(?=[A-Z])))(?P<label>(?:Answers?|Responses?)[ _-]+for[ _-]+(?:the[ _-]+)?Record)(?:(?![A-Za-z])|(?-i:(?<=[a-z])(?=[A-Z]))|(?=pdf(?:-[0-9]+)?\\Z))",
+      "description": "Printed answers/responses for the record wording; no question or witness identity inferred."
+    },
+    {
+      "id": "response-wording",
+      "scope": "search",
+      "priority": 0,
+      "pattern": "(?:(?<![A-Za-z0-9])|(?-i:(?<=[a-z0-9])(?=[A-Z])))(?P<label>Responses?)(?=[ _-]+to[ _-]+(?:Senate[ _-]+Judiciary|(?:questions[ _-]+from[ _-]+)?Senator)\\b|[ _-]*[0-9]*(?:pdf)?\\Z)",
+      "description": "Printed response wording, including a terminal generic Responses label; not automatically questions for the record."
+    },
+    {
+      "id": "document-list-wording",
+      "scope": "search",
+      "priority": 0,
+      "pattern": "(?:(?<![A-Za-z0-9])|(?-i:(?<=[a-z0-9])(?=[A-Z])))(?P<label>(?:Master[ _-]+)?Amendment[ _-]+List|Exhibit[ _-]+List)(?:(?![A-Za-z])|(?-i:(?<=[a-z])(?=[A-Z]))|(?=pdf(?:-[0-9]+)?\\Z))",
+      "description": "Printed list heading; identifies a list rather than an individual amendment or exhibit."
+    },
+    {
+      "id": "document-role-wording",
+      "scope": "search",
+      "priority": 0,
+      "pattern": "(?:(?<![A-Za-z0-9])|(?-i:(?<=[a-z0-9])(?=[A-Z])))(?P<label>Committee[ _-]+Memo(?:randum)?|Revenue[ _-]+Estimate|Issue[ _-]+Brief|Brochure|Flyer|Pamphlet|Graphic|Scatterplot|Slides?|Appendix|Attachment|Report)(?:(?![A-Za-z])|(?-i:(?<=[a-z])(?=[A-Z]))|(?=pdf(?:-[0-9]+)?\\Z))",
+      "description": "Literal descriptive document wording; no publication family, content verification or official status inferred."
+    },
+    {
+      "id": "slide-reference",
+      "scope": "search",
+      "priority": 0,
+      "pattern": "(?:(?<![A-Za-z0-9])|(?-i:(?<=[a-z0-9])(?=[A-Z])))(?P<label>Slides?)[ _#.-]+(?P<item_token>[0-9]{1,4}[A-Za-z]?|[A-Za-z][0-9]*)(?![A-Za-z0-9])",
+      "description": "Printed slide identifier; does not establish total pages or slide count."
+    },
+    {
+      "id": "chair-mark-description",
+      "scope": "search",
+      "priority": 0,
+      "pattern": "(?:(?<![A-Za-z0-9])|(?-i:(?<=[a-z0-9])(?=[A-Z])))(?P<label>(?:Description|Modification)s?[ _-]+(?:of|to)[ _-]+(?:the[ _-]+)?Chair(?:man)?[\\x27’]?s[ _-]+Mark)(?:(?![A-Za-z])|(?-i:(?<=[a-z])(?=[A-Z]))|(?=pdf(?:-[0-9]+)?\\Z))",
+      "description": "Printed description or modification of a chairman's mark; not a completed legislative action."
+    },
+    {
+      "id": "descriptive-draft-wording",
+      "scope": "search",
+      "priority": 0,
+      "pattern": "(?:(?<![A-Za-z0-9])|(?-i:(?<=[a-z0-9])(?=[A-Z])))(?P<draft_label>Discussion[ _-]*Draft|Subcommittee[ _-]*Draft|Draft)(?:(?![A-Za-z])|(?-i:(?<=[a-z])(?=[A-Z]))|(?=pdf(?:-[0-9]+)?\\Z))",
+      "description": "Printed draft wording in descriptive filenames; no official version or contents verified."
+    },
+    {
+      "id": "treaty-citation",
+      "scope": "search",
+      "priority": 0,
+      "pattern": "(?<![A-Za-z0-9])(?P<citation_marker>Treaty[ ._-]+Doc(?:ument)?)[ ._-]*(?P<citation_congress>[0-9]{1,3})[-_ ]+(?P<citation_number>[0-9]+)(?![A-Za-z0-9])",
+      "description": "Printed treaty-document citation; no treaty identity or other Congress inferred."
+    },
+    {
+      "id": "gao-reference",
+      "scope": "search",
+      "priority": 0,
+      "pattern": "(?<![A-Za-z0-9])(?P<agency_identifier>GAO-[0-9]{2}-[0-9]+)(?![A-Za-z0-9])",
+      "description": "Printed GAO identifier retained whole; no date, contents or verified publication identity inferred."
+    },
+    {
+      "id": "jct-reference",
+      "scope": "search",
+      "priority": 0,
+      "pattern": "(?<![A-Za-z0-9])(?P<series_token>JCX|JCT[ _-]+X)[ _-]+(?P<series_number>[0-9]+)[ _-]+(?P<series_year_token>[0-9]{2})(?![A-Za-z0-9])",
+      "description": "Explicit JCT/JCX series components. Printed short year retains unspecified century; digits are not a date."
+    },
+    {
+      "id": "jct-compact-reference",
+      "scope": "search",
+      "priority": 0,
+      "pattern": "(?<![A-Za-z0-9])(?P<series_token>JCX)(?P<series_identifier>[0-9]+)(?![A-Za-z0-9])",
+      "description": "Compact JCX identifier stays whole; number/year split is not established."
+    },
+    {
+      "id": "local-x-reference",
+      "scope": "search",
+      "priority": 0,
+      "pattern": "\\A(?P<local_prefix>X)[_-](?P<series_identifier>[0-9]+(?:[-_][0-9]+)+)(?![A-Za-z0-9])",
+      "description": "Literal x-series identifier stays whole; no agency, number/year split or corrected digits inferred."
+    },
+    {
+      "id": "drafting-identifier",
+      "scope": "search",
+      "priority": 0,
+      "pattern": "(?<![A-Za-z0-9])(?P<drafting_identifier>(?-i:[A-Z]{3}[0-9]{2}(?:[A-Z][0-9]{2}|[0-9]{3,4})))(?![A-Za-z0-9])",
+      "description": "Printed drafting identifier; no author, year, committee or amendment number inferred."
+    },
+    {
+      "id": "question-component",
+      "scope": "search",
+      "priority": 0,
+      "pattern": "(?<![A-Za-z0-9])(?P<question_marker>Question)[ _.-]*(?P<question_identifier>[0-9]+[A-Za-z]?)(?![A-Za-z0-9])",
+      "description": "Explicit question component; no relationship to a particular hearing or witness inferred."
+    },
+    {
+      "id": "outline-prefix",
+      "scope": "search",
+      "priority": 0,
+      "pattern": "\\A(?P<outline_identifier>[IVX]{1,6}\\.-[A-Z]\\.)-",
+      "description": "Printed outline prefix retained whole; no reconstructed section hierarchy inferred."
+    },
+    {
+      "id": "partial-date",
+      "scope": "search",
+      "priority": 0,
+      "pattern": "(?<![A-Za-z0-9])(?P<partial_date_token>(?P<partial_year_token>(?:19|20)[0-9]{2})(?P<partial_month_token>[0-9]{2}|xx)(?P<unknown_day_token>xx))(?![A-Za-z0-9])",
+      "description": "Printed partial date with unknown components; never an exact day or an event-date role."
+    },
+    {
+      "id": "possible-month-day-prefix",
+      "scope": "document-wording-search",
+      "priority": 0,
+      "pattern": "\\A(?P<possible_month_day_token>(?:0[1-9]|1[0-2])(?:0[1-9]|[12][0-9]|3[01])|(?:0[1-9]|[12][0-9]|3[01])(?:0[1-9]|1[0-2]))(?=[ _-]+[A-Za-z])",
+      "description": "Four-digit prefix can be an identifier or month/day; both remain possible and no year or date order is chosen."
+    },
+    {
+      "id": "updated-local-code",
+      "scope": "stem",
+      "priority": 2,
+      "pattern": "(?P<qualifier_wording>Updated)[_-]+(?P<local_code_token>ANS)(?P<suffix>(?:[_-].*)?)",
+      "description": "Printed updated wording and local ANS abbreviation; no expansion or verified revision status."
+    },
+    {
+      "id": "document-alias-testimony",
+      "scope": "search",
+      "priority": 0,
+      "pattern": "(?:(?<![A-Za-z0-9])|(?-i:(?<=[a-z0-9])(?=[A-Z])))(?P<label>Tesitmony|Tesimony|Testiomony|Testimomy|Testmiony|tedtimony)(?:(?![A-Za-z])|(?-i:(?<=[a-z])(?=[A-Z]))|(?=pdf(?:-[0-9]+)?\\Z))",
+      "description": "Observed spelling alias for Testimony; raw spelling retained without fuzzy correction or verified contents.",
+      "label": "Testimony"
+    },
+    {
+      "id": "document-alias-statement",
+      "scope": "search",
+      "priority": 0,
+      "pattern": "(?:(?<![A-Za-z0-9])|(?-i:(?<=[a-z0-9])(?=[A-Z])))(?P<label>Statemet|statmement)(?:(?![A-Za-z])|(?-i:(?<=[a-z])(?=[A-Z]))|(?=pdf(?:-[0-9]+)?\\Z))",
+      "description": "Observed spelling alias for Statement; raw spelling retained without fuzzy correction or verified contents.",
+      "label": "Statement"
+    },
+    {
+      "id": "document-alias-transcript",
+      "scope": "search",
+      "priority": 0,
+      "pattern": "(?:(?<![A-Za-z0-9])|(?-i:(?<=[a-z0-9])(?=[A-Z])))(?P<label>TRASNCRIPTION)(?:(?![A-Za-z])|(?-i:(?<=[a-z])(?=[A-Z]))|(?=pdf(?:-[0-9]+)?\\Z))",
+      "description": "Observed spelling alias for Transcription; raw spelling retained without fuzzy correction or verified contents.",
+      "label": "Transcription"
+    },
+    {
+      "id": "document-alias-questionnaire",
+      "scope": "search",
+      "priority": 0,
+      "pattern": "(?:(?<![A-Za-z0-9])|(?-i:(?<=[a-z0-9])(?=[A-Z])))(?P<label>Questionaire)(?:(?![A-Za-z])|(?-i:(?<=[a-z])(?=[A-Z]))|(?=pdf(?:-[0-9]+)?\\Z))",
+      "description": "Observed spelling alias for Questionnaire; raw spelling retained without fuzzy correction or verified contents.",
+      "label": "Questionnaire"
+    },
+    {
+      "id": "document-alias-question",
+      "scope": "search",
+      "priority": 0,
+      "pattern": "(?:(?<![A-Za-z0-9])|(?-i:(?<=[a-z0-9])(?=[A-Z])))(?P<label>Quetions)(?:(?![A-Za-z])|(?-i:(?<=[a-z])(?=[A-Z]))|(?=pdf(?:-[0-9]+)?\\Z))",
+      "description": "Observed spelling alias for Questions; raw spelling retained without fuzzy correction or verified contents.",
+      "label": "Questions"
+    },
+    {
+      "id": "document-alias-response",
+      "scope": "search",
+      "priority": 0,
+      "pattern": "(?:(?<![A-Za-z0-9])|(?-i:(?<=[a-z0-9])(?=[A-Z])))(?P<label>reponses)(?:(?![A-Za-z])|(?-i:(?<=[a-z])(?=[A-Z]))|(?=pdf(?:-[0-9]+)?\\Z))",
+      "description": "Observed spelling alias for Responses; raw spelling retained without fuzzy correction or verified contents.",
+      "label": "Responses"
+    },
+    {
+      "id": "document-alias-witness-list",
+      "scope": "search",
+      "priority": 0,
+      "pattern": "(?:(?<![A-Za-z0-9])|(?-i:(?<=[a-z0-9])(?=[A-Z])))(?P<label>Wtiness[ _-]+List)(?:(?![A-Za-z])|(?-i:(?<=[a-z])(?=[A-Z]))|(?=pdf(?:-[0-9]+)?\\Z))",
+      "description": "Observed spelling alias for Witness List; raw spelling retained without fuzzy correction or verified contents.",
+      "label": "Witness List"
+    },
+    {
+      "id": "filename-format-wording",
+      "scope": "search",
+      "priority": 0,
+      "pattern": "(?<![A-Za-z0-9])(?P<filename_format_token>xml)(?:[_-]?(?P<local_number_token>[0-9]+))?\\Z",
+      "description": "Printed terminal xml component and optional local number; neither an extension nor verified file contents."
+    },
+    {
+      "id": "joined-testimony-wording",
+      "scope": "search",
+      "priority": 0,
+      "pattern": "(?<=[a-z])(?P<label>testimon(?:y|ies))(?=(?:senatebudgetcommittee)?[0-9]*\\Z)",
+      "description": "Observed terminal testimony wording joined to preceding text; no person identity or contents verified."
+    },
+    {
+      "id": "abbreviated-component",
+      "scope": "search",
+      "priority": 0,
+      "pattern": "(?<![A-Za-z0-9])(?P<component_marker>Q)[ _.-]*(?P<component_identifier>[0-9]+[A-Za-z]?)(?![A-Za-z0-9])",
+      "description": "Printed Q component. Q may denote a question, quarter or a local category; its role is not established by the filename."
+    },
+    {
+      "id": "short-legislative-companion",
+      "scope": "search",
+      "priority": 0,
+      "pattern": "(?<![A-Za-z0-9])(?P<measure_token>hc|hj|h|sc|sj|s)(?P<measure_number>[0-9]+)(?P<local_modifier>nr|fs|EW)?[_-](?P<document_abbreviation>supp[_-]rpt)(?![A-Za-z0-9])",
+      "description": "Short measure and literal companion-file abbreviation; modifiers remain unexpanded and no Congress, official version or contents are inferred."
+    },
+    {
+      "id": "document-alias-witness",
+      "scope": "search",
+      "priority": 0,
+      "pattern": "(?<![A-Za-z0-9])(?P<label>Wtiness)(?![A-Za-z0-9])(?![ _-]+List(?![A-Za-z]))",
+      "label": "Witness",
+      "description": "Observed Wtiness spelling alias; retains source spelling without resolving a person or inferring a witness statement."
     }
   ]
 }
