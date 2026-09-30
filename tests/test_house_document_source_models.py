@@ -12,7 +12,7 @@ from congress_api.adapters import house as adapter
 from congress_api.adapters import inventory as inventory_adapter
 from congress_api.adapters.common import AdapterContext
 from congress_api.models.content import RawContent
-from congress_api.models.documents import PdfWitnessObservation
+from congress_api.models.documents import ModsWitnessObservation, PdfWitnessObservation
 from congress_api.models.house import (
     HouseFileAttributes,
     HouseFileXML,
@@ -133,6 +133,21 @@ def test_html_fallback_preserves_body_and_typed_file_groups():
         HouseParsedRecord.model_validate(payload)
 
 
+def test_document_rows_accept_list_of_strings_and_reject_non_string_elements():
+    parsed = records_parse_house_record((FIXTURES / 'house-multiple-files.xml').read_bytes(),
+                                       (FIXTURES / 'house-witnesses.xml').read_bytes(), '', 'present')
+    payload = parsed.source_dict()
+    assert payload['documents']
+    payload['documents'][0] = list(payload['documents'][0])
+    restored = HouseParsedRecord.model_validate(payload)
+    assert isinstance(restored.documents[0], tuple)
+    assert restored.documents[0] == parsed.documents[0]
+    bad = parsed.source_dict()
+    bad['documents'][0] = [bad['documents'][0][0], bad['documents'][0][1], 12, bad['documents'][0][3]]
+    with pytest.raises(ValidationError):
+        HouseParsedRecord.model_validate(bad)
+
+
 def test_live_html_retains_original_encoding_not_replacement_text(monkeypatch):
     raw = b'<div id="DivMeetingContent">caf\xe9</div>'
     def get(session, url, **kwargs):
@@ -176,6 +191,15 @@ def test_mods_witness_model_reuses_native_model_and_keeps_raw_xml():
     assert result.source_witnesses and result.people
     assert result.people[0].honorific == 'Mr.'
     assert not any(person.model_extra for person in result.people)
+
+
+def test_mods_witness_observation_rejects_digest_mismatch():
+    raw = (FIXTURES.parent / 'gpo_metadata/CHRG-113hhrg21122.xml').read_bytes()
+    result = parse_mods_observation(raw)
+    bad = result.source_dict()
+    bad['raw_sha256'] = '0' * 64
+    with pytest.raises(ValidationError, match='digest mismatch'):
+        ModsWitnessObservation.model_validate(bad)
 
 
 def test_document_models_reach_inventory_normalization_without_storage():

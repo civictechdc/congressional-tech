@@ -93,12 +93,17 @@ class VideoMatchTests(unittest.TestCase):
         self.assertTrue(all(len(link.provenance.citations) == 2 for link in kind(result, "material_link")))
 
     def test_curated_offsite_urls_keep_exact_spelling(self):
+        from congress_api.adapters.recordings import offsite_reference
         url = "http://www.senate.gov/isvp/?comm=epw&filename=epw120623&part=one%2Ftwo"
         result = list(records([row(status="full_recording_offsite", video_ids=url, source="research", method="research", score="0")], self.context, packages=self.packages))
         validate([*self.baseline, *result])
         self.assertEqual(kind(result, "representation")[0].locations[0].url, url)
         self.assertEqual(kind(result, "assessment")[0].provenance.basis, "curated")
-        self.assertEqual(kind(result, "material")[0].details.medium, "unknown")
+        material = kind(result, "material")[0]
+        self.assertEqual(material.details.medium, "unknown")
+        key, _, _, identifiers = offsite_reference(url)
+        self.assertEqual(material.identifiers, identifiers)
+        self.assertEqual(material.id, self.context.ids("material", key))
 
     def test_shared_and_multiple_date_volumes_do_not_fan_out_to_meetings(self):
         meetings = [Meeting(id=n, title=n, provenance=self.evidence) for n in ("meeting-one", "meeting-two")]

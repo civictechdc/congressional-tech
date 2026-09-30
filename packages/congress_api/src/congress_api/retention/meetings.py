@@ -5,14 +5,24 @@ import json
 from pathlib import Path
 
 from congress_api.models.congress import CommitteeMeeting
+from congress_api.retention.jsonl import write as write_jsonl
 
 
 def read(path: Path) -> dict[str, dict]:
+    """Return the full meeting snapshot, keyed by source URL.
+
+    Does not apply inventory scope. ``retention.tables.read_meetings`` is the
+    reader that keeps only in-scope meetings.
+    """
     return {url: row.source_dict() for url, row in read_models(path).items()}
 
 
 def read_models(path: Path) -> dict[str, CommitteeMeeting]:
-    """Read native meeting models; ``read`` retains the existing dict interface."""
+    """Return every retained meeting model, keyed by ``_url``.
+
+    Duplicate source URLs raise. This reader does not apply inventory scope;
+    ``retention.tables.read_meetings`` does. ``read`` is the dict interface.
+    """
     if not Path(path).exists():
         return {}
     with gzip.open(path, "rt", encoding="utf-8") as f:
@@ -21,22 +31,15 @@ def read_models(path: Path) -> dict[str, CommitteeMeeting]:
         for row in rows:
             if row.source_url is None:
                 raise ValueError("Retained meeting lacks _url")
+            if row.source_url in result:
+                raise ValueError(f"Duplicate meeting source URL: {row.source_url}")
             result[row.source_url] = row
         return result
 
 
 def write(records: dict[str, dict], path: Path) -> None:
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    ## sorted, and mtime=0 so identical content gives identical bytes
-    try:
-        with open(temporary, "wb") as raw, gzip.GzipFile(filename="", fileobj=raw, mode="wb", mtime=0) as f:
-            for url in sorted(records):
-                f.write((json.dumps(records[url], sort_keys=True) + "\n").encode("utf-8"))
-        temporary.replace(path)
-    finally:
-        temporary.unlink(missing_ok=True)
+    """Write the full meeting snapshot. Rows are validated on read, not here."""
+    write_jsonl(records, path)
 
 
 def write_pending(path, urls, responses=None):

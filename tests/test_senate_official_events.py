@@ -162,6 +162,31 @@ def test_wordpress_publication_date_is_only_a_discovery_hint():
     assert records.listed(host, get, since=date(2023, 1, 3))[0] == []
 
 
+def test_wordpress_full_undated_page_continues_to_later_dated_hearings():
+    host = 'indian.senate.gov'
+    undated = [{'link': f'https://www.{host}/u{i}', 'title': {'rendered': f'Undated {i}'},
+                'date': '2022-01-01T00:00:00', 'acf': []} for i in range(100)]
+    dated = [{'link': f'https://www.{host}/real-hearing', 'title': {'rendered': 'Real Hearing'},
+              'date': '2022-01-02T00:00:00', 'acf': {'hearing_date_time': '2022-06-01 10:00:00'}}]
+    pages = []
+
+    def get(url):
+        if url.endswith('/types'):
+            return json.dumps({'hearings': {'rest_base': 'hearings'}})
+        if 'page=1&' in url or url.endswith('page=1'):
+            pages.append(1)
+            return json.dumps(undated)
+        if 'page=2&' in url or url.endswith('page=2'):
+            pages.append(2)
+            return json.dumps(dated)
+        pages.append(url)
+        return '[]'
+
+    listed = records.wordpress_listed(host, get)
+    assert pages[:2] == [1, 2]
+    assert listed == [(date(2022, 6, 1), f'https://www.{host}/real-hearing', 'Real Hearing')]
+
+
 def test_historical_collection_requires_explicit_sites(tmp_path):
     with pytest.raises(ValueError, match='--site'):
         records.main(tmp_path/'unused', tmp_path, tmp_path, since=date(2011, 1, 3))
@@ -212,7 +237,7 @@ def test_offline_rematch_preserves_supported_association_despite_changed_rarity_
     native = {'eventId':'12', 'chamber':'Senate', 'congress':117, 'date':'2022-03-02', 'meetingStatus':'Scheduled',
               'type':'Meeting', 'title':'Hearings to examine the economics of cartels', 'committees':[{'systemCode':'scnc00'}]}
     path=tmp_path/'native.jsonl.gz'; path.write_bytes(gzip.compress((json.dumps(native)+'\n').encode()))
-    monkeypatch.setattr(records,'match_pages',lambda *a: ([],[],[]))
+    monkeypatch.setattr("congress_api.matching.senate_pages.match_pages", lambda *a: ([], [], []))
     records.main(path,tmp_path,tmp_path,offline=True,as_of=date(2026,9,28),site=[host],refresh_limit=0)
     saved=records_read_state(tmp_path/'senate.json.gz')
     assert saved[host]['pages'][url]['events'] == ['12']

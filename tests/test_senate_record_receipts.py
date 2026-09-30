@@ -111,7 +111,7 @@ def test_successful_listing_receipts_and_seed_import_are_distinct(tmp_path, monk
         return [(dt.date(2026, 9, 20), PAGE, "Retained hearing")], {"form": "/hearings?page={}", "from_0": False}
     monkeypatch.setattr(records, "listed", listing)
     monkeypatch.setattr(records_http, "get_with_retry", lambda *args, **kwargs: SimpleNamespace(status_code=200, content=HTML))
-    monkeypatch.setattr(records, "match_pages", lambda *args: ([], [], []))
+    monkeypatch.setattr("congress_api.matching.senate_pages.match_pages", lambda *args: ([], [], []))
     records.main(**args)
     saved = read_state(tmp_path / "senate.json.gz")[HOST]
     assert saved["last_check"]["receipts"][0]["url"] == LISTING

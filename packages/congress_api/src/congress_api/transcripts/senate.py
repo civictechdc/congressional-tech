@@ -46,8 +46,9 @@ INDEX = "captions_index.csv"
 CAPTURE_VERSION = "3"
 
 
-def _segment_source(url: str, sources: list[MediaTextSource] | None = None) -> MediaTextSource:
-    source = get_source(url, sources=sources)
+def _segment_source(url: str) -> MediaTextSource:
+    """Fetch one subtitle segment; callers retain the result on the main thread."""
+    source = get_source(url)
     parsed_cues(source.text if source.status_code == 200 else "", url)
     return source
 
@@ -57,7 +58,11 @@ def _segment(url: str) -> str:
 
 
 def fetch_one(url: str, out_dir: Path, nthreads: int = 16) -> tuple[str, str, str, int]:
-    """Return an index row only after a complete, scoped acquisition check."""
+    """Return an index row only after a complete, scoped acquisition check.
+
+    ``nthreads`` sizes the subtitle-segment pool. Callers (``main``) pass the
+    same CLI worker count used for recording-level parallelism.
+    """
     out_dir = Path(out_dir)
     parsed = parse_player_url(url)
     comm, fn = parsed or ("", "")
@@ -98,7 +103,9 @@ def fetch_one(url: str, out_dir: Path, nthreads: int = 16) -> tuple[str, str, st
                 if not segments:
                     raise IncompleteCaptionsError("Subtitle playlist contains no segments")
                 with ThreadPoolExecutor(nthreads) as pool:
-                    segment_sources = list(pool.map(lambda segment: _segment_source(segment, sources), segments))
+                    segment_sources = list(pool.map(_segment_source, segments))
+                # Retain on the main thread; workers must not mutate ``sources``.
+                sources.extend(segment_sources)
                 selected = (master_source, playlist_source, segment_sources)
                 break
             except (requests.RequestException, IncompleteCaptionsError) as exc:
@@ -128,16 +135,20 @@ def fetch_one(url: str, out_dir: Path, nthreads: int = 16) -> tuple[str, str, st
             if zero_duration:
                 receipt['zero_duration_cues'] = zero_duration
             result = (fn, comm, "webvtt", len(text))
-        # Retain complete source responses for positive and negative checks.
+        # Stage gzip first; publish only after txt (when any) succeeds so a
+        # mid-write failure cannot clobber a prior complete capture.
         out_dir.mkdir(parents=True, exist_ok=True)
         raw_path = out_dir / f"{fn}.captions.json.gz"
         temporary = raw_path.with_suffix(raw_path.suffix + '.tmp')
-        temporary.write_bytes(gzip.compress(json.dumps(raw.source_dict(), ensure_ascii=False).encode('utf-8'), mtime=0))
-        temporary.replace(raw_path)
-        receipt['source_file'] = raw_path.name
-        if result[2] == "webvtt":
-            _write_text(out_dir / f"{fn}.cues.txt", "\n".join(" | ".join(cue) for cue in all_cues) + "\n")
-            _write_text(out_dir / f"{fn}.txt", text)
+        try:
+            temporary.write_bytes(gzip.compress(json.dumps(raw.source_dict(), ensure_ascii=False).encode('utf-8'), mtime=0))
+            receipt['source_file'] = raw_path.name
+            if result[2] == "webvtt":
+                _write_text(out_dir / f"{fn}.cues.txt", "\n".join(" | ".join(cue) for cue in all_cues) + "\n")
+                _write_text(out_dir / f"{fn}.txt", text)
+            temporary.replace(raw_path)
+        finally:
+            temporary.unlink(missing_ok=True)
     except Exception as exc:
         if sources:
             receipt["source_responses"] = sources
@@ -177,7 +188,7 @@ def main(out_dir, urls, nthreads=4):
     failures = []
     try:
         with ThreadPoolExecutor(nthreads) as pool:
-            futures = [pool.submit(fetch_one, url, out_dir) for url in todo]
+            futures = [pool.submit(fetch_one, url, out_dir, nthreads) for url in todo]
             for n, (url, future) in enumerate(zip(todo, futures), 1):
                 try:
                     fn, comm, kind, chars = future.result()

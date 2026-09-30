@@ -76,6 +76,34 @@ def test_atomic_write_keeps_existing_bytes_after_serialization_failure(tmp_path)
     assert path.read_bytes() == before
 
 
+def test_duplicate_source_url_raises_like_gpo_evidence(tmp_path):
+    import gzip
+    import json
+
+    from congress_api.retention.meetings import read as meetings_read
+
+    path = tmp_path / "meetings.jsonl.gz"
+    row = {"_url": "https://api.congress.gov/v3/committee-meeting/112/house/1",
+           "eventId": "1", "congress": 112, "chamber": "House"}
+    path.write_bytes(gzip.compress(
+        (json.dumps(row, sort_keys=True) + "\n"
+         + json.dumps({**row, "title": "again"}, sort_keys=True) + "\n").encode(),
+        mtime=0))
+    with pytest.raises(ValueError, match="Duplicate meeting source URL"):
+        meetings_read(path)
+
+
+def test_meeting_read_keeps_rows_inventory_scope_drops(tmp_path):
+    from congress_api.retention.tables import read_meetings
+
+    path = tmp_path / "meetings.jsonl.gz"
+    url = "https://api.congress.gov/v3/committee-meeting/112/house/1"
+    row = {"_url": url, "eventId": "1", "congress": 112, "chamber": "House", "meetingStatus": "Held"}
+    meetings_write({url: row}, path)
+    assert meetings_read(path)[url]["congress"] == 112
+    assert read_meetings(path) == []
+
+
 def test_short_api_page_with_next_is_not_treated_as_complete(tmp_path, monkeypatch):
     path, url, old = setup(monkeypatch, tmp_path)
     offsets = []

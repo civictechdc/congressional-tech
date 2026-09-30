@@ -33,7 +33,8 @@ and the inventory's raw `type` column remain unchanged.
 | Print associations and same-day title sharing | `matching.prints`; inventory and explorer use the same matcher. Print and recording sharing use the same grouping rule without merging meeting IDs. |
 | Generic recording matches | `matching.recordings`; shared meeting classification feeds recording compatibility groups. Business meetings can match markup uploads; field hearings can match hearing uploads. Recaps and reactions cannot establish this weak match. Upload-title keywords never relabel the meeting. |
 | Possible rescheduling | `matching.recordings.reschedule_candidate`; closed/partly closed sessions and recurring briefings/depositions are excluded. This is a matching restriction, not an access determination. |
-| Senate page associations | `matching.senate_pages` / `matching.senate`; committee/date restrictions, weighted titles and exact identifiers remain distinct from print and recording rules. Adapters consume retained decisions. |
+| GPO hearing ↔ video verdicts | `matching.gpo_decisions`; `matching.gpo_videos` only scores candidates. Overrides, locks, clip divert, greedy assignment and status rows are decided here. `cli.gpo_match` loads files and writes the CSV. |
+| Senate page associations | `matching.senate_pages.associate_pages` returns `events` and `match_details` (`senate.records.match_pages`, then exact `senate.records.match_identifiers`). Acquisition checkpoints that result. Weighted titles stay in `match_pages`; exact proof stays in `matching.senate`. Adapters consume the retained decisions. |
 
 Publisher page-heading labels still require their source-specific layout and a
 matching dated sitting. Reported status remains distinct from a title-based

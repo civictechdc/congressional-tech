@@ -1,5 +1,6 @@
 """Interpret supplied Senate hearing and listing pages without fetching them."""
 
+import calendar
 import datetime as dt
 import re
 from html import unescape
@@ -26,9 +27,14 @@ PARSER_VERSION = 5
 
 
 def parse_page(page: str | bytes, url: str) -> SenatePage:
-    """Read source bytes into a source model before normalization or storage."""
-    original = page if isinstance(page, bytes) else page.encode("utf-8")
-    page = original.decode("utf-8", "replace") if isinstance(page, bytes) else page
+    """Read source bytes into a source model before normalization or storage.
+
+    Byte inputs must be strict UTF-8; invalid sequences raise UnicodeDecodeError.
+    """
+    if isinstance(page, bytes):
+        original, page = page, page.decode("utf-8")
+    else:
+        original = page.encode("utf-8")
     title = re.search(r'<meta property="og:title" content="([^"]+)"|<title>(.*?)</title>', page, re.S)
     result = {"title": text(title.group(1) or title.group(2)).split(" | ")[0] if title else "",
               "lines": sorted(lines(page)), "witnesses": witnesses(page, url), "documents": documents(page, url)}
@@ -55,8 +61,13 @@ def parsed(page, url):
 
 
 def parse_listing_page(page, site):
-    """(day, url, title) for the hearing pages one page of a listing shows. The day is the date written nearest the
-    link; a listing that writes no year beside a link files it by year and month (/2026/3/<name>)."""
+    """(day, url, title) for hearing pages one listing page shows.
+
+    Prefer a date written on the row or near the link. When only a `/YYYY/M/name`
+    path dates the link, rank it by the last day of that month so since/pagination
+    treat the whole month as in scope. That bound is not a printed calendar day
+    (and is never mid-month day 15).
+    """
     rows = []
     if not page.strip():
         return rows
@@ -74,8 +85,11 @@ def parse_listing_page(page, site):
     written = re.sub(r"<[^>]+>", lambda tag: " " * len(tag.group()), page)  # the page's words, each where it stood
     for link in HEARING_LINK.finditer(page):
         near = sorted((abs(m.start() - link.start()), written_day(m)) for m in DATE.finditer(written, max(0, link.start() - 900), link.end() + 900) if written_day(m))
-        filed = re.search(r"/(\d{4})/(\d{1,2})/[^/]+$", link.group(1))
-        day = row_days.get((unescape(link.group(1)), text(link.group(2)))) or (near[0][1] if near else dt.date(int(filed.group(1)), int(filed.group(2)), 15) if filed else None)
+        filed = re.search(r"/(\d{4})/(\d{1,2})/[^/]+$", unescape(link.group(1)))
+        day = row_days.get((unescape(link.group(1)), text(link.group(2)))) or (near[0][1] if near else None)
+        if day is None and filed:
+            year, month = int(filed.group(1)), int(filed.group(2))
+            day = dt.date(year, month, calendar.monthrange(year, month)[1])
         if day and text(link.group(2)):
             href = unescape(link.group(1))
             row = ListingRow(day=day, url=href if href.startswith("http") else f"https://www.{site}{href}", title=text(link.group(2)))

@@ -18,14 +18,24 @@ def _require_playlist(body: str, url: str) -> None:
 
 
 def _subtitle_uri(master: str) -> str | None:
+    """Playlist URI for subtitles: prefer English, then DEFAULT=YES, else the first track."""
+    tracks = []
     for line in master.splitlines():
         if line.strip().startswith("#EXT-X-MEDIA:"):
             attrs = HLSRendition.model_validate(dict((name, value.strip('"')) for name, value in re.findall(r'([A-Z0-9-]+)=("[^"]*"|[^,]*)', line)))
             if attrs.type == "SUBTITLES":
                 if not attrs.uri:
                     raise IncompleteCaptionsError("Declared subtitle track has no playlist URI")
-                return attrs.uri
-    return None
+                tracks.append(attrs)
+    if not tracks:
+        return None
+    for track in tracks:
+        if (track.language or "").lower().startswith("eng"):
+            return track.uri
+    for track in tracks:
+        if (track.default or "").upper() == "YES":
+            return track.uri
+    return tracks[0].uri
 
 
 def parsed_cues(body: str, url: str = "retained WebVTT") -> list[WebVTTCue]:

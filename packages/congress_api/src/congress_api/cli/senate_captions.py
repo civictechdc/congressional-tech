@@ -8,10 +8,10 @@ Recordings since about mid-2023 commonly carry an English WebVTT subtitle track;
 both live and archive paths can provide one. Its segments are fetched concurrently
 and joined into <filename>.txt. Older recordings may carry captions only inside
 the video stream, which this tool doesn't decode. Absence from both WebVTT paths is recorded as
-`none`; failed or incomplete checks are not indexed. Appends to <out-dir>/captions_index.csv:
-filename, comm, kind (webvtt | none), characters. Current complete captures are skipped;
-legacy entries without retained timing are rechecked when requested. Playlist and
-segment text is retained in <filename>.captions.json.gz.
+`none`; failed or incomplete checks are not indexed. Rewrites <out-dir>/captions_index.csv
+via a temp file then replace: filename, comm, kind (webvtt | none), characters. Current
+complete captures are skipped; legacy entries without retained timing are rechecked when
+requested. Playlist and segment text is retained in <filename>.captions.json.gz.
 New checks also write caption_receipts/<record-key>.json with their observation
 time and exact scope. Legacy index rows without receipts retain unknown check times.
 """
@@ -30,7 +30,12 @@ def parse_args_and_run():
     parser.add_argument("--out-dir", required=True)
     parser.add_argument("--urls", nargs="*", default=[], help="Player URLs (senate.gov/isvp/?comm=...&filename=...).")
     parser.add_argument("--urls-file", type=Path, help="Text file with one player URL per line.")
-    parser.add_argument("--nthreads", type=positive, default=4)
+    parser.add_argument(
+        "--nthreads",
+        type=positive,
+        default=4,
+        help="Concurrent recordings to fetch; each recording still uses the default segment-worker pool.",
+    )
     args = parser.parse_args()
     urls = list(args.urls) + ([l.strip() for l in args.urls_file.read_text().splitlines() if l.strip()] if args.urls_file else [])
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(asctime)s : %(message)s")

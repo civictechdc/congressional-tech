@@ -191,6 +191,7 @@ def roster(lines: list[str]) -> tuple[list[Person], set[str]]:
 
 def parse_gpo_text(text: str | GpoTranscriptText, header: Header, mods_people: dict[str, Person] | None = None, source_url: str = "") -> Transcript:
     """Normalize a typed source extraction; plain text remains a legacy input."""
+    header = header.model_copy(deep=True)
     text = text.text if isinstance(text, GpoTranscriptText) else text
     lines = text.replace("\r", "").splitlines()
     indent = paragraph_indent(lines)
@@ -237,9 +238,11 @@ def parse_gpo_text(text: str | GpoTranscriptText, header: Header, mods_people: d
         from_state = {k for k, p in participants.items() if state and p.state and (p.state == state or p.state.lower() == state.lower())}
         k = names.match(participants, name, prefer=(from_state or prefer | set(header.present)))
         if not k:
+            # Ambiguous surnames return None; a fresh unknown key is better than the wrong member.
             k = person_key(name)
-            role = ROLE_WORDS.get(title) or ("witness" if title in WITNESS_TITLES else "unknown")
-            participants[k] = Person(name=name, role=role_hint or role, surname=names.surname(name))
+            if k not in participants:
+                role = ROLE_WORDS.get(title) or ("witness" if title in WITNESS_TITLES else "unknown")
+                participants[k] = Person(name=name, role=role_hint or role, surname=names.surname(name))
         p = participants[k]
         if title in ("mr", "ms", "mrs", "miss", "dr", "senator") and not p.honorific:
             p.honorific = title.capitalize() + ("." if title != "senator" else "")

@@ -13,7 +13,7 @@ import re
 from zoneinfo import ZoneInfo
 
 from congress_api.matching.captions import text_source
-from congress_api.matching.committees import codes_of
+from congress_api.matching.committees import codes_of, occupancy_codes_of, parent_code
 from congress_api.matching.gpo_videos import EVENT_ID, VIDEO_ID, similarity, words
 from congress_api.matching.meetings import HEARING_TYPES, NOT_HELD, TRANSCRIPT, meeting_access, meeting_type
 from congress_api.matching.prints import attached_prints, match_prints, same_day_title_groups, title_key
@@ -162,6 +162,8 @@ def build(meetings, gpo, videos, documents, pages, recordings, probed, yt_caps, 
         units = {c["systemCode"] for c in m.get("committees", [])}
         start = dt.datetime.fromisoformat(m["date"].replace("Z", "+00:00")).astimezone(ET) if "T" in m["date"] else None
         for code in codes:
+            natives = [n for n in occupancy_codes_of(m) if parent_code(n) == code]
+            alone = bool(natives) and all(meetings_that_day[n, day] == 1 for n in natives)
             sub_words = [ws for c in m.get("committees", []) if not c["systemCode"].endswith("00") and units_that_day[(c["systemCode"], day)] == 1
                          for ws in unit_names[c["systemCode"]]]
             for k in range(-1, 4):
@@ -172,15 +174,15 @@ def build(meetings, gpo, videos, documents, pages, recordings, probed, yt_caps, 
                     if similarity(tw, words(vt)) >= 0.5 or (tb and tb & bills(vt)):
                         out.append(vid)
                     elif (k == 0 or (k == 1 and ("markup" if MARKUP_WORDS.search(vt) else "hearing") not in kinds_that_day[(code, d)])) and not tagged and all((t.month, t.day) == (d0.month, d0.day) for t in title_dates(vt)) \
-                            and session_kind_fits(m, vt) and (meetings_that_day[(code, day)] == 1 or any(sw and sw <= set(words(vt)) for sw in sub_words)):
+                            and session_kind_fits(m, vt) and (alone or any(sw and sw <= set(words(vt)) for sw in sub_words)):
                         out.append(vid)
-            same_day = [(vid, minutes) for vid, unit, minutes in dated.get((code, day), []) if unit in units or (unit is None and meetings_that_day[(code, day)] == 1)]
+            same_day = [(vid, minutes) for vid, unit, minutes in dated.get((code, day), []) if unit in units or (unit is None and alone)]
             if same_day and start and any(minutes is not None for _, minutes in same_day):
                 same_day = [min(same_day, key=lambda x: abs((x[1] if x[1] is not None else 10**6) - start.hour * 60 - start.minute))]
             out.extend(vid for vid, _ in same_day)
         return list(dict.fromkeys(out))
-    ## how many meetings each committee, and each subcommittee, held on each day, and of which kinds; the words of each parent committee's name
-    meetings_that_day = collections.Counter((c, m["date"][:10]) for m in meetings for c in codes_of(m))
+    ## Native day occupancy (aliases must not merge select committees into Judiciary counts).
+    meetings_that_day = collections.Counter((c, m["date"][:10]) for m in meetings for c in occupancy_codes_of(m))
     kinds_that_day = collections.defaultdict(set)
     for m in meetings:
         for c in codes_of(m):
@@ -204,14 +206,18 @@ def build(meetings, gpo, videos, documents, pages, recordings, probed, yt_caps, 
         if r["kind"] == "transcript":
             found_transcripts[r["event_id"]].append(r["url"])
     page_title = {r["event_id"]: r["title"] for r in pages}
-    prints = match_prints(meetings, gpo, attached, share=False)
+    strong_prints = {}
+    prints = match_prints(meetings, gpo, attached, share=False, strong=strong_prints)
     rows = []
     for m in meetings:
         codes = codes_of(m)
         packages = prints[m["eventId"]]
+        # Strong print ownership (event ID / attached file) suppresses window YouTube matching;
+        # weak title/day prints still keep packages for text_source but do not block videos.
+        allow_window = not strong_prints.get(m["eventId"])
         urls = [v.get("url", "") for v in (m.get("videos") or [])]
         youtube = list(dict.fromkeys([VIDEO_ID.search(u).group(1) for u in urls if VIDEO_ID.search(u)] + vid_by_eid.get(m["eventId"], [])
-                                     + (window_matches(m, codes) if not packages else [])
+                                     + (window_matches(m, codes) if allow_window else [])
                                      + [v for v in found[m["eventId"]] if not v.startswith("http")]))
         senate = [u for u in urls if parse_player_url(u)] or [u for comm in senate_comms(m, codes) for u in probed.get((comm, m["date"][:10]), [])]
         rows.append({"event_id": m["eventId"], "congress": m["congress"], "chamber": m.get("chamber", ""), "type": m.get("type", ""), "date": m["date"][:10],
@@ -234,7 +240,7 @@ def build(meetings, gpo, videos, documents, pages, recordings, probed, yt_caps, 
         r["text_source"] = text_source(r, yt_caps, sen_caps, video_flags)
         if r["text_source"] == "no_video":
             r["not_held"] = r["not_held"] or ("yes" if NOT_HELD.match(re.sub(r"^\W+", "", page_title.get(r["event_id"], ""))) else "")
-        r["gpo_packages"], r["youtube_ids"], r["senate_urls"] = " ".join(sorted(r["gpo_packages"])), " ".join(r["youtube_ids"]), " ".join(r["senate_urls"])
+        r["gpo_packages"], r["youtube_ids"], r["senate_urls"] = " ".join(sorted(r["gpo_packages"])), " ".join(sorted(r["youtube_ids"])), " ".join(sorted(r["senate_urls"]))
     ## a postponed meeting re-entered under a new event ID keeps its old record as Scheduled: point it at the twin that was held
     same_title = collections.defaultdict(list)
     for r in rows:

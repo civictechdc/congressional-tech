@@ -115,7 +115,7 @@ def video_duration(video_id: str, proxy: str | None = None) -> float:
             if m:
                 return sum(int(x or 0) * k for x, k in zip(m.groups(), (3600, 60, 1)))
     import yt_dlp
-    with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True, "logger": logging.getLogger("yt_dlp"), **({"proxy": proxy, "nocheckcertificate": True} if proxy else {})}) as ydl:
+    with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True, "logger": logging.getLogger("yt_dlp"), **({"proxy": proxy} if proxy else {})}) as ydl:
         source = YtdlpVideoInfo.model_validate(ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False))
         return source.duration or 4 * 3600
 

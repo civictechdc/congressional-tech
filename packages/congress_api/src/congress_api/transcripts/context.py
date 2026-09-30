@@ -181,8 +181,19 @@ def context_for_event(event_id: str, package_id: str = "") -> HearingContext:
         participants[person_key(p.name)] = p
     if package_id:
         people, facts = mods_people(package_id)
-        participants.update({k: v for k, v in people.items() if k not in participants or not participants[k].organization})
+        for key, person in people.items():
+            if key not in participants:
+                participants[key] = person
+                continue
+            # Never replace a meeting participant (especially a witness) with a
+            # MODS person just because affiliation fields were blank; fill gaps.
+            existing = participants[key]
+            # Meeting witnesses keep their role; MODS only fills blank affiliation.
+            for field in ("organization", "position", "party", "state", "bioguide_id", "honorific", "surname"):
+                if not getattr(existing, field) and getattr(person, field):
+                    setattr(existing, field, getattr(person, field))
         header.title = header.title or facts["title"]; header.serial = facts["serial"]; header.package_id = package_id
+
         if header.chamber == "unknown":
             header.chamber = facts.get("chamber", "unknown")
         header.date = header.date or facts["held_date"]; header.congress = header.congress or (int(facts["congress"]) if facts["congress"] else None)

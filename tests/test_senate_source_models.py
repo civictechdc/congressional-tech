@@ -44,13 +44,16 @@ def test_every_retained_page_layout_is_a_lossless_native_model(fixture):
     assert SenatePage.model_validate_json(json.dumps(source.payload)).source_dict() == expected
 
 
-def test_html_bytes_that_are_not_utf8_remain_exact_through_model_and_adapter():
+def test_html_bytes_that_are_not_utf8_fail_instead_of_replacing():
     raw = b'<title>Source title</title>\r\n<p>Original \x96 bytes</p><script>all original JS</script>'
-    page = records_parse_page(raw, PAGE)
-    assert page.raw_html.body_encoding == 'base64'
-    assert page.raw_html.body_bytes() == raw
+    with pytest.raises(UnicodeDecodeError):
+        records_parse_page(raw, PAGE)
+    # Valid UTF-8 still retains exact source bytes beside the parse.
+    utf8 = '<title>Source title</title>\r\n<p>Original – bytes</p><script>all original JS</script>'.encode()
+    page = records_parse_page(utf8, PAGE)
+    assert page.raw_html.body_bytes() == utf8
     source, = of_kind(adapt(page), 'source_record')
-    assert RawContent.model_validate(source.payload['raw_html']).body_bytes() == raw
+    assert RawContent.model_validate(source.payload['raw_html']).body_bytes() == utf8
 
 
 def test_archived_help_page_keeps_displayed_event_date_and_type():
@@ -124,7 +127,7 @@ def test_collector_retains_complete_wordpress_response_through_saved_state_and_a
         return SimpleNamespace(status_code=200, content=raw if requested == url else HTML)
     monkeypatch.setattr(records, 'listed', listing)
     monkeypatch.setattr(records_http, 'get_with_retry', request)
-    monkeypatch.setattr(records, 'match_pages', lambda *args: ([], [], []))
+    monkeypatch.setattr("congress_api.matching.senate_pages.match_pages", lambda *args: ([], [], []))
     records.main(**args)
     state = read_state(tmp_path / 'senate.json.gz')
     body = state[HOST]['source_bodies'][url]

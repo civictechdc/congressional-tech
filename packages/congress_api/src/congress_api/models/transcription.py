@@ -29,7 +29,7 @@ class Person(SourceModel):
 
 
 class Turn(SourceModel):
-    """One speaker turn. Times are seconds into the recording (machine transcripts only)."""
+    """One speaker turn; times are seconds into the recording and, unlike WebVTT, start/end order is not validated."""
     speaker: str                    # key into Transcript.participants, or a raw label ("spk:3") when unresolved
     text: str
     start: float | int | None = None

@@ -94,10 +94,12 @@ def get_with_retry(session, url, params=None, attempts=3, *, method="GET", allow
             _next[pace_key] = time.monotonic() + gap
         try:
             if through_zyte:
-                status, body = zyte.get(url, session)
+                status, body, header_items = zyte.decode(zyte.request(url, session))
                 response = requests.Response()
                 response.status_code, response._content, response.url = status, body, url
                 response.encoding = "utf-8"
+                for item in header_items:
+                    response.headers[item.name] = item.value
             else:
                 response = session.request(method, url, params=params, timeout=60, headers=UA)
                 status = response.status_code

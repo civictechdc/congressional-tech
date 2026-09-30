@@ -129,6 +129,35 @@ def test_existing_plain_text_is_skipped_without_inventing_original_html(tmp_path
     assert not (tmp_path / 'source').exists()
 
 
+def test_plain_text_replace_failure_leaves_no_complete_destination(tmp_path, monkeypatch):
+    """Atomic txt write: failed replace must not leave a skippable truncated file."""
+    package = 'CHRG-115hhrg33061'
+    row = tmp_path / 'rows.csv'
+    row.write_text(f'package_id,html_url\n{package},https://www.govinfo.gov/{package}.htm\n')
+    out = tmp_path / 'out'
+    raw = (FIXTURES / f'{package}.htm').read_bytes()
+    monkeypatch.setattr(transcripts, 'get_with_retry',
+                        lambda *a: SimpleNamespace(content=raw, text=raw.decode()))
+    original = Path.replace
+    replacements = []
+
+    def selective(source, target):
+        if source.name.endswith('.txt.tmp'):
+            replacements.append((source, target))
+            assert source.exists()
+            raise OSError('replace failed')
+        return original(source, target)
+
+    monkeypatch.setattr(Path, 'replace', selective)
+    with pytest.raises(SystemExit):
+        transcripts.main(out, row, nthreads=1)
+    path = out / f'{package}.txt'
+    assert not path.exists()
+    assert len(replacements) == 1
+    assert not replacements[0][0].exists()
+    assert (out / 'source' / f'{package}.json').exists()
+
+
 def test_real_short_complete_markup_is_saved_but_unavailable_stub_is_not(tmp_path, monkeypatch):
     packages = ['CHRG-115hhrg33061', 'CHRG-113hhrg88163']
     row = tmp_path / 'rows.csv'

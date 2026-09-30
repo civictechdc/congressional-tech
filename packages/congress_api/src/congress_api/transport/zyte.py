@@ -37,10 +37,19 @@ def request(url, session=None, timeout=120):
         json={"url": url, "httpResponseBody": True, "httpResponseHeaders": True})
 
 
+def decode(response):
+    """Publisher status, body, and headers from a Zyte API response.
+
+    A non-200 Zyte status is (that status, b"", []). A 200 JSON body missing
+    statusCode fails validation instead of inventing HTTP 200.
+    """
+    if response.status_code != 200:
+        return response.status_code, b"", []
+    parsed = ZyteResponse.model_validate(response.json())
+    return parsed.statusCode, base64.b64decode(parsed.httpResponseBody), list(parsed.httpResponseHeaders or [])
+
+
 def get(url, session=None, timeout=120):
     """(the site's status, its body); when Zyte itself fails (429, 503, 520 ...), (Zyte's status, b"")."""
-    r = request(url, session, timeout)
-    if r.status_code != 200:
-        return r.status_code, b""
-    d = ZyteResponse.model_validate(r.json())
-    return d.statusCode, base64.b64decode(d.httpResponseBody)
+    status, body, _headers = decode(request(url, session, timeout))
+    return status, body

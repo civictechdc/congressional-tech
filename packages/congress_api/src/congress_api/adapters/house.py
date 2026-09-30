@@ -9,7 +9,7 @@ from committee_meeting.legislation import Amendment, AmendmentGroup, AmendmentSp
 from committee_meeting.materials import DocumentDetails, MaterialLink
 from committee_meeting.meetings import Affiliation, Appearance, Panel, Person, RecordedName
 
-from congress_api.adapters.common import digest, material_records, observed_time, ref, web_url
+from congress_api.adapters.common import digest, material_records, observed_time, ref, web_url, witness_roles
 from congress_api.adapters.meetings import category
 from congress_api.models.house import HouseParsedRecord
 
@@ -117,7 +117,7 @@ def records(state, context, *, meetings):
         panels = {}
         if meeting:
             for i, panel in enumerate(rich.get("panels", [])):
-                if not panel["active"]:
+                if panel.get("active", True) is False:
                     continue
                 p = Panel(id=context.ids("panel", key + "|panel|" + panel.get("sort_order", panel["selector"])), meeting=meeting,
                           order=number(panel.get("sort_order")), provenance=context.evidence(source, selector=f"/evidence/panels/{i}"))
@@ -144,11 +144,12 @@ def records(state, context, *, meetings):
                                     identifiers=(Identifier(scheme="bioguide", value=bio),), provenance=evidence)
                     yield person
                 testified = get("testified") or meta.get("attributes", {}).get("testified")
+                position = get("position")
                 a = Appearance(id=context.ids("appearance", witness_key), meeting=meeting, person=ref(person) if person else None,
                                panel=panels.get(w.get("panel_selector")), name=RecordedName(display=name, given=get("firstname", "first"), family=get("lastname", "last"),
-                               honorific=get("honorific"), middle=get("middlename", "middle"), suffix=get("suffix"), retired=get("retired")), roles=("witness",),
+                               honorific=get("honorific"), middle=get("middlename", "middle"), suffix=get("suffix"), retired=get("retired")), roles=witness_roles(position),
                                participation="testified" if str(testified).lower() in ("true", "yes", "1") else "listed",
-                               affiliation=Affiliation(position=get("position"), organization_name=get("organization"), on_behalf_of=get("behalf-of", "behalf_of"), location=get("location")),
+                               affiliation=Affiliation(position=position, organization_name=get("organization"), on_behalf_of=get("behalf-of", "behalf_of"), location=get("location")),
                                order=number(w.get("display_order")), provenance=context.evidence(source, selector=f"/evidence/witness_observations/{i}" if observations is not None else f"/witnesses/{i}"))
                 owners[w.get("selector", "")] = ref(a)
                 yield a

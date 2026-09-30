@@ -67,6 +67,11 @@ def write_state(path, state):
 
 
 def read_meetings(path):
+    """Return meetings inside inventory scope.
+
+    ``retention.meetings.read`` returns the full snapshot. This reader drops
+    meetings that ``in_inventory_scope`` rejects.
+    """
     with gzip.open(path, "rt", encoding="utf-8") as f:
         records = (CommitteeMeeting.model_validate_json(line) for line in f)
         return [row for m in records if in_inventory_scope(row := m.source_dict())]

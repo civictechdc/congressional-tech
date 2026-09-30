@@ -56,6 +56,7 @@ def request(url, through_zyte, receipts, allowed=(200, 404)):
 
 def fetch_xml(urls, expected, through_zyte, receipts=None):
     receipts = receipts if receipts is not None else []
+    errors = []
     for url in dict.fromkeys(urls):
         response = request(url, through_zyte, receipts)
         if response.status_code == 404:
@@ -66,15 +67,15 @@ def fetch_xml(urls, expected, through_zyte, receipts=None):
                 root = parser(response.content)
                 if root.tag != expected:
                     raise ET.ParseError(f"unexpected root {root.tag}")
-                break
-            except (ET.ParseError, ValueError):
+                return root, url
+            except (ET.ParseError, ValueError) as error:
                 receipts[-1]["outcome"] = "invalid_xml"
                 if attempt == 2:
-                    raise
+                    errors.append(error)
+                    break
                 response = request(url, through_zyte, receipts, allowed=(200,))
-        if root.tag != expected:
-            raise ValueError(f"Unexpected XML root from {url}: {root.tag}")
-        return root, url
+    if errors:
+        raise errors[-1]
     return None, ""
 
 

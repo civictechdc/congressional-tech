@@ -147,11 +147,17 @@ def documents(page_html, url):
     return list(out.values())
 
 
+def century_year(year: int) -> int:
+    """Expand a 2-digit year for Senate inventory (~1935+): 35–99 → 1935–1999, 00–34 → 2000–2034."""
+    if year > 99:
+        return year
+    return (1900 if year >= 35 else 2000) + year
+
+
 def written_day(match):
     try:
         if match.group(1):
-            year = int(match.group(3))
-            return dt.date(year if year > 99 else 2000 + year, int(match.group(1)), int(match.group(2)))
+            return dt.date(century_year(int(match.group(3))), int(match.group(1)), int(match.group(2)))
         if match.group(4):
             return dt.date(int(match.group(6)), MONTHS.index(match.group(4)[:3].lower()) + 1, int(match.group(5)))
         return dt.date(int(match.group(7)), int(match.group(8)), int(match.group(9)))

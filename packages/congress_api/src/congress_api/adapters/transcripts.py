@@ -28,7 +28,7 @@ from committee_meeting.materials import (
 )
 from committee_meeting.provenance import Method, RetainedContent
 
-from congress_api.adapters.common import AdapterContext, reported_time, web_url
+from congress_api.adapters.common import AdapterContext, MeetingLookupKey, meeting_lookup_key, reported_time, web_url
 from congress_api.models.transcription import SCHEMA_VERSION, Transcript
 
 
@@ -49,7 +49,7 @@ def records(
     inputs: Iterable[TranscriptInput],
     context: AdapterContext,
     *,
-    meetings: Mapping[tuple[int, str, str], Ref] | None = None,
+    meetings: Mapping[MeetingLookupKey, Ref] | None = None,
     source_versions: Mapping[tuple[str, str], Ref] | None = None,
 ):
     """Yield retained bodies and evidenced associations from explicit lookups.
@@ -218,7 +218,7 @@ def records(
 
         if material_ref:
             event_id = str(header.get("event_id") or "")
-            meeting = (meetings or {}).get((congress, chamber, event_id)) if event_id else None
+            meeting = (meetings or {}).get(meeting_lookup_key(congress, chamber, event_id)) if event_id else None
             if meeting:
                 if meeting.kind != "meeting":
                     raise ValueError("transcript meeting lookup must contain meeting references")

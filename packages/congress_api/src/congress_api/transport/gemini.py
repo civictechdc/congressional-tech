@@ -47,12 +47,16 @@ MIN_SPLIT_SECONDS = 600
 _client = None
 
 
+class TranscriptionWindowError(RuntimeError):
+    """A transcription window failed after retries; not a schema-valid empty turn list."""
+
+
 def client() -> genai.Client:
     global _client
     if _client is None:
         key = os.environ.get("GEMINI_API_KEY")
         if not key:
-            raise SystemExit("GEMINI_API_KEY is not set")
+            raise RuntimeError("GEMINI_API_KEY is not set")
         _client = genai.Client(api_key=key)
     return _client
 
@@ -109,6 +113,7 @@ def transcribe_window(roster: list[dict], meeting: dict, start: float, end: floa
             b = transcribe_window(roster, meeting, mid, end, youtube_id=youtube_id, model=model, capture_dir=capture_dir)
         return {"turns": a["turns"] + b["turns"], "events": a["events"] + b["events"], "usage": {k: a["usage"].get(k, 0) + b["usage"].get(k, 0) for k in ("in", "out")}}
 
+    last_error: Exception | None = None
     for attempt in range(2):
         try:
             r = client().models.generate_content(model=model, contents=contents, config=cfg)
@@ -124,6 +129,11 @@ def transcribe_window(roster: list[dict], meeting: dict, start: float, end: floa
                           "out": getattr(usage, "candidates_token_count", None) or 0}
             return d
         except Exception as e:
+            last_error = e
             logging.warning(f"window {start:.0f}-{end:.0f}: {str(e)[:200]}; retrying")
             time.sleep(15 * (attempt + 1))
-    return halves() if end - start > MIN_SPLIT_SECONDS else {"turns": [], "events": [], "usage": {"in": 0, "out": 0}}
+    if end - start > MIN_SPLIT_SECONDS:
+        return halves()
+    raise TranscriptionWindowError(
+        f"window {start:.0f}-{end:.0f} failed after retries"
+    ) from last_error

@@ -25,7 +25,7 @@ def serialized_matches(matches):
 @pytest.mark.parametrize("rule,meetings,packages,attached,expected", [
     ("package_event_id", [meeting()], [package(event_id="1", committee_code="hsag00", held_date="2020-01-01")], None, {"1": {PACKAGE}}),
     ("attached_file", [meeting(meetingDocuments=[{"url": f"http://example.org/{PACKAGE}.pdf"}]), meeting("2", title="Transportation infrastructure investment")], [package()], None, {"1": {PACKAGE}, "2": set()}),
-    ("collection_day", [meeting(), meeting("2", title="Transportation infrastructure investment")], [package(title="APPROPRIATIONS FOR FISCAL YEAR 2027")], None, {"1": {PACKAGE}, "2": {PACKAGE}}),
+    ("collection_day", [meeting()], [package(title="APPROPRIATIONS FOR FISCAL YEAR 2027")], None, {"1": {PACKAGE}}),
     ("markup_print_day", [meeting(type="Markup")], [package(title="Markup of agricultural insurance commodity programs")], None, {"1": {PACKAGE}}),
     ("unique_committee_day", [meeting()], [package()], None, {"1": {PACKAGE}}),
     ("title_similarity", [meeting(), meeting("2", title="Transportation infrastructure investment")], [package(title="Competition in digital information markets")], None, {"1": {PACKAGE}, "2": set()}),
@@ -37,12 +37,18 @@ def test_each_accepted_branch_explains_unchanged_results(rule, meetings, package
     assert plain == explained == expected
     assert serialized_matches(plain) == serialized_matches(explained)
     assert rule in {decision["rule"] for decision in decisions}
-    assert all(decision["rule_version"] == ("2" if decision["rule"] in ("markup_print_day", "unique_committee_day") else "1")
+    assert all(decision["rule_version"] == ("2" if decision["rule"] in ("markup_print_day", "unique_committee_day", "collection_day") else "1")
                for decision in decisions)
     assert all(decision["package_id"] in expected[decision["event_id"]] for decision in decisions)
     for decision in decisions:
         assert decision["evidence"]["meeting"]["eventId"] == decision["event_id"]
         assert decision["evidence"]["packages"][0]["package_id"] == decision["package_id"]
+
+
+def test_collection_day_does_not_attach_to_every_same_day_meeting():
+    meetings = [meeting(), meeting("2", title="Transportation infrastructure investment")]
+    packages = [package(title="APPROPRIATIONS FOR FISCAL YEAR 2027")]
+    assert match_prints(meetings, packages) == {"1": set(), "2": set()}
 
 
 def test_multiple_reasons_preserve_real_title_score_and_native_fields():
@@ -103,9 +109,24 @@ def test_all_markup_spellings_use_the_same_print_rules(row):
 
 
 def test_multiple_committee_paths_keep_native_codes_and_matching_alias():
-    meetings = [meeting(committees=[{"systemCode": "hlqj00"}, {"systemCode": "hsag00"}])]
-    packages = [package()]
+    title = "Competition in digital information markets"
+    meetings = [meeting(title=title, committees=[{"systemCode": "hlqj00"}, {"systemCode": "hsag00"}])]
+    packages = [package(title=title)]
     decisions = []
-    match_prints(meetings, packages, decisions=decisions)
+    assert match_prints(meetings, packages, decisions=decisions) == {"1": {PACKAGE}}
     assert decisions[0]["evidence"]["meeting"]["committees"] == meetings[0]["committees"]
     assert decisions[0]["evidence"]["matching_committee_code"] == "hsju00"
+    assert "title_similarity" in {d["rule"] for d in decisions}
+    assert not any(d["rule"] == "unique_committee_day" for d in decisions)
+
+
+def test_select_committee_alias_does_not_inflate_judiciary_unique_day():
+    """hlqj00 aliases to hsju00 for channels, but must not share Judiciary uniqueness."""
+    judiciary = meeting(event="judiciary")
+    select = meeting(event="select", committees=[{"systemCode": "hlqj00"}],
+                     title="Transportation infrastructure investment")
+    packages = [package()]  # Judiciary day package; titles do not match either uniquely via title
+    assert match_prints([judiciary, select], packages) == {"judiciary": {PACKAGE}, "select": set()}
+    decisions = []
+    match_prints([judiciary, select], packages, decisions=decisions)
+    assert {d["event_id"] for d in decisions if d["rule"] == "unique_committee_day"} == {"judiciary"}

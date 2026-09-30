@@ -131,6 +131,39 @@ def test_package_only_transcription_uses_native_title_and_chamber(monkeypatch, p
         assert result.header.title == 'FULL COMMITTEE BUSINESS MEETING'
 
 
+def test_mods_fills_witness_affiliation_without_replacing_role(monkeypatch):
+    from congress_api.models.transcription import Person
+    from congress_api.parsers.witness_names import person_key
+    from congress_api.transcripts import context as metadata
+
+    key = person_key('Jane Witness')
+    meeting = {
+        'eventId': '1', 'congress': 118, 'chamber': 'House', 'title': 'Hearing',
+        'committees': [{'systemCode': 'hsju00', 'name': 'Judiciary'}], 'date': '2024-01-01T15:00:00Z',
+        'witnesses': [{'name': 'Jane Witness', 'organization': '', 'position': ''}],
+        'videos': [],
+    }
+    mods_member = Person(name='Jane Witness', role='member', organization='Acme Corp',
+                         position='CEO', party='D', state='VA', bioguide_id='W000001', surname='Witness')
+
+    monkeypatch.setattr(metadata, 'meetings', lambda: {'1': meeting})
+    monkeypatch.setattr(metadata, 'mods_people', lambda package_id: ({key: mods_member}, {
+        'title': 'MODS Title', 'serial': '', 'held_date': '2024-01-01', 'congress': '118',
+        'session': '1', 'chamber': 'house', 'committee': 'Judiciary', 'committee_code': 'hsju00',
+        'subcommittee': ''}))
+    monkeypatch.setattr(metadata, 'roster_for', lambda *a, **k: {})
+    monkeypatch.setattr(metadata, 'legislators_current', lambda: {})
+
+    result = metadata.context_for_event('1', package_id='CHRG-118hhrg1')
+    person = result.participants[key]
+    assert person.role == 'witness'
+    assert person.organization == 'Acme Corp'
+    assert person.position == 'CEO'
+    assert person.party == 'D'
+    assert person.state == 'VA'
+    assert person.bioguide_id == 'W000001'
+
+
 def test_source_models_do_not_depend_on_io_or_normalization_and_export_schema():
     forbidden = {'requests', 'csv', 'tinydb', 'pyarrow', 'committee_meeting'}
     for entry in pkgutil.iter_modules(models.__path__):

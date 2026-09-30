@@ -20,28 +20,11 @@ Evidence, strongest first (score in brackets):
         (committees mistag videos; see `stale`).
   [ 50] Posted 1 day before to 3 days after, naming the hearing's subcommittee.
 
-Rules:
-- Each video goes to its best-scoring hearing. Hearings on the same day may share a
-  video (joint hearings, or several GPO packages for one proceeding); hearings on
-  different days may not.
-- A video found by weaker evidence (score under 90) counts as a clip, not a full recording,
-  when it's under 20 minutes, or under 30 minutes with a member-clip title ("Wyden Q&A ...",
-  "Chairman Smith Questions Witnesses ...", "Opening Statement ..."). Senate party channels
-  post 10-25 minute question rounds for most hearings; measured on the September 2026 data,
-  nearly every weak match under 20 minutes was one.
-- A hearing is matched on every day listed in `hearing_dates` (the days its transcript's
-  day headers give) when there are any, else on GPO's held date; on both when the
-  transcript names one day and GPO another. Multi-hearing volumes
-  (Appropriations "Part N") are matched to meetings by subcommittee, since their title
-  names no hearing.
-- Curated verdicts in the overrides file (seeded from the September 2026 research
-  pass) apply where they exist. A "no video"/"clips only" verdict gives way to strong
-  new evidence (score 90+) or a dated recording of 30+ minutes, unless the row is
-  locked (`lock=yes`, for matches that were reviewed and rejected).
-- Recordings off YouTube give status `full_recording_offsite` when YouTube has no full
-  recording: a senate.gov player link in the hearing's Congress.gov meeting record (the
-  Senate hosts its own video), or a `found_offsite` override (C-SPAN, an archived file,
-  another site; `video_ids` holds the URLs and `channel` the host).
+``candidates`` scores one hearing. Durable assignment, overrides, and CSV verdicts
+live in ``matching.gpo_decisions``. A hearing is scored on every day in
+``hearing_dates`` when present, else on GPO's held date; on both when the transcript
+names one day and GPO another. Multi-hearing volumes (Appropriations "Part N") match
+meetings by subcommittee, because their title names no hearing.
 """
 
 import datetime as dt
@@ -101,8 +84,31 @@ def valid_date(y, m, d):
         return None
 
 
-def dates_in_text(text):
-    """ISO dates written in a video title/description, in the formats committees use."""
+def _in_range(day):
+    return day is not None and "2005" <= day <= "2100"
+
+
+def _six_digit_date(code, context_dates=None):
+    """Resolve one 6-digit token. Prefer MMDDYY; never keep both parses.
+
+    Committees usually write hearing dates as MMDDYY ("031815"); YYMMDD ("140115") also
+    appears. One valid parse is enough. When both are valid and differ, keep a date only if
+    ``context_dates`` (held days or an upload window) names it—MMDDYY first when both agree.
+    """
+    mmddyy = valid_date(2000 + int(code[4:]), int(code[:2]), int(code[2:4]))
+    yymmdd = valid_date(2000 + int(code[:2]), int(code[2:4]), int(code[4:]))
+    ordered = list(dict.fromkeys(day for day in (mmddyy, yymmdd) if _in_range(day)))
+    if len(ordered) <= 1:
+        return set(ordered)
+    if not context_dates:
+        return set()
+    agreed = [day for day in ordered if day in context_dates]
+    return {agreed[0]} if agreed else set()
+
+
+def dates_in_text(text, context_dates=None):
+    """ISO dates from a video title/description. Separators, 8-digit codes, and month names
+    stay as-is; compact 6-digit tokens go through :func:`_six_digit_date`."""
     found = set()
     for m, d, y in re.findall(r"(?<!\d)(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4}|\d{2})(?!\d)", text):
         y = int(y) + (2000 if len(y) == 2 else 0)
@@ -111,11 +117,10 @@ def dates_in_text(text):
         found.add(valid_date(int(y), MONTHS[mon], int(d)))
     for code in re.findall(r"(?<!\d)(\d{8})(?!\d)", text):  # 20160107
         found.add(valid_date(int(code[:4]), int(code[4:6]), int(code[6:])))
-    for code in re.findall(r"(?<!\d)(\d{6})(?!\d)", text):  # 031815 (MMDDYY) or 140115 (YYMMDD)
-        found.add(valid_date(2000 + int(code[4:]), int(code[:2]), int(code[2:4])))
-        found.add(valid_date(2000 + int(code[:2]), int(code[2:4]), int(code[4:])))
+    for code in re.findall(r"(?<!\d)(\d{6})(?!\d)", text):
+        found |= _six_digit_date(code, context_dates)
     found.discard(None)
-    return {d for d in found if "2005" <= d <= "2100"}
+    return {d for d in found if _in_range(d)}
 
 
 def matching_days(h):

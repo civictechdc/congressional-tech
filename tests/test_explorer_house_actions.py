@@ -113,3 +113,19 @@ def test_unusable_house_retrieval_times_stay_in_source_payload(retrieved):
     assert any(item.id.endswith("invalid-retrieval-time") for item in of_kind(rows, "data_issue"))
     assessment, = of_kind(rows, "assessment")
     assert assessment.status == "error" and assessment.observed_at is None
+
+
+def test_nominee_position_adds_nominee_role_without_changing_source_text():
+    position = "Nominee, Director of the Indian Health Service"
+    saved = {"witnesses": [{"name": "Mark Cruz", "position": position, "organization": "HHS"}], "documents": []}
+    appearance, = of_kind(adapt(saved), "appearance")
+    assert appearance.roles == ("witness", "nominee")
+    assert appearance.affiliation.position == position
+    assert of_kind(adapt(saved), "source_record")[0].payload["witnesses"][0]["position"] == position
+
+
+def test_missing_panel_active_defaults_to_included():
+    saved = {"evidence": {"panels": [{"selector": "p1", "sort_order": "1"}], "witness_observations": [], "document_groups": []},
+             "documents": [], "witnesses": []}
+    panel, = of_kind(adapt(saved), "panel")
+    assert panel.order == 1

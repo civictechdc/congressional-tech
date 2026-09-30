@@ -14,10 +14,12 @@ hearing against its print: word error rate 8.7%, speakers right on 85% of words.
 gemini.py for why the windows are 25 minutes and why the dedicated transcription model
 was dropped.
 
-Writes <id>.json (the schema) and <id>.gpo.txt (the print's layout). Needs GEMINI_API_KEY;
-YOUTUBE_API_KEY lets the video's length come from the Data API instead of yt-dlp, and --proxy
-is passed to yt-dlp when YouTube asks for a sign-in.
-New GovInfo HTML and Gemini responses are retained under source/ before parsing.
+Writes <id>.json (the schema) and <id>.gpo.txt (the print's layout). Refuses to overwrite
+either file unless --force is passed; writes use a temp file then replace. Audio/video
+transcription needs GEMINI_API_KEY; GPO-only parsing does not. YOUTUBE_API_KEY lets the
+video's length come from the Data API instead of yt-dlp, and --proxy is passed to yt-dlp
+when YouTube asks for a sign-in. New GovInfo HTML and Gemini responses are retained under
+source/ before parsing.
 """
 
 import argparse
@@ -35,6 +37,22 @@ from congress_api.transcripts.render import render_gpo
 from congress_api.parsers.senate_player import parse_player_url
 
 
+def _refuse_existing(out_dir: Path, stem: str, force: bool) -> None:
+    existing = [path for name in (f"{stem}.json", f"{stem}.gpo.txt")
+                if (path := out_dir / name).exists()]
+    if existing and not force:
+        sys.exit(f"refusing to overwrite {', '.join(map(str, existing))}; pass --force")
+
+
+def _atomic_write(path: Path, text: str) -> None:
+    temporary = path.with_name(path.name + ".tmp")
+    try:
+        temporary.write_text(text, encoding="utf-8")
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
 def parse_args_and_run():
     p = argparse.ArgumentParser(description="Transcribe a committee proceeding into the shared transcript schema.")
     p.add_argument("--out-dir", required=True, type=Path)
@@ -42,6 +60,7 @@ def parse_args_and_run():
     p.add_argument("--gpo-package", help="Parse this GPO print instead of transcribing (or, with a recording, use its metadata too).")
     p.add_argument("--video-id"); p.add_argument("--senate-url"); p.add_argument("--audio", help="A local audio or video file.")
     p.add_argument("--proxy", help="Proxy for yt-dlp when YouTube asks for a sign-in.")
+    p.add_argument("--force", action="store_true", help="Overwrite existing <id>.json and <id>.gpo.txt.")
     p.add_argument("--gpo-path", type=Path, default=DEFAULT_GPO_HEARINGS_FILE, help="gpo_hearings.csv (see gpo-fetch).")
     p.add_argument("--meetings", type=Path, default=DEFAULT_MEETINGS_FILE, help="congress_meetings.jsonl.gz (see congress-meetings).")
     a = p.parse_args()
@@ -50,7 +69,9 @@ def parse_args_and_run():
     logging.getLogger("google_genai").setLevel(logging.WARNING); logging.getLogger("httpx").setLevel(logging.WARNING)
     a.out_dir.mkdir(parents=True, exist_ok=True)
     if a.gpo_package and not (a.video_id or a.senate_url or a.audio or a.event_id):
-        t = from_gpo(a.gpo_package, a.gpo_path, source_dir=a.out_dir / 'source'); stem = a.gpo_package
+        stem = a.gpo_package
+        _refuse_existing(a.out_dir, stem, a.force)
+        t = from_gpo(a.gpo_package, a.gpo_path, source_dir=a.out_dir / 'source')
     else:
         if not (a.event_id or a.gpo_package):
             sys.exit("give --event-id or --gpo-package so the participants are known")
@@ -72,9 +93,10 @@ def parse_args_and_run():
                 p.error("--senate-url filename must be a single file name")
         else:
             stem = Path(a.audio).stem
+        _refuse_existing(a.out_dir, stem, a.force)
         t = transcribe(ctx, a.out_dir, video_id=video_id, senate_url=senate_url, local=a.audio or "", proxy=a.proxy)
-    (a.out_dir / f"{stem}.json").write_text(t.to_json(), encoding="utf-8")
-    (a.out_dir / f"{stem}.gpo.txt").write_text(render_gpo(t), encoding="utf-8")
+    _atomic_write(a.out_dir / f"{stem}.json", t.to_json())
+    _atomic_write(a.out_dir / f"{stem}.gpo.txt", render_gpo(t))
     named = sum(1 for p in t.participants.values() if p.role != "unknown" and p.name != "Unknown")
     logging.info(f"wrote {a.out_dir / stem}.json: {len(t.turns)} turns, {named} named participants")
 

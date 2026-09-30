@@ -1,7 +1,6 @@
 """Retain Congress-scoped committee lists plus full committee details and history."""
 
 import csv
-import gzip
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -10,8 +9,10 @@ from urllib.parse import urlsplit
 import requests
 
 from congress_api.acquisition.meetings import API, get
-from congress_api.models.congress import CommitteeDetail, CommitteeRecord, CommitteeSnapshot
-from congress_api.retention.meetings import read, write
+from congress_api.models.congress import CommitteeDetail, CommitteeRecord
+from congress_api.retention.committees import read as read_committees
+from congress_api.retention.committees import write as write_committees
+from congress_api.retention.meetings import read as read_meetings
 from congress_api.retention.rejected_pages import retain_rejected_page
 
 
@@ -25,7 +26,7 @@ def detail_url(committee):
 
 
 def collect(meetings_path, output_path, *, api_key, session=None, gpo_path=None):
-    congresses = {int(row['congress']) for row in read(meetings_path).values()}
+    congresses = {int(row['congress']) for row in read_meetings(meetings_path).values()}
     if gpo_path:
         with Path(gpo_path).open(newline='') as stream:
             congresses.update(int(row['congress']) for row in csv.DictReader(stream) if row.get('congress'))
@@ -33,10 +34,7 @@ def collect(meetings_path, output_path, *, api_key, session=None, gpo_path=None)
     if not congresses:
         raise ValueError('The retained meeting and document inputs have no Congresses')
     output = Path(output_path)
-    existing = []
-    if output.exists():
-        with gzip.open(output, 'rt') as stream:
-            existing = [CommitteeSnapshot.model_validate_json(line).source_dict() for line in stream if line.strip()]
+    existing = read_committees(output)
     have = {row['congress'] for row in existing}
     refresh = set(congresses[-2:]) | (set(congresses) - have)
     rows = {f"{row['congress']}|{row['committee']['systemCode']}": row for row in existing if row['congress'] not in refresh}
@@ -92,5 +90,5 @@ def collect(meetings_path, output_path, *, api_key, session=None, gpo_path=None)
                     raise
                 observed[url] = dict(detail=detail, detail_url=url, detail_retrieved_at=datetime.now(timezone.utc).isoformat())
         row.update(observed[url])
-    write(rows, output)
+    write_committees(rows, output)
     return rows

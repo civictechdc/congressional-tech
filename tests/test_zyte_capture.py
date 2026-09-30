@@ -2,8 +2,10 @@
 import base64
 from types import SimpleNamespace
 
+import pytest
 from congress_api.models.transport import ZyteResponse
 from congress_api.transport import zyte
+from pydantic import ValidationError
 
 
 def test_request_keeps_complete_response_and_requests_publisher_headers(monkeypatch):
@@ -29,3 +31,8 @@ def test_provider_error_is_not_treated_as_publisher_success(monkeypatch):
     monkeypatch.setenv('ZYTE_TOKEN', 'test-token')
     session = SimpleNamespace(post=lambda *a, **k: SimpleNamespace(status_code=429))
     assert zyte.get('https://publisher.gov/file.pdf', session) == (429, b'')
+
+
+def test_missing_status_code_fails_instead_of_defaulting_to_success():
+    with pytest.raises(ValidationError, match='statusCode'):
+        ZyteResponse.model_validate({'httpResponseBody': base64.b64encode(b'x').decode()})

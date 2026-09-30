@@ -39,3 +39,25 @@ def test_gpo_malformed_cache_only_fails_when_admitted(tmp_path, acquired):
         assert len(report['failures']) == 1
         assert report['failures'][0]['package_id'] == package
         assert 'not a MODS document' in report['failures'][0]['error']
+
+
+def test_gpo_protected_field_violation_is_failure_not_write(tmp_path, monkeypatch):
+    package = 'CHRG-113hhrg21122'
+    raw = (Path(__file__).parent / 'fixtures' / 'gpo_metadata' / f'{package}.xml').read_bytes()
+    row = asdict(parse_mods(package, raw, '2026-09-01T00:00:00Z'))
+    source, output, retained = (tmp_path / name for name in ('in.csv', 'out.csv', 'evidence.jsonl.gz'))
+    evidence.write_csv({package: row}, source)
+    original = source.read_bytes()
+    cache = tmp_path / 'mods'
+    cache.mkdir()
+    (cache / f'{package}.xml').write_bytes(raw)
+    monkeypatch.setattr('congress_api.replay.gpo.merge_cached_row',
+                        lambda old, parsed: dict(old, title='CHANGED BY BUG'))
+
+    report = replay(source, cache, output, retained)
+
+    assert output.read_bytes() == original
+    assert len(report['failures']) == 1
+    assert report['failures'][0]['package_id'] == package
+    assert 'Protected fields changed' in report['failures'][0]['error']
+    assert report['packages'] == []

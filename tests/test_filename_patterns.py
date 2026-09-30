@@ -223,6 +223,19 @@ def test_service_dates_scope_names_to_congress_with_exclusive_term_end():
     assert by_congress == {'118': ('Boundary', 'Retired'), '119': ('Boundary', 'Newmember')}
 
 
+def test_service_dates_use_march_fourth_before_congress_74():
+    from congress_api.models.legislators import Legislator, member_surnames_by_congress
+    members = [Legislator.model_validate({'id': {'bioguide': f'T{i:06}'},
+        'name': {'first': 'Example', 'last': last},
+        'terms': [{'type': 'rep', 'state': 'VA', 'start': start, 'end': end}]})
+        for i, (last, start, end) in enumerate([
+            ('Retired', '1933-03-04', '1935-01-03'),
+            ('Newmember', '1935-01-03', '1937-01-03'),
+            ('Boundary', '1935-01-02', '1935-01-04')])]
+    by_congress = member_surnames_by_congress(members)
+    assert by_congress == {'73': ('Boundary', 'Retired'), '74': ('Boundary', 'Newmember')}
+
+
 def test_multiple_bills_are_not_a_version_and_numeric_modifier():
     name = 'BILLS-115HR6147HR6258-RCP115-81.pdf'
     assert fields(name, 'measure-list')['measure_list'] == 'HR6147HR6258'

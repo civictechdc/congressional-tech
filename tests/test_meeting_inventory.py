@@ -160,6 +160,35 @@ def test_video_cache_reading_is_separate_from_matching(tmp_path, monkeypatch, ca
     assert videos == [("hsju00", video)]
 
 
+def test_weak_print_keeps_window_youtube_but_strong_print_suppresses_it():
+    meeting = {"eventId": "1", "congress": 118, "chamber": "House", "date": "2024-01-02",
+               "type": "Hearing", "title": "Competition in digital markets", "committees": [{"systemCode": "hsju00"}]}
+    video = ("hsju00", {"videoId": "windowvid123", "title": "Competition in digital markets", "description": "",
+                        "publishedAt": "2024-01-02T12:00:00Z", "duration": 3600, "caption": False})
+    weak = [{"package_id": "CHRG-118hhrg1", "congress": "118", "event_id": "", "committee_code": "hsju00",
+             "title": "Competition in digital markets", "held_date": "2024-01-02", "hearing_dates": ""}]
+    strong = [{**weak[0], "event_id": "1", "title": "Unrelated agricultural commodity programs"}]
+    weak_row = text_sources.build([meeting], weak, [video], [], [], [], {}, {}, {})[0]
+    assert weak_row["gpo_packages"] == "CHRG-118hhrg1"
+    assert "windowvid123" in weak_row["youtube_ids"].split()
+    strong_row = text_sources.build([meeting], strong, [video], [], [], [], {}, {}, {})[0]
+    assert strong_row["gpo_packages"] == "CHRG-118hhrg1"
+    assert strong_row["youtube_ids"] == ""
+
+
+def test_youtube_and_senate_urls_are_sorted_like_packages():
+    meeting = {"eventId": "1", "congress": 118, "chamber": "Senate", "date": "2024-01-02",
+               "type": "Hearing", "title": "Budget", "committees": [{"systemCode": "ssbu00"}],
+               "videos": [{"url": "https://www.youtube.com/watch?v=zzzzzzzzzzz"},
+                          {"url": "https://www.youtube.com/watch?v=aaaaaaaaaaa"},
+                          {"url": "https://www.senate.gov/isvp/?comm=budget&filename=budget010224b"},
+                          {"url": "https://www.senate.gov/isvp/?comm=budget&filename=budget010224a"}]}
+    row = text_sources.build([meeting], [], [], [], [], [], {}, {}, {})[0]
+    assert row["youtube_ids"] == "aaaaaaaaaaa zzzzzzzzzzz"
+    assert row["senate_urls"] == ("https://www.senate.gov/isvp/?comm=budget&filename=budget010224a "
+                                  "https://www.senate.gov/isvp/?comm=budget&filename=budget010224b")
+
+
 def test_invalid_video_cache_is_not_treated_as_a_missing_channel(tmp_path):
     from congress_api.retention.tables import read_youtube_videos
 
@@ -211,6 +240,31 @@ def test_house_refusal_is_not_saved_as_absence(monkeypatch):
     monkeypatch.setattr("congress_api.transport.http.get_with_retry", refusal)
     with pytest.raises(RuntimeError, match="403"):
         fetch_xml(["https://docs.house.gov/m.xml"], "committee-meeting", False)
+
+
+def test_fetch_xml_continues_to_next_url_after_invalid_xml(monkeypatch):
+    from pathlib import Path
+    from types import SimpleNamespace
+
+    from congress_api.acquisition.house import fetch_xml
+
+    good = (Path(__file__).parent / "fixtures" / "meeting_inventory" / "house-field-location.xml").read_bytes()
+    bad = b"<html>not meeting xml</html>"
+    urls = ["https://docs.house.gov/bad.xml", "https://docs.house.gov/good.xml"]
+    calls = []
+
+    def get(session, url, **kwargs):
+        calls.append(url)
+        body = bad if "bad" in url else good
+        return SimpleNamespace(status_code=200, content=body)
+
+    monkeypatch.setattr("congress_api.transport.http.get_with_retry", get)
+    root, url = fetch_xml(urls, "committee-meeting", False)
+    assert url == urls[1]
+    assert root.tag == "committee-meeting"
+    assert root.get("meeting-id") == "HMTG110745"
+    assert calls.count(urls[0]) == 3
+    assert calls.count(urls[1]) == 1
 
 
 def test_archive_absence_is_probed_once_and_outputs_settle(tmp_path, monkeypatch):

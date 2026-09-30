@@ -90,10 +90,16 @@ def parse_transcript_html(data: str | bytes, *, decoded_text: str | None = None)
 
     HTTP callers supply response bytes and its declared-encoding text together.
     A string-only caller retains exactly that supplied string, not invented
-    pre-decoding network bytes.
+    pre-decoding network bytes. Byte-only callers must be strict UTF-8 (or pass
+    decoded_text); invalid sequences raise UnicodeDecodeError.
     """
     raw = data if isinstance(data, bytes) else data.encode('utf-8')
-    page = decoded_text if decoded_text is not None else data.decode('utf-8', 'replace') if isinstance(data, bytes) else data
+    if decoded_text is not None:
+        page = decoded_text
+    elif isinstance(data, bytes):
+        page = data.decode('utf-8')
+    else:
+        page = data
     return GpoTranscriptText(source=RawContent.from_bytes(raw, 'text/html'),
                              text=html.unescape(re.sub(r'<[^>]+>', '', page)))
 

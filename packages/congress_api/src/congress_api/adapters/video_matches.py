@@ -25,6 +25,7 @@ from committee_meeting.materials import (
 from committee_meeting.provenance import Method, Provenance
 
 from congress_api.adapters.common import AdapterContext, web_url
+from congress_api.adapters.recordings import offsite_reference
 
 
 def records(
@@ -81,9 +82,11 @@ def records(
                 offsite = status == "full_recording_offsite" or (status == "clips_only" and bool(web_url(token)))
                 if offsite:
                     url = web_url(token)
-                    provider = urlsplit(url).hostname if url else None
-                    recording_key = "offsite|" + token
-                    identifiers = (Identifier(scheme="url", value=token),)
+                    if url:
+                        recording_key, url, _, identifiers = offsite_reference(url)
+                        provider = urlsplit(url).hostname
+                    else:
+                        recording_key, provider, identifiers = None, None, ()
                 else:
                     valid_id = bool(re.fullmatch(r"[A-Za-z0-9_-]{11}", token))
                     url = "https://www.youtube.com/watch?v=" + quote(token, safe="") if valid_id else None

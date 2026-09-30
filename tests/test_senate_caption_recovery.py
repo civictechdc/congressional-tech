@@ -63,3 +63,55 @@ def test_archive_only_negative_check_retains_checked_location(tmp_path, monkeypa
     assert receipt['scope']['includes_embedded_archive_captions'] is False
     assert receipt['outcome'] == 'not_found'
     assert 'No checked master' in receipt['reason']
+
+
+def test_failure_after_staged_gzip_keeps_previous_capture_bytes(tmp_path, monkeypatch):
+    """Re-fetch must not replace .captions.json.gz until txt succeeds."""
+    from congress_api.retention import captions as caption_store
+    from test_senate_caption_checks import PLAYER, responses
+
+    monkeypatch.setattr(captions_sess, 'get', responses())
+    captions.fetch_one(PLAYER, tmp_path, nthreads=1)
+    gzip_path = tmp_path / 'epw120623.captions.json.gz'
+    previous = gzip_path.read_bytes()
+    original_receipt = json.loads(captions_receipt_path(tmp_path, PLAYER).read_text())
+    assert original_receipt['outcome'] == 'available'
+    assert previous
+
+    real_write = caption_store._write_text
+
+    def fail_plain_text(path, text):
+        if path.name.endswith('.txt') and not path.name.endswith('.cues.txt'):
+            raise OSError('txt write failed after gzip staged')
+        return real_write(path, text)
+
+    monkeypatch.setattr(captions, '_write_text', fail_plain_text)
+    with pytest.raises(OSError, match='txt write failed'):
+        captions.fetch_one(PLAYER, tmp_path, nthreads=1)
+
+    assert gzip_path.read_bytes() == previous
+    assert not gzip_path.with_suffix(gzip_path.suffix + '.tmp').exists()
+    error_receipt = json.loads(captions_receipt_path(tmp_path, PLAYER).read_text())
+    assert error_receipt['outcome'] == 'error'
+    assert error_receipt['last_successful']['source_file'] == 'epw120623.captions.json.gz'
+    assert (tmp_path / error_receipt['last_successful']['source_file']).read_bytes() == previous
+
+
+def test_main_passes_nthreads_into_segment_pool(tmp_path, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+
+    from test_senate_caption_checks import PLAYER, responses
+
+    seen = []
+    real = ThreadPoolExecutor
+
+    class TrackingPool(real):
+        def __init__(self, max_workers=None, *args, **kwargs):
+            seen.append(max_workers)
+            super().__init__(max_workers=max_workers, *args, **kwargs)
+
+    monkeypatch.setattr(captions, 'ThreadPoolExecutor', TrackingPool)
+    monkeypatch.setattr(captions_sess, 'get', responses())
+    captions.main(tmp_path, [PLAYER], nthreads=3)
+    # Recording pool and per-recording segment pool both receive CLI nthreads.
+    assert seen == [3, 3]

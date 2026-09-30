@@ -10,7 +10,7 @@ class ResponseHeader(SourceModel):
 
 class ZyteResponse(SourceModel):
     url: str | None = None
-    statusCode: int = 200
+    statusCode: int
     httpResponseBody: str
     httpResponseHeaders: list[ResponseHeader] | None = None
     requestId: str | None = None

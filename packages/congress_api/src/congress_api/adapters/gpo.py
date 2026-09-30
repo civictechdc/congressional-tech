@@ -19,7 +19,7 @@ from committee_meeting.materials import (
 from committee_meeting.provenance import AlternativeValue, FieldEvidence, Method
 
 from congress_api.adapters.committees import committee_lookup, ensure_committee_term, source_committee_keys
-from congress_api.adapters.common import AdapterContext, reported_time, web_url
+from congress_api.adapters.common import AdapterContext, MeetingLookupKey, meeting_lookup_key, reported_time, web_url
 from congress_api.matching.reviewed_committees import reviewed
 
 
@@ -38,6 +38,18 @@ def _committee_evidence(row, context, source, review_context):
     return None, evidence
 
 
+def _committee_keys(row, review_context=None):
+    """Native codes win; reviewed codes fill blanks only with review provenance."""
+    keys = source_committee_keys(row)
+    if keys:
+        return keys
+    decision = reviewed(row) if review_context else None
+    codes = (decision or {}).get('committee_codes') or ()
+    if not codes:
+        return ()
+    return source_committee_keys({**row, 'committee_code': codes[0], 'committee_codes': ';'.join(codes)})
+
+
 def committee_records(rows, context, *, existing, review_context=None, evidence_by_package=None):
     """Retain missing terms explicitly identified by document metadata.
 
@@ -50,7 +62,7 @@ def committee_records(rows, context, *, existing, review_context=None, evidence_
         package = str(row.get('package_id') or '').strip()
         if not package:
             continue
-        for identity in source_committee_keys(row):
+        for identity in _committee_keys(row, review_context):
             if identity in known:
                 continue
             congress, code = identity
@@ -108,7 +120,7 @@ def records(
     rows: Iterable[Mapping[str, Any]],
     context: AdapterContext,
     *,
-    meetings: Mapping[tuple[int, str, str], Ref] | None = None,
+    meetings: Mapping[MeetingLookupKey, Ref] | None = None,
     committees: Mapping[tuple[int, str], Ref] | None = None,
     review_context: AdapterContext | None = None,
     evidence_by_package: Mapping[str, Any] | None = None,
@@ -215,9 +227,11 @@ def records(
                 'citations': evidence.citations + review_evidence.citations,
                 'explanation': decision['explanation'],
             })
-        category = (decision or {}).get('category') or ("errata" if row.get("record_type") == "errata" else "transcript")
+        # Reviewed categories require review provenance; never silent reclassification.
+        category = "errata" if row.get("record_type") == "errata" else "transcript"
         category_evidence = ()
-        if decision and decision.get('category') and review_source:
+        if review_source and decision and decision.get('category'):
+            category = decision['category']
             selected = review_context.evidence(review_source, selector='/category', basis='derived',
                                                 method='congress_api.gpo.reviewed_committees')
             category_evidence = (FieldEvidence(path='/details/category', selected=selected,
@@ -264,7 +278,7 @@ def records(
                 )
 
         event_id = str(row.get("event_id") or "").strip()
-        for identity in source_committee_keys(row):
+        for identity in _committee_keys(row, review_context):
             committee = (committees or {}).get(identity)
             if not committee:
                 continue
@@ -276,7 +290,7 @@ def records(
                 role='transcript' if category == 'transcript' else 'supporting',
                 provenance=committee_evidence,
             )
-        meeting = (meetings or {}).get((congress, chamber, event_id)) if event_id else None
+        meeting = (meetings or {}).get(meeting_lookup_key(congress, chamber, event_id)) if event_id else None
         if meeting:
             if meeting.kind != "meeting":
                 raise ValueError("GPO meeting lookup must contain meeting references")

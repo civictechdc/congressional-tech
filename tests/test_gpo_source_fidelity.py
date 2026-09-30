@@ -158,6 +158,7 @@ def test_html_day_reader_keeps_each_constituent_response(tmp_path, monkeypatch):
     result = fetch.read_transcript(None, {'title': 'Hearing', 'congress': 113,
         'html_urls': ';'.join(urls), 'held_date': '2013-06-12'}, captured)
     assert result['hearing_dates'] == '2013-06-12;2013-06-13'
+    assert result['text_read'] == 'yes'
     assert [evidence.body_bytes(captured[url]) for url in urls] == pages
 
 
@@ -286,7 +287,7 @@ def test_failed_new_package_retries_after_other_success_advances_watermark(tmp_p
     monkeypatch.setattr(fetch, 'load_congress_api_key', lambda: 'unused')
     monkeypatch.setattr(fetch, 'list_collection', listing)
     monkeypatch.setattr(fetch, 'get_with_retry', get)
-    monkeypatch.setattr(fetch, 'read_transcript', lambda *args: {'hearing_dates': '', 'committee_name': ''})
+    monkeypatch.setattr(fetch, 'read_transcript', lambda *args: {'hearing_dates': '', 'committee_name': '', 'text_read': 'yes'})
     with pytest.raises(SystemExit):
         fetch.main(path, min_congress=113, nthreads=1, refresh_limit=0, evidence_path=retained)
     pending = Path(str(retained) + '.pending.json')
@@ -311,9 +312,59 @@ def test_pending_survives_csv_failure_and_csv_write_is_atomic(tmp_path, monkeypa
     monkeypatch.setattr(fetch, 'load_congress_api_key', lambda: 'unused')
     monkeypatch.setattr(fetch, 'list_collection', lambda *args: [{'packageId': row['package_id'], 'lastModified': '2026-09-02T00:00:00Z'}])
     monkeypatch.setattr(fetch, 'get_with_retry', lambda *args: SimpleNamespace(content=(FIXTURES / 'CHRG-113hhrg21122.xml').read_bytes()))
-    monkeypatch.setattr(fetch, 'read_transcript', lambda *args: {'hearing_dates': '', 'committee_name': ''})
+    monkeypatch.setattr(fetch, 'read_transcript', lambda *args: {'hearing_dates': '', 'committee_name': '', 'text_read': 'yes'})
     monkeypatch.setattr(fetch, 'write_csv', lambda *args: (_ for _ in ()).throw(OSError('disk full')))
     with pytest.raises(OSError, match='disk full'):
         fetch.main(path, min_congress=113, nthreads=1, refresh_limit=0)
     assert path.read_bytes() == before
     assert json.loads(Path(str(path) + '.pending.json').read_text()) == {row['package_id']: '2026-09-02T00:00:00Z'}
+
+
+def test_malformed_package_id_is_skipped_without_aborting_refresh(tmp_path, monkeypatch):
+    good = parsed()
+    good.update(parser_version='', text_read='yes')
+    bad = dict(good, package_id='NOT-A-PACKAGE', congress='113', parser_version='')
+    path = tmp_path / 'rows.csv'
+    fetch_write_csv({good['package_id']: good, bad['package_id']: bad}, path)
+    calls = []
+    monkeypatch.setattr(fetch, 'load_congress_api_key', lambda: 'unused')
+    monkeypatch.setattr(fetch, 'list_collection', lambda *args: [])
+    def get(session, url):
+        calls.append(url)
+        return SimpleNamespace(content=(FIXTURES / f"{good['package_id']}.xml").read_bytes())
+    monkeypatch.setattr(fetch, 'get_with_retry', get)
+    fetch.main(path, min_congress=113, nthreads=1, refresh_limit=10)
+    assert any(good['package_id'] in url for url in calls)
+    assert not any('NOT-A-PACKAGE' in url for url in calls)
+    rows = fetch_read_csv(path)
+    assert bad['package_id'] in rows
+    assert rows[good['package_id']]['parser_version'] == fetch_PARSER_VERSION
+
+
+def test_zero_html_urls_leave_text_read_unset_for_later_backfill(tmp_path, monkeypatch):
+    row = parsed()
+    row.update(html_url='', html_urls='', text_read='', parser_version=fetch_PARSER_VERSION)
+    path = tmp_path / 'rows.csv'
+    fetch_write_csv({row['package_id']: row}, path)
+    calls = []
+    monkeypatch.setattr(fetch, 'load_congress_api_key', lambda: 'unused')
+    monkeypatch.setattr(fetch, 'list_collection', lambda *args: [])
+    monkeypatch.setattr(fetch, 'get_with_retry', lambda *a, **k: calls.append(a) or SimpleNamespace(content=b'', text=''))
+    fetch.main(path, min_congress=113, nthreads=1, refresh_limit=10)
+    assert fetch_read_csv(path)[row['package_id']]['text_read'] == ''
+    assert calls == []
+    # Remains eligible for backfill if HTML URLs appear later; still no network with none.
+    fetch.main(path, min_congress=113, nthreads=1, refresh_limit=10)
+    assert fetch_read_csv(path)[row['package_id']]['text_read'] == ''
+    assert calls == []
+
+
+def test_read_transcript_sets_text_read_only_after_html_fetch(monkeypatch):
+    monkeypatch.setattr(fetch, 'get_with_retry', lambda session, url: SimpleNamespace(
+        content=b'WEDNESDAY, JUNE 12, 2013', text='WEDNESDAY, JUNE 12, 2013'))
+    with_html = fetch.read_transcript(None, {'title': 'Hearing', 'congress': 113,
+        'html_urls': 'https://example.gov/a.htm', 'held_date': '2013-06-12'})
+    assert with_html['text_read'] == 'yes'
+    empty = fetch.read_transcript(None, {'title': 'Hearing', 'congress': 113, 'html_urls': '', 'held_date': '2013-06-12'})
+    assert empty == {'hearing_dates': '', 'committee_name': ''}
+    assert 'text_read' not in empty

@@ -67,7 +67,13 @@ def main(out_dir, gpo_path, congress=None, committee=None, chamber=None, package
             if len(text) < MIN_TEXT_CHARS and not has_proceeding_text(text):
                 no_text.append(row["package_id"])
                 return
-            (out_dir / f"{row['package_id']}.txt").write_text(text, encoding="utf-8")
+            path = out_dir / f"{row['package_id']}.txt"
+            temporary = path.with_suffix(path.suffix + '.tmp')
+            try:
+                temporary.write_text(text, encoding="utf-8")
+                temporary.replace(path)
+            finally:
+                temporary.unlink(missing_ok=True)
         except Exception as ex:
             failures.append(f"{row['package_id']}: {ex!r}")
 

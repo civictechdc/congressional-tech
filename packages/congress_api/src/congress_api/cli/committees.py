@@ -13,7 +13,8 @@ def main():
     parser.add_argument('--meetings-path', type=Path, required=True)
     parser.add_argument('--gpo-path', type=Path, help='Include Congresses represented by retained GPO documents')
     parser.add_argument('--output-path', type=Path, required=True)
-    args = parser.parse_args()
+    ## ignore the unknown args (e.g. --congress-api-key, read by the key loader)
+    args = parser.parse_known_args()[0]
     collect(**vars(args), api_key=load_congress_api_key())
 
 

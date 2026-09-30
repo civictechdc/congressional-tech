@@ -74,6 +74,28 @@ def test_curated_assignments_keep_native_blank_and_have_separate_cited_source():
     assert wrong_congress['committee_code'] == ''
 
 
+def test_adapter_uses_reviewed_codes_when_native_codes_blank_without_clean_rows():
+    row = gpo_row(package_id='CHRG-113hhrg85023', congress='113', committee_code='',
+                  committee_codes='', committee_code_gpo='', committee_name='', event_id='')
+    refs = {(113, c): Ref(kind='committee_term', id=c) for c in ('hsap00', 'hsap18')}
+    with_review = list(gpo.records([row], context(), committees=refs, review_context=context('gpo.committee-review')))
+    assert {link.subject.id for link in with_review if link.kind == 'material_link'} == {'hsap00', 'hsap18'}
+    without = list(gpo.records([row], context(), committees=refs))
+    assert not any(r.kind == 'material_link' for r in without)
+
+
+def test_reviewed_category_requires_review_provenance():
+    row = gpo_row(package_id='CHRG-109shrg25756', congress='109', chamber='senate',
+                  committee_code='ssap00', event_id='')
+    silent = next(r for r in gpo.records([row], context()) if r.kind == 'material')
+    assert silent.details.category == 'transcript'
+    assert not silent.field_evidence
+    reviewed_material = next(r for r in gpo.records(
+        [row], context(), review_context=context('gpo.committee-review')) if r.kind == 'material')
+    assert reviewed_material.details.category == 'supporting'
+    assert reviewed_material.field_evidence[0].path == '/details/category'
+
+
 def test_budget_justification_is_supporting_and_original_classification_remains():
     row = gpo_row(package_id='CHRG-109shrg25756', congress='109', chamber='senate',
                   committee_code='ssap00', committee_code_gpo='', event_id='')

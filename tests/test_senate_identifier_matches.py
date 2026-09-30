@@ -49,6 +49,18 @@ def test_preserves_existing_supported_match_even_if_new_identifiers_point_elsewh
     assert case['page']['events']==['previous']
 
 
+def test_exact_identifier_replaces_fuzzy_only_association():
+    case = deepcopy(CASES[18])  # Named nominee with exact transcript package.
+    page = case['page']
+    page['events'] = ['wrong-fuzzy']
+    page['match_details'] = {'wrong-fuzzy': {'method': 'senate.records.match_pages', 'version': '2'}}
+    assert match_identifiers([case['native']], {HOST: {'pages': {case['page_url']: page}}}) == [
+        (case['page_url'], case['expected_event_id'])]
+    assert page['events'] == [case['expected_event_id']]
+    assert page['match_details'][case['expected_event_id']]['method'] == 'senate.records.match_identifiers'
+    assert 'wrong-fuzzy' not in page['match_details']
+
+
 def test_adapter_exposes_exact_identifier_match_evidence_inline():
     from datetime import UTC, datetime
 

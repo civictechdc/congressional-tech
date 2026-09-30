@@ -6,6 +6,14 @@ import re
 from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Callable, Mapping
+
+# Adapter meeting maps: (congress, chamber, event id). Not the congress.gov string id.
+MeetingLookupKey = tuple[int, str, str]
+
+
+def meeting_lookup_key(congress: int, chamber: str, event_id: str) -> MeetingLookupKey:
+    """Build the meeting-map key adapters already share. Values are not rewritten."""
+    return (congress, chamber, event_id)
 from urllib.parse import urlsplit
 
 from committee_meeting.common import Identifier, Ref, ReportedTime

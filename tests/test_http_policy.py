@@ -55,6 +55,41 @@ def test_gateway_requires_explicit_absence_status(unpaced):
         http.get_with_retry(session, URL)
 
 
+def test_zyte_synthetic_response_maps_publisher_headers(unpaced, monkeypatch):
+    import base64
+
+    monkeypatch.setenv('ZYTE_TOKEN', 'test-token')
+    payload = {
+        'url': 'https://docs.house.gov/file.xml',
+        'statusCode': 200,
+        'httpResponseBody': base64.b64encode(b'<committee-meeting/>').decode(),
+        'httpResponseHeaders': [
+            {'name': 'Content-Type', 'value': 'application/xml'},
+            {'name': 'X-Publisher-Document-Type', 'value': 'Meeting'},
+        ],
+    }
+    monkeypatch.setattr(http.zyte, 'request', lambda *a, **k: SimpleNamespace(
+        status_code=200, json=lambda: payload))
+    result = http.get_with_retry(None, payload['url'], through_zyte=True)
+    assert result.status_code == 200
+    assert result.content == b'<committee-meeting/>'
+    assert result.headers['Content-Type'] == 'application/xml'
+    assert result.headers['X-Publisher-Document-Type'] == 'Meeting'
+
+
+def test_zyte_get_rejects_payload_without_publisher_status(monkeypatch):
+    import base64
+
+    from congress_api.transport import zyte
+    from pydantic import ValidationError
+
+    monkeypatch.setenv('ZYTE_TOKEN', 'test-token')
+    payload = {'httpResponseBody': base64.b64encode(b'x').decode()}
+    session = SimpleNamespace(post=lambda *a, **k: SimpleNamespace(status_code=200, json=lambda: payload))
+    with pytest.raises(ValidationError, match='statusCode'):
+        zyte.get('https://publisher.gov/file.pdf', session)
+
+
 def test_caption_transport_keeps_pool_timeout_and_empty_body_retries(monkeypatch):
     assert captions_sess.get_adapter('https://example.gov')._pool_maxsize == 32
     calls = []

@@ -58,13 +58,16 @@ def replay(input_path, mods_dir, output_path, evidence_path, *, html_dir=None, r
                     if url and html.is_file() and not transcripts.get(url, {}).get('retrieved_at'):
                         transcripts[url] = evidence.observation(html.read_bytes(), url, 'text/html')
             captured['transcripts'] = transcripts
-            retained[package] = captured
-            rows[package] = merged
             old_urls = {u for f in ('html_url', 'pdf_url', 'html_urls', 'pdf_urls') for u in (old.get(f) or '').split(';') if u}
             new_urls = {u for f in ('html_urls', 'pdf_urls') for u in merged[f].split(';') if u}
             protected = ('title', 'held_date', 'last_modified', 'hearing_dates', 'text_read',
                          'committee_code', 'committee_name', 'event_id', 'serial')
-            assert all(merged.get(field) == old.get(field) for field in protected)
+            changed = [field for field in protected if merged.get(field) != old.get(field)]
+            if changed:
+                # Explicit raise so python -O cannot strip this guard.
+                raise ValueError(f'Protected fields changed during replay: {", ".join(changed)}')
+            retained[package] = captured
+            rows[package] = merged
             receipt['packages'].append({
                 'package_id': package, 'mods_sha256': captured['mods']['sha256'],
                 'mods_record_change_date': root.findtext('m:recordInfo/m:recordChangeDate', '', MODS_NS),

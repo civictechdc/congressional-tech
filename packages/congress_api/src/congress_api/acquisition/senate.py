@@ -7,9 +7,11 @@ WordPress event dates rank listings when available. Publication dates are only
 ranking hints, never evidence of a proceeding's date.
 
 Page associations use the page's own date and at least half the native title's
-rarity-weighted subject. Shared menu lines and files are excluded from matching;
-ambiguous ties remain unlinked. Existing associations survive changes in rarity
-weights unless a newly explicit event date contradicts the native record.
+rarity-weighted subject. ``matching.senate_pages.associate_pages`` returns the
+events and match details; this collector only checkpoints them. Shared menu lines
+and files are excluded from matching; ambiguous ties remain unlinked. Existing
+associations survive changes in rarity weights unless a newly explicit event date
+contradicts the native record.
 
 Recognized official event headers retain their title, date and type, so an
 unmatched official proceeding can later be admitted under its own URL identity.
@@ -37,9 +39,7 @@ import re
 from congress_api.acquisition.refresh import due
 from congress_api.matching.committees import codes_of
 from congress_api.matching.meetings import in_inventory_scope
-from congress_api.matching.senate import match_identifiers
-from congress_api.matching.senate_corrections import selected_date
-from congress_api.matching.senate_pages import mark_possible_matches, match_pages, retained_matches
+from congress_api.matching.senate_pages import associate_pages, mark_possible_matches, retained_matches
 from congress_api.models.content import RawContent
 from congress_api.models.senate import WORDPRESS_POSTS, WORDPRESS_TYPES, SenatePage, WordPressHearingFields
 from congress_api.parsers.senate import PARSER_VERSION, parse_listing_page, parsed
@@ -87,7 +87,9 @@ def wordpress_listed(site, get):
                 if re.match(r"\d{4}-\d\d-\d\d", day or ""):
                     held.append((day, post))
             out += [(dt.date.fromisoformat(day[:10]), p.link, text(p.title.rendered)) for day, p in held]
-            if len(posts) < 100 or not held:
+            # A full page of undated posts is not end-of-list; only a short or
+            # empty API page means there are no further pages to read.
+            if len(posts) < 100:
                 break
     return out
 
@@ -135,7 +137,10 @@ def request(url, receipts, *, allowed=(200, 404)):
 
 
 def decoded_page(response, url, receipt):
-    """The hearing-page reader accepts text, never a PDF decoded as UTF-8."""
+    """The hearing-page reader accepts text, never a PDF decoded as UTF-8.
+
+    Body bytes must be strict UTF-8, matching parsers.senate.parse_page.
+    """
     headers = getattr(response, "headers", {})
     content_type = headers.get("Content-Type", headers.get("content-type", ""))
     if response.content.lstrip().startswith(b"%PDF-") or content_type.split(";", 1)[0].strip().lower() == "application/pdf":
@@ -143,8 +148,11 @@ def decoded_page(response, url, receipt):
         if content_type:
             receipt["content_type"] = content_type
         raise ValueError(f"Senate hearing-page reader received PDF content from {url}")
-    return response.content.decode("utf-8", "replace")
-
+    try:
+        return response.content.decode("utf-8")
+    except UnicodeDecodeError:
+        receipt.update(outcome="error", error=f"invalid UTF-8 from {url}")
+        raise
 
 def fetch_page(url, previous, today, *, cache=None, check=None):
     """Read one page, retaining schedule dates separately from actual receipts."""
@@ -346,29 +354,13 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
         u not in state[host]["pages"] or state[host]["pages"][u].get("status") == "error" for u in state[host]["listings"]))]
     if errors or missing:
         raise RuntimeError(f"Senate source incomplete: {errors[:5] or missing}")
-    found = match_pages(ms, state)
-    # A changing site corpus changes rarity weights. Keep a previously supported
-    # association unless the page's explicit event date now contradicts it.
-    previous = {url: list(page.get("events") or []) for saved in state.values() for url, page in saved["pages"].items()}
-    native = collections.defaultdict(list)
-    for meeting in native_meetings:
-        native[str(meeting["eventId"])].append(meeting)
-    for host, saved in state.items():
+    associations = associate_pages(ms, native_meetings, state)
+    for saved in state.values():
         for url, page in saved["pages"].items():
-            event = page.get("event")
-            page["events"] = [identifier for identifier in previous[url] if not event or any(
-                meeting.get("date", "")[:10] == selected_date(url, event) and any(SITE.get(code) == host for code in codes_of(meeting))
-                for meeting in native[str(identifier)])]
-    for row in found[0]:
-        for saved in state.values():
-            if row["page"] in saved["pages"]:
-                page = saved["pages"][row["page"]]
-                if row["event_id"] not in page["events"]:
-                    page["events"].append(row["event_id"])
-                    page.setdefault("match_details", {})[row["event_id"]] = {
-                        "method": "senate.records.match_pages", "version": "2",
-                    }
-    match_identifiers(native_meetings, state)
+            update = associations[url]
+            page["events"] = update["events"]
+            if "match_details" in update:
+                page["match_details"] = update["match_details"]
     mark_possible_matches(native_meetings, state)
     write_state(path, state)
     found = retained_matches(state)

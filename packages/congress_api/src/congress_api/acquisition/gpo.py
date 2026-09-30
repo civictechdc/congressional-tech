@@ -126,12 +126,18 @@ def main(
         if old is None or old["last_modified"] != package["lastModified"]:
             to_fetch[package["packageId"]] = package["lastModified"]
     stale = sorted((row for row in existing.values()
-                    if (row.get("parser_version") != PARSER_VERSION
-                        or (evidence_path is not None and not upstream.get(row["package_id"], {}).get("mods")))
-                    and PACKAGE_ID_REGEX.match(row["package_id"])[2] in chambers
+                    if (match := PACKAGE_ID_REGEX.match(row["package_id"]))
+                    and match[2] in chambers
+                    and (row.get("parser_version") != PARSER_VERSION
+                         or (evidence_path is not None and not upstream.get(row["package_id"], {}).get("mods")))
                     and int(row["congress"]) >= min_congress
                     and row["package_id"] not in to_fetch),
                    key=lambda row: (-int(row["congress"]), row["package_id"]))
+    skipped_ids = sorted({row["package_id"] for row in existing.values()
+                          if not PACKAGE_ID_REGEX.match(row["package_id"])})
+    if skipped_ids:
+        logging.warning(f"Skipping {len(skipped_ids)} malformed package_id(s) in CSV: {skipped_ids[0]}"
+                        + (f" (+{len(skipped_ids) - 1} more)" if len(skipped_ids) > 1 else ""))
     for row in stale[:refresh_limit]:
         to_fetch[row["package_id"]] = row["last_modified"]
     pending.update(to_fetch)
@@ -142,7 +148,9 @@ def main(
     session = requests.Session()
 
     def fetch_one(item):
+        """Return hearing/error/evidence updates; the caller merges shared state."""
         package_id, last_modified = item
+        captured = None
         try:
             mods = get_with_retry(
                 session, f"{GOVINFO_CONTENT}/metadata/pkg/{package_id}/mods.xml"
@@ -160,14 +168,10 @@ def main(
                 # Keep rejected response bytes without replacing the last valid
                 # MODS record or marking its CSV row freshly parsed.
                 captured['failed_mods'] = {**observation, 'error': str(ex)}
-                if evidence_path is not None:
-                    upstream[package_id] = captured
                 raise
             captured.update(parser_version=PARSER_VERSION, mods=observation)
             captured.pop('failed_mods', None)
             captured['transcripts'] = dict(captured.get('transcripts', {}))
-            if evidence_path is not None:
-                upstream[package_id] = captured
             old = existing.get(package_id)
             # Parser repairs must not discard transcript-derived corrections or
             # turn a small metadata refresh into a full transcript download.
@@ -178,22 +182,27 @@ def main(
                 hearing.committee_name = hearing.committee_name or old.get("committee_name", "")
             if hearing.congress >= TEXT_DAYS_FROM_CONGRESS and not (unchanged and hearing.text_read):
                 read = read_transcript(session, asdict(hearing), captured["transcripts"] if evidence_path else None)
-                hearing.hearing_dates, hearing.text_read = read["hearing_dates"], "yes"
+                hearing.hearing_dates = read["hearing_dates"]
                 hearing.committee_name = hearing.committee_name or read["committee_name"]
+                if read.get("text_read"):
+                    hearing.text_read = read["text_read"]
             result = asdict(hearing)
             if unchanged:
                 result = merge_cached_row(old, result, live_refresh=True)
                 result.update(parser_version=PARSER_VERSION, hearing_dates=hearing.hearing_dates,
                               text_read=hearing.text_read, witness_count=hearing.witness_count)
-            return result
+            return result, None, captured if evidence_path is not None else None
         except Exception as ex:
-            failures.append(f"{package_id}: {ex!r}")
-            return None
+            return None, f"{package_id}: {ex!r}", captured if evidence_path is not None and captured is not None else None
 
     completed = set()
     with ThreadPoolExecutor(nthreads) as pool:
-        for i, hearing in enumerate(pool.map(fetch_one, to_fetch.items()), 1):
-            if hearing is not None:
+        for i, (hearing, error, captured) in enumerate(pool.map(fetch_one, to_fetch.items()), 1):
+            if captured is not None:
+                upstream[captured['package_id']] = captured
+            if error:
+                failures.append(error)
+            elif hearing is not None:
                 existing[hearing["package_id"]] = hearing
                 completed.add(hearing["package_id"])
             if i % 500 == 0:
@@ -201,23 +210,34 @@ def main(
 
     ## one-time backfill: hearing days for transcripts fetched before they were read
     backfill = sorted((r for r in existing.values()
-                if int(r["congress"]) >= max(TEXT_DAYS_FROM_CONGRESS, min_congress)
-                and PACKAGE_ID_REGEX.match(r["package_id"])[2] in chambers and not r.get("text_read")),
+                if (match := PACKAGE_ID_REGEX.match(r["package_id"]))
+                and match[2] in chambers
+                and int(r["congress"]) >= max(TEXT_DAYS_FROM_CONGRESS, min_congress)
+                and not r.get("text_read")),
                 key=lambda row: (-int(row["congress"]), row["package_id"]))[:refresh_limit]
     if backfill:
         logging.info(f"Reading hearing days from {len(backfill)} transcripts")
 
         def fill(row):
             try:
-                captured = upstream.setdefault(row['package_id'], {'package_id': row['package_id']}) if evidence_path else {}
-                read = read_transcript(session, row, captured.setdefault('transcripts', {}) if evidence_path else None)
-                row["hearing_dates"], row["text_read"] = read["hearing_dates"], "yes"
-                row["committee_name"] = row["committee_name"] or read["committee_name"]
+                transcripts = {} if evidence_path else None
+                read = read_transcript(session, row, transcripts)
+                return row, read, transcripts, None
             except Exception as ex:
-                failures.append(f"{row['package_id']} hearing days: {ex!r}")
+                return row, None, None, f"{row['package_id']} hearing days: {ex!r}"
 
         with ThreadPoolExecutor(nthreads) as pool:
-            list(pool.map(fill, backfill))
+            for row, read, transcripts, error in pool.map(fill, backfill):
+                if error:
+                    failures.append(error)
+                    continue
+                row["hearing_dates"] = read["hearing_dates"]
+                row["committee_name"] = row["committee_name"] or read["committee_name"]
+                if read.get("text_read"):
+                    row["text_read"] = read["text_read"]
+                if evidence_path and transcripts is not None:
+                    captured = upstream.setdefault(row['package_id'], {'package_id': row['package_id']})
+                    captured.setdefault('transcripts', {}).update(transcripts)
 
     clean_rows(existing)
 
@@ -250,11 +270,17 @@ def list_collection(since: str, api_key: str):
 
 def read_transcript(session, row: dict, evidence: dict | None = None) -> dict:
     """What the transcript itself says: `hearing_dates`, the hearing days when they say more than
-    GPO's held date, and `committee_name`, the committee on its title page."""
+    GPO's held date, and `committee_name`, the committee on its title page.
+
+    Sets ``text_read`` to ``yes`` only when at least one HTML body was fetched. With no HTML
+    URLs, leave ``text_read`` unset so a later parser refresh can still enqueue backfill.
+    """
     volume = is_multi_hearing_volume(row["title"])
     days, names = set(), []
-    urls = str(row.get('html_urls') or row.get('html_url') or '').split(';')
-    for url in dict.fromkeys(u for u in urls if u):
+    urls = [u for u in dict.fromkeys(str(row.get('html_urls') or row.get('html_url') or '').split(';')) if u]
+    if not urls:
+        return GpoTranscriptDates(hearing_dates="", committee_name="").source_dict()
+    for url in urls:
         response = get_with_retry(session, url)
         text = response.text
         if evidence is not None:
@@ -266,8 +292,9 @@ def read_transcript(session, row: dict, evidence: dict | None = None) -> dict:
             names.append(name)
     days = sorted(days)
     tells_more = days and (days != [row["held_date"]] or volume)
-    return GpoTranscriptDates(hearing_dates=";".join(days) if tells_more else "",
-                              committee_name=names[0] if names else "").source_dict()
+    return {**GpoTranscriptDates(hearing_dates=";".join(days) if tells_more else "",
+                                 committee_name=names[0] if names else "").source_dict(),
+            "text_read": "yes"}
 
 
 def parse_timestamp(value: str) -> datetime:

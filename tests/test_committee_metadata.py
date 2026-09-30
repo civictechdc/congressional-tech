@@ -137,3 +137,26 @@ def test_duplicate_committee_pages_do_not_silently_overwrite_source(tmp_path, mo
     with pytest.raises(ValueError, match='Duplicate committee'):
         collector.collect(meetings, output, api_key='test-key')
     assert output.read_bytes() == before
+
+
+def test_committee_snapshot_roundtrip_is_not_a_meeting(tmp_path):
+    from pydantic import ValidationError
+
+    from congress_api.retention.committees import read as read_committees
+    from congress_api.retention.committees import write as write_committees
+    from congress_api.retention.jsonl import write as write_jsonl
+    from congress_api.retention.meetings import read_models
+    from congress_api.retention.meetings import write as write_meeting_snapshot
+
+    row = metadata()
+    path = tmp_path / 'committees.jsonl.gz'
+    write_committees({'115|hsru00': row}, path)
+    assert read_committees(path) == [row]
+    with pytest.raises(ValidationError):
+        read_models(path)
+
+    payload = {'b': {'n': 1}, 'a': {'n': 2}}
+    left, right = tmp_path / 'left.gz', tmp_path / 'right.gz'
+    write_jsonl(payload, left)
+    write_meeting_snapshot(payload, right)
+    assert left.read_bytes() == right.read_bytes()

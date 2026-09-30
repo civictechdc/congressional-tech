@@ -9,6 +9,7 @@ import re
 from congress_api.matching.committees import codes_of
 from congress_api.matching.gpo_videos import words
 from congress_api.matching.meetings import HEARING_TYPES, meeting_access, meeting_type
+from congress_api.matching.senate import match_identifiers
 from congress_api.matching.senate_corrections import DATE_CORRECTIONS, selected_date
 from congress_api.parsers.senate_page import BUSINESS, DATE, NEAR, OWN, SITE, topic, written_day
 
@@ -37,7 +38,6 @@ def match_pages(meetings, state):
             found.setdefault(url, [])
     page_words, on_day = {}, collections.defaultdict(list)
     for s in sites:
-        print(f"  {s}: {len(listings[s]):,} hearing pages listed, {sum(1 for u in listings[s] if pages.get(u, {})):,} read", flush=True)
         ## what many of a site's pages carry or link is the site's, not a hearing's
         written = {u: set(pages.get(u, {}).get("lines", [])) for u in listings[s]}
         carried_by = collections.Counter(l for u in listings[s] for l in written[u])
@@ -78,6 +78,52 @@ def match_pages(meetings, state):
         stats["with documents"] += bool(files)
         stats["with a transcript"] += any(k == "transcript" for k, _, _ in files)
     return found_pages, found_witnesses, found_documents
+
+
+def _date_still_supports(host, url, event, identifier, native_by_id):
+    """Keep a saved event when the page has no explicit date, or that date still matches the native meeting."""
+    if not event:
+        return True
+    day = selected_date(url, event)
+    return any(meeting.get("date", "")[:10] == day and any(SITE.get(code) == host for code in codes_of(meeting))
+               for meeting in native_by_id[str(identifier)])
+
+
+def associate_pages(meetings, native_meetings, state):
+    """Return ``url -> {events, match_details}`` for every saved page.
+
+    Fuzzy title matches append. Exact package or bill proof then replaces a
+    fuzzy-only list (``matching.senate.match_identifiers``). A saved association
+    whose page date now contradicts the native meeting is dropped first. Method
+    labels stay ``senate.records.match_pages`` / ``senate.records.match_identifiers``.
+    The caller checkpoints the returned fields; this function also writes them
+    onto ``state`` so identifier matching sees the fuzzy pass.
+    """
+    found, _, _ = match_pages(meetings, state)
+    native_by_id = collections.defaultdict(list)
+    for meeting in native_meetings:
+        native_by_id[str(meeting["eventId"])].append(meeting)
+    for host, site in state.items():
+        for url, page in site.get("pages", {}).items():
+            event = page.get("event")
+            page["events"] = [identifier for identifier in list(page.get("events") or [])
+                              if _date_still_supports(host, url, event, identifier, native_by_id)]
+    for row in found:
+        for site in state.values():
+            page = site.get("pages", {}).get(row["page"])
+            if page is None or row["event_id"] in page["events"]:
+                continue
+            page["events"].append(row["event_id"])
+            page.setdefault("match_details", {})[row["event_id"]] = {"method": "senate.records.match_pages", "version": "2"}
+    match_identifiers(native_meetings, state)
+    associations = {}
+    for site in state.values():
+        for url, page in site.get("pages", {}).items():
+            update = {"events": list(page.get("events") or [])}
+            if page.get("match_details"):
+                update["match_details"] = dict(page["match_details"])
+            associations[url] = update
+    return associations
 
 
 def retained_matches(state):

@@ -6,11 +6,19 @@ repeated and unknown elements. Original bytes live in ``source_bodies``.
 """
 from typing import Annotated, Literal, cast
 
-from pydantic import Field, field_validator
+from pydantic import BeforeValidator, Field, field_validator
 
 from .base import SourceModel
 from .content import RawContent
 from .xml import XmlAttributes, XmlElement
+
+
+def _source_tuple(value):
+    # JSON stores the existing positional source rows as arrays.
+    return tuple(value) if isinstance(value, list) else value
+
+
+DocumentRow = Annotated[tuple[str, str, str, list[str]], BeforeValidator(_source_tuple)]
 
 
 class HouseDatedAttributes(XmlAttributes):
@@ -373,7 +381,7 @@ class HouseActionRow(SourceModel):
 
 
 class HouseParsedRecord(SourceModel):
-    documents: list[Annotated[tuple[str, str, str, list[str]], Field(strict=False)]]
+    documents: list[DocumentRow]
     witnesses: list[HouseWitnessRow]
     amendments: list[HouseActionRow]
     xml_update: str

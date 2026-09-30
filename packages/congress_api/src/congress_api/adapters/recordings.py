@@ -10,6 +10,11 @@ from committee_meeting.materials import RecordingDetails
 from congress_api.adapters.common import digest, material_records, ref, web_url
 
 
+def offsite_reference(url):
+    """Shared offsite player identity for curated findings and GPO match rows."""
+    return "offsite|" + url, url, None, (Identifier(scheme="url", value=url),)
+
+
 def recording_reference(token):
     """Use the same recording identity for native pages and curated findings."""
     from urllib.parse import urlsplit
@@ -35,7 +40,7 @@ def recording_reference(token):
         player = parse_player_url(url)
         if player:
             return "senate|" + "|".join(player), url, "senate", (Identifier(scheme="senate.filename", value=player[1], scope=player[0]),)
-    return "offsite|" + url, url, None, ()
+    return offsite_reference(url)
 
 
 def records(rows, context, *, meetings):

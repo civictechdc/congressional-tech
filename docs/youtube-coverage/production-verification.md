@@ -8,9 +8,9 @@ The weekly pipeline now runs three additional commands, in this order after `gpo
 
 | Command | Modules | Reads and writes |
 |---|---|---|
-| `house-meeting-records` | `congress_api.house.records`, `.repository` | Meeting export and GPO table → House documents, witnesses, amendments/votes; parsed `house.json.gz` state |
-| `senate-meeting-records` | `congress_api.senate.records`, `.pages` | Meeting export and committee listings/pages → Senate pages, witnesses, documents; parsed `senate.json.gz` state |
-| `meeting-inventory` | `congress_api.inventory.main`, `.text_sources`, `.prints`, `.completeness`, `.captions`, `.witness_lists` | Export, GPO tables, YouTube caches, curated recordings and reader CSVs → text index, no-records list, completeness and witnesses; `inventory.json.gz` state |
+| `house-meeting-records` | `congress_api.cli.house`; retained state adapts in `congress_api.adapters.house` | Meeting export and GPO table → House documents, witnesses, amendments/votes; parsed `house.json.gz` state |
+| `senate-meeting-records` | `congress_api.cli.senate`; retained pages adapt in `congress_api.adapters.senate`. `senate.records.*` strings are frozen provenance labels, not modules | Meeting export and committee listings/pages → Senate pages, witnesses, documents; parsed `senate.json.gz` state |
+| `meeting-inventory` | `congress_api.cli.inventory` | Export, GPO tables, YouTube caches, curated recordings and reader CSVs → text index, no-records list, completeness and witnesses; `inventory.json.gz` state |
 
 `congress_api.http` owns retries and host pacing; `.zyte` owns the optional Zyte client; `.xml` owns BOM-tolerant XML and MODS element access; `.witnesses` owns name parsing and person keys; `.committees` owns parent codes/aliases. The transcriber adapts those plain witness fields to its own `Person` model. GPO fetching and the inventory share `gpo.fetch.mods_witnesses`; existing `gpo.match` and `senate.isvp` helpers remain authoritative.
 

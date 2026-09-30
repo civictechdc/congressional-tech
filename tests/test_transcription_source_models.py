@@ -53,12 +53,12 @@ def test_successful_call_retains_complete_sdk_http_text_before_parse(tmp_path, m
     assert capture.observed_at and capture.start == 0 and capture.end == 5
 
 
-def test_invalid_model_response_is_retained_on_both_attempts(tmp_path, monkeypatch):
+def test_invalid_model_response_is_retained_then_raises(tmp_path, monkeypatch):
     response = SimpleNamespace(text='{bad JSON', sdk_http_response=None, candidates=[])
     monkeypatch.setattr(gemini, 'client', lambda: SimpleNamespace(models=SimpleNamespace(generate_content=lambda **k: response)))
     monkeypatch.setattr(gemini.time, 'sleep', lambda n: None)
-    result = gemini.transcribe_window([], {}, 0, 5, youtube_id='example', capture_dir=tmp_path)
-    assert result['turns'] == []
+    with pytest.raises(gemini.TranscriptionWindowError, match='failed after retries'):
+        gemini.transcribe_window([], {}, 0, 5, youtube_id='example', capture_dir=tmp_path)
     captures = [GeminiResponseCapture.model_validate_json(p.read_text()) for p in tmp_path.glob('*.json')]
     assert len(captures) == 2
     assert all(c.response is None and c.generated.body_bytes() == b'{bad JSON' for c in captures)

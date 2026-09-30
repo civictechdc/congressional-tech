@@ -4,9 +4,9 @@ Lee", "Jeff Van Drew") to the participants known from the roster and witness lis
 
 A reference matches a participant when its name tokens are a suffix of the participant's
 name tokens, compared without punctuation or case: "Van Drew" ends "Jefferson Van Drew",
-"Lee" ends both "Laurel M. Lee" and "Sheila Jackson Lee". Ties go to whoever `prefer`
-names (the members listed as present, the subcommittee's members), then to the first.
-No lists of surname particles or honorifics are needed: what isn't a title is a name.
+"Lee" ends both "Laurel M. Lee" and "Sheila Jackson Lee". Ambiguous ties resolve only when
+`prefer` names exactly one hit (present members, subcommittee roster, state); otherwise
+the match is None so callers can treat the speaker as unknown rather than guess.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ def tokens(name: str) -> list[str]:
 
 
 def match(participants: dict[str, Person], reference: str, prefer: set[str] = frozenset()) -> str | None:
-    """The key of the participant `reference` names, or None."""
+    """The key of the participant `reference` names, or None when absent or ambiguous."""
     ref = tokens(reference)
     if not ref:
         return None
@@ -39,9 +39,12 @@ def match(participants: dict[str, Person], reference: str, prefer: set[str] = fr
         ## a single token may also be the reference's last word matching the participant's surname alone
         last = ref[-1]
         hits = [key for key, full in names.items() if full[-1:] == [last]]
+    if len(hits) == 1:
+        return hits[0]
     if not hits:
         return None
-    return next((key for key in hits if key in prefer), hits[0])
+    preferred = [key for key in hits if key in prefer]
+    return preferred[0] if len(preferred) == 1 else None
 
 
 def surname(name: str, titles: set[str] = frozenset()) -> str:
