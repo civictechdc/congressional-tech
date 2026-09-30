@@ -1,0 +1,80 @@
+{
+  "BILLS-118HR2534116thCongressih.pdf": {
+    "before": {
+      "input": "BILLS-118HR2534116thCongressih.pdf",
+      "found_in_source": false,
+      "source_example_ids": [],
+      "source_issues": [],
+      "valid": true,
+      "ambiguous": false,
+      "matches": [
+        {
+          "kind": "bill-numbered-described",
+          "record": {
+            "description": "thCongress",
+            "versionSuffix": "",
+            "kind": "bill-numbered-described",
+            "extension": "pdf",
+            "congress": 118,
+            "numberedSubject": "HR2534116",
+            "stage": "ih",
+            "measureType": "hr",
+            "measureNumber": 2534116
+          },
+          "matched_conventions": [
+            "bill-numbered-described"
+          ],
+          "canonical_filename": "BILLS-118HR2534116thCongressih.pdf",
+          "requires_interpretation": true,
+          "decisions": [
+            "Preserve the numbered subject and intervening description. Only an explicitly typed numbered subject yields primary measure fields. Numeric-only subjects remain local tokens.",
+            "The raw numbered subject preserves leading zeros even when its explicit typed number also yields an integer measureNumber."
+          ]
+        }
+      ],
+      "issues": []
+    },
+    "after": {
+      "input": "BILLS-118HR2534116thCongressih.pdf",
+      "found_in_source": false,
+      "source_example_ids": [],
+      "source_issues": [],
+      "valid": true,
+      "ambiguous": false,
+      "matches": [
+        {
+          "kind": "bill-titled-draft",
+          "record": {
+            "versionSuffix": "",
+            "kind": "bill-titled-draft",
+            "extension": "pdf",
+            "congress": 118,
+            "description": "HR2534116thCongress",
+            "stage": "ih"
+          },
+          "matched_conventions": [
+            "bill-titled-draft"
+          ],
+          "canonical_filename": "BILLS-118HR2534116thCongressih.pdf",
+          "requires_interpretation": true,
+          "decisions": [
+            "A literal description precedes an explicit IH/PIH suffix. Free text is not split into surnames or legislation identities. Later fallback preserves more specific layouts."
+          ]
+        }
+      ],
+      "issues": [
+        "ambiguous-number-boundary"
+      ],
+      "rejected_candidates": [
+        {
+          "kind": "bill-numbered-described",
+          "priority": 1,
+          "code": "ambiguous-number-boundary",
+          "message": "Digits adjoin ordinal wording; their division into a measure number and a title or reference number is not established.",
+          "details": []
+        }
+      ]
+    },
+    "reason": "Retained Congress.gov meeting 115754 identifies H.R. 2534 from the 116th Congress. The joined digits do not establish that boundary by themselves; preserve the full title instead of claiming bill 2534116."
+  }
+}
