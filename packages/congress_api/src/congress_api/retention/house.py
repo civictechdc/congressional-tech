@@ -5,7 +5,7 @@ import xml.etree.ElementTree as ET
 
 from congress_api.models.content import RawContent
 from congress_api.parsers.house import parsed
-from congress_api.parsers.house_documents import addresses
+from congress_api.matching.house import addresses
 from congress_api.parsers.house_xml import parse_house_meeting, parse_house_witnesses
 
 

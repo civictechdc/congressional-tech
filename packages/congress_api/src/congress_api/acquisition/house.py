@@ -23,7 +23,8 @@ from congress_api.matching.meetings import NOT_HELD, TRANSCRIPT, is_hearing
 from congress_api.matching.prints import attached_prints, match_prints
 from congress_api.models.content import RawContent
 from congress_api.parsers.house import parsed
-from congress_api.parsers.house_documents import AMENDMENT_FIELDS, WITNESS_FIELDS, addresses
+from congress_api.matching.house import addresses
+from congress_api.parsers.house_documents import AMENDMENT_FIELDS, WITNESS_FIELDS
 from congress_api.parsers.house_evidence import SCHEMA_VERSION
 from congress_api.parsers.house_xml import parse_house_meeting, parse_house_witnesses
 from congress_api.retention.house import seed, timestamp

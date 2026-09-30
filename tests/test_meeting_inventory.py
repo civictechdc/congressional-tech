@@ -8,6 +8,7 @@ from congress_api.acquisition.refresh import due
 from congress_api.matching import captions, completeness
 from congress_api.matching import recordings as text_sources
 from congress_api.matching.prints import match_prints
+from congress_api.matching import house as house_matching
 from congress_api.parsers import house_documents as repository
 from congress_api.parsers import senate_page as pages
 from congress_api.parsers.xml import parse_xml as repository_parse_xml
@@ -36,14 +37,14 @@ def test_senate_layout(sample):
 def test_house_addresses_use_filed_documents_before_record_guesses():
     m = {"eventId": "108754", "congress": 115, "type": "Hearing", "date": "2018-11-14", "committees": [{"systemCode": "hshm00"}],
          "witnessDocuments": [{"url": "https://docs.house.gov/meetings/AS/AS26/20181114/108754/HHRG-115-AS26-Wstate-ManfraJ-20181114.pdf"}]}
-    assert repository.addresses(m)[0] == "https://docs.house.gov/meetings/AS/AS26/20181114/108754/HHRG-115-AS26-20181114.xml"
+    assert house_matching.addresses(m)[0] == "https://docs.house.gov/meetings/AS/AS26/20181114/108754/HHRG-115-AS26-20181114.xml"
     m.update(committees=[{"systemCode": "hlig00"}], witnessDocuments=[])
-    assert "/IG/IG00/" in repository.addresses(m)[0]
+    assert "/IG/IG00/" in house_matching.addresses(m)[0]
 
 
 def test_witness_address_can_come_from_full_committee():
     root = repository_parse_xml(b'<committee-meeting meeting-type="HHRG" congress-num="114"><meeting-details><meeting-date><calendar-date>2015-09-30</calendar-date></meeting-date><committees><committee-name id="AS00"/></committees><subcommittees><committee-name id="AS26"/></subcommittees></meeting-details></committee-meeting>')
-    urls = repository.addresses({"eventId": "103995"}, root)
+    urls = house_matching.addresses({"eventId": "103995"}, root)
     assert "/AS00/" in urls[0] and "/AS26/" in urls[1]
 
 
