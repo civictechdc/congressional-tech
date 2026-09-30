@@ -393,6 +393,8 @@ Adopt in five steps:
 
 ## Architecture assessment
 
+**Historical.** Provider import paths cited in this section were removed. Current modules are listed in [Package layout](../../../congress_api/README.md#package-layout). Replay entry points are in the [replay protection matrix](../../../../docs/congress-api-contracts.md#replay-protection-matrix).
+
 ### Findings and lineage
 
 | Finding | Evidence | Decision |

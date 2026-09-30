@@ -28,6 +28,8 @@ deliver the proposed Explorer.
 
 ## Evidence and branch scope
 
+**Historical.** Provider import paths in this section were removed. Current modules are listed in [Package layout](../congress_api/README.md#package-layout). Replay entry points are in the [replay protection matrix](../../docs/congress-api-contracts.md#replay-protection-matrix).
+
 The two checkouts differ. At review time, the requested primary checkout was
 `claude/hearing-text` at `9b038bc`; it contains the uncommitted model proposal
 but lacks the promoted `house`, `inventory`, shared-helper and Senate page
@@ -52,6 +54,8 @@ available and is not treated as a requirement.
 
 ## What runs today
 
+**Historical.** Provider import paths in this section were removed. Current modules are listed in [Package layout](../congress_api/README.md#package-layout). Replay entry points are in the [replay protection matrix](../../docs/congress-api-contracts.md#replay-protection-matrix).
+
 | Entry point | Actual flow | Integration consequence |
 |---|---|---|
 | `congress-meetings` | Fetches full detail records, retains `_url`, updates a URL-keyed collection, writes deterministic compressed JSON Lines (`meetings.py:35–105`). | Use this complete native input for the Explorer. It has no per-record fetch timestamp; import time cannot fill that gap. |
@@ -69,6 +73,8 @@ video output saves. Preserve that behavior when adding an export job
 `.github/workflows/update-data.yml:71–162`).
 
 ## Ownership and dependency direction
+
+**Historical.** `congress_api.transcribe.schema` in the table below names a removed provider import path. Current modules are listed in [Package layout](../congress_api/README.md#package-layout). Replay entry points are in the [replay protection matrix](../../docs/congress-api-contracts.md#replay-protection-matrix).
 
 ```mermaid
 flowchart LR
@@ -116,6 +122,8 @@ no network access.
 
 ## Map native facts before selected reports
 
+**Historical.** Provider import paths in this section were removed. Current modules are listed in [Package layout](../congress_api/README.md#package-layout). Replay entry points are in the [replay protection matrix](../../docs/congress-api-contracts.md#replay-protection-matrix).
+
 | Input and fields | Model output | Required rule |
 |---|---|---|
 | Congress.gov `_url`, `eventId`, `congress`, `chamber`, title and type | `SourceRecord`, `Meeting`, `Identifier` | Use scoped provider identity. Missing names/titles stay unknown; record raw type before a derived classification. |
@@ -146,6 +154,8 @@ needs durable old-to-new public links. Snapshot hashes identify observations;
 they must not replace durable meeting, person or material IDs.
 
 ## Changes needed at the producing code
+
+**Historical.** Provider import paths in this section were removed. Current modules are listed in [Package layout](../congress_api/README.md#package-layout). Replay entry points are in the [replay protection matrix](../../docs/congress-api-contracts.md#replay-protection-matrix).
 
 ### Retain source document groups and check evidence
 
@@ -243,6 +253,8 @@ and last attempt. The absence of an issue does not certify complete coverage.
 | Source/page family was not read or parser could not handle it | Input limitation; scoped unknown/error assessment; record issue where an affected subject is known. | “Not checked” or “Could not read,” distinct from “Not found.” |
 | Last successful data exceeds its documented refresh policy | `stale` issue/evaluation with the policy version; last successful date remains visible. | New export date does not make source data current. |
 | A prior problem is resolved or dismissed | Retain the issue ID, original evidence and a resolution with date/reason/evidence. | Correction history remains inspectable. |
+
+**Historical.** Provider import paths in the next paragraphs were removed. Current modules are listed in [Package layout](../congress_api/README.md#package-layout). Replay entry points are in the [replay protection matrix](../../docs/congress-api-contracts.md#replay-protection-matrix).
 
 There are concrete cases for these rules. The Senate reader documents layouts
 it does not parse (`senate/records.py:56–59`). Legacy manual Senate caption

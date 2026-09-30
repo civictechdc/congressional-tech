@@ -40,6 +40,8 @@ Run the focused regression suite with the checkout's Python environment:
 .venv/bin/python -m pytest -q tests
 ```
 
+**Historical.** The provider import paths in the next paragraph were removed. Current modules are listed in [Package layout](../../packages/congress_api/README.md#package-layout). Replay entry points are in the [replay protection matrix](../congress-api-contracts.md#replay-protection-matrix).
+
 Offline replay commands live in `congress_api.house.replay`, `congress_api.senate.replay` and `congress_api.gpo.replay`; each exposes `--help` and writes a replay receipt. The existing weekly commands retain their inputs and outputs, with the GPO evidence file and pending retries stored on `pipeline-data`.
 
 Local receipts and regenerated source outputs are under `.cache/source-fidelity/`: `house/`, `senate/`, `gpo/`, `inventory/`, `captions/` and `live/`. `full-normalization-validation.json` records the all-input check and its input digests. The subsequent additive Senate script repair is verified separately in `senate/script-capture-replay.json` and `senate/script-live/report.json`; the former records the consolidated Senate digest and unchanged existing fields and identities. `local-xml-search.json` and `local-opaque-xml-search.json` record the additional source locations. These artifacts are separate from the unchanged pinned inputs under `.cache/raw-output-audit-20260928/snapshot/`. The repaired datasets and verification receipts are local artifacts and have not been published.
