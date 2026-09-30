@@ -183,10 +183,10 @@ def test_document_models_reach_inventory_normalization_without_storage():
 
 def test_failed_pdf_parse_keeps_original_error_body(monkeypatch):
     raw = b'<html>Access denied</html>'
-    monkeypatch.setattr(witness_lists.http, 'get_with_retry', lambda *a, **k: SimpleNamespace(status_code=200, content=raw))
+    get = lambda *a, **k: SimpleNamespace(status_code=200, content=raw)
     state = {}
     with pytest.raises(ValueError, match='not a PDF'):
-        witness_lists.get_witnesses('one', 'https://example.gov/witnesses.pdf', state, 'v1', '2026-09-28', datetime.now(UTC).date(), False)
+        witness_lists.get_witnesses('one', 'https://example.gov/witnesses.pdf', state, 'v1', '2026-09-28', datetime.now(UTC).date(), False, get=get)
     assert state['one']['last_check']['outcome'] == 'error'
     assert RawContent.model_validate(state['one']['last_check']['content']).body_bytes() == raw
 

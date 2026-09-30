@@ -1,4 +1,4 @@
-"""Fill missing witnesses from MODS and attached witness-list PDFs.
+"""Parse retained MODS and witness-list PDF bytes without acquisition.
 
 Keep original MODS/PDF bytes beside typed names, source text, URL, version and
 check date, including valid empty lists. MODS uses GPO's parser, and PDFs use pypdf reading order.
@@ -7,16 +7,11 @@ change in text extraction. Bad responses are failures, not scanned lists.
 """
 import io
 import hashlib
-import datetime as dt
 import re
-from xml.etree.ElementTree import ParseError
 
 from pypdf import PdfReader
-from pypdf.errors import PyPdfError
 
-from congress_api import http
 from congress_api.gpo.fetch import GOVINFO_CONTENT, mods_witnesses
-from congress_api.inventory.common import due
 from congress_api.witnesses import TITLE, DEGREE, is_name, witness
 from congress_api.inventory.reviewed_witness_lists import REVIEWED
 from congress_api.models.content import RawContent
@@ -85,54 +80,9 @@ def mods_observation(data):
     return parse_mods_observation(data).source_dict()
 
 
-def timestamp():
-    return dt.datetime.now(dt.UTC).isoformat()
 
-
-def get_witnesses(key, url, state, version, day, today, offline, seed_cache=None, package=False):
-    saved = state.get(key)
-    complete = saved is not None and "people" in saved
-    if complete:
-        if offline:
-            return saved["people"]
-        failed = (saved.get("last_check") or {}).get("outcome") == "error"
-        # A missing file can appear without a package revision. Retry negatives
-        # weekly, and failed refreshes next run, even for an unchanged print.
-        unchanged_print = package and saved.get("version") == version and not saved.get("absent")
-        if not failed and unchanged_print:
-            return saved["people"]
-        if not failed and saved.get("version") == version:
-            expired = ((today - dt.date.fromisoformat(saved["checked"])).days >= 7
-                       if saved.get("absent") else due(saved, day, version, today))
-            if not expired:
-                return saved["people"]
-    data = None
-    if not complete and seed_cache:
-        path = seed_cache / "mods" / f"{key}.xml" if package else seed_cache / "witness_lists" / re.sub(r"\W+", "_", url.split("/meeting/")[-1])
-        if path.exists():
-            data = path.read_bytes()
-    imported = data is not None
-    if not imported and offline:
-        raise RuntimeError(f"Missing saved witness source: {key}")
-    check = {"mode": "cache_import" if imported else "live", "url": url, "started_at": timestamp()}
-    try:
-        if not imported:
-            response = http.get_with_retry(None, url, allowed=(200, 404))
-            check.update(completed_at=timestamp(), status_code=response.status_code)
-            data = response.content if response.status_code == 200 else None
-        evidence = (mods_observation(data) if package else pdf_observation(data)) if data is not None else {}
-    except (ValueError, RuntimeError, OSError, ParseError, PyPdfError) as error:
-        check.update(completed_at=timestamp(), outcome="error", error=str(error))
-        if data is not None:
-            check['content'] = RawContent.from_bytes(data, 'application/xml' if package else 'application/pdf').source_dict()
-        state[key] = {**(saved or {}), "url": url, "last_check": check}
-        raise
-    check.update(completed_at=check.get("completed_at") or timestamp(), outcome="present" if data is not None else "not_found")
-    people = evidence.get("people", [])
-    state[key] = {"people": people, "url": url, "version": version, "checked": today.isoformat(), "absent": data is None,
-                  "text_present": evidence.get("text_present", False), **evidence, "last_check": check, "observation_check": check}
-    if imported:
-        state[key]["imported_at"] = check["completed_at"]
-    elif data is not None:
-        state[key]["retrieved_at"] = check["completed_at"]
-    return people
+def get_witnesses(key, url, state, version, day, today, offline, seed_cache=None, package=False, *, get=None):
+    """Compatibility entry point; acquisition owns fetching and retention."""
+    from congress_api.inventory import acquisition
+    return acquisition.get_witnesses(key, url, state, version, day, today, offline,
+                                     seed_cache, package, **({"get": get} if get is not None else {}))

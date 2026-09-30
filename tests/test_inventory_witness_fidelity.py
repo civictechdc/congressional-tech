@@ -6,7 +6,7 @@ from pypdf.errors import PyPdfError
 
 import pytest
 
-from congress_api.inventory import witness_lists
+from congress_api.inventory import acquisition, witness_lists
 from congress_api.inventory.witness_lists import document_witnesses, pdf_observation
 from congress_api.witnesses import witness
 
@@ -79,30 +79,30 @@ URL = "https://www.govinfo.gov/metadata/pkg/CHRG-113hhrg21122/mods.xml"
 
 
 def capture(state, *, today=dt.date(2026, 9, 27), offline=False, **kwargs):
-    return witness_lists.get_witnesses("CHRG-113hhrg21122", URL, state, "v1", "2013-07-23", today, offline, package=True, **kwargs)
+    return acquisition.get_witnesses("CHRG-113hhrg21122", URL, state, "v1", "2013-07-23", today, offline, package=True, **kwargs)
 
 
 def test_live_mods_capture_uses_actual_receipt_time_and_retains_source_names(monkeypatch):
-    monkeypatch.setattr(witness_lists, "timestamp", lambda: STAMP)
-    monkeypatch.setattr(witness_lists.http, "get_with_retry", lambda *a, **k: SimpleNamespace(status_code=200, content=MODS))
+    monkeypatch.setattr(acquisition, "timestamp", lambda: STAMP)
+    get = lambda *a, **k: SimpleNamespace(status_code=200, content=MODS)
     state = {}
-    people = capture(state, today=dt.date(2020, 1, 1))
+    people = capture(state, get=get, today=dt.date(2020, 1, 1))
     saved = state["CHRG-113hhrg21122"]
     assert people and saved["source_witnesses"]
     assert saved["checked"] == "2020-01-01" and saved["retrieved_at"] == STAMP
     assert saved["last_check"] == saved["observation_check"] == {
         "mode": "live", "url": URL, "started_at": STAMP, "completed_at": STAMP, "status_code": 200, "outcome": "present"}
-    monkeypatch.setattr(witness_lists.http, "get_with_retry", lambda *a, **k: pytest.fail("unchanged successful MODS requested again"))
-    assert capture(state, today=dt.date(2026, 9, 27)) == people
+    get = lambda *a, **k: pytest.fail("unchanged successful MODS requested again")
+    assert capture(state, get=get, today=dt.date(2026, 9, 27)) == people
 
 
 def test_imported_mods_never_claims_a_live_retrieval(tmp_path, monkeypatch):
     (tmp_path / "mods").mkdir()
     (tmp_path / "mods" / "CHRG-113hhrg21122.xml").write_bytes(MODS)
-    monkeypatch.setattr(witness_lists, "timestamp", lambda: STAMP)
-    monkeypatch.setattr(witness_lists.http, "get_with_retry", lambda *a, **k: pytest.fail("cache import requested network"))
+    monkeypatch.setattr(acquisition, "timestamp", lambda: STAMP)
+    get = lambda *a, **k: pytest.fail("cache import requested network")
     state = {}
-    assert capture(state, offline=True, seed_cache=tmp_path)
+    assert capture(state, get=get, offline=True, seed_cache=tmp_path)
     saved = state["CHRG-113hhrg21122"]
     assert "retrieved_at" not in saved and saved["imported_at"] == STAMP
     assert saved["last_check"]["mode"] == "cache_import"
@@ -113,59 +113,59 @@ def test_unchanged_mods_404_is_retried_after_a_week(monkeypatch):
     def fetch(*args, **kwargs):
         calls.append(args)
         return SimpleNamespace(status_code=404 if len(calls) == 1 else 200, content=MODS)
-    monkeypatch.setattr(witness_lists.http, "get_with_retry", fetch)
+    get = fetch
     state = {}
-    assert capture(state, today=dt.date(2026, 9, 20)) == []
-    assert capture(state, today=dt.date(2026, 9, 26)) == [] and len(calls) == 1
-    assert capture(state, today=dt.date(2026, 9, 27)) and len(calls) == 2
+    assert capture(state, get=get, today=dt.date(2026, 9, 20)) == []
+    assert capture(state, get=get, today=dt.date(2026, 9, 26)) == [] and len(calls) == 1
+    assert capture(state, get=get, today=dt.date(2026, 9, 27)) and len(calls) == 2
     assert not state["CHRG-113hhrg21122"]["absent"]
 
 
 @pytest.mark.parametrize("body", [b"<html><title>Access denied</title></html>", b"broken XML"])
 def test_invalid_live_mods_keeps_prior_observation_and_retries_next_run(body, monkeypatch):
-    monkeypatch.setattr(witness_lists, "timestamp", lambda: STAMP)
-    monkeypatch.setattr(witness_lists.http, "get_with_retry", lambda *a, **k: SimpleNamespace(status_code=200, content=MODS))
+    monkeypatch.setattr(acquisition, "timestamp", lambda: STAMP)
+    get = lambda *a, **k: SimpleNamespace(status_code=200, content=MODS)
     state = {}
-    people = capture(state)
+    people = capture(state, get=get)
     prior = state["CHRG-113hhrg21122"].copy()
     # A package update requires a new capture even while the old check is young.
     state["CHRG-113hhrg21122"]["version"] = "old"
-    monkeypatch.setattr(witness_lists.http, "get_with_retry", lambda *a, **k: SimpleNamespace(status_code=200, content=body))
+    get = lambda *a, **k: SimpleNamespace(status_code=200, content=body)
     with pytest.raises((ValueError, ParseError)):
-        capture(state)
+        capture(state, get=get)
     saved = state["CHRG-113hhrg21122"]
     assert saved["people"] == people and saved["observation_check"] == prior["observation_check"]
     assert saved["last_check"]["outcome"] == "error" and saved["last_check"]["status_code"] == 200
     assert saved["retrieved_at"] == prior["retrieved_at"]
-    assert capture(state, offline=True) == people
-    monkeypatch.setattr(witness_lists.http, "get_with_retry", lambda *a, **k: SimpleNamespace(status_code=200, content=MODS))
-    assert capture(state) == people and state["CHRG-113hhrg21122"]["last_check"]["outcome"] == "present"
+    assert capture(state, get=get, offline=True) == people
+    get = lambda *a, **k: SimpleNamespace(status_code=200, content=MODS)
+    assert capture(state, get=get) == people and state["CHRG-113hhrg21122"]["last_check"]["outcome"] == "present"
 
 
 def test_first_failed_capture_stays_missing_offline_and_retryable_live(monkeypatch):
     def refused(*args, **kwargs):
         raise RuntimeError("503 Unavailable")
-    monkeypatch.setattr(witness_lists.http, "get_with_retry", refused)
+    get = refused
     state = {}
     with pytest.raises(RuntimeError, match="503"):
-        capture(state)
+        capture(state, get=get)
     assert "people" not in state["CHRG-113hhrg21122"]
     with pytest.raises(RuntimeError, match="Missing saved witness source"):
-        capture(state, offline=True)
-    monkeypatch.setattr(witness_lists.http, "get_with_retry", lambda *a, **k: SimpleNamespace(status_code=200, content=MODS))
-    assert capture(state)
+        capture(state, get=get, offline=True)
+    get = lambda *a, **k: SimpleNamespace(status_code=200, content=MODS)
+    assert capture(state, get=get)
 
 
 def test_corrupt_pdf_is_failed_capture_not_an_empty_scan(monkeypatch):
-    monkeypatch.setattr(witness_lists.http, "get_with_retry", lambda *a, **k: SimpleNamespace(status_code=200, content=b"%PDF-1.7 broken"))
+    get = lambda *a, **k: SimpleNamespace(status_code=200, content=b"%PDF-1.7 broken")
     state = {}
     with pytest.raises(PyPdfError):
-        witness_lists.get_witnesses("doc", URL, state, "v1", "2026-09-20", dt.date(2026, 9, 27), False)
+        acquisition.get_witnesses("doc", URL, state, "v1", "2026-09-20", dt.date(2026, 9, 27), False, get=get)
     assert state["doc"]["last_check"]["outcome"] == "error" and "people" not in state["doc"]
 
 
 def test_saved_offline_and_unchanged_mods_do_not_require_meeting_date(monkeypatch):
-    monkeypatch.setattr(witness_lists.http, "get_with_retry", lambda *a, **k: pytest.fail("saved unchanged source fetched again"))
+    get = lambda *a, **k: pytest.fail("saved unchanged source fetched again")
     state = {"key": {"people": [{"name": "Alex Smith"}], "version": "v1"}}
     for offline in (True, False):
-        assert witness_lists.get_witnesses("key", URL, state, "v1", "", dt.date(2026, 9, 27), offline, package=True) == state["key"]["people"]
+        assert acquisition.get_witnesses("key", URL, state, "v1", "", dt.date(2026, 9, 27), offline, package=True, get=get) == state["key"]["people"]

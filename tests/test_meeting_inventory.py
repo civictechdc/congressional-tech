@@ -158,9 +158,21 @@ def test_archive_absence_is_probed_once_and_outputs_settle(tmp_path, monkeypatch
     def absent(session, url, **kwargs):
         calls.append(url)
         return SimpleNamespace(status_code=404)
-    monkeypatch.setattr("congress_api.http.get_with_retry", absent)
+    from congress_api.inventory import acquisition
+    from congress_api.inventory.common import write_state
+    probes = {}
+    days = [('ag', '2020-01-02')]
+    # The acquisition seam is independent of orchestration and accepts the fake.
+    acquisition.probe_days(days, probes, dt.date(2026, 9, 27), get=absent)
+    assert len(calls) == 8
+    assert acquisition.probe_days(days, probes, dt.date(2026, 9, 27), get=absent) == 0
+    # Use the actual committee code selected for this fixture.
+    from congress_api.inventory.text_sources import senate_comms
+    from congress_api.committees import codes_of
+    comm, = senate_comms(m, codes_of(m))
+    write_state(tmp_path / 'inventory.json.gz', {'probes': {f'{comm}|2020-01-02': probes['ag|2020-01-02']}})
     args = dict(meetings=meetings, state_dir=tmp_path, output_dir=tmp_path, gpo_path=tmp_path / "gpo.csv", videos_path=tmp_path / "videos.csv", tinydb_dir=tmp_path,
-                recordings=tmp_path / "recordings.csv", channels_csv_path=tmp_path / "channels.csv", as_of=dt.date(2026, 9, 27))
+                recordings=tmp_path / "recordings.csv", channels_csv_path=tmp_path / "channels.csv", as_of=dt.date(2026, 9, 27), offline=True)
     main(**args)
     first = (tmp_path / "hearing_text_sources.csv").read_bytes()
     assert len(calls) == 8

@@ -27,9 +27,8 @@ import json
 import re
 from pathlib import Path
 
-from congress_api import http
 from congress_api.inventory.common import read_csv
-from congress_api.senate.isvp import LIVE_ID, archive_url, live_url, parse_player_url, player_url
+from congress_api.senate.isvp import LIVE_ID, parse_player_url
 from congress_api.models.media import ArchiveProbe, CaptionReceipt
 
 
@@ -85,13 +84,8 @@ def text_source(row, youtube, senate, flags):
     return "video_no_captions" if row["youtube_ids"] or row["senate_urls"] or row["other_recordings"] else "no_video"
 
 
-def probe_day(comm, day):
-    date = dt.date.fromisoformat(day)
-    found = []
-    for filename in (f"{comm}{date:%m%d%y}", f"{comm}A{date:%m%d%y}", f"{comm}B{date:%m%d%y}", f"{comm}{date:%m%d%y}p"):
-        for url in (archive_url(comm, filename), live_url(comm, filename)):
-            response = http.get_with_retry(None, url, method="HEAD", allowed=(200, 404))
-            if response.status_code == 200:
-                found.append(player_url(comm, filename))
-                break
-    return found
+
+def probe_day(comm, day, *, get=None):
+    """Compatibility entry point; acquisition owns the network probe."""
+    from congress_api.inventory import acquisition
+    return acquisition.probe_day(comm, day, **({"get": get} if get is not None else {}))

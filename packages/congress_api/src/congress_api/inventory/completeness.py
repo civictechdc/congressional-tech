@@ -7,7 +7,8 @@ supplies recording coverage for printed hearings independently of text source.
 """
 import collections, html, re
 from congress_api.inventory.common import CLOSED, kind
-from congress_api.inventory.witness_lists import GOVINFO_CONTENT, get_witnesses
+from congress_api.gpo.fetch import GOVINFO_CONTENT
+from congress_api.inventory import acquisition
 
 FIELDS = ['event_id', 'congress', 'chamber', 'kind', 'closed', 'date', 'committees', 'title', 'recording', 'text_source', 'witnesses', 'witness_source', 'witness_list_document', 'print_shared_with_other_meetings', 'witness_documents', 'meeting_documents', 'documents_found_elsewhere', 'location', 'related_items', 'rescheduled_to', 'not_held']
 WITNESS_FIELDS = ['event_id', 'name', 'position', 'organization', 'source', 'from']
@@ -39,12 +40,12 @@ def build(meetings, index, recorded, house_witnesses, senate_witnesses, document
     from_gpo, from_list = {}, {}
     for e, package in own_print.items():
         row = gpo[package]
-        from_gpo[e] = get_witnesses(package, f"{GOVINFO_CONTENT}/metadata/pkg/{package}/mods.xml", state.setdefault("mods", {}),
+        from_gpo[e] = acquisition.get_witnesses(package, f"{GOVINFO_CONTENT}/metadata/pkg/{package}/mods.xml", state.setdefault("mods", {}),
             row["last_modified"], row["held_date"], today, offline, seed_cache, package=True)
     by_event = {m["eventId"]: m for m in meetings}
     for e, url in witness_list.items():
         m = by_event[e]
-        from_list[e] = get_witnesses(url, url, state.setdefault("witness_lists", {}), m.get("updateDate", ""),
+        from_list[e] = acquisition.get_witnesses(url, url, state.setdefault("witness_lists", {}), m.get("updateDate", ""),
             m["date"][:10], today, offline, seed_cache)
 
     rows, filled = [], []
