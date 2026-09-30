@@ -8,7 +8,7 @@ its own AdapterContext so its input_snapshot_id names that artifact.
 
 import json
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import date
 
 from committee_meeting.assessments import Assessment
 from committee_meeting.common import ReportedTime
@@ -71,12 +71,7 @@ def records(state, context, *, meetings, materials=None, recovered_witnesses=())
             for check, suffix, selector in checks:
                 checked, scope = None, None
                 if isinstance(check, dict):
-                    try:
-                        parsed = datetime.fromisoformat(check.get('observed_at', '').replace('Z', '+00:00'))
-                        if parsed.tzinfo is not None and parsed <= context.now:
-                            checked = parsed
-                    except (TypeError, ValueError, AttributeError):
-                        pass
+                    checked = observed_time(check.get('observed_at'), context.now)
                     raw_scope = check.get('scope')
                     if isinstance(raw_scope, dict) and raw_scope:
                         scope = json.dumps(raw_scope, sort_keys=True, ensure_ascii=False)

@@ -1,7 +1,7 @@
 """Adapt retained Senate committee pages without fetching or rematching them."""
 
 from collections import Counter, defaultdict
-from datetime import date, datetime
+from datetime import date
 from urllib.parse import urlsplit
 
 from committee_meeting.assessments import Assessment
@@ -18,7 +18,7 @@ from committee_meeting.meetings import (
 )
 from committee_meeting.provenance import AlternativeValue, FieldEvidence, Method
 
-from congress_api.adapters.common import digest, material_records, ref, reported_time, web_url, witness_roles
+from congress_api.adapters.common import digest, material_records, observed_time, ref, reported_time, web_url, witness_roles
 from congress_api.adapters.meetings import category
 from congress_api.adapters.recordings import recording_reference
 from congress_api.matching.meetings import meeting_access, meeting_type
@@ -56,14 +56,6 @@ def _attachment_aliases(page):
     return aliases, skipped
 
 
-def _timestamp(value, now):
-    try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
-        return parsed if parsed.tzinfo is not None and parsed <= now else None
-    except (AttributeError, TypeError, ValueError):
-        return None
-
-
 def _live_receipt(page, url, now):
     """Legacy checked dates are scheduling state, not retrieval evidence."""
     check = page.get("observation_check") or page.get("last_check") or {}
@@ -75,15 +67,9 @@ def _live_receipt(page, url, now):
         expected = {200: "retrieved", 404: "not_found"}.get(receipt.get("status_code"))
         if expected is None or receipt.get("outcome") != expected:
             continue
-        completed = receipt.get("completed_at")
-        if not isinstance(completed, str):
-            continue
-        try:
-            observed = datetime.fromisoformat(completed.replace("Z", "+00:00"))
-            if observed.tzinfo is not None and observed <= now:
-                return observed, expected
-        except (KeyError, TypeError, ValueError):
-            pass
+        observed = observed_time(receipt.get("completed_at"), now)
+        if observed is not None:
+            return observed, expected
     return None
 
 
@@ -149,11 +135,11 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                 payload["source_bodies"] = site["source_bodies"]
             listing_source = context.source(f"senate-listing-check|{host}", payload)
             yield listing_source
-            if listing_check.get("outcome") == "error":
+            if isinstance(listing_check, dict) and listing_check.get("outcome") == "error":
                 yield DataIssue(
                     id=context.ids("data_issue", listing_source.id + "|failed-listing-refresh"), subject=ref(listing_source), category="unverified",
                     summary="The latest Senate listing refresh failed.", explanation="Previously retained page observations remain available.",
-                    detected_at=context.now, last_checked_at=_timestamp(listing_check.get("completed_at"), context.now),
+                    detected_at=context.now, last_checked_at=observed_time(listing_check.get("completed_at"), context.now),
                     provenance=context.evidence(listing_source, selector="/last_check"),
                 )
         pages = site.get("pages") or {}
@@ -176,7 +162,7 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
             live = _live_receipt(page, url, context.now)
             check = page.get("last_check") or {}
             failed = isinstance(check, dict) and check.get("mode") == "live" and check.get("outcome") == "error"
-            previous_retrieval = _timestamp(page.get("retrieved_at"), context.now) if isinstance(check, dict) and check.get("mode") == "live" else None
+            previous_retrieval = observed_time(page.get("retrieved_at"), context.now) if isinstance(check, dict) and check.get("mode") == "live" else None
             if live or previous_retrieval:
                 source = source.model_copy(update={"retrieved_at": live[0] if live else previous_retrieval})
             yield source
@@ -210,7 +196,7 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                 yield DataIssue(
                     id=context.ids("data_issue", key + "|failed-refresh"), subject=ref(source), category="unverified",
                     summary="The latest Senate page refresh failed.", explanation="The previous usable source result is retained; this failure does not establish absence.",
-                    detected_at=context.now, last_checked_at=_timestamp(check.get("completed_at"), context.now),
+                    detected_at=context.now, last_checked_at=observed_time(check.get("completed_at"), context.now),
                     provenance=context.evidence(source, selector="/last_check"),
                 )
             if not live and not previous_retrieval:
@@ -482,7 +468,7 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                     yield Assessment(
                         id=context.ids("assessment", key + "|reachability|" + meeting.id), subject=meeting,
                         aspect="reachability", status="error", evaluated_at=context.now,
-                        observed_at=_timestamp(check.get("completed_at"), context.now), provider=context.provider, scope=url,
+                        observed_at=observed_time(check.get("completed_at"), context.now), provider=context.provider, scope=url,
                         explanation="The latest refresh failed. Previously retained documents and witnesses remain historical observations.",
                         provenance=match_evidence.model_copy(update={"citations": match_evidence.citations + context.evidence(source, selector="/last_check").citations}),
                     )

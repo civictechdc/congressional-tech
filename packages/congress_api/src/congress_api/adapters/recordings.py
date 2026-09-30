@@ -17,6 +17,8 @@ def recording_reference(token):
     from congress_api.matching.gpo_videos import VIDEO_ID
     from congress_api.parsers.senate_player import parse_player_url
 
+    if not isinstance(token, str):
+        return None
     url = web_url(token)
     if re.fullmatch(r"[A-Za-z0-9_-]{11}", token):
         return "youtube|" + token, "https://www.youtube.com/watch?v=" + token, "youtube", (Identifier(scheme="youtube.video", value=token),)
