@@ -132,8 +132,12 @@ class HouseXMLNode(XmlElement):
 
 def text_fields(node: XmlElement, model: type[SourceModel]) -> SourceModel:
     """First scalar reading for consumers; repeated originals stay in children."""
-    return model.model_validate({field.alias or name: node.findtext(field.alias or name)
-                                for name, field in model.model_fields.items() if node.find(field.alias or name) is not None})
+    fields = {}
+    for name, field in model.model_fields.items():
+        key = field.alias or name
+        if (child := node.find(key)) is not None:
+            fields[key] = child.text
+    return model.model_validate(fields)
 
 
 class HouseFileXML(HouseXMLNode):
@@ -239,11 +243,11 @@ class HouseMeetingDetailsXML(HouseXMLNode):
         node = self.find('meeting-location/field')
         if node is None:
             return None
-        fields = {field.alias or name: node.findtext(field.alias or name)
-                  for name, field in HouseFieldLocationFields.model_fields.items()
-                  if name != 'state' and node.find(field.alias or name) is not None}
-        if (state := node.find('state')) is not None:
-            fields['state'] = state
+        fields = {}
+        for name, field in HouseFieldLocationFields.model_fields.items():
+            key = field.alias or name
+            if (child := node.find(key)) is not None:
+                fields[key] = child if name == 'state' else child.text
         return HouseFieldLocationFields.model_validate(fields)
 
 

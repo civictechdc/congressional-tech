@@ -7,6 +7,7 @@ locate pages; only a page's own date and subject establish which meeting it is.
 import datetime as dt
 import html
 import re
+from collections import Counter
 from urllib.parse import urljoin, urlsplit
 
 from lxml import html as dom
@@ -357,7 +358,7 @@ def source_details(page_html, url, people):
         witnesses_by_node[card] = index
     # Separate cards with the same parsed name are not proof that their people
     # are identical. The older witness list may already have deduplicated names.
-    repeated = {index for index in witnesses_by_node.values() if list(witnesses_by_node.values()).count(index) > 1}
+    repeated = {index for index, count in Counter(witnesses_by_node.values()).items() if count > 1}
     witnesses_by_node = {card: index for card, index in witnesses_by_node.items() if index not in repeated}
     witness_metadata = {index: metadata for index, metadata in witness_metadata.items() if int(index) not in repeated}
     files = {}

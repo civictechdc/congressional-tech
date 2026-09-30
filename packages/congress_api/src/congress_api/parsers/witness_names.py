@@ -89,7 +89,6 @@ def witness(text: str) -> dict:
 
 def person_key(name: str) -> str:
     """'Hon. Ben Cline' -> 'cline-ben'; 'Mr. Dunham' -> 'dunham'."""
-    import re
     parts = [p for p in re.sub(r"[^\w\s-]", "", name).lower().split() if p not in ("hon", "the", "mr", "ms", "mrs", "dr", "senator", "representative", "chairman", "chairwoman", "chair", "jr", "sr", "ii", "iii")]
     if not parts:
         return "unknown"

@@ -5,34 +5,28 @@ from xml.etree.ElementTree import Element
 
 from congress_api.models.content import RawContent
 from congress_api.models.house import XML_MODELS, HouseMeetingXML, HouseWitnessListXML
-from congress_api.parsers.xml import xml_element
+from congress_api.parsers.xml import parse_xml, xml_element
+
+
+def _parse_house_xml[T: HouseMeetingXML | HouseWitnessListXML](
+    root: bytes | str | Element | T, model: type[T], tag: str,
+) -> T:
+    if isinstance(root, model):
+        return root
+    raw = root if isinstance(root, bytes) else root.encode('utf-8') if isinstance(root, str) else None
+    if raw is not None:
+        root = parse_xml(raw)
+    if root.tag != tag:
+        raise ValueError(f'Expected a House {tag} XML document')
+    result = cast(T, xml_element(root, XML_MODELS))
+    if raw is not None:
+        result.raw_content = RawContent.from_bytes(raw, 'application/xml')
+    return result
 
 
 def parse_house_meeting(root: bytes | str | Element | HouseMeetingXML) -> HouseMeetingXML:
-    if isinstance(root, HouseMeetingXML):
-        return root
-    raw = root if isinstance(root, bytes) else root.encode('utf-8') if isinstance(root, str) else None
-    if raw is not None:
-        from congress_api.parsers.xml import parse_xml
-        root = parse_xml(raw)
-    if root.tag != 'committee-meeting':
-        raise ValueError('Expected a House committee-meeting XML document')
-    result = cast(HouseMeetingXML, xml_element(root, XML_MODELS))
-    if raw is not None:
-        result.raw_content = RawContent.from_bytes(raw, 'application/xml')
-    return result
+    return _parse_house_xml(root, HouseMeetingXML, 'committee-meeting')
 
 
 def parse_house_witnesses(root: bytes | str | Element | HouseWitnessListXML) -> HouseWitnessListXML:
-    if isinstance(root, HouseWitnessListXML):
-        return root
-    raw = root if isinstance(root, bytes) else root.encode('utf-8') if isinstance(root, str) else None
-    if raw is not None:
-        from congress_api.parsers.xml import parse_xml
-        root = parse_xml(raw)
-    if root.tag != 'witness-list':
-        raise ValueError('Expected a House witness-list XML document')
-    result = cast(HouseWitnessListXML, xml_element(root, XML_MODELS))
-    if raw is not None:
-        result.raw_content = RawContent.from_bytes(raw, 'application/xml')
-    return result
+    return _parse_house_xml(root, HouseWitnessListXML, 'witness-list')

@@ -32,6 +32,7 @@ BILL = re.compile(r"\b(H\.?\s?R\.?|H\.?\s?J\.?\s?Res\.?|H\.?\s?Con\.?\s?Res\.?|H
 ## Dates in upload titles: "10-29-13 Full Committee Business Meeting", "June 28, 2013 Full Committee Business Meeting",
 ## and Natural Resources' 2016-18 archive titles "3.2.16. EMR. 10:00 AM." (date, subcommittee, hour)
 MONTHS = "january february march april may june july august september october november december".split()
+_MONTH_NUMBERS = {name[:3]: i for i, name in enumerate(MONTHS, 1)}
 
 
 TITLE_DATE = re.compile(r"\b(\d{1,2})[./-](\d{1,2})[./-](\d{2}|\d{4})\b|\b(" + "|".join(m[:3] for m in MONTHS) + r")[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})\b", re.I)
@@ -109,7 +110,13 @@ def title_dates(title):
     out = set()
     for mo, d, y, mon, d2, y2 in TITLE_DATE.findall(title):
         try:
-            out.add(dt.date(int(y) if len(y) == 4 else 2000 + int(y), int(mo), int(d)) if mo else dt.date(int(y2), MONTHS.index(mon.lower()[:3] + {"jan": "uary", "feb": "ruary", "mar": "ch", "apr": "il", "may": "", "jun": "e", "jul": "y", "aug": "ust", "sep": "tember", "oct": "ober", "nov": "ember", "dec": "ember"}[mon.lower()[:3]]) + 1, int(d2)))
+            if mo:
+                year = int(y) if len(y) == 4 else 2000 + int(y)
+                month, day = int(mo), int(d)
+            else:
+                year, day = int(y2), int(d2)
+                month = _MONTH_NUMBERS[mon.lower()]
+            out.add(dt.date(year, month, day))
         except (ValueError, KeyError):
             pass
     return out

@@ -83,7 +83,7 @@ def clean_rows(rows: dict[str, dict]) -> None:
         if not code and row["committee_name"]:
             here, anywhere = by_name.get(name_key(row["chamber"], row["committee_name"])), by_name.get(name_key("", row["committee_name"]), {})
             code = here.most_common(1)[0][0] if here else next(iter(anywhere)) if len(anywhere) == 1 else ""
-        codes = list(dict.fromkeys(fix(c) for c in row.get('committee_codes_gpo', '').split(';') if fix(c)))
+        codes = list(dict.fromkeys(normalized for c in row.get('committee_codes_gpo', '').split(';') if (normalized := fix(c))))
         if code and code not in codes:
             codes.insert(0, code)
         decision = reviewed(row)

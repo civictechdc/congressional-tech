@@ -55,6 +55,7 @@ def build(meetings, index, recorded, house_witnesses, senate_witnesses, document
             into[row["event_id"]].append(row)
     from_gpo = {event: mods_observations[package]["people"] for event, package in own_print.items()}
     from_list = {event: pdf_observations[url]["people"] for event, url in witness_list.items()}
+    exclusive_prints = set(own_print.values())
 
     rows, filled = [], []
     for m in meetings:
@@ -73,13 +74,13 @@ def build(meetings, index, recorded, house_witnesses, senate_witnesses, document
         elif not listed and from_senate[e]:
             source, count = "senate committee page", len(from_senate[e])
             filled += [{"event_id": e, "name": w["name"], "position": w["position"], "organization": w["organization"], "source": "senate committee page", "from": w["page"]} for w in from_senate[e]]
-        elif not listed and is_hearing(m) and nominees(m.get("title") or ""):
-            named = nominees(m["title"])
+        elif not listed and is_hearing(m) and (named := nominees(m.get("title") or "")):
             source, count = "meeting title (nominees)", len(named)
             filled += [{"event_id": e, "name": n, "position": f"nominee to be {office}", "organization": "", "source": "meeting title (nominees)", "from": m["_url"]} for n, office in named]
-        shared = [p for p in prints_of[e] if p not in own_print.values()]
-        rows.append({"event_id": e, "congress": m["congress"], "chamber": m.get("chamber", ""), "kind": meeting_type(m)[0], "access": meeting_access(m)[0],
-                     "closed": "yes" if meeting_access(m)[0] == "closed" else "",
+        shared = [p for p in prints_of[e] if p not in exclusive_prints]
+        access = meeting_access(m)[0]
+        rows.append({"event_id": e, "congress": m["congress"], "chamber": m.get("chamber", ""), "kind": meeting_type(m)[0], "access": access,
+                     "closed": "yes" if access == "closed" else "",
                      "date": m["date"][:10], "committees": r["committees"], "title": r["title"].replace("\r\n", "\n").replace("\r", "\n"),
                      ## a printed hearing's recording is matched to its print by the weekly matcher
                      "recording": "yes" if r["youtube_ids"] or r["senate_urls"] or r["other_recordings"] or recorded & set(prints_of[e]) else "", "text_source": r["text_source"],

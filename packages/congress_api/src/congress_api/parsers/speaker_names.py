@@ -33,26 +33,15 @@ def match(participants: dict[str, Person], reference: str, prefer: set[str] = fr
     ref = tokens(reference)
     if not ref:
         return None
-    hits = []
-    for k, p in participants.items():
-        full = tokens(p.name)
-        for n in range(1, len(ref) + 1):
-            if full[-n:] == ref[-n:] and n == len(ref):
-                hits.append((n, k))
-                break
-        else:
-            if full and full[-len(ref):] == ref:
-                hits.append((len(ref), k))
+    names = {key: tokens(person.name) for key, person in participants.items()}
+    hits = [key for key, full in names.items() if full[-len(ref):] == ref]
     if not hits:
         ## a single token may also be the reference's last word matching the participant's surname alone
         last = ref[-1]
-        hits = [(1, k) for k, p in participants.items() if tokens(p.name)[-1:] == [last]]
+        hits = [key for key, full in names.items() if full[-1:] == [last]]
     if not hits:
         return None
-    best = max(n for n, _ in hits)
-    keys = [k for n, k in hits if n == best]
-    preferred = [k for k in keys if k in prefer]
-    return (preferred or keys)[0]
+    return next((key for key in hits if key in prefer), hits[0])
 
 
 def surname(name: str, titles: set[str] = frozenset()) -> str:
