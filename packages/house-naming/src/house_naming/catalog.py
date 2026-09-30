@@ -11,6 +11,7 @@ from jsonschema.exceptions import SchemaError
 from .compiler import parts, record_schema, stem_pattern
 from .errors import NamingError
 from .io import loads
+from .extraction import bind_extraction_rules
 
 
 def _error(message: str) -> None:
@@ -29,17 +30,7 @@ def _check_catalog(guide: dict[str, Any]) -> dict[str, int]:
         first = errors[0]
         _error(f"Catalog schema violation at /{'/'.join(map(str, first.absolute_path))}: {first.message}")
     nodes, sections, examples = guide['source_nodes'], guide['sections'], guide['examples']
-    extraction_ids = set()
-    for rule in guide.get('extraction_rules', []):
-        if rule['id'] in extraction_ids:
-            _error(f"Duplicate extraction rule: {rule['id']}")
-        extraction_ids.add(rule['id'])
-        try:
-            regex = re.compile(rule['pattern'], re.I | re.ASCII)
-        except re.error as exc:
-            _error(f"Bad extraction pattern {rule['id']}: {exc}")
-        if not regex.groupindex:
-            _error(f"Extraction pattern {rule['id']} has no named fields")
+    bind_extraction_rules(guide)
     for key, node in nodes.items():
         if node['section_id'] is not None and node['section_id'] not in sections:
             _error(f'Source {key} references an absent section')

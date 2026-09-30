@@ -9,13 +9,16 @@ NUMBER_BOUNDARY_NOTE = (
     'Digits adjoin ordinal wording; their division into a measure number and '
     'a title or reference number is not established.'
 )
+ORDINAL_SUFFIX = (
+    r'(?i:st|nd|rd|th)(?=[ _-]|$)'
+    r'|(?:st|nd|rd|th)(?=[A-Z])'
+    r'|(?i:st|nd|rd|th)(?=(?i:Congress|Century))'
+)
 
 
 def starts_with_ordinal_suffix(description: str) -> bool:
     """Recognize an ordinal tail without confusing the, Stephen or Third."""
-    return bool(re.match(
-        r'(?:st|nd|rd|th)(?=[A-Z]|[ _-]|$)'
-        r'|(?i:st|nd|rd|th)(?=(?i:Congress|Century))', description, re.ASCII))
+    return bool(re.match(ORDINAL_SUFFIX, description, re.ASCII))
 
 
 @lru_cache(maxsize=1)
@@ -25,6 +28,7 @@ def _reference_patterns(measures: tuple[str, ...]) -> tuple[re.Pattern, ...]:
     # not establish HR 575921. Only documented boundaries/suffix shapes qualify.
     measure = re.compile(
         r'(?<![A-Za-z0-9])(?P<code>(?i:' + codes + r'))[-_]?(?P<number>[0-9]{1,10})'
+        r'(?!(?:' + ORDINAL_SUFFIX + r'))'
         r'(?!(?i:st|nd|rd|th)(?:[A-Za-z]|$))'
         r'(?=$|[-_]|[A-Z]|(?i:asamended|amendment|rev[0-9])|(?i:a|b|q|r|sa)(?:$|[-_]))', re.ASCII)
     print_ref = re.compile(r'(?<![A-Za-z0-9])RCP(?P<congress>[1-9][0-9]{2})-'
@@ -106,6 +110,8 @@ def derived_values(record: dict, subjects: tuple[str, ...], measures: tuple[str,
         for hit in re.finditer(r'(?:^|-)(part|pt|p|volume|vol|v|addendum|add|errata|err)([0-9]+|[IVXLCDM]+|[A-Z])?(?=-|$)',
                                record.get('publicationSuffix', ''), re.I | re.ASCII):
             marker = hit[1].lower()
+            if kind == 'published-hearing' and marker == 'err':
+                continue  # GovInfo uses this spelling for both addenda and errata.
             field = ('part' if marker in {'part', 'pt', 'p'} else
                      'volume' if marker in {'volume', 'vol', 'v'} else
                      'addendum' if marker in {'addendum', 'add'} else 'errata')

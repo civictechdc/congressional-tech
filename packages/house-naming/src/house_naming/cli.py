@@ -2,31 +2,19 @@
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
 import sys
-from typing import Any
 
 from . import __version__
 from .catalog import check_catalog, load_guide
 from .compiler import filename_schema, records_schema
 from .engine import Engine
 from .errors import NamingError
-from .io import loads, dumps
+from .io import dumps, read_json
 
 
 class Parser(argparse.ArgumentParser):
     def error(self, message: str) -> None:
         raise NamingError('usage', message)
-
-
-def read_record(path: str) -> Any:
-    """Read at most 64 KiB, including for files that change during a read."""
-    if path == '-':
-        payload = sys.stdin.buffer.read(65_537)
-    else:
-        with Path(path).open('rb') as stream:
-            payload = stream.read(65_537)
-    return loads(payload, max_bytes=65_536)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -66,7 +54,7 @@ def main(argv: list[str] | None = None) -> int:
             if command == 'kinds':
                 data = engine.kinds()
             elif command in ('validate', 'render'):
-                record = read_record(args.record)
+                record = read_json(args.record)
                 if command == 'validate':
                     data = {'valid': True, 'record': engine.validate(record)}
                 else:
@@ -82,7 +70,7 @@ def main(argv: list[str] | None = None) -> int:
                 sys.stdout.write(dumps(data))
                 return 0 if data['valid'] else 1
             elif command == 'extract':
-                reference = read_record(args.member_surnames) if args.member_surnames else None
+                reference = read_json(args.member_surnames) if args.member_surnames else None
                 data = engine.extract(args.filename, member_surnames=reference)
             elif command == 'lookup':
                 data = engine.lookup(args.context, args.token)
@@ -98,7 +86,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     except NamingError as exc:
         sys.stderr.write(dumps({'error': exc.as_dict()}))
-        return 2 if exc.code in ('usage', 'input-too-large', 'invalid-catalog') else 1
+        return 2 if exc.code in ('usage', 'input-too-large', 'invalid-catalog', 'extraction-limit') else 1
     except BrokenPipeError:
         return 0
     except (OSError, UnicodeError, ValueError) as exc:

@@ -133,9 +133,9 @@ def test_hearing_err_marker_retains_documented_ambiguity(engine):
     marker, = fields(result, 'publication_marker')
     assert 'addenda and errata' in marker['note']
     assert marker['vocabulary_url'] == 'https://www.govinfo.gov/help/chrg'
-    # The existing strict field name remains compatible; raw text and this
-    # explanation prevent treating that name as a resolved content distinction.
     assert result['matches'][0]['record']['publicationSuffix'] == '-err'
+    assert 'errata' not in result['matches'][0]['record']
+    assert 'addendum' not in result['matches'][0]['record']
 
 
 @pytest.mark.parametrize('name', ['S. Prt. 114-27.pdf', 'S.Prt.112-35.pdf', 'S-Prt-119-12345.pdf'])

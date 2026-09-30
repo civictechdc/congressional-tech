@@ -2,6 +2,8 @@
 from __future__ import annotations
 import json
 import math
+from pathlib import Path
+import sys
 from typing import Any
 from .errors import NamingError
 
@@ -35,3 +37,13 @@ def loads(text: str | bytes, *, max_bytes: int = 16_777_216) -> Any:
 
 def dumps(data: Any) -> str:
     return json.dumps(data, ensure_ascii=False, allow_nan=False, indent=2) + '\n'
+
+
+def read_json(path: str | Path, *, max_bytes: int = 65_536) -> Any:
+    """Read bounded strict JSON from a file, or stdin when the path is '-'."""
+    if str(path) == '-':
+        payload = sys.stdin.buffer.read(max_bytes + 1)
+    else:
+        with Path(path).open('rb') as stream:
+            payload = stream.read(max_bytes + 1)
+    return loads(payload, max_bytes=max_bytes)

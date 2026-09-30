@@ -44,7 +44,7 @@ def engine():
     ('CHRG-106hhrg53880.pdf',
      {'kind':'published-hearing','congress':106,'publicationType':'hhrg','publicationNumber':'53880','publicationSuffix':'','extension':'pdf'}),
     ('CHRG-106shrg98240-pt1-err.pdf',
-     {'kind':'published-hearing','congress':106,'publicationType':'shrg','publicationNumber':'98240','publicationSuffix':'-pt1-err','part':'1','errata':'','extension':'pdf'}),
+     {'kind':'published-hearing','congress':106,'publicationType':'shrg','publicationNumber':'98240','publicationSuffix':'-pt1-err','part':'1','extension':'pdf'}),
     ('CHRG-107shrg87708-volII.pdf',
      {'kind':'published-hearing','congress':107,'publicationType':'shrg','publicationNumber':'87708','publicationSuffix':'-volII','volume':'II','extension':'pdf'}),
     ('CHRG-114shrg52542-add1.pdf',

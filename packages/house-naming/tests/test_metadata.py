@@ -20,7 +20,7 @@ def engine():
     ('CHRG-107shrg87708-volII.pdf', dict(kind='published-hearing', congress=107,
         publicationType='shrg', publicationNumber='87708', publicationSuffix='-volII', volume='II', extension='pdf')),
     ('CHRG-106shrg98240-pt1-err.pdf', dict(kind='published-hearing', congress=106,
-        publicationType='shrg', publicationNumber='98240', publicationSuffix='-pt1-err', part='1', errata='', extension='pdf')),
+        publicationType='shrg', publicationNumber='98240', publicationSuffix='-pt1-err', part='1', extension='pdf')),
     ('BILLS-113HR-FC-AP-FY2014-AP00-Agriculture.pdf', dict(kind='appropriation-described', congress=113,
         measureType='HR', stage='FC', description='AP-FY2014-AP00-Agriculture', fiscalYear='2014',
         committeeCode='AP00', subject='Agriculture', extension='pdf')),
@@ -132,7 +132,8 @@ def test_conflicting_derived_values_are_rejected(engine):
 def test_constructed_suffix_controls(engine):
     # Constructed controls, not corpus observations.
     record = engine.parse('CHRG-112hhrg123-volII-pt3-err2.pdf')['matches'][0]['record']
-    assert (record['volume'], record['part'], record['errata']) == ('II', '3', '2')
+    assert (record['volume'], record['part']) == ('II', '3')
+    assert 'errata' not in record and record['publicationSuffix'].endswith('-err2')
     repeated = engine.parse('CHRG-112hhrg123-pt1-pt2.pdf')['matches'][0]['record']
     assert repeated['publicationSuffix'] == '-pt1-pt2' and 'part' not in repeated
     unknown = engine.parse('CHRG-112hhrg123-appendix.pdf')['matches'][0]['record']

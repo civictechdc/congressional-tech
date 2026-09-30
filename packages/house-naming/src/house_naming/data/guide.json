@@ -20028,11 +20028,11 @@
   },
   "policies": [
     "All patterns in this catalog are active. Implementation interpretations are documented on each pattern; no runtime profile selection or per-record acknowledgment is required.",
-    "Canonical output spelling is specified per template and field enum. Lookups are case-folded; filename matching is case-sensitive. No automatic spelling correction, case conversion, identifier padding, or name transliteration.",
+    "Canonical output spelling is specified per template and field enum. Lookups are case-folded; parsing accepts ASCII case variants of fixed tokens and code fields and renders their canonical spelling. Free text retains its spelling. No automatic spelling correction, identifier padding, or name transliteration.",
     "The terminal -U<positive integer> suffix is reserved for revision. Free tokens ending -U<digits> are rejected, including U0. Revision and meeting counters cannot have leading zeros; sequence and amendment identifiers preserve leading zeros.",
-    "This implementation permits pdf and xml extensions. This is an implementation constraint, not a claim that the guide prohibits all other formats.",
+    "Permitted extensions are defined per naming kind by its field enum; publication kinds also accept htm and html. These are implementation constraints, not claims that the guide prohibits other formats.",
     "End users supply only JSON; a filename ending .xml does not entail reading or producing XML content.",
-    "Resource bounds are implementation decisions: 255 UTF-8 bytes per filename, 160 characters per free token, 32 per sequence identifier, signed-32-bit maximum positive counters; prepared tokens exclude whitespace, controls, slashes and Windows-forbidden punctuation.",
+    "Resource bounds are implementation decisions: 255 UTF-8 bytes per validated filename, 160 characters per free token, 32 per sequence identifier, signed-32-bit maximum positive counters; prepared tokens exclude whitespace, controls, slashes and Windows-forbidden punctuation. Literal extraction instead accepts source basenames up to 16384 UTF-8 bytes; remainder refinement raises a structured limit error above 128 steps or 262144 retained field characters.",
     "Date fields are lexical YYYYMMDD in JSON Schema; the runtime also checks the Gregorian calendar and Monday week starts.",
     "Committee folder codes are never silently converted to filename tokens. The retained committee directory is historical lookup data, not a filename acceptance allowlist. No member directory is bundled; Bioguide identifiers receive syntax validation only, not identity or membership checks.",
     "Multiple matching patterns are returned together. A match indicates only this implementation’s grammar, not normative document classification, person identity, file existence, uniqueness, publication authority, or legal compliance.",
@@ -20659,14 +20659,14 @@
     },
     {
       "id": "unmatched-trailing-date",
-      "pattern": "(?P<name_token>(?![0-9]).+?)[ ._-]+(?P<date_token>(?:19|20)[0-9]{2}[ ._-][0-9]{1,2}[ ._-][0-9]{1,2}|[0-9]{1,2}[ ._-][0-9]{1,2}[ ._-](?:[0-9]{4}|[0-9]{2})|[0-9]{5,8})(?P<ignored_suffix>pdf|-(?:testimony|tedtimony))?",
+      "pattern": "(?P<name_token>(?![0-9])(?:[ ._-](?=[ ._-])|.+?(?<![ ._-])))[ ._-]+(?P<date_token>(?:19|20)[0-9]{2}[ ._-][0-9]{1,2}[ ._-][0-9]{1,2}|[0-9]{1,2}[ ._-][0-9]{1,2}[ ._-](?:[0-9]{4}|[0-9]{2})|[0-9]{5,8})(?P<ignored_suffix>pdf|-(?:testimony|tedtimony))?",
       "scope": "unmatched-date",
       "priority": 0,
       "description": "A trailing calendar-plausible date is retained separately from the assumed name; neither date order nor century is invented."
     },
     {
       "id": "assumed-name-with-identifier",
-      "pattern": "(?P<name_token>(?![0-9]).+?)[ ._-]+(?P<generic_identifier>[0-9]+)(?P<ignored_suffix>pdf|-(?:testimony|tedtimony))?",
+      "pattern": "(?P<name_token>(?![0-9])(?:[ ._-](?=[ ._-])|.+?(?<![ ._-])))[ ._-]+(?P<generic_identifier>[0-9]+)(?P<ignored_suffix>pdf|-(?:testimony|tedtimony))?",
       "scope": "unmatched-stem",
       "description": "Assumed name followed by a separated numeric identifier, preserving both.",
       "priority": 0
@@ -20687,7 +20687,7 @@
     },
     {
       "id": "subject-labeled",
-      "pattern": "(?P<subject_token>.+?)[ _-]+(?P<label>Witness[ _-]+List|Opening[ _-]+Statement|Written[ _-]+Testimony|Prepared[ _-]+Statement|(?:(?:Written[ _-]+)?(?:Responses?|Answers?|Resp)[ _-]+(?:to|for)[ _-]+(?:(?:Written[ _-]+)?Questions?[ _-]+for[ _-]+(?:the[ _-]+)?Record|QFR(?:['’]?s)?)|QFR(?:['’]?s)?[ _-]*(?:Responses?|Answers?)|(?:Written[ _-]+)?Questions?[ _-]+for[ _-]+(?:the[ _-]+)?Record|QFR(?:['’]?s)?)|Official[ _-]+Hearing[ _-]+Transcript|Letter[ _-]+of[ _-]+Support|Testimony|Biography|Transcript|Statement)",
+      "pattern": "(?P<subject_token>(?:[ _-](?=[ _-])|.+?(?<![ _-])))[ _-]+(?P<label>Witness[ _-]+List|Opening[ _-]+Statement|Written[ _-]+Testimony|Prepared[ _-]+Statement|(?:(?:Written[ _-]+)?(?:Responses?|Answers?|Resp)[ _-]+(?:to|for)[ _-]+(?:(?:Written[ _-]+)?Questions?[ _-]+for[ _-]+(?:the[ _-]+)?Record|QFR(?:['’]?s)?)|QFR(?:['’]?s)?[ _-]*(?:Responses?|Answers?)|(?:Written[ _-]+)?Questions?[ _-]+for[ _-]+(?:the[ _-]+)?Record|QFR(?:['’]?s)?)|Official[ _-]+Hearing[ _-]+Transcript|Letter[ _-]+of[ _-]+Support|Testimony|Biography|Transcript|Statement)",
       "description": "Literal subject followed by explicit document wording; document contents are not verified.",
       "scope": "stem",
       "priority": 2

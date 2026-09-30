@@ -19,7 +19,8 @@
     "footnotes",
     "sections",
     "source_nodes",
-    "policies"
+    "policies",
+    "extraction_rules"
   ],
   "properties": {
     "id": {

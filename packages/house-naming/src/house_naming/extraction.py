@@ -17,6 +17,59 @@ from .metadata import NUMBER_BOUNDARY_NOTE, starts_with_ordinal_suffix
 HOUSE_NAMING_URL = "https://www.govinfo.gov/content/pkg/GOVPUB-Y1_2-PURL-gpo156119/pdf/GOVPUB-Y1_2-PURL-gpo156119.pdf"
 
 MAX_SOURCE_BYTES = 16_384
+MAX_REMAINDER_REFINEMENTS = 128
+MAX_REMAINDER_TEXT = 262_144
+STEM_PRIORITIES = (0, 1, 2)
+PAYLOAD_PRIORITIES = (0, 1, 2, 3)
+DATE_RULES = frozenset({'date-separated', 'date-compact', 'date-compact-unpadded',
+                        'short-date-compact', 'short-date-unpadded', 'timestamp-shaped', 'addendum-number-date'})
+# IDs used for procedural dispatch are implementation identifiers, not labels.
+SUPPLEMENTAL_RULES = frozenset({
+    'named-month-year', 'written-fiscal-year', 'source-amendment-reference',
+    'senr-context', 'congress-wording', 'executive-session-wording',
+    'managers-amendment-wording', 'notice-agenda-wording', 'summary-component-wording',
+    'amendment-form-wording', 'managers-package-wording', 'edition-wording',
+    'committee-mark-wording', 'ordered-reported-wording', 'legislative-text-wording',
+    'action-by-wording', 'committee-resolution-wording', 'meeting-results-prefix',
+    'meeting-results-suffix', 'executive-business-wording', 'bill-companion-abbreviation',
+    'committee-print-wording', 'act-year-reference', 'bracketed-terminal-number',
+    'budget-views-wording', 'oversight-plan-wording', 'joined-fiscal-year',
+})
+# The extractor dereferences these even when a filename has no matching layout.
+REQUIRED_RULES = {
+    'date-separated', 'measure-reference', 'support-reference',
+    'document-qualifier', 'document-label-number', 'amendment-local-version',
+}
+# Only captures that procedural handlers require belong here; regex grammar
+# remains in guide.json. Other rules need no Python entry.
+RULE_INPUTS = {
+    **{rid: ('search', set()) for rid in DATE_RULES},
+    'date-separated': ('search', {'date_token'}),
+    'measure-reference': ('search', {'measure_token', 'measure_number'}),
+    'support-reference': ('document-wording-search', {'relation_wording'}),
+    'document-qualifier': ('document-wording-search', {'qualifier_wording'}),
+    'document-label-number': ('document-wording-search', {'local_number_token'}),
+    'amendment-local-version': ('amendment-text-search', {'revision_marker', 'revision_number'}),
+    'amendment-reference': ('search', {'amendment_token'}),
+    'exhibit-reference': ('search', {'item_token'}),
+    'document-suffix': ('search', {'document_identifier'}),
+    'malformed-numeric-date': ('search', {'date_token'}),
+    'gsa-project-reference': ('search', {'reference_identifier_token'}),
+    'printed-citation': ('search', {'citation_marker'}),
+    'named-month-year': ('document-wording-search', {'month_token', 'year_token'}),
+    'congress-wording': ('document-wording-search', {'referenced_congress'}),
+    'bill-companion-abbreviation': ('document-wording-search', {'document_abbreviation'}),
+    'source-amendment-reference': ('document-wording-search', {'amendment_token'}),
+    'meeting-results-prefix': ('document-wording-search', {'result_wording'}),
+    'meeting-results-suffix': ('document-wording-search', {'result_wording'}),
+    'budget-views-wording': ('document-wording-search', {'label'}),
+    'oversight-plan-wording': ('document-wording-search', {'label'}),
+    'revision-token': ('search', {'revision_marker', 'revision_number'}),
+    'revised-token': ('search', {'revision_marker', 'revision_number'}),
+    'assumed-name': ('unmatched-stem', {'ignored_suffix'}),
+    **{name: ('stem', {'package_family', 'publication_code', 'publication_number'})
+       for name in ('published-hearing', 'published-report', 'published-print')},
+}
 EXTENSION = re.compile(r'\.(?P<extension>pdf|xml|html?|docx?|xlsx?|pptx?|txt|rtf|zip|csv|tsv|xsd|jpe?g|png|mp[34]|m3u8|aspx|cfm)\Z', re.I | re.ASCII)
 TOKEN = re.compile(r'(?P<word>[^\W\d_]+)|(?P<number>[0-9]+)|(?P<separator>[\s\S])')
 QUERY = re.compile(r'[?&](?:[^?&=\s]+=[^&\s]*)(?:&[^?&=\s]+=[^&\s]*)*\Z')
@@ -104,10 +157,53 @@ def date_candidates(raw: str) -> tuple[list[str], bool, str]:
                                             else 'No valid supported calendar reading; raw token retained.')
 
 
+def bind_extraction_rules(guide: dict) -> dict[str, tuple[dict, re.Pattern]]:
+    """Validate and compile the catalog at the same boundary that dispatches it."""
+    bound = {}
+    for rule in guide['extraction_rules']:
+        rid, scope = rule['id'], rule['scope']
+        if rid in bound:
+            raise NamingError('invalid-catalog', f'Duplicate extraction rule: {rid}')
+        try:
+            regex = re.compile(rule['pattern'], re.I | re.ASCII)
+        except re.error as exc:
+            raise NamingError('invalid-catalog', f'Bad extraction pattern {rid}: {exc}') from exc
+        fields = set(regex.groupindex)
+        if not fields:
+            raise NamingError('invalid-catalog', f'Extraction pattern {rid} has no named fields')
+        if rid in DATE_RULES and not fields & {'date_token', 'short_date_token'}:
+            raise NamingError('invalid-catalog', f'Extraction rule {rid} requires a date_token or short_date_token capture')
+        priorities = (STEM_PRIORITIES if scope == 'stem' else PAYLOAD_PRIORITIES
+                      if scope in {'committee-payload', 'legislative-payload'} else (0,))
+        if rule['priority'] not in priorities:
+            raise NamingError('invalid-catalog', f'Unsupported priority {rule["priority"]} for {scope} rule {rid}')
+        if (scope == 'document-wording-search' and rid not in SUPPLEMENTAL_RULES | REQUIRED_RULES
+                or scope == 'transport-search' and rid != 'extension-protocol-suffix'):
+            raise NamingError('invalid-catalog', f'No {scope} handler for extraction rule {rid}')
+        expected_scope, required = RULE_INPUTS.get(rid, (scope, set()))
+        required = set(required)
+        if scope == 'unmatched-date':
+            required.add('date_token')
+        if scope == 'published-suffix-search':
+            required.update({'publication_marker', 'publication_identifier'})
+        if 'revision_marker' in fields:
+            required.add('revision_number')
+        if fields & {'start_day_token', 'end_day_token'}:
+            required.update({'month_token', 'year_token', 'start_day_token', 'end_day_token'})
+        if scope != expected_scope or not required <= fields:
+            raise NamingError('invalid-catalog', f'Extraction rule {rid} requires scope {expected_scope} and captures {sorted(required)}')
+        bound[rid] = rule, regex
+    missing = REQUIRED_RULES - bound.keys()
+    if missing:
+        raise NamingError('invalid-catalog', f'Missing required extraction rules: {sorted(missing)}')
+    return bound
+
+
 class Extractor:
     def __init__(self, guide: dict):
         self.guide = guide
-        self.rules = [(r, re.compile(r['pattern'], re.I | re.ASCII)) for r in guide['extraction_rules']]
+        self.by_id = bind_extraction_rules(guide)
+        self.rules = list(self.by_id.values())
         self.stem_ids = {r['id'] for r, _ in self.rules if r['scope'] == 'stem'}
         self.legislative_ids = {r['id'] for r, _ in self.rules if r['scope'] == 'legislative-payload'}
         versions = '|'.join(sorted([*guide['codes']['version'], 'pih', 'pis'], key=len, reverse=True))
@@ -355,7 +451,7 @@ class Extractor:
                     for part, text in member.groupdict().items():
                         fields.append(self._field(part, text, start + offset + member.start(part),
                             start + offset + member.end(part), note=field['note']))
-            if name == 'revision_marker' and raw.lower() == 'u' and hit.end() == len(hit.string) and int(groups['revision_number']) > 0:
+            if name == 'revision_marker' and raw.lower() == 'u' and hit.end() == len(hit.string) and (groups['revision_number'] or '').strip('0'):
                 self._meaning(field, 'revision')
                 field.update(code='u', label='Document update', vocabulary_url=f'{HOUSE_NAMING_URL}#page=20', note='U1 denotes the first update since posting.')
             if name == 'part_marker' and rule['id'] == 'report-part':
@@ -483,7 +579,7 @@ class Extractor:
                             measure_spans: list[tuple[int, int]]) -> list[dict]:
         """Refine descriptive sides using existing source IDs, dates and suffixes."""
         stem = filename[start:stem_end]
-        reference_rule, reference_regex = next((r, rx) for r, rx in self.rules if r['id'] == 'support-reference')
+        reference_rule, reference_regex = self.by_id['support-reference']
         hits = list(reference_regex.finditer(stem))
         if not hits:
             return []
@@ -563,7 +659,7 @@ class Extractor:
             stem_end = hit.start()
         stem = filename[start:stem_end]
         payloads = []
-        for priority in (0, 1, 2):
+        for priority in STEM_PRIORITIES:
             found = False
             for rule, regex in self.rules:
                 if rule['scope'] == 'stem' and rule['priority'] == priority and (hit := regex.fullmatch(stem)):
@@ -583,7 +679,7 @@ class Extractor:
                                     if rule['scope'] == 'stem' and rule['priority'] == 2
                                     and rule['id'] != 'opaque-prefixed-source' and (hit := regex.fullmatch(payload)))
                 continue
-            for priority in (0, 1, 2, 3):
+            for priority in PAYLOAD_PRIORITIES:
                 found = [self._match(rule, hit, offset) for rule, regex in self.rules
                          if rule['scope'] == scope and rule['priority'] == priority and (hit := regex.fullmatch(payload))]
                 if found:
@@ -728,8 +824,8 @@ class Extractor:
         searches = [(r, rx) for r, rx in self.rules if r['scope'] == 'search']
         reference_numbers = {'measure-reference': 'measure_number', 'amendment-reference': 'amendment_token',
                              'exhibit-reference': 'item_token', 'document-suffix': 'document_identifier'}
-        separated_date = next(rx for r, rx in searches if r['id'] == 'date-separated')
-        measure_regex = next(rx for r, rx in searches if r['id'] == 'measure-reference')
+        separated_date = self.by_id['date-separated'][1]
+        measure_regex = self.by_id['measure-reference'][1]
         measure_spans = [(start + m.start(), start + m.end()) for m in measure_regex.finditer(stem)]
         # Complete identifier/date forms reserve their spans before other scans.
         order = {'timestamp-shaped': 0, 'uuid': 1, 'hex-identifier': 2, 'bioguide-token': 3,
@@ -744,7 +840,7 @@ class Extractor:
                  'degree-wording': 5, 'degree-local-number': 5, 'degree-target': 5,
                  'measure-placeholder': 5, 'questionnaire-wording': 5, 'biographical-wording': 5,
                  'remarks-wording': 5}
-        date_rules = {'date-separated', 'date-compact', 'date-compact-unpadded', 'short-date-compact', 'short-date-unpadded', 'timestamp-shaped', 'addendum-number-date'}
+        date_rules = DATE_RULES
         revision_dates = [rx for r, rx in searches if r['id'] in date_rules and r['id'] != 'addendum-number-date']
 
         def candidates(rule, regex):
@@ -863,7 +959,7 @@ class Extractor:
                            for m in observations for f in m['fields']
                            if f['name'] == 'label' and any(rx.fullmatch(f['raw']) for rx in label_patterns)]
         if document_labels:
-            qualifier_rule, qualifier_regex = next((r, rx) for r, rx in self.rules if r['id'] == 'document-qualifier')
+            qualifier_rule, qualifier_regex = self.by_id['document-qualifier']
             qualifier_hits = [self._match(qualifier_rule, h, start) for h in qualifier_regex.finditer(stem)
                               if not self._overlaps(start + h.start(), start + h.end(), protected)]
             terminal_spans = [(f['start'], f['end']) for m in observations for f in m['fields']
@@ -891,7 +987,7 @@ class Extractor:
                     if match['rule'] == 'document-qualifier' and (adjacent or terminal):
                         observations.append(match)
                         protected.append((match['start'], match['end']))
-            number_rule, number_regex = next((r, rx) for r, rx in self.rules if r['id'] == 'document-label-number')
+            number_rule, number_regex = self.by_id['document-label-number']
             label_ends = {m['end'] for m in document_labels} | {
                 m['end'] for m in observations if m['rule'] == 'document-qualifier'}
             for hit in number_regex.finditer(stem):
@@ -915,7 +1011,7 @@ class Extractor:
                     # This slot is already recognized as joined references. Its
                     # literal SA prefix is not part of the first measure type.
                     pos = 2 if field['raw'].upper().startswith('SA') else 0
-                    reference_rule = next(r for r, _ in self.rules if r['id'] == 'measure-reference')
+                    reference_rule = self.by_id['measure-reference'][0]
                     while hit := self.joined_measures.match(field['raw'], pos):
                         observations.append(self._match(reference_rule, hit, field['start']))
                         pos = hit.end()
@@ -1125,6 +1221,7 @@ class Extractor:
                    for f in m['fields'] if f['name'] in {'name_token','subject_token'} and f['raw']]
         seen = set()
         pos = 0
+        retained_text = sum(len(f['raw']) for m in observations for f in m['fields'])
         while pos < len(pending):
             field = pending[pos]
             pos += 1
@@ -1136,6 +1233,11 @@ class Extractor:
             if not refined or (refined['rule'] != 'local-number-remainder'
                                and not any(f['name'] in {'date_token','generic_identifier'} for f in refined['fields'])):
                 continue
+            retained_text += sum(len(f['raw']) for f in refined['fields'])
+            if pos > MAX_REMAINDER_REFINEMENTS or retained_text > MAX_REMAINDER_TEXT:
+                raise NamingError('extraction-limit', 'Remainder refinement exceeds its work or retained-text limit.',
+                                  [{'max_refinements': MAX_REMAINDER_REFINEMENTS,
+                                    'max_retained_characters': MAX_REMAINDER_TEXT}])
             subject = field['name'] == 'subject_token'
             refined.update(rule='remainder-' + refined['rule'],
                            scope='subject-refinement' if subject else refined['scope'],
@@ -1151,18 +1253,7 @@ class Extractor:
         # Supplement descriptive text without rewriting earlier fallback readings.
         # Complete dates and concrete IDs already own their spans.
         supplemental_hits = [(r, h) for r, rx in self.rules
-                             if r['id'] in {'named-month-year', 'written-fiscal-year', 'source-amendment-reference',
-                                            'senr-context', 'congress-wording', 'executive-session-wording',
-                                            'managers-amendment-wording', 'notice-agenda-wording', 'summary-component-wording',
-                                            'amendment-form-wording',
-                                            'managers-package-wording', 'edition-wording', 'committee-mark-wording',
-                                            'ordered-reported-wording', 'legislative-text-wording', 'action-by-wording',
-                                            'committee-resolution-wording',
-                                            'meeting-results-prefix', 'meeting-results-suffix',
-                                            'executive-business-wording',
-                                            'bill-companion-abbreviation',
-                                            'committee-print-wording', 'act-year-reference', 'bracketed-terminal-number',
-                                            'budget-views-wording', 'oversight-plan-wording', 'joined-fiscal-year'}
+                             if r['id'] in SUPPLEMENTAL_RULES
                              for h in rx.finditer(stem)]
         if supplemental_hits:
             protected_fields = [f for m in observations for f in m['fields']
@@ -1234,7 +1325,7 @@ class Extractor:
                 if not self._overlaps(start + hit.start(), start + hit.end(), reserved):
                     observations.append(self._match(rule, hit, start))
                     if rule['id'] == 'source-amendment-reference':
-                        part_rule, part_regex = next((r, rx) for r, rx in self.rules if r['id'] == 'amendment-local-version')
+                        part_rule, part_regex = self.by_id['amendment-local-version']
                         if part := part_regex.fullmatch(hit['amendment_token']):
                             observations.append(self._match(part_rule, part, start + hit.start('amendment_token')))
         if member_surnames:

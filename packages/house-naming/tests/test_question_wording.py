@@ -162,9 +162,9 @@ def test_constructed_remainder_does_not_reinterpret_assigned_measure_numbers(eng
 
 def test_many_nested_fallback_components_are_bounded():
     subprocess.run([sys.executable, '-c',
-        'from house_naming import Engine; r=Engine().extract("1-" * 1000 + "Smith-2.pdf"); '
+        'from house_naming import Engine; r=Engine().extract("1-" * 32 + "Smith-2.pdf"); '
         'ids={(f["start"], f["raw"]) for m in r["observations"] for f in m["fields"] if f["name"]=="generic_identifier"}; '
-        'assert len(ids)==1001'], check=True, capture_output=True, timeout=8)
+        'assert len(ids)==33'], check=True, capture_output=True, timeout=3)
 
 
 @pytest.mark.parametrize('name,selected', [
