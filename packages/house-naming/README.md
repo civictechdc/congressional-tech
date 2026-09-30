@@ -7,7 +7,9 @@ renders filenames for supported conventions.
 It combines the House's **Document Naming Conventions, version 1.2.1
 (April 24, 2012)** with layouts observed in document inventories, including
 Government Publishing Office (GPO) hearing, report and committee-print identifiers.
-One bundled catalog owns the rules, definitions and source examples. Runtime
+One bundled JSON catalog owns the naming rules, definitions, source examples
+and extraction settings. Python applies the matching, calendar and boundary
+algorithms. Ordinary filename rules need no Python registration. Runtime
 operations work offline and do not read or download documents.
 
 A filename can supply useful evidence without proving a document's contents,
@@ -77,6 +79,51 @@ The core engine does not require Pydantic, PyArrow or `congress_api`.
 Applications should import filename parsing, corpus tooling, naming lookups and
 bill-code definitions from `house_naming`. The former `congress_api.filenames`,
 `filename_corpus`, `naming` and `bill_codes` modules have moved here.
+
+## How extraction works
+
+The input is a literal basename, optionally accompanied by a source URL or a
+Congress-specific surname list. The reader returns source observations and any
+validated naming records. It never opens the named file.
+
+The catalog separates the information needed to read a source filename from
+the information needed to validate and render a naming record:
+
+| Catalog section | What it defines |
+| --- | --- |
+| `extraction_rules` | Literal regexes, named captures, field readings, search order, protected fields and nested-rule selection. |
+| `extraction_vocabularies` | Shared observed and GovInfo token meanings, with provenance or references to House definitions. |
+| `extraction_patterns` | Shared regex components, such as joined measure lists and separated version suffixes. |
+| `extraction_roles` | Named rule inputs required by algorithms; a rule's ID does not select its behavior. |
+| `patterns`, `field_types`, `codes` | Renderable conventions, record constraints and source-backed code definitions. |
+
+[`extraction_catalog.py`](src/house_naming/extraction_catalog.py) compiles literal
+patterns and checks required captures, vocabulary references, processors and
+refinement routes. Missing inputs, unknown processors and cyclic routes fail
+before extraction.
+
+[`extraction.py`](src/house_naming/extraction.py) applies those settings in a
+fixed sequence:
+
+1. Separate extensions and query-shaped suffixes while retaining their text.
+2. Match eligible filename and payload layouts, interpret captured fields,
+   and protect assigned identifiers from unrelated searches.
+3. Inspect permitted fields for references, dates and document wording. Nested
+   matches retain offsets into the original filename. Already assigned
+   identifiers constrain date and fallback readings.
+4. Return selected observations, suppressed alternatives and the pieces that
+   reconstruct the input exactly.
+
+Python keeps the reusable calculations: real-date validation, ambiguous date
+readings, boundary and overlap checks, surname matching, offsets and work limits.
+The catalog selects these operations through `processors` and other declared
+settings. It cannot supply executable expressions or arbitrary Python handlers.
+
+[`engine.py`](src/house_naming/engine.py) also runs strict convention parsing
+and combines its results with the literal observations. `parse()` and
+`extract()` share the catalog but answer different questions: whether a name
+forms a valid record, and what its source text actually says. Literal evidence
+can remain useful when strict validation fails.
 
 ## Read source filenames without losing evidence
 
@@ -439,8 +486,9 @@ interpretations—the latter is descriptive, not an enable/disable switch.
 
 `load_guide()` and `engine.guide` return independent mutable catalog copies.
 `engine.extraction_rules()` also returns copies. Editing a returned value does
-not modify the engine. Bill definitions live in `house_naming.bill_codes`;
-the guide URL and shared lookup interface live in `house_naming.naming`.
+not modify the engine. `house_naming.bill_codes` exports bill type and version
+dictionaries loaded from the catalog; it does not maintain a second vocabulary.
+The guide URL and shared lookup interface live in `house_naming.naming`.
 
 ## Command-line interface
 
@@ -488,10 +536,23 @@ node tools/check_ecmascript.mjs  # Optional; no npm dependencies.
 The build deterministically regenerates lookup indices, code-linked field enums
 and the two derived schemas. There is no source-document extraction step.
 
-Catalog checks validate references, indices, templates and the rule IDs,
-captures, scopes and priorities used by procedural handlers. Ordinary extraction
-rules need no Python registration; specially dispatched rules require a matching
-handler.
+To add an ordinary extraction rule, add its pattern and readings to
+`guide.json`, then add positive examples and negative controls under `tests/`.
+No Python registration is needed. See
+[Add a catalog rule](FILENAME_PATTERNS.md#add-a-catalog-rule) for a complete example.
+
+Use `field_readings` for labels and explanatory notes, and `field_vocabularies`
+for shared token definitions. Explicit field readings override the shorthand
+rule-level `label`; subsequent vocabulary lookups and computed warnings can
+refine the result. Use `refine` to select child rules inside a captured field,
+and `searchable_fields` to declare text available for additional scanning.
+Identifiers remain protected unless a rule explicitly permits refinement.
+
+A new algorithm requires Python changes and matching input checks in
+`extraction_catalog.py`. The catalog schema constrains its settings. Tests in
+[`test_catalog_extraction.py`](tests/test_catalog_extraction.py) demonstrate
+catalog-only extensions, rejection of invalid configuration and unchanged
+behavior when every literal rule is renamed with its references.
 
 Tests cover every kind, source fidelity, malformed input, ambiguity, date and
 identifier boundaries, references, revisions, deterministic builds, CLI behavior
@@ -502,6 +563,12 @@ The repository's `check_house_naming_upgrade.py` and
 round-trips or coverage counts does not establish document-content accuracy.
 The optional Node check verifies regex portability, not integration with a
 JavaScript JSON Schema validator.
+
+For a behavior-preserving refactor, compare complete extraction results against
+a frozen reader and catalog using identical inventory and surname inputs.
+Check observations, suppressed candidates, labels, notes, offsets, ordering and
+strict parsing results. Matching coverage counts alone can conceal lost fields
+or changed meanings.
 
 For compatibility, consumers should use the returned record's `kind`.
 `conference-numbered`, detailed appropriations conventions and

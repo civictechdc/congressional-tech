@@ -20,7 +20,10 @@
     "sections",
     "source_nodes",
     "policies",
-    "extraction_rules"
+    "extraction_rules",
+    "extraction_vocabularies",
+    "extraction_patterns",
+    "extraction_roles"
   ],
   "properties": {
     "id": {
@@ -461,30 +464,10 @@
           },
           "field_readings": {
             "type": "object",
-            "minProperties": 1,
-            "description": "Qualified literal readings keyed by capture name; no official vocabulary code or content verification is assigned.",
             "additionalProperties": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "label",
-                "note"
-              ],
-              "properties": {
-                "label": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "note": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "vocabulary_url": {
-                  "type": "string",
-                  "minLength": 1
-                }
-              }
-            }
+              "$ref": "#/$defs/extraction_reading"
+            },
+            "description": "Static readings keyed by capture; computations may refine them while retaining raw text."
           },
           "source_hosts": {
             "type": "array",
@@ -505,8 +488,423 @@
               "pattern": "^https?://[^\\s]+$"
             },
             "description": "Exact caller-supplied source URLs qualifying reviewed local occurrences; never document identity."
+          },
+          "field_vocabularies": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "vocabulary"
+                ],
+                "properties": {
+                  "vocabulary": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "from": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "normalize": {
+                    "enum": [
+                      "words",
+                      "first-word",
+                      "letters"
+                    ]
+                  },
+                  "fallback": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          },
+          "searchable_fields": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "scan_order": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reserve": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reference_number": {
+            "type": "string",
+            "minLength": 1
+          },
+          "processors": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "numeric-date",
+                "congress-ordinal",
+                "malformed-date",
+                "fiscal-year",
+                "inferred-version",
+                "week-start",
+                "partial-date",
+                "possible-month-day",
+                "month-year",
+                "complete-date-token",
+                "publication-components",
+                "numeric-subject-parts",
+                "capitalized-label-boundary",
+                "following-degree",
+                "between-degrees",
+                "leading-date-label",
+                "revision-date",
+                "subject-remainder",
+                "suffix-only-fallback",
+                "atomic-identifier",
+                "ascii-left-boundary",
+                "avoid-ordinal-tail",
+                "companion-context",
+                "heading-abbreviation",
+                "amendment-label-boundary"
+              ]
+            },
+            "uniqueItems": true
+          },
+          "scan_stage": {
+            "enum": [
+              "context",
+              "supplemental"
+            ]
+          },
+          "whole_slot_only": {
+            "type": "boolean"
+          },
+          "unique_refinement": {
+            "type": "boolean"
+          },
+          "refine": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "field",
+                "stage",
+                "mode"
+              ],
+              "oneOf": [
+                {
+                  "required": [
+                    "rules"
+                  ]
+                },
+                {
+                  "required": [
+                    "scope"
+                  ]
+                }
+              ],
+              "properties": {
+                "field": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "stage": {
+                  "enum": [
+                    "before-search",
+                    "fields",
+                    "match",
+                    "scopes",
+                    "targets",
+                    "supplemental",
+                    "local-reference"
+                  ]
+                },
+                "mode": {
+                  "enum": [
+                    "search",
+                    "match",
+                    "fullmatch"
+                  ]
+                },
+                "rules": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "uniqueItems": true,
+                  "minItems": 1
+                },
+                "scope": {
+                  "enum": [
+                    "amendment-text-search",
+                    "appropriation-text-search",
+                    "collection-prefix",
+                    "committee-payload",
+                    "committee-print-search",
+                    "document-wording-search",
+                    "legislative-payload",
+                    "legislative-payload-search",
+                    "legislative-subject-search",
+                    "legislative-text-search",
+                    "meeting-suffix-search",
+                    "published-suffix-search",
+                    "report-text-search",
+                    "search",
+                    "stem",
+                    "transport-search",
+                    "unmatched-date",
+                    "unmatched-stem",
+                    "witness-suffix-search",
+                    "source-stem"
+                  ]
+                },
+                "unique": {
+                  "type": "boolean"
+                },
+                "search_rules": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "uniqueItems": true
+                },
+                "trim_for": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "when": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "field",
+                    "values"
+                  ],
+                  "properties": {
+                    "field": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "values": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "uniqueItems": true,
+                      "minItems": 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "version_boundary_field": {
+            "type": "string",
+            "minLength": 1
+          },
+          "ordinal_tail": {
+            "type": "string",
+            "minLength": 1
+          },
+          "payload_scope": {
+            "type": "string",
+            "minLength": 1
+          },
+          "roster_congress": {
+            "type": "string",
+            "minLength": 1
+          },
+          "candidate_group": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reserve_field": {
+            "type": "string",
+            "minLength": 1
+          },
+          "capture_rules": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "uniqueItems": true,
+              "minItems": 1
+            }
+          },
+          "payload_probe": {
+            "type": "boolean"
+          },
+          "leading_date": {
+            "type": "boolean"
+          },
+          "revision_candidate": {
+            "type": "boolean"
+          },
+          "unique_search": {
+            "type": "boolean"
+          },
+          "unique_label": {
+            "type": "boolean"
+          },
+          "respect_measure": {
+            "type": "boolean"
+          },
+          "qualifier_anchor": {
+            "type": "boolean"
+          },
+          "qualifier_before_only": {
+            "type": "boolean"
+          },
+          "deduplicate_fields": {
+            "enum": [
+              "syntax",
+              "reading"
+            ]
+          },
+          "allow_overlap_fields": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "publication_components": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "versions": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "uniqueItems": true,
+                "minItems": 1
+              },
+              "numbered_markers": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "uniqueItems": true,
+                "minItems": 1
+              },
+              "reading": {
+                "$ref": "#/$defs/extraction_reading"
+              },
+              "field_vocabularies": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "vocabulary"
+                    ],
+                    "properties": {
+                      "vocabulary": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "from": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "normalize": {
+                        "enum": [
+                          "words",
+                          "first-word",
+                          "letters"
+                        ]
+                      },
+                      "fallback": {
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
+      }
+    },
+    "extraction_vocabularies": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "$ref": "#/$defs/extraction_reading"
+        }
+      }
+    },
+    "extraction_patterns": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "pattern"
+        ],
+        "properties": {
+          "pattern": {
+            "type": "string",
+            "minLength": 1
+          },
+          "vocabularies": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "context"
+              ],
+              "properties": {
+                "context": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "extra": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "uniqueItems": true
+                }
+              }
+            }
+          },
+          "ignore_case": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "extraction_roles": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
       }
     }
   },
@@ -1018,6 +1416,52 @@
         "maxItems": {
           "const": 64
         }
+      }
+    },
+    "extraction_reading": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1
+        },
+        "vocabulary_url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "context": {
+          "type": "string",
+          "minLength": 1
+        },
+        "house_context": {
+          "type": "string",
+          "minLength": 1
+        },
+        "house_token": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label_case": {
+          "const": "title"
+        }
+      },
+      "dependentRequired": {
+        "house_context": [
+          "house_token"
+        ],
+        "house_token": [
+          "house_context"
+        ]
       }
     }
   }

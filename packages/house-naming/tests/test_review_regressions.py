@@ -8,7 +8,9 @@ import sys
 import pytest
 
 from house_naming import Engine, NamingError, check_catalog
-from house_naming.extraction import Extractor, REQUIRED_RULES, RULE_INPUTS
+from house_naming.extraction import Extractor
+from house_naming.extraction_catalog import ROLE_INPUTS, PROCESSOR_INPUTS
+from house_naming.catalog import load_guide
 
 
 @pytest.fixture(scope='module')
@@ -61,17 +63,19 @@ def test_long_revision_is_literal_text(engine, digit):
     assert cli.returncode == 0, cli.stderr
 
 
-@pytest.mark.parametrize('rid', sorted(REQUIRED_RULES))
-@pytest.mark.parametrize('damage', ['remove', 'rename', 'capture', 'scope'])
-def test_required_rules_fail_catalog_check_before_extraction(engine, rid, damage):
+@pytest.mark.parametrize('role,damage', [(role, damage) for role in sorted(ROLE_INPUTS)
+    for damage in ('remove', 'rename', 'capture', 'scope')
+    if damage != 'capture' or ROLE_INPUTS[role][1]])
+def test_required_roles_fail_catalog_check_before_extraction(engine, role, damage):
     guide = engine.guide
+    rid = guide['extraction_roles'][role]
     rule = next(r for r in guide['extraction_rules'] if r['id'] == rid)
     if damage == 'remove':
         guide['extraction_rules'].remove(rule)
     elif damage == 'rename':
         rule['id'] += '-renamed'
     elif damage == 'capture':
-        field = sorted(RULE_INPUTS[rid][1])[0]
+        field = sorted(ROLE_INPUTS[role][1])[0]
         rule['pattern'] = rule['pattern'].replace(f'(?P<{field}>', f'(?P<renamed_{field}>')
     else:
         rule['scope'] = 'stem'
@@ -91,8 +95,8 @@ def test_catalog_requires_rule_list(engine):
 
 
 @pytest.mark.parametrize('rid,field', [
-    (rid, field) for rid, (_, fields) in sorted(RULE_INPUTS.items())
-    if rid not in REQUIRED_RULES for field in sorted(fields)
+    (rule['id'], field) for rule in load_guide()['extraction_rules']
+    for processor in rule.get('processors', ()) for field in sorted(PROCESSOR_INPUTS[processor])
 ])
 def test_optional_handlers_require_the_captures_they_read(engine, rid, field):
     guide = engine.guide
@@ -116,13 +120,14 @@ def test_every_accepted_stem_priority_executes(engine, priority):
         assert any(r['rule'] == 'review-stem' for r in Extractor(guide).extract('ZZQX.pdf')['observations'])
 
 
-@pytest.mark.parametrize('scope', ['document-wording-search', 'transport-search'])
-def test_special_scope_cannot_accept_an_undispatched_rule(engine, scope):
+@pytest.mark.parametrize('scope,name', [
+    ('document-wording-search', 'ZZQX.pdf'), ('transport-search', 'file.pdfZZQX')])
+def test_new_scope_rules_execute_without_python_registration(engine, scope, name):
     guide = engine.guide
-    guide['extraction_rules'].append(dict(id='unhandled-rule', scope=scope, priority=0,
-        pattern=r'(?P<review_field>ZZQX)', description='No procedural handler.'))
-    with pytest.raises(NamingError, match='handler'):
-        check_catalog(guide)
+    guide['extraction_rules'].append(dict(id='catalog-only-rule', scope=scope, priority=0,
+        pattern=r'(?P<review_field>ZZQX)', description='Catalog-only extension.'))
+    check_catalog(guide)
+    assert any(m['rule'] == 'catalog-only-rule' for m in Extractor(guide).extract(name)['observations'])
 
 
 def test_suffix_regexes_keep_original_field_boundaries(engine):
