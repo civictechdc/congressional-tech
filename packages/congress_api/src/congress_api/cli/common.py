@@ -18,3 +18,10 @@ def nonnegative(value):
     if number < 0:
         raise ValueError("must be nonnegative")
     return number
+
+
+def positive(value):
+    number = int(value)
+    if number < 1:
+        raise ValueError("must be positive")
+    return number

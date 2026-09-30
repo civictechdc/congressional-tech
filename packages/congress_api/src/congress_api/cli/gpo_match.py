@@ -44,7 +44,9 @@ def load_videos(tinydb_dir, channels):
         path = Path(tinydb_dir) / f"youtube_{i:02d}.json"
         if not path.exists():
             continue
-        for table, rows in json.load(open(path)).items():
+        with path.open() as stream:
+            tables = json.load(stream)
+        for table, rows in tables.items():
             if not table.startswith("youtube_videos_"):
                 continue
             for v in rows.values():
@@ -81,12 +83,14 @@ def load_meetings(path):
 
 
 def main(output_path, tinydb_dir, channels_csv_path, gpo_path, meetings_path, overrides_path, coverage_path, no_overrides=False):
-    channels = list(csv.DictReader(open(channels_csv_path)))
+    with open(channels_csv_path) as stream:
+        channels = list(csv.DictReader(stream))
     tracked_codes = {c["systemCode"] for c in channels}
     videos = load_videos(tinydb_dir, channels)
     first_video = {code: min(v["published"] for v in vs) for code, vs in videos.items() if vs}
     meetings = load_meetings(meetings_path)
-    hearings = [h for h in csv.DictReader(open(gpo_path))]
+    with open(gpo_path) as stream:
+        hearings = list(csv.DictReader(stream))
     for h in hearings:
         h["committee_code"] = ALIAS.get(h["committee_code"], h["committee_code"])
         h["_dates"] = matching_days(h)
@@ -98,7 +102,8 @@ def main(output_path, tinydb_dir, channels_csv_path, gpo_path, meetings_path, ov
 
     overrides = {}
     if not no_overrides and Path(overrides_path).exists():
-        overrides = {r["package_id"]: r for r in csv.DictReader(open(overrides_path))}
+        with open(overrides_path) as stream:
+            overrides = {r["package_id"]: r for r in csv.DictReader(stream)}
 
     ## gather evidence
     pairs, clips = [], collections.defaultdict(list)

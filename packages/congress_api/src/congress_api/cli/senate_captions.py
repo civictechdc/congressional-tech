@@ -21,6 +21,7 @@ import logging
 import sys
 from pathlib import Path
 
+from congress_api.cli.common import positive
 from congress_api.transcripts.senate import main
 
 
@@ -29,7 +30,7 @@ def parse_args_and_run():
     parser.add_argument("--out-dir", required=True)
     parser.add_argument("--urls", nargs="*", default=[], help="Player URLs (senate.gov/isvp/?comm=...&filename=...).")
     parser.add_argument("--urls-file", type=Path, help="Text file with one player URL per line.")
-    parser.add_argument("--nthreads", type=int, default=4)
+    parser.add_argument("--nthreads", type=positive, default=4)
     args = parser.parse_args()
     urls = list(args.urls) + ([l.strip() for l in args.urls_file.read_text().splitlines() if l.strip()] if args.urls_file else [])
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(asctime)s : %(message)s")

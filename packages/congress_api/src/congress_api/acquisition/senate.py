@@ -221,6 +221,10 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
 
     See docs/congress-api-contracts.md#offline-behavior.
     """
+    if refresh_limit < 0:
+        raise ValueError("refresh_limit must be nonnegative")
+    if limit is not None and limit < 0:
+        raise ValueError("limit must be nonnegative")
     if since is not None and since < FIRST_RECORD and not site:
         raise ValueError("Historical collection before June 2019 requires an explicit --site scope")
     # Collection/admission must see canceled and historical native meetings too;

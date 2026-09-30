@@ -5,6 +5,7 @@ from pathlib import Path
 
 from congress_shared.globals import DEFAULT_GPO_HEARINGS_FILE
 
+from congress_api.cli.common import positive
 from congress_api.transcripts.gpo import main
 
 
@@ -16,7 +17,7 @@ def parse_args_and_run():
     parser.add_argument("--committee", nargs="*", help="Only these committee codes, e.g. hsvr00.")
     parser.add_argument("--chamber", nargs="*", choices=["house", "senate", "joint"])
     parser.add_argument("--package-ids", nargs="*")
-    parser.add_argument("--nthreads", type=int, default=4)
+    parser.add_argument("--nthreads", type=positive, default=4)
     args = parser.parse_known_args()[0]
     main(args.out_dir, args.gpo_path, args.congress, args.committee, args.chamber, args.package_ids, args.nthreads)
 

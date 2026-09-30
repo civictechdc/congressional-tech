@@ -85,6 +85,8 @@ def main(
     refresh_limit: int = 100,
     evidence_path: Path | None = None,
 ) -> None:
+    if nthreads < 1:
+        raise ValueError("nthreads must be positive")
     if refresh_limit < 0:
         raise ValueError("refresh_limit must be nonnegative")
     api_key = load_congress_api_key()

@@ -5,6 +5,7 @@ from pathlib import Path
 
 from congress_shared.globals import DEFAULT_GPO_HEARINGS_FILE
 
+from congress_api.cli.common import nonnegative, positive
 from congress_api.acquisition.gpo import main
 
 
@@ -36,14 +37,14 @@ def parse_args_and_run():
     )
     parser.add_argument(
         "--nthreads",
-        type=int,
+        type=positive,
         default=4,
         help="Concurrent metadata downloads.",
     )
 
     parser.add_argument("--evidence-path", type=Path,
                         help="Gzip JSONL upstream XML/HTML evidence on pipeline-data; kept out of the CSV.")
-    parser.add_argument("--refresh-limit", type=int, default=100,
+    parser.add_argument("--refresh-limit", type=nonnegative, default=100,
                         help="Maximum unchanged rows to refresh for a newer parser (default: 100).")
 
     ## ignore the unknown args (e.g. --congress-api-key, read by the key loader)

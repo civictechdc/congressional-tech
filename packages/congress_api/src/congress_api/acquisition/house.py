@@ -137,6 +137,10 @@ def main(meetings, gpo_path, state_dir, output_dir, seed_cache=None, offline=Fal
 
     See docs/congress-api-contracts.md#offline-behavior.
     """
+    if refresh_limit < 0:
+        raise ValueError("refresh_limit must be nonnegative")
+    if limit is not None and limit < 0:
+        raise ValueError("limit must be nonnegative")
     if threads < 1 or (threads > 1 and not zyte):
         raise ValueError("Direct House requests use one worker; parallel backfills require --zyte")
     ms, gpo = read_meetings(meetings), read_csv(gpo_path)
@@ -155,8 +159,10 @@ def main(meetings, gpo_path, state_dir, output_dir, seed_cache=None, offline=Fal
     pending = [m for m in selected if state.get(m["eventId"], {}).get("status") == "error"
                or state.get(m["eventId"], {}).get("evidence", {}).get("schema_version") != SCHEMA_VERSION
                or due(state.get(m["eventId"]), m["date"], m.get("updateDate", ""), as_of)]
-    changed = [m for m in pending if state.get(m["eventId"], {}).get("version") != m.get("updateDate", "")]
-    aged = [m for m in pending if m not in changed]
+    changed, aged = [], []
+    for m in pending:
+        queue = changed if state.get(m["eventId"], {}).get("version") != m.get("updateDate", "") else aged
+        queue.append(m)
     aged.sort(key=lambda m: (state.get(m["eventId"], {}).get("checked", ""), m["eventId"]))
     todo = (changed + aged[:refresh_limit])[:limit] if not offline else []
     def fetch_one(m):

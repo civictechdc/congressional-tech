@@ -23,7 +23,6 @@ New GovInfo HTML and Gemini responses are retained under source/ before parsing.
 import argparse
 import csv
 import logging
-import re
 import sys
 from pathlib import Path
 
@@ -33,6 +32,7 @@ from congress_api.transcripts import context as metadata
 from congress_api.transcripts.context import context_for_event
 from congress_api.transcripts.generate import from_gpo, transcribe
 from congress_api.transcripts.render import render_gpo
+from congress_api.parsers.senate_player import parse_player_url
 
 
 def parse_args_and_run():
@@ -54,14 +54,25 @@ def parse_args_and_run():
     else:
         if not (a.event_id or a.gpo_package):
             sys.exit("give --event-id or --gpo-package so the participants are known")
-        row = {r["package_id"]: r for r in csv.DictReader(open(a.gpo_path))}.get(a.gpo_package or "", {})
+        with open(a.gpo_path) as stream:
+            row = {r["package_id"]: r for r in csv.DictReader(stream)}.get(a.gpo_package or "", {})
         ctx = context_for_event(a.event_id or row.get("event_id", ""), package_id=a.gpo_package or "")
         video_id = a.video_id or (ctx.youtube_ids[0] if ctx.youtube_ids and not a.senate_url and not a.audio else "")
         senate_url = a.senate_url or ("" if video_id or a.audio else (ctx.senate_urls[0] if ctx.senate_urls else ""))
         if not (video_id or senate_url or a.audio):
             sys.exit("no recording known for this meeting; pass --video-id, --senate-url or --audio")
+        if video_id:
+            stem = video_id
+        elif senate_url:
+            player = parse_player_url(senate_url)
+            if player is None:
+                p.error("--senate-url requires comm and filename query parameters")
+            stem = player[1]
+            if Path(stem).name != stem or stem in {".", ".."}:
+                p.error("--senate-url filename must be a single file name")
+        else:
+            stem = Path(a.audio).stem
         t = transcribe(ctx, a.out_dir, video_id=video_id, senate_url=senate_url, local=a.audio or "", proxy=a.proxy)
-        stem = video_id or (re.search(r"filename=([^&]+)", senate_url).group(1) if senate_url else Path(a.audio).stem)
     (a.out_dir / f"{stem}.json").write_text(t.to_json(), encoding="utf-8")
     (a.out_dir / f"{stem}.gpo.txt").write_text(render_gpo(t), encoding="utf-8")
     named = sum(1 for p in t.participants.values() if p.role != "unknown" and p.name != "Unknown")
