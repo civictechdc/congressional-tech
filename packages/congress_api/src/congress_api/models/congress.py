@@ -8,6 +8,7 @@ on ``source_dict()``. Field types were checked against the retained full corpus.
 from pydantic import Field
 
 from .base import SourceModel
+from .content import RawContent
 
 
 class Pagination(SourceModel):
@@ -168,6 +169,9 @@ class CommitteeMeeting(SourceModel):
     relatedItems: RelatedItems | None = None
     source_url: str | None = Field(None, alias="_url")
     retrieved_at: str | None = Field(None, alias="_retrieved_at")
+    # XML recovery uses the same meeting field layout, with exact source bytes
+    # retained so interpreted numeric fields never masquerade as native JSON.
+    source_xml: RawContent | None = Field(None, alias="_source_xml")
 
 
 class MeetingsPage(SourceModel):

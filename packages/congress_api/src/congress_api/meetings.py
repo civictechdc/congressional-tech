@@ -23,7 +23,9 @@ from pathlib import Path
 
 import requests
 
-from congress_api.http import get_with_retry
+from congress_api.http import HttpRequestError, get_with_retry
+from congress_api.congress_source import meeting_from_xml, parse_congress_xml
+from congress_api.models.content import RawContent
 from congress_api.models.congress import CommitteeMeeting, MeetingSummary
 from congress_api.retention.rejected_pages import retain_rejected_page
 from congress_shared.auth import load_congress_api_key
@@ -95,7 +97,23 @@ def main(output_path: Path = DEFAULT_MEETINGS_FILE, nthreads: int = 5) -> None:
         try:
             if not url.startswith(f"{API}/committee-meeting/"):
                 raise ValueError("Meeting detail URL is not on the Congress.gov API")
-            response = get(session, url, api_key)
+            try:
+                response = get(session, url, api_key)
+            except (HttpRequestError, ValueError) as error:
+                # Some historical endpoints fail JSON serialization but serve
+                # XML. Refusals, rate limits and missing records are not that case.
+                if isinstance(error, HttpRequestError) and error.status != 500:
+                    raise
+                xml = get_with_retry(session, url, params={'api_key': api_key, 'format': 'xml'}, attempts=5)
+                response = {'_source_xml': RawContent.from_bytes(xml.content, 'application/xml').source_dict()}
+                response = {'committeeMeeting': meeting_from_xml(parse_congress_xml(xml.content)).source_dict()}
+                recovered = response['committeeMeeting']
+                expected = url.removeprefix(f'{API}/committee-meeting/').split('/')
+                chamber = recovered['chamber'].lower()
+                if chamber == 'joint':
+                    chamber = 'nochamber'
+                if expected != [str(recovered['congress']), chamber, recovered['eventId']]:
+                    raise ValueError('XML meeting identity does not match the requested endpoint')
             record = CommitteeMeeting.model_validate(response["committeeMeeting"]).source_dict()
             if any(record.get(field) in (None, "") for field in ("eventId", "congress", "chamber")):
                 raise ValueError("Meeting detail lacks eventId, congress or chamber")

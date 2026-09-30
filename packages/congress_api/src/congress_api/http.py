@@ -30,6 +30,14 @@ _next = collections.defaultdict(float)
 _local = threading.local()
 
 
+class HttpRequestError(RuntimeError):
+    """Failed transport with a status callers can inspect without parsing text."""
+
+    def __init__(self, message, status):
+        super().__init__(message)
+        self.status = status
+
+
 def response_metadata(response: requests.Response) -> dict:
     """Retain all received headers, including repeated fields, without reading the body.
 
@@ -96,4 +104,4 @@ def get_with_retry(session, url, params=None, attempts=3, *, method="GET", allow
             _next[pace_key] = max(_next[pace_key], time.monotonic() + delay)
         if isinstance(status, int) and status not in (202, 403, 408, 429, 500, 502, 503, 504, 520):
             break
-    raise RuntimeError(f"{method} {host}{urlsplit(url).path}: {status}")
+    raise HttpRequestError(f"{method} {host}{urlsplit(url).path}: {status}", status)
