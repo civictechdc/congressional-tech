@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 
 from congress_api.matching.meetings import in_inventory_scope
-from congress_api.models.congress import CommitteeMeeting
+from congress_api.retention.meetings import read_meetings as read_meeting_rows
 
 
 def read_csv(path):
@@ -69,9 +69,8 @@ def write_state(path, state):
 def read_meetings(path):
     """Return meetings inside inventory scope.
 
-    ``retention.meetings.read`` returns the full snapshot. This reader drops
-    meetings that ``in_inventory_scope`` rejects.
+    ``retention.meetings.read`` returns the full snapshot. This wrapper passes
+    ``in_inventory_scope`` to ``retention.meetings.read_meetings``, so a bare
+    call still drops meetings outside that scope.
     """
-    with gzip.open(path, "rt", encoding="utf-8") as f:
-        records = (CommitteeMeeting.model_validate_json(line) for line in f)
-        return [row for m in records if in_inventory_scope(row := m.source_dict())]
+    return read_meeting_rows(path, scope=in_inventory_scope)

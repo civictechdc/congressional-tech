@@ -104,6 +104,50 @@ def test_meeting_read_keeps_rows_inventory_scope_drops(tmp_path):
     assert read_meetings(path) == []
 
 
+def test_scoped_reader_preserves_each_caller_population(tmp_path, caplog):
+    import logging
+
+    from congress_api.cli.gpo_match import load_meetings
+    from congress_api.matching.meetings import scheduled_or_rescheduled
+    from congress_api.retention.meetings import all_meetings
+    from congress_api.retention.meetings import read_meetings as read_scoped
+    from congress_api.retention.tables import read_meetings as read_inventory
+    from congress_api.transcripts import context as metadata
+
+    rows = [
+        {"_url": "held112", "eventId": "held112", "congress": 112, "chamber": "House", "meetingStatus": "Held", "date": "2012-01-01", "committees": [{"systemCode": "hsju00"}]},
+        {"_url": "sched112", "eventId": "sched112", "congress": 112, "chamber": "House", "meetingStatus": "Scheduled", "date": "2012-02-01", "committees": [{"systemCode": "hsju00"}]},
+        {"_url": "sched119", "eventId": "sched119", "congress": 119, "chamber": "Senate", "meetingStatus": "Scheduled", "date": "2026-01-01", "committees": [{"systemCode": "ssbu00"}]},
+        {"_url": "cancel", "eventId": "cancel", "congress": 119, "chamber": "Senate", "meetingStatus": "Canceled", "date": "2026-02-01", "committees": [{"systemCode": "slia00"}]},
+    ]
+    path = tmp_path / "meetings.jsonl.gz"
+    meetings_write({row["_url"]: row for row in rows}, path)
+
+    def ids(scope):
+        return {row["eventId"] for row in read_scoped(path, scope=scope)}
+
+    assert {row["eventId"] for row in read_inventory(path)} == {"sched119"}
+    assert {row["eventId"] for row in read_scoped(path)} == {"sched119"}
+    assert ids(scheduled_or_rescheduled) == {"sched112", "sched119"}
+    assert ids(all_meetings) == {"held112", "sched112", "sched119", "cancel"}
+    loaded = load_meetings(path)
+    assert {record["eventId"] for dates in loaded.values() for records in dates.values() for record in records} == {"sched112", "sched119"}
+
+    previous = dict(metadata.PATHS)
+    try:
+        metadata.set_paths(previous["gpo"], str(path))
+        assert set(metadata.meetings()) == {"held112", "sched112", "sched119", "cancel"}
+        missing = tmp_path / "absent.jsonl.gz"
+        metadata.set_paths(previous["gpo"], str(missing))
+        with caplog.at_level(logging.WARNING):
+            assert metadata.meetings() == {}
+            assert load_meetings(missing) == {}
+        assert "no meetings file" in caplog.text
+        assert "No meetings file" in caplog.text
+    finally:
+        metadata.set_paths(previous["gpo"], previous["meetings"])
+
+
 def test_short_api_page_with_next_is_not_treated_as_complete(tmp_path, monkeypatch):
     path, url, old = setup(monkeypatch, tmp_path)
     offsets = []

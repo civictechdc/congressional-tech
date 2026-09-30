@@ -32,7 +32,6 @@ CSV files are views of those same saved associations. --seed-cache imports exist
 
 import collections
 import datetime as dt
-import gzip
 import json
 import re
 
@@ -45,6 +44,7 @@ from congress_api.models.senate import WORDPRESS_POSTS, WORDPRESS_TYPES, SenateP
 from congress_api.parsers.senate import PARSER_VERSION, parse_listing_page, parsed
 from congress_api.parsers.senate_page import FIRST_RECORD, LISTINGS, SITE, attachment_page, documents
 from congress_api.parsers.text import text
+from congress_api.retention.meetings import all_meetings, read_meetings
 from congress_api.retention.senate import seed_fetch
 from congress_api.retention.tables import read_state, write_csv, write_state
 from congress_api.transport import http
@@ -237,8 +237,7 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
         raise ValueError("Historical collection before June 2019 requires an explicit --site scope")
     # Collection/admission must see canceled and historical native meetings too;
     # the inventory's reporting filter would make them look like missing events.
-    with gzip.open(meetings, "rt", encoding="utf-8") as stream:
-        native_meetings = list(map(json.loads, stream))
+    native_meetings = read_meetings(meetings, scope=all_meetings)
     # Preserve the established refresh scope for other sites. Full native input
     # still informs duplicate guards, including canceled or historical records.
     ms = [meeting for meeting in native_meetings if any(code in ("slia00", "scnc00") for code in codes_of(meeting)) or

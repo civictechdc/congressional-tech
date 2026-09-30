@@ -17,7 +17,6 @@ from __future__ import annotations
 import csv
 import dataclasses
 import datetime as dt
-import gzip
 import logging
 import re
 import urllib.request
@@ -28,8 +27,8 @@ from zoneinfo import ZoneInfo
 from congress_shared.globals import DEFAULT_GPO_HEARINGS_FILE, DEFAULT_MEETINGS_FILE
 
 from congress_api.parsers import speaker_names as names
-from congress_api.models.congress import CommitteeMeeting
 from congress_api.models.transcription import Header, Person
+from congress_api.retention.meetings import all_meetings, read_meetings
 from congress_api.parsers.legislators import parse_legislators
 from congress_api.parsers.witness_names import person_key
 
@@ -69,9 +68,8 @@ def set_paths(gpo_path: str, meetings_path: str) -> None:
 def meetings() -> dict[str, dict]:
     out, path = {}, PATHS["meetings"]
     if Path(path).exists():
-        with gzip.open(path, "rt", encoding="utf-8") as f:
-            for line in f:
-                m = CommitteeMeeting.model_validate_json(line); out[m.eventId] = m.source_dict()
+        for row in read_meetings(path, scope=all_meetings):
+            out[row["eventId"]] = row
     else:
         logging.warning(f"no meetings file at {path}; pass --meetings")
     return out

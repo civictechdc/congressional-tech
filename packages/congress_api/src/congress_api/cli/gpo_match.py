@@ -3,7 +3,6 @@
 import argparse
 import collections
 import csv
-import gzip
 import json
 import logging
 from pathlib import Path
@@ -20,6 +19,8 @@ from congress_shared.globals import (
 from congress_api.matching.committees import codes_of
 from congress_api.matching.gpo_decisions import COLUMNS, decide
 from congress_api.matching.gpo_videos import EVENT_ID, SENATE_VIDEO, VIDEO_ID, dates_in_text, words
+from congress_api.matching.meetings import scheduled_or_rescheduled
+from congress_api.retention.meetings import read_meetings
 
 DEFAULT_OVERRIDES_FILE = DATA_DIR / "hearing_video_overrides.csv"
 
@@ -53,18 +54,14 @@ def load_meetings(path):
     if not Path(path).exists():
         logging.warning(f"No meetings file at {path}; Congress.gov evidence skipped")
         return out
-    with gzip.open(path, "rt", encoding="utf-8") as stream:
-        for line in stream:
-            meeting = json.loads(line)
-            if meeting.get("meetingStatus") not in ("Scheduled", "Rescheduled"):
-                continue
-            urls = [video.get("url", "") for video in (meeting.get("videos") or [])]
-            record = {"eventId": meeting["eventId"], "title": meeting.get("title") or "", "words": words(meeting.get("title")),
-                      "subcommittees": [c.get("name", "") for c in meeting.get("committees", []) if not c["systemCode"].endswith("00")],
-                      "videos": [VIDEO_ID.search(url).group(1) for url in urls if VIDEO_ID.search(url)],
-                      "offsite": [url for url in urls if SENATE_VIDEO.match(url)]}
-            for code in codes_of(meeting):
-                out[code][meeting["date"][:10]].append(record)
+    for meeting in read_meetings(path, scope=scheduled_or_rescheduled):
+        urls = [video.get("url", "") for video in (meeting.get("videos") or [])]
+        record = {"eventId": meeting["eventId"], "title": meeting.get("title") or "", "words": words(meeting.get("title")),
+                  "subcommittees": [c.get("name", "") for c in meeting.get("committees", []) if not c["systemCode"].endswith("00")],
+                  "videos": [VIDEO_ID.search(url).group(1) for url in urls if VIDEO_ID.search(url)],
+                  "offsite": [url for url in urls if SENATE_VIDEO.match(url)]}
+        for code in codes_of(meeting):
+            out[code][meeting["date"][:10]].append(record)
     return out
 
 

@@ -80,6 +80,11 @@ NOT_HELD = re.compile(r"^\s*(postponed|cancel+ed|rescheduled|test)\b", re.I)
 TRANSCRIPT = re.compile(r"transcript", re.I)
 
 
+def scheduled_or_rescheduled(row):
+    """Scheduled and rescheduled meetings, with no congress floor."""
+    return row.get("meetingStatus") in ("Scheduled", "Rescheduled")
+
+
 def in_inventory_scope(row):
     """The retained inventory and print matcher share this collection scope."""
-    return row.get("meetingStatus") in ("Scheduled", "Rescheduled") and int(row.get("congress", 0)) >= 113
+    return scheduled_or_rescheduled(row) and int(row.get("congress", 0)) >= 113
