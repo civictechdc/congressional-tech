@@ -1,0 +1,1 @@
+"""Legacy TinyDB analyze commands."""

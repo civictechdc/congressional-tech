@@ -11,7 +11,7 @@ import requests
 from congress_shared.auth import load_congress_api_key
 from .meetings import API, get, read, write
 from .models.congress import CommitteeRecord, CommitteeSnapshot
-from .fetch.rejected import retain_rejected_page
+from .retention.rejected_pages import retain_rejected_page
 
 
 def collect(meetings_path, output_path, *, api_key, session=None, gpo_path=None):
@@ -68,6 +68,11 @@ def main():
     parser.add_argument('--output-path', type=Path, required=True)
     args = parser.parse_args()
     collect(**vars(args), api_key=load_congress_api_key())
+
+
+def parse_args_and_run():
+    """Console entry point; preserve main() for existing callers."""
+    return main()
 
 
 if __name__ == '__main__':

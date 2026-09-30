@@ -25,7 +25,7 @@ import requests
 
 from congress_api.http import get_with_retry
 from congress_api.models.congress import CommitteeMeeting, MeetingSummary
-from congress_api.fetch.rejected import retain_rejected_page
+from congress_api.retention.rejected_pages import retain_rejected_page
 from congress_shared.auth import load_congress_api_key
 from congress_shared.globals import CONGRESS_METADATA, DEFAULT_MEETINGS_FILE
 
