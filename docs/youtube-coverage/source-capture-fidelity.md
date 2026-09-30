@@ -43,3 +43,19 @@ Run the focused regression suite with the checkout's Python environment:
 Offline replay commands live in `congress_api.house.replay`, `congress_api.senate.replay` and `congress_api.gpo.replay`; each exposes `--help` and writes a replay receipt. The existing weekly commands retain their inputs and outputs, with the GPO evidence file and pending retries stored on `pipeline-data`.
 
 Local receipts and regenerated source outputs are under `.cache/source-fidelity/`: `house/`, `senate/`, `gpo/`, `inventory/`, `captions/` and `live/`. `full-normalization-validation.json` records the all-input check and its input digests. The subsequent additive Senate script repair is verified separately in `senate/script-capture-replay.json` and `senate/script-live/report.json`; the former records the consolidated Senate digest and unchanged existing fields and identities. `local-xml-search.json` and `local-opaque-xml-search.json` record the additional source locations. These artifacts are separate from the unchanged pinned inputs under `.cache/raw-output-audit-20260928/snapshot/`. The repaired datasets and verification receipts are local artifacts and have not been published.
+
+## Raw archive layout (September 30)
+
+The local R2 mirror is `.cache/congressional-tech-raw/`. It has three directories:
+
+- `bodies/sha256/<first-2>/<sha256>.gz`: one gzip file per distinct uncompressed body. The filename identifies the uncompressed bytes; the index also records the stored gzip checksum and size.
+- `receipts/<source>/<family>/<capture-date>/<run-id>.jsonl.gz`: source metadata, original local paths, and references to retained bodies. `documents/` has no additional family component. Missing observation dates use `undated/`; records spanning several observation dates use `mixed-dates/`.
+- `indexes/captures.parquet`: source URLs, receipt locations, body references, fidelity, available response status and retrieval time, and unresolved historical file references.
+
+There is no `snapshots/` directory. Receipts retain original JSON values with embedded source strings replaced by body references. `congress_api.retention.bundles.restore` reconstructs those values; it does not promise the original enclosing JSON whitespace. Exact byte captures, older decoded text, and retained files remain distinguishable. Missing files remain explicit and are never represented as successful captures.
+
+A saved record can reference several source families. It remains together in one receipt; the index classifies each referenced body separately. Source journals also retain their collection limits, refusals and outcomes, including entries without a body. Generated tables, code backups and extraction diagnostics are excluded where identified; their originals remain in the existing caches.
+
+`research/scripts/assemble_raw_archive.py` assembles this layout from explicit file manifests. It checks source stability, persisted body checksums, and JSON reconstruction. On APFS it uses independent copy-on-write copies for existing gzip files. It preserves the original caches and observes the configured free-space floor. It does not fetch, upload, change acquisition or replay paths, or delete originals. Migration manifests, logs and validation results live outside the archive under `.cache/r2-admin/archive-layout-20260930/`.
+
+The reviewed inputs are `final-body-manifest.jsonl` and `final-record-manifest.jsonl` in that administration directory. Record manifests include the source family so journal headers and bodyless acquisition outcomes retain the same source context as their response records. `verification.json` reports the final receipt/index checks; older intermediate logs document the migration and its repairs.
