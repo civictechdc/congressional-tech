@@ -94,9 +94,9 @@ meeting-inventory --help
 
 The weekly production sequence and saved-data formats are documented in
 [congress-api](packages/congress_api/README.md) and its
-[compatibility reference](docs/congress-api-contracts.md). `congress-fetch` and
-`congress-analyze` remain available for legacy TinyDB exploration; they do not
-run in the production workflow. Help does not require credentials.
+[compatibility reference](docs/congress-api-contracts.md). Help does not require
+credentials. The unused Congress exploration tools were
+[retired after preserving their useful acquisition behavior](docs/legacy-congress-removal.md).
 
 Inflation data:
 

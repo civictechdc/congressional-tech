@@ -3,19 +3,19 @@
 The acquisition tools retain publisher inputs; source parsers interpret bytes;
 `adapters/` translate source models into `committee_meeting`. The exporter owns
 persistent IDs and publication. These boundaries and the interfaces below are
-preserved by the refactor. See the [source-model review](../packages/congress_api/SOURCE_MODEL_REVIEW.md)
-for the source-value and original-byte fidelity gate.
+preserved by the refactor. See [source verification](../packages/congress_api/SOURCE_MODELS.md#verification-and-limits)
+for the source-value and original-byte fidelity checks.
 
 ## Commands and artifacts
 
-These twelve console script names are stable. Default data paths are relative
+These ten production console script names are stable. Default data paths are relative
 to `packages/congress_shared/src/congress_shared/data/`, not the working directory.
 Paths marked required have no default. CLI `--help` is safe without credentials.
 
 | Command | Primary artifacts and paths | Invocation family |
 | --- | --- | --- |
-| `congress-meetings` | `congress_meetings.jsonl.gz`: native meeting JSONL; sibling `.pending.json` retry state and `.gz.rejected.json` rejected listing pages | Custom; `--output-path`, `--nthreads` (5) |
-| `congress-committees` | Required `--output-path`: gzip JSONL committee snapshots; adjacent `.rejected.json` when listing validation fails | Custom; required `--meetings-path`, optional `--gpo-path` |
+| `congress-meetings` | `congress_meetings.jsonl.gz`: meeting JSONL (XML recoveries include `_source_xml`); sibling `.pending.json` retry state and `.gz.rejected.json` rejected listing pages | Custom; `--output-path`, `--nthreads` (5) |
+| `congress-committees` | Required `--output-path`: gzip JSONL Congress-specific lists plus full committee details/history with separate capture times; adjacent `.rejected.json` when listing/detail validation fails | Custom; required `--meetings-path`, optional `--gpo-path` |
 | `gpo-fetch` | `gpo_hearings.csv`; optional `--evidence-path`: gzip JSONL of retained MODS/HTML and acquisition receipts | Custom; `--output-path`, `--chambers` (`hsj`), `--min-congress`, `--full-relist`, `--nthreads` (4), `--refresh-limit` (100) |
 | `gpo-match` | `gpo_hearing_videos.csv`; default coverage file beside it, named `gpo_hearing_video_coverage.csv` | Global `--tinydb_dir`; `--gpo-path`, `--meetings`, `--channels-csv-path`, `--overrides`, `--no-overrides`, `--output-path`, `--coverage-path` |
 | `house-meeting-records` | Required `--state-dir/house.json.gz`; `--output-dir/{house_documents_found,house_witnesses_found,house_amendments_found}.csv` | Source flags; required `--gpo-path`; `--refresh-limit` (400), `--limit`, `--zyte`, `--threads` |
@@ -24,8 +24,6 @@ Paths marked required have no default. CLI `--help` is safe without credentials.
 | `gpo-transcripts` | Required `--out-dir/<package>.txt`, with original HTML observation in `source/<package>.json`, including short rejected text | Custom; `--gpo-path`, `--congress`, `--committee`, `--chamber`, `--package-ids`, `--nthreads` (4) |
 | `senate-captions` | Required `--out-dir/<filename>.txt`, `<filename>.captions.json.gz` (raw playlists/WebVTT), `caption_receipts/<filename>.json`, and `captions_index.csv` | Custom; `--urls`, `--urls-file`, `--nthreads` (4) |
 | `hearing-transcribe` | Required `--out-dir/{stem}.json` and `{stem}.gpo.txt`; `source/` contains retained HTML/Gemini attempts | Custom; `--event-id`, `--gpo-package`, `--video-id`, `--senate-url`, `--audio`, `--proxy`, `--gpo-path`, `--meetings` |
-| `congress-fetch` | Explore-only TinyDB `committee-summaries.json`, chamber committee details; event URL discovery in memory. Full `events.json` requires the separate `process_events()` method | Global `--tinydb_dir` (shared data directory); `--chamber` (`house`), `--congress_number` (119) |
-| `congress-analyze` | Explore-only stdout; reads committee/event/YouTube TinyDB files | Same global/explore flags; does not replace the production mirror |
 
 `inventory.common.source_args` defines required `--meetings`, `--state-dir`,
 `--output-dir`, optional `--seed-cache` (expanded path), `--offline`, and
@@ -183,9 +181,11 @@ Parquet inventory tooling; `house-naming[test]` supplies its regression dependen
 See its [corpus documentation](../packages/house-naming/FILENAME_PATTERNS.md).
 The `tests/test_filename_*.py` consumer gate remains part of validation.
 
-Explore-only code lives in `congress_api.legacy`; old `fetch`, `analyze` and
-`json_to_tinydb` imports/module commands remain compatibility aliases. Production
-rejected-page retention belongs to `retention.rejected_pages`, outside the legacy
-path. See [TinyDB decision](adr/tinydb-explore-sunset.md). Physical collector/parser
-moves and a unified CLI remain deferred; this refactor does not add an HTTP
-protocol, dependency container, or shared HTML scraper.
+The user approved retiring the unused Congress exploration tools after preserving
+their remaining acquisition capabilities. `congress-fetch`, `congress-analyze`,
+`congress_api.legacy`, the old `api`, `fetch`, `analyze`, `xml_to_dict` and
+`json_to_tinydb` imports are removed. Use `congress-meetings` and
+`congress-committees`; see the [removal audit](legacy-congress-removal.md).
+Production rejected-page retention remains in `retention.rejected_pages`.
+YouTube collectors and TinyDB caches remain active. Physical collector/parser
+moves and a unified CLI remain deferred.

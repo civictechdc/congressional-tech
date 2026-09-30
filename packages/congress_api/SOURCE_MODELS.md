@@ -22,8 +22,8 @@ Inventory late acquisition lives in `inventory.acquisition`: witness PDF/MODS
 capture and Senate day probes accept a defaulted `get=` function. The orchestrator
 and `completeness.build` call it explicitly. `inventory.witness_lists` retains the
 byte-only PDF/MODS parser entry points and a compatibility acquisition delegate.
-Production rejected listing pages use `retention.rejected_pages`; legacy TinyDB
-exploration cannot become a production retention dependency.
+Production rejected listing and committee detail responses use
+`retention.rejected_pages`, independently of any storage importer.
 
 Our generated CSVs, TinyDB files, caption indexes and inventory files are local
 imports, not upstream schemas. Existing compatibility readers remain available.
@@ -35,8 +35,8 @@ that model is `ModsDocument`.
 
 | Source we parse | Canonical model | Parser or entry point |
 | --- | --- | --- |
-| Congress.gov meeting/detail/list JSON | `CommitteeMeeting`, `MeetingResponse`, `MeetingsPage` | `models.congress.parse_response`; `api.request_source` |
-| Congress.gov committee/detail/list JSON | `CommitteeRecord`, `CommitteeDetail`, `CommitteeResponse`, `CommitteesPage` | `models.congress.parse_response`; `api.request_source` |
+| Congress.gov meeting/detail/list JSON | `CommitteeMeeting`, `MeetingResponse`, `MeetingsPage` | `models.congress.parse_response`; `meetings.get` |
+| Congress.gov committee/detail/list JSON | `CommitteeRecord`, `CommitteeDetail`, `CommitteeResponse`, `CommitteesPage` | `models.congress.parse_response`; `meetings.get` |
 | Congress.gov XML fallback | `CongressXmlDocument` | `congress_source.parse_congress_xml` |
 | GovInfo collection JSON | `GpoCollectionPage`, `GpoCollectionPackage` | `gpo.fetch.list_collection` |
 | GovInfo MODS XML | `ModsDocument` and nested native MODS records | `gpo.source.parse_mods_document` |
@@ -109,9 +109,9 @@ schema = CommitteeMeeting.model_json_schema(by_alias=True)
 
 ## Verification and limits
 
-Tests use retained real records, live committee response fixtures, all retained
-Congress.gov records, House XML, Senate layouts and WordPress records, MODS,
-actual witness PDFs and caption samples. Checks cover complete source-value
+Regression tests use retained real Congress.gov records and committee response
+fixtures, House XML, Senate layouts and WordPress records, MODS, actual witness
+PDFs and caption samples. Checks cover complete source-value
 round trips, original-byte hashes, unknown fields, aliases, incorrect scalar
 types and typed-parser-to-adapter parity. Local full-corpus receipts are in
 `.cache/source-models/`; representative regression fixtures are included with
@@ -133,15 +133,79 @@ The transcriber keeps those HTML captures and each Gemini attempt separately.
 Gemini's retained HTTP text is the SDK-decoded body, not original transport
 bytes; an unavailable SDK body remains null.
 
-Historical captures whose original bodies were never saved cannot acquire them from a
-schema change. Existing saved source bodies can be replayed; absent ones remain
-absent until fetched. This change does not trigger a historical refetch, alter
-the running GovInfo refresh, rebuild public tables or publish data.
+Historical captures whose original bodies were never saved cannot acquire them
+from a schema change. Existing saved source bodies can be replayed; absent ones
+remain absent until fetched. A retained URL alone does not establish that its
+PDF/XML body was downloaded or parsed. Capture, interpretation and publication
+require separate checks.
 
 Congress.gov field definitions were checked against the publisher’s
 [meeting documentation](https://github.com/LibraryOfCongress/api.congress.gov/blob/main/Documentation/CommitteeMeetingEndpoint.md)
 and [committee documentation](https://github.com/LibraryOfCongress/api.congress.gov/blob/main/Documentation/CommitteeEndpoint.md),
 with live responses used to verify actual JSON scalar types.
 
-A [manual source review](SOURCE_MODEL_REVIEW.md) records the actual samples,
-extraction fixes, combined test result and remaining qualification limits.
+The September 28–29 manual review covered the observed JSON/XML families,
+House/Senate pages, MODS, witness PDFs, captions and supporting JSON. Full sample
+reports remain in `.cache/source-models/final-manual-{congress,house-pdf,senate-media,gpo-transcription}.md`;
+follow-up capture evidence is in `.cache/raw-source-backfill-20260928/`.
+These are local evaluation records, not runtime inputs or current download status.
+The review did not manually inspect every file or qualify an actual upstream
+Gemini response. Synthetic Gemini tests do not establish that qualification.
+
+Preserve these interpretation limits:
+
+- Native document classifications, file formats and meeting/witness document
+  ownership are separate signals. Keep publisher disagreements and status labels.
+- Complete short GPO proceedings can be valid; text length alone does not establish
+  completeness. An unavailable-text notice is not a transcript.
+- Captions retain source timing, including valid zero-duration cues. Successful
+  byte/cue validation does not establish speech accuracy or whole-session coverage.
+- Source pages can contain witnesses in running prose that the structured parser
+  misses. Unreviewed scans and abbreviated schedules require separate evaluation.
+
+### Witness PDF extraction and evaluation
+
+Keep `pypdf` native-text extraction. The September 28 comparison used eight
+visually checked PDFs (nine pages, 35 witnesses) plus 461 valid cached PDFs for
+throughput. All four pypdf/PyMuPDF modes exposed the same 23 names in native text;
+the witness parser recognized 11. The remaining misses came from name parsing
+and scans. Default PyMuPDF also introduced two false person records by changing
+table reading order. Its speed advantage saved about 1.5 seconds across 523
+pages, excluding I/O and parsing. These selected samples are not corpus-wide
+accuracy estimates or a qualification for long printed hearings.
+
+Keep the PDF signature check: some `.pdf` responses are HTML error pages.
+Empty native text in an image-only PDF is different from failed acquisition.
+Exact-digest reviewed readings remain separate from automatic extraction.
+SpicyDocs' pypdf reader matched the existing text on these samples; its geometry
+reader reproduced the PyMuPDF reading-order issue. Neither provides a demonstrated
+witness-accuracy improvement by merely replacing the library.
+
+The benchmark scripts, pinned inputs, expected readings, per-page results and
+versions remain in `.cache/source-models/pdf-extractor-comparison/`.
+The paired XML/PDF inventory script and manifest remain in
+`.cache/source-models/witness-pdf-pairs/`; later download paths and hashes are in
+`.cache/raw-source-backfill-20260928/witness-pdfs/manifest.json`.
+
+For another witness evaluation, select active named XML witnesses and identify
+candidate PDFs using native `HW`/Witness List types, explicit descriptions or
+`-WList-` filenames. Older `SD` documents can also be witness lists. Join by House
+event ID and exact attachment filename, retaining source URLs, type, selector
+and digest. These pairs are candidates: verify editions, withdrawals, panel
+subsets and actual PDF content before treating XML as expected output. Publisher
+labels sometimes identify an organizational statement as a witness list.
+
+## Committee details and XML meeting recovery
+
+`CommitteeSnapshot` retains a Congress-specific `committee` and optional full
+`detail` (`CommitteeDetail`) with independent `detail_url` and
+`detail_retrieved_at`. The collector fills missing details and refreshes endpoints
+represented in its refreshed Congress lists. The adapter retains the complete
+snapshot but uses the historical list for Congress-specific classification.
+
+`congress_source.meeting_from_xml` explicitly interprets known meeting lists and
+numeric fields from `CongressXmlDocument`. The resulting `CommitteeMeeting`
+retains the exact original bytes as `_source_xml` (`RawContent`), distinguishing
+this interpretation from native JSON. Unknown XML, attributes and scalar spelling
+remain recoverable from those bytes. Unexpected structures fail and stay in the
+collector's pending-response evidence, rather than silently dropping values.

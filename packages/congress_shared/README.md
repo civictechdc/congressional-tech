@@ -27,7 +27,7 @@ uv pip install -e packages/congress_shared
 
 Each loader builds its own `ArgumentParser` and calls `parse_known_args`, so the flag can sit on a command that never declared it. A missing key raises `RuntimeError`. The Congress error names only `~/.data.gov.api.key`, even though `~/.data.gov.key` is also checked.
 
-Callers: `congress-fetch`, `gpo-fetch`, and `congress-meetings` use `load_congress_api_key`. `youtube-fetch` uses `load_youtube_api_key`.
+Callers: `congress-committees`, `gpo-fetch`, and `congress-meetings` use `load_congress_api_key`. `youtube-fetch` uses `load_youtube_api_key`.
 
 ## Paths
 
@@ -49,7 +49,7 @@ The two bundled files are `congress_metadata.json` and `youtube-accounts.csv`. T
 
 `add_global_args` adds `--tinydb_dir` (a resolved `Path`, default `DEFAULT_TINYDB_DIR`). `add_youtube_args` adds `--channels-csv-path` (destination `channels_csv_path`). That flag's type is `str` and its default is a `Path`, so an explicit value arrives as a string and the default arrives as a `Path`.
 
-`youtube-fetch`, `youtube-analyze`, `congress-fetch`, `congress-analyze`, and `gpo-match` call `add_global_args`. The two YouTube commands also call `add_youtube_args`. `gpo-match` declares its own `--channels-csv-path` as a `Path` instead.
+`youtube-fetch`, `youtube-analyze`, and `gpo-match` call `add_global_args`. The two YouTube commands also call `add_youtube_args`. `gpo-match` declares its own `--channels-csv-path` as a `Path` instead.
 
 Importing `congress_shared.globals` configures the root logger at INFO, writing to stdout, and reads `congress_metadata.json`. A missing or invalid JSON file fails the import.
 

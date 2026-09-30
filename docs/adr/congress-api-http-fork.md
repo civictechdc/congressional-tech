@@ -1,14 +1,22 @@
-# Preserve the characterized HTTP fork
+# Retire the legacy HTTP fork after preserving XML recovery
 
-Status: accepted, 2026-09-30.
+Status: accepted, 2026-09-30; supersedes the earlier decision to keep both clients.
 
-Production `meetings.get` delegates to `http.get_with_retry` with five attempts.
-Legacy `api.request_source` performs a single bare request and supports XML
-fallback. They are different behaviors; the wrapper is not a second production
-HTTP implementation.
+The original refactor characterized two behaviors: the production gateway with
+pacing/retries and a bare-request legacy JSON/XML client. The owner subsequently
+requested removal of unused code, conditional on preserving XML meeting recovery.
 
-Keep the fork while isolating optional TinyDB exploration. The package README
-owns the HTTP policy matrix; `test_http_policy.py` fixes the observed retry,
-timeout, parameter, error and fallback behavior. A later change to the legacy
-client needs its own behavior decision. No HTTP protocol, container, or package
-split is needed for this refactor.
+`congress-meetings` now retries detail requests as XML after HTTP 500 or JSON
+decoding failure. Both formats use `http.get_with_retry` with five attempts.
+`HttpRequestError` remains a `RuntimeError` and exposes the final status so callers
+can decide recovery without parsing error text. Refusal, missing records, rate
+limits and transport errors do not trigger XML recovery.
+
+The byte-only `congress_source` parser and source models remain. Exact XML is
+retained in `_source_xml`; unsuccessful interpretation keeps prior data and
+pending source evidence. The unused `api.py` and `xml_to_dict.py` are removed.
+Caption and transcription transports retain their characterized behavior.
+
+See the [HTTP policy](../../packages/congress_api/README.md#http-policy),
+`test_http_policy.py`, `test_congress_xml_recovery.py`, and
+[removal audit](../legacy-congress-removal.md).

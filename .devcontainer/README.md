@@ -29,8 +29,6 @@ congress-meetings --output-path output/congress_meetings.jsonl.gz
 It retains incomplete work for retry. Source readers and inventory use explicit
 state/input paths; follow the [weekly source-reader sequence](../docs/youtube-coverage/meeting-state.md)
 and [offline requirements](../docs/congress-api-contracts.md#offline-behavior).
-`congress-fetch` and `congress-analyze` remain optional **legacy TinyDB exploration**
-commands. They are not used by weekly CI and do not replace `congress-meetings`.
 
 For YouTube, the bundled channel table is the default; pass `--tinydb_dir` to
 choose cache storage. Use each command's help for credentials and output paths.

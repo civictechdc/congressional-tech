@@ -1,20 +1,19 @@
-# Keep TinyDB exploration outside production
+# Retire unused Congress exploration tools
 
-Status: accepted, 2026-09-30.
+Status: accepted, 2026-09-30; supersedes the earlier decision to retain aliases.
 
-The weekly workflow uses `congress-meetings`; `congress-fetch` and
-`congress-analyze` serve optional local exploration. Keep both script names and
-old module imports, but put their implementation under `congress_api.legacy`.
-Shared committee objects sit outside the fetch/analyze command packages so the
-commands do not depend on each other. Production rejected-page retention moves
-to `retention.rejected_pages`, with its old import retained as an alias.
+The owner requested removal of unused, superseded code after an intent audit,
+then explicitly required implementing both remaining acquisition capabilities
+before removal. `congress-meetings` now recovers HTTP 500/invalid-JSON detail
+responses through XML; `congress-committees` retains full detail/history records.
+Both preserve source evidence and prior successful snapshots on failure.
 
-No removal date or new features are planned. Root and devcontainer instructions
-lead with the production mirror. Old imports remain compatibility shims for at
-least one release; their eventual removal requires a separate owner decision.
-No runtime deprecation warning is added to existing command output.
+Remove `congress-fetch`, `congress-analyze`, their TinyDB implementations, old
+module aliases, one-off converter and legacy HTTP/XML wrappers. Do not create a
+separate legacy package. Production retention and source models remain. The
+independent YouTube collectors still use TinyDB; their code, dependencies,
+workflow commands and caches remain in place.
 
-The known dictionary-shaped event bug in legacy `analyze.main` is unchanged and
-tracked as separate bugfix work in the refactoring plan. This isolation does not
-claim to repair that path or remove TinyDB: production YouTube matching still
-uses YouTube TinyDB caches.
+The [intent audit](../legacy-congress-removal.md) records the original purposes,
+callers, replacements, removed interfaces and verification. This is an explicit
+owner-approved compatibility break for the unused exploration commands/imports.
