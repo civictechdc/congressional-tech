@@ -4,23 +4,22 @@ Run with the repository interpreter and --gaps-only for candidate development;
 omit that option for the final full-inventory comparison.
 """
 import argparse
-from collections import Counter
 import gzip
 import hashlib
-import importlib.util
 import importlib
+import importlib.util
 import json
-from pathlib import Path
 import shutil
 import sys
+from collections import Counter
+from pathlib import Path
 from time import perf_counter
 
 import pyarrow.parquet as pq
-
-from house_naming import filenames as current
 from congress_api.models.legislators import member_surnames_by_congress
+from congress_api.parsers.legislators import parse_legislators
+from house_naming import filenames as current
 from house_naming.filename_corpus import file_hashes, parser_source_paths
-from congress_api.models.legislators import parse_legislators
 
 
 def load_baseline(root):

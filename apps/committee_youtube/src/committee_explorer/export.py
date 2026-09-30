@@ -1,32 +1,43 @@
 """Offline export, validated before an atomic local publication pointer changes."""
 import argparse
-from collections import ChainMap, Counter, defaultdict
 import csv
-from datetime import datetime, timezone
 import fcntl
 import gzip
 import hashlib
 import io
 import json
-from pathlib import Path
 import shutil
 import tempfile
+from collections import ChainMap, Counter, defaultdict
+from datetime import datetime, timezone
+from pathlib import Path
 
-from committee_meeting import Catalog, SCHEMA_VERSION
+from committee_meeting import SCHEMA_VERSION
 from committee_meeting.common import Ref
 from committee_meeting.provenance import Citation, Method, RetainedContent
 from committee_meeting.publication import ExportPartition, InputSnapshot, PublicationManifest, SourceScope
-from congress_api.adapters.common import AdapterContext
-from congress_api.adapters import meetings as native, house, gpo, transcripts, findings, inventory, video_matches, recordings as curated_recordings
-from congress_api.adapters import committee_metadata, committee_adjustments
-from congress_api.gpo import reviewed_committees
+from congress_api.adapters import (
+    committee_adjustments,
+    committee_metadata,
+    findings,
+    gpo,
+    house,
+    inventory,
+    transcripts,
+    video_matches,
+)
+from congress_api.adapters import meetings as native
+from congress_api.adapters import recordings as curated_recordings
 from congress_api.adapters.committees import committee_lookup, ensure_committee_term
+from congress_api.adapters.common import AdapterContext
+from congress_api.matching import reviewed_committees
+
 from .assemble import Assembly
 from .coverage import build as coverage
+from .history import load_history, migrate_history, save_history
 from .ids import IdRegistry
 from .issues import apply_decisions
 from .query import write_queries
-from .history import load_history, save_history, migrate_history
 
 VERSION = "0.1.0"
 
@@ -104,6 +115,7 @@ def _retain_senate_meeting_ids(rows, senate_state, ids):
     Multiple existing source identities or ambiguous native IDs remain separate.
     """
     from collections import defaultdict
+
     from congress_api.adapters.senate import official_events
 
     native_by_event = defaultdict(list)
@@ -172,7 +184,7 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         reuse_key = None
         if reuse_from is not None:
-            from .reuse import request_key, try_reuse, save_receipt
+            from .reuse import request_key, save_receipt, try_reuse
             reuse_key = request_key(files={
                 'meetings': meetings, 'gpo': gpo_path, 'gpo_evidence': gpo_evidence_path, 'house': house_state, 'senate': senate_state,
                 'inventory': inventory_state, 'recovered_witnesses': recovered_witnesses,
@@ -249,7 +261,7 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=
         gpo_context, gpo_review_context, gpo_rows, all_gpo = None, None, [], []
         gpo_evidence = {}
         if gpo_evidence_path:
-            from congress_api.gpo.evidence import read as read_gpo_evidence
+            from congress_api.retention.gpo import read as read_gpo_evidence
             evidence_context, _ = context(gpo_evidence_path, "govinfo:upstream")
             gpo_evidence = read_gpo_evidence(gpo_evidence_path)
             scopes.append(SourceScope(provider="govinfo:upstream", scope="retained MODS and transcript observations",
@@ -341,8 +353,8 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=
                         if "govinfo" in identifier.scheme or "gpo" in identifier.scheme:
                             versions[("govinfo", identifier.value)] = Ref(kind=r.kind, id=r.id)
                             print_versions[identifier.value] = (Ref(kind="material", id=r.material.id), Ref(kind=r.kind, id=r.id))
-            from congress_api.inventory.prints import match_prints
-            from congress_api.inventory.common import in_inventory_scope
+            from congress_api.matching.meetings import in_inventory_scope
+            from congress_api.matching.prints import match_prints
             # The matcher owns its existing scope/rules. Ambiguous unscoped IDs
             # are excluded from association output rather than merged.
             eligible = [r for r in all_meetings if in_inventory_scope(r)]

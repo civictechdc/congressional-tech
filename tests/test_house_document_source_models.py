@@ -1,24 +1,32 @@
 """Raw source models retain exact bytes and constrain interpreted structures."""
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 from xml.etree import ElementTree as ET
 
 import pytest
-from pydantic import ValidationError
-
 from committee_meeting.common import Ref
+from congress_api.acquisition import house as records
+from congress_api.acquisition.gaps import get_witnesses as witness_lists_get_witnesses
 from congress_api.adapters import house as adapter
 from congress_api.adapters import inventory as inventory_adapter
 from congress_api.adapters.common import AdapterContext
-from congress_api.house import records
-from congress_api.house.source import parse_house_meeting, parse_house_witnesses
-from congress_api.inventory.witness_lists import parse_pdf_observation, parse_mods_observation
-from congress_api.inventory import witness_lists
 from congress_api.models.content import RawContent
 from congress_api.models.documents import PdfWitnessObservation
-from congress_api.models.house import HouseMeetingXML, HouseWitnessListXML, HouseFileXML, HouseParsedRecord, HouseFileAttributes
-from congress_api.models.xml import XmlAttributes, parse_xml_element
+from congress_api.models.house import (
+    HouseFileAttributes,
+    HouseFileXML,
+    HouseMeetingXML,
+    HouseParsedRecord,
+    HouseWitnessListXML,
+)
+from congress_api.models.xml import XmlAttributes
+from congress_api.parsers.house import parse_house_record as records_parse_house_record
+from congress_api.parsers.house_xml import parse_house_meeting, parse_house_witnesses
+from congress_api.parsers.witness_pdf import parse_mods_observation, parse_pdf_observation
+from congress_api.parsers.xml import parse_xml_element
+from congress_api.transport import http as records_http
+from pydantic import ValidationError
 
 FIXTURES = Path(__file__).parent / 'fixtures/meeting_inventory'
 
@@ -100,7 +108,7 @@ def test_wrong_root_is_rejected_not_treated_as_empty_house_data():
 
 
 def test_typed_house_parser_reaches_normalization_without_a_saved_file():
-    parsed = records.parse_house_record((FIXTURES / 'house-multiple-files.xml').read_bytes(),
+    parsed = records_parse_house_record((FIXTURES / 'house-multiple-files.xml').read_bytes(),
                                        (FIXTURES / 'house-witnesses.xml').read_bytes(), '', 'present')
     assert isinstance(parsed, HouseParsedRecord)
     assert parsed.source_bodies['meeting_xml'].body_bytes() == (FIXTURES / 'house-multiple-files.xml').read_bytes()
@@ -116,7 +124,7 @@ def test_typed_house_parser_reaches_normalization_without_a_saved_file():
 
 def test_html_fallback_preserves_body_and_typed_file_groups():
     raw = (FIXTURES / 'house-fallback.html').read_bytes()
-    parsed = records.parse_house_record(None, None, raw.decode(), 'unfetched')
+    parsed = records_parse_house_record(None, None, raw.decode(), 'unfetched')
     assert parsed.source_bodies['page_html'].body_bytes() == raw
     assert sum(len(group.files) for group in parsed.evidence.document_groups) == 7
     payload = parsed.source_dict()
@@ -129,7 +137,7 @@ def test_live_html_retains_original_encoding_not_replacement_text(monkeypatch):
     raw = b'<div id="DivMeetingContent">caf\xe9</div>'
     def get(session, url, **kwargs):
         return SimpleNamespace(status_code=404, content=b'absent') if url.endswith('.xml') else SimpleNamespace(status_code=200, content=raw)
-    monkeypatch.setattr(records.http, 'get_with_retry', get)
+    monkeypatch.setattr(records_http, 'get_with_retry', get)
     result = records.fetch({'eventId': '1', 'congress': 119, 'committees': []}, {'urls': ['https://docs.house.gov/missing.xml']})
     assert RawContent.model_validate(result['source_bodies']['page_html']).body_bytes() == raw
     assert result['last_check']['receipts'][-1]['sha256'] == result['source_bodies']['page_html']['sha256']
@@ -138,7 +146,7 @@ def test_live_html_retains_original_encoding_not_replacement_text(monkeypatch):
 
 def test_rejected_live_xml_retains_the_unparsed_response_in_failure_receipt(monkeypatch):
     raw = b'<html><title>Unexpected upstream page</title></html>'
-    monkeypatch.setattr(records.http, 'get_with_retry', lambda *a, **k: SimpleNamespace(status_code=200, content=raw))
+    monkeypatch.setattr(records_http, 'get_with_retry', lambda *a, **k: SimpleNamespace(status_code=200, content=raw))
     check = {}
     with pytest.raises(ValueError, match='committee-meeting'):
         records.fetch({'eventId': '1', 'congress': 119, 'committees': []},
@@ -186,7 +194,7 @@ def test_failed_pdf_parse_keeps_original_error_body(monkeypatch):
     get = lambda *a, **k: SimpleNamespace(status_code=200, content=raw)
     state = {}
     with pytest.raises(ValueError, match='not a PDF'):
-        witness_lists.get_witnesses('one', 'https://example.gov/witnesses.pdf', state, 'v1', '2026-09-28', datetime.now(UTC).date(), False, get=get)
+        witness_lists_get_witnesses('one', 'https://example.gov/witnesses.pdf', state, 'v1', '2026-09-28', datetime.now(UTC).date(), False, get=get)
     assert state['one']['last_check']['outcome'] == 'error'
     assert RawContent.model_validate(state['one']['last_check']['content']).body_bytes() == raw
 

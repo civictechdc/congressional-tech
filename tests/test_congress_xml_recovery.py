@@ -1,17 +1,17 @@
 """Recover JSON-only failures from XML without losing source or prior captures."""
-from collections import defaultdict
 import json
+from collections import defaultdict
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-
-from congress_api import http, meetings
-from congress_api.congress_source import meeting_from_xml, parse_congress_xml
+from congress_api.acquisition import meetings
 from congress_api.models.content import RawContent
+from congress_api.parsers.congress import meeting_from_xml, parse_congress_xml
+from congress_api.retention.meetings import read as meetings_read
+from congress_api.transport import http
 from test_explorer_material_adapters import context
 from test_meeting_collection import pending, setup
-
 
 RAW = (Path(__file__).parent / 'fixtures/source_models/meeting-116-senate-326051.xml').read_bytes()
 
@@ -66,7 +66,7 @@ def test_failed_json_detail_recovers_xml_and_clears_pending(tmp_path, monkeypatc
     monkeypatch.setattr(meetings, 'get', get)
     monkeypatch.setattr(meetings, 'get_with_retry', xml)
     meetings.main(path, nthreads=1)
-    saved = meetings.read(path)[url]
+    saved = meetings_read(path)[url]
     assert saved['eventId'] == 'old' and saved['relatedItems']['nominations'][0]['part'] == '00'
     assert RawContent.model_validate(saved['_source_xml']).body_bytes() == raw
     assert pending(path) == []
@@ -87,7 +87,7 @@ def test_unusable_xml_keeps_prior_meeting_and_failed_bytes_for_retry(tmp_path, m
     monkeypatch.setattr(meetings, 'get_with_retry', lambda *a, **k: SimpleNamespace(content=body))
     with pytest.raises(SystemExit):
         meetings.main(path, nthreads=1)
-    assert meetings.read(path)[url] == old and pending(path) == [url]
+    assert meetings_read(path)[url] == old and pending(path) == [url]
     failed = json.loads(path.with_suffix(path.suffix + '.pending.json').read_text())
     assert RawContent.model_validate(failed['responses'][url]['_source_xml']).body_bytes() == body
 
@@ -103,7 +103,7 @@ def test_other_transport_failures_do_not_trigger_xml_fallback(tmp_path, monkeypa
     monkeypatch.setattr(meetings, 'get_with_retry', lambda *a, **k: pytest.fail('Unexpected XML request'))
     with pytest.raises(SystemExit):
         meetings.main(path, nthreads=1)
-    assert meetings.read(path)[url] == old and pending(path) == [url]
+    assert meetings_read(path)[url] == old and pending(path) == [url]
 
 
 def test_http_failure_exposes_status_without_query_secrets(monkeypatch):
@@ -126,7 +126,7 @@ def test_recovery_rejects_a_different_meeting_but_retains_xml(tmp_path, monkeypa
     monkeypatch.setattr(meetings, 'get_with_retry', lambda *a, **k: SimpleNamespace(content=RAW))
     with pytest.raises(SystemExit):
         meetings.main(path, nthreads=1)
-    assert meetings.read(path)[url] == old and pending(path) == [url]
+    assert meetings_read(path)[url] == old and pending(path) == [url]
     failed = json.loads(path.with_suffix(path.suffix + '.pending.json').read_text())['responses'][url]
     assert RawContent.model_validate(failed['committeeMeeting']['_source_xml']).body_bytes() == RAW
 
@@ -137,7 +137,7 @@ def test_json_success_does_not_fetch_xml(tmp_path, monkeypatch):
                         {'committeeMeetings': [{'url': url}]} if params else {'committeeMeeting': old})
     monkeypatch.setattr(meetings, 'get_with_retry', lambda *a, **k: pytest.fail('Unexpected XML request'))
     meetings.main(path, nthreads=1)
-    assert '_source_xml' not in meetings.read(path)[url]
+    assert '_source_xml' not in meetings_read(path)[url]
 
 
 def test_empty_xml_objects_remain_empty_objects():

@@ -1,21 +1,22 @@
 """Compare default extraction, optional member references and corpus helpers."""
 import argparse
-from collections import Counter, defaultdict
 import gzip
 import hashlib
-from itertools import zip_longest
 import json
-from pathlib import Path
 import re
 import shutil
+from collections import Counter, defaultdict
+from itertools import zip_longest
+from pathlib import Path
 from time import perf_counter
 
-from house_naming import Engine
-from house_naming.corpus import filename_tokens, shared_token_pattern, residual_fields, DESCRIPTIVE_FIELDS
 from congress_api.models.legislators import member_surnames_by_congress
+from congress_api.parsers.legislators import parse_legislators
+from house_naming import Engine
+from house_naming.corpus import DESCRIPTIVE_FIELDS, filename_tokens, residual_fields, shared_token_pattern
 from house_naming.filename_corpus import parser_source_paths
-from house_naming.filenames import ParsedFilename, filename_tokens as native_tokens, parse_filename
-from congress_api.models.legislators import parse_legislators
+from house_naming.filenames import ParsedFilename, parse_filename
+from house_naming.filenames import filename_tokens as native_tokens
 
 
 def sha(path):

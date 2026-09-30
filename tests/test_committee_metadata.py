@@ -3,9 +3,9 @@ import gzip
 import json
 
 import pytest
-
-from congress_api import committee_metadata as collector
 from committee_explorer.export import export
+from congress_api.acquisition import committees as collector
+from congress_api.acquisition.meetings import API as collector_API
 from test_explorer_export import NOW, native, write_meetings
 
 
@@ -43,7 +43,7 @@ def test_collector_paginates_and_keeps_historical_snapshot(tmp_path, monkeypatch
     assert {key: rows['113|hsru00'][key] for key in historical} == historical
     assert rows['113|hsru00']['detail']['systemCode'] == 'hsru00'
     assert len(rows) == 5
-    assert calls == [(f'{collector.API}/committee/{c}', o) for c in (114, 115) for o in (0, 1)]
+    assert calls == [(f'{collector_API}/committee/{c}', o) for c in (114, 115) for o in (0, 1)]
     assert all('test-key' not in row['_url'] for row in rows.values())
     with gzip.open(output, 'rt') as stream:
         assert len([json.loads(line) for line in stream]) == 5

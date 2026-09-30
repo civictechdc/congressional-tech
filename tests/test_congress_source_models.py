@@ -1,18 +1,17 @@
 """Native types, unknown fields and source identity survive parser boundaries."""
-import json
 import ast
 import importlib
+import json
 import pkgutil
 from pathlib import Path
 
-from pydantic import BaseModel, ValidationError
 import pytest
-
 from congress_api import models
 from congress_api.adapters import meetings as adapter
-from congress_api.congress_source import parse_congress_xml
 from congress_api.models.congress import CommitteeMeeting, parse_response
-from congress_api.models.legislators import parse_legislators
+from congress_api.parsers.congress import parse_congress_xml
+from congress_api.parsers.legislators import parse_legislators
+from pydantic import BaseModel, ValidationError
 from test_explorer_material_adapters import context
 
 FIXTURES = Path(__file__).parent / 'fixtures'
@@ -119,7 +118,7 @@ def test_real_xml_keeps_native_text_types_and_distinct_list_element_names():
 
 @pytest.mark.parametrize('package,chamber', [('CHRG-119hhrg64429', 'house'), ('CHRG-116shrg42251', 'senate')])
 def test_package_only_transcription_uses_native_title_and_chamber(monkeypatch, package, chamber):
-    from congress_api.transcribe import metadata
+    from congress_api.transcripts import context as metadata
     raw = (FIXTURES / 'gpo_metadata' / f'{package}.xml').read_bytes()
     monkeypatch.setattr(metadata, 'fetch', lambda url: raw)
     monkeypatch.setattr(metadata, 'meetings', lambda: {})

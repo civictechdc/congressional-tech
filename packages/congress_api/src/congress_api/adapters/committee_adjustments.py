@@ -4,6 +4,8 @@ These are curated decisions with public evidence, not altered API responses.
 Additions are bounded to the documented Congress; no future term is assumed.
 """
 
+
+
 ADJUSTMENTS = (
     {
         'code': 'jcfm00', 'first_congress': 106, 'last_congress': 106,

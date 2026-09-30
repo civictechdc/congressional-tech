@@ -6,10 +6,13 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-
-from congress_api.inventory import acquisition, captions, completeness, witness_lists
-from congress_api.inventory.common import read_csv, read_state, write_state
-from congress_api.inventory.main import main
+from congress_api.acquisition import gaps as acquisition
+from congress_api.acquisition.gaps import get_witnesses as witness_lists_get_witnesses
+from congress_api.acquisition.gaps import probe_day as captions_probe_day
+from congress_api.cli.inventory import main
+from congress_api.matching import completeness
+from congress_api.parsers import witness_pdf as witness_lists
+from congress_api.retention.tables import read_csv, read_state, write_state
 
 TODAY = dt.date(2026, 9, 30)
 FIXTURES = Path(__file__).parent / 'fixtures/meeting_inventory'
@@ -45,9 +48,9 @@ def test_compatibility_calls_delegate_to_acquisition(monkeypatch):
     before, after = {}, {}
     args = ('key', 'https://example.gov/witness.pdf')
     people = acquisition.get_witnesses(*args, before, 'v1', '2020-01-01', TODAY, False, get=get)
-    assert witness_lists.get_witnesses(*args, after, 'v1', '2020-01-01', TODAY, False, get=get) == people
+    assert witness_lists_get_witnesses(*args, after, 'v1', '2020-01-01', TODAY, False, get=get) == people
     assert before == after
-    assert captions.probe_day('ag', '2020-01-01', get=lambda *a, **k: SimpleNamespace(status_code=404)) == []
+    assert captions_probe_day('ag', '2020-01-01', get=lambda *a, **k: SimpleNamespace(status_code=404)) == []
 
 
 @pytest.fixture
@@ -67,8 +70,8 @@ def inputs(tmp_path, monkeypatch):
         'senate_documents_found': 'event_id,kind,url', 'senate_hearing_pages_found': 'event_id,title',
         'house_witnesses_found': 'event_id,name', 'senate_witnesses_found': 'event_id,name'}.items():
         (tmp_path / f'{name}.csv').write_text(header + '\n')
-    from congress_api.committees import codes_of
-    from congress_api.inventory.text_sources import senate_comms
+    from congress_api.matching.committees import codes_of
+    from congress_api.matching.recordings import senate_comms
     comm, = senate_comms(meetings[1], codes_of(meetings[1]))
     state = {'probes': {f'{comm}|2020-01-02': {'urls': [], 'checked': '2026-09-29', 'source': 'HEAD'}},
              'witness_lists': {'https://example.gov/witness.pdf': witness_lists.pdf_observation((FIXTURES / 'witness-hubzone.pdf').read_bytes())}}
@@ -111,6 +114,6 @@ def test_completeness_uses_saved_mods_without_acquisition(monkeypatch):
     index = {'1': dict(gpo_packages=package, committees='', title='Hearing', youtube_ids='', senate_urls='',
                        other_recordings='', text_source='gpo', rescheduled_to='', not_held='')}
     rows, people = completeness.build([meeting], index, set(), [], [], [],
-        {package: {'last_modified': 'v1', 'held_date': '2013-07-23'}}, {'mods': {package: observation}}, TODAY, True, None)
+        {'1': package}, {}, {package: observation}, {})
     assert people and rows[0]['witness_source'] == 'gpo'
     assert {p['name'] for p in people} == {p['name'] for p in observation['people']}

@@ -4,9 +4,19 @@ description. A candidate is confirmed when it is 30+ minutes, its title shares t
 hearing's words, and it was uploaded the day of the hearing (to 3 days after) or its
 text carries the hearing's date or event ID. Writes confirmed.csv and review.csv.
 """
-import csv, json, os, re, sys, datetime as dt, collections, requests
+import collections
+import csv
+import datetime as dt
+import json
+import os
+import re
+import sys
+
+import requests
+
 sys.path.insert(0, 'packages/congress_api/src'); sys.path.insert(0, 'packages/congress_shared/src')
-from congress_api.gpo.match import words, similarity, dates_in_text, EVENT_ID
+from congress_api.matching.gpo_videos import EVENT_ID, dates_in_text, similarity, words
+
 S = sys.argv[1]  # scratch dir holding news_candidates.json; the repo copies are research/data/news_search_*.json
 cands = json.load(open(f'{S}/news_candidates.json'))
 gpo = {r['package_id']: r for r in csv.DictReader(open('apps/committee_youtube/data/gpo_hearings.csv'))}

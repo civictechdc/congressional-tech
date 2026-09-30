@@ -2,11 +2,10 @@
 from datetime import UTC, datetime
 
 import pytest
-
 from committee_meeting.common import Ref
 from congress_api.adapters.common import AdapterContext
 from congress_api.adapters.senate import records as adapt
-from congress_api.senate.records import match_pages
+from congress_api.matching.senate_pages import match_pages
 
 PAGE = 'https://www.armed-services.senate.gov/hearings/strategic-forces'
 PLAYER = 'https://www.senate.gov/isvp/?auto_play=false&comm=armed&filename=armedA032625'
@@ -59,7 +58,8 @@ def test_embedded_recording_is_linked_only_to_an_established_page_match():
 def test_real_strategic_forces_open_portion_reaches_recording_output():
     import json
     from pathlib import Path
-    from congress_api.senate.records import parse_page
+
+    from congress_api.parsers.senate import parse_page
     fixture = Path(__file__).parent / 'fixtures/meeting_inventory/armed-open-closed.html'
     info = json.loads(fixture.with_suffix('.json').read_text())
     page = parse_page(fixture.read_bytes(), info['url']).source_dict()
@@ -77,7 +77,8 @@ def test_real_strategic_forces_open_portion_reaches_recording_output():
 def test_real_publisher_no_broadcast_notice_is_scoped_not_a_failed_search():
     import json
     from pathlib import Path
-    from congress_api.senate.records import parse_page
+
+    from congress_api.parsers.senate import parse_page
     fixture = Path(__file__).parent / 'fixtures/meeting_inventory/agriculture-no-broadcast.html'
     info = json.loads(fixture.with_suffix('.json').read_text())
     page = parse_page(fixture.read_bytes(), info['url']).source_dict()
@@ -103,12 +104,13 @@ def test_real_publisher_no_broadcast_notice_is_scoped_not_a_failed_search():
 def test_real_access_heading_updates_only_matching_existing_sitting(access, day, expected, has_prior_alternative):
     import json
     from pathlib import Path
+
+    from committee_explorer.assemble import Assembly
     from committee_meeting.meetings import Meeting, MeetingOccurrence
     from committee_meeting.provenance import AlternativeValue, FieldEvidence
-    from committee_explorer.assemble import Assembly
     from congress_api.adapters.common import reported_time
     from congress_api.models.senate import SenatePage
-    from congress_api.senate.records import parse_page
+    from congress_api.parsers.senate import parse_page
     fixture = Path(__file__).parent / 'fixtures/meeting_inventory/armed-open-closed.html'
     info = json.loads(fixture.with_suffix('.json').read_text())
     page = parse_page(fixture.read_bytes(), info['url']).source_dict()

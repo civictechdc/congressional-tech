@@ -6,8 +6,8 @@ persistent IDs and publication. These boundaries and the interfaces below are
 preserved by the refactor. See [source verification](../packages/congress_api/SOURCE_MODELS.md#verification-and-limits)
 for the source-value and original-byte fidelity checks.
 
-File reading belongs to collectors, explicit `read_*`/cache helpers, and the
-exporter. Transcript normalization accepts `TranscriptInput(data, name, uri)`;
+Shared file readers and capture writers live in `retention/`; collection and
+transcript workflows call them, and the explorer owns its publication inputs. Transcript normalization accepts `TranscriptInput(data, name, uri)`;
 it validates supplied bytes with `models.transcription.Transcript` and never
 opens the URI. The exporter uses the same bytes for the input snapshot and the
 transcript representation. Invalid bodies still retain their digest, location
@@ -16,7 +16,7 @@ pairs; `read_youtube_videos` reads the generated channel caches separately.
 
 ## Meeting interpretation and matching
 
-`meeting_rules.py` owns meeting type, access and hearing eligibility for inventory,
+`matching/meetings.py` owns meeting type, access and hearing eligibility for inventory,
 House/Senate collection, adapters and Parquet conversion. Explicit publisher types
 take precedence over title inference. Generic meetings stay generic, and a briefing
 does not establish closed access. Both ordinary and field hearings can have witnesses.
@@ -29,11 +29,11 @@ and the inventory's raw `type` column remain unchanged.
 
 | Rule | Owner and intentional limits |
 | --- | --- |
-| Inventory population | `inventory.common.in_inventory_scope`; the exporter uses the same population for print matching. Senate's explicit Indian Affairs/Drug Caucus exceptions remain in its collector. |
-| Print associations and same-day title sharing | `inventory.prints`; inventory and explorer use the same matcher. Print and recording sharing use the same grouping rule without merging meeting IDs. |
-| Generic recording matches | `inventory.text_sources`; shared meeting classification feeds recording compatibility groups. Business meetings can match markup uploads; field hearings can match hearing uploads. Recaps and reactions cannot establish this weak match. Upload-title keywords never relabel the meeting. |
-| Possible rescheduling | `inventory.text_sources.reschedule_candidate`; closed/partly closed sessions and recurring briefings/depositions are excluded. This is a matching restriction, not an access determination. |
-| Senate page associations | `senate.records` / `senate.matching`; committee/date restrictions, weighted titles and exact identifiers remain distinct from print and recording rules. Adapters consume retained decisions. |
+| Inventory population | `matching.meetings.in_inventory_scope`; the exporter uses the same population for print matching. Senate's explicit Indian Affairs/Drug Caucus exceptions remain in its collector. |
+| Print associations and same-day title sharing | `matching.prints`; inventory and explorer use the same matcher. Print and recording sharing use the same grouping rule without merging meeting IDs. |
+| Generic recording matches | `matching.recordings`; shared meeting classification feeds recording compatibility groups. Business meetings can match markup uploads; field hearings can match hearing uploads. Recaps and reactions cannot establish this weak match. Upload-title keywords never relabel the meeting. |
+| Possible rescheduling | `matching.recordings.reschedule_candidate`; closed/partly closed sessions and recurring briefings/depositions are excluded. This is a matching restriction, not an access determination. |
+| Senate page associations | `matching.senate_pages` / `matching.senate`; committee/date restrictions, weighted titles and exact identifiers remain distinct from print and recording rules. Adapters consume retained decisions. |
 
 Publisher page-heading labels still require their source-specific layout and a
 matching dated sitting. Reported status remains distinct from a title-based
@@ -65,7 +65,7 @@ Paths marked required have no default. CLI `--help` is safe without credentials.
 | `senate-captions` | Required `--out-dir/<filename>.txt`, `<filename>.captions.json.gz` (raw playlists/WebVTT), `caption_receipts/<filename>.json`, and `captions_index.csv` | Custom; `--urls`, `--urls-file`, `--nthreads` (4) |
 | `hearing-transcribe` | Required `--out-dir/{stem}.json` and `{stem}.gpo.txt`; `source/` contains retained HTML/Gemini attempts | Custom; `--event-id`, `--gpo-package`, `--video-id`, `--senate-url`, `--audio`, `--proxy`, `--gpo-path`, `--meetings` |
 
-`inventory.common.source_args` defines required `--meetings`, `--state-dir`,
+`cli.common.source_args` defines required `--meetings`, `--state-dir`,
 `--output-dir`, optional `--seed-cache` (expanded path), `--offline`, and
 `--as-of` (UTC today, ISO date). The source-reader and TinyDB flag families stay
 separate. `congress_shared.globals.add_global_args` adds only `--tinydb_dir`.
@@ -102,8 +102,10 @@ data, then saves `pipeline-data/committee-explorer/{public,state,attempts.json}`
 Only that verified publication dispatches `deploy-pages.yml`. Collection success
 alone is not a claim of successful publication.
 
-`tests/test_congress_api_boundaries.py` freezes script names, checks production
-imports, and checks the workflow's explore exclusion. This is a local/CI
+`tests/test_congress_api_boundaries.py` freezes script names, checks source purity
+and the workflow's explore exclusion. `tests/test_congress_api_imports.py` enforces
+the allowed folder imports declared in `pyproject.toml`, including relative and
+nested imports. This is a local/CI
 regression gate, not evidence that a new workflow has run on GitHub.
 
 ## Offline behavior
@@ -117,12 +119,13 @@ acquisition, not file I/O, parsing, state persistence, or CSV joins.
 | Senate reader | Usable per-site listing/pages in `senate.json.gz`, or complete local seed pages for initial import | Seed parsing; native duplicate guards and retained matching; state/three CSV writes | Missing required listing or failed seed import raises; existing saved sites skip live discovery and refresh |
 | Inventory | `inventory.json.gz` probe results for eligible unrecorded Senate days and parsed MODS/PDF witness sources as needed; seed cache can provide missing observations | Caption-index/receipt import, seed imports, CSV/YouTube joins, nominee extraction; rewrite inventory state and four CSVs | Missing required probe or witness source raises; missing input files also raise. Recent days (<7 days old) remain deferred. A saved empty witness list or negative probe is usable evidence |
 
-The inventory orchestrator calls `inventory.acquisition` for day probes;
-`completeness.build` calls it for witness sources. `get_witnesses`, `probe_day`,
-and `probe_days` accept a defaulted `get=http.get_with_retry` collaborator.
-The gateway receives `session=None` to retain its thread-local session behavior.
-No CLI option or orchestrator `get` parameter is added. PDF/MODS parsing remains
-in `witness_lists`; compatibility calls there delegate to acquisition.
+The inventory application (`cli.inventory`) calls `acquisition.gaps` for day
+probes and witness collection. `matching.completeness.witness_sources` selects
+inputs; `matching.completeness.build` consumes collected MODS/PDF observations.
+Neither matching step reads files or calls acquisition. The acquisition helpers
+retain their injectable `get=http.get_with_retry` dependency and thread-local
+session behavior. PDF/MODS parsing belongs to `parsers.witness_pdf`; old forwarding
+wrappers were removed. Partial acquisition state is still saved on failure.
 
 ## Parser, schema and capture versions
 
@@ -132,14 +135,14 @@ are not separate owners. The AST registry test catches new or changed constants.
 
 | Owner | Version | What it governs / consumer |
 | --- | --- | --- |
-| `house.evidence.SCHEMA_VERSION` | `"1.1"` | House evidence; House reader refresh queue and House replay |
-| `senate.records.PARSER_VERSION` | `5` | Parsed Senate pages; bounded maintenance and Senate replay |
-| `gpo.fetch.PARSER_VERSION` | `"3"` | GPO CSV/evidence interpretation; fetch and cached replay |
-| `inventory.witness_lists.PARSER_VERSION` | `2` | PDF/MODS witness observations; retained with names and bytes |
-| `senate.captions.CAPTURE_VERSION` | `"3"` | Caption-capture completeness; stale receipts trigger recapture |
-| `models.transcription.SCHEMA_VERSION` | `"1.0"` | Transcript JSON; exported through `transcribe.schema`, checked by transcript adapter |
-| `senate.captions` receipt `schema_version` | `"1.0"` | Caption receipt layout, separate from capture algorithm |
-| `http.response_metadata` `response_metadata_version` | `2` | Parsed response header/status fidelity |
+| `parsers.house_evidence.SCHEMA_VERSION` | `"1.1"` | House evidence; House reader refresh queue and House replay |
+| `parsers.senate.PARSER_VERSION` | `5` | Parsed Senate pages; bounded maintenance and Senate replay |
+| `parsers.gpo_hearings.PARSER_VERSION` | `"3"` | GPO CSV/evidence interpretation; fetch and cached replay |
+| `parsers.witness_pdf.PARSER_VERSION` | `2` | PDF/MODS witness observations; retained with names and bytes |
+| `transcripts.senate.CAPTURE_VERSION` | `"3"` | Caption-capture completeness; stale receipts trigger recapture |
+| `models.transcription.SCHEMA_VERSION` | `"1.0"` | Transcript JSON; exported through `transcripts.render`, checked by transcript adapter |
+| `transcripts.senate` receipt `schema_version` | `"1.0"` | Caption receipt layout, separate from capture algorithm |
+| `transport.http.response_metadata` `response_metadata_version` | `2` | Parsed response header/status fidelity |
 
 Other source-model JSON and the GPO evidence store currently have no independent
 schema-version constant. `TRANSCRIPT_JSON_SCHEMA` and Gemini `TURNS_SCHEMA` are
@@ -198,8 +201,8 @@ an adapter upgrade affects key formation; green digest tests alone do not prove 
 ## Replay protection matrix
 
 Each driver remains independent. The module CLI paths are stable:
-`python -m congress_api.house.replay`, `python -m congress_api.senate.replay`,
-`python -m congress_api.gpo.replay`. No shared replay loop or receipt schema.
+`python -m congress_api.replay.house`, `python -m congress_api.replay.senate`,
+`python -m congress_api.replay.gpo`. No shared replay loop or receipt schema.
 
 | Driver | Admission / skip gates | Preserved values | Receipt and output |
 | --- | --- | --- | --- |

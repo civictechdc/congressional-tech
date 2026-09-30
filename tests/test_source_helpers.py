@@ -1,8 +1,7 @@
 import pytest
-
-from congress_api.committees import codes_of
-from congress_api.witnesses import is_name, witness
-from congress_api.xml import parse_xml
+from congress_api.matching.committees import codes_of
+from congress_api.parsers.witness_names import is_name, witness
+from congress_api.parsers.xml import parse_xml
 
 
 @pytest.mark.parametrize("line,name,position,organization", [
@@ -30,8 +29,8 @@ def test_bom_and_committee_aliases():
 
 
 def test_http_retries_and_paces_house(monkeypatch):
-    from congress_api import http
     import requests
+    from congress_api.transport import http
     at, calls = [0.0], []
     monkeypatch.setattr(http.time, "monotonic", lambda: at[0])
     monkeypatch.setattr(http.time, "sleep", lambda seconds: at.__setitem__(0, at[0] + seconds))
@@ -50,8 +49,8 @@ def test_http_retries_and_paces_house(monkeypatch):
 
 
 def test_transient_failure_is_not_absence(monkeypatch):
-    from congress_api import http
     import requests
+    from congress_api.transport import http
     monkeypatch.setattr(http.time, "sleep", lambda _: None)
     class Session:
         def request(self, *args, **kwargs):
@@ -62,12 +61,13 @@ def test_transient_failure_is_not_absence(monkeypatch):
 
 
 def test_http_same_host_requests_overlap_and_keep_start_spacing(monkeypatch):
+    import time
     from collections import defaultdict
     from concurrent.futures import ThreadPoolExecutor
     from threading import Event
-    import time
+
     import requests
-    from congress_api import http
+    from congress_api.transport import http
 
     monkeypatch.setattr(http, "_next", defaultdict(float))
     first_started, second_started = Event(), Event()

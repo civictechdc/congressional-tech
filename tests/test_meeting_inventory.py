@@ -3,19 +3,22 @@ import json
 from pathlib import Path
 
 import pytest
-
-from congress_api.house import repository
-from congress_api.inventory import captions, completeness, text_sources
-from congress_api.inventory.common import due, read_state, write_state
-from congress_api.inventory.prints import match_prints
-from congress_api.senate import pages, records
+from congress_api.acquisition import senate as records
+from congress_api.acquisition.refresh import due
+from congress_api.matching import captions, completeness
+from congress_api.matching import recordings as text_sources
+from congress_api.matching.prints import match_prints
+from congress_api.parsers import house_documents as repository
+from congress_api.parsers import senate_page as pages
+from congress_api.parsers.xml import parse_xml as repository_parse_xml
+from congress_api.retention.tables import read_state, write_state
 
 FIXTURES = Path(__file__).parent / "fixtures/meeting_inventory"
 
 
 @pytest.mark.parametrize("sample", json.loads((FIXTURES / "house.json").read_text()), ids=lambda s: s["fixture"])
 def test_house_xml(sample):
-    root = repository.parse_xml((FIXTURES / sample["fixture"]).read_bytes())
+    root = repository_parse_xml((FIXTURES / sample["fixture"]).read_bytes())
     if "witnesses" in sample:
         assert repository.witness_rows(root) == sample["witnesses"]
     else:
@@ -39,7 +42,7 @@ def test_house_addresses_use_filed_documents_before_record_guesses():
 
 
 def test_witness_address_can_come_from_full_committee():
-    root = repository.parse_xml(b'<committee-meeting meeting-type="HHRG" congress-num="114"><meeting-details><meeting-date><calendar-date>2015-09-30</calendar-date></meeting-date><committees><committee-name id="AS00"/></committees><subcommittees><committee-name id="AS26"/></subcommittees></meeting-details></committee-meeting>')
+    root = repository_parse_xml(b'<committee-meeting meeting-type="HHRG" congress-num="114"><meeting-details><meeting-date><calendar-date>2015-09-30</calendar-date></meeting-date><committees><committee-name id="AS00"/></committees><subcommittees><committee-name id="AS26"/></subcommittees></meeting-details></committee-meeting>')
     urls = repository.addresses({"eventId": "103995"}, root)
     assert "/AS00/" in urls[0] and "/AS26/" in urls[1]
 
@@ -65,13 +68,13 @@ def test_caption_observation_overrides_flag_and_cutoff():
 
 
 def test_pdf_schedule_is_not_a_witness_affiliation():
-    from congress_api.inventory.witness_lists import read_pdf
+    from congress_api.parsers.witness_pdf import read_pdf
     people, text_present = read_pdf((FIXTURES / "house-member-schedule.pdf").read_bytes())
     assert text_present and people == []
 
 
 def test_mods_witnesses_can_live_in_granules():
-    from congress_api.gpo.fetch import mods_witnesses
+    from congress_api.parsers.gpo_hearings import mods_witnesses
     data = b'<mods xmlns="http://www.loc.gov/mods/v3"><relatedItem><extension><witness>Coffren, Lauren</witness></extension></relatedItem></mods>'
     assert mods_witnesses(data) == [{"name": "Lauren Coffren", "honorific": "", "position": "", "organization": ""}]
 
@@ -79,7 +82,7 @@ def test_mods_witnesses_can_live_in_granules():
 def test_completeness_preserves_legacy_title_newlines():
     m = {"eventId": "1", "congress": 119, "date": "2026-09-01", "type": "Meeting", "title": "Business\r\nmeeting"}
     r = dict(event_id="1", committees="ssju00", title=m["title"], gpo_packages="", youtube_ids="", senate_urls="", other_recordings="", text_source="no_video", rescheduled_to="", not_held="")
-    rows, people = completeness.build([m], {"1": r}, set(), [], [], [], {}, {}, dt.date(2026, 9, 27), True, None)
+    rows, people = completeness.build([m], {"1": r}, set(), [], [], [], {}, {}, {}, {})
     assert rows[0]["title"] == "Business\nmeeting" and people == []
 
 
@@ -129,7 +132,7 @@ def test_rescheduling_exclusions_do_not_invent_closed_access(title, expected):
 
 @pytest.mark.parametrize("caption,expected", [(True, "youtube_captions"), (False, "video_no_captions"), (None, "video_no_captions")])
 def test_video_cache_reading_is_separate_from_matching(tmp_path, monkeypatch, caption, expected):
-    from congress_api.inventory.common import read_youtube_videos
+    from congress_api.retention.tables import read_youtube_videos
 
     channels = [{"systemCode": "hsag00"}, {"systemCode": "hsap00"}, {"systemCode": "hsju00"}]
     video = {"videoId": "retained-video", "title": "Competition in digital markets", "description": "",
@@ -158,7 +161,7 @@ def test_video_cache_reading_is_separate_from_matching(tmp_path, monkeypatch, ca
 
 
 def test_invalid_video_cache_is_not_treated_as_a_missing_channel(tmp_path):
-    from congress_api.inventory.common import read_youtube_videos
+    from congress_api.retention.tables import read_youtube_videos
 
     (tmp_path / "youtube_00.json").write_bytes(b"{not json}")
     with pytest.raises(json.JSONDecodeError):
@@ -202,10 +205,10 @@ def test_listing_decodes_html_entities_in_source_urls():
 
 
 def test_house_refusal_is_not_saved_as_absence(monkeypatch):
-    from congress_api.house.records import fetch_xml
+    from congress_api.acquisition.house import fetch_xml
     def refusal(*args, **kwargs):
         raise RuntimeError("403")
-    monkeypatch.setattr("congress_api.http.get_with_retry", refusal)
+    monkeypatch.setattr("congress_api.transport.http.get_with_retry", refusal)
     with pytest.raises(RuntimeError, match="403"):
         fetch_xml(["https://docs.house.gov/m.xml"], "committee-meeting", False)
 
@@ -213,7 +216,8 @@ def test_house_refusal_is_not_saved_as_absence(monkeypatch):
 def test_archive_absence_is_probed_once_and_outputs_settle(tmp_path, monkeypatch):
     import gzip
     from types import SimpleNamespace
-    from congress_api.inventory.main import main
+
+    from congress_api.cli.inventory import main
     m = {"eventId": "1", "congress": 116, "date": "2020-01-02", "chamber": "Senate", "type": "Meeting", "title": "Closed briefing", "meetingStatus": "Scheduled", "committees": [{"systemCode": "ssaf00"}]}
     meetings = tmp_path / "meetings.jsonl.gz"
     meetings.write_bytes(gzip.compress((json.dumps(m) + "\n").encode()))
@@ -223,8 +227,8 @@ def test_archive_absence_is_probed_once_and_outputs_settle(tmp_path, monkeypatch
     def absent(session, url, **kwargs):
         calls.append(url)
         return SimpleNamespace(status_code=404)
-    from congress_api.inventory import acquisition
-    from congress_api.inventory.common import write_state
+    from congress_api.acquisition import gaps as acquisition
+    from congress_api.retention.tables import write_state
     probes = {}
     days = [('ag', '2020-01-02')]
     # The acquisition seam is independent of orchestration and accepts the fake.
@@ -232,8 +236,8 @@ def test_archive_absence_is_probed_once_and_outputs_settle(tmp_path, monkeypatch
     assert len(calls) == 8
     assert acquisition.probe_days(days, probes, dt.date(2026, 9, 27), get=absent) == 0
     # Use the actual committee code selected for this fixture.
-    from congress_api.inventory.text_sources import senate_comms
-    from congress_api.committees import codes_of
+    from congress_api.matching.committees import codes_of
+    from congress_api.matching.recordings import senate_comms
     comm, = senate_comms(m, codes_of(m))
     write_state(tmp_path / 'inventory.json.gz', {'probes': {f'{comm}|2020-01-02': probes['ag|2020-01-02']}})
     args = dict(meetings=meetings, state_dir=tmp_path, output_dir=tmp_path, gpo_path=tmp_path / "gpo.csv", videos_path=tmp_path / "videos.csv", tinydb_dir=tmp_path,

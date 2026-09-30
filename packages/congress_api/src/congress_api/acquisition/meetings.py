@@ -1,0 +1,154 @@
+"""
+Keep a local copy of every House, Senate and joint committee meeting record on Congress.gov.
+
+    congress-meetings --output-path congress_meetings.jsonl.gz
+
+Each line is one meeting's detail record (event ID, date, committees, title, type,
+status, witnesses, and the official `videos` links, usually to YouTube). The
+first run lists every meeting from the 112th Congress on (about 13,600 detail
+calls). Later runs fetch meetings Congress.gov updated since the newest
+`updateDate` on file, plus any previously failed detail URLs retained in the
+adjacent ``.pending.json`` file. Listing still covers every Congress.
+"""
+
+import json
+import logging
+import sys
+import threading
+from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
+
+import requests
+from congress_shared.auth import load_congress_api_key
+from congress_shared.globals import CONGRESS_METADATA, DEFAULT_MEETINGS_FILE
+
+from congress_api.models.congress import CommitteeMeeting, MeetingSummary
+from congress_api.models.content import RawContent
+from congress_api.parsers.congress import meeting_from_xml, parse_congress_xml
+from congress_api.retention.meetings import read, write, write_pending
+from congress_api.retention.rejected_pages import retain_rejected_page
+from congress_api.transport.http import HttpRequestError, get_with_retry
+
+API = "https://api.congress.gov/v3"
+
+
+FIRST_CONGRESS = 112  # Congress.gov's committee meeting records start here
+
+
+CHAMBERS = ("house", "nochamber", "senate")  # nochamber = joint committees and commissions
+
+
+RELIST_OVERLAP = timedelta(days=2)
+
+
+def main(output_path: Path = DEFAULT_MEETINGS_FILE, nthreads: int = 5) -> None:
+    if nthreads < 1:
+        raise ValueError("nthreads must be positive")
+    output_path = Path(output_path)
+    api_key = load_congress_api_key()
+    session = requests.Session()
+
+    records = read(output_path)
+    since = None
+    if records:
+        newest = max(r.get("updateDate", "") for r in records.values())
+        since = (datetime.strptime(newest[:19], "%Y-%m-%dT%H:%M:%S") - RELIST_OVERLAP).strftime("%Y-%m-%dT%H:%M:%SZ")
+    logging.info(f"{len(records)} meetings on file; listing {'changes since ' + since if since else 'everything'}")
+
+    # Historical records can also be corrected; use the update window for every
+    # Congress instead of silently ignoring changes more than two Congresses old.
+    current = max(int(c) for c in CONGRESS_METADATA)
+    have = {(r.get("chamber") or "").lower() for r in records.values()}  # "house", "nochamber", "senate"
+    pending_path = output_path.with_suffix(output_path.suffix + ".pending.json")
+    pending = json.loads(pending_path.read_text()) if pending_path.exists() else {"urls": []}
+    failed_responses = dict(pending.get("responses", {}))
+    urls = list(pending["urls"])
+    for chamber in CHAMBERS:
+        new_chamber = since is None or chamber not in have
+        congresses = range(FIRST_CONGRESS, current + 1)
+        for congress in congresses:
+            params = {"limit": 250, "offset": 0}
+            listed = set()
+            if since and not new_chamber:
+                params.update(fromDateTime=since, toDateTime="2100-01-01T00:00:00Z")
+            while True:
+                page = get(session, f"{API}/committee-meeting/{congress}/{chamber}", api_key, params)
+                try:
+                    meetings = [MeetingSummary.model_validate(m) for m in page["committeeMeetings"]]
+                except (ValueError, TypeError, KeyError):
+                    retain_rejected_page(output_path, page, url=f"{API}/committee-meeting/{congress}/{chamber}", offset=params['offset'])
+                    raise
+                page_urls = [m.url.split("?")[0] for m in meetings]
+                if page_urls and not set(page_urls) - listed:
+                    raise ValueError(f"Meeting pagination repeated a page: {congress}/{chamber}")
+                listed.update(page_urls)
+                urls += page_urls
+                if not page.get("pagination", {}).get("next") and len(meetings) < params["limit"]:
+                    break
+                if not meetings:
+                    raise ValueError(f"Meeting pagination did not advance: {congress}/{chamber}")
+                params["offset"] += len(meetings)
+    urls = list(dict.fromkeys(urls))
+    logging.info(f"Fetching {len(urls)} new or updated meeting records")
+    # Save work before beginning detail requests. A crash may repeat completed
+    # requests, but a later global updateDate can never skip unfinished URLs.
+    write_pending(pending_path, urls, failed_responses)
+
+    failures, failed_urls, lock = [], [], threading.Lock()
+
+    def fetch(url):
+        response = None
+        try:
+            if not url.startswith(f"{API}/committee-meeting/"):
+                raise ValueError("Meeting detail URL is not on the Congress.gov API")
+            try:
+                response = get(session, url, api_key)
+            except (HttpRequestError, ValueError) as error:
+                # Some historical endpoints fail JSON serialization but serve
+                # XML. Refusals, rate limits and missing records are not that case.
+                if isinstance(error, HttpRequestError) and error.status != 500:
+                    raise
+                xml = get_with_retry(session, url, params={'api_key': api_key, 'format': 'xml'}, attempts=5)
+                response = {'_source_xml': RawContent.from_bytes(xml.content, 'application/xml').source_dict()}
+                response = {'committeeMeeting': meeting_from_xml(parse_congress_xml(xml.content)).source_dict()}
+                recovered = response['committeeMeeting']
+                expected = url.removeprefix(f'{API}/committee-meeting/').split('/')
+                chamber = recovered['chamber'].lower()
+                if chamber == 'joint':
+                    chamber = 'nochamber'
+                if expected != [str(recovered['congress']), chamber, recovered['eventId']]:
+                    raise ValueError('XML meeting identity does not match the requested endpoint')
+            record = CommitteeMeeting.model_validate(response["committeeMeeting"]).source_dict()
+            if any(record.get(field) in (None, "") for field in ("eventId", "congress", "chamber")):
+                raise ValueError("Meeting detail lacks eventId, congress or chamber")
+            record["_url"] = url
+            record["_retrieved_at"] = datetime.now(UTC).isoformat()
+            with lock:
+                records[url] = record
+                failed_responses.pop(url, None)
+        except Exception as ex:
+            with lock:
+                failures.append(f"{url}: {type(ex).__name__}")
+                failed_urls.append(url)
+                if response is not None:
+                    # Keep the source JSON if interpretation failed. A strict
+                    # model must never turn a new publisher shape into data loss.
+                    failed_responses[url] = response
+
+    with ThreadPoolExecutor(nthreads) as pool:
+        list(pool.map(fetch, urls))
+
+    if failed_responses:
+        # Keep the full retry set until the parsed snapshot is safely written.
+        write_pending(pending_path, urls, failed_responses)
+    write(records, output_path)
+    write_pending(pending_path, failed_urls, failed_responses)
+    logging.info(f"Wrote {len(records)} meetings to {output_path}")
+    if failures:
+        logging.error(f"{len(failures)} meeting(s) failed:\n  " + "\n  ".join(failures[:50]))
+        sys.exit(1)
+
+
+def get(session, url, api_key, params=None, attempts=5):
+    return get_with_retry(session, url, params={**(params or {}), "api_key": api_key, "format": "json"}, attempts=attempts).json()

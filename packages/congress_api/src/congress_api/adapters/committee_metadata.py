@@ -1,10 +1,12 @@
 """Enrich Congress-scoped committees with their official classification."""
+
 from committee_meeting.committees import Committee, CommitteeTerm
 from committee_meeting.common import DateRange, Identifier, Ref
 from committee_meeting.provenance import AlternativeValue, FieldEvidence
-from .meetings import chamber
-from .committee_adjustments import ADJUSTMENTS
-from .committees import committee_lookup
+
+from congress_api.adapters.committee_adjustments import ADJUSTMENTS
+from congress_api.adapters.committees import committee_lookup
+from congress_api.adapters.meetings import chamber
 
 TYPES = {'Standing': 'standing', 'Select': 'select', 'Special': 'special', 'Joint': 'joint',
          'Subcommittee': 'subcommittee', 'Commission or Caucus': 'commission_or_caucus',

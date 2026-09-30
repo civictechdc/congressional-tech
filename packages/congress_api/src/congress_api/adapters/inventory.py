@@ -5,9 +5,10 @@ known recording identities and filters recovered rows already represented by
 native or committee-source appearances. Convert a separate recovered CSV with
 its own AdapterContext so its input_snapshot_id names that artifact.
 """
+
+import json
 from collections import defaultdict
 from datetime import date, datetime
-import json
 
 from committee_meeting.assessments import Assessment
 from committee_meeting.common import ReportedTime
@@ -15,10 +16,9 @@ from committee_meeting.issues import DataIssue
 from committee_meeting.meetings import Affiliation, Appearance, RecordedName
 from committee_meeting.provenance import Method
 
-from congress_api.senate.isvp import LIVE_ID, STREAM, archive_url, live_url, parse_player_url
+from congress_api.adapters.common import digest, observed_time, ref, web_url, witness_roles
 from congress_api.models.base import SourceModel
-
-from .common import digest, observed_time, ref, web_url, witness_roles
+from congress_api.parsers.senate_player import LIVE_ID, STREAM, archive_url, live_url, parse_player_url
 
 
 def records(state, context, *, meetings, materials=None, recovered_witnesses=()):

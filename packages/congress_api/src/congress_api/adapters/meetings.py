@@ -1,20 +1,26 @@
 """Full Congress.gov meeting records, including statuses omitted by inventory reports."""
+
+import json
 from collections import Counter
 from urllib.parse import urlsplit
-import json
-import re
 
-from committee_meeting.common import Identifier, Location
 from committee_meeting.committees import Committee, CommitteeTerm
+from committee_meeting.common import Identifier, Location
 from committee_meeting.issues import DataIssue
 from committee_meeting.legislation import LegislativeItem, MeetingSubject
 from committee_meeting.materials import DocumentDetails, RecordingDetails
-from committee_meeting.meetings import Affiliation, Appearance, ConveningCommittee, Meeting, MeetingOccurrence, RecordedName
+from committee_meeting.meetings import (
+    Affiliation,
+    Appearance,
+    ConveningCommittee,
+    Meeting,
+    MeetingOccurrence,
+    RecordedName,
+)
 from committee_meeting.provenance import FieldEvidence
 
-from congress_api.meeting_rules import meeting_access, meeting_type
-
-from .common import digest, material_records, ref, reported_time, web_url, observed_time
+from congress_api.adapters.common import digest, material_records, observed_time, ref, reported_time, web_url
+from congress_api.matching.meetings import meeting_access, meeting_type
 
 
 def chamber(value):
@@ -201,14 +207,14 @@ def records(rows, context):
                 provider = None
                 identifiers = ()
                 if recording and url:
-                    from congress_api.gpo.match import VIDEO_ID
+                    from congress_api.matching.gpo_videos import VIDEO_ID
                     match = VIDEO_ID.search(url)
                     if match:
                         provider = "youtube"
                         dkey = "youtube|" + match.group(1)
                         identifiers = (Identifier(scheme="youtube.video", value=match.group(1)),)
                     else:
-                        from congress_api.senate.isvp import parse_player_url
+                        from congress_api.parsers.senate_player import parse_player_url
                         player = parse_player_url(url)
                         if player:
                             provider = "senate"

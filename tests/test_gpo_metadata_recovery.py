@@ -1,12 +1,12 @@
 """Actual MODS layouts must preserve committee ownership and constituent files."""
 from dataclasses import asdict
 from pathlib import Path
-import json
 
 from committee_meeting.common import Ref
 from congress_api.adapters import gpo
 from congress_api.adapters.committees import hierarchy_from_code, source_committee_keys
-from congress_api.gpo.fetch import parse_mods, clean_rows
+from congress_api.matching.gpo_committees import clean_rows
+from congress_api.parsers.gpo_hearings import parse_mods
 from test_explorer_material_adapters import context, gpo_row
 
 FIXTURES = Path(__file__).parent / 'fixtures' / 'gpo_metadata'

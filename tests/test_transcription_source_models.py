@@ -4,13 +4,11 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from congress_api.models.transcription import GeminiResponseCapture, Transcript, YoutubeVideoResponse, YtdlpVideoInfo
+from congress_api.parsers.gemini import parse_generated_response as gemini_parse_generated_response
+from congress_api.transcripts.render import TRANSCRIPT_JSON_SCHEMA
+from congress_api.transport import gemini
 from pydantic import ValidationError
-
-from congress_api.models.transcription import (
-    GeminiResponseCapture, Transcript, YoutubeVideoResponse, YtdlpVideoInfo,
-)
-from congress_api.transcribe import gemini
-from congress_api.transcribe.schema import TRANSCRIPT_JSON_SCHEMA
 
 RESEARCH = Path(__file__).parents[1] / 'docs/youtube-coverage/research/data/transcribe_compare'
 
@@ -28,12 +26,12 @@ def test_generated_response_preserves_unknown_fields_roles_and_numeric_kinds():
     payload = {'turns': [{'speaker': 'Someone', 'role': 'future-role', 'confidence': 0,
         'start': 0, 'end': 3.5, 'text': 'Original text', 'future': {'keep': [None]}}],
         'events': [{'seconds': 0.5, 'kind': 'future-event', 'text': 'Native event'}], 'new': False}
-    source = gemini.parse_generated_response(json.dumps(payload))
+    source = gemini_parse_generated_response(json.dumps(payload))
     assert source.source_dict() == payload
     assert type(source.turns[0].start) is int
     payload['turns'][0]['start'] = '0'
     with pytest.raises(ValidationError):
-        gemini.parse_generated_response(json.dumps(payload))
+        gemini_parse_generated_response(json.dumps(payload))
 
 
 def test_successful_call_retains_complete_sdk_http_text_before_parse(tmp_path, monkeypatch):

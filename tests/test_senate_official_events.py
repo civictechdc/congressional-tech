@@ -1,18 +1,22 @@
 """Actual committee layouts retain witnesses, attachment evidence and event identity."""
+import json
 from datetime import UTC, date, datetime
 from pathlib import Path
 from types import SimpleNamespace
-import json
 
 import pytest
-
 from committee_meeting.common import Ref
 from committee_meeting.meetings import Meeting
+from congress_api.acquisition import senate as records
 from congress_api.adapters.common import AdapterContext
-from congress_api.adapters.senate import official_events, records as adapt
-from congress_api.senate import records
-from congress_api.senate.pages import event_details, witnesses
-from congress_api.senate.corrections import DATE_CORRECTIONS
+from congress_api.adapters.senate import official_events
+from congress_api.adapters.senate import records as adapt
+from congress_api.matching.senate_corrections import DATE_CORRECTIONS
+from congress_api.parsers.senate import parsed as records_parsed
+from congress_api.parsers.senate_page import event_details, witnesses
+from congress_api.retention.tables import read_state as records_read_state
+from congress_api.retention.tables import write_state as records_write_state
+from congress_api.transport import http as records_http
 
 FIXTURES = Path(__file__).parent / 'fixtures/senate_official'
 NOW = datetime(2026, 9, 28, tzinfo=UTC)
@@ -38,7 +42,7 @@ def context():
 
 def state_for(name, **changes):
     url = URLS[name]
-    page = {**records.parsed(fixture(name), url), 'events': [], **changes}
+    page = {**records_parsed(fixture(name), url), 'events': [], **changes}
     host = 'indian.senate.gov' if name.startswith('indian') else 'drugcaucus.senate.gov'
     return json.loads(json.dumps({host: {'listings': {url: [page['event']['date'], page['event']['title']]}, 'pages': {url: page}}}))
 
@@ -133,7 +137,7 @@ def test_explicit_attachment_follow_retains_original_url_label_and_pdf(monkeypat
     def get(_session, target, **kwargs):
         calls.append(target)
         return SimpleNamespace(status_code=200, content=(html if target == url else fixture('drug-attachment')).encode())
-    monkeypatch.setattr(records.http, 'get_with_retry', get)
+    monkeypatch.setattr(records_http, 'get_with_retry', get)
     page = records.fetch_page(url, {}, date(2026, 9, 28))
     assert calls == [url, attachment]
     assert page['document_labels'][attachment] == 'DOWNLOAD TESTIMONY'
@@ -188,10 +192,10 @@ def test_failed_backfill_keeps_candidate_guard_for_already_collected_native_even
     def fetch(_session, target, **kwargs):
         if target == broken: raise RuntimeError('503 Unavailable')
         return SimpleNamespace(status_code=200, content=fixture('indian-housing-2026').encode())
-    monkeypatch.setattr(records.http, 'get_with_retry', fetch)
+    monkeypatch.setattr(records_http, 'get_with_retry', fetch)
     with pytest.raises(RuntimeError, match='503'):
         records.main(path, tmp_path, tmp_path, as_of=date(2026,9,28), site=[host])
-    saved = records.read_state(tmp_path/'senate.json.gz')
+    saved = records_read_state(tmp_path/'senate.json.gz')
     assert saved[host]['pages'][url]['candidate_events'] == ['12']
     rows = list(adapt(saved, context(), meetings={(119,'senate','12'): Ref(kind='meeting',id='known')}, committee_terms={(119,'slia00'): Ref(kind='committee_term',id='term')}))
     assert not any(row.kind == 'meeting' for row in rows)
@@ -204,13 +208,13 @@ def test_offline_rematch_preserves_supported_association_despite_changed_rarity_
     state = state_for('drug-market-2022', events=['12'], checked='2026-09-28', parser_version=2)
     state[host]['checked'] = '2026-09-28'
     state[host]['versions'] = {'12': ''}
-    records.write_state(tmp_path/'senate.json.gz', state)
+    records_write_state(tmp_path/'senate.json.gz', state)
     native = {'eventId':'12', 'chamber':'Senate', 'congress':117, 'date':'2022-03-02', 'meetingStatus':'Scheduled',
               'type':'Meeting', 'title':'Hearings to examine the economics of cartels', 'committees':[{'systemCode':'scnc00'}]}
     path=tmp_path/'native.jsonl.gz'; path.write_bytes(gzip.compress((json.dumps(native)+'\n').encode()))
     monkeypatch.setattr(records,'match_pages',lambda *a: ([],[],[]))
     records.main(path,tmp_path,tmp_path,offline=True,as_of=date(2026,9,28),site=[host],refresh_limit=0)
-    saved=records.read_state(tmp_path/'senate.json.gz')
+    saved=records_read_state(tmp_path/'senate.json.gz')
     assert saved[host]['pages'][url]['events'] == ['12']
     assert saved[host]['pages'][url]['candidate_events'] == []
     assert '12,' in (tmp_path/'senate_hearing_pages_found.csv').read_text()
@@ -222,9 +226,9 @@ def test_unrelated_sites_keep_previous_refresh_population(tmp_path, monkeypatch)
     native={'eventId':'canceled','chamber':'Senate','congress':119,'date':'2026-08-26','meetingStatus':'Canceled',
             'type':'Hearing','title':'A canceled hearing','committees':[{'systemCode':'ssbu00'}]}
     path=tmp_path/'native.jsonl.gz';path.write_bytes(gzip.compress((json.dumps(native)+'\n').encode()))
-    monkeypatch.setattr(records.http,'get_with_retry',lambda *a,**k:pytest.fail('unrelated canceled record triggered collection'))
+    monkeypatch.setattr(records_http,'get_with_retry',lambda *a,**k:pytest.fail('unrelated canceled record triggered collection'))
     records.main(path,tmp_path,tmp_path,as_of=date(2026,9,28))
-    assert records.read_state(tmp_path/'senate.json.gz') == {}
+    assert records_read_state(tmp_path/'senate.json.gz') == {}
 
 
 def test_existing_march_second_match_also_cites_the_transcript_correction():

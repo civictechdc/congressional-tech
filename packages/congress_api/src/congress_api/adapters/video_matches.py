@@ -6,8 +6,8 @@ an explanation for each individual recording-to-meeting association.
 """
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, Sequence
 import re
+from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 from urllib.parse import quote, urlsplit
 
@@ -15,12 +15,16 @@ from committee_meeting.assessments import Assessment
 from committee_meeting.common import Identifier, Ref
 from committee_meeting.issues import DataIssue
 from committee_meeting.materials import (
-    Material, MaterialLink, MaterialLocation, MaterialVersion, RecordingDetails,
+    Material,
+    MaterialLink,
+    MaterialLocation,
+    MaterialVersion,
+    RecordingDetails,
     Representation,
 )
 from committee_meeting.provenance import Method, Provenance
 
-from .common import AdapterContext, web_url
+from congress_api.adapters.common import AdapterContext, web_url
 
 
 def records(

@@ -2,9 +2,8 @@
 from pathlib import Path
 
 import pytest
-
-from congress_api.gpo.source import parse_package_manifest
 from congress_api.models.gpo import GpoPackageManifest
+from congress_api.parsers.gpo import parse_package_manifest
 
 
 @pytest.mark.parametrize(('package', 'filename'), [

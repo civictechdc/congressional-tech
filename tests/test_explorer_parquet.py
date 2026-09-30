@@ -1,13 +1,11 @@
 """Verify browser tables against source-backed records, including missing links."""
 import json
-from pathlib import Path
 
 import pyarrow.parquet as pq
 import pytest
-
 from committee_explorer.browser import package, verify
 from committee_explorer.export import export
-from test_explorer_export import native, write_meetings, NOW
+from test_explorer_export import NOW, native, write_meetings
 
 
 def test_direct_committee_material_links_preserve_scope_and_lifecycle_without_meetings(tmp_path):
@@ -134,11 +132,12 @@ def test_access_is_separate_from_meeting_type_and_survives_export(tmp_path):
     ('Hearing', 'Markup of the annual budget', 'hearing', 'unknown'),
 ])
 def test_inventory_adapter_and_browser_use_the_same_meeting_rules(tmp_path, raw_type, title, kind, access):
-    from congress_api.inventory import completeness, text_sources
+    from congress_api.matching import completeness
+    from congress_api.matching import recordings as text_sources
 
     row = {**native(), 'type': raw_type, 'title': title}
     index = {r['event_id']: r for r in text_sources.build([row], [], [], [], [], [], {}, {}, {})}
-    inventory, _ = completeness.build([row], index, set(), [], [], [], {}, {}, NOW.date(), True, None)
+    inventory, _ = completeness.build([row], index, set(), [], [], [], {}, {}, {}, {})
     assert inventory[0]['kind'] == kind
     assert inventory[0]['access'] == access
     assert inventory[0]['closed'] == ('yes' if access == 'closed' else '')

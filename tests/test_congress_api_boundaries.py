@@ -2,14 +2,14 @@
 import argparse
 import ast
 import hashlib
-from pathlib import Path
 import re
 import subprocess
 import sys
-import tomllib
+from pathlib import Path
 
+import tomllib
 from congress_api.adapters.common import AdapterContext, digest
-from congress_api.inventory.common import source_args
+from congress_api.cli.common import source_args
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / 'packages/congress_api/src/congress_api'
@@ -20,11 +20,11 @@ SCRIPTS = {
     'congress-meetings', 'congress-committees',
 }
 VERSIONS = {
-    ('house/evidence.py', 'SCHEMA_VERSION'): '1.1',
-    ('senate/records.py', 'PARSER_VERSION'): 5,
-    ('gpo/fetch.py', 'PARSER_VERSION'): '3',
-    ('inventory/witness_lists.py', 'PARSER_VERSION'): 2,
-    ('senate/captions.py', 'CAPTURE_VERSION'): '3',
+    ('parsers/house_evidence.py', 'SCHEMA_VERSION'): '1.1',
+    ('parsers/senate.py', 'PARSER_VERSION'): 5,
+    ('parsers/gpo_hearings.py', 'PARSER_VERSION'): '3',
+    ('parsers/witness_pdf.py', 'PARSER_VERSION'): 2,
+    ('transcripts/senate.py', 'CAPTURE_VERSION'): '3',
     ('models/transcription.py', 'SCHEMA_VERSION'): '1.0',
 }
 
@@ -134,17 +134,36 @@ for entry in sys.argv[1:]:
 
 
 def test_committee_entrypoint_delegates_without_changing_main(monkeypatch):
-    from congress_api import committee_metadata
-    monkeypatch.setattr(committee_metadata, 'main', lambda: 'existing-main-result')
-    assert committee_metadata.parse_args_and_run() == 'existing-main-result'
+    from congress_api.cli import committees
+    monkeypatch.setattr(committees, 'main', lambda: 'existing-main-result')
+    assert committees.parse_args_and_run() == 'existing-main-result'
 
 
-def test_inventory_http_calls_live_only_in_acquisition():
-    for path in (SOURCE / 'inventory').glob('*.py'):
-        if path.name == 'acquisition.py':
-            continue
-        for node in ast.walk(ast.parse(path.read_text())):
-            if isinstance(node, ast.ImportFrom):
-                assert 'get_with_retry' not in {alias.name for alias in node.names}, path
-            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
-                assert node.func.attr not in {'get_with_retry', 'urlopen', 'request'}, path
+def test_interpretation_cannot_import_acquisition_storage_or_command_wiring():
+    forbidden = {'acquisition', 'transport', 'retention', 'cli', 'transcripts', 'replay', 'adapters'}
+    for family in ('models', 'parsers', 'matching'):
+        for path in (SOURCE / family).glob('*.py'):
+            for node in ast.walk(ast.parse(path.read_text())):
+                if isinstance(node, ast.ImportFrom):
+                    modules = [node.module or '']
+                    if node.module == 'congress_api':
+                        modules += ['congress_api.' + alias.name for alias in node.names]
+                else:
+                    modules = [a.name for a in node.names] if isinstance(node, ast.Import) else []
+                for module in modules:
+                    parts = module.split('.')
+                    assert not (len(parts) > 1 and parts[0] == 'congress_api' and parts[1] in forbidden), (path, module)
+                    assert module not in {'urllib.request', 'http.client'}, (path, module)
+                    assert parts[0] not in {'requests', 'httpx', 'google', 'yt_dlp'}, (path, module)
+                if isinstance(node, ast.Call):
+                    name = node.func.id if isinstance(node.func, ast.Name) else node.func.attr if isinstance(node.func, ast.Attribute) else ''
+                    assert name not in {'open', 'read_text', 'read_bytes', 'write_text', 'write_bytes'}, (path, name)
+
+
+def test_commands_resolve_to_cli_and_old_provider_packages_are_retired():
+    project = tomllib.loads((SOURCE.parents[1] / 'pyproject.toml').read_text())['project']
+    assert all(entry.startswith('congress_api.cli.') for entry in project['scripts'].values())
+    assert {p.name for p in SOURCE.iterdir() if p.is_dir() and p.name != '__pycache__'} == {
+        'models', 'parsers', 'acquisition', 'transport', 'retention', 'adapters',
+        'matching', 'transcripts', 'replay', 'cli',
+    }

@@ -9,23 +9,27 @@ Each otherwise-readable representation carries this explicit validation limit.
 """
 from __future__ import annotations
 
+import json
+import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from hashlib import sha256
-import json
-import re
 
 from committee_meeting.common import Identifier, Ref
 from committee_meeting.issues import DataIssue
 from committee_meeting.materials import (
-    ContentSchema, Material, MaterialLink, MaterialRelation, MaterialVersion,
-    Representation, TextDetails,
+    ContentSchema,
+    Material,
+    MaterialLink,
+    MaterialRelation,
+    MaterialVersion,
+    Representation,
+    TextDetails,
 )
 from committee_meeting.provenance import Method, RetainedContent
 
+from congress_api.adapters.common import AdapterContext, reported_time, web_url
 from congress_api.models.transcription import SCHEMA_VERSION, Transcript
-
-from .common import AdapterContext, reported_time, web_url
 
 
 @dataclass(frozen=True)

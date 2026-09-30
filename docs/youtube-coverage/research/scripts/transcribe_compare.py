@@ -11,16 +11,23 @@ the audio plus a speaker resolver; its outputs are kept as routeA_*.json in
 research/data/transcribe_compare/ but that code was removed from the package after it
 lost on attribution (66-74% against 85%). Needs `pip install jiwer`.
 """
-import csv, html, json, os, re, sys, time
+import csv
+import html
+import json
+import re
+import sys
+import time
 from pathlib import Path
+
 ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT / "packages/congress_api/src")); sys.path.insert(0, str(ROOT / "packages/congress_shared/src")); sys.path.insert(0, str(ROOT / "packages/youtube_api/src"))
 import jiwer
 import requests
-from congress_api.transcribe import gemini as G
-from congress_api.transcribe.gpo_parse import parse_gpo_text
-from congress_api.transcribe.metadata import context_for_event, mods_people
-from congress_api.transcribe.schema import Header, Person, Transcript, Turn, Source, person_key
+from congress_api.models.transcription import Header, Person, Source, Transcript, Turn
+from congress_api.parsers.gpo_text import parse_gpo_text
+from congress_api.parsers.witness_names import person_key
+from congress_api.transcripts.context import context_for_event, mods_people
+from congress_api.transport import gemini as G
 
 WINDOW = 25 * 60
 

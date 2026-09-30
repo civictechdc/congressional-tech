@@ -5,8 +5,11 @@ from types import SimpleNamespace
 
 import pytest
 import requests
-
-from congress_api import http, meetings
+from congress_api.acquisition import meetings
+from congress_api.transport import http
+from congress_api.transport.senate import HDR as captions_HDR
+from congress_api.transport.senate import get_source as captions_get_source
+from congress_api.transport.senate import sess as captions_sess
 
 URL = 'https://api.congress.gov/v3/committee/119'
 
@@ -53,22 +56,22 @@ def test_gateway_requires_explicit_absence_status(unpaced):
 
 
 def test_caption_transport_keeps_pool_timeout_and_empty_body_retries(monkeypatch):
-    from congress_api.senate import captions
-    assert captions.sess.get_adapter('https://example.gov')._pool_maxsize == 32
+    assert captions_sess.get_adapter('https://example.gov')._pool_maxsize == 32
     calls = []
     bodies = [response(200, b''), response(503), response(200, b'WEBVTT\n\n')]
     def get(url, **kwargs):
         calls.append(kwargs)
         return bodies[len(calls) - 1]
-    monkeypatch.setattr(captions.sess, 'get', get)
-    assert captions.get_source('https://example.gov/captions.vtt').raw_body.body_bytes() == b'WEBVTT\n\n'
+    monkeypatch.setattr(captions_sess, 'get', get)
+    assert captions_get_source('https://example.gov/captions.vtt').raw_body.body_bytes() == b'WEBVTT\n\n'
     assert len(calls) == 3
-    assert all(call == {'headers': captions.HDR, 'timeout': 30} for call in calls)
+    assert all(call == {'headers': captions_HDR, 'timeout': 30} for call in calls)
 
 
 def test_transcription_metadata_fetch_keeps_urllib_bytes_and_timeout(monkeypatch):
     import io
-    from congress_api.transcribe import metadata
+
+    from congress_api.transcripts import context as metadata
     calls = []
     def urlopen(request, **kwargs):
         calls.append((request.full_url, request.get_header('User-agent'), kwargs))
@@ -79,7 +82,7 @@ def test_transcription_metadata_fetch_keeps_urllib_bytes_and_timeout(monkeypatch
 
 
 def test_transcription_duration_uses_direct_youtube_request(monkeypatch):
-    from congress_api.transcribe import main
+    from congress_api.transcripts import generate as main
     monkeypatch.setenv('YOUTUBE_API_KEY', 'test-key')
     calls = []
     def get(url, **kwargs):
@@ -92,8 +95,9 @@ def test_transcription_duration_uses_direct_youtube_request(monkeypatch):
 
 
 def test_transcription_gpo_keeps_direct_html_capture(tmp_path, monkeypatch):
-    from congress_api.transcribe import main, gpo_parse
-    from congress_api.gpo.evidence import body_bytes
+    from congress_api.parsers import gpo_text as gpo_parse
+    from congress_api.retention.gpo import body_bytes
+    from congress_api.transcripts import generate as main
     data = b'<html><pre>Retained transcript source</pre></html>'
     csv = tmp_path / 'gpo.csv'
     csv.write_text('package_id,chamber,event_id,html_url\nCHRG-test,House,1,https://example.gov/transcript.htm\n')

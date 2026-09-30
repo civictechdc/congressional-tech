@@ -71,9 +71,9 @@ records the inventory's intentional differences and replay commands.
 
 ## Acquisition boundary
 
-`congress_api.inventory.acquisition` owns late witness PDF/MODS fetches and
+`congress_api.acquisition.gaps` owns late witness PDF/MODS fetches and
 Senate day probes. The join calls these functions explicitly; source parsers stay
-in `inventory.witness_lists`. Tests pass `get=` directly without changing the CLI.
+in `parsers.witness_pdf`. Tests pass `get=` directly without changing the CLI.
 See the [per-command offline matrix](../congress-api-contracts.md#offline-behavior)
 for saved-state requirements, seed imports and failure behavior. Offline mode
 still reads inputs and writes deterministic state and derived CSVs.

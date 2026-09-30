@@ -1,16 +1,15 @@
 """Offline integration checks cover evidence, stable IDs and publication failure."""
-from datetime import datetime, timezone
-from hashlib import sha256
 import gzip
 import json
-from pathlib import Path
 import socket
+from datetime import datetime, timezone
+from hashlib import sha256
+from pathlib import Path
 
 import pytest
-
 from committee_explorer.export import export
-from congress_api.house import records as house_reader
-from congress_api.xml import parse_xml
+from congress_api.parsers.house import parsed as house_reader_parsed
+from congress_api.parsers.xml import parse_xml
 
 NOW = datetime(2026, 9, 27, 12, tzinfo=timezone.utc)
 FIXTURES = Path(__file__).parent / "fixtures/meeting_inventory"
@@ -85,7 +84,7 @@ def test_native_and_house_preserve_source_shape(tmp_path):
     canceled = {**row, "eventId": "106246", "meetingStatus": "Canceled", "witnesses": [], "relatedItems": {}, "meetingDocuments": []}
     path = write_meetings(tmp_path, [canceled, row])
     root = parse_xml((FIXTURES / "house-formats.xml").read_bytes())
-    saved = house_reader.parsed(root, None, "", "absent")
+    saved = house_reader_parsed(root, None, "", "absent")
     state = tmp_path / "house.json.gz"
     state.write_bytes(gzip.compress(json.dumps({"106245": saved}).encode()))
     manifest, catalog = run(tmp_path, path, house_state=state)

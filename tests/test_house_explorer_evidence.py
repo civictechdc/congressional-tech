@@ -7,20 +7,24 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-
-from congress_api.house import evidence, records, repository
-from congress_api.inventory.common import read_state, write_state
+from congress_api.acquisition import house as records
+from congress_api.parsers import house_evidence as evidence
+from congress_api.parsers.house import parsed as records_parsed
+from congress_api.parsers.xml import parse_xml as repository_parse_xml
+from congress_api.retention.house import seed as records_seed
+from congress_api.retention.tables import read_state, write_state
+from congress_api.transport import http as records_http
 
 FIXTURES = Path(__file__).parent / "fixtures/meeting_inventory"
 
 
 def xml(name):
-    return repository.parse_xml((FIXTURES / name).read_bytes())
+    return repository_parse_xml((FIXTURES / name).read_bytes())
 
 
 def test_formats_keep_three_documents_and_six_exact_urls():
     root = xml("house-formats.xml")
-    result = records.parsed(root, None, "", "unfetched")
+    result = records_parsed(root, None, "", "unfetched")
     groups = result["evidence"]["document_groups"]
     assert result["evidence"]["schema_version"] == evidence.SCHEMA_VERSION
     assert len(groups) == len(result["documents"]) == 3
@@ -36,7 +40,7 @@ def test_formats_keep_three_documents_and_six_exact_urls():
 
 
 def test_witness_ownership_and_order_are_source_local():
-    result = records.parsed(xml("house-formats.xml"), xml("house-witnesses.xml"), "", "present")
+    result = records_parsed(xml("house-formats.xml"), xml("house-witnesses.xml"), "", "present")
     retained = result["evidence"]
     witness = retained["witness_observations"][0]
     assert witness["selector"] == "/witness-list/panel[1]/witness[1]"
@@ -56,7 +60,7 @@ def test_removed_rows_survive_evidence_but_not_current_csvs():
     root = xml("house-removed.xml")
     wlist = xml("house-witnesses.xml")
     wlist.find("panel/witness").set("remove-date", "2026-09-27")
-    result = records.parsed(root, wlist, "", "present")
+    result = records_parsed(root, wlist, "", "present")
     assert result["documents"] == result["amendments"] == result["witnesses"] == []
     assert len(result["evidence"]["document_groups"]) == 5
     assert all(not group["active"] for group in result["evidence"]["document_groups"])
@@ -67,7 +71,7 @@ def test_removed_rows_survive_evidence_but_not_current_csvs():
 def test_removed_file_keeps_its_exact_source_attributes():
     root = xml("house-formats.xml")
     root.find("meeting-documents/meeting-document/files/file").set("remove-date", "2026-09-27")
-    result = records.parsed(root, None, "", "unfetched")
+    result = records_parsed(root, None, "", "unfetched")
     group = result["evidence"]["document_groups"][0]
     assert group["active"] and not group["files"][0]["active"] and group["files"][1]["active"]
     assert result["documents"][0][2].endswith(".xml")
@@ -77,7 +81,7 @@ def test_seed_import_time_is_not_a_live_check(tmp_path):
     path = tmp_path / "docs_house_xml/meeting/106245.xml"
     path.parent.mkdir(parents=True)
     path.write_bytes((FIXTURES / "house-formats.xml").read_bytes())
-    seeded = records.seed({"eventId": "106245"}, tmp_path)
+    seeded = records_seed({"eventId": "106245"}, tmp_path)
     assert dt.datetime.fromisoformat(seeded["imported_at"]).utcoffset() == dt.timedelta(0)
     assert "last_check" not in seeded and "retrieved_at" not in seeded
     assert seeded["seed"] == "research cache"
@@ -88,7 +92,7 @@ def test_live_receipts_preserve_absence_and_retrieval_without_document_fetches(m
     def get(_session, url, **_kwargs):
         called.append(url)
         return SimpleNamespace(status_code=404, content=b"") if "WList" in url else SimpleNamespace(status_code=200, content=(FIXTURES / "house-formats.xml").read_bytes())
-    monkeypatch.setattr(records.http, "get_with_retry", get)
+    monkeypatch.setattr(records_http, "get_with_retry", get)
     result = records.fetch({"eventId": "106245"}, {"urls": ["https://docs.house.gov/meetings/RU/RU00/20170712/106245/HHRG-115-RU00-20170712.xml"]})
     check = result["last_check"]
     assert check["mode"] == "live" and check["outcome"] == "present"
@@ -128,7 +132,7 @@ def test_failed_refresh_keeps_prior_observation_and_failure_receipt(tmp_path, mo
     args = source_inputs(tmp_path, count=1)
     def refused(*args, **kwargs):
         raise RuntimeError("403 Forbidden")
-    monkeypatch.setattr(records.http, "get_with_retry", refused)
+    monkeypatch.setattr(records_http, "get_with_retry", refused)
     with pytest.raises(RuntimeError, match="1 failed"):
         records.main(**args, refresh_limit=1)
     saved = read_state(tmp_path / "house.json.gz")["0"]
@@ -142,7 +146,7 @@ def test_failed_refresh_keeps_prior_observation_and_failure_receipt(tmp_path, mo
 def test_first_check_failure_stays_incomplete_offline(tmp_path, monkeypatch):
     args = source_inputs(tmp_path, count=1)
     write_state(tmp_path / "house.json.gz", {})
-    monkeypatch.setattr(records.http, "get_with_retry", lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("403 Forbidden")))
+    monkeypatch.setattr(records_http, "get_with_retry", lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("403 Forbidden")))
     with pytest.raises(RuntimeError, match="1 missing, 1 failed"):
         records.main(**args)
     saved = read_state(tmp_path / "house.json.gz")["0"]
@@ -153,7 +157,7 @@ def test_first_check_failure_stays_incomplete_offline(tmp_path, monkeypatch):
 
 
 def test_no_meeting_page_is_an_absence_receipt_not_a_publication_claim(monkeypatch):
-    monkeypatch.setattr(records.http, "get_with_retry", lambda *args, **kwargs: SimpleNamespace(status_code=200, content=b"No meeting data is available"))
+    monkeypatch.setattr(records_http, "get_with_retry", lambda *args, **kwargs: SimpleNamespace(status_code=200, content=b"No meeting data is available"))
     result = records.fetch({"eventId": "1"}, {})
     assert result["status"] == "page"  # Keep legacy parsing behavior.
     assert result["page_status"] == "no_meeting_data"

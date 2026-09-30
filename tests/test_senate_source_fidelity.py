@@ -1,15 +1,14 @@
 """Real retained HTML keeps witness-card ownership through state and adaptation."""
-from copy import deepcopy
 import json
 import re
+from copy import deepcopy
 from pathlib import Path
 
 import pytest
-
-from congress_api.senate.records import parsed, retained_matches
-from congress_api.senate.replay import replay
+from congress_api.matching.senate_pages import retained_matches
+from congress_api.parsers.senate import parsed
+from congress_api.replay.senate import replay
 from test_explorer_senate_adapter import adapt, of_kind
-
 
 FIXTURES = Path(__file__).parent / "fixtures" / "meeting_inventory"
 URL = "https://www.aging.senate.gov/hearings/-21st-century-caregiving-supporting-workers-family-caregivers-seniors-and-people-with-disabilities"

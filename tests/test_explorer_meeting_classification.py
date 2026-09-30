@@ -3,9 +3,9 @@ from datetime import datetime, timezone
 from uuid import NAMESPACE_URL, uuid5
 
 import pytest
-
 from congress_api.adapters.common import AdapterContext
-from congress_api.adapters.meetings import meeting_access, meeting_type, records
+from congress_api.adapters.meetings import records
+from congress_api.matching.meetings import meeting_access, meeting_type
 
 
 @pytest.mark.parametrize('title,expected', [

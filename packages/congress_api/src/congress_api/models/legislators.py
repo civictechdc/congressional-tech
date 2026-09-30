@@ -94,8 +94,6 @@ class Legislator(SourceModel):
 LEGISLATORS = TypeAdapter(list[Legislator])
 
 
-def parse_legislators(data: str | bytes) -> list[Legislator]:
-    return LEGISLATORS.validate_json(data)
 
 
 def member_surnames_by_congress(legislators: list[Legislator]) -> dict[str, tuple[str, ...]]:

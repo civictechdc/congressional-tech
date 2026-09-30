@@ -3,18 +3,20 @@ from copy import deepcopy
 from datetime import UTC, datetime
 from pathlib import Path
 
-from committee_meeting.common import Ref
-from congress_api.adapters.common import AdapterContext
-from congress_api.adapters import house
-from congress_api.house import records, repository
-from congress_api.house.replay import MATCH_FIELDS, replay
 from committee_explorer.ids import IdRegistry
+from committee_meeting.common import Ref
+from congress_api.adapters import house
+from congress_api.adapters.common import AdapterContext
+from congress_api.matching.house import document_rows as records_document_rows
+from congress_api.parsers.house import parsed as records_parsed
+from congress_api.parsers.xml import parse_xml as repository_parse_xml
+from congress_api.replay.house import MATCH_FIELDS, replay
 
 FIXTURES = Path(__file__).parent / "fixtures/meeting_inventory"
 
 
 def xml(name):
-    return repository.parse_xml((FIXTURES / name).read_bytes())
+    return repository_parse_xml((FIXTURES / name).read_bytes())
 
 
 def adapt(saved):
@@ -24,9 +26,9 @@ def adapt(saved):
 
 def test_original_bill_xml_survives_pdf_overlap_in_csv_and_adapter():
     root = xml("house-multiple-files.xml")
-    saved = records.parsed(root, None, "", "absent")
+    saved = records_parsed(root, None, "", "absent")
     pdf = "https://docs.house.gov/billsthisweek/20130304/BILLS-113hr933ih.pdf"
-    rows = list(records.document_rows(saved, "100431", have=[pdf]))
+    rows = list(records_document_rows(saved, "100431", have=[pdf]))
     bill = next(row for row in rows if "BILLS-113hr933ih" in row["url"])
     assert bill["url"].endswith(".xml")
     assert bill["document_type"] == "BR"
@@ -39,8 +41,8 @@ def test_original_bill_xml_survives_pdf_overlap_in_csv_and_adapter():
 
 
 def test_repeated_raw_entries_keep_individual_dates_and_owners():
-    saved = records.parsed(xml("house-multiple-files.xml"), xml("house-repeated-documents.xml"), "", "present")
-    rows = list(records.document_rows(saved, "100876"))
+    saved = records_parsed(xml("house-multiple-files.xml"), xml("house-repeated-documents.xml"), "", "present")
+    rows = list(records_document_rows(saved, "100876"))
     qfr = [row for row in rows if row["url"].endswith("Wstate-BisceglieJ-20130521-SD003.pdf")]
     assert len(qfr) == 2
     assert qfr[0]["url"] == qfr[1]["url"]
@@ -52,16 +54,16 @@ def test_repeated_raw_entries_keep_individual_dates_and_owners():
 def test_removed_panel_never_emits_current_witnesses_or_files():
     wlist = xml("house-witnesses.xml")
     wlist.find("panel").set("remove-date", "2026-09-28")
-    saved = records.parsed(xml("house-removed.xml"), wlist, "", "present")
+    saved = records_parsed(xml("house-removed.xml"), wlist, "", "present")
     assert saved["documents"] == saved["witnesses"] == []
-    assert list(records.document_rows(saved, "100431")) == []
+    assert list(records_document_rows(saved, "100431")) == []
     assert not [row for row in adapt(saved) if row.kind in ("appearance", "representation")]
     assert saved["evidence"]["witness_observations"][0]["metadata"]
 
 
 def test_html_fallback_preserves_alternate_files_and_reaches_adapter():
     page = (FIXTURES / "house-fallback.html").read_text()
-    saved = records.parsed(None, None, page, "unfetched")
+    saved = records_parsed(None, None, page, "unfetched")
     assert len(saved["documents"]) == 4  # Old summary remains usable for replay.
     groups = saved["evidence"]["document_groups"]
     assert len(groups) == 4 and sum(len(group["files"]) for group in groups) == 7
@@ -71,14 +73,14 @@ def test_html_fallback_preserves_alternate_files_and_reaches_adapter():
 
 def test_fallback_witness_is_not_hidden_by_empty_xml_observations():
     page = '<h2>Witnesses</h2><p><strong>Ms. Example</strong><br/><small>Director, on behalf of Agency</small></p>'
-    saved = records.parsed(None, None, page, "unfetched")
+    saved = records_parsed(None, None, page, "unfetched")
     appearance, = [row for row in adapt(saved) if row.kind == "appearance"]
     assert appearance.name.display == "Ms. Example"
     assert appearance.affiliation.position == "Director"
 
 
 def test_house_codes_and_ownership_survive_adapter():
-    saved = records.parsed(xml("house-removed.xml"), xml("house-witnesses.xml"), "", "present")
+    saved = records_parsed(xml("house-removed.xml"), xml("house-witnesses.xml"), "", "present")
     rows = adapt(saved)
     assert {row.details.category for row in rows if row.kind == "material"} == {"biography", "statement"}
     appearance, = [row for row in rows if row.kind == "appearance"]
@@ -86,7 +88,7 @@ def test_house_codes_and_ownership_survive_adapter():
 
 
 def test_rich_action_preserves_resolution_type_with_legacy_identity():
-    saved = records.parsed(xml("house-multiple-files.xml"), None, "", "absent")
+    saved = records_parsed(xml("house-multiple-files.xml"), None, "", "absent")
     group = next(group for group in saved["evidence"]["document_groups"] if group["type"] == "CV")
     group["metadata"].setdefault("children", []).append({"tag": "legis-num", "text": "H. Res. 123"})
     item = next(row for row in adapt(saved) if row.kind == "legislative_item")
@@ -98,7 +100,7 @@ def test_distinct_documents_with_same_add_time_do_not_share_identity():
     root = xml("house-multiple-files.xml")
     for group in root.findall("meeting-documents/meeting-document"):
         group.set("add-date", "2013-03-04T14:33:35.403")
-    rows = adapt(records.parsed(root, None, "", "absent"))
+    rows = adapt(records_parsed(root, None, "", "absent"))
     materials = [row for row in rows if row.kind == "material"]
     assert len({row.id for row in materials}) == len(materials) == 5
 
@@ -110,7 +112,7 @@ def legacy_cache(tmp_path):
     witness = tmp_path / "docs_house_xml/wlist/100431.none"
     witness.parent.mkdir(parents=True)
     witness.touch()
-    saved = records.parsed(xml("house-multiple-files.xml"), None, "", "absent")
+    saved = records_parsed(xml("house-multiple-files.xml"), None, "", "absent")
     saved.pop("evidence")
     saved.update(checked="2026-09-27", version="old-api-update", seed="research cache")
     return {"100431": saved}
@@ -149,7 +151,7 @@ def test_replay_does_not_claim_old_live_time_for_expanded_cache_payload(tmp_path
 def test_malformed_upstream_url_stays_visible_as_an_issue():
     root = xml("house-multiple-files.xml")
     root.find("meeting-documents/meeting-document/files/file").set("doc-url", "mailto:https://www.congress.gov/bill.pdf")
-    rows = adapt(records.parsed(root, None, "", "absent"))
+    rows = adapt(records_parsed(root, None, "", "absent"))
     issue, = [row for row in rows if row.kind == "data_issue" and row.category == "incorrect"]
     assert issue.provenance.citations[0].selector == "/evidence/document_groups/0/files/0/url"
     assert not [row for row in rows if row.kind == "representation" and row.locations[0].url.startswith("mailto:")]
@@ -159,7 +161,7 @@ def test_same_name_observations_in_separate_panels_do_not_collapse():
     wlist = xml("house-witnesses.xml")
     wlist.append(deepcopy(wlist.find("panel")))
     wlist.findall("panel")[1].set("sort-order", "2")
-    rows = adapt(records.parsed(xml("house-removed.xml"), wlist, "", "present"))
+    rows = adapt(records_parsed(xml("house-removed.xml"), wlist, "", "present"))
     appearances = [row for row in rows if row.kind == "appearance"]
     assert len(appearances) == len({row.id for row in appearances}) == 2
     assert len({row.panel.id for row in appearances}) == 2
@@ -167,16 +169,16 @@ def test_same_name_observations_in_separate_panels_do_not_collapse():
 
 def test_removed_names_do_not_change_active_witness_identity():
     wlist = xml("house-witnesses.xml")
-    before = [row.id for row in adapt(records.parsed(xml("house-removed.xml"), wlist, "", "present")) if row.kind == "appearance"]
+    before = [row.id for row in adapt(records_parsed(xml("house-removed.xml"), wlist, "", "present")) if row.kind == "appearance"]
     duplicate = deepcopy(wlist.find("panel/witness"))
     duplicate.set("remove-date", "2026-09-28")
     wlist.find("panel").append(duplicate)
-    after = [row.id for row in adapt(records.parsed(xml("house-removed.xml"), wlist, "", "present")) if row.kind == "appearance"]
+    after = [row.id for row in adapt(records_parsed(xml("house-removed.xml"), wlist, "", "present")) if row.kind == "appearance"]
     assert after == before
 
 
 def test_replay_preserves_unambiguous_published_material_and_version_ids(tmp_path):
-    saved = records.parsed(xml("house-multiple-files.xml"), None, "", "absent")
+    saved = records_parsed(xml("house-multiple-files.xml"), None, "", "absent")
     legacy = {key: value for key, value in saved.items() if key != "evidence"}
     ids = IdRegistry(tmp_path / "ids.json")
     context = AdapterContext(now=datetime(2026, 9, 28, tzinfo=UTC), input_id="house-state", provider="docs.house.gov", ids=ids)
@@ -198,7 +200,7 @@ def test_ambiguous_repeated_source_entries_do_not_alias_published_identity(tmp_p
     copy = deepcopy(original)
     copy.set("add-date", "2013-03-06T10:00:00")
     root.find("meeting-documents").append(copy)
-    saved = records.parsed(root, None, "", "absent")
+    saved = records_parsed(root, None, "", "absent")
     legacy = {key: value for key, value in saved.items() if key != "evidence"}
     ids = IdRegistry(tmp_path / "ids.json")
     context = AdapterContext(now=datetime(2026, 9, 28, tzinfo=UTC), input_id="house-state", provider="docs.house.gov", ids=ids)

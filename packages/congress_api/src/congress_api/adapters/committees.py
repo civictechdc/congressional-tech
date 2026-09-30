@@ -1,8 +1,9 @@
 """Congress.gov's documented committee-code hierarchy; no name matching."""
+
 import re
 
-from committee_meeting.common import Identifier, Ref
 from committee_meeting.committees import Committee, CommitteeTerm
+from committee_meeting.common import Identifier, Ref
 
 HIERARCHY_SOURCE = 'https://github.com/LibraryOfCongress/api.congress.gov/blob/main/Documentation/CommitteeEndpoint.md'
 

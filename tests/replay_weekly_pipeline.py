@@ -14,8 +14,6 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from congress_api.inventory.common import read_csv
-
 
 def main(root):
     pipeline, out = root / "pipeline-data", root / "outputs"
@@ -57,10 +55,10 @@ def main(root):
     timings = {}
     with patch("youtube_api.fetch.youtube_event_fetcher.build", return_value=youtube), \
          patch("youtube_api.fetch.main.load_youtube_api_key", return_value="offline"), \
-         patch("congress_api.gpo.fetch.load_congress_api_key", return_value="offline"), \
-         patch("congress_api.gpo.fetch.list_collection", return_value=[]), \
-         patch("congress_api.meetings.load_congress_api_key", return_value="offline"), \
-         patch("congress_api.meetings.get", return_value={"committeeMeetings": []}), \
+         patch("congress_api.acquisition.gpo.load_congress_api_key", return_value="offline"), \
+         patch("congress_api.acquisition.gpo.list_collection", return_value=[]), \
+         patch("congress_api.acquisition.meetings.load_congress_api_key", return_value="offline"), \
+         patch("congress_api.acquisition.meetings.get", return_value={"committeeMeetings": []}), \
          patch("requests.sessions.Session.request", side_effect=no_network):
         for command, args in steps:
             started = time.monotonic()

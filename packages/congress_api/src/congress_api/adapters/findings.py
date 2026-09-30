@@ -1,9 +1,9 @@
 """Translate decisions emitted by existing matchers; do not reimplement rules."""
+
 from collections import defaultdict
-from committee_meeting.common import Ref
+
 from committee_meeting.materials import MaterialLink
-from committee_meeting.provenance import Citation, Method, Provenance
-from .common import ref
+from committee_meeting.provenance import Method
 
 
 def print_links(decisions, context, *, meetings, versions):

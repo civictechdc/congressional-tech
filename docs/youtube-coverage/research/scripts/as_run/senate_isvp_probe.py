@@ -14,13 +14,19 @@ Probes every Senate and joint GPO hearing since the 113th Congress whose status 
 Writes one row per hearing: package_id, held_date, committee_code, comm, urls (player links,
 space-separated; empty when nothing was found).
 """
-import collections, csv, datetime as dt, sys, os, time
-from pathlib import Path
+import collections
+import csv
+import datetime as dt
+import os
+import sys
+import time
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+
 import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[5] / "packages/congress_api/src"))
-from congress_api.senate.isvp import COMM, STREAM, archive_url, live_url, player_url  # noqa: E402
+from congress_api.parsers.senate_player import COMM, STREAM, archive_url, live_url, player_url
 
 VARIANTS = ["", "A", "B"]  # lettered names are tried when the committee held several hearings that day, or the plain one is missing
 WORKERS = 8

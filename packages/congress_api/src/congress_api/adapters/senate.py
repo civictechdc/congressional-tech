@@ -1,4 +1,5 @@
 """Adapt retained Senate committee pages without fetching or rematching them."""
+
 from collections import Counter, defaultdict
 from datetime import date, datetime
 from urllib.parse import urlsplit
@@ -7,18 +8,23 @@ from committee_meeting.assessments import Assessment
 from committee_meeting.common import Identifier, Ref
 from committee_meeting.issues import DataIssue
 from committee_meeting.materials import DocumentDetails, MaterialLink, RecordingDetails
-from committee_meeting.meetings import Affiliation, Appearance, RecordedName, ConveningCommittee, Meeting, MeetingOccurrence
+from committee_meeting.meetings import (
+    Affiliation,
+    Appearance,
+    ConveningCommittee,
+    Meeting,
+    MeetingOccurrence,
+    RecordedName,
+)
 from committee_meeting.provenance import AlternativeValue, FieldEvidence, Method
 
+from congress_api.adapters.common import digest, material_records, ref, reported_time, web_url, witness_roles
+from congress_api.adapters.meetings import category
+from congress_api.adapters.recordings import recording_reference
+from congress_api.matching.meetings import meeting_access, meeting_type
+from congress_api.matching.senate_corrections import DATE_CORRECTIONS, selected_date
 from congress_api.models.senate import SenatePage, SenateSite
-from congress_api.senate.pages import DATE, OWN, SITE, attachment_page, written_day
-from congress_api.senate.corrections import DATE_CORRECTIONS, selected_date
-
-from .common import digest, material_records, ref, web_url, reported_time, witness_roles
-from .recordings import recording_reference
-from .meetings import category
-from congress_api.meeting_rules import meeting_type, meeting_access
-
+from congress_api.parsers.senate_page import DATE, OWN, SITE, attachment_page, written_day
 
 MATCH_METHOD = Method(name="senate.records.match_pages", version="1")
 
@@ -81,7 +87,6 @@ def _live_receipt(page, url, now):
     return None
 
 
-
 def _site_data(site):
     if isinstance(site, SenateSite):
         return site.source_dict()
@@ -116,6 +121,7 @@ def official_events(state):
             congress = (year - 1789) // 2 + 1
             yield {"host": host, "url": url, "page": page, "event": event,
                    "congress": congress, "committee_code": codes[host]}
+
 
 def records(state, context, *, meetings, committee_terms=None, meeting_records=None, occurrence_records=None):
     """Normalize native SenatePage/SenateSite models or legacy saved dictionaries.

@@ -1,14 +1,18 @@
 """Timed upstream caption text survives capture and numeric speech survives normalization."""
-from pathlib import Path
 import gzip
 import json
+from pathlib import Path
+
 import pytest
 import yt_dlp
-
-from congress_api.senate import captions as senate
+from congress_api.parsers.captions import cues as senate_cues
+from congress_api.parsers.captions import merge_rollup as senate_merge_rollup
+from congress_api.parsers.captions import parsed_cues as senate_parsed_cues
+from congress_api.transcripts import senate as senate
+from congress_api.transport.senate import sess as senate_sess
 from congress_shared.webvtt import cue_lines
+from test_senate_caption_checks import MASTER_BODY, PLAYER, PLAYLIST_BODY, VTT1, VTT2, responses
 from youtube_api.captions import main as youtube
-from test_senate_caption_checks import PLAYER, MASTER_BODY, PLAYLIST_BODY, VTT1, VTT2, responses
 
 VIDEO = 'abcdefghijk'
 VTT = 'WEBVTT\nLanguage: en\n\ncue-1\n00:00:01.000 --> 00:00:02.000\n2025\nA &amp; B\n\nNOTE omitted metadata\nnot speech\n\n2\n00:00:02.000 --> 00:00:03.000\n<v Speaker>Thank you.</v>\n'
@@ -16,7 +20,7 @@ VTT = 'WEBVTT\nLanguage: en\n\ncue-1\n00:00:01.000 --> 00:00:02.000\n2025\nA &am
 
 def test_text_parsers_keep_numeric_speech_and_decode_entities_without_cue_ids():
     assert cue_lines(VTT) == [['2025', 'A & B'], ['Thank you.']]
-    assert senate.cues(VTT) == [['2025', 'A & B'], ['Thank you.']]
+    assert senate_cues(VTT) == [['2025', 'A & B'], ['Thank you.']]
     assert youtube.vtt_to_text(VTT) == '2025\nA & B\nThank you.\n'
     with pytest.raises(ValueError):
         cue_lines('WEBVTT\n00:00:00.000 --> 00:00:01.000\ninvalid header')
@@ -25,7 +29,7 @@ def test_text_parsers_keep_numeric_speech_and_decode_entities_without_cue_ids():
 def test_real_youtube_space_payload_line_is_not_a_cue_separator():
     # First two complete cues of the English track acquired for kZ849HjjWwo.
     raw = (Path(__file__).parent / 'fixtures/captions/youtube-kZ849HjjWwo-space-payload.vtt').read_text()
-    parsed = senate.parsed_cues(raw)
+    parsed = senate_parsed_cues(raw)
     assert len(parsed) == 2
     assert parsed[0].start == '00:16:09.268'
     assert parsed[0].text[0] == ' '
@@ -91,7 +95,7 @@ def test_youtube_negative_retains_discovery_metadata_and_unknown_source_fields(t
 
 
 def test_senate_capture_retains_playlists_segments_and_timestamps(tmp_path, monkeypatch):
-    monkeypatch.setattr(senate.sess, 'get', responses())
+    monkeypatch.setattr(senate_sess, 'get', responses())
     senate.fetch_one(PLAYER, tmp_path)
     retained = json.loads(gzip.decompress((tmp_path / 'epw120623.captions.json.gz').read_bytes()))
     assert retained['master']['text'] == MASTER_BODY
@@ -121,7 +125,7 @@ def test_legacy_youtube_none_and_positive_without_vtt_recheck_without_duplicates
 def test_legacy_senate_positive_without_timed_source_is_rechecked(tmp_path, monkeypatch):
     (tmp_path / senate.INDEX).write_text('filename,comm,kind,characters\nepw120623,epw,webvtt,3\n')
     (tmp_path / 'epw120623.txt').write_text('old')
-    monkeypatch.setattr(senate.sess, 'get', responses())
+    monkeypatch.setattr(senate_sess, 'get', responses())
     assert senate.main(tmp_path, [PLAYER], nthreads=1)['webvtt'] == 1
     assert len((tmp_path / senate.INDEX).read_text().splitlines()) == 2
     assert (tmp_path / 'epw120623.captions.json.gz').exists()
@@ -129,8 +133,8 @@ def test_legacy_senate_positive_without_timed_source_is_rechecked(tmp_path, monk
 
 def test_real_senate_vtt_preserves_25_timed_cues_and_rollup_text():
     raw = (Path(__file__).parent / 'fixtures/captions/senate-jec011724-segment101.vtt').read_text()
-    lines = senate.cues(raw)
+    lines = senate_cues(raw)
     assert len(lines) == 25
-    assert senate.merge_rollup(lines) == (
+    assert senate_merge_rollup(lines) == (
         'HOUSING AS NEIGHBORS, TO EVEN\nRIGHT HERE DOWN THE STREET HERE\nIN VIRGINIA, WHERE THE\n'
         'NEIGHBORHOOD, VERY PROGRESSIVE\nIN VOTING ONE, BASICALLY OPPOSED\n.\nFOR THOSE OF US IN THE\n')

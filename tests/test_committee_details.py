@@ -1,12 +1,12 @@
 """Committee detail capture preserves full payloads and historical list meaning."""
-from datetime import datetime
 import gzip
 import json
+from datetime import datetime
 from pathlib import Path
 
 import pytest
-
-from congress_api import committee_metadata as collector
+from congress_api.acquisition import committees as collector
+from congress_api.acquisition.meetings import API as collector_API
 from test_committee_metadata import metadata, save
 from test_explorer_export import NOW, native, write_meetings
 from test_explorer_material_adapters import context
@@ -20,7 +20,7 @@ def test_full_details_fetched_once_and_preserved_through_normalization(tmp_path,
     detail['history'][0]['futureHistory'] = 'retained'
     meetings = write_meetings(tmp_path, [{**native(), 'congress': c, '_url': f'https://example.test/{c}'} for c in (113, 114, 115)])
     historical = metadata(113, code, kind='Select')
-    endpoint = f'{collector.API}/committee/{chamber}/{code}'
+    endpoint = f'{collector_API}/committee/{chamber}/{code}'
     historical['committee']['url'] = endpoint + '?format=json'
     historical['committee']['chamber'] = chamber.title()
     output = save(tmp_path / 'committees.jsonl.gz', [historical])
@@ -110,5 +110,5 @@ def test_detail_endpoint_must_match_publisher_identity(url):
 
 
 def test_joint_detail_url_uses_publisher_chamber_and_omits_query_credentials():
-    endpoint = f'{collector.API}/committee/joint/jsec00'
+    endpoint = f'{collector_API}/committee/joint/jsec00'
     assert collector.detail_url({'systemCode': 'jsec00', 'url': endpoint + '?api_key=secret&format=json'}) == endpoint

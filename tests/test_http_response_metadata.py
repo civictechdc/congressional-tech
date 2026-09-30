@@ -3,8 +3,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
 
 import requests
-
-from congress_api.http import response_metadata
+from congress_api.transport.http import response_metadata
 
 
 def test_streaming_metadata_retains_unknown_duplicate_and_redirect_headers():

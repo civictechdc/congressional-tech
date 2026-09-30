@@ -53,7 +53,7 @@ Congress.gov and the GovInfo collection API share one [data.gov](https://api.dat
 | `DATA_GOV_API_KEY` / `--congress-api-key` | `congress-meetings`, `congress-committees`, `gpo-fetch`, … |
 | `GEMINI_API_KEY` | `hearing-transcribe` (Gemini windows) |
 | `YOUTUBE_API_KEY` | Optional video duration in `hearing-transcribe` (else `yt-dlp`) |
-| `ZYTE_TOKEN` | `congress_api.zyte` / `http.get_with_retry` for bot-challenged hosts; `house-meeting-records --zyte` |
+| `ZYTE_TOKEN` | `congress_api.transport.zyte` / `transport.http.get_with_retry` for bot-challenged hosts; `house-meeting-records --zyte` |
 
 `hearing-transcribe --proxy` is forwarded to `yt-dlp`.
 
@@ -63,11 +63,11 @@ This is the authoritative policy matrix. No clients are merged by the refactor.
 
 | Call path / hosts | Pacing, retries and timeout | Zyte and metadata |
 | --- | --- | --- |
-| `http.get_with_retry`: House repository, GovInfo, Congress.gov and committee sites | Direct starts: 1.2 s for `docs.house.gov`, 0.2 s elsewhere; 3 attempts, 60 s timeout. Retry 202/403/408/429/500/502/503/504/520 and request exceptions; other unallowed statuses stop. Next-start backoff is 2^(attempt+1) s; direct House 403 waits 60 s. `allowed` defines caller-confirmed statuses | Explicit `through_zyte=True`, not automatic fallback. Zyte skips local pacing; returned response is synthetic. `response_metadata` retains all available parsed header fields and states fidelity; callers retain metadata separately |
-| `meetings.get` and committee snapshot collection: Congress.gov | Delegates to the same gateway with **5 attempts**, injects API key/JSON format, decodes JSON | No Zyte option on this wrapper; safe gateway errors omit query secrets |
-| `senate.captions.sess`: ISVP playlists and WebVTT | Module-level `requests.Session`, HTTPS `pool_maxsize=32`; default 3 immediate attempts, 30 s timeout. 404 is absence, empty 200 retries, exhausted failures raise | No Zyte. Typed media captures retain status/text/raw body; not gateway response-header metadata |
-| `transcribe.main`: GPO HTML and YouTube duration | Direct requests: 60 s for GPO HTML, 30 s for YouTube JSON; no shared retry/pacing. yt-dlp is the duration fallback | No Zyte; GPO HTML is retained separately |
-| `transcribe.metadata`: GovInfo MODS and unitedstates GitHub Pages legislators | `urllib.request.urlopen`, 60 s timeout, explicit User-Agent; legislators cached in memory, MODS fetched on demand; no gateway retries | No Zyte; source bytes/models retained by the metadata path |
+| `transport.http.get_with_retry`: House repository, GovInfo, Congress.gov and committee sites | Direct starts: 1.2 s for `docs.house.gov`, 0.2 s elsewhere; 3 attempts, 60 s timeout. Retry 202/403/408/429/500/502/503/504/520 and request exceptions; other unallowed statuses stop. Next-start backoff is 2^(attempt+1) s; direct House 403 waits 60 s. `allowed` defines caller-confirmed statuses | Explicit `through_zyte=True`, not automatic fallback. Zyte skips local pacing; returned response is synthetic. `response_metadata` retains all available parsed header fields and states fidelity; callers retain metadata separately |
+| `acquisition.meetings.get` and committee snapshot collection: Congress.gov | Delegates to the same gateway with **5 attempts**, injects API key/JSON format, decodes JSON | No Zyte option on this wrapper; safe gateway errors omit query secrets |
+| `transport.senate.sess`: ISVP playlists and WebVTT | Module-level `requests.Session`, HTTPS `pool_maxsize=32`; default 3 immediate attempts, 30 s timeout. 404 is absence, empty 200 retries, exhausted failures raise | No Zyte. Typed media captures retain status/text/raw body; not gateway response-header metadata |
+| `transcripts.generate`: GPO HTML and YouTube duration | Direct requests: 60 s for GPO HTML, 30 s for YouTube JSON; no shared retry/pacing. yt-dlp is the duration fallback | No Zyte; GPO HTML is retained separately |
+| `transcripts.context`: GovInfo MODS and unitedstates GitHub Pages legislators | `urllib.request.urlopen`, 60 s timeout, explicit User-Agent; legislators cached in memory, MODS fetched on demand; no gateway retries | No Zyte; source bytes/models retained by the metadata path |
 | Audio / Gemini | yt-dlp/ffmpeg and google-genai own their transports; Gemini has its existing application retry loop | Not part of the shared HTTP gateway |
 
 A 200 challenge page is not automatically successful source parsing. Collector
@@ -79,46 +79,50 @@ session. See `tests/test_http_policy.py`, `test_http_response_metadata.py`,
 
 ## Package layout
 
-```
-packages/congress_api/
-├── README.md                 # This file
-├── pyproject.toml            # Metadata, dependencies, console scripts
-├── package.json              # @ct/congress-api workspace marker
-├── turbo.json                # Extends repo Turborepo config
-├── SOURCE_MODELS.md          # Source inventory, fidelity and verification
-└── src/congress_api/
-    ├── meetings.py           # congress-meetings → gzip JSONL
-    ├── committee_metadata.py # congress-committees → committee snapshots
-    ├── congress_source.py    # Parse Congress.gov JSON/XML bodies
-    ├── http.py, zyte.py      # Retries, pacing, optional Zyte
-    ├── committees.py, witnesses.py
-    ├── xml.py                # XML/MODS helpers
-    ├── adapters/             # Offline source → committee-meeting records
-    ├── retention/            # Production rejected-page retention
-    ├── house/                # docs.house.gov gap fill
-    ├── senate/               # Committee sites + ISVP captions
-    ├── gpo/                  # GovInfo CHRG packages
-    ├── inventory/            # Weekly meeting join
-    ├── transcribe/           # GPO print parse + Gemini transcription
-    └── models/               # Pydantic source models (see SOURCE_MODELS.md)
-```
+Files are grouped by responsibility, with provider names inside each group:
 
-Packages with an `__init__.py`: `adapters`, `house`, `senate`, `inventory`, `transcribe`, `models`. Other directories are regular Python packages via setuptools `src` layout.
+| Directory under `src/congress_api/` | Responsibility | Examples |
+| --- | --- | --- |
+| `models/` | Describe publisher fields and preserve unknown values | Congress.gov, House XML, MODS, media, transcript models |
+| `parsers/` | Interpret supplied bytes or decoded data; no files or HTTP | `congress.py`, `house.py`, `senate.py`, `gpo.py`, `witness_pdf.py`, `captions.py` |
+| `acquisition/` | Select and collect source records; manage refresh decisions | `meetings.py`, `committees.py`, `house.py`, `senate.py`, `gpo.py`, `gaps.py` |
+| `transport/` | Implement retries, pacing and provider/media access | `http.py`, `zyte.py`, `senate.py`, `audio.py`, `gemini.py` |
+| `retention/` | Read/write captures, generated tables, failures and refresh state | `tables.py`, `meetings.py`, `gpo.py`, `captions.py`, `rejected_pages.py` |
+| `adapters/` | Convert source data to `committee_meeting` using supplied identity/import context | Meeting, material, committee and transcript adapters |
+| `matching/` | Classify meetings and associate documents, recordings and witnesses | `meetings.py`, `prints.py`, `recordings.py`, `completeness.py` |
+| `transcripts/` | Produce published-text, caption and generated transcripts with distinct origins | `gpo.py`, `senate.py`, `generate.py`, `context.py`, `render.py` |
+| `replay/` | Reinterpret saved evidence without fetching replacements | `house.py`, `senate.py`, `gpo.py` |
+| `cli/` | Parse command arguments and connect collection, matching and output | Ten console entrypoints plus common flags |
+
+The dependency direction is concrete: collectors use transports, parsers and
+retention; parsers and matchers accept supplied data; adapters receive identity
+and import context from their application. Models, parsers and matching cannot
+import collection, storage or command wiring. Tests enforce this boundary.
+
+For inventory witness recovery, `matching.completeness.witness_sources` selects
+exclusive prints and linked PDFs. `acquisition.gaps.collect_witnesses` collects
+those inputs. `matching.completeness.build` reads supplied observations to build
+the report. `cli.inventory` connects those steps and saves partial progress.
+
+The former provider-based import paths were removed; all in-repository consumers
+use the directories above. Console names, flags, retained formats, parser versions
+and stored evidence/matching identifiers remain unchanged. Source identifiers are
+stable labels, not Python import paths. Replay commands use `congress_api.replay`.
 
 ## Console scripts
 
 | Script | Module | Primary output |
 | --- | --- | --- |
-| `congress-committees` | `committee_metadata` | Gzip JSONL of `CommitteeSnapshot` rows |
-| `congress-meetings` | `meetings` | `congress_meetings.jsonl.gz` |
-| `house-meeting-records` | `house.records` | House CSVs + `house.json.gz` state |
-| `senate-meeting-records` | `senate.records` | Senate CSVs + `senate.json.gz` state |
-| `meeting-inventory` | `inventory.main` | Inventory CSVs + `inventory.json.gz` |
-| `gpo-fetch` | `gpo.fetch` | `gpo_hearings.csv` (+ optional evidence store) |
-| `gpo-transcripts` | `gpo.transcripts` | One `.txt` per package under `--out-dir` |
-| `gpo-match` | `gpo.match` | `gpo_hearing_videos.csv` + coverage CSV |
-| `senate-captions` | `senate.captions` | WebVTT text, receipts, `captions_index.csv` |
-| `hearing-transcribe` | `transcribe.main` | `{stem}.json` + `{stem}.gpo.txt` |
+| `congress-committees` | `cli.committees` | Gzip JSONL of `CommitteeSnapshot` rows |
+| `congress-meetings` | `cli.meetings` | `congress_meetings.jsonl.gz` |
+| `house-meeting-records` | `cli.house` | House CSVs + `house.json.gz` state |
+| `senate-meeting-records` | `cli.senate` | Senate CSVs + `senate.json.gz` state |
+| `meeting-inventory` | `cli.inventory` | Inventory CSVs + `inventory.json.gz` |
+| `gpo-fetch` | `cli.gpo_fetch` | `gpo_hearings.csv` (+ optional evidence store) |
+| `gpo-transcripts` | `cli.gpo_transcripts` | One `.txt` per package under `--out-dir` |
+| `gpo-match` | `cli.gpo_match` | `gpo_hearing_videos.csv` + coverage CSV |
+| `senate-captions` | `cli.senate_captions` | WebVTT text, receipts, `captions_index.csv` |
+| `hearing-transcribe` | `cli.transcribe` | `{stem}.json` + `{stem}.gpo.txt` |
 
 `congress_shared.globals.add_global_args` adds `--tinydb_dir` where used. Commands that call `parse_known_args` leave `--congress-api-key` available for the key loader.
 
@@ -126,10 +130,10 @@ Packages with an `__init__.py`: `adapters`, `house`, `senate`, `inventory`, `tra
 
 | Invocation | Role |
 | --- | --- |
-| `python -m congress_api.house.replay` | Upgrade retained House evidence from cache (no network) |
-| `python -m congress_api.senate.replay` | Upgrade retained Senate pages from cache |
-| `python -m congress_api.gpo.replay` | Merge cached MODS/HTML into GPO CSV and evidence |
-| `python -m congress_api.senate.captions` | Same as `senate-captions` |
+| `python -m congress_api.replay.house` | Upgrade retained House evidence from cache (no network) |
+| `python -m congress_api.replay.senate` | Upgrade retained Senate pages from cache |
+| `python -m congress_api.replay.gpo` | Merge cached MODS/HTML into GPO CSV and evidence |
+| `python -m congress_api.cli.senate_captions` | Same as `senate-captions` |
 
 ## Common workflows
 
@@ -176,7 +180,7 @@ gpo-match --tinydb_dir DIR --meetings PATH --output-path gpo_hearing_videos.csv
 gpo-transcripts --out-dir ~/transcripts --congress 118
 ```
 
-`gpo-fetch` incrementally lists CHRG packages, parses MODS, and (113th+) reads transcript HTML for dates and title-page committee names. `--full-relist`, `--min-congress`, `--refresh-limit`, and `--evidence-path` control scope and retained bytes. `python -m congress_api.gpo.replay` backfills CSV columns from cached evidence without live requests.
+`gpo-fetch` incrementally lists CHRG packages, parses MODS, and (113th+) reads transcript HTML for dates and title-page committee names. `--full-relist`, `--min-congress`, `--refresh-limit`, and `--evidence-path` control scope and retained bytes. `python -m congress_api.replay.gpo` backfills CSV columns from cached evidence without live requests.
 
 `gpo-match` scores YouTube and offsite video candidates against meetings on disk. `gpo-transcripts` skips existing files and very short text unless the HTML still contains a complete proceeding.
 
@@ -185,7 +189,7 @@ gpo-transcripts --out-dir ~/transcripts --congress 118
 Run in order (see [meeting state](../../docs/youtube-coverage/meeting-state.md)):
 
 1. **`house-meeting-records`** — requires `--gpo-path`, `--meetings`, `--state-dir`, `--output-dir`. Optional `--seed-cache`, `--offline`, `--as-of`, `--refresh-limit`, `--limit`, `--zyte`, `--threads`.
-2. **`senate-meeting-records`** — same shared flags via `inventory.common.source_args`; optional `--site`, `--since`, `--refresh-limit`, `--limit`.
+2. **`senate-meeting-records`** — same shared flags via `cli.common.source_args`; optional `--site`, `--since`, `--refresh-limit`, `--limit`.
 3. **`meeting-inventory`** — joins meetings, GPO CSV, video match CSV, TinyDB/YouTube inputs, House/Senate CSVs from `--output-dir`, optional caption indexes (`--youtube-caption-index`, `--senate-caption-index`), and `--recordings`.
 
 Shared source flags (`source_args`): `--meetings`, `--state-dir`, `--output-dir`, `--seed-cache`, `--offline`, `--as-of`.
@@ -194,7 +198,7 @@ Outputs include `hearing_text_sources.csv`, `meetings_without_records.csv`, `mee
 
 The [offline behavior matrix](../../docs/congress-api-contracts.md#offline-behavior) explains saved-state requirements and failure behavior.
 
-Offline replay (no HTTP): `python -m congress_api.house.replay`, `python -m congress_api.senate.replay`.
+Offline replay (no HTTP): `python -m congress_api.replay.house`, `python -m congress_api.replay.senate`.
 
 ### 5. Transcripts
 
@@ -261,14 +265,12 @@ From `congress_shared.globals` (package-relative, not cwd-relative):
 
 ### Shared clients and utilities
 
-- **`meetings.py`** — `congress-meetings`; thin wrapper over `http.get_with_retry`, with five attempts (the gateway defaults to three).
-- **`congress_source.py`** — `parse_congress_xml`, `parse_response` → typed Congress.gov models; `meeting_from_xml` interprets XML for meeting readers while retaining original bytes.
-- **`http.py` / `zyte.py`** — `get_with_retry`, optional Zyte extract for rate-limited hosts.
-- **`committees.py`** — `parent_code`, `codes_of`, recording aliases.
-- **`witnesses.py`** — `witness`, `person_key`, `is_name` for GPO and page lines.
-- **`committee_metadata.py`** — `collect`, `congress-committees`.
-- **`xml.py`** — BOM-safe parse and MODS helpers.
-- **`meeting_rules.py`** — shared meeting type, access and hearing eligibility for collectors, inventory and explorer adapters; retains which source field supplied the classification.
+- `transport.http` / `transport.zyte` provide retries, pacing and optional Zyte access.
+- `parsers.congress` parses typed Congress.gov XML; `meeting_from_xml` retains the original bytes.
+- `parsers.xml` owns BOM-safe XML reading and ordered typed XML conversion.
+- `parsers.witness_names` and `parsers.speaker_names` read person-name tokens for source and transcript interpretation.
+- `matching.committees` owns `parent_code`, `codes_of` and recording aliases.
+- `matching.meetings` owns meeting type, access, hearing eligibility and inventory scope, including the source field behind each classification.
 
 ### Filename parsing
 
@@ -304,60 +306,41 @@ Each adapter exposes a **`records(...)`** (or domain-specific) entry that return
 | `house`, `senate`, `gpo` | Retained chamber/GovInfo payloads |
 | `inventory`, `findings`, `video_matches`, `recordings`, `transcripts` | Inventory observations, print links, manual associations, supplied transcript JSON bytes |
 
-### `retention/`
+### Provider-specific readers and recovery
 
-`rejected_pages.retain_rejected_page` saves rejected listing/detail JSON without
-replacing a valid snapshot. The old `fetch.rejected` alias has been removed.
+| Source | Interpret supplied data | Acquire and retain | Reprocess saved inputs |
+| --- | --- | --- | --- |
+| Congress.gov | `parsers.congress`; models under `models.congress` / `models.congress_xml` | `acquisition.meetings`, `acquisition.committees`, `retention.meetings`, `retention.rejected_pages` | Existing retained JSON/XML is consumed by the adapters |
+| House | `parsers.house_xml`, `parsers.house_documents`, `parsers.house_evidence`, `parsers.house` | `acquisition.house`, `retention.house`, `retention.tables` | `replay.house` |
+| Senate pages | `parsers.senate_page`, `parsers.senate`; associations in `matching.senate` / `matching.senate_pages` | `acquisition.senate`, `retention.senate`, `retention.tables` | `replay.senate` |
+| GovInfo | `parsers.gpo`, `parsers.gpo_hearings`; corrections in `matching.gpo_committees` / `matching.reviewed_committees` | `acquisition.gpo`, `retention.gpo` | `replay.gpo` |
+| Witness lists | `parsers.witness_pdf`; digest-keyed manual readings in `parsers.reviewed_witness_lists` | `acquisition.gaps`, `retention.tables` | Retained observations feed `matching.completeness` |
+| Captions | `parsers.senate_player`, `parsers.captions`; availability in `matching.captions` | `transcripts.senate`, `transport.senate`, `retention.captions` | Retained timed segments remain available to parsers |
+| Published/generated transcripts | `parsers.gpo_text`, `parsers.gemini`; shared types in `models.transcription` | `transcripts.gpo`, `transcripts.generate`, `transcripts.context`; media/model access in `transport.audio` / `transport.gemini` | Supplied transcript bytes feed `adapters.transcripts` |
 
-### `house/`
+`retention.rejected_pages.retain_rejected_page` preserves rejected listing/detail
+JSON without replacing a valid snapshot. GPO CSV rows remain summaries; complete
+native MODS models and retained bodies carry source evidence. Transcript rendering
+lives in `transcripts.render`; generated responses are retained before interpretation.
 
-- **`records`** — `house-meeting-records` (`parse_args_and_run`).
-- **`source`** — XML → `HouseMeetingXML` / `HouseWitnessListXML`.
-- **`repository`** — URL and witness extraction from XML/HTML (no HTTP).
-- **`evidence`** — retained `HouseEvidence` (schema 1.1).
-- **`replay`** — offline evidence upgrade.
+## Import fences
 
-### `senate/`
+`[tool.congress-api.import-fences]` in `pyproject.toml` lists which responsibility
+folders each folder may import. `tests/test_congress_api_imports.py` enforces the
+list in the normal test/CI run, including absolute, relative, aliased and
+function-local imports. A new folder requires an explicit policy.
 
-- **`records`** — `senate-meeting-records`.
-- **`pages`** — HTML layouts, witnesses, documents, listing constants.
-- **`matching`** — GPO package / bill-id association to native meetings.
-- **`corrections`** — curated date overrides (`selected_date`).
-- **`isvp`** — player URL parse/build, HLS URLs.
-- **`captions`** — `senate-captions`, WebVTT merge and index.
-- **`replay`** — offline parser upgrades.
+Models depend only on models. Parsers may also use models, and matching may use
+parsers and models. Adapters can use these three groups and `committee_meeting`,
+but cannot fetch data or read retention modules. Collection and transcript
+workflows can use storage and transports. Command wiring lives at the outside
+of these dependencies. No source module may depend on the explorer application.
 
-### `gpo/`
+Run the focused boundary checks with:
 
-- **`fetch`** — `gpo-fetch`, `GpoHearing` rows, `PARSER_VERSION` `"3"`.
-- **`source`** — bytes → `ModsDocument`, transcript HTML, manifest.
-- **`evidence`** — gzip JSONL upstream retention.
-- **`transcripts`** — `gpo-transcripts`.
-- **`match`** — `gpo-match`, scoring and overrides.
-- **`reviewed_committees`** — curated committee codes when MODS lacks authority IDs.
-- **`replay`** — offline CSV/evidence merge.
-
-### `inventory/`
-
-- **`main`** — `meeting-inventory` orchestrator.
-- **`common`** — CSV/state I/O, `source_args`, refresh scheduling.
-- **`text_sources`** — per-meeting text and video index.
-- **`prints`** — GPO print ↔ meeting ownership rules.
-- **`captions`** — caption availability and saved observation imports; old probe entry delegates to acquisition.
-- **`completeness`** — witness and completeness rows.
-- **`acquisition`** — MODS/PDF capture, Senate HEAD probes and day scheduling; defaulted `get=` for tests.
-- **`witness_lists`** — byte-only MODS/PDF parsing (`parse_pdf_observation`, `parse_mods_observation`); old acquisition entry delegates.
-- **`reviewed_witness_lists`** — digest-keyed manual PDF readings.
-
-### `transcribe/`
-
-- **`main`** — `hearing-transcribe`, `from_gpo`, Gemini orchestration.
-- **`schema`** — GPO layout render (`render_gpo`); types in `models/transcription`.
-- **`gpo_parse`** — plain-text GPO → `Transcript`.
-- **`metadata`** — `HearingContext`, roster from meetings/GPO/legislators.
-- **`audio`** — ffmpeg/yt-dlp/Senate HLS → chunked MP3.
-- **`gemini`** — windowed Gemini calls, split/retry on truncation.
-- **`names`** — token/surname matching for roster placement.
+```bash
+python -m pytest tests/test_congress_api_imports.py tests/test_congress_api_boundaries.py -q
+```
 
 ## Tests
 

@@ -9,16 +9,20 @@ adjournment times, the presiding member, members present, distinct speakers, ins
 speaker name that looks like a heading or a bare title. Exits non-zero if a print yields no
 turns, loses more than 30% of its words, or produces an odd speaker name.
 """
-import collections, csv, html, re, sys
+import collections
+import csv
+import html
+import re
+import sys
 from pathlib import Path
 
 import requests
 
 ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT / "packages/congress_api/src")); sys.path.insert(0, str(ROOT / "packages/congress_shared/src"))
-from congress_api.transcribe.gpo_parse import parse_gpo_text  # noqa: E402
-from congress_api.transcribe.metadata import mods_people  # noqa: E402
-from congress_api.transcribe.schema import Header  # noqa: E402
+from congress_api.models.transcription import Header
+from congress_api.parsers.gpo_text import parse_gpo_text
+from congress_api.transcripts.context import mods_people
 
 PRINTS = {"house_2008": "CHRG-110hhrg46592", "house_2013": "CHRG-113hhrg88542", "house_2019": "CHRG-116hhrg38145", "judiciary_2023": "CHRG-118hhrg54254",
           "approps_volume": "CHRG-118hhrg54343", "senate_2014": "CHRG-113shrg92444", "senate_2019": "CHRG-116shrg39977", "senate_2024": "CHRG-118shrg55877", "jec_2017": "CHRG-115jhrg25919"}

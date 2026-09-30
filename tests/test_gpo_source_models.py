@@ -1,18 +1,21 @@
 """Native source structure/bytes survive before legacy GPO row extraction."""
-from dataclasses import asdict
 import html
 import json
-from pathlib import Path
 import re
+from dataclasses import asdict
+from pathlib import Path
 from types import SimpleNamespace
 from xml.etree import ElementTree
 
 import pytest
-from pydantic import ValidationError
-
-from congress_api.gpo import evidence, fetch, transcripts
-from congress_api.gpo.source import parse_mods_document, parse_transcript_html
 from congress_api.models.gpo import GpoCollectionPage, GpoEvidenceObservation, ModsDocument
+from congress_api.parsers.gpo import parse_mods_document, parse_transcript_html
+from congress_api.parsers.gpo_hearings import committee_on_title_page as fetch_committee_on_title_page
+from congress_api.parsers.gpo_hearings import mods_witnesses as fetch_mods_witnesses
+from congress_api.parsers.gpo_hearings import parse_mods as fetch_parse_mods
+from congress_api.retention import gpo as evidence
+from congress_api.transcripts import gpo as transcripts
+from pydantic import ValidationError
 
 FIXTURES = Path(__file__).parent / 'fixtures' / 'gpo_metadata'
 
@@ -29,9 +32,9 @@ def test_mods_model_roundtrips_every_element_and_original_bytes(path):
     for native, model in zip(native_nodes, model_nodes):
         assert (native.tag, native.attrib, native.text or '', native.tail or '') == (
             model.tag, model.attrib, model.text, model.tail)
-    assert asdict(fetch.parse_mods(path.stem, source, 'unchanged')) == asdict(
-        fetch.parse_mods(path.stem, raw, 'unchanged'))
-    assert fetch.mods_witnesses(source) == fetch.mods_witnesses(raw)
+    assert asdict(fetch_parse_mods(path.stem, source, 'unchanged')) == asdict(
+        fetch_parse_mods(path.stem, raw, 'unchanged'))
+    assert fetch_mods_witnesses(source) == fetch_mods_witnesses(raw)
 
 
 def test_mods_native_nominee_and_roles_are_available_without_implying_attendance():
@@ -94,8 +97,8 @@ def test_html_model_keeps_full_source_and_existing_text_extraction():
 
 
 def test_typed_html_reaches_transcript_normalizer_without_csv():
-    from congress_api.transcribe.gpo_parse import parse_gpo_text
     from congress_api.models.transcription import Header
+    from congress_api.parsers.gpo_text import parse_gpo_text
     source = parse_transcript_html((FIXTURES / 'CHRG-119hhrg64429.htm').read_bytes())
     header = Header(title='Retained errata', chamber='house')
     typed = parse_gpo_text(source, header.model_copy(deep=True))
@@ -147,16 +150,16 @@ def test_real_short_complete_markup_is_saved_but_unavailable_stub_is_not(tmp_pat
 
 def test_real_special_committee_name_retains_native_descriptor():
     raw = (FIXTURES / 'CHRG-114shrg51750.htm').read_text()
-    assert fetch.committee_on_title_page(raw) == 'Special Committee on Aging'
-    assert fetch.committee_on_title_page('SELECT COMMITTEE ON INTELLIGENCE\nUNITED STATES SENATE') == 'Select Committee on Intelligence'
-    assert fetch.committee_on_title_page('JOINT COMMITTEE ON TAXATION\nHOUSE OF REPRESENTATIVES') == 'Joint Committee on Taxation'
+    assert fetch_committee_on_title_page(raw) == 'Special Committee on Aging'
+    assert fetch_committee_on_title_page('SELECT COMMITTEE ON INTELLIGENCE\nUNITED STATES SENATE') == 'Select Committee on Intelligence'
+    assert fetch_committee_on_title_page('JOINT COMMITTEE ON TAXATION\nHOUSE OF REPRESENTATIVES') == 'Joint Committee on Taxation'
 
 
 def test_real_addendum_part_name_reaches_rendition_metadata_without_changing_title():
     path = FIXTURES / 'CHRG-116shrg63315.xml'
     model = parse_mods_document(path.read_bytes())
     assert model.constituents[1].titles[0].part_name == 'Addendum 1'
-    row = fetch.parse_mods(path.stem, model, '')
+    row = fetch_parse_mods(path.stem, model, '')
     files = json.loads(row.file_metadata)
     supplement = [fields for url, fields in files.items() if '-add1' in url]
     primary = [fields for url, fields in files.items() if '-add1' not in url]

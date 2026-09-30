@@ -1,15 +1,14 @@
 """Offline import boundaries for retained official documents and transcript bodies."""
-from datetime import datetime, timezone
-from hashlib import sha256
 import json
 import unittest
+from datetime import datetime, timezone
+from hashlib import sha256
 from unittest.mock import patch
 
 from committee_meeting import Catalog
 from committee_meeting.common import Ref
 from committee_meeting.materials import Material, MaterialVersion, RecordingDetails
 from committee_meeting.meetings import Meeting
-
 from congress_api.adapters import gpo, transcripts
 from congress_api.adapters.common import AdapterContext
 

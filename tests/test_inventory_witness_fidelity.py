@@ -1,14 +1,13 @@
-from pathlib import Path
 import datetime as dt
+from pathlib import Path
 from types import SimpleNamespace
 from xml.etree.ElementTree import ParseError
-from pypdf.errors import PyPdfError
 
 import pytest
-
-from congress_api.inventory import acquisition, witness_lists
-from congress_api.inventory.witness_lists import document_witnesses, pdf_observation
-from congress_api.witnesses import witness
+from congress_api.acquisition import gaps as acquisition
+from congress_api.parsers.witness_names import witness
+from congress_api.parsers.witness_pdf import document_witnesses, pdf_observation
+from pypdf.errors import PyPdfError
 
 FIXTURES = Path(__file__).parent / "fixtures" / "meeting_inventory"
 

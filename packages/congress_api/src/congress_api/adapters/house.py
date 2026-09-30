@@ -1,13 +1,16 @@
 """House retained source groups, with explicit limits for legacy flattened state."""
+
 import re
+
 from committee_meeting.assessments import Assessment
 from committee_meeting.common import Identifier
 from committee_meeting.issues import DataIssue
 from committee_meeting.legislation import Amendment, AmendmentGroup, AmendmentSponsor, LegislativeItem, Vote
 from committee_meeting.materials import DocumentDetails, MaterialLink
 from committee_meeting.meetings import Affiliation, Appearance, Panel, Person, RecordedName
-from .common import digest, material_records, ref, web_url, observed_time
-from .meetings import category
+
+from congress_api.adapters.common import digest, material_records, observed_time, ref, web_url
+from congress_api.adapters.meetings import category
 from congress_api.models.house import HouseParsedRecord
 
 DOCUMENT_CATEGORIES = {

@@ -1,15 +1,23 @@
 """Small adapter values. Identity persistence belongs to the calling application."""
-from dataclasses import dataclass
-from datetime import date, datetime
+
 import hashlib
 import json
 import re
+from dataclasses import dataclass
+from datetime import date, datetime
 from typing import Callable, Mapping
 from urllib.parse import urlsplit
 
 from committee_meeting.common import Identifier, Ref, ReportedTime
+from committee_meeting.materials import (
+    DocumentDetails,
+    Material,
+    MaterialLink,
+    MaterialLocation,
+    MaterialVersion,
+    Representation,
+)
 from committee_meeting.provenance import Citation, Method, Provenance, SourceRecord
-from committee_meeting.materials import DocumentDetails, Material, MaterialVersion, Representation, MaterialLocation, MaterialLink
 
 
 def digest(value):

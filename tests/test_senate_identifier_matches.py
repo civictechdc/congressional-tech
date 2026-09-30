@@ -1,11 +1,10 @@
 """Individually reviewed raw source pairs are the oracle, not generated matches."""
+import json
 from copy import deepcopy
 from pathlib import Path
-import json
 
 import pytest
-
-from congress_api.senate.matching import match_identifiers
+from congress_api.matching.senate import match_identifiers
 
 CASES=json.loads((Path(__file__).parent/'fixtures/senate_official/manual-matches.json').read_text())
 HOST='indian.senate.gov'
@@ -51,7 +50,8 @@ def test_preserves_existing_supported_match_even_if_new_identifiers_point_elsewh
 
 
 def test_adapter_exposes_exact_identifier_match_evidence_inline():
-    from datetime import UTC,datetime
+    from datetime import UTC, datetime
+
     from committee_meeting.common import Ref
     from congress_api.adapters.common import AdapterContext
     from congress_api.adapters.senate import records

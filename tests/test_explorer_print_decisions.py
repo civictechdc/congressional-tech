@@ -2,10 +2,8 @@
 import json
 
 import pytest
-
-from congress_api.gpo.match import similarity, words
-from congress_api.inventory.prints import match_prints
-
+from congress_api.matching.gpo_videos import similarity, words
+from congress_api.matching.prints import match_prints
 
 PACKAGE = "CHRG-119hhrg123"
 

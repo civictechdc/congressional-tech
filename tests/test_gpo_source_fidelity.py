@@ -1,20 +1,27 @@
 """Raw MODS bytes, CSV repairs and adapter evidence agree without invented freshness."""
-from dataclasses import asdict
 import hashlib
 import json
+from dataclasses import asdict
 from pathlib import Path
 from types import SimpleNamespace
 
+from congress_api.acquisition import gpo as fetch
 from congress_api.adapters import gpo
-from congress_api.gpo import evidence, fetch
-from congress_api.gpo.replay import replay
+from congress_api.matching.gpo_committees import merge_cached_row as fetch_merge_cached_row
+from congress_api.parsers.gpo_hearings import PARSER_VERSION as fetch_PARSER_VERSION
+from congress_api.parsers.gpo_hearings import committee_on_title_page as fetch_committee_on_title_page
+from congress_api.parsers.gpo_hearings import parse_mods as fetch_parse_mods
+from congress_api.replay.gpo import replay
+from congress_api.retention import gpo as evidence
+from congress_api.retention.gpo import read_csv as fetch_read_csv
+from congress_api.retention.gpo import write_csv as fetch_write_csv
 from test_explorer_material_adapters import context
 
 FIXTURES = Path(__file__).parent / 'fixtures' / 'gpo_metadata'
 
 
 def parsed(package='CHRG-113hhrg21122'):
-    return asdict(fetch.parse_mods(package, (FIXTURES / f'{package}.xml').read_bytes(), '2026-09-01T00:00:00Z'))
+    return asdict(fetch_parse_mods(package, (FIXTURES / f'{package}.xml').read_bytes(), '2026-09-01T00:00:00Z'))
 
 
 def test_real_mods_serial_and_roster_survive_as_native_evidence_without_attendance():
@@ -66,9 +73,9 @@ def test_replay_preserves_later_corrections_dates_and_digest_is_exact(tmp_path):
                text_read='yes', parser_version='', committee_metadata='', serial_numbers='',
                file_metadata='', html_urls='', pdf_urls='')
     inp, out, retained, receipt = (tmp_path / name for name in ('in.csv', 'out.csv', 'evidence.jsonl.gz', 'receipt.json'))
-    fetch.write_csv({row['package_id']: row}, inp)
+    fetch_write_csv({row['package_id']: row}, inp)
     result = replay(inp, FIXTURES, out, retained, receipt_path=receipt)
-    repaired = fetch.read_csv(out)[row['package_id']]
+    repaired = fetch_read_csv(out)[row['package_id']]
     for field in ('title', 'committee_code', 'hearing_dates', 'text_read', 'last_modified'):
         assert repaired[field] == row[field]
     assert repaired['serial_numbers'] == 'FC09'
@@ -89,7 +96,7 @@ def test_unchanged_rows_refresh_by_parser_version_with_a_bound_and_no_transcript
     row.update(parser_version='', title='Reviewed title', hearing_dates='2013-06-14', text_read='yes', witness_count=999)
     second = dict(row, package_id='CHRG-113hhrg99999')
     path, retained = tmp_path / 'rows.csv', tmp_path / 'evidence.jsonl.gz'
-    fetch.write_csv({package: row, second['package_id']: second}, path)
+    fetch_write_csv({package: row, second['package_id']: second}, path)
     calls = []
     def get(session, url):
         calls.append(url)
@@ -98,8 +105,8 @@ def test_unchanged_rows_refresh_by_parser_version_with_a_bound_and_no_transcript
     monkeypatch.setattr(fetch, 'list_collection', lambda since, key: [])
     monkeypatch.setattr(fetch, 'get_with_retry', get)
     fetch.main(path, min_congress=113, nthreads=1, refresh_limit=1, evidence_path=retained)
-    rows = fetch.read_csv(path)
-    assert rows[package]['parser_version'] == fetch.PARSER_VERSION
+    rows = fetch_read_csv(path)
+    assert rows[package]['parser_version'] == fetch_PARSER_VERSION
     assert rows[second['package_id']]['parser_version'] == ''
     assert rows[package]['hearing_dates'] == row['hearing_dates']
     assert rows[package]['title'] == 'Reviewed title'
@@ -117,8 +124,8 @@ def test_live_refresh_fills_native_scalar_blanks_but_cache_replay_preserves_them
     current.update(event_id='123456', subcommittees='Subcommittee on Oversight')
     old = dict(current, event_id='', committee_code_gpo='', subcommittees='',
                title='Reviewed title', hearing_dates='2013-06-14', text_read='yes')
-    offline = fetch.merge_cached_row(old, current)
-    live = fetch.merge_cached_row(old, current, live_refresh=True)
+    offline = fetch_merge_cached_row(old, current)
+    live = fetch_merge_cached_row(old, current, live_refresh=True)
     for field in ('event_id', 'committee_code_gpo', 'subcommittees'):
         assert offline[field] == ''
         assert live[field] == current[field]
@@ -166,7 +173,7 @@ def test_committee_and_material_adapters_share_enriched_source_identity():
 def test_replay_retains_html_without_mods_and_preserves_acquired_observation(tmp_path):
     row = parsed()
     input_path, output_path, retained = (tmp_path / name for name in ('in.csv', 'out.csv', 'evidence.jsonl.gz'))
-    fetch.write_csv({row['package_id']: row}, input_path)
+    fetch_write_csv({row['package_id']: row}, input_path)
     html_dir, mods_dir = tmp_path / 'html', tmp_path / 'mods'
     html_dir.mkdir(); mods_dir.mkdir()
     raw = b'<pre>THURSDAY, JUNE 13, 2013</pre>'
@@ -188,7 +195,7 @@ def test_replay_retains_html_without_mods_and_preserves_acquired_observation(tmp
 def test_invalid_mods_root_is_failure_not_empty_success():
     import pytest
     with pytest.raises(ValueError, match='not a MODS document'):
-        fetch.parse_mods('CHRG-113hhrg21122', b'<html>temporary failure</html>', '')
+        fetch_parse_mods('CHRG-113hhrg21122', b'<html>temporary failure</html>', '')
 
 
 def test_live_errata_native_title_and_type_survive_empty_title_info():
@@ -199,17 +206,17 @@ def test_live_errata_native_title_and_type_survive_empty_title_info():
     assert material.title == row['title']
     assert material.details.category == 'errata'
     old = dict(row, title='', record_type='hearing')
-    refreshed = fetch.merge_cached_row(old, row, live_refresh=True)
+    refreshed = fetch_merge_cached_row(old, row, live_refresh=True)
     assert refreshed['title'] == row['title']
     assert refreshed['record_type'] == 'errata'
 
 
 def test_title_page_committee_continuation_across_blank_line_excludes_layout_labels():
     html = (FIXTURES / 'CHRG-119hhrg64429.htm').read_text()
-    assert fetch.committee_on_title_page(html) == 'Committee on Oversight and Government Reform'
-    assert fetch.committee_on_title_page('COMMITTEE ON HOUSE\n\nADMINISTRATION\nHOUSE OF REPRESENTATIVES') == 'Committee on House Administration'
-    assert fetch.committee_on_title_page("COMMITTEE ON VETERANS' AFFAIRS\n\nBEFORE THE\nUNITED STATES SENATE") == "Committee on Veterans' Affairs"
-    assert fetch.committee_on_title_page('COMMITTEE ON SMALL BUSINESS\n\nUNITED STATES\nHOUSE OF REPRESENTATIVES') == 'Committee on Small Business'
+    assert fetch_committee_on_title_page(html) == 'Committee on Oversight and Government Reform'
+    assert fetch_committee_on_title_page('COMMITTEE ON HOUSE\n\nADMINISTRATION\nHOUSE OF REPRESENTATIVES') == 'Committee on House Administration'
+    assert fetch_committee_on_title_page("COMMITTEE ON VETERANS' AFFAIRS\n\nBEFORE THE\nUNITED STATES SENATE") == "Committee on Veterans' Affairs"
+    assert fetch_committee_on_title_page('COMMITTEE ON SMALL BUSINESS\n\nUNITED STATES\nHOUSE OF REPRESENTATIVES') == 'Committee on Small Business'
 
 
 def test_transcript_failure_keeps_old_row_and_successful_mods_bytes(tmp_path, monkeypatch):
@@ -218,7 +225,7 @@ def test_transcript_failure_keeps_old_row_and_successful_mods_bytes(tmp_path, mo
     row = parsed(package)
     row.update(parser_version='', text_read='')
     path, retained = tmp_path / 'rows.csv', tmp_path / 'evidence.jsonl.gz'
-    fetch.write_csv({package: row}, path)
+    fetch_write_csv({package: row}, path)
     monkeypatch.setattr(fetch, 'load_congress_api_key', lambda: 'unused')
     monkeypatch.setattr(fetch, 'list_collection', lambda since, key: [])
     def get(session, url):
@@ -228,7 +235,7 @@ def test_transcript_failure_keeps_old_row_and_successful_mods_bytes(tmp_path, mo
     monkeypatch.setattr(fetch, 'get_with_retry', get)
     with pytest.raises(SystemExit):
         fetch.main(path, min_congress=113, nthreads=1, refresh_limit=1, evidence_path=retained)
-    assert fetch.read_csv(path)[package]['parser_version'] == ''
+    assert fetch_read_csv(path)[package]['parser_version'] == ''
     assert evidence.read(retained)[package]['mods']['retrieved_at']
 
 
@@ -238,7 +245,7 @@ def test_rejected_mods_bytes_survive_without_replacing_last_valid_source(tmp_pat
     row.update(parser_version='', text_read='yes')
     package = row['package_id']
     path, retained = tmp_path / 'rows.csv', tmp_path / 'evidence.jsonl.gz'
-    fetch.write_csv({package: row}, path)
+    fetch_write_csv({package: row}, path)
     raw = (FIXTURES / f'{package}.xml').read_bytes()
     previous = evidence.observation(raw, 'https://www.govinfo.gov/mods.xml', 'application/xml',
                                     retrieved_at='2026-09-01T00:00:00Z')
@@ -253,11 +260,11 @@ def test_rejected_mods_bytes_survive_without_replacing_last_valid_source(tmp_pat
     assert value['mods'] == previous
     assert evidence.body_bytes(value['failed_mods']) == rejected
     assert value['failed_mods']['retrieved_at'] and value['failed_mods']['error']
-    assert fetch.read_csv(path)[package]['parser_version'] == ''
+    assert fetch_read_csv(path)[package]['parser_version'] == ''
     monkeypatch.setattr(fetch, 'get_with_retry', lambda *args: SimpleNamespace(content=raw))
     fetch.main(path, min_congress=113, nthreads=1, refresh_limit=0, evidence_path=retained)
     assert 'failed_mods' not in evidence.read(retained)[package]
-    assert fetch.read_csv(path)[package]['parser_version'] == fetch.PARSER_VERSION
+    assert fetch_read_csv(path)[package]['parser_version'] == fetch_PARSER_VERSION
 
 
 def test_failed_new_package_retries_after_other_success_advances_watermark(tmp_path, monkeypatch):
@@ -265,7 +272,7 @@ def test_failed_new_package_retries_after_other_success_advances_watermark(tmp_p
     path, retained = tmp_path / 'rows.csv', tmp_path / 'evidence.jsonl.gz'
     old = parsed()
     old.update(last_modified='2026-01-10T00:00:00Z', text_read='yes')
-    fetch.write_csv({old['package_id']: old}, path)
+    fetch_write_csv({old['package_id']: old}, path)
     failed, successful = 'CHRG-113hhrg11111', 'CHRG-113hhrg22222'
     first, windows = True, []
     def listing(since, key):
@@ -284,11 +291,11 @@ def test_failed_new_package_retries_after_other_success_advances_watermark(tmp_p
         fetch.main(path, min_congress=113, nthreads=1, refresh_limit=0, evidence_path=retained)
     pending = Path(str(retained) + '.pending.json')
     assert json.loads(pending.read_text()) == {failed: '2026-01-11T00:00:00Z'}
-    assert failed not in fetch.read_csv(path) and successful in fetch.read_csv(path)
+    assert failed not in fetch_read_csv(path) and successful in fetch_read_csv(path)
     first = False
     fetch.main(path, min_congress=113, nthreads=1, refresh_limit=0, evidence_path=retained)
     assert windows[-1] == '2026-01-18T00:00:00Z'
-    assert failed in fetch.read_csv(path)
+    assert failed in fetch_read_csv(path)
     assert json.loads(pending.read_text()) == {}
 
 
@@ -296,10 +303,10 @@ def test_pending_survives_csv_failure_and_csv_write_is_atomic(tmp_path, monkeypa
     import pytest
     row = parsed()
     path = tmp_path / 'rows.csv'
-    fetch.write_csv({row['package_id']: row}, path)
+    fetch_write_csv({row['package_id']: row}, path)
     before = path.read_bytes()
     with pytest.raises(ValueError):
-        fetch.write_csv({row['package_id']: row, 'invalid': dict(row, unexpected='field')}, path)
+        fetch_write_csv({row['package_id']: row, 'invalid': dict(row, unexpected='field')}, path)
     assert path.read_bytes() == before
     monkeypatch.setattr(fetch, 'load_congress_api_key', lambda: 'unused')
     monkeypatch.setattr(fetch, 'list_collection', lambda *args: [{'packageId': row['package_id'], 'lastModified': '2026-09-02T00:00:00Z'}])

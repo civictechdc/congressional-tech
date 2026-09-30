@@ -1,23 +1,30 @@
 """Source models retain publisher values before normalization and storage."""
-from copy import deepcopy
-from datetime import date
 import gzip
 import json
+from copy import deepcopy
+from datetime import date
 from pathlib import Path
 from types import SimpleNamespace
 
-from pydantic import ValidationError
 import pytest
-
+from congress_api.acquisition import senate as records
 from congress_api.adapters.senate import records as adapt_records
-from congress_api.inventory.common import read_state
 from congress_api.models.content import RawContent
 from congress_api.models.media import HLSRendition, SenateCaptionSources
-from congress_api.models.senate import SenatePage, SenateSite, WordPressPost, WordPressType, WORDPRESS_POSTS
-from congress_api.senate import captions, records
+from congress_api.models.senate import WORDPRESS_POSTS, SenatePage, SenateSite, WordPressPost, WordPressType
+from congress_api.parsers.captions import IncompleteCaptionsError as captions_IncompleteCaptionsError
+from congress_api.parsers.captions import _subtitle_uri as captions__subtitle_uri
+from congress_api.parsers.captions import parsed_cues as captions_parsed_cues
+from congress_api.parsers.senate import parse_page as records_parse_page
+from congress_api.retention.captions import receipt_path as captions_receipt_path
+from congress_api.retention.tables import read_state
+from congress_api.transcripts import senate as captions
+from congress_api.transport import http as records_http
+from congress_api.transport.senate import sess as captions_sess
+from pydantic import ValidationError
 from test_explorer_senate_adapter import adapt, context, of_kind
-from test_senate_caption_checks import PLAYER, responses, MASTER, MASTER_BODY
-from test_senate_record_receipts import setup_inputs, HTML, HOST, PAGE
+from test_senate_caption_checks import MASTER, MASTER_BODY, PLAYER, responses
+from test_senate_record_receipts import HOST, HTML, PAGE, setup_inputs
 
 FIXTURES = Path(__file__).parent / 'fixtures'
 SOURCES = FIXTURES / 'source_models'
@@ -26,7 +33,7 @@ SOURCES = FIXTURES / 'source_models'
 @pytest.mark.parametrize('fixture', sorted((FIXTURES / 'meeting_inventory').glob('senate-*.html')))
 def test_every_retained_page_layout_is_a_lossless_native_model(fixture):
     original = fixture.read_bytes()
-    model = records.parse_page(original, 'https://example.senate.gov/hearings/evidence')
+    model = records_parse_page(original, 'https://example.senate.gov/hearings/evidence')
     assert isinstance(model, SenatePage)
     assert model.raw_html.body_bytes() == original
     assert model.raw_html.sha256 == RawContent.from_bytes(original, 'text/html').sha256
@@ -39,7 +46,7 @@ def test_every_retained_page_layout_is_a_lossless_native_model(fixture):
 
 def test_html_bytes_that_are_not_utf8_remain_exact_through_model_and_adapter():
     raw = b'<title>Source title</title>\r\n<p>Original \x96 bytes</p><script>all original JS</script>'
-    page = records.parse_page(raw, PAGE)
+    page = records_parse_page(raw, PAGE)
     assert page.raw_html.body_encoding == 'base64'
     assert page.raw_html.body_bytes() == raw
     source, = of_kind(adapt(page), 'source_record')
@@ -49,7 +56,7 @@ def test_html_bytes_that_are_not_utf8_remain_exact_through_model_and_adapter():
 def test_archived_help_page_keeps_displayed_event_date_and_type():
     raw = (SOURCES / 'senate-help-executive-session-20230615.html').read_bytes()
     url = 'https://www.help.senate.gov/hearings/s-133-s-134-s-265-s-1844-s-1852-and-s-1855'
-    page = records.parse_page(raw, url)
+    page = records_parse_page(raw, url)
     assert page.event.date == '2023-06-15'
     assert page.event.date_text == 'Thursday, June 15th, 2023'
     assert page.event.type == 'Executive Session'
@@ -59,11 +66,11 @@ def test_archived_help_page_keeps_displayed_event_date_and_type():
     assert page.raw_html.body_bytes() == raw
     # An unrelated date outside the recognized hearing details cannot admit an event.
     unrelated = raw.replace(b'Hearing__details', b'Unrelated__details')
-    assert records.parse_page(unrelated, url).event is None
+    assert records_parse_page(unrelated, url).event is None
 
 
 def test_native_site_and_page_models_have_the_same_normalization_as_dictionaries():
-    page = records.parse_page(HTML, PAGE)
+    page = records_parse_page(HTML, PAGE)
     state = {HOST: {'pages': {PAGE: page.source_dict()}}}
     modeled = {HOST: SenateSite(pages={PAGE: page})}
     assert list(adapt_records(state, context(), meetings={})) == list(adapt_records(modeled, context(), meetings={}))
@@ -97,7 +104,7 @@ def test_malformed_nested_source_values_fail_without_string_coercion():
     post['acf']['witness_1'] = [{'witness_name': 123}]
     with pytest.raises(ValidationError, match='witness_name'):
         WordPressPost.model_validate(post)
-    page = records.parse_page(HTML, PAGE).source_dict()
+    page = records_parse_page(HTML, PAGE).source_dict()
     page['document_metadata'] = {'https://example.gov/doc.pdf': {'labels': [], 'attributes': [], 'container_attributes': [], 'witness_indexes': [-1]}}
     with pytest.raises(ValidationError, match='witness_indexes'):
         SenatePage.model_validate(page)
@@ -116,7 +123,7 @@ def test_collector_retains_complete_wordpress_response_through_saved_state_and_a
     def request(_session, requested, **kwargs):
         return SimpleNamespace(status_code=200, content=raw if requested == url else HTML)
     monkeypatch.setattr(records, 'listed', listing)
-    monkeypatch.setattr(records.http, 'get_with_retry', request)
+    monkeypatch.setattr(records_http, 'get_with_retry', request)
     monkeypatch.setattr(records, 'match_pages', lambda *args: ([], [], []))
     records.main(**args)
     state = read_state(tmp_path / 'senate.json.gz')
@@ -135,7 +142,7 @@ def test_caption_response_bytes_and_uninterpreted_source_metadata_are_retained(t
         response = serve(url, **kwargs)
         body = original_master if url == MASTER else response.text.encode()
         return SimpleNamespace(status_code=response.status_code, text=body.decode(), content=body, headers={})
-    monkeypatch.setattr(captions.sess, 'get', get)
+    monkeypatch.setattr(captions_sess, 'get', get)
     captions.fetch_one(PLAYER, tmp_path)
     raw = json.loads(gzip.decompress((tmp_path / 'epw120623.captions.json.gz').read_bytes()))
     source = SenateCaptionSources.model_validate(raw)
@@ -146,11 +153,11 @@ def test_caption_response_bytes_and_uninterpreted_source_metadata_are_retained(t
 
 def test_real_webvtt_cues_keep_timing_identifier_settings_and_literal_text():
     body = (FIXTURES / 'captions/senate-jec011724-segment101.vtt').read_text()
-    cues = captions.parsed_cues(body)
+    cues = captions_parsed_cues(body)
     assert len(cues) == 25
     assert cues[0].start and cues[0].end
     raw = 'WEBVTT\n\nsource-cue-1\n00:00:01.000 --> 00:00:03.000 align:start line:90%\n<v Speaker>A &amp; B</v>\n'
-    cue, = captions.parsed_cues(raw)
+    cue, = captions_parsed_cues(raw)
     assert cue.source_dict() == {'start': '00:00:01.000', 'end': '00:00:03.000', 'text': ['<v Speaker>A &amp; B</v>'], 'identifier': 'source-cue-1', 'settings': 'align:start line:90%'}
 
 
@@ -158,7 +165,7 @@ def test_real_webvtt_cues_keep_timing_identifier_settings_and_literal_text():
 def test_rejected_senate_response_preserves_exact_attempt_without_replacing_prior_page(tmp_path, monkeypatch, body):
     args = setup_inputs(tmp_path)
     original = read_state(tmp_path / 'senate.json.gz')[HOST]['pages'][PAGE]
-    monkeypatch.setattr(records.http, 'get_with_retry', lambda *args, **kwargs: SimpleNamespace(status_code=200, content=body, headers={}))
+    monkeypatch.setattr(records_http, 'get_with_retry', lambda *args, **kwargs: SimpleNamespace(status_code=200, content=body, headers={}))
     with pytest.raises(RuntimeError):
         records.main(**args)
     saved = read_state(tmp_path / 'senate.json.gz')[HOST]['pages'][PAGE]
@@ -171,11 +178,11 @@ def test_rejected_senate_response_preserves_exact_attempt_without_replacing_prio
 
 def test_rejected_caption_body_is_retained_with_failure_receipt(tmp_path, monkeypatch):
     body = b'<html>Unrecognized stream response\r\n</html>'
-    monkeypatch.setattr(captions.sess, 'get', lambda *args, **kwargs: SimpleNamespace(status_code=200, text=body.decode(), content=body, headers={'Content-Type': 'text/html'}))
-    with pytest.raises(captions.IncompleteCaptionsError):
+    monkeypatch.setattr(captions_sess, 'get', lambda *args, **kwargs: SimpleNamespace(status_code=200, text=body.decode(), content=body, headers={'Content-Type': 'text/html'}))
+    with pytest.raises(captions_IncompleteCaptionsError):
         captions.fetch_one(PLAYER, tmp_path)
-    receipt = json.loads(captions.receipt_path(tmp_path, PLAYER).read_text())
-    from congress_api.senate.isvp import archive_url
+    receipt = json.loads(captions_receipt_path(tmp_path, PLAYER).read_text())
+    from congress_api.parsers.senate_player import archive_url
     assert [source['url'] for source in receipt['source_responses']] == [MASTER, archive_url('epw', 'epw120623')]
     for source in receipt['source_responses']:
         assert RawContent.model_validate(source['raw_body']).body_bytes() == body
@@ -184,7 +191,7 @@ def test_rejected_caption_body_is_retained_with_failure_receipt(tmp_path, monkey
 
 
 def test_real_appropriations_section_heading_is_not_the_testimony_title():
-    page = records.parse_page((FIXTURES / 'meeting_inventory/senate-2.html').read_bytes(), PAGE)
+    page = records_parse_page((FIXTURES / 'meeting_inventory/senate-2.html').read_bytes(), PAGE)
     page.events = ['12']
     assert page.documents[0][1] == 'Witnesses'
     assert page.document_metadata[page.documents[0][2]].labels == ['Download Testimony']
@@ -202,7 +209,7 @@ def test_real_appropriations_section_heading_is_not_the_testimony_title():
 
 
 def test_real_appropriations_player_keeps_empty_start_and_wmode():
-    from congress_api.senate.isvp import parse_player_query, parse_player_url
+    from congress_api.parsers.senate_player import parse_player_query, parse_player_url
     url = 'https://www.senate.gov/isvp/?comm=approps&type=arch&stt=&filename=appropsA032923&auto_play=false&wmode=transparent&poster=https%3A%2F%2Fwww%2Eappropriations%2Esenate%2Egov%2Fthemes%2Fappropriations%2Fimages%2Fvideo%2Dposter%2Dflash%2Dfit%2Epng'
     query = parse_player_query(url)
     assert query.source_dict()['stt'] == ''
@@ -228,19 +235,19 @@ def test_real_hls_rendition_and_empty_segment_remain_distinct_from_absence():
     model = HLSRendition.model_validate(attrs)
     assert model.source_dict() == attrs
     assert model.language == 'eng' and model.group_id == 'subs' and model.default == 'YES'
-    assert captions._subtitle_uri(master) == 'master/text_1.m3u8'
+    assert captions__subtitle_uri(master) == 'master/text_1.m3u8'
     empty = (FIXTURES / 'captions/senate-jec011724-segment1.vtt').read_text()
     assert 'MPEGTS:183000' in empty
-    assert captions.parsed_cues(empty) == []
+    assert captions_parsed_cues(empty) == []
 
 
 def test_real_forbidden_html_does_not_replace_a_good_hearing_under_http200(tmp_path, monkeypatch):
     raw = (SOURCES / 'senate-error-forbidden.html').read_bytes()
-    model = records.parse_page(raw, PAGE)
+    model = records_parse_page(raw, PAGE)
     assert model.title == '403 Forbidden' and model.raw_html.body_bytes() == raw
     args = setup_inputs(tmp_path)
     previous = read_state(tmp_path / 'senate.json.gz')[HOST]['pages'][PAGE]
-    monkeypatch.setattr(records.http, 'get_with_retry', lambda *args, **kwargs: SimpleNamespace(status_code=200, content=raw))
+    monkeypatch.setattr(records_http, 'get_with_retry', lambda *args, **kwargs: SimpleNamespace(status_code=200, content=raw))
     with pytest.raises(RuntimeError, match='Unrecognized'):
         records.main(**args)
     retained = read_state(tmp_path / 'senate.json.gz')[HOST]['pages'][PAGE]
@@ -257,7 +264,7 @@ def test_real_coldfusion_listing_error_retains_old_listing_and_error_body(tmp_pa
     previous = read_state(tmp_path / 'senate.json.gz')[HOST]
     url = 'https://www.budget.senate.gov/hearings?PageNum_rs=0'
     monkeypatch.setattr(records, 'listed', lambda host, get, saved: (records.listing_page(host, '/hearings?PageNum_rs={}', 0, get), {}))
-    monkeypatch.setattr(records.http, 'get_with_retry', lambda *args, **kwargs: SimpleNamespace(status_code=200, content=raw))
+    monkeypatch.setattr(records_http, 'get_with_retry', lambda *args, **kwargs: SimpleNamespace(status_code=200, content=raw))
     with pytest.raises(RuntimeError, match='returned no hearings'):
         records.main(**args)
     retained = read_state(tmp_path / 'senate.json.gz')[HOST]

@@ -1,15 +1,18 @@
 """Capture receipts survive inventory import and dated assessment normalization."""
-from datetime import datetime, timezone
 import json
+from datetime import datetime, timezone
 
 from committee_meeting.common import Ref
-from congress_api.adapters.common import AdapterContext
 from congress_api.adapters import inventory
-from congress_api.inventory.captions import import_observations
-from congress_api.senate import captions as senate
-from youtube_api.captions import main as youtube
+from congress_api.adapters.common import AdapterContext
+from congress_api.retention.captions import RECEIPTS as senate_RECEIPTS
+from congress_api.retention.captions import import_observations
+from congress_api.retention.captions import receipt_path as senate_receipt_path
+from congress_api.transcripts import senate as senate
+from congress_api.transport.senate import sess as senate_sess
 from test_caption_source_fidelity import VIDEO, VTT, fake_ydl
-from test_senate_caption_checks import PLAYER, responses, response
+from test_senate_caption_checks import PLAYER, response, responses
+from youtube_api.captions import main as youtube
 
 
 def adapt(state):
@@ -67,16 +70,16 @@ def test_failed_youtube_refresh_retains_prior_positive_without_recursion(tmp_pat
 
 
 def test_senate_positive_then_error_retains_source_pointer_and_bounded_scope(tmp_path, monkeypatch):
-    monkeypatch.setattr(senate.sess, 'get', responses())
+    monkeypatch.setattr(senate_sess, 'get', responses())
     senate.main(tmp_path, [PLAYER], nthreads=1)
-    original = json.loads(senate.receipt_path(tmp_path, PLAYER).read_text())
+    original = json.loads(senate_receipt_path(tmp_path, PLAYER).read_text())
     import requests
-    monkeypatch.setattr(senate.sess, 'get', lambda *a, **k: (_ for _ in ()).throw(requests.Timeout('timeout')))
+    monkeypatch.setattr(senate_sess, 'get', lambda *a, **k: (_ for _ in ()).throw(requests.Timeout('timeout')))
     import pytest
     for _ in range(2):
         with pytest.raises(requests.Timeout):
             senate.fetch_one(PLAYER, tmp_path)
-    receipt = json.loads(senate.receipt_path(tmp_path, PLAYER).read_text())
+    receipt = json.loads(senate_receipt_path(tmp_path, PLAYER).read_text())
     assert receipt['last_successful'] == original
     assert receipt['last_successful']['source_file'] == 'epw120623.captions.json.gz'
     assert 'last_successful' not in receipt['last_successful']
@@ -93,13 +96,13 @@ def test_confirmed_negatives_are_dated_scoped_but_legacy_csv_is_undated(tmp_path
     youtube_dir, senate_dir = tmp_path / 'youtube', tmp_path / 'senate'
     fake_ydl(monkeypatch, info={})
     youtube.main(youtube_dir, [VIDEO], nthreads=1)
-    monkeypatch.setattr(senate.sess, 'get', lambda *a, **k: response(404))
+    monkeypatch.setattr(senate_sess, 'get', lambda *a, **k: response(404))
     senate.main(senate_dir, [PLAYER], nthreads=1)
     state = {}
     import_observations(state, youtube_index=youtube_dir / youtube.INDEX, senate_index=senate_dir / senate.INDEX)
     assessments = [r for r in adapt(state) if r.kind == 'assessment']
     assert len(assessments) == 2 and all(a.status == 'not_found' and a.observed_at and a.scope for a in assessments)
-    for path in (youtube_dir / youtube.RECEIPTS, senate_dir / senate.RECEIPTS):
+    for path in (youtube_dir / youtube.RECEIPTS, senate_dir / senate_RECEIPTS):
         for receipt in path.glob('*.json'): receipt.unlink()
     legacy = {}
     import_observations(legacy, youtube_index=youtube_dir / youtube.INDEX, senate_index=senate_dir / senate.INDEX)

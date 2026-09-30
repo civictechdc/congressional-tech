@@ -18,9 +18,9 @@ HTTP or opening output files. Source models describe native values. The
 records. Storage readers and writers sit outside this sequence and can change
 without redefining a publisher’s data.
 
-Inventory late acquisition lives in `inventory.acquisition`: witness PDF/MODS
+Inventory late acquisition lives in `acquisition.gaps`: witness PDF/MODS
 capture and Senate day probes accept a defaulted `get=` function. The orchestrator
-and `completeness.build` call it explicitly. `inventory.witness_lists` retains the
+and `completeness.build` call it explicitly. `parsers.witness_pdf` retains the
 byte-only PDF/MODS parser entry points and a compatibility acquisition delegate.
 Production rejected listing and committee detail responses use
 `retention.rejected_pages`, independently of any storage importer.
@@ -35,25 +35,25 @@ that model is `ModsDocument`.
 
 | Source we parse | Canonical model | Parser or entry point |
 | --- | --- | --- |
-| Congress.gov meeting/detail/list JSON | `CommitteeMeeting`, `MeetingResponse`, `MeetingsPage` | `models.congress.parse_response`; `meetings.get` |
-| Congress.gov committee/detail/list JSON | `CommitteeRecord`, `CommitteeDetail`, `CommitteeResponse`, `CommitteesPage` | `models.congress.parse_response`; `meetings.get` |
-| Congress.gov XML fallback | `CongressXmlDocument` | `congress_source.parse_congress_xml` |
-| GovInfo collection JSON | `GpoCollectionPage`, `GpoCollectionPackage` | `gpo.fetch.list_collection` |
-| GovInfo MODS XML | `ModsDocument` and nested native MODS records | `gpo.source.parse_mods_document` |
-| GovInfo ZIP package file-list XML (METS) | `GpoPackageManifest`, `MetsFile`, `MetsFileLocation` | `gpo.source.parse_package_manifest` |
-| GovInfo transcript HTML | `GpoTranscriptText`, `GpoTranscriptDates`; structured `Transcript` extraction | `gpo.transcripts`, `gpo.fetch`, `transcribe.gpo_parse` |
-| House meeting and witness XML | `HouseMeetingXML`, `HouseWitnessListXML` | `house.source.parse_house_meeting`, `parse_house_witnesses` |
-| House meeting HTML and combined extraction | `HouseEvidence`, `HouseParsedRecord` | `house.evidence`, `house.records.parse_house_record` |
-| Senate hearing and attachment HTML | `SenatePage`, nested witness/document/page records | `senate.records.parse_page` |
-| Senate WordPress types and posts JSON | `WordPressType`, `WordPressPost`, nested ACF and metadata records | `senate.records.wordpress_listed` |
-| Witness-list PDF | `PdfWitnessObservation`, `PdfTextPage`, `DocumentWitness` | `inventory.witness_lists.parse_pdf_observation` |
-| MODS witness extraction | `ModsWitnessObservation` | `inventory.witness_lists.parse_mods_observation` |
-| Senate player query, HLS playlists and WebVTT | `SenatePlayerQuery`, `HLSRendition`, `SenateCaptionSources`, `WebVTTCue` | `senate.isvp`, `senate.captions` |
+| Congress.gov meeting/detail/list JSON | `CommitteeMeeting`, `MeetingResponse`, `MeetingsPage` | `models.congress.parse_response`; `acquisition.meetings.get` |
+| Congress.gov committee/detail/list JSON | `CommitteeRecord`, `CommitteeDetail`, `CommitteeResponse`, `CommitteesPage` | `models.congress.parse_response`; `acquisition.meetings.get` |
+| Congress.gov XML fallback | `CongressXmlDocument` | `parsers.congress.parse_congress_xml` |
+| GovInfo collection JSON | `GpoCollectionPage`, `GpoCollectionPackage` | `acquisition.gpo.list_collection` |
+| GovInfo MODS XML | `ModsDocument` and nested native MODS records | `parsers.gpo.parse_mods_document` |
+| GovInfo ZIP package file-list XML (METS) | `GpoPackageManifest`, `MetsFile`, `MetsFileLocation` | `parsers.gpo.parse_package_manifest` |
+| GovInfo transcript HTML | `GpoTranscriptText`, `GpoTranscriptDates`; structured `Transcript` extraction | `transcripts.gpo`, `acquisition.gpo`, `parsers.gpo_text` |
+| House meeting and witness XML | `HouseMeetingXML`, `HouseWitnessListXML` | `parsers.house_xml.parse_house_meeting`, `parse_house_witnesses` |
+| House meeting HTML and combined extraction | `HouseEvidence`, `HouseParsedRecord` | `parsers.house_evidence`, `parsers.house.parse_house_record` |
+| Senate hearing and attachment HTML | `SenatePage`, nested witness/document/page records | `parsers.senate.parse_page` |
+| Senate WordPress types and posts JSON | `WordPressType`, `WordPressPost`, nested ACF and metadata records | `acquisition.senate.wordpress_listed` |
+| Witness-list PDF | `PdfWitnessObservation`, `PdfTextPage`, `DocumentWitness` | `parsers.witness_pdf.parse_pdf_observation` |
+| MODS witness extraction | `ModsWitnessObservation` | `parsers.witness_pdf.parse_mods_observation` |
+| Senate player query, HLS playlists and WebVTT | `SenatePlayerQuery`, `HLSRendition`, `SenateCaptionSources`, `WebVTTCue` | `parsers.senate_player`, `transcripts.senate` |
 | unitedstates/congress-legislators JSON | `Legislator` and nested identifiers, terms and names | `models.legislators.parse_legislators` |
-| Zyte response JSON | `ZyteResponse` | `zyte.request` / `zyte.get` |
-| Gemini transcription JSON | `GeminiTranscriptResponse`, `GeminiResponseCapture` | `transcribe.gemini` |
-| YouTube duration response | `YoutubeVideoResponse` | `transcribe.main.video_duration` |
-| yt-dlp video metadata used for duration and caption discovery | `YtdlpVideoInfo` | `transcribe.main.video_duration`; retained caption metadata |
+| Zyte response JSON | `ZyteResponse` | `transport.zyte.request` / `transport.zyte.get` |
+| Gemini transcription JSON | `GeminiTranscriptResponse`, `GeminiResponseCapture` | `transport.gemini` |
+| YouTube duration response | `YoutubeVideoResponse` | `transcripts.generate.video_duration` |
+| yt-dlp video metadata used for duration and caption discovery | `YtdlpVideoInfo` | `transcripts.generate.video_duration`; retained caption metadata |
 
 `models/` contains shared source definitions. `RawContent` retains exact bytes
 with a verified SHA-256. `XmlElement` preserves expanded namespace names,
@@ -203,7 +203,7 @@ labels sometimes identify an organizational statement as a witness list.
 represented in its refreshed Congress lists. The adapter retains the complete
 snapshot but uses the historical list for Congress-specific classification.
 
-`congress_source.meeting_from_xml` explicitly interprets known meeting lists and
+`parsers.congress.meeting_from_xml` explicitly interprets known meeting lists and
 numeric fields from `CongressXmlDocument`. The resulting `CommitteeMeeting`
 retains the exact original bytes as `_source_xml` (`RawContent`), distinguishing
 this interpretation from native JSON. Unknown XML, attributes and scalar spelling

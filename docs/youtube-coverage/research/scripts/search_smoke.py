@@ -20,7 +20,13 @@ streams live, since neither reaches a channel's uploads playlist.
 Writes `results.json` (the cache) and `results.rows.json` (the sample with a `results` list per row),
 and prints one line per row. Metered: SerpAPI charges per search, so choose the sample first.
 """
-import argparse, datetime as dt, json, os, re, sys, time
+import argparse
+import datetime as dt
+import json
+import os
+import re
+import sys
+import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -28,9 +34,9 @@ import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "packages/congress_api/src"))
-from congress_api.gpo.match import VIDEO_ID  # noqa: E402
-from congress_api.senate.isvp import STREAM, archive_url, live_url, player_url  # noqa: E402
-from congress_api.inventory.text_sources import title_dates  # noqa: E402
+from congress_api.matching.gpo_videos import VIDEO_ID
+from congress_api.matching.recordings import title_dates
+from congress_api.parsers.senate_player import STREAM, archive_url, live_url, player_url
 
 OFFICIAL = re.compile(r"\.(house|senate)\.gov|c-span\.org|congress\.gov|govinfo\.gov", re.I)
 ## official pages that never embed a recording of their own

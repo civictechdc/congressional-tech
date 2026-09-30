@@ -13,11 +13,20 @@ Shared, cached, rate-limited web helper for the missing-video investigation agen
 
 Every network call is cached (shared by all agents) and throttled per host, so never bypass this module.
 """
-import hashlib, json, os, re, subprocess, sys, time, fcntl, urllib.parse
+import fcntl
+import hashlib
+import json
+import os
+import re
+import subprocess
+import time
+import urllib.parse
+
 import requests
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-from congress_api import zyte
+from congress_api.transport import zyte
+
 CACHE = os.path.join(HERE, "cache"); os.makedirs(CACHE, exist_ok=True)
 MIN_INTERVAL = {"web.archive.org": 1.0, "archive.org": 1.0, "www.c-span.org": 1.0, "www.youtube.com": 0.5}
 _sess = requests.Session()

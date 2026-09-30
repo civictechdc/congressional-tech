@@ -6,7 +6,7 @@ from committee_meeting.common import Ref
 from committee_meeting.materials import DocumentDetails, RecordingDetails
 from congress_api.adapters import gpo
 from congress_api.adapters.common import material_records
-from congress_api.gpo.fetch import parse_mods
+from congress_api.parsers.gpo_hearings import parse_mods
 from test_explorer_material_adapters import context
 
 FIXTURES = Path(__file__).parent / 'fixtures' / 'gpo_metadata'

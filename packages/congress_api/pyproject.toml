@@ -19,16 +19,16 @@ dependencies = [
 test = ["pytest>=9,<10"]
 
 [project.scripts]
-house-meeting-records = "congress_api.house.records:parse_args_and_run"
-senate-meeting-records = "congress_api.senate.records:parse_args_and_run"
-meeting-inventory = "congress_api.inventory.main:parse_args_and_run"
-gpo-fetch = "congress_api.gpo.fetch:parse_args_and_run"
-gpo-match = "congress_api.gpo.match:parse_args_and_run"
-senate-captions = "congress_api.senate.captions:parse_args_and_run"
-hearing-transcribe = "congress_api.transcribe.main:parse_args_and_run"
-gpo-transcripts = "congress_api.gpo.transcripts:parse_args_and_run"
-congress-meetings = "congress_api.meetings:parse_args_and_run"
-congress-committees = "congress_api.committee_metadata:parse_args_and_run"
+house-meeting-records = "congress_api.cli.house:parse_args_and_run"
+senate-meeting-records = "congress_api.cli.senate:parse_args_and_run"
+meeting-inventory = "congress_api.cli.inventory:parse_args_and_run"
+gpo-fetch = "congress_api.cli.gpo_fetch:parse_args_and_run"
+gpo-match = "congress_api.cli.gpo_match:parse_args_and_run"
+senate-captions = "congress_api.cli.senate_captions:parse_args_and_run"
+hearing-transcribe = "congress_api.cli.transcribe:parse_args_and_run"
+gpo-transcripts = "congress_api.cli.gpo_transcripts:parse_args_and_run"
+congress-meetings = "congress_api.cli.meetings:parse_args_and_run"
+congress-committees = "congress_api.cli.committees:parse_args_and_run"
 
 [build-system]
 requires = ["setuptools>=61"]
@@ -42,3 +42,17 @@ where = ["src"]
 [tool.uv.sources]
 committee-meeting = { path = "../committee_meeting", editable = true }
 congress-shared = { path = "../congress_shared", editable = true }
+
+# Direct imports between responsibility folders. Same-folder imports are allowed.
+# tests/test_congress_api_imports.py checks absolute, relative and function-local imports.
+[tool.congress-api.import-fences]
+models = []
+parsers = ["models"]
+matching = ["models", "parsers"]
+retention = ["models", "parsers", "matching"]
+transport = ["models", "parsers", "retention"]
+acquisition = ["models", "parsers", "matching", "retention", "transport"]
+transcripts = ["models", "parsers", "matching", "retention", "transport"]
+replay = ["parsers", "matching", "retention", "acquisition"]
+adapters = ["models", "parsers", "matching"]
+cli = ["models", "parsers", "matching", "retention", "transport", "acquisition", "transcripts", "replay", "adapters"]

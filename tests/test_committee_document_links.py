@@ -2,10 +2,9 @@
 import csv
 
 import pytest
-
 from committee_meeting import Catalog
 from committee_meeting.common import Ref
-from congress_api import committee_metadata as collector
+from congress_api.acquisition import committees as collector
 from congress_api.adapters import committee_metadata, gpo
 from congress_api.adapters.committees import committee_lookup, ensure_committee_term
 from test_committee_metadata import metadata, save

@@ -1,0 +1,66 @@
+"""Read generated CSV/YouTube tables and retain deterministic compressed state.
+
+These are local pipeline formats, separate from publisher source parsing."""
+
+import csv
+import gzip
+import json
+from pathlib import Path
+
+from congress_api.matching.meetings import in_inventory_scope
+from congress_api.models.congress import CommitteeMeeting
+
+
+def read_csv(path):
+    with Path(path).open(encoding="utf-8", newline="") as f:
+        return list(csv.DictReader(f))
+
+
+def read_youtube_videos(directory, channels):
+    """Yield (committee code, unchanged video row) from generated channel caches.
+
+    Cache numbers follow the channels table, including channels without a file.
+    These are locally generated JSON tables, not native YouTube API responses.
+    """
+    for i, channel in enumerate(channels):
+        path = Path(directory) / f"youtube_{i:02d}.json"
+        if not path.exists():
+            continue
+        with path.open(encoding="utf-8") as stream:
+            tables = json.load(stream)
+        for name, rows in tables.items():
+            if name.startswith("youtube_videos_"):
+                for row in rows.values():
+                    yield channel["systemCode"], row
+
+
+def write_csv(path, rows, fields):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    with temporary.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fields)
+        writer.writeheader()
+        writer.writerows(rows)
+    temporary.replace(path)
+
+
+def read_state(path):
+    if not Path(path).exists():
+        return {}
+    with gzip.open(path, "rt", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def write_state(path, state):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(".tmp")
+    temporary.write_bytes(gzip.compress(json.dumps(state, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode(), mtime=0))
+    temporary.replace(path)
+
+
+def read_meetings(path):
+    with gzip.open(path, "rt", encoding="utf-8") as f:
+        records = (CommitteeMeeting.model_validate_json(line) for line in f)
+        return [row for m in records if in_inventory_scope(row := m.source_dict())]

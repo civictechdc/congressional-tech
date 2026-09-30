@@ -1,18 +1,21 @@
 """Import retained manual meeting-recording associations without rematching."""
-from collections import defaultdict
+
 import re
+from collections import defaultdict
 
 from committee_meeting.common import Identifier
 from committee_meeting.issues import DataIssue
 from committee_meeting.materials import RecordingDetails
-from .common import digest, material_records, ref, web_url
+
+from congress_api.adapters.common import digest, material_records, ref, web_url
 
 
 def recording_reference(token):
     """Use the same recording identity for native pages and curated findings."""
     from urllib.parse import urlsplit
-    from congress_api.gpo.match import VIDEO_ID
-    from congress_api.senate.isvp import parse_player_url
+
+    from congress_api.matching.gpo_videos import VIDEO_ID
+    from congress_api.parsers.senate_player import parse_player_url
 
     url = web_url(token)
     if re.fullmatch(r"[A-Za-z0-9_-]{11}", token):

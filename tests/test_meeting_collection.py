@@ -1,10 +1,11 @@
 """Congress.gov collection keeps source fields and retries interrupted work."""
-from datetime import datetime
 import json
+from datetime import datetime
 
 import pytest
-
-from congress_api import meetings
+from congress_api.acquisition import meetings
+from congress_api.retention.meetings import read as meetings_read
+from congress_api.retention.meetings import write as meetings_write
 
 
 def setup(monkeypatch, tmp_path):
@@ -15,7 +16,7 @@ def setup(monkeypatch, tmp_path):
     path = tmp_path / "meetings.jsonl.gz"
     url = f"{meetings.API}/committee-meeting/112/house/old"
     old = {"_url": url, "eventId": "old", "congress": 112, "chamber": "House", "updateDate": "2026-01-10T00:00:00Z"}
-    meetings.write({url: old}, path)
+    meetings_write({url: old}, path)
     return path, url, old
 
 
@@ -41,7 +42,7 @@ def test_failed_old_detail_is_retried_after_new_watermark_passes_it(tmp_path, mo
     with pytest.raises(SystemExit):
         meetings.main(path, nthreads=1)
     assert pending(path) == [old_url]
-    assert meetings.read(path)[old_url] == old
+    assert meetings_read(path)[old_url] == old
     first = False
     calls.clear()
     meetings.main(path, nthreads=1)
@@ -49,7 +50,7 @@ def test_failed_old_detail_is_retried_after_new_watermark_passes_it(tmp_path, mo
     assert all(params["fromDateTime"] == "2026-01-18T00:00:00Z" for _, params in calls if params)
     assert len([url for url, params in calls if params]) == 3  # Includes historical 112th Congress.
     assert pending(path) == []
-    updated = meetings.read(path)[old_url]
+    updated = meetings_read(path)[old_url]
     assert updated["futureField"] == {"nested": [1, "kept"]}
     assert datetime.fromisoformat(updated["_retrieved_at"]).tzinfo is not None
     assert "private-key" not in json.dumps(updated)
@@ -68,10 +69,10 @@ def test_pending_work_survives_output_write_failure(tmp_path, monkeypatch):
 
 def test_atomic_write_keeps_existing_bytes_after_serialization_failure(tmp_path):
     path = tmp_path / "meetings.jsonl.gz"
-    meetings.write({"old": {"_url": "old", "native": True}}, path)
+    meetings_write({"old": {"_url": "old", "native": True}}, path)
     before = path.read_bytes()
     with pytest.raises(TypeError):
-        meetings.write({"first": {"_url": "first"}, "invalid": {"value": object()}}, path)
+        meetings_write({"first": {"_url": "first"}, "invalid": {"value": object()}}, path)
     assert path.read_bytes() == before
 
 
@@ -88,7 +89,7 @@ def test_short_api_page_with_next_is_not_treated_as_complete(tmp_path, monkeypat
     monkeypatch.setattr(meetings, "get", get)
     meetings.main(path, nthreads=1)
     assert offsets == [0, 1]
-    assert len(meetings.read(path)) == 2
+    assert len(meetings_read(path)) == 2
 
 
 def test_missing_collection_field_is_an_error_not_confirmed_empty(tmp_path, monkeypatch):
@@ -116,7 +117,7 @@ def test_incomplete_detail_does_not_replace_previously_saved_record(tmp_path, mo
     monkeypatch.setattr(meetings, "get", lambda session, address, key, params=None: {"committeeMeetings": [{"url": url}]} if params else {"committeeMeeting": {}})
     with pytest.raises(SystemExit):
         meetings.main(path, nthreads=1)
-    assert meetings.read(path)[url] == old
+    assert meetings_read(path)[url] == old
     assert pending(path) == [url]
     retained = json.loads(path.with_suffix(path.suffix + ".pending.json").read_text())
     assert retained['responses'][url] == {'committeeMeeting': {}}
@@ -133,4 +134,4 @@ def test_rejected_source_survives_a_later_snapshot_write_failure(tmp_path, monke
     retained = json.loads(path.with_suffix(path.suffix + '.pending.json').read_text())
     assert retained['responses'][url] == raw
     assert retained['urls'] == [url]
-    assert meetings.read(path)[url] == old
+    assert meetings_read(path)[url] == old

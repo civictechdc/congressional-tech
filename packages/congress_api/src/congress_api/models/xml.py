@@ -5,9 +5,8 @@ survive parsing. Source families supply concrete node/attribute models; unknown
 publisher elements remain XML nodes, not untyped dictionaries. Source owners
 retain RawContent separately for lexical details such as comments and prefixes.
 """
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator
 import re
-from xml.etree.ElementTree import Element
 
 from pydantic import Field, SerializeAsAny
 
@@ -61,14 +60,3 @@ class XmlElement(SourceModel):
             yield from child.itertext()
             if child.tail:
                 yield child.tail
-
-
-def xml_element(element: Element, models: Mapping[str, type[XmlElement]] | None = None) -> XmlElement:
-    model = (models or {}).get(element.tag, XmlElement)
-    return model(tag=element.tag, attributes=element.attrib, text=element.text or '', tail=element.tail or '',
-                 children=[xml_element(child, models) for child in element])
-
-
-def parse_xml_element(data: bytes | str) -> XmlElement:
-    from congress_api.xml import parse_xml
-    return xml_element(parse_xml(data))

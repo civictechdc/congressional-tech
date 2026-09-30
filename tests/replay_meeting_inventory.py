@@ -14,17 +14,16 @@ import gzip
 import json
 import re
 import shutil
-import sys
 import time
 from pathlib import Path
-from urllib.parse import urlsplit, parse_qs
+from urllib.parse import parse_qs, urlsplit
 
 import requests
-
-from congress_api import http
-from congress_api.house import records as house
-from congress_api.senate import records as senate
-from congress_api.inventory.common import read_meetings, read_state, write_state
+from congress_api.acquisition import house as house
+from congress_api.acquisition import senate as senate
+from congress_api.retention.senate import seed_fetch as senate_seed_fetch
+from congress_api.retention.tables import read_meetings, read_state, write_state
+from congress_api.transport import http
 
 
 def main(args):
@@ -78,7 +77,7 @@ def main(args):
                 event = parse_qs(urlsplit(url).query)["EventID"][0]
                 response._content = (args.seed_cache / "docs_house" / f"{event}.html").read_bytes()
         else:
-            page = senate.seed_fetch(args.seed_cache, url)
+            page = senate_seed_fetch(args.seed_cache, url)
             response._content = page.encode()
             if not page:
                 response.status_code = 404

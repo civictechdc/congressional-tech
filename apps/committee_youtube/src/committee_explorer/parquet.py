@@ -4,17 +4,16 @@ The source payload is the only JSON column: providers have different raw schemas
 Searches never read that column. Internal model objects are folded into the
 meeting, witness or material they describe, not published as navigation steps.
 """
-from collections import defaultdict
 import json
+from collections import defaultdict
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from congress_api.adapters.meetings import category, document_title, event_page
-from congress_api.meeting_rules import meeting_access, meeting_type
-from congress_api.adapters.committees import HIERARCHY_SOURCE, hierarchy_from_code
-
 import pyarrow as pa
 import pyarrow.parquet as pq
+from congress_api.adapters.committees import HIERARCHY_SOURCE, hierarchy_from_code
+from congress_api.adapters.meetings import category, document_title, event_page
+from congress_api.matching.meetings import meeting_access, meeting_type
 
 from .collector_labels import PLACEHOLDER_LABELS, collector_placeholder_conflict
 
@@ -80,7 +79,7 @@ def write_tables(records, sources, query_rows, stage, descriptor):
                     native_documents[(source['id'], f'/{group}/{i}')] = (group, document)
         payload = source.get('payload') or {}
         if source['provider'] == 'docs.house.gov':
-            from congress_api.house.repository import XML_KINDS
+            from congress_api.parsers.house_documents import XML_KINDS
             for i, group in enumerate((payload.get('evidence') or {}).get('document_groups', [])):
                 code = group.get('type')
                 label = XML_KINDS.get(code, code)
@@ -414,9 +413,11 @@ def migrate(input_dir, output_dir):
     import gzip
     import shutil
     import tempfile
+
+    from committee_meeting.publication import ExportPartition
+
     from .browser import verify
     from .export import encode, file_sha, sha
-    from committee_meeting.publication import ExportPartition
     _, root, manifest = verify(input_dir)
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)

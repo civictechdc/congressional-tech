@@ -5,14 +5,14 @@ import json
 from types import SimpleNamespace
 
 import pytest
-
 from committee_meeting.common import Ref
+from congress_api.acquisition import senate as records
 from congress_api.adapters.common import AdapterContext
 from congress_api.adapters.senate import records as adapted_records
-from congress_api.inventory.common import read_state, write_state
-from congress_api.senate import records
 from congress_api.models.content import RawContent
-
+from congress_api.parsers.senate import parsed as records_parsed
+from congress_api.retention.tables import read_state, write_state
+from congress_api.transport import http as records_http
 
 HOST = "budget.senate.gov"
 PAGE = "https://www.budget.senate.gov/hearings/retained"
@@ -41,7 +41,7 @@ def setup_inputs(tmp_path, *, saved=True, listing_checked="2026-09-27"):
 
 def test_cache_import_has_only_import_time_and_schedule_day(tmp_path, monkeypatch):
     monkeypatch.setattr(records, "seed_fetch", lambda cache, url: HTML.decode())
-    monkeypatch.setattr(records.http, "get_with_retry", lambda *args, **kwargs: pytest.fail("cache import made a live request"))
+    monkeypatch.setattr(records_http, "get_with_retry", lambda *args, **kwargs: pytest.fail("cache import made a live request"))
     result = records.fetch_page(PAGE, {"events": ["1"]}, dt.date(2020, 1, 1), cache=tmp_path)
     assert result["imported_at"] == STAMP and result["checked"] == "2020-01-01"
     assert "retrieved_at" not in result and "last_check" not in result
@@ -54,7 +54,7 @@ def test_live_page_receipt_uses_actual_time_and_preserves_existing_result(status
     def response(_session, url, **kwargs):
         calls.append((url, kwargs))
         return SimpleNamespace(status_code=status, content=HTML)
-    monkeypatch.setattr(records.http, "get_with_retry", response)
+    monkeypatch.setattr(records_http, "get_with_retry", response)
     result = records.fetch_page(PAGE, {}, dt.date(2020, 1, 1))
     assert calls == [(PAGE, {"allowed": (200, 404)})]
     assert result["checked"] == "2020-01-01"
@@ -62,7 +62,7 @@ def test_live_page_receipt_uses_actual_time_and_preserves_existing_result(status
     assert check["mode"] == "live" and check["outcome"] == expected and check["completed_at"] == STAMP
     assert check["receipts"] == [{"url": PAGE, "started_at": STAMP, "completed_at": STAMP, "status_code": status, "outcome": "retrieved" if status == 200 else "not_found"}]
     legacy = {k: value for k, value in result.items() if k not in ("last_check", "observation_check", "retrieved_at", "checked", "events", "version", "parser_version")}
-    assert legacy == (records.parsed(HTML.decode(), PAGE) if status == 200 else {"title": "", "lines": [], "witnesses": [], "documents": [], "absent": True, "raw_html": RawContent.from_bytes(HTML, "text/html").source_dict()})
+    assert legacy == (records_parsed(HTML.decode(), PAGE) if status == 200 else {"title": "", "lines": [], "witnesses": [], "documents": [], "absent": True, "raw_html": RawContent.from_bytes(HTML, "text/html").source_dict()})
 
 
 def test_failed_page_refresh_keeps_good_result_and_exports_error(tmp_path, monkeypatch):
@@ -70,7 +70,7 @@ def test_failed_page_refresh_keeps_good_result_and_exports_error(tmp_path, monke
     prior = read_state(tmp_path / "senate.json.gz")[HOST]["pages"][PAGE]
     def refused(*args, **kwargs):
         raise RuntimeError("403 Forbidden")
-    monkeypatch.setattr(records.http, "get_with_retry", refused)
+    monkeypatch.setattr(records_http, "get_with_retry", refused)
     with pytest.raises(RuntimeError, match="403 Forbidden"):
         records.main(**args)
     state = read_state(tmp_path / "senate.json.gz")
@@ -95,7 +95,7 @@ def test_failed_listing_refresh_keeps_old_listing_and_failure_receipt(tmp_path, 
     monkeypatch.setattr(records, "listed", lambda host,get,saved: get(LISTING))
     def refused(*args, **kwargs):
         raise RuntimeError("503 Unavailable")
-    monkeypatch.setattr(records.http, "get_with_retry", refused)
+    monkeypatch.setattr(records_http, "get_with_retry", refused)
     with pytest.raises(RuntimeError, match="503 Unavailable"):
         records.main(**args)
     saved = read_state(tmp_path / "senate.json.gz")[HOST]
@@ -110,7 +110,7 @@ def test_successful_listing_receipts_and_seed_import_are_distinct(tmp_path, monk
         get(LISTING)
         return [(dt.date(2026, 9, 20), PAGE, "Retained hearing")], {"form": "/hearings?page={}", "from_0": False}
     monkeypatch.setattr(records, "listed", listing)
-    monkeypatch.setattr(records.http, "get_with_retry", lambda *args, **kwargs: SimpleNamespace(status_code=200, content=HTML))
+    monkeypatch.setattr(records_http, "get_with_retry", lambda *args, **kwargs: SimpleNamespace(status_code=200, content=HTML))
     monkeypatch.setattr(records, "match_pages", lambda *args: ([], [], []))
     records.main(**args)
     saved = read_state(tmp_path / "senate.json.gz")[HOST]
@@ -119,7 +119,7 @@ def test_successful_listing_receipts_and_seed_import_are_distinct(tmp_path, monk
     assert saved["pages"][PAGE]["retrieved_at"] == STAMP
     write_state(tmp_path / "senate.json.gz", {})
     monkeypatch.setattr(records, "seed_fetch", lambda cache,url: HTML.decode())
-    monkeypatch.setattr(records.http, "get_with_retry", lambda *args, **kwargs: pytest.fail("seed import made a live request"))
+    monkeypatch.setattr(records_http, "get_with_retry", lambda *args, **kwargs: pytest.fail("seed import made a live request"))
     records.main(**args, seed_cache=tmp_path, offline=True)
     seeded = read_state(tmp_path / "senate.json.gz")[HOST]
     assert seeded["imported_at"] == seeded["pages"][PAGE]["imported_at"] == STAMP
@@ -131,7 +131,7 @@ def test_initial_page_failure_remains_incomplete_offline(tmp_path, monkeypatch):
     state = read_state(tmp_path / "senate.json.gz")
     state[HOST]["pages"] = {}
     write_state(tmp_path / "senate.json.gz", state)
-    monkeypatch.setattr(records.http, "get_with_retry", lambda *args, **kwargs: SimpleNamespace(status_code=200, content=b"unrecognized page"))
+    monkeypatch.setattr(records_http, "get_with_retry", lambda *args, **kwargs: SimpleNamespace(status_code=200, content=b"unrecognized page"))
     with pytest.raises(RuntimeError, match="Unrecognized"):
         records.main(**args)
     saved = read_state(tmp_path / "senate.json.gz")[HOST]["pages"][PAGE]
@@ -145,7 +145,7 @@ def test_initial_page_failure_remains_incomplete_offline(tmp_path, monkeypatch):
 def test_pdf_response_never_enters_html_parser(content, headers, tmp_path, monkeypatch):
     args = setup_inputs(tmp_path)
     prior = read_state(tmp_path / "senate.json.gz")[HOST]["pages"][PAGE]
-    monkeypatch.setattr(records.http, "get_with_retry", lambda *args, **kwargs: SimpleNamespace(status_code=200, content=content, headers=headers))
+    monkeypatch.setattr(records_http, "get_with_retry", lambda *args, **kwargs: SimpleNamespace(status_code=200, content=content, headers=headers))
     monkeypatch.setattr(records, "parsed", lambda *args: pytest.fail("PDF response entered HTML parser"))
     with pytest.raises(RuntimeError, match="PDF content"):
         records.main(**args)

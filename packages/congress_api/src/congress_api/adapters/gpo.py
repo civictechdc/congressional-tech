@@ -9,14 +9,18 @@ from urllib.parse import urlsplit
 from committee_meeting.common import Identifier, Ref
 from committee_meeting.issues import DataIssue
 from committee_meeting.materials import (
-    DocumentDetails, Material, MaterialLink, MaterialLocation, MaterialVersion,
+    DocumentDetails,
+    Material,
+    MaterialLink,
+    MaterialLocation,
+    MaterialVersion,
     Representation,
 )
 from committee_meeting.provenance import AlternativeValue, FieldEvidence, Method
-from congress_api.gpo.reviewed_committees import reviewed
 
-from .common import AdapterContext, reported_time, web_url
-from .committees import committee_lookup, ensure_committee_term, source_committee_keys
+from congress_api.adapters.committees import committee_lookup, ensure_committee_term, source_committee_keys
+from congress_api.adapters.common import AdapterContext, reported_time, web_url
+from congress_api.matching.reviewed_committees import reviewed
 
 
 def _committee_evidence(row, context, source, review_context):
@@ -70,7 +74,6 @@ def committee_records(rows, context, *, existing, review_context=None, evidence_
             yield from records
             term = next(item for item in records if item.kind == 'committee_term')
             known[identity] = Ref(kind='committee_term', id=term.id)
-
 
 
 def primary_rendition_index(records):

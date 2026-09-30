@@ -2,8 +2,8 @@
 import base64
 from types import SimpleNamespace
 
-from congress_api import zyte
 from congress_api.models.transport import ZyteResponse
+from congress_api.transport import zyte
 
 
 def test_request_keeps_complete_response_and_requests_publisher_headers(monkeypatch):
