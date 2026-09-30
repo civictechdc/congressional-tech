@@ -5,6 +5,13 @@ the research run. Direct requests start at least 1.2 seconds apart; a 403 pauses
 that host for 60 seconds. Other hosts use a 0.2-second gap. Errors never become
 confirmed absences. Request counts include retries and are reported by host.
 The pacing lock controls request starts, not requests already in flight.
+
+The authoritative policy matrix is in packages/congress_api/README.md, under
+"HTTP policy". meetings.get delegates here with five attempts instead of three.
+The legacy api.request_source, Senate captions sess, and transcribe HTTP calls
+remain separate clients with characterized behavior; this module does not
+silently replace their retry, pooling or parsing policies. response_metadata
+describes received headers; callers decide whether to retain that metadata.
 """
 import collections
 from contextlib import nullcontext

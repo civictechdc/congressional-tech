@@ -1,3 +1,10 @@
+"""Minimal JSON/XML client used by legacy TinyDB exploration.
+
+request_source performs one requests.get without gateway pacing, retries,
+timeout or Zyte. Production meetings.get wraps http.get_with_retry instead.
+See the HTTP policy matrix in the package README and characterization tests
+before changing either client's behavior.
+"""
 import requests
 from .xml_to_dict import parse_xml_string
 from .models.congress import parse_response

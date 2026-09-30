@@ -29,7 +29,7 @@ from pathlib import Path
 import requests
 
 from congress_shared.globals import DEFAULT_GPO_HEARINGS_FILE
-from congress_api.gpo.fetch import get_with_retry
+from congress_api.http import get_with_retry
 from congress_api.gpo.source import parse_transcript_html
 from congress_api.gpo.evidence import write_observation
 from congress_api.models.gpo import GpoEvidenceObservation
