@@ -188,6 +188,9 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=
         snapshots, scopes, reconciliation = [], [], []
         def context(path, provider, limitations=()):
             raw, body = read(path)
+            return source_context(raw, provider, limitations), body
+
+        def source_context(raw, provider, limitations=()):
             input_id = provider + ":" + sha(raw)
             job = provider_jobs.get(provider)
             result = (attempt_receipt.get('jobs', {}).get(job) or {}).get('result')
@@ -198,7 +201,7 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=
             snapshots.append(InputSnapshot(id=input_id, provider=provider, artifact=RetainedContent(uri="sha256:" + sha(raw), sha256=sha(raw)),
                                             revision=revision if provider in ("congress.gov", "docs.house.gov", "senate.committees", "youtube", "meeting-inventory") else None,
                                             imported_at=now, last_attempt_at=checked_at, last_attempt_status=status, limitations=tuple(limitations)))
-            return AdapterContext(now, input_id, provider, ids), body
+            return AdapterContext(now, input_id, provider, ids)
         ctx, body = context(meetings, "congress.gov", ("Legacy native records lack per-record retrieval timestamps.",))
         rows = [json.loads(line) for line in body.splitlines() if line.strip()]
         rows.sort(key=native.meeting_key)
@@ -459,9 +462,12 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=
         else:
             scopes.append(SourceScope(provider="recovered-witnesses", scope="recovered witness rows", status="not_collected", explanation="No recovered witness table supplied."))
         for path in transcript_files:
-            c, _ = context(path, "transcript-artifact")
-            assembly.add(transcripts.records([Path(path)], c, meetings=lookup, source_versions=versions))
-            scopes.append(SourceScope(provider="transcript-artifact", scope=Path(path).name, status="included", input_snapshot_ids=(c.input_id,), explanation="Existing local artifact imported; no text generation or acquisition performed."))
+            path = Path(path)
+            body = path.read_bytes()
+            c = source_context(body, "transcript-artifact")
+            source = transcripts.TranscriptInput(data=body, name=path.name, uri=path.resolve().as_uri())
+            assembly.add(transcripts.records([source], c, meetings=lookup, source_versions=versions))
+            scopes.append(SourceScope(provider="transcript-artifact", scope=path.name, status="included", input_snapshot_ids=(c.input_id,), explanation="Existing local artifact imported; no text generation or acquisition performed."))
         if not transcript_files:
             scopes.append(SourceScope(provider="transcript-artifact", scope="retained transcript bodies", status="not_collected", explanation="No body artifacts were supplied; metadata links do not establish captured or searchable text."))
         catalog = assembly.finish()

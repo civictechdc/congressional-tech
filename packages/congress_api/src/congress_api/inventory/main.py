@@ -14,7 +14,7 @@ from pathlib import Path
 from congress_api import http
 from congress_api.committees import codes_of
 from congress_api.inventory import acquisition, captions, completeness, text_sources
-from congress_api.inventory.common import read_csv, read_meetings, read_state, source_args, write_csv, write_state
+from congress_api.inventory.common import read_csv, read_meetings, read_state, read_youtube_videos, source_args, write_csv, write_state
 from congress_shared.globals import DEFAULT_CHANNELS_CSV
 
 TEXT_FIELDS = "event_id congress chamber type date committees title gpo_packages youtube_ids senate_urls other_recordings committee_transcripts text_source documents rescheduled_to not_held".split()
@@ -40,7 +40,8 @@ def main(meetings, state_dir, output_dir, gpo_path, videos_path, tinydb_dir, rec
     try:
         count = acquisition.probe_days(days, probes, as_of, offline)
         documents = read_csv(output_dir / "house_documents_found.csv") + read_csv(output_dir / "senate_documents_found.csv")
-        rows = text_sources.build(ms, gpo, read_csv(channels_csv_path), tinydb_dir, documents,
+        videos = read_youtube_videos(tinydb_dir, read_csv(channels_csv_path))
+        rows = text_sources.build(ms, gpo, videos, documents,
             read_csv(output_dir / "senate_hearing_pages_found.csv"), read_csv(recordings),
             {(comm, day): probes.get(f"{comm}|{day}", {}).get("urls", []) for comm, day in days}, state.get("youtube", {}), state.get("senate", {}))
         index = {r["event_id"]: r for r in rows}

@@ -6,6 +6,14 @@ persistent IDs and publication. These boundaries and the interfaces below are
 preserved by the refactor. See [source verification](../packages/congress_api/SOURCE_MODELS.md#verification-and-limits)
 for the source-value and original-byte fidelity checks.
 
+File reading belongs to collectors, explicit `read_*`/cache helpers, and the
+exporter. Transcript normalization accepts `TranscriptInput(data, name, uri)`;
+it validates supplied bytes with `models.transcription.Transcript` and never
+opens the URI. The exporter uses the same bytes for the input snapshot and the
+transcript representation. Invalid bodies still retain their digest, location
+and validation issue. Inventory matching accepts `(committee_code, video_row)`
+pairs; `read_youtube_videos` reads the generated channel caches separately.
+
 ## Commands and artifacts
 
 These ten production console script names are stable. Default data paths are relative

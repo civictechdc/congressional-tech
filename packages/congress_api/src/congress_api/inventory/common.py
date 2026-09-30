@@ -65,6 +65,24 @@ def read_csv(path):
         return list(csv.DictReader(f))
 
 
+def read_youtube_videos(directory, channels):
+    """Yield (committee code, unchanged video row) from generated channel caches.
+
+    Cache numbers follow the channels table, including channels without a file.
+    These are locally generated JSON tables, not native YouTube API responses.
+    """
+    for i, channel in enumerate(channels):
+        path = Path(directory) / f"youtube_{i:02d}.json"
+        if not path.exists():
+            continue
+        with path.open(encoding="utf-8") as stream:
+            tables = json.load(stream)
+        for name, rows in tables.items():
+            if name.startswith("youtube_videos_"):
+                for row in rows.values():
+                    yield channel["systemCode"], row
+
+
 def write_csv(path, rows, fields):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)

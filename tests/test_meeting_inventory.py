@@ -100,6 +100,44 @@ def test_dates_bill_names_nominees_and_natural_resources_time():
     assert completeness.nominees("Hearings to examine the nominations of Thomas Peter Feddo, of Virginia, to be Assistant Secretary of the Treasury for Investment Security.") == [("Thomas Peter Feddo", "Assistant Secretary of the Treasury for Investment Security")]
 
 
+@pytest.mark.parametrize("caption,expected", [(True, "youtube_captions"), (False, "video_no_captions"), (None, "video_no_captions")])
+def test_video_cache_reading_is_separate_from_matching(tmp_path, monkeypatch, caption, expected):
+    from congress_api.inventory.common import read_youtube_videos
+
+    channels = [{"systemCode": "hsag00"}, {"systemCode": "hsap00"}, {"systemCode": "hsju00"}]
+    video = {"videoId": "retained-video", "title": "Competition in digital markets", "description": "",
+             "publishedAt": "2024-01-02T12:00:00Z", "duration": 3600, "caption": caption,
+             "future": {"native": [None, 0]}}
+    (tmp_path / "youtube_00.json").write_text(json.dumps({"_default": {"1": {"ignore": True}}}))
+    # Channel 01 has no saved file. Channel 02 must keep its committee association.
+    (tmp_path / "youtube_02.json").write_text(json.dumps({"youtube_videos_example": {"5": video}}))
+    videos = list(read_youtube_videos(tmp_path, channels))
+    assert videos == [("hsju00", video)]
+    meeting = {"eventId": "123456", "congress": 118, "chamber": "House", "date": "2024-01-02",
+               "type": "Hearing", "title": video["title"], "committees": [{"systemCode": "hsju00"}]}
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("matching attempted file access")
+
+    monkeypatch.setattr("builtins.open", forbidden)
+    monkeypatch.setattr(Path, "open", forbidden)
+    rows = text_sources.build([meeting], [], iter(videos), [], [], [], {}, {}, {})
+    assert rows[0]["youtube_ids"] == video["videoId"]
+    assert rows[0]["text_source"] == expected
+    # Title/date matching must stay within the supplied committee.
+    meeting["committees"] = [{"systemCode": "hsag00"}]
+    assert text_sources.build([meeting], [], videos, [], [], [], {}, {}, {})[0]["youtube_ids"] == ""
+    assert videos == [("hsju00", video)]
+
+
+def test_invalid_video_cache_is_not_treated_as_a_missing_channel(tmp_path):
+    from congress_api.inventory.common import read_youtube_videos
+
+    (tmp_path / "youtube_00.json").write_bytes(b"{not json}")
+    with pytest.raises(json.JSONDecodeError):
+        list(read_youtube_videos(tmp_path, [{"systemCode": "hsju00"}]))
+
+
 def test_incremental_refresh_and_deterministic_state(tmp_path):
     today = dt.date(2026, 9, 27)
     saved = {"checked": "2026-09-20", "version": "v1"}

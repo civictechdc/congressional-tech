@@ -301,7 +301,7 @@ Each adapter exposes a **`records(...)`** (or domain-specific) entry that return
 | `meetings` | Full Congress.gov meeting payloads |
 | `committees`, `committee_metadata`, `committee_adjustments` | Committee hierarchy and curated overrides |
 | `house`, `senate`, `gpo` | Retained chamber/GovInfo payloads |
-| `inventory`, `findings`, `video_matches`, `recordings`, `transcripts` | Inventory observations, print links, manual associations, on-disk transcript JSON |
+| `inventory`, `findings`, `video_matches`, `recordings`, `transcripts` | Inventory observations, print links, manual associations, supplied transcript JSON bytes |
 
 ### `retention/`
 

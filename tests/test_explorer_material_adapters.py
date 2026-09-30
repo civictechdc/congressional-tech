@@ -2,8 +2,6 @@
 from datetime import datetime, timezone
 from hashlib import sha256
 import json
-from pathlib import Path
-import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -120,23 +118,25 @@ class GpoAdapterTests(unittest.TestCase):
 
 class TranscriptAdapterTests(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory()
-        self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
+        for target in ("builtins.open", "pathlib.Path.open", "socket.create_connection", "socket.socket.connect"):
+            blocked = patch(target, side_effect=AssertionError("adapter attempted I/O"))
+            blocked.start()
+            self.addCleanup(blocked.stop)
 
-    def write(self, name, value=None, raw=None):
-        path = self.root / name
-        path.write_bytes(raw if raw is not None else (json.dumps(value or body(), indent=2) + "\n\n").encode())
-        return path
+    def source(self, name, value=None, raw=None):
+        return transcripts.TranscriptInput(
+            data=raw if raw is not None else (json.dumps(value or body(), indent=2) + "\n\n").encode(),
+            name=name, uri=f"https://example.gov/retained/{name}",
+        )
 
     def test_body_bytes_and_local_speakers_survive_without_attendance(self):
-        path = self.write("body.json")
-        with patch("socket.create_connection", side_effect=AssertionError("network forbidden")):
-            result = list(transcripts.records([path], context("transcript-artifacts")))
+        item = self.source("body.json")
+        result = list(transcripts.records([item], context("transcript-artifacts")))
         catalog(result)
         representation = kind(result, "representation")[0]
-        self.assertEqual(representation.sha256, sha256(path.read_bytes()).hexdigest())
-        self.assertEqual(representation.byte_size, path.stat().st_size)
+        self.assertEqual(representation.sha256, sha256(item.data).hexdigest())
+        self.assertEqual(representation.byte_size, len(item.data))
+        self.assertEqual(representation.retained.uri, item.uri)
         self.assertEqual(representation.locations, ())
         self.assertEqual(representation.content_schema.version, "1.0")
         source = kind(result, "source_record")[0]
@@ -153,7 +153,7 @@ class TranscriptAdapterTests(unittest.TestCase):
         official = list(gpo.records([gpo_row()], context()))
         version = kind(official, "material_version")[0]
         result = list(transcripts.records(
-            [self.write("parsed.json")], context("transcript-artifacts"),
+            [self.source("parsed.json")], context("transcript-artifacts"),
             source_versions={("govinfo", "CHRG-118hhrg50001"): Ref(kind="material_version", id=version.id)},
         ))
         catalog([*official, *result])
@@ -171,7 +171,7 @@ class TranscriptAdapterTests(unittest.TestCase):
         data = body(source={"kind": "gemini_transcription", "video_id": "video-1", "generated_at": "2026-09-26T12:30:00Z"})
         meeting_ref = Ref(kind="meeting", id="meeting-known")
         result = list(transcripts.records(
-            [self.write("generated.json", data)], context("transcript-artifacts"),
+            [self.source("generated.json", data)], context("transcript-artifacts"),
             meetings={(118, "house", "123456"): meeting_ref},
             source_versions={("youtube", "video-1"): Ref(kind="material_version", id=source_version.id)},
         ))
@@ -185,7 +185,7 @@ class TranscriptAdapterTests(unittest.TestCase):
 
     def test_scheduled_header_time_keeps_its_note_and_does_not_become_actual_start(self):
         data = body(source={"kind": "gemini_transcription", "notes": "tokens in 10; time_convened is the scheduled time from Congress.gov"})
-        result = list(transcripts.records([self.write("scheduled.json", data)], context("transcript-artifacts")))
+        result = list(transcripts.records([self.source("scheduled.json", data)], context("transcript-artifacts")))
         catalog(result)
         source = kind(result, "source_record")[0]
         issue = next(i for i in kind(result, "data_issue") if i.field_path == "/payload/header/time_convened")
@@ -197,7 +197,7 @@ class TranscriptAdapterTests(unittest.TestCase):
 
     def test_owner_reader_rejects_bad_scalar_without_losing_source_data(self):
         data = body(participants={}, turns=[{"speaker": "unresolved", "text": 123}])
-        result = list(transcripts.records([self.write("untyped.json", data)], context("transcript-artifacts")))
+        result = list(transcripts.records([self.source("untyped.json", data)], context("transcript-artifacts")))
         catalog(result)
         source = kind(result, "source_record")[0]
         representation = kind(result, "representation")[0]
@@ -209,8 +209,8 @@ class TranscriptAdapterTests(unittest.TestCase):
         self.assertFalse(any(i.field_path == "/payload/participants" for i in kind(result, "data_issue")))
 
     def test_changed_bytes_keep_one_work_and_distinct_versions(self):
-        first = self.write("one.json")
-        second = self.write("two.json", raw=first.read_bytes() + b" \n")
+        first = self.source("one.json")
+        second = self.source("two.json", raw=first.data + b" \n")
         result = list(transcripts.records([first, second, first], context("transcript-artifacts")))
         catalog(result)
         self.assertEqual(len(kind(result, "source_record")), 2)
@@ -219,16 +219,16 @@ class TranscriptAdapterTests(unittest.TestCase):
         self.assertEqual(len(kind(result, "representation")), 2)
 
     def test_unreadable_body_is_retained_with_a_blocking_issue(self):
-        path = self.write("broken.json", raw=b"{not json}")
-        result = list(transcripts.records([path], context("transcript-artifacts")))
+        item = self.source("broken.json", raw=b"{not json}")
+        result = list(transcripts.records([item], context("transcript-artifacts")))
         catalog(result)
         representation = kind(result, "representation")[0]
-        self.assertEqual(representation.sha256, sha256(path.read_bytes()).hexdigest())
+        self.assertEqual(representation.sha256, sha256(item.data).hexdigest())
         self.assertIsNone(representation.content_schema)
         self.assertIn("blocks_use", [i.impact for i in kind(result, "data_issue")])
 
     def test_unsupported_body_version_is_not_labeled_as_valid_current_schema(self):
-        result = list(transcripts.records([self.write("future.json", body(schema_version="2.0"))], context("transcript-artifacts")))
+        result = list(transcripts.records([self.source("future.json", body(schema_version="2.0"))], context("transcript-artifacts")))
         catalog(result)
         self.assertIsNone(kind(result, "representation")[0].content_schema)
         self.assertEqual(kind(result, "source_record")[0].payload["schema_version"], "2.0")

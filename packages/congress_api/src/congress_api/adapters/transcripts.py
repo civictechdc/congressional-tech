@@ -10,9 +10,9 @@ Each otherwise-readable representation carries this explicit validation limit.
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
 from hashlib import sha256
 import json
-from pathlib import Path
 import re
 
 from committee_meeting.common import Identifier, Ref
@@ -23,13 +23,26 @@ from committee_meeting.materials import (
 )
 from committee_meeting.provenance import Method, RetainedContent
 
-from congress_api.transcribe.schema import SCHEMA_VERSION, Transcript
+from congress_api.models.transcription import SCHEMA_VERSION, Transcript
 
 from .common import AdapterContext, reported_time, web_url
 
 
+@dataclass(frozen=True)
+class TranscriptInput:
+    """Original bytes and their caller-supplied name and retained location.
+
+    The caller reads or downloads the body. The adapter never accesses ``uri``;
+    it records that location as evidence, even when the body is invalid.
+    """
+
+    data: bytes
+    name: str
+    uri: str
+
+
 def records(
-    files: Iterable[Path],
+    inputs: Iterable[TranscriptInput],
     context: AdapterContext,
     *,
     meetings: Mapping[tuple[int, str, str], Ref] | None = None,
@@ -44,22 +57,21 @@ def records(
     ``('senate', video_id)``. No participant roster becomes attendance, no local
     speaker key becomes a person, and no header time becomes an actual start.
 
-    Local retained URIs locate evidence for the exporter. They are deliberately
+    Retained URIs locate evidence for the exporter. They are deliberately
     absent from public ``locations``; publishing bytes is a separate operation.
     """
     emitted = set()
-    for filename in files:
-        path = Path(filename)
-        data = path.read_bytes()
+    for item in inputs:
+        data = item.data
         digest = sha256(data).hexdigest()
-        retained = RetainedContent(uri=path.resolve().as_uri(), sha256=digest)
+        retained = RetainedContent(uri=item.uri, sha256=digest)
         error = None
         try:
             payload = json.loads(data)
             if not isinstance(payload, dict):
                 raise ValueError("transcript body is not a JSON object")
         except (ValueError, UnicodeDecodeError) as exc:
-            payload = {"filename": path.name}
+            payload = {"filename": item.name}
             error = str(exc)
         header = payload.get("header") if isinstance(payload.get("header"), dict) else {}
         origin = payload.get("source") if isinstance(payload.get("source"), dict) else {}
@@ -68,7 +80,7 @@ def records(
         video = str(origin.get("video_id") or "")
         # Provider IDs establish product identity; filenames only scope otherwise
         # unidentifiable retained artifacts, never establish meeting identity.
-        native = package if producer == "gpo_print" and package else video or path.name
+        native = package if producer == "gpo_print" and package else video or item.name
         key = f"transcript:{producer}:{native}"
         source = context.source(f"{key}:sha256:{digest}", payload, url=web_url(origin.get("url")))
         source = source.model_copy(update={"retained": retained})

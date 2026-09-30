@@ -1,5 +1,6 @@
 """Offline integration checks cover evidence, stable IDs and publication failure."""
 from datetime import datetime, timezone
+from hashlib import sha256
 import gzip
 import json
 from pathlib import Path
@@ -40,6 +41,43 @@ def native():
 
 def run(tmp_path, path, **kw):
     return export(meetings=path, output_dir=tmp_path / "public", state_dir=tmp_path / "state", as_of=NOW, **kw)
+
+
+@pytest.mark.parametrize("valid", [True, False])
+def test_transcript_snapshot_and_representation_use_one_read(tmp_path, monkeypatch, valid):
+    meetings = write_meetings(tmp_path, [native()])
+    transcript = tmp_path / "transcript.json"
+    payload = {"schema_version": "1.0", "header": {"title": "Retained hearing", "chamber": "house"},
+               "participants": {}, "turns": [], "future": {"keep": None}}
+    raw = b"\xef\xbb\xbf" + json.dumps(payload, indent=2).encode() if valid else b"{not json}"
+    transcript.write_bytes(raw)
+    read_bytes = Path.read_bytes
+
+    def changing_file(path):
+        data = read_bytes(path)
+        if path == transcript:
+            # A second read would see a different source than the input snapshot.
+            path.write_bytes(b"changed after capture")
+        return data
+
+    monkeypatch.setattr(Path, "read_bytes", changing_file)
+    manifest, catalog = run(tmp_path, meetings, transcript_files=[transcript])
+    snapshot = next(s for s in manifest.inputs if s.provider == "transcript-artifact")
+    source = next(s for s in catalog.sources if s.provider == "transcript-artifact")
+    representation = next(r for r in catalog.records if r.kind == "representation" and r.retained)
+    assert snapshot.artifact.sha256 == source.retained.sha256 == representation.sha256 == sha256(raw).hexdigest()
+    assert source.input_snapshot_id == snapshot.id
+    assert representation.byte_size == len(raw)
+    assert representation.retained.uri == transcript.as_uri()
+    assert representation.locations == ()
+    if valid:
+        assert source.payload == payload
+        assert representation.content_schema.version == "1.0"
+    else:
+        assert source.payload == {"filename": transcript.name}
+        assert representation.content_schema is None
+        assert any(r.kind == "data_issue" and r.subject.id == representation.id and r.impact == "blocks_use"
+                   for r in catalog.records)
 
 
 def test_native_and_house_preserve_source_shape(tmp_path):

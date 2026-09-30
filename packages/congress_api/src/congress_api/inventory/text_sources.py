@@ -5,7 +5,7 @@ Natural Resources subcommittee/time labels, generic session uploads and joint
 hearing sharing. Twenty minutes separates weak matches from member clips.
 Print and transcript ownership is evaluated before caption availability.
 """
-import collections, datetime as dt, json, re
+import collections, datetime as dt, re
 from zoneinfo import ZoneInfo
 from congress_api.committees import codes_of
 from congress_api.gpo.match import EVENT_ID, VIDEO_ID, similarity, words
@@ -75,25 +75,20 @@ def unit_and_minutes(title):
     return NR_UNITS[unit.upper()], (int(hh) % 12 + (12 if ap.upper() == "P" else 0)) * 60 + int(mm)
 
 
-def build(meetings, gpo, channels, youtube_dir, documents, pages, recordings, probed, yt_caps, sen_caps):
+def build(meetings, gpo, videos, documents, pages, recordings, probed, yt_caps, sen_caps):
+    """Match supplied rows; ``videos`` contains (committee code, video row) pairs."""
     video_flags = {}
     vid_by_eid = collections.defaultdict(list)
     by_code_day: dict = collections.defaultdict(list)  # (committee code, upload date) -> videos, for date-window matching
     dated: dict = collections.defaultdict(list)  # (committee code, date in the title) -> uploads of 20+ minutes titled with that date
-    for i, c in enumerate(channels):
-        path = youtube_dir / f"youtube_{i:02d}.json"
-        if not path.exists():
-            continue
-        for t, rows in json.load(open(path)).items():
-            if t.startswith("youtube_videos_"):
-                for v in rows.values():
-                    video_flags[v["videoId"]] = v.get("caption")
-                    for a, b in EVENT_ID.findall(v["title"] + " " + v["description"]):
-                        vid_by_eid[a or b].append(v["videoId"])
-                    by_code_day[(c["systemCode"], v["publishedAt"][:10])].append((v["videoId"], v["title"], v.get("duration") or 0, bool(EVENT_ID.search(v["title"] + " " + v["description"]))))
-                    if (v.get("duration") or 0) >= 1200:
-                        for day in title_dates(v["title"]):
-                            dated[(c["systemCode"], day.isoformat())].append((v["videoId"], *unit_and_minutes(v["title"])))
+    for code, v in videos:
+        video_flags[v["videoId"]] = v.get("caption")
+        for a, b in EVENT_ID.findall(v["title"] + " " + v["description"]):
+            vid_by_eid[a or b].append(v["videoId"])
+        by_code_day[(code, v["publishedAt"][:10])].append((v["videoId"], v["title"], v.get("duration") or 0, bool(EVENT_ID.search(v["title"] + " " + v["description"]))))
+        if (v.get("duration") or 0) >= 1200:
+            for day in title_dates(v["title"]):
+                dated[(code, day.isoformat())].append((v["videoId"], *unit_and_minutes(v["title"])))
 
     def window_matches(m, codes):
         """Tracked videos of the committee at least 20 minutes long (a markup's or short hearing's full recording; a
