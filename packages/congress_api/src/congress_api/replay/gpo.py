@@ -40,14 +40,14 @@ def replay(input_path, mods_dir, output_path, evidence_path, *, html_dir=None, r
             continue
         old = rows[package]
         try:
-            data = path.read_bytes()
-            root = parse_xml(data)
-            parsed = asdict(parse_mods(package, data, old['last_modified']))
             captured = dict(retained.get(package, {}))
-            # Never replace an acquired observation with an undated local cache.
+            # Acquired observations are protected before interpreting local bytes.
             if captured.get('mods', {}).get('retrieved_at'):
                 receipt['packages'].append({'package_id': package, 'status': 'kept-acquired-evidence'})
                 continue
+            data = path.read_bytes()
+            root = parse_xml(data)
+            parsed = asdict(parse_mods(package, data, old['last_modified']))
             merged = merge_cached_row(old, parsed)
             captured.update(package_id=package, parser_version=PARSER_VERSION,
                 mods=evidence.observation(data, f'{GOVINFO_CONTENT}/metadata/pkg/{package}/mods.xml', 'application/xml'))

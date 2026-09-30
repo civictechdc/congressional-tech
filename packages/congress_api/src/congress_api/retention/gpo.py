@@ -66,8 +66,11 @@ def write_observation(value: GpoEvidenceObservation, path: Path):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + '.tmp')
-    temporary.write_text(value.model_dump_json(by_alias=True, exclude_unset=True), encoding='utf-8')
-    temporary.replace(path)
+    try:
+        temporary.write_text(value.model_dump_json(by_alias=True, exclude_unset=True), encoding='utf-8')
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def read(path: Path | None):
@@ -89,7 +92,10 @@ def write(values, path: Path):
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + '.tmp')
     # Stable gzip headers keep a replay with identical data byte-identical.
-    with temporary.open('wb') as raw, gzip.GzipFile(fileobj=raw, mode='wb', mtime=0, filename='') as stream:
-        for package in sorted(values):
-            stream.write((json.dumps(values[package], ensure_ascii=False, separators=(',', ':'), sort_keys=True) + '\n').encode())
-    temporary.replace(path)
+    try:
+        with temporary.open('wb') as raw, gzip.GzipFile(fileobj=raw, mode='wb', mtime=0, filename='') as stream:
+            for package in sorted(values):
+                stream.write((json.dumps(values[package], ensure_ascii=False, separators=(',', ':'), sort_keys=True) + '\n').encode())
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)

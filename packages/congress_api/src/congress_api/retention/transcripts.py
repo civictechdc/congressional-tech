@@ -27,5 +27,8 @@ def retain_response(response, directory: Path, *, model: str, start: float, end:
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / f'{start:g}-{end:g}-{observed.strftime("%Y%m%dT%H%M%S%fZ")}-{attempt}.json'
     temporary = path.with_suffix('.tmp')
-    temporary.write_text(capture.model_dump_json(by_alias=True), encoding='utf-8')
-    temporary.replace(path)
+    try:
+        temporary.write_text(capture.model_dump_json(by_alias=True), encoding='utf-8')
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
