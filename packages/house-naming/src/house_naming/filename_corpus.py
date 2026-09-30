@@ -14,8 +14,11 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import sys
 
-from .corpus import DESCRIPTIVE_FIELDS, residual_fields as _residual_fields
+from .corpus import DESCRIPTIVE_FIELDS, audit_check, residual_fields as _residual_fields
+from .errors import NamingError
+from .io import read_json, dumps
 
 from .filenames import (
     EXTENSION, FilenameField, ParsedFilename, resolve_unmatched_filename, filename_tokens, parse_filename, registry,
@@ -94,12 +97,13 @@ def build_corpus(filenames, output: Path, *, member_surnames: dict[str, Sequence
     for name in names:
         input_digest.update((json.dumps(name, ensure_ascii=False) + '\n').encode())
         parsed = parse_filename(name, member_surnames=member_surnames)
-        assert ''.join(p.raw for p in parsed.pieces) == name
+        audit_check(''.join(p.raw for p in parsed.pieces) == name,
+                    'Parser pieces do not reconstruct the filename.', filename=name)
         end = 0
         for piece in parsed.pieces:
-            assert piece.start == end
+            audit_check(piece.start == end, 'Parser pieces are not contiguous.', filename=name)
             end += len(piece.raw)
-            assert piece.end == end
+            audit_check(piece.end == end, 'Parser piece end disagrees with its text.', filename=name)
         counts['lossless_filenames_checked'] += 1
         per_scope = defaultdict(list)
         for match in parsed.matches:
@@ -111,8 +115,10 @@ def build_corpus(filenames, output: Path, *, member_surnames: dict[str, Sequence
             if len(examples[match.rule]) < 3:
                 examples[match.rule].append({'filename': name, 'match': match.model_dump()})
             for field in match.fields:
-                assert 0 <= match.start <= field.start <= field.end <= match.end <= len(name)
-                assert name[field.start:field.end] == field.raw
+                audit_check(0 <= match.start <= field.start <= field.end <= match.end <= len(name),
+                            'Field span is outside its match.', filename=name)
+                audit_check(name[field.start:field.end] == field.raw,
+                            'Field text disagrees with its source span.', filename=name)
                 counts['field_spans_checked'] += 1
                 if field.name not in DESCRIPTIVE_FIELDS:
                     status = ('uncertain' if uncertain_capture(field) else 'unresolved_date' if field.name == 'date_token'
@@ -152,12 +158,13 @@ def build_corpus(filenames, output: Path, *, member_surnames: dict[str, Sequence
     for key, row in shared.items():
         regex = patterns[key]
         for variant in row['variants']:
-            assert regex.fullmatch(variant)
+            audit_check(bool(regex.fullmatch(variant)), f'Token rule does not match its variant: {key!r}.')
             # Whole-token negatives: extensions or longer words/numbers cannot
             # create spurious recurrence. CamelCase boundaries have unit tests.
             if key[0] in {'word', 'number'}:
                 adjacent = 'x' if key[0] == 'word' else '9'
-                assert regex.search(adjacent + variant + adjacent) is None
+                audit_check(regex.search(adjacent + variant + adjacent) is None,
+                            f'Token rule matches inside a larger token: {key!r}.')
             counts['token_variant_controls_checked'] += 1
 
     output.mkdir(parents=True, exist_ok=True)
@@ -212,7 +219,7 @@ def build_corpus(filenames, output: Path, *, member_surnames: dict[str, Sequence
             for key, spans in expected.items():
                 actual = [(m.start('token'), m.end('token'), m['token'])
                           for m in patterns[key].finditer(name[:parsed.stem_end])]
-                assert actual == spans, (name, key, actual, spans)
+                audit_check(actual == spans, f'Token occurrences disagree with source spans: {key!r}.', filename=name)
                 counts['shared_token_occurrences_checked'] += len(spans)
             counts['filenames_with_shared_token'] += bool(expected)
             counts['filenames_with_shared_word'] += any(k[0] in {'word', 'wordpart'} for k in expected)
@@ -230,7 +237,8 @@ def build_corpus(filenames, output: Path, *, member_surnames: dict[str, Sequence
                     (date_resolution_counts if basis == 'date_pattern' else assumption_counts)[interpretation.rule] += 1
                     counts['filenames_resolved_by_date_pattern' if basis == 'date_pattern' else 'filenames_resolved_by_assumption'] += 1
                     for field in interpretation.fields:
-                        assert name[field.start:field.end] == field.raw
+                        audit_check(name[field.start:field.end] == field.raw,
+                                    'Fallback field text disagrees with its source span.', filename=name)
                         counts['unmatched_resolution_field_spans_checked'] += 1
                 else:
                     counts['filenames_unmatched_after_assumptions'] += 1
@@ -344,7 +352,7 @@ def build_corpus(filenames, output: Path, *, member_surnames: dict[str, Sequence
     return summary
 
 
-def main():
+def _main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('inventory', type=Path)
     parser.add_argument('output', type=Path)
@@ -358,7 +366,7 @@ def main():
     import pyarrow.parquet as pq
     rows = pq.read_table(args.inventory, columns=['filename', 'variants']).to_pylist()
     filenames = {name for row in rows for name in [row['filename'], *(row['variants'] or [])]}
-    reference = json.loads(args.member_surnames.read_text()) if args.member_surnames else {}
+    reference = read_json(args.member_surnames) if args.member_surnames else {}
     if not isinstance(reference, dict) or any(not isinstance(names, list) or any(not isinstance(name, str) or not name.strip() for name in names) for names in reference.values()):
         parser.error('--member-surnames must contain an object mapping Congress numbers to lists of names')
     summary = build_corpus(filenames, args.output, member_surnames=reference)
@@ -375,6 +383,19 @@ def main():
     _write_json(args.output / 'coverage.json', summary)
     print(json.dumps({k: v for k, v in summary.items() if k not in {'per_rule_matches', 'top_shared_words', 'checks', 'limits'}}, indent=2))
     return 0 if summary['mechanical_gate'] else 1
+
+
+def main():
+    try:
+        return _main()
+    except NamingError as exc:
+        sys.stderr.write(dumps({'error': exc.as_dict()}))
+        return 2 if exc.code in {'input-too-large', 'invalid-catalog', 'extraction-limit'} else 1
+    except BrokenPipeError:
+        return 0
+    except (OSError, UnicodeError, ValueError) as exc:
+        sys.stderr.write(dumps({'error': {'code': 'io-or-configuration-error', 'message': str(exc), 'details': []}}))
+        return 2
 
 
 if __name__ == '__main__':

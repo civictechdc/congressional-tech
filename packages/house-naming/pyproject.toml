@@ -13,7 +13,7 @@ license-files = ["LICENSE", "NOTICE"]
 dependencies = ["jsonschema>=4.18,<5"]
 
 [project.optional-dependencies]
-test = ["pytest>=8,<10", "pydantic>=2.11,<3", "pyarrow"]
+test = ["pytest>=8,<10", "pydantic>=2.11,<3", "pyarrow", "setuptools>=77"]
 typed = ["pydantic>=2.11,<3"]
 corpus = ["pydantic>=2.11,<3", "pyarrow"]
 

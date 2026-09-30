@@ -20,6 +20,13 @@ DESCRIPTIVE_FIELDS = frozenset({
 })
 
 
+def audit_check(condition: bool, message: str, *, filename: str | None = None) -> None:
+    """Acceptance checks must execute under both ordinary and optimized Python."""
+    if not condition:
+        details = [{'filename': filename}] if filename is not None else []
+        raise NamingError('audit-failed', message, details)
+
+
 def filename_tokens(result: dict) -> list[dict]:
     """Return whole words/numbers plus ASCII CamelCase parts before extensions.
 
@@ -96,8 +103,10 @@ def residual_fields(result: dict, *, field_names=frozenset({'descriptor', 'suffi
         source_positions = {i for i in range(field['start'], field['end']) if name[i].isalnum()}
         covered_positions = {i for a, b in intervals for i in range(a, b) if name[i].isalnum()}
         residual_positions = {i for span in spans for i in range(span['start'], span['end']) if name[i].isalnum()}
-        assert source_positions == covered_positions | residual_positions
-        assert not covered_positions & residual_positions
+        audit_check(source_positions == covered_positions | residual_positions,
+                    'Residual fields do not cover the original text.', filename=name)
+        audit_check(not covered_positions & residual_positions,
+                    'Covered and residual fields overlap.', filename=name)
         rows.append({'rule': rule, 'field': deepcopy(field),
                      'covered_by': [{'rule': r, 'field': deepcopy(f)} for r, f in covered],
                      'residual_spans': spans})
