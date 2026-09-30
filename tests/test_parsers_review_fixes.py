@@ -9,7 +9,8 @@ from congress_api.parsers.gpo_hearings import hearing_days
 from congress_api.parsers.gpo_text import parse_gpo_text
 from congress_api.parsers.senate import parse_listing_page, parse_page
 from congress_api.parsers.senate_page import DATE, century_year, written_day
-from congress_api.parsers import speaker_names as names
+from congress_api.matching import speaker_names as names
+from congress_api.matching.gpo_speakers import bind_gpo_transcript
 
 
 def test_parse_page_rejects_invalid_utf8():
@@ -98,7 +99,9 @@ def test_gpo_text_ambiguous_surname_becomes_unknown_not_first_hit():
         "  Ms. Lee. Second turn.\n"
     )
     original = header.model_copy(deep=True)
-    transcript = parse_gpo_text(body, header, mods)
+    unresolved = parse_gpo_text(body, header, mods)
+    assert {turn.speaker for turn in unresolved.turns if turn.kind == "speech"} == {"Ms. Lee"}
+    transcript = bind_gpo_transcript(unresolved)
     assert header.time_convened == original.time_convened  # caller header unchanged
     speakers = {turn.speaker for turn in transcript.turns if turn.kind == "speech"}
     assert speakers.isdisjoint({"lee-sheila", "lee-laurel"})

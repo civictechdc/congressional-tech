@@ -24,6 +24,7 @@ sys.path.insert(0, str(ROOT / "packages/congress_api/src")); sys.path.insert(0, 
 import jiwer
 import requests
 from congress_api.models.transcription import Header, Person, Source, Transcript, Turn
+from congress_api.matching.gpo_speakers import bind_gpo_transcript
 from congress_api.parsers.gpo_text import parse_gpo_text
 from congress_api.parsers.witness_names import person_key
 from congress_api.transcripts.context import context_for_event, mods_people
@@ -64,7 +65,7 @@ def main(package_id, video_id, out_dir):
     people, facts = mods_people(package_id)
     header = Header(title=facts["title"], chamber=row["chamber"], congress=int(facts["congress"]), session=int(facts["session"] or 0) or None, committee=facts["committee"], committee_code=facts["committee_code"], subcommittee=facts["subcommittee"], date=facts["held_date"], serial=facts["serial"], package_id=package_id, event_id=row["event_id"])
     text = html.unescape(re.sub(r"<[^>]+>", "", requests.get(row["html_url"], timeout=60, headers={"User-Agent": "Mozilla/5.0"}).text))
-    gpo = parse_gpo_text(text, header, people, source_url=row["html_url"])
+    gpo = bind_gpo_transcript(parse_gpo_text(text, header, people, source_url=row["html_url"]))
     (out / "gpo.json").write_text(gpo.to_json())
     ctx = context_for_event(row["event_id"], package_id=package_id) if row["event_id"] else None
     participants = dict(gpo.participants); participants.update({k: v for k, v in (ctx.participants if ctx else {}).items() if k not in participants})

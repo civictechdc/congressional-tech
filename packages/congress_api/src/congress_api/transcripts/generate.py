@@ -29,7 +29,8 @@ from pathlib import Path
 import requests
 from congress_shared.globals import DEFAULT_GPO_HEARINGS_FILE
 
-from congress_api.parsers import speaker_names as names
+from congress_api.matching import speaker_names as names
+from congress_api.matching.gpo_speakers import bind_gpo_transcript
 from congress_api.models.gpo import GpoEvidenceObservation
 from congress_api.models.transcription import (
     Header,
@@ -71,7 +72,7 @@ def from_gpo(package_id: str, gpo_path=DEFAULT_GPO_HEARINGS_FILE, *, source_dir:
         write_observation(GpoEvidenceObservation(**source.source.source_dict(), url=row['html_url'],
             retrieved_at=dt.datetime.now(dt.timezone.utc).isoformat(), acquisition='http'),
             source_dir / f'{package_id}.json')
-    return parse_gpo_text(source, header, people, source_url=row["html_url"])
+    return bind_gpo_transcript(parse_gpo_text(source, header, people, source_url=row["html_url"]))
 
 
 def place(participants: dict[str, Person], name: str, role: str, confidence) -> str:

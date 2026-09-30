@@ -2,7 +2,8 @@
 Parse a GPO printed hearing into the shared `Transcript` schema.
 
     from congress_api.parsers.gpo_text import parse_gpo_text
-    t = parse_gpo_text(text, header, mods_people)   # text: the print as plain text (see gpo-transcripts)
+    from congress_api.matching.gpo_speakers import bind_gpo_transcript
+    t = bind_gpo_transcript(parse_gpo_text(text, header, mods_people))   # text: the print as plain text (see gpo-transcripts)
 
 A print's structure is typographic, and this parser reads the document's own conventions
 rather than a vocabulary of its own:
@@ -14,8 +15,8 @@ rather than a vocabulary of its own:
   [continuing]."). Which leading words are titles is learned from the document: a token that
   precedes several different names ("Mr.", "Senator", "The") is a title; one that precedes a
   single name ("Van" before "Drew") is part of the name.
-- Attributions resolve to participants by token suffix (`names.match`), preferring members the
-  "Present:" line or the subcommittee roster names when a surname is shared.
+- A speaker turn keeps the print's attribution ("Mr. Cline", "The Chairman") as its
+  speaker label. Binding that label to a roster entry is `matching.gpo_speakers.bind_gpo_transcript`.
 - Stage directions are parenthetical paragraphs in either bracket style; the adjournment and
   the prepared-statement inserts are read from them. The convening sentence ("met ... at 2:02
   p.m. ... presiding") gives the time, place and presiding member; the roster page gives the
@@ -28,7 +29,6 @@ from __future__ import annotations
 import re
 from collections import Counter, defaultdict
 
-from congress_api.parsers import speaker_names as names
 from congress_api.models.gpo import GpoTranscriptText
 from congress_api.models.transcription import Header, Insert, Person, Source, Transcript, Turn
 from congress_api.parsers.gpo import parse_transcript_html
@@ -182,7 +182,7 @@ def roster(lines: list[str]) -> tuple[list[Person], set[str]]:
                     if role != "member":
                         seen[k].role = role
                 continue
-            p = Person(name=name, role=role, surname=names.surname(name), state=m.group(2))
+            p = Person(name=name, role=role, state=m.group(2))
             people.append(p); seen[k] = p
             if in_sub:
                 sub.add(k)
@@ -190,7 +190,11 @@ def roster(lines: list[str]) -> tuple[list[Person], set[str]]:
 
 
 def parse_gpo_text(text: str | GpoTranscriptText, header: Header, mods_people: dict[str, Person] | None = None, source_url: str = "") -> Transcript:
-    """Normalize a typed source extraction; plain text remains a legacy input."""
+    """Normalize a typed source extraction; plain text remains a legacy input.
+
+    Speaker labels stay the print's own words. `speaker_binding` records the
+    roster and the order of those labels so matching can assign participant keys.
+    """
     header = header.model_copy(deep=True)
     text = text.text if isinstance(text, GpoTranscriptText) else text
     lines = text.replace("\r", "").splitlines()
@@ -209,65 +213,21 @@ def parse_gpo_text(text: str | GpoTranscriptText, header: Header, mods_people: d
     if body_line is None:
         body_line = next((ln for ln, kind, t in paras_all if kind == "para" and ATTRIBUTION.match(t) and ATTRIBUTION.match(t).group(1) in recurring), 0)
 
-    ## participants: the MODS record, then the roster page
-    participants: dict[str, Person] = dict(mods_people or {})
+    ## Participants supplied by the caller stay unbound. The roster page is parsed
+    ## here and handed to matching, which decides which entry a spoken name names.
+    participants: dict[str, Person] = {key: person.model_copy(deep=True) for key, person in (mods_people or {}).items()}
     roster_people, sub_members = roster(lines[:body_line])
-    for p in roster_people:
-        k = names.match(participants, p.name) or person_key(p.name)
-        if k in participants:
-            participants[k].state = participants[k].state or p.state
-            if p.role != "member":
-                participants[k].role = p.role
-        else:
-            participants[k] = p
-    prefer = set(sub_members) if (header.subcommittee or sub_members) else set()
-
-    def resolve(reference: str, role_hint: str = "") -> str:
-        """The participant an attribution or name refers to, created when unknown. "The Chairman" and
-        other role-only references are the presiding member; "Davis of Illinois" is the Davis from
-        Illinois."""
-        words = reference.split()
-        if header.presiding and all(w.rstrip(".").lower() in set(ROLE_WORDS) | {"the", "vice", "acting"} for w in words):
-            return header.presiding
-        title = words[0].rstrip(".").lower() if len(words) > 1 and words[0].rstrip(".").lower() in titles | set(ROLE_WORDS) | WITNESS_TITLES else ""
-        name = " ".join(words[1:]) if title else reference
-        state = None
-        m_state = re.fullmatch(r"(.+?) of ([A-Z][a-z]+(?: [A-Z][a-z]+)?)", name)
-        if m_state:
-            name, state = m_state.group(1), m_state.group(2)
-        from_state = {k for k, p in participants.items() if state and p.state and (p.state == state or p.state.lower() == state.lower())}
-        k = names.match(participants, name, prefer=(from_state or prefer | set(header.present)))
-        if not k:
-            # Ambiguous surnames return None; a fresh unknown key is better than the wrong member.
-            k = person_key(name)
-            if k not in participants:
-                role = ROLE_WORDS.get(title) or ("witness" if title in WITNESS_TITLES else "unknown")
-                participants[k] = Person(name=name, role=role_hint or role, surname=names.surname(name))
-        p = participants[k]
-        if title in ("mr", "ms", "mrs", "miss", "dr", "senator") and not p.honorific:
-            p.honorific = title.capitalize() + ("." if title != "senator" else "")
-        if ROLE_WORDS.get(title) in ("chair", "ranking_member") and p.role in ("member", "unknown"):
-            p.role = ROLE_WORDS[title]
-        return k
-
+    caller_present = list(header.present)
+    convening_tail = ""
     if conv:
         header.time_convened = header.time_convened or re.sub(r"\s+", "", conv.group(1).lower())
-        tail = conv.group(2)
-        loc = re.search(r"\bin (?:the )?([^,;]*(?:room|Rm\.|Hall|Building|Center|Capitol|Courthouse)[^,;]*(?:,\s*[^,;]*Building)?)", tail, re.I)
+        convening_tail = conv.group(2)
+        loc = re.search(r"\bin (?:the )?([^,;]*(?:room|Rm\.|Hall|Building|Center|Capitol|Courthouse)[^,;]*(?:,\s*[^,;]*Building)?)", convening_tail, re.I)
         header.location = header.location or (re.sub(r"\s+", " ", loc.group(1)).strip(" ,") if loc else "")
-        ## the presiding member: whichever participant the sentence names; else the capitalized phrase before "presiding"
-        pres = next((k for k, p in participants.items() if p.role in ("chair", "ranking_member", "member") and re.search(r"\b" + re.escape(p.name.split()[-1]) + r"\b", tail)), None)
-        if not pres:
-            m = re.search(r"((?:[A-Z][\w'’\-]*\.? ){1,4})\s*[\[(]", tail) or re.search(r"((?:[A-Z][\w'’\-]*\.? ){1,4})$", tail.strip())
-            if m:
-                pres = resolve(re.sub(r"^(Hon\.|Honorable|Senator|Representative) ", "", m.group(1).strip()), role_hint="chair")
-        if pres:
-            header.presiding = pres
-            if participants[pres].role in ("member", "unknown"):
-                participants[pres].role = "chair"
 
     turns: list[Turn] = []
     inserts: list[Insert] = []
+    ops: list[dict] = []
     in_appendix, pending_statement, open_insert = False, None, False
     for ln, kind, text in paras_all:
         if ln < body_line:
@@ -279,7 +239,9 @@ def parse_gpo_text(text: str | GpoTranscriptText, header: Header, mods_people: d
         if pm and not header.present and not in_appendix:
             body = re.sub(r"^(Representatives?|Senators?|Members?|Delegates?)\s+", "", pm.group(1).rstrip(". "))
             body = re.sub(r"\s*[\[(][^\])]*[\])]", "", body)  # "[presiding]"
-            header.present = [resolve(n.strip(), role_hint="member") for n in re.split(r",\s*(?:and\s+)?|\s+and\s+|;\s*", body) if 0 < len(n.strip()) < 40]
+            names = [n.strip() for n in re.split(r",\s*(?:and\s+)?|\s+and\s+|;\s*", body) if 0 < len(n.strip()) < 40]
+            ops.append({"op": "present", "names": names})
+            header.present = names
             continue
         if kind == "aside":
             inner = text.strip("[]() ")
@@ -288,7 +250,9 @@ def parse_gpo_text(text: str | GpoTranscriptText, header: Header, mods_people: d
                 header.time_adjourned = header.time_adjourned or re.sub(r"\s+", "", am.group(1).lower())
             pr = PREPARED.search(text)
             if pr:
-                inserts.append(Insert(kind="prepared_statement" if re.search(r"statement|testimony", text, re.I) else "submission", title=inner, for_person=names.match(participants, pr.group(1)) or ""))
+                reference = pr.group(1)
+                inserts.append(Insert(kind="prepared_statement" if re.search(r"statement|testimony", text, re.I) else "submission", title=inner, for_person=reference))
+                ops.append({"op": "insert", "index": len(inserts) - 1, "reference": reference})
                 open_insert = not in_appendix and bool(re.search(r"follows?:?\]?\)?$", inner))
             elif "GRAPHIC" in inner.upper():
                 inserts.append(Insert(kind="graphic", title=inner)); open_insert = False
@@ -306,10 +270,9 @@ def parse_gpo_text(text: str | GpoTranscriptText, header: Header, mods_people: d
             continue  # a heading: a title, a date, a centered label
         m = ATTRIBUTION.match(text)
         if m and is_attribution(m.group(1), recurring, titles):
-            k = resolve(m.group(1))
-            turns.append(Turn(speaker=k, text=text[m.end():], kind="statement" if pending_statement else "speech"))
-            if pending_statement and participants[k].role == "unknown":
-                participants[k].role = "witness"
+            reference = m.group(1)
+            turns.append(Turn(speaker=reference, text=text[m.end():], kind="statement" if pending_statement else "speech"))
+            ops.append({"op": "turn", "index": len(turns) - 1, "reference": reference, "statement": bool(pending_statement)})
             pending_statement, open_insert = None, False
         elif open_insert and inserts:
             inserts[-1].text += text + "\n"
@@ -317,4 +280,6 @@ def parse_gpo_text(text: str | GpoTranscriptText, header: Header, mods_people: d
             last = next((t for t in reversed(turns) if t.kind != "direction"), None)
             if last is not None:
                 last.text += " " + text
-    return Transcript(header=header, participants=participants, turns=turns, inserts=inserts, source=Source(kind="gpo_print", url=source_url))
+    return Transcript(header=header, participants=participants, turns=turns, inserts=inserts, source=Source(kind="gpo_print", url=source_url),
+                       speaker_binding={"titles": sorted(titles), "roster": [{"name": person.name, "role": person.role, "state": person.state, "key": person_key(person.name)} for person in roster_people],
+                                        "subcommittee_keys": sorted(sub_members), "convening_tail": convening_tail, "caller_present": caller_present, "ops": ops})

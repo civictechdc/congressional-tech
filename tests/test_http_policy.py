@@ -144,6 +144,7 @@ def test_transcription_gpo_keeps_direct_html_capture(tmp_path, monkeypatch):
         return response(body=data)
     monkeypatch.setattr(main.requests, 'get', get)
     monkeypatch.setattr(gpo_parse, 'parse_gpo_text', lambda source, *a, **k: source)
+    monkeypatch.setattr(main, 'bind_gpo_transcript', lambda transcript: transcript)
     main.from_gpo('CHRG-test', csv, source_dir=tmp_path / 'source')
     assert calls == [('https://example.gov/transcript.htm', {'timeout': 60, 'headers': {'User-Agent': 'Mozilla/5.0'}})]
     captured = json.loads((tmp_path / 'source/CHRG-test.json').read_text())

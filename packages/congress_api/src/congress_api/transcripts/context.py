@@ -26,7 +26,7 @@ from zoneinfo import ZoneInfo
 
 from congress_shared.globals import DEFAULT_GPO_HEARINGS_FILE, DEFAULT_MEETINGS_FILE
 
-from congress_api.parsers import speaker_names as names
+from congress_api.matching import speaker_names as names
 from congress_api.models.transcription import Header, Person
 from congress_api.retention.meetings import all_meetings, read_meetings
 from congress_api.parsers.legislators import parse_legislators

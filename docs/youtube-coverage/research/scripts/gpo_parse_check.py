@@ -21,6 +21,7 @@ import requests
 ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT / "packages/congress_api/src")); sys.path.insert(0, str(ROOT / "packages/congress_shared/src"))
 from congress_api.models.transcription import Header
+from congress_api.matching.gpo_speakers import bind_gpo_transcript
 from congress_api.parsers.gpo_text import parse_gpo_text
 from congress_api.transcripts.context import mods_people
 
@@ -40,7 +41,7 @@ def main():
             people, facts = {}, {"title": row["title"], "committee": "", "committee_code": row["committee_code"], "subcommittee": "", "held_date": row["held_date"], "serial": "", "congress": row["congress"], "session": ""}
         text = html.unescape(re.sub(r"<[^>]+>", "", requests.get(row["html_url"], timeout=60, headers={"User-Agent": "Mozilla/5.0"}).text))
         header = Header(title=facts["title"], chamber=row["chamber"], congress=int(row["congress"]), committee=facts["committee"], committee_code=facts["committee_code"], subcommittee=facts["subcommittee"], date=row["held_date"], package_id=pkg)
-        t = parse_gpo_text(text, header, people, source_url=row["html_url"])
+        t = bind_gpo_transcript(parse_gpo_text(text, header, people, source_url=row["html_url"]))
         spoken = [u for u in t.turns if u.kind != "direction"]
         words = sum(len(u.text.split()) for u in spoken); total = len(text.split())
         speakers = collections.Counter(t.participants[u.speaker].name if u.speaker in t.participants else u.speaker for u in spoken)
