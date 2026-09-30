@@ -21,7 +21,8 @@ without redefining a publisher’s data.
 Inventory late acquisition lives in `acquisition.gaps`: witness PDF/MODS
 capture and Senate day probes accept a defaulted `get=` function. The orchestrator
 and `completeness.build` call it explicitly. `parsers.witness_pdf` retains the
-byte-only PDF/MODS parser entry points and a compatibility acquisition delegate.
+byte-only PDF/MODS parser entry points. Collection calls belong to
+`acquisition.gaps`; the former parser acquisition delegates were removed.
 Production rejected listing and committee detail responses use
 `retention.rejected_pages`, independently of any storage importer.
 
@@ -49,7 +50,7 @@ that model is `ModsDocument`.
 | Witness-list PDF | `PdfWitnessObservation`, `PdfTextPage`, `DocumentWitness` | `parsers.witness_pdf.parse_pdf_observation` |
 | MODS witness extraction | `ModsWitnessObservation` | `parsers.witness_pdf.parse_mods_observation` |
 | Senate player query, HLS playlists and WebVTT | `SenatePlayerQuery`, `HLSRendition`, `SenateCaptionSources`, `WebVTTCue` | `parsers.senate_player`, `transcripts.senate` |
-| unitedstates/congress-legislators JSON | `Legislator` and nested identifiers, terms and names | `models.legislators.parse_legislators` |
+| unitedstates/congress-legislators JSON | `Legislator` and nested identifiers, terms and names | `parsers.legislators.parse_legislators` |
 | Zyte response JSON | `ZyteResponse` | `transport.zyte.request` / `transport.zyte.get` |
 | Gemini transcription JSON | `GeminiTranscriptResponse`, `GeminiResponseCapture` | `transport.gemini` |
 | YouTube duration response | `YoutubeVideoResponse` | `transcripts.generate.video_duration` |

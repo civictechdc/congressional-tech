@@ -217,7 +217,7 @@ hearing-transcribe --audio path/to/file.mp3 --event-id 116xxx --out-dir ~/out
 senate-captions --out-dir ~/hearing-text/senate --urls-file links.txt
 ```
 
-Downloads English WebVTT from ISVP HLS (archive and live paths). URL helpers live in `senate/isvp.py` (`COMM`, `STREAM`, `LIVE_ID`, `archive_url`, `live_url`).
+Downloads English WebVTT from ISVP HLS (archive and live paths). URL helpers live in `parsers.senate_player` (`COMM`, `STREAM`, `LIVE_ID`, `archive_url`, `live_url`).
 
 ### 7. Filename analysis (separate package)
 
@@ -230,7 +230,8 @@ When surname context is needed, prepare it from the source legislator model:
 ```python
 import json
 from pathlib import Path
-from congress_api.models.legislators import parse_legislators, member_surnames_by_congress
+from congress_api.models.legislators import member_surnames_by_congress
+from congress_api.parsers.legislators import parse_legislators
 
 members = parse_legislators(Path("legislators.json").read_bytes())
 Path("member-surnames.json").write_text(json.dumps(member_surnames_by_congress(members)))
