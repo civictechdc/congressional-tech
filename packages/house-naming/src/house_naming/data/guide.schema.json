@@ -441,7 +441,8 @@
               "transport-search",
               "unmatched-date",
               "unmatched-stem",
-              "witness-suffix-search"
+              "witness-suffix-search",
+              "source-stem"
             ]
           },
           "description": {
@@ -457,6 +458,53 @@
             "type": "string",
             "minLength": 1,
             "description": "Reading for a literal label capture, such as an explicit observed spelling alias; does not verify contents."
+          },
+          "field_readings": {
+            "type": "object",
+            "minProperties": 1,
+            "description": "Qualified literal readings keyed by capture name; no official vocabulary code or content verification is assigned.",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "label",
+                "note"
+              ],
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "note": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "vocabulary_url": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          },
+          "source_hosts": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$"
+            },
+            "description": "Exact publisher hostnames, consulted only by source-stem rules. No suffix matching or network request."
+          },
+          "source_urls": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^https?://[^\\s]+$"
+            },
+            "description": "Exact caller-supplied source URLs qualifying reviewed local occurrences; never document identity."
           }
         }
       }

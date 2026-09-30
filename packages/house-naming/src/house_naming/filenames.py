@@ -68,6 +68,7 @@ class RejectedNamingCandidate(BaseModel):
 class ParsedFilename(BaseModel):
     model_config = ConfigDict(frozen=True, extra='forbid')
     filename: str
+    source_url: str | None = None
     stem_end: int
     matches: tuple[FilenameMatch, ...]
     pieces: tuple[FilenamePiece, ...]
@@ -76,7 +77,8 @@ class ParsedFilename(BaseModel):
     rejected_candidates: tuple[RejectedNamingCandidate, ...] = ()
 
 
-def parse_filename(filename: str, *, member_surnames: Mapping[str, Sequence[str]] | None = None) -> ParsedFilename:
+def parse_filename(filename: str, *, member_surnames: Mapping[str, Sequence[str]] | None = None,
+                   source_url: str | None = None) -> ParsedFilename:
     """Return the engine's literal observations, including rejected alternatives.
 
     `matches` means extracted source syntax, not convention-valid records.
@@ -84,9 +86,10 @@ def parse_filename(filename: str, *, member_surnames: Mapping[str, Sequence[str]
     report convention validation; neither invalidity nor fallback implies that
     this filename was discarded.
     """
-    result = HOUSE_NAMING.extract(filename, member_surnames=member_surnames)
+    result = HOUSE_NAMING.extract(filename, member_surnames=member_surnames,
+                                 **({'source_url': source_url} if source_url is not None else {}))
     matches = tuple(FilenameMatch.model_validate(match) for match in result['observations'])
-    return ParsedFilename(filename=result['input'], stem_end=result['stem_end'], matches=matches,
+    return ParsedFilename(filename=result['input'], source_url=source_url, stem_end=result['stem_end'], matches=matches,
                           pieces=result['pieces'], suppressed=result['suppressed'],
                           issues=result['issues'], rejected_candidates=result['rejected_candidates'])
 

@@ -31,6 +31,7 @@ def main(argv: list[str] | None = None) -> int:
     commands.add_parser('parse').add_argument('filename', help='Exact basename, not a path or URL')
     sub = commands.add_parser('extract', help='Read literal fields, uncertainty and retained source spans')
     sub.add_argument('filename', help='Literal source basename, including nonconforming names')
+    sub.add_argument('--source-url', help='Optional original source URL for publisher conventions; no network requests')
     sub.add_argument('--member-surnames', help='Optional Congress-keyed surname JSON file, or - for stdin (at most 64 KiB)')
     sub = commands.add_parser('lookup')
     sub.add_argument('context')
@@ -71,7 +72,7 @@ def main(argv: list[str] | None = None) -> int:
                 return 0 if data['valid'] else 1
             elif command == 'extract':
                 reference = read_json(args.member_surnames) if args.member_surnames else None
-                data = engine.extract(args.filename, member_surnames=reference)
+                data = engine.extract(args.filename, member_surnames=reference, source_url=args.source_url)
             elif command == 'lookup':
                 data = engine.lookup(args.context, args.token)
             elif command == 'contexts':

@@ -9,6 +9,7 @@ from datetime import date
 from collections.abc import Mapping, Sequence
 from functools import lru_cache
 import re
+from urllib.parse import urlsplit
 
 from .errors import NamingError
 from .bill_codes import BILL_VERSIONS, BILLS_HELP_URL
@@ -175,6 +176,11 @@ def bind_extraction_rules(guide: dict) -> dict[str, tuple[dict, re.Pattern]]:
         fields = set(regex.groupindex)
         if 'label' in rule and 'label' not in fields:
             raise NamingError('invalid-catalog', f'Extraction rule {rid} supplies a label reading without a label capture')
+        if not set(rule.get('field_readings', {})) <= fields:
+            raise NamingError('invalid-catalog', f'Extraction rule {rid} supplies a reading for an absent capture')
+        qualified = bool(rule.get('source_hosts') or rule.get('source_urls'))
+        if (scope == 'source-stem') != qualified:
+            raise NamingError('invalid-catalog', f'Extraction rule {rid} requires source qualifiers exactly for source-stem scope')
         if not fields:
             raise NamingError('invalid-catalog', f'Extraction pattern {rid} has no named fields')
         if rid in DATE_RULES and not fields & {'date_token', 'short_date_token'}:
@@ -210,7 +216,7 @@ class Extractor:
         self.guide = guide
         self.by_id = bind_extraction_rules(guide)
         self.rules = list(self.by_id.values())
-        self.stem_ids = {r['id'] for r, _ in self.rules if r['scope'] == 'stem'}
+        self.stem_ids = {r['id'] for r, _ in self.rules if r['scope'] in {'stem', 'source-stem'}}
         self.legislative_ids = {r['id'] for r, _ in self.rules if r['scope'] == 'legislative-payload'}
         versions = '|'.join(sorted([*guide['codes']['version'], 'pih', 'pis'], key=len, reverse=True))
         self.separated_version = re.compile(r'[-_](?P<version_token>' + versions + r')'
@@ -496,6 +502,7 @@ class Extractor:
                     field['note'] += ' Printed date is not Monday; source value retained.'
             if rule['scope'] == 'unmatched-stem' or rule['scope'] == 'unmatched-date' and name in {'name_token', 'ignored_suffix'}:
                 field['note'] = 'User-requested fallback assumption; not a verified person or identifier.'
+            field.update(rule.get('field_readings', {}).get(name, {}))
             fields.append(field)
         if rule['id'] == 'partial-date':
             for field in fields:
@@ -683,7 +690,8 @@ class Extractor:
                 result.append(observed)
         return result
 
-    def extract(self, filename: str, *, member_surnames: Mapping[str, Sequence[str]] | None = None) -> dict:
+    def extract(self, filename: str, *, member_surnames: Mapping[str, Sequence[str]] | None = None,
+                source_url: str | None = None) -> dict:
         if not isinstance(filename, str):
             raise NamingError('invalid-filename', 'Filename must be a string basename')
         try:
@@ -695,6 +703,22 @@ class Extractor:
             raise NamingError('invalid-filename', 'Expected a literal basename, not a path or URL')
         if member_surnames is not None and not isinstance(member_surnames, Mapping):
             raise NamingError('invalid-member-reference', 'Member surnames must be a Congress-keyed mapping')
+        source_host = None
+        if source_url is not None:
+            try:
+                if not isinstance(source_url, str) or len(source_url.encode('utf-8')) > MAX_SOURCE_BYTES:
+                    raise ValueError
+                if any(c.isspace() or ord(c) < 32 for c in source_url):
+                    raise ValueError
+                source = urlsplit(source_url)
+                if (source.scheme not in {'http', 'https'} or not source.hostname
+                        or source.username is not None or source.password is not None):
+                    raise ValueError
+                if source.port not in {None, 80, 443}:
+                    raise ValueError
+                source_host = source.hostname
+            except (ValueError, UnicodeError) as exc:
+                raise NamingError('invalid-source-url', 'Source context must be an HTTP(S) URL without credentials, at most 16384 UTF-8 bytes') from exc
         observations = []
         ignored = []
         start = len(filename) - len(filename.lstrip())
@@ -712,7 +736,17 @@ class Extractor:
             stem_end = hit.start()
         stem = filename[start:stem_end]
         payloads = []
-        for priority in STEM_PRIORITIES:
+        # Local publisher aliases qualify whole basenames, never a token inside
+        # an official witness/member slot. The supplied URL is not dereferenced.
+        if source_url is not None:
+            for rule, regex in self.rules:
+                if rule['scope'] != 'source-stem':
+                    continue
+                if source_host not in rule.get('source_hosts', ()) and source_url not in rule.get('source_urls', ()):
+                    continue
+                if hit := regex.fullmatch(stem):
+                    observations.append(self._match(rule, hit, start))
+        for priority in (() if any(m['scope'] == 'source-stem' for m in observations) else STEM_PRIORITIES):
             found = False
             for rule, regex in self.rules:
                 if rule['scope'] == 'stem' and rule['priority'] == priority and (hit := regex.fullmatch(stem)):
@@ -778,6 +812,15 @@ class Extractor:
             if parent['rule'] not in self.legislative_ids:
                 continue
             for field in parent['fields']:
+                # Local amendment references own their digits even when those
+                # digits happen to resemble dates. Read complete slots first.
+                if field['name'] in {'subject_token', 'amendment_token'}:
+                    wanted = {'amendment-to-substitute', 'numbered-amendment-to-substitute'}
+                    wanted.add('manager-amendment-subject' if field['name'] == 'subject_token'
+                               else 'manager-amendment-identifier')
+                    for rule, regex in self.rules:
+                        if rule['id'] in wanted and (hit := regex.fullmatch(field['raw'])):
+                            observations.append(self._match(rule, hit, field['start']))
                 if field['name'] not in {'descriptor', 'suffix'}:
                     continue
                 for rule, regex in self.rules:
@@ -1038,6 +1081,19 @@ class Extractor:
             elif rule['id'] in order or rule['id'] in date_rules:
                 protected.append((a, b))
 
+        # An explicit measure reference also supplies legislative context in
+        # descriptive names. Reuse the bounded marker, outside assigned fields.
+        if not payloads and any(m['rule'] == 'measure-reference' for m in observations):
+            for rule_id in ('descriptive-amendment-to-substitute', 'substitute-marker'):
+                if rule_id not in self.by_id:
+                    continue
+                rule, regex = self.by_id[rule_id]
+                for hit in regex.finditer(stem):
+                    a, b = start + hit.start(), start + hit.end()
+                    if not self._overlaps(a, b, protected):
+                        observations.append(self._match(rule, hit, start))
+                        protected.append((a, b))
+
         # Qualifiers belong to their filename wording, not to a verified access
         # or publication state. Group only neighboring words; names may precede
         # a terminal qualifier group, but unrelated title words cannot follow it.
@@ -1148,7 +1204,8 @@ class Extractor:
                 for rule, regex in self.rules:
                     if rule['scope'] in scopes:
                         for hit in regex.finditer(field['raw']):
-                            if rule['id'] == 'report-part' and any(
+                            if rule['id'] in {'report-part', 'amendment-to-substitute', 'numbered-amendment-to-substitute',
+                                              'manager-amendment-subject', 'manager-amendment-identifier'} and any(
                                     m['rule'] == rule['id'] and m['start'] == field['start'] + hit.start()
                                     and m['end'] == field['start'] + hit.end() for m in observations):
                                 continue
@@ -1175,10 +1232,12 @@ class Extractor:
                         observations.extend(self._match(rule, hit, field['start']) for hit in hits)
 
         # Bare ANS_01 already has a whole-slot interpretation. Keep the new
-        # component rule only when it exposes a field not already available.
+        # component rule only when it exposes syntax not already available.
+        # A qualified reading on the whole-slot marker is not a second number.
         for match in tuple(observations):
             if match['rule'] == 'local-amendment-component' and all(
-                any(field == other for m in observations if m is not match for other in m['fields'])
+                any(all(field[key] == other[key] for key in ('name', 'raw', 'start', 'end'))
+                    for m in observations if m is not match for other in m['fields'])
                 for field in match['fields']
             ):
                 observations.remove(match)
@@ -1460,5 +1519,6 @@ class Extractor:
                             observations.append(fragment)
                     break
         pieces = [{'kind': hit.lastgroup, 'raw': hit[0], 'start': hit.start(), 'end': hit.end()} for hit in TOKEN.finditer(filename)]
-        return {'input': filename, 'stem_end': stem_end, 'observations': observations,
+        return {'input': filename, **({'source_url': source_url} if source_url is not None else {}),
+                'stem_end': stem_end, 'observations': observations,
                 'pieces': pieces, 'suppressed': ignored}

@@ -1,0 +1,1292 @@
+{
+  "reviewed": "2026-09-30",
+  "scope": "78 names / 79 distinct reviewed bodies. TT: all 58 casefolded names. SFR: both names. MGR: all seven bounded names. ANS: eleven selected names, not a population accuracy claim. Hashes identify retained research evidence; offline parser tests do not reverify live bodies or contents.",
+  "cases": [
+    {
+      "filename": "tt_doar_3.15.18.pdf",
+      "variants": [
+        "TT_Doar_3.15.18.pdf",
+        "tt_doar_3.15.18.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "a89996bdfdc39586e60d6e0f71425fa324a3f37cae3a0249ac70bf9194b98542",
+          "urls": [
+            "https://edworkforce.house.gov/UploadedFiles/TT_Doar_3.15.18.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_brey.pdf",
+      "variants": [
+        "TT_Brey.pdf",
+        "tt_brey.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "74803b08a7f00e3707b40224bb285758a5b364accffdb9eae498f170218e1c04",
+          "urls": [
+            "https://edworkforce.house.gov/UploadedFiles/TT_Brey.pdf",
+            "http://edworkforce.house.gov/UploadedFiles/TT_Brey.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_meisbrrg.pdf",
+      "variants": [
+        "TT_Meisbrrg.pdf",
+        "tt_meisbrrg.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "360ff4c8f316959edfc9f7dd2ee60254b066dab20ef75b879aea2be17ee357c6",
+          "urls": [
+            "https://edworkforce.house.gov/UploadedFiles/TT_Meisbrrg.pdf",
+            "http://edworkforce.house.gov/UploadedFiles/TT_Meisbrrg.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_roberts.pdf",
+      "variants": [
+        "TT_Roberts.pdf",
+        "tt_roberts.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "a17da321a0acfb1ac9a717638aa81abd69c6b347d00c2c9ff414c47388899be1",
+          "urls": [
+            "https://edworkforce.house.gov/UploadedFiles/TT_Roberts.pdf",
+            "http://edworkforce.house.gov/UploadedFiles/TT_Roberts.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_paal.pdf",
+      "variants": [
+        "TT_Paal.pdf",
+        "tt_paal.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "50f36fb0f1f694ddbc61c3033a04c2d7977a4a45e8a96496f4ed1c30e1885a06",
+          "urls": [
+            "https://edworkforce.house.gov/UploadedFiles/TT_Paal.pdf",
+            "http://edworkforce.house.gov/UploadedFiles/TT_Paal.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_troy.pdf",
+      "variants": [
+        "TT_Troy.pdf",
+        "tt_troy.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "a8aafd765d86e07af65bcaede7fcacaf43e6c65f3370956e3340621767b56e88",
+          "urls": [
+            "https://edworkforce.house.gov/UploadedFiles/TT_Troy.pdf",
+            "http://edworkforce.house.gov/UploadedFiles/TT_Troy.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt___christie.pdf",
+      "variants": [
+        "tt___christie.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "539d7f111934b1b87becc2636d5cddc85257a3693aa1976be6bd2dc927656530",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt___christie.pdf",
+            "http://edworkforce.house.gov/uploadedfiles/tt___christie.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_adams.pdf",
+      "variants": [
+        "tt_adams.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "0e7950ca11bc4422988cb934251ba3accfefa60b6dcddc749c47aa683a90fc9c",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_adams.pdf",
+            "http://edworkforce.house.gov/uploadedfiles/tt_adams.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt__susan_smith.pdf",
+      "variants": [
+        "tt__susan_smith.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "25e368a906b401752fffc7853fb18f69456dc06913d49d70807a05d4b17c3262",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt__susan_smith.pdf",
+            "http://edworkforce.house.gov/uploadedfiles/tt__susan_smith.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_bates.pdf",
+      "variants": [
+        "tt_bates.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "48d40913b17677ff91c160b6d37f3dc3487ee78f05239bcd4c10aef98f55b40b",
+          "urls": [
+            "https://www.congress.gov/114/meeting/house/104925/witnesses/tt_bates.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_browne.pdf",
+      "variants": [
+        "tt_browne.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "effedb5873acbbf69124e6bff188c77a0ed87fa681c93efe9bda1d0359dda5d5",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_browne.pdf",
+            "http://edworkforce.house.gov/uploadedfiles/tt_browne.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_burton.pdf",
+      "variants": [
+        "tt_burton.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "8e09e25659d5e9f5867019b73f345c180218173cab8e0291bf1585a3c380426b",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_burton.pdf",
+            "http://edworkforce.house.gov/uploadedfiles/tt_burton.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_carter.pdf",
+      "variants": [
+        "tt_carter.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "1b22f376342608cd11d49c4a20aff37bb4822aede693c26b317234bb8dd55617",
+          "urls": [
+            "https://www.congress.gov/115/meeting/house/105495/witnesses/tt_carter.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_clarke.pdf",
+      "variants": [
+        "tt_clarke.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "9ca38d1dcd550be9226c57d8e558aed91e81b7ade2c67cf88e58aa55dd151b92",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_clarke.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "TT_Hahn_3.15.18.pdf",
+      "variants": [
+        "TT_Hahn_3.15.18.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "c894b7be79205e17e733bcf291787a9c2c32e33a9886a5615c3c77f5846911be",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/TT_Hahn_3.15.18.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_davis.pdf",
+      "variants": [
+        "tt_davis.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "16b90c209aa4335e6bcfc4c77cf2dde8cc8f303ce74030f0e2a566e53d6bf35f",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_davis.pdf",
+            "http://edworkforce.house.gov/uploadedfiles/tt_davis.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_dowler.pdf",
+      "variants": [
+        "tt_dowler.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "607eb93d587fbca018b7b8a766c4369039883d170e595773a141eeec53c7ffe1",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_dowler.pdf",
+            "http://edworkforce.house.gov/uploadedfiles/tt_dowler.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_draeger.pdf",
+      "variants": [
+        "tt_draeger.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "91f73d3fe37e7879b04109fe785bc6f02113a63fb23af413364cc4ceba96c2c1",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_draeger.pdf",
+            "http://edworkforce.house.gov/uploadedfiles/tt_draeger.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_fitzgerald.pdf",
+      "variants": [
+        "tt_fitzgerald.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "90a257e9cf85bc2bd00c718c38a3c54fd8cfdd665a6afedd7bbf16eb71a2537e",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_fitzgerald.pdf",
+            "http://edworkforce.house.gov/uploadedfiles/tt_fitzgerald.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_fortney.pdf",
+      "variants": [
+        "tt_fortney.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "1fcc59815a835a7cae008c7d163453ac65d294c51d2e2c2556c0c54400de3288",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_fortney.pdf",
+            "http://edworkforce.house.gov/uploadedfiles/tt_fortney.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_ben_miller_4.27.17.pdf",
+      "variants": [
+        "tt_ben_miller_4.27.17.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "acf3040281c606cefdae61bc6523bf122237eb120002b8bd5224323bfa91a803",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_ben_miller_4.27.17.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_ghildarucci.pdf",
+      "variants": [
+        "tt_ghildarucci.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "829861e6dd9aee339b31f8a6484f17e6675e614a747dad317fe89031c23cff64",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_ghildarucci.pdf",
+            "http://edworkforce.house.gov/uploadedfiles/tt_ghildarucci.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "TT_Aloul.pdf",
+      "variants": [
+        "TT_Aloul.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "fac4785e3e1f990ad53d9e21b227d6d8691ba4c1b83f42ae1ad403021eedcd36",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/TT_Aloul.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_kemple.pdf",
+      "variants": [
+        "tt_kemple.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "aa5d32a3897bbea6dca1a95f7509ae4f632d65a74bcad0fbf417ae66a41b6507",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_kemple.pdf",
+            "http://edworkforce.house.gov/uploadedfiles/tt_kemple.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_king_7.12.17.pdf",
+      "variants": [
+        "tt_king_7.12.17.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "d1c02d92a34edc947a16b68dbd6591773cd6ab19de14701f5ec49c1388f6395f",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_king_7.12.17.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_kirschner.pdf",
+      "variants": [
+        "tt_kirschner.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "dadac75f422cade9fe26ff92f534a759bd18132205bc5f34b3493bcc51cb35ca",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_kirschner.pdf",
+            "http://edworkforce.house.gov/uploadedfiles/tt_kirschner.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_kitchner.pdf",
+      "variants": [
+        "tt_kitchner.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "69206b9f62fd3addd3db0fddf173235607391d46d389622784b0875f92c903ba",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_kitchner.pdf",
+            "http://edworkforce.house.gov/uploadedfiles/tt_kitchner.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_cox.pdf",
+      "variants": [
+        "tt_cox.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "19642c7f0efa6a2b191559e46cb1cd9e53fe434c5e47eeaad955d0232dc73f86",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_cox.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_hurst_web.pdf",
+      "variants": [
+        "tt_hurst_web.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "73361e434b2d2939637b9b6295d2b62552c9761a2829b230831e81c55177c541",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_hurst_web.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_furman.pdf",
+      "variants": [
+        "tt_furman.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "0f5e1f4c50ebda61d393304ff3a8f21003fb55031121cfbab405687d1f91b5d9",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_furman.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_long.pdf",
+      "variants": [
+        "tt_long.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "87e81861a48f295a1b156630c6786cc30ee8f7fb9c712c79e9971b94d72bf1c5",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_long.pdf",
+            "http://edworkforce.house.gov/uploadedfiles/tt_long.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_marculwicz.pdf",
+      "variants": [
+        "tt_marculwicz.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "994a71c707f74d70314efa3ab8fecfef4387be8a019c1851effedcd8cf3bed31",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_marculwicz.pdf",
+            "http://edworkforce.house.gov/uploadedfiles/tt_marculwicz.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_klausner_web.pdf",
+      "variants": [
+        "tt_klausner_web.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "b72a2ca650a02e61f9bd012c8f9770ba4d185380ef868163f0564d87eb0576bb",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_klausner_web.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_messenger.pdf",
+      "variants": [
+        "tt_messenger.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "99c7bd84f006bda90e180882a5c7db5fdefef82d609d05328c3fb114844cae03",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_messenger.pdf",
+            "http://edworkforce.house.gov/uploadedfiles/tt_messenger.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_miaoulis.pdf",
+      "variants": [
+        "tt_miaoulis.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "f1432abc95d6375ab42ef18bf29de61c2d867fe261093f9aeac0c8277e60bc6a",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_miaoulis.pdf",
+            "http://edworkforce.house.gov/uploadedfiles/tt_miaoulis.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_larkin.pdf",
+      "variants": [
+        "tt_larkin.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "9c4c14feb610c00aa0cd0d9e03f65e2e22e7c837ca8895af89abfc9bc8078ef3",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_larkin.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_ohm_1.30.18.pdf",
+      "variants": [
+        "tt_ohm_1.30.18.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "352446b10aa6120f59097120ef37f6d3faa3e40daead0744878e015070b60e4c",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_ohm_1.30.18.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_lajeunesse.pdf",
+      "variants": [
+        "tt_lajeunesse.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "e9f6a77b4121e7792a9fb1ebc66ef5f67d673db11b93efb9c521b603576e1c7a",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_lajeunesse.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_mccomis_4.27.pdf",
+      "variants": [
+        "tt_mccomis_4.27.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "1653cab3f275006e297b0a0c0a006c996f50c1b0d2591c658c38452f07ca7d4d",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_mccomis_4.27.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_mitts_web.pdf",
+      "variants": [
+        "tt_mitts_web.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "e218ac6d8580ec79e31e2cf94be3174ce77213a93ee089c065ab8021b46edce5",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_mitts_web.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_olson.pdf",
+      "variants": [
+        "tt_olson.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "980e9442434af1f14bca2a872da9b0967f20c50304f84bb609849823582e4cb8",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_olson.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_ponder.pdf",
+      "variants": [
+        "tt_ponder.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "b92a01b74a8dae95c3ea1e7a93821669a8a864383341cf322e754d19fe97df5f",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_ponder.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_sarvadi.pdf",
+      "variants": [
+        "tt_sarvadi.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "fe45aa804ee1f7c9293e52ec9a40a21fa4aaf8536c902012ab13cc4ee4a42ea2",
+          "urls": [
+            "https://www.congress.gov/114/meeting/house/104983/witnesses/tt_sarvadi.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_petrisko.pdf",
+      "variants": [
+        "tt_petrisko.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "d029640611be8862b4cca137220f2ae7e9e958084999954af7e4de26726acac3",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_petrisko.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_schneider.pdf",
+      "variants": [
+        "tt_schneider.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "0f08cdf5da3ba025c0a49cdbe8761c42a2c08eb3540f11ea29a6c5cb30e695a1",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_schneider.pdf",
+            "http://edworkforce.house.gov/uploadedfiles/tt_schneider.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_senser.pdf",
+      "variants": [
+        "tt_senser.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "ccffcb7ae793155b90649e2a85bed74d63ffa1b8d26ff0f471d2c87551a6eb8a",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_senser.pdf",
+            "http://edworkforce.house.gov/uploadedfiles/tt_senser.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_sokas.pdf",
+      "variants": [
+        "tt_sokas.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "cdec3ff221a6953ad8f0f271a0a8128a670c65168f8b59c0b889fb09d8c0c88e",
+          "urls": [
+            "https://www.congress.gov/114/meeting/house/104983/witnesses/tt_sokas.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_pruitt.pdf",
+      "variants": [
+        "tt_pruitt.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "a20824d9dcd385e9d7c2644374af647302a5cbaf873c628a745db0090d94dbb7",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_pruitt.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_sprick.pdf",
+      "variants": [
+        "tt_sprick.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "a6f79cbc75180d1b87d1d82fb2c146435846f5c10a56c259000c2b027868faec",
+          "urls": [
+            "https://www.congress.gov/114/meeting/house/104983/witnesses/tt_sprick.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_ritchie_web.pdf",
+      "variants": [
+        "tt_ritchie_web.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "8f07ef8934b487f17b3e74ad1f7467d24a0161d525f016c9e24c09d08a08c5a2",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_ritchie_web.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_thompson.pdf",
+      "variants": [
+        "tt_thompson.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "9b3feef2cd045193c6096364482acb897d6095f121cf3e79d02e124fefdf4e60",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_thompson.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_tse.pdf",
+      "variants": [
+        "tt_tse.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "7c8cd1b54c2fa2424bd3f900f2624abb100462aaac7464a7aa8150bfdc89f7da",
+          "urls": [
+            "https://www.congress.gov/114/meeting/house/104925/witnesses/tt_tse.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_schanzenbach.pdf",
+      "variants": [
+        "tt_schanzenbach.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "c2505e864c46ae0bdf902b7c7dedf6350728b655463e53e53ec7fabb69211cf0",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_schanzenbach.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_sossa.pdf",
+      "variants": [
+        "tt_sossa.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "844c86fecd957d1f896737c6e51ad8f86233b7bd58a7a4a57bc8bf32fe3530f0",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_sossa.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_williams.pdf",
+      "variants": [
+        "tt_williams.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "7c74967bb84de271bbb4566a69cf779de19ba00bb42530842b0f39c247a79004",
+          "urls": [
+            "https://www.congress.gov/115/meeting/house/105495/witnesses/tt_williams.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_vann.pdf",
+      "variants": [
+        "tt_vann.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "ccee9829d06685157ce318f02d9227c7f1c18cda032cf42e7bc614cbfafd94bc",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_vann.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_stickland.pdf",
+      "variants": [
+        "tt_stickland.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "3983aa391d746a5de2f29aea4d30361a5e8ac946a4231ad1eaa401565d368893",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_stickland.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "sfr-gregory-heeb.fbi.pdf",
+      "variants": [
+        "sfr-gregory-heeb.fbi.pdf"
+      ],
+      "family": "sfr",
+      "expected_label": "Written witness statement",
+      "occurrences": [
+        {
+          "sha256": "5d9309a4e49b2005c5f76376bc9b6fa805bd94b42f9860f17e6fb1ce45adf463",
+          "urls": [
+            "https://www.jec.senate.gov/public/_cache/files/2f5ca5c1-44c9-4e23-944e-8008293856f7/sfr-gregory-heeb.fbi.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "BILLS-116-MGR_01-A000374-Amdt-11.pdf",
+      "variants": [
+        "BILLS-116-MGR_01-A000374-Amdt-11.pdf"
+      ],
+      "family": "mgr",
+      "expected_label": "Manager amendment",
+      "occurrences": [
+        {
+          "sha256": "8853949d9215b9680fa770bc81f543909f8faff67acb57fb340dba808d47d115",
+          "urls": [
+            "https://www.congress.gov/116/meeting/house/109829/documents/BILLS-116-MGR_01-A000374-Amdt-11.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "sfr-karen-seifert.scsf.pdf",
+      "variants": [
+        "sfr-karen-seifert.scsf.pdf"
+      ],
+      "family": "sfr",
+      "expected_label": "Written witness statement",
+      "occurrences": [
+        {
+          "sha256": "a2b0fb8004296425946776f8f71fe0c729dbeedb4dd00e115da4c420abe4fc8d",
+          "urls": [
+            "https://www.jec.senate.gov/public/_cache/files/cd05f718-bdbf-4fc6-9a6d-aacc53daee3c/sfr-karen-seifert.scsf.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "tt_whitehurst.pdf",
+      "variants": [
+        "tt_whitehurst.pdf"
+      ],
+      "family": "tt",
+      "expected_label": "Truth in Testimony disclosure",
+      "occurrences": [
+        {
+          "sha256": "58b52113bdd030505a34a035261d576cb2ab3b51fed62094df9b18e3a3b32f7e",
+          "urls": [
+            "https://edworkforce.house.gov/uploadedfiles/tt_whitehurst.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "BILLS-118-HR4045-M001159-Amdt-FC_MGR_02XMLfiledbytheMajoritytoHR4045.pdf",
+      "variants": [
+        "BILLS-118-HR4045-M001159-Amdt-FC_MGR_02XMLfiledbytheMajoritytoHR4045.pdf"
+      ],
+      "family": "mgr",
+      "expected_label": null,
+      "occurrences": [
+        {
+          "sha256": "3ea476bd6ec8adcab35825c699e9f0fee039bac728550fc5c9cbe60d118928af",
+          "urls": [
+            "https://www.congress.gov/118/meeting/house/116653/documents/BILLS-118-HR4045-M001159-Amdt-FC_MGR_02XMLfiledbytheMajoritytoHR4045.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "BILLS-116-MGR_01-D000482-Amdt-82.pdf",
+      "variants": [
+        "BILLS-116-MGR_01-D000482-Amdt-82.pdf"
+      ],
+      "family": "mgr",
+      "expected_label": "Manager amendment",
+      "occurrences": [
+        {
+          "sha256": "9ece085f89a3705b0515ca19c30d9597013e91195d49d4428db4c35b8bf61699",
+          "urls": [
+            "http://docs.house.gov/meetings/IF/IF00/20191119/110257/BILLS-116-MGR_01-D000482-Amdt-82.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "cole-letter-of-support_-mgr-eliecer-camacho-jimenez",
+      "variants": [
+        "cole-letter-of-support_-mgr-eliecer-camacho-jimenez"
+      ],
+      "family": "mgr",
+      "expected_label": null,
+      "occurrences": [
+        {
+          "sha256": "c0fa0d98cfec5c3e28e54d0766fa65c6139c877660ae4e4ccfc8f893e4e42ce1",
+          "urls": [
+            "https://www.judiciary.senate.gov/download/cole-letter-of-support_-mgr-eliecer-camacho-jimenez"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "BILLS-118-Manager-G000546-Amdt-MGR.pdf",
+      "variants": [
+        "BILLS-118-Manager-G000546-Amdt-MGR.pdf"
+      ],
+      "family": "mgr",
+      "expected_label": "Manager amendment",
+      "occurrences": [
+        {
+          "sha256": "a602fd954790320d033b507fe35944264a40e2ec57d5962d63ccd190ca74edba",
+          "urls": [
+            "http://docs.house.gov/meetings/PW/PW00/20230613/116070/BILLS-118-Manager-G000546-Amdt-MGR.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "mgr_01.pdf",
+      "variants": [
+        "MGR_01.pdf",
+        "mgr_01.pdf"
+      ],
+      "family": "mgr",
+      "expected_label": "Manager amendment",
+      "occurrences": [
+        {
+          "sha256": "f83a2fcd13dd1877e66b7ba48b9197e81d7217c587d4695204bcebbeeb246715",
+          "urls": [
+            "https://transportation.house.gov/UploadedFiles/MGR_01.pdf"
+          ]
+        },
+        {
+          "sha256": "4e794447e3acfbde7a37ffe7104cfa118215037d37cf20f1773c198fb2a17f5b",
+          "urls": [
+            "https://www.congress.gov/118/meeting/house/117174/documents/MGR_01.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "BILLS-113-HR3606-M001177-Amdt-ANS.pdf",
+      "variants": [
+        "BILLS-113-HR3606-M001177-Amdt-ANS.pdf"
+      ],
+      "family": "ans",
+      "expected_label": "Amendment in the nature of a substitute",
+      "occurrences": [
+        {
+          "sha256": "a2d7efe6aecc77e872a7ca5e549628b1d49f521a74bbde543418dffe9d02c82a",
+          "urls": [
+            "https://www.congress.gov/113/meeting/house/102297/documents/BILLS-113-HR3606-M001177-Amdt-ANS.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "BILLS-115-HR2763-C000266-Amdt-ANS.pdf",
+      "variants": [
+        "BILLS-115-HR2763-C000266-Amdt-ANS.pdf"
+      ],
+      "family": "ans",
+      "expected_label": "Amendment in the nature of a substitute",
+      "occurrences": [
+        {
+          "sha256": "d2ce594d6a845323f507072ee38225133507f96c2d1ed27ed01ca005eb100e70",
+          "urls": [
+            "https://docs.house.gov/meetings/SM/SM00/20170615/106102/BILLS-115-HR2763-C000266-Amdt-ANS.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "BILLS-119-HR2556-B001285-Amdt-2toANS.pdf",
+      "variants": [
+        "BILLS-119-HR2556-B001285-Amdt-2toANS.pdf"
+      ],
+      "family": "ans",
+      "expected_label": "Substitute amendment target",
+      "occurrences": [
+        {
+          "sha256": "655f322eebb616af365d15346651bf46bca741b86bc7ef0ed284389971e03adc",
+          "urls": [
+            "https://docs.house.gov/meetings/II/II00/20250625/118294/BILLS-119-HR2556-B001285-Amdt-2toANS.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "BILLS-119-HR2556-H001068-Amdt-5toANS.pdf",
+      "variants": [
+        "BILLS-119-HR2556-H001068-Amdt-5toANS.pdf"
+      ],
+      "family": "ans",
+      "expected_label": "Substitute amendment target",
+      "occurrences": [
+        {
+          "sha256": "4a9b67f7c7a94cc9739914bf5c2ae83322bf8ea899d4ac075fbfc9cb256fec29",
+          "urls": [
+            "https://docs.house.gov/meetings/II/II00/20250625/118294/BILLS-119-HR2556-H001068-Amdt-5toANS.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "BILLS-116-MGR_01-P000034-Amdt-4.pdf",
+      "variants": [
+        "BILLS-116-MGR_01-P000034-Amdt-4.pdf"
+      ],
+      "family": "mgr",
+      "expected_label": "Manager amendment",
+      "occurrences": [
+        {
+          "sha256": "9e0cd61e859ab0668d404188e1f73aceeaa842445741156b4aad69782607e3a4",
+          "urls": [
+            "http://docs.house.gov/meetings/IF/IF16/20191114/110229/BILLS-116-MGR_01-P000034-Amdt-4.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "BILLS-117-AANS6671-T000472-Amdt-50.pdf",
+      "variants": [
+        "BILLS-117-AANS6671-T000472-Amdt-50.pdf"
+      ],
+      "family": "ans",
+      "expected_label": "Substitute amendment target",
+      "occurrences": [
+        {
+          "sha256": "3530fd4682fcb6f4126f307e6ea1a7cb91b4820c71cb630fa46fe1cf2f6c3118",
+          "urls": [
+            "https://www.congress.gov/117/meeting/house/114996/documents/BILLS-117-AANS6671-T000472-Amdt-50.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "#24 S. 2433 Staff ANS  (FLO21C75).pdf",
+      "variants": [
+        "#24 S. 2433 Staff ANS  (FLO21C75).pdf"
+      ],
+      "family": "ans",
+      "expected_label": "Amendment in the nature of a substitute",
+      "occurrences": [
+        {
+          "sha256": "f3dabe6a36ede4daf6d0a6833a8d22438dc8fa2a856c818b482e3b3337d08895",
+          "urls": [
+            "https://www.energy.senate.gov/wp-content/uploads/media/doc/%2324%20S.%202433%20Staff%20ANS%20%20(FLO21C75).pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "S. 1421 Baldwin_ANS as modified.pdf",
+      "variants": [
+        "S. 1421 Baldwin_ANS as modified.pdf"
+      ],
+      "family": "ans",
+      "expected_label": "Amendment in the nature of a substitute",
+      "occurrences": [
+        {
+          "sha256": "1cacb40c9a099b80ec0a20c1a2403bde11648db8968dec259befbbdfa259dd27",
+          "urls": [
+            "https://www.commerce.senate.gov/wp-content/uploads/media/doc/S.%201421%20Baldwin_ANS%20as%20modified.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "BILLS-117-2724-B001295-Amdt-AANS2724-U1.pdf",
+      "variants": [
+        "BILLS-117-2724-B001295-Amdt-AANS2724-U1.pdf"
+      ],
+      "family": "ans",
+      "expected_label": "Substitute amendment target",
+      "occurrences": [
+        {
+          "sha256": "651db2e67f39b227600dfa57a50b27b2c60634dc9e439adc49ecceca45e81d32",
+          "urls": [
+            "http://docs.house.gov/meetings/VR/VR00/20220406/114627/BILLS-117-2724-B001295-Amdt-AANS2724-U1.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "C30BE139A540D48DC27CE8A4C2DDD2581F79CD42A5BB1F602ACF9EA2F7777BE1.carper-capito-ans.pdf",
+      "variants": [
+        "C30BE139A540D48DC27CE8A4C2DDD2581F79CD42A5BB1F602ACF9EA2F7777BE1.carper-capito-ans.pdf"
+      ],
+      "family": "ans",
+      "expected_label": "Amendment in the nature of a substitute",
+      "occurrences": [
+        {
+          "sha256": "076025636097608777378aa7cc98a87d8c2b498541537c9c4181688350436eb8",
+          "urls": [
+            "https://www.epw.senate.gov/public/_cache/files/b/1/b167600c-12de-4692-9ee6-4f250c749547/C30BE139A540D48DC27CE8A4C2DDD2581F79CD42A5BB1F602ACF9EA2F7777BE1.carper-capito-ans.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "updated_ans_for_website.pdf",
+      "variants": [
+        "updated_ans_for_website.pdf"
+      ],
+      "family": "ans",
+      "expected_label": "Amendment in the nature of a substitute",
+      "occurrences": [
+        {
+          "sha256": "516b90d24a654b0e3458871d33df1e9252b9a6ffb88c768197cda9da883efae4",
+          "urls": [
+            "https://www.congress.gov/117/meeting/house/111181/documents/updated_ans_for_website.pdf"
+          ]
+        }
+      ]
+    },
+    {
+      "filename": "BILLS-116ANS2326ih.pdf",
+      "variants": [
+        "BILLS-116ANS2326ih.pdf"
+      ],
+      "family": "ans",
+      "expected_label": "Amendment in the nature of a substitute",
+      "occurrences": [
+        {
+          "sha256": "1240c222e3bf73b778c2a909911a969e6396ba6807260e6d501629738abb040a",
+          "urls": [
+            "http://docs.house.gov/meetings/VR/VR10/20190501/109396/BILLS-116ANS2326ih.pdf"
+          ]
+        }
+      ]
+    }
+  ]
+}

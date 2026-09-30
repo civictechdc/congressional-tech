@@ -20571,7 +20571,13 @@
       "pattern": "(?P<subject_token>[A-Za-z]+[0-9]+)?(?P<amendment_marker>AnAmendmentintheNatureofaSubstitute|AmendmentintheNatureofaSubstitute|AINS|ANS)(?P<target_marker>to)?(?:(?P<measure_token>hconres|sconres|hjres|sjres|hres|sres|hr|s)?(?P<measure_number>[0-9]+))?(?P<descriptor>.*?)(?P<version_token>pwah|reah|renr|rhuc|ash|ath|ats|cdh|cds|cph|cps|eah|eas|enr|eph|fah|fph|fps|hdh|hds|iph|ips|lth|lts|oph|ops|pap|pav|pch|pcs|pih|pis|rah|ras|rch|rcs|rdh|rds|res|rfh|rfs|rih|ris|rth|rts|sas|as|eh|es|ih|is|pp|rh|rs|sc)(?P<version_number_token>[0-9]+)?(?:\\((?P<annotation>[^()]*)\\))?(?P<suffix>(?:[-_].*)?)",
       "scope": "legislative-payload",
       "description": "Explicit substitute marker, optional target reference, descriptive text and text version.",
-      "priority": 1
+      "priority": 1,
+      "field_readings": {
+        "amendment_marker": {
+          "label": "Amendment in the nature of a substitute",
+          "note": "Filename convention describes substitute form; it does not verify contents, a bill identity or legislative action."
+        }
+      }
     },
     {
       "id": "numberless-versioned-file",
@@ -20774,28 +20780,52 @@
       "scope": "legislative-subject-search",
       "priority": 0,
       "pattern": "\\A(?P<amendment_marker>AnAmendmentintheNatureofaSubstitute|AmendmentintheNatureofaSubstitute|AINS|ANS)(?P<local_number_token>[0-9]+)?(?P<target_marker>to|for)(?:(?P<label>Committee[ _-]*Print)(?P<print_identifier>[0-9]+(?:-[A-Z])?)?|(?P<measure_token>hconres|sconres|hjres|sjres|hres|sres|hr|s)(?P<measure_number>[0-9]+)(?:(?P<descriptor>the[A-Za-z].*)|(?P<offering_marker>offeredby)(?P<offerer_token>[A-Za-z][A-Za-z'’-]*?))?|(?P<target_subject>Contempt[ _-]*Report|Subtitle[_]+[A-Za-z].*))(?:[-_]U[0-9]+)?\\Z",
-      "description": "Printed substitute marker and explicit target; print identifiers and local numeric modifiers do not supply a measure number or Congress."
+      "description": "Printed substitute marker and explicit target; print identifiers and local numeric modifiers do not supply a measure number or Congress.",
+      "field_readings": {
+        "amendment_marker": {
+          "label": "Amendment in the nature of a substitute",
+          "note": "Filename convention describes substitute form; it does not verify contents, a bill identity or legislative action."
+        }
+      }
     },
     {
       "id": "substitute-marker",
       "scope": "legislative-subject-search",
       "priority": 0,
       "pattern": "(?<![A-Za-z0-9])(?P<amendment_marker>AnAmendmentintheNatureofaSubstitute|AmendmentintheNatureofaSubstitute|AINS|ANS)(?![A-Za-z0-9])",
-      "description": "Literal bounded substitute wording inside an assigned legislative field; no official code expansion or document-content claim."
+      "description": "Literal bounded substitute wording inside an assigned legislative field; no official code expansion or document-content claim.",
+      "field_readings": {
+        "amendment_marker": {
+          "label": "Amendment in the nature of a substitute",
+          "note": "Filename convention describes substitute form; it does not verify contents, a bill identity or legislative action."
+        }
+      }
     },
     {
       "id": "local-substitute-number",
       "scope": "amendment-text-search",
       "priority": 0,
       "pattern": "\\A(?P<amendment_marker>AINS|ANS)[_-]?(?P<local_number_token>[0-9]+)(?P<revision_wording>Revised)?(?P<suffix>(?:-U[0-9]+)?)\\Z",
-      "description": "Numeric component of a local substitute-marked identifier; the complete identifier remains in its original source field."
+      "description": "Numeric component of a local substitute-marked identifier; the complete identifier remains in its original source field.",
+      "field_readings": {
+        "amendment_marker": {
+          "label": "Amendment in the nature of a substitute",
+          "note": "Filename convention describes substitute form; it does not verify contents, a bill identity or legislative action."
+        }
+      }
     },
     {
       "id": "local-number-substitute",
       "scope": "amendment-text-search",
       "priority": 0,
-      "pattern": "\\A(?P<local_number_token>[0-9]+)[_-]?(?P<revision_wording>Revised)?(?P<target_marker>to)?(?P<label>Substitute)?(?P<amendment_marker>AINS|ANS)(?P<suffix>(?:-U[0-9]+)?)\\Z",
-      "description": "Printed numeric component and substitute wording in a local identifier; optional to wording is retained without changing the identifier."
+      "pattern": "\\A(?P<local_number_token>[0-9]+)[_-]?(?P<revision_wording>Revised)?(?P<label>Substitute)?(?P<amendment_marker>AINS|ANS)(?P<suffix>(?:-U[0-9]+)?)\\Z",
+      "description": "Printed numeric component and substitute wording in a local identifier; no target relationship or official sequence inferred.",
+      "field_readings": {
+        "amendment_marker": {
+          "label": "Amendment in the nature of a substitute",
+          "note": "Filename convention describes substitute form; it does not verify contents, a bill identity or legislative action."
+        }
+      }
     },
     {
       "id": "compound-filing-target",
@@ -20809,7 +20839,13 @@
       "scope": "legislative-subject-search",
       "priority": 0,
       "pattern": "\\A(?P<descriptor>(?-i:[A-Z][a-z]+(?:[A-Z][a-z]+)*))(?P<amendment_marker>(?-i:AINS|ANS))(?:(?P<target_marker>to)(?P<target_subject>.+))?\\Z",
-      "description": "Mixed-case prefix before literal ANS/AINS wording in a legislative subject; the prefix remains descriptive text, not an established person name."
+      "description": "Mixed-case prefix before literal ANS/AINS wording in a legislative subject; the prefix remains descriptive text, not an established person name.",
+      "field_readings": {
+        "amendment_marker": {
+          "label": "Amendment in the nature of a substitute",
+          "note": "Filename convention describes substitute form; it does not verify contents, a bill identity or legislative action."
+        }
+      }
     },
     {
       "id": "local-amendment-component",
@@ -21448,6 +21484,174 @@
       "pattern": "(?<![A-Za-z0-9])(?P<label>Wtiness)(?![A-Za-z0-9])(?![ _-]+List(?![A-Za-z]))",
       "label": "Witness",
       "description": "Observed Wtiness spelling alias; retains source spelling without resolving a person or inferring a witness statement."
+    },
+    {
+      "id": "amendment-to-substitute",
+      "scope": "amendment-text-search",
+      "pattern": "\\A(?P<target_marker>A)(?P<target_amendment_marker>ANS)(?P<local_number_token>[0-9]+)?(?P<suffix>(?:-U[0-9]+)?)\\Z",
+      "description": "Local AANS notation means amendment to a substitute; adjacent digits retain their local role, not an inferred measure type.",
+      "field_readings": {
+        "target_marker": {
+          "label": "Amendment to",
+          "note": "Observed AANS relationship wording, not a person or document identifier."
+        },
+        "target_amendment_marker": {
+          "label": "Substitute amendment target",
+          "note": "The substitute is the target of this amendment, not an assertion that this document is itself a substitute. No target identity is inferred."
+        }
+      },
+      "priority": 0
+    },
+    {
+      "id": "numbered-amendment-to-substitute",
+      "scope": "amendment-text-search",
+      "pattern": "\\A(?P<local_number_token>[0-9]+)[_-]?(?P<revision_wording>Revised)?(?P<target_marker>to)(?P<label>Substitute)?(?P<target_amendment_marker>AINS|ANS)(?P<suffix>(?:-U[0-9]+)?)\\Z",
+      "description": "Local amendment number followed by an explicit to-ANS relationship; the substitute is the target.",
+      "field_readings": {
+        "target_marker": {
+          "label": "Amendment to",
+          "note": "Printed target relationship; no target identity is established."
+        },
+        "target_amendment_marker": {
+          "label": "Substitute amendment target",
+          "note": "The substitute is the target of this amendment, not an assertion that this document is itself a substitute. No target identity is inferred."
+        }
+      },
+      "priority": 0
+    },
+    {
+      "id": "manager-amendment-subject",
+      "scope": "legislative-subject-search",
+      "pattern": "\\A(?P<amendment_marker>MGR)[_-](?P<local_number_token>[0-9]+)\\Z",
+      "description": "MGR-number in an assigned legislative subject; reviewed manager-amendment convention, not a global acronym expansion.",
+      "field_readings": {
+        "amendment_marker": {
+          "label": "Manager amendment",
+          "note": "Local legislative convention corroborated by committee minutes and source descriptions; no offerer or bill identity inferred.",
+          "vocabulary_url": "https://www.congress.gov/116/meeting/house/110257/documents/HMKP-116-IF00-20191119-SD003-U1.pdf"
+        }
+      },
+      "priority": 0
+    },
+    {
+      "id": "manager-amendment-identifier",
+      "scope": "amendment-text-search",
+      "pattern": "\\A(?P<amendment_marker>MGR)\\Z",
+      "description": "MGR occupying the complete amendment slot in a legislative filename; no expansion inside FC_MGR or prose.",
+      "field_readings": {
+        "amendment_marker": {
+          "label": "Manager amendment",
+          "note": "Local legislative convention; no claim about the offerer, contents or target identity.",
+          "vocabulary_url": "https://docs.house.gov/meetings/PW/PW00/20230613/116070/BILLS-118-Manager-G000546-Amdt-MGR.pdf"
+        }
+      },
+      "priority": 0
+    },
+    {
+      "id": "publisher-tt-disclosure",
+      "scope": "source-stem",
+      "pattern": "(?P<document_token>TT)[_-](?P<subject_token>.+)",
+      "source_hosts": [
+        "edworkforce.house.gov"
+      ],
+      "description": "Education and Workforce publisher convention, confirmed on 58 recovered TT documents. Publisher does not identify the issuing committee or establish completeness. Exact reviewed Congress.gov mirrors are also qualified; unrelated mirrors are not.",
+      "field_readings": {
+        "document_token": {
+          "label": "Truth in Testimony disclosure",
+          "note": "Source-qualified local TT convention. Original token retained; no issuer, witness identity or completeness inferred.",
+          "vocabulary_url": "https://edworkforce.house.gov/UploadedFiles/TT_Doar_3.15.18.pdf"
+        }
+      },
+      "priority": 0,
+      "source_urls": [
+        "https://www.congress.gov/114/meeting/house/104925/witnesses/tt_bates.pdf",
+        "https://www.congress.gov/114/meeting/house/104925/witnesses/tt_tse.pdf",
+        "https://www.congress.gov/114/meeting/house/104983/witnesses/tt_sarvadi.pdf",
+        "https://www.congress.gov/114/meeting/house/104983/witnesses/tt_sokas.pdf",
+        "https://www.congress.gov/114/meeting/house/104983/witnesses/tt_sprick.pdf",
+        "https://www.congress.gov/115/meeting/house/105495/witnesses/tt_carter.pdf",
+        "https://www.congress.gov/115/meeting/house/105495/witnesses/tt_williams.pdf"
+      ]
+    },
+    {
+      "id": "publisher-sfr-statement",
+      "scope": "source-stem",
+      "pattern": "(?P<document_token>SFR)-(?P<subject_token>.+)",
+      "source_hosts": [
+        "www.jec.senate.gov"
+      ],
+      "description": "Joint Economic Committee testimony filenames; written-statement role confirmed on two source PDFs. Acronym expansion remains inferred.",
+      "field_readings": {
+        "document_token": {
+          "label": "Written witness statement",
+          "note": "Statement for the Record is an inferred expansion of SFR in this testimony context; the reviewed covers say Statement of. Not answers to questions for the record.",
+          "vocabulary_url": "https://docs.house.gov/meetings/HM/HM00/20251211/118722/HHRG-119-HM00-Wstate-KentJ-20251211.pdf"
+        }
+      },
+      "priority": 0
+    },
+    {
+      "id": "source-manager-amendment",
+      "scope": "source-stem",
+      "pattern": "(?P<amendment_marker>MGR)[_-](?P<local_number_token>01)",
+      "source_urls": [
+        "https://transportation.house.gov/UploadedFiles/MGR_01.pdf",
+        "https://www.congress.gov/118/meeting/house/117174/documents/MGR_01.pdf"
+      ],
+      "description": "Two reviewed source occurrences share this basename but have different bodies; their descriptions confirm manager-amendment role, not common identity.",
+      "field_readings": {
+        "amendment_marker": {
+          "label": "Manager amendment",
+          "note": "Source descriptions establish the local reading only. This basename and the unversioned committee URL do not identify an edition or bill.",
+          "vocabulary_url": "https://transportation.house.gov/amendments/officially-filed-amendments-june-25-2025.htm"
+        }
+      },
+      "priority": 0
+    },
+    {
+      "id": "source-updated-substitute",
+      "scope": "source-stem",
+      "pattern": "(?P<qualifier_wording>updated)_(?P<amendment_marker>ans)(?P<suffix>_for_website)",
+      "source_urls": [
+        "https://www.congress.gov/117/meeting/house/111181/documents/updated_ans_for_website.pdf"
+      ],
+      "description": "Reviewed source occurrence supplies substitute wording; its committee-print target is absent from the filename and is not inferred.",
+      "field_readings": {
+        "amendment_marker": {
+          "label": "Amendment in the nature of a substitute",
+          "note": "Filename convention describes substitute form; it does not verify contents, a bill identity or legislative action."
+        }
+      },
+      "priority": 0
+    },
+    {
+      "id": "publisher-epw-substitute",
+      "scope": "source-stem",
+      "pattern": "(?P<opaque_identifier>[0-9a-f]{64})\\.(?P<subject_token>[^.]+)-(?P<amendment_marker>ANS)",
+      "source_hosts": [
+        "www.epw.senate.gov"
+      ],
+      "description": "EPW publisher convention for a digest-prefixed descriptive ANS filename. Descriptive text does not establish people or a bill number.",
+      "field_readings": {
+        "amendment_marker": {
+          "label": "Amendment in the nature of a substitute",
+          "note": "Filename convention describes substitute form; it does not verify contents, a bill identity or legislative action."
+        }
+      },
+      "priority": 0
+    },
+    {
+      "id": "descriptive-amendment-to-substitute",
+      "scope": "legislative-text-search",
+      "priority": 0,
+      "pattern": "(?<![A-Za-z0-9])(?P<target_marker>to)[ _-]+(?P<target_amendment_marker>AINS|ANS)(?![A-Za-z0-9])",
+      "description": "Explicit to-ANS relationship inside legislative text; the substitute is the target, not the form of this document.",
+      "field_readings": {
+        "target_amendment_marker": {
+          "label": "Substitute amendment target",
+          "note": "Printed to-ANS relationship; no target identity or contents inferred."
+        }
+      }
     }
   ]
 }

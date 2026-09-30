@@ -58,17 +58,20 @@ class Engine:
     def kinds(self) -> list[str]:
         return list(self._kinds)
 
-    def extract(self, filename: str, *, member_surnames: Mapping[str, Sequence[str]] | None = None) -> dict[str, Any]:
+    def extract(self, filename: str, *, member_surnames: Mapping[str, Sequence[str]] | None = None,
+                source_url: str | None = None) -> dict[str, Any]:
         """Read literal source fields, including non-renderable and partial names.
 
         `valid` and `matches` retain parse()'s convention-validation meaning.
         `observations` retain source spans, candidates and fallback assumptions;
         they do not certify a document's contents or a person's identity.
+        `source_url` optionally qualifies local publisher conventions. It is
+        caller-supplied provenance, never fetched or used as document identity.
         """
         from .extraction import Extractor
         if not hasattr(self, '_extractor'):
             self._extractor = Extractor(self._guide)
-        extracted = self._extractor.extract(filename, member_surnames=member_surnames)
+        extracted = self._extractor.extract(filename, member_surnames=member_surnames, source_url=source_url)
         return {**self.parse(filename), **extracted}
 
     def lookup(self, context: str, token: str) -> dict[str, Any] | None:

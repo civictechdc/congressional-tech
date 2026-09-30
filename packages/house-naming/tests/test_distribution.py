@@ -22,13 +22,14 @@ def test_source_archive_contains_a_working_development_tree(tmp_path):
         # This archive was just built from the test's own local source copy.
         archive.extractall(unpacked, **({'filter': 'data'} if hasattr(tarfile, 'data_filter') else {}))
     root, = unpacked.iterdir()
-    for path in ['tests/records.json', 'examples/witness.json', 'tools/build.py',
+    for path in ['tests/records.json', 'tests/fixtures/verified_local_conventions.json',
+                 'examples/witness.json', 'tools/build.py',
                  'tools/check_ecmascript.mjs', 'FILENAME_PATTERNS.md']:
         assert (root / path).is_file(), path
     env = dict(os.environ, PYTHONPATH=str(root / 'src'))
     for args in [
         ['tools/build.py', '--check'],
-        ['-m', 'pytest', '--collect-only', '-q', 'tests/test_runtime.py'],
+        ['-m', 'pytest', '--collect-only', '-q', 'tests'],
         ['-m', 'house_naming', 'render', 'examples/witness.json', '--plain'],
     ]:
         run = subprocess.run([sys.executable, *args], cwd=root, env=env,

@@ -1,5 +1,6 @@
 include FILENAME_PATTERNS.md
 include tests/records.json
+recursive-include tests/fixtures *.json
 recursive-include examples *.json
 include tools/build.py
 include tools/check_ecmascript.mjs
