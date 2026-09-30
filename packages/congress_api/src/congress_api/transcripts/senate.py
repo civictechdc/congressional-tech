@@ -152,7 +152,10 @@ def main(out_dir, urls, nthreads=4):
     out_dir = Path(out_dir).expanduser()
     out_dir.mkdir(parents=True, exist_ok=True)
     index = out_dir / INDEX
-    saved = {(r['comm'], r['filename']): r for r in csv.DictReader(index.open())} if index.exists() else {}
+    saved = {}
+    if index.exists():
+        with index.open() as stream:
+            saved = {(r['comm'], r['filename']): r for r in csv.DictReader(stream)}
     unique = {}
     for url in urls:
         key = parse_player_url(url) or ('', url)

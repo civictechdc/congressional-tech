@@ -119,7 +119,9 @@ def transcribe_window(roster: list[dict], meeting: dict, start: float, end: floa
                 logging.info(f"window {start:.0f}-{end:.0f}: {reason}, splitting")
                 return halves()
             d = parse_generated_response(r.text).source_dict()
-            d["usage"] = {"in": r.usage_metadata.prompt_token_count or 0, "out": r.usage_metadata.candidates_token_count or 0}
+            usage = getattr(r, "usage_metadata", None)
+            d["usage"] = {"in": getattr(usage, "prompt_token_count", None) or 0,
+                          "out": getattr(usage, "candidates_token_count", None) or 0}
             return d
         except Exception as e:
             logging.warning(f"window {start:.0f}-{end:.0f}: {str(e)[:200]}; retrying")

@@ -1,7 +1,7 @@
 """
 One transcript schema for a committee proceeding, whatever produced it.
 
-A GPO print (`gpo_parse.py`) and a machine transcription (`main.py`) both become a
+A GPO print (`parsers.gpo_text`) and a machine transcription (`transcripts.generate`) both become a
 `Transcript`: the header a printed hearing carries (committee, date, room, presiding
 member, members present, witnesses), then speaker turns with the speaker resolved to a
 person, then the record inserts. `render_gpo()` writes it back in the print's layout, so

@@ -23,6 +23,7 @@ import re
 import urllib.request
 from functools import lru_cache
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from congress_shared.globals import DEFAULT_GPO_HEARINGS_FILE, DEFAULT_MEETINGS_FILE
 
@@ -81,7 +82,9 @@ def gpo_rows() -> list[dict]:
     path = PATHS["gpo"]
     if not Path(path).exists():
         logging.warning(f"no gpo_hearings.csv at {path}; pass --gpo-path")
-    return list(csv.DictReader(open(path))) if Path(path).exists() else []
+        return []
+    with open(path) as stream:
+        return list(csv.DictReader(stream))
 
 
 def mods_people(package_id: str) -> tuple[dict[str, Person], dict]:
@@ -148,14 +151,14 @@ def roster_for(committee_code: str, congress: int, exclude_package: str = "") ->
 
 
 def et_time(iso: str) -> str:
-    """'2019-12-05T15:00:00Z' -> '10:00 a.m.' Eastern (standard time November-March, daylight time otherwise)."""
+    """Format an aware timestamp in Eastern time, applying the date's daylight-saving rules."""
     try:
         t = dt.datetime.fromisoformat(iso.replace("Z", "+00:00"))
     except ValueError:
         return ""
     if t.tzinfo is None:
         return ""
-    east = t.astimezone(dt.timezone(dt.timedelta(hours=-5 if t.month in (11, 12, 1, 2, 3) else -4)))
+    east = t.astimezone(ZoneInfo("America/New_York"))
     return f"{east.hour % 12 or 12}:{east.minute:02d} {'a.m.' if east.hour < 12 else 'p.m.'}"
 
 

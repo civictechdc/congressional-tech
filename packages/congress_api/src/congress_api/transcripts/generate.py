@@ -58,7 +58,8 @@ def meeting_json(h: Header) -> dict:
 
 def from_gpo(package_id: str, gpo_path=DEFAULT_GPO_HEARINGS_FILE, *, source_dir: Path | None = None) -> Transcript:
     from congress_api.parsers.gpo_text import parse_gpo_text
-    row = {r["package_id"]: r for r in csv.DictReader(open(gpo_path))}[package_id]
+    with open(gpo_path) as stream:
+        row = {r["package_id"]: r for r in csv.DictReader(stream)}[package_id]
     people, facts = mods_people(package_id)
     header = Header(title=facts["title"], chamber=row["chamber"], congress=int(facts["congress"] or 0) or None, session=int(facts["session"] or 0) or None,
                     committee=facts["committee"], committee_code=facts["committee_code"], subcommittee=facts["subcommittee"], date=facts["held_date"],

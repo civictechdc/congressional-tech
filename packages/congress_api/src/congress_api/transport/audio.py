@@ -14,6 +14,7 @@ extraction and cutting.
 from __future__ import annotations
 
 import logging
+import math
 import subprocess
 import tempfile
 from pathlib import Path
@@ -60,6 +61,8 @@ def get_audio(out_dir: Path, video_id: str = "", senate_url: str = "", local: st
 
 def duration(path: Path) -> float:
     out = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(path)], capture_output=True, text=True)
+    if out.returncode != 0:
+        raise RuntimeError(f"ffprobe failed: {out.stderr[-400:]}")
     return float(out.stdout.strip() or 0)
 
 
@@ -73,6 +76,10 @@ def cut(path: Path, start: float, length: float) -> Path:
 
 def chunks(path: Path, minutes: float = 25, overlap: float = 0) -> list[tuple[Path, float]]:
     """Cut into chunks of `minutes` (plus `overlap` seconds shared with the next one). Returns (path, offset_seconds)."""
+    if not math.isfinite(minutes) or minutes <= 0:
+        raise ValueError("minutes must be finite and positive")
+    if not math.isfinite(overlap) or overlap < 0:
+        raise ValueError("overlap must be finite and nonnegative")
     total = duration(path)
     step = minutes * 60
     out, start, n = [], 0.0, 0

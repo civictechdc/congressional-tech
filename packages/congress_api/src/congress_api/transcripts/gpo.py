@@ -39,7 +39,8 @@ MIN_TEXT_CHARS = 10000
 def main(out_dir, gpo_path, congress=None, committee=None, chamber=None, package_ids=None, nthreads=4):
     out_dir = Path(out_dir).expanduser()
     out_dir.mkdir(parents=True, exist_ok=True)
-    rows = list(csv.DictReader(open(gpo_path)))
+    with open(gpo_path) as stream:
+        rows = list(csv.DictReader(stream))
     if package_ids:
         wanted = set(package_ids)
         rows = [r for r in rows if r["package_id"] in wanted]
