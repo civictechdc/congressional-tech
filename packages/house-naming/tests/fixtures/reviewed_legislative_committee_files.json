@@ -1,0 +1,395 @@
+{
+  "reviewed": "2026-10-01",
+  "scope": "32 retained PDFs: 15 SCA, one SPW, 16 legislative/procedural. First two pages read as native text (or fewer when shorter); selected pages inspected visually. S. Res. 123 is scanned and was read visually. No OCR, refetching or population-wide contents claim. SHA-256 values identify decompressed retained bodies; these offline tests do not fetch or reverify PDF contents.",
+  "decisions": {
+    "SCA": "Committee context only. Reviewed contents span witness testimony, complete hearing, member statement, report, appendix and transcribed testimony; no abbreviation-derived document kind.",
+    "SPW": "One retained EPW transcript supports only that occurrence. Keep the abbreviation unexpanded and do not assign a family-wide transcript kind.",
+    "RCP": "Only complete bounded drafting layouts receive committee-print. RCP-116-01 is committee rules and stays unclassified from its filename. Local numbers do not become print numbers or bill numbers.",
+    "CP": "Comparative-print reading requires the Rules Committee publisher plus the complete bill-version/RCP layout."
+  },
+  "cases": [
+    {
+      "family": "sca",
+      "filename": "SCA_ Blunt_6_17_21_update.pdf",
+      "url": "https://www.aging.senate.gov/imo/media/doc/A07B8018-5056-A066-6041-55A47F04A7B5/SCA_%20Blunt_6_17_21_update.pdf",
+      "sha256": "84c07438a5be5dccbd9cb3f88c46bf22f0556e1cecba8d618c9e5564a3e9d2d6",
+      "pages": 4,
+      "finding": "Witness testimony by Stephanie Blunt before the Special Committee on Aging.",
+      "expected_filename_kind": [],
+      "visually_reviewed_pages": [
+        1
+      ]
+    },
+    {
+      "family": "sca",
+      "filename": "SCA_ Braddy_6_17_21.pdf",
+      "url": "https://www.aging.senate.gov/imo/media/doc/A07B8018-5056-A066-6041-55A47F04A7B5/SCA_%20Braddy_6_17_21.pdf",
+      "sha256": "e5204332e5562ec618ed04e2280aa3bf57ebe0d02697db40e2c38a46ee1b9827",
+      "pages": 4,
+      "finding": "Witness testimony by Theo Braddy before the Special Committee on Aging.",
+      "expected_filename_kind": [],
+      "visually_reviewed_pages": []
+    },
+    {
+      "family": "sca",
+      "filename": "SCA_04.27.2017.pdf",
+      "url": "https://www.aging.senate.gov/imo/media/doc/SCA_04.27.2017.pdf",
+      "sha256": "162cd32db112cfdcd10cab6659f8763355cb4e5aac20b64396561b3072560a6c",
+      "pages": 61,
+      "finding": "Complete GPO hearing, S. Hrg. 115-363, Aging Without Community; not an individual statement.",
+      "expected_filename_kind": [],
+      "visually_reviewed_pages": [
+        1
+      ]
+    },
+    {
+      "family": "sca",
+      "filename": "SCA_AGShapiro_10_4_17.pdf",
+      "url": "https://www.aging.senate.gov/imo/media/doc/DC596A46-5056-A066-602A-AC400C03D714/SCA_AGShapiro_10_4_17.pdf",
+      "sha256": "1a091de7cebc73d97d85f2666d873ef06f515a4c318fb919e1cfa155e9500b27",
+      "pages": 8,
+      "finding": "Pennsylvania Attorney General Josh Shapiro testimony before the Special Committee on Aging.",
+      "expected_filename_kind": [],
+      "visually_reviewed_pages": []
+    },
+    {
+      "family": "sca",
+      "filename": "SCA_Flannigan_04_18_18.pdf",
+      "url": "https://www.aging.senate.gov/imo/media/doc/7D7E20BD-5056-A066-60D6-B2299AC270D4/SCA_Flannigan_04_18_18.pdf",
+      "sha256": "7e6aa79109c85078d3d0aabd99a170e174ebab2f7c284b5466a32bfc7494bf2d",
+      "pages": 3,
+      "finding": "Denise Flannigan testimony about guardianships.",
+      "expected_filename_kind": [],
+      "visually_reviewed_pages": []
+    },
+    {
+      "family": "sca",
+      "filename": "SCA_Mack_07_21_2020.pdf",
+      "url": "https://www.aging.senate.gov/imo/media/doc/14732735-5056-A066-6090-52CA2171592E/SCA_Mack_07_21_2020.pdf",
+      "sha256": "e43e39c46d5ba4dc0e62827450b454ec21d7fa02ecc5399543dae04d65ec33b5",
+      "pages": 6,
+      "finding": "Dominic Mack testimony on racial health disparities.",
+      "expected_filename_kind": [],
+      "visually_reviewed_pages": []
+    },
+    {
+      "family": "sca",
+      "filename": "SCA_Scott_2_6_19.pdf",
+      "url": "https://www.aging.senate.gov/imo/media/doc/SCA_Scott_2_6_19.pdf",
+      "sha256": "54e805a985210fe4022b6cfe7b25f3feb76e0ec1d2915077a1cad61ef6a59bfc",
+      "pages": 10,
+      "finding": "Written statement of John Scott. The cover itself says Select Committee on Aging; do not silently correct publisher text.",
+      "expected_filename_kind": [],
+      "visually_reviewed_pages": [
+        1
+      ]
+    },
+    {
+      "family": "sca",
+      "filename": "SCA_Ackman_4_27_16.pdf",
+      "url": "https://www.aging.senate.gov/imo/media/doc/SCA_Ackman_4_27_16.pdf",
+      "sha256": "62c5d6077cccfb739a5ffbd76662dd87e5d429ec28a6b8d37a0dad9145bf12ed",
+      "pages": 5,
+      "finding": "William Ackman statement before the Special Committee on Aging.",
+      "expected_filename_kind": [],
+      "visually_reviewed_pages": []
+    },
+    {
+      "family": "sca",
+      "filename": "SCA_Askari_4_27_16.pdf",
+      "url": "https://www.aging.senate.gov/imo/media/doc/SCA_Askari_4_27_16.pdf",
+      "sha256": "527ca78a4e94d51620fab9af18a09fed5af5da4089f0635c2fedbb6cf108c53b",
+      "pages": 2,
+      "finding": "Frederick Askari testimony before the Special Committee on Aging.",
+      "expected_filename_kind": [],
+      "visually_reviewed_pages": []
+    },
+    {
+      "family": "sca",
+      "filename": "SCA_Baron_04_06_16.pdf",
+      "url": "https://www.aging.senate.gov/imo/media/doc/SCA_Baron_04_06_16.pdf",
+      "sha256": "f540cd96eee69374c40e15261dd5bd47e22785867ff76e2e96e21dfd17010e66",
+      "pages": 4,
+      "finding": "Lisa Baron testimony before the Special Committee on Aging.",
+      "expected_filename_kind": [],
+      "visually_reviewed_pages": []
+    },
+    {
+      "family": "sca",
+      "filename": "SCA_Berman_6_23_16.pdf",
+      "url": "https://www.aging.senate.gov/imo/media/doc/SCA_Berman_6_23_16.pdf",
+      "sha256": "2a94924dacdafd094892c3cc438f379a258692366bebdaa1e5d4d752b074406d",
+      "pages": 4,
+      "finding": "Amy Berman testimony before the Special Committee on Aging.",
+      "expected_filename_kind": [],
+      "visually_reviewed_pages": []
+    },
+    {
+      "family": "spw",
+      "filename": "B2E156A9718FFEE0A39AEE760A2112F1855BAD18DAD413F75FE4A6ADA01E8BAD.spw-06092021.pdf",
+      "url": "https://www.epw.senate.gov/public/_cache/files/1/5/15b4d5fe-e3dc-4ab3-9c0f-0d861eebc5d7/B2E156A9718FFEE0A39AEE760A2112F1855BAD18DAD413F75FE4A6ADA01E8BAD.spw-06092021.pdf",
+      "sha256": "cdda03899462b35e0de2fa936d8006cccbb21c82542c14abe5becef4b447ab0b",
+      "pages": 84,
+      "finding": "84-page EPW transcript with a contents page, meeting opening, senators and witnesses. One body cannot establish a family-wide meaning or acronym expansion.",
+      "expected_filename_kind": [],
+      "visually_reviewed_pages": [
+        2
+      ]
+    },
+    {
+      "family": "sca",
+      "filename": "SCA_Boyko_11_28_18_appendix.pdf",
+      "url": "https://www.aging.senate.gov/imo/media/doc/SCA_Boyko_11_28_18_appendix.pdf",
+      "sha256": "6d15d94bc1e913716117ac682b64e2e68dbdc006664a94e60f2af93df8681af9",
+      "pages": 44,
+      "finding": "A set of background briefs on conservator exploitation, supplied as a testimony appendix.",
+      "expected_filename_kind": [
+        "appendix"
+      ],
+      "visually_reviewed_pages": []
+    },
+    {
+      "family": "sca",
+      "filename": "SCA_Buckley_11_28_18_report.pdf",
+      "url": "https://www.aging.senate.gov/imo/media/doc/SCA_Buckley_11_28_18_report.pdf",
+      "sha256": "af72e24691927db9765eb31c180f6d490152d922379740066da67e8f219763ee",
+      "pages": 7,
+      "finding": "Report on the first full year under the Nevada right-to-counsel law; not a witness statement.",
+      "expected_filename_kind": [
+        "report"
+      ],
+      "visually_reviewed_pages": []
+    },
+    {
+      "family": "sca",
+      "filename": "SCA_Hatch_transcript_2_15_17.pdf",
+      "url": "https://www.aging.senate.gov/imo/media/doc/29FCFF23-5056-A066-600C-61811F23B7BE/SCA_Hatch_transcript_2_15_17.pdf",
+      "sha256": "c26908f0ab7f9ea734ac330845375a63466c5a95e0750a1a65be76c240813e48",
+      "pages": 2,
+      "finding": "Philip Hatch video testimony marked As Transcribed; not a complete meeting transcript.",
+      "expected_filename_kind": [
+        "transcript"
+      ],
+      "visually_reviewed_pages": []
+    },
+    {
+      "family": "sca",
+      "filename": "SCA_SMC_4_6_16.pdf",
+      "url": "https://www.aging.senate.gov/imo/media/doc/SCA_SMC_4_6_16.pdf",
+      "sha256": "0354a7613831d245964f174bca49efd83bd5c1a3ba38840237f63358d93bb977",
+      "pages": 3,
+      "finding": "Opening statement by Senator Susan Collins; not an external witness statement.",
+      "expected_filename_kind": [],
+      "visually_reviewed_pages": []
+    },
+    {
+      "family": "legislative",
+      "filename": "CP-117HR2773RH-RCP117-47.pdf",
+      "url": "https://rules.house.gov/sites/republicans.rules.house.gov/files/CP-117HR2773RH-RCP117-47.pdf",
+      "sha256": "6049e3c4e374a4c3ecb4add33c18e69856a1e71d79ecdfbba2bc68c090904cb3",
+      "pages": 10,
+      "finding": "Comparative print of H.R. 2773 as reported and RCP 117-47; the cover warns it is computer-generated and not authoritative.",
+      "expected_filename_kind": [
+        "bill-comparison"
+      ],
+      "visually_reviewed_pages": [
+        1
+      ]
+    },
+    {
+      "family": "legislative",
+      "filename": "S. Res. 123 As Reported.pdf",
+      "url": "https://www.foreign.senate.gov/imo/media/doc/S.%20Res.%20123%20As%20Reported.pdf",
+      "sha256": "9f785069846ec72f8232cb3a59bd7cee136a9ea650dd5830d5c6d911f000a6de",
+      "pages": 9,
+      "finding": "Scanned Senate resolution S. Res. 123; visually inspected cover identifies the resolution and printed reported wording.",
+      "expected_filename_kind": [
+        "legislative-text"
+      ],
+      "visually_reviewed_pages": [
+        1
+      ]
+    },
+    {
+      "family": "legislative",
+      "filename": "S. Res. 226 (Reported Out).pdf",
+      "url": "https://www.foreign.senate.gov/imo/media/doc/5a414f2b-d4b7-d5bc-d32d-8ec451b19fe8/S.%20Res.%20226%20(Reported%20Out).pdf",
+      "sha256": "b6e7ee6451c746d9c47995b64a8db95090f5e4ee86ba2693c7938d028d1cb02f",
+      "pages": 5,
+      "finding": "Senate resolution S. Res. 226 with reported amendments. The filename does not supply the Congress shown on the cover.",
+      "expected_filename_kind": [
+        "legislative-text"
+      ],
+      "visually_reviewed_pages": []
+    },
+    {
+      "family": "legislative",
+      "filename": "Motion to Authorize Subpoena to Twitter and Facebook (Graham).pdf",
+      "url": "https://www.judiciary.senate.gov/imo/media/doc/Motion%20to%20Authorize%20Subpoena%20to%20Twitter%20and%20Facebook%20(Graham).pdf",
+      "sha256": "d6146b8ae571c0449d82c8b37d07dfa0c3bd012da787284613d72086daf79cae",
+      "pages": 1,
+      "finding": "Motion of Senator Lindsey Graham to authorize subpoenas; filename wording does not establish passage.",
+      "expected_filename_kind": [
+        "motion"
+      ],
+      "visually_reviewed_pages": [
+        1
+      ]
+    },
+    {
+      "family": "legislative",
+      "filename": "Proposed Amendment to SENR Cmte Rules for the 119th Congress 1-23-25 Bus Mtg.pdf",
+      "url": "https://www.energy.senate.gov/wp-content/uploads/meetings/53951DA7-A34D-4DA9-BA8A-E68758EA9531/Proposed%20Amendment%20to%20SENR%20Cmte%20Rules%20for%20the%20119th%20Congress%201-23-25%20Bus%20Mtg.pdf",
+      "sha256": "17a2780d3f4621a24d2ad20372db6df2744d769734dfb7c5d396a06c73bca2a0",
+      "pages": 1,
+      "finding": "Proposed amendment to Energy and Natural Resources committee rules; no adoption inferred.",
+      "expected_filename_kind": [
+        "amendment"
+      ],
+      "visually_reviewed_pages": [
+        1
+      ]
+    },
+    {
+      "family": "legislative",
+      "filename": "CJS RCP FINAL_xml.pdf",
+      "url": "https://rules.house.gov/sites/republicans.rules.house.gov/files/CJS%20RCP%20FINAL_xml.pdf",
+      "sha256": "4d9a2523ba430748ca855069e4a2bc4af322d4716a24ac70a55b6cec5c7bfc88",
+      "pages": 148,
+      "finding": "Rules Committee Print 118-12, text of H.R. 5893. CJS stays a literal subject abbreviation in filename metadata.",
+      "expected_filename_kind": [
+        "committee-print"
+      ],
+      "visually_reviewed_pages": [
+        1
+      ]
+    },
+    {
+      "family": "legislative",
+      "filename": "H3564_RCP_xml.pdf",
+      "url": "https://rules.house.gov/sites/republicans.rules.house.gov/files/H3564_RCP_xml.pdf",
+      "sha256": "5831f3415846c5d100967f4dc70e4f4f60436d6275c78778999bd90ff93130f9",
+      "pages": 6,
+      "finding": "Rules Committee Print 118-8, text of H.R. 3564. The print number is absent from the filename.",
+      "expected_filename_kind": [
+        "committee-print"
+      ],
+      "visually_reviewed_pages": []
+    },
+    {
+      "family": "legislative",
+      "filename": "mlva-rcp_xml.pdf",
+      "url": "https://docs.house.gov/billsthisweek/20250623/mlva-rcp_xml.pdf",
+      "sha256": "b7e738561c2da621d263483d8186ac24db8bf6ea4b174300d28c884133e24e80",
+      "pages": 91,
+      "finding": "Rules Committee Print 119-5 with an unnumbered appropriations bill; MLVA stays literal.",
+      "expected_filename_kind": [
+        "committee-print"
+      ],
+      "visually_reviewed_pages": []
+    },
+    {
+      "family": "legislative",
+      "filename": "RCP-116-01.pdf",
+      "url": "https://rules.house.gov/sites/republicans.rules.house.gov/files/116-1/RCP-116-01.pdf",
+      "sha256": "e790c59cfb77e514cd2a09d45acc9ee954bbd62e5fac7b981205632f0b26e047",
+      "pages": 21,
+      "finding": "Rules of the Committee on Rules, 116th Congress. Counterexample to treating every RCP-numbered basename as a legislative committee print.",
+      "expected_filename_kind": [],
+      "visually_reviewed_pages": [
+        1
+      ]
+    },
+    {
+      "family": "legislative",
+      "filename": "RCP2_STOPINSIDERTRADING_xml.pdf",
+      "url": "https://docs.house.gov/billsthisweek/20260720/RCP2_STOPINSIDERTRADING_xml.pdf",
+      "sha256": "6bc674c199715495e59b8bb7c0de4fcb3aa60f3c5e05b1bb1701a9eacc1de776",
+      "pages": 14,
+      "finding": "Rules Committee Print 119-38 concerning H.R. 7008 and H.R. 9368. The filename number 2 supplies neither print identity nor bill identity.",
+      "expected_filename_kind": [
+        "committee-print"
+      ],
+      "visually_reviewed_pages": []
+    },
+    {
+      "family": "legislative",
+      "filename": "RCP_277_xml.pdf",
+      "url": "https://rules.house.gov/sites/republicans.rules.house.gov/files/RCP_277_xml.pdf",
+      "sha256": "efdacccea00185fdac48fce83d8f7c6052dfcef9687609e063d8f77ccd881c55",
+      "pages": 21,
+      "finding": "Rules Committee Print 118-6, text of H.R. 277. The filename local number alone does not establish its role.",
+      "expected_filename_kind": [
+        "committee-print"
+      ],
+      "visually_reviewed_pages": []
+    },
+    {
+      "family": "legislative",
+      "filename": "RCP_H5961_xml.pdf",
+      "url": "https://rules.house.gov/sites/republicans.rules.house.gov/files/RCP_H5961_xml.pdf",
+      "sha256": "72ca205a1bf74b2a61b8e7251961383d29f50fdbfb844d0564bad928dd8b643d",
+      "pages": 6,
+      "finding": "Rules Committee Print 118-14, text of H.R. 5961. Only the short measure reference is in the filename.",
+      "expected_filename_kind": [
+        "committee-print"
+      ],
+      "visually_reviewed_pages": []
+    },
+    {
+      "family": "legislative",
+      "filename": "118hr5893ih_to_CJS RCP FINAL_xml.pdf",
+      "url": "https://rules.house.gov/sites/republicans.rules.house.gov/files/118hr5893ih_to_CJS%20RCP%20FINAL_xml.pdf",
+      "sha256": "8ae59ed765c02157b2d871c9b02a27d344208f9e41169a46e43cfbf5a76b4360",
+      "pages": 48,
+      "finding": "Comparative print explicitly compares 118hr5893ih to CJS RCP FINAL_xml; computer-generated and not authoritative.",
+      "expected_filename_kind": [
+        "bill-comparison"
+      ],
+      "visually_reviewed_pages": []
+    },
+    {
+      "family": "legislative",
+      "filename": "118hr5894ih_to_LHHS RCP FINAL_xml.pdf",
+      "url": "https://rules.house.gov/sites/republicans.rules.house.gov/files/118hr5894ih_to_LHHS%20RCP%20FINAL_xml.pdf",
+      "sha256": "32f73c823ca00faf8183f336d3abfa4b97dcea79a3790c7b664b796c02c94bb1",
+      "pages": 65,
+      "finding": "Comparative print explicitly compares 118hr5894ih to LHHS RCP FINAL_xml; computer-generated and not authoritative.",
+      "expected_filename_kind": [
+        "bill-comparison"
+      ],
+      "visually_reviewed_pages": []
+    },
+    {
+      "family": "legislative",
+      "filename": "S. Res. 542 Resolving Clause Amendment1.pdf",
+      "url": "https://www.foreign.senate.gov/imo/media/doc/S.%20Res.%20542%20Resolving%20Clause%20Amendment1.pdf",
+      "sha256": "f4b1cb5cb37229a0d0717829825ce814328b1e2665c648f983c216e20618bf89",
+      "pages": 2,
+      "finding": "Resolving-clause amendment; the exact same retained body is also available under the misleading bare s-res-542 download slug.",
+      "expected_filename_kind": [
+        "amendment"
+      ],
+      "visually_reviewed_pages": [],
+      "aliases": [
+        {
+          "filename": "s-res-542",
+          "url": "https://www.foreign.senate.gov/download/s-res-542",
+          "expected_filename_kind": []
+        }
+      ]
+    },
+    {
+      "family": "legislative",
+      "filename": "S. Res. __ (Commending Career Professionals at State).pdf",
+      "url": "https://www.foreign.senate.gov/imo/media/doc/S.%20Res.%20__%20(Commending%20Career%20Professionals%20at%20State).pdf",
+      "sha256": "ec9f0e6261b9f23c812834b8a60e4c39e8fd32e7e487cc138969c0243d799d8c",
+      "pages": 4,
+      "finding": "Unnumbered Senate resolution with the title retained in the filename.",
+      "expected_filename_kind": [
+        "legislative-text"
+      ],
+      "visually_reviewed_pages": []
+    }
+  ]
+}

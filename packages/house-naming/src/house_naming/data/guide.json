@@ -26737,6 +26737,229 @@
           }
         ]
       }
+    },
+    {
+      "id": "complete-senate-resolution",
+      "scope": "stem",
+      "priority": 2,
+      "pattern": "(?P<measure_token>S\\.?[ _]*RES\\.?)[ .]*(?:(?P<measure_number>[0-9]+)|(?P<number_placeholder>_{2,}))(?P<suffix>(?:[ _-]*(?:\\((?:Reported[ _-]+Out|As[ _-]+Reported)\\)|(?:As[ _-]+)?Reported(?:[ _-]+Out)?|Revised|Text)[0-9]*(?:[ _-]+[A-Z]{3}[0-9]{2}[A-Z0-9]{3,4})?)?)",
+      "description": "Complete Senate resolution basename, optionally followed by bounded edition wording and a drafting identifier. A whole number stays a measure number, even when date-like. References inside other document titles do not match; no Congress, official version or legislative action is inferred. Hyphen-only download slugs are excluded: a retained s-res-542 alias identifies a resolving-clause amendment.",
+      "field_readings": {
+        "measure_token": {
+          "category": "legislative-text"
+        }
+      },
+      "searchable_fields": [
+        "suffix"
+      ],
+      "field_vocabularies": {
+        "measure_token": [
+          {
+            "vocabulary": "house:measure",
+            "normalize": "letters"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rcp-local-numbered-print",
+      "scope": "stem",
+      "priority": 2,
+      "pattern": "(?P<print_token>RCP)[ _-]+(?P<local_number_token>[0-9]+)(?:[_-](?P<local_modifier>[0-9]+))?[_-](?P<filename_format_token>xml)(?:[_-](?P<numeric_suffix_token>[0-9]+))?",
+      "description": "Whole RCP/local-number/xml drafting layout. Reviewed covers identify Rules Committee Prints, but the local number does not establish a bill number, print number or Congress.",
+      "field_readings": {
+        "print_token": {
+          "category": "committee-print"
+        },
+        "local_number_token": {
+          "note": "Literal local component; not a bill number, official print number or Congress."
+        }
+      }
+    },
+    {
+      "id": "rcp-local-measure-print",
+      "scope": "stem",
+      "priority": 2,
+      "pattern": "(?P<payload>(?P<print_token>RCP)[_-]+(?:[HS](?:C|J)?[0-9]+(?:etc)?(?:[_-](?:[HS](?:C|J)?[0-9]+|[0-9]+))*[_-])?(?P<filename_format_token>xml)(?:[_-](?P<local_modifier>[0-9]+)| +\\((?P<numeric_suffix_token>[0-9]+)\\))?)",
+      "description": "Complete RCP/short-measure/xml layout, including consecutive measure components and local numeric suffixes. Shared reference readers retain the literal short measure spelling; no print identity is invented.",
+      "field_readings": {
+        "print_token": {
+          "category": "committee-print"
+        }
+      },
+      "searchable_fields": [
+        "payload",
+        "print_token",
+        "filename_format_token"
+      ]
+    },
+    {
+      "id": "short-measure-rcp-print",
+      "scope": "stem",
+      "priority": 2,
+      "pattern": "(?P<measure_token>H)(?P<measure_number>[0-9]+)[_-](?P<print_token>RCP)[_-](?P<filename_format_token>xml)",
+      "description": "Complete short House measure followed by RCP/xml. The H spelling is retained as a local measure reference; the filename supplies no print number or Congress.",
+      "field_readings": {
+        "print_token": {
+          "category": "committee-print"
+        }
+      },
+      "field_vocabularies": {
+        "measure_token": [
+          {
+            "vocabulary": "house:measure",
+            "normalize": "letters"
+          }
+        ]
+      }
+    },
+    {
+      "id": "subject-rcp-print",
+      "scope": "stem",
+      "priority": 2,
+      "pattern": "(?P<subject_token>CJS|LHHS|MLVA)[ _-]+(?P<print_token>RCP)(?:[ _-]+(?P<qualifier_wording>FINAL))?[_-](?P<filename_format_token>xml)",
+      "description": "Reviewed appropriations-subject/RCP/xml layouts. Subject abbreviations remain literal, and FINAL is filename wording rather than a verified edition or legislative status.",
+      "field_readings": {
+        "print_token": {
+          "category": "committee-print"
+        },
+        "qualifier_wording": {
+          "note": "Printed edition wording only; contents and status are not verified."
+        }
+      }
+    },
+    {
+      "id": "rcp-local-titled-print",
+      "scope": "stem",
+      "priority": 2,
+      "pattern": "(?P<print_token>RCP)(?P<local_number_token>[0-9]+)[_-](?P<subject_token>(?-i:[A-Z]{3,}))[_-](?P<filename_format_token>xml)",
+      "description": "Whole RCP/local-number/uppercase-title/xml layout. Reviewed source RCP2_STOPINSIDERTRADING is a Rules Committee Print; its 2 is not the published print number or a measure number.",
+      "field_readings": {
+        "print_token": {
+          "category": "committee-print"
+        },
+        "local_number_token": {
+          "note": "Literal local component; not an official print or measure number."
+        }
+      },
+      "searchable_fields": [
+        "subject_token"
+      ]
+    },
+    {
+      "id": "publisher-cp-comparative-print",
+      "scope": "source-stem",
+      "priority": 0,
+      "pattern": "(?P<comparison_wording>CP)-(?P<comparison_source>(?P<congress>[0-9]{3})(?P<measure_token>HCONRES|SCONRES|HJRES|SJRES|HRES|SRES|HR|S)(?P<measure_number>[0-9]+)(?P<version_token>RH|IH|RS|IS|EH|ES|ENR)(?:-(?P<part_marker>P)(?P<part_number>[0-9]+))?)-(?P<comparison_target>(?P<print_token>RCP)(?P<print_congress>[0-9]{3})-(?P<print_number>[0-9]+))(?P<suffix>(?:-U[0-9]+)?)",
+      "description": "Rules Committee publisher CP/numbered-bill-version/RCP-print layout. The reviewed CP-117HR2773RH-RCP117-47 cover explicitly identifies a comparative print. Both references survive; this does not assert equivalence, an authoritative change record or a verified legislative action.",
+      "field_readings": {
+        "comparison_wording": {
+          "category": "bill-comparison",
+          "label": "Comparative print",
+          "vocabulary_url": "https://rules.house.gov/sites/republicans.rules.house.gov/files/CP-117HR2773RH-RCP117-47.pdf"
+        }
+      },
+      "field_vocabularies": {
+        "measure_token": [
+          {
+            "vocabulary": "house:measure",
+            "normalize": "letters"
+          }
+        ],
+        "version_token": [
+          {
+            "vocabulary": "house:version"
+          }
+        ]
+      },
+      "searchable_fields": [
+        "suffix"
+      ],
+      "source_hosts": [
+        "rules.house.gov"
+      ]
+    },
+    {
+      "id": "procedural-motion-heading",
+      "scope": "stem",
+      "priority": 2,
+      "pattern": "(?!.*(?:^|[ _-])(?:Testimony|Summary|Report|Letter|Analysis|Fact[ _-]+Sheet)(?:[ _.-]|$))(?P<label>Motion)[ _-]+to[ _-]+(?P<target_subject>(?:Authorize|Recommit|Table|Proceed|Adopt|Strike|Waive|Suspend|Postpone)[ _-]+.+)",
+      "description": "Leading Motion to plus an explicit procedural action. The remainder describes the target, not an additional document genre; no mover identity, passage or vote outcome is inferred.",
+      "field_readings": {
+        "label": {
+          "category": "motion"
+        }
+      },
+      "searchable_fields": [
+        "target_subject"
+      ]
+    },
+    {
+      "id": "committee-rules-amendment-heading",
+      "scope": "stem",
+      "priority": 2,
+      "pattern": "(?!.*(?:^|[ _-])(?:Testimony|Summary|Report|Letter|Analysis|Fact[ _-]+Sheet)(?:[ _.-]|$))(?:(?P<qualifier_wording>Proposed)[ _-]+)?(?P<amendment_marker>Amendment)[ _-]+to[ _-]+(?P<target_subject>(?:[A-Za-z]+[ _-]+){0,8}(?:Committee|Cmte)[ _-]+Rules(?:[ _-].*)?)",
+      "description": "Leading amendment-to-committee-rules heading. Retain proposed wording and the target rules; no adoption, author or official amendment number is inferred.",
+      "field_readings": {
+        "amendment_marker": {
+          "category": "amendment"
+        },
+        "qualifier_wording": {
+          "note": "Printed proposal wording, not a verified legislative action."
+        }
+      },
+      "searchable_fields": [
+        "target_subject"
+      ]
+    },
+    {
+      "id": "placeholder-senate-resolution-title",
+      "scope": "stem",
+      "priority": 2,
+      "pattern": "(?P<measure_token>S\\.?[ _]*RES\\.?)[ .]*(?P<number_placeholder>_{2,})[ ]+\\((?P<description>[^()]+)\\)",
+      "description": "Complete unnumbered Senate resolution heading with a parenthesized title. Preserve its placeholder and literal title without supplying a number, Congress or official version.",
+      "field_readings": {
+        "measure_token": {
+          "category": "legislative-text"
+        }
+      },
+      "field_vocabularies": {
+        "measure_token": [
+          {
+            "vocabulary": "house:measure",
+            "normalize": "letters"
+          }
+        ]
+      }
+    },
+    {
+      "id": "publisher-bill-to-rcp-comparison",
+      "scope": "source-stem",
+      "priority": 0,
+      "pattern": "(?P<comparison_source>(?P<congress>[0-9]{3})(?P<measure_token>HR)(?P<measure_number>[0-9]+)(?P<version_token>IH))_(?P<comparison_relation>to)_(?P<comparison_target>(?P<subject_token>CJS|LHHS)[ ]+(?P<print_token>RCP)[ ]+(?P<qualifier_wording>FINAL)_(?P<filename_format_token>xml))",
+      "description": "Rules Committee bill-version_to_appropriations-RCP layout. Both reviewed CJS and LHHS covers explicitly identify comparative prints. Keep the two printed references and local subject; no printed RCP number, verified finality or authoritative legislative action is inferred.",
+      "field_readings": {
+        "comparison_relation": {
+          "category": "bill-comparison",
+          "label": "Comparative print"
+        }
+      },
+      "field_vocabularies": {
+        "measure_token": [
+          {
+            "vocabulary": "house:measure",
+            "normalize": "letters"
+          }
+        ],
+        "version_token": [
+          {
+            "vocabulary": "house:version"
+          }
+        ]
+      },
+      "source_hosts": [
+        "rules.house.gov"
+      ]
     }
   ],
   "extraction_vocabularies": {

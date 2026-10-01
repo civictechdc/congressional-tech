@@ -350,6 +350,22 @@ time and body hash in the capture layer; this reader never fills in a bill or
 edition from the basename or URL. See the 78-case fixture in
 `tests/fixtures/verified_local_conventions.json` for the bounded source review.
 
+Complete Senate-resolution basenames (including `S. Res. 123 As Reported.pdf`)
+receive `legislative-text`; reported wording does not establish an official
+version or action. Complete RCP drafting layouts receive `committee-print`,
+while local numbers remain separate from bill and print numbers. The Rules
+Committee publisher also qualifies the complete `CP-<bill-version>-RCP<print>`
+comparative-print layout. Explicit procedural headings distinguish motions
+and amendments to committee rules from documents discussing them.
+
+Committee abbreviations do not determine document kind. The retained SCA
+samples contain witness statements, a complete hearing, a member statement,
+reports and appendices. The single retained SPW sample is an EPW transcript;
+that does not qualify every SPW file. Likewise, `RCP-116-01.pdf` contains
+committee rules, so a bare RCP reference remains insufficient. The
+[32-PDF review fixture](tests/fixtures/reviewed_legislative_committee_files.json)
+records source URLs, body hashes, findings and the narrower filename readings.
+
 ### Optional surname context
 
 Supply a Congress-specific surname vocabulary when a filename joins a printed
