@@ -8,7 +8,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from house_naming.corpus import filename_tokens as _filename_tokens, shared_token_pattern
 from house_naming.extraction import EXTENSION, date_candidates, member_title_pattern
 from .naming import HOUSE_NAMING
@@ -26,6 +26,8 @@ class FilenameField(BaseModel):
     label: str | None = None
     context: str | None = None
     vocabulary_url: str | None = None
+    role: str | None = None
+    category: str | None = None
 
 
 class FilenameMatch(BaseModel):
@@ -75,6 +77,7 @@ class ParsedFilename(BaseModel):
     suppressed: tuple[SuppressedFilenameMatch, ...] = ()
     issues: tuple[str, ...] = ()
     rejected_candidates: tuple[RejectedNamingCandidate, ...] = ()
+    metadata: dict[str, list[str]] = Field(default_factory=dict)
 
 
 def parse_filename(filename: str, *, member_surnames: Mapping[str, Sequence[str]] | None = None,
@@ -91,7 +94,8 @@ def parse_filename(filename: str, *, member_surnames: Mapping[str, Sequence[str]
     matches = tuple(FilenameMatch.model_validate(match) for match in result['observations'])
     return ParsedFilename(filename=result['input'], source_url=source_url, stem_end=result['stem_end'], matches=matches,
                           pieces=result['pieces'], suppressed=result['suppressed'],
-                          issues=result['issues'], rejected_candidates=result['rejected_candidates'])
+                          issues=result['issues'], rejected_candidates=result['rejected_candidates'],
+                          metadata=result['metadata'])
 
 
 def resolve_unmatched_filename(parsed: ParsedFilename) -> FilenameMatch | None:

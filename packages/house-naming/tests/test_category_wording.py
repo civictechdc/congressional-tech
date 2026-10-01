@@ -48,7 +48,6 @@ def test_managers_amendment_wording(engine, filename, expected):
     ('03-04-20_views_and_estimate_notice.pdf', 'views_and_estimate_notice'),
     ('Agenda 1-23-25 SENR Cmte Bus Mtg.pdf', 'Agenda'),
     ('NOTICE OF SENATE COMMITTEE HEARING December 2 2025.pdf', 'NOTICE'),
-    ('Notice Letter Footjoy IP EDGE.pdf', 'Notice'),
     ('the-following-agenda-to-be-considered-06-17-2026', 'the-following-agenda-to-be-considered'),
     ('Agenda.pdf', 'Agenda'),
     ('notice_of_meeting.pdf', 'notice'),
@@ -125,3 +124,11 @@ def test_specific_phrase_keeps_the_prior_generic_label(engine):
 def test_literal_hybrid_remote_words_do_not_verify_access(engine):
     result = engine.extract('01-19-22_remote_hearing_notice.pdf')
     assert not any(f['name'] in {'access_wording', 'status', 'meeting_id'} for m in result['observations'] for f in m['fields'])
+
+
+def test_notice_letter_does_not_imply_a_meeting(engine):
+    result = engine.extract('Notice Letter Footjoy IP EDGE.pdf')
+    assert 'notice' in result['metadata']['document_kind']
+    assert 'meeting-notice' not in result['metadata']['document_kind']
+    assert result['metadata']['label'] == ['Notice']
+    assert result['metadata']['document_token'] == ['Letter']

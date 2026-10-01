@@ -90,7 +90,8 @@ def test_whole_marker_reuses_its_existing_role(engine, token, context, field_nam
         assert field['label'] == entry['label']
         assert field['vocabulary_url'].endswith('#page=7')
     else:
-        assert field['code'] is None and field['label'] is None
+        assert field['code'] is None
+        assert field['label'] == 'Amendment in the nature of a substitute'
     assert fields(result, 'print_number')[0]['raw'] == '7'
 
 

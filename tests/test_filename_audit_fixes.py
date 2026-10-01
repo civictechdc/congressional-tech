@@ -57,7 +57,7 @@ def test_documented_house_pih_stage_has_its_own_source(name, number):
     assert 'pih' not in BILL_VERSIONS  # Not part of GovInfo's common-version table.
     parsed = filenames.parse_filename(name)
     version, = [f for m in parsed.matches for f in m.fields if f.name == 'version_token']
-    assert version.code == 'pih' and version.label == 'Pre-introduced measure; no bill number'
+    assert version.code == 'pih' and version.label == 'Pre-introduced measure'
     assert version.vocabulary_url == HOUSE_NAMING_URL + "#page=6"
     assert name[version.start:version.end] == version.raw
     numbers = {f.raw for m in parsed.matches for f in m.fields if f.name == 'measure_number'}

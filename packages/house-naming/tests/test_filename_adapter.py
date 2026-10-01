@@ -23,7 +23,7 @@ def test_adapter_preserves_every_field_and_diagnostic(name):
     for key, target in [('input', 'filename'), ('stem_end', 'stem_end'),
                         ('observations', 'matches'), ('pieces', 'pieces'),
                         ('suppressed', 'suppressed'), ('issues', 'issues'),
-                        ('rejected_candidates', 'rejected_candidates')]:
+                        ('rejected_candidates', 'rejected_candidates'), ('metadata', 'metadata')]:
         assert actual[target] == expected[key]
 
 

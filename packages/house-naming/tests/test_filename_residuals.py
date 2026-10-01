@@ -118,7 +118,7 @@ def test_unstructured_review_field_keeps_the_saved_typed_shape():
     assert row['field'] == {
         'name': 'unstructured_stem', 'raw': 'UnfamiliarWord', 'start': 0, 'end': 14,
         'candidates': (), 'note': None, 'code': None, 'label': None,
-        'context': None, 'vocabulary_url': None,
+        'context': None, 'vocabulary_url': None, 'role': None, 'category': None,
     }
 
 

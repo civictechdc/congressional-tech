@@ -89,4 +89,4 @@ def test_optional_identifier_letters_do_not_shorten_version_codes(payload):
     if expected == 'pis':
         assert versions[0].label is None
     elif expected == 'pih':
-        assert versions[0].label == 'Pre-introduced measure; no bill number'
+        assert versions[0].label == 'Pre-introduced measure'

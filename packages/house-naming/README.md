@@ -19,7 +19,7 @@ identity or legislative status. The APIs keep those distinctions visible.
 
 | Task | API | Result |
 | --- | --- | --- |
-| Read metadata from an actual source filename | `Engine.extract(name)` | Literal observations, original text and offsets, plus any validated naming records. |
+| Read metadata from an actual source filename | `Engine.extract(name)` | Flat useful `metadata`, literal observations and offsets, plus any validated naming records. |
 | Recognize a supported naming convention | `Engine.parse(name)` | Validated records, canonical filenames, ambiguity and rejected candidates. |
 | Check a structured record | `Engine.validate(record)` | A fresh validated record, including established defaults and derived fields. |
 | Generate a supported filename | `Engine.render(record)` | A filename, or the supplied URL for a link-only kind. |
@@ -54,6 +54,8 @@ source = engine.extract("Opening Statement-Hassan-2020-06-03.pdf")
 
 # The wording is readable even though the filename is not a strict convention.
 assert not source["valid"]
+assert source["metadata"]["subject_token"] == ["Hassan"]
+assert source["metadata"]["document_kind"] == ["opening-statement"]
 assert any(
     item["rule"] == "labeled-subject-date"
     for item in source["observations"]
@@ -113,11 +115,26 @@ fixed sequence:
    identifiers constrain date and fallback readings.
 4. Return selected observations, suppressed alternatives and the pieces that
    reconstruct the input exactly.
+5. Collect useful values in `metadata`. Catalog field readings supply roles and
+   categories even when the filename cannot form a valid naming record.
 
 Python keeps the reusable calculations: real-date validation, ambiguous date
 readings, boundary and overlap checks, surname matching, offsets and work limits.
 The catalog selects these operations through `processors` and other declared
 settings. It cannot supply executable expressions or arbitrary Python handlers.
+
+Useful metadata retains descriptions alongside dates, fiscal years and revisions.
+For example, `HRPT-113-FY2014LegBranch.pdf` supplies fiscal year `2014` and
+description `LegBranch`; `BILLS-116HR8andHR1112ih.pdf` supplies both `hr8` and
+`hr1112`. Join references normalize leading zeros while literal number fields
+keep their spelling. Explicit document wording can add a category alongside a
+validated layout kind, such as `committee-print` alongside `bill-untyped-draft`.
+
+Subject refinement trims already recognized document labels, dates and
+qualifiers from the edges. It preserves interior title text, including fiscal
+years, as one literal span. A qualifier-only name such as `opening-statement-final.pdf`
+has no subject. `McGlynn Responses to Whitehouse QFRs.pdf` preserves `McGlynn`
+and `Whitehouse` separately as subject and questioner text.
 
 [`engine.py`](src/house_naming/engine.py) also runs strict convention parsing
 and combines its results with the literal observations. `parse()` and
@@ -139,6 +156,7 @@ In addition to the strict parsing results, `extract()` returns:
 
 | Field | Meaning |
 | --- | --- |
+| `metadata` | Flat string-list values suitable for table columns, including literal readings and useful convention fields. Independent of strict validity; no offsets or diagnostics. |
 | `stem_end` | End offset before recognized extensions or query-shaped suffix text. |
 | `observations` | Rule, scope, matched span and captured source fields. |
 | `pieces` | Word, number and separator spans that reconstruct the exact input. |
@@ -147,7 +165,9 @@ In addition to the strict parsing results, `extract()` returns:
 
 Every observed field carries `name`, `raw`, zero-based `start` and `end`
 offsets, `candidates`, `note`, and optional `code`, `label`, `context` and
-`vocabulary_url`. Offsets use the half-open interval `[start, end)` in the
+`vocabulary_url`. A catalog reading may also assign a `role` (such as
+`witness_id`) or a document `category`. These describe filename wording and
+position; they do not verify identity or contents. Offsets use the half-open interval `[start, end)` in the
 original filename. Snake-case observation names describe source text:
 `measure_number` retains printed digits, whereas a validated record's
 `measureNumber` is an integer.
@@ -161,6 +181,36 @@ general fuzzy correction or verification of the document's contents.
 The typed adapter exposes these observations as `ParsedFilename.matches`.
 Those matches are literal observations; they are distinct from the validated
 record candidates in `Engine.parse()["matches"]`.
+
+Applications should consume `result["metadata"]` rather than reconstructing
+categories from strict `matches`. For example, a House `Bio` filename ending in
+`.docx` still supplies its witness string, committee, Congress and meeting date
+even though the strict convention rejects that extension. Unknown tokens and
+ambiguous dates remain literal values or alternatives.
+
+`metadata` selects a refined subject instead of repeating its enclosing fallback
+text. Recognized dates, UUIDs, revision wording and document labels keep their
+own fields; the original subject stays in `observations`. Disjoint text fragments
+are never joined into an invented name. Field roles also keep amendment IDs
+separate from explicit `Rev` suffixes without changing strict parsing.
+
+`document_kind` describes the file's naming family or explicit document wording.
+For an amendment to an oversight plan or committee print, the target's category
+goes in `target_document_kind`. Neither category verifies the document contents
+or legislative status. Printed qualifiers such as `Final`, `Prepared` and
+`Public` likewise remain wording, not verified publication or access states.
+
+Descriptive amendment names with a preceding measure reference can retain a
+six-digit suffix as both `amendment_token` and `short_date_token`. These are
+competing readings: no century or event date is inferred. Ordinary numbered
+amendment identifiers remain protected. The literal PIH display label is
+`Pre-introduced measure`; `lookup("consideration", "pih")` retains the House
+guide's full definition, including its no-bill-number condition.
+
+`house_naming.values.filename_metadata(result)` exposes the same collection
+step for callers that already hold an extraction result. It processes one source
+filename. HTTP formats, cache-generated names, redirects, cross-source aliases
+and document identity belong to acquisition/indexing code, not this package.
 
 ### What the reader extracts
 

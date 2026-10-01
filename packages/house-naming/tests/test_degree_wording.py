@@ -120,7 +120,8 @@ def test_constructed_date_and_uuid_suffixes_take_precedence(engine, suffix):
 def test_compact_digits_after_amendment_keep_reference_and_alternative_date(engine):
     result = checked(engine, 's-704-murphy-1st-degree-amendment-121119-15')
     assert values(result, 'degree_token') == ['1st-degree']
-    assert not values(result, 'short_date_token')
+    assert values(result, 'short_date_token') == ['121119']
+    assert result['metadata'].get('date_token_candidates', []) == []
     assert values(result, 'amendment_token') == ['121119']
     # The filename does not prove an event date or official amendment number.
     assert any(s['raw'] == '121119' and s['rule'] == 'short-date-compact'

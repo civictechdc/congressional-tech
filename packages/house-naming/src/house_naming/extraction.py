@@ -30,6 +30,23 @@ MONTHS = {name: number for number, name in enumerate(
     ('jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'), 1)}
 
 
+def remaining_spans(filename, start, end, covered):
+    """Keep disjoint literal text after assigned spans, trimming separators only."""
+    result, pos = [], start
+    spans = sorted((max(a, start), min(b, end)) for a, b in covered if a < end and start < b)
+    for a, b in [*spans, (end, end)]:
+        if a > pos:
+            left, right = pos, a
+            while left < right and filename[left] in ' ._-()[]':
+                left += 1
+            while right > left and filename[right - 1] in ' ._-()[]':
+                right -= 1
+            if left < right:
+                result.append((left, right))
+        pos = max(pos, b)
+    return result
+
+
 @lru_cache(maxsize=256)
 def member_title_pattern(surnames: tuple[str, ...], *, include_title: bool = True) -> str:
     """Use supplied spellings, allowing omitted surname punctuation only."""
@@ -50,21 +67,34 @@ def date_candidates(raw: str) -> tuple[list[str], bool, str]:
     short = []
     if len(parts) == 1 and raw.isascii() and raw.isdigit():
         if len(raw) == 8:
-            triples = [(raw[:4], raw[4:6], raw[6:]), (raw[4:], raw[:2], raw[2:4]), (raw[4:], raw[2:4], raw[:2])]
+            triples = [(raw[:4], raw[4:6], raw[6:])]
+            # Delimiter-free publisher aliases also append counters to short
+            # dates. Support the observed 19xx/20xx trailing-year convention;
+            # other centuries require an explicit year-first/separated date.
+            if raw[4:6] in {'19', '20'}:
+                triples.extend([(raw[4:], raw[:2], raw[2:4]), (raw[4:], raw[2:4], raw[:2])])
         elif len(raw) == 7:
             # One unpadded month/day with a four-digit year. Preserve every
             # valid supported reading rather than selecting a date order.
-            triples = [(raw[:4], raw[4:5], raw[5:]), (raw[:4], raw[4:6], raw[6:])]
+            triples = ([(raw[:4], raw[4:5], raw[5:]), (raw[:4], raw[4:6], raw[6:])]
+                       if raw[:2] in {'19', '20'} else [])
             for split in (1, 2):
                 a, b = raw[:split], raw[split:3]
-                triples.extend([(raw[3:], a, b), (raw[3:], b, a)])
+                if raw[3:5] in {'19', '20'}:
+                    triples.extend([(raw[3:], a, b), (raw[3:], b, a)])
         elif len(raw) == 6:
+            if raw[2:4] in {'19', '20'}:
+                triples = [(raw[2:], raw[:1], raw[1:2]), (raw[2:], raw[1:2], raw[:1])]
             a, b, c = int(raw[:2]), int(raw[2:4]), int(raw[4:])
             short = [(c, a, b), (c, b, a), (a, b, c)]
         elif len(raw) == 5:
             for split in (1, 2):
                 a, b, c = int(raw[:split]), int(raw[split:-2]), int(raw[-2:])
                 short.extend([(c, a, b), (c, b, a)])
+    elif (len(parts) == 2 and all(p.isascii() and p.isdigit() for p in parts)
+          and len(parts[0]) <= 2 and len(parts[1]) == 6 and parts[1][2:4] in {'19', '20'}):
+        a, b, y = parts[0], parts[1][:2], parts[1][2:]
+        triples = [(y, a, b), (y, b, a)]
     elif len(parts) == 3 and all(p.isascii() and p.isdigit() for p in parts):
         if len(parts[0]) == 4:
             triples = [(parts[0], parts[1], parts[2])]
@@ -196,7 +226,8 @@ class Extractor:
 
     def _field(self, name: str, raw: str, start: int, end: int, *, note=None) -> dict:
         return {'name': name, 'raw': raw, 'start': start, 'end': end,
-                'candidates': [], 'note': note, 'code': None, 'label': None, 'context': None, 'vocabulary_url': None}
+                'candidates': [], 'note': note, 'code': None, 'label': None, 'context': None,
+                'vocabulary_url': None, 'role': None, 'category': None}
 
     def _meaning(self, field: dict, context: str, token: str | None = None) -> None:
         token = (token if token is not None else field['raw']).lower()
@@ -499,6 +530,114 @@ class Extractor:
                 result.append(observed)
         return result
 
+    def _subject_remainders(self, filename: str, observations: list[dict]) -> list[dict]:
+        """Refine descriptive subjects using fields already recognized elsewhere.
+
+        Never join disjoint pieces or reinterpret structured witness/member IDs.
+        A single remaining text span is a subject, not a resolved person.
+        """
+        labels = [f for m in observations for f in m['fields']
+                  if f['name'] in {'label', 'amendment_marker', 'document_token'} and f.get('category')]
+        if not labels:
+            return []
+        removable = {'label', 'date_token', 'short_date_token', 'time_token', 'fraction_token',
+                     'opaque_identifier', 'opaque_uuid', 'opaque_hex', 'qualifier_wording',
+                     'revision_marker', 'revision_number', 'local_number_token', 'ignored_suffix',
+                     'committee_token', 'committee_marker', 'subcommittee_token', 'subcommittee_marker',
+                     'meeting_wording', 'field_location_token', 'field_marker', 'session_period',
+                     'nomination_wording', 'fiscal_marker', 'fiscal_year_token', 'month_year_token',
+                     'month_token', 'year_token', 'filename_format_token', 'context_token', 'question_identifier'}
+        spans = [(f['start'], f['end']) for m in observations for f in m['fields']
+                 if f['name'] in removable and f['raw']]
+        # Conjunctions connect document labels, not parts of a person's name.
+        for left in labels:
+            for right in labels:
+                if left['end'] < right['start'] and re.fullmatch(
+                        r'[ _-]*(?:and|&)[ _-]*', filename[left['end']:right['start']], re.I):
+                    spans.append((left['end'], right['start']))
+        if any(f.get('category') == 'amendment' for f in labels):
+            spans.extend((f['start'], f['end']) for m in observations for f in m['fields']
+                         if f['name'] in {'measure_token', 'measure_number', 'amendment_marker', 'amendment_token'})
+        results, seen = [], {(f['start'], f['end']) for m in observations for f in m['fields']
+                             if f['name'] == 'subject_token' and f['raw']}
+        for parent in observations:
+            explicit = self._uses(parent, 'subject-remainder') or parent['scope'] == 'subject-refinement'
+            fallback = parent['scope'] in {'unmatched-date', 'unmatched-stem'}
+            payload = self._option(parent, 'payload_scope') == 'descriptive-payload'
+            if not (explicit or fallback or payload):
+                continue
+            for field in parent['fields']:
+                if field['name'] != ('subject_token' if explicit else 'payload' if payload else 'name_token'):
+                    continue
+                a, b = field['start'], field['end']
+                if fallback and not any(a <= f['start'] < f['end'] <= b for f in labels):
+                    continue
+                # Remove only recognized complete components within this span.
+                remaining = remaining_spans(filename, a, b, spans)
+                # Recognized interior fields may be part of the title itself,
+                # such as FY 2024 in a budget hearing. Trim the edges while
+                # preserving the contiguous source text between them.
+                left, right = (remaining[0][0], remaining[-1][1]) if remaining else (b, b)
+                # Leading grammatical wording belongs to a label-to-subject
+                # transition. Do not remove 'on' from a statement's topic.
+                if explicit and any(f['end'] <= a and f.get('category') in {
+                        'questions-for-record', 'questions-for-record-response', 'witness-statement'} for f in labels):
+                    if prefix := re.match(r'(?:to|of|for)[ _-]+', filename[left:right], re.I):
+                        left += prefix.end()
+                counter = re.fullmatch(r'[A-Za-z]+([0-9]{1,3})', filename[left:right])
+                counter_field = None
+                if counter:
+                    counter_start = left + counter.start(1)
+                    counter_field = self._field('local_number_token', filename[counter_start:right], counter_start, right,
+                        note='Terminal number in an unstructured document subject; no revision or person identity inferred.')
+                    right = counter_start
+                has_text = any(c.isalpha() for c in filename[left:right])
+                if (left, right) in seen and has_text:
+                    continue
+                if (left, right) == (a, b) and not payload and has_text:
+                    continue
+                fields = []
+                if left < right and has_text:
+                    fields.append(self._field('subject_token', filename[left:right], left, right,
+                        note='Literal descriptive subject; no author, witness or member identity inferred.'))
+                if counter_field:
+                    fields.append(counter_field)
+                # Only trim edges of an existing subject. Interior context can
+                # divide a title; do not manufacture a new title by joining it.
+                seen.add((left, right))
+                results.append({'rule': 'document-subject-remainder', 'scope': 'subject-refinement',
+                    'start': a, 'end': b,
+                    'description': 'Subject text remaining after recognized filename components; no person identity inferred.',
+                    'fields': fields})
+        return results
+
+    def _description_remainders(self, filename, observations):
+        """Retain report text and titles alongside their other extracted fields."""
+        fields = [f for m in observations for f in m['fields']]
+        containers = [(m, f) for m in observations for f in m['fields']
+                      if (self._uses(m, 'report-description') and f['name'] == 'payload')
+                      or (self._uses(m, 'description-remainder') and f['name'] == 'description')]
+        results, seen = [], set()
+        for parent, field in containers:
+            remove = {'revision_marker', 'revision_number', 'measure_token', 'number_placeholder',
+                      'amendment_marker', 'amendment_token', 'filename_format_token'}
+            if self._uses(parent, 'report-description'):
+                remove |= {'label', 'fiscal_marker', 'fiscal_year_token', 'measure_number',
+                           'part_marker', 'part_number', 'report_subject_token'}
+            spans = [(f['start'], f['end']) for f in fields if f['name'] in remove]
+            a, b = field['start'], field['end']
+            remaining = remaining_spans(filename, a, b, spans)
+            # Preserve each literal fragment; never join across removed text.
+            parts = [self._field('description', filename[x:y], x, y)
+                     for x, y in remaining if any(c.isalpha() for c in filename[x:y])]
+            key = a, b
+            if key not in seen and (self._uses(parent, 'report-description')
+                                     or [(f['start'], f['end']) for f in parts] != [(a, b)]):
+                seen.add(key)
+                results.append(dict(rule='document-description-remainder', scope='subject-refinement',
+                                    start=a, end=b, description='Literal description outside assigned components.', fields=parts))
+        return results
+
     def extract(self, filename: str, *, member_surnames: Mapping[str, Sequence[str]] | None = None,
                 source_url: str | None = None) -> dict:
         if not isinstance(filename, str):
@@ -569,9 +708,19 @@ class Extractor:
                 break
         for scope, payload, offset in payloads:
             if scope == 'descriptive-payload':
-                observations.extend(self._match(rule, hit, offset) for rule, regex in self.rules
-                                    if rule['scope'] == 'stem' and rule['priority'] == 2
-                                    and rule.get('payload_scope') != 'descriptive-payload' and (hit := regex.fullmatch(payload)))
+                for priority in STEM_PRIORITIES:
+                    found = False
+                    for rule, regex in self.rules:
+                        if (rule['scope'] != 'stem' or rule['priority'] != priority
+                                or rule.get('payload_scope') == 'descriptive-payload'
+                                or not (hit := regex.fullmatch(payload))):
+                            continue
+                        found = True
+                        observations.append(self._match(rule, hit, offset))
+                        if child_scope := rule.get('payload_scope'):
+                            payloads.append((child_scope, hit['payload'], offset + hit.start('payload')))
+                    if found:
+                        break
                 continue
             for priority in PAYLOAD_PRIORITIES:
                 found = [self._match(rule, hit, offset) for rule, regex in self.rules
@@ -709,7 +858,9 @@ class Extractor:
         protected = []
         for match in observations:
             for field in match['fields']:
-                if not self._searchable(match, field):
+                numeric_subject = (match['scope'] == 'legislative-payload'
+                                   and field['name'] == 'subject_token' and field['raw'].isdigit())
+                if numeric_subject or not self._searchable(match, field):
                     protected.append((field['start'], field['end']))
 
         searches = [(r, rx) for r, rx in self.rules if r['scope'] == 'search']
@@ -746,7 +897,9 @@ class Extractor:
             def priority(hit):
                 raw = hit.groupdict().get('date_token', hit.groupdict().get('short_date_token'))
                 separators = set(re.findall(r'[ ._-]', raw))
-                return (len(separators) > 1, hit.start())
+                # Prefer a complete four-digit-year reading over a crossing
+                # short-date fragment, without assuming a century for either.
+                return (not bool(date_candidates(raw)[0]), len(separators) > 1, hit.start())
             yield from sorted(hits, key=priority)
 
         def search_candidates():
@@ -870,11 +1023,23 @@ class Extractor:
                                and (not self._option(m, 'qualifier_before_only') or match['end'] <= m['start'])
                                for m in group)
                 public = any(f['raw'].lower() == 'public' for f in match.get('fields', ()))
-                prefix = (all(c in ' ._()-[]' for c in filename[start:match['start']])
-                          and not any(f['name'] == 'label' for m in observations for f in m['fields']))
+                prefix = all(c in ' ._()-[]0123456789' or any(a <= i < b for a,b in terminal_spans)
+                             for i,c in enumerate(filename[start:match['start']], start))
+                # A leading qualifier can precede an unstructured subject and
+                # its document label. Other topic labels (e.g. Final report
+                # discusses Smith SJQ) make that interpretation unsupported.
+                labels_after = [f for m in observations for f in m['fields']
+                                if f['name'] == 'label' and f['start'] >= match['end']]
+                prefix = prefix and all(f.get('category') in {
+                    'testimony', 'statement', 'witness-statement', 'witness-list',
+                    'questions-for-record', 'questions-for-record-response', 'questionnaire'} for f in labels_after)
                 allowed = adjacent or terminal or prefix
                 if public:
-                    allowed = adjacent or terminal and bool(document_labels)
+                    # Public servants / Public health describes a topic. A
+                    # trailing Public or Public before the label is different.
+                    allowed = terminal and bool(document_labels) or any(
+                        m['rule'] != self.roles['qualifier'][0]['id'] and match['end'] <= m['start']
+                        for m in group)
                 if match['rule'] == self.roles['qualifier'][0]['id'] and allowed:
                     observations.append(match)
                     protected.append((match['start'], match['end']))
@@ -1086,6 +1251,13 @@ class Extractor:
                                 if not self._searchable(m, f) and f['name'] != 'generic_identifier']
             protected = [(f['start'], f['end']) for f in protected_fields]
             for rule, hit in supplemental_hits:
+                if 'measure-context' in rule.get('processors', ()) and not any(
+                        b <= start + hit.start() for a, b in measure_spans):
+                    continue
+                if 'numeric-date' in rule.get('processors', ()):
+                    raw = hit.groupdict().get('date_token', hit.groupdict().get('short_date_token'))
+                    if not date_candidates(raw)[1]:
+                        continue
                 if 'ascii-left-boundary' in rule.get('processors', ()):
                     a = start + hit.start()
                     if a > start and filename[a - 1].isalpha() and not filename[a - 1].isascii():
@@ -1139,6 +1311,8 @@ class Extractor:
                 if not self._overlaps(start + hit.start(), start + hit.end(), reserved):
                     observations.append(self._match(rule, hit, start))
                     self._refine(observations[-1], filename, observations, 'supplemental')
+        observations.extend(self._subject_remainders(filename, observations))
+        observations.extend(self._description_remainders(filename, observations))
         if member_surnames:
             observations.extend(self._members(filename, observations, member_surnames))
         # A concatenated URL can leave a recognizable prefix without yielding a

@@ -41,6 +41,12 @@ does not resolve a committee, and a witness string does not resolve a person.
 The typed adapter exposes the observations as `parsed.matches`. Successful
 extraction does not make a malformed or unsupported convention valid.
 
+A filename such as `01 19 2021 Nominations -- Blinken Part 1.pdf` separates
+`Nominations` as its label, `Blinken` as its `subject_token`, and `1` as its
+`part_number`. The same layout supports comma-separated subjects, URL slugs
+with `__`, and trailing publisher UUIDs. It does not turn the subject into a
+verified witness, nominee identity, or person record.
+
 ## Bill types, versions and modifiers
 
 The retained `bill_codes.py` vocabulary contains the eight bill types and
@@ -104,6 +110,18 @@ manufacture an IH/IS reading.
 Consecutive digits remain intact unless the syntax establishes their roles.
 Unknown boundaries remain visible rather than becoming a guessed bill identity,
 publication date or current legislative status.
+
+Compact dates also need a supported year position. Trailing four-digit years
+and unpadded seven-digit forms use the observed `19xx`/`20xx` conventions;
+`transcript-07282103` does not establish July 28, 2103. Explicit separated
+dates such as `2103-07-28` remain calendar candidates. Two-digit years never
+acquire a century. Lowercase drafting IDs reserve their digits just as uppercase
+IDs do, and explicit clock wording takes precedence over a date-shaped number.
+
+`metadata` describes one filename and its supplied context. Applications may
+deduplicate identical document bytes, but should retain each filename's values
+with its source URL. A shared transcript can cover multiple hearing dates, and
+a joint statement can legitimately appear under several people's filenames.
 
 ## House conventions and source definitions
 
@@ -420,6 +438,25 @@ The audit does not evaluate the entire absent-rule-by-filename cross product or
 certify document contents. New conventions require another audit.
 
 ## Compare parser changes
+
+`Engine.extract()` includes flat `metadata` alongside its source observations.
+Field `role` and `category` readings live in the same catalog as extraction
+rules. The values collector does not maintain another regex registry. Useful
+fields survive unsupported extensions and incomplete conventions; strict
+`parse()` validity stays independent.
+
+`tests/test_sample_regressions.py` covers the three 500-row manual reviews:
+subject boundaries, UUIDs and qualifiers, missing amendment numbers, `Rev`
+suffixes, descriptive conference reports, QFR/member-roster categories, and
+DOCX/ZIP classification. It also checks rejected interpretations and exact
+source spans. Storage sentinels, source URL resolution and alias attribution
+remain indexing concerns.
+
+`tests/test_stratified_regressions.py` covers the follow-up review of 100 rows
+per document kind: compact-date counters, drafting IDs, report descriptions,
+multiple measure references, explicit document categories, and subject text
+beside qualifiers or fiscal years. Negative controls preserve structured IDs,
+literal short years and unknown publisher abbreviations.
 
 Run focused tests from the repository root:
 

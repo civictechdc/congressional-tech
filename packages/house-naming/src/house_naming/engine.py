@@ -65,14 +65,19 @@ class Engine:
         `valid` and `matches` retain parse()'s convention-validation meaning.
         `observations` retain source spans, candidates and fallback assumptions;
         they do not certify a document's contents or a person's identity.
+        `metadata` collects useful values and literal roles without requiring
+        a valid naming convention. Values are lists of source strings.
         `source_url` optionally qualifies local publisher conventions. It is
         caller-supplied provenance, never fetched or used as document identity.
         """
         from .extraction import Extractor
+        from .values import filename_metadata
         if not hasattr(self, '_extractor'):
             self._extractor = Extractor(self._guide)
         extracted = self._extractor.extract(filename, member_surnames=member_surnames, source_url=source_url)
-        return {**self.parse(filename), **extracted}
+        result = {**self.parse(filename), **extracted}
+        result['metadata'] = filename_metadata(result)
+        return result
 
     def lookup(self, context: str, token: str) -> dict[str, Any] | None:
         if not isinstance(context, str) or not isinstance(token, str):

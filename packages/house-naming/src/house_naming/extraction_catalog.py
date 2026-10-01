@@ -27,6 +27,7 @@ ROLE_INPUTS = {
 }
 PROCESSOR_INPUTS = {
     'numeric-date': set(),
+    'measure-context': set(),
     'congress-ordinal': {'referenced_congress'},
     'malformed-date': {'date_token'},
     'fiscal-year': {'fiscal_year_token'},
@@ -44,6 +45,8 @@ PROCESSOR_INPUTS = {
     'leading-date-label': {'label'},
     'revision-date': {'revision_marker', 'revision_number'},
     'subject-remainder': {'subject_token'},
+    'report-description': {'payload'},
+    'description-remainder': {'description'},
     'suffix-only-fallback': {'ignored_suffix'},
     'atomic-identifier': set(),
     'ascii-left-boundary': set(),

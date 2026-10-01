@@ -14,7 +14,7 @@ WORD = re.compile(r'[^\W\d_]+')
 CAMEL_BOUNDARY = r'(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])'
 CAMEL_SPLIT = re.compile(CAMEL_BOUNDARY)
 DESCRIPTIVE_FIELDS = frozenset({
-    'payload', 'descriptor', 'suffix', 'subject_token', 'title_token',
+    'payload', 'descriptor', 'description', 'suffix', 'subject_token', 'title_token',
     'context_token', 'recipient_token', 'annotation', 'name_token', 'target_subject',
     'local_identifier', 'measure_list', 'filer_token', 'comparison_source', 'comparison_target',
 })

@@ -571,7 +571,10 @@
                 "avoid-ordinal-tail",
                 "companion-context",
                 "heading-abbreviation",
-                "amendment-label-boundary"
+                "amendment-label-boundary",
+                "report-description",
+                "description-remainder",
+                "measure-context"
               ]
             },
             "uniqueItems": true
@@ -1453,6 +1456,16 @@
         },
         "label_case": {
           "const": "title"
+        },
+        "role": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "description": "Normalized metadata role for the literal field; does not verify document contents or identity."
+        },
+        "category": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "description": "Normalized metadata category for the literal field; does not verify document contents or identity."
         }
       },
       "dependentRequired": {

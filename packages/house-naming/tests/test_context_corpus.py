@@ -135,5 +135,6 @@ def test_assumed_name_does_not_make_all_text_explained(engine):
 
 def test_simple_amendment_identifiers_stay_explained_when_auditing_complex_ones(engine):
     result = engine.extract('Cassidy S. 1664 Amendment #1.pdf')
-    rows = residual_fields(result, field_names={'amendment_token'}, include_unstructured=True)
+    # The subject now has an explicit slot, but its identity remains unexplained.
+    rows = residual_fields(result, field_names={'amendment_token', 'subject_token'}, include_unstructured=True)
     assert [s['raw'] for r in rows for s in r['residual_spans']] == ['Cassidy']
