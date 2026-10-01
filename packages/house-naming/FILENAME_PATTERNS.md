@@ -55,6 +55,36 @@ same selection drives subject trimming and public kinds. Source-page link text
 is separate metadata (`source_document_label`) and is not copied into filename
 facts.
 
+The document index can fill an empty `document_kind` from a recognized
+`source_document_type`, including publisher XML codes. `document_kind_source`
+records `filename`, `recovered_filename`, `content`, or `source_document_type`;
+the original type remains intact.
+Filename kinds take precedence across all aliases of a document. `other`,
+missing types and unrecognized source values leave the kind empty. This fallback
+belongs to the index and does not change `Engine.extract()` results.
+
+The index uses the existing typed House XML readers to identify numeric meeting
+records and witness lists. A witness-list root can supply a missing kind before
+the source-type fallback. `source_record_identifier` retains an embedded ID;
+the numeric filename does not supply one. `record_role` separates `document`,
+`source-record`, `capture-state`, and `error-response`. The viewer defaults to
+documents, with an explicit control for source records and capture history.
+All source rows and retained body keys remain in the Parquet files.
+
+Legacy House cache names are recovered only when forward-encoding known publisher
+URLs produces one original basename. `recovered_filename` and
+`recovered_source_url` preserve that evidence alongside the original cache name
+and path. Ambiguous names stay unresolved. Filename extraction uses the recovered
+name; it does not combine inferred subjects or dates from the cache key.
+`body_format` records inspected contents independently of the original response
+headers. A known Not Found page stays error evidence even if its requested name
+ends in `.pdf`. Numeric `.none` files in the House XML cache retain their marker
+state and any literal attempted URL, without inventing a current HTTP result.
+XML document links remain in `source_record_document_url`. Recurring rebuilds
+reuse body-derived fields by content hash while the readers are unchanged;
+new bodies use the supplied storage reader. Filename rules stay independent
+of both storage and body parsing.
+
 For example, `Written Testimony` maps to `testimony`, `STMNT` to `statement`,
 and `rules_memorandum` to `rules-memorandum`. `Business Meeting` and `Nominations`
 provide broad fallback kinds when no more specific genre is present. A business

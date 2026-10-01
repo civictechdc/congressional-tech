@@ -276,3 +276,42 @@ def test_discovered_file_inherits_parent_context_from_previous_catalog(tmp_path)
     assert row["source_meeting_id"] == ["123"]
     assert row.get("source_document_type") is None
     assert row["source_document_label"] == ["Statement"]
+
+
+def test_recurring_catalog_preserves_body_evidence_without_reading_unchanged_bodies(tmp_path):
+    from test_document_evidence import retained
+    store = initialize(tmp_path)
+    url = 'https://www.congress.gov/119/meeting/house/123/documents/HHRG-119-IF00-WList-20250101.pdf'
+    name = 'house_123_documents_HHRG_119_IF00_WList_20250101_pdf'
+    rows = [retained(tmp_path, '123.xml', f'<committee-meeting meeting-id="HMKP123"><file doc-url="{url}"/></committee-meeting>'.encode()),
+            retained(tmp_path, name, b'%PDF-1.4\n'),
+            retained(tmp_path, '124.xml', b'<witness-list meeting-id="HMKP124"/>')]
+    index.write_filename_metadata(tmp_path, rows, workers=1)
+    for key in (FILENAMES, DOCUMENTS):
+        store.objects[key] = (tmp_path / key).read_bytes()
+    for row in rows:
+        store.objects[row['body_key']] = (tmp_path / row['body_key']).read_bytes()
+    before = table(store).to_pylist()
+    original_read = store.read
+    reads = []
+    store.read = lambda key: reads.append(key) or original_read(key)
+    a = Archive(store, 'refresh')
+    rebuild_catalog(store, a.captures, workers=1)
+    after = table(store).to_pylist()
+    assert before == after
+    assert not any(key.startswith('bodies/') for key in reads)
+
+
+def test_new_numeric_xml_capture_is_read_from_injected_store(tmp_path):
+    store = initialize(tmp_path)
+    a = Archive(store, 'new-xml')
+    url = 'https://docs.house.gov/meetings/123.xml'
+    r = response(url, b'<witness-list meeting-id="HMKP123"/>')
+    r['response_headers']['content-type'] = 'application/xml'
+    a.record(r, outcome='saved', links=[])
+    a.save()
+    rebuild_catalog(store, a.captures, workers=1)
+    row = next(r for r in table(store).to_pylist() if r['filename']=='123.xml')
+    assert row['document_kind'] == ['witness-list']
+    assert row['document_kind_source'] == ['content']
+    assert row['source_record_identifier'] == ['HMKP123']

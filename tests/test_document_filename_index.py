@@ -497,7 +497,11 @@ def test_source_refresh_preserves_parser_fields_ids_and_alias_context(tmp_path):
     context=index.DocumentSources();context.add_meeting(source_meeting())
     index.refresh_source_metadata(tmp_path,context)
     after=pq.read_table(path)
-    assert before.equals(after.select(before.column_names),check_metadata=False)
+    unchanged=[name for name in before.column_names
+               if name not in {'document_kind', 'document_kind_source'}]
+    assert before.select(unchanged).equals(after.select(unchanged),check_metadata=False)
+    assert after['document_kind'].to_pylist()==[['support-document'],None]
+    assert after['document_kind_source'].to_pylist()==[['source_document_type'],None]
     docs=pq.read_table(path.with_name('documents.parquet')).to_pylist()
     assert len(docs)==1 and docs[0]['source_committee_code']==['hsif14']
     assert docs[0]['committee_code']==['IF14']

@@ -90,6 +90,7 @@ dd { margin:0; font-size:13px; line-height:1.65; overflow-wrap:anywhere; white-s
 <label class="field">Search column<select id="field"><option value="filename">filename</option></select></label>
 </div>
 <div class="controls filters">
+<label>Show<select id="scope"><option value="">Documents</option><option value="capture-records">Source records &amp; capture history</option><option value="all">All records</option></select></label>
 <label>Congress<select id="congress"><option value="">All Congresses</option></select></label>
 <label class="kind">Document kind<select id="document_kind"><option value="">All document kinds</option><option value="__null__">No document kind</option></select></label>
 <label>Format<select id="format"><option value="">All formats</option></select></label>
@@ -103,7 +104,7 @@ dd { margin:0; font-size:13px; line-height:1.65; overflow-wrap:anywhere; white-s
 <table><colgroup><col style="width:35%"><col style="width:10%"><col style="width:18%"><col style="width:7%"><col style="width:8%"><col style="width:8%"><col style="width:14%"></colgroup><thead><tr><th scope="col">Filename / source</th><th scope="col">Format</th><th scope="col">Document kind</th><th scope="col">Congress</th><th scope="col">Committee</th><th scope="col">Measure</th><th scope="col">Saved response</th></tr></thead><tbody id="rows"></tbody></table>
 <div id="empty" hidden>No rows match these filters.<button type="button" class="quiet" id="empty-reset">Clear filters</button></div>
 </div>
-<footer><span>Filename metadata and source context (source_* columns) · Format uses the saved response type when available; otherwise the filename extension.</span><nav class="pager" aria-label="Results pages"><button id="previous" class="outline" disabled>← Previous</button><span id="page-status">—</span><button id="next" class="outline" disabled>Next →</button></nav></footer>
+<footer><span>Filename metadata and source context (source_* columns) · Format uses inspected contents, then the saved response type, then the filename extension.</span><nav class="pager" aria-label="Results pages"><button id="previous" class="outline" disabled>← Previous</button><span id="page-status">—</span><button id="next" class="outline" disabled>Next →</button></nav></footer>
 </main>
 <dialog id="detail" aria-labelledby="detail-title">
 <div class="detail-head"><div class="detail-top"><p class="eyebrow">Source row</p><button id="close-detail" class="outline" aria-label="Close details">Close ×</button></div><h2 id="detail-title">Loading…</h2><div class="detail-actions"><a id="source-link" target="_blank" rel="noopener noreferrer" hidden>Open source ↗</a><button id="copy" class="outline" disabled>Copy JSON</button><span id="copy-status" role="status"></span></div></div>
@@ -113,7 +114,7 @@ dd { margin:0; font-size:13px; line-height:1.65; overflow-wrap:anywhere; white-s
 <script type="module">
 const $ = id => document.getElementById(id);
 const number = n => new Intl.NumberFormat().format(n);
-const keys = ['q','field','congress','document_kind','format','retained'];
+const keys = ['q','field','congress','document_kind','format','retained','scope'];
 const pretty = value => value.replaceAll('-', ' ').replace(/^./, x => x.toUpperCase());
 const formatLabel = value => value.includes('/') ? value : value.toUpperCase();
 const display = value => Array.isArray(value) ? value.join(' · ') : (value ?? '—');
@@ -131,11 +132,12 @@ function renderRows(data) {
  for(const row of data.rows) {
   const tr=node('tr'), first=node('td'), button=node('button',row.filename || '(No filename saved)','filename');
   button.type='button'; button.addEventListener('click',()=>openDetail(row._row)); first.append(button);
-  const url=sourceUrl(row.source_url);
-  if(url) { const link=node('a',url.hostname+' ↗','source'); link.href=url.href; link.title=row.source_url; link.target='_blank'; link.rel='noopener noreferrer'; first.append(link); }
+  const url=sourceUrl(row.source_url || row.recovered_source_url?.[0]);
+  if(url) { const link=node('a',url.hostname+' ↗','source'); link.href=url.href; link.title=url.href; link.target='_blank'; link.rel='noopener noreferrer'; first.append(link); }
+  if(row.record_role?.[0] && row.record_role[0]!=='document') first.append(node('div',pretty(row.record_role[0]),'muted'));
   if(row.source_count>1) first.append(node('div',`${row.source_count} source records`,'muted'));
   const format=node('td',row.format?.map(formatLabel).join(' · ') || '—');
-  if(row.format?.length) format.append(node('div',row.media_type?.length?'response type':'filename','muted'));
+  if(row.format?.length) format.append(node('div',row.body_format?.length?'saved contents':row.media_type?.length?'response type':'filename','muted'));
   const saved=node('td',row.retained?'Saved':'No saved response',row.retained?'retained':'muted');
   if(row.http_status?.length) saved.append(node('div','HTTP '+row.http_status.join(' / '),'muted'));
   tr.append(first, format, node('td',row.document_kind?.map(pretty).join(' · ') || '—'), node('td',display(row.congress)),node('td',display(row.committee_code)),node('td',display(row.measure_references)),saved);
@@ -169,7 +171,7 @@ async function openDetail(id, update=true) {
    button.addEventListener('click',()=>openDetail(source._row)); $('source-variants').append(button);
   }
  }
- const url=sourceUrl(data.source_url); if(url) { $('source-link').href=url.href; $('source-link').hidden=false; } renderDetails(); }
+ const url=sourceUrl(data.source_url || data.recovered_source_url?.[0]); if(url) { $('source-link').href=url.href; $('source-link').hidden=false; } renderDetails(); }
  catch(error) { if(error.name!=='AbortError') $('detail-data').textContent=error.message; }
 }
 function renderDetails() {
@@ -192,7 +194,7 @@ $('field-search').addEventListener('input',renderDetails); $('show-empty').addEv
 $('copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(JSON.stringify(rowData,null,2));$('copy-status').textContent='Copied';}catch{$('copy-status').textContent='Clipboard unavailable';}});
 window.addEventListener('popstate',()=>{const row=restore();load();if(row!==null)openDetail(row,false);else closeDetail(false);});
 try {
- info=await api('/api/info'); $('summary').textContent=`${number(info.entries)} filename entries · ${number(info.rows)} source rows · ${info.fields.length} columns`;
+ info=await api('/api/info'); $('summary').textContent=`${number(info.documents)} documents · ${number(info.capture_records)} source/capture records · ${number(info.rows)} source rows`;
  $('field').replaceChildren(...info.fields.map(field=>{const option=node('option',field);option.value=field;return option;}));
  for(const key of ['congress','document_kind','format']) { const values=info.facets[key]; if(key==='congress') values.sort((a,b)=>Number(b)-Number(a)); for(const value of values) { const option=node('option',key==='document_kind'?pretty(value):key==='format'?formatLabel(value):value);option.value=value;$(key).append(option); } }
  const row=restore(); if(row!==null) openDetail(row,false); await load();

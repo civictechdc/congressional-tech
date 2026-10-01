@@ -1,6 +1,7 @@
 """Rebuild both document tables from saved names and new durable receipts.
 
-Bodies are never read. The filename table commits last and carries the capture
+Selected House bodies are read through the supplied store; unchanged body meanings
+are reused from the previous table. The filename table commits last and carries the capture
 row count consumed. If publishing either table fails, the next run repeats the
 uncommitted delta. Readers must check that both tables have the same catalog_id.
 """
@@ -15,6 +16,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from congress_api.retention import document_index as index
+from congress_api.retention.document_evidence import read_retained_body
 
 FILENAMES = "indexes/document-filenames.parquet"
 DOCUMENTS = "indexes/documents.parquet"
@@ -142,6 +144,7 @@ def rebuild_catalog(store, captures, *, seeds=(), workers=4):
             sources.values(),
             workers=workers,
             previous=previous,
+            read_body=lambda key: read_retained_body(None, key, read_compressed=store.read),
             metadata={"raw_capture_rows": str(len(captures))},
         )
         # The filename table is the cursor: publish it only after documents.

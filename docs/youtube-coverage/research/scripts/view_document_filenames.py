@@ -23,7 +23,8 @@ DEFAULT_FILE = ROOT / '.cache/congressional-tech-raw/indexes/document-filenames.
 HTML = Path(__file__).resolve().parents[1] / 'filename-viewer.html'
 LIST_COLUMNS = ('filename', 'source_url', 'body_key', 'congress', 'document_kind',
                 'extension', 'committee_code', 'measure_references', 'media_type', 'http_status',
-                'source_id', 'document_id', 'format')
+                'source_id', 'document_id', 'format', 'record_role', 'body_format',
+                'recovered_filename', 'recovered_source_url')
 FILTERS = ('congress', 'document_kind', 'format')
 
 
@@ -49,6 +50,10 @@ class Catalog:
             self.members[entry].append(row_id)
         self.preferred_sources = [sources[key] for key in self.documents['source_id'].to_pylist()]
         self.order = pc.sort_indices(self.documents, sort_keys=[('filename', 'ascending')])
+        self.document_entries = set(
+            i for i, roles in enumerate(self.documents['record_role'].to_pylist())
+            if roles == ['document']
+        ) if 'record_role' in self.documents.column_names else set(range(len(self.documents)))
         self.group_starts = [0]
         for group in range(self.file.num_row_groups):
             self.group_starts.append(self.group_starts[-1] + self.file.metadata.row_group(group).num_rows)
@@ -65,6 +70,8 @@ class Catalog:
             'file': path.name, 'rows': len(self.table),
             'filenames': pc.count_distinct(self.table['filename']).as_py(),
             'entries': len(self.members),
+            'documents': len(self.document_entries),
+            'capture_records': len(self.members) - len(self.document_entries),
             'bytes': path.stat().st_size, 'fields': self.fields, 'facets': facets,
         }
 
@@ -84,7 +91,11 @@ class Catalog:
             raise ValueError('Unknown search column.')
         mask = pa.array([True] * len(self.table))
         if text:
-            mask = pc.and_(mask, pc.fill_null(pc.match_substring(self.searchable(field), text, ignore_case=True), False))
+            found = pc.fill_null(pc.match_substring(self.searchable(field), text, ignore_case=True), False)
+            if field == 'filename' and 'recovered_filename' in self.fields:
+                found = pc.or_(found, pc.fill_null(pc.match_substring(
+                    self.searchable('recovered_filename'), text, ignore_case=True), False))
+            mask = pc.and_(mask, found)
         for name in FILTERS:
             value = query.get(name, query.get('extension', '') if name == 'format' else '')
             if name == 'document_kind' and value == '__null__':
@@ -100,6 +111,13 @@ class Catalog:
             present = pc.is_valid(self.table['body_key'])
             mask = pc.and_(mask, present if retained == 'yes' else pc.invert(present))
         matching_entries = {self.entry_ids[row_id] for row_id in pc.indices_nonzero(mask).to_pylist()}
+        scope = query.get('scope', '')
+        if scope not in ('', 'all', 'capture-records'):
+            raise ValueError('Unknown record scope.')
+        if not scope:
+            matching_entries.intersection_update(self.document_entries)
+        elif scope == 'capture-records':
+            matching_entries.difference_update(self.document_entries)
         if query.get('document_kind') == '__null__':
             missing_kind = pc.equal(pc.fill_null(pc.list_value_length(self.documents['document_kind']), 0), 0)
             matching_entries.intersection_update(pc.indices_nonzero(missing_kind).to_pylist())

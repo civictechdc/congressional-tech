@@ -1,4 +1,4 @@
-"""Write useful filename metadata as flat Parquet columns, without opening bodies.
+"""Write useful filename and selected retained-source metadata as flat columns.
 
 Filename rules belong to house_naming.Engine. This command locates saved names,
 keeps their meanings and references, and omits parser mechanics and diagnostics.
@@ -9,6 +9,9 @@ source_publisher_committee_code identifies the Senate site's owner from the
 collector's existing site map. Missing context stays null. A shared document
 retains all observed parents; flat lists do not imply pairwise relationships.
 --source-metadata-only refreshes these fields without rerunning filename parsing.
+document_kind uses filename evidence first, then typed contents or a recognized
+source document type. document_kind_source identifies that choice; native types
+stay intact.
 """
 
 from __future__ import annotations
@@ -35,6 +38,10 @@ from house_naming import Engine, __version__
 from house_naming.errors import NamingError
 from house_naming.extraction import QUERY
 from house_naming.values import filename_metadata as flatten  # noqa: F401 - public flat-value helper
+from congress_api.retention.document_evidence import (
+    FIELDS as EVIDENCE_FIELDS, BODY_FIELDS, body_evidence_key, cached_body_fields, evidence_fingerprint,
+    enrich_sources, read_retained_body,
+)
 
 
 FAMILIES = (
@@ -77,6 +84,55 @@ SOURCE_SCHEMA = pa.schema(
 )
 ENGINE = None
 EMPTY_BODY_DIGEST = sha256(b"").hexdigest()
+
+# Publisher document types and their XML codes, mapped to the catalog's kinds.
+# This is index policy, not filename interpretation. Do not infer from link titles.
+SOURCE_DOCUMENT_KINDS = {
+    alias.casefold(): kind
+    for kind, aliases in [
+        ("witness-statement", ("Witness Statement", "WS")),
+        ("testimony-disclosure", ("Witness Truth in Testimony", "truth in testimony", "WT")),
+        ("witness-biography", ("Witness Biography", "WB")),
+        ("witness-support", ("Witness Support Document", "WD")),
+        ("member-statement", ("Member Statement", "Member Statements", "MS")),
+        ("committee-amendment", ("Committee Amendment", "CA")),
+        ("interchamber-amendment", ("House or Senate Amendment", "HA")),
+        ("floor-amendment", ("Floor Amendment", "FA")),
+        ("committee-vote", ("Committee Recorded Vote", "CV")),
+        ("committee-report", ("Committee Report", "CR")),
+        ("conference-report", ("Conference Report", "FR")),
+        ("legislative-text", ("Bills and Resolutions", "BR")),
+        ("support-document", ("Support Document", "SD")),
+        ("transcript", ("Hearing: Transcript", "transcript", "HT")),
+        ("witness-list", ("Hearing: Witness List", "witness list", "HW")),
+        ("questions-for-record", ("Hearing: Questions for the Record", "questions for the record", "HQ")),
+        ("member-roster", ("Hearing: Member Roster", "HM")),
+        ("cover-page", ("Hearing: Cover Page", "HC")),
+        ("table-of-contents", ("Hearing: Table of Contents", "TC")),
+        ("questionnaire", ("questionnaire",)),
+    ]
+    for alias in aliases
+}
+
+
+def fill_document_kind(row):
+    """Choose a kind without changing native fields or broadening filename rules."""
+    if row.get("document_kind"):
+        row["document_kind_source"] = ["recovered_filename" if row.get("recovered_filename") else "filename"]
+        return
+    if row.get("content_document_kind"):
+        row["document_kind"] = row["content_document_kind"]
+        row["document_kind_source"] = ["content"]
+        return
+    if row.get("record_role") in (["source-record"], ["capture-state"], ["error-response"]):
+        row["document_kind"] = row["document_kind_source"] = None
+        return
+    kinds = {
+        kind for value in row.get("source_document_type") or []
+        if (kind := SOURCE_DOCUMENT_KINDS.get(" ".join(value.split()).casefold()))
+    }
+    row["document_kind"] = sorted(kinds) or None
+    row["document_kind_source"] = ["source_document_type"] if kinds else None
 
 MEDIA_FORMATS = {
     "application/pdf": "pdf",
@@ -201,17 +257,14 @@ def source_groups(table):
         table[name].to_pylist()
         for name in ("filename", "source_url", "body_key", "media_type", "http_status")
     ]
-    columns.append(
-        table["capture_outcome"].to_pylist()
-        if "capture_outcome" in table.column_names
-        else [None] * len(table)
-    )
-    for row_id, (filename, url, body, media, statuses, outcomes) in enumerate(
+    for field in ("capture_outcome", "body_format"):
+        columns.append(table[field].to_pylist() if field in table.column_names else [None] * len(table))
+    for row_id, (filename, url, body, media, statuses, outcomes, body_format) in enumerate(
         zip(*columns)
     ):
         endpoint = entry_key(filename, url, row_id)
         parents[root(row_id)] = root(endpoints.setdefault(endpoint, row_id))
-        if document_body(body, media, statuses, outcomes):
+        if document_body(body, media, statuses, outcomes, body_format):
             parents[root(row_id)] = root(bodies.setdefault(body, row_id))
     groups, members, entry_ids = {}, [], []
     for row_id in range(len(table)):
@@ -225,8 +278,8 @@ def source_groups(table):
     return entry_ids, members
 
 
-def document_body(body, media, statuses, outcomes=None):
-    formats = set(file_formats(media, None) or [])
+def document_body(body, media, statuses, outcomes=None, body_format=None):
+    formats = set(body_format or file_formats(media, None) or [])
     document_formats = set(MEDIA_FORMATS.values()) - {"html", "binary"}
     return (
         body
@@ -236,7 +289,8 @@ def document_body(body, media, statuses, outcomes=None):
             and (not outcomes or set(outcomes) == {"saved"})
             and formats
             and formats <= document_formats
-            and any(str(status).startswith("2") for status in statuses or [])
+            and (any(str(status).startswith("2") for status in statuses or [])
+                 or (not statuses and body_format == ["pdf"]))
         )
         else None
     )
@@ -244,6 +298,9 @@ def document_body(body, media, statuses, outcomes=None):
 
 def prepare_document_indexes(rows, schema):
     """Keep exact source rows and create one canonical row per document group."""
+    for name in ("document_kind", "document_kind_source", "record_role"):
+        if name not in schema.names:
+            schema = schema.append(pa.field(name, STRINGS))
     # The parser's public metadata keeps both names for compatibility. These
     # tables need only one normalized publication code, alongside raw spelling.
     # Preserve either column if any row actually carries a distinct reading.
@@ -257,13 +314,21 @@ def prepare_document_indexes(rows, schema):
         for row in rows:
             row.pop(redundant, None)
     for row in rows:
+        # Source metadata can change without reparsing filenames. Remove only
+        # previous fallbacks before regrouping so they never outrank an alias's
+        # filename kind or survive removal/correction of the source assertion.
+        if row.get("document_kind_source") in (["source_document_type"], ["content"]):
+            row["document_kind"] = None
+        row.pop("document_kind_source", None)
         row["source_id"] = sha256(
             compact(
                 [row.get(k) for k in ("body_key", "filename", "source_url")]
             ).encode()
         ).hexdigest()
-        row["format"] = file_formats(row.get("media_type"), row.get("extension"))
-    grouping_schema = pa.schema([*SOURCE_SCHEMA, ("capture_outcome", STRINGS)])
+        row["record_role"] = row.get("record_role") or ["document"]
+        row["format"] = (None if row["record_role"] == ["capture-state"] else
+                         row.get("body_format") or file_formats(row.get("media_type"), row.get("extension")))
+    grouping_schema = pa.schema([*SOURCE_SCHEMA, ("capture_outcome", STRINGS), ("body_format", STRINGS)])
     _, groups = source_groups(pa.Table.from_pylist(rows, schema=grouping_schema))
     documents = []
     for members in groups:
@@ -278,6 +343,7 @@ def prepare_document_indexes(rows, schema):
                         row.get("media_type"),
                         row.get("http_status"),
                         row.get("capture_outcome"),
+                        row.get("body_format"),
                     )
                 )
             }
@@ -306,7 +372,7 @@ def prepare_document_indexes(rows, schema):
         }
         document.update(
             document_id=document_id,
-            filename=display_filename(preferred.get("filename")),
+            filename=display_filename((preferred.get("recovered_filename") or [preferred.get("filename")])[0]),
         )
         values = defaultdict(set)
         for row in sources:
@@ -315,6 +381,19 @@ def prepare_document_indexes(rows, schema):
                 if isinstance(value, list):
                     values[key].update(value)
         document.update({key: sorted(value) for key, value in values.items() if value})
+        # A successful document and its error/marker history can share an endpoint.
+        # The group's role describes its usable document; each source keeps its role.
+        roles = values["record_role"]
+        document["record_role"] = [next(role for role in (
+            "document", "source-record", "error-response", "capture-state"
+        ) if role in roles)]
+        # Aggregate filename kinds before filling individual source-row gaps.
+        # A broad native type on an alias must not dilute a more specific name.
+        fill_document_kind(document)
+        if any(row.get("document_kind") and not row.get("recovered_filename") for row in sources):
+            document["document_kind_source"] = ["filename"]
+        for row in sources:
+            fill_document_kind(row)
         for singular, plural in [
             ("filename", "filenames"),
             ("source_url", "source_urls"),
@@ -341,7 +420,7 @@ def prepare_document_indexes(rows, schema):
     ]
     metadata = {
         **(schema.metadata or {}),
-        b"format_version": b"7",
+        b"format_version": b"9",
         b"catalog_id": catalog_id.encode(),
     }
     source_schema = pa.schema(fields, metadata=metadata)
@@ -350,7 +429,7 @@ def prepare_document_indexes(rows, schema):
             *fields,
             *[(name, STRINGS) for name in ("filenames", "source_urls", "body_keys")],
         ],
-        metadata={**metadata, b"format_version": b"2"},
+        metadata={**metadata, b"format_version": b"4"},
     )
     return rows, source_schema, documents, document_schema
 
@@ -1158,7 +1237,7 @@ def parser_fingerprint():
 
 
 def write_filename_metadata(
-    root, source_rows, *, workers=4, previous=None, metadata=None
+    root, source_rows, *, workers=4, previous=None, metadata=None, read_body=None
 ):
     """Interpret supplied source rows; acquisition and storage discovery stay outside."""
     started = time.monotonic()
@@ -1172,6 +1251,13 @@ def write_filename_metadata(
             names.add(source["filename"])
     fingerprint = parser_fingerprint()
     cached = {}
+    body_fingerprint = evidence_fingerprint()
+    body_cache = {}
+    if previous is not None and (previous.schema.metadata or {}).get(b"body_evidence_fingerprint") == body_fingerprint.encode():
+        for batch in previous.select([k for k in (BODY_FIELDS | {"body_key"}) if k in previous.column_names]).to_batches():
+            for row in batch.to_pylist():
+                if key := body_evidence_key(row):
+                    body_cache[key] = cached_body_fields(row, key)
     source_fields = (
         set(SOURCE_SCHEMA.names) | SOURCE_CONTEXT_FIELDS | {"capture_outcome"}
     )
@@ -1183,12 +1269,17 @@ def write_filename_metadata(
         fields = (
             set(previous.column_names)
             - source_fields
-            - {"source_id", "document_id", "format"}
+            - {"source_id", "document_id", "format", "document_kind_source"}
+            - EVIDENCE_FIELDS
         )
         for batch in previous.to_batches(max_chunksize=4096):
             for row in batch.to_pylist():
+                if row.get("recovered_filename") or row.get("body_format") or row.get("cache_marker_state"):
+                    continue  # These meanings depend on retained evidence, not just names.
                 cached[(row["filename"], row["source_url"])] = {
                     k: row[k] for k in fields if row[k] is not None
+                    and not (k == "document_kind"
+                             and row.get("document_kind_source") == ["source_document_type"])
                 }
     pending = [key for key in inputs if key not in cached]
     # A single-worker path is useful for callers already running a worker and
@@ -1225,6 +1316,10 @@ def write_filename_metadata(
     for key in inputs:
         columns.update(cached[key])
         rows.extend({**row, **cached[key]} for row in inputs[key])
+    enrich_sources(rows, read_body=read_body or (lambda key: read_retained_body(root, key)),
+                   extract=extract, cached=body_cache)
+    columns.update(key for row in rows for key, value in row.items()
+                   if isinstance(value, list) and key not in SOURCE_SCHEMA.names)
     if columns & set(SOURCE_SCHEMA.names):
         raise ValueError("Extracted metadata conflicts with source locator columns")
     schema = pa.schema(
@@ -1233,6 +1328,7 @@ def write_filename_metadata(
             "format_version": "5",
             "house_naming_version": __version__,
             "house_naming_fingerprint": fingerprint,
+            "body_evidence_fingerprint": body_fingerprint,
             **(metadata or {}),
         },
     )
@@ -1292,7 +1388,7 @@ def build(root, inventory_dir, *, workers=4, families=FAMILIES):
 
 
 def refresh_filename_metadata(root, *, workers=4):
-    """Reinterpret saved names without opening bodies, receipts or inventories."""
+    """Reinterpret names and selected retained bodies without discovery or acquisition."""
     source = pq.ParquetFile(root / "indexes/document-filenames.parquet")
     fields = [
         *SOURCE_SCHEMA.names,

@@ -184,3 +184,46 @@ def test_hash_grouping_never_hides_errors_unknowns_or_different_documents(tmp_pa
         ('statement.pdf', 'https://x.test/two/statement.pdf', body2, media, status),
     ])
     assert catalog.search({})['total'] == 2
+
+
+def test_default_document_scope_keeps_capture_records_available_separately(tmp_path):
+    catalog_from_sources(tmp_path, [
+        ('unknown.pdf', 'https://x.test/unknown.pdf', None, None, None),
+        ('123.xml', None, 'meeting', 'text/xml', None),
+        ('123.none', None, 'marker', None, None),
+        ('error.pdf', None, 'html-error', 'text/html', None),
+    ])
+    roles = {'unknown.pdf': 'document', '123.xml': 'source-record',
+             '123.none': 'capture-state', 'error.pdf': 'error-response'}
+    for filename in ('test.parquet', 'documents.parquet'):
+        path = tmp_path / filename
+        table = pq.read_table(path)
+        table = table.set_column(table.schema.get_field_index('record_role'),
+            table.schema.field('record_role'), pa.array([[roles[x]] for x in table['filename'].to_pylist()]))
+        pq.write_table(table, path)
+    catalog = viewer.Catalog(tmp_path / 'test.parquet')
+    assert catalog.search({'document_kind': '__null__'})['total'] == 1
+    assert catalog.search({'scope': 'all', 'document_kind': '__null__'})['total'] == 4
+    assert catalog.search({'scope': 'capture-records'})['total'] == 3
+    assert catalog.search({'scope': 'capture-records', 'q': '123.none'})['rows'][0]['record_role'] == ['capture-state']
+    assert catalog.info['documents'] == 1
+    assert catalog.info['capture_records'] == 3
+    with pytest.raises(ValueError, match='scope'):
+        catalog.search({'scope': 'typo'})
+
+
+def test_recovered_publisher_name_is_searchable_without_losing_literal_cache_search(tmp_path):
+    name = 'HHRG-119-IF00-WList-20250101.pdf'
+    cache = 'house_123_documents_HHRG_119_IF00_WList_20250101_pdf'
+    url = f'https://www.congress.gov/119/meeting/house/123/documents/{name}'
+    row = dict(body_key=None, filename=cache, source_url=None,
+               recovered_filename=[name], recovered_source_url=[url], document_kind=['witness-list'])
+    schema = pa.schema([*index.SOURCE_SCHEMA, ('recovered_filename', index.STRINGS),
+                        ('recovered_source_url', index.STRINGS), ('document_kind', index.STRINGS),
+                        ('congress', index.STRINGS), ('extension', index.STRINGS)])
+    index.write_document_indexes(tmp_path / 'test.parquet', [row], schema)
+    catalog = viewer.Catalog(tmp_path / 'test.parquet')
+    assert catalog.search({'q': name})['total'] == 1
+    assert catalog.search({'q': cache})['total'] == 1
+    assert catalog.search({'q': name})['rows'][0]['filename'] == name
+    assert catalog.record(0)['filename'] == cache

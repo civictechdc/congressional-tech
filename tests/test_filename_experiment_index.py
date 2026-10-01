@@ -64,7 +64,9 @@ def test_literal_and_source_congress_and_document_types_stay_separate(tmp_path):
     bill, person = rows
     assert bill['congress'] == ['107'] and bill['source_congress'] == ['114']
     assert person['source_document_type'] == ['Witness Statement']
-    assert person['document_kind'] is None
+    assert person['document_kind'] == ['witness-statement']
+    assert person['document_kind_source'] == ['source_document_type']
+    assert not index.Engine().extract('JaneDoe.pdf')['metadata'].get('document_kind')
 
 
 def test_old_publication_field_filter_uses_canonical_column(tmp_path):

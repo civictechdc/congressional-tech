@@ -31,7 +31,7 @@ def main():
     refresh.add_argument(
         "--metadata-only",
         action="store_true",
-        help="Reparse existing indexed filenames; no receipts, inventories, bodies or network access",
+        help="Reparse indexed filenames and selected retained House bodies; no discovery or network access",
     )
     refresh.add_argument(
         "--source-metadata-only",

@@ -7,7 +7,6 @@ See docs/congress-api-contracts.md for the per-command offline behavior.
 """
 
 import datetime as dt
-import re
 from xml.etree.ElementTree import ParseError
 
 from pypdf.errors import PyPdfError
@@ -16,6 +15,7 @@ from congress_api.acquisition.refresh import due
 from congress_api.models.content import RawContent
 from congress_api.parsers import witness_pdf as witness_lists
 from congress_api.parsers.senate_player import archive_url, live_url, player_url
+from congress_api.retention.document_evidence import legacy_house_cache_name
 from congress_api.transport import http
 
 
@@ -42,7 +42,7 @@ def get_witnesses(key, url, state, version, day, today, offline, seed_cache=None
                 return saved["people"]
     data = None
     if not complete and seed_cache:
-        path = seed_cache / "mods" / f"{key}.xml" if package else seed_cache / "witness_lists" / re.sub(r"\W+", "_", url.split("/meeting/")[-1])
+        path = seed_cache / "mods" / f"{key}.xml" if package else seed_cache / "witness_lists" / legacy_house_cache_name(url)
         if path.exists():
             data = path.read_bytes()
     imported = data is not None

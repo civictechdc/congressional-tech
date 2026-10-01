@@ -190,7 +190,9 @@ new durable receipts and current pipeline links. It retains unfetched filenames,
 response-header names, redirects and parent committee/meeting metadata. New names
 pass through `house_naming.Engine.extract`; unchanged names reuse saved results.
 A fingerprint of the parser code and catalog invalidates that reuse when rules change.
-Rebuilding tables never downloads document bodies.
+Rebuilding reads selected retained House bodies through the configured store
+and reuses their classifications while the readers stay unchanged. It does not
+fetch files from publishers.
 
 A successful capture means retained bytes passed basic format checks, not verified substantive
 content or a parsed document model. A captured HTML wrapper and its download links
