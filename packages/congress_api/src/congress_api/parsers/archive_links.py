@@ -7,6 +7,8 @@ from urllib.parse import parse_qsl, urlsplit
 
 from lxml import etree
 
+from congress_api.models.content import RawContent
+
 from congress_api.parsers.document_links import (
     document_links,
     http_url,
@@ -16,6 +18,35 @@ from congress_api.parsers.document_links import (
 
 MEDIA_FILE = re.compile(r"\.(?:mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:$|[?#])", re.I)
 SECRET_KEYS = {"api_key", "apikey", "key", "token", "access_token", "authorization"}
+
+
+def inspect_capture(response, *, replay=False):
+    """Classify retained source bytes using the same rules for fallback and capture."""
+    body = (
+        RawContent.model_validate(response["content"]).body_bytes()
+        if response.get("content") else b""
+    )
+    links = []
+    if response.get("error") == "retained_body_limit":
+        return "inspection_deferred", links
+    if response.get("error") or not response.get("complete"):
+        return "incomplete" if body else "request_failed", links
+    if response.get("http_status") != 200 and not (
+        replay and response.get("http_status") is None
+    ):
+        return "http_error", links
+    outcome, kind = inspect_body(
+        body, response["url"], response.get("content", {}).get("media_type", "")
+    )
+    if outcome in {"saved", "html"}:
+        try:
+            links = related_links(body, response["url"], kind)
+        except (ValueError, UnicodeError) as error:
+            response["interpretation_error"] = type(error).__name__
+            outcome = "parse_failed"
+    if outcome == "html" and links:
+        outcome = "saved"
+    return outcome, links
 
 
 def allowed_url(value, base=""):

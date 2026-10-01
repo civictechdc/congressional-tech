@@ -18,7 +18,7 @@ from congress_api.parsers.archive_links import json_links
 from congress_api.retention.raw_archive import Archive
 from congress_api.retention.raw_catalog import rebuild_catalog
 from congress_api.retention.r2 import R2Store
-from congress_api.transport.source_capture import fetch_source
+from congress_api.transport.rust_fetch import RustFetcher
 from congress_api.transport import zyte
 
 
@@ -56,7 +56,9 @@ def parser():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--bucket", default="congressional-tech-raw")
     p.add_argument("--account-id", default=os.environ.get("CLOUDFLARE_ACCOUNT_ID"))
-    p.add_argument("--transport", choices=("zyte", "direct"), default="zyte")
+    p.add_argument("--transport", choices=("auto", "zyte", "direct"), default="auto")
+    p.add_argument("--fetcher-binary", default="source-fetch", help="Path to the Rust reqwest worker")
+    p.add_argument("--requests-per-second", type=positive, default=40)
     p.add_argument("--seed", action="append", type=Path, default=[])
     p.add_argument(
         "--limit",
@@ -64,7 +66,7 @@ def parser():
         default=5000,
         help="Maximum captures/replays per run; unfinished URLs remain queued",
     )
-    p.add_argument("--workers", type=positive, default=8)
+    p.add_argument("--workers", type=positive, default=80)
     p.add_argument("--index-workers", type=positive, default=2)
     p.add_argument("--max-seconds", type=positive, default=5400)
     p.add_argument("--max-file-mib", type=positive, default=64)
@@ -114,7 +116,7 @@ def main(argv=None):
             ),
             args.bucket,
         )
-    if not args.plan_only and args.transport == "zyte":
+    if not args.plan_only and args.transport in {"auto", "zyte"}:
         zyte.token()
     run_id = (
         datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + uuid4().hex[:12]
@@ -133,26 +135,20 @@ def main(argv=None):
         stop = threading.Event()
         signal.signal(signal.SIGTERM, lambda *_: stop.set())
         signal.signal(signal.SIGINT, lambda *_: stop.set())
-        summary = run_sync(
-            archive,
-            seeds,
-            fetch=partial(
-                fetch_source,
-                transport=args.transport,
-                max_bytes=args.max_file_mib * 1024**2,
-            ),
-            limit=args.limit,
-            workers=args.workers,
-            max_seconds=args.max_seconds,
-            max_bytes=args.max_file_mib * 1024**2,
-            stop=stop,
-            publish=lambda a: rebuild_catalog(
-                a.store,
-                a.captures,
-                seeds=seed_files(args.seed),
-                workers=args.index_workers,
-            ),
-        )
+        with RustFetcher(
+            args.fetcher_binary, requests_per_second=args.requests_per_second,
+            workers=args.workers, max_bytes=args.max_file_mib * 1024**2,
+        ) as fetcher:
+            summary = run_sync(
+                archive, seeds, fetch=partial(fetcher.fetch, transport=args.transport),
+                limit=args.limit, workers=args.workers, max_seconds=args.max_seconds,
+                max_bytes=args.max_file_mib * 1024**2, stop=stop,
+                publish=lambda a: rebuild_catalog(
+                    a.store, a.captures, seeds=seed_files(args.seed), workers=args.index_workers,
+                ),
+            )
+        summary.update(fetcher="reqwest", requests_per_second=args.requests_per_second,
+                       workers=args.workers, http_requests=fetcher.sequence)
     summary.update(run_id=run_id, bucket=args.bucket, transport=args.transport)
     args.summary.parent.mkdir(parents=True, exist_ok=True)
     args.summary.write_text(json.dumps(summary, indent=2) + "\n")

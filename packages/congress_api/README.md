@@ -150,10 +150,30 @@ links, and scans already retained bodies without refetching them. It does not
 crawl site navigation or archive full video/audio files. Authenticated Congress.gov,
 GovInfo collection and YouTube API requests remain with their existing collectors.
 
-Production defaults to **Zyte**, with eight workers, at most 5,000 downloads or
-retained-body scans, and 90 minutes of collection per run. Direct requests are
-an explicit manual override. The default response limit is 64 MiB; larger responses
-remain incomplete, never successful. Increase `--max-file-mib` for a targeted run.
+Production uses the Rust `source-fetch` reqwest worker, with **direct requests
+first and one Zyte fallback when capture fails**. It starts at most **40 HTTP
+requests per second** across direct requests, redirects, and fallbacks, with up
+to **80 concurrent source tasks**. The rate is a shared ceiling; source latency,
+archive writes, and catalog work can lower completed captures per second.
+The run still limits work to 5,000 downloads or retained-body scans and 90 minutes
+of collection. Manual `direct` and `zyte` modes remain available. The default
+response limit is 64 MiB; larger responses remain incomplete, never successful.
+Increase `--max-file-mib` for a targeted run.
+
+Fallback uses the same inspection rules as capture: request errors, non-200
+statuses, partial bodies, empty or invalid files, challenges, and HTML without
+recognized download links trigger one Zyte attempt. Successful files, HTML
+wrappers with download links, and excluded media do not. A blocked redirect
+stays blocked. Receipts retain the direct attempt's body, status, and headers
+alongside the final result. Provider authentication failures still stop new
+work after in-flight captures are retained.
+
+Build the native worker with `cargo build --release --locked --manifest-path
+packages/source-fetch/Cargo.toml --bin source-fetch`, then pass its path with
+`--fetcher-binary` or put it on `PATH`. GitHub Actions builds and tests it before
+collection. Python continues to own URL checks, file interpretation, receipts,
+retry state, and catalog publication. Rust owns the shared HTTP pool and rate
+limit; body files cross the process boundary through a temporary local directory.
 
 Each run writes bodies to `bodies/sha256/` before appending immutable gzip JSONL
 batches under `receipts/<family>/<date>/download-<run-id>-<batch>.jsonl.gz`.

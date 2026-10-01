@@ -54,6 +54,8 @@ def response_metadata(response: requests.Response) -> dict:
     as repeated Link headers that requests combines in its mapping. These are
     parsed HTTP headers, not a byte-for-byte copy of the wire protocol.
     """
+    if metadata := getattr(response, "capture_metadata", None):
+        return metadata
     original = getattr(response.raw, "_original_response", None)
     message = getattr(original, "msg", None)
     raw_headers = getattr(response.raw, "headers", None)

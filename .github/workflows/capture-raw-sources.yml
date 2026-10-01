@@ -14,10 +14,10 @@ on:
         type: number
         default: 5000
       transport:
-        description: Source transport (production uses Zyte)
+        description: Source transport (auto tries direct, then Zyte on failure)
         type: choice
-        options: [zyte, direct]
-        default: zyte
+        options: [auto, zyte, direct]
+        default: auto
 
 permissions:
   contents: read
@@ -43,6 +43,13 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
+      - name: Build and check the Rust fetcher
+        run: |
+          rustup toolchain install 1.89.0 --profile minimal --component rustfmt --component clippy
+          cargo +1.89.0 fmt --check --manifest-path packages/source-fetch/Cargo.toml
+          cargo +1.89.0 clippy --locked --release --manifest-path packages/source-fetch/Cargo.toml -- -D warnings
+          cargo +1.89.0 test --locked --release --manifest-path packages/source-fetch/Cargo.toml
+          cargo +1.89.0 build --locked --release --manifest-path packages/source-fetch/Cargo.toml --bin source-fetch
       - name: Install capture tools
         run: >-
           pip install -e packages/house-naming -e packages/committee_meeting
@@ -53,6 +60,11 @@ jobs:
           tests/test_raw_source_sync.py tests/test_source_capture.py tests/test_r2_archive_store.py
           tests/test_raw_catalog.py tests/test_document_filename_index.py tests/test_document_filename_viewer.py
           tests/test_congress_api_imports.py tests/test_document_link_probe.py
+          tests/test_rust_fetch.py
+      - name: Verify native concurrency and request pacing on loopback
+        env:
+          SOURCE_FETCH_BINARY: ${{ github.workspace }}/packages/source-fetch/target/release/source-fetch
+        run: python -m pytest -q tests/test_rust_fetch_native.py
       - name: Capture sources and rebuild filename and document tables
         env:
           CLOUDFLARE_ACCOUNT_ID: '174055408ff1560e60601c4d12c561c4'
@@ -60,7 +72,7 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           ZYTE_TOKEN: ${{ secrets.ZYTE_TOKEN }}
           CAPTURE_LIMIT: ${{ inputs.limit || 5000 }}
-          CAPTURE_TRANSPORT: ${{ inputs.transport || 'zyte' }}
+          CAPTURE_TRANSPORT: ${{ inputs.transport || 'auto' }}
         run: |
           seeds=()
           for path in \
@@ -71,8 +83,9 @@ jobs:
             if [ -f "$path" ]; then seeds+=(--seed "$path"); fi
           done
           raw-source-sync --bucket congressional-tech-raw \
+            --fetcher-binary "$GITHUB_WORKSPACE/packages/source-fetch/target/release/source-fetch" \
             --transport "$CAPTURE_TRANSPORT" --limit "$CAPTURE_LIMIT" \
-            --workers 8 --index-workers 2 --max-seconds 5400 --max-file-mib 64 \
+            --requests-per-second 40 --workers 80 --index-workers 2 --max-seconds 5400 --max-file-mib 64 \
             --summary raw-capture-summary.json "${seeds[@]}"
       - name: Show capture summary
         if: ${{ always() }}

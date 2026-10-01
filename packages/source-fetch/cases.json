@@ -1,0 +1,26 @@
+[
+  {
+    "id": "senate-captions",
+    "url": "https://www-senate-gov-media-srs.akamaized.net/hls/live/2036794/foreign/foreign121125/master/text_1_00019.vtt"
+  },
+  {
+    "id": "govinfo-mods",
+    "url": "https://www.govinfo.gov/metadata/pkg/CHRG-112hhrg74055/mods.xml"
+  },
+  {
+    "id": "senate-players",
+    "url": "https://www-senate-gov-media-srs.akamaized.net/hls/live/2036800/armed/armedA112019/master.m3u8"
+  },
+  {
+    "id": "senate-pages",
+    "url": "https://www.indian.senate.gov/hearings/business-meeting-consider-s-995-s-1953/"
+  },
+  {
+    "id": "govinfo-mets",
+    "url": "https://www.govinfo.gov/content/pkg/CHRG-108hhrg90628/mets.xml"
+  },
+  {
+    "id": "documents",
+    "url": "https://docs.house.gov/meetings/BA/BA00/20211116/114255/BILLS-117-2620-F000454-Amdt-4.pdf"
+  }
+]

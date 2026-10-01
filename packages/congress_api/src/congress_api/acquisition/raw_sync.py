@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 import time
 
 from congress_api.models.content import RawContent
-from congress_api.parsers.archive_links import inspect_body, related_links
+from congress_api.parsers.archive_links import inspect_capture
 from congress_api.retention.raw_archive import BodyLimitExceeded
 
 
@@ -99,39 +99,7 @@ def run_sync(
                 for future in done:
                     state = active.pop(future)
                     response, mode = future.result()
-                    body = (
-                        RawContent.model_validate(response["content"]).body_bytes()
-                        if response.get("content")
-                        else b""
-                    )
-                    links = []
-                    kind = None
-                    if response.get("error") == "retained_body_limit":
-                        outcome = "inspection_deferred"
-                    elif response.get("error") or not response.get("complete"):
-                        outcome = "incomplete" if body else "request_failed"
-                    elif response.get("http_status") != 200 and not (
-                        mode == "replay" and response.get("http_status") is None
-                    ):
-                        outcome = "http_error"
-                    else:
-                        outcome, kind = inspect_body(
-                            body,
-                            response["url"],
-                            response.get("content", {}).get("media_type", ""),
-                        )
-                        if outcome in {"saved", "html"}:
-                            try:
-                                links = related_links(body, response["url"], kind)
-                            except (ValueError, UnicodeError) as error:
-                                # A malformed publisher response must not stop
-                                # unrelated captures or become a completed scan.
-                                response["interpretation_error"] = type(error).__name__
-                                outcome = "parse_failed"
-                    # HTML is retained, but a document download hidden behind it
-                    # remains separate work. Successful scans need not refetch it.
-                    if outcome == "html" and links:
-                        outcome = "saved"
+                    outcome, links = inspect_capture(response, replay=mode == "replay")
                     for link in links:
                         link["parent_url"] = state["url"]
                         link["parent_sha256"] = response.get("content", {}).get(
@@ -147,6 +115,7 @@ def run_sync(
                     )
                     counts[outcome] += 1
                     counts[mode] += 1
+                    counts["zyte_fallbacks"] += bool(response.get("prior_attempts"))
                     for link in links:
                         child = archive.state.get(link["url"])
                         if (

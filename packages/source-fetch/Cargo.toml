@@ -1,0 +1,48 @@
+[package]
+name = "source-fetch"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.89"
+publish = false
+description = "Rate-limited reqwest transport for congressional source capture"
+license = "Apache-2.0"
+repository = "https://github.com/civictechdc/congressional-tech"
+keywords = ["benchmark", "http", "congress"]
+categories = ["command-line-utilities"]
+
+[[bin]]
+name = "reqwest-fetch-bench"
+path = "benchmark.rs"
+
+[[bin]]
+name = "source-fetch"
+path = "main.rs"
+
+[dependencies]
+anyhow = "1"
+async-compression = { version = "0.4", features = ["tokio", "gzip", "brotli", "zlib"] }
+base64 = "0.22"
+dotenvy = "0.15"
+futures-util = "0.3"
+mimalloc = "0.1"
+reqwest = { version = "=0.13.5", features = ["json", "gzip", "brotli", "deflate", "stream"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time", "io-std", "io-util", "fs", "sync", "test-util"] }
+tokio-util = { version = "0.7", features = ["io"] }
+
+[lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "warn"
+redundant_imports = "warn"
+redundant_lifetimes = "warn"
+unused_lifetimes = "warn"
+
+[lints.clippy]
+complexity = { level = "warn", priority = -1 }
+correctness = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+perf = { level = "warn", priority = -1 }
+style = { level = "warn", priority = -1 }
+suspicious = { level = "warn", priority = -1 }

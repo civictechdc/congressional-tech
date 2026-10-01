@@ -27,8 +27,9 @@ class Response:
             yield self.data[i : i + chunk_size]
 
 
-def test_production_defaults_to_zyte_and_retains_native_metadata(monkeypatch):
-    assert parser().parse_args([]).transport == "zyte"
+def test_capture_defaults_to_direct_with_fallback_and_retains_native_metadata(monkeypatch):
+    defaults = parser().parse_args([])
+    assert (defaults.transport, defaults.requests_per_second, defaults.workers) == ("auto", 40, 80)
     raw = b"%PDF-1.7\n\xff\n%%EOF"
     payload = {
         "url": "https://example.gov/final.pdf",

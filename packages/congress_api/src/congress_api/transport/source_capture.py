@@ -1,4 +1,4 @@
-"""Bounded full-response capture; Zyte is the production default."""
+"""Bounded full-response capture for direct and Zyte transports."""
 
 import base64
 from datetime import datetime, timezone
@@ -25,10 +25,10 @@ def read_bounded(response, limit):
             parts.append(part[: limit - (size - len(part))])
             return b"".join(parts), False
         parts.append(part)
-    return b"".join(parts), True
+    return b"".join(parts), getattr(response, "capture_complete", True)
 
 
-def fetch_source(url, *, transport="zyte", max_bytes=64 * 1024**2, session=None):
+def fetch_source(url, *, transport="zyte", max_bytes=64 * 1024**2, session=None, pace=True):
     if not allowed_url(url):
         raise ValueError("URL is outside capture scope")
     if transport not in {"zyte", "direct"}:
@@ -55,7 +55,7 @@ def fetch_source(url, *, transport="zyte", max_bytes=64 * 1024**2, session=None)
                 data, complete = read_bounded(response, (max_bytes * 4 // 3) + 1024**2)
                 if not complete:
                     result.update(
-                        error="provider_response_limit",
+                        error=getattr(response, "capture_error", None) or "provider_response_limit",
                         provider_content=RawContent.from_bytes(
                             data, "application/json"
                         ),
@@ -109,7 +109,8 @@ def fetch_source(url, *, transport="zyte", max_bytes=64 * 1024**2, session=None)
                 if not allowed_url(target):
                     result["error"] = "excluded_redirect"
                     break
-                pace_request(target)
+                if pace:
+                    pace_request(target)
                 with session.get(
                     target,
                     headers=UA,
@@ -138,7 +139,7 @@ def fetch_source(url, *, transport="zyte", max_bytes=64 * 1024**2, session=None)
                         ),
                     )
                     if not complete:
-                        result["error"] = "source_response_limit"
+                        result["error"] = getattr(response, "capture_error", None) or "source_response_limit"
                     break
             else:
                 result["error"] = "redirect_limit"

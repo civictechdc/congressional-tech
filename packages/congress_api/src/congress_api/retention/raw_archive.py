@@ -319,9 +319,14 @@ class Archive:
             )
         for cap in captures:
             cap.update(self.body_info[cap["sha256"]])
+            pointer = cap["pointer"]
+            prior_source = (
+                len(pointer) == 4 and pointer[0] == "prior_attempts"
+                and pointer[2:] == ["content", "body"]
+            )
             cap["family"] = (
                 previous["family"]
-                if cap["pointer"]
+                if prior_source or pointer
                 in (["content", "body"], ["provider_response", "httpResponseBody"])
                 else "external/provider-responses"
             )
