@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "base_catalog_sha256": "REPLACE_WITH_CURRENT_JSON_CATALOG_SHA256",
+  "provenance": {
+    "kind": "model",
+    "actor": "operator-or-adapter-id",
+    "method": "local-page-and-document-review",
+    "created_at": "2026-09-30T00:00:00Z",
+    "provider": "your-local-provider",
+    "model": "exact-model-and-revision",
+    "parameters": {"temperature": 0},
+    "prompt": "REPLACE_WITH_EXACT_PROMPT_USED",
+    "raw_output": "REPLACE_WITH_COMPLETE_RAW_MODEL_RESPONSE"
+  },
+  "plans": [{
+    "document_id": "REPLACE_FROM_PLANS_JSON",
+    "source_sha256": "REPLACE_FROM_PLANS_JSON",
+    "context_sha256": "REPLACE_FROM_PLANS_JSON",
+    "sections": [{
+      "section_id": "results",
+      "role": "results",
+      "schema_ref": "report",
+      "parts": [
+        {"page_id": "REPLACE_FIRST_PAGE", "bbox": [0.05, 0.30, 0.95, 0.95], "evidence_refs": ["native-3"]},
+        {"page_id": "REPLACE_SECOND_PAGE", "bbox": [0.05, 0.05, 0.95, 0.80], "evidence_refs": ["native-1"]}
+      ],
+      "continuations": [{
+        "from_part": 0, "to_part": 1,
+        "reason": "REPLACE_WITH_OBSERVED_CONTINUATION_EVIDENCE",
+        "from_evidence_refs": ["native-3"], "to_evidence_refs": ["native-1"]
+      }]
+    }],
+    "unresolved_pages": []
+  }]
+}

@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "category": {
+    "id": "laboratory-report",
+    "version": "1",
+    "roles": ["sample-identification", "results", "quality-control"],
+    "anchors": [
+      {"id": "sample", "pattern": "sample identification", "role": "sample-identification", "schema_ref": "report"},
+      {"id": "results", "pattern": "^results", "role": "results", "schema_ref": "report"},
+      {"id": "quality", "pattern": "quality control", "role": "quality-control", "schema_ref": "report"}
+    ],
+    "schemas": {"report": {"format": "json-schema", "uri": "urn:example:laboratory-report:v1"}}
+  },
+  "ocr": {"mode": "auto"},
+  "layout": {"provider": "none"}
+}

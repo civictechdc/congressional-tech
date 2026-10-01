@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "document-catalog"
+version = "0.1.0"
+description = "Local, evidence-preserving document layout catalogs and section plans"
+requires-python = ">=3.10"
+dependencies = ["PyMuPDF>=1.24,<2", "Pillow>=10,<13", "numpy>=1.26,<3", "jsonschema>=4.18,<5", "pyarrow>=18,<26"]
+
+[project.optional-dependencies]
+vision = ["pyobjc-framework-Vision>=10; sys_platform == 'darwin'", "ocrmac>=1; sys_platform == 'darwin'"]
+layout = ["docling>=2.72,<3", "docling-ibm-models>=3.11,<4"]
+test = ["pytest>=8,<10"]
+
+[project.scripts]
+document-catalog = "document_catalog.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra"

@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "category": {
+    "id": "meeting-agenda",
+    "version": "1",
+    "roles": ["agenda-items", "attendees"],
+    "anchors": [
+      {"id": "agenda", "pattern": "agenda items", "role": "agenda-items", "schema_ref": "meeting"},
+      {"id": "attendees", "pattern": "attendees", "role": "attendees", "schema_ref": "meeting"}
+    ],
+    "schemas": {"meeting": {"format": "xml-schema", "uri": "urn:example:meeting:v1"}}
+  }
+}

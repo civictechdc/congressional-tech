@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "base_catalog_sha256": "REPLACE_WITH_CURRENT_JSON_CATALOG_SHA256",
+  "reviewer": {"kind": "human", "id": "reviewer-id"},
+  "method": "visual-inspection-of-retained-page",
+  "created_at": "2026-09-30T00:00:00Z",
+  "judgments": [{
+    "target_type": "section",
+    "target_id": "REPLACE_FROM_REVIEW_TARGETS_JSON",
+    "context_sha256": "REPLACE_FROM_REVIEW_TARGETS_JSON",
+    "decision": "uncertain",
+    "reason": "REPLACE_WITH_SPECIFIC_REVIEW_FINDING"
+  }]
+}
