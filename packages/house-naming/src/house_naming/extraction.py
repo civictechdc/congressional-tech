@@ -9,11 +9,13 @@ from datetime import date
 from collections.abc import Mapping, Sequence
 from functools import lru_cache
 import re
+from unicodedata import category
 from urllib.parse import urlsplit
 
 from .errors import NamingError
 from .extraction_catalog import bind_extraction_rules, compile_pattern
 from .metadata import NUMBER_BOUNDARY_NOTE, starts_with_ordinal_suffix, target_subject_spans
+from .categories import document_category_fields
 
 HOUSE_NAMING_URL = "https://www.govinfo.gov/content/pkg/GOVPUB-Y1_2-PURL-gpo156119/pdf/GOVPUB-Y1_2-PURL-gpo156119.pdf"
 
@@ -30,7 +32,12 @@ MONTHS = {name: number for number, name in enumerate(
     ('jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'), 1)}
 
 
-def remaining_spans(filename, start, end, covered):
+def subject_separator(char):
+    """Printed delimiters at a subject edge; internal punctuation stays literal."""
+    return char.isspace() or category(char).startswith('P') or char == '|'
+
+
+def remaining_spans(filename, start, end, covered, *, subject=False):
     """Keep disjoint literal text after assigned spans, trimming separators only."""
     result, pos = [], start
     spans = sorted((max(a, start), min(b, end)) for a, b in covered if a < end and start < b)
@@ -46,9 +53,12 @@ def remaining_spans(filename, start, end, covered):
                     stack.append(i)
                 elif char in ')]' and stack and filename[stack[-1]] == {')': '(', ']': '['}[char]:
                     paired.update((stack.pop(), i))
-            while left < right and filename[left] in ' ._-()[]' and left not in paired:
+            while left < right and left not in paired and (
+                    filename[left] in ' ,._-()[]' or subject and subject_separator(filename[left])):
+                if filename[left] == '#' and filename[left + 1:left + 2].isdigit():
+                    break  # A printed reference such as #9 is content, not a delimiter.
                 left += 1
-            while right > left and filename[right - 1] in ' ._-()[]' and right - 1 not in paired:
+            while right > left and filename[right - 1] in ' ,._-()[]' and right - 1 not in paired:
                 right -= 1
             if left < right:
                 result.append((left, right))
@@ -547,8 +557,8 @@ class Extractor:
         Never join disjoint pieces or reinterpret structured witness/member IDs.
         A single remaining text span is a subject, not a resolved person.
         """
-        labels = [f for m in observations for f in m['fields']
-                  if f['name'] in {'label', 'amendment_marker', 'document_token'} and f.get('category')]
+        labels = [f for f in document_category_fields(filename, observations)
+                  if f['name'] in {'label', 'amendment_marker', 'document_token', 'meeting_wording'}]
         if not labels:
             return []
         removable = {'label', 'date_token', 'short_date_token', 'time_token', 'fraction_token',
@@ -557,10 +567,13 @@ class Extractor:
                      'committee_token', 'committee_marker', 'subcommittee_token', 'subcommittee_marker',
                      'meeting_wording', 'field_location_token', 'field_marker', 'session_period',
                      'nomination_wording', 'fiscal_marker', 'fiscal_year_token', 'month_year_token',
-                     'month_token', 'year_token', 'filename_format_token', 'context_token', 'question_identifier'}
+                     'month_token', 'year_token', 'filename_format_token', 'context_token', 'question_identifier',
+                     'outline_identifier', 'addendum_marker'}
+        if any(f['name'] == 'meeting_wording' for f in labels):
+            removable.add('possible_month_day_token')
         spans = [(f['start'], f['end']) for m in observations for f in m['fields']
                  if f['name'] in removable and f['raw']
-                 and (f['name'] != 'label' or f.get('category'))]
+                 and (f['name'] != 'label' or f in labels)]
         # Conjunctions connect document labels, not parts of a person's name.
         for left in labels:
             for right in labels:
@@ -585,7 +598,7 @@ class Extractor:
                 if fallback and not any(a <= f['start'] < f['end'] <= b for f in labels):
                     continue
                 # Remove only recognized complete components within this span.
-                remaining = remaining_spans(filename, a, b, spans)
+                remaining = remaining_spans(filename, a, b, spans, subject=True)
                 # Recognized interior fields may be part of the title itself,
                 # such as FY 2024 in a budget hearing. Trim the edges while
                 # preserving the contiguous source text between them.
@@ -597,6 +610,9 @@ class Extractor:
                     if prefix := re.match(r'(?:to|of|for)[ _-]+', filename[left:right], re.I):
                         left += prefix.end()
                 counter = re.fullmatch(r'[A-Za-z]+([0-9]{1,3})', filename[left:right])
+                if counter and any(f['name'] == 'measure_number' and f['start'] == left + counter.start(1)
+                                   and f['end'] == right for m in observations for f in m['fields']):
+                    counter = None  # S1 names a measure; its number is not a subject counter.
                 counter_field = None
                 if counter:
                     counter_start = left + counter.start(1)
@@ -731,8 +747,8 @@ class Extractor:
                 results.append(dict(rule='role-subject-remainder', scope='subject-refinement',
                     start=a, end=b, description='Role-only possessive; the original subject is retained.', fields=[]))
                 continue
-            while cursor < b and filename[cursor] in ' ._-':
-                cursor += 1
+            remaining = remaining_spans(filename, cursor, b, (), subject=True)
+            cursor = remaining[0][0] if remaining else b
             if not any(c.isalpha() for c in filename[cursor:b]) or (cursor, b) in seen:
                 continue
             seen.add((cursor, b))
@@ -1111,7 +1127,8 @@ class Extractor:
         qualifier_hits = [self._match(qualifier_rule, h, start) for h in qualifier_regex.finditer(stem)
                           if not self._overlaps(start + h.start(), start + h.end(), protected)]
         terminal_spans = [(f['start'], f['end']) for m in observations for f in m['fields']
-                          if f['name'] in {'opaque_uuid','opaque_hex','date_token','short_date_token','time_token','fraction_token','filename_format_token'}]
+                          if f['name'] in {'opaque_uuid','opaque_hex','date_token','short_date_token','time_token','fraction_token','filename_format_token',
+                                           'fiscal_marker','fiscal_year_token'}]
         terminal_end = stem_end
         if hanging := re.search(r'pdf(?:-[0-9]+)?\Z', stem, re.I):
             terminal_end = start + hanging.start()
@@ -1142,7 +1159,11 @@ class Extractor:
                 prefix = prefix and all(f.get('category') in {
                     'testimony', 'statement', 'witness-statement', 'witness-list',
                     'questions-for-record', 'questions-for-record-response', 'questionnaire'} for f in labels_after)
-                allowed = adjacent or terminal or prefix
+                # Processing words at the start of a title can name its topic
+                # (OCR Technology, Opt Out). Require a document or suffix context.
+                processing = any(f['raw'].lower() in {'ocr', 'sanitized', 'scrubbed', 'opt'}
+                                 for f in match.get('fields', ()))
+                allowed = adjacent or terminal or prefix and not processing
                 if public:
                     # Public servants / Public health describes a topic. A
                     # trailing Public or Public before the label is different.

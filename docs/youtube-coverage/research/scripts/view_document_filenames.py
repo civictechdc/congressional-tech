@@ -78,6 +78,8 @@ class Catalog:
     def search(self, query):
         text = query.get('q', '')[:2000]
         field = query.get('field', 'filename')
+        if field == 'publication_code_code' and field not in self.fields:
+            field = 'publication_type'  # Preserve bookmarked filters after consolidation.
         if field not in self.fields:
             raise ValueError('Unknown search column.')
         mask = pa.array([True] * len(self.table))

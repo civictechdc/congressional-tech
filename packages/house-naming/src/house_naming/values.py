@@ -9,6 +9,7 @@ from collections import defaultdict
 import re
 
 from .metadata import target_subject_spans
+from .categories import EVENT_KINDS, document_category_fields
 
 OMIT_FIELDS = frozenset({'payload', 'query_text', 'ignored_suffix', 'protocol_marker'})
 GENERIC_KINDS = frozenset({'committee-document', 'committee-document-numbered'})
@@ -43,9 +44,7 @@ def filename_metadata(result: dict, *, convention_matches: list[dict] | None = N
     # A structured amendment's subject describes its target. Labels inside
     # that slot remain useful without changing the amendment's document kind.
     target_spans = target_subject_spans(observations)
-    bill_descriptions = [(f['start'],f['end']) for m in observations for f in m['fields']
-                         if (m.get('scope') == 'legislative-payload' and f['name'] in {'descriptor', 'suffix'})
-                         or (m.get('scope') == 'legislative-text-search' and f['name'] == 'description')]
+    primary_fields = {id(f) for f in document_category_fields(result.get('input'), observations)}
 
     def add(name, value):
         if value is not None and value != '':
@@ -83,13 +82,10 @@ def filename_metadata(result: dict, *, convention_matches: list[dict] | None = N
             if name == 'fiscal_year_token' and len(field['raw']) == 4:
                 add('fiscal_year', field['raw'])
             if category := field.get('category'):
-                if category == 'biography' and any(
-                        a <= field['start'] < field['end'] < b for a,b in bill_descriptions):
-                    pass  # Bio inside a bill title does not describe this file.
-                elif field['name'] != 'amendment_marker' and any(
+                if field['name'] != 'amendment_marker' and any(
                         a <= field['start'] < field['end'] <= b for a,b in target_spans):
                     add('target_document_kind', category)
-                elif category not in categories:
+                elif id(field) in primary_fields and category not in categories:
                     categories.append(category)
             if role := field.get('role'):
                 if not role.endswith('bioguide_id') or (field['start'], field['end']) in bioguides:
@@ -133,6 +129,9 @@ def filename_metadata(result: dict, *, convention_matches: list[dict] | None = N
     # A strict witness-support reading is more specific than its Wstate prefix.
     # Likewise, a known QFR/roster token improves a generic committee document.
     kinds = row.get('document_kind', [])
+    if any(kind == 'published-report' or kind.startswith('conference-') for kind in [*kinds, *categories]):
+        # A report-family prefix does not reclassify a known report component.
+        categories = [category for category in categories if category != 'committee-report']
     if 'bill-numbered' in categories:
         # A padded number or separator is not descriptive title text. The
         # literal numbered grammar is narrower than a fallback strict layout.
@@ -148,10 +147,17 @@ def filename_metadata(result: dict, *, convention_matches: list[dict] | None = N
                        or category == 'biography' and kind == 'witness-biography'
                        for kind in kinds):
                 add('document_kind', category)
+    if {'questions-for-record', 'response'} <= set(row.get('document_kind', [])):
+        row['document_kind'] = [kind for kind in row['document_kind'] if kind != 'response']
+        add('document_kind', 'questions-for-record-response')
     if 'questions-for-record-response' in row.get('document_kind', []):
         row['document_kind'] = [kind for kind in row['document_kind'] if kind != 'questions-for-record']
     if 'witness-support' in row.get('document_kind', []):
         row['document_kind'] = [kind for kind in row['document_kind'] if kind != 'witness-statement']
+    if set(row.get('document_kind', [])) - EVENT_KINDS - GENERIC_KINDS:
+        row['document_kind'] = [kind for kind in row['document_kind'] if kind not in EVENT_KINDS]
+    elif 'business-meeting' in row.get('document_kind', []):
+        row['document_kind'] = [kind for kind in row['document_kind'] if kind != 'nomination']
     if row.get('amendment_id') and not row.get('amendment_identifier'):
         row['amendment_identifier'] = list(row['amendment_id'])
     return dict(row)

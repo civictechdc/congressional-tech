@@ -76,6 +76,7 @@ SOURCE_SCHEMA = pa.schema(
     ]
 )
 ENGINE = None
+EMPTY_BODY_DIGEST = sha256(b"").hexdigest()
 
 MEDIA_FORMATS = {
     "application/pdf": "pdf",
@@ -231,6 +232,7 @@ def document_body(body, media, statuses, outcomes=None):
         body
         if (
             body
+            and body.rsplit("/", 1)[-1].removesuffix(".gz") != EMPTY_BODY_DIGEST
             and (not outcomes or set(outcomes) == {"saved"})
             and formats
             and formats <= document_formats
@@ -242,6 +244,18 @@ def document_body(body, media, statuses, outcomes=None):
 
 def prepare_document_indexes(rows, schema):
     """Keep exact source rows and create one canonical row per document group."""
+    # The parser's public metadata keeps both names for compatibility. These
+    # tables need only one normalized publication code, alongside raw spelling.
+    # Preserve either column if any row actually carries a distinct reading.
+    redundant = "publication_code_code"
+    if redundant in schema.names and all(
+        not row.get(redundant) or row[redundant] == row.get("publication_type")
+        for row in rows
+    ):
+        schema = pa.schema([field for field in schema if field.name != redundant],
+                           metadata=schema.metadata)
+        for row in rows:
+            row.pop(redundant, None)
     for row in rows:
         row["source_id"] = sha256(
             compact(
@@ -327,7 +341,7 @@ def prepare_document_indexes(rows, schema):
     ]
     metadata = {
         **(schema.metadata or {}),
-        b"format_version": b"6",
+        b"format_version": b"7",
         b"catalog_id": catalog_id.encode(),
     }
     source_schema = pa.schema(fields, metadata=metadata)
@@ -336,7 +350,7 @@ def prepare_document_indexes(rows, schema):
             *fields,
             *[(name, STRINGS) for name in ("filenames", "source_urls", "body_keys")],
         ],
-        metadata={**metadata, b"format_version": b"1"},
+        metadata={**metadata, b"format_version": b"2"},
     )
     return rows, source_schema, documents, document_schema
 
@@ -1082,15 +1096,27 @@ def extract(item):
     filename, source_url = item
     if filename is None:
         return {}
-    # URL path segments from source API records are identifiers, not fetched
-    # document filenames. Keep their source role without asking a lexical date
-    # parser to interpret the digits. Original rows and URLs remain unchanged.
-    if filename.isascii() and filename.isdigit() and source_url:
+    # API records and known error endpoints are acquisition inputs. Keep their
+    # source role instead of treating endpoint names as document subjects.
+    # This does not alter the retained filename, URL, or response status.
+    if source_url:
         try:
             url = urlsplit(source_url)
             path = url.path.strip("/").split("/")
+            if url.scheme in {"http", "https"}:
+                if (url.hostname == "api.govinfo.gov" and len(path) == 3
+                        and path[0] == "packages" and path[2] == filename == "summary"):
+                    return {"source_record_identifier": [path[1]],
+                            "source_record_type": ["package-summary"]}
+                if (path[-1] == filename and (
+                    (url.hostname == "docs.house.gov" and url.path == "/committee/Error/Error.aspx")
+                    or (url.hostname == "www.govinfo.gov" and url.path == "/error")
+                )):
+                    return {"source_record_type": ["error-page"],
+                            **({"extension": ["aspx"]} if filename == "Error.aspx" else {})}
             if (
-                url.scheme in {"http", "https"}
+                filename.isascii() and filename.isdigit()
+                and url.scheme in {"http", "https"}
                 and url.hostname == "api.congress.gov"
                 and len(path) == 5
                 and path[0] == "v3"
