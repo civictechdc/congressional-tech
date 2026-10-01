@@ -1,0 +1,254 @@
+"""Find explicit related files in supplied source data; never crawl navigation."""
+
+import ipaddress
+import json
+import re
+from urllib.parse import parse_qsl, urlsplit
+
+from lxml import etree
+
+from congress_api.parsers.document_links import (
+    document_links,
+    http_url,
+    FILE,
+    response_kind,
+)
+
+MEDIA_FILE = re.compile(r"\.(?:mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:$|[?#])", re.I)
+SECRET_KEYS = {"api_key", "apikey", "key", "token", "access_token", "authorization"}
+
+
+def allowed_url(value, base=""):
+    url = http_url(value, base) if isinstance(value, str) else None
+    if not url or MEDIA_FILE.search(url):
+        return None
+    parts = urlsplit(url)
+    host = parts.hostname.lower()
+    if host in {
+        "localhost",
+        "metadata.google.internal",
+        "api.zyte.com",
+        "api.congress.gov",
+        "api.govinfo.gov",
+        "www.googleapis.com",
+        "youtube.googleapis.com",
+    } or host.endswith((".local", ".internal")):
+        return None
+    if any(k.lower() in SECRET_KEYS for k, _ in parse_qsl(parts.query)):
+        return None
+    try:
+        if not ipaddress.ip_address(host).is_global:
+            return None
+    except ValueError:
+        pass
+    return url
+
+
+def json_links(value, source="", pointer=(), context=None):
+    """Read native document/link slots and literal file URLs, preserving source fields."""
+    context = context or {}
+    if isinstance(value, dict):
+        if "eventId" in value:
+            context = {
+                k: value[k]
+                for k in (
+                    "eventId",
+                    "congress",
+                    "chamber",
+                    "committees",
+                    "title",
+                    "date",
+                    "type",
+                )
+                if k in value
+            }
+        for key, child in value.items():
+            if key in {"body", "httpResponseBody", "raw_html", "raw_xml", "text"}:
+                continue
+            if (
+                isinstance(child, dict)
+                and allowed_url(key)
+                and any(k in child for k in ("documents", "witnesses", "event"))
+            ):
+                yield {
+                    "url": key,
+                    "source": source,
+                    "pointer": list(pointer),
+                    "context": context,
+                }
+            if (
+                isinstance(child, str)
+                and allowed_url(child)
+                and (
+                    FILE.search(child)
+                    or re.search(r"\.(?:vtt|srt|m3u8)(?:$|[?#])", child, re.I)
+                    or (
+                        key in {"url", "doc-url"}
+                        and any("document" in str(p).lower() for p in pointer)
+                    )
+                )
+            ):
+                yield {
+                    "url": child,
+                    "source": source,
+                    "pointer": [*pointer, key],
+                    "context": context,
+                    "native": {
+                        k: v
+                        for k, v in value.items()
+                        if k not in {"body", "httpResponseBody"}
+                    },
+                }
+            elif isinstance(child, (dict, list)):
+                yield from json_links(child, source, (*pointer, key), context)
+    elif isinstance(value, list):
+        # Existing House/Senate parsed state uses [type, label, URL, ...].
+        if (
+            len(value) >= 3
+            and isinstance(value[2], str)
+            and allowed_url(value[2])
+            and any("document" in str(p).lower() for p in pointer)
+        ):
+            yield {
+                "url": value[2],
+                "source": source,
+                "pointer": list(pointer),
+                "context": context,
+                "native": value,
+            }
+        else:
+            for index, child in enumerate(value):
+                if (
+                    isinstance(child, str)
+                    and allowed_url(child)
+                    and (
+                        FILE.search(child)
+                        or re.search(r"\.(?:vtt|srt|m3u8)(?:$|[?#])", child, re.I)
+                    )
+                ):
+                    yield {
+                        "url": child,
+                        "source": source,
+                        "pointer": [*pointer, index],
+                        "context": context,
+                    }
+                else:
+                    yield from json_links(child, source, (*pointer, index), context)
+
+
+def related_links(body, url, kind):
+    if kind == "html":
+        return [
+            link.source_dict()
+            for link in document_links(body, url)
+            if allowed_url(link.url)
+        ]
+    if kind == "xml":
+        tree = etree.fromstring(
+            body, parser=etree.XMLParser(resolve_entities=False, no_network=True)
+        )
+        result = []
+        for node in tree.iter():
+            if not isinstance(node.tag, str):
+                continue
+            tag = etree.QName(node).localname
+            values = [
+                v
+                for k, v in node.attrib.items()
+                if etree.QName(k).localname in {"href", "doc-url", "url"}
+            ]
+            if tag.lower() in {"url", "uri"} and node.text:
+                values.append(node.text.strip())
+            for value in values:
+                target = allowed_url(value, url)
+                if target:
+                    result.append(
+                        {
+                            "url": target,
+                            "basis": "xml_link",
+                            "tag": tag,
+                            "text": "".join(node.itertext()),
+                            "attributes": dict(node.attrib),
+                            "source_xpath": tree.getroottree().getpath(node),
+                        }
+                    )
+        return result
+    if kind == "json":
+        return list(json_links(json.loads(body), url))
+    if kind == "playlist":
+        # Only subtitle playlists/segments, never audio or video segments.
+        result = []
+        for line in body.decode("utf-8-sig").splitlines():
+            match = (
+                re.search(r'URI="([^"]+)"', line)
+                if line.startswith("#EXT-X-MEDIA:TYPE=SUBTITLES")
+                else None
+            )
+            value = (
+                match[1]
+                if match
+                else line
+                if re.search(r"\.(?:vtt|srt)(?:$|[?#])", line)
+                and not line.startswith("#")
+                else None
+            )
+            if value and (target := allowed_url(value, url)):
+                result.append({"url": target, "basis": "subtitle_link", "text": line})
+        return result
+    return []
+
+
+def inspect_body(body, url, media):
+    """Basic format validation is distinct from a complete substantive document."""
+    kind = response_kind(body, media)
+    prefix = body[:8192].lower()
+    if not body:
+        return "empty", kind
+    if any(
+        marker in prefix
+        for marker in (
+            b"cf-chl-",
+            b"<title>just a moment",
+            b"verify you are human",
+            b"<title>access denied",
+        )
+    ):
+        return "challenge", "html"
+    if media.lower().startswith(("video/", "audio/")):
+        return "excluded_media", kind
+    if kind == "pdf":
+        return ("saved" if b"%%EOF" in body[-8192:] else "invalid_document"), kind
+    if kind == "html":
+        return "html", kind
+    if (
+        kind == "xml"
+        or urlsplit(url).path.lower().endswith(".xml")
+        or media.split(";")[0] in {"application/xml", "text/xml"}
+    ):
+        try:
+            etree.fromstring(
+                body, parser=etree.XMLParser(resolve_entities=False, no_network=True)
+            )
+            return "saved", "xml"
+        except etree.XMLSyntaxError:
+            return "invalid_document", "xml"
+    if body.lstrip().startswith((b"{", b"[")) and (
+        "json" in media or urlsplit(url).path.endswith(".json")
+    ):
+        try:
+            json.loads(body)
+            return "saved", "json"
+        except (ValueError, UnicodeError):
+            return "invalid_document", "json"
+    if body.lstrip(b"\xef\xbb\xbf").startswith(b"#EXTM3U"):
+        return "saved", "playlist"
+    if kind in {"zip", "legacy_office", "rtf"} or body.lstrip(
+        b"\xef\xbb\xbf"
+    ).startswith(b"WEBVTT"):
+        return "saved", kind
+    if (
+        media.split(";")[0].startswith(("text/plain", "text/csv", "text/vtt"))
+        and b"\0" not in body[:8192]
+    ):
+        return "saved", "text"
+    return "unverified", kind

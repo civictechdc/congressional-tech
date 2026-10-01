@@ -78,6 +78,16 @@ def response_metadata(response: requests.Response) -> dict:
     }
 
 
+def pace_request(url, *, through_zyte=False):
+    """Share the publisher request-start limit across HTTP implementations."""
+    host = urlsplit(url).hostname
+    pace_key = f"zyte:{host}" if through_zyte else host
+    gap = 0 if through_zyte else 1.2 if host == "docs.house.gov" else 0.2
+    with nullcontext() if through_zyte else _locks[host]:
+        time.sleep(max(0, _next[pace_key] - time.monotonic()))
+        _next[pace_key] = time.monotonic() + gap
+
+
 def get_with_retry(session, url, params=None, attempts=3, *, method="GET", allowed=(200,), through_zyte=False):
     """Return a response or raise, without putting API keys from query strings in errors."""
     if session is None:
@@ -86,12 +96,9 @@ def get_with_retry(session, url, params=None, attempts=3, *, method="GET", allow
         session = _local.session
     host = urlsplit(url).hostname
     pace_key = f"zyte:{host}" if through_zyte else host
-    gap = 0 if through_zyte else 1.2 if host == "docs.house.gov" else 0.2
     status = "request error"
     for attempt in range(attempts):
-        with nullcontext() if through_zyte else _locks[host]:
-            time.sleep(max(0, _next[pace_key] - time.monotonic()))
-            _next[pace_key] = time.monotonic() + gap
+        pace_request(url, through_zyte=through_zyte)
         try:
             if through_zyte:
                 status, body, header_items = zyte.decode(zyte.request(url, session))

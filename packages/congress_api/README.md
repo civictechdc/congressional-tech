@@ -38,7 +38,9 @@ Runtime dependencies include `committee-meeting`, `congress-shared`, `pydantic`,
 
 `hearing-transcribe` expects `ffmpeg` and `ffprobe` on `PATH`. YouTube and Senate audio paths use `yt-dlp`.
 
-Filename parsing and corpus tooling live in the independent [house-naming package](../house-naming/README.md); they are not congress-api runtime dependencies.
+Filename rules and corpus tooling live in the independent [house-naming package](../house-naming/README.md).
+The optional `archive` dependency group uses that package to build document tables;
+ordinary source collectors do not require it.
 
 ## Credentials and environment
 
@@ -123,6 +125,7 @@ stable labels, not Python import paths. Replay commands use `congress_api.replay
 | `gpo-match` | `cli.gpo_match` | `gpo_hearing_videos.csv` + coverage CSV |
 | `senate-captions` | `cli.senate_captions` | WebVTT text, receipts, `captions_index.csv` |
 | `hearing-transcribe` | `cli.transcribe` | `{stem}.json` + `{stem}.gpo.txt` |
+| `raw-source-sync` | `cli.raw_sync` | Missing bodies, appended receipts, capture/retry indexes and rebuilt filename/document tables in R2 |
 
 `congress_shared.globals.add_global_args` adds `--tinydb_dir` where used. Commands that call `parse_known_args` leave `--congress-api-key` available for the key loader.
 
@@ -136,6 +139,77 @@ stable labels, not Python import paths. Replay commands use `congress_api.replay
 | `python -m congress_api.cli.senate_captions` | Same as `senate-captions` |
 
 ## Common workflows
+
+### Recurring raw-source capture
+
+[Capture missing raw sources](../../.github/workflows/capture-raw-sources.yml)
+runs every six hours and after `Update committee data` completes. It reads the
+R2 mirror's capture and filename indexes plus available native records on
+`pipeline-data`. It downloads missing URLs, follows explicit document and subtitle
+links, and scans already retained bodies without refetching them. It does not
+crawl site navigation or archive full video/audio files. Authenticated Congress.gov,
+GovInfo collection and YouTube API requests remain with their existing collectors.
+
+Production defaults to **Zyte**, with eight workers, at most 5,000 downloads or
+retained-body scans, and 90 minutes of collection per run. Direct requests are
+an explicit manual override. The default response limit is 64 MiB; larger responses
+remain incomplete, never successful. Increase `--max-file-mib` for a targeted run.
+
+Each run writes bodies to `bodies/sha256/` before appending immutable gzip JSONL
+batches under `receipts/<family>/<date>/download-<run-id>-<batch>.jsonl.gz`.
+Receipts preserve source/provider status, headers, available source context,
+discovered links and body references. They retain unknown source dates and
+saved-text fidelity when replaying older captures. Source status and retrieval
+date remain distinct from the latest inspection time.
+
+`indexes/download-state.parquet` tracks pending URLs, results and retries;
+`indexes/captures.parquet` gains new receipt references. After saving captures, the
+same run rebuilds `indexes/document-filenames.parquet` and `indexes/documents.parquet`.
+The shared builder in `retention/document_index.py` reads existing source columns,
+new durable receipts and current pipeline links. It retains unfetched filenames,
+response-header names, redirects and parent committee/meeting metadata. New names
+pass through `house_naming.Engine.extract`; unchanged names reuse saved results.
+A fingerprint of the parser code and catalog invalidates that reuse when rules change.
+Rebuilding tables never downloads document bodies.
+
+A successful capture means retained bytes passed basic format checks, not verified substantive
+content or a parsed document model. A captured HTML wrapper and its download links
+have separate results. Failures retry after one day; 404/410 responses and HTML
+without discovered files retry after seven days.
+
+The filename table records how many capture rows its build consumed and publishes
+after the document table. If either upload fails, the next run repeats that delta
+even when no new downloads are needed. Both tables carry the same `catalog_id`;
+readers must reject mismatched IDs (the local viewer already does). These two object
+writes are not atomic: an interrupted publication can temporarily make the pair
+unavailable until the next successful rebuild. Capture logs remain intact.
+
+Saved URLs are not periodically refreshed. Replaced files at the same URL need
+an explicit refresh policy, separate from this missing-file backfill. Retained
+bodies also obey the inspection size limit; oversized ones remain retained and
+are recorded as `inspection_deferred`, without a source refetch. This job does not
+extract PDF text or publish the dashboard.
+
+Receipt batches checkpoint every 100 results and at normal shutdown. Interrupted
+index publication recovers from those receipts on the next run. A hard stop can
+repeat the uncheckpointed work. Conditional index writes reject competing writers;
+the workflow also serializes its own runs. The initial mirror upload must finish
+before this workflow starts, and local mirror indexes must not be uploaded over
+newer CI indexes.
+
+Install `packages/congress_api[archive]` for PyArrow, the S3 client and house-naming. GitHub Actions
+requires `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` and `ZYTE_TOKEN` secrets; the
+workflow supplies `CLOUDFLARE_ACCOUNT_ID`. The R2 credential needs object read/write
+access only to `congressional-tech-raw`. The workflow becomes active after it reaches
+`main`. Successful runs attach a JSON summary to the Actions log; failures remain
+visible in the failed step and any published capture receipts.
+
+Read-only planning against a local mirror:
+
+```bash
+python -m congress_api.cli.raw_sync --plan-only \
+  --local-mirror .cache/congressional-tech-raw --summary raw-capture-plan.json
+```
 
 ### 1. Congress.gov meeting mirror
 

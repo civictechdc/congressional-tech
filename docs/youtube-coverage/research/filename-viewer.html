@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Document filenames · Raw archive</title>
+<style>
+:root { color-scheme: light; --ink:#17242e; --muted:#5e6b75; --line:#dce2e5; --accent:#175bc2; --wash:#f5f7f8; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color:var(--ink); background:#fff; }
+* { box-sizing:border-box; }
+body { margin:0; }
+button,input,select { font:inherit; }
+button,a,input,select,summary { touch-action:manipulation; }
+button,a { -webkit-tap-highlight-color:transparent; }
+a { color:var(--accent); text-underline-offset:3px; }
+button { cursor:pointer; }
+button:disabled { cursor:default; opacity:.4; }
+:focus-visible { outline:3px solid #a6c6f8; outline-offset:3px; }
+header { padding:28px 36px 22px; border-bottom:1px solid var(--line); display:flex; gap:24px; align-items:center; justify-content:space-between; }
+.eyebrow { font-size:11px; font-weight:650; letter-spacing:.12em; color:var(--muted); text-transform:uppercase; margin:0 0 10px; }
+h1 { font-size:28px; line-height:1.2; letter-spacing:-.035em; margin:0 0 9px; font-weight:650; }
+#summary { color:var(--muted); font-size:13px; margin:0; }
+.download { font-size:13px; text-decoration:none; white-space:nowrap; }
+.downloads { display:flex; flex-direction:column; gap:9px; align-items:flex-end; }
+main { padding:24px 36px; }
+.controls { display:flex; flex-wrap:wrap; align-items:end; gap:12px; }
+label { display:flex; flex-direction:column; gap:7px; font-size:11px; font-weight:600; color:var(--muted); }
+input,select { min-height:39px; padding:8px 10px; border:1px solid #cbd4da; border-radius:5px; color:var(--ink); background:white; font-size:13px; max-width:100%; }
+.search { flex:1 1 310px; }
+.search input { width:100%; }
+.field { width:185px; }
+.filters { margin-top:16px; padding-bottom:22px; border-bottom:1px solid var(--line); }
+.filters label { min-width:135px; }
+.filters .kind { flex:0 1 280px; min-width:200px; }
+.quiet { border:0; background:none; color:var(--accent); padding:10px 8px; font-size:13px; }
+.results-bar { display:flex; align-items:center; justify-content:space-between; gap:15px; min-height:56px; font-size:12px; }
+#result-count { margin:0; }
+.hint { color:var(--muted); margin:0; font-size:12px; }
+.table-wrap { overflow:auto; border:1px solid var(--line); border-radius:5px; }
+table { width:100%; border-collapse:collapse; text-align:left; table-layout:fixed; }
+th { font-size:11px; font-weight:600; color:var(--muted); background:var(--wash); padding:12px 14px; border-bottom:1px solid var(--line); }
+td { padding:13px 14px; border-bottom:1px solid #e9edf0; font-size:12px; vertical-align:top; overflow-wrap:anywhere; line-height:1.55; }
+tr:last-child td { border-bottom:0; }
+tbody tr:hover { background:#f8faff; }
+.filename { padding:0; border:0; background:none; text-align:left; font-family:ui-monospace, "SFMono-Regular", Consolas, monospace; color:var(--ink); font-size:12px; font-weight:550; overflow-wrap:anywhere; line-height:1.55; }
+.filename:hover { color:var(--accent); text-decoration:underline; text-underline-offset:3px; }
+.source { display:block; margin-top:5px; font-size:11px; color:var(--muted); text-decoration:none; width:fit-content; }
+.source:hover { color:var(--accent); text-decoration:underline; }
+.muted { color:var(--muted); }
+.retained { color:var(--accent); }
+#empty { text-align:center; padding:60px 20px; color:var(--muted); font-size:14px; }
+#empty button { display:block; margin:12px auto 0; }
+footer { display:flex; justify-content:space-between; gap:14px; align-items:center; padding:18px 0; color:var(--muted); font-size:12px; }
+.pager { display:flex; gap:14px; align-items:center; }
+.outline { background:white; border:1px solid #cbd4da; border-radius:5px; padding:8px 12px; color:var(--ink); font-size:12px; }
+#page-status { font-variant-numeric:tabular-nums; }
+#error { color:#9b2323; background:#fff5f5; padding:14px; border-radius:5px; margin-top:18px; }
+[hidden] { display:none !important; }
+#detail { margin:0 0 0 auto; height:100dvh; max-height:100dvh; width:min(650px, 94vw); max-width:94vw; border:0; border-left:1px solid var(--line); padding:0; background:white; box-shadow:-12px 0 60px #17242e12; }
+#detail::backdrop { background:#17242e44; }
+.detail-head { position:sticky; top:0; padding:24px; background:white; border-bottom:1px solid var(--line); z-index:1; }
+.detail-top { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:18px; }
+.detail-top .eyebrow { margin:0; }
+#detail-title { font-size:16px; font-weight:600; line-height:1.6; overflow-wrap:anywhere; margin:0 0 12px; font-family:ui-monospace, "SFMono-Regular", Consolas, monospace; }
+.detail-actions { display:flex; align-items:center; gap:18px; font-size:12px; }
+.detail-tools { padding:20px 24px 0; }
+.detail-tools input[type=search] { width:100%; }
+.check { flex-direction:row; align-items:center; margin-top:12px; font-size:12px; font-weight:400; }
+.check input { min-height:auto; accent-color:var(--accent); }
+#detail-data { padding:0 24px 30px; }
+#source-variants { margin:0 24px; padding:16px 0; border-bottom:1px solid var(--line); }
+#source-variants p { margin:0 0 10px; font-size:12px; color:var(--muted); }
+#source-variants button { display:block; width:100%; text-align:left; margin-top:8px; overflow-wrap:anywhere; }
+#source-variants button[aria-pressed=true] { border-color:var(--accent); background:#f3f7fd; }
+#field-count { font-size:12px; color:var(--muted); margin:18px 0 0; }
+dl { margin:0; }
+.entry { padding:15px 0; border-bottom:1px solid var(--line); }
+dt { font-size:11px; color:var(--muted); margin-bottom:7px; font-family:ui-monospace, "SFMono-Regular", Consolas, monospace; }
+dd { margin:0; font-size:13px; line-height:1.65; overflow-wrap:anywhere; white-space:pre-wrap; }
+#copy-status { font-size:12px; color:var(--muted); }
+@media(max-width:760px) { header { padding:22px 18px; align-items:start; } h1 { font-size:24px; } main { padding:20px 18px; } .download { font-size:12px; } .field { flex:1 1 100%; } .filters label { flex:1 1 130px; } .filters .kind { flex:1 1 200px; } .hint { display:none; } table { min-width:950px; } footer { flex-wrap:wrap; } .detail-head { padding:20px; } }
+@media(prefers-reduced-motion:no-preference) { button,a { transition:color .12s, background-color .12s; } #detail[open] { animation:slide-in .16s ease-out; } @keyframes slide-in { from { transform:translateX(30px); opacity:.5; } to { transform:translateX(0); opacity:1; } } }
+</style>
+</head>
+<body>
+<header><div><p class="eyebrow">Raw archive / Filename index</p><h1>Document filenames</h1><p id="summary">Reading the catalog…</p></div><div class="downloads"><a class="download" href="/data.parquet" download>Documents Parquet ↗</a><a class="download" href="/sources.parquet" download>Source filenames Parquet ↗</a></div></header>
+<main>
+<form id="search-form" role="search">
+<div class="controls">
+<label class="search">Search<input id="q" type="search" placeholder="Search filenames…" autocomplete="off"></label>
+<label class="field">Search column<select id="field"><option value="filename">filename</option></select></label>
+</div>
+<div class="controls filters">
+<label>Congress<select id="congress"><option value="">All Congresses</option></select></label>
+<label class="kind">Document kind<select id="document_kind"><option value="">All document kinds</option></select></label>
+<label>Format<select id="format"><option value="">All formats</option></select></label>
+<label>Saved response<select id="retained"><option value="">All rows</option><option value="yes">Has saved response</option><option value="no">No saved response</option></select></label>
+<button id="reset" type="button" class="quiet">Clear filters</button>
+</div>
+</form>
+<div id="error" role="alert" hidden></div>
+<div class="results-bar"><p id="result-count" role="status" aria-live="polite">Loading entries…</p><p class="hint">Download aliases and identical saved documents share an entry. Select a filename to see every source record.</p></div>
+<div class="table-wrap" id="results" aria-busy="true">
+<table><colgroup><col style="width:35%"><col style="width:10%"><col style="width:18%"><col style="width:7%"><col style="width:8%"><col style="width:8%"><col style="width:14%"></colgroup><thead><tr><th scope="col">Filename / source</th><th scope="col">Format</th><th scope="col">Document kind</th><th scope="col">Congress</th><th scope="col">Committee</th><th scope="col">Measure</th><th scope="col">Saved response</th></tr></thead><tbody id="rows"></tbody></table>
+<div id="empty" hidden>No rows match these filters.<button type="button" class="quiet" id="empty-reset">Clear filters</button></div>
+</div>
+<footer><span>Filename metadata and source context (source_* columns) · Format uses the saved response type when available; otherwise the filename extension.</span><nav class="pager" aria-label="Results pages"><button id="previous" class="outline" disabled>← Previous</button><span id="page-status">—</span><button id="next" class="outline" disabled>Next →</button></nav></footer>
+</main>
+<dialog id="detail" aria-labelledby="detail-title">
+<div class="detail-head"><div class="detail-top"><p class="eyebrow">Source row</p><button id="close-detail" class="outline" aria-label="Close details">Close ×</button></div><h2 id="detail-title">Loading…</h2><div class="detail-actions"><a id="source-link" target="_blank" rel="noopener noreferrer" hidden>Open source ↗</a><button id="copy" class="outline" disabled>Copy JSON</button><span id="copy-status" role="status"></span></div></div>
+<div id="source-variants" hidden></div>
+<div class="detail-tools"><label>Find a field<input id="field-search" type="search" placeholder="Field name or value…"></label><label class="check"><input id="show-empty" type="checkbox">Include empty fields</label><p id="field-count" role="status"></p></div><div id="detail-data"></div>
+</dialog>
+<script type="module">
+const $ = id => document.getElementById(id);
+const number = n => new Intl.NumberFormat().format(n);
+const keys = ['q','field','congress','document_kind','format','retained'];
+const pretty = value => value.replaceAll('-', ' ').replace(/^./, x => x.toUpperCase());
+const formatLabel = value => value.includes('/') ? value : value.toUpperCase();
+const display = value => Array.isArray(value) ? value.join(' · ') : (value ?? '—');
+let info, page = 1, pages = 1, rowData, searchController, detailController, timer;
+function node(tag, text, className) { const el=document.createElement(tag); if(text !== undefined) el.textContent=text; if(className) el.className=className; return el; }
+function sourceUrl(value) { try { const url=new URL(value); return ['http:','https:'].includes(url.protocol) ? url : null; } catch { return null; } }
+async function api(url, signal) { const res=await fetch(url,{signal}); const data=await res.json(); if(!res.ok) throw new Error(data.error || 'Could not read the catalog.'); return data; }
+function currentQuery() { const p=new URLSearchParams(); for(const key of keys) if($(key).value && !(key==='field' && $(key).value==='filename')) p.set(key,$(key).value); if(page>1) p.set('page',page); return p; }
+function saveUrl(mode='replaceState') { const p=currentQuery(); if($('detail').open && $('detail').dataset.row) p.set('row',$('detail').dataset.row); history[mode](null,'',`${location.pathname}${p.size?'?'+p:''}`); }
+function restore() { const p=new URLSearchParams(location.search); for(const key of keys) $(key).value=p.get(key) || (key==='format'?p.get('extension'):'') || (key==='field'?'filename':''); if(!$('field').value) $('field').value='filename'; page=Math.max(1,Number(p.get('page')) || 1); $('q').placeholder=`Search ${$('field').value.replaceAll('_',' ')}…`; return p.get('row'); }
+function reset() { clearTimeout(timer); for(const key of keys) $(key).value=key==='field'?'filename':''; $('q').placeholder='Search filenames…'; changed(); }
+function changed(mode='pushState') { clearTimeout(timer); page=1; closeDetail(false); saveUrl(mode); load(); }
+function renderRows(data) {
+ const fragment=document.createDocumentFragment();
+ for(const row of data.rows) {
+  const tr=node('tr'), first=node('td'), button=node('button',row.filename || '(No filename saved)','filename');
+  button.type='button'; button.addEventListener('click',()=>openDetail(row._row)); first.append(button);
+  const url=sourceUrl(row.source_url);
+  if(url) { const link=node('a',url.hostname+' ↗','source'); link.href=url.href; link.title=row.source_url; link.target='_blank'; link.rel='noopener noreferrer'; first.append(link); }
+  if(row.source_count>1) first.append(node('div',`${row.source_count} source records`,'muted'));
+  const format=node('td',row.format?.map(formatLabel).join(' · ') || '—');
+  if(row.format?.length) format.append(node('div',row.media_type?.length?'response type':'filename','muted'));
+  const saved=node('td',row.retained?'Saved':'No saved response',row.retained?'retained':'muted');
+  if(row.http_status?.length) saved.append(node('div','HTTP '+row.http_status.join(' / '),'muted'));
+  tr.append(first, format, node('td',row.document_kind?.map(pretty).join(' · ') || '—'), node('td',display(row.congress)),node('td',display(row.committee_code)),node('td',display(row.measure_references)),saved);
+  fragment.append(tr);
+ }
+ $('rows').replaceChildren(fragment); $('empty').hidden=data.total!==0;
+ page=data.page; pages=data.pages;
+ $('result-count').textContent=data.total ? `${number((page-1)*data.limit+1)}–${number(Math.min(page*data.limit,data.total))} of ${number(data.total)} ${data.total===1?'entry':'entries'}` : '0 matching entries';
+ $('page-status').textContent=`${number(page)} / ${number(pages)}`;
+ $('previous').disabled=page<=1; $('next').disabled=page>=pages;
+}
+async function load() {
+ searchController?.abort(); const controller=searchController=new AbortController(); $('results').setAttribute('aria-busy','true'); $('result-count').textContent='Searching…'; $('error').hidden=true; $('previous').disabled=$('next').disabled=true;
+ try { const data=await api('/api/rows?'+currentQuery(),controller.signal); if(controller!==searchController) return; renderRows(data); saveUrl(); }
+ catch(error) { if(error.name!=='AbortError') { $('error').textContent=error.message; $('error').hidden=false; $('result-count').textContent='Could not load rows. Change a filter or retry.'; $('rows').replaceChildren(); } }
+ finally { if(controller===searchController) $('results').setAttribute('aria-busy','false'); }
+}
+function closeDetail(update=true) { detailController?.abort(); $('detail').close(); delete $('detail').dataset.row; if(update) saveUrl(); }
+async function openDetail(id, update=true) {
+ detailController?.abort(); const controller=detailController=new AbortController(); rowData=null; $('detail').dataset.row=String(id); $('detail-title').textContent='Loading…'; $('detail-data').replaceChildren(); $('field-count').textContent=''; $('field-search').value=''; $('show-empty').checked=false; $('copy').disabled=true; $('source-link').hidden=true; $('copy-status').textContent='';
+ $('source-variants').replaceChildren(); $('source-variants').hidden=true;
+ if(!$('detail').open) $('detail').showModal(); if(update) saveUrl('pushState');
+ try { const entry=await api('/api/entry/'+encodeURIComponent(id),controller.signal); if(controller!==detailController) return; const data=entry.record; rowData=data; $('detail-title').textContent=entry.filename || '(No filename saved)'; $('copy').disabled=false;
+ if(entry.sources.length>1) {
+  $('source-variants').hidden=false;
+  $('source-variants').append(node('p','Source records · Select one to inspect its original URL and metadata.'));
+  for(const source of entry.sources) {
+   const label=[source.format?.map(formatLabel).join(' · ') || 'Unknown format',source.http_status?.length?'HTTP '+source.http_status.join(' / '):'',source.retained?'Saved':'No saved response'].filter(Boolean).join(' · ');
+   const button=node('button',label,'outline'); button.setAttribute('aria-pressed',String(source._row===Number(id)));
+   button.append(node('span',source.source_url || source.filename,'source'));
+   button.addEventListener('click',()=>openDetail(source._row)); $('source-variants').append(button);
+  }
+ }
+ const url=sourceUrl(data.source_url); if(url) { $('source-link').href=url.href; $('source-link').hidden=false; } renderDetails(); }
+ catch(error) { if(error.name!=='AbortError') $('detail-data').textContent=error.message; }
+}
+function renderDetails() {
+ if(!rowData) return;
+ const q=$('field-search').value.toLowerCase(); const populated=Object.values(rowData).filter(v=>v!==null&&v!==''&&(!Array.isArray(v)||v.length)).length;
+ const entries=Object.entries(rowData).filter(([key,value])=>($('show-empty').checked || (value!==null&&value!==''&&(!Array.isArray(value)||value.length))) && (!q || key.toLowerCase().includes(q)||display(value).toLowerCase().includes(q)));
+ $('field-count').textContent=`${populated} populated fields · ${Object.keys(rowData).length} total · ${entries.length} shown`;
+ const dl=node('dl'); for(const [key,value] of entries) { const entry=node('div',undefined,'entry'); entry.append(node('dt',key)); const dd=node('dd'); if(value===null) dd.append(node('span','null','muted')); else for(const item of Array.isArray(value)?value:[value]) dd.append(node('div',String(item))); entry.append(dd); dl.append(entry); }
+ $('detail-data').replaceChildren(entries.length?dl:node('p','No fields match this search.','muted'));
+}
+$('search-form').addEventListener('submit',event=>{event.preventDefault();changed();});
+$('q').addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(()=>changed('replaceState'),220);});
+for(const key of keys.filter(k=>k!=='q')) $(key).addEventListener('change',()=>{ $('q').placeholder=`Search ${$('field').value.replaceAll('_',' ')}…`; changed(); });
+$('reset').addEventListener('click',reset); $('empty-reset').addEventListener('click',reset);
+for(const [id,delta] of [['previous',-1],['next',1]]) $(id).addEventListener('click',()=>{page+=delta;saveUrl('pushState');load();$('results').scrollIntoView({block:'start'});});
+$('close-detail').addEventListener('click',()=>closeDetail());
+$('detail').addEventListener('cancel',event=>{event.preventDefault();closeDetail();});
+$('detail').addEventListener('click',event=>{if(event.target===$('detail') && event.clientX<$('detail').getBoundingClientRect().left) closeDetail();});
+$('field-search').addEventListener('input',renderDetails); $('show-empty').addEventListener('change',renderDetails);
+$('copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(JSON.stringify(rowData,null,2));$('copy-status').textContent='Copied';}catch{$('copy-status').textContent='Clipboard unavailable';}});
+window.addEventListener('popstate',()=>{const row=restore();load();if(row!==null)openDetail(row,false);else closeDetail(false);});
+try {
+ info=await api('/api/info'); $('summary').textContent=`${number(info.entries)} filename entries · ${number(info.rows)} source rows · ${info.fields.length} columns`;
+ $('field').replaceChildren(...info.fields.map(field=>{const option=node('option',field);option.value=field;return option;}));
+ for(const key of ['congress','document_kind','format']) { const values=info.facets[key]; if(key==='congress') values.sort((a,b)=>Number(b)-Number(a)); for(const value of values) { const option=node('option',key==='document_kind'?pretty(value):key==='format'?formatLabel(value):value);option.value=value;$(key).append(option); } }
+ const row=restore(); if(row!==null) openDetail(row,false); await load();
+} catch(error) { $('error').textContent=error.message; $('error').hidden=false; $('summary').textContent='Catalog unavailable'; }
+</script>
+</body>
+</html>

@@ -61,3 +61,158 @@ A saved record can reference several source families. It remains together in one
 `research/scripts/assemble_raw_archive.py` assembles this layout from explicit file manifests. It checks source stability, persisted body checksums, and JSON reconstruction. On APFS it uses independent copy-on-write copies for existing gzip files. It preserves the original caches and observes the configured free-space floor. It does not fetch, upload, change acquisition or replay paths, or delete originals. Migration manifests, logs and validation results live outside the archive under `.cache/r2-admin/archive-layout-20260930/`.
 
 The reviewed inputs are `final-body-manifest.jsonl` and `final-record-manifest.jsonl` in that administration directory. Record manifests include the source family so journal headers and bodyless acquisition outcomes retain the same source context as their response records. `verification.json` reports the final receipt/index checks; older intermediate logs document the migration and its repairs.
+
+### Filename metadata
+
+`indexes/documents.parquet` has one canonical row per document group, including
+unfetched or unresolved entries. `indexes/document-filenames.parquet` retains
+every original filename/source association and its metadata from
+`house_naming.Engine.extract`. The index builder writes both together:
+
+```sh
+.venv/bin/python docs/youtube-coverage/research/scripts/index_document_filenames.py \
+  .cache/congressional-tech-raw --inventory-dir output/filename-clustering --workers 4
+```
+
+The command reads the capture index, its receipts, and the complete
+`filenames.parquet` / `urls.parquet` inventory pair without opening document
+bodies or fetching anything. It includes every literal filename variant in the
+inventory, plus names found in archived metadata and captures from `documents`,
+`govinfo/transcript-html`, `house/meeting-xml`, and `house/witness-xml`. Files do
+not need to have been downloaded. URL query parameters and saved response
+filenames are included; bare endpoints are not invented filenames.
+
+The filename table has one row per body, filename and source URL. `body_key` is null when no
+retained capture supports that exact filename/URL pair. Neither a shared basename
+nor a reused URL by itself proves a file match. Repeated observations and matching
+header/URL names share a row. `filename_origins` distinguishes response headers,
+URL paths and local-only filenames; `source_paths` retains local locations when
+no publisher filename was available. Different filenames for the same bytes
+remain separate. Bodies without available names still have a row. Literal case
+variants remain separate, even when the inventory grouped them. When a variant's
+exact URL association is unavailable, it retains a row with a null source URL.
+
+Both tables contain `document_id`. Each filename/source association also has a
+`source_id`; the document row's `source_id` identifies its preferred source.
+The document row supplies a clean filename, preferred URL/body, and flat
+`filenames`, `source_urls`, and `body_keys` lists containing its aliases and
+captures. Other list-valued metadata contains all distinct values from its
+sources. The filename table preserves the original pairings and spellings.
+`format` is computed from saved response media types, with filename extensions
+as a fallback. The viewer consumes these saved decisions directly.
+
+The document ID is deterministic for the same evidence. Adding filename/URL
+aliases for the same confirmed body does not change it. New document bodies or
+resolution of an unknown item can change its ID; this is a file inventory, not
+a permanent identifier for a legislative work. Both tables carry the same
+build identifier in their Parquet metadata so a reader can reject mixed builds.
+
+Refresh grouping from an existing filename index without parsing filenames,
+reading raw captures, or making network requests:
+
+```sh
+.venv/bin/python docs/youtube-coverage/research/scripts/index_document_filenames.py \
+  .cache/congressional-tech-raw --documents-only
+```
+
+All extracted values are ordinary top-level Parquet columns, using lists of
+strings to preserve multiple references, possible readings and printed leading
+zeros. Missing values are null. The table includes:
+
+- Literal fields such as `congress`, `committee_code`, `document_token`,
+  `measure_number`, `version_token`, identifiers, names, subjects and dates.
+- Their meanings and alternatives in `<field>_code`, `<field>_label`, and
+  `<field>_candidates` columns when the engine supplies them.
+- Useful convention-specific metadata such as `document_kind`, `witness_id`,
+  `meeting_date`, `vote_date`, `report_number`, `amendment_degree`, and `part`.
+- Complete `measure_references` such as `hr1` and `s2`, plus print and fiscal-year
+  references. These preserve the pairing that separate type/number lists lose.
+
+New semantic fields automatically become columns. Raw transport syntax and
+whole overlapping payload fragments are omitted; the original filename retains
+that text. There are no JSON dumps, nested records, offsets, rule IDs, validity
+flags, error messages, or parser diagnostics. Use the original `filename` and
+`source_url` with `house_naming` to regenerate those details when needed. The
+Parquet footer identifies the format and package version. When the engine refines
+a subject by separating its date or identifier, the subject column keeps the
+refined text. The removed date/identifier remains in its own column, and the
+literal filename preserves the full original text.
+
+Saved response `media_type` and `http_status` values are included as flat columns.
+They come from the body-owning receipt record and its response headers, with the
+capture index as a fallback. They remain separate from the literal `extension`;
+a `.pdf` URL can return HTML. Join `body_key` to `captures.parquet` for additional
+acquisition facts and publisher data.
+Filename metadata does not certify document contents or download success; the
+retained response can be an error page. Names and candidate dates remain filename
+readings, not established personal identities or meeting dates. Do not count
+filename rows as distinct documents or zip independent type/number columns.
+Rebuild the derived table after adding captures or changing the parser.
+
+### Local filename viewer
+
+Browse `indexes/document-filenames.parquet` without a build or another export:
+
+```sh
+.venv/bin/python docs/youtube-coverage/research/scripts/view_document_filenames.py
+```
+
+Open <http://127.0.0.1:8785>. Search any column, filter by Congress, document kind,
+format, or saved-response status, and select a filename to see all populated
+metadata. Empty fields are optional. Filters and selected rows are kept in the
+URL; row links refer to positions in this particular Parquet export. The Format
+column and filter use the saved response media type when available and the
+literal filename extension otherwise. Saved HTTP statuses stay visible, so a
+retained error response is not presented as a successful document download.
+
+The root index builder strips query-shaped suffixes from preferred filenames and groups the
+same endpoint's `download=1` variants. It also groups successful document captures
+with the same body hash, including a download endpoint and its direct file URL.
+HTML, error responses and unknown response types cannot join entries by hash.
+Other query parameters (including document identifiers), different hosts and
+different paths remain separate unless identical saved document bytes connect
+them. A group prefers a saved successful document response with a filename
+extension and retains all available formats. The viewer reads these groups from
+`documents.parquet`. Select one to switch between original
+source records, URLs and literal filenames in one detail panel. The Parquet
+filename table retains every source association; this grouping does not assert that different
+bodies, versions or formats are identical.
+
+The viewer uses the installed PyArrow library and Python's local HTTP server. It
+reads both indexes, serves 50 rows at a time, and loads full source fields only
+when a row is selected. Searches and filters match original source values while
+the list shows the saved canonical entry. It binds to localhost and exposes only
+the viewer, its query endpoints, and the two Parquet downloads. Restart it after
+regenerating the tables. Pass the filename index path or `--port` to override the
+defaults; `documents.parquet` must be beside the filename index.
+
+### Resolve a document landing page with a bounded GET
+
+```sh
+.venv/bin/python docs/youtube-coverage/research/scripts/probe_document_links.py \
+  'https://www.finance.senate.gov/download/-7202023-cardin-statement'
+```
+
+The command reuses successful exact-URL captures before making requests. Use
+`--live` to bypass them. `congress_api.acquisition.documents.resolve_document`
+accepts the response reader as a dependency; the HTML parser has no file or
+network access. The HTTP implementation uses a streamed GET, asks for the first
+256 KiB, and enforces that read limit even when the server ignores the Range
+header. Redirects are followed explicitly without reading their bodies. PDF,
+ZIP/Office and RTF signatures let the reader stop after 1 KiB. ZIP bytes alone
+do not establish a particular Office subtype. XML is identified from its
+declaration; none of these prefix checks validates the complete document.
+
+At most five responses are inspected per input URL. Explicit file links,
+download prompts, embeds and HTML refresh targets can supply the next URL.
+Multiple candidates, loops, truncated HTML and failed requests remain distinct
+outcomes. There is no JavaScript execution or inferred URL guessing. Unexpected
+compressed responses remain unresolved instead of being inflated without a
+limit. These probes share the acquisition host pacing rules but do not retry or
+use Zyte automatically.
+
+Results, headers, link attributes and exact prefixes are saved under
+`.cache/document-probes/` (override with `--output`). Partial responses are marked
+as such and are never added to the capture index as complete downloads. The
+command resolves supplied URLs; it does not start a bulk crawl or change the
+weekly collection pipeline.

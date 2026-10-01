@@ -1,0 +1,90 @@
+name: Capture missing raw sources
+
+on:
+  schedule:
+    - cron: '23 */6 * * *'
+  workflow_run:
+    workflows: [Update committee data]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: Maximum captures or retained-body scans in this run
+        type: number
+        default: 5000
+      transport:
+        description: Source transport (production uses Zyte)
+        type: choice
+        options: [zyte, direct]
+        default: zyte
+
+permissions:
+  contents: read
+
+concurrency:
+  group: raw-source-mirror
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/checkout@v5
+        with:
+          ref: pipeline-data
+          path: pipeline-data
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install capture tools
+        run: >-
+          pip install -e packages/house-naming -e packages/committee_meeting
+          -e packages/congress_shared -e 'packages/congress_api[archive,test]'
+      - name: Verify capture and recovery offline
+        run: >-
+          python .github/scripts/offline-python.py -m pytest -q
+          tests/test_raw_source_sync.py tests/test_source_capture.py tests/test_r2_archive_store.py
+          tests/test_raw_catalog.py tests/test_document_filename_index.py tests/test_document_filename_viewer.py
+          tests/test_congress_api_imports.py tests/test_document_link_probe.py
+      - name: Capture sources and rebuild filename and document tables
+        env:
+          CLOUDFLARE_ACCOUNT_ID: '174055408ff1560e60601c4d12c561c4'
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          ZYTE_TOKEN: ${{ secrets.ZYTE_TOKEN }}
+          CAPTURE_LIMIT: ${{ inputs.limit || 5000 }}
+          CAPTURE_TRANSPORT: ${{ inputs.transport || 'zyte' }}
+        run: |
+          seeds=()
+          for path in \
+            pipeline-data/congress_meetings.jsonl.gz \
+            pipeline-data/gpo-evidence.jsonl.gz \
+            pipeline-data/meeting-inventory/house.json.gz \
+            pipeline-data/meeting-inventory/senate.json.gz; do
+            if [ -f "$path" ]; then seeds+=(--seed "$path"); fi
+          done
+          raw-source-sync --bucket congressional-tech-raw \
+            --transport "$CAPTURE_TRANSPORT" --limit "$CAPTURE_LIMIT" \
+            --workers 8 --index-workers 2 --max-seconds 5400 --max-file-mib 64 \
+            --summary raw-capture-summary.json "${seeds[@]}"
+      - name: Show capture summary
+        if: ${{ always() }}
+        run: |
+          if [ -f raw-capture-summary.json ]; then
+            { echo '### Raw source capture'; echo '```json'; cat raw-capture-summary.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'No completed capture summary was written. Check the failed step above; published receipts remain retained.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: raw-capture-summary-${{ github.run_id }}-${{ github.run_attempt }}
+          path: raw-capture-summary.json
+          if-no-files-found: ignore

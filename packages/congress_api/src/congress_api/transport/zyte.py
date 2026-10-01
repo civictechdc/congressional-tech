@@ -26,7 +26,7 @@ def token():
     return tok
 
 
-def request(url, session=None, timeout=120):
+def request(url, session=None, timeout=120, *, stream=False):
     """Return the complete API response so capture callers can retain its evidence.
 
     Request binary-safe native bytes and publisher headers. Callers must keep
@@ -34,7 +34,8 @@ def request(url, session=None, timeout=120):
     Authentication stays on the request and must not be written into receipts.
     """
     return (session or requests).post(API, auth=(token(), ""), timeout=timeout,
-        json={"url": url, "httpResponseBody": True, "httpResponseHeaders": True})
+        json={"url": url, "httpResponseBody": True, "httpResponseHeaders": True},
+        **({"stream": True} if stream else {}))
 
 
 def decode(response):

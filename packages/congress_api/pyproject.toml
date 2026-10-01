@@ -9,6 +9,7 @@ dependencies = [
     "congress-shared",
     "lxml",
     "requests",
+    "httpx>=0.28,<1",
     "pydantic>=2.11,<3",
     "pypdf[fonts]>=6,<7",
   "google-genai",
@@ -16,9 +17,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+archive = ["pyarrow>=19,<24", "boto3>=1.40,<2", "house-naming-guide"]
 test = ["pytest>=9,<10"]
 
 [project.scripts]
+raw-source-sync = "congress_api.cli.raw_sync:main"
 house-meeting-records = "congress_api.cli.house:parse_args_and_run"
 senate-meeting-records = "congress_api.cli.senate:parse_args_and_run"
 meeting-inventory = "congress_api.cli.inventory:parse_args_and_run"
@@ -42,6 +45,7 @@ where = ["src"]
 [tool.uv.sources]
 committee-meeting = { path = "../committee_meeting", editable = true }
 congress-shared = { path = "../congress_shared", editable = true }
+house-naming-guide = { path = "../house-naming", editable = true }
 
 # Direct imports between responsibility folders. Same-folder imports are allowed.
 # tests/test_congress_api_imports.py checks absolute, relative and function-local imports.

@@ -14,6 +14,26 @@ class DocumentWitness(SourceModel):
     organization: str = ''
 
 
+class DocumentLink(SourceModel):
+    url: str
+    basis: str
+    text: str
+    tag: str
+    attributes: dict[str, str]
+
+
+class DocumentProbeResponse(SourceModel):
+    """A response prefix, explicitly separate from a fully captured document."""
+    url: str
+    status_code: int
+    headers: dict[str, str]
+    header_items: list[tuple[str, str]]
+    content: RawContent
+    complete: bool
+    from_cache: bool = False
+    body_key: str | None = None
+
+
 class ReviewedPdfReading(SourceModel):
     url: str
     page: int = Field(ge=1)
