@@ -184,5 +184,7 @@ def test_rule_ids_are_not_dispatch_instructions(engine):
         'S.123 Reported.pdf', 'RCP118-5_HR1_HR2.pdf', 'First Degree 2.pdf',
         'BILLS-119HR1_HAmdt2.pdf', 'S.Hrg.119-12345.pdf', '03-2020-Smith.pdf',
         'CRPT-119hrpt12.pdf', 'CPRT-119hprt12345.pdf',
+        'Acting Vice Chairman Jones Testimony.pdf',
+        '011024chairmanwhitehouseopeningstatement.pdf',
     ):
         assert normalize(reader.extract(name)) == original.extract(name), name

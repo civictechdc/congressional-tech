@@ -76,7 +76,15 @@ class Engine:
             self._extractor = Extractor(self._guide)
         extracted = self._extractor.extract(filename, member_surnames=member_surnames, source_url=source_url)
         result = {**self.parse(filename), **extracted}
-        result['metadata'] = filename_metadata(result)
+        # Query syntax is already owned by the literal reader. Reuse its
+        # boundary and the convention parser for useful values, while strict
+        # validation continues to describe the complete original input.
+        matches = result['matches']
+        for observation in extracted['observations']:
+            if observation['rule'] == 'query-shaped-suffix':
+                matches = self.parse(filename[:observation['start']])['matches']
+                break
+        result['metadata'] = filename_metadata(result, convention_matches=matches)
         return result
 
     def lookup(self, context: str, token: str) -> dict[str, Any] | None:

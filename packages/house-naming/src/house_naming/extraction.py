@@ -13,7 +13,7 @@ from urllib.parse import urlsplit
 
 from .errors import NamingError
 from .extraction_catalog import bind_extraction_rules, compile_pattern
-from .metadata import NUMBER_BOUNDARY_NOTE, starts_with_ordinal_suffix
+from .metadata import NUMBER_BOUNDARY_NOTE, starts_with_ordinal_suffix, target_subject_spans
 
 HOUSE_NAMING_URL = "https://www.govinfo.gov/content/pkg/GOVPUB-Y1_2-PURL-gpo156119/pdf/GOVPUB-Y1_2-PURL-gpo156119.pdf"
 
@@ -37,9 +37,18 @@ def remaining_spans(filename, start, end, covered):
     for a, b in [*spans, (end, end)]:
         if a > pos:
             left, right = pos, a
-            while left < right and filename[left] in ' ._-()[]':
+            # Brackets inside a surviving component are content. Strip only
+            # unmatched edge brackets left behind by removed components.
+            stack, paired = [], set()
+            for i in range(left, right):
+                char = filename[i]
+                if char in '([':
+                    stack.append(i)
+                elif char in ')]' and stack and filename[stack[-1]] == {')': '(', ']': '['}[char]:
+                    paired.update((stack.pop(), i))
+            while left < right and filename[left] in ' ._-()[]' and left not in paired:
                 left += 1
-            while right > left and filename[right - 1] in ' ._-()[]':
+            while right > left and filename[right - 1] in ' ._-()[]' and right - 1 not in paired:
                 right -= 1
             if left < right:
                 result.append((left, right))
@@ -135,6 +144,8 @@ class Extractor:
         self.separated_version = self._pattern('separated_version')
         self.joined_measures = self._pattern('joined_measures')
         self.filer_member = self._pattern('filer_member')
+        self.wording_rules = [(r, rx) for r, rx in self.rules
+                              if r['scope'] in {'role-wording-search', 'role-wording-prefix'}]
         self.refinements = {}
         for rule, _ in self.rules:
             stages = {}
@@ -548,7 +559,8 @@ class Extractor:
                      'nomination_wording', 'fiscal_marker', 'fiscal_year_token', 'month_year_token',
                      'month_token', 'year_token', 'filename_format_token', 'context_token', 'question_identifier'}
         spans = [(f['start'], f['end']) for m in observations for f in m['fields']
-                 if f['name'] in removable and f['raw']]
+                 if f['name'] in removable and f['raw']
+                 and (f['name'] != 'label' or f.get('category'))]
         # Conjunctions connect document labels, not parts of a person's name.
         for left in labels:
             for right in labels:
@@ -638,6 +650,98 @@ class Extractor:
                                     start=a, end=b, description='Literal description outside assigned components.', fields=parts))
         return results
 
+    def _role_wording(self, filename, observations, start, end):
+        """Annotate literal wording in existing text slots without rewriting them.
+
+        Subject means the parser's text slot, never a verified person. Targets
+        take precedence over enclosing text; other prose stays in context.
+        """
+        text_fields = {'subject_token', 'name_token', 'target_subject', 'descriptor',
+                       'description', 'report_subject_token', 'numbered_subject',
+                       'context_token', 'filer_token', 'offerer_token', 'recipient_token',
+                       'annotation', 'suffix'}
+        sources = [f for m in observations for f in m['fields']
+                   if f['name'] in text_fields and f['raw']]
+        if not sources:
+            return []
+        targets = target_subject_spans(observations)
+        legislative = [(m['start'], m['end']) for m in observations
+                       if m['scope'].startswith('legislative-')]
+        opening_statement = any(f.get('category') == 'opening-statement'
+                                for m in observations for f in m['fields'])
+        candidates = []
+        for rule, regex in self.wording_rules:
+            if rule['scope'] == 'role-wording-search':
+                candidates.extend(self._match(rule, hit, start)
+                                  for hit in regex.finditer(filename[start:end]))
+            elif opening_statement:
+                # Lowercase fused prefixes require a recognized document label
+                # and a text-slot start; arbitrary interior substrings do not.
+                candidates.extend(self._match(rule, hit, source['start'])
+                                  for source in sources
+                                  if source['name'] in {'subject_token', 'name_token', 'context_token'}
+                                  and (hit := regex.match(source['raw'])))
+        result, seen = [], set()
+        for match in sorted(candidates, key=lambda m: (m['start'], -m['end'])):
+            for field in match['fields']:
+                a, b = field['start'], field['end']
+                owners = [f for f in sources if f['start'] <= a < b <= f['end']]
+                if not owners or (field['name'], a, b) in seen:
+                    continue
+                seen.add((field['name'], a, b))
+                if any(left <= a < b <= right for left, right in targets):
+                    context = 'target'
+                    preferred = [f for f in owners if f['name'] == 'target_subject']
+                elif not any(left <= a < b <= right for left, right in legislative) and (
+                        preferred := [f for f in owners if f['name'] == 'subject_token']):
+                    context = 'subject'
+                else:
+                    context, preferred = 'context', []
+                owner = min(preferred or owners, key=lambda f: f['end'] - f['start'])
+                field.update(name=context + '_' + field['name'], context=owner['name'])
+                result.append({**match, 'fields': [field]})
+        return result
+
+    def _role_subject_remainders(self, filename, observations):
+        """Reuse recognized leading titles; keep the remaining text uninterpreted."""
+        wording = [f for m in observations for f in m['fields']
+                   if f['name'] in {'subject_role_wording', 'subject_role_modifier'}]
+        if not wording:
+            return []
+        results, seen = [], set()
+        for subject in (f for m in observations for f in m['fields']
+                        if f['name'] == 'subject_token' and not f.get('role')):
+            a, b = subject['start'], subject['end']
+            parts = sorted((f for f in wording if a <= f['start'] < f['end'] <= b),
+                           key=lambda f: (f['start'], f['end']))
+            if not any(f['name'] == 'subject_role_wording' for f in parts):
+                continue
+            cursor = a
+            for part in parts:
+                if filename[cursor:part['start']].strip(' ._-'):
+                    break
+                cursor = part['end']
+            # Interior titles may describe another person or topic. Only a
+            # complete leading sequence is removed; identifiers stay intact.
+            if cursor == a or any(f['end'] > cursor for f in parts):
+                continue
+            # A dangling possessive supplies no subject. Preserve uppercase
+            # initials and ordinary single-letter subjects such as Senator S.
+            if re.fullmatch(r"(?:['’]|[-_])s", filename[cursor:b]):
+                results.append(dict(rule='role-subject-remainder', scope='subject-refinement',
+                    start=a, end=b, description='Role-only possessive; the original subject is retained.', fields=[]))
+                continue
+            while cursor < b and filename[cursor] in ' ._-':
+                cursor += 1
+            if not any(c.isalpha() for c in filename[cursor:b]) or (cursor, b) in seen:
+                continue
+            seen.add((cursor, b))
+            results.append(dict(rule='role-subject-remainder', scope='subject-refinement',
+                start=a, end=b, description='Subject text after explicit leading role wording; the original subject is retained.',
+                fields=[self._field('subject_token', filename[cursor:b], cursor, b,
+                    note='Remaining subject text, not a resolved person name; internal name/topic boundaries are unchanged.')]))
+        return results
+
     def extract(self, filename: str, *, member_surnames: Mapping[str, Sequence[str]] | None = None,
                 source_url: str | None = None) -> dict:
         if not isinstance(filename, str):
@@ -721,6 +825,11 @@ class Extractor:
                             payloads.append((child_scope, hit['payload'], offset + hit.start('payload')))
                     if found:
                         break
+                if not found:
+                    observations.append({'rule': 'descriptive-payload-fallback', 'scope': 'descriptive-payload',
+                        'start': offset, 'end': offset + len(payload),
+                        'description': 'Descriptive text after an opaque prefix; no identity inferred.',
+                        'fields': [self._field('name_token', payload, offset, offset + len(payload))]})
                 continue
             for priority in PAYLOAD_PRIORITIES:
                 found = [self._match(rule, hit, offset) for rule, regex in self.rules
@@ -1352,6 +1461,8 @@ class Extractor:
                                 description=fragment['description'] + ' Readable prefix before extension-like text and a protocol marker; the full source name remains malformed.')
                             observations.append(fragment)
                     break
+        observations.extend(self._role_wording(filename, observations, start, stem_end))
+        observations.extend(self._role_subject_remainders(filename, observations))
         pieces = [{'kind': hit.lastgroup, 'raw': hit[0], 'start': hit.start(), 'end': hit.end()} for hit in TOKEN.finditer(filename)]
         return {'input': filename, **({'source_url': source_url} if source_url is not None else {}),
                 'stem_end': stem_end, 'observations': observations,

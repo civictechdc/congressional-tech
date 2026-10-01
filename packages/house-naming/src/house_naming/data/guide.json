@@ -24273,7 +24273,8 @@
       "description": "Printed results wording in a meeting/session heading; EBM and the observed Sessio spelling are not repaired or expanded. No meeting occurrence, access, vote result or file contents are verified.",
       "field_readings": {
         "result_wording": {
-          "note": "Printed results wording in a meeting/session heading; EBM and the observed Sessio spelling are not repaired or expanded. No meeting occurrence, access, vote result or file contents are verified."
+          "note": "Printed results wording in a meeting/session heading; EBM and the observed Sessio spelling are not repaired or expanded. No meeting occurrence, access, vote result or file contents are verified.",
+          "category": "meeting-results"
         }
       },
       "scan_stage": "supplemental",
@@ -24287,7 +24288,8 @@
       "description": "Printed results wording in a meeting/session heading; EBM and the observed Sessio spelling are not repaired or expanded. No meeting occurrence, access, vote result or file contents are verified.",
       "field_readings": {
         "result_wording": {
-          "note": "Printed results wording in a meeting/session heading; EBM and the observed Sessio spelling are not repaired or expanded. No meeting occurrence, access, vote result or file contents are verified."
+          "note": "Printed results wording in a meeting/session heading; EBM and the observed Sessio spelling are not repaired or expanded. No meeting occurrence, access, vote result or file contents are verified.",
+          "category": "meeting-results"
         }
       },
       "scan_stage": "supplemental",
@@ -25901,6 +25903,84 @@
         "numeric-date"
       ],
       "description": "A separated month followed by joined day/year; preserve all supported calendar readings and no event role."
+    },
+    {
+      "id": "bounded-role-wording",
+      "scope": "role-wording-search",
+      "pattern": "(?:(?u:(?<![^\\W\\d_]))|(?-i:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])))(?P<role_wording>ranking[ ._-]*member|vice[ ._-]*chair(?:woman|man|person)?|chair(?:woman|man|person)?|senator|representative)(?:(?u:(?![^\\W\\d_]))|(?-i:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])))",
+      "priority": 0,
+      "description": "Title wording at Unicode word or visible ASCII CamelCase boundaries. Longest phrases precede nested titles; the text slot supplies context, not identity.",
+      "field_readings": {
+        "role_wording": {
+          "note": "Literal wording only; does not establish a person, officeholding, authorship, sponsorship, or membership."
+        }
+      },
+      "field_vocabularies": {
+        "role_wording": [
+          {
+            "vocabulary": "role-wording",
+            "normalize": "letters"
+          }
+        ]
+      }
+    },
+    {
+      "id": "bounded-role-modifier",
+      "scope": "role-wording-search",
+      "pattern": "(?:(?u:(?<![^\\W\\d_]))|(?-i:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])))(?P<role_modifier>acting|former)(?:(?u:(?![^\\W\\d_]))|(?-i:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])))",
+      "priority": 0,
+      "description": "Literal acting/former wording in retained text. No assignment to an adjacent title or person is implied.",
+      "field_readings": {
+        "role_modifier": {
+          "note": "Literal wording only; does not establish a person, officeholding, authorship, sponsorship, or membership."
+        }
+      },
+      "field_vocabularies": {
+        "role_modifier": [
+          {
+            "vocabulary": "role-modifiers",
+            "normalize": "letters"
+          }
+        ]
+      }
+    },
+    {
+      "id": "opening-statement-role-prefix",
+      "scope": "role-wording-prefix",
+      "pattern": "^(?:of)?(?P<role_wording>rankingmember(?!ship)|chairman(?!ship)|senator(?!ial|ship))(?=[a-z]{2})",
+      "priority": 0,
+      "description": "Observed lowercase fused role prefixes at a text-slot start in an opening statement. The remaining name/topic text stays unsplit; no surname lookup or identity assertion.",
+      "field_readings": {
+        "role_wording": {
+          "note": "Literal wording only; does not establish a person, officeholding, authorship, sponsorship, or membership."
+        }
+      },
+      "field_vocabularies": {
+        "role_wording": [
+          {
+            "vocabulary": "role-wording",
+            "normalize": "letters"
+          }
+        ]
+      }
+    },
+    {
+      "id": "supporting-materials-reference",
+      "scope": "stem",
+      "priority": 0,
+      "pattern": "(?P<label>(?:Additional|Supporting)[ _-]+Materials?)[ _-]+(?P<target_marker>for)[ _-]+(?P<target_subject>.+)",
+      "description": "Explicit supporting materials for another document or topic; the target wording does not classify the supporting file or resolve a person.",
+      "searchable_fields": [
+        "target_subject"
+      ],
+      "field_readings": {
+        "label": {
+          "category": "supporting-material"
+        },
+        "target_marker": {
+          "note": "Printed relationship to the following document or topic; contents and identity are not verified."
+        }
+      }
     }
   ],
   "extraction_vocabularies": {
@@ -26926,6 +27006,36 @@
       },
       "committeeauthorizationandoversightplan": {
         "category": "oversight-plan"
+      },
+      "billsummary": {
+        "category": "summary"
+      },
+      "billsummaries": {
+        "category": "summary"
+      },
+      "billtext": {
+        "category": "legislative-text"
+      },
+      "legislativetext": {
+        "category": "legislative-text"
+      },
+      "legislationtext": {
+        "category": "legislative-text"
+      },
+      "sectionbysection": {
+        "category": "section-by-section"
+      },
+      "sectionbysectionsummary": {
+        "category": "section-by-section"
+      },
+      "sectionbysectionanalysis": {
+        "category": "section-by-section"
+      },
+      "sectionbysectiondescription": {
+        "category": "section-by-section"
+      },
+      "openingremarks": {
+        "category": "opening-remarks"
       }
     },
     "person-slot-roles": {
@@ -26956,6 +27066,49 @@
     "document-date-roles": {
       "vote": {
         "role": "vote_date"
+      }
+    },
+    "role-wording": {
+      "rankingmember": {
+        "code": "ranking-member"
+      },
+      "vicechair": {
+        "code": "vice-chair"
+      },
+      "vicechairman": {
+        "code": "vice-chair"
+      },
+      "vicechairwoman": {
+        "code": "vice-chair"
+      },
+      "vicechairperson": {
+        "code": "vice-chair"
+      },
+      "chairman": {
+        "code": "chair"
+      },
+      "chairwoman": {
+        "code": "chair"
+      },
+      "chairperson": {
+        "code": "chair"
+      },
+      "chair": {
+        "code": "chair"
+      },
+      "senator": {
+        "code": "senator"
+      },
+      "representative": {
+        "code": "representative"
+      }
+    },
+    "role-modifiers": {
+      "acting": {
+        "code": "acting"
+      },
+      "former": {
+        "code": "former"
       }
     }
   },

@@ -8,17 +8,20 @@ from __future__ import annotations
 from collections import defaultdict
 import re
 
+from .metadata import target_subject_spans
 
 OMIT_FIELDS = frozenset({'payload', 'query_text', 'ignored_suffix', 'protocol_marker'})
 GENERIC_KINDS = frozenset({'committee-document', 'committee-document-numbered'})
 
 
-def filename_metadata(result: dict) -> dict[str, list[str]]:
+def filename_metadata(result: dict, *, convention_matches: list[dict] | None = None) -> dict[str, list[str]]:
     """Flatten one extraction without losing source spellings or alternatives.
 
     Refined text supersedes its enclosing fallback in these useful values only;
     all original spans remain available in ``observations``. Strict validation
     adds convention-specific fields but is never required for literal readings.
+    The caller may supply matches for the filename before a transport suffix;
+    this does not change the original result's strict validation fields.
     """
     row = defaultdict(list)
     observations = result['observations']
@@ -30,7 +33,8 @@ def filename_metadata(result: dict) -> dict[str, list[str]]:
     categories = []
     assigned_roles = set()
     empty_subjects = [(m['start'], m['end']) for m in observations
-                      if m.get('rule') == 'document-subject-remainder' and not m['fields']]
+                      if m.get('rule') in {'document-subject-remainder', 'role-subject-remainder'}
+                      and not m['fields']]
     concrete = [(f['start'], f['end']) for m in observations for f in m['fields']
                 if f['name'] in {'amendment_token', 'measure_number', 'year_token', 'date_token',
                                 'short_date_token', 'drafting_identifier'}]
@@ -38,11 +42,7 @@ def filename_metadata(result: dict) -> dict[str, list[str]]:
     descriptions = [m for m in observations if m.get('rule') == 'document-description-remainder']
     # A structured amendment's subject describes its target. Labels inside
     # that slot remain useful without changing the amendment's document kind.
-    target_spans = [(f['start'],f['end']) for m in observations for f in m['fields']
-                    if f['name'] == 'target_subject' or f['name'] == 'subject_token'
-                    and any(p['name'] == 'amendment_token' for p in m['fields'])]
-    target_spans.extend((f['start'],m['end']) for m in observations for f in m['fields']
-                        if f['name'] == 'target_marker')
+    target_spans = target_subject_spans(observations)
     bill_descriptions = [(f['start'],f['end']) for m in observations for f in m['fields']
                          if (m.get('scope') == 'legislative-payload' and f['name'] in {'descriptor', 'suffix'})
                          or (m.get('scope') == 'legislative-text-search' and f['name'] == 'description')]
@@ -108,7 +108,7 @@ def filename_metadata(result: dict) -> dict[str, list[str]]:
         if len(types) == len(numbers) == 1:
             add('measure_references', (types[0]['code'] or types[0]['raw']).lower() + (numbers[0]['raw'].lstrip('0') or '0'))
 
-    for match in result.get('matches', ()):
+    for match in result.get('matches', ()) if convention_matches is None else convention_matches:
         for name, value in match['record'].items():
             if name == 'references':
                 for reference in value:

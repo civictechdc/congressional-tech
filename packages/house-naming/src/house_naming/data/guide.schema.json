@@ -445,7 +445,9 @@
               "unmatched-date",
               "unmatched-stem",
               "witness-suffix-search",
-              "source-stem"
+              "source-stem",
+              "role-wording-search",
+              "role-wording-prefix"
             ]
           },
           "description": {
