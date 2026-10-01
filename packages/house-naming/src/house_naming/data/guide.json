@@ -20107,9 +20107,9 @@
     },
     {
       "id": "published-report",
-      "pattern": "(?P<package_family>CRPT)-?(?P<congress>[0-9]{1,3})(?P<publication_code>[hse]rpt)(?P<publication_number>[0-9]+)(?P<suffix>.*)",
+      "pattern": "(?P<package_family>CRPT)-?(?P<congress>[0-9]{1,3})-?(?P<publication_code>[hse]rpt)-?(?P<publication_number>[0-9]+)(?P<suffix>.*)",
       "scope": "stem",
-      "description": "Published report package notation, including an observed missing hyphen; literal extraction does not relax strict canonical validation.",
+      "description": "Published report package notation with optional hyphens between collection, Congress, publication type and report number. Literal extraction does not relax strict canonical validation.",
       "priority": 0,
       "field_readings": {
         "publication_code": {
@@ -20366,6 +20366,10 @@
       "field_readings": {
         "publication_code": {
           "role": "publication_type"
+        },
+        "package_family": {
+          "category": "committee-report",
+          "note": "Report-prefixed filename; conference status and a report number are not inferred from the payload."
         }
       }
     },
@@ -20450,7 +20454,12 @@
       "priority": 0,
       "searchable_fields": [
         "payload"
-      ]
+      ],
+      "field_readings": {
+        "package_family": {
+          "category": "amendment"
+        }
+      }
     },
     {
       "id": "dated-document",
@@ -21282,20 +21291,13 @@
     },
     {
       "id": "compact-support",
-      "pattern": "(?P<subject_token>[A-Za-z_]+?)(?P<document_token>supportfor|letterofrecommendationfor)(?P<recipient_token>[A-Za-z]+)",
+      "pattern": "(?P<subject_token>[A-Za-z_]+?)(?P<document_token>letterofsupportfor|letterofrecommendationfor|supportfor)(?P<recipient_token>[A-Za-z]+)(?P<local_number_token>[0-9]+)?",
       "scope": "stem",
-      "description": "Joined support/recommendation naming convention; both parties remain literal strings.",
+      "description": "Joined support/recommendation wording. Explicit letterofsupportfor identifies a support letter and letterofrecommendationfor identifies a letter; supportfor alone does not establish a document genre. Both surrounding parties remain uninterpreted strings without verified authorship or identity. An optional trailing numeric component is retained without claiming a copy, revision or person identifier.",
       "priority": 0,
       "searchable_fields": [
         "subject_token"
-      ]
-    },
-    {
-      "id": "compact-transcript",
-      "pattern": "(?P<date_or_number_token>[0-9]+)(?P<context_token>[A-Za-z]+?)(?P<document_token>transcript)",
-      "scope": "stem",
-      "description": "Number followed by joined context/transcript wording; a date interpretation is not imposed.",
-      "priority": 0,
+      ],
       "field_vocabularies": {
         "document_token": [
           {
@@ -21304,6 +21306,24 @@
           }
         ]
       }
+    },
+    {
+      "id": "compact-transcript",
+      "pattern": "(?P<date_or_number_token>[0-9]+)(?P<context_token>[A-Za-z]*?)(?P<document_token>transcript)(?P<suffix>nom|[0-9]+)?",
+      "scope": "stem",
+      "description": "Numeric prefix, optional joined context and transcript wording, with optional printed nom or numeric suffix. The prefix remains date-or-number wording and available to the ordinary calendar candidate scans; no event role or century is inferred.",
+      "priority": 0,
+      "field_vocabularies": {
+        "document_token": [
+          {
+            "vocabulary": "document-categories",
+            "normalize": "letters"
+          }
+        ]
+      },
+      "searchable_fields": [
+        "date_or_number_token"
+      ]
     },
     {
       "id": "compact-opening-statement",
@@ -21522,13 +21542,21 @@
     },
     {
       "id": "exhibit-reference",
-      "pattern": "(?<![A-Za-z])(?P<exhibit_marker>Exhibit|Attachment|Appendix(?=[ _#.-]+(?:[0-9]{1,4}[A-Za-z]?|[A-Za-z][0-9]*)(?![A-Za-z0-9]))|Agenda[ _-]+Item)[ _#.-]+(?P<item_token>(?:[0-9]+[A-Za-z]?|[A-Za-z][0-9]*))(?![A-Za-z0-9])",
+      "pattern": "(?<![A-Za-z])(?P<exhibit_marker>Exhibit|Attachment|Appendix(?=[ _#.-]+(?:[0-9]{1,4}[A-Za-z]?|[A-Za-z][0-9]*)(?![A-Za-z0-9]))|Agenda[ _-]+Item)(?:[ _#.-]+|(?=[0-9]))(?P<item_token>(?:[0-9]+[A-Za-z]?|[A-Za-z][0-9]*))(?![A-Za-z0-9])",
       "scope": "search",
-      "description": "Printed exhibit, attachment, appendix or agenda item identifier. Appendix numeric labels are limited to short identifiers so longer date-shaped suffixes remain available to the date reader.",
+      "description": "Printed exhibit, attachment, appendix or agenda item identifier. Appendix numeric labels are limited to short identifiers so longer date-shaped suffixes remain available to the date reader. Exhibit/Attachment and a numeric item may also be joined; the explicit reference owns its full digits before generic date scans.",
       "priority": 0,
       "scan_order": 4,
       "reserve": "match",
-      "reference_number": "item_token"
+      "reference_number": "item_token",
+      "field_vocabularies": {
+        "exhibit_marker": [
+          {
+            "vocabulary": "document-categories",
+            "normalize": "letters"
+          }
+        ]
+      }
     },
     {
       "id": "document-suffix",
@@ -23135,7 +23163,7 @@
     },
     {
       "id": "labeled-subject",
-      "pattern": "(?P<label>Witness[ _-]*List|Opening[ _-]*Statements?|Written[ _-]*Statement|Witness[ _-]*Statement|Written[ _-]*Testimony|Prepared[ _-]*Statement|(?:(?:Written[ _-]+)?(?:Responses?|Answers?|Resp)[ _-]+(?:to|for)[ _-]+(?:(?:Written[ _-]+)?Questions?[ _-]+for[ _-]+(?:the[ _-]+)?Record|QFR(?:['’]?s)?)|QFR(?:['’]?s)?[ _-]*(?:Responses?|Answers?)|(?:Written[ _-]+)?Questions?[ _-]+for[ _-]+(?:the[ _-]+)?Record|QFR(?:['’]?s)?)|Official[ _-]+Hearing[ _-]+Transcript|Letter[ _-]+of[ _-]+Support|Testimon(?:y|ies)|Biography|Transcript|Statement)[ _-]+(?P<subject_token>.+)",
+      "pattern": "(?P<label>Witness[ _-]*List|Opening[ _-]*Statements?|Written[ _-]*Statement|Witness[ _-]*Statement|Writt?en[ _-]*Testimony|Prepared[ _-]*Statement|(?:(?:Written[ _-]+)?(?:Responses?|Answers?|Resp)[ _-]+(?:to|for)[ _-]+(?:(?:Supplemental|Written)[ _-]+)?(?:(?:Written[ _-]+)?Questions?[ _-]+for[ _-]+(?:the[ _-]+)?Record|QFR(?:['’]?s)?)|QFR(?:['’]?s)?[ _-]*(?:Responses?|Answers?)|(?:Written[ _-]+)?Questions?[ _-]+for[ _-]+(?:the[ _-]+)?Record|QFR(?:['’]?s)?)|Official[ _-]+Hearing[ _-]+Transcript|Letter[ _-]+of[ _-]+Support|(?:Witness[ _-]+)?Testimon(?:y|ies)|Biography|Transcript|Statement)[ _-]+(?P<subject_token>.+)",
       "description": "Explicit document wording and literal subject; subject does not establish a person identity.",
       "scope": "stem",
       "priority": 2,
@@ -23156,7 +23184,7 @@
     },
     {
       "id": "subject-labeled",
-      "pattern": "(?P<subject_token>(?:[ _-](?=[ _-])|.+?(?<![ _-])))[ _-]+(?P<label>Witness[ _-]*List|Opening[ _-]*Statements?|Written[ _-]*Statement|Witness[ _-]*Statement|Written[ _-]*Testimony|Prepared[ _-]*Statement|(?:(?:Written[ _-]+)?(?:Responses?|Answers?|Resp)[ _-]+(?:to|for)[ _-]+(?:(?:Written[ _-]+)?Questions?[ _-]+for[ _-]+(?:the[ _-]+)?Record|QFR(?:['’]?s)?)|QFR(?:['’]?s)?[ _-]*(?:Responses?|Answers?)|(?:Written[ _-]+)?Questions?[ _-]+for[ _-]+(?:the[ _-]+)?Record|QFR(?:['’]?s)?)|Official[ _-]+Hearing[ _-]+Transcript|Letter[ _-]+of[ _-]+Support|Testimon(?:y|ies)|Biography|Transcript|Statement)",
+      "pattern": "(?P<subject_token>(?:[ _-](?=[ _-])|.+?(?<![ _-])))[ _-]+(?P<label>Witness[ _-]*List|Opening[ _-]*Statements?|Written[ _-]*Statement|Witness[ _-]*Statement|Writt?en[ _-]*Testimony|Prepared[ _-]*Statement|(?:(?:Written[ _-]+)?(?:Responses?|Answers?|Resp)[ _-]+(?:to|for)[ _-]+(?:(?:Supplemental|Written)[ _-]+)?(?:(?:Written[ _-]+)?Questions?[ _-]+for[ _-]+(?:the[ _-]+)?Record|QFR(?:['’]?s)?)|QFR(?:['’]?s)?[ _-]*(?:Responses?|Answers?)|(?:Written[ _-]+)?Questions?[ _-]+for[ _-]+(?:the[ _-]+)?Record|QFR(?:['’]?s)?)|Official[ _-]+Hearing[ _-]+Transcript|Letter[ _-]+of[ _-]+Support|(?:Witness[ _-]+)?Testimon(?:y|ies)|Biography|Transcript|Statement)",
       "description": "Literal subject followed by explicit document wording; document contents are not verified.",
       "scope": "stem",
       "priority": 2,
@@ -23177,7 +23205,7 @@
     },
     {
       "id": "label-only",
-      "pattern": "(?P<label>Witness[ _-]+List|Opening[ _-]+Statement|Written[ _-]+Testimony|Prepared[ _-]+Statement|(?:(?:Written[ _-]+)?(?:Responses?|Answers?|Resp)[ _-]+(?:to|for)[ _-]+(?:(?:Written[ _-]+)?Questions?[ _-]+for[ _-]+(?:the[ _-]+)?Record|QFR(?:['’]?s)?)|QFR(?:['’]?s)?[ _-]*(?:Responses?|Answers?)|(?:Written[ _-]+)?Questions?[ _-]+for[ _-]+(?:the[ _-]+)?Record|QFR(?:['’]?s)?)|Official[ _-]+Hearing[ _-]+Transcript|Letter[ _-]+of[ _-]+Support|Testimony|Biography|Transcript|Statement)",
+      "pattern": "(?P<label>Witness[ _-]+List|Opening[ _-]+Statement|Written[ _-]+Testimony|Prepared[ _-]+Statement|(?:(?:Written[ _-]+)?(?:Responses?|Answers?|Resp)[ _-]+(?:to|for)[ _-]+(?:(?:Supplemental|Written)[ _-]+)?(?:(?:Written[ _-]+)?Questions?[ _-]+for[ _-]+(?:the[ _-]+)?Record|QFR(?:['’]?s)?)|QFR(?:['’]?s)?[ _-]*(?:Responses?|Answers?)|(?:Written[ _-]+)?Questions?[ _-]+for[ _-]+(?:the[ _-]+)?Record|QFR(?:['’]?s)?)|Official[ _-]+Hearing[ _-]+Transcript|Letter[ _-]+of[ _-]+Support|Testimony|Biography|Transcript|Statement)",
       "description": "Only the explicit document label is supplied.",
       "scope": "stem",
       "priority": 1,
@@ -23203,7 +23231,7 @@
     },
     {
       "id": "document-wording",
-      "pattern": "(?:(?<![A-Za-z])|(?-i:(?<=[a-z0-9])(?=[A-Z])))(?P<label>Witness[ _-]*List|Opening[ _-]*Statements?|Written[ _-]*Statement|Witness[ _-]*Statement|Written[ _-]*Testimony|Prepared[ _-]*Statement|(?:(?:Written[ _-]+)?(?:Responses?|Answers?|Resp)[ _-]+(?:to|for)[ _-]+(?:(?:Written[ _-]+)?Questions?[ _-]+for[ _-]+(?:the[ _-]+)?Record|QFR(?:['’]?s)?)|QFR(?:['’]?s)?[ _-]*(?:Responses?|Answers?)|(?:Written[ _-]+)?Questions?[ _-]+for[ _-]+(?:the[ _-]+)?Record|QFR(?:['’]?s)?)|Official[ _-]+Hearing[ _-]+Transcript|Letter[ _-]+of[ _-]+Support|Testimon(?:y|ies)|Biography|Transcript|Statement)(?:(?![A-Za-z])|(?-i:(?<=[a-z])(?=[A-Z]))|(?=(?:pdf|docx?)(?:-[0-9]+)?\\Z))",
+      "pattern": "(?:(?<![A-Za-z])|(?-i:(?<=[a-z0-9])(?=[A-Z])))(?P<label>Witness[ _-]*List|Opening[ _-]*Statements?|Written[ _-]*Statement|Witness[ _-]*Statement|Writt?en[ _-]*Testimony|Prepared[ _-]*Statement|(?:(?:Written[ _-]+)?(?:Responses?|Answers?|Resp)[ _-]+(?:to|for)[ _-]+(?:(?:Supplemental|Written)[ _-]+)?(?:(?:Written[ _-]+)?Questions?[ _-]+for[ _-]+(?:the[ _-]+)?Record|QFR(?:['’]?s)?)|QFR(?:['’]?s)?[ _-]*(?:Responses?|Answers?)|(?:Written[ _-]+)?Questions?[ _-]+for[ _-]+(?:the[ _-]+)?Record|QFR(?:['’]?s)?)|Official[ _-]+Hearing[ _-]+Transcript|Letter[ _-]+of[ _-]+Support|(?:Witness[ _-]+)?Testimon(?:y|ies)|Biography|Transcript|Statement)(?:(?![A-Za-z])|(?-i:(?<=[a-z])(?=[A-Z]))|(?=(?:pdf|docx?)(?:-[0-9]+)?\\Z))",
       "scope": "search",
       "priority": 0,
       "description": "Literal document-related wording; does not certify a file type or its contents.",
@@ -23229,7 +23257,15 @@
       "description": "Explicit appendix identifier and literal title, including archive filenames; not a person-name assumption.",
       "searchable_fields": [
         "subject_token"
-      ]
+      ],
+      "field_vocabularies": {
+        "document_token": [
+          {
+            "vocabulary": "document-categories",
+            "normalize": "letters"
+          }
+        ]
+      }
     },
     {
       "id": "short-date-unpadded",
@@ -23817,10 +23853,10 @@
     },
     {
       "id": "document-qualifier",
-      "pattern": "(?:(?<![A-Za-z0-9])|(?-i:(?<=[a-z0-9])(?=[A-Z])))(?P<qualifier_wording>As[ _-]*(?:Modified(?:[ _-]*Again)?|Amended)|As[ _-]*(?:Delivered|Prepared|Given)|Prepared|Corrected|Follow[ _-]*Up|Addendum|Edited|Public|Final|OCR|Redacted|Amended|Updated|Modified|Signed|Cleared|Unofficial)(?:(?![A-Za-z])|(?-i:(?<=[a-z])(?=[A-Z]))|(?=pdf(?:-[0-9]+)?\\Z))",
+      "pattern": "(?:(?<![A-Za-z0-9])|(?-i:(?<=[a-z0-9])(?=[A-Z])))(?P<qualifier_wording>As[ _-]*(?:Modified(?:[ _-]*Again)?|Amended)|As[ _-]*(?:Delivered|Prepared|Given)|Prepared|Corrected|Follow[ _-]*Up|Addendum|Edited|Public|Final|OCR|Redacted|Sanitized|Scrubbed|Opt|Amended|Updated|Modified|Signed|Cleared|Unofficial)(?:(?![A-Za-z])|(?-i:(?<=[a-z])(?=[A-Z]))|(?=pdf(?:-[0-9]+)?\\Z))",
       "scope": "document-wording-search",
       "priority": 0,
-      "description": "Printed qualifier adjacent to document wording or terminal; a leading qualifier is retained when no document label gives it a conflicting topic context. Public requires a document label. No verified publication, revision or access state.",
+      "description": "Printed qualifier adjacent to document wording or terminal; a leading qualifier is retained when no document label gives it a conflicting topic context. Public requires a document label. No verified publication, revision or access state. Sanitized, Scrubbed and Opt are retained as printed processing suffixes, without expanding Opt or claiming which processing occurred.",
       "field_readings": {
         "qualifier_wording": {
           "note": "Printed qualifier wording; access, edition and file contents are not verified."
@@ -24273,7 +24309,8 @@
       "description": "Printed results wording in a meeting/session heading; EBM and the observed Sessio spelling are not repaired or expanded. No meeting occurrence, access, vote result or file contents are verified.",
       "field_readings": {
         "result_wording": {
-          "note": "Printed results wording in a meeting/session heading; EBM and the observed Sessio spelling are not repaired or expanded. No meeting occurrence, access, vote result or file contents are verified."
+          "note": "Printed results wording in a meeting/session heading; EBM and the observed Sessio spelling are not repaired or expanded. No meeting occurrence, access, vote result or file contents are verified.",
+          "category": "meeting-results"
         }
       },
       "scan_stage": "supplemental",
@@ -24287,7 +24324,8 @@
       "description": "Printed results wording in a meeting/session heading; EBM and the observed Sessio spelling are not repaired or expanded. No meeting occurrence, access, vote result or file contents are verified.",
       "field_readings": {
         "result_wording": {
-          "note": "Printed results wording in a meeting/session heading; EBM and the observed Sessio spelling are not repaired or expanded. No meeting occurrence, access, vote result or file contents are verified."
+          "note": "Printed results wording in a meeting/session heading; EBM and the observed Sessio spelling are not repaired or expanded. No meeting occurrence, access, vote result or file contents are verified.",
+          "category": "meeting-results"
         }
       },
       "scan_stage": "supplemental",
@@ -24297,8 +24335,8 @@
       "id": "executive-business-wording",
       "scope": "document-wording-search",
       "priority": 0,
-      "pattern": "(?<!%[0-9a-f]{2})(?<![A-Za-z0-9%])(?:(?P<access_wording>Open|Closed)[ _-]+)?(?:(?P<meeting_wording>Executive[ _-]+Business[ _-]+Meetings?)|(?P<meeting_abbreviation>EBM))(?:(?![A-Za-z])|(?=pdf(?:-[0-9]+)?\\Z))",
-      "description": "Printed executive business meeting heading. EBM is retained only inside a recognized results heading and is not expanded. No event, occurrence or access is verified.",
+      "pattern": "(?<!%[0-9a-f]{2})(?<![A-Za-z0-9%])(?:(?P<access_wording>Open|Closed)[ _-]+)?(?:(?P<meeting_wording>(?:Executive[ _-]+Business[ _-]+Meetings?|Exec[ _-]+Bus[ _-]+Mtg))|(?P<meeting_abbreviation>EBM))(?:(?![A-Za-z])|(?=pdf(?:-[0-9]+)?\\Z))",
+      "description": "Printed executive business meeting heading. EBM is retained only inside a recognized results heading and is not expanded. No event, occurrence or access is verified. The observed Exec Bus Mtg spelling is retained as meeting wording, not promoted to a document category.",
       "scan_stage": "supplemental",
       "field_readings": {
         "meeting_wording": {
@@ -24801,7 +24839,7 @@
       "id": "document-list-wording",
       "scope": "search",
       "priority": 0,
-      "pattern": "(?:(?<![A-Za-z0-9])|(?-i:(?<=[a-z0-9])(?=[A-Z])))(?P<label>(?:Master[ _-]+)?Amendment[ _-]+List|Exhibit[ _-]+List)(?:(?![A-Za-z])|(?-i:(?<=[a-z])(?=[A-Z]))|(?=pdf(?:-[0-9]+)?\\Z))",
+      "pattern": "(?:(?<![A-Za-z0-9])|(?-i:(?<=[a-z0-9])(?=[A-Z])))(?P<label>(?:Master[ _-]+)?Amendment[ _-]+List|Exhibit[ _-]+List|Panelists?[ _-]+List|Participants?[ _-]+List)(?:(?![A-Za-z])|(?-i:(?<=[a-z])(?=[A-Z]))|(?=pdf(?:-[0-9]+)?\\Z))",
       "description": "Printed list heading; identifies a list rather than an individual amendment or exhibit.",
       "scan_order": 4,
       "reserve": "match",
@@ -24818,7 +24856,7 @@
       "id": "document-role-wording",
       "scope": "search",
       "priority": 0,
-      "pattern": "(?:(?<![A-Za-z0-9])|(?-i:(?<=[a-z0-9])(?=[A-Z])))(?P<label>Committee[ _-]+Memo(?:randum)?|Revenue[ _-]+Estimate|Issue[ _-]+Brief|Brochure|Flyer|Pamphlet|Graphic|Scatterplot|Slides?|Appendix|Attachment|Report)(?:(?![A-Za-z])|(?-i:(?<=[a-z])(?=[A-Z]))|(?=pdf(?:-[0-9]+)?\\Z))",
+      "pattern": "(?:(?<![A-Za-z0-9])|(?-i:(?<=[a-z0-9])(?=[A-Z])))(?P<label>(?:Committee|Rules)[ _-]+Memo(?:randum)?|Revenue[ _-]+Estimate|Estimated[ _-]+Revenue[ _-]+Effects|Issue[ _-]+Brief|Brochure|Flyer|Pamphlet|Graphic|Scatterplot|Slides?|Tally[ _-]+Sheets?|Letters|Letter(?![ _-]*of[ _-]*Support)|Exhibit|Append(?:ix(?:es)?|ices)|Attachment|Report)(?:(?![A-Za-z])|(?-i:(?<=[a-z])(?=[A-Z]))|(?=pdf(?:-[0-9]+)?\\Z))",
       "description": "Literal descriptive document wording; no publication family, content verification or official status inferred.",
       "scan_order": 5,
       "field_vocabularies": {
@@ -24881,7 +24919,9 @@
       "description": "Printed treaty-document citation; no treaty identity or other Congress inferred.",
       "field_readings": {
         "citation_marker": {
-          "note": "Printed treaty-document citation; no treaty identity or other Congress inferred."
+          "note": "Printed treaty-document citation; no treaty identity or other Congress inferred.",
+          "code": "tdoc",
+          "label": "Treaty document citation"
         },
         "citation_congress": {
           "note": "Printed treaty-document citation; no treaty identity or other Congress inferred."
@@ -25069,7 +25109,7 @@
       "id": "document-alias-testimony",
       "scope": "search",
       "priority": 0,
-      "pattern": "(?:(?<![A-Za-z0-9])|(?-i:(?<=[a-z0-9])(?=[A-Z])))(?P<label>Tesitmony|Tesimony|Testiomony|Testimomy|Testmiony|tedtimony)(?:(?![A-Za-z])|(?-i:(?<=[a-z])(?=[A-Z]))|(?=pdf(?:-[0-9]+)?\\Z))",
+      "pattern": "(?:(?<![A-Za-z0-9])|(?-i:(?<=[a-z0-9])(?=[A-Z])))(?P<label>Tesitmony|Tesimony|Testiomony|Testimomy|Testimoiny|Testmiony|tedtimony)(?:(?![A-Za-z])|(?-i:(?<=[a-z])(?=[A-Z]))|(?=pdf(?:-[0-9]+)?\\Z))",
       "description": "Observed spelling alias for Testimony; raw spelling retained without fuzzy correction or verified contents.",
       "label": "Testimony",
       "scan_order": 5,
@@ -25091,7 +25131,7 @@
       "id": "document-alias-statement",
       "scope": "search",
       "priority": 0,
-      "pattern": "(?:(?<![A-Za-z0-9])|(?-i:(?<=[a-z0-9])(?=[A-Z])))(?P<label>Statemet|statmement)(?:(?![A-Za-z])|(?-i:(?<=[a-z])(?=[A-Z]))|(?=pdf(?:-[0-9]+)?\\Z))",
+      "pattern": "(?:(?<![A-Za-z0-9])|(?-i:(?<=[a-z0-9])(?=[A-Z])))(?P<label>(?:Opening[ _-]+)?(?:Statemet|statmement|Statment))(?:(?![A-Za-z])|(?-i:(?<=[a-z])(?=[A-Z]))|(?=pdf(?:-[0-9]+)?\\Z))",
       "description": "Observed spelling alias for Statement; raw spelling retained without fuzzy correction or verified contents.",
       "label": "Statement",
       "scan_order": 5,
@@ -25438,9 +25478,10 @@
       "pattern": "(?P<amendment_marker>MGR)[_-](?P<local_number_token>01)",
       "source_urls": [
         "https://transportation.house.gov/UploadedFiles/MGR_01.pdf",
-        "https://www.congress.gov/118/meeting/house/117174/documents/MGR_01.pdf"
+        "https://www.congress.gov/118/meeting/house/117174/documents/MGR_01.pdf",
+        "https://transportation.house.gov/uploadedfiles/mgr_01.pdf"
       ],
-      "description": "Two reviewed source occurrences share this basename but have different bodies; their descriptions confirm manager-amendment role, not common identity.",
+      "description": "Two reviewed source occurrences share this basename but have different bodies; their descriptions confirm manager-amendment role, not common identity. The lowercase transportation.house.gov alias has the same retained nonempty body as the reviewed uppercase URL; URL paths are otherwise not case-folded.",
       "field_readings": {
         "amendment_marker": {
           "label": "Manager amendment",
@@ -25613,7 +25654,7 @@
       "id": "qfr-response-questioner",
       "scope": "stem",
       "priority": 1,
-      "pattern": "(?P<subject_token>[A-Za-z][A-Za-z .\\'-]*?)[ _-]+(?P<response_wording>Responses?[ _-]+to)[ _-]+(?P<questioner_token>[A-Za-z][A-Za-z .\\'-]*?)[ _-]+(?P<label>QFRs?)(?:[_-][0-9a-f]{8}-[0-9a-f-]{27})?",
+      "pattern": "(?P<subject_token>[A-Za-z][A-Za-z .\\'-]*?)[ _-]+(?P<response_wording>Responses?[ _-]+to)[ _-]+(?!(?:(?:Supplemental|Written)[ _-]+)+QFRs?(?:\\Z|[_-]))(?P<questioner_token>[A-Za-z][A-Za-z .\\'-]*?)[ _-]+(?P<label>QFRs?)(?:[_-][0-9a-f]{8}-[0-9a-f-]{27})?",
       "description": "Printed respondent and questioner text; no person identity established.",
       "searchable_fields": [
         "subject_token"
@@ -25700,7 +25741,9 @@
         "label": {
           "category": "notice"
         }
-      }
+      },
+      "scan_order": 4,
+      "reserve": "match"
     },
     {
       "id": "hour-minute-clock",
@@ -25901,6 +25944,799 @@
         "numeric-date"
       ],
       "description": "A separated month followed by joined day/year; preserve all supported calendar readings and no event role."
+    },
+    {
+      "id": "bounded-role-wording",
+      "scope": "role-wording-search",
+      "pattern": "(?:(?u:(?<![^\\W\\d_]))|(?-i:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])))(?P<role_wording>ranking[ ._-]*member|vice[ ._-]*chair(?:woman|man|person)?|chair(?:woman|man|person)?|senator|representative)(?:(?u:(?![^\\W\\d_]))|(?-i:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])))",
+      "priority": 0,
+      "description": "Title wording at Unicode word or visible ASCII CamelCase boundaries. Longest phrases precede nested titles; the text slot supplies context, not identity.",
+      "field_readings": {
+        "role_wording": {
+          "note": "Literal wording only; does not establish a person, officeholding, authorship, sponsorship, or membership."
+        }
+      },
+      "field_vocabularies": {
+        "role_wording": [
+          {
+            "vocabulary": "role-wording",
+            "normalize": "letters"
+          }
+        ]
+      }
+    },
+    {
+      "id": "bounded-role-modifier",
+      "scope": "role-wording-search",
+      "pattern": "(?:(?u:(?<![^\\W\\d_]))|(?-i:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])))(?P<role_modifier>acting|former)(?:(?u:(?![^\\W\\d_]))|(?-i:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])))",
+      "priority": 0,
+      "description": "Literal acting/former wording in retained text. No assignment to an adjacent title or person is implied.",
+      "field_readings": {
+        "role_modifier": {
+          "note": "Literal wording only; does not establish a person, officeholding, authorship, sponsorship, or membership."
+        }
+      },
+      "field_vocabularies": {
+        "role_modifier": [
+          {
+            "vocabulary": "role-modifiers",
+            "normalize": "letters"
+          }
+        ]
+      }
+    },
+    {
+      "id": "opening-statement-role-prefix",
+      "scope": "role-wording-prefix",
+      "pattern": "^(?:of)?(?P<role_wording>rankingmember(?!ship)|chairman(?!ship)|senator(?!ial|ship))(?=[a-z]{2})",
+      "priority": 0,
+      "description": "Observed lowercase fused role prefixes at a text-slot start in an opening statement. The remaining name/topic text stays unsplit; no surname lookup or identity assertion.",
+      "field_readings": {
+        "role_wording": {
+          "note": "Literal wording only; does not establish a person, officeholding, authorship, sponsorship, or membership."
+        }
+      },
+      "field_vocabularies": {
+        "role_wording": [
+          {
+            "vocabulary": "role-wording",
+            "normalize": "letters"
+          }
+        ]
+      }
+    },
+    {
+      "id": "supporting-materials-reference",
+      "scope": "stem",
+      "priority": 0,
+      "pattern": "(?P<label>(?:Additional|Supporting)[ _-]+Materials?)[ _-]+(?P<target_marker>for)[ _-]+(?P<target_subject>.+)",
+      "description": "Explicit supporting materials for another document or topic; the target wording does not classify the supporting file or resolve a person.",
+      "searchable_fields": [
+        "target_subject"
+      ],
+      "field_readings": {
+        "label": {
+          "category": "supporting-material"
+        },
+        "target_marker": {
+          "note": "Printed relationship to the following document or topic; contents and identity are not verified."
+        }
+      }
+    },
+    {
+      "id": "publisher-help-written-statement",
+      "scope": "source-stem",
+      "priority": 0,
+      "pattern": "(?P<context_token>HELP)(?P<document_token>writtenstatement)(?P<subject_token>[A-Za-z]+)",
+      "source_hosts": [
+        "www.help.senate.gov",
+        "help.senate.gov"
+      ],
+      "description": "HELP publisher joined acronym plus explicit written-statement wording and a literal subject. No committee ID, witness role or person identity is assigned.",
+      "field_vocabularies": {
+        "document_token": [
+          {
+            "vocabulary": "document-categories",
+            "normalize": "letters"
+          }
+        ]
+      },
+      "searchable_fields": [
+        "subject_token"
+      ]
+    },
+    {
+      "id": "source-joined-statement-subject",
+      "scope": "source-stem",
+      "priority": 0,
+      "pattern": "(?P<document_token>statement)(?P<subject_token>[A-Za-z]+)",
+      "source_urls": [
+        "https://www.armed-services.senate.gov/download/statementmedeiros"
+      ],
+      "description": "This reviewed source alias has the same retained body as Statement.Medeiros.pdf. Source qualification establishes the joined boundary; arbitrary statement-prefixed words are not split. The remaining text is a literal subject, not a verified witness.",
+      "field_vocabularies": {
+        "document_token": [
+          {
+            "vocabulary": "document-categories",
+            "normalize": "letters"
+          }
+        ]
+      },
+      "searchable_fields": [
+        "subject_token"
+      ]
+    },
+    {
+      "id": "source-joined-biography-date",
+      "scope": "source-stem",
+      "priority": 0,
+      "pattern": "(?P<subject_token>[A-Za-z]+?)(?P<document_token>bio)[_-](?P<date_token>[0-9]{2}[._-][0-9]{2}[._-][0-9]{2})",
+      "source_urls": [
+        "https://www.armed-services.senate.gov/download/mckeonbio_12-04-19"
+      ],
+      "description": "This reviewed source alias has the same retained body as McKeon.Bio_12-04-19.pdf. Preserve the joined subject/bio boundary and short-date uncertainty without a person identity or an invented century.",
+      "field_vocabularies": {
+        "document_token": [
+          {
+            "vocabulary": "document-categories",
+            "normalize": "letters"
+          }
+        ]
+      },
+      "searchable_fields": [
+        "subject_token"
+      ]
+    },
+    {
+      "id": "compound-opaque-identifier",
+      "scope": "stem",
+      "priority": 1,
+      "pattern": "(?P<opaque_identifier>(?=[0-9a-f]{0,5}[0-9])[0-9a-f]{6})_(?P<opaque_hex>(?=[0-9a-f]*[a-f])[0-9a-f]{32})",
+      "description": "Two complete hexadecimal identifier components; preserve both literal values without splitting a numeric prefix or inferring a hash algorithm."
+    },
+    {
+      "id": "cdoc-treaty-package",
+      "scope": "stem",
+      "priority": 0,
+      "pattern": "(?P<collection_token>CDOC)-(?P<congress>[0-9]{1,3})-?(?P<publication_code>tdoc)-?(?P<publication_number>[0-9]+)",
+      "description": "Printed CDOC treaty-document package components; source Congress and number only, with no treaty identity or meeting association inferred.",
+      "field_readings": {
+        "publication_code": {
+          "role": "publication_type",
+          "category": "treaty-document"
+        },
+        "publication_number": {
+          "note": "Printed treaty-document number within this Congress, not a bill or meeting number."
+        }
+      },
+      "field_vocabularies": {
+        "collection_token": [
+          {
+            "vocabulary": "house:collection"
+          }
+        ],
+        "publication_code": [
+          {
+            "vocabulary": "publication"
+          }
+        ]
+      }
+    },
+    {
+      "id": "partial-report-measure",
+      "scope": "stem",
+      "priority": 0,
+      "pattern": "(?P<collection_token>CRPT)-(?P<congress>[0-9]{1,3})-?(?P<publication_code>[hse]rpt)(?P<measure_token>(?:hconres|sconres|hjres|sjres|hres|sres|hr|s)\\.?)(?P<measure_number>[0-9]+)?(?P<suffix>[-_]*)",
+      "description": "Report collection/type and an explicit measure token in a partial layout; absent report and measure numbers remain absent.",
+      "field_readings": {
+        "publication_code": {
+          "role": "publication_type"
+        },
+        "collection_token": {
+          "category": "committee-report"
+        }
+      },
+      "field_vocabularies": {
+        "collection_token": [
+          {
+            "vocabulary": "house:collection"
+          }
+        ],
+        "publication_code": [
+          {
+            "vocabulary": "publication"
+          }
+        ],
+        "measure_token": [
+          {
+            "vocabulary": "house:measure",
+            "normalize": "letters"
+          }
+        ]
+      }
+    },
+    {
+      "id": "report-collection-measure",
+      "scope": "stem",
+      "priority": 0,
+      "pattern": "(?P<collection_token>CRPT)-(?P<congress>[0-9]{1,3})-(?P<measure_token>(?:hconres|sconres|hjres|sjres|hres|sres|hr|s)\\.?)(?P<measure_number>[0-9]+)(?:[-_](?P<description>.+))?",
+      "description": "Report collection associated with a printed measure and optional local wording; no report number or conference status inferred.",
+      "field_readings": {
+        "collection_token": {
+          "category": "committee-report"
+        }
+      },
+      "field_vocabularies": {
+        "collection_token": [
+          {
+            "vocabulary": "house:collection"
+          }
+        ],
+        "measure_token": [
+          {
+            "vocabulary": "house:measure",
+            "normalize": "letters"
+          }
+        ]
+      },
+      "searchable_fields": [
+        "description"
+      ]
+    },
+    {
+      "id": "titled-report-portion",
+      "scope": "stem",
+      "priority": 0,
+      "pattern": "(?P<collection_token>CRPT)-(?P<congress>[0-9]{1,3})-?(?P<publication_code>[hse]rpt)(?P<report_subject_token>[A-Za-z]+)-(?P<description>.+?)[_-](?P<section_marker>portion)[_-](?P<section_identifier>[0-9]+)",
+      "description": "Titled report portion with an unassigned printed report token; PIH here is retained literally, never treated as a bill version or a report number.",
+      "field_readings": {
+        "publication_code": {
+          "role": "publication_type"
+        },
+        "collection_token": {
+          "category": "committee-report"
+        },
+        "report_subject_token": {
+          "note": "Unassigned printed token within a report filename, not a bill version."
+        },
+        "section_identifier": {
+          "note": "Printed portion identifier, not a report number or an inferred official report part."
+        }
+      },
+      "field_vocabularies": {
+        "collection_token": [
+          {
+            "vocabulary": "house:collection"
+          }
+        ],
+        "publication_code": [
+          {
+            "vocabulary": "publication"
+          }
+        ]
+      },
+      "searchable_fields": [
+        "description"
+      ]
+    },
+    {
+      "id": "named-amendment-to-measure",
+      "scope": "stem",
+      "priority": 2,
+      "pattern": "(?:[A-Z]{3}[0-9]{2}(?:[A-Z][0-9]{2}|[0-9]{3,4})[ _-]+)?(?!Letter(?:[ _-]|$)|Statement(?:[ _-]|$)|Testimony(?:[ _-]|$)|Report(?:[ _-]|$)|Summary(?:[ _-]|$)|Memo(?:[ _-]|$)|Analysis(?:[ _-]|$)|Questions(?:[ _-]|$)|Responses(?:[ _-]|$))(?P<subject_token>[A-Za-z][A-Za-z'’]*?)(?:['’]s)?[ _-]+(?P<amendment_marker>Amendment)[ _-]+(?P<target_marker>to)[ _-]+(?P<measure_token>(?:hconres|sconres|hjres|sjres|hres|sres|hr|s)\\.?)[ ._-]*(?P<measure_number>[0-9]+)(?P<suffix>(?:[ _-]*(?:\\(Manager\\x27s\\)|Substitute))?(?:[ _-]+[A-Z]{3}[0-9]{2}(?:[A-Z][0-9]{2}|[0-9]{3,4}))?)",
+      "description": "Literal name-slot wording before Amendment to an explicit measure; no author identity or sponsorship inferred. A leading or trailing drafting identifier retains its independent role.",
+      "field_readings": {
+        "subject_token": {
+          "note": "Literal name-slot wording; no person identity or sponsorship asserted."
+        },
+        "amendment_marker": {
+          "category": "amendment"
+        }
+      },
+      "field_vocabularies": {
+        "measure_token": [
+          {
+            "vocabulary": "house:measure",
+            "normalize": "letters"
+          }
+        ]
+      },
+      "searchable_fields": [
+        "suffix"
+      ]
+    },
+    {
+      "id": "named-measure-substitute",
+      "scope": "stem",
+      "priority": 2,
+      "pattern": "(?:(?P<local_modifier>NEW)[ _-]+)?(?P<measure_token>H\\.?[ _-]*CON\\.?[ _-]*RES\\.?|S\\.?[ _-]*CON\\.?[ _-]*RES\\.?|H\\.?[ _-]*J\\.?[ _-]*RES\\.?|S\\.?[ _-]*J\\.?[ _-]*RES\\.?|H\\.?[ _-]*RES\\.?|S\\.?[ _-]*RES\\.?|H\\.?[ _-]*R\\.?|S\\.?)[ ._-]*(?P<measure_number>[0-9]+)[ _-]+(?P<subject_token>(?!Letter(?:[ _-]|$)|Statement(?:[ _-]|$)|Testimony(?:[ _-]|$)|Report(?:[ _-]|$)|Summary(?:[ _-]|$)|Memo(?:[ _-]|$)|Analysis(?:[ _-]|$)|Questions(?:[ _-]|$)|Responses(?:[ _-]|$)|Policy(?:[ _-]|$))[A-Za-z][A-Za-z'’]*(?:[ _-]+[A-Za-z][A-Za-z'’]*){0,5})[ _-]+(?P<qualifier_wording>Substitute)(?P<suffix>(?:[ _-]*(?:\\((?:as[ _-]+)?modified\\)|modified|Part[ _-]+[0-9]+|\\([0-9]+\\)|[0-9]{1,2}\\.[0-9]{1,2}))*[ ]*)",
+      "description": "Complete measure/name-slot/Substitute filename identifies the amendment form. Modified/part/copy wording stays literal; no official version, person identity or legislative status is asserted.",
+      "field_readings": {
+        "subject_token": {
+          "note": "Literal name-slot wording; no person identity or sponsorship asserted."
+        },
+        "qualifier_wording": {
+          "note": "Printed substitute wording; no official version code or legislative status inferred.",
+          "category": "amendment"
+        }
+      },
+      "field_vocabularies": {
+        "measure_token": [
+          {
+            "vocabulary": "house:measure",
+            "normalize": "letters"
+          }
+        ]
+      },
+      "searchable_fields": [
+        "suffix"
+      ]
+    },
+    {
+      "id": "source-joined-testimony-subject",
+      "scope": "source-stem",
+      "priority": 0,
+      "pattern": "(?P<label>testimony)(?:(?P<qualifier_wording>revised)[_-]+)?(?P<subject_token>[A-Za-z]+)(?:[_-](?P<date_token>[0-9]{8})(?P<ignored_suffix>pdf)?)?",
+      "source_urls": [
+        "https://www.armed-services.senate.gov/download/testimonybeaudette",
+        "https://www.agriculture.senate.gov/download/testimonyrevised_cheng_03302023pdf"
+      ],
+      "description": "Reviewed publisher aliases join testimony wording to a literal subject or revised qualifier. Retained documents corroborate these boundaries; no witness identity or role is inferred. Unqualified joined text stays literal.",
+      "field_vocabularies": {
+        "label": [
+          {
+            "vocabulary": "document-categories",
+            "normalize": "letters"
+          }
+        ]
+      },
+      "searchable_fields": [
+        "subject_token"
+      ],
+      "field_readings": {
+        "subject_token": {
+          "note": "Literal subject wording; no identity or witness role inferred."
+        }
+      }
+    },
+    {
+      "id": "source-context-testimony-date",
+      "scope": "source-stem",
+      "priority": 0,
+      "pattern": "(?P<generic_identifier>[0-9]+)-(?P<context_token>[A-Za-z]{2,5})(?P<label>testimony)(?P<date_token>[0-9]{1,2}[._-][0-9]{1,2}[._-](?:19|20)[0-9]{2})",
+      "source_urls": [
+        "https://www.congress.gov/115/meeting/house/106799/witnesses/53501-hbctestimony1.30.2018.pdf"
+      ],
+      "description": "Reviewed source filename joins a short literal context token, testimony wording and a complete date after a local identifier. No committee acronym expansion or witness identity is asserted.",
+      "field_vocabularies": {
+        "label": [
+          {
+            "vocabulary": "document-categories",
+            "normalize": "letters"
+          }
+        ]
+      }
+    },
+    {
+      "id": "alphabetic-addendum-subject-date",
+      "scope": "stem",
+      "priority": 2,
+      "pattern": "(?P<addendum_marker>Addendum)[ _-]+(?P<addendum_identifier>[A-Za-z])[ _-]+(?P<subject_token>[^0-9]+?)[ _-]+(?P<date_token>(?:19|20)[0-9]{2}[._-][0-9]{1,2}[._-][0-9]{1,2}|[0-9]{1,2}[._-][0-9]{1,2}[._-](?:19|20)[0-9]{2}|[0-9]{8})(?P<ignored_suffix>pdf)?",
+      "description": "Explicit alphabetic addendum identifier followed by literal subject wording and a printed date. The letter is not an official report part and the subject is not a resolved person.",
+      "field_readings": {
+        "addendum_marker": {
+          "role": "qualifier_wording"
+        },
+        "addendum_identifier": {
+          "note": "Printed alphabetic addendum identifier; no report number or official part inferred."
+        },
+        "subject_token": {
+          "note": "Literal subject wording; no identity or authorship inferred."
+        }
+      },
+      "searchable_fields": [
+        "subject_token"
+      ]
+    },
+    {
+      "id": "single-subject-letter",
+      "scope": "stem",
+      "priority": 2,
+      "pattern": "(?P<subject_token>[A-Za-z][A-Za-z0-9]*)[_-](?P<label>Letter)",
+      "description": "A single literal subject token followed by the complete letter label; no sender, recipient, support direction or person identity is inferred.",
+      "field_readings": {
+        "label": {
+          "category": "letter"
+        }
+      }
+    },
+    {
+      "id": "dated-subject-tally-sheet",
+      "scope": "stem",
+      "priority": 2,
+      "pattern": "(?P<date_token>[0-9]{1,4}[._-][0-9]{1,2}[._-][0-9]{2,4}|[0-9]{8})[_-]+(?!(?:Statement|Letter|Testimony|Report|Memo|Analysis)[_-])(?P<subject_token>[A-Za-z]+(?:[_-][A-Za-z0-9]+)?)[_-]+(?P<label>Tally[_-]+Sheet)",
+      "description": "Printed dated tally-sheet layout with a literal subject. A source may associate it with an amendment, but that does not make this filename an amendment or establish the vote result.",
+      "field_readings": {
+        "label": {
+          "category": "tally-sheet"
+        },
+        "subject_token": {
+          "note": "Literal subject/local wording; no member, amendment or vote-result identity inferred."
+        }
+      }
+    },
+    {
+      "id": "source-local-tdamend",
+      "scope": "source-stem",
+      "priority": 0,
+      "pattern": "(?P<local_code_token>tdamend)_(?P<local_identifier>[0-9]+)_(?P<filename_format_token>xml)(?P<local_number_token>[0-9]+)?",
+      "source_urls": [
+        "https://transportation.house.gov/uploadedfiles/tdamend_002_xml1.pdf",
+        "https://www.congress.gov/115/meeting/house/106690/documents/tdamend_002_xml1.pdf"
+      ],
+      "description": "These reviewed occurrences have matching source filename/label context; the retained transportation PDF explicitly identifies an amendment and shows the local TDAMEND_002.XML drafting filename. Meaning is source-qualified; no bill number or author from the PDF is copied into filename metadata.",
+      "field_readings": {
+        "local_code_token": {
+          "category": "amendment",
+          "note": "Source-qualified local amendment wording; no universal expansion of TD inferred."
+        },
+        "local_identifier": {
+          "note": "Printed local drafting identifier, not an official numbered amendment."
+        },
+        "local_number_token": {
+          "note": "Printed trailing local component, not a verified revision number."
+        }
+      }
+    },
+    {
+      "id": "record-response-variants",
+      "scope": "search",
+      "priority": 0,
+      "scan_order": 4,
+      "pattern": "(?<![A-Za-z0-9%])(?P<label>(?:Further[ _-]+)?(?:Reponses?|Responses?|Answers?)[ _-]+(?:to|for)[ _-]+(?:(?:Senator[ _-]+[A-Za-z]+)[ _-]+)?(?:Written[ _-]+)?(?:Questions?|Quetions)[ _-]+(?:for|from|of)[ _-]+(?:the[ _-]+)?Record)(?![A-Za-z])",
+      "description": "Explicit response-to-record-question wording, including the observed reponses and quetions spellings; no general fuzzy correction.",
+      "field_readings": {
+        "label": {
+          "category": "questions-for-record-response"
+        }
+      },
+      "qualifier_anchor": true
+    },
+    {
+      "id": "written-record-questions",
+      "scope": "search",
+      "priority": 0,
+      "scan_order": 4,
+      "pattern": "(?<![A-Za-z0-9%])(?P<label>Written[ _-]+Questions?[ _-]+for[ _-]+(?:the[ _-]+)?Record)(?![A-Za-z])",
+      "description": "Explicit written questions for the record, distinct from a response when a longer response phrase governs it.",
+      "field_readings": {
+        "label": {
+          "category": "questions-for-record"
+        }
+      }
+    },
+    {
+      "id": "measure-degree-amendment",
+      "scope": "stem",
+      "priority": 2,
+      "pattern": "(?P<payload>(?:H\\.?[ _-]*CON\\.?[ _-]*RES\\.?|S\\.?[ _-]*CON\\.?[ _-]*RES\\.?|H\\.?[ _-]*J\\.?[ _-]*RES\\.?|S\\.?[ _-]*J\\.?[ _-]*RES\\.?|H\\.?[ _-]*RES\\.?|S\\.?[ _-]*RES\\.?|H\\.?[ _-]*R\\.?|S\\.?)(?:[ .-]*[0-9]+|[ .-]*_{2,}(?:,[ _-]*(?P<description>[^_]+))?)[ _-]*(?P<subject_token>(?!Letter(?:[ _-]|$)|Statement(?:[ _-]|$)|Testimony(?:[ _-]|$)|Report(?:[ _-]|$)|Summary(?:[ _-]|$)|Memo(?:[ _-]|$)|Analysis(?:[ _-]|$)|Questions(?:[ _-]|$)|Responses(?:[ _-]|$)|Policy(?:[ _-]|$))[A-Za-z][A-Za-z'’]*(?:[ _-]+[A-Za-z][A-Za-z'’]*){0,5})[ _-]+(?P<amendment_form_wording>(?:1st|2nd|3rd|first|second|third)[ _-]+degree)(?:[ _-]+[0-9]{1,3})?(?:[ _-]+to[ _-]+[A-Za-z][A-Za-z’\\x27 _-]*?[ _-]+(?:1st|2nd|3rd|first|second|third)[ _-]+degree[ _-]+[0-9]{1,3})?(?:[ _-]+(?P<qualifier_wording>REVISED[0-9]*|Modified|Modfied))?(?:[_-][0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})?)",
+      "description": "Complete measure/name-slot/degree layout, with optional target degree clause. Numbered components remain local identifiers under the shared degree reader; no official amendment number or person identity inferred.",
+      "field_readings": {
+        "amendment_form_wording": {
+          "category": "amendment",
+          "note": "Degree amendment form established by the complete measure/name-slot/degree layout."
+        },
+        "subject_token": {
+          "note": "Literal name-slot text; no person identity or sponsorship asserted."
+        }
+      },
+      "searchable_fields": [
+        "payload",
+        "subject_token",
+        "amendment_form_wording",
+        "description",
+        "qualifier_wording"
+      ]
+    },
+    {
+      "id": "agenda-measure-amendment",
+      "scope": "stem",
+      "priority": 2,
+      "pattern": "#(?P<item_token>[0-9]+)[ _-]+(?P<measure_token>H\\.?[ _-]*CON\\.?[ _-]*RES\\.?|S\\.?[ _-]*CON\\.?[ _-]*RES\\.?|H\\.?[ _-]*J\\.?[ _-]*RES\\.?|S\\.?[ _-]*J\\.?[ _-]*RES\\.?|H\\.?[ _-]*RES\\.?|S\\.?[ _-]*RES\\.?|H\\.?[ _-]*R\\.?|S\\.?)[ ._-]*(?P<measure_number>[0-9]+)[ _-]+(?P<subject_token>(?!Letter(?:[ _-]|$)|Statement(?:[ _-]|$)|Testimony(?:[ _-]|$)|Report(?:[ _-]|$)|Summary(?:[ _-]|$)|Memo(?:[ _-]|$)|Analysis(?:[ _-]|$)|Questions(?:[ _-]|$)|Responses(?:[ _-]|$)|Policy(?:[ _-]|$))[A-Za-z][A-Za-z'’]*(?:[ _-]+[A-Za-z][A-Za-z'’]*){0,5})[ _-]+(?P<amendment_marker>Amdt)[ _-]*\\((?P<drafting_identifier>[A-Z]{3}[0-9]{2}[A-Z0-9]{3,4})\\)",
+      "description": "Agenda item, measure, literal offerer slot and explicit Amdt wording. The agenda item and drafting identifier do not supply an amendment number.",
+      "field_readings": {
+        "amendment_marker": {
+          "category": "amendment"
+        },
+        "item_token": {
+          "note": "Printed agenda item, not an amendment number."
+        }
+      },
+      "field_vocabularies": {
+        "measure_token": [
+          {
+            "vocabulary": "house:measure",
+            "normalize": "letters"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cp-explicit-bill-comparison",
+      "scope": "stem",
+      "priority": 2,
+      "pattern": "CP-(?P<comparison_source>(?P<congress>[0-9]{3})(?P<measure_token>HCONRES|SCONRES|HJRES|SJRES|HRES|SRES|HR|S)(?P<measure_number>[0-9]+)(?P<version_token>RH|IH|RS|IS|EH|ES|ENR)(?:-(?P<part_marker>P)(?P<part_number>[0-9]+))?)-(?P<comparison_relation>COMPARED)-(?P<comparison_target>(?P<print_token>RCP)(?P<print_congress>[0-9]{3})-(?P<print_number>[0-9]+))(?P<suffix>(?:-U[0-9]+)?)",
+      "description": "Explicit COMPARED layout relates a printed bill version and Rules Committee Print. Preserve both sides; no textual equivalence or legislative action is asserted.",
+      "field_readings": {
+        "comparison_relation": {
+          "category": "bill-comparison"
+        }
+      },
+      "field_vocabularies": {
+        "measure_token": [
+          {
+            "vocabulary": "house:measure",
+            "normalize": "letters"
+          }
+        ],
+        "version_token": [
+          {
+            "vocabulary": "house:version"
+          }
+        ]
+      },
+      "searchable_fields": [
+        "suffix"
+      ]
+    },
+    {
+      "id": "standalone-report-citation",
+      "scope": "stem",
+      "priority": 2,
+      "pattern": "(?P<citation_marker>[HS][ ._-]*(?:REPT|RPT))[ ._-]*(?P<citation_congress>[0-9]{1,3})[-_ ]+(?:(?P<citation_number>[0-9]+)|(?P<number_placeholder>X+|_+))(?P<suffix>(?:[ _-]*\\((?:H\\.?[ _-]*CON\\.?[ _-]*RES\\.?|S\\.?[ _-]*CON\\.?[ _-]*RES\\.?|H\\.?[ _-]*J\\.?[ _-]*RES\\.?|S\\.?[ _-]*J\\.?[ _-]*RES\\.?|H\\.?[ _-]*RES\\.?|S\\.?[ _-]*RES\\.?|H\\.?[ _-]*R\\.?|S\\.?)[ ._-]*[0-9]+\\))?)",
+      "description": "Standalone House/Senate report citation filename, optionally followed by its measure. A placeholder stays unknown and citation numbers are not GovInfo jacket numbers.",
+      "field_readings": {
+        "citation_marker": {
+          "category": "committee-report",
+          "note": "Standalone report citation filename; no conference status inferred."
+        }
+      },
+      "field_vocabularies": {
+        "citation_marker": [
+          {
+            "vocabulary": "citation-type",
+            "normalize": "letters"
+          }
+        ]
+      },
+      "searchable_fields": [
+        "suffix"
+      ]
+    },
+    {
+      "id": "standalone-treaty-document",
+      "scope": "stem",
+      "priority": 2,
+      "pattern": "(?P<citation_marker>Treaty[ ._-]+Doc(?:ument)?)[ ._-]*(?P<citation_congress>[0-9]{1,3})[-_ ]+(?P<citation_number>[0-9]+)(?P<suffix>(?:[ _-]+As[ _-]+Reported)?)",
+      "description": "Standalone treaty-document citation filename; resolutions and amendments concerning the treaty are excluded.",
+      "field_readings": {
+        "citation_marker": {
+          "category": "treaty-document",
+          "code": "tdoc",
+          "label": "Treaty document citation"
+        }
+      },
+      "searchable_fields": [
+        "suffix"
+      ]
+    },
+    {
+      "id": "introduced-measure-text",
+      "scope": "stem",
+      "priority": 2,
+      "pattern": "(?P<measure_token>H\\.?[ _-]*CON\\.?[ _-]*RES\\.?|S\\.?[ _-]*CON\\.?[ _-]*RES\\.?|H\\.?[ _-]*J\\.?[ _-]*RES\\.?|S\\.?[ _-]*J\\.?[ _-]*RES\\.?|H\\.?[ _-]*RES\\.?|S\\.?[ _-]*RES\\.?|H\\.?[ _-]*R\\.?|S\\.?)[ ._-]*(?P<measure_number>[0-9]+)[ _-]+(?P<label>Introduced(?:[ _-]+Text)?)(?P<suffix>(?:[_-][0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})?)",
+      "description": "A complete measure reference followed only by Introduced/Text wording identifies legislative text. No official version code or legislative event date is inferred.",
+      "field_readings": {
+        "label": {
+          "category": "legislative-text"
+        }
+      },
+      "field_vocabularies": {
+        "measure_token": [
+          {
+            "vocabulary": "house:measure",
+            "normalize": "letters"
+          }
+        ]
+      },
+      "searchable_fields": [
+        "suffix"
+      ]
+    },
+    {
+      "id": "rules-print-measure",
+      "scope": "stem",
+      "priority": 2,
+      "pattern": "(?P<label>Rules[ _-]+Print)[ _-]+(?P<measure_token>H\\.?[ _-]*CON\\.?[ _-]*RES\\.?|S\\.?[ _-]*CON\\.?[ _-]*RES\\.?|H\\.?[ _-]*J\\.?[ _-]*RES\\.?|S\\.?[ _-]*J\\.?[ _-]*RES\\.?|H\\.?[ _-]*RES\\.?|S\\.?[ _-]*RES\\.?|H\\.?[ _-]*R\\.?|S\\.?)[ ._-]*(?P<measure_number>[0-9]+)(?:[_-](?P<filename_format_token>xml|pdf))?",
+      "description": "Rules Print wording with a complete measure reference; no print number or Congress inferred.",
+      "field_readings": {
+        "label": {
+          "category": "committee-print"
+        }
+      },
+      "field_vocabularies": {
+        "measure_token": [
+          {
+            "vocabulary": "house:measure",
+            "normalize": "letters"
+          }
+        ]
+      }
+    },
+    {
+      "id": "fiscal-rules-print",
+      "scope": "stem",
+      "priority": 2,
+      "pattern": "(?P<payload>FY[0-9]{2,4}[ _-]+(?P<appropriation_subject>[A-Za-z]{2,8})[ _-]+(?P<label>Rules[ _-]+Print)(?:[_-](?P<filename_format_token>xml|pdf))?)",
+      "description": "Fiscal-year and local subject abbreviation followed by Rules Print. Fiscal-year parsing remains with the shared reader; the subject abbreviation is not expanded.",
+      "field_readings": {
+        "label": {
+          "category": "committee-print"
+        }
+      },
+      "searchable_fields": [
+        "payload"
+      ]
+    },
+    {
+      "id": "source-corroborated-opener",
+      "scope": "source-stem",
+      "priority": 0,
+      "pattern": "(?P<subject_token>.+?)[ _-]+(?P<label>Opener)(?P<numeric_suffix_token>[0-9]+)?(?P<suffix>(?:[ _-].*)?)",
+      "source_urls": [
+        "https://www.finance.senate.gov/imo/media/doc/031621%20Wyden%20domestic%20manufacturing%20hearing%20opener.pdf",
+        "https://www.finance.senate.gov/imo/media/doc/031821%20forced%20labor%20opener.pdf",
+        "https://www.finance.senate.gov/imo/media/doc/061720%20Wyden%20Trade%20Agenda%20Hearing%20Opener1.pdf",
+        "https://www.finance.senate.gov/imo/media/doc/Cornyn%20Opener%20-%20POE%20Hearing.pdf",
+        "https://www.help.senate.gov/imo/media/doc/17ee2dec-bda3-6894-8f3d-2a5a1080b546/Klomp_Opener_HELP_d5d68c57-2b9c-4e31-a0d8-0bf30c7a2b52.pdf",
+        "https://www.help.senate.gov/imo/media/doc/17ee2dec-bda3-6894-8f3d-2a5a1080b546/Saphier_Opener_HELP_c91ad3b2-2fde-47bb-b410-280127e06e1d.pdf",
+        "https://www.help.senate.gov/imo/media/doc/17ee2dec-bda3-6894-8f3d-2a5a1080b546/Westlake_Opener_HELP_21824036-8ff3-4316-a745-a6b63dda2a13.pdf"
+      ],
+      "description": "Reviewed Finance and HELP source pages label these exact files as member or witness statements. Their printed Opener wording describes an opening statement; no author identity, witness role or document-body claim is inferred. Other URLs and standalone opener wording remain unqualified.",
+      "field_readings": {
+        "label": {
+          "category": "opening-statement"
+        }
+      },
+      "searchable_fields": [
+        "subject_token",
+        "suffix"
+      ],
+      "processors": [
+        "subject-remainder"
+      ]
+    },
+    {
+      "scope": "source-stem",
+      "priority": 0,
+      "id": "publisher-help-section-analysis",
+      "pattern": "(?P<subject_token>S[ ._]+[^%/]+?|[^%/]+[ _-]+Act)[ ,_-]+(?P<document_abbreviation>SXS)(?:[ _-]*(?=\\([0-9]+\\)|[0-9]+(?![0-9)]))\\(?(?P<local_number_token>[0-9]+)\\)?)?(?:[ _-]+(?P<opaque_uuid>[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}))?(?P<ignored_suffix>pdf)?",
+      "source_hosts": [
+        "www.help.senate.gov",
+        "help.senate.gov"
+      ],
+      "searchable_fields": [
+        "subject_token"
+      ],
+      "description": "HELP publisher SxS companion files after a Senate measure or Act title. The S. 3775 source cover explicitly says Section-by-Section; the Childhood Diabetes Reduction Act source follows the same section analysis structure. Other publishers remain unexpanded. No official version or verified bill identity is inferred.",
+      "field_readings": {
+        "document_abbreviation": {
+          "label": "Section-by-section",
+          "category": "section-by-section",
+          "vocabulary_url": "https://www.help.senate.gov/imo/media/doc/0f40db80-98c3-28e4-9ff6-a188443dea3a/S%203775%20SxS.pdf",
+          "note": "Source-qualified companion-file convention; literal spelling retained."
+        }
+      }
+    },
+    {
+      "scope": "source-stem",
+      "priority": 0,
+      "id": "publisher-appropriations-som",
+      "pattern": "(?:(?P<division_marker>DIV(?:ISION)?)[ _-]+(?P<division_token>[A-Z])[ _-]*(?P<appropriation_subject>[A-Za-z& _-]*?)|(?P<generic_identifier>[0-9]+)[ _-]+(?P<context_token>FRONT)[ _-]+)(?P<document_abbreviation>SOM)(?P<suffix>[ _-]+(?:OCR[ _-]+)?FY[0-9]{2,4}(?:[ ._-]*(?:OMNI|OCR))*)",
+      "source_hosts": [
+        "docs.house.gov",
+        "www.congress.gov"
+      ],
+      "searchable_fields": [
+        "suffix",
+        "appropriation_subject"
+      ],
+      "description": "House appropriations DIV/DIVISION or FRONT filename followed by SOM and a fiscal-year suffix. Reviewed FY17 FRONT and FY18 Division A publisher PDFs identify an explanatory statement. The category follows that bounded publisher family; SOM is not globally expanded or treated as proof of conference status.",
+      "field_readings": {
+        "document_abbreviation": {
+          "label": "Explanatory statement",
+          "category": "explanatory-statement",
+          "vocabulary_url": "https://docs.house.gov/billsthisweek/20170501/1%20-%20FRONT%20-SOM%20FY17OCR.pdf",
+          "note": "Source-qualified appropriations file family; original SOM spelling retained and no author or legal status inferred."
+        }
+      }
+    },
+    {
+      "scope": "source-stem",
+      "priority": 0,
+      "id": "publisher-armed-services-nom-dated",
+      "pattern": "(?P<date_token>[0-9]{1,4}(?:[ ._-][0-9]{1,4}){2})[ _-]+(?:(?P<scope_token>full)[ _-]+)?(?P<nomination_wording>nom)(?:[ _-]+(?P<meeting_wording>hearing))?",
+      "source_hosts": [
+        "www.armed-services.senate.gov",
+        "armed-services.senate.gov"
+      ],
+      "description": "Armed Services publisher complete dated nom heading. The broad nomination event category does not imply a transcript, person identity, access, occurrence or a resolved date order. Nom inside arbitrary titles or other publishers remains unexpanded.",
+      "field_readings": {
+        "nomination_wording": {
+          "label": "Nomination",
+          "category": "nomination",
+          "vocabulary_url": "https://www.armed-services.senate.gov/imo/media/doc/05-08-2025-full-nom.pdf",
+          "note": "Reviewed publisher cover identifies nominations. This reading does not import the cover transcript label or resolve its date; only filename wording is normalized."
+        }
+      }
+    },
+    {
+      "scope": "source-stem",
+      "priority": 0,
+      "id": "publisher-armed-services-nom-leading",
+      "pattern": "(?P<nomination_wording>nom)[ _-]+(?P<date_token>[0-9]{6,8})",
+      "source_hosts": [
+        "www.armed-services.senate.gov",
+        "armed-services.senate.gov"
+      ],
+      "description": "Armed Services publisher complete dated nom heading. The broad nomination event category does not imply a transcript, person identity, access, occurrence or a resolved date order. Nom inside arbitrary titles or other publishers remains unexpanded.",
+      "field_readings": {
+        "nomination_wording": {
+          "label": "Nomination",
+          "category": "nomination",
+          "vocabulary_url": "https://www.armed-services.senate.gov/imo/media/doc/05-08-2025-full-nom.pdf",
+          "note": "Reviewed publisher cover identifies nominations. This reading does not import the cover transcript label or resolve its date; only filename wording is normalized."
+        }
+      }
+    },
+    {
+      "id": "numeric-prefix-vote-record",
+      "scope": "stem",
+      "priority": 2,
+      "pattern": "(?P<possible_month_day_token>(?:0?[1-9]|[12][0-9]|3[01])\\.(?:0?[1-9]|[12][0-9]|3[01]))[ _]+(?P<vote_tally_token>[0-9]{1,3}-[0-9]{1,3})[ _]+(?P<vote_wording>votes?)",
+      "description": "Complete numeric-prefix, tally and vote wording layout observed on Senate Energy files. Keep each printed numeric component whole before date scans; no year, date order, yes/no allocation or outcome is inferred.",
+      "field_readings": {
+        "possible_month_day_token": {
+          "note": "Two printed numeric components resemble a month/day without a year or resolved order; an identifier remains possible."
+        },
+        "vote_tally_token": {
+          "note": "Printed vote-count pair, kept in source order without assigning yes/no, roll-call status, a motion or outcome."
+        },
+        "vote_wording": {
+          "category": "vote-record",
+          "label": "Vote record",
+          "note": "Filename wording only; document contents and vote outcome are not verified."
+        }
+      }
+    },
+    {
+      "id": "event-context-wording",
+      "scope": "document-wording-search",
+      "priority": 0,
+      "scan_stage": "supplemental",
+      "pattern": "(?:(?<![A-Za-z0-9])|(?-i:(?<=[a-z0-9])(?=[A-Z])))(?P<meeting_wording>Field[ _-]*Hearings?|Panel[ _-]*Discussions?)(?:(?![A-Za-z])|(?-i:(?<=[a-z])(?=[A-Z]))|(?=pdf(?:-[0-9]+)?\\Z))",
+      "description": "Literal field-hearing or panel-discussion wording describes event context. Its category is a broad filename fallback only; a more specific document genre takes precedence. No occurrence, access, location, identity or document contents are inferred.",
+      "allow_overlap_fields": [
+        "label"
+      ],
+      "field_vocabularies": {
+        "meeting_wording": [
+          {
+            "vocabulary": "event-context-wording",
+            "normalize": "letters"
+          }
+        ]
+      }
     }
   ],
   "extraction_vocabularies": {
@@ -26237,6 +27073,10 @@
       "jhrg": {
         "code": "jhrg",
         "label": "Joint hearing"
+      },
+      "tdoc": {
+        "code": "tdoc",
+        "label": "Treaty document"
       }
     },
     "senr-subcommittee": {
@@ -26926,6 +27766,903 @@
       },
       "committeeauthorizationandoversightplan": {
         "category": "oversight-plan"
+      },
+      "billsummary": {
+        "category": "summary"
+      },
+      "billsummaries": {
+        "category": "summary"
+      },
+      "billtext": {
+        "category": "legislative-text"
+      },
+      "legislativetext": {
+        "category": "legislative-text"
+      },
+      "legislationtext": {
+        "category": "legislative-text"
+      },
+      "sectionbysection": {
+        "category": "section-by-section"
+      },
+      "sectionbysectionsummary": {
+        "category": "section-by-section"
+      },
+      "sectionbysectionanalysis": {
+        "category": "section-by-section"
+      },
+      "sectionbysectiondescription": {
+        "category": "section-by-section"
+      },
+      "openingremarks": {
+        "category": "opening-remarks"
+      },
+      "letterofsupportfor": {
+        "category": "letter-of-support"
+      },
+      "responsetosupplementalqfr": {
+        "category": "questions-for-record-response"
+      },
+      "responsetowrittenqfr": {
+        "category": "questions-for-record-response"
+      },
+      "responsetosupplementalqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "responsetowrittenqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "responsetosupplementalquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "responsetosupplementalquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "responsetowrittenquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "responsetosupplementalwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "responsetowrittenwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "responseforsupplementalqfr": {
+        "category": "questions-for-record-response"
+      },
+      "responseforwrittenqfr": {
+        "category": "questions-for-record-response"
+      },
+      "responseforsupplementalqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "responseforwrittenqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "responseforsupplementalquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "responseforsupplementalquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "responseforwrittenquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "responseforsupplementalwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "responseforwrittenwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponsetosupplementalqfr": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponsetowrittenqfr": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponsetosupplementalqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponsetowrittenqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponsetosupplementalquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponsetosupplementalquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponsetowrittenquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponsetosupplementalwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponsetowrittenwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponseforsupplementalqfr": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponseforwrittenqfr": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponseforsupplementalqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponseforwrittenqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponseforsupplementalquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponseforsupplementalquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponseforwrittenquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponseforsupplementalwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponseforwrittenwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "responsestosupplementalqfr": {
+        "category": "questions-for-record-response"
+      },
+      "responsestowrittenqfr": {
+        "category": "questions-for-record-response"
+      },
+      "responsestosupplementalqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "responsestowrittenqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "responsestosupplementalquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "responsestosupplementalquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "responsestowrittenquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "responsestosupplementalwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "responsestowrittenwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "responsesforsupplementalqfr": {
+        "category": "questions-for-record-response"
+      },
+      "responsesforwrittenqfr": {
+        "category": "questions-for-record-response"
+      },
+      "responsesforsupplementalqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "responsesforwrittenqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "responsesforsupplementalquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "responsesforsupplementalquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "responsesforwrittenquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "responsesforsupplementalwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "responsesforwrittenwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponsestosupplementalqfr": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponsestowrittenqfr": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponsestosupplementalqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponsestowrittenqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponsestosupplementalquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponsestosupplementalquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponsestowrittenquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponsestosupplementalwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponsestowrittenwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponsesforsupplementalqfr": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponsesforwrittenqfr": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponsesforsupplementalqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponsesforwrittenqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponsesforsupplementalquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponsesforsupplementalquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponsesforwrittenquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponsesforsupplementalwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresponsesforwrittenwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "answertosupplementalqfr": {
+        "category": "questions-for-record-response"
+      },
+      "answertowrittenqfr": {
+        "category": "questions-for-record-response"
+      },
+      "answertosupplementalqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "answertowrittenqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "answertosupplementalquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "answertosupplementalquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "answertowrittenquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "answertosupplementalwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "answertowrittenwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "answerforsupplementalqfr": {
+        "category": "questions-for-record-response"
+      },
+      "answerforwrittenqfr": {
+        "category": "questions-for-record-response"
+      },
+      "answerforsupplementalqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "answerforwrittenqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "answerforsupplementalquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "answerforsupplementalquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "answerforwrittenquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "answerforsupplementalwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "answerforwrittenwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswertosupplementalqfr": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswertowrittenqfr": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswertosupplementalqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswertowrittenqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswertosupplementalquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswertosupplementalquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswertowrittenquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswertosupplementalwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswertowrittenwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswerforsupplementalqfr": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswerforwrittenqfr": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswerforsupplementalqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswerforwrittenqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswerforsupplementalquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswerforsupplementalquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswerforwrittenquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswerforsupplementalwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswerforwrittenwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "answerstosupplementalqfr": {
+        "category": "questions-for-record-response"
+      },
+      "answerstowrittenqfr": {
+        "category": "questions-for-record-response"
+      },
+      "answerstosupplementalqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "answerstowrittenqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "answerstosupplementalquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "answerstosupplementalquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "answerstowrittenquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "answerstosupplementalwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "answerstowrittenwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "answersforsupplementalqfr": {
+        "category": "questions-for-record-response"
+      },
+      "answersforwrittenqfr": {
+        "category": "questions-for-record-response"
+      },
+      "answersforsupplementalqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "answersforwrittenqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "answersforsupplementalquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "answersforsupplementalquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "answersforwrittenquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "answersforsupplementalwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "answersforwrittenwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswerstosupplementalqfr": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswerstowrittenqfr": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswerstosupplementalqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswerstowrittenqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswerstosupplementalquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswerstosupplementalquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswerstowrittenquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswerstosupplementalwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswerstowrittenwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswersforsupplementalqfr": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswersforwrittenqfr": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswersforsupplementalqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswersforwrittenqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswersforsupplementalquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswersforsupplementalquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswersforwrittenquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswersforsupplementalwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenanswersforwrittenwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "resptosupplementalqfr": {
+        "category": "questions-for-record-response"
+      },
+      "resptowrittenqfr": {
+        "category": "questions-for-record-response"
+      },
+      "resptosupplementalqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "resptowrittenqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "resptosupplementalquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "resptosupplementalquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "resptowrittenquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "resptosupplementalwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "resptowrittenwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "respforsupplementalqfr": {
+        "category": "questions-for-record-response"
+      },
+      "respforwrittenqfr": {
+        "category": "questions-for-record-response"
+      },
+      "respforsupplementalqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "respforwrittenqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "respforsupplementalquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "respforsupplementalquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "respforwrittenquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "respforsupplementalwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "respforwrittenwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresptosupplementalqfr": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresptowrittenqfr": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresptosupplementalqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresptowrittenqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresptosupplementalquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresptosupplementalquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresptowrittenquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresptosupplementalwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenresptowrittenwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenrespforsupplementalqfr": {
+        "category": "questions-for-record-response"
+      },
+      "writtenrespforwrittenqfr": {
+        "category": "questions-for-record-response"
+      },
+      "writtenrespforsupplementalqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "writtenrespforwrittenqfrs": {
+        "category": "questions-for-record-response"
+      },
+      "writtenrespforsupplementalquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenrespforsupplementalquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenrespforwrittenquestionsforrecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenrespforsupplementalwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "writtenrespforwrittenwrittenquestionsfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "witnesstestimony": {
+        "category": "testimony"
+      },
+      "witnesstestimonies": {
+        "category": "testimony"
+      },
+      "writentestimony": {
+        "category": "testimony"
+      },
+      "nomination": {
+        "category": "nomination"
+      },
+      "nominations": {
+        "category": "nomination"
+      },
+      "businessmeeting": {
+        "category": "business-meeting"
+      },
+      "report": {
+        "category": "report"
+      },
+      "stmnt": {
+        "category": "statement"
+      },
+      "smnt": {
+        "category": "statement"
+      },
+      "stmt": {
+        "category": "statement"
+      },
+      "writtenstmnt": {
+        "category": "statement"
+      },
+      "writtensmnt": {
+        "category": "statement"
+      },
+      "writtenstmt": {
+        "category": "statement"
+      },
+      "preparedstmnt": {
+        "category": "statement"
+      },
+      "preparedsmnt": {
+        "category": "statement"
+      },
+      "preparedstmt": {
+        "category": "statement"
+      },
+      "statemet": {
+        "category": "statement"
+      },
+      "statmement": {
+        "category": "statement"
+      },
+      "openingstmnt": {
+        "category": "opening-statement"
+      },
+      "openingsmnt": {
+        "category": "opening-statement"
+      },
+      "openingstmt": {
+        "category": "opening-statement"
+      },
+      "openingstatemet": {
+        "category": "opening-statement"
+      },
+      "openingstatmement": {
+        "category": "opening-statement"
+      },
+      "amendments": {
+        "category": "amendment-collection"
+      },
+      "exhibits": {
+        "category": "exhibit-collection"
+      },
+      "gsacommitteeresolution": {
+        "category": "committee-resolution"
+      },
+      "gsacommitteeresolutions": {
+        "category": "committee-resolution"
+      },
+      "gsaresolution": {
+        "category": "committee-resolution"
+      },
+      "gsaresolutions": {
+        "category": "committee-resolution"
+      },
+      "committeeresolution": {
+        "category": "committee-resolution"
+      },
+      "committeeresolutions": {
+        "category": "committee-resolution"
+      },
+      "response": {
+        "category": "response"
+      },
+      "responses": {
+        "category": "response"
+      },
+      "reponse": {
+        "category": "response"
+      },
+      "reponses": {
+        "category": "response"
+      },
+      "summary": {
+        "category": "summary"
+      },
+      "summaries": {
+        "category": "summary"
+      },
+      "summaryofchanges": {
+        "category": "summary"
+      },
+      "executivesummary": {
+        "category": "summary"
+      },
+      "execsummary": {
+        "category": "summary"
+      },
+      "billtobill": {
+        "category": "bill-comparison"
+      },
+      "managerspackage": {
+        "category": "managers-package"
+      },
+      "managerspackages": {
+        "category": "managers-package"
+      },
+      "slide": {
+        "category": "slides"
+      },
+      "slides": {
+        "category": "slides"
+      },
+      "masteramendmentlist": {
+        "category": "amendment-list"
+      },
+      "amendmentlist": {
+        "category": "amendment-list"
+      },
+      "descriptionofthechairmansmark": {
+        "category": "mark-description"
+      },
+      "descriptionofthechairmark": {
+        "category": "mark-description"
+      },
+      "descriptionofchairmansmark": {
+        "category": "mark-description"
+      },
+      "descriptionofchairmark": {
+        "category": "mark-description"
+      },
+      "chairmansmark": {
+        "category": "chair-mark"
+      },
+      "chairmark": {
+        "category": "chair-mark"
+      },
+      "chairsmark": {
+        "category": "chair-mark"
+      },
+      "chairmansmodifiedmark": {
+        "category": "chair-mark"
+      },
+      "chairsmodifiedmark": {
+        "category": "chair-mark"
+      },
+      "modificationsofthechairmansmark": {
+        "category": "mark-modification"
+      },
+      "modificationstothechairmansmark": {
+        "category": "mark-modification"
+      },
+      "modificationofthechairmansmark": {
+        "category": "mark-modification"
+      },
+      "modificationtothechairmansmark": {
+        "category": "mark-modification"
+      },
+      "modificationstothechairsmark": {
+        "category": "mark-modification"
+      },
+      "remarks": {
+        "category": "remarks"
+      },
+      "oralremarks": {
+        "category": "remarks"
+      },
+      "preparedremarks": {
+        "category": "remarks"
+      },
+      "writtenremarks": {
+        "category": "remarks"
+      },
+      "closingremarks": {
+        "category": "remarks"
+      },
+      "issuebrief": {
+        "category": "issue-brief"
+      },
+      "appendix": {
+        "category": "appendix"
+      },
+      "attachment": {
+        "category": "attachment"
+      },
+      "attachments": {
+        "category": "attachment"
+      },
+      "committeememo": {
+        "category": "committee-memorandum"
+      },
+      "committeememorandum": {
+        "category": "committee-memorandum"
+      },
+      "rulesmemo": {
+        "category": "rules-memorandum"
+      },
+      "rulesmemorandum": {
+        "category": "rules-memorandum"
+      },
+      "flyer": {
+        "category": "flyer"
+      },
+      "revenueestimate": {
+        "category": "revenue-estimate"
+      },
+      "responsesfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "answersfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "responsefortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "answerfortherecord": {
+        "category": "questions-for-record-response"
+      },
+      "questionfortherecord": {
+        "category": "questions-for-record"
+      },
+      "writtenquestionsforrecord": {
+        "category": "questions-for-record"
+      },
+      "exhibitlist": {
+        "category": "exhibit-list"
+      },
+      "pamphlet": {
+        "category": "pamphlet"
+      },
+      "graphic": {
+        "category": "graphic"
+      },
+      "scatterplot": {
+        "category": "graphic"
+      },
+      "brochure": {
+        "category": "brochure"
+      },
+      "shortbio": {
+        "category": "biography"
+      },
+      "witnessbios": {
+        "category": "biography"
+      },
+      "budgetviewsandestimates": {
+        "category": "budget-views-and-estimates"
+      },
+      "factsheet": {
+        "category": "fact-sheet"
+      },
+      "factsheets": {
+        "category": "fact-sheet"
+      },
+      "trasncription": {
+        "category": "transcript"
+      },
+      "estimatedrevenueeffects": {
+        "category": "revenue-estimate"
+      },
+      "tallysheet": {
+        "category": "tally-sheet"
+      },
+      "tallysheets": {
+        "category": "tally-sheet"
+      },
+      "letter": {
+        "category": "letter"
+      },
+      "letters": {
+        "category": "letter"
+      },
+      "exhibit": {
+        "category": "exhibit"
+      },
+      "appendixes": {
+        "category": "appendix"
+      },
+      "appendices": {
+        "category": "appendix"
+      },
+      "panelistlist": {
+        "category": "panelist-list"
+      },
+      "panelistslist": {
+        "category": "panelist-list"
+      },
+      "participantlist": {
+        "category": "participant-list"
+      },
+      "participantslist": {
+        "category": "participant-list"
+      },
+      "statment": {
+        "category": "statement"
+      },
+      "openingstatment": {
+        "category": "opening-statement"
+      },
+      "letterofrecommendationfor": {
+        "category": "letter"
       }
     },
     "person-slot-roles": {
@@ -26956,6 +28693,75 @@
     "document-date-roles": {
       "vote": {
         "role": "vote_date"
+      }
+    },
+    "role-wording": {
+      "rankingmember": {
+        "code": "ranking-member"
+      },
+      "vicechair": {
+        "code": "vice-chair"
+      },
+      "vicechairman": {
+        "code": "vice-chair"
+      },
+      "vicechairwoman": {
+        "code": "vice-chair"
+      },
+      "vicechairperson": {
+        "code": "vice-chair"
+      },
+      "chairman": {
+        "code": "chair"
+      },
+      "chairwoman": {
+        "code": "chair"
+      },
+      "chairperson": {
+        "code": "chair"
+      },
+      "chair": {
+        "code": "chair"
+      },
+      "senator": {
+        "code": "senator"
+      },
+      "representative": {
+        "code": "representative"
+      }
+    },
+    "role-modifiers": {
+      "acting": {
+        "code": "acting"
+      },
+      "former": {
+        "code": "former"
+      }
+    },
+    "event-context-wording": {
+      "fieldhearing": {
+        "category": "field-hearing",
+        "code": "field-hearing",
+        "label": "Field hearing",
+        "note": "Printed event-context wording; category is a fallback when no specific document genre is established by the filename."
+      },
+      "fieldhearings": {
+        "category": "field-hearing",
+        "code": "field-hearing",
+        "label": "Field hearing",
+        "note": "Printed event-context wording; category is a fallback when no specific document genre is established by the filename."
+      },
+      "paneldiscussion": {
+        "category": "panel-discussion",
+        "code": "panel-discussion",
+        "label": "Panel discussion",
+        "note": "Printed event-context wording; category is a fallback when no specific document genre is established by the filename."
+      },
+      "paneldiscussions": {
+        "category": "panel-discussion",
+        "code": "panel-discussion",
+        "label": "Panel discussion",
+        "note": "Printed event-context wording; category is a fallback when no specific document genre is established by the filename."
       }
     }
   },

@@ -32,6 +32,45 @@ def test_html_extension_fallback_uses_the_same_format_as_response_metadata():
     assert index.file_formats(['text/html'], ['pdf']) == ['html']
 
 
+def test_precise_categories_survive_both_parquet_tables_without_retyping_sources(tmp_path):
+    (tmp_path / 'indexes').mkdir()
+    cases = [
+        ('2023-11-02-ebm-results', 'meeting-results', 'other'),
+        ('fy24_cjs_bill_text.pdf', 'legislative-text', 'Support Document'),
+        ('fy25_thud_senate_bill_summary.pdf', 'summary', 'SD'),
+    ]
+    sources = [dict(body_key=None, filename=name, source_url=f'https://example.test/{name}',
+                    source_document_type=[native_type]) for name, _, native_type in cases]
+    # No bodies or receipts: the consumer only interprets supplied filenames.
+    index.write_filename_metadata(tmp_path, sources, workers=1)
+    filenames = pq.read_table(tmp_path / 'indexes/document-filenames.parquet').to_pylist()
+    documents = pq.read_table(tmp_path / 'indexes/documents.parquet').to_pylist()
+    for rows in (filenames, documents):
+        by_name = {row['filename']: row for row in rows}
+        for name, kind, native_type in cases:
+            assert by_name[name]['document_kind'] == [kind]
+            assert by_name[name]['source_document_type'] == [native_type]
+    assert not DIAGNOSTICS & filenames[0].keys()
+
+
+def test_role_wording_survives_both_tables_without_person_or_source_inference(tmp_path):
+    (tmp_path / 'indexes').mkdir()
+    name = 'Acting Vice Chairman Jones Testimony.pdf'
+    source = dict(body_key=None, filename=name, source_url='https://example.test/jones.pdf',
+                  source_document_type=['Witness Statement'], source_committee_code=['hsii00'])
+    index.write_filename_metadata(tmp_path, [source], workers=1)
+    for filename in ('document-filenames.parquet', 'documents.parquet'):
+        row, = pq.read_table(tmp_path / 'indexes' / filename).to_pylist()
+        assert row['subject_role_wording'] == ['Vice Chairman']
+        assert row['subject_role_wording_code'] == ['vice-chair']
+        assert row['subject_role_modifier'] == ['Acting']
+        assert row['subject_role_modifier_code'] == ['acting']
+        assert row['subject_token'] == ['Jones']
+        assert row['source_document_type'] == ['Witness Statement']
+        assert row['source_committee_code'] == ['hsii00']
+        assert not (DIAGNOSTICS | {'person_id', 'officeholder', 'party', 'author'}) & row.keys()
+
+
 def test_metadata_refresh_keeps_source_rows_and_identity_without_reopening_evidence(tmp_path):
     (tmp_path / 'indexes').mkdir()
     path = tmp_path / 'indexes/document-filenames.parquet'
@@ -496,3 +535,30 @@ def test_source_metadata_cli_reads_retained_records_without_fetching(tmp_path):
     assert record['source_document_type']==['BR']
     assert record['source_meeting_key']==['119/house/1001']
     assert not (tmp_path/'bodies').exists()
+
+
+def test_discovery_fixes_survive_both_parquet_tables(tmp_path):
+    (tmp_path / 'indexes').mkdir()
+    cases = [
+        ('HHRG-113-JU00-Transcript-20130719.pdf&download=1',
+         {'document_kind': ['committee-transcript']}),
+        ('aa11bb22-1234-abcd-5678-000000000000_spw-12032025-hearing-on-nominations-of-beaman-and-weaver.pdf',
+         {'name_token': ['spw-12032025-hearing-on-nominations-of-beaman-and-weaver']}),
+        ('Smith (ACME) Testimony.pdf', {'subject_token': ['Smith (ACME)']}),
+        ('Additional Materials for Norton Testimony 5-19-22.pdf',
+         {'document_kind': ['supporting-material'], 'target_document_kind': ['testimony']}),
+        ('the-path-forward-key-findings-in-the-syria-study-group-report-transcript-092419',
+         {'subject_token': ['the-path-forward-key-findings-in-the-syria-study-group-report']}),
+        ('chairman-s-opening-statement-final.pdf',
+         {'subject_token': None, 'subject_role_wording_code': ['chair']}),
+    ]
+    sources = [dict(body_key=None, filename=name, source_url=f'https://example.test/source/{i}',
+                    source_document_type=['Unchanged publisher value']) for i, (name, _) in enumerate(cases)]
+    index.write_filename_metadata(tmp_path, sources, workers=1)
+    for filename in ('document-filenames.parquet', 'documents.parquet'):
+        by_name = {name: r for r in pq.read_table(tmp_path / 'indexes' / filename).to_pylist()
+                   for name in (r.get('filenames') or [r['filename']])}
+        for name, expected in cases:
+            assert {key: by_name[name].get(key) for key in expected} == expected
+            assert by_name[name]['source_document_type'] == ['Unchanged publisher value']
+        assert not DIAGNOSTICS & set(next(iter(by_name.values())))

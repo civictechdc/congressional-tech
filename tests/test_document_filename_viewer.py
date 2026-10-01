@@ -140,6 +140,35 @@ def test_mixed_index_generations_fail_clearly(tmp_path):
         viewer.Catalog(tmp_path / 'test.parquet')
 
 
+def test_missing_kind_filters_document_groups_and_combines_with_search(tmp_path):
+    catalog_from_sources(tmp_path, [
+        ('alias', 'https://x.test/alias', 'shared', 'application/pdf', '200'),
+        ('typed.pdf', 'https://x.test/typed.pdf', 'shared', 'application/pdf', '200'),
+        ('unknown.pdf', 'https://x.test/unknown.pdf', None, None, None),
+        ('empty.pdf', 'https://x.test/empty.pdf', 'empty-kind', 'application/pdf', '200'),
+    ])
+    # One alias has no kind, but its document group is already classified.
+    # Test both representations of an absent kind without changing grouping.
+    for name in ('test.parquet', 'documents.parquet'):
+        path = tmp_path / name
+        table = pq.read_table(path)
+        kinds = [['testimony'] if filename == 'typed.pdf' else [] if filename == 'empty.pdf' else None
+                 for filename in table['filename'].to_pylist()]
+        table = table.set_column(table.schema.get_field_index('document_kind'),
+                                 table.schema.field('document_kind'), pa.array(kinds, type=pa.list_(pa.string())))
+        pq.write_table(table, path)
+    catalog = viewer.Catalog(tmp_path / 'test.parquet')
+    result = catalog.search({'document_kind': '__null__'})
+    assert result['total'] == 2
+    assert {r['filename'] for r in result['rows']} == {'unknown.pdf', 'empty.pdf'}
+    assert catalog.search({'document_kind': '__null__', 'q': 'alias'})['total'] == 0
+    assert catalog.search({'document_kind': '__null__', 'q': 'unknown', 'retained': 'no'})['total'] == 1
+    assert catalog.search({'document_kind': '__null__', 'format': 'pdf', 'retained': 'yes'})['total'] == 1
+    assert catalog.search({'document_kind': '__null__', 'page': '999', 'limit': '1'})['page'] == 2
+    assert catalog.search({'document_kind': 'testimony'})['total'] == 1
+    assert catalog.search({})['total'] == 3
+
+
 @pytest.mark.parametrize(('body1', 'body2', 'media', 'status'), [
     ('v1', 'v2', 'application/pdf', '200'),  # Same basename, different content.
     ('error', 'error', 'text/html', '200'),

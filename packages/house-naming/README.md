@@ -136,6 +136,31 @@ years, as one literal span. A qualifier-only name such as `opening-statement-fin
 has no subject. `McGlynn Responses to Whitehouse QFRs.pdf` preserves `McGlynn`
 and `Whitehouse` separately as subject and questioner text.
 
+Title wording preserves the original subject in observations and leaves the
+document kind unchanged. `Acting Vice Chairman Jones Testimony.pdf` supplies
+`subject_role_wording=["Vice Chairman"]`, `subject_role_wording_code=["vice-chair"]`
+and `subject_role_modifier=["Acting"]`, with `subject_token=["Jones"]`.
+Leading recognized titles and their modifiers are removed from the useful
+subject value, while original text and offsets remain available. Thus
+`ranking-member-lee` yields `lee`, and `rankingmembermerkley` yields `merkley`.
+Interior titles, multiple described subjects, structured identifiers and targets
+keep their complete text. A remaining string such as `whitehousereefact` stays
+unsplit; it is not asserted to be a person's name. Chair variants share the `chair` code;
+ranking member, vice chair, senator and representative have separate codes.
+`acting` and `former` remain separate modifiers, without an inferred attachment
+to a person or title.
+
+The prefixes `subject_`, `target_` and `context_` describe where the wording
+occurs: a subject slot, a known target (including an amendment's subject), or
+other descriptive text. They do not establish a person's identity, office,
+authorship or membership. Even a subject slot can contain a topic or group.
+Observations retain each spelling, source offset and containing field name in
+`context`; the flat metadata exposes wording and grouping codes. Narrow fused
+prefixes such as `chairmanwhitehouse` require a recognized opening-statement
+label and a text-slot start. The remaining text stays unsplit. Abbreviated
+`Rep` filer syntax continues through its existing rule; broader honorifics and
+occupations are outside this vocabulary.
+
 [`engine.py`](src/house_naming/engine.py) also runs strict convention parsing
 and combines its results with the literal observations. `parse()` and
 `extract()` share the catalog but answer different questions: whether a name
@@ -195,6 +220,11 @@ are never joined into an invented name. Field roles also keep amendment IDs
 separate from explicit `Rev` suffixes without changing strict parsing.
 
 `document_kind` describes the file's naming family or explicit document wording.
+Recognized meeting-result headings supply `meeting-results`; specific phrases
+such as Bill Summary, Bill Text, Section by Section and Opening Remarks supply
+`summary`, `legislative-text`, `section-by-section` and `opening-remarks`.
+Generic Report and Summary wording stays literal: a title can use report as a
+verb or discuss summary judgment. A matched word alone need not establish a kind.
 For an amendment to an oversight plan or committee print, the target's category
 goes in `target_document_kind`. Neither category verifies the document contents
 or legislative status. Printed qualifiers such as `Final`, `Prepared` and
@@ -207,9 +237,21 @@ amendment identifiers remain protected. The literal PIH display label is
 `Pre-introduced measure`; `lookup("consideration", "pih")` retains the House
 guide's full definition, including its no-bill-number condition.
 
-`house_naming.values.filename_metadata(result)` exposes the same collection
-step for callers that already hold an extraction result. It processes one source
-filename. HTTP formats, cache-generated names, redirects, cross-source aliases
+`house_naming.values.filename_metadata(result)` collects values from an existing
+extraction result. `Engine.extract` also supplies `convention_matches` for the
+filename before any recognized query-shaped suffix, so useful metadata survives
+`?download=1` or `&download=1`. The original `valid`, `matches` and source spans
+still describe the complete input. The collector accepts these optional matches
+without parsing or changing the supplied result.
+
+Descriptive text after opaque prefixes remains available as useful text.
+Subject refinement preserves balanced parentheses and topic words such as
+“report” in a transcript title. An explicit “Additional Materials for” or
+“Supporting Materials for” prefix identifies `supporting-material`; a document
+category inside its target goes in `target_document_kind`. A dangling role
+possessive such as `chairman-s` supplies no subject, while initials remain intact.
+
+The reader processes one source filename. HTTP formats, cache-generated names, redirects, cross-source aliases
 and document identity belong to acquisition/indexing code, not this package.
 
 ### What the reader extracts

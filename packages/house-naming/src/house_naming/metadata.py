@@ -16,6 +16,16 @@ ORDINAL_SUFFIX = (
 )
 
 
+def target_subject_spans(observations):
+    """Ranges that already describe a target, including amendment subjects."""
+    spans = [(f['start'], f['end']) for m in observations for f in m['fields']
+             if f['name'] == 'target_subject' or f['name'] == 'subject_token'
+             and any(p['name'] == 'amendment_token' for p in m['fields'])]
+    spans.extend((f['start'], m['end']) for m in observations for f in m['fields']
+                 if f['name'] == 'target_marker')
+    return spans
+
+
 def starts_with_ordinal_suffix(description: str) -> bool:
     """Recognize an ordinal tail without confusing the, Stephen or Third."""
     return bool(re.match(ORDINAL_SUFFIX, description, re.ASCII))

@@ -78,6 +78,8 @@ class Catalog:
     def search(self, query):
         text = query.get('q', '')[:2000]
         field = query.get('field', 'filename')
+        if field == 'publication_code_code' and field not in self.fields:
+            field = 'publication_type'  # Preserve bookmarked filters after consolidation.
         if field not in self.fields:
             raise ValueError('Unknown search column.')
         mask = pa.array([True] * len(self.table))
@@ -85,6 +87,8 @@ class Catalog:
             mask = pc.and_(mask, pc.fill_null(pc.match_substring(self.searchable(field), text, ignore_case=True), False))
         for name in FILTERS:
             value = query.get(name, query.get('extension', '') if name == 'format' else '')
+            if name == 'document_kind' and value == '__null__':
+                continue  # Check the grouped document, not an unclassified alias.
             if value:
                 if value not in self.info['facets'][name]:
                     raise ValueError(f'Unknown {name} filter.')
@@ -96,6 +100,9 @@ class Catalog:
             present = pc.is_valid(self.table['body_key'])
             mask = pc.and_(mask, present if retained == 'yes' else pc.invert(present))
         matching_entries = {self.entry_ids[row_id] for row_id in pc.indices_nonzero(mask).to_pylist()}
+        if query.get('document_kind') == '__null__':
+            missing_kind = pc.equal(pc.fill_null(pc.list_value_length(self.documents['document_kind']), 0), 0)
+            matching_entries.intersection_update(pc.indices_nonzero(missing_kind).to_pylist())
         matches = [entry for entry in self.order.to_pylist() if entry in matching_entries]
         total = len(matches)
         limit = max(1, min(100, int(query.get('limit', 50))))

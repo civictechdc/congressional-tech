@@ -47,6 +47,29 @@ A filename such as `01 19 2021 Nominations -- Blinken Part 1.pdf` separates
 with `__`, and trailing publisher UUIDs. It does not turn the subject into a
 verified witness, nominee identity, or person record.
 
+`label` preserves the wording found in the filename. `document_kind` collects
+normalized kinds from that wording and recognized filename layouts. The
+`document-categories` vocabulary in `guide.json` owns the spelling mappings;
+`categories.py` selects document wording rather than contextual mentions. The
+same selection drives subject trimming and public kinds. Source-page link text
+is separate metadata (`source_document_label`) and is not copied into filename
+facts.
+
+For example, `Written Testimony` maps to `testimony`, `STMNT` to `statement`,
+and `rules_memorandum` to `rules-memorandum`. `Business Meeting` and `Nominations`
+provide broad fallback kinds when no more specific genre is present. A business
+meeting transcript stays `transcript`, and GSA resolutions for a business meeting
+stay `committee-resolution`. Raw labels survive these choices. An explicit list
+such as `Testimony, Summary, and Bio` can retain multiple kinds.
+
+The reader also distinguishes amendment collections from amendment lists, mark
+descriptions from the marks they describe, and questions from responses for the
+record. A report mentioned in testimony, a policy response, a bill-title word,
+or a structured witness identifier does not supply a new primary kind. These
+are filename readings, not verification of the linked file's contents. Numeric
+capture names, ambiguous local codes and the generic word `Documents` remain
+unclassified without additional evidence.
+
 ## Bill types, versions and modifiers
 
 The retained `bill_codes.py` vocabulary contains the eight bill types and
@@ -176,7 +199,17 @@ structures. These observations do not broaden strict `parse()` acceptance.
 | `PortmanOpeningStatement.pdf.pdf` | `OpeningStatement` label and both extensions. CamelCase does not authorize arbitrary substrings such as Statement in `reStatementSuffix`. |
 | `Smith-Tesitmony.pdf` | Raw spelling `Tesitmony`, explicit alias reading `Testimony` and original offsets; no general fuzzy matching. |
 | `Welch2ModifiedSigned.pdf` | Printed `Modified` and `Signed` qualifiers; neither a verified signature nor a numbered revision. |
-| `Treaty Doc. 115-31.pdf` | Citation Congress `115` and intact document number `31`. |
+| `Treaty Doc. 115-31.pdf` | Citation Congress `115`, intact document number `31` and normalized citation code `tdoc`; no primary document type inferred. |
+| `CDOC-111tdoc8.pdf` | Package Congress `111`, treaty-document type `tdoc` and document number `8`. |
+| `CRPT-117-hrpt261.pdf` | Report Congress `117`, House report type and number `261`, with separators preserved. |
+| `CRPT-117hrptPIH-american-rescue-plan_portion_1.pdf` | Report context, printed `PIH`, title and portion `1`; no report number or bill stage invented. |
+| `Clements Responses to Supplemental QFRs.pdf` | Response label and subject `Clements`; `Supplemental` qualifies the questions rather than naming a questioner. |
+| `Blumenthal Amendment to S. 1494 - MDM19899.pdf` | Literal name, amendment wording, target measure and drafting identifier; no resolved sponsor identity. |
+| `S. 1303 Cruz-Cantwell_Substitute.pdf` | Measure reference, name slot and Substitute wording; no official version assigned. |
+| `Exhibit03202024.pdf` | Explicit exhibit identifier `03202024`, protected from date scans. Bare `Exhibits` does not acquire an item number. |
+| `addendum_b_undesser_07192023pdf` | Addendum identifier `b`, subject `undesser` and date candidates; no official report part inferred. |
+| `eapheaa-letter` | Complete letter label and literal subject; no author or recipient inferred. |
+| `09-09-21_meuser_2v1_tally_sheet.pdf` | Tally-sheet wording and subject/local text `meuser_2v1`; a source amendment association does not retype this file. |
 | `GAO-24-107597.pdf`, `JCX1022.pdf`, `FLO23798.pdf` | Intact identifiers without invented date or number/year splits. Suppressed date readings remain inspectable. |
 | `202103xx.pdf` | Year/month candidate `2021-03`, with unknown day preserved. |
 | `0205-Smith.pdf` | Generic identifier and possible month/day prefix, with no chosen year or date order. |
@@ -188,6 +221,13 @@ description of a mark from the mark itself. Generic Responses does not
 automatically mean questions for the record. Opaque prefixes do not prevent
 reading wording in the descriptive remainder. Examples and ambiguity controls
 are exercised in [test_sparse_corpus.py](tests/test_sparse_corpus.py).
+
+Compact transcript names retain their numeric date candidates when nomination
+wording or a trailing counter follows `transcript`. Five- to eight-digit prefixes
+can remain ambiguous; neither that wording nor source meeting metadata establishes
+a date. Recognized outline and addendum components stay in their own fields and
+are removed from the remaining subject text. These boundaries are exercised in
+the `test_experiment_*` regression modules.
 
 ### Surnames and title boundaries
 
@@ -468,6 +508,31 @@ Run focused tests from the repository root:
 Tests exercise source definitions and examples, exact fields and offsets, and
 negative controls. Full-corpus comparisons provide a separate check on coverage
 and regressions.
+
+`tests/test_top500_*.py` covers the follow-up null-kind token audit. Explicit
+tally sheets, numbered exhibits and appendices, participant/panelist lists,
+observed statement spellings, legislative degree/substitute layouts, comparisons
+and standalone publication citations receive kinds without changing strict
+convention validation. A citation inside testimony remains a reference. A tally
+sheet about an amendment retains the amendment fields without becoming an
+amendment document. Literal support wording does not establish a letter genre.
+
+Ambiguous publisher abbreviations require the reviewed source and filename
+structure; their original wording remains available. Processing qualifiers
+remain separate from document kinds. Cache-path aliases, missing capture
+metadata and document grouping remain index responsibilities.
+
+`tests/test_event_vote_wording.py` covers panel-discussion and field-hearing
+context, including camel-case wording and existing notices/transcripts. The
+literal `meeting_wording` and normalized `meeting_wording_code` remain available
+alongside a specific genre; the event category is used only as a broad fallback.
+It does not establish a transcript, witness identity, or an event's occurrence.
+Publisher-supplied document types remain separate source metadata.
+
+The complete `07.21 11-9 vote.pdf` layout retains `07.21` as a possible month/day
+token and `11-9` as `vote_tally_token`. The tally cannot supply a date's year.
+Neither date order, year, yes/no allocation nor outcome is inferred. The original
+filename and all captured substrings remain unchanged.
 
 The repository's
 [comparison tool](../../tests/compare_filename_families.py) replays a frozen
