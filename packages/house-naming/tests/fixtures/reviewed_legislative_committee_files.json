@@ -3,7 +3,7 @@
   "scope": "32 retained PDFs: 15 SCA, one SPW, 16 legislative/procedural. First two pages read as native text (or fewer when shorter); selected pages inspected visually. S. Res. 123 is scanned and was read visually. No OCR, refetching or population-wide contents claim. SHA-256 values identify decompressed retained bodies; these offline tests do not fetch or reverify PDF contents.",
   "decisions": {
     "SCA": "Committee context only. Reviewed contents span witness testimony, complete hearing, member statement, report, appendix and transcribed testimony; no abbreviation-derived document kind.",
-    "SPW": "One retained EPW transcript supports only that occurrence. Keep the abbreviation unexpanded and do not assign a family-wide transcript kind.",
+    "SPW": "The original single-body review did not justify a family rule. A subsequent 174-document source/content review supports a bounded EPW-host SPW date-stem transcript inference, preserving existing filename readings. Keep the abbreviation unexpanded and retained-body usability separate.",
     "RCP": "Only complete bounded drafting layouts receive committee-print. RCP-116-01 is committee rules and stays unclassified from its filename. Local numbers do not become print numbers or bill numbers.",
     "CP": "Comparative-print reading requires the Rules Committee publisher plus the complete bill-version/RCP layout."
   },
@@ -130,8 +130,10 @@
       "url": "https://www.epw.senate.gov/public/_cache/files/1/5/15b4d5fe-e3dc-4ab3-9c0f-0d861eebc5d7/B2E156A9718FFEE0A39AEE760A2112F1855BAD18DAD413F75FE4A6ADA01E8BAD.spw-06092021.pdf",
       "sha256": "cdda03899462b35e0de2fa936d8006cccbb21c82542c14abe5becef4b447ab0b",
       "pages": 84,
-      "finding": "84-page EPW transcript with a contents page, meeting opening, senators and witnesses. One body cannot establish a family-wide meaning or acronym expansion.",
-      "expected_filename_kind": [],
+      "finding": "84-page EPW transcript with a contents page, meeting opening, senators and witnesses. One body cannot establish a family-wide meaning or acronym expansion. A subsequent 174-document source/content review supports the bounded EPW-qualified SPW date-stem inference; the abbreviation itself remains unexpanded.",
+      "expected_filename_kind": [
+        "transcript"
+      ],
       "visually_reviewed_pages": [
         2
       ]

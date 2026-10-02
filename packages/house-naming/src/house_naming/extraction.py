@@ -788,6 +788,7 @@ class Extractor:
             except (ValueError, UnicodeError) as exc:
                 raise NamingError('invalid-source-url', 'Source context must be an HTTP(S) URL without credentials, at most 16384 UTF-8 bytes') from exc
         observations = []
+        source_readings = []
         ignored = []
         start = len(filename) - len(filename.lstrip())
         end = len(filename.rstrip())
@@ -813,7 +814,11 @@ class Extractor:
                 if source_host not in rule.get('source_hosts', ()) and source_url not in rule.get('source_urls', ()):
                     continue
                 if hit := regex.fullmatch(stem):
-                    observations.append(self._match(rule, hit, start))
+                    # Some publisher conventions add a reading to the existing
+                    # filename. Defer those until dates, IDs and subjects have
+                    # been read through their usual paths.
+                    target = source_readings if rule.get('scan_stage') == 'supplemental' else observations
+                    target.append(self._match(rule, hit, start))
         for priority in (() if any(m['scope'] == 'source-stem' for m in observations) else STEM_PRIORITIES):
             found = False
             for rule, regex in self.rules:
@@ -1374,7 +1379,7 @@ class Extractor:
         # Supplement descriptive text without rewriting earlier fallback readings.
         # Complete dates and concrete IDs already own their spans.
         supplemental_hits = [(r, h) for r, rx in self.rules
-                             if r.get('scan_stage') == 'supplemental' or (r['scope'] == 'document-wording-search' and r.get('scan_stage') != 'context')
+                             if r['scope'] != 'source-stem' and (r.get('scan_stage') == 'supplemental' or (r['scope'] == 'document-wording-search' and r.get('scan_stage') != 'context'))
                              for h in rx.finditer(stem)]
         if supplemental_hits:
             protected_fields = [f for m in observations for f in m['fields']
@@ -1484,6 +1489,7 @@ class Extractor:
                     break
         observations.extend(self._role_wording(filename, observations, start, stem_end))
         observations.extend(self._role_subject_remainders(filename, observations))
+        observations.extend(source_readings)
         pieces = [{'kind': hit.lastgroup, 'raw': hit[0], 'start': hit.start(), 'end': hit.end()} for hit in TOKEN.finditer(filename)]
         return {'input': filename, **({'source_url': source_url} if source_url is not None else {}),
                 'stem_end': stem_end, 'observations': observations,

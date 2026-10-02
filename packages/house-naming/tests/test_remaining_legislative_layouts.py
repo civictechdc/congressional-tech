@@ -152,8 +152,7 @@ def test_reviewed_comparative_print_to_layout(engine, name, measure, subject):
 @pytest.mark.parametrize('name,url', [
     ('SCA_04.27.2017.pdf', 'https://www.aging.senate.gov/imo/media/doc/SCA_04.27.2017.pdf'),
     ('SCA_Scott_2_6_19.pdf', 'https://www.aging.senate.gov/imo/media/doc/SCA_Scott_2_6_19.pdf'),
-    ('B2E156A9718FFEE0A39AEE760A2112F1855BAD18DAD413F75FE4A6ADA01E8BAD.spw-06092021.pdf',
-     'https://www.epw.senate.gov/public/_cache/files/B2E156A9718FFEE0A39AEE760A2112F1855BAD18DAD413F75FE4A6ADA01E8BAD.spw-06092021.pdf'),
+    ('B2E156A9718FFEE0A39AEE760A2112F1855BAD18DAD413F75FE4A6ADA01E8BAD.spw-06092021.pdf', None),
 ])
 def test_committee_abbreviation_alone_does_not_supply_kind(engine, name, url):
     # Reviewed SCA PDFs include both statements and a complete hearing.

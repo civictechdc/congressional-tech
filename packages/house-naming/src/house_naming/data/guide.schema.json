@@ -582,6 +582,7 @@
             "uniqueItems": true
           },
           "scan_stage": {
+            "description": "Supplemental source-stem rules add a publisher reading after ordinary filename extraction, preserving existing dates, identifiers and subjects; other source-stem rules select the stem interpretation.",
             "enum": [
               "context",
               "supplemental"

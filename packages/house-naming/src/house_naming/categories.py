@@ -6,6 +6,7 @@ between a document's genre, a topic it discusses and a more specific phrase.
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 
 from .metadata import target_subject_spans
 
@@ -15,6 +16,48 @@ TOPIC_KINDS = frozenset({'report', 'summary', 'response', 'rules-memorandum', 'c
                          'mark-modification', 'business-meeting', 'nomination',
                          'tally-sheet', 'letter', 'exhibit', 'appendix', 'attachment',
                          'panelist-list', 'participant-list'}) | EVENT_KINDS
+
+# Broad navigation groups, not new readings of a filename or its contents.
+# Spell out membership: e.g. bill-comparison is not legislative text, and a
+# conference-legislation-part is not a conference report. Unlisted kinds keep
+# their own name until there is a deliberate reason to group them.
+_FAMILY_MEMBERS = {
+    'letter': ('letter-of-support',),
+    'statement': ('opening-statement', 'member-statement', 'witness-statement', 'testimony',
+                  'explanatory-statement'),
+    'remarks': ('opening-remarks',),
+    'transcript': ('committee-transcript',),
+    'report': ('committee-report', 'committee-report-part', 'committee-report-unnumbered',
+               'conference-report', 'conference-unnumbered', 'published-report'),
+    'legislation': ('legislative-text', 'bill-named-draft', 'bill-numbered', 'bill-numbered-described',
+                    'bill-preintroduced', 'bill-suspension-numbered', 'bill-titled-draft',
+                    'bill-unnumbered', 'bill-untyped-draft', 'bill-untyped-numbered',
+                    'appropriation-described', 'appropriation-routed', 'conference-legislation-part'),
+    'amendment': ('amendment-collection', 'bill-house-amendment', 'committee-amendment',
+                  'committee-amendment-described', 'committee-enbloc-described', 'committee-enbloc-numbered',
+                  'floor-amendment', 'interchamber-amendment', 'managers-package', 'mark-modification'),
+    'print': ('committee-print', 'published-print'),
+    'list': ('amendment-list', 'exhibit-list', 'bill-measure-list', 'member-roster',
+             'witness-list', 'panelist-list', 'participant-list'),
+    'biography': ('witness-biography',),
+    'memorandum': ('committee-memorandum', 'rules-memorandum'),
+    'notice': ('meeting-notice',),
+    'vote-record': ('committee-vote', 'tally-sheet'),
+    'exhibit': ('exhibit-collection',),
+    'supporting-material': ('support-document', 'meeting-support', 'witness-support'),
+    'questions-and-answers': ('questionnaire', 'questions-for-record', 'questions-for-record-response'),
+    'disclosure': ('testimony-disclosure',),
+}
+_KIND_FAMILIES = {kind: family for family, kinds in _FAMILY_MEMBERS.items() for kind in kinds}
+
+
+def document_families(kinds: Iterable[str] | None) -> list[str]:
+    """Group selected kinds; never infer a genre from a topic or relationship.
+
+    Unknown kinds remain their own families. Missing kinds have no family.
+    Multiple kinds may supply multiple families, with duplicates removed.
+    """
+    return sorted({_KIND_FAMILIES.get(kind, kind) for kind in kinds or ()})
 
 
 def document_category_fields(filename: str | None, observations: list[dict]) -> list[dict]:
@@ -28,9 +71,19 @@ def document_category_fields(filename: str | None, observations: list[dict]) -> 
     titles = [(f['start'], f['end']) for m in observations for f in m['fields']
               if (m.get('scope') == 'legislative-payload' and f['name'] in {'descriptor', 'suffix'})
               or (m.get('scope') == 'legislative-text-search' and f['name'] == 'description')]
+    # A publisher-qualified transcript prefix describes the document. Its
+    # trailing title can discuss amendments, nominations or other documents
+    # without making the transcript one of those things. Keep their literal
+    # fields; exclude only their document-kind claims.
+    transcript_subjects = [(f['start'], f['end']) for m in observations
+                           if m.get('scope') == 'source-stem'
+                           and any(part.get('category') == 'transcript' for part in m['fields'])
+                           for f in m['fields'] if f['name'] in {'suffix', 'subject_token'}]
     candidates = []
     for field in sorted(fields, key=lambda f: (f['start'], -f['end'])):
         a, b, kind = field['start'], field['end'], field['category']
+        if any(x <= a < b <= y for x, y in transcript_subjects):
+            continue
         if field['name'] != 'amendment_marker' and any(x <= a < b <= y for x, y in targets):
             continue
         if (field['name'] in {'label', 'exhibit_marker', 'document_token', 'meeting_wording'} and kind not in LEGISLATIVE_KINDS

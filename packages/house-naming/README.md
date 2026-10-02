@@ -220,6 +220,14 @@ are never joined into an invented name. Field roles also keep amendment IDs
 separate from explicit `Rev` suffixes without changing strict parsing.
 
 `document_kind` describes the file's naming family or explicit document wording.
+`document_family` groups those specific kinds for browsing: `letter-of-support`
+belongs to `letter`, `opening-statement` to `statement`, and
+`committee-transcript` to `transcript`. Existing kinds and literal fields remain
+unchanged. Unmapped kinds keep their own family; missing kinds have no family.
+`house_naming.document_families(kinds)` applies the same mapping to kinds supplied
+by a source or content parser. Support/opposition wording and `target_subject`
+remain separate relationships: neither implies a letter or supplies a family.
+
 Recognized meeting-result headings supply `meeting-results`; specific phrases
 such as Bill Summary, Bill Text, Section by Section and Opening Remarks supply
 `summary`, `legislative-text`, `section-by-section` and `opening-remarks`.
@@ -352,16 +360,25 @@ edition from the basename or URL. See the 78-case fixture in
 
 Complete Senate-resolution basenames (including `S. Res. 123 As Reported.pdf`)
 receive `legislative-text`; reported wording does not establish an official
-version or action. Complete RCP drafting layouts receive `committee-print`,
+version or action. Complete Senate bill basenames also accept trailing copy
+digits and literal `version` wording, as in `S. 712 As Reported2.pdf` and
+`S. 4064 Reported out version -- PAT22557.pdf`. Intervening titles and `Revised`
+remain insufficient to distinguish bills from amendments. Complete RCP drafting layouts receive `committee-print`,
 while local numbers remain separate from bill and print numbers. The Rules
 Committee publisher also qualifies the complete `CP-<bill-version>-RCP<print>`
 comparative-print layout. Explicit procedural headings distinguish motions
 and amendments to committee rules from documents discussing them.
 
-Committee abbreviations do not determine document kind. The retained SCA
+Committee abbreviations alone do not determine document kind. The retained SCA
 samples contain witness statements, a complete hearing, a member statement,
-reports and appendices. The single retained SPW sample is an EPW transcript;
-that does not qualify every SPW file. Likewise, `RCP-116-01.pdf` contains
+reports and appendices. A subsequent 174-document SPW content review supports
+a bounded EPW publisher inference: an optional 64-hex prefix, `SPW`, a separator,
+a six- or eight-digit token, and an optional separated title. It supplies
+`transcript` while preserving existing date, identifier and subject readings.
+The abbreviation remains unexpanded, and title words such as amendments or
+business meeting remain literal details rather than additional document kinds.
+Other publishers and unmatched SPW spellings receive no such inference. This
+does not establish that a retained PDF is complete or readable. Likewise, `RCP-116-01.pdf` contains
 committee rules, so a bare RCP reference remains insufficient. The
 [32-PDF review fixture](tests/fixtures/reviewed_legislative_committee_files.json)
 records source URLs, body hashes, findings and the narrower filename readings.

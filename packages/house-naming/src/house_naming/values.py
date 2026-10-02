@@ -9,7 +9,7 @@ from collections import defaultdict
 import re
 
 from .metadata import target_subject_spans
-from .categories import EVENT_KINDS, document_category_fields
+from .categories import EVENT_KINDS, document_category_fields, document_families
 
 OMIT_FIELDS = frozenset({'payload', 'query_text', 'ignored_suffix', 'protocol_marker'})
 GENERIC_KINDS = frozenset({'committee-document', 'committee-document-numbered'})
@@ -160,4 +160,6 @@ def filename_metadata(result: dict, *, convention_matches: list[dict] | None = N
         row['document_kind'] = [kind for kind in row['document_kind'] if kind != 'nomination']
     if row.get('amendment_id') and not row.get('amendment_identifier'):
         row['amendment_identifier'] = list(row['amendment_id'])
+    if families := document_families(row.get('document_kind')):
+        row['document_family'] = families
     return dict(row)

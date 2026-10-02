@@ -26742,8 +26742,8 @@
       "id": "complete-senate-bill-edition",
       "scope": "stem",
       "priority": 2,
-      "pattern": "(?P<measure_token>S\\.?)[ .]*(?P<measure_number>[0-9]+)[ _-]+(?P<suffix>(?:\\((?:Reported[ _-]+Out|As[ _-]*Reported)\\)|(?:As[ _-]*)?Reported(?:[ _-]+Out)?|Text)(?:[ _-]+[A-Z]{3}[0-9]{2}[A-Z0-9]{3,4})?(?:[_-][0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})?)",
-      "description": "A complete Senate bill reference followed only by Text or Reported edition wording, an optional drafting identifier and UUID. Reviewed Foreign Relations bill covers support these layouts. Bare bill references, summaries and amendment titles do not match. No Congress, official version or legislative event is inferred.",
+      "pattern": "(?P<measure_token>S\\.?)[ .]*(?P<measure_number>[0-9]+)[ _-]+(?P<suffix>(?:\\((?:Reported[ _-]+Out|As[ _-]*Reported)\\)|(?:As[ _-]*)?Reported(?:[ _-]+Out)?|Text)(?:[ _-]+version)?[0-9]*(?:[ _-]+[A-Z]{3}[0-9]{2}[A-Z0-9]{3,4})?(?:[_-][0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})?)",
+      "description": "A complete Senate bill reference followed only by Text or Reported edition wording, optional literal version wording or copy digits, and optional drafting-identifier and UUID suffixes. Reviewed Foreign Relations bill covers support these layouts. Bare bill references, intervening titles, summaries and amendment titles do not match. No Congress, official version or legislative event is inferred.",
       "field_readings": {
         "measure_token": {
           "category": "legislative-text"
@@ -26983,6 +26983,23 @@
       "source_hosts": [
         "rules.house.gov"
       ]
+    },
+    {
+      "id": "publisher-epw-spw-transcript",
+      "scope": "source-stem",
+      "priority": 0,
+      "scan_stage": "supplemental",
+      "pattern": "(?:[a-f0-9]{64}\\.)?(?P<document_abbreviation>SPW)[ _-]+[0-9]{6}(?:[0-9]{2})?(?P<suffix>(?:[ _-].*)?)",
+      "source_hosts": [
+        "www.epw.senate.gov",
+        "epw.senate.gov"
+      ],
+      "description": "EPW publisher SPW date-shaped filenames identify transcript wording. Retained source pages place them under Related Files and reviewed PDF contents show Senate committee proceedings. This is a bounded filename inference, not verification that a retained body is complete or readable. The abbreviation remains unexpanded; existing identifier, date and subject readers preserve literal values and uncertainty.",
+      "field_readings": {
+        "document_abbreviation": {
+          "category": "transcript"
+        }
+      }
     }
   ],
   "extraction_vocabularies": {
