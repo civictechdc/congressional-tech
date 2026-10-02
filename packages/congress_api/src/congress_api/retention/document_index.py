@@ -42,6 +42,7 @@ from congress_api.retention.document_evidence import (
     FIELDS as EVIDENCE_FIELDS, BODY_FIELDS, body_evidence_key, cached_body_fields, evidence_fingerprint,
     enrich_sources, read_retained_body,
 )
+from congress_api.parsers.source_family import family as source_family
 
 
 FAMILIES = (
@@ -677,6 +678,11 @@ SOURCE_CONTEXT_FIELDS = frozenset(
         "source_document_added_at",
         "source_document_published_at",
         "source_package_id",
+        "source_link_url",
+        "source_link_label",
+        "source_witness_name",
+        "source_witness_position",
+        "source_witness_organization",
     }
 )
 
@@ -745,6 +751,8 @@ class DocumentSources:
             source_meeting_date=parent.get("date"),
             source_meeting_type=parent.get("type"),
             source_page_url=link.get("parent_url"),
+            source_link_url=link.get("url"),
+            source_link_label=link.get("text"),
             source_document_group=group,
             source_document_type=native.get("documentType"),
             source_document_label=native.get("name")
@@ -765,7 +773,7 @@ class DocumentSources:
             {
                 k: v
                 for k, v in self.by_url.get(link.get("parent_url"), {}).items()
-                if not k.startswith("source_document_")
+                if not k.startswith(("source_document_", "source_link_", "source_witness_"))
             },
         )
         for committee in parent.get("committees") or []:
@@ -834,6 +842,7 @@ class DocumentSources:
                         context,
                         context_values(
                             source_document_group=group,
+                            source_link_url=document.get("url"),
                             source_document_type=document.get("documentType"),
                             source_document_label=document.get("name")
                             or document.get("description"),
@@ -878,8 +887,24 @@ class DocumentSources:
                             source_document_group="page.documents",
                             source_document_type=kind,
                             source_document_label=label,
+                            source_link_url=document_url,
+                            source_link_label=(page.get("document_labels") or {}).get(document_url),
                         ),
                     )
+                    metadata = (page.get("document_metadata") or {}).get(document_url) or {}
+                    for anchor in metadata.get("labels") or []:
+                        merge_context(values, context_values(source_link_label=anchor))
+                    witnesses = page.get("witnesses") or []
+                    for i in metadata.get("witness_indexes") or []:
+                        if type(i) is not int or not 0 <= i < len(witnesses):
+                            continue
+                        witness = witnesses[i]
+                        if isinstance(witness, dict):
+                            merge_context(values, context_values(
+                                source_witness_name=witness.get("name"),
+                                source_witness_position=witness.get("position"),
+                                source_witness_organization=witness.get("organization"),
+                            ))
                     self.add_url(document_url, values)
 
     def add_inventory(self, record):
@@ -898,6 +923,7 @@ class DocumentSources:
                 source_chamber=observation.get("chamber"),
                 source_meeting_id=observation.get("event_id"),
                 source_page_url=observation.get("page_url"),
+                source_link_url=url,
                 source_package_id=observation.get("package_id"),
                 source_document_label=observation.get("description")
                 or observation.get("label"),
@@ -935,6 +961,19 @@ class DocumentSources:
             )
             self.add_url(url, context)
 
+    def add_redirect(self, record):
+        """Follow an observed successful download for provenance, not identity."""
+        if not isinstance(record, dict):
+            return
+        status = record.get("http_status")
+        requested, final = record.get("url"), record.get("final_url")
+        if (type(status) is not int or not 200 <= status < 300
+                or record.get("usable") is False or not requested or not final or requested == final):
+            return
+        values = self.by_url.get(requested)
+        if values:
+            self.add_url(final, values)
+
 
 def read_document_sources(root, urls=None):
     """Read retained parent records only, without document bodies or HTTP."""
@@ -951,7 +990,7 @@ def read_document_sources(root, urls=None):
     captures = archive.read(columns=columns)
 
     def records(family, suffix=None):
-        selected = captures.filter(pc.equal(captures["family"], family))
+        selected = captures if family is None else captures.filter(pc.equal(captures["family"], family))
         if suffix:
             if "source_file" not in selected.column_names:
                 return
@@ -980,9 +1019,13 @@ def read_document_sources(root, urls=None):
     context.urls = None
     for record in records("senate/pages", "senate.json.gz"):
         context.add_senate(record)
-    context.urls = wanted
     for record in records("documents", "documents/inventory.jsonl.gz"):
         context.add_inventory(record)
+    # The original endpoint may be extensionless and historically routed to a
+    # page family. Its successful response records the final download URL.
+    for record in records(None, "documents/receipts.jsonl"):
+        context.add_redirect(record)
+    context.urls = wanted
     return context
 
 
@@ -1047,7 +1090,16 @@ def collect_names(root, inventory_dir, families=FAMILIES):
             ],
         ]
     )
-    table = table.filter(pc.is_in(table["family"], value_set=pa.array(families)))
+    selected = pc.is_in(table["family"], value_set=pa.array(families))
+    if "documents" in families:
+        # Reinterpret historical page routing through the same source owner.
+        # This recovers existing downloads without rewriting immutable receipts.
+        pages = pc.equal(table["family"], "senate/pages")
+        urls = table.filter(pages)["context_url"].to_pylist()
+        downloads = pa.array(sorted({url for url in urls if url and source_family(url=url) == "documents"}),
+                             type=pa.string())
+        selected = pc.or_(selected, pc.and_(pages, pc.is_in(table["context_url"], value_set=downloads)))
+    table = table.filter(selected)
     by_receipt = defaultdict(lambda: defaultdict(list))
     bodies, names = set(), {}
     for row in table.to_pylist():

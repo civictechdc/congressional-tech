@@ -1,7 +1,7 @@
 """Route retained evidence by its source URL and source-file context."""
 
 import re
-from urllib.parse import urlsplit
+from urllib.parse import parse_qsl, urlsplit
 
 
 def family(source="", url="", pointer=(), media_type=""):
@@ -75,6 +75,9 @@ def family(source="", url="", pointer=(), media_type=""):
             return "senate/captions"
         if "/isvp" in upath or upath.endswith(".m3u8") or "akamaized.net" in host:
             return "senate/players"
+        query = {k.casefold(): v.casefold() for k, v in parse_qsl(u.query)}
+        if query.get("a") == "files.serve" and query.get("file_id"):
+            return "documents"
         if "/wp-json/" in upath or any(
             x in u.query.lower() for x in ("pagenum_", "mt_page=", "page=")
         ):

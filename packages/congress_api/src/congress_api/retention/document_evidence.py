@@ -14,13 +14,15 @@ from urllib.parse import unquote, urlsplit
 from xml.etree.ElementTree import ParseError
 
 from congress_api.parsers.house_xml import parse_house_meeting, parse_house_witnesses
-from congress_api.parsers.xml import parse_xml
+from congress_api.parsers.xml import parse_xml, xml_element
 
 
 FIELDS = frozenset({
     'record_role', 'body_format', 'content_document_kind', 'cache_marker_state',
     'attempted_url', 'recovered_filename', 'recovered_source_url',
     'source_record_document_url',
+    'content_xml_root', 'content_amendment_type', 'content_amendment_stage',
+    'content_amendment_degree', 'content_legis_num',
 })
 ENCODED_NAME = re.compile(r'house_\d+_documents_')
 BODY_FIELDS = FIELDS - {'recovered_filename', 'recovered_source_url'} | {
@@ -46,7 +48,8 @@ def body_evidence_key(row):
     if row.get('cache_marker_state') and row['cache_marker_state'] != ['unread']:
         return ('marker', row['body_key'])
     if (row.get('body_format') == ['xml']
-            and row.get('source_record_type') in (['committee-meeting'], ['witness-list'])):
+            and (row.get('source_record_type') in (['committee-meeting'], ['witness-list'])
+                 or row.get('content_xml_root') == ['amendment-doc'])):
         return ('xml', row['body_key'])
     if row.get('body_format') in (['pdf'], ['html']):
         return ('document', row['body_key'])
@@ -112,11 +115,22 @@ class _PageTitle(HTMLParser):
 
 
 def house_record(data):
-    """Use the existing typed XML readers; other roots remain uninterpreted."""
+    """Read supported House XML structures; other roots remain uninterpreted."""
     if data is None:
         return {}
     try:
         root = parse_xml(data)
+        if (root.tag == 'amendment-doc' and root.get('amend-type') in {'house-amendment', 'senate-amendment'}
+                and root.find('amendment-form') is not None and root.find('amendment-body') is not None):
+            model = xml_element(root)
+            fields = {'body_format': ['xml'], 'record_role': ['document'],
+                      'content_xml_root': [model.tag], 'content_document_kind': ['amendment']}
+            for attribute in ('type', 'stage', 'degree'):
+                if value := model.get('amend-' + attribute):
+                    fields['content_amendment_' + attribute] = [value]
+            if value := model.findtext('amendment-form/legis-num'):
+                fields['content_legis_num'] = [value]
+            return fields
         parser = {'committee-meeting': parse_house_meeting,
                   'witness-list': parse_house_witnesses}.get(root.tag)
         if parser is None:
@@ -193,7 +207,8 @@ def enrich_sources(rows, *, read_body, extract, cached=None):
             if key not in cached:
                 cached[key] = marker_fields(read(row))
             row.update(cached[key])
-        elif re.fullmatch(r'\d+\.xml', row.get('filename') or ''):
+        elif (re.fullmatch(r'\d+\.xml', row.get('filename') or '')
+              or ((row.get('filename') or '').lower().endswith('.xml') and not row.get('document_kind'))):
             key = ('xml', row.get('body_key'))
             if key not in cached:
                 cached[key] = house_record(read(row))

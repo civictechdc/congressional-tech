@@ -75,8 +75,9 @@ every original filename/source association and its metadata from
 ```
 
 The command reads the capture index, its receipts, and the complete
-`filenames.parquet` / `urls.parquet` inventory pair without opening document
-bodies or fetching anything. It includes every literal filename variant in the
+`filenames.parquet` / `urls.parquet` inventory pair without fetching anything.
+It reads selected retained XML and legacy cache bodies to identify source records,
+witness lists, amendments, and cache markers. It includes every literal filename variant in the
 inventory, plus names found in archived metadata and captures from `documents`,
 `govinfo/transcript-html`, `house/meeting-xml`, and `house/witness-xml`. Files do
 not need to have been downloaded. URL query parameters and saved response
@@ -143,6 +144,27 @@ They come from the body-owning receipt record and its response headers, with the
 capture index as a fallback. They remain separate from the literal `extension`;
 a `.pdf` URL can return HTML. Join `body_key` to `captures.parquet` for additional
 acquisition facts and publisher data.
+
+Parent records supply `source_page_*`, `source_meeting_*`, committee codes,
+and the publisher's original document type. `source_link_url` retains the original
+href; `source_link_label` retains actual anchor text separately from a generated
+document label. A successful retained redirect carries that context to the final
+download URL. It does not establish document identity; matching body bytes do.
+Historical Senate `Files.Serve` captures are included even when an older archive
+classified their extensionless endpoints as pages.
+
+When a saved Senate page explicitly associates a link with a witness card,
+`source_witness_name`, `source_witness_position`, and `source_witness_organization`
+preserve those values. These fields identify the source association, not verified
+authorship or the attachment's genre. Shared files retain all observed values;
+independent lists must not be zipped together.
+
+`document_kind_source` distinguishes filename, recovered filename, XML content,
+and recognized source document types. Supported amendment XML preserves its root,
+type, stage, degree, and printed legislative identifier in `content_*` columns.
+Unknown publisher types, including `other`, remain null unless other evidence
+establishes a kind. The filename's literal values remain separate and unchanged.
+
 Filename metadata does not certify document contents or download success; the
 retained response can be an error page. Names and candidate dates remain filename
 readings, not established personal identities or meeting dates. Do not count

@@ -485,6 +485,67 @@ def test_senate_page_metadata_belongs_to_its_own_documents_only():
     assert 'source_committee_code' not in data  # Host identifies publisher, not meeting subcommittee.
 
 
+def test_senate_links_keep_exact_anchor_and_witness_card_metadata():
+    context = index.DocumentSources()
+    url = 'https://www.aging.senate.gov/download/sca-example'
+    unowned = 'https://www.aging.senate.gov/download/sca-chair'
+    context.add_senate({'aging.senate.gov': {'pages': {'https://www.aging.senate.gov/hearings/one': {
+        'documents': [['other', 'SCA_example', url], ['other', 'SCA_chair', unowned]],
+        'document_labels': {url: 'Download testimony', unowned: ''},
+        'document_metadata': {url: {'labels': ['Witness attachment'], 'witness_indexes': [0, True, -1, 99, '1']},
+                              unowned: {'witness_indexes': []}},
+        'witnesses': [{'name': 'Stephanie Blunt', 'position': 'Executive Director',
+                       'organization': 'Trident Area Agency on Aging'}, {'name': 'Wrong witness'}],
+    }}}})
+    row = context.for_url(url)
+    assert row['source_link_url'] == [url]
+    assert row['source_link_label'] == ['Download testimony', 'Witness attachment']
+    assert row['source_witness_name'] == ['Stephanie Blunt']
+    assert row['source_witness_position'] == ['Executive Director']
+    assert row['source_witness_organization'] == ['Trident Area Agency on Aging']
+    assert row['source_document_type'] == ['other']
+    index.fill_document_kind(row)
+    assert row['document_kind'] is None
+    assert not context.for_url(unowned).get('source_witness_name')
+
+
+def test_retained_redirect_transfers_link_context_without_guessing_from_basename():
+    context = index.DocumentSources()
+    requested = 'https://www.epw.senate.gov/public/?a=Files.Serve&File_id=ABC'
+    final = 'https://www.epw.senate.gov/public/_cache/files/hash.spw.pdf'
+    context.add_inventory({'url': requested, 'observations': [{'page_url': 'https://www.epw.senate.gov/hearings/one',
+                           'kind': 'other', 'label': 'SPW 03152023.pdf'}]})
+    context.add_redirect({'url': requested, 'final_url': final, 'http_status': 200, 'usable': True})
+    row = context.for_url(final)
+    assert row['source_page_url'] == ['https://www.epw.senate.gov/hearings/one']
+    assert row['source_link_url'] == [requested]
+    assert row['source_document_type'] == ['other']
+    assert context.for_url('https://unrelated.test/hash.spw.pdf') == {}
+    context.add_redirect({'url': requested, 'final_url': 'https://www.epw.senate.gov/login',
+                          'http_status': 403, 'usable': False})
+    assert context.for_url('https://www.epw.senate.gov/login') == {}
+
+
+def test_legacy_misrouted_downloads_recover_retained_bodies(tmp_path):
+    (tmp_path/'indexes').mkdir()
+    (tmp_path/'receipts').mkdir()
+    requested = 'https://www.epw.senate.gov/public/?a=Files.Serve&File_id=ABC'
+    final = 'https://www.epw.senate.gov/public/_cache/files/hash.spw.pdf'
+    key = 'receipts/legacy.jsonl.gz'
+    with gzip.open(tmp_path/key, 'wt') as f:
+        f.write(json.dumps({'record': {'url': requested, 'final_url': final, 'raw_path': 'body.gz'}})+'\n')
+    pq.write_table(pa.Table.from_pylist([dict(family='senate/pages', body_key='retained',
+        receipt_key=key, receipt_line=1, pointer_json='["raw_path"]', context_url=requested,
+        original_path='body.gz')]), tmp_path/'indexes/captures.parquet')
+    write_inventory(tmp_path/'inventory', [dict(filename_key='hash.spw.pdf', filename='hash.spw.pdf',
+        variants=['hash.spw.pdf'])], [dict(url=final, filename_keys=['hash.spw.pdf'])])
+    names, _, bodies, _ = index.collect_names(tmp_path, tmp_path/'inventory')
+    assert bodies == {'retained'}
+    assert ('retained', 'hash.spw.pdf', final) in names
+    assert (None, 'hash.spw.pdf', final) not in names
+    assert index.collect_names(tmp_path, tmp_path/'inventory', families=('house/meeting-xml',))[2] == set()
+
+
 def test_source_refresh_preserves_parser_fields_ids_and_alias_context(tmp_path):
     (tmp_path/'indexes').mkdir()
     path=tmp_path/'indexes/document-filenames.parquet'
@@ -519,7 +580,10 @@ def test_source_metadata_cli_reads_retained_records_without_fetching(tmp_path):
                  'url':'https://legacy.test/report.pdf','observations':[{
                      'event_id':'1001','chamber':'House','congress':119,
                      'group':'meeting-document','group_attributes':{'type':'BR'},
-                     'description':'Legacy bill copy'}]})]
+                     'description':'Legacy bill copy'}]}),
+             ('senate/pages','input/documents/receipts.jsonl', {
+                 'url':'https://legacy.test/report.pdf', 'final_url':'https://final.test/copy.pdf',
+                 'http_status':200, 'usable':True})]
     captures=[]
     for n,(family,source,record) in enumerate(entries):
         key=f'receipts/{n}.jsonl.gz'
@@ -538,6 +602,9 @@ def test_source_metadata_cli_reads_retained_records_without_fetching(tmp_path):
     assert record['source_committee_code']==['hsif14']
     assert record['source_document_type']==['BR']
     assert record['source_meeting_key']==['119/house/1001']
+    redirect=index.read_document_sources(tmp_path, {'https://final.test/copy.pdf'}).for_url('https://final.test/copy.pdf')
+    assert redirect['source_meeting_key']==['119/house/1001']
+    assert redirect['source_link_url']==['https://legacy.test/report.pdf']
     assert not (tmp_path/'bodies').exists()
 
 

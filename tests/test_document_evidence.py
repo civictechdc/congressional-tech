@@ -57,6 +57,40 @@ def test_foreign_and_malformed_xml_stay_unclassified(tmp_path, data):
     assert not row.get('source_record_identifier')
 
 
+def test_amendment_xml_retains_native_meaning_and_replays_without_body_reads(tmp_path):
+    data = b'''<?xml version="1.0"?><amendment-doc amend-stage="proposed"
+        amend-type="house-amendment" amend-degree="first">
+        <amendment-form><legis-num>Rules Committee Print 116-69</legis-num></amendment-form>
+        <amendment-body><text>Strike the text.</text></amendment-body></amendment-doc>'''
+    source = retained(tmp_path, 'BILLS-116HR1520SA-RCP116-69.xml', data)
+    sources, docs = build(tmp_path, [source])
+    for row in (sources[0], docs[0]):
+        assert row['document_kind'] == ['amendment']
+        assert row['document_kind_source'] == ['content']
+        assert row['content_xml_root'] == ['amendment-doc']
+        assert row['content_amendment_type'] == ['house-amendment']
+        assert row['content_amendment_stage'] == ['proposed']
+        assert row['content_amendment_degree'] == ['first']
+        assert row['content_legis_num'] == ['Rules Committee Print 116-69']
+        assert row['record_role'] == ['document']
+        assert row['version_token'] == ['SA']  # Literal filename token stays intact.
+        assert not row.get('version_token_code')  # No official GovInfo code inferred.
+    before = pq.read_table(tmp_path/'indexes/document-filenames.parquet')
+    def no_reads(key):
+        raise AssertionError('Known XML contents should be cached')
+    replay, _ = build(tmp_path, [source], previous=before, read_body=no_reads)
+    assert replay == sources
+
+
+@pytest.mark.parametrize('data', [
+    b'<amendment-doc/>', b'<amendment-doc amend-type="unknown"><amendment-form/></amendment-doc>',
+    b'<html><amendment-doc amend-type="house-amendment"/></html>',
+])
+def test_incomplete_or_embedded_amendment_roots_do_not_establish_kind(tmp_path, data):
+    sources, _ = build(tmp_path, [retained(tmp_path, 'local.xml', data)])
+    assert sources[0]['document_kind'] is None
+
+
 @pytest.mark.parametrize(('data', 'state', 'attempted'), [
     (b'', 'empty', None),
     (b'https://docs.house.gov/meetings/A/123/WList.xml', 'url-pointer', 'https://docs.house.gov/meetings/A/123/WList.xml'),
