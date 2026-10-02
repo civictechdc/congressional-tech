@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from committee_meeting.common import Ref
 from congress_api.adapters.common import AdapterContext
 from congress_api.adapters.senate import records
+from congress_api.models.senate import PAGE_WORKFLOW_FIELDS
 
 
 NOW = datetime(2026, 9, 27, tzinfo=UTC)
@@ -30,11 +31,21 @@ def of_kind(rows, kind):
     return [row for row in rows if row.kind == kind]
 
 
+def retained_page(rows, saved):
+    """Check both retained payloads; return the publisher page for further checks."""
+    sources = of_kind(rows, 'source_record')
+    source, = [s for s in sources if s.identifier.value.startswith('senate-page|')]
+    assert source.payload == {k: v for k, v in saved.items() if k not in PAGE_WORKFLOW_FIELDS}
+    expected = {k: v for k, v in saved.items() if k in PAGE_WORKFLOW_FIELDS}
+    workflow = [s for s in sources if s.identifier.value.startswith('senate-page-workflow|')]
+    assert [s.payload for s in workflow] == ([expected] if expected else [])
+    return source
+
+
 def test_page_payload_exact_urls_and_match_provenance_survive():
     saved = page(extra_native_metadata={"future": True})
     rows = adapt(saved)
-    source, = of_kind(rows, "source_record")
-    assert source.payload == saved
+    source = retained_page(rows, saved)
     assert source.retrieved_at is None and source.imported_at == NOW
     assert source.input_snapshot_id == "senate-input"
     representation, = of_kind(rows, "representation")
@@ -58,7 +69,7 @@ def test_ambiguous_event_cannot_link_or_create_fictional_appearances():
     assert len(of_kind(rows, "material")) == 1
     assert not of_kind(rows, "material_link") and not of_kind(rows, "appearance")
     assert not of_kind(rows, "meeting") and not of_kind(rows, "person")
-    source, = of_kind(rows, "source_record")
+    source = retained_page(rows, page())
     assert source.payload["witnesses"][0]["name"] == "Alex Smith"
     assert any(issue.category == "unlinked" for issue in of_kind(rows, "data_issue"))
 
@@ -70,7 +81,7 @@ def test_recorded_page_match_version_is_preserved():
     assert link.provenance.method.name == "senate.records.match_pages"
     assert link.provenance.method.version == "2"
     assert link.provenance.citations[0].selector == "/match_details/12"
-    assert of_kind(rows, "source_record")[0].payload == saved
+    retained_page(rows, saved)
 
 
 def test_unmatched_document_is_retained():
@@ -132,4 +143,4 @@ def test_nominee_role_uses_explicit_witness_position_without_changing_source_tex
     assert nominee.roles == ("witness", "nominee")
     assert nominee.affiliation.position == saved["witnesses"][0]["position"]
     assert introducer.roles == ("witness",)
-    assert of_kind(rows, "source_record")[0].payload == saved
+    retained_page(rows, saved)

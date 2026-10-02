@@ -1,6 +1,7 @@
 """Adapt retained Senate committee pages without fetching or rematching them."""
 
 from collections import Counter, defaultdict
+from copy import deepcopy
 from datetime import date
 from urllib.parse import urlsplit
 
@@ -83,10 +84,10 @@ def _site_data(site):
 
 
 def _prepared(state):
-    """Dict state with workflow lifted off pages. Page objects stay the source payloads."""
+    """Lift workflow off page copies without changing the caller's retained state."""
     prepared = {}
     for host, site in state.items():
-        prepared[host] = _site_data(site)
+        prepared[host] = deepcopy(_site_data(site))
     return normalize_senate_state(prepared)
 
 
@@ -177,6 +178,10 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
             if live or previous_retrieval:
                 source = source.model_copy(update={"retrieved_at": live[0] if live else previous_retrieval})
             yield source
+            workflow_source = None
+            if record:
+                workflow_source = context.source(f"senate-page-workflow|{host}|{url}", record, url)
+                yield workflow_source
             correction = DATE_CORRECTIONS.get(url)
             correction_evidence = None
             if correction:
@@ -184,11 +189,11 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                 yield correction_source
                 correction_evidence = context.evidence(correction_source, basis="curated", selector="/date")
 
-            def issue(code, category, summary, *, explanation=None, subject=None, selector=None):
+            def issue(code, category, summary, *, explanation=None, subject=None, selector=None, evidence_source=None):
                 return DataIssue(
                     id=context.ids("data_issue", key + "|" + code), subject=subject or ref(source),
                     category=category, summary=summary, explanation=explanation,
-                    detected_at=context.now, provenance=context.evidence(source, selector=selector),
+                    detected_at=context.now, provenance=context.evidence(evidence_source or source, selector=selector),
                 )
 
             suspect_pdf = urlsplit(url).path.lower().endswith(".pdf") and not page.get("title") and any(
@@ -208,7 +213,7 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                     id=context.ids("data_issue", key + "|failed-refresh"), subject=ref(source), category="unverified",
                     summary="The latest Senate page refresh failed.", explanation="The previous usable source result is retained; this failure does not establish absence.",
                     detected_at=context.now, last_checked_at=observed_time(check.get("completed_at"), context.now),
-                    provenance=context.evidence(source, selector="/last_check"),
+                    provenance=context.evidence(workflow_source, selector="/last_check"),
                 )
             if not live and not previous_retrieval:
                 yield issue("unverified-retrieval", "unverified", "This page has no retained live retrieval receipt.",
@@ -223,15 +228,16 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                     meeting = candidates[0]
                     details = (record.get("match_details") or {}).get(str(event))
                     if details and details.get("method") in ("senate.records.match_identifiers", "senate.records.match_pages"):
-                        match_evidence = context.evidence(source, basis="derived", method=Method(name=details["method"], version=details["version"]), selector=f"/match_details/{event}")
+                        match_evidence = context.evidence(workflow_source, basis="derived", method=Method(name=details["method"], version=details["version"]), selector=f"/match_details/{event}")
                     else:
-                        match_evidence = context.evidence(source, basis="derived", method=MATCH_METHOD, selector=f"/events/{index}")
+                        match_evidence = context.evidence(workflow_source, basis="derived", method=MATCH_METHOD, selector=f"/events/{index}")
                     if correction_evidence:
                         match_evidence = match_evidence.model_copy(update={"citations": match_evidence.citations + correction_evidence.citations})
                     matched[meeting.id] = (meeting, match_evidence)
                 else:
                     yield issue(f"unresolved-event|{event}", "unlinked", "A saved page association has no unique meeting reference.",
-                                explanation=f"Event {event} resolves to {len(candidates)} entries in the supplied meeting lookup.", selector=f"/events/{index}")
+                                explanation=f"Event {event} resolves to {len(candidates)} entries in the supplied meeting lookup.",
+                                selector=f"/events/{index}", evidence_source=workflow_source)
             official = events.get(url)
             event = official["event"] if official else None
             if official and not matched and not seen_events and not record.get("candidate_events"):
@@ -283,7 +289,8 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                     yield original.model_copy(update={"meeting_type": kind, "field_evidence": fields, "identifiers": identifiers, "provenance": evidence})
             if not matched and record.get("candidate_events"):
                 yield issue("possible-native-event", "unlinked", "The official event may already have a Congress.gov meeting.",
-                            explanation="The same committee has a retained meeting on this date, but the page match is not established; a duplicate meeting was not created.", selector="/candidate_events")
+                            explanation="The same committee has a retained meeting on this date, but the page match is not established; a duplicate meeting was not created.",
+                            selector="/candidate_events", evidence_source=workflow_source)
             if not matched:
                 yield issue("unlinked-page", "unlinked", "This retained committee page has no supported meeting association.",
                             explanation="Documents remain discoverable. Witness rows remain in the source payload until their meeting is established.")
@@ -481,7 +488,7 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                         aspect="reachability", status="error", evaluated_at=context.now,
                         observed_at=observed_time(check.get("completed_at"), context.now), provider=context.provider, scope=url,
                         explanation="The latest refresh failed. Previously retained documents and witnesses remain historical observations.",
-                        provenance=match_evidence.model_copy(update={"citations": match_evidence.citations + context.evidence(source, selector="/last_check").citations}),
+                        provenance=match_evidence.model_copy(update={"citations": match_evidence.citations + context.evidence(workflow_source, selector="/last_check").citations}),
                     )
             elif page.get("absent"):
                 for meeting, match_evidence in matched.values():

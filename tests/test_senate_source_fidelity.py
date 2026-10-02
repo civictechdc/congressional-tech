@@ -8,7 +8,7 @@ from congress_api.matching.senate_pages import retained_matches
 from congress_api.parsers.senate import parsed
 from congress_api.replay.senate import replay
 from congress_api.retention.senate import cached_html_path
-from test_explorer_senate_adapter import adapt, of_kind
+from test_explorer_senate_adapter import adapt, of_kind, retained_page
 
 FIXTURES = Path(__file__).parent / "fixtures" / "meeting_inventory"
 URL = "https://www.aging.senate.gov/hearings/-21st-century-caregiving-supporting-workers-family-caregivers-seniors-and-people-with-disabilities"
@@ -35,7 +35,7 @@ def test_real_page_preserves_content_order_and_player_attributes_in_source():
         "src": "https://www.senate.gov/isvp/?auto_play=false&comm=aging&filename=aging061721&poster=https://www.aging.senate.gov/assets/images/video-poster.png"}}
     assert content["links"] == [{"text": "Back To Hearings", "attributes": {
         "class": "Breadcrumbs__button h-100 mt-5 mt-lg-0 mb-3", "href": "https://www.aging.senate.gov/hearings"}}]
-    assert of_kind(adapt(saved), "source_record")[0].payload == saved
+    retained_page(adapt(saved), saved)
 
 
 def test_real_panel_heading_is_preserved_on_each_explicit_member_card():
@@ -61,7 +61,7 @@ def test_non_file_source_links_keep_literal_text_destination_and_attributes():
         {"text": "S. 10", "attributes": {"href": "https://www.congress.gov/bill/119th-congress/senate-bill/10", "data-bill": "s10", "title": "Source bill"}},
         {"text": "Institute", "attributes": {"href": "/about", "rel": "external"}}]
     assert saved["document_metadata"]["https://www.aging.senate.gov/document.pdf"]["attributes"] == [{"href": "/document.pdf", "type": "application/pdf"}]
-    assert of_kind(adapt(saved), "source_record")[0].payload == saved
+    retained_page(adapt(saved), saved)
 
 
 def test_real_inline_player_configuration_survives_without_executing_javascript():
@@ -78,9 +78,9 @@ def test_real_inline_player_configuration_survives_without_executing_javascript(
     assert not saved["page_metadata"].get("media")
     saved["events"] = ["12"]
     rows = adapt(saved)
-    source, = of_kind(rows, "source_record")
+    source = retained_page(rows, saved)
     readback = json.loads(source.model_dump_json())
-    assert readback["payload"] == saved
+    assert readback["payload"] == source.payload
     assert readback["payload"]["page_metadata"]["media_scripts"][1]["text"] == scripts[1]["text"]
     assert not of_kind(rows, "material")
 
@@ -106,7 +106,7 @@ def test_aging_card_retains_ownership_location_and_source_words_to_output():
     assert next(link for link in links if link.subject.kind == "appearance").subject.id == appearance.id
     assert of_kind(adapt(legacy), "appearance")[0].id == appearance.id
     assert of_kind(adapt(legacy), "material")[0].id == of_kind(rows, "material")[0].id
-    assert of_kind(rows, "source_record")[0].payload == saved
+    retained_page(rows, saved)
     _, witnesses, documents = retained_matches({"aging.senate.gov": {"pages": {URL: saved}, "workflow": {URL: {"events": ["12"]}}}})
     assert witnesses[0]["location"] == "Chicago, IL"
     assert documents[0]["witness_names"] == '["Ai-jen Poo"]'

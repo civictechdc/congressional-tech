@@ -6,6 +6,7 @@ from committee_meeting.common import Ref
 from congress_api.adapters.common import AdapterContext
 from congress_api.adapters.senate import records as adapt
 from congress_api.matching.senate_pages import match_pages
+from test_explorer_senate_adapter import retained_page
 
 PAGE = 'https://www.armed-services.senate.gov/hearings/strategic-forces'
 PLAYER = 'https://www.senate.gov/isvp/?auto_play=false&comm=armed&filename=armedA032625'
@@ -48,8 +49,12 @@ def test_embedded_recording_is_linked_only_to_an_established_page_match():
     link, = [r for r in rows if r.kind == 'material_link']
     assert link.subject.id == 'known' and link.role == 'recording'
     assert {c.selector for c in link.provenance.citations} == {'/events/0', '/page_metadata/media/0'}
-    source, = [r for r in rows if r.kind == 'source_record']
+    source = retained_page(rows, page)
     assert source.payload['page_metadata'] == metadata
+    sources = {r.id: r for r in rows if r.kind == 'source_record'}
+    citations = {c.selector: c for c in link.provenance.citations}
+    assert citations['/page_metadata/media/0'].source.id == source.id
+    assert sources[citations['/events/0'].source.id].payload == {'events': ['336743']}
     unlinked = list(adapt(state, ctx, meetings={}))
     assert len([r for r in unlinked if r.kind == 'material']) == 1
     assert not [r for r in unlinked if r.kind == 'material_link']

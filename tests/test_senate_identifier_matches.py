@@ -85,6 +85,9 @@ def test_adapter_exposes_exact_identifier_match_evidence_inline():
     assert appearance.meeting.id=='retained-meeting'
     assert appearance.provenance.method.name=='senate.records.match_identifiers'
     assert appearance.provenance.citations[0].selector=='/match_details/326221'
-    source,=[row for row in rows if row.kind=='source_record']
-    assert 'match_details' not in source.payload
-    assert state[HOST]['workflow'][case['page_url']]['match_details']['326221']['shared_transcript_packages']==['CHRG-116shrg37479']
+    sources={row.id:row for row in rows if row.kind=='source_record'}
+    match,witness=appearance.provenance.citations
+    assert sources[witness.source.id].payload==state[HOST]['pages'][case['page_url']]
+    assert 'match_details' not in sources[witness.source.id].payload
+    assert sources[match.source.id].payload==state[HOST]['workflow'][case['page_url']]
+    assert sources[match.source.id].payload['match_details']['326221']['shared_transcript_packages']==['CHRG-116shrg37479']

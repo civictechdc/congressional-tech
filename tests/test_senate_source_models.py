@@ -22,7 +22,7 @@ from congress_api.transcripts import senate as captions
 from congress_api.transport import http as records_http
 from congress_api.transport.senate import sess as captions_sess
 from pydantic import ValidationError
-from test_explorer_senate_adapter import adapt, context, of_kind
+from test_explorer_senate_adapter import adapt, context, of_kind, retained_page
 from test_senate_caption_checks import MASTER, MASTER_BODY, PLAYER, responses
 from test_senate_record_receipts import HOST, HTML, PAGE, setup_inputs
 
@@ -214,8 +214,9 @@ def test_real_appropriations_section_heading_is_not_the_testimony_title():
     material, = of_kind(result, 'material')
     assert material.title == 'Deb Haaland — Witness statement'
     # Normalized presentation does not mutate source triples, hash-based IDs or labels.
-    source, = of_kind(result, 'source_record')
-    assert source.payload == saved == page.source_dict()
+    source = retained_page(result, saved)
+    assert source.payload == page.source_dict()
+    assert saved == {**page.source_dict(), 'events': ['12']}
     previous = page.source_dict()
     previous.pop('document_metadata')  # Same source document, without the explicit owner correction.
     material_again, = of_kind(adapt(previous), 'material')

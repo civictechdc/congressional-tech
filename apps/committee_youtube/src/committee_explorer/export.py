@@ -124,7 +124,7 @@ def _retain_senate_meeting_ids(rows, senate_state, ids):
         native_by_event[str(row['eventId'])].append(row)
     matches = defaultdict(set)
     for event in official_events(senate_state):
-        saved = set(map(str, workflow_record(senate_state.get(event['host']) or {}, event['url'], event['page']).get('events') or ()))
+        saved = set(map(str, workflow_record(senate_state.get(event['host']) or {}, event['url']).get('events') or ()))
         if len(saved) != 1:
             continue
         candidates = native_by_event.get(next(iter(saved)), ())

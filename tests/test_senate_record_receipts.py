@@ -13,6 +13,7 @@ from congress_api.models.content import RawContent
 from congress_api.parsers.senate import parsed as records_parsed
 from congress_api.retention.tables import read_state, write_state
 from congress_api.transport import http as records_http
+from test_explorer_senate_adapter import retained_page
 
 HOST = "budget.senate.gov"
 PAGE = "https://www.budget.senate.gov/hearings/retained"
@@ -90,7 +91,13 @@ def test_failed_page_refresh_keeps_good_result_and_exports_error(tmp_path, monke
     assert assessment.observed_at == dt.datetime.fromisoformat(STAMP)
     assert any(item.kind == "material" for item in emitted)
     assert any(item.kind == "appearance" for item in emitted)
-    source, = [item for item in emitted if item.kind == "source_record"]
+    sources = {item.id: item for item in emitted if item.kind == "source_record"}
+    issue, = [item for item in emitted if item.kind == "data_issue" and item.summary == "The latest Senate page refresh failed."]
+    source = sources[issue.subject.id]
+    assert source.payload == page
+    check, = issue.provenance.citations
+    assert check.selector == "/last_check"
+    assert sources[check.source.id].payload == workflow
     assert source.retrieved_at == dt.datetime.fromisoformat(prior["retrieved_at"])
 
 
@@ -171,8 +178,9 @@ def test_legacy_garbled_pdf_lines_remain_raw_with_unverified_issue():
     payload = {"title": "", "lines": ["\x04\ufffd\x06\ufffd garbled bytes"], "documents": [], "witnesses": [], "events": []}
     context = AdapterContext(now=dt.datetime(2026, 9, 28, tzinfo=dt.UTC), input_id="senate-state", provider="senate", ids=lambda kind,key: kind+":"+key)
     emitted = list(adapted_records({"intelligence.senate.gov": {"pages": {url: payload}}}, context, meetings={}))
-    source, = [item for item in emitted if item.kind == "source_record"]
-    assert source.payload == payload
+    source = retained_page(emitted, payload)
     issue, = [item for item in emitted if item.kind == "data_issue" and item.id.endswith("possible-binary-source")]
+    citation, = issue.provenance.citations
+    assert citation.source.id == source.id and citation.selector == "/lines"
     assert issue.category == "unverified" and issue.provenance.basis == "inferred"
     assert "format remains unverified" in issue.explanation

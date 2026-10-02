@@ -157,10 +157,9 @@ def test_direct_document_reader_and_typed_page_agree_on_witness_files():
     ('committee amendment', 'Changes to witness statements', 'amendment'),
 ])
 def test_normalization_respects_source_type_before_title_words(kind, title, expected):
-    from test_explorer_senate_adapter import adapt, of_kind, page
+    from test_explorer_senate_adapter import adapt, of_kind, page, retained_page
     saved = page(documents=[[kind, title, 'https://www.help.senate.gov/download/opaque']])
     records = adapt(saved)
     material, = of_kind(records, 'material')
     assert material.details.category == expected
-    source, = of_kind(records, 'source_record')
-    assert source.payload == saved
+    retained_page(records, saved)

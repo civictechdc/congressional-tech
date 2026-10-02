@@ -7,6 +7,7 @@ import pytest
 from committee_meeting.common import Ref
 from congress_api.adapters import inventory, recordings, senate
 from congress_api.adapters.common import AdapterContext
+from test_explorer_senate_adapter import retained_page
 
 NOW = datetime(2026, 9, 30, tzinfo=UTC)
 PAGE = "https://example.senate.gov/hearing"
@@ -62,8 +63,12 @@ def test_caption_and_senate_negative_checks_require_past_zoned_times(timestamp, 
     assessment, = [record for record in result if record.kind == "assessment"]
     assert assessment.observed_at == expected
     assert assessment.status == ("not_found" if expected else "unknown")
-    source, = [record for record in result if record.kind == "source_record"]
-    assert source.payload == page
+    source = retained_page(result, page)
+    assert source.payload == {"absent": True}
+    sources = {record.id: record for record in result if record.kind == "source_record"}
+    match, = assessment.provenance.citations
+    assert match.source.id != source.id
+    assert sources[match.source.id].payload["observation_check"] == page["observation_check"]
 
 
 @pytest.mark.parametrize("check", ["unreadable", 17, ["unknown"]])
