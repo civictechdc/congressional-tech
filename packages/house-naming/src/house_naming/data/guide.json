@@ -26739,6 +26739,29 @@
       }
     },
     {
+      "id": "complete-senate-bill-edition",
+      "scope": "stem",
+      "priority": 2,
+      "pattern": "(?P<measure_token>S\\.?)[ .]*(?P<measure_number>[0-9]+)[ _-]+(?P<suffix>(?:\\((?:Reported[ _-]+Out|As[ _-]*Reported)\\)|(?:As[ _-]*)?Reported(?:[ _-]+Out)?|Text)(?:[ _-]+[A-Z]{3}[0-9]{2}[A-Z0-9]{3,4})?(?:[_-][0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})?)",
+      "description": "A complete Senate bill reference followed only by Text or Reported edition wording, an optional drafting identifier and UUID. Reviewed Foreign Relations bill covers support these layouts. Bare bill references, summaries and amendment titles do not match. No Congress, official version or legislative event is inferred.",
+      "field_readings": {
+        "measure_token": {
+          "category": "legislative-text"
+        }
+      },
+      "field_vocabularies": {
+        "measure_token": [
+          {
+            "vocabulary": "house:measure",
+            "normalize": "letters"
+          }
+        ]
+      },
+      "searchable_fields": [
+        "suffix"
+      ]
+    },
+    {
       "id": "complete-senate-resolution",
       "scope": "stem",
       "priority": 2,
