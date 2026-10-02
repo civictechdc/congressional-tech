@@ -245,7 +245,16 @@ def enrich_sources(rows, *, read_body, extract, cached=None):
             remember(row['source_url'])
         row['record_role'] = ['error-response' if row.get('source_record_type') == ['error-page']
                               else 'source-record' if row.get('source_record_type') else 'document']
-        if cache_marker(row):
+        paths = row.get('source_paths') or []
+        if (not row.get('source_url') and row.get('filename_origins') == ['retained_path']
+                and paths and all(re.fullmatch(
+                    r'raw-source-backfill-\d{8}/documents/metadata-review/[^/]+\.py\.before', path)
+                    and path.rsplit('/', 1)[-1] == row.get('filename') for path in paths)):
+            # Collector backups imported with the archive are capture evidence.
+            # The basename alone cannot establish this role for a public link.
+            row['record_role'] = ['capture-state']
+            row['source_record_type'] = ['collector-artifact']
+        elif cache_marker(row):
             key = ('marker', row.get('body_key'))
             if key not in cached:
                 cached[key] = marker_fields(read(row))

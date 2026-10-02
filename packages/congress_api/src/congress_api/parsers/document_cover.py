@@ -50,22 +50,48 @@ def document_page_fields(first: str, second: str = '') -> dict[str, list[str]]:
            or re.search(r'^TESTIMONY\s*\nBEFORE (?:THE )?(?:SPECIAL )?COMMITTEE\b', clean[:900], re.M))
           and senate and committee and 'BEFORE' in compact):
         kind = 'witness-statement'
-    # Official legislative covers require their own measure line, chamber
-    # heading and operative document wording. A referenced bill is insufficient.
-    measure = re.search(r'(?m)^(?:\d+(?:ST|ND|RD|TH)\s+SESSION\s+)?(S\.|H\.\s*R\.)\s*(\d+)\s*$', clean)
-    chamber = 'IN THE SENATE OF THE UNITED STATES' in clean or 'IN THE HOUSE OF REPRESENTATIVES' in clean
+    return legislative_cover_fields(clean) or ({'content_document_kind': [kind]} if kind else {})
+
+
+def legislative_cover_fields(clean: str) -> dict[str, list[str]]:
+    """Require a measure heading, chamber and operative form, including drafts.
+
+    A draft's blank number establishes its form but supplies no citation.
+    Passed bills headed AN ACT are legislative text, without implying enactment.
+    """
+    measure = re.search(
+        r'(?m)^(?:\d+(?:ST|ND|RD|TH|D)\s+SESSION\s+)?'
+        r'(S\.(?:\s*(?:J\.|CON\.)?\s*RES\.)?|H\.\s*(?:R\.|(?:J\.|CON\.)?\s*RES\.))'
+        r'\s*(\d+|L{2,})\s*$', clean)
+    if not measure or not ('IN THE SENATE OF THE UNITED STATES' in clean
+                          or 'IN THE HOUSE OF REPRESENTATIVES' in clean):
+        return {}
+    congress = re.search(r'\b(\d{1,3})(?:ST|ND|RD|TH)\s+(?:CONGRESS|CONG\.)', clean)
+    if not measure[2].isdigit() and not congress:
+        return {}
     fields = {}
-    if measure and chamber:
-        if re.search(r'^AMENDMENT IN THE NATURE OF A SUBSTITUTE\b', clean, re.M):
-            kind = 'amendment'
-            fields['content_amendment_type'] = ['substitute']
-        elif re.search(r'^A BILL$', clean, re.M) and re.search(r'BE IT ENACTED', clean):
-            kind = 'legislative-text'
-        if kind in {'amendment', 'legislative-text'}:
-            fields['content_citation'] = [('S.' if measure[1] == 'S.' else 'H.R.') + ' ' + measure[2]]
-            if congress := re.search(r'\b(\d{1,3})(?:ST|ND|RD|TH)\s+(?:CONGRESS|CONG\.)', clean):
-                fields['content_congress'] = [congress[1]]
-    return {'content_document_kind': [kind], **fields} if kind else {}
+    if re.search(r'^AMENDMENT IN THE NATURE OF A SUBSTITUTE\b', clean, re.M):
+        kind = 'amendment'
+        fields['content_amendment_type'] = ['substitute']
+    elif (re.search(r'^AMENDMENT NO\.', clean, re.M)
+          and re.search(r'^AMENDMENT INTENDED TO BE PROPOSED BY\b', clean, re.M)
+          and re.search(r'^VIZ:', clean, re.M)):
+        kind = 'amendment'
+    elif (re.search(r'^(?:A BILL|AN ACT)$', clean, re.M)
+          and re.search(r'^BE IT ENACTED\b', clean, re.M)):
+        kind = 'legislative-text'
+    elif (re.search(r'^(?:(?:JOINT|CONCURRENT) )?RESOLUTION$', clean, re.M)
+          and re.search(r'^RESOLVED\b', clean, re.M)):
+        kind = 'legislative-text'
+    else:
+        return {}
+    if measure[2].isdigit():
+        prefix = re.sub(r'\s+', '', measure[1])
+        prefix = prefix.replace('CON.RES.', 'Con.Res.').replace('RES.', 'Res.')
+        fields['content_citation'] = [prefix + ' ' + measure[2]]
+    if congress:
+        fields['content_congress'] = [congress[1]]
+    return {'content_document_kind': [kind], **fields}
 
 
 def document_cover(data: bytes) -> dict[str, list[str]]:

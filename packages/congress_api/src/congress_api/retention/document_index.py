@@ -1710,8 +1710,6 @@ def extract(item):
     if ENGINE is None:
         ENGINE = Engine()
     filename, source_url = item
-    if filename is None:
-        return {}
     # API records and known error endpoints are acquisition inputs. Keep their
     # source role instead of treating endpoint names as document subjects.
     # This does not alter the retained filename, URL, or response status.
@@ -1720,6 +1718,16 @@ def extract(item):
             url = urlsplit(source_url)
             path = url.path.strip("/").split("/")
             if url.scheme in {"http", "https"}:
+                if (url.hostname == "api.govinfo.gov" and len(path) == 3
+                        and path[0] == "collections" and re.fullmatch(r'[A-Z]+', path[1])
+                        and re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z', path[2])):
+                    return {"source_record_identifier": [path[1]],
+                            "source_record_type": ["collection-listing"]}
+                if (url.hostname in {"www.govinfo.gov", "govinfo.gov"} and len(path) == 4
+                        and path[:2] == ["metadata", "pkg"]
+                        and path[3] in {"mods.xml", "premis.xml", "mets.xml"}):
+                    return {"source_record_identifier": [path[2]],
+                            "source_record_type": [path[3][:-4]], "extension": ["xml"]}
                 if (url.hostname == "api.govinfo.gov" and len(path) == 3
                         and path[0] == "packages" and path[2] == filename == "summary"):
                     return {"source_record_identifier": [path[1]],
@@ -1731,7 +1739,7 @@ def extract(item):
                     return {"source_record_type": ["error-page"],
                             **({"extension": ["aspx"]} if filename == "Error.aspx" else {})}
             if (
-                filename.isascii() and filename.isdigit()
+                filename and filename.isascii() and filename.isdigit()
                 and url.scheme in {"http", "https"}
                 and url.hostname == "api.congress.gov"
                 and len(path) == 5
@@ -1745,6 +1753,8 @@ def extract(item):
                 }
         except ValueError:
             pass  # Retain the ordinary invalid-URL fallback below.
+    if filename is None:
+        return {}
     try:
         try:
             result = ENGINE.extract(filename, source_url=source_url)
