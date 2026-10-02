@@ -860,6 +860,9 @@ SOURCE_CONTEXT_FIELDS = frozenset(
         "source_capture_pointer",
         "source_capture_url",
         "source_occurrence_scope",
+        "source_probe_status",
+        "source_probe_method",
+        "source_probe_checked_at",
         "source_occurrences",
     }
 )
@@ -1444,7 +1447,7 @@ def refresh_response_metadata(root, rows):
                           & set(archive.schema_arrow.names))
     for batch in archive.iter_batches(columns=sorted(columns)):
         selected = pa.Table.from_batches([batch])
-        selected = selected.filter(pc.is_in(selected["body_key"], value_set=bodies))
+        selected = selected.filter(pc.is_in(pc.cast(selected["body_key"], pa.string()), value_set=bodies))
         for capture in selected.to_pylist():
             references[capture["receipt_key"]][capture["receipt_line"]].append(capture)
     for receipt, lines in sorted(references.items()):
@@ -1510,7 +1513,7 @@ def refresh_source_metadata(root, context=None):
             # from XML/receipts. Keep those paired observations; parser-inferred
             # fields are replaced by the fresh interpretation below.
             native = [o for o in row.get("source_occurrences") or []
-                      if o.get("source_document_type_basis") == ["publisher"]]
+                      if o.get("source_document_type_basis") == ["publisher"] or o.get("source_probe_status")]
             added = context.for_url(row.get("source_url"))
             if native:
                 added["source_occurrences"] = merge_values(
@@ -1788,6 +1791,11 @@ def write_filename_metadata(
 ):
     """Interpret supplied source rows; acquisition and storage discovery stay outside."""
     started = time.monotonic()
+    from congress_api.retention.document_recovery import recover_sources, recovery_fingerprint
+    if (root / 'indexes/captures.parquet').exists():
+        source_rows = recover_sources(source_rows, pq.ParquetFile(root / 'indexes/captures.parquet'),
+            read_receipt=lambda key: (root / key).read_bytes())
+        metadata = {**(metadata or {}), 'retained_recovery_fingerprint': recovery_fingerprint()}
     inputs = defaultdict(list)
     bodies, names = set(), set()
     for source in source_rows:
@@ -1954,7 +1962,9 @@ def refresh_filename_metadata(root, *, workers=4):
         for batch in source.iter_batches(columns=fields)
         for row in batch.to_pylist()
     )
-    return write_filename_metadata(root, rows, workers=workers)
+    return write_filename_metadata(root, rows, workers=workers, metadata={
+        key.decode(): value.decode() for key, value in (source.schema_arrow.metadata or {}).items()
+        if key in {b'raw_capture_rows', b'retained_recovery_fingerprint'}})
 
 
 def reindex_documents(root):

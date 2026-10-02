@@ -17,6 +17,7 @@ import pyarrow.parquet as pq
 
 from congress_api.retention import document_index as index
 from congress_api.retention.document_evidence import read_retained_body
+from congress_api.retention.document_recovery import recover_sources, recovery_fingerprint
 
 FILENAMES = "indexes/document-filenames.parquet"
 DOCUMENTS = "indexes/documents.parquet"
@@ -138,16 +139,19 @@ def rebuild_catalog(store, captures, *, seeds=(), workers=4):
     for row in sources.values():
         for field, values in context.for_url(row.get("source_url")).items():
             row[field] = index.merge_values(field, row.get(field), values)
+    recovery = recovery_fingerprint()
+    replay = captures if meta.get(b'retained_recovery_fingerprint') != recovery.encode() else captures.slice(cursor)
+    source_rows = recover_sources(sources.values(), replay, read_receipt=store.read)
     with TemporaryDirectory(prefix="raw-catalog-") as directory:
         root = Path(directory)
         (root / "indexes").mkdir()
         result = index.write_filename_metadata(
             root,
-            sources.values(),
+            source_rows,
             workers=workers,
             previous=previous,
             read_body=lambda key: read_retained_body(None, key, read_compressed=store.read),
-            metadata={"raw_capture_rows": str(len(captures))},
+            metadata={"raw_capture_rows": str(len(captures)), 'retained_recovery_fingerprint': recovery},
         )
         # The filename table is the cursor: publish it only after documents.
         store.put(DOCUMENTS, (root / DOCUMENTS).read_bytes())

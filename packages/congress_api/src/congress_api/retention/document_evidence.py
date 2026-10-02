@@ -12,6 +12,7 @@ from pathlib import Path
 import re
 from urllib.parse import unquote, urlsplit
 from xml.etree.ElementTree import ParseError
+from zipfile import is_zipfile
 
 from congress_api.parsers.house_xml import parse_house_meeting, parse_house_witnesses
 from congress_api.parsers.document_cover import COVER_FIELDS, document_cover
@@ -53,7 +54,7 @@ def body_evidence_key(row):
             and (row.get('source_record_type') in (['committee-meeting'], ['witness-list'])
                  or row.get('content_xml_root') == ['amendment-doc'])):
         return ('xml', row['body_key'])
-    if row.get('body_format') in (['pdf'], ['html']):
+    if row.get('body_format') in (['pdf'], ['html'], ['zip']):
         return ('document', row['body_key'])
     return None
 
@@ -101,6 +102,10 @@ def response_failed(row):
 
 def apply_response_role(row):
     """Recompute capture-derived failure without replacing proven source/body roles."""
+    if (not row.get('body_key') and row.get('source_probe_status')
+            and 'xml' not in row['source_probe_status']):
+        row['record_role'] = ['capture-state']
+        return
     if row.get('record_role') in (['source-record'], ['capture-state']):
         return
     if row.get('source_record_type') == ['error-page']:
@@ -193,6 +198,40 @@ def house_record(data):
     return fields
 
 
+def document_body_fields(data):
+    """Identify ambiguous bytes independently of names, headers, and HTTP status."""
+    if data is None:
+        return {}
+    if data.lstrip().startswith(b'%PDF-'):
+        return {'body_format': ['pdf']}
+    if data.startswith(b'PK\x03\x04') and is_zipfile(BytesIO(data)):
+        return {'body_format': ['zip']}
+    if fields := house_record(data):
+        return fields
+    if re.match(br'\s*(?:<!doctype\s+html|<html)\b', data, re.I):
+        fields = {'body_format': ['html']}
+        title = _PageTitle()
+        title.feed(data.decode('utf-8', errors='replace'))
+        if ' '.join(''.join(title.parts).split()).casefold() in {
+            'not found | committee repository | u.s. house of representatives',
+            'page not found | govinfo', 'u.s. senate: 404 error page', '403 forbidden',
+        }:
+            fields.update(record_role=['error-response'], source_record_type=['error-page'])
+        return fields
+    return {}
+
+
+def committee_page(row):
+    """Only known committee page routes qualify; generic HTML stays a document."""
+    try:
+        url = urlsplit(row.get('source_url') or '')
+    except ValueError:
+        return False
+    host = (url.hostname or '').lower()
+    return (host.endswith(('.house.gov', '.senate.gov')) or host in {'www.csce.gov', 'csce.gov'}) and bool(
+        re.match(r'/(?:activities/)?hearings(?:/|$)|/press-releases/|/media/media-advisories/', url.path))
+
+
 def cache_marker(row):
     return bool(re.fullmatch(r'\d+\.none', row.get('filename') or '') and any(
         'docs_house_xml' in path.split('/') for path in row.get('source_paths') or []
@@ -271,7 +310,14 @@ def enrich_sources(rows, *, read_body, extract, cached=None):
 
     body_fields = {key: fields for (family, key), fields in cached.items() if family == 'document'}
     for row in rows:
-        if not ENCODED_NAME.match(row.get('filename') or ''):
+        name = row.get('filename') or ''
+        encoded = ENCODED_NAME.match(name)
+        # Normal named PDFs already have a bounded cover reader. Inspect missing
+        # or misleading format hints, including anonymous copies and HTML caches.
+        if row.get('record_role') in (['source-record'], ['capture-state']):
+            continue
+        if not row.get('body_key') or (not encoded and (row.get('document_kind')
+                or name.lower().endswith(('.pdf', '.xml')))):
             continue
         candidates = sorted(urls.get(row['filename'], ()))
         names = {unquote(urlsplit(url).path.rsplit('/', 1)[-1]) for url in candidates}
@@ -284,7 +330,7 @@ def enrich_sources(rows, *, read_body, extract, cached=None):
             row.update(extract((name, candidates[0])))
             row['recovered_filename'] = [name]
             row['recovered_source_url'] = candidates
-        key = ('document', row.get('body_key'))
+        key = ('xml' if cached.get(('xml', row.get('body_key'))) else 'document', row.get('body_key'))
         if key in cached:
             row.update(cached[key])
             body_fields[row.get('body_key')] = cached[key]
@@ -292,26 +338,17 @@ def enrich_sources(rows, *, read_body, extract, cached=None):
         data = read(row)
         if data is None:
             continue
-        if data.lstrip().startswith(b'%PDF-'):
-            row['body_format'] = ['pdf']
-        elif re.match(br'\s*(?:<!doctype\s+html|<html)\b', data, re.I):
-            row['body_format'] = ['html']
-            title = _PageTitle()
-            title.feed(data.decode('utf-8', errors='replace'))
-            if ' '.join(''.join(title.parts).split()).casefold() == (
-                'not found | committee repository | u.s. house of representatives'
-            ):
-                row['record_role'] = ['error-response']
-                row['source_record_type'] = ['error-page']
-        body_fields[row['body_key']] = {
-            key: row[key] for key in ('body_format', 'record_role', 'source_record_type')
-            if key in row and (key == 'body_format' or row['record_role'] == ['error-response'])
-        }
+        body_fields[row['body_key']] = document_body_fields(data)
+        row.update(body_fields[row['body_key']])
         cached[key] = body_fields[row['body_key']]
     for row in rows:
         # The same retained bytes cannot be PDF at one URL and a Not Found page
         # at another. Keep native response headers intact alongside body evidence.
         row.update(body_fields.get(row.get('body_key'), {}))
+        if (row.get('body_format') == ['html'] and not row.get('document_kind')
+                and not row.get('source_record_type') and committee_page(row) and not response_failed(row)):
+            row['record_role'] = ['source-record']
+            row['source_record_type'] = ['committee-page']
         # Apply capture-specific failures after body evidence has been shared.
         # A failed retrieval must never poison the cache for identical bytes
         # successfully captured elsewhere, nor replace source/marker roles.

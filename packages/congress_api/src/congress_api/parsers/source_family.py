@@ -82,7 +82,7 @@ def family(source="", url="", pointer=(), media_type=""):
             x in u.query.lower() for x in ("pagenum_", "mt_page=", "page=")
         ):
             return "senate/listings"
-        if any(x in upath for x in ("/download/", "/imo/", "/uploads/")) or re.search(
+        if any(x in upath for x in ("/download/", "/services/files/", "/imo/", "/uploads/")) or re.search(
             r"\.(pdf|xml|docx?|zip|rtf)$", upath
         ):
             return "documents"
