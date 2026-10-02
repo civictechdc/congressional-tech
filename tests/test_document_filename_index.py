@@ -87,7 +87,8 @@ def test_metadata_refresh_keeps_source_rows_and_identity_without_reopening_evide
     result = json.loads(run.stdout)
     after = pq.read_table(path)
     assert result['rows'] == 1
-    assert after.select(index.SOURCE_SCHEMA.names).to_pylist() == [source]
+    assert after.select(list(source)).to_pylist() == [source]
+    assert all(after[name].to_pylist() == [None] for name in index.RESPONSE_FIELDS)
     assert after['source_id'].to_pylist() == before['source_id'].to_pylist()
     assert after['document_id'].to_pylist() == before['document_id'].to_pylist()
     assert after['subject_token'].to_pylist() == [['Levi Pesata']]
@@ -221,8 +222,9 @@ def test_build_keeps_body_coverage_and_merges_repeated_name_origins(tmp_path):
     assert hr1['measure_references'] == ['hr1']
     assert next(r for r in actual if r['body_key'] == 'unknown')['measure_references'] is None
     assert not DIAGNOSTICS & set(table.schema.names)
-    assert all(pa.types.is_string(f.type) or
+    assert all(f.name == 'source_occurrences' or pa.types.is_string(f.type) or
                (pa.types.is_list(f.type) and pa.types.is_string(f.type.value_type)) for f in table.schema)
+    assert pa.types.is_struct(table.schema.field('source_occurrences').type.value_type)
     assert not (tmp_path/'bodies').exists()
 
 
@@ -523,7 +525,11 @@ def test_retained_redirect_transfers_link_context_without_guessing_from_basename
     assert context.for_url('https://unrelated.test/hash.spw.pdf') == {}
     context.add_redirect({'url': requested, 'final_url': 'https://www.epw.senate.gov/login',
                           'http_status': 403, 'usable': False})
-    assert context.for_url('https://www.epw.senate.gov/login') == {}
+    failed = context.for_url('https://www.epw.senate.gov/login')
+    assert failed['source_page_url'] == ['https://www.epw.senate.gov/hearings/one']
+    assert failed['source_association_basis'] == ['publisher_redirect']
+    assert failed['source_associated_url'] == [requested]
+    assert 'document_kind' not in failed  # Provenance is not usable-content evidence.
 
 
 def test_legacy_misrouted_downloads_recover_retained_bodies(tmp_path):
@@ -559,10 +565,11 @@ def test_source_refresh_preserves_parser_fields_ids_and_alias_context(tmp_path):
     index.refresh_source_metadata(tmp_path,context)
     after=pq.read_table(path)
     unchanged=[name for name in before.column_names
-               if name not in {'document_kind', 'document_kind_source'}]
+               if name not in {'document_kind', 'document_kind_source', 'document_family'}]
     assert before.select(unchanged).equals(after.select(unchanged),check_metadata=False)
     assert after['document_kind'].to_pylist()==[['support-document'],None]
     assert after['document_kind_source'].to_pylist()==[['source_document_type'],None]
+    assert after['document_family'].to_pylist()==[['supporting-material'],None]
     docs=pq.read_table(path.with_name('documents.parquet')).to_pylist()
     assert len(docs)==1 and docs[0]['source_committee_code']==['hsif14']
     assert docs[0]['committee_code']==['IF14']

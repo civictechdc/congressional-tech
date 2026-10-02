@@ -41,13 +41,25 @@ class WitnessCard(SourceModel):
     fields: list[WitnessField]
     location: str | None = None
     panel: str | None = None
+    role: str | None = None
 
 
-class DocumentMetadata(SourceModel):
+class DocumentLinkFields(SourceModel):
     labels: list[str]
     attributes: list[dict[str, str]]
     container_attributes: list[dict[str, str]]
     witness_indexes: list[Annotated[int, Field(ge=0)]]
+
+
+class DocumentOccurrence(DocumentLinkFields):
+    """One literal anchor, with its own heading and witness-card association."""
+    headings: list[str] = Field(default_factory=list)
+    # Publisher ownership can be a group or a name we cannot safely split.
+    witness_card: WitnessCard | None = None
+
+
+class DocumentMetadata(DocumentLinkFields):
+    occurrences: list[DocumentOccurrence] = Field(default_factory=list)
 
 
 class EmbeddedMedia(SourceModel):

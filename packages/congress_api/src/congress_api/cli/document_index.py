@@ -31,12 +31,12 @@ def main():
     refresh.add_argument(
         "--metadata-only",
         action="store_true",
-        help="Reparse indexed filenames and selected retained House bodies; no discovery or network access",
+        help="Reparse indexed filenames and selected retained records/PDF covers; no discovery or network access",
     )
     refresh.add_argument(
         "--source-metadata-only",
         action="store_true",
-        help="Add retained parent meeting/page metadata to existing documents; no filename parsing or fetching",
+        help="Refresh retained parent context, response validity and untyped PDF covers; no filename parsing or fetching",
     )
     parser.add_argument("--workers", type=int, default=4)
     args = parser.parse_args()

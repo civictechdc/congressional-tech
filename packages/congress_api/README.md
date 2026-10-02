@@ -194,6 +194,14 @@ Rebuilding reads selected retained House bodies through the configured store
 and reuses their classifications while the readers stay unchanged. It does not
 fetch files from publishers.
 
+The tables retain filename readings separately from `source_*` assertions, even
+when Congress or document types disagree. `publication_type` is the normalized
+publication code; `publication_code` retains the filename spelling. The redundant
+`publication_code_code` column is omitted when all its values are represented by
+`publication_type`. Empty response bodies do not identify documents or merge
+unrelated URLs. Known API summary and error endpoints retain their source-record
+role instead of becoming document subjects.
+
 A successful capture means retained bytes passed basic format checks, not verified substantive
 content or a parsed document model. A captured HTML wrapper and its download links
 have separate results. Failures retry after one day; 404/410 responses and HTML

@@ -61,6 +61,8 @@ FILE = re.compile(r"<a\b[^>]*href=\"([^\"]*(?:/download/|/media-center/files/|/w
 KINDS = [("transcript", r"transcript"), ("questions for the record", r"qfr|questions?[ \-_]for[ \-_]the[ \-_]record|responses?[ \-_]to[ \-_](?:written[ \-_])?questions"),
          ("questionnaire", r"questionnaire"), ("witness biography", r"\bbio(?:graphy)?\b|/bio_"), ("witness statement", r"testimony"), ("member statement", r"statement")]
 
+AMENDMENT_LIST = re.compile(r".+\bas (?:amended|modified) by(?::(?:\s*PASSED BY VOICE VOTE)?)?", re.I)
+
 
 def person(name, details, page):
     """One witness row from a name as the page writes it ("The Honorable Jay Bhattacharya, M.D., Ph.D.") and the lines under it."""
@@ -130,10 +132,84 @@ def witnesses(page_html, url):
     return [w for w in out if is_name(w["name"]) and not (w["name"] in seen or seen.add(w["name"]))]
 
 
-def documents(page_html, url):
+def section_document_kind(metadata):
+    """Read an exact publisher section label, never a substring of a topic.
+
+    A URL appearing under different sections keeps separate occurrence claims;
+    its aggregate type is supplied only when every occurrence agrees.
+    """
+    occurrences = (metadata or {}).get("occurrences") or [metadata or {}]
+    kinds = []
+    for occurrence in occurrences:
+        headings = occurrence.get("headings") or []
+        heading = headings[0].strip().rstrip(":").strip() if len(headings) == 1 else ""
+        kind = None
+        if re.fullmatch(r"(?:hearing |related )?transcripts?", heading, re.I):
+            kind = "transcript"
+        elif re.fullmatch(r"(?:(?:witness|written|prepared) )?testimony(?: on the following bills| submitted for the record)?", heading, re.I):
+            kind = "witness statement"
+        elif re.fullmatch(r"member statements?", heading, re.I):
+            kind = "member statement"
+        elif re.fullmatch(r"legislation", heading, re.I):
+            kind = "legislative text"
+        elif re.fullmatch(r"(?:stakeholder )?responses to senators['’]? questions", heading, re.I):
+            kind = "questions for the record"
+        elif (re.fullmatch(r"(?:view (?:the manager['’]s|all agreed to member) )?amendments", heading, re.I)
+              or AMENDMENT_LIST.fullmatch(heading)):
+            kind = "committee amendment"
+        kinds.append(kind)
+    return kinds[0] if kinds[0] and all(kind == kinds[0] for kind in kinds) else None
+
+
+def literal_document_kind(label, url):
+    """The existing link-word inference, independent of page structure."""
+    return next((kind for kind, pattern in KINDS
+        if re.search(pattern, f"{label} {url.rsplit('/', 1)[-1]}", re.I)), "other")
+
+
+def document_context(metadata):
+    """Return an agreed type and its evidence basis from scoped occurrences."""
+    results = []
+    for occurrence in (metadata or {}).get("occurrences") or [metadata or {}]:
+        kind = section_document_kind(occurrence)
+        basis = "publisher_section_heading" if kind else None
+        labels = occurrence.get("labels") or []
+        # The broad section can contain a bill and amendments to it. Only an
+        # explicit amendment label establishes the more specific form.
+        if kind == "legislative text" and any(re.fullmatch(
+                r"(?:[\w’'.-]+\s+){0,5}Amendment\s+(?:to|fo)\s+(?:S\.|H\.?\s*R\.?)\s*\d+", label.strip(), re.I)
+                for label in labels):
+            kind, basis = "committee amendment", "publisher_link_label"
+        # An amendment list may also link its summary. Keep that document form.
+        if kind == "committee amendment" and any(re.fullmatch(
+                r"(?:amendment )?summar(?:y|ies)", label.strip(), re.I) for label in labels):
+            kind, basis = "summary", "publisher_link_label"
+        primary_witness_file = any("Button--hearingLink" in (a.get("class") or "").split()
+                                   for a in occurrence.get("attributes") or [])
+        if not kind and primary_witness_file and (occurrence.get("witness_card")
+                or len(occurrence.get("witness_indexes") or []) == 1):
+            urls = [a.get("href", "") for a in occurrence.get("attributes") or []]
+            literal = literal_document_kind(" ".join(labels), " ".join(urls))
+            # A biography, transcript or QFR can share the witness's card.
+            if literal in {"other", "member statement", "witness statement"}:
+                member = (occurrence.get("witness_card") or {}).get("role") == "member"
+                kind = "member statement" if member else "witness statement"
+                basis = "publisher_member_card" if member else "publisher_witness_card"
+        results.append((kind, basis))
+    return results[0] if all(result == results[0] for result in results) else (None, None)
+
+
+def document_kind(label, url, metadata=None):
+    """Prefer publisher context to the legacy link-word inference."""
+    return document_context(metadata)[0] or literal_document_kind(label, url)
+
+
+def documents(page_html, url, metadata=None):
     """(kind, name, file) for each file a hearing page links. The name is the link's own words; under a button
     ("Download Testimony"), the heading it stands under, the witness or senator whose file it is; and the file's
     own name when the link is a picture."""
+    if metadata is None:
+        metadata, _, _ = source_details(page_html, url, witnesses(page_html, url))
     page_html, out = re.sub(r"<!--.*?-->", "", page_html, flags=re.S), {}
     for link in FILE.finditer(page_html):
         file = html.unescape(link.group(1)).strip()
@@ -143,8 +219,87 @@ def documents(page_html, url):
         said = text(link.group(2))
         heading = re.findall(r"<h[2-5][^>]*>(.*?)</h[2-5]>", page_html[max(0, link.start() - 2500):link.start()], re.S)
         name = text(heading[-1]) if heading and re.match(r"(download|view|read|open)\b", said, re.I) else said or file.rsplit("/", 1)[-1]
-        out.setdefault(file, (next((k for k, pattern in KINDS if re.search(pattern, f"{said} {file.rsplit('/', 1)[-1]}", re.I)), "other"), name, file))
+        out.setdefault(file, (document_kind(said, file, metadata.get(file)), name, file))
     return list(out.values())
+
+
+def paragraph_headings(paragraph, anchor=None):
+    """Bold labels on their own visual line also delimit a publisher section.
+
+    EPW embeds these lines in paragraphs using repeated br tags. Inline emphasis
+    in prose is not a heading. An inline label followed by links stays local to
+    its paragraph and is handled separately by link_headings.
+    """
+    markup = dom.tostring(paragraph, encoding="unicode", with_tail=False)
+    nodes = list(paragraph.iter())
+    limit = nodes.index(anchor) if anchor is not None else len(nodes)
+    result, start = [], 0
+    for node in paragraph.xpath(".//strong|.//b"):
+        written = dom.tostring(node, encoding="unicode", with_tail=False)
+        position = markup.find(written, start)
+        if position < 0:
+            continue
+        start = position + len(written)
+        # A bold file title is not a new section. EPW's linked QFR heading
+        # is an explicit section label and can name its own download.
+        if node.xpath(".//a") and not section_document_kind({"headings": [" ".join(node.text_content().split())]}):
+            continue
+        before = re.split(r"<br\b[^>]*>", markup[:position])[-1]
+        after = re.split(r"<br\b[^>]*>", markup[start:])[0]
+        if nodes.index(node) < limit and not text(before) and not text(after):
+            result.append(node)
+    return result
+
+
+def link_headings(anchor):
+    """Find the closest enclosing section's heading in DOM order.
+
+    Foreign Relations and Aging wrap the heading in Hearing__sectionHeading.
+    Do not cross a separate section, navigation region, or witness card to find
+    a heading. An adjacent section's heading never describes this anchor.
+    """
+    heading_tags = {"h1", "h2", "h3", "h4", "h5", "h6"}
+    branch = anchor
+    for ancestor in anchor.iterancestors():
+        headings = paragraph_headings(ancestor, anchor) if ancestor.tag == "p" else []
+        # Indian Affairs places a bold label and several bill links in one
+        # paragraph. Its label describes those files, not the next paragraph.
+        inline = (ancestor.tag == "p" and not (ancestor.text or "").strip()
+                  and len(ancestor) and ancestor[0].tag in {"strong", "b"})
+        for sibling in ancestor:
+            if sibling is branch:
+                break
+            if sibling.tag in heading_tags:
+                headings.append(sibling)
+            elif inline and sibling.tag in {"strong", "b"} and not sibling.xpath(".//a"):
+                headings.append(sibling)
+            elif set((sibling.get("class") or "").split()) & {"Hearing__sectionHeading", "Heading--sectionTitle"}:
+                headings.extend(sibling.xpath("./h1|./h2|./h3|./h4|./h5|./h6"))
+            elif "AdditionalContent" in (sibling.get("class") or "").split() and not sibling.xpath(".//a"):
+                headings.extend(sibling.xpath("./div[contains(concat(' ', normalize-space(@class), ' '), ' Heading--sectionTitle ')]/h2"))
+            elif sibling.tag == "p":
+                headings.extend(paragraph_headings(sibling))
+        # Commerce introduces one amendment list with its bill/substitute.
+        # The introduction does not describe links after that list.
+        if branch.tag in {"ul", "ol"}:
+            previous = branch.getprevious()
+            while previous is not None and not isinstance(previous.tag, str):
+                previous = previous.getprevious()
+            if previous is not None and previous.tag in {"p", "li"} and AMENDMENT_LIST.fullmatch(
+                    " ".join(previous.text_content().split())):
+                headings.append(previous)
+        headings = [node for node in headings if node.text_content().strip()]
+        if headings:
+            # Inline tags can split a word ("Question<a>...</a>s") or precede
+            # punctuation; keep the publisher's contiguous text intact.
+            return [" ".join(headings[-1].text_content().split())]
+        classes = set((ancestor.get("class") or "").split())
+        if ancestor.tag in {"section", "article", "nav", "aside", "footer", "main"} or classes & {
+                "Hearing__section", "vcard", "capigacr-widget-card", "paragraph--witness",
+                "field-collection-item-field-hearing-new-witness", "jet-listing-grid__item"}:
+            break
+        branch = ancestor
+    return []
 
 
 def century_year(year: int) -> int:
@@ -317,7 +472,7 @@ def source_details(page_html, url, people):
             family = "list-group-item"
         if family:
             cards.append((node, family))
-    witnesses_by_node, witness_metadata = {}, {}
+    witnesses_by_node, witness_metadata, cards_by_node = {}, {}, {}
     for card, family in cards:
         selectors = {"capigacr-widget-card": "capigacr-widget-card__title", "vcard": "fn",
                      "paragraph--witness": "witness__field-name", "field-collection-item-field-hearing-new-witness": "group-header",
@@ -337,9 +492,8 @@ def source_details(page_html, url, people):
             raw_name = value(headings[-1]) if headings else (value(above[0]) if above else "")
             raw_name = re.sub(r"^\d+\.\s*", "", raw_name)
         matches = by_name.get(witness(raw_name)["name"], []) if raw_name.strip() else []
-        if len(matches) != 1:
+        if not raw_name.strip():
             continue
-        index = matches[0]
         fields = []
         field_classes = {"title", "org", "occupation", "organization", "member-detail-item", "locality", "region",
                          "witness__field-position", "witness__field-organization", "jet-listing-dynamic-field__content"}
@@ -351,6 +505,8 @@ def source_details(page_html, url, people):
                     fields.append({"class": node.get("class", ""), "text": written})
         metadata = {"layout": family, "name": raw_name.strip(), "text": value(card), "attributes": dict(card.attrib), "fields": fields}
         for ancestor in card.iterancestors():
+            if has(ancestor, "Hearing__additionalContentSection--members"):
+                metadata["role"] = "member"
             if has(ancestor, "capigacr-widget-card__panel-section"):
                 headings = nodes(ancestor, "capigacr-widget-card__panel-section-title")
                 if len(headings) == 1:
@@ -360,8 +516,11 @@ def source_details(page_html, url, people):
                          re.fullmatch(r"[^,]+,\s*[A-Z]{2}(?:\s+\d{5})?", field["text"])), None)
         if location:
             metadata["location"] = location
-        witness_metadata[str(index)] = metadata
-        witnesses_by_node[card] = index
+        cards_by_node[card] = metadata
+        if len(matches) == 1:
+            index = matches[0]
+            witness_metadata[str(index)] = metadata
+            witnesses_by_node[card] = index
     # Separate cards with the same parsed name are not proof that their people
     # are identical. The older witness list may already have deduplicated names.
     repeated = {index for index, count in Counter(witnesses_by_node.values()).items() if count > 1}
@@ -375,24 +534,31 @@ def source_details(page_html, url, people):
             continue
         if (anchor.get("type") or "").lower() in ("application/rss+xml", "application/atom+xml") or re.search(r"/(?:rss|atom|sitemap)\.xml(?:$|[?#])", href, re.I):
             continue
-        entry = files.setdefault(href, {"labels": [], "attributes": [], "container_attributes": [], "witness_indexes": []})
+        entry = files.setdefault(href, {"labels": [], "attributes": [], "container_attributes": [], "witness_indexes": [], "occurrences": []})
         label = value(anchor)
+        occurrence = {"labels": [label] if label else [], "attributes": [dict(anchor.attrib)],
+                      "container_attributes": [], "witness_indexes": [], "headings": link_headings(anchor)}
         if label and label not in entry["labels"]:
             entry["labels"].append(label)
         attributes = dict(anchor.attrib)
         if attributes not in entry["attributes"]:
             entry["attributes"].append(attributes)
-        # The closest card wins; nested template containers cannot attach a file
-        # to another witness elsewhere on the page.
+        # The closest card wins; retain each anchor separately so two anchors
+        # for one URL cannot cross-pair their labels and witness ownership.
         for ancestor in anchor.iterancestors():
             attributes = {key: value for key, value in ancestor.attrib.items() if key.startswith("data-")}
-            if attributes and attributes not in entry["container_attributes"]:
-                entry["container_attributes"].append(attributes)
-            if ancestor in witnesses_by_node:
-                index = witnesses_by_node[ancestor]
-                if index not in entry["witness_indexes"]:
-                    entry["witness_indexes"].append(index)
+            if attributes and attributes not in occurrence["container_attributes"]:
+                occurrence["container_attributes"].append(attributes)
+            if ancestor in cards_by_node:
+                occurrence["witness_card"] = cards_by_node[ancestor]
+                if ancestor in witnesses_by_node:
+                    occurrence["witness_indexes"].append(witnesses_by_node[ancestor])
                 break
+        for field in ("container_attributes", "witness_indexes"):
+            for item in occurrence[field]:
+                if item not in entry[field]:
+                    entry[field].append(item)
+        entry["occurrences"].append(occurrence)
     # Non-file links can identify bills, nominations or witness organizations.
     # Retain their literal destinations without interpreting or following them.
     page_metadata["links"] = [{"text": value(anchor), "attributes": dict(anchor.attrib)}

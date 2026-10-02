@@ -2,7 +2,8 @@
 
 Live observations are protected. A cached page can enrich legacy state only when
 its parsed text lines exactly match the saved lines. Existing witness/document
-rows and associations are retained, so richer metadata does not change their IDs.
+URLs, labels and associations are retained. Explicit sections can refine an
+"other" document type without changing the source identity.
 Run with explicit, distinct input/output paths; nothing fetches or rematches.
 
 Compatibility and source-specific protection rules:
@@ -21,7 +22,7 @@ from pathlib import Path
 from congress_api.acquisition.senate import DOCUMENT_FIELDS, PAGE_FIELDS, WITNESS_FIELDS
 from congress_api.matching.senate_pages import mark_possible_matches, normalize_senate_state, retained_matches
 from congress_api.parsers.senate import PARSER_VERSION, parsed
-from congress_api.parsers.senate_page import source_details
+from congress_api.parsers.senate_page import document_context, source_details
 from congress_api.retention.senate import cached_html_path
 from congress_api.retention.tables import read_state, write_csv, write_state
 
@@ -56,8 +57,19 @@ def replay(state, cache, *, meetings, parsed_at=None):
             metadata, people, content = source_details(raw, url, page.get("witnesses") or [])
             page["document_metadata"], page["witness_metadata"], page["page_metadata"] = metadata, people, content
             page["document_labels"] = {**fresh.get("document_labels", {}), **page.get("document_labels", {})}
-            # Preserve the existing source rows and their identity. Additional
-            # directly linked formats do not overwrite a previous description.
+            # Keep labels/URLs and replace only the uninformative fallback with
+            # an explicit publisher section. Conflicting known types stay put.
+            documents = []
+            for document in page.get("documents", []):
+                kind, label, file = document
+                context_kind, basis = document_context(metadata.get(file))
+                if kind == "other" and context_kind:
+                    kind = context_kind
+                    counts["document_types_from_witness_cards" if basis == "publisher_witness_card"
+                           else "document_types_from_sections"] += 1
+                documents.append(type(document)((kind, label, file)))
+            page["documents"] = documents
+            # Additional directly linked formats keep their own description.
             known = {document[2] for document in page.get("documents", [])}
             additions = [list(document) for document in fresh["documents"] if document[2] not in known]
             page.setdefault("documents", []).extend(additions)

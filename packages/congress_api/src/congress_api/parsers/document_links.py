@@ -10,11 +10,26 @@ FILE = re.compile(r'\.(?:pdf|xml|docx?|xlsx?|pptx?|zip|rtf|txt|csv)(?:$|[?#])', 
 PROMPT = re.compile(r'(?:please )?click here[.!]?|download(?: file)?|continue|pdf|xml|docx?|xlsx?|pptx?|zip|rtf|txt|csv', re.I)
 
 
+def remove_dot_segments(path):
+    """Normalize literal URL path dots, preserving escapes and repeated slashes."""
+    segments = path.split('/')
+    result = []
+    for index, segment in enumerate(segments):
+        if segment == '..':
+            if len(result) > 1:
+                result.pop()
+        elif segment != '.':
+            result.append(segment)
+        if segment in {'.', '..'} and index == len(segments) - 1:
+            result.append('')
+    return '/'.join(result)
+
+
 def http_url(value, base=''):
     try:
         url = urlsplit(urljoin(base, value))
         if url.scheme in ('https', 'http') and url.hostname and not url.username and not url.password:
-            return urlunsplit(url._replace(fragment=''))
+            return urlunsplit(url._replace(path=remove_dot_segments(url.path), fragment=''))
     except ValueError:
         pass
     return None

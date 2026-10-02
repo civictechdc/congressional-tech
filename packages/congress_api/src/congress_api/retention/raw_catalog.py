@@ -47,7 +47,7 @@ def rebuild_catalog(store, captures, *, seeds=(), workers=4):
         )
         for field, items in values.items():
             if items:
-                row[field] = sorted(set(row.get(field) or []) | set(items))
+                row[field] = index.merge_values(field, row.get(field), items)
         return row
 
     context = index.DocumentSources()
@@ -100,6 +100,8 @@ def rebuild_catalog(store, captures, *, seeds=(), workers=4):
                 link_names(link)
             for link in record.get("links", []):
                 link_names(link)
+            context.add_redirect(record)
+            context.add_associations(record)
             for row in rows:
                 if json.loads(row.get("pointer_json") or "[]") not in (
                     [],
@@ -132,10 +134,10 @@ def rebuild_catalog(store, captures, *, seeds=(), workers=4):
             for row in captured[(name, url)]:
                 for field, items in old.items():
                     if isinstance(items, list):
-                        row[field] = sorted(set(row.get(field) or []) | set(items))
+                        row[field] = index.merge_values(field, row.get(field), items)
     for row in sources.values():
         for field, values in context.for_url(row.get("source_url")).items():
-            row[field] = sorted(set(row.get(field) or []) | set(values))
+            row[field] = index.merge_values(field, row.get(field), values)
     with TemporaryDirectory(prefix="raw-catalog-") as directory:
         root = Path(directory)
         (root / "indexes").mkdir()

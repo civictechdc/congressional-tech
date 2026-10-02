@@ -1,0 +1,94 @@
+[
+  {
+    "fixture": "coverless.pdf",
+    "original_filename": "06-09-2026_personnel_markup.pdf",
+    "body_key": "bodies/sha256/3b/3b30dea350bb6edc386208f479e4df3d24e0d09351700db50636218ebd07d61a.gz",
+    "pages": [
+      1,
+      2
+    ]
+  },
+  {
+    "fixture": "stenographic.pdf",
+    "original_filename": "19-13_02-14-191.pdf",
+    "body_key": "bodies/sha256/72/729cfe0092f3f8720f673c5c232cb0ba7ec88818890183c30ea88857db6cc2a0.gz",
+    "pages": [
+      1,
+      2
+    ]
+  },
+  {
+    "fixture": "bill.pdf",
+    "original_filename": "Agriculture, Rural Development, Food and Drug Administration, and Related Agencies Bill.PDF",
+    "body_key": "bodies/sha256/7c/7cd92bd648c92209e6903ea9e9ab33182366e9ef555ae2dc4db5c1cc1a5820fc.gz",
+    "pages": [
+      1,
+      2
+    ]
+  },
+  {
+    "fixture": "letter.pdf",
+    "original_filename": "alecia.pdf",
+    "body_key": "bodies/sha256/33/334eb5fca4536e78022f69deb0a46a35227579fea10d5db18137ab6d68cfaebd.gz",
+    "pages": [
+      1,
+      2
+    ]
+  },
+  {
+    "fixture": "email.pdf",
+    "original_filename": "alex.pdf",
+    "body_key": "bodies/sha256/22/22a58cb727e5a9f55cf889ca779efec4938eeff699b094868ef35d14147b53a2.gz",
+    "pages": [
+      1
+    ]
+  },
+  {
+    "fixture": "opening.pdf",
+    "original_filename": "Cavoli EUCOM 05.26.22_final.pdf",
+    "body_key": "bodies/sha256/0d/0dc58219d087a95eef9103efd47e3e4ce4305d41a93680032706c88d82aed511.gz",
+    "pages": [
+      1,
+      2
+    ]
+  },
+  {
+    "fixture": "substitute.pdf",
+    "original_filename": "loeffler-amendment-fo-s3235",
+    "body_key": "bodies/sha256/b6/b6cdc44046ed8c4f00e68629c95c1835908d0c97916a85cf871d14132f72962b.gz",
+    "pages": [
+      1,
+      2
+    ]
+  },
+  {
+    "fixture": "paper-questions.pdf",
+    "original_filename": "SASC Army FY21 Posture Hearing Questions_.pdf",
+    "body_key": "bodies/sha256/f1/f14de07e391ee08bd0644bfd02b9ceacac307139e652814e26e291de38f3356d.gz",
+    "pages": [
+      1,
+      2
+    ]
+  },
+  {
+    "fixture": "testimony.pdf",
+    "original_filename": "SCA_Platt_7_26_17.pdf",
+    "body_key": "bodies/sha256/90/905854efccf453a390863ff041109ccfe35108137ba0801fd2fd54f9ebad48bb.gz",
+    "pages": [
+      1,
+      2
+    ]
+  },
+  {
+    "fixture": "substitute-original.pdf",
+    "original_filename": "loeffler-amendment-fo-s3235",
+    "body_key": "bodies/sha256/b6/b6cdc44046ed8c4f00e68629c95c1835908d0c97916a85cf871d14132f72962b.gz",
+    "pages": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "unchanged_original": true
+  }
+]

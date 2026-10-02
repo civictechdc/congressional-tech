@@ -12,7 +12,7 @@ from congress_api.models.senate import ListingRow, SenatePage
 from congress_api.parsers.senate_page import (
     DATE,
     HEARING_LINK,
-    KINDS,
+    document_kind,
     document_labels,
     documents,
     event_details,
@@ -23,7 +23,7 @@ from congress_api.parsers.senate_page import (
 )
 from congress_api.parsers.text import text
 
-PARSER_VERSION = 5
+PARSER_VERSION = 10
 
 
 def parse_page(page: str | bytes, url: str) -> SenatePage:
@@ -37,15 +37,16 @@ def parse_page(page: str | bytes, url: str) -> SenatePage:
         original = page.encode("utf-8")
     title = re.search(r'<meta property="og:title" content="([^"]+)"|<title>(.*?)</title>', page, re.S)
     result = {"title": text(title.group(1) or title.group(2)).split(" | ")[0] if title else "",
-              "lines": sorted(lines(page)), "witnesses": witnesses(page, url), "documents": documents(page, url)}
+              "lines": sorted(lines(page)), "witnesses": witnesses(page, url)}
     if labels := document_labels(page, url):
         result["document_labels"] = labels
     result["document_metadata"], result["witness_metadata"], result["page_metadata"] = source_details(page, url, result["witnesses"])
+    result["documents"] = documents(page, url, result["document_metadata"])
     known = {row[2] for row in result["documents"]}
     for file, metadata in result["document_metadata"].items():
         if file not in known:
             label = next(iter(metadata["labels"]), "")
-            kind = next((kind for kind, pattern in KINDS if re.search(pattern, f"{label} {file.rsplit('/', 1)[-1]}", re.I)), "other")
+            kind = document_kind(label, file, metadata)
             result["documents"].append((kind, label or file.rsplit("/", 1)[-1], file))
     event = event_details(page, url)
     if event:

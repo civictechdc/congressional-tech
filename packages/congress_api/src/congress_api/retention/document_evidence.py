@@ -1,4 +1,4 @@
-"""Interpret selected retained House records without changing their source locators.
+"""Interpret selected retained records and PDF covers without changing source locators.
 
 The caller supplies body reading and filename interpretation. Publisher filenames
 are recovered only by forward-matching known URLs through the legacy cache key.
@@ -14,15 +14,16 @@ from urllib.parse import unquote, urlsplit
 from xml.etree.ElementTree import ParseError
 
 from congress_api.parsers.house_xml import parse_house_meeting, parse_house_witnesses
+from congress_api.parsers.document_cover import COVER_FIELDS, document_cover
 from congress_api.parsers.xml import parse_xml, xml_element
 
 
 FIELDS = frozenset({
-    'record_role', 'body_format', 'content_document_kind', 'cache_marker_state',
+    'record_role', 'body_format', 'content_document_kind', 'content_citation', 'cache_marker_state',
     'attempted_url', 'recovered_filename', 'recovered_source_url',
     'source_record_document_url',
     'content_xml_root', 'content_amendment_type', 'content_amendment_stage',
-    'content_amendment_degree', 'content_legis_num',
+    'content_amendment_degree', 'content_legis_num', *COVER_FIELDS,
 })
 ENCODED_NAME = re.compile(r'house_\d+_documents_')
 BODY_FIELDS = FIELDS - {'recovered_filename', 'recovered_source_url'} | {
@@ -35,9 +36,10 @@ def evidence_fingerprint():
     import congress_api.models.house as models
     import congress_api.models.xml as xml_models
     import congress_api.parsers.house_xml as house_xml
+    import congress_api.parsers.document_cover as document_cover
     import congress_api.parsers.xml as xml
     digest = sha256()
-    for path in (__file__, models.__file__, xml_models.__file__, house_xml.__file__, xml.__file__):
+    for path in (__file__, models.__file__, xml_models.__file__, house_xml.__file__, xml.__file__, document_cover.__file__):
         digest.update(Path(path).read_bytes())
     return digest.hexdigest()
 
@@ -58,12 +60,53 @@ def body_evidence_key(row):
 
 def cached_body_fields(row, key):
     if key[0] == 'document':
-        fields = {'body_format'}
-        if row.get('record_role') == ['error-response']:
+        fields = {'body_format', *COVER_FIELDS}
+        if row.get('source_record_type') == ['error-page']:
             fields |= {'record_role', 'source_record_type'}
     else:
         fields = BODY_FIELDS
-    return {k: v for k, v in row.items() if k in fields and v}
+    cached = {k: v for k, v in row.items() if k in fields and v}
+    if key[0] == 'xml' and cached.get('record_role') == ['error-response']:
+        # XML meaning follows bytes; a failed retrieval belongs to its capture.
+        cached['record_role'] = ['source-record' if cached.get('source_record_type') == ['committee-meeting']
+                                 else 'document']
+    return cached
+
+
+def response_failed(row):
+    """Whether the retained response evidence establishes a failed capture.
+
+    Flat lists can contain both a successful capture and an older failure.
+    Mixed values therefore do not establish failure. A validated usable result
+    outweighs status history, but not explicit incomplete bytes or a failed
+    content inspection. Missing/deferred validation is never itself failure.
+    """
+    usable = set(row.get('response_usable') or [])
+    complete = set(row.get('response_body_complete') or [])
+    if usable == {'false'} or complete == {'false'}:
+        return True
+    outcomes = set(row.get('capture_outcome') or [])
+    failures = {'challenge', 'incomplete', 'error', 'request_failed',
+                'http_error', 'invalid_document', 'empty', 'parse_failed'}
+    if outcomes and outcomes <= failures:
+        return True
+    if 'true' in usable:
+        return False
+    statuses = {int(value) for value in row.get('http_status') or []
+                if re.fullmatch(r'[0-9]{3}', str(value))}
+    if statuses and not any(200 <= status < 300 for status in statuses):
+        return True
+    return False
+
+
+def apply_response_role(row):
+    """Recompute capture-derived failure without replacing proven source/body roles."""
+    if row.get('record_role') in (['source-record'], ['capture-state']):
+        return
+    if row.get('source_record_type') == ['error-page']:
+        row['record_role'] = ['error-response']
+    else:
+        row['record_role'] = ['error-response' if response_failed(row) else 'document']
 
 
 def legacy_house_cache_name(url):
@@ -260,4 +303,36 @@ def enrich_sources(rows, *, read_body, extract, cached=None):
         # The same retained bytes cannot be PDF at one URL and a Not Found page
         # at another. Keep native response headers intact alongside body evidence.
         row.update(body_fields.get(row.get('body_key'), {}))
+        # Apply capture-specific failures after body evidence has been shared.
+        # A failed retrieval must never poison the cache for identical bytes
+        # successfully captured elsewhere, nor replace source/marker roles.
+        apply_response_role(row)
+    enrich_document_covers(rows, read_body=read_body)
     return rows
+
+
+def enrich_document_covers(rows, *, read_body):
+    """Fill untyped retained PDFs from explicit covers, once per body.
+
+    Known filename/source types need no PDF extraction. Content facts follow
+    identical bytes across aliases; capture failures stay capture-specific.
+    """
+    covers = {row['body_key']: {key: row[key] for key in COVER_FIELDS if row.get(key)}
+              for row in rows if row.get('body_key') and row.get('content_document_kind')
+              and row.get('body_format') == ['pdf']}
+    for row in rows:
+        key = row.get('body_key')
+        if (not key or key in covers or row.get('document_kind') or row.get('content_document_kind')
+                or row.get('record_role') in (['source-record'], ['capture-state'], ['error-response'])
+                or response_failed(row)):
+            continue
+        if (row.get('body_format') != ['pdf'] and row.get('format') != ['pdf']
+                and not (row.get('filename') or '').lower().endswith('.pdf')
+                and not any(value.split(';')[0].strip().lower() == 'application/pdf' for value in row.get('media_type') or [])):
+            continue
+        data = read_body(key)
+        covers[key] = document_cover(data) if data is not None else {}
+    for row in rows:
+        if fields := covers.get(row.get('body_key')):
+            row.update(fields)
+            row['body_format'] = ['pdf']

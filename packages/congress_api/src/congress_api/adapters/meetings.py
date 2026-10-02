@@ -67,7 +67,7 @@ def event_page(url):
 
 
 def category(row):
-    native = str(row.get("documentType") or "").strip().lower()
+    native = str(row.get("documentType") or row.get("kind") or "").strip().lower()
     # These labels describe the document itself; a title mentioning a bill or
     # witness must not replace the publisher's more specific classification.
     explicit = {
@@ -75,6 +75,7 @@ def category(row):
         "committee report": "report", "conference report": "report",
         "hearing: member roster": "hearing_record", "hearing: cover page": "hearing_record",
         "hearing: table of contents": "hearing_record",
+        "legislative text": "bill_text", "committee amendment": "amendment", "summary": "supporting",
     }
     if native in explicit:
         return explicit[native]

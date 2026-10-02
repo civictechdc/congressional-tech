@@ -30,6 +30,16 @@ FIXTURES = Path(__file__).parent / 'fixtures'
 SOURCES = FIXTURES / 'source_models'
 
 
+def test_original_link_occurrences_are_typed_and_lossless():
+    raw = b'<title>Hearing</title><section><h2>Related Files</h2><a href="/a.pdf">Article</a></section>'
+    model = records_parse_page(raw, PAGE)
+    metadata = model.document_metadata[PAGE.split('/hearings')[0] + '/a.pdf']
+    assert metadata.occurrences[0].headings == ['Related Files']
+    assert metadata.occurrences[0].labels == ['Article']
+    assert not metadata.model_extra
+    assert SenatePage.model_validate(model.source_dict()).source_dict() == model.source_dict()
+
+
 @pytest.mark.parametrize('fixture', sorted((FIXTURES / 'meeting_inventory').glob('senate-*.html')))
 def test_every_retained_page_layout_is_a_lossless_native_model(fixture):
     original = fixture.read_bytes()

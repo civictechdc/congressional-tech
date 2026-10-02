@@ -17,11 +17,11 @@ SCRIPTS = {
     'house-meeting-records', 'senate-meeting-records', 'meeting-inventory',
     'gpo-fetch', 'gpo-match',
     'senate-captions', 'hearing-transcribe', 'gpo-transcripts',
-    'congress-meetings', 'congress-committees',
+    'congress-meetings', 'congress-committees', 'raw-source-sync',
 }
 VERSIONS = {
     ('parsers/house_evidence.py', 'SCHEMA_VERSION'): '1.1',
-    ('parsers/senate.py', 'PARSER_VERSION'): 5,
+    ('parsers/senate.py', 'PARSER_VERSION'): 10,
     ('parsers/gpo_hearings.py', 'PARSER_VERSION'): '3',
     ('parsers/witness_pdf.py', 'PARSER_VERSION'): 2,
     ('transcripts/senate.py', 'CAPTURE_VERSION'): '3',

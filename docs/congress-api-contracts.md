@@ -137,7 +137,7 @@ are not separate owners. The AST registry test catches new or changed constants.
 | Owner | Version | What it governs / consumer |
 | --- | --- | --- |
 | `parsers.house_evidence.SCHEMA_VERSION` | `"1.1"` | House evidence; House reader refresh queue and House replay |
-| `parsers.senate.PARSER_VERSION` | `5` | Parsed Senate pages; bounded maintenance and Senate replay |
+| `parsers.senate.PARSER_VERSION` | `10` | Parsed Senate pages; skips empty headings, preserves joint-participant card ownership, and distinguishes explicit amendments within Legislation; bounded maintenance and Senate replay |
 | `parsers.gpo_hearings.PARSER_VERSION` | `"3"` | GPO CSV/evidence interpretation; fetch and cached replay |
 | `parsers.witness_pdf.PARSER_VERSION` | `2` | PDF/MODS witness observations; retained with names and bytes |
 | `transcripts.senate.CAPTURE_VERSION` | `"3"` | Caption-capture completeness; stale receipts trigger recapture |
@@ -208,12 +208,58 @@ Each driver remains independent. The module CLI paths are stable:
 | Driver | Admission / skip gates | Preserved values | Receipt and output |
 | --- | --- | --- | --- |
 | House | Current evidence skips; only absent/1.0 schema can upgrade. Require usable raw cache and exact `MATCH_FIELDS`: documents, witnesses, amendments, XML update, status, witness status | All saved fields except enriched `evidence` and added `replay`; especially checked/version/retrieved_at and live receipts | Explicit distinct `--state` / `--output`; sibling `house-replay.json`; per-event input paths/digests, matched fields, replay time and counts |
-| Senate | Skip live markers (`retrieved_at` on the page, `observation_check`, live `last_check` on that page's `workflow` record; an old file that still has those checks on the page is lifted before this test), current parser, missing HTML, absent title or changed text lines | Existing witnesses/document tuples, associations, check/acquisition times and prior labels; add new document URLs and structured metadata; possible-match annotations do not rematch | Distinct `--input` and `--output-dir/senate.json.gz`; three CSVs; `replay-report.json`; `workflow[url].cache_replay` has digest, parser version and null acquisition time |
+| Senate | Skip live markers (`retrieved_at` on the page, `observation_check`, live `last_check` on that page's `workflow` record; an old file that still has those checks on the page is lifted before this test), current parser, missing HTML, absent title or changed text lines | Existing witnesses, document URLs/labels, associations and check/acquisition times; an explicit section or primary witness-file button may refine `other`; add new document URLs and structured metadata; possible-match annotations do not rematch | Distinct `--input` and `--output-dir/senate.json.gz`; three CSVs; `replay-report.json`; `workflow[url].cache_replay` has digest, parser version and null acquisition time |
 | GPO | Ignore unlisted packages; skip acquired MODS; parse failures recorded. Use `merge_cached_row`, retain acquired transcripts | CSV title, held_date, last_modified, hearing_dates, text_read, committee_code/name, event_id, serial; old scalar corrections win; URL metadata can grow | Explicit CSV/evidence/receipt paths; receipt includes input/output SHA, package changes, disagreements, unmatched caches and failures. Cached evidence does not invent retrieved_at |
 
 Run `test_house_source_fidelity.py`, `test_senate_source_fidelity.py` and
 `test_gpo_source_fidelity.py` for receipt fields and source-specific protection.
 Compare each driver's own before/after receipt fields, not one generic schema.
+
+Document-index refresh also reinterprets Senate link sections from the exact
+retained page digest. `source_link_heading` preserves the publisher's words;
+`publisher_section_heading` distinguishes an explicit “Transcripts” section
+from filename/link-word inference. `parsers.document_cover` recognizes numbered
+GPO hearings, stenographic transcripts, opening statements, explicit testimony,
+paper-hearing questions, and official bill/substitute covers from native text.
+GPO covers must be on page one; a blank first page permits checking page two for
+proceedings. `content_document_kind`, `content_citation`, `content_congress`, and
+`content_amendment_type` retain supported meanings separately from filename
+fields. This check does not use OCR or classify attachments from a generic
+“Related Files” heading. Missing or unrecognized evidence leaves the kind empty.
+
+Witness-card ownership no longer requires its label to parse as one individual.
+The typed occurrence retains the raw `witness_card`; `source_participant_label`
+exposes its name in the catalog. A paired label does not establish coauthorship
+or create individual witness records. Literal URL dot segments are normalized
+for matching and grouping, while original source URLs and anchors stay intact.
+Content classification never confirms a candidate source association.
+The member-card section remains distinct even when it uses the witness-card
+layout. PDF extraction accepts public files that open with an empty password;
+files requiring a password abstain. A source-metadata refresh preserves native
+publisher observations already retained in the table when the current readers
+do not reproduce them, including House XML document type codes and receipt
+locations. It still replaces parser-inferred classifications.
+For the same original page and link, explicit publisher types and sections
+take precedence over older inventory/link-word guesses when selecting a kind.
+Both observations remain visible; distinct parents are never collapsed by this
+precedence rule.
+
+Bold testimony labels within a paragraph also describe that paragraph's links,
+including Indian Affairs testimony links labeled only with bill numbers.
+Independent successful Senate HTML captures contribute their own page digest,
+receipt, anchor, and witness context even when an older saved page has no digest.
+They remain separate observations; they do not replace the older capture or
+invent a meeting association.
+
+A retained Senate Judiciary nomination-page link with explicit support wording
+adds the `nomination-support` family. An otherwise unclassified document also
+gets that kind with `document_kind_source=source_context`; known letters,
+statements and other forms keep their specific kind. The page and label must
+belong to the same retained anchor. Legislative references and unconfirmed link
+associations do not qualify. Refreshes recompute this classification from the
+retained context rather than caching it as filename meaning.
+An explicit “Letter of Support” link label supplies the more specific
+`letter-of-support` kind with `document_kind_source=source_link_label`.
 
 ## Filename migration and legacy scope
 
