@@ -28,6 +28,22 @@ def catalog_from_sources(tmp_path, sources):
     return viewer.Catalog(path)
 
 
+def test_failed_response_and_paired_origin_are_visible_and_searchable(tmp_path):
+    (tmp_path / 'indexes').mkdir()
+    row = dict(body_key='bad-body', filename='SCA_Berman.pdf', source_url='https://x.test/a',
+               http_status=['200'], media_type=['application/pdf'], response_usable=['false'],
+               response_format=['pdf_missing_eof'], source_occurrences=[{
+                   'source_page_url': ['https://committee.test/hearing'], 'source_link_label': ['Amy Berman - Article']}])
+    index.write_filename_metadata(tmp_path, [row], workers=1)
+    catalog = viewer.Catalog(tmp_path / 'indexes/document-filenames.parquet')
+    assert catalog.search({'document_kind': '__null__'})['total'] == 0
+    result = catalog.search({'scope': 'capture-records', 'field': 'source_occurrences', 'q': 'Amy Berman'})
+    assert result['total'] == 1
+    assert result['rows'][0]['response_format'] == ['pdf_missing_eof']
+    assert result['rows'][0]['response_usable'] == ['false']
+    assert catalog.record(result['rows'][0]['_row'])['source_occurrences'][0]['source_link_label'] == ['Amy Berman - Article']
+
+
 def test_only_download_parameters_group_not_document_ids_or_other_paths():
     key = index.entry_key
     assert key('statement', 'https://x.test/a/statement', 0) == key(
@@ -46,6 +62,62 @@ def test_only_download_parameters_group_not_document_ids_or_other_paths():
     assert index.display_filename('report.pdf?download=1') == 'report.pdf'
     assert index.display_filename('report&download=1') == 'report'
     assert index.display_filename('Oil&Gas.pdf') == 'Oil&Gas.pdf'
+
+
+def test_family_filters_specific_kinds_and_source_fallbacks(tmp_path):
+    (tmp_path / 'indexes').mkdir()
+    rows = [
+        dict(filename='Lee Letter of Support for Smith.pdf', source_url='https://x.test/letter', body_key=None),
+        dict(filename='Lee Opening Statement.pdf', source_url='https://x.test/opening', body_key=None),
+        dict(filename='123.pdf', source_url='https://x.test/native', body_key=None,
+             source_document_type=['Witness Statement']),
+        dict(filename='Lee Support for Smith.pdf', source_url='https://x.test/unknown', body_key=None),
+    ]
+    index.write_filename_metadata(tmp_path, rows, workers=1)
+    catalog = viewer.Catalog(tmp_path / 'indexes/document-filenames.parquet')
+    statements = catalog.search({'document_family': 'statement'})
+    assert statements['total'] == 2
+    assert {tuple(r['document_kind']) for r in statements['rows']} == {('opening-statement',), ('witness-statement',)}
+    assert catalog.search({'document_family': 'letter'})['total'] == 1
+    assert catalog.search({'document_family': 'statement', 'document_kind': 'opening-statement'})['total'] == 1
+    assert catalog.search({'document_family': 'letter', 'document_kind': 'opening-statement'})['total'] == 0
+    assert catalog.search({'document_family': '__null__'})['total'] == 1
+    assert catalog.search({'document_family': '__null__', 'q': 'Smith'})['total'] == 1
+    for row in statements['rows']:
+        assert row['document_family'] == ['statement']
+        assert catalog.record(row['_row'])['document_family'] == ['statement']
+    assert set(catalog.info['facets']['document_family']) == {'letter', 'statement'}
+
+
+def test_nomination_support_family_keeps_specific_forms_and_drops_null_filter(tmp_path):
+    (tmp_path / 'indexes').mkdir()
+    parent = 'https://www.judiciary.senate.gov/committee-activity/hearings/nominations'
+    rows = [dict(filename=name, body_key=None, source_url=f'https://www.judiciary.senate.gov/download/{i}',
+                 source_occurrences=[dict(source_original_page_url=[parent], source_page_title=['Nominations'],
+                     source_link_label=[name], source_link_url=[f'https://www.judiciary.senate.gov/download/{i}'],
+                     source_occurrence_scope=['anchor'])])
+            for i, name in enumerate(['Aramayo Support for de Alba.pdf', 'Maley Letter of Support for Kolar.pdf',
+                                      'Labor Unions Statement of Support for Berner.pdf', 'Group Support for S. 2754.pdf'])]
+    index.write_filename_metadata(tmp_path, rows, workers=1)
+    catalog = viewer.Catalog(tmp_path / 'indexes/document-filenames.parquet')
+    result = catalog.search({'document_family': 'nomination-support'})
+    assert result['total'] == 3
+    assert {tuple(row['document_kind']) for row in result['rows']} == {
+        ('nomination-support',), ('letter-of-support',), ('statement',)}
+    assert catalog.search({'document_kind': 'nomination-support'})['total'] == 1
+    assert catalog.search({'document_family': 'nomination-support', 'document_kind': '__null__'})['total'] == 0
+    assert catalog.search({'q': 'Aramayo', 'document_kind': '__null__'})['total'] == 0
+    assert 'nomination-support' in catalog.info['facets']['document_family']
+
+
+def test_family_recomputes_after_source_kind_is_removed():
+    row = dict(document_kind=None, document_family=['letter'], source_document_type=['other'])
+    index.fill_document_kind(row)
+    assert row['document_family'] is None
+    row['source_document_type'] = ['Witness Statement']
+    index.fill_document_kind(row)
+    assert row['document_kind'] == ['witness-statement']
+    assert row['document_family'] == ['statement']
 
 
 def test_grouping_prefers_saved_pdf_and_retains_raw_rows_and_filter_behavior(tmp_path):

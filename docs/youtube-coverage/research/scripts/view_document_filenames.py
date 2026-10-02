@@ -21,11 +21,12 @@ import pyarrow.parquet as pq
 ROOT = Path(__file__).resolve().parents[4]
 DEFAULT_FILE = ROOT / '.cache/congressional-tech-raw/indexes/document-filenames.parquet'
 HTML = Path(__file__).resolve().parents[1] / 'filename-viewer.html'
-LIST_COLUMNS = ('filename', 'source_url', 'body_key', 'congress', 'document_kind',
+LIST_COLUMNS = ('filename', 'source_url', 'body_key', 'congress', 'document_kind', 'document_family',
                 'extension', 'committee_code', 'measure_references', 'media_type', 'http_status',
                 'source_id', 'document_id', 'format', 'record_role', 'body_format',
+                'response_usable', 'response_body_complete', 'response_format', 'response_result',
                 'recovered_filename', 'recovered_source_url')
-FILTERS = ('congress', 'document_kind', 'format')
+FILTERS = ('congress', 'document_family', 'document_kind', 'format')
 
 
 class Catalog:
@@ -60,8 +61,10 @@ class Catalog:
         self.filter_text = {}
         facets = {}
         for field in FILTERS:
-            values = pc.list_flatten(self.table[field])
-            joined = pc.binary_join(self.table[field], '\0')
+            column = (self.table[field] if field in self.table.column_names else
+                      pa.nulls(len(self.table), type=pa.list_(pa.string())))
+            values = pc.list_flatten(column)
+            joined = pc.binary_join(column, '\0')
             if field == 'format':
                 values, joined = pc.utf8_lower(values), pc.utf8_lower(joined)
             facets[field] = sorted(v for v in pc.unique(values).to_pylist() if v)
@@ -80,6 +83,9 @@ class Catalog:
         if field not in self.fields:
             raise ValueError('Unknown search column.')
         column = self.table[field] if field in LIST_COLUMNS else self.file.read(columns=[field])[field]
+        if pa.types.is_list(column.type) and pa.types.is_struct(column.type.value_type):
+            return pa.array([json.dumps(value, ensure_ascii=False) if value else None
+                             for value in column.to_pylist()], type=pa.string())
         return pc.binary_join(column, ' | ') if pa.types.is_list(column.type) else column
 
     def search(self, query):
@@ -98,7 +104,7 @@ class Catalog:
             mask = pc.and_(mask, found)
         for name in FILTERS:
             value = query.get(name, query.get('extension', '') if name == 'format' else '')
-            if name == 'document_kind' and value == '__null__':
+            if name in ('document_kind', 'document_family') and value == '__null__':
                 continue  # Check the grouped document, not an unclassified alias.
             if value:
                 if value not in self.info['facets'][name]:
@@ -118,9 +124,12 @@ class Catalog:
             matching_entries.intersection_update(self.document_entries)
         elif scope == 'capture-records':
             matching_entries.difference_update(self.document_entries)
-        if query.get('document_kind') == '__null__':
-            missing_kind = pc.equal(pc.fill_null(pc.list_value_length(self.documents['document_kind']), 0), 0)
-            matching_entries.intersection_update(pc.indices_nonzero(missing_kind).to_pylist())
+        for name in ('document_kind', 'document_family'):
+            if query.get(name) == '__null__':
+                column = (self.documents[name] if name in self.documents.column_names else
+                          pa.nulls(len(self.documents), type=pa.list_(pa.string())))
+                missing = pc.equal(pc.fill_null(pc.list_value_length(column), 0), 0)
+                matching_entries.intersection_update(pc.indices_nonzero(missing).to_pylist())
         matches = [entry for entry in self.order.to_pylist() if entry in matching_entries]
         total = len(matches)
         limit = max(1, min(100, int(query.get('limit', 50))))

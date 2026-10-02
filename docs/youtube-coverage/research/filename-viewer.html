@@ -92,6 +92,7 @@ dd { margin:0; font-size:13px; line-height:1.65; overflow-wrap:anywhere; white-s
 <div class="controls filters">
 <label>Show<select id="scope"><option value="">Documents</option><option value="capture-records">Source records &amp; capture history</option><option value="all">All records</option></select></label>
 <label>Congress<select id="congress"><option value="">All Congresses</option></select></label>
+<label>Document family<select id="document_family"><option value="">All document families</option><option value="__null__">No document family</option></select></label>
 <label class="kind">Document kind<select id="document_kind"><option value="">All document kinds</option><option value="__null__">No document kind</option></select></label>
 <label>Format<select id="format"><option value="">All formats</option></select></label>
 <label>Saved response<select id="retained"><option value="">All rows</option><option value="yes">Has saved response</option><option value="no">No saved response</option></select></label>
@@ -114,10 +115,11 @@ dd { margin:0; font-size:13px; line-height:1.65; overflow-wrap:anywhere; white-s
 <script type="module">
 const $ = id => document.getElementById(id);
 const number = n => new Intl.NumberFormat().format(n);
-const keys = ['q','field','congress','document_kind','format','retained','scope'];
+const keys = ['q','field','congress','document_family','document_kind','format','retained','scope'];
 const pretty = value => value.replaceAll('-', ' ').replace(/^./, x => x.toUpperCase());
 const formatLabel = value => value.includes('/') ? value : value.toUpperCase();
-const display = value => Array.isArray(value) ? value.join(' · ') : (value ?? '—');
+const display = value => value && typeof value === 'object' ? (Array.isArray(value) ? value.map(display).join(' · ') : JSON.stringify(value)) : (value ?? '—');
+const savedLabel = row => !row.retained ? 'No saved response' : row.record_role?.includes('error-response') ? 'Saved failed response' : 'Saved';
 let info, page = 1, pages = 1, rowData, searchController, detailController, timer;
 function node(tag, text, className) { const el=document.createElement(tag); if(text !== undefined) el.textContent=text; if(className) el.className=className; return el; }
 function sourceUrl(value) { try { const url=new URL(value); return ['http:','https:'].includes(url.protocol) ? url : null; } catch { return null; } }
@@ -138,9 +140,12 @@ function renderRows(data) {
   if(row.source_count>1) first.append(node('div',`${row.source_count} source records`,'muted'));
   const format=node('td',row.format?.map(formatLabel).join(' · ') || '—');
   if(row.format?.length) format.append(node('div',row.body_format?.length?'saved contents':row.media_type?.length?'response type':'filename','muted'));
-  const saved=node('td',row.retained?'Saved':'No saved response',row.retained?'retained':'muted');
+  const saved=node('td',savedLabel(row),row.retained?'retained':'muted');
   if(row.http_status?.length) saved.append(node('div','HTTP '+row.http_status.join(' / '),'muted'));
-  tr.append(first, format, node('td',row.document_kind?.map(pretty).join(' · ') || '—'), node('td',display(row.congress)),node('td',display(row.committee_code)),node('td',display(row.measure_references)),saved);
+  if(row.response_format?.some(value=>value.includes('missing')||value.includes('invalid'))) saved.append(node('div',row.response_format.join(' · '),'muted'));
+  const kind=node('td',row.document_kind?.map(pretty).join(' · ') || '—');
+  if(row.document_family?.length && row.document_family.join('|')!==row.document_kind?.join('|')) kind.append(node('div','Family: '+row.document_family.map(pretty).join(' · '),'muted'));
+  tr.append(first, format, kind, node('td',display(row.congress)),node('td',display(row.committee_code)),node('td',display(row.measure_references)),saved);
   fragment.append(tr);
  }
  $('rows').replaceChildren(fragment); $('empty').hidden=data.total!==0;
@@ -165,7 +170,7 @@ async function openDetail(id, update=true) {
   $('source-variants').hidden=false;
   $('source-variants').append(node('p','Source records · Select one to inspect its original URL and metadata.'));
   for(const source of entry.sources) {
-   const label=[source.format?.map(formatLabel).join(' · ') || 'Unknown format',source.http_status?.length?'HTTP '+source.http_status.join(' / '):'',source.retained?'Saved':'No saved response'].filter(Boolean).join(' · ');
+   const label=[source.format?.map(formatLabel).join(' · ') || 'Unknown format',source.http_status?.length?'HTTP '+source.http_status.join(' / '):'',savedLabel(source)].filter(Boolean).join(' · ');
    const button=node('button',label,'outline'); button.setAttribute('aria-pressed',String(source._row===Number(id)));
    button.append(node('span',source.source_url || source.filename,'source'));
    button.addEventListener('click',()=>openDetail(source._row)); $('source-variants').append(button);
@@ -179,7 +184,7 @@ function renderDetails() {
  const q=$('field-search').value.toLowerCase(); const populated=Object.values(rowData).filter(v=>v!==null&&v!==''&&(!Array.isArray(v)||v.length)).length;
  const entries=Object.entries(rowData).filter(([key,value])=>($('show-empty').checked || (value!==null&&value!==''&&(!Array.isArray(value)||value.length))) && (!q || key.toLowerCase().includes(q)||display(value).toLowerCase().includes(q)));
  $('field-count').textContent=`${populated} populated fields · ${Object.keys(rowData).length} total · ${entries.length} shown`;
- const dl=node('dl'); for(const [key,value] of entries) { const entry=node('div',undefined,'entry'); entry.append(node('dt',key)); const dd=node('dd'); if(value===null) dd.append(node('span','null','muted')); else for(const item of Array.isArray(value)?value:[value]) dd.append(node('div',String(item))); entry.append(dd); dl.append(entry); }
+ const dl=node('dl'); for(const [key,value] of entries) { const entry=node('div',undefined,'entry'); entry.append(node('dt',key)); const dd=node('dd'); if(value===null) dd.append(node('span','null','muted')); else for(const item of Array.isArray(value)?value:[value]) { if(item && typeof item==='object') { const origin=node('dl'); for(const [field,values] of Object.entries(item)) if(values?.length) { origin.append(node('dt',field),node('dd',display(values))); } dd.append(origin); } else dd.append(node('div',String(item))); } entry.append(dd); dl.append(entry); }
  $('detail-data').replaceChildren(entries.length?dl:node('p','No fields match this search.','muted'));
 }
 $('search-form').addEventListener('submit',event=>{event.preventDefault();changed();});
@@ -196,7 +201,7 @@ window.addEventListener('popstate',()=>{const row=restore();load();if(row!==null
 try {
  info=await api('/api/info'); $('summary').textContent=`${number(info.documents)} documents · ${number(info.capture_records)} source/capture records · ${number(info.rows)} source rows`;
  $('field').replaceChildren(...info.fields.map(field=>{const option=node('option',field);option.value=field;return option;}));
- for(const key of ['congress','document_kind','format']) { const values=info.facets[key]; if(key==='congress') values.sort((a,b)=>Number(b)-Number(a)); for(const value of values) { const option=node('option',key==='document_kind'?pretty(value):key==='format'?formatLabel(value):value);option.value=value;$(key).append(option); } }
+ for(const key of ['congress','document_family','document_kind','format']) { const values=info.facets[key]; if(key==='congress') values.sort((a,b)=>Number(b)-Number(a)); for(const value of values) { const option=node('option',key.startsWith('document_')?pretty(value):key==='format'?formatLabel(value):value);option.value=value;$(key).append(option); } }
  const row=restore(); if(row!==null) openDetail(row,false); await load();
 } catch(error) { $('error').textContent=error.message; $('error').hidden=false; $('summary').textContent='Catalog unavailable'; }
 </script>
