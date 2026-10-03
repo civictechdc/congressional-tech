@@ -203,8 +203,9 @@ def test_anonymous_xml_body_cache_replays_without_rereading(tmp_path):
     assert pq.read_table(tmp_path / 'indexes/document-filenames.parquet').to_pylist() == previous.to_pylist()
 
 
-def test_recurring_catalog_replays_old_consumed_receipts_once_then_new_attempts(tmp_path):
+def test_recurring_catalog_replays_old_consumed_receipts_and_new_attempts(tmp_path):
     from congress_api.retention.raw_catalog import rebuild_catalog, FILENAMES, DOCUMENTS
+    from congress_api.retention.raw_archive import CAPTURE_SCHEMA
     from test_raw_source_sync import MemoryStore
 
     url = 'https://example.test/Vita.xml'
@@ -214,7 +215,7 @@ def test_recurring_catalog_replays_old_consumed_receipts_once_then_new_attempts(
     store = MemoryStore()
     for path in (FILENAMES, DOCUMENTS, 'receipts.jsonl.gz'):
         store.objects[path] = (tmp_path / path).read_bytes()
-    captures = pq.read_table(tmp_path / 'indexes/captures.parquet')
+    captures = pa.Table.from_pylist(pq.read_table(tmp_path / 'indexes/captures.parquet').to_pylist(), schema=CAPTURE_SCHEMA)
     rebuild_catalog(store, captures, workers=1)
     first = pq.read_table(pa.BufferReader(store.read(FILENAMES)))
     assert first.to_pylist()[0]['source_probe_status'] == ['not_found']

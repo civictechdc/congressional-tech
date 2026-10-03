@@ -56,6 +56,8 @@ class R2Store:
             if error.response["Error"]["Code"] in {"PreconditionFailed", "412"}:
                 if immutable and key.startswith("bodies/"):
                     return False
+                if immutable and key.startswith("catalog-history/sha256/") and self.read(key) == body:
+                    return False  # A retry may preserve the same prior table again.
                 raise RuntimeError(
                     f"Concurrent update or reused receipt name: {key}; published receipts remain recoverable."
                 ) from error

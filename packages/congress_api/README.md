@@ -185,14 +185,49 @@ date remain distinct from the latest inspection time.
 `indexes/download-state.parquet` tracks pending URLs, results and retries;
 `indexes/captures.parquet` gains new receipt references. After saving captures, the
 same run rebuilds `indexes/document-filenames.parquet` and `indexes/documents.parquet`.
-The shared builder in `retention/document_index.py` reads existing source columns,
-new durable receipts and current pipeline links. It retains unfetched filenames,
-response-header names, redirects and parent committee/meeting metadata. New names
-pass through `house_naming.Engine.extract`; unchanged names reuse saved results.
-A fingerprint of the parser code and catalog invalidates that reuse when rules change.
-Rebuilding reads selected retained House bodies through the configured store
-and reuses their classifications while the readers stay unchanged. It does not
-fetch files from publishers.
+Acquisition and `--rebuild-only` use `retention/raw_catalog.py` and the existing
+`retention/document_index.py` readers. Every rebuild replays indexed migration and
+download receipts, House state/XML, Senate state/pages, Congress meeting records
+and inventory relationships. It retains unfetched filenames, response-header
+names, redirects and parent committee/meeting metadata. Filename and body
+interpretations reuse results only while their parser fingerprints match;
+source context is reconstructed even when the capture count is unchanged.
+
+To refresh the derived tables independently of acquisition:
+
+```sh
+raw-source-sync --rebuild-only --bucket congressional-tech-raw \
+  --index-workers 2 --summary raw-rebuild-summary.json
+```
+
+This mode requires `CLOUDFLARE_ACCOUNT_ID`, `R2_ACCESS_KEY_ID` and
+`R2_SECRET_ACCESS_KEY`. It reads the R2 capture index and its retained receipts
+and necessary bodies, validates both generated tables, and publishes documents
+before filenames with the existing conditional writes. It skips acquisition,
+the Rust fetcher, Zyte credentials, and all capture/download-state writes.
+Optional `--seed` files supply already saved link metadata, including filenames
+whose bodies have not been captured. Reading these files does not queue or fetch
+URLs. `--plan-only` and `--local-mirror` cannot be combined with this mode.
+Acquisition flags such as `--limit`, `--transport` and `--workers` do not limit
+the rebuild. `--index-workers` controls filename interpretation.
+
+Before either derived table is replaced, its previous bytes are retained under
+`catalog-history/sha256/<digest>/<table>.parquet`. The summary reports
+`previous_filenames_key` and `previous_documents_key`. This preserves old-only
+columns and labels for audit without asserting that untraceable values came from
+the publisher. A history-write failure stops publication. Literal publisher
+types use `source_document_type_basis=publisher`; saved House parser labels use
+`house_parser_inference`. Each claim keeps its own `source_occurrences` entry
+and receipt locator. Missing source fields remain null; inferred labels never
+receive a publisher basis.
+
+The October 3 comparison's 26,107 shared filename rows with a type in R2 and none
+locally were all reproduced from retained `house.json.gz` receipts. These include
+the Elmendorf, Christie, Kemple, Ware and Zapote examples. The older House labels
+must not be relabelled as native publisher types. Literal `WS` observations are
+also retained where the saved XML evidence supplies them. This audit verifies
+those missing types; it does not establish a full remote-corpus rebuild or a
+production publication.
 
 The tables retain filename readings separately from `source_*` assertions, even
 when Congress or document types disagree. `publication_type` is the normalized
@@ -208,11 +243,18 @@ have separate results. Failures retry after one day; 404/410 responses and HTML
 without discovered files retry after seven days.
 
 The filename table records how many capture rows its build consumed and publishes
-after the document table. If either upload fails, the next run repeats that delta
-even when no new downloads are needed. Both tables carry the same `catalog_id`;
+after the document table. If either upload fails, the next run replays retained
+evidence even when no new downloads are needed. Both tables carry the same `catalog_id`;
 readers must reject mismatched IDs (the local viewer already does). These two object
 writes are not atomic: an interrupted publication can temporarily make the pair
 unavailable until the next successful rebuild. Capture logs remain intact.
+Rebuilds consume the capture-index snapshot read at startup. Concurrently added
+captures remain intact and enter the next rebuild. Receipts not yet referenced
+by that index still require the acquisition path's interrupted-run recovery.
+Missing referenced receipts fail the rebuild; absent or oversized source bodies
+leave the affected interpretations unavailable. Reads use the existing bounded,
+digest-checked body reader. No full-corpus runtime or memory bound is established
+by the focused tests.
 
 Saved URLs are not periodically refreshed. Replaced files at the same URL need
 an explicit refresh policy, separate from this missing-file backfill. Retained

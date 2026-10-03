@@ -31,6 +31,7 @@ from email.message import Message
 from email.utils import collapse_rfc2231_value
 from functools import lru_cache
 import gzip
+from io import BytesIO
 import json
 from pathlib import Path
 import re
@@ -226,7 +227,7 @@ def _select_document_kind(row):
         links = observation.get('source_link_url') or []
         return (pages[0], http_url(links[0]) or links[0]) if len(pages) == len(links) == 1 else None
 
-    inferred = {'inventory_inference', 'senate_parser_inference', 'senate_parser_fallback'}
+    inferred = {'inventory_inference', 'house_parser_inference', 'senate_parser_inference', 'senate_parser_fallback'}
     explicit = {scope(o) for o in trusted if scope(o) and any(
         basis.startswith('publisher') for basis in o.get('source_document_type_basis') or [])
         and any(' '.join(value.split()).casefold() in SOURCE_DOCUMENT_KINDS
@@ -582,29 +583,7 @@ def write_document_indexes(destination, rows, schema):
                             records[start : start + 32768], schema=record_schema
                         )
                     )
-        source_ids = pq.read_table(temporary[0], columns=["source_id", "document_id"])
-        document_ids = pq.read_table(temporary[1], columns=["source_id", "document_id"])
-        if (
-            len(source_ids) != len(rows)
-            or len(document_ids) != len(documents)
-            or len(set(source_ids["source_id"].to_pylist())) != len(rows)
-            or len(set(document_ids["document_id"].to_pylist())) != len(documents)
-            or set(source_ids["document_id"].to_pylist())
-            != set(document_ids["document_id"].to_pylist())
-            or not set(
-                zip(
-                    document_ids["source_id"].to_pylist(),
-                    document_ids["document_id"].to_pylist(),
-                )
-            )
-            <= set(
-                zip(
-                    source_ids["source_id"].to_pylist(),
-                    source_ids["document_id"].to_pylist(),
-                )
-            )
-        ):
-            raise ValueError("Document/source index references do not match")
+        validate_document_indexes(*temporary, source_rows=len(rows), document_rows=len(documents))
         for tmp, (path, _, _) in zip(temporary, outputs):
             tmp.replace(path)
     finally:
@@ -616,6 +595,27 @@ def write_document_indexes(destination, rows, schema):
         documents_output=str(document_path),
         documents_bytes=document_path.stat().st_size,
     )
+
+
+def validate_document_indexes(source_path, document_path, *, source_rows=None, document_rows=None):
+    """Validate the actual paired files before either destination is replaced."""
+    source_ids = pq.read_table(source_path, columns=["source_id", "document_id"])
+    document_ids = pq.read_table(document_path, columns=["source_id", "document_id"])
+    source_meta = source_ids.schema.metadata or {}
+    document_meta = document_ids.schema.metadata or {}
+    if not source_meta.get(b"catalog_id") or source_meta[b"catalog_id"] != document_meta.get(b"catalog_id"):
+        raise ValueError("Document/source catalog_id values do not match")
+    sources = source_ids["source_id"].to_pylist()
+    groups = source_ids["document_id"].to_pylist()
+    preferred = document_ids["source_id"].to_pylist()
+    documents = document_ids["document_id"].to_pylist()
+    if (source_rows is not None and len(sources) != source_rows
+            or document_rows is not None and len(documents) != document_rows
+            or any(value is None for values in (sources, groups, preferred, documents) for value in values)
+            or len(set(sources)) != len(sources) or len(set(documents)) != len(documents)
+            or set(groups) != set(documents)
+            or not set(zip(preferred, documents)) <= set(zip(sources, groups))):
+        raise ValueError("Document/source index references do not match")
 
 
 def compact(value):
@@ -984,8 +984,9 @@ class DocumentSources:
         parent = link.get("context") or {}
         self.add_meeting(parent)
         native = link.get("native") or {}
-        senate_tuple = isinstance(native, (list, tuple))
-        if senate_tuple:
+        parsed_tuple = isinstance(native, (list, tuple))
+        house_tuple = parsed_tuple and len(native) >= 4
+        if parsed_tuple:
             native = dict(zip(("documentType", "name", "url"), native))
         group = next(
             (
@@ -1042,7 +1043,8 @@ class DocumentSources:
             values["source_original_page_url"] = {link["parent_url"]}
         merge_context(values, receipt or {})
         if native.get("documentType"):
-            basis = ("senate_parser_fallback" if native["documentType"] == "other" else "senate_parser_inference") if senate_tuple else "publisher"
+            basis = ("house_parser_inference" if house_tuple else
+                     "senate_parser_fallback" if native["documentType"] == "other" else "senate_parser_inference") if parsed_tuple else "publisher"
             merge_context(values, context_values(source_document_type_basis=basis))
         self.add_url(link.get("url"), values)
 
@@ -1115,7 +1117,8 @@ class DocumentSources:
                     self.add_url(document.get("url"), context)
 
     def add_senate(self, state, receipt=None, *, read_body=None):
-        from congress_api.parsers.senate_page import SITE, document_context, event_details, source_details
+        from congress_api.parsers.senate import parsed
+        from congress_api.parsers.senate_page import SITE, document_context
 
         if not isinstance(state, dict):
             return
@@ -1137,10 +1140,12 @@ class DocumentSources:
                 if read_body is not None and digest and re.fullmatch(r"[a-f0-9]{64}", digest):
                     raw = read_body(f"bodies/sha256/{digest[:2]}/{digest}.gz")
                     if raw:
-                        markup = raw.decode("utf-8", "replace")
-                        metadata_by_url, _, _ = source_details(markup, url,
-                                                              page.get("witnesses") or [])
-                        event = event_details(markup, url) or event
+                        # Refresh the discovered links and their witnesses too;
+                        # old parser output may not contain a newly recognized
+                        # anchor. Keep the original byte digest as its locator.
+                        page = {**page, **parsed(raw.decode("utf-8", "replace"), url)}
+                        metadata_by_url = page.get("document_metadata") or {}
+                        event = page.get("event") or event
                 context = context_values(
                     source_page_url=url,
                     source_original_page_url=url,
@@ -1211,6 +1216,45 @@ class DocumentSources:
                                 continue
                             self.add_url(href, {**values, "source_link_href": {href},
                                                "source_resolved_url": {document_url}})
+
+    def add_house(self, state, receipt=None):
+        """Retain saved House parser labels separately from literal XML metadata."""
+        if not isinstance(state, dict):
+            return
+        for event, page in state.items():
+            if not isinstance(page, dict) or not isinstance(page.get("documents"), list):
+                continue
+            values = {**self.event_context(event, "house"), **(receipt or {})}
+            for document in page["documents"]:
+                if not isinstance(document, (list, tuple)) or len(document) < 3:
+                    continue
+                kind, label, url = document[:3]
+                self.add_url(url, {**values, **context_values(
+                    source_document_group="house.documents", source_link_url=url,
+                    source_document_type=kind, source_document_label=label,
+                    source_document_type_basis="house_parser_inference" if kind else None)})
+            self.add_house_evidence(page.get("evidence") or {}, values)
+
+    def add_house_evidence(self, evidence, receipt=None):
+        """Read the existing House evidence model without flattening file ownership."""
+        witnesses = {w.get("selector"): w for w in evidence.get("witness_observations") or []}
+        for group in evidence.get("document_groups") or []:
+            if not group.get("active"):
+                continue
+            witness = witnesses.get(group.get("owning_witness_selector"), {})
+            for file in group.get("files") or []:
+                if not file.get("active"):
+                    continue
+                attributes = (file.get("metadata") or {}).get("attributes") or {}
+                self.add_url(file.get("url"), {**(receipt or {}), **context_values(
+                    source_link_url=file.get("url"), source_capture_pointer=file.get("selector"),
+                    source_document_group=group.get("source"), source_witness_name=witness.get("name"),
+                    source_document_type=group.get("type") or group.get("legacy_kind"),
+                    source_document_type_basis="publisher" if group.get("type") else
+                        "house_parser_inference" if group.get("legacy_kind") else None,
+                    source_document_label=group.get("description"), source_document_format=file.get("format"),
+                    source_document_added_at=attributes.get("add-date"),
+                    source_document_published_at=attributes.get("publish-date"))})
 
     def add_inventory(self, record, receipt=None):
         if not isinstance(record, dict) or not isinstance(
@@ -1342,19 +1386,78 @@ def add_retained_senate_pages(context, captures, read_body):
                 source_receipt_key=receipt, source_receipt_line=line))
 
 
-def read_document_sources(root, urls=None):
+def retained_records(captures, read_receipt):
+    """Read each referenced receipt line once, with all its indexed body pointers."""
+    references = defaultdict(lambda: defaultdict(list))
+    for batch in captures.to_batches(max_chunksize=65536):
+        for row in batch.to_pylist():
+            if not row.get("receipt_key") or type(row.get("receipt_line")) is not int or row["receipt_line"] < 1:
+                raise ValueError("Invalid capture receipt locator")
+            references[row["receipt_key"]][row["receipt_line"]].append(row)
+    for key, lines in sorted(references.items()):
+        payload = read_receipt(key)
+        if payload is None:
+            raise ValueError(f"Missing capture receipt: {key}")
+        with gzip.open(BytesIO(payload), "rt", encoding="utf-8") as stream:
+            for number, line in enumerate(stream, 1):
+                rows = lines.pop(number, None)
+                if rows:
+                    yield json.loads(line)["record"], rows, context_values(
+                        source_receipt_key=key, source_receipt_line=number)
+                if not lines:
+                    break
+        if lines:
+            raise ValueError(f"Capture index references missing receipt lines: {key}")
+
+
+def add_retained_house_documents(context, captures, read_body):
+    """Replay publisher XML through the existing House parser, with exact locators."""
+    from congress_api.parsers.house_evidence import retained_evidence
+    from congress_api.parsers.xml import parse_xml
+    from xml.etree.ElementTree import ParseError
+
+    selected = captures.filter(pc.is_in(captures["family"], value_set=pa.array(
+        ["house/meeting-xml", "house/witness-xml"])))
+    seen = set()
+    for row in selected.to_pylist():
+        key, url = row.get("body_key"), row.get("context_url")
+        if not key or (key, url) in seen or row.get("http_status") not in (None, 200):
+            continue
+        seen.add((key, url))
+        body = read_body(key)
+        if body is None:
+            continue
+        try:
+            root = parse_xml(body)
+            if root.tag not in {"committee-meeting", "witness-list"}:
+                continue
+            evidence = retained_evidence(root if root.tag == "committee-meeting" else None,
+                                         root if root.tag == "witness-list" else None)
+        except (ValueError, ParseError):
+            continue
+        event = root.get("meeting-id", "").removeprefix("HMKP")
+        values = {**context.event_context(event, "house"), **context_values(
+            source_page_url=url, source_original_page_url=url, source_page_sha256=sha256(body).hexdigest(),
+            source_receipt_key=row.get("receipt_key"), source_receipt_line=row.get("receipt_line"))}
+        context.add_house_evidence(evidence, values)
+
+
+def read_document_sources(root=None, urls=None, *, captures=None, read_receipt=None, read_body=None, context=None):
     """Read retained parents and explicit download-page links, without HTTP."""
-    context = DocumentSources()
-    path = root / "indexes/captures.parquet"
-    if not path.exists():
-        return context
-    archive = pq.ParquetFile(path)
+    context = context or DocumentSources()
+    if captures is None:
+        path = root / "indexes/captures.parquet"
+        if not path.exists():
+            return context
+        captures = pq.read_table(path)
+    read_receipt = read_receipt or (lambda key: (root / key).read_bytes())
+    read_body = read_body or (lambda key: read_retained_body(root, key))
     columns = [
         name
         for name in ("family", "source_file", "receipt_key", "receipt_line", "body_key", "context_url", "http_status")
-        if name in archive.schema_arrow.names
+        if name in captures.column_names
     ]
-    captures = archive.read(columns=columns)
+    captures = captures.select(columns)
 
     def records(family, suffix=None):
         selected = captures if family is None else captures.filter(pc.equal(captures["family"], family))
@@ -1362,22 +1465,8 @@ def read_document_sources(root, urls=None):
             if "source_file" not in selected.column_names:
                 return
             selected = selected.filter(pc.ends_with(selected["source_file"], suffix))
-        references = defaultdict(set)
-        for row in selected.to_pylist():
-            references[row["receipt_key"]].add(row["receipt_line"])
-        for receipt, lines in sorted(references.items()):
-            with gzip.open(root / receipt, "rt", encoding="utf-8") as stream:
-                for line_number, line in enumerate(stream, 1):
-                    if line_number in lines:
-                        lines.remove(line_number)
-                        yield json.loads(line)["record"], context_values(
-                            source_receipt_key=receipt, source_receipt_line=line_number)
-                    if not lines:
-                        break
-            if lines:
-                raise ValueError(
-                    f"Context index references missing receipt lines: {receipt}"
-                )
+        for record, _, receipt in retained_records(selected, read_receipt):
+            yield record, receipt
 
     for record, receipt in records("congress/meetings"):
         context.add_meeting(record, receipt)
@@ -1385,10 +1474,13 @@ def read_document_sources(root, urls=None):
     # even when the caller only needs linked document URLs.
     wanted = urls
     for record, receipt in records("senate/pages", "senate.json.gz"):
-        context.add_senate(record, receipt, read_body=lambda key: read_retained_body(root, key))
+        context.add_senate(record, receipt, read_body=read_body)
+    for record, receipt in records(None, "house.json.gz"):
+        context.add_house(record, receipt)
+    add_retained_house_documents(context, captures, read_body)
     for record, receipt in records("documents", "documents/inventory.jsonl.gz"):
         context.add_inventory(record, receipt)
-    add_retained_senate_pages(context, captures, lambda key: read_retained_body(root, key))
+    add_retained_senate_pages(context, captures, read_body)
     # Download receipts can refer to an HTML landing page whose exact anchor
     # supplies the later requested URL. Read only those retained page bodies.
     body_references = defaultdict(set)
@@ -1409,7 +1501,7 @@ def read_document_sources(root, urls=None):
         for key, url in body_references.get(ref, ()):
             if url != requested:
                 continue
-            body = read_retained_body(root, key)
+            body = read_body(key)
             if body is None:
                 continue
             from congress_api.parsers.senate_page import source_details
@@ -1822,6 +1914,7 @@ def write_filename_metadata(
     )
     if (
         previous is not None
+        and "document_kind_source" in previous.column_names
         and (previous.schema.metadata or {}).get(b"house_naming_fingerprint")
         == fingerprint.encode()
     ):

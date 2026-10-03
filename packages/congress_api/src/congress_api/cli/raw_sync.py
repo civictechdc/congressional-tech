@@ -59,7 +59,8 @@ def parser():
     p.add_argument("--transport", choices=("auto", "zyte", "direct"), default="auto")
     p.add_argument("--fetcher-binary", default="source-fetch", help="Path to the Rust reqwest worker")
     p.add_argument("--requests-per-second", type=positive, default=40)
-    p.add_argument("--seed", action="append", type=Path, default=[])
+    p.add_argument("--seed", action="append", type=Path, default=[],
+                   help="Saved JSON/JSONL link metadata; rebuild mode reads it without acquiring URLs")
     p.add_argument(
         "--limit",
         type=positive,
@@ -70,7 +71,10 @@ def parser():
     p.add_argument("--index-workers", type=positive, default=2)
     p.add_argument("--max-seconds", type=positive, default=5400)
     p.add_argument("--max-file-mib", type=positive, default=64)
-    p.add_argument("--plan-only", action="store_true")
+    mode = p.add_mutually_exclusive_group()
+    mode.add_argument("--plan-only", action="store_true")
+    mode.add_argument("--rebuild-only", action="store_true",
+                      help="Rebuild and publish both document tables from retained R2 evidence; no acquisition")
     p.add_argument(
         "--local-mirror",
         type=Path,
@@ -116,14 +120,18 @@ def main(argv=None):
             ),
             args.bucket,
         )
-    if not args.plan_only and args.transport in {"auto", "zyte"}:
+    if not args.plan_only and not args.rebuild_only and args.transport in {"auto", "zyte"}:
         zyte.token()
     run_id = (
         datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + uuid4().hex[:12]
     )
-    archive = Archive(store, run_id)
-    seeds = seed_files(args.seed)
-    if args.plan_only:
+    if args.rebuild_only:
+        summary = dict(mode="rebuild", catalog=rebuild_catalog(
+            store, seeds=seed_files(args.seed) if args.seed else (), workers=args.index_workers,
+        ))
+    elif args.plan_only:
+        archive = Archive(store, run_id)
+        seeds = seed_files(args.seed)
         for item in seeds:
             archive.seed(item)
         summary = dict(
@@ -132,6 +140,8 @@ def main(argv=None):
             outcomes=dict(Counter(s["outcome"] for s in archive.state.values())),
         )
     else:
+        archive = Archive(store, run_id)
+        seeds = seed_files(args.seed)
         stop = threading.Event()
         signal.signal(signal.SIGTERM, lambda *_: stop.set())
         signal.signal(signal.SIGINT, lambda *_: stop.set())
@@ -149,7 +159,9 @@ def main(argv=None):
             )
         summary.update(fetcher="reqwest", requests_per_second=args.requests_per_second,
                        workers=args.workers, http_requests=fetcher.sequence)
-    summary.update(run_id=run_id, bucket=args.bucket, transport=args.transport)
+    summary.update(run_id=run_id, bucket=args.bucket)
+    if not args.rebuild_only:
+        summary["transport"] = args.transport
     args.summary.parent.mkdir(parents=True, exist_ok=True)
     args.summary.write_text(json.dumps(summary, indent=2) + "\n")
     print(json.dumps(summary, indent=2))
