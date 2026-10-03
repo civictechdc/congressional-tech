@@ -1,0 +1,241 @@
+[
+  {
+    "url": "https://www.csce.gov/hearings/combating-kleptocracy-with-incorporation-transparency",
+    "file": "combating-kleptocracy-with-incorporation-transparency.html",
+    "sha256": "a856432bd6e3cfed1bd0b18bb0af2f3ba639a3e4eb71cbdac25bce624070c8e9",
+    "date": "2017-10-03",
+    "documents": [
+      {
+        "url": "https://www.csce.gov/sites/evo-subsites/csce.house.gov/files/migrated/uploads/2017/10/Caroline-Vicini.pdf",
+        "kind": "witness statement",
+        "witnesses": [
+          "Caroline Vicini"
+        ]
+      },
+      {
+        "url": "https://www.csce.gov/sites/evo-subsites/csce.house.gov/files/migrated/uploads/2017/10/Charles-Davidson.pdf",
+        "kind": "witness statement",
+        "witnesses": [
+          "Charles Davidson"
+        ]
+      },
+      {
+        "url": "https://www.csce.gov/sites/evo-subsites/csce.house.gov/files/migrated/uploads/2017/10/Gary-Kalman.pdf",
+        "kind": "witness statement",
+        "witnesses": [
+          "Gary Kalman"
+        ]
+      },
+      {
+        "url": "https://www.csce.gov/sites/evo-subsites/csce.house.gov/files/migrated/uploads/2017/10/Pat-OCarroll.pdf",
+        "kind": "witness statement",
+        "witnesses": [
+          "Pat O\u2019Carroll"
+        ]
+      }
+    ]
+  },
+  {
+    "url": "https://www.csce.gov/hearings/prisoners-of-the-purge",
+    "file": "prisoners-of-the-purge.html",
+    "sha256": "ff4887bea24f7dba7beb3caf1152be5675d2dc602c88b70ca2516537303ba612",
+    "date": "2017-11-15",
+    "documents": [
+      {
+        "url": "https://www.csce.gov/sites/evo-subsites/csce.house.gov/files/migrated/uploads/2017/11/III.A-DAS-Cohen.pdf",
+        "kind": "witness statement",
+        "witnesses": [
+          "Jonathan R. Cohen"
+        ]
+      },
+      {
+        "url": "https://www.csce.gov/sites/evo-subsites/csce.house.gov/files/migrated/uploads/2017/11/III.C-Jacqueline-Furnari.pdf",
+        "kind": "witness statement",
+        "witnesses": [
+          "Jacqueline Furnari"
+        ]
+      },
+      {
+        "url": "https://www.csce.gov/sites/evo-subsites/csce.house.gov/files/migrated/uploads/2017/11/III.D-Nate-Schenkkan-REVISED.pdf",
+        "kind": "witness statement",
+        "witnesses": [
+          "Nate Schenkkan"
+        ]
+      }
+    ]
+  },
+  {
+    "url": "https://www.csce.gov/hearings/baltic-sea-regional-security",
+    "file": "baltic-sea-regional-security.html",
+    "sha256": "a97e93ea0317f04d8760483080d97994186d1e4c71fb7f9201fe5b6df3c0e193",
+    "date": "2019-07-02",
+    "documents": [
+      {
+        "url": "https://www.csce.gov/sites/evo-subsites/csce.house.gov/files/migrated/uploads/2019/06/Estonia_Prikk_0.pdf",
+        "kind": "witness statement",
+        "witnesses": []
+      },
+      {
+        "url": "https://www.csce.gov/sites/evo-subsites/csce.house.gov/files/migrated/uploads/2019/06/Jones.pdf",
+        "kind": "witness statement",
+        "witnesses": [
+          "Douglas D. Jones"
+        ]
+      },
+      {
+        "url": "https://www.csce.gov/sites/evo-subsites/csce.house.gov/files/migrated/uploads/2019/06/Karoblis.pdf",
+        "kind": "witness statement",
+        "witnesses": [
+          "Minister Raimundas Karoblis"
+        ]
+      },
+      {
+        "url": "https://www.csce.gov/sites/evo-subsites/csce.house.gov/files/migrated/uploads/2019/06/Kuusela.pdf",
+        "kind": "witness statement",
+        "witnesses": [
+          "Director-General Janne Kuusela"
+        ]
+      },
+      {
+        "url": "https://www.csce.gov/sites/evo-subsites/csce.house.gov/files/migrated/uploads/2019/06/Sweden.pdf",
+        "kind": "witness statement",
+        "witnesses": []
+      }
+    ]
+  },
+  {
+    "url": "https://www.csce.gov/hearings/responding-to-hate-crimes",
+    "file": "responding-to-hate-crimes.html",
+    "sha256": "f8e85c01293ce68f6951d2a18e323d3aae97b8c82b95949a27ef1fe7f75f03b1",
+    "date": "2019-07-16",
+    "documents": [
+      {
+        "url": "https://www.csce.gov/sites/evo-subsites/csce.house.gov/files/migrated/uploads/2019/07/Helsinki-Commission-Hearing-Alina-Bricman.pdf",
+        "kind": "witness statement",
+        "witnesses": [
+          "Alina Bricman"
+        ]
+      }
+    ]
+  },
+  {
+    "url": "https://www.csce.gov/hearings/human-rights-at-home-implications-for-us-leadership",
+    "file": "human-rights-at-home-implications-for-us-leadership.html",
+    "sha256": "969c7382f6fe60c9f37138cb45635c14efb63aeb82aaa13aad6681f1813b0cc5",
+    "date": "2020-07-02",
+    "documents": [
+      {
+        "url": "https://www.csce.gov/sites/evo-subsites/csce.house.gov/files/migrated/uploads/2020/06/Hearing-with-the-Helsinki-commission-2-July-2020-talking-points.pdf",
+        "kind": "witness statement",
+        "witnesses": [
+          "Malcolm Momodou Jallow"
+        ]
+      },
+      {
+        "url": "https://www.csce.gov/sites/evo-subsites/csce.house.gov/files/migrated/uploads/2020/06/Helsinki-Comm-7-2-20.pdf",
+        "kind": "witness statement",
+        "witnesses": [
+          "Ian Kelly"
+        ]
+      }
+    ]
+  },
+  {
+    "url": "https://www.csce.gov/hearings/confronting-kremlin-communist-corruption",
+    "file": "confronting-kremlin-communist-corruption.html",
+    "sha256": "85e6e11d449800ae90e8d702bb7d9679c4e4199b166d0fbd86dc3b305e9fd99d",
+    "date": "2021-11-18",
+    "documents": [
+      {
+        "url": "https://www.csce.gov/sites/evo-subsites/csce.house.gov/files/migrated/uploads/2021/11/2021-House-Defense-Bill-Counter-Kleptocracy-Bills.pdf",
+        "kind": "other",
+        "witnesses": []
+      }
+    ]
+  },
+  {
+    "url": "https://www.csce.gov/hearings/poland-s-leadership-of-the-osce-in-a-time-of-crisis",
+    "file": "poland-s-leadership-of-the-osce-in-a-time-of-crisis.html",
+    "sha256": "bd6ecaf23944babfdf86db049f46296f1fbd3a1041a76ff21c59719b7e87b3ec",
+    "date": "2022-02-03",
+    "documents": [
+      {
+        "url": "https://www.csce.gov/sites/evo-subsites/csce.house.gov/files/migrated/uploads/2022/01/MZR_Helsinki-commission-FINAL.pdf",
+        "kind": "witness statement",
+        "witnesses": [
+          "Zbigniew Rau"
+        ]
+      }
+    ]
+  },
+  {
+    "url": "https://www.csce.gov/hearings/game-changer",
+    "file": "game-changer.html",
+    "sha256": "21937e808a5231850160bfc265f77449cbb5b322b8854e4155547d6e7c7f0559",
+    "date": "2022-03-17",
+    "documents": [
+      {
+        "url": "https://www.csce.gov/sites/evo-subsites/csce.house.gov/files/migrated/uploads/2022/03/BioforWebBalticshearing.pdf",
+        "kind": "witness biography",
+        "witnesses": []
+      },
+      {
+        "url": "https://www.csce.gov/sites/evo-subsites/csce.house.gov/files/migrated/uploads/2022/03/RKols_Hybrid-threats-Baltic-Perspective-2022.pdf",
+        "kind": "witness statement",
+        "witnesses": [
+          "Rihards Kols"
+        ]
+      }
+    ]
+  },
+  {
+    "url": "https://www.csce.gov/hearings/diverse-voices-reporting-from-ukraine",
+    "file": "diverse-voices-reporting-from-ukraine.html",
+    "sha256": "91b8370e162a5d1f92c9feb54935c77231d6487c6f4f4c36190abe47310df318",
+    "date": "2022-04-20",
+    "documents": [
+      {
+        "url": "https://www.csce.gov/sites/evo-subsites/csce.house.gov/files/migrated/uploads/2022/04/0420-Diverse-Voices-Reporting-From-Ukraine.pdf",
+        "kind": "witness biography",
+        "witnesses": []
+      }
+    ]
+  },
+  {
+    "url": "https://www.csce.gov/hearings/countering-oligarchs-enablers-and-lawfare",
+    "file": "countering-oligarchs-enablers-and-lawfare.html",
+    "sha256": "f5060c31946d589e8468e2aeef82a891f673b347c7d8064db9f16b67df56c453",
+    "date": "2022-04-06",
+    "documents": [
+      {
+        "url": "https://www.csce.gov/sites/evo-subsites/csce.house.gov/files/migrated/uploads/2022/04/Browder.pdf",
+        "kind": "witness statement",
+        "witnesses": [
+          "Bill Browder"
+        ]
+      }
+    ]
+  },
+  {
+    "url": "https://www.csce.gov/hearings/securing-syria-s-transformation-by-diminishing-russia-s-influence",
+    "file": "securing-syria-s-transformation-by-diminishing-russia-s-influence.html",
+    "sha256": "d0865e96cfa883e3c470e4977c1c854b9b73973cdcade5b8d7872c4a9383d026",
+    "date": "2026-02-03",
+    "documents": [
+      {
+        "url": "https://www.csce.gov/sites/evo-subsites/csce.house.gov/files/migrated/uploads/2026/01/Doran-Securing-Syrias-Transformation-by-Diminishing-Russias-Influence.pdf",
+        "kind": "witness statement",
+        "witnesses": [
+          "Michael Doran"
+        ]
+      },
+      {
+        "url": "https://www.csce.gov/sites/evo-subsites/csce.house.gov/files/migrated/uploads/2026/01/Geopolitical-Shift-in-the-Levant-Outzen-CSCE.docx",
+        "kind": "witness statement",
+        "witnesses": [
+          "Richard Outzen"
+        ]
+      }
+    ]
+  }
+]

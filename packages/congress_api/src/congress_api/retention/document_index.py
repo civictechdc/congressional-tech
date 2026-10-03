@@ -850,6 +850,7 @@ SOURCE_CONTEXT_FIELDS = frozenset(
         "source_page_sha256",
         "source_original_page_url",
         "source_link_heading",
+        "source_link_context",
         "source_document_type_basis",
         "source_label_document_kind",
         "source_association_basis",
@@ -1114,7 +1115,7 @@ class DocumentSources:
                     self.add_url(document.get("url"), context)
 
     def add_senate(self, state, receipt=None, *, read_body=None):
-        from congress_api.parsers.senate_page import SITE, document_context, source_details
+        from congress_api.parsers.senate_page import SITE, document_context, event_details, source_details
 
         if not isinstance(state, dict):
             return
@@ -1129,22 +1130,24 @@ class DocumentSources:
                 digest = ((page.get("cache_replay") or workflow.get("cache_replay") or {}).get("raw_sha256")
                           or (page.get("raw_html") or {}).get("sha256"))
                 metadata_by_url = page.get("document_metadata") or {}
+                event = page.get("event") or {}
                 # Replay only the exact retained observation, never an arbitrary
                 # newer page at the same URL. The storage dependency validates
                 # the digest and bounds the read; missing bodies retain state.
                 if read_body is not None and digest and re.fullmatch(r"[a-f0-9]{64}", digest):
                     raw = read_body(f"bodies/sha256/{digest[:2]}/{digest}.gz")
                     if raw:
-                        metadata_by_url, _, _ = source_details(raw.decode("utf-8", "replace"), url,
+                        markup = raw.decode("utf-8", "replace")
+                        metadata_by_url, _, _ = source_details(markup, url,
                                                               page.get("witnesses") or [])
-                event = page.get("event") or {}
+                        event = event_details(markup, url) or event
                 context = context_values(
                     source_page_url=url,
                     source_original_page_url=url,
                     source_page_title=page.get("title"),
                     source_page_date=event.get("date"),
                     source_page_type=event.get("type"),
-                    source_publisher_committee_code=publishers.get(host),
+                    source_publisher_committee_code=publishers.get(host.removeprefix("www.")),
                     source_page_sha256=digest,
                 )
                 merge_context(context, receipt or {})
@@ -1173,6 +1176,7 @@ class DocumentSources:
                                 "senate_parser_fallback" if kind == "other" else "senate_parser_inference",
                             source_document_label=label,
                             source_link_url=document_url,
+                            source_link_context=anchor.get("paragraph_text"),
                             source_occurrence_scope="anchor" if metadata.get("occurrences") else "retained_url_aggregate",
                         ))
                         for written in anchor.get("labels") or []:

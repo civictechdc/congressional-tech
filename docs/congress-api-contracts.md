@@ -137,7 +137,7 @@ are not separate owners. The AST registry test catches new or changed constants.
 | Owner | Version | What it governs / consumer |
 | --- | --- | --- |
 | `parsers.house_evidence.SCHEMA_VERSION` | `"1.1"` | House evidence; House reader refresh queue and House replay |
-| `parsers.senate.PARSER_VERSION` | `10` | Parsed Senate pages; skips empty headings, preserves joint-participant card ownership, and distinguishes explicit amendments within Legislation; bounded maintenance and Senate replay |
+| `parsers.senate.PARSER_VERSION` | `11` | Parsed Senate pages; retains CSCE testimony-field roles, explicit biography labels, event dates, and surrounding link paragraphs; bounded maintenance and Senate replay |
 | `parsers.gpo_hearings.PARSER_VERSION` | `"3"` | GPO CSV/evidence interpretation; fetch and cached replay |
 | `parsers.witness_pdf.PARSER_VERSION` | `2` | PDF/MODS witness observations; retained with names and bytes |
 | `transcripts.senate.CAPTURE_VERSION` | `"3"` | Caption-capture completeness; stale receipts trigger recapture |

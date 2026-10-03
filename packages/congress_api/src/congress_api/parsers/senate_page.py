@@ -167,35 +167,48 @@ def literal_document_kind(label, url):
         if re.search(pattern, f"{label} {url.rsplit('/', 1)[-1]}", re.I)), "other")
 
 
+def _document_occurrence_context(occurrence):
+    """Interpret one link using only its own heading, label, field, and card."""
+    kind = section_document_kind(occurrence)
+    basis = "publisher_section_heading" if kind else None
+    labels = occurrence.get("labels") or []
+    card = occurrence.get("witness_card") or {}
+    attributes = occurrence.get("attributes") or []
+    if not kind and any(re.fullmatch(r"(?:Witness |Panelist |Speaker )?Biograph(?:y|ies)",
+                                    label.strip(), re.I) for label in labels):
+        kind, basis = "witness biography", "publisher_link_label"
+    # CSCE uses the same generic transcript icon for whole-event transcripts
+    # and witness files. The enclosing testimony field supplies the role.
+    if not kind and card.get("layout") == "paragraph--witness" and any(
+            "witness__field-testimony" in (container.get("class") or "").split()
+            for container in occurrence.get("container_attributes") or []):
+        kind, basis = "witness statement", "publisher_witness_field"
+    # The broad section can contain a bill and amendments to it. Only an
+    # explicit amendment label establishes the more specific form.
+    if kind == "legislative text" and any(re.fullmatch(
+            r"(?:[\w’'.-]+\s+){0,5}Amendment\s+(?:to|fo)\s+(?:S\.|H\.?\s*R\.?)\s*\d+", label.strip(), re.I)
+            for label in labels):
+        kind, basis = "committee amendment", "publisher_link_label"
+    # An amendment list may also link its summary. Keep that document form.
+    if kind == "committee amendment" and any(re.fullmatch(
+            r"(?:amendment )?summar(?:y|ies)", label.strip(), re.I) for label in labels):
+        kind, basis = "summary", "publisher_link_label"
+    primary_witness_file = any("Button--hearingLink" in (a.get("class") or "").split() for a in attributes)
+    if not kind and primary_witness_file and (card or len(occurrence.get("witness_indexes") or []) == 1):
+        urls = [a.get("href", "") for a in attributes]
+        literal = literal_document_kind(" ".join(labels), " ".join(urls))
+        # A biography, transcript or QFR can share the witness's card.
+        if literal in {"other", "member statement", "witness statement"}:
+            member = card.get("role") == "member"
+            kind = "member statement" if member else "witness statement"
+            basis = "publisher_member_card" if member else "publisher_witness_card"
+    return kind, basis
+
+
 def document_context(metadata):
-    """Return an agreed type and its evidence basis from scoped occurrences."""
-    results = []
-    for occurrence in (metadata or {}).get("occurrences") or [metadata or {}]:
-        kind = section_document_kind(occurrence)
-        basis = "publisher_section_heading" if kind else None
-        labels = occurrence.get("labels") or []
-        # The broad section can contain a bill and amendments to it. Only an
-        # explicit amendment label establishes the more specific form.
-        if kind == "legislative text" and any(re.fullmatch(
-                r"(?:[\w’'.-]+\s+){0,5}Amendment\s+(?:to|fo)\s+(?:S\.|H\.?\s*R\.?)\s*\d+", label.strip(), re.I)
-                for label in labels):
-            kind, basis = "committee amendment", "publisher_link_label"
-        # An amendment list may also link its summary. Keep that document form.
-        if kind == "committee amendment" and any(re.fullmatch(
-                r"(?:amendment )?summar(?:y|ies)", label.strip(), re.I) for label in labels):
-            kind, basis = "summary", "publisher_link_label"
-        primary_witness_file = any("Button--hearingLink" in (a.get("class") or "").split()
-                                   for a in occurrence.get("attributes") or [])
-        if not kind and primary_witness_file and (occurrence.get("witness_card")
-                or len(occurrence.get("witness_indexes") or []) == 1):
-            urls = [a.get("href", "") for a in occurrence.get("attributes") or []]
-            literal = literal_document_kind(" ".join(labels), " ".join(urls))
-            # A biography, transcript or QFR can share the witness's card.
-            if literal in {"other", "member statement", "witness statement"}:
-                member = (occurrence.get("witness_card") or {}).get("role") == "member"
-                kind = "member statement" if member else "witness statement"
-                basis = "publisher_member_card" if member else "publisher_witness_card"
-        results.append((kind, basis))
+    """Return a shared type only when all occurrences agree on it and its basis."""
+    occurrences = (metadata or {}).get("occurrences") or [metadata or {}]
+    results = [_document_occurrence_context(occurrence) for occurrence in occurrences]
     return results[0] if all(result == results[0] for result in results) else (None, None)
 
 
@@ -363,6 +376,11 @@ def event_details(page_html, url):
     candidates = [text(value) for value in re.findall(r'<(?:div|p)[^>]*class="jet-listing-dynamic-field__content"[^>]*>(.*?)</(?:div|p)>', page_html, re.S)]
     date_text = next((value for value in candidates if re.match(r"^Date:\s*", value, re.I)), None)
     displayed_type = None
+    if date_text is None and host.removeprefix("www.") == "csce.gov":
+        root = dom.fromstring(page_html)
+        dates = root.xpath('//*[contains(concat(" ", normalize-space(@class), " "), " csce-hearing__field-hearing-date ")]')
+        if len(dates) == 1:
+            date_text = text(dom.tostring(dates[0], encoding="unicode", with_tail=False))
     if date_text is None and host.removeprefix("www.") == "help.senate.gov":
         # The older HELP template labels its event date inside Hearing__details.
         # Keep its displayed type, rather than inferring one from the bill list.
@@ -538,6 +556,9 @@ def source_details(page_html, url, people):
         label = value(anchor)
         occurrence = {"labels": [label] if label else [], "attributes": [dict(anchor.attrib)],
                       "container_attributes": [], "witness_indexes": [], "headings": link_headings(anchor)}
+        paragraphs = anchor.xpath("ancestor::p[1]")
+        if paragraphs and (paragraph := " ".join(paragraphs[0].text_content().split())):
+            occurrence["paragraph_text"] = paragraph
         if label and label not in entry["labels"]:
             entry["labels"].append(label)
         attributes = dict(anchor.attrib)
@@ -547,6 +568,8 @@ def source_details(page_html, url, people):
         # for one URL cannot cross-pair their labels and witness ownership.
         for ancestor in anchor.iterancestors():
             attributes = {key: value for key, value in ancestor.attrib.items() if key.startswith("data-")}
+            if has(ancestor, "witness__field-testimony"):
+                attributes["class"] = ancestor.get("class")
             if attributes and attributes not in occurrence["container_attributes"]:
                 occurrence["container_attributes"].append(attributes)
             if ancestor in cards_by_node:

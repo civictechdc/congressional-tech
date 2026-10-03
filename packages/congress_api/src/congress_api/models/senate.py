@@ -54,6 +54,7 @@ class DocumentLinkFields(SourceModel):
 class DocumentOccurrence(DocumentLinkFields):
     """One literal anchor, with its own heading and witness-card association."""
     headings: list[str] = Field(default_factory=list)
+    paragraph_text: str | None = None
     # Publisher ownership can be a group or a name we cannot safely split.
     witness_card: WitnessCard | None = None
 
