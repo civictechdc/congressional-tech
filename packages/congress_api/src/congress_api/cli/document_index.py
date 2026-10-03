@@ -4,11 +4,15 @@ import argparse
 import json
 from pathlib import Path
 
+import pyarrow as pa
+import pyarrow.parquet as pq
+
 from congress_api.cli.raw_progress import ProgressLog
+from congress_api.retention.catalog_cache import LocalStore
+from congress_api.retention.raw_catalog import rebuild_catalog
+from congress_api.retention.raw_archive import CAPTURE_SCHEMA
 from congress_api.retention.document_index import (
     build,
-    refresh_source_metadata,
-    reindex_documents,
     refresh_filename_metadata,
 )
 
@@ -23,43 +27,31 @@ def main():
         type=Path,
         help="Directory containing filenames.parquet and urls.parquet",
     )
-    refresh = parser.add_mutually_exclusive_group()
-    refresh.add_argument(
-        "--documents-only",
-        action="store_true",
-        help="Refresh both document indexes from existing filename metadata; no parsing or fetching",
-    )
-    refresh.add_argument(
-        "--metadata-only",
-        action="store_true",
-        help="Reparse indexed filenames and selected retained records/PDF covers; no discovery or network access",
-    )
-    refresh.add_argument(
-        "--source-metadata-only",
-        action="store_true",
-        help="Refresh retained parent context, response validity and untyped PDF covers; no filename parsing or fetching",
-    )
+    parser.add_argument('--repair', action='store_true', help='Replay all retained sources instead of using source checkpoints')
+    # Old invocations remain valid, but all refresh modes use the same updater.
+    for flag in ('--documents-only', '--metadata-only', '--source-metadata-only'):
+        parser.add_argument(flag, action='store_true', help=argparse.SUPPRESS)
     parser.add_argument("--workers", type=int, default=4)
     args = parser.parse_args()
     if args.workers < 1:
         parser.error("--workers must be positive")
-    if (
-        not (args.documents_only or args.metadata_only or args.source_metadata_only)
-        and args.inventory_dir is None
-    ):
-        parser.error(
-            "--inventory-dir is required unless a metadata or document refresh is selected"
-        )
     with ProgressLog(args.archive / 'status/document-index.json'):
-        result = (
-            refresh_source_metadata(args.archive)
-            if args.source_metadata_only
-            else reindex_documents(args.archive)
-            if args.documents_only
-            else refresh_filename_metadata(args.archive, workers=args.workers)
-            if args.metadata_only
-            else build(args.archive, args.inventory_dir, workers=args.workers)
-        )
+        if args.inventory_dir is not None:
+            result = build(args.archive, args.inventory_dir, workers=args.workers)
+        elif (args.archive / 'indexes/captures.parquet').exists():
+            captures = pq.read_table(args.archive / 'indexes/captures.parquet')
+            # Older local inventories omitted empty capture columns; keep the
+            # remote writer strict and adapt this legacy input at the CLI edge.
+            captures = pa.Table.from_arrays([
+                captures[field.name].cast(field.type) if field.name in captures.column_names
+                else pa.nulls(len(captures), field.type) for field in CAPTURE_SCHEMA], schema=CAPTURE_SCHEMA)
+            result = rebuild_catalog(LocalStore(args.archive), captures,
+                                     workers=args.workers, repair=args.repair)
+        elif (args.archive / 'indexes/document-filenames.parquet').exists():
+            # A standalone filename table can still be reinterpreted without an archive.
+            result = refresh_filename_metadata(args.archive, workers=args.workers)
+        else:
+            parser.error('An archive capture index or existing filename table is required')
         print(json.dumps(result, indent=2), flush=True)
 
 

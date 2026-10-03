@@ -32,6 +32,10 @@ class MemoryStore:
         self.objects[key] = body
         self.writes.append(key)
 
+    def version(self, key):
+        from hashlib import sha256
+        return sha256(self.objects[key]).hexdigest() if key in self.objects else 'missing'
+
     def keys(self, prefix):
         return sorted(k for k in self.objects if k.startswith(prefix))
 

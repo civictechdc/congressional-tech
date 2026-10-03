@@ -279,3 +279,19 @@ def test_body_cache_is_invalidated_when_the_body_reader_changes(tmp_path, monkey
     assert reads == [row['body_key']]
     assert sources[0]['record_role'] == ['source-record']
     assert sources[0]['document_kind'] is None
+
+
+def test_missing_marker_keeps_capture_state_but_is_not_cached_as_completed():
+    from congress_api.retention import document_evidence as evidence
+    source = dict(body_key='missing', filename='123.none', source_url=None,
+                  source_paths=['external/docs_house_xml/wlist/123.none'])
+    cached = {}
+    first = evidence.enrich_sources([dict(source)], read_body=lambda _: None,
+                                    extract=lambda _: {}, cached=cached)[0]
+    assert first['record_role'] == ['capture-state']
+    assert first['cache_marker_state'] == ['unread']
+    assert not cached
+    second = evidence.enrich_sources([dict(source)], read_body=lambda _: b'',
+                                     extract=lambda _: {}, cached=cached)[0]
+    assert second['cache_marker_state'] == ['empty']
+    assert ('marker', 'missing') in cached

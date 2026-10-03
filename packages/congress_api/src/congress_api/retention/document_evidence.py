@@ -257,7 +257,7 @@ def marker_fields(data):
 def enrich_sources(rows, *, read_body, extract, cached=None):
     """Add flat evidence fields; original filenames, URLs, types and statuses stay intact."""
     urls = defaultdict(set)
-    cached = dict(cached or {})
+    cached = cached if cached is not None else {}
 
     def remember(url):
         try:
@@ -293,14 +293,18 @@ def enrich_sources(rows, *, read_body, extract, cached=None):
         elif cache_marker(row):
             key = ('marker', row.get('body_key'))
             if key not in cached:
-                cached[key] = marker_fields(read(row))
-            row.update(cached[key])
+                data = read(row)
+                if data is not None:
+                    cached[key] = marker_fields(data)
+            row.update(cached.get(key, marker_fields(None)))
         elif (re.fullmatch(r'\d+\.xml', row.get('filename') or '')
               or ((row.get('filename') or '').lower().endswith('.xml') and not row.get('document_kind'))):
             key = ('xml', row.get('body_key'))
             if key not in cached:
-                cached[key] = house_record(read(row))
-            fields = cached[key]
+                data = read(row)
+                if data is not None:
+                    cached[key] = house_record(data)
+            fields = cached.get(key, {})
             row.update(fields)
             for url in fields.get('source_record_document_url', ()):
                 remember(url)
@@ -350,19 +354,21 @@ def enrich_sources(rows, *, read_body, extract, cached=None):
         # A failed retrieval must never poison the cache for identical bytes
         # successfully captured elsewhere, nor replace source/marker roles.
         apply_response_role(row)
-    enrich_document_covers(rows, read_body=read_body)
+    enrich_document_covers(rows, read_body=read_body, cached=cached)
     return rows
 
 
-def enrich_document_covers(rows, *, read_body):
+def enrich_document_covers(rows, *, read_body, cached=None):
     """Fill untyped retained PDFs from explicit covers, once per body.
 
     Known filename/source types need no PDF extraction. Content facts follow
     identical bytes across aliases; capture failures stay capture-specific.
     """
-    covers = {row['body_key']: {key: row[key] for key in COVER_FIELDS if row.get(key)}
+    cached = cached if cached is not None else {}
+    covers = {key: fields for (reader, key), fields in cached.items() if reader == 'cover'}
+    covers.update({row['body_key']: {key: row[key] for key in COVER_FIELDS if row.get(key)}
               for row in rows if row.get('body_key') and row.get('content_document_kind')
-              and row.get('body_format') == ['pdf']}
+              and row.get('body_format') == ['pdf']})
     for row in rows:
         key = row.get('body_key')
         if (not key or key in covers or row.get('document_kind') or row.get('content_document_kind')
@@ -374,7 +380,9 @@ def enrich_document_covers(rows, *, read_body):
                 and not any(value.split(';')[0].strip().lower() == 'application/pdf' for value in row.get('media_type') or [])):
             continue
         data = read_body(key)
-        covers[key] = document_cover(data) if data is not None else {}
+        if data is not None:
+            covers[key] = document_cover(data)
+            cached[('cover', key)] = covers[key]
     for row in rows:
         if fields := covers.get(row.get('body_key')):
             row.update(fields)

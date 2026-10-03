@@ -154,10 +154,12 @@ def test_local_index_command_reports_progress_without_remote_publication(tmp_pat
     from congress_api.cli import document_index
 
     monkeypatch.setattr(sys, 'argv', ['document-filename-index', str(tmp_path), '--documents-only'])
-    def reindex(_):
+    (tmp_path / 'indexes').mkdir()
+    (tmp_path / 'indexes/document-filenames.parquet').touch()
+    def reindex(_, **kwargs):
         progress.report('write_document_tables', completed=3, total=3, unit='rows')
         return {'rows': 3}
-    monkeypatch.setattr(document_index, 'reindex_documents', reindex)
+    monkeypatch.setattr(document_index, 'refresh_filename_metadata', reindex)
     document_index.main()
     status = json.loads((tmp_path / 'status/document-index.json').read_text())
     assert status['status'] == 'completed'

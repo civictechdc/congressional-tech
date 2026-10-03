@@ -604,8 +604,9 @@ def test_source_metadata_cli_reads_retained_records_without_fetching(tmp_path):
                                            body_key=None)],index.SOURCE_SCHEMA)
     run=subprocess.run([sys.executable,str(SCRIPT),str(tmp_path),'--source-metadata-only'],
                        check=True,capture_output=True,text=True)
-    assert json.loads(run.stdout)['source_context_rows']==1
-    record=pq.read_table(path.with_name('documents.parquet')).to_pylist()[0]
+    assert json.loads(run.stdout)['rows'] >= 1
+    record=next(row for row in pq.read_table(path.with_name('documents.parquet')).to_pylist()
+                if row['source_url']=='https://legacy.test/report.pdf')
     assert record['source_committee_code']==['hsif14']
     assert record['source_document_type']==['BR']
     assert record['source_meeting_key']==['119/house/1001']

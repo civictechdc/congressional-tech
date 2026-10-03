@@ -125,7 +125,7 @@ def test_paired_validation_rejects_mismatched_catalog_before_writes(tmp_path, mo
     monkeypatch.setattr(index, 'write_filename_metadata', corrupt)
     with pytest.raises(ValueError, match='catalog_id'):
         rebuild_catalog(store, table(store, CAPTURES_KEY), workers=1)
-    assert store.writes == []
+    assert all(key.startswith("indexes/processing/") for key in store.writes)
 
 
 def test_retained_house_labels_are_inferences_and_native_unknown_stays_null():
@@ -169,7 +169,7 @@ def test_history_failure_prevents_either_table_replacement(tmp_path):
     store.put = fail
     with pytest.raises(OSError, match='history unavailable'):
         rebuild_catalog(store, workers=1)
-    assert store.objects == before
+    assert {k: v for k, v in store.objects.items() if not k.startswith("indexes/processing/")} == before
 
 
 def test_capture_locator_is_kept_alongside_parent_context():

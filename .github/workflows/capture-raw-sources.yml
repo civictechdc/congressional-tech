@@ -15,6 +15,8 @@ on:
       - 'packages/congress_api/src/congress_api/acquisition/raw_sync.py'
       - 'packages/congress_api/src/congress_api/retention/raw_*.py'
       - 'packages/congress_api/src/congress_api/retention/document_*.py'
+      - 'packages/congress_api/src/congress_api/retention/catalog_cache.py'
+      - 'packages/source-fetch/**'
       - 'packages/congress_api/src/congress_api/retention/r2.py'
       - 'packages/congress_api/src/congress_api/parsers/**'
       - 'packages/congress_api/src/congress_api/models/**'
@@ -37,6 +39,10 @@ on:
         options: [rebuild, capture]
         default: rebuild
         required: true
+      repair:
+        description: Replay all retained sources and interpretation (normally leave disabled)
+        type: boolean
+        default: false
       limit:
         description: Capture mode only - maximum captures or retained-body scans
         type: number
@@ -59,7 +65,7 @@ jobs:
   capture:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-24.04
-    # Collection can use 90 minutes; leave time to replay the full retained corpus.
+    # Collection can use 90 minutes; explicit repair may replay historical evidence.
     timeout-minutes: 240
     defaults:
       run:
@@ -94,23 +100,27 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - name: Build and check the Rust fetcher
-        if: steps.operation.outputs.mode == 'capture'
-        run: |
-          rustup toolchain install 1.89.0 --profile minimal --component rustfmt --component clippy
-          cargo +1.89.0 fmt --check --manifest-path packages/source-fetch/Cargo.toml
-          cargo +1.89.0 clippy --locked --release --manifest-path packages/source-fetch/Cargo.toml -- -D warnings
-          cargo +1.89.0 test --locked --release --manifest-path packages/source-fetch/Cargo.toml
-          cargo +1.89.0 build --locked --release --manifest-path packages/source-fetch/Cargo.toml --bin source-fetch
       - name: Install capture and rebuild tools
         run: >-
           pip install -e 'packages/house-naming[test]' -e packages/committee_meeting
           -e packages/congress_shared -e 'packages/congress_api[archive,test]' 'PyYAML>=6,<7'
+      - name: Identify installed validation environment
+        id: runtime
+        run: |
+          python -m pip freeze --exclude-editable > /tmp/raw-source-dependencies.txt
+          python --version >> /tmp/raw-source-dependencies.txt
+          echo "key=$(sha256sum /tmp/raw-source-dependencies.txt | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@v4
+        id: verified
+        with:
+          path: .cache/raw-source-verified
+          key: raw-verified-v1-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}-${{ steps.runtime.outputs.key }}
       - name: Verify capture and recovery offline
+        if: steps.verified.outputs.cache-hit != 'true'
         run: >-
           python .github/scripts/offline-python.py -m pytest -q
           tests/test_raw_source_sync.py tests/test_source_capture.py tests/test_r2_archive_store.py
-          tests/test_raw_catalog.py tests/test_raw_rebuild.py
+          tests/test_raw_catalog.py tests/test_raw_rebuild.py tests/test_incremental_catalog.py
           tests/test_raw_progress.py
           tests/test_document_filename_index.py tests/test_document_filename_viewer.py
           tests/test_congress_api_imports.py tests/test_document_link_probe.py
@@ -119,11 +129,40 @@ jobs:
           tests/test_document_metadata_preservation.py tests/test_document_source_context.py
           tests/test_senate_document_sections.py packages/house-naming/tests
           .github/tests/test_raw_source_workflow.py
-      - name: Verify native concurrency and request pacing on loopback
+      - name: Mark successful code validation
+        if: steps.verified.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p .cache/raw-source-verified
+          echo "$GITHUB_SHA" > .cache/raw-source-verified/revision
+      - uses: actions/cache/save@v4
+        if: steps.verified.outputs.cache-hit != 'true'
+        with:
+          path: .cache/raw-source-verified
+          key: ${{ steps.verified.outputs.cache-primary-key }}
+      - uses: actions/cache/restore@v4
         if: steps.operation.outputs.mode == 'capture'
+        id: fetcher
+        with:
+          path: packages/source-fetch/target/release/source-fetch
+          key: raw-fetcher-v1-${{ runner.os }}-${{ runner.arch }}-rust189-${{ github.sha }}-${{ steps.runtime.outputs.key }}
+      - name: Build and check the Rust fetcher
+        if: steps.operation.outputs.mode == 'capture' && steps.fetcher.outputs.cache-hit != 'true'
+        run: |
+          rustup toolchain install 1.89.0 --profile minimal --component rustfmt --component clippy
+          cargo +1.89.0 fmt --check --manifest-path packages/source-fetch/Cargo.toml
+          cargo +1.89.0 clippy --locked --release --manifest-path packages/source-fetch/Cargo.toml -- -D warnings
+          cargo +1.89.0 test --locked --release --manifest-path packages/source-fetch/Cargo.toml
+          cargo +1.89.0 build --locked --release --manifest-path packages/source-fetch/Cargo.toml --bin source-fetch
+      - name: Verify native concurrency and request pacing on loopback
+        if: steps.operation.outputs.mode == 'capture' && steps.fetcher.outputs.cache-hit != 'true'
         env:
           SOURCE_FETCH_BINARY: ${{ github.workspace }}/packages/source-fetch/target/release/source-fetch
         run: python -m pytest -q tests/test_rust_fetch_native.py
+      - uses: actions/cache/save@v4
+        if: steps.operation.outputs.mode == 'capture' && steps.fetcher.outputs.cache-hit != 'true'
+        with:
+          path: packages/source-fetch/target/release/source-fetch
+          key: ${{ steps.fetcher.outputs.cache-primary-key }}
       - name: Publish filename and document tables
         id: sync
         env:
@@ -132,6 +171,7 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           ZYTE_TOKEN: ${{ steps.operation.outputs.mode == 'capture' && secrets.ZYTE_TOKEN || '' }}
           SYNC_MODE: ${{ steps.operation.outputs.mode }}
+          REPAIR: ${{ inputs.repair || 'false' }}
           CAPTURE_LIMIT: ${{ inputs.limit || 5000 }}
           CAPTURE_TRANSPORT: ${{ inputs.transport || 'auto' }}
         run: |
@@ -153,6 +193,7 @@ jobs:
               ;;
             *) echo "Unsupported operation: $SYNC_MODE" >&2; exit 1 ;;
           esac
+          if [ "${REPAIR:-false}" = "true" ]; then args+=(--repair); fi
           raw-source-sync "${args[@]}" "${seeds[@]}"
           test -s raw-capture-summary.json
       - name: Show publication summary

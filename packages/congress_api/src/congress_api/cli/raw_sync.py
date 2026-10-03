@@ -82,6 +82,8 @@ def parser():
         type=Path,
         help="Read-only local planning; requires --plan-only",
     )
+    p.add_argument("--repair", action="store_true",
+                   help="Reconstruct saved state and replay all source evidence")
     p.add_argument("--summary", type=Path, default=Path("raw-capture-summary.json"))
     return p
 
@@ -144,11 +146,11 @@ def run(args, log):
         log.state.update(run_id=run_id, mode='rebuild' if args.rebuild_only else 'plan' if args.plan_only else 'capture')
     if args.rebuild_only:
         summary = dict(mode="rebuild", catalog=rebuild_catalog(
-            store, seeds=seed_files(args.seed) if args.seed else (), workers=args.index_workers,
+            store, seeds=seed_files(args.seed) if args.seed else (), workers=args.index_workers, repair=args.repair,
         ))
     elif args.plan_only:
         progress.report('load_capture_state')
-        archive = Archive(store, run_id)
+        archive = Archive(store, run_id, repair=args.repair)
         seeds = seed_files(args.seed)
         for item in seeds:
             archive.seed(item)
@@ -159,7 +161,7 @@ def run(args, log):
         )
     else:
         progress.report('load_capture_state')
-        archive = Archive(store, run_id)
+        archive = Archive(store, run_id, repair=args.repair)
         seeds = seed_files(args.seed)
         stop = threading.Event()
         signal.signal(signal.SIGTERM, lambda *_: stop.set())
@@ -173,7 +175,7 @@ def run(args, log):
                 limit=args.limit, workers=args.workers, max_seconds=args.max_seconds,
                 max_bytes=args.max_file_mib * 1024**2, stop=stop,
                 publish=lambda a: rebuild_catalog(
-                    a.store, a.captures, seeds=seed_files(args.seed), workers=args.index_workers,
+                    a.store, a.captures, seeds=seed_files(args.seed), workers=args.index_workers, repair=args.repair,
                 ),
             )
         summary.update(fetcher="reqwest", requests_per_second=args.requests_per_second,

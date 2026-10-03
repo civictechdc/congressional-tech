@@ -95,7 +95,7 @@ def capture_rank(row):
 
 
 class Archive:
-    def __init__(self, store, run_id):
+    def __init__(self, store, run_id, *, repair=False):
         self.store, self.run_id = store, run_id
         data = store.read(CAPTURES_KEY)
         if data is None:
@@ -105,13 +105,25 @@ class Archive:
         self.captures = decode_table(data)
         if self.captures.schema.remove_metadata() != CAPTURE_SCHEMA:
             raise ValueError("Unexpected capture index schema")
-        self.additions, self.body_info, self.state = [], {}, {}
+        saved = store.read(STATE_KEY)
+        saved_table = decode_table(saved) if saved else None
+        saved_metadata = (saved_table.schema.metadata or {}) if saved_table is not None else {}
+        saved_state = {r['url']: r for r in saved_table.to_pylist()} if saved_table is not None else {}
+        cursor = int(saved_metadata.get(b'capture_rows', b'0'))
+        from congress_api.retention.catalog_cache import capture_digest
+        resumed = (not repair and 0 <= cursor <= len(self.captures) and saved_metadata.get(b'capture_digest')
+                   == capture_digest(self.captures.slice(0, cursor)).encode())
+        if not resumed:
+            cursor = 0
+        self.additions, self.body_info, self.state = [], {}, dict(saved_state)
         self.sequence = 0
         self.pending = []
         self.day = datetime.now(timezone.utc).date().isoformat()
         indexed = set()
+        position = 0
         for batch in self.captures.to_batches(max_chunksize=65536):
             for row in batch.to_pylist():
+                position += 1
                 if row["receipt_key"]:
                     indexed.add(row["receipt_key"])
                 if row["body_key"] and row["sha256"]:
@@ -125,6 +137,8 @@ class Archive:
                             "stored_bytes",
                         )
                     }
+                if position <= cursor:
+                    continue
                 url = allowed_url(row["context_url"])
                 if not url or row["family"] in {
                     "external/provider-responses",
@@ -150,7 +164,12 @@ class Archive:
                         retrieved_at=row["retrieved_at"],
                     )
         # Add every known document URL, including files not yet downloaded.
-        names = store.read("indexes/document-filenames.parquet")
+        # Only a changed catalog can introduce additional unqueued document URLs.
+        version = getattr(store, 'version', lambda key: None)('indexes/document-filenames.parquet')
+        self.filename_version = version
+        names = None
+        if repair or version is None or saved_metadata.get(b'filename_version') != str(version).encode():
+            names = store.read('indexes/document-filenames.parquet')
         if names:
             table = pq.read_table(
                 pa.BufferReader(names),
@@ -196,9 +215,9 @@ class Archive:
                         outcome="retained",
                         links_scanned=False,
                     )
-        saved = store.read(STATE_KEY)
-        if saved:
-            self.state.update({r["url"]: r for r in decode_table(saved).to_pylist()})
+        # Persisted attempts/validation take precedence over legacy bootstrap guesses.
+        if not resumed:
+            self.state.update(saved_state)
         # Recover all published batches, including a run interrupted before save().
         for key in store.keys("receipts/"):
             if "/download-" not in key or key in indexed:
@@ -410,15 +429,18 @@ class Archive:
             )
 
     def save(self):
+        from congress_api.retention.catalog_cache import capture_digest
         self.flush()
-        self.store.put(
-            STATE_KEY,
-            encode_table(
-                pa.Table.from_pylist(list(self.state.values()), schema=STATE_SCHEMA)
-            ),
-        )
+        combined = self.captures
         if self.additions:
             appended = pa.Table.from_pylist(self.additions, schema=CAPTURE_SCHEMA)
-            self.captures = pa.concat_tables([self.captures, appended])
-            self.store.put(CAPTURES_KEY, encode_table(self.captures))
+            combined = pa.concat_tables([combined, appended])
+        metadata = {'capture_rows': str(len(combined)), 'capture_digest': capture_digest(combined)}
+        if self.filename_version is not None:
+            metadata['filename_version'] = str(self.filename_version)
+        self.store.put(STATE_KEY, encode_table(pa.Table.from_pylist(
+            list(self.state.values()), schema=STATE_SCHEMA.with_metadata(metadata))))
+        if self.additions:
+            self.store.put(CAPTURES_KEY, encode_table(combined))
+            self.captures = combined
             self.additions.clear()

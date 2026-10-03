@@ -10,7 +10,7 @@ source_committee_code is the meeting's Congress.gov systemCode; the separate
 source_publisher_committee_code identifies the Senate site's owner from the
 collector's existing site map. Missing context stays null. A shared document
 retains all observed parents; flat lists do not imply pairwise relationships.
---source-metadata-only refreshes these fields without rerunning filename parsing.
+The archive updater reuses unchanged interpretations automatically.
 document_kind uses filename evidence first, then typed contents or a recognized
 source document type. document_kind_source identifies that choice; native types
 stay intact.
@@ -1070,6 +1070,26 @@ class DocumentSources:
         # An unscoped identifier cannot choose between chambers or Congresses.
         return self.meetings[keys[0]] if len(keys) == 1 else {}
 
+    def refresh_meeting_context(self):
+        """Join later meeting facts to earlier links using their scoped event ID."""
+        for url, observations in list(self.occurrences.items()):
+            for occurrence in list(observations.values()):
+                events = occurrence.get('source_meeting_id') or []
+                chambers = occurrence.get('source_chamber') or []
+                congresses = occurrence.get('source_congress') or []
+                if len(events) != 1 or len(chambers) != 1 or len(congresses) > 1:
+                    continue
+                meeting = self.event_context(events[0], chambers[0], congresses[0] if congresses else None)
+                if not meeting:
+                    continue
+                expanded = dict(occurrence)
+                for field, values in meeting.items():
+                    if field in {"source_page_url", "source_original_page_url"}:
+                        continue  # Keep the actual parent page of this link.
+                    expanded[field] = merge_values(field, expanded.get(field), values)
+                if expanded != occurrence:
+                    self.add_url(url, expanded)
+
     def add_meeting(self, record, receipt=None):
         if not isinstance(record, dict):
             return
@@ -1464,7 +1484,8 @@ def add_retained_house_documents(context, captures, read_body):
         except (ValueError, ParseError):
             continue
         event = root.get("meeting-id", "").removeprefix("HMKP")
-        values = {**context.event_context(event, "house"), **context_values(
+        values = {**context_values(source_meeting_id=event, source_chamber="House"),
+                  **context.event_context(event, "house"), **context_values(
             source_page_url=url, source_original_page_url=url, source_page_sha256=sha256(body).hexdigest(),
             source_receipt_key=row.get("receipt_key"), source_receipt_line=row.get("receipt_line"))}
         context.add_house_evidence(evidence, values)
@@ -1940,7 +1961,7 @@ def parser_fingerprint():
 
 
 def write_filename_metadata(
-    root, source_rows, *, workers=4, previous=None, metadata=None, read_body=None
+    root, source_rows, *, workers=4, previous=None, metadata=None, read_body=None, cache_store=None, reuse_results=True
 ):
     """Interpret supplied source rows; acquisition and storage discovery stay outside."""
     started = time.monotonic()
@@ -1960,19 +1981,21 @@ def write_filename_metadata(
             names.add(source["filename"])
     fingerprint = parser_fingerprint()
     progress.report('reuse_cached_metadata')
-    cached = {}
+    from congress_api.retention.catalog_cache import LocalStore, load_results, save_results
+    cache_store = cache_store or LocalStore(root)
+    cached = load_results(cache_store, 'filenames', fingerprint, ('filename', 'source_url'), reuse=reuse_results)
     body_fingerprint = evidence_fingerprint()
-    body_cache = {}
-    if previous is not None and (previous.schema.metadata or {}).get(b"body_evidence_fingerprint") == body_fingerprint.encode():
+    body_cache = load_results(cache_store, 'bodies', body_fingerprint, ('reader', 'body_key'), reuse=reuse_results)
+    if reuse_results and previous is not None and (previous.schema.metadata or {}).get(b"body_evidence_fingerprint") == body_fingerprint.encode():
         for batch in previous.select([k for k in (BODY_FIELDS | {"body_key"}) if k in previous.column_names]).to_batches():
             for row in batch.to_pylist():
                 if key := body_evidence_key(row):
-                    body_cache[key] = cached_body_fields(row, key)
+                    body_cache.setdefault(key, cached_body_fields(row, key))
     source_fields = (
         set(SOURCE_SCHEMA.names) | SOURCE_CONTEXT_FIELDS | {"capture_outcome"}
     )
     if (
-        previous is not None
+        reuse_results and previous is not None
         and "document_kind_source" in previous.column_names
         and (previous.schema.metadata or {}).get(b"house_naming_fingerprint")
         == fingerprint.encode()
@@ -1989,27 +2012,29 @@ def write_filename_metadata(
                     continue  # Anonymous bodies share no reusable filename meaning.
                 if row.get("recovered_filename") or row.get("body_format") or row.get("cache_marker_state"):
                     continue  # These meanings depend on retained evidence, not just names.
-                cached[(row["filename"], row["source_url"])] = {
+                cached.setdefault((row["filename"], row["source_url"]), {
                     k: row[k] for k in fields if row[k] is not None
                     and not (k == "document_kind"
                              and any(value in DERIVED_KIND_SOURCES for value in row.get("document_kind_source") or []))
-                }
+                })
+    if not reuse_results:
+        cached, body_cache = {}, {}
     pending = [key for key in inputs if key not in cached]
     def collect(parsed):
         for key, fields in progress.track(zip(pending, parsed), 'extract_filenames',
                                          total=len(pending), unit='filenames'):
             cached[key] = fields
 
-    # A single-worker path is useful for callers already running a worker and
-    # keeps small rebuilds independent of process spawning.
-    if workers == 1:
-        collect(map(extract, pending))
-    elif pending:
-        # The CLI reports progress from a thread; workers must not fork that thread's state.
-        with ProcessPoolExecutor(max_workers=workers, mp_context=get_context('spawn')) as pool:
-            collect(pool.map(extract, pending, chunksize=128))
-    else:
-        collect(())
+    try:
+        if workers == 1:
+            collect(map(extract, pending))
+        elif pending:
+            with ProcessPoolExecutor(max_workers=workers, mp_context=get_context('spawn')) as pool:
+                collect(pool.map(extract, pending, chunksize=128))
+    finally:
+        # A failed later stage can reuse these completed filename results.
+        save_results(cache_store, 'filenames', fingerprint, ('filename', 'source_url'), cached)
+
     rows, columns = (
         [],
         {
@@ -2024,8 +2049,23 @@ def write_filename_metadata(
         columns.update(cached[key])
         rows.extend({**row, **cached[key]} for row in inputs[key])
     progress.report('inspect_document_contents', total=len(bodies), unit='distinct_retained_bodies')
-    enrich_sources(rows, read_body=read_body or (lambda key: read_retained_body(root, key)),
-                   extract=extract, cached=body_cache)
+    def interpret(key):
+        if key not in cached:
+            cached[key] = extract(key)
+        return cached[key]
+    deferred_bodies = set()
+    supplied_reader = read_body or (lambda key: read_retained_body(root, key))
+    def inspect_body(key):
+        data = supplied_reader(key)
+        if data is None:
+            deferred_bodies.add(key)
+        return data
+    try:
+        enrich_sources(rows, read_body=inspect_body,
+                       extract=interpret, cached=body_cache)
+    finally:
+        save_results(cache_store, 'bodies', body_fingerprint, ('reader', 'body_key'), body_cache)
+        save_results(cache_store, 'filenames', fingerprint, ('filename', 'source_url'), cached)
     progress.report('apply_response_metadata', total=len(rows), unit='source_rows')
     refresh_response_metadata(root, rows)
     for row in rows:
@@ -2041,6 +2081,7 @@ def write_filename_metadata(
             "house_naming_version": __version__,
             "house_naming_fingerprint": fingerprint,
             "body_evidence_fingerprint": body_fingerprint,
+            "deferred_body_reads": str(len(deferred_bodies)),
             **(metadata or {}),
         },
     )
@@ -2114,7 +2155,7 @@ def refresh_filename_metadata(root, *, workers=4):
         for batch in source.iter_batches(columns=fields)
         for row in batch.to_pylist()
     )
-    return write_filename_metadata(root, rows, workers=workers, metadata={
+    return write_filename_metadata(root, rows, workers=workers, previous=source.read(), metadata={
         key.decode(): value.decode() for key, value in (source.schema_arrow.metadata or {}).items()
         if key in {b'raw_capture_rows', b'retained_recovery_fingerprint'}})
 

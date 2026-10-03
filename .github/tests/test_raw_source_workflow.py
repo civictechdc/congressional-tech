@@ -130,7 +130,8 @@ def test_rebuild_workflow_arguments_execute_without_acquisition(
     def forbidden(*args, **kwargs):
         pytest.fail("The workflow's rebuild invocation entered acquisition")
 
-    def rebuild(actual_store, *, seeds=(), workers):
+    def rebuild(actual_store, *, seeds=(), workers, repair=False):
+        assert not repair
         assert actual_store is store
         calls.append((workers, list(seeds)))
         return {"catalog_id": "rebuilt"}
@@ -265,7 +266,7 @@ def test_shared_writer_lock_revision_credentials_and_single_rebuild():
     ]
     assert len(native) == 2
     assert all(
-        step["if"] == "steps.operation.outputs.mode == 'capture'" for step in native
+        step["if"] == "steps.operation.outputs.mode == 'capture' && steps.fetcher.outputs.cache-hit != 'true'" for step in native
     )
     assert sum(step.get("run", "").count('raw-source-sync "') for step in STEPS) == 1
     assert SUMMARY["if"] == "${{ always() }}"
@@ -314,3 +315,29 @@ def test_triggers_cover_parser_changes_and_exclude_generated_outputs():
         "docs/youtube-coverage/source-capture-fidelity.md",
     ]:
         assert not any(fnmatchcase(path, pattern) for pattern in patterns), path
+
+
+def test_validation_is_reused_only_for_exact_revision_and_dependency_environment():
+    restores = {step['id']: step for step in STEPS if step.get('uses') == 'actions/cache/restore@v4'}
+    assert set(restores) == {'verified', 'fetcher'}
+    for step in restores.values():
+        assert '${{ github.sha }}' in step['with']['key']
+        assert '${{ steps.runtime.outputs.key }}' in step['with']['key']
+        assert 'restore-keys' not in step['with']
+    verification = next(step for step in STEPS if step.get('name') == 'Verify capture and recovery offline')
+    assert verification['if'] == "steps.verified.outputs.cache-hit != 'true'"
+    saves = [step for step in STEPS if step.get('uses') == 'actions/cache/save@v4']
+    assert len(saves) == 2
+    for step in saves:
+        assert 'always()' not in step['if']
+        assert STEPS.index(step) < STEPS.index(PUBLISH)
+    assert STEPS.index(saves[0]) > STEPS.index(verification)
+    assert STEPS.index(saves[1]) > next(i for i, step in enumerate(STEPS)
+        if step.get('name') == 'Verify native concurrency and request pacing on loopback')
+
+
+def test_explicit_repair_uses_same_command(tmp_path, recording_command):
+    result = run_step(PUBLISH, tmp_path, SYNC_MODE='rebuild', REPAIR='true', **recording_command)
+    assert result.returncode == 0, result.stderr
+    args = json.loads((tmp_path / 'invocation.json').read_text())
+    assert '--repair' in args

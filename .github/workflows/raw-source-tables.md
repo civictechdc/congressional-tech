@@ -1,83 +1,108 @@
-# Raw source document table publication
+# Raw source document table updates
 
-`capture-raw-sources.yml` runs the current Python parser against retained evidence
-and publishes the document tables to R2. R2 stores the evidence and tables;
-GitHub Actions performs the rebuild. Parser changes do not need another upstream
-download batch before metadata can be published.
+`capture-raw-sources.yml` collects missing sources and updates the document tables
+in R2. Ordinary updates reuse completed work. Full source replay is an explicit
+repair operation; a fresh archive or changed source parser also needs replay.
 
 | Trigger | Operation |
 | --- | --- |
-| Relevant code pushed to `main` | Rebuild only |
-| Manual dispatch, `mode=rebuild` (default) | Rebuild only |
-| Manual dispatch, `mode=capture` | Capture missing sources, then rebuild |
-| Every six hours | Capture missing sources, then rebuild |
-| `Update committee data` completes on `main` | Capture missing sources, then rebuild |
+| Relevant code pushed to `main` | Update metadata; no acquisition |
+| Manual dispatch, `mode=rebuild` (default) | Update metadata; no acquisition |
+| Manual dispatch, `mode=capture` | Capture missing sources, then update metadata |
+| Every six hours | Capture missing sources, then update metadata |
+| `Update committee data` completes on `main` | Capture missing sources, then update metadata |
 
-The completion trigger also runs after an unsuccessful collection, preserving the
-existing opportunity to process retained partial progress. It accepts only runs
-from this repository. Push filters cover filename rules, source parsers, source
-models, rebuild code, and this workflow. Generated tables, site changes,
-`pipeline-data`, and documentation do not trigger a metadata rebuild.
+The completion trigger accepts only runs from this repository, including failed
+collection runs with retained partial progress. Generated outputs and
+`pipeline-data` commits do not trigger this workflow.
 
-## Run a rebuild
+## What an update reads
 
-In GitHub Actions, select **Capture raw sources and rebuild document tables**,
-choose **Run workflow**, select `main`, and leave `mode` set to `rebuild`.
-The equivalent CLI command is:
+The updater reads the capture index, existing tables and processing checkpoints.
+It checks that the previously consumed capture prefix has not changed. With the
+same source parser, only new captures and previously unavailable source bodies
+need replay. New links can still be associated with older captures by exact URL.
+A changed filename parser reuses source interpretation and body results. Changed
+body readers invalidate body results independently. A changed source reader
+replays source context; this conservative invalidation covers the source-parser
+set, not individual committee layouts.
 
-```sh
-gh workflow run capture-raw-sources.yml --ref main -f mode=rebuild
-```
+The internal checkpoints are three Parquet files under `indexes/processing/`:
 
-`limit` and `transport` apply only to capture mode. Rebuild mode calls
-`raw-source-sync --rebuild-only` with the existing bucket, available seed files,
-index worker count, and summary path. It skips Rust setup and native fetcher
-tests, passes no Zyte token, and has no acquisition arguments. Unknown operations
-fail before the command runs. The Python mode is responsible for leaving
-`indexes/captures.parquet` and `indexes/download-state.parquet` untouched.
-Capture mode calls the same command once and uses its shared rebuild after
-acquisition; the workflow does not add a second rebuild.
+| File | Contents |
+| --- | --- |
+| `sources.parquet` | Source rows, paired page/link observations, scoped meeting facts and URL associations |
+| `filenames.parquet` | Filename and source URL, with flat filename-derived fields |
+| `bodies.parquet` | Body key and reader, with flat content-derived fields; an empty result records a completed inspection |
 
-The job allows four hours overall. Capture remains limited to 90 minutes, leaving
-time for a full metadata rebuild and publication after collection.
+These files contain derived processing state. They do not replace raw bodies,
+receipts or the public document tables. Missing bodies do not count as completed
+inspections. Source interpretation is saved before filename/PDF work; completed
+filename and body stages are saved before publication, including on ordinary
+exceptions. A hard kill can still lose the current stage's unsaved work.
 
-## Revision, publication, and failure checks
+An unchanged update reads no raw receipts or bodies and leaves the published
+pair alone. Updates still rewrite the derived Parquet tables when their inputs
+or meanings change. The first run after this change initializes checkpoints.
 
-The workflow checks out `github.sha` and validates that code before publishing.
-For push and manual events, this is the triggering code revision, including on
-reruns; scheduled and completion events use their default-branch event revision.
-See GitHub's [event revision definitions](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows).
-The separate `pipeline-data` checkout supplies the latest saved seeds.
+Acquisition loads saved download state first, applies new capture rows, and
+imports document URLs only when the filename table's object version changes.
+It continues to recover receipt batches that were saved before an interrupted
+index write. `--repair` enables reconstruction from the historical capture index.
 
-All operations keep the existing `raw-source-mirror` concurrency group with
-`cancel-in-progress: false`. Any future R2 writer must use that same group. The
-workflow has read-only repository permissions and writes no Git commits, which
-prevents its output from triggering another rebuild.
+## Commands
 
-The Actions summary records the operation, trigger, code revision, seed revision
-when available, job status, publication-step outcome, and the command's JSON
-summary. The JSON is also retained as a workflow artifact. A missing summary
-after a successful command fails the step. Setup or publication failures still
-produce a status summary and explicitly leave publication unverified when no
-command summary exists.
-
-## Local validation
-
-Install the workflow's Python dependencies, including `PyYAML>=6,<7`, then run:
+Update retained metadata without acquisition:
 
 ```sh
-python .github/scripts/offline-python.py -m pytest -q .github/tests/test_raw_source_workflow.py
+raw-source-sync --rebuild-only
 ```
 
-These tests execute the actual workflow shell steps with a recording command in
-a temporary directory. They check event selection, acquisition arguments,
-invalid modes, command failures, missing summaries, success/failure reporting,
-path filters, the shared writer lock, and the triggering revision. They also
-parse the recorded arguments with the real Python CLI, so a missing
-`--rebuild-only` implementation fails validation before publication. The tests
-run in both the publication workflow and pull-request validation.
+Explicitly replay retained sources and filename/body interpretation:
 
-The publication workflow also runs the offline catalog, recovery, preservation,
-source parser, filename rule, and capture tests. Local tests do not establish
-hosted credentials, R2 publication, or a successful GitHub Actions run; those
-require an authorized hosted run and examination of its summary and outputs.
+```sh
+raw-source-sync --rebuild-only --repair
+```
+
+The local archive uses the same updater:
+
+```sh
+document-filename-index .cache/congressional-tech-raw
+```
+
+The old `--documents-only`, `--metadata-only` and `--source-metadata-only` flags
+remain accepted as aliases for automatic updating. Callers no longer choose
+which interpretation stages to run. `--inventory-dir` remains a one-time legacy
+inventory import; a standalone filename table can be refreshed without a raw
+archive. Neither local operation fetches upstream sources.
+
+In GitHub Actions, choose **Capture raw sources and rebuild document tables**.
+Leave `repair` disabled for normal runs. `limit` and `transport` apply only to
+capture mode. Metadata-only runs pass no Zyte token and skip native-fetcher setup.
+Capture mode invokes the updater once after acquisition.
+
+## Validation, publication and recovery
+
+The workflow checks out the event's exact `github.sha`. Successful Python
+validation is reusable only for that revision, operating system, architecture,
+Python version and installed dependency versions. The tested Rust binary has a
+separate exact-match cache, including its pinned toolchain. There are no fallback
+cache keys. Cache misses rerun validation; failed validation never saves a success
+marker or binary. Data integrity checks still run on every table publication.
+The cache uses GitHub's [separate restore and save actions](https://github.com/actions/cache/tree/main/restore).
+
+All R2 writers share the `raw-source-mirror` concurrency group with
+`cancel-in-progress: false`. The workflow has read-only repository permissions.
+Before replacement, it validates the paired tables and preserves exact previous
+table bytes in `catalog-history/sha256/`. Conditional writes reject competing
+index updates. Readers must check matching `catalog_id` values; interrupted
+publication may leave an unmatched pair, which the next update repairs.
+
+The Actions summary and retained artifact include operation, revision, publication
+result and progress. Live progress is also available at
+`status/raw-source-sync.json`. A missing completion summary fails the step;
+a last status of `running` may indicate an interrupted process. Hosted completion
+and publication require examining the actual run and its resulting tables.
+
+The workflow allows four hours. Capture remains bounded to 90 minutes, leaving
+time for updating metadata or an explicitly requested repair.

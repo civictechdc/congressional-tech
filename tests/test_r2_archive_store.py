@@ -101,3 +101,18 @@ def test_catalog_history_retry_requires_identical_bytes(saved):
             with pytest.raises(RuntimeError, match='Concurrent update'):
                 store.put(key, data, immutable=True)
         stub.assert_no_pending_responses()
+
+
+def test_catalog_version_uses_head_without_downloading_the_table():
+    c = client()
+    key = 'indexes/document-filenames.parquet'
+    with Stubber(c) as stub:
+        stub.add_response('head_object', {'ETag': '"version"'}, {'Bucket': 'archive', 'Key': key})
+        stub.add_client_error('head_object', service_error_code='404', http_status_code=404,
+                              expected_params={'Bucket': 'archive', 'Key': key})
+        store = R2Store(c, 'archive')
+        assert store.version(key) == '"version"'
+        assert store.version(key) == 'missing'
+        # HEAD used for change detection must not authorize replacing that index.
+        assert key not in store.index_etags
+        stub.assert_no_pending_responses()

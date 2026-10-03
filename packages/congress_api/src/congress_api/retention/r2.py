@@ -68,6 +68,16 @@ class R2Store:
             self.index_etags[key] = result["ETag"]
         return True
 
+    def version(self, key):
+        """Read an object's version without downloading its contents."""
+        from botocore.exceptions import ClientError
+        try:
+            return self.client.head_object(Bucket=self.bucket, Key=key)['ETag']
+        except ClientError as error:
+            if error.response['Error']['Code'] in {'NoSuchKey', '404'}:
+                return 'missing'
+            raise
+
     def keys(self, prefix):
         for page in self.client.get_paginator("list_objects_v2").paginate(
             Bucket=self.bucket, Prefix=prefix
