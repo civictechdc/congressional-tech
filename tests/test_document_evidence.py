@@ -1,11 +1,29 @@
 """Regression controls for retained House records, cache markers and filenames."""
 import gzip
 from hashlib import sha256
+import tracemalloc
 
 import pyarrow.parquet as pq
 import pytest
 
 from congress_api.retention import document_index as index
+
+
+def test_body_interpretation_does_not_retain_every_raw_payload(monkeypatch):
+    from congress_api.retention import document_evidence as evidence
+
+    rows = [dict(body_key=f'body-{n}', filename=f'opaque-{n}', source_url=None)
+            for n in range(20)]
+    # Isolate retention from parser allocations: keep only the resulting fields.
+    monkeypatch.setattr(evidence, 'document_body_fields', lambda _: {'body_format': ['zip']})
+    tracemalloc.start()
+    try:
+        evidence.enrich_sources(rows, read_body=lambda _: b'x' * (2 * 1024**2), extract=lambda _: {})
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    assert all(row['body_format'] == ['zip'] for row in rows)
+    assert peak < 8 * 1024**2, 'Raw body memory must not grow with corpus size'
 
 
 def retained(root, name, data, *, url=None, path=None, **fields):

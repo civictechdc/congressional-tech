@@ -257,7 +257,6 @@ def marker_fields(data):
 def enrich_sources(rows, *, read_body, extract, cached=None):
     """Add flat evidence fields; original filenames, URLs, types and statuses stay intact."""
     urls = defaultdict(set)
-    bodies = {}
     cached = dict(cached or {})
 
     def remember(url):
@@ -273,11 +272,9 @@ def enrich_sources(rows, *, read_body, extract, cached=None):
 
     def read(row):
         key = row.get('body_key')
-        if not key:
-            return None
-        if key not in bodies:
-            bodies[key] = read_body(key)
-        return bodies[key]
+        # The parsed-field cache handles aliases. Keeping every decompressed body
+        # as well makes memory grow with the archive's total uncompressed size.
+        return read_body(key) if key else None
 
     for row in rows:
         if row.get('source_url'):
