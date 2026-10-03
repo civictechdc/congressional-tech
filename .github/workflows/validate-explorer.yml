@@ -38,7 +38,7 @@ jobs:
           python-version: "3.12"
       - name: Install local Python packages and test tools
         run: >-
-          pip install -e packages/house-naming -e packages/committee_meeting -e packages/congress_shared
+          pip install -e 'packages/house-naming[test]' -e packages/committee_meeting -e packages/congress_shared
           -e packages/youtube_api -e 'packages/congress_api[archive,test]' -e apps/committee_youtube 'PyYAML>=6,<7'
       - name: Test models, retained-source adapters and publication offline
         run: python .github/scripts/offline-python.py -m pytest -q tests packages/committee_meeting/tests packages/house-naming/tests .github/tests

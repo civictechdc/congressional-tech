@@ -103,7 +103,7 @@ jobs:
           cargo +1.89.0 build --locked --release --manifest-path packages/source-fetch/Cargo.toml --bin source-fetch
       - name: Install capture and rebuild tools
         run: >-
-          pip install -e packages/house-naming -e packages/committee_meeting
+          pip install -e 'packages/house-naming[test]' -e packages/committee_meeting
           -e packages/congress_shared -e 'packages/congress_api[archive,test]' 'PyYAML>=6,<7'
       - name: Verify capture and recovery offline
         run: >-
