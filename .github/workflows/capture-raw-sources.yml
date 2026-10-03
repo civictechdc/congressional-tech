@@ -1,6 +1,27 @@
-name: Capture missing raw sources
+name: Capture raw sources and rebuild document tables
 
 on:
+  push:
+    branches: [main]
+    # Code changes publish metadata from retained evidence without acquisition.
+    # Generated data and pipeline-data commits cannot trigger this path.
+    paths:
+      - 'packages/house-naming/src/**'
+      - 'packages/house-naming/pyproject.toml'
+      - 'packages/congress_api/pyproject.toml'
+      - 'packages/congress_api/src/congress_api/cli/raw_sync.py'
+      - 'packages/congress_api/src/congress_api/cli/common.py'
+      - 'packages/congress_api/src/congress_api/acquisition/raw_sync.py'
+      - 'packages/congress_api/src/congress_api/retention/raw_*.py'
+      - 'packages/congress_api/src/congress_api/retention/document_*.py'
+      - 'packages/congress_api/src/congress_api/retention/r2.py'
+      - 'packages/congress_api/src/congress_api/parsers/**'
+      - 'packages/congress_api/src/congress_api/models/**'
+      - 'packages/congress_shared/src/congress_shared/globals.py'
+      - 'packages/congress_shared/src/congress_shared/data/**'
+      - '.github/scripts/offline-python.py'
+      - '.github/workflows/capture-raw-sources.yml'
+      - '.github/tests/test_raw_source_workflow.py'
   schedule:
     - cron: '23 */6 * * *'
   workflow_run:
@@ -9,12 +30,18 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
+      mode:
+        description: Rebuild metadata from retained evidence, or capture missing sources then rebuild
+        type: choice
+        options: [rebuild, capture]
+        default: rebuild
+        required: true
       limit:
-        description: Maximum captures or retained-body scans in this run
+        description: Capture mode only - maximum captures or retained-body scans
         type: number
         default: 5000
       transport:
-        description: Source transport (auto tries direct, then Zyte on failure)
+        description: Capture mode only - source transport (auto tries direct, then Zyte)
         type: choice
         options: [auto, zyte, direct]
         default: auto
@@ -23,17 +50,40 @@ permissions:
   contents: read
 
 concurrency:
+  # Keep every R2 writer in the same group, including metadata-only rebuilds.
   group: raw-source-mirror
   cancel-in-progress: false
 
 jobs:
   capture:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
+    # Collection can use 90 minutes; leave time to replay the full retained corpus.
+    timeout-minutes: 240
+    defaults:
+      run:
+        shell: bash
     steps:
+      - name: Select operation
+        id: operation
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_MODE: ${{ inputs.mode }}
+        run: |
+          case "$EVENT_NAME" in
+            push) mode=rebuild ;;
+            workflow_dispatch) mode="$INPUT_MODE" ;;
+            schedule|workflow_run) mode=capture ;;
+            *) echo "Unsupported event: $EVENT_NAME" >&2; exit 1 ;;
+          esac
+          case "$mode" in
+            rebuild|capture) echo "mode=$mode" >> "$GITHUB_OUTPUT" ;;
+            *) echo "Unsupported operation: $mode" >&2; exit 1 ;;
+          esac
       - uses: actions/checkout@v5
         with:
-          ref: main
+          # Validate and execute the same immutable revision, also on reruns.
+          ref: ${{ github.sha }}
           persist-credentials: false
       - uses: actions/checkout@v5
         with:
@@ -44,33 +94,42 @@ jobs:
         with:
           python-version: '3.12'
       - name: Build and check the Rust fetcher
+        if: steps.operation.outputs.mode == 'capture'
         run: |
           rustup toolchain install 1.89.0 --profile minimal --component rustfmt --component clippy
           cargo +1.89.0 fmt --check --manifest-path packages/source-fetch/Cargo.toml
           cargo +1.89.0 clippy --locked --release --manifest-path packages/source-fetch/Cargo.toml -- -D warnings
           cargo +1.89.0 test --locked --release --manifest-path packages/source-fetch/Cargo.toml
           cargo +1.89.0 build --locked --release --manifest-path packages/source-fetch/Cargo.toml --bin source-fetch
-      - name: Install capture tools
+      - name: Install capture and rebuild tools
         run: >-
           pip install -e packages/house-naming -e packages/committee_meeting
-          -e packages/congress_shared -e 'packages/congress_api[archive,test]'
+          -e packages/congress_shared -e 'packages/congress_api[archive,test]' 'PyYAML>=6,<7'
       - name: Verify capture and recovery offline
         run: >-
           python .github/scripts/offline-python.py -m pytest -q
           tests/test_raw_source_sync.py tests/test_source_capture.py tests/test_r2_archive_store.py
-          tests/test_raw_catalog.py tests/test_document_filename_index.py tests/test_document_filename_viewer.py
+          tests/test_raw_catalog.py tests/test_raw_rebuild.py
+          tests/test_document_filename_index.py tests/test_document_filename_viewer.py
           tests/test_congress_api_imports.py tests/test_document_link_probe.py
           tests/test_rust_fetch.py
+          tests/test_document_evidence.py tests/test_document_retained_recovery.py
+          tests/test_document_metadata_preservation.py tests/test_document_source_context.py
+          tests/test_senate_document_sections.py packages/house-naming/tests
+          .github/tests/test_raw_source_workflow.py
       - name: Verify native concurrency and request pacing on loopback
+        if: steps.operation.outputs.mode == 'capture'
         env:
           SOURCE_FETCH_BINARY: ${{ github.workspace }}/packages/source-fetch/target/release/source-fetch
         run: python -m pytest -q tests/test_rust_fetch_native.py
-      - name: Capture sources and rebuild filename and document tables
+      - name: Publish filename and document tables
+        id: sync
         env:
           CLOUDFLARE_ACCOUNT_ID: '174055408ff1560e60601c4d12c561c4'
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          ZYTE_TOKEN: ${{ secrets.ZYTE_TOKEN }}
+          ZYTE_TOKEN: ${{ steps.operation.outputs.mode == 'capture' && secrets.ZYTE_TOKEN || '' }}
+          SYNC_MODE: ${{ steps.operation.outputs.mode }}
           CAPTURE_LIMIT: ${{ inputs.limit || 5000 }}
           CAPTURE_TRANSPORT: ${{ inputs.transport || 'auto' }}
         run: |
@@ -82,19 +141,43 @@ jobs:
             pipeline-data/meeting-inventory/senate.json.gz; do
             if [ -f "$path" ]; then seeds+=(--seed "$path"); fi
           done
-          raw-source-sync --bucket congressional-tech-raw \
-            --fetcher-binary "$GITHUB_WORKSPACE/packages/source-fetch/target/release/source-fetch" \
-            --transport "$CAPTURE_TRANSPORT" --limit "$CAPTURE_LIMIT" \
-            --requests-per-second 40 --workers 80 --index-workers 2 --max-seconds 5400 --max-file-mib 64 \
-            --summary raw-capture-summary.json "${seeds[@]}"
-      - name: Show capture summary
+          args=(--bucket congressional-tech-raw --index-workers 2 --summary raw-capture-summary.json)
+          case "$SYNC_MODE" in
+            rebuild) args+=(--rebuild-only) ;;
+            capture)
+              args+=(--fetcher-binary "$GITHUB_WORKSPACE/packages/source-fetch/target/release/source-fetch"
+                --transport "$CAPTURE_TRANSPORT" --limit "$CAPTURE_LIMIT"
+                --requests-per-second 40 --workers 80 --max-seconds 5400 --max-file-mib 64)
+              ;;
+            *) echo "Unsupported operation: $SYNC_MODE" >&2; exit 1 ;;
+          esac
+          raw-source-sync "${args[@]}" "${seeds[@]}"
+          test -s raw-capture-summary.json
+      - name: Show publication summary
         if: ${{ always() }}
+        env:
+          SYNC_MODE: ${{ steps.operation.outputs.mode }}
+          EVENT_NAME: ${{ github.event_name }}
+          CODE_REVISION: ${{ github.sha }}
+          JOB_STATUS: ${{ job.status }}
+          SYNC_OUTCOME: ${{ steps.sync.outcome }}
         run: |
-          if [ -f raw-capture-summary.json ]; then
-            { echo '### Raw source capture'; echo '```json'; cat raw-capture-summary.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo 'No completed capture summary was written. Check the failed step above; published receipts remain retained.' >> "$GITHUB_STEP_SUMMARY"
-          fi
+          {
+            echo '### Raw source document tables'
+            echo "Operation: ${SYNC_MODE:-unresolved}; trigger: $EVENT_NAME"
+            echo "Code revision: $CODE_REVISION"
+            if [ -d pipeline-data/.git ]; then
+              echo "Seed revision: $(git -C pipeline-data rev-parse HEAD)"
+            fi
+            echo "Job status: $JOB_STATUS; publication step: ${SYNC_OUTCOME:-not run}"
+            if [ -s raw-capture-summary.json ]; then
+              echo '```json'
+              cat raw-capture-summary.json
+              echo '```'
+            else
+              echo 'No completed publication summary was written. Check the failed step; table publication is unverified.'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         if: ${{ always() }}
         with:
