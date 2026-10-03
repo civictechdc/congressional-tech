@@ -274,3 +274,30 @@ def test_rebuild_releases_capture_index_before_filename_interpretation(tmp_path,
     monkeypatch.setattr(index, 'write_filename_metadata', write)
     rebuild_catalog(store, workers=1)
     assert table(store).schema.metadata[b'raw_capture_rows'] == b'1'
+
+
+def test_embedded_house_html_keeps_source_role_and_observed_format():
+    store = MemoryStore()
+    retain(store, {'evidence': {'html': {}}}, family='house/meeting-xml',
+           source_file='state/house.json.gz', pointer=['evidence', 'html'],
+           body=b'<html><title>Committee meeting</title></html>')
+    rebuild_catalog(store, workers=1)
+    row, = table(store).to_pylist()
+    assert row['source_record_type'] == ['committee-meeting-page']
+    assert row['record_role'] == ['source-record']
+    assert row['body_format'] == ['html']
+
+
+def test_capture_role_requires_one_matching_receipt_and_pointer(tmp_path):
+    source = dict(body_key=None, filename='opaque.html', source_url='https://example.gov/opaque.html',
+        source_occurrences=[
+            {'source_occurrence_scope': ['capture'], 'source_receipt_key': ['receipts/house/meeting-xml/day/run.jsonl.gz'],
+             'source_capture_pointer': ['[]']},
+            {'source_occurrence_scope': ['capture'], 'source_receipt_key': ['receipts/documents/day/run.jsonl.gz'],
+             'source_capture_pointer': ['["evidence", "html"]']},
+        ])
+    (tmp_path / 'indexes').mkdir()
+    index.write_filename_metadata(tmp_path, [source], workers=1)
+    row, = pq.read_table(tmp_path / FILENAMES).to_pylist()
+    assert row['record_role'] == ['document']
+    assert row.get('source_record_type') is None

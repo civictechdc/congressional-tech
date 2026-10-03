@@ -423,7 +423,7 @@ def document_body(body, media, statuses, outcomes=None, body_format=None, respon
 
 def prepare_document_indexes(rows, schema):
     """Keep exact source rows and create one canonical row per document group."""
-    for name in ("document_kind", "document_kind_source", "document_family", "record_role"):
+    for name in ("document_kind", "document_kind_source", "document_family", "record_role", "source_record_type"):
         if name not in schema.names:
             schema = schema.append(pa.field(name, STRINGS))
     # The parser's public metadata keeps both names for compatibility. These
@@ -439,6 +439,7 @@ def prepare_document_indexes(rows, schema):
         for row in rows:
             row.pop(redundant, None)
     for row in rows:
+        apply_capture_record_role(row)
         # Source metadata can change without reparsing filenames. Remove only
         # previous fallbacks before regrouping so they never outrank an alias's
         # filename kind or survive removal/correction of the source assertion.
@@ -1523,6 +1524,36 @@ def read_document_sources(root=None, urls=None, *, captures=None, read_receipt=N
     return context
 
 
+def capture_record_type(family, pointer_json):
+    """Recognize a retained source page from its collector's explicit field."""
+    try:
+        pointer = json.loads(pointer_json or "[]")
+    except (TypeError, ValueError):
+        return None
+    if (family == "house/meeting-xml" and isinstance(pointer, list)
+            and pointer[-2:] == ["evidence", "html"]):
+        return "committee-meeting-page"
+    return None
+
+
+def apply_capture_record_role(row):
+    """Keep receipt/pointer pairs together when recognizing embedded source HTML."""
+    if row.get("source_record_type"):
+        return
+    for occurrence in row.get("source_occurrences") or []:
+        if occurrence.get("source_occurrence_scope") != ["capture"]:
+            continue
+        for receipt in occurrence.get("source_receipt_key") or []:
+            if not receipt.startswith("receipts/"):
+                continue
+            family = "/".join(receipt.split("/")[1:3])
+            for pointer in occurrence.get("source_capture_pointer") or []:
+                if kind := capture_record_type(family, pointer):
+                    row["source_record_type"] = [kind]
+                    row["record_role"] = ["source-record"]
+                    return
+
+
 def refresh_response_metadata(root, rows):
     """Recover response facts by exact body/URL and locators for unplaced bodies.
 
@@ -1589,11 +1620,9 @@ def refresh_response_metadata(root, rows):
                                     if capture.get("original_path"):
                                         row["source_paths"] = merge_values(
                                             "source_paths", row.get("source_paths"), [capture["original_path"]])
-                                pointer = json.loads(capture["pointer_json"] or "[]")
-                                if (capture.get("family") == "house/meeting-xml"
-                                        and pointer[-2:] == ["evidence", "html"]
-                                        and not row.get("source_record_type")):
-                                    row["source_record_type"] = ["committee-meeting-page"]
+                                if (not row.get("source_record_type") and (kind := capture_record_type(
+                                        capture.get("family"), capture.get("pointer_json")))):
+                                    row["source_record_type"] = [kind]
                                     row["record_role"] = ["source-record"]
                 if not lines:
                     break
