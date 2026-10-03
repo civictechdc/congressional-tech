@@ -211,6 +211,28 @@ URLs. `--plan-only` and `--local-mirror` cannot be combined with this mode.
 Acquisition flags such as `--limit`, `--transport` and `--workers` do not limit
 the rebuild. `--index-workers` controls filename interpretation.
 
+Capture and rebuild commands print timestamped progress when stages change and
+every 30 seconds while running. Updates include the current stage, completed and
+total items where known, elapsed time, time since the last reported progress,
+and cumulative retained-object reads and bytes. Stages cover source replay,
+filename interpretation, content inspection, grouping, validation and publication.
+Counts describe that stage, not an overall completion percentage or ETA.
+
+The latest update is saved beside `--summary` with a `.progress.json` suffix.
+Live R2 runs also update `status/raw-source-sync.json` every 30 seconds and at
+exit. This small status object is separate from the data indexes; status-upload
+failures do not fail the data operation. It includes the run ID and, in GitHub
+Actions, the workflow run ID, attempt and code revision. Check that identity and
+`updated_at` before treating a saved status as current. A hard kill can leave the
+last status as `running`; the GitHub job result remains authoritative.
+The local `document-filename-index` command uses the same reporting and saves
+its latest update to `<archive>/status/document-index.json`, without uploading it.
+
+In GitHub Actions, open **Publish filename and document tables** to follow the
+live log. The final job summary and downloadable artifact retain the last local
+progress file even when publication fails. Existing jobs keep the code they
+started with, so new progress reporting begins with the next updated run.
+
 Before either derived table is replaced, its previous bytes are retained under
 `catalog-history/sha256/<digest>/<table>.parquet`. The summary reports
 `previous_filenames_key` and `previous_documents_key`. This preserves old-only

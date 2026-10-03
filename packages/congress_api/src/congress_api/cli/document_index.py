@@ -4,6 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
+from congress_api.cli.raw_progress import ProgressLog
 from congress_api.retention.document_index import (
     build,
     refresh_source_metadata,
@@ -49,16 +50,17 @@ def main():
         parser.error(
             "--inventory-dir is required unless a metadata or document refresh is selected"
         )
-    result = (
-        refresh_source_metadata(args.archive)
-        if args.source_metadata_only
-        else reindex_documents(args.archive)
-        if args.documents_only
-        else refresh_filename_metadata(args.archive, workers=args.workers)
-        if args.metadata_only
-        else build(args.archive, args.inventory_dir, workers=args.workers)
-    )
-    print(json.dumps(result, indent=2), flush=True)
+    with ProgressLog(args.archive / 'status/document-index.json'):
+        result = (
+            refresh_source_metadata(args.archive)
+            if args.source_metadata_only
+            else reindex_documents(args.archive)
+            if args.documents_only
+            else refresh_filename_metadata(args.archive, workers=args.workers)
+            if args.metadata_only
+            else build(args.archive, args.inventory_dir, workers=args.workers)
+        )
+        print(json.dumps(result, indent=2), flush=True)
 
 
 if __name__ == "__main__":

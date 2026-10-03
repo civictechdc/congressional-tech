@@ -10,6 +10,7 @@ on:
       - 'packages/house-naming/pyproject.toml'
       - 'packages/congress_api/pyproject.toml'
       - 'packages/congress_api/src/congress_api/cli/raw_sync.py'
+      - 'packages/congress_api/src/congress_api/cli/raw_progress.py'
       - 'packages/congress_api/src/congress_api/cli/common.py'
       - 'packages/congress_api/src/congress_api/acquisition/raw_sync.py'
       - 'packages/congress_api/src/congress_api/retention/raw_*.py'
@@ -110,6 +111,7 @@ jobs:
           python .github/scripts/offline-python.py -m pytest -q
           tests/test_raw_source_sync.py tests/test_source_capture.py tests/test_r2_archive_store.py
           tests/test_raw_catalog.py tests/test_raw_rebuild.py
+          tests/test_raw_progress.py
           tests/test_document_filename_index.py tests/test_document_filename_viewer.py
           tests/test_congress_api_imports.py tests/test_document_link_probe.py
           tests/test_rust_fetch.py
@@ -177,10 +179,18 @@ jobs:
             else
               echo 'No completed publication summary was written. Check the failed step; table publication is unverified.'
             fi
+            if [ -s raw-capture-summary.progress.json ]; then
+              echo 'Last recorded progress (a running status may mean the process was interrupted):'
+              echo '```json'
+              cat raw-capture-summary.progress.json
+              echo '```'
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         if: ${{ always() }}
         with:
           name: raw-capture-summary-${{ github.run_id }}-${{ github.run_attempt }}
-          path: raw-capture-summary.json
+          path: |
+            raw-capture-summary.json
+            raw-capture-summary.progress.json
           if-no-files-found: ignore

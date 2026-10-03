@@ -14,9 +14,11 @@ from uuid import uuid4
 
 from congress_api.acquisition.raw_sync import run_sync
 from congress_api.cli.common import positive
+from congress_api.cli.raw_progress import ProgressLog
 from congress_api.parsers.archive_links import json_links
 from congress_api.retention.raw_archive import Archive
 from congress_api.retention.raw_catalog import rebuild_catalog
+from congress_api.retention import raw_progress as progress
 from congress_api.retention.r2 import R2Store
 from congress_api.transport.rust_fetch import RustFetcher
 from congress_api.transport import zyte
@@ -86,6 +88,12 @@ def parser():
 
 def main(argv=None):
     args = parser().parse_args(argv)
+    with ProgressLog(args.summary.with_suffix('.progress.json')) as log:
+        return run(args, log)
+
+
+def run(args, log):
+    progress.report('connect_storage')
     if args.local_mirror:
         if not args.plan_only:
             raise SystemExit("--local-mirror requires --plan-only")
@@ -104,32 +112,42 @@ def main(argv=None):
             raise SystemExit(
                 "CLOUDFLARE_ACCOUNT_ID, R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY are required"
             )
+        client_args = dict(
+            endpoint_url=f"https://{args.account_id}.r2.cloudflarestorage.com",
+            aws_access_key_id=os.environ["R2_ACCESS_KEY_ID"],
+            aws_secret_access_key=os.environ["R2_SECRET_ACCESS_KEY"],
+            region_name="auto",
+        )
         store = R2Store(
-            boto3.client(
-                "s3",
-                endpoint_url=f"https://{args.account_id}.r2.cloudflarestorage.com",
-                aws_access_key_id=os.environ["R2_ACCESS_KEY_ID"],
-                aws_secret_access_key=os.environ["R2_SECRET_ACCESS_KEY"],
-                region_name="auto",
-                config=Config(
+            boto3.client("s3", **client_args, config=Config(
                     retries={"mode": "standard", "max_attempts": 5},
                     max_pool_connections=args.workers + 4,
                     request_checksum_calculation="when_required",
                     response_checksum_validation="when_required",
-                ),
-            ),
+                )),
             args.bucket,
         )
+        if not args.plan_only:
+            # Status is best-effort and bounded; it must not hold up data work.
+            status_store = R2Store(boto3.client("s3", **client_args, config=Config(
+                connect_timeout=3, read_timeout=5, retries={"total_max_attempts": 1},
+                request_checksum_calculation="when_required",
+                response_checksum_validation="when_required",
+            )), args.bucket)
+            log.publish = lambda payload: status_store.put('status/raw-source-sync.json', payload)
     if not args.plan_only and not args.rebuild_only and args.transport in {"auto", "zyte"}:
         zyte.token()
     run_id = (
         datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + uuid4().hex[:12]
     )
+    with log.lock:
+        log.state.update(run_id=run_id, mode='rebuild' if args.rebuild_only else 'plan' if args.plan_only else 'capture')
     if args.rebuild_only:
         summary = dict(mode="rebuild", catalog=rebuild_catalog(
             store, seeds=seed_files(args.seed) if args.seed else (), workers=args.index_workers,
         ))
     elif args.plan_only:
+        progress.report('load_capture_state')
         archive = Archive(store, run_id)
         seeds = seed_files(args.seed)
         for item in seeds:
@@ -140,6 +158,7 @@ def main(argv=None):
             outcomes=dict(Counter(s["outcome"] for s in archive.state.values())),
         )
     else:
+        progress.report('load_capture_state')
         archive = Archive(store, run_id)
         seeds = seed_files(args.seed)
         stop = threading.Event()
@@ -164,7 +183,7 @@ def main(argv=None):
         summary["transport"] = args.transport
     args.summary.parent.mkdir(parents=True, exist_ok=True)
     args.summary.write_text(json.dumps(summary, indent=2) + "\n")
-    print(json.dumps(summary, indent=2))
+    print(json.dumps(summary, indent=2), flush=True)
 
 
 if __name__ == "__main__":

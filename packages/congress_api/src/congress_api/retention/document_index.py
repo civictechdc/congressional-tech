@@ -34,6 +34,7 @@ import gzip
 from io import BytesIO
 from itertools import groupby
 import json
+from multiprocessing import get_context
 from pathlib import Path
 import re
 import time
@@ -48,6 +49,7 @@ from house_naming import Engine, __version__, document_families
 from house_naming.errors import NamingError
 from house_naming.extraction import QUERY
 from house_naming.values import filename_metadata as flatten  # noqa: F401 - public flat-value helper
+from congress_api.retention import raw_progress as progress
 from congress_api.retention.document_evidence import (
     FIELDS as EVIDENCE_FIELDS, BODY_FIELDS, body_evidence_key, cached_body_fields, evidence_fingerprint,
     enrich_sources, enrich_document_covers, read_retained_body, response_failed, apply_response_role,
@@ -423,6 +425,7 @@ def document_body(body, media, statuses, outcomes=None, body_format=None, respon
 
 def prepare_document_indexes(rows, schema):
     """Keep exact source rows and create one canonical row per document group."""
+    progress.report('group_documents', total=len(rows), unit='source_rows')
     for name in ("document_kind", "document_kind_source", "document_family", "record_role", "source_record_type"):
         if name not in schema.names:
             schema = schema.append(pa.field(name, STRINGS))
@@ -458,7 +461,7 @@ def prepare_document_indexes(rows, schema):
                                 ("capture_outcome", STRINGS), ("body_format", STRINGS)])
     _, groups = source_groups(pa.Table.from_pylist(rows, schema=grouping_schema))
     documents = []
-    for members in groups:
+    for members in progress.track(groups, 'combine_document_metadata', unit='document_groups'):
         sources = [rows[i] for i in members]
         bodies = sorted(
             {
@@ -576,6 +579,8 @@ def write_document_indexes(destination, rows, schema):
         (document_path, documents, document_schema),
     ]
     temporary = [path.with_suffix(".parquet.tmp") for path, _, _ in outputs]
+    progress.report('write_document_tables', completed=0, total=len(rows) + len(documents), unit='rows')
+    written = 0
     try:
         for tmp, (_, records, record_schema) in zip(temporary, outputs):
             with pq.ParquetWriter(tmp, record_schema, compression="zstd") as writer:
@@ -585,6 +590,10 @@ def write_document_indexes(destination, rows, schema):
                             records[start : start + 32768], schema=record_schema
                         )
                     )
+                    written += min(32768, len(records) - start)
+                    progress.report('write_document_tables', completed=written,
+                                    total=len(rows) + len(documents), unit='rows')
+        progress.report('validate_document_tables')
         validate_document_indexes(*temporary, source_rows=len(rows), document_rows=len(documents))
         for tmp, (path, _, _) in zip(temporary, outputs):
             tmp.replace(path)
@@ -1375,7 +1384,8 @@ def add_retained_senate_pages(context, captures, read_body):
         if digest in context.by_url.get(url, {}).get("source_page_sha256", set()):
             continue  # This exact page observation was already replayed above.
         observations.setdefault((url, key, host), set()).add((row["receipt_key"], row["receipt_line"]))
-    for (url, key, host), receipts in observations.items():
+    for (url, key, host), receipts in progress.track(
+            observations.items(), 'read_senate_html', unit='pages'):
         raw = read_body(key)
         if raw is None or not re.search(br"<(?:html\b|!doctype\s+html\b)", raw[:2048], re.I):
             continue
@@ -1388,8 +1398,10 @@ def add_retained_senate_pages(context, captures, read_body):
                 source_receipt_key=receipt, source_receipt_line=line))
 
 
-def retained_records(captures, read_receipt):
+def retained_records(captures, read_receipt, *, stage='replay_capture_receipts'):
     """Read each referenced receipt line once, with all its indexed body pointers."""
+    progress.report(stage, completed=0, total=len(captures), unit='capture_rows')
+    completed = reported = 0
     references = defaultdict(lambda: defaultdict(list))
     batches = captures.to_batches(max_chunksize=65536)
     # Keep row positions while grouping; decoding every URL, path and body
@@ -1415,10 +1427,15 @@ def retained_records(captures, read_receipt):
                         rows.extend(batches[batch_number].take(selected).to_pylist())
                     yield json.loads(line)["record"], rows, context_values(
                         source_receipt_key=key, source_receipt_line=number)
+                    completed += len(rows)
+                    if completed - reported >= 1000:
+                        progress.report(stage, completed=completed, total=len(captures), unit='capture_rows')
+                        reported = completed
                 if not lines:
                     break
         if lines:
             raise ValueError(f"Capture index references missing receipt lines: {key}")
+    progress.report(stage, completed=completed, total=len(captures), unit='capture_rows')
 
 
 def add_retained_house_documents(context, captures, read_body):
@@ -1430,7 +1447,7 @@ def add_retained_house_documents(context, captures, read_body):
     selected = captures.filter(pc.is_in(captures["family"], value_set=pa.array(
         ["house/meeting-xml", "house/witness-xml"])))
     seen = set()
-    for row in selected.to_pylist():
+    for row in progress.track(selected.to_pylist(), 'read_house_xml', unit='capture_rows'):
         key, url = row.get("body_key"), row.get("context_url")
         if not key or (key, url) in seen or row.get("http_status") not in (None, 200):
             continue
@@ -1476,7 +1493,8 @@ def read_document_sources(root=None, urls=None, *, captures=None, read_receipt=N
             if "source_file" not in selected.column_names:
                 return
             selected = selected.filter(pc.ends_with(selected["source_file"], suffix))
-        for record, _, receipt in retained_records(selected, read_receipt):
+        stage = 'read_' + (suffix or family).replace('/', '_').replace('.', '_')
+        for record, _, receipt in retained_records(selected, read_receipt, stage=stage):
             yield record, receipt
 
     for record, receipt in records("congress/meetings"):
@@ -1926,6 +1944,7 @@ def write_filename_metadata(
 ):
     """Interpret supplied source rows; acquisition and storage discovery stay outside."""
     started = time.monotonic()
+    progress.report('prepare_filename_inputs')
     from congress_api.retention.document_recovery import recover_sources, recovery_fingerprint
     if (root / 'indexes/captures.parquet').exists():
         source_rows = recover_sources(source_rows, pq.ParquetFile(root / 'indexes/captures.parquet'),
@@ -1940,6 +1959,7 @@ def write_filename_metadata(
         if source["filename"]:
             names.add(source["filename"])
     fingerprint = parser_fingerprint()
+    progress.report('reuse_cached_metadata')
     cached = {}
     body_fingerprint = evidence_fingerprint()
     body_cache = {}
@@ -1975,27 +1995,21 @@ def write_filename_metadata(
                              and any(value in DERIVED_KIND_SOURCES for value in row.get("document_kind_source") or []))
                 }
     pending = [key for key in inputs if key not in cached]
+    def collect(parsed):
+        for key, fields in progress.track(zip(pending, parsed), 'extract_filenames',
+                                         total=len(pending), unit='filenames'):
+            cached[key] = fields
+
     # A single-worker path is useful for callers already running a worker and
     # keeps small rebuilds independent of process spawning.
     if workers == 1:
-        cached.update(zip(pending, map(extract, pending)))
+        collect(map(extract, pending))
     elif pending:
-        with ProcessPoolExecutor(max_workers=workers) as pool:
-            for i, (key, parsed) in enumerate(
-                zip(pending, pool.map(extract, pending, chunksize=128)), 1
-            ):
-                cached[key] = parsed
-                if i % 10000 == 0:
-                    print(
-                        compact(
-                            {
-                                "stage": "extracting",
-                                "inputs_done": i,
-                                "inputs_total": len(pending),
-                            }
-                        ),
-                        flush=True,
-                    )
+        # The CLI reports progress from a thread; workers must not fork that thread's state.
+        with ProcessPoolExecutor(max_workers=workers, mp_context=get_context('spawn')) as pool:
+            collect(pool.map(extract, pending, chunksize=128))
+    else:
+        collect(())
     rows, columns = (
         [],
         {
@@ -2009,8 +2023,10 @@ def write_filename_metadata(
     for key in inputs:
         columns.update(cached[key])
         rows.extend({**row, **cached[key]} for row in inputs[key])
+    progress.report('inspect_document_contents', total=len(bodies), unit='distinct_retained_bodies')
     enrich_sources(rows, read_body=read_body or (lambda key: read_retained_body(root, key)),
                    extract=extract, cached=body_cache)
+    progress.report('apply_response_metadata', total=len(rows), unit='source_rows')
     refresh_response_metadata(root, rows)
     for row in rows:
         apply_response_role(row)

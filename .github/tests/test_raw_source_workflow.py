@@ -221,6 +221,21 @@ def test_summary_reports_success_failure_and_setup_failure(
     assert ("publication is unverified" in text) is not receipt
 
 
+def test_interrupted_run_keeps_last_progress_in_summary_and_artifact(tmp_path):
+    (tmp_path / 'raw-capture-summary.progress.json').write_text(
+        '{"stage":"read_house_xml","status":"running","completed":1200}')
+    summary = tmp_path / 'summary.md'
+    result = run_step(SUMMARY, tmp_path, SYNC_MODE='rebuild', EVENT_NAME='push',
+                      CODE_REVISION='trigger-sha', JOB_STATUS='cancelled',
+                      SYNC_OUTCOME='cancelled', GITHUB_STEP_SUMMARY=str(summary))
+    assert result.returncode == 0, result.stderr
+    text = summary.read_text()
+    assert 'read_house_xml' in text and '1200' in text
+    assert 'interrupted' in text and 'publication is unverified' in text
+    artifact = next(step for step in STEPS if step.get('uses', '').startswith('actions/upload-artifact@'))
+    assert 'raw-capture-summary.progress.json' in artifact['with']['path'].splitlines()
+
+
 def test_shared_writer_lock_revision_credentials_and_single_rebuild():
     assert len(WORKFLOW["jobs"]) == 1
     assert WORKFLOW["concurrency"] == {

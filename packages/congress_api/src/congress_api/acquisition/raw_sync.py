@@ -8,6 +8,7 @@ import time
 from congress_api.models.content import RawContent
 from congress_api.parsers.archive_links import inspect_capture
 from congress_api.retention.raw_archive import BodyLimitExceeded
+from congress_api.retention import raw_progress as progress
 
 
 def run_sync(
@@ -79,6 +80,7 @@ def run_sync(
             ), "replay"
         return fetch(state["url"]), "fetch"
 
+    progress.report('acquire_sources', completed=0, unit='capture_attempts')
     try:
         with ThreadPoolExecutor(max_workers=workers) as pool:
             while queue or active:
@@ -115,6 +117,8 @@ def run_sync(
                     )
                     counts[outcome] += 1
                     counts[mode] += 1
+                    progress.report('acquire_sources', completed=counts['fetch'] + counts['replay'],
+                                    unit='capture_attempts')
                     counts["zyte_fallbacks"] += bool(response.get("prior_attempts"))
                     for link in links:
                         child = archive.state.get(link["url"])
@@ -128,6 +132,7 @@ def run_sync(
                     if response.get("provider_http_status") in (401, 403):
                         fatal = True
     finally:
+        progress.report('save_capture_indexes')
         archive.save()
         catalog = publish(archive) if publish else None
     if fatal:

@@ -17,6 +17,7 @@ import pyarrow.compute as pc
 
 from congress_api.parsers.source_family import family as source_family
 from congress_api.retention import document_index as index
+from congress_api.retention import raw_progress as progress
 from congress_api.retention.document_evidence import read_retained_body
 from congress_api.retention.document_recovery import recover_sources, recovery_fingerprint
 from congress_api.retention.raw_archive import CAPTURES_KEY, CAPTURE_SCHEMA, decode_table
@@ -27,18 +28,25 @@ DOCUMENTS = "indexes/documents.parquet"
 
 def rebuild_catalog(store, captures=None, *, seeds=(), workers=4):
     """Publish derived tables only; never instantiate or save acquisition state."""
+    def read(key):
+        data = store.read(key)
+        progress.advance('objects_read')
+        progress.advance('bytes_read', len(data) if data else 0)
+        return data
+
+    progress.report('load_indexes')
     if captures is None:
-        data = store.read(CAPTURES_KEY)
+        data = read(CAPTURES_KEY)
         if data is None:
             raise ValueError("Missing retained capture index")
         captures = decode_table(data)
         del data
     if captures.schema.remove_metadata() != CAPTURE_SCHEMA:
         raise ValueError("Unexpected capture index schema")
-    previous_bytes = store.read(FILENAMES)
+    previous_bytes = read(FILENAMES)
     previous = decode_table(previous_bytes) if previous_bytes else None
     # Read both ETags before publication; also retain any unmatched prior pair.
-    previous_documents = store.read(DOCUMENTS)
+    previous_documents = read(DOCUMENTS)
     meta = (previous.schema.metadata or {}) if previous is not None else {}
     if int(meta.get(b"raw_capture_rows", b"0")) > len(captures):
         raise ValueError("Capture index was truncated since the last catalog rebuild")
@@ -53,7 +61,10 @@ def rebuild_catalog(store, captures=None, *, seeds=(), workers=4):
         return row
 
     context = index.DocumentSources()
+    progress.report('restore_previous_source_metadata', total=len(previous) if previous is not None else 0,
+                    unit='source_rows')
     if previous is not None:
+        restored = 0
         columns = [f for f in previous.column_names if f in
                    set(index.SOURCE_SCHEMA.names) | index.SOURCE_CONTEXT_FIELDS | {"capture_outcome"}]
         for batch in previous.select(columns).to_batches(max_chunksize=4096):
@@ -65,9 +76,12 @@ def rebuild_catalog(store, captures=None, *, seeds=(), workers=4):
                 for occurrence in row.get("source_occurrences") or []:
                     if occurrence.get("source_document_type_basis") == ["publisher"] or occurrence.get("source_probe_status"):
                         context.add_url(row.get("source_url"), occurrence)
+            restored += len(batch)
+            progress.report('restore_previous_source_metadata', completed=restored,
+                            total=len(previous), unit='source_rows')
 
-    read_body = lambda key: read_retained_body(None, key, read_compressed=store.read)
-    context = index.read_document_sources(captures=captures, read_receipt=store.read,
+    read_body = lambda key: read_retained_body(None, key, read_compressed=read)
+    context = index.read_document_sources(captures=captures, read_receipt=read,
                                           read_body=read_body, context=context)
 
     def link_names(link, receipt=None):
@@ -81,7 +95,7 @@ def rebuild_catalog(store, captures=None, *, seeds=(), workers=4):
         for name, basis in names:
             add(None, name, url, filename_origins=[basis])
 
-    for link in seeds:
+    for link in progress.track(seeds, 'read_seed_links', unit='links'):
         link_names(link)
     # Include migration receipts and recurring captures, regardless of cursor.
     # Historical Senate download routing is interpreted by the current owner.
@@ -93,7 +107,7 @@ def rebuild_catalog(store, captures=None, *, seeds=(), workers=4):
                                       pc.is_in(captures["context_url"], value_set=downloads)))
     recurring = pc.fill_null(pc.match_substring(captures["receipt_key"], "/download-"), False)
     selected = pc.or_(selected, recurring)
-    for record, rows, receipt in index.retained_records(captures.filter(selected), store.read):
+    for record, rows, receipt in index.retained_records(captures.filter(selected), read):
         if isinstance(record, dict):
             for link in record.get("source_context", {}).get("observations", []):
                 link_names(link, receipt)
@@ -125,6 +139,7 @@ def rebuild_catalog(store, captures=None, *, seeds=(), workers=4):
             for name, basis, url in index.inventory_names(record):
                 add(None, name, url, filename_origins=[basis])
     # Metadata-only publisher records can list files with no capture yet.
+    progress.report('prepare_source_associations')
     for url, values in context.by_url.items():
         if values.get("source_link_url"):
             for name, basis in index.url_document_names(url) or [(index.url_filename(url), "url_path")]:
@@ -142,12 +157,13 @@ def rebuild_catalog(store, captures=None, *, seeds=(), workers=4):
                 for field, items in old.items():
                     if isinstance(items, list):
                         row[field] = index.merge_values(field, row.get(field), items)
-    for row in sources.values():
+    for row in progress.track(sources.values(), 'associate_source_metadata', unit='source_rows'):
         for field, values in context.for_url(row.get("source_url")).items():
             row[field] = index.merge_values(field, row.get(field), values)
     del context
     capture_rows = len(captures)
-    source_rows = recover_sources(sources.values(), captures, read_receipt=store.read)
+    progress.report('recover_capture_associations')
+    source_rows = recover_sources(sources.values(), captures, read_receipt=read)
     # Interpretation now needs only the recovered source rows. Release receipt
     # lookup tables and the capture inventory before filename/PDF processing.
     del captures, sources, captured, selected, senate, downloads, recurring
@@ -159,16 +175,21 @@ def rebuild_catalog(store, captures=None, *, seeds=(), workers=4):
             metadata={"raw_capture_rows": str(capture_rows),
                       "retained_recovery_fingerprint": recovery_fingerprint()},
         )
+        progress.report('validate_document_tables')
         index.validate_document_indexes(root / FILENAMES, root / DOCUMENTS,
                                         source_rows=result["rows"], document_rows=result["document_rows"])
         # Retain evidence that exists only in an older generated table, including
         # columns whose original publisher/parser basis can no longer be proved.
+        progress.report('archive_previous_tables')
         for label, key, data in (("filenames", FILENAMES, previous_bytes),
                                  ("documents", DOCUMENTS, previous_documents)):
             if data is not None:
                 saved = f"catalog-history/sha256/{sha256(data).hexdigest()}/{Path(key).name}"
                 store.put(saved, data, immutable=True)
                 result[f"previous_{label}_key"] = saved
+        progress.report('publish_documents', completed=0, total=2, unit='tables')
         store.put(DOCUMENTS, (root / DOCUMENTS).read_bytes())
+        progress.report('publish_filenames', completed=1, total=2, unit='tables')
         store.put(FILENAMES, (root / FILENAMES).read_bytes())
+        progress.report('catalog_published', completed=2, total=2, unit='tables')
     return {k: v for k, v in result.items() if k not in ("output", "documents_output")}
