@@ -243,3 +243,34 @@ def test_receipt_replay_groups_noncontiguous_rows_without_losing_fields():
         (1, {'a'}, ['a1']), (2, {'a'}, ['a2-first', 'a2-last']),
         (1, {'b'}, ['b1']), (2, {'b'}, ['b2']),
     ]
+
+
+def test_rebuild_releases_capture_index_before_filename_interpretation(tmp_path, monkeypatch):
+    import gc
+    import weakref
+    from congress_api.retention import raw_catalog
+
+    store = initialize(tmp_path)
+    retain(store, {'url': 'https://example.gov/new.pdf'}, family='documents',
+           source_file='capture.json', url='https://example.gov/new.pdf', body=b'%PDF-1.7\n%%EOF')
+    decoded_captures = []
+    original_decode = raw_catalog.decode_table
+    original_write = index.write_filename_metadata
+
+    def decode(data):
+        result = original_decode(data)
+        if result.schema.remove_metadata() == CAPTURE_SCHEMA:
+            decoded_captures.append(weakref.ref(result))
+        return result
+
+    def write(*args, **kwargs):
+        gc.collect()
+        assert decoded_captures and all(ref() is None for ref in decoded_captures), (
+            'Receipt replay is complete; do not retain the capture index during PDF inspection'
+        )
+        return original_write(*args, **kwargs)
+
+    monkeypatch.setattr(raw_catalog, 'decode_table', decode)
+    monkeypatch.setattr(index, 'write_filename_metadata', write)
+    rebuild_catalog(store, workers=1)
+    assert table(store).schema.metadata[b'raw_capture_rows'] == b'1'

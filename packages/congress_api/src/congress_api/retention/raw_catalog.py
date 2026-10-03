@@ -32,6 +32,7 @@ def rebuild_catalog(store, captures=None, *, seeds=(), workers=4):
         if data is None:
             raise ValueError("Missing retained capture index")
         captures = decode_table(data)
+        del data
     if captures.schema.remove_metadata() != CAPTURE_SCHEMA:
         raise ValueError("Unexpected capture index schema")
     previous_bytes = store.read(FILENAMES)
@@ -145,13 +146,17 @@ def rebuild_catalog(store, captures=None, *, seeds=(), workers=4):
         for field, values in context.for_url(row.get("source_url")).items():
             row[field] = index.merge_values(field, row.get(field), values)
     del context
+    capture_rows = len(captures)
     source_rows = recover_sources(sources.values(), captures, read_receipt=store.read)
+    # Interpretation now needs only the recovered source rows. Release receipt
+    # lookup tables and the capture inventory before filename/PDF processing.
+    del captures, sources, captured, selected, senate, downloads, recurring
     with TemporaryDirectory(prefix="raw-catalog-") as directory:
         root = Path(directory)
         (root / "indexes").mkdir()
         result = index.write_filename_metadata(
             root, source_rows, workers=workers, previous=previous, read_body=read_body,
-            metadata={"raw_capture_rows": str(len(captures)),
+            metadata={"raw_capture_rows": str(capture_rows),
                       "retained_recovery_fingerprint": recovery_fingerprint()},
         )
         index.validate_document_indexes(root / FILENAMES, root / DOCUMENTS,
