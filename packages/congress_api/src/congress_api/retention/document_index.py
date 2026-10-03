@@ -32,6 +32,7 @@ from email.utils import collapse_rfc2231_value
 from functools import lru_cache
 import gzip
 from io import BytesIO
+from itertools import groupby
 import json
 from pathlib import Path
 import re
@@ -1389,19 +1390,28 @@ def add_retained_senate_pages(context, captures, read_body):
 def retained_records(captures, read_receipt):
     """Read each referenced receipt line once, with all its indexed body pointers."""
     references = defaultdict(lambda: defaultdict(list))
-    for batch in captures.to_batches(max_chunksize=65536):
-        for row in batch.to_pylist():
+    batches = captures.to_batches(max_chunksize=65536)
+    # Keep row positions while grouping; decoding every URL, path and body
+    # field here duplicates the whole capture inventory as Python objects.
+    for batch_number, batch in enumerate(batches):
+        for position, row in enumerate(batch.select(["receipt_key", "receipt_line"]).to_pylist()):
             if not row.get("receipt_key") or type(row.get("receipt_line")) is not int or row["receipt_line"] < 1:
                 raise ValueError("Invalid capture receipt locator")
-            references[row["receipt_key"]][row["receipt_line"]].append(row)
+            references[row["receipt_key"]][row["receipt_line"]].append((batch_number, position))
     for key, lines in sorted(references.items()):
         payload = read_receipt(key)
         if payload is None:
             raise ValueError(f"Missing capture receipt: {key}")
         with gzip.open(BytesIO(payload), "rt", encoding="utf-8") as stream:
             for number, line in enumerate(stream, 1):
-                rows = lines.pop(number, None)
-                if rows:
+                positions = lines.pop(number, None)
+                if positions:
+                    rows = []
+                    # Taking from the original batch avoids repeatedly joining
+                    # every Arrow chunk for each small receipt lookup.
+                    for batch_number, group in groupby(positions, key=lambda item: item[0]):
+                        selected = pa.array([position for _, position in group], type=pa.int64())
+                        rows.extend(batches[batch_number].take(selected).to_pylist())
                     yield json.loads(line)["record"], rows, context_values(
                         source_receipt_key=key, source_receipt_line=number)
                 if not lines:

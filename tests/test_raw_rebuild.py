@@ -201,3 +201,45 @@ def test_saved_senate_state_replays_newly_recognized_links_from_exact_body():
                if r['source_url'] == 'https://www.foreign.senate.gov/opaque.pdf')
     assert row['document_kind'] == ['transcript']
     assert row['source_page_sha256'] == [digest]
+
+
+def test_receipt_replay_does_not_materialize_all_capture_payloads():
+    import tracemalloc
+
+    # All capture fields remain available to the caller, but only receipt
+    # locators are needed before the corresponding receipt line is reached.
+    count = 5000
+    captures = pa.table({
+        'receipt_key': ['receipt'] * count,
+        'receipt_line': list(range(1, count + 1)),
+        'context_url': ['https://example.gov/' + 'x' * 8192] * count,
+    })
+    payload = gzip.compress(b'{"record":{"id":1}}\n')
+    tracemalloc.start()
+    records = index.retained_records(captures, lambda _: payload)
+    try:
+        record, rows, locator = next(records)
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        records.close()
+        tracemalloc.stop()
+    assert record == {'id': 1}
+    assert rows == captures.slice(0, 1).to_pylist()
+    assert locator['source_receipt_line'] == {'1'}
+    assert peak < 8 * 1024**2, 'Keep receipt positions, not every decoded capture row'
+
+
+def test_receipt_replay_groups_noncontiguous_rows_without_losing_fields():
+    captures = pa.table({
+        'receipt_key': ['b', 'a', 'a', 'b', 'a'],
+        'receipt_line': [2, 2, 1, 1, 2],
+        'body_key': ['b2', 'a2-first', 'a1', 'b1', 'a2-last'],
+    })
+    captures = pa.Table.from_batches(captures.to_batches(max_chunksize=2))
+    payload = gzip.compress(b'{"record":{"id":1}}\n{"record":{"id":2}}\n')
+    result = list(index.retained_records(captures, lambda _: payload))
+    assert [(r['id'], loc['source_receipt_key'], [row['body_key'] for row in rows])
+            for r, rows, loc in result] == [
+        (1, {'a'}, ['a1']), (2, {'a'}, ['a2-first', 'a2-last']),
+        (1, {'b'}, ['b1']), (2, {'b'}, ['b2']),
+    ]
