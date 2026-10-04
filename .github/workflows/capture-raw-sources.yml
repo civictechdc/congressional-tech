@@ -23,8 +23,10 @@ on:
       - 'packages/congress_shared/src/congress_shared/globals.py'
       - 'packages/congress_shared/src/congress_shared/data/**'
       - '.github/scripts/offline-python.py'
+      - '.github/scripts/finalize-raw-source.py'
       - '.github/workflows/capture-raw-sources.yml'
       - '.github/tests/test_raw_source_workflow.py'
+      - '.github/tests/test_raw_source_finalizer.py'
   schedule:
     - cron: '23 */6 * * *'
   workflow_run:
@@ -41,6 +43,10 @@ on:
         required: true
       repair:
         description: Replay all retained sources and interpretation (normally leave disabled)
+        type: boolean
+        default: false
+      inspect_bodies:
+        description: Also inspect retained document contents (normal updates use receipts and filenames)
         type: boolean
         default: false
       limit:
@@ -122,10 +128,12 @@ jobs:
           tests/test_raw_source_sync.py tests/test_source_capture.py tests/test_r2_archive_store.py
           tests/test_raw_catalog.py tests/test_raw_rebuild.py tests/test_incremental_catalog.py
           tests/test_raw_progress.py
+          .github/tests/test_raw_source_finalizer.py
           tests/test_document_filename_index.py tests/test_document_filename_viewer.py
           tests/test_congress_api_imports.py tests/test_document_link_probe.py
           tests/test_rust_fetch.py
           tests/test_document_evidence.py tests/test_document_retained_recovery.py
+          tests/test_published_hearing_cover.py
           tests/test_document_metadata_preservation.py tests/test_document_source_context.py
           tests/test_senate_document_sections.py packages/house-naming/tests
           .github/tests/test_raw_source_workflow.py
@@ -172,6 +180,7 @@ jobs:
           ZYTE_TOKEN: ${{ steps.operation.outputs.mode == 'capture' && secrets.ZYTE_TOKEN || '' }}
           SYNC_MODE: ${{ steps.operation.outputs.mode }}
           REPAIR: ${{ inputs.repair || 'false' }}
+          INSPECT_BODIES: ${{ inputs.inspect_bodies || 'false' }}
           CAPTURE_LIMIT: ${{ inputs.limit || 5000 }}
           CAPTURE_TRANSPORT: ${{ inputs.transport || 'auto' }}
         run: |
@@ -194,6 +203,7 @@ jobs:
             *) echo "Unsupported operation: $SYNC_MODE" >&2; exit 1 ;;
           esac
           if [ "${REPAIR:-false}" = "true" ]; then args+=(--repair); fi
+          if [ "${INSPECT_BODIES:-false}" = "true" ]; then args+=(--inspect-bodies); fi
           raw-source-sync "${args[@]}" "${seeds[@]}"
           test -s raw-capture-summary.json
       - name: Show publication summary
@@ -235,3 +245,26 @@ jobs:
             raw-capture-summary.json
             raw-capture-summary.progress.json
           if-no-files-found: ignore
+
+  finalize:
+    needs: capture
+    if: ${{ always() && (github.event_name != 'workflow_run' || github.event.workflow_run.head_repository.full_name == github.repository) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: pip install 'boto3>=1.40,<2'
+      - name: Finalize retained progress on a separate worker
+        env:
+          CLOUDFLARE_ACCOUNT_ID: '174055408ff1560e60601c4d12c561c4'
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          CAPTURE_RESULT: ${{ needs.capture.result }}
+        run: python .github/scripts/finalize-raw-source.py

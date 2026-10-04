@@ -20,7 +20,6 @@ def run_sync(
     workers=8,
     max_seconds=5400,
     stop=None,
-    publish=None,
     max_bytes=64 * 1024**2,
 ):
     context = {}
@@ -134,7 +133,8 @@ def run_sync(
     finally:
         progress.report('save_capture_indexes')
         archive.save()
-        catalog = publish(archive) if publish else None
+    if stop and stop.is_set():
+        raise InterruptedError("Capture stopped; completed receipts and state were saved.")
     if fatal:
         raise RuntimeError(
             "Zyte authorization failed; in-flight captures were retained before stopping."
@@ -149,5 +149,4 @@ def run_sync(
         ),
         limit=limit,
         transport_budget_seconds=max_seconds,
-        catalog=catalog,
     )

@@ -27,6 +27,37 @@ def test_actual_pdf_cover_yields_publication_identity():
         'content_document_kind': ['published-hearing'], 'content_citation': ['S. Hrg. 117-16']}
 
 
+def test_cover_reader_closes_its_pdf_buffer_on_success_and_failure(monkeypatch):
+    from io import BytesIO
+    from importlib import import_module
+    module = import_module('congress_api.parsers.document_cover')
+    streams = []
+    def tracked(data):
+        stream = BytesIO(data)
+        streams.append(stream)
+        return stream
+    monkeypatch.setattr(module, 'BytesIO', tracked)
+    assert document_cover(PDF)['content_document_kind'] == ['published-hearing']
+    assert document_cover(b'%PDF-1.7\ninvalid') == {}
+    assert all(stream.closed for stream in streams)
+
+
+def test_witness_reader_closes_buffer_and_retains_raw_observation(monkeypatch):
+    from io import BytesIO
+    from hashlib import sha256
+    from congress_api.parsers import witness_pdf
+    streams = []
+    def tracked(data):
+        stream = BytesIO(data)
+        streams.append(stream)
+        return stream
+    monkeypatch.setattr(witness_pdf, 'BytesIO', tracked)
+    result = witness_pdf.parse_pdf_observation(PDF)
+    assert result.raw_sha256 == sha256(PDF).hexdigest()
+    assert result.pages[0].text and result.source_text
+    assert all(stream.closed for stream in streams)
+
+
 @pytest.mark.parametrize('text', [
     COVER.replace('S. H RG. 117–16', 'Reference: S. Hrg. 117–16'),
     COVER.replace('HEARING\nBEFORE THE', 'Prepared statement for the hearing before the'),

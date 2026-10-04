@@ -105,6 +105,7 @@ def test_events_execute_one_command_in_the_selected_mode(
 
     parsed = parser().parse_args(args)
     assert parsed.rebuild_only is (expected == "rebuild")
+    assert parsed.inspect_bodies is False
 
 
 def test_rebuild_workflow_arguments_execute_without_acquisition(
@@ -130,7 +131,8 @@ def test_rebuild_workflow_arguments_execute_without_acquisition(
     def forbidden(*args, **kwargs):
         pytest.fail("The workflow's rebuild invocation entered acquisition")
 
-    def rebuild(actual_store, *, seeds=(), workers, repair=False):
+    def rebuild(actual_store, *, seeds=(), workers, repair=False, inspect_bodies=False):
+        assert inspect_bodies is False
         assert not repair
         assert actual_store is store
         calls.append((workers, list(seeds)))
@@ -238,7 +240,10 @@ def test_interrupted_run_keeps_last_progress_in_summary_and_artifact(tmp_path):
 
 
 def test_shared_writer_lock_revision_credentials_and_single_rebuild():
-    assert len(WORKFLOW["jobs"]) == 1
+    assert set(WORKFLOW["jobs"]) == {'capture', 'finalize'}
+    finalizer = WORKFLOW['jobs']['finalize']
+    assert finalizer['needs'] == 'capture' and 'always()' in finalizer['if']
+    assert finalizer['timeout-minutes'] == '5'
     assert WORKFLOW["concurrency"] == {
         "group": "raw-source-mirror",
         "cancel-in-progress": "false",
@@ -341,3 +346,12 @@ def test_explicit_repair_uses_same_command(tmp_path, recording_command):
     assert result.returncode == 0, result.stderr
     args = json.loads((tmp_path / 'invocation.json').read_text())
     assert '--repair' in args
+
+
+def test_body_inspection_requires_explicit_dispatch_input(tmp_path, recording_command):
+    from congress_api.cli.raw_sync import parser
+    assert WORKFLOW['on']['workflow_dispatch']['inputs']['inspect_bodies']['default'] == 'false'
+    result = run_step(PUBLISH, tmp_path, SYNC_MODE='rebuild', INSPECT_BODIES='true', **recording_command)
+    assert result.returncode == 0, result.stderr
+    args = json.loads((tmp_path / 'invocation.json').read_text())
+    assert parser().parse_args(args).inspect_bodies is True

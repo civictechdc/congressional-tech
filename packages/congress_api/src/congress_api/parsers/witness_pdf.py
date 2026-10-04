@@ -7,7 +7,7 @@ change in text extraction. Bad responses are failures, not scanned lists.
 """
 
 import hashlib
-import io
+from io import BytesIO
 import re
 
 from pypdf import PdfReader
@@ -48,7 +48,8 @@ def document_witnesses(text):
 def parse_pdf_observation(data: bytes) -> PdfWitnessObservation:
     if not data.startswith(b"%PDF"):
         raise ValueError("Witness list response is not a PDF")
-    pages = [PdfTextPage(number=i, text=page.extract_text() or '') for i, page in enumerate(PdfReader(io.BytesIO(data)).pages, 1)]
+    with BytesIO(data) as stream, PdfReader(stream) as pdf:
+        pages = [PdfTextPage(number=i, text=page.extract_text() or '') for i, page in enumerate(pdf.pages, 1)]
     text = "\n".join(page.text for page in pages)
     sha = hashlib.sha256(data).hexdigest()
     result = {"people": parse_document_witnesses(text), "text_present": bool(text.strip()), "source_text": text,

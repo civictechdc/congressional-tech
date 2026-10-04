@@ -255,7 +255,10 @@ def marker_fields(data):
 
 
 def enrich_sources(rows, *, read_body, extract, cached=None):
-    """Add flat evidence fields; original filenames, URLs, types and statuses stay intact."""
+    """Read native content/format facts; PDF covers are a separate fallback stage.
+
+    Original filenames, URLs, types and statuses stay intact.
+    """
     urls = defaultdict(set)
     cached = cached if cached is not None else {}
 
@@ -354,7 +357,6 @@ def enrich_sources(rows, *, read_body, extract, cached=None):
         # A failed retrieval must never poison the cache for identical bytes
         # successfully captured elsewhere, nor replace source/marker roles.
         apply_response_role(row)
-    enrich_document_covers(rows, read_body=read_body, cached=cached)
     return rows
 
 

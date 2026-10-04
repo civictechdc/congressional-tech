@@ -84,6 +84,8 @@ def parser():
     )
     p.add_argument("--repair", action="store_true",
                    help="Reconstruct saved state and replay all source evidence")
+    p.add_argument("--inspect-bodies", action="store_true",
+                   help="Also inspect retained document contents; normal updates use receipts and filenames")
     p.add_argument("--summary", type=Path, default=Path("raw-capture-summary.json"))
     return p
 
@@ -92,6 +94,36 @@ def main(argv=None):
     args = parser().parse_args(argv)
     with ProgressLog(args.summary.with_suffix('.progress.json')) as log:
         return run(args, log)
+
+
+def capture_sources(args, store, run_id):
+    """Finish collection and release its working state before catalog processing."""
+    progress.report('load_capture_state')
+    archive = Archive(store, run_id, repair=args.repair)
+    stop = threading.Event()
+    previous_handlers = {sig: signal.signal(sig, lambda *_: stop.set())
+                         for sig in (signal.SIGTERM, signal.SIGINT)}
+    try:
+        with RustFetcher(
+            args.fetcher_binary, requests_per_second=args.requests_per_second,
+            workers=args.workers, max_bytes=args.max_file_mib * 1024**2,
+        ) as fetcher:
+            summary = run_sync(
+                archive, seed_files(args.seed), fetch=partial(fetcher.fetch, transport=args.transport),
+                limit=args.limit, workers=args.workers, max_seconds=args.max_seconds,
+                max_bytes=args.max_file_mib * 1024**2, stop=stop,
+            )
+        summary.update(fetcher="reqwest", requests_per_second=args.requests_per_second,
+                       workers=args.workers, http_requests=fetcher.sequence)
+        return summary
+    finally:
+        for sig, handler in previous_handlers.items():
+            signal.signal(sig, handler)
+
+
+def save_summary(path, summary):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(summary, indent=2) + "\n")
 
 
 def run(args, log):
@@ -146,7 +178,7 @@ def run(args, log):
         log.state.update(run_id=run_id, mode='rebuild' if args.rebuild_only else 'plan' if args.plan_only else 'capture')
     if args.rebuild_only:
         summary = dict(mode="rebuild", catalog=rebuild_catalog(
-            store, seeds=seed_files(args.seed) if args.seed else (), workers=args.index_workers, repair=args.repair,
+            store, seeds=seed_files(args.seed) if args.seed else (), workers=args.index_workers, repair=args.repair, inspect_bodies=args.inspect_bodies,
         ))
     elif args.plan_only:
         progress.report('load_capture_state')
@@ -160,31 +192,18 @@ def run(args, log):
             outcomes=dict(Counter(s["outcome"] for s in archive.state.values())),
         )
     else:
-        progress.report('load_capture_state')
-        archive = Archive(store, run_id, repair=args.repair)
-        seeds = seed_files(args.seed)
-        stop = threading.Event()
-        signal.signal(signal.SIGTERM, lambda *_: stop.set())
-        signal.signal(signal.SIGINT, lambda *_: stop.set())
-        with RustFetcher(
-            args.fetcher_binary, requests_per_second=args.requests_per_second,
-            workers=args.workers, max_bytes=args.max_file_mib * 1024**2,
-        ) as fetcher:
-            summary = run_sync(
-                archive, seeds, fetch=partial(fetcher.fetch, transport=args.transport),
-                limit=args.limit, workers=args.workers, max_seconds=args.max_seconds,
-                max_bytes=args.max_file_mib * 1024**2, stop=stop,
-                publish=lambda a: rebuild_catalog(
-                    a.store, a.captures, seeds=seed_files(args.seed), workers=args.index_workers, repair=args.repair,
-                ),
-            )
-        summary.update(fetcher="reqwest", requests_per_second=args.requests_per_second,
-                       workers=args.workers, http_requests=fetcher.sequence)
+        summary = dict(mode="capture", **capture_sources(args, store, run_id))
+        # A later catalog failure must not hide already committed acquisitions.
+        save_summary(args.summary, {**summary, 'run_id': run_id, 'bucket': args.bucket,
+                                   'transport': args.transport, 'catalog_status': 'pending'})
+        summary['catalog'] = rebuild_catalog(
+            store, seeds=seed_files(args.seed), workers=args.index_workers, repair=args.repair, inspect_bodies=args.inspect_bodies,
+        )
+        summary['catalog_status'] = 'completed'
     summary.update(run_id=run_id, bucket=args.bucket)
     if not args.rebuild_only:
         summary["transport"] = args.transport
-    args.summary.parent.mkdir(parents=True, exist_ok=True)
-    args.summary.write_text(json.dumps(summary, indent=2) + "\n")
+    save_summary(args.summary, summary)
     print(json.dumps(summary, indent=2), flush=True)
 
 

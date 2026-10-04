@@ -38,7 +38,7 @@ def retained(root, name, data, *, url=None, path=None, **fields):
 
 def build(root, rows, **kwargs):
     (root / 'indexes').mkdir(exist_ok=True)
-    index.write_filename_metadata(root, rows, workers=1, **kwargs)
+    index.write_filename_metadata(root, rows, workers=1, inspect_bodies=True, **kwargs)
     return (pq.read_table(root / 'indexes' / name).to_pylist()
             for name in ('document-filenames.parquet', 'documents.parquet'))
 

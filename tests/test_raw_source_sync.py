@@ -496,3 +496,15 @@ def test_malformed_subtitle_playlist_is_retained_and_does_not_stop_batch():
     assert state[urls[0]]["outcome"] == "parse_failed"
     assert state[urls[0]]["body_key"] and state[urls[0]]["next_attempt_at"]
     assert state[urls[1]]["outcome"] == "saved"
+
+
+def test_stop_saves_state_and_does_not_continue_to_later_work():
+    import threading
+    stop = threading.Event()
+    stop.set()
+    store = MemoryStore()
+    url = 'https://example.gov/later.pdf'
+    with pytest.raises(InterruptedError):
+        run_sync(Archive(store, 'stopped'), [{'url': url}],
+                 fetch=lambda _: pytest.fail('Stop request ignored'), stop=stop)
+    assert Archive(store, 'resumed').state[url]['outcome'] == 'pending'

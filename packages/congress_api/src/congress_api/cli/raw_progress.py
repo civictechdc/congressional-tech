@@ -1,5 +1,5 @@
 """Flush live progress to stderr, a local sidecar and an optional status writer."""
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import json
 import logging
 import os
@@ -8,6 +8,24 @@ import threading
 import time
 
 from congress_api.retention.raw_progress import LOGGER
+
+
+def memory_usage():
+    """Small process measurements; unavailable platforms simply omit them."""
+    try:
+        import resource
+    except ImportError:
+        return {}
+    peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    result = {'process_peak_bytes': peak if sys.platform == 'darwin' else peak * 1024}
+    try:
+        with open('/proc/self/status') as stream:
+            for line in stream:
+                if line.startswith('VmRSS:'):
+                    result['process_resident_bytes'] = int(line.split()[1]) * 1024
+    except OSError:
+        pass
+    return result
 
 
 class ProgressLog(logging.Handler):
@@ -55,8 +73,12 @@ class ProgressLog(logging.Handler):
         # Handler.handle holds this same reentrant lock during emit.
         with self.lock:
             now = self.clock()
+            updated = datetime.now(timezone.utc)
             state = {**self.state,
-                     'updated_at': datetime.now(timezone.utc).isoformat(),
+                     'updated_at': updated.isoformat(),
+                     'heartbeat_expires_at': (updated + timedelta(seconds=max(90, self.interval * 3))).isoformat()
+                         if self.state['status'] == 'running' else None,
+                     'memory': memory_usage(),
                      'elapsed_seconds': round(now - self.started, 1),
                      'stage_elapsed_seconds': round(now - self.stage_started, 1),
                      'seconds_since_progress': round(now - self.changed, 1)}

@@ -281,7 +281,7 @@ def test_embedded_house_html_keeps_source_role_and_observed_format():
     retain(store, {'evidence': {'html': {}}}, family='house/meeting-xml',
            source_file='state/house.json.gz', pointer=['evidence', 'html'],
            body=b'<html><title>Committee meeting</title></html>')
-    rebuild_catalog(store, workers=1)
+    rebuild_catalog(store, workers=1, inspect_bodies=True)
     row, = table(store).to_pylist()
     assert row['source_record_type'] == ['committee-meeting-page']
     assert row['record_role'] == ['source-record']
@@ -301,3 +301,46 @@ def test_capture_role_requires_one_matching_receipt_and_pointer(tmp_path):
     row, = pq.read_table(tmp_path / FILENAMES).to_pylist()
     assert row['record_role'] == ['document']
     assert row.get('source_record_type') is None
+
+
+def test_capture_state_is_released_and_summary_saved_before_rebuild(tmp_path, monkeypatch):
+    import gc
+    import signal
+    import weakref
+    import boto3
+    from congress_api.cli import raw_sync
+    references = []
+    class Collection:
+        def __init__(self, store, *_args, **_kwargs):
+            self.store = store
+            references.append(weakref.ref(self))
+    class Fetcher:
+        sequence = 2
+        def __init__(self, *_args, **_kwargs): pass
+        def __enter__(self): return self
+        def __exit__(self, *_args): pass
+        def fetch(self, _url): pytest.fail('No real network in this test')
+    class Store:
+        def __init__(self, *_args): pass
+        def put(self, *_args): pass
+    summary = tmp_path / 'summary.json'
+    handlers = {sig: signal.getsignal(sig) for sig in (signal.SIGINT, signal.SIGTERM)}
+    def rebuild(*_args, **_kwargs):
+        gc.collect()
+        assert references[0]() is None, 'Acquisition state remains live during the catalog join'
+        assert {sig: signal.getsignal(sig) for sig in handlers} == handlers
+        saved = json.loads(summary.read_text())
+        assert saved['attempted'] == 2 and saved['catalog_status'] == 'pending'
+        raise OSError('catalog interrupted')
+    monkeypatch.setattr(raw_sync, 'Archive', Collection)
+    monkeypatch.setattr(raw_sync, 'RustFetcher', Fetcher)
+    monkeypatch.setattr(raw_sync, 'R2Store', Store)
+    monkeypatch.setattr(raw_sync, 'run_sync', lambda *a, **k: {'attempted': 2})
+    monkeypatch.setattr(raw_sync, 'rebuild_catalog', rebuild)
+    monkeypatch.setattr(boto3, 'client', lambda *a, **k: object())
+    for key in ('CLOUDFLARE_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY'):
+        monkeypatch.setenv(key, 'fixture')
+    with pytest.raises(OSError, match='catalog interrupted'):
+        raw_sync.main(['--transport', 'direct', '--summary', str(summary)])
+    assert json.loads(summary.read_text())['attempted'] == 2
+    assert json.loads(summary.with_suffix('.progress.json').read_text())['status'] == 'failed'

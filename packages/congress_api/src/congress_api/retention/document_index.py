@@ -24,6 +24,7 @@ URLs and receipt locator, even when no publisher filename was saved.
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Mapping
 from concurrent.futures import ProcessPoolExecutor
 from hashlib import sha256
 from uuid import uuid4
@@ -37,6 +38,7 @@ import json
 from multiprocessing import get_context
 from pathlib import Path
 import re
+from sys import intern
 import time
 import unicodedata
 from urllib.parse import parse_qsl, unquote, urlencode, urljoin, urlsplit, urlunsplit
@@ -650,7 +652,9 @@ def merge_values(field, *groups):
         for occurrence in group or []:
             normalized = {key: sorted(set(items)) for key, items in occurrence.items() if items}
             if normalized:
-                values[json.dumps(normalized, sort_keys=True)] = normalized
+                # Shared source observations are values: joins replace lists,
+                # they never mutate occurrences. Reuse already normalized ones.
+                values[json.dumps(normalized, sort_keys=True)] = occurrence if normalized == occurrence else normalized
     return [values[key] for key in sorted(values)]
 
 
@@ -907,6 +911,30 @@ def merge_context(target, values):
             target.setdefault(key, set()).update(items)
 
 
+class SourceFilters(Mapping):
+    """Read flat filters from paired observations instead of retaining both."""
+    def __init__(self, occurrences, extras):
+        self.occurrences, self.extras = occurrences, extras
+
+    def __iter__(self):
+        return iter(self.occurrences)
+
+    def __len__(self):
+        return len(self.occurrences)
+
+    def __contains__(self, url):
+        return url in self.occurrences
+
+    def __getitem__(self, url):
+        if url not in self.occurrences:
+            raise KeyError(url)
+        values = {}
+        merge_context(values, self.extras.get(url, {}))
+        for occurrence in self.occurrences[url].values():
+            merge_context(values, occurrence)
+        return values
+
+
 class DocumentSources:
     """Interpret supplied parent records; join by exact URL or scoped event ID.
 
@@ -918,8 +946,9 @@ class DocumentSources:
 
     def __init__(self, urls=None):
         self.urls = {http_url(url) or url for url in urls} if urls is not None else None
-        self.by_url = {}
         self.occurrences = defaultdict(dict)
+        self.extra_filters = {}
+        self.by_url = SourceFilters(self.occurrences, self.extra_filters)
         self.transfers = defaultdict(list)
         self.meetings = {}
         self.events = defaultdict(set)
@@ -932,15 +961,26 @@ class DocumentSources:
         if "source_occurrences" in values:
             # Restored flat filters already summarize paired observations. Do
             # not turn that summary into a fabricated cross-product occurrence.
-            merge_context(self.by_url.setdefault(url, {}), {
-                key: items for key, items in values.items()
-                if key in SOURCE_OCCURRENCE_FIELDS and items})
+            # Preserve any genuinely unpaired legacy values, but do not cache
+            # another full copy of filters derivable from the occurrences.
+            paired = {}
+            for occurrence in values.get("source_occurrences") or []:
+                merge_context(paired, occurrence)
+            extra = {key: set(items) - paired.get(key, set())
+                     for key, items in values.items()
+                     if key in SOURCE_OCCURRENCE_FIELDS and items}
+            extra = {key: items for key, items in extra.items() if items}
+            if extra:
+                merge_context(self.extra_filters.setdefault(url, {}), extra)
+                self.occurrences.setdefault(url, {})
             pending = [(url, occurrence) for occurrence in values.get("source_occurrences") or []]
         else:
             pending = [(url, values)]
         while pending:
             destination, supplied = pending.pop()
-            occurrence = {key: sorted(set(items)) for key, items in supplied.items()
+            # Parent URLs, titles and receipt locators recur across many links.
+            # Share their immutable strings as well as the observation objects.
+            occurrence = {key: sorted({intern(item) for item in items}) for key, items in supplied.items()
                           if key in SOURCE_OCCURRENCE_FIELDS and items}
             if not occurrence:
                 continue
@@ -952,7 +992,6 @@ class DocumentSources:
             if identity in self.occurrences[destination]:
                 continue
             self.occurrences[destination][identity] = occurrence
-            merge_context(self.by_url.setdefault(destination, {}), occurrence)
             for target, association in self.transfers.get(destination, []):
                 # Each transferred occurrence retains its original parent/link.
                 # Association fields describe this edge, never document identity.
@@ -982,11 +1021,20 @@ class DocumentSources:
         for occurrence in list(self.occurrences.get(requested, {}).values()):
             self.add_url(final, self.transfer_occurrence(occurrence, association))
 
+    def restore_association(self, url, occurrence):
+        if occurrence.get("source_occurrence_scope") != ["association"]:
+            return
+        values = {key: value for key, value in occurrence.items()
+                  if key in {"source_association_basis", "source_associated_url",
+                             "source_receipt_key", "source_receipt_line"}}
+        for original in occurrence.get("source_associated_url") or []:
+            self.add_transfer(original, url, values)
+
     def for_url(self, url):
         url = (http_url(url) or url) if isinstance(url, str) else url
         result = {key: sorted(values) for key, values in self.by_url.get(url, {}).items() if values}
         if self.occurrences.get(url):
-            result["source_occurrences"] = [dict(self.occurrences[url][key])
+            result["source_occurrences"] = [self.occurrences[url][key]
                                             for key in sorted(self.occurrences[url])]
         return result
 
@@ -1961,10 +2009,16 @@ def parser_fingerprint():
 
 
 def write_filename_metadata(
-    root, source_rows, *, workers=4, previous=None, metadata=None, read_body=None, cache_store=None, reuse_results=True
+    root, source_rows, *, workers=4, previous=None, metadata=None, read_body=None,
+    oversized_bodies=(), cache_store=None, reuse_results=True, inspect_bodies=False
 ):
     """Interpret supplied source rows; acquisition and storage discovery stay outside."""
     started = time.monotonic()
+    previous_schema = (previous.schema_arrow if isinstance(previous, pq.ParquetFile) else previous.schema) if previous is not None else None
+    def previous_batches(columns=None):
+        if isinstance(previous, pq.ParquetFile):
+            return previous.iter_batches(columns=columns, batch_size=4096)
+        return (previous.select(columns) if columns else previous).to_batches(max_chunksize=4096)
     progress.report('prepare_filename_inputs')
     from congress_api.retention.document_recovery import recover_sources, recovery_fingerprint
     if (root / 'indexes/captures.parquet').exists():
@@ -1981,13 +2035,19 @@ def write_filename_metadata(
             names.add(source["filename"])
     fingerprint = parser_fingerprint()
     progress.report('reuse_cached_metadata')
-    from congress_api.retention.catalog_cache import LocalStore, load_results, save_results
+    from congress_api.retention.catalog_cache import LocalStore, load_results, result_checkpoint
     cache_store = cache_store or LocalStore(root)
-    cached = load_results(cache_store, 'filenames', fingerprint, ('filename', 'source_url'), reuse=reuse_results)
+    cached = {}
     body_fingerprint = evidence_fingerprint()
+    if not inspect_bodies and previous_schema is not None:
+        # A metadata-only update preserves earlier content readings. Replacing
+        # their reader version without actually reading the files loses evidence.
+        body_fingerprint = (previous_schema.metadata or {}).get(
+            b'body_evidence_fingerprint', body_fingerprint.encode()).decode()
+    reuse_bodies = reuse_results or not inspect_bodies
     body_cache = load_results(cache_store, 'bodies', body_fingerprint, ('reader', 'body_key'), reuse=reuse_results)
-    if reuse_results and previous is not None and (previous.schema.metadata or {}).get(b"body_evidence_fingerprint") == body_fingerprint.encode():
-        for batch in previous.select([k for k in (BODY_FIELDS | {"body_key"}) if k in previous.column_names]).to_batches():
+    if reuse_bodies and previous is not None and (previous_schema.metadata or {}).get(b"body_evidence_fingerprint") == body_fingerprint.encode():
+        for batch in previous_batches([k for k in (BODY_FIELDS | {"body_key"}) if k in previous_schema.names]):
             for row in batch.to_pylist():
                 if key := body_evidence_key(row):
                     body_cache.setdefault(key, cached_body_fields(row, key))
@@ -1996,21 +2056,22 @@ def write_filename_metadata(
     )
     if (
         reuse_results and previous is not None
-        and "document_kind_source" in previous.column_names
-        and (previous.schema.metadata or {}).get(b"house_naming_fingerprint")
+        and "document_kind_source" in previous_schema.names
+        and (previous_schema.metadata or {}).get(b"house_naming_fingerprint")
         == fingerprint.encode()
     ):
         fields = (
-            set(previous.column_names)
+            set(previous_schema.names)
             - source_fields
             - {"source_id", "document_id", "format", "document_kind_source"}
-            - EVIDENCE_FIELDS
+            - EVIDENCE_FIELDS - BODY_FIELDS
         )
-        for batch in previous.to_batches(max_chunksize=4096):
+        for batch in previous_batches(sorted(fields | {'filename', 'source_url', 'recovered_filename',
+                'body_format', 'cache_marker_state', 'document_kind_source'} & set(previous_schema.names))):
             for row in batch.to_pylist():
                 if row.get("filename") is None:
                     continue  # Anonymous bodies share no reusable filename meaning.
-                if row.get("recovered_filename") or row.get("body_format") or row.get("cache_marker_state"):
+                if row.get("recovered_filename"):
                     continue  # These meanings depend on retained evidence, not just names.
                 cached.setdefault((row["filename"], row["source_url"]), {
                     k: row[k] for k in fields if row[k] is not None
@@ -2018,22 +2079,21 @@ def write_filename_metadata(
                              and any(value in DERIVED_KIND_SOURCES for value in row.get("document_kind_source") or []))
                 })
     if not reuse_results:
-        cached, body_cache = {}, {}
+        cached = {}
+        if inspect_bodies:
+            body_cache = {}
+    checkpoint_bodies = result_checkpoint(cache_store, 'bodies', body_fingerprint,
+                                         ('reader', 'body_key'), body_cache)
     pending = [key for key in inputs if key not in cached]
     def collect(parsed):
         for key, fields in progress.track(zip(pending, parsed), 'extract_filenames',
                                          total=len(pending), unit='filenames'):
             cached[key] = fields
-
-    try:
-        if workers == 1:
-            collect(map(extract, pending))
-        elif pending:
-            with ProcessPoolExecutor(max_workers=workers, mp_context=get_context('spawn')) as pool:
-                collect(pool.map(extract, pending, chunksize=128))
-    finally:
-        # A failed later stage can reuse these completed filename results.
-        save_results(cache_store, 'filenames', fingerprint, ('filename', 'source_url'), cached)
+    if workers == 1:
+        collect(map(extract, pending))
+    elif pending:
+        with ProcessPoolExecutor(max_workers=workers, mp_context=get_context('spawn')) as pool:
+            collect(pool.map(extract, pending, chunksize=128))
 
     rows, columns = (
         [],
@@ -2045,27 +2105,47 @@ def write_filename_metadata(
             if key in SOURCE_CONTEXT_FIELDS | {"capture_outcome"} and row[key]
         },
     )
-    for key in inputs:
+    input_count = len(inputs)
+    for key in list(inputs):
         columns.update(cached[key])
-        rows.extend({**row, **cached[key]} for row in inputs[key])
-    progress.report('inspect_document_contents', total=len(bodies), unit='distinct_retained_bodies')
+        # Consume one group at a time so callers supplying an iterator do not
+        # retain a second complete set of source dictionaries during assembly.
+        rows.extend({**row, **cached[key]} for row in inputs.pop(key))
+    del inputs, source_rows
+    progress.report('inspect_document_contents', completed=0, unit='distinct_body_attempts')
     def interpret(key):
         if key not in cached:
             cached[key] = extract(key)
         return cached[key]
     deferred_bodies = set()
+    attempted_bodies = set()
     supplied_reader = read_body or (lambda key: read_retained_body(root, key))
     def inspect_body(key):
+        if not inspect_bodies:
+            return None
+        checkpoint_bodies()
+        if key in oversized_bodies or key in deferred_bodies:
+            return None  # Missing bytes retry next run; known size limits stay skipped.
         data = supplied_reader(key)
         if data is None:
             deferred_bodies.add(key)
+        attempted_bodies.add(key)
+        progress.report('inspect_document_contents', completed=len(attempted_bodies), unit='distinct_body_attempts')
         return data
     try:
         enrich_sources(rows, read_body=inspect_body,
                        extract=interpret, cached=body_cache)
+        # Preserve native XML/format facts before applying source kinds. Only
+        # the optional PDF-cover fallback can be skipped for a known kind.
+        # Regrouping below recomputes these fallbacks across aliases.
+        for row in rows:
+            fill_document_kind(row)
+        enrich_document_covers(rows, read_body=inspect_body, cached=body_cache)
     finally:
-        save_results(cache_store, 'bodies', body_fingerprint, ('reader', 'body_key'), body_cache)
-        save_results(cache_store, 'filenames', fingerprint, ('filename', 'source_url'), cached)
+        if inspect_bodies:
+            checkpoint_bodies(force=True)
+    cached.clear()
+    body_cache.clear()
     progress.report('apply_response_metadata', total=len(rows), unit='source_rows')
     refresh_response_metadata(root, rows)
     for row in rows:
@@ -2082,6 +2162,7 @@ def write_filename_metadata(
             "house_naming_fingerprint": fingerprint,
             "body_evidence_fingerprint": body_fingerprint,
             "deferred_body_reads": str(len(deferred_bodies)),
+            "body_inspection": str(inspect_bodies).lower(),
             **(metadata or {}),
         },
     )
@@ -2099,7 +2180,7 @@ def write_filename_metadata(
             {row["filename"] for row in rows if row["filename"] is not None}
         ),
         rows_without_retained_body=sum(row["body_key"] is None for row in rows),
-        parser_inputs=len(inputs),
+        parser_inputs=input_count,
         parsed_inputs=len(pending),
         output=str(destination),
         output_bytes=destination.stat().st_size,
@@ -2107,7 +2188,7 @@ def write_filename_metadata(
     )
 
 
-def build(root, inventory_dir, *, workers=4, families=FAMILIES):
+def build(root, inventory_dir, *, workers=4, families=FAMILIES, inspect_bodies=False):
     names, capture_rows, bodies, known_variants = collect_names(
         root, inventory_dir, families
     )
@@ -2134,13 +2215,13 @@ def build(root, inventory_dir, *, workers=4, families=FAMILIES):
         for (body, filename, url), origins in names.items()
     )
     return dict(
-        write_filename_metadata(root, sources, workers=workers),
+        write_filename_metadata(root, sources, workers=workers, inspect_bodies=inspect_bodies),
         capture_rows=capture_rows,
         known_inventory_spellings=len(known_variants),
     )
 
 
-def refresh_filename_metadata(root, *, workers=4):
+def refresh_filename_metadata(root, *, workers=4, inspect_bodies=False):
     """Reinterpret names and selected retained bodies without discovery or acquisition."""
     source = pq.ParquetFile(root / "indexes/document-filenames.parquet")
     fields = [
@@ -2155,7 +2236,7 @@ def refresh_filename_metadata(root, *, workers=4):
         for batch in source.iter_batches(columns=fields)
         for row in batch.to_pylist()
     )
-    return write_filename_metadata(root, rows, workers=workers, previous=source.read(), metadata={
+    return write_filename_metadata(root, rows, workers=workers, previous=source, inspect_bodies=inspect_bodies, metadata={
         key.decode(): value.decode() for key, value in (source.schema_arrow.metadata or {}).items()
         if key in {b'raw_capture_rows', b'retained_recovery_fingerprint'}})
 

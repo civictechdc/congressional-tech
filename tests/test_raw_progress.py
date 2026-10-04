@@ -164,3 +164,13 @@ def test_local_index_command_reports_progress_without_remote_publication(tmp_pat
     status = json.loads((tmp_path / 'status/document-index.json').read_text())
     assert status['status'] == 'completed'
     assert status['completed'] == status['total'] == 3
+
+
+def test_running_heartbeat_has_expiry_and_memory_measurement(tmp_path):
+    from datetime import datetime
+    path = tmp_path / 'progress.json'
+    with ProgressLog(path, stream=io.StringIO(), interval=3600):
+        state = json.loads(path.read_text())
+        assert datetime.fromisoformat(state['heartbeat_expires_at']) > datetime.fromisoformat(state['updated_at'])
+        assert state['memory']['process_peak_bytes'] > 0
+    assert json.loads(path.read_text())['heartbeat_expires_at'] is None

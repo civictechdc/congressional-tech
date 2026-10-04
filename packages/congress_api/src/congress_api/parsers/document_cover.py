@@ -102,22 +102,22 @@ def document_cover(data: bytes) -> dict[str, list[str]]:
     if not data.lstrip().startswith(b'%PDF-'):
         return {}
     try:
-        pdf = PdfReader(BytesIO(data))
-        # Some public PDFs set owner permissions but open without a password.
-        # Required user passwords still abstain; no guessing or OCR is involved.
-        if pdf.is_encrypted and not pdf.decrypt(''):
-            return {}
-        if not pdf.pages:
-            return {}
-        first = pdf.pages[0].extract_text() or ''
-        if result := document_page_fields(first):
-            return result
-        # Second-page fallback is exclusively for coverless proceedings, not
-        # a new cover or an opening statement embedded in a different document.
-        if not first.strip() and len(pdf.pages) > 1:
-            result = document_page_fields('', pdf.pages[1].extract_text() or '')
-            if result.get('content_document_kind') == ['transcript']:
+        with BytesIO(data) as stream, PdfReader(stream) as pdf:
+            # Some public PDFs set owner permissions but open without a password.
+            # Required user passwords still abstain; no guessing or OCR is involved.
+            if pdf.is_encrypted and not pdf.decrypt(''):
+                return {}
+            if not pdf.pages:
+                return {}
+            first = pdf.pages[0].extract_text() or ''
+            if result := document_page_fields(first):
                 return result
+            # Second-page fallback is exclusively for coverless proceedings, not
+            # a new cover or an opening statement embedded in a different document.
+            if not first.strip() and len(pdf.pages) > 1:
+                result = document_page_fields('', pdf.pages[1].extract_text() or '')
+                if result.get('content_document_kind') == ['transcript']:
+                    return result
     except (PyPdfError, ValueError, KeyError, TypeError, IndexError, RecursionError):
         return {}
     return {}

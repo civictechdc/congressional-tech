@@ -281,8 +281,10 @@ by the focused tests.
 Saved URLs are not periodically refreshed. Replaced files at the same URL need
 an explicit refresh policy, separate from this missing-file backfill. Retained
 bodies also obey the inspection size limit; oversized ones remain retained and
-are recorded as `inspection_deferred`, without a source refetch. This job does not
-extract PDF text or publish the dashboard.
+are recorded as `inspection_deferred`, without a source refetch. Normal table updates use receipt metadata and filenames. `--inspect-bodies`
+explicitly enables retained XML/format and PDF-cover inspection; it does not
+transcribe recordings or publish the dashboard. The published filename table
+supplies reusable source context, without separate source or filename checkpoints.
 
 Receipt batches checkpoint every 100 results and at normal shutdown. Interrupted
 index publication recovers from those receipts on the next run. A hard stop can

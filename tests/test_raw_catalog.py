@@ -60,8 +60,8 @@ def test_capture_rebuild_preserves_headers_redirects_context_and_unfetched_names
         [seed],
         fetch=lambda _: r,
         limit=1,
-        publish=lambda a: rebuild_catalog(store, a.captures, seeds=[seed], workers=1),
     )
+    result['catalog'] = rebuild_catalog(store, seeds=[seed], workers=1)
     rows = table(store).to_pylist()
     matches = [row for row in rows if row["filename"] == header]
     assert matches and all(
@@ -130,8 +130,8 @@ def test_failed_filename_publication_replays_delta_without_fetch(tmp_path):
         [],
         fetch=lambda _: pytest.fail("Rebuild should not fetch sources"),
         limit=0,
-        publish=lambda a: rebuild_catalog(store, a.captures, workers=1),
     )
+    rebuild_catalog(store, workers=1)
     assert any(
         row["filename"] == "New-testimony.pdf" and row["body_key"]
         for row in table(store).to_pylist()
@@ -310,7 +310,7 @@ def test_new_numeric_xml_capture_is_read_from_injected_store(tmp_path):
     r['response_headers']['content-type'] = 'application/xml'
     a.record(r, outcome='saved', links=[])
     a.save()
-    rebuild_catalog(store, a.captures, workers=1)
+    rebuild_catalog(store, a.captures, workers=1, inspect_bodies=True)
     row = next(r for r in table(store).to_pylist() if r['filename']=='123.xml')
     assert row['document_kind'] == ['witness-list']
     assert row['document_kind_source'] == ['content']
