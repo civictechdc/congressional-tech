@@ -26,7 +26,7 @@ Agriculture,@HouseAgDems,0,0,115,Republican,house,0
 Agriculture,@HouseAgDems,43,8,116,Democratic,house,0
 Agriculture,@HouseAgDems,77,71,117,Democratic,house,0
 Agriculture,@HouseAgDems,30,30,118,Republican,house,0
-Agriculture,@HouseAgDems,53,53,119,Republican,house,1
+Agriculture,@HouseAgDems,54,54,119,Republican,house,1
 Agriculture,@houseagriculturecommittee2800,0,0,106,Republican,house,0
 Agriculture,@houseagriculturecommittee2800,0,0,107,Republican,house,0
 Agriculture,@houseagriculturecommittee2800,0,0,108,Republican,house,0
@@ -54,7 +54,7 @@ Appropriations,@HouseAppropriationsCommittee,206,8,115,Republican,house,0
 Appropriations,@HouseAppropriationsCommittee,273,12,116,Democratic,house,4
 Appropriations,@HouseAppropriationsCommittee,230,2,117,Democratic,house,0
 Appropriations,@HouseAppropriationsCommittee,218,32,118,Republican,house,14
-Appropriations,@HouseAppropriationsCommittee,229,47,119,Republican,house,118
+Appropriations,@HouseAppropriationsCommittee,230,48,119,Republican,house,119
 Armed Services,@HouseArmedServices,0,0,106,Republican,house,0
 Armed Services,@HouseArmedServices,0,0,107,Republican,house,0
 Armed Services,@HouseArmedServices,0,0,108,Republican,house,0
@@ -96,7 +96,7 @@ Armed Services,@armedservices8789,0,0,115,Republican,house,0
 Armed Services,@armedservices8789,0,0,116,Democratic,house,0
 Armed Services,@armedservices8789,0,0,117,Democratic,house,0
 Armed Services,@armedservices8789,2,0,118,Republican,house,1
-Armed Services,@armedservices8789,359,354,119,Republican,house,201
+Armed Services,@armedservices8789,362,357,119,Republican,house,204
 Armed Services,@armedservicesGOP,0,0,106,Republican,house,0
 Armed Services,@armedservicesGOP,0,0,107,Republican,house,0
 Armed Services,@armedservicesGOP,0,0,108,Republican,house,0
@@ -194,7 +194,7 @@ Energy & Commerce,@energyandcommerce,283,282,115,Republican,house,0
 Energy & Commerce,@energyandcommerce,224,224,116,Democratic,house,7
 Energy & Commerce,@energyandcommerce,146,146,117,Democratic,house,0
 Energy & Commerce,@energyandcommerce,574,574,118,Republican,house,21
-Energy & Commerce,@energyandcommerce,338,338,119,Republican,house,217
+Energy & Commerce,@energyandcommerce,345,345,119,Republican,house,224
 Energy & Commerce,@EnergyCommerce,0,0,106,Republican,house,0
 Energy & Commerce,@EnergyCommerce,0,0,107,Republican,house,0
 Energy & Commerce,@EnergyCommerce,0,0,108,Republican,house,0
@@ -222,7 +222,7 @@ Financial Services,@USHouseFSC,32,32,115,Republican,house,0
 Financial Services,@USHouseFSC,182,38,116,Democratic,house,0
 Financial Services,@USHouseFSC,143,10,117,Democratic,house,0
 Financial Services,@USHouseFSC,139,10,118,Republican,house,0
-Financial Services,@USHouseFSC,212,77,119,Republican,house,2
+Financial Services,@USHouseFSC,215,77,119,Republican,house,2
 Financial Services,@GOPFinancialServices,0,0,106,Republican,house,0
 Financial Services,@GOPFinancialServices,0,0,107,Republican,house,0
 Financial Services,@GOPFinancialServices,0,0,108,Republican,house,0
@@ -236,7 +236,7 @@ Financial Services,@GOPFinancialServices,259,94,115,Republican,house,0
 Financial Services,@GOPFinancialServices,189,189,116,Democratic,house,14
 Financial Services,@GOPFinancialServices,96,96,117,Democratic,house,0
 Financial Services,@GOPFinancialServices,490,490,118,Republican,house,1
-Financial Services,@GOPFinancialServices,192,192,119,Republican,house,17
+Financial Services,@GOPFinancialServices,195,195,119,Republican,house,17
 Financial Services,@fscdems9522,0,0,106,Republican,house,0
 Financial Services,@fscdems9522,0,0,107,Republican,house,0
 Financial Services,@fscdems9522,0,0,108,Republican,house,0
@@ -292,7 +292,7 @@ Foreign Affairs,@houseforeign,275,275,115,Republican,house,69
 Foreign Affairs,@houseforeign,279,227,116,Democratic,house,27
 Foreign Affairs,@houseforeign,178,178,117,Democratic,house,5
 Foreign Affairs,@houseforeign,135,135,118,Republican,house,0
-Foreign Affairs,@houseforeign,184,184,119,Republican,house,1
+Foreign Affairs,@houseforeign,185,185,119,Republican,house,1
 Foreign Affairs,@HouseForeignGOP,0,0,106,Republican,house,0
 Foreign Affairs,@HouseForeignGOP,0,0,107,Republican,house,0
 Foreign Affairs,@HouseForeignGOP,0,0,108,Republican,house,0
@@ -306,7 +306,7 @@ Foreign Affairs,@HouseForeignGOP,183,1,115,Republican,house,0
 Foreign Affairs,@HouseForeignGOP,272,272,116,Democratic,house,0
 Foreign Affairs,@HouseForeignGOP,255,255,117,Democratic,house,31
 Foreign Affairs,@HouseForeignGOP,432,432,118,Republican,house,44
-Foreign Affairs,@HouseForeignGOP,471,470,119,Republican,house,25
+Foreign Affairs,@HouseForeignGOP,473,472,119,Republican,house,25
 Homeland Security,@HouseHomeland,0,0,106,Republican,house,0
 Homeland Security,@HouseHomeland,0,0,107,Republican,house,0
 Homeland Security,@HouseHomeland,0,0,108,Republican,house,0
@@ -376,7 +376,7 @@ House Administration,@CHADemsVideos,30,2,115,Republican,house,0
 House Administration,@CHADemsVideos,40,7,116,Democratic,house,1
 House Administration,@CHADemsVideos,56,20,117,Democratic,house,2
 House Administration,@CHADemsVideos,46,46,118,Republican,house,0
-House Administration,@CHADemsVideos,65,65,119,Republican,house,11
+House Administration,@CHADemsVideos,67,67,119,Republican,house,11
 House Administration,@committeeonhouseadministra952,0,0,106,Republican,house,0
 House Administration,@committeeonhouseadministra952,0,0,107,Republican,house,0
 House Administration,@committeeonhouseadministra952,0,0,108,Republican,house,0
@@ -418,7 +418,7 @@ Judiciary,@USHouseJudiciaryGOP,125,125,115,Republican,house,2
 Judiciary,@USHouseJudiciaryGOP,140,140,116,Democratic,house,0
 Judiciary,@USHouseJudiciaryGOP,112,112,117,Democratic,house,0
 Judiciary,@USHouseJudiciaryGOP,241,241,118,Republican,house,0
-Judiciary,@USHouseJudiciaryGOP,266,266,119,Republican,house,0
+Judiciary,@USHouseJudiciaryGOP,268,268,119,Republican,house,0
 Judiciary,@JudiciaryDems,0,0,106,Republican,house,0
 Judiciary,@JudiciaryDems,0,0,107,Republican,house,0
 Judiciary,@JudiciaryDems,0,0,108,Republican,house,0
@@ -432,7 +432,7 @@ Judiciary,@JudiciaryDems,156,127,115,Republican,house,0
 Judiciary,@JudiciaryDems,138,20,116,Democratic,house,0
 Judiciary,@JudiciaryDems,131,27,117,Democratic,house,1
 Judiciary,@JudiciaryDems,215,92,118,Republican,house,28
-Judiciary,@JudiciaryDems,330,242,119,Republican,house,92
+Judiciary,@JudiciaryDems,331,243,119,Republican,house,92
 Judiciary,@housejudiciarydemocrats8939,0,0,106,Republican,house,0
 Judiciary,@housejudiciarydemocrats8939,0,0,107,Republican,house,0
 Judiciary,@housejudiciarydemocrats8939,0,0,108,Republican,house,0
@@ -530,7 +530,7 @@ Oversight and Government Reform,@OversightDems,54,54,115,Republican,house,0
 Oversight and Government Reform,@OversightDems,673,673,116,Democratic,house,1
 Oversight and Government Reform,@OversightDems,369,369,117,Democratic,house,0
 Oversight and Government Reform,@OversightDems,142,142,118,Republican,house,1
-Oversight and Government Reform,@OversightDems,390,390,119,Republican,house,5
+Oversight and Government Reform,@OversightDems,401,401,119,Republican,house,5
 Oversight and Government Reform,@COVIDOversight,0,0,106,Republican,house,0
 Oversight and Government Reform,@COVIDOversight,0,0,107,Republican,house,0
 Oversight and Government Reform,@COVIDOversight,0,0,108,Republican,house,0
@@ -768,7 +768,7 @@ Ways and Means,@WaysandMeansCommittee,0,0,115,Republican,house,0
 Ways and Means,@WaysandMeansCommittee,0,0,116,Democratic,house,0
 Ways and Means,@WaysandMeansCommittee,0,0,117,Democratic,house,0
 Ways and Means,@WaysandMeansCommittee,151,151,118,Republican,house,0
-Ways and Means,@WaysandMeansCommittee,123,123,119,Republican,house,2
+Ways and Means,@WaysandMeansCommittee,124,124,119,Republican,house,2
 Ways and Means,@waysmeanscmte,0,0,106,Republican,house,0
 Ways and Means,@waysmeanscmte,0,0,107,Republican,house,0
 Ways and Means,@waysmeanscmte,0,0,108,Republican,house,0
@@ -908,7 +908,7 @@ Select Committee on the CCP,@ChinaSelect,0,0,115,Republican,house,0
 Select Committee on the CCP,@ChinaSelect,0,0,116,Democratic,house,0
 Select Committee on the CCP,@ChinaSelect,0,0,117,Democratic,house,0
 Select Committee on the CCP,@ChinaSelect,304,303,118,Republican,house,0
-Select Committee on the CCP,@ChinaSelect,217,215,119,Republican,house,86
+Select Committee on the CCP,@ChinaSelect,220,218,119,Republican,house,87
 Select Committee on the CCP,@SelectCommitteeontheCCPDems,0,0,106,Republican,house,0
 Select Committee on the CCP,@SelectCommitteeontheCCPDems,0,0,107,Republican,house,0
 Select Committee on the CCP,@SelectCommitteeontheCCPDems,0,0,108,Republican,house,0
@@ -1132,7 +1132,7 @@ Helsinki Commission,@HelsinkiCommission,19,19,115,,joint,0
 Helsinki Commission,@HelsinkiCommission,29,29,116,,joint,0
 Helsinki Commission,@HelsinkiCommission,62,62,117,,joint,3
 Helsinki Commission,@HelsinkiCommission,522,521,118,,joint,0
-Helsinki Commission,@HelsinkiCommission,129,128,119,,joint,19
+Helsinki Commission,@HelsinkiCommission,130,129,119,,joint,20
 Congressional-Executive Commission on China,@ChinaCommission,0,0,106,,joint,0
 Congressional-Executive Commission on China,@ChinaCommission,0,0,107,,joint,0
 Congressional-Executive Commission on China,@ChinaCommission,0,0,108,,joint,0
@@ -1216,7 +1216,7 @@ Senate Appropriations,@SenateApprops,0,0,119,Republican,senate,0
 "Senate Banking, Housing, and Urban Affairs",@SenBankingGOP,0,0,116,Republican,senate,0
 "Senate Banking, Housing, and Urban Affairs",@SenBankingGOP,200,200,117,Democratic,senate,1
 "Senate Banking, Housing, and Urban Affairs",@SenBankingGOP,89,89,118,Democratic,senate,0
-"Senate Banking, Housing, and Urban Affairs",@SenBankingGOP,157,157,119,Republican,senate,8
+"Senate Banking, Housing, and Urban Affairs",@SenBankingGOP,159,159,119,Republican,senate,9
 "Senate Banking, Housing, and Urban Affairs",@senatebankinghousingandurbdems,0,0,106,Republican,senate,0
 "Senate Banking, Housing, and Urban Affairs",@senatebankinghousingandurbdems,0,0,107,Democratic / Republican / Democratic,senate,0
 "Senate Banking, Housing, and Urban Affairs",@senatebankinghousingandurbdems,0,0,108,Republican,senate,0
@@ -1230,7 +1230,7 @@ Senate Appropriations,@SenateApprops,0,0,119,Republican,senate,0
 "Senate Banking, Housing, and Urban Affairs",@senatebankinghousingandurbdems,0,0,116,Republican,senate,0
 "Senate Banking, Housing, and Urban Affairs",@senatebankinghousingandurbdems,45,45,117,Democratic,senate,1
 "Senate Banking, Housing, and Urban Affairs",@senatebankinghousingandurbdems,50,50,118,Democratic,senate,0
-"Senate Banking, Housing, and Urban Affairs",@senatebankinghousingandurbdems,80,80,119,Republican,senate,69
+"Senate Banking, Housing, and Urban Affairs",@senatebankinghousingandurbdems,81,81,119,Republican,senate,69
 "Senate Banking, Housing, and Urban Affairs",@SenateBankingGOP,0,0,106,Republican,senate,0
 "Senate Banking, Housing, and Urban Affairs",@SenateBankingGOP,0,0,107,Democratic / Republican / Democratic,senate,0
 "Senate Banking, Housing, and Urban Affairs",@SenateBankingGOP,0,0,108,Republican,senate,0
@@ -1286,7 +1286,7 @@ Senate Budget,@SenateBudget,0,0,115,Republican,senate,0
 Senate Budget,@SenateBudget,0,0,116,Republican,senate,0
 Senate Budget,@SenateBudget,0,0,117,Democratic,senate,0
 Senate Budget,@SenateBudget,94,94,118,Democratic,senate,2
-Senate Budget,@SenateBudget,198,198,119,Republican,senate,18
+Senate Budget,@SenateBudget,199,199,119,Republican,senate,19
 "Senate Commerce, Science, and Transportation",@CommerceRepublicans,0,0,106,Republican,senate,0
 "Senate Commerce, Science, and Transportation",@CommerceRepublicans,0,0,107,Democratic / Republican / Democratic,senate,0
 "Senate Commerce, Science, and Transportation",@CommerceRepublicans,0,0,108,Republican,senate,0
@@ -1314,7 +1314,7 @@ Senate Budget,@SenateBudget,198,198,119,Republican,senate,18
 "Senate Commerce, Science, and Transportation",@commercedems,0,0,116,Republican,senate,0
 "Senate Commerce, Science, and Transportation",@commercedems,66,66,117,Democratic,senate,17
 "Senate Commerce, Science, and Transportation",@commercedems,137,137,118,Democratic,senate,59
-"Senate Commerce, Science, and Transportation",@commercedems,195,195,119,Republican,senate,167
+"Senate Commerce, Science, and Transportation",@commercedems,196,196,119,Republican,senate,168
 "Senate Commerce, Science, and Transportation",@senatecommercecommitteedem873,0,0,106,Republican,senate,0
 "Senate Commerce, Science, and Transportation",@senatecommercecommitteedem873,0,0,107,Democratic / Republican / Democratic,senate,0
 "Senate Commerce, Science, and Transportation",@senatecommercecommitteedem873,0,0,108,Republican,senate,0
@@ -1370,7 +1370,7 @@ Senate Energy and Natural Resources,@SenateEnergy,75,75,115,Republican,senate,0
 Senate Energy and Natural Resources,@SenateEnergy,136,136,116,Republican,senate,0
 Senate Energy and Natural Resources,@SenateEnergy,130,130,117,Democratic,senate,5
 Senate Energy and Natural Resources,@SenateEnergy,108,108,118,Democratic,senate,56
-Senate Energy and Natural Resources,@SenateEnergy,209,209,119,Republican,senate,45
+Senate Energy and Natural Resources,@SenateEnergy,211,211,119,Republican,senate,45
 Senate Environment and Public Works,@EPWGOP,0,0,106,Republican,senate,0
 Senate Environment and Public Works,@EPWGOP,0,0,107,Democratic / Republican / Democratic,senate,0
 Senate Environment and Public Works,@EPWGOP,0,0,108,Republican,senate,0
@@ -1398,7 +1398,7 @@ Senate Environment and Public Works,@EPWCmte,11,11,115,Republican,senate,0
 Senate Environment and Public Works,@EPWCmte,3,3,116,Republican,senate,0
 Senate Environment and Public Works,@EPWCmte,77,77,117,Democratic,senate,0
 Senate Environment and Public Works,@EPWCmte,164,164,118,Democratic,senate,16
-Senate Environment and Public Works,@EPWCmte,144,144,119,Republican,senate,9
+Senate Environment and Public Works,@EPWCmte,145,145,119,Republican,senate,9
 Senate Finance,@GOPSenateFinance,0,0,106,Republican,senate,0
 Senate Finance,@GOPSenateFinance,0,0,107,Democratic / Republican / Democratic,senate,0
 Senate Finance,@GOPSenateFinance,0,0,108,Republican,senate,0
@@ -1454,7 +1454,7 @@ Senate Foreign Relations,@SFRCDems,0,0,115,Republican,senate,0
 Senate Foreign Relations,@SFRCDems,0,0,116,Republican,senate,0
 Senate Foreign Relations,@SFRCDems,0,0,117,Democratic,senate,0
 Senate Foreign Relations,@SFRCDems,0,0,118,Democratic,senate,0
-Senate Foreign Relations,@SFRCDems,41,41,119,Republican,senate,11
+Senate Foreign Relations,@SFRCDems,44,44,119,Republican,senate,13
 Senate Homeland Security and Governmental Affairs,@HSGACDems,0,0,106,Republican,senate,0
 Senate Homeland Security and Governmental Affairs,@HSGACDems,0,0,107,Democratic / Republican / Democratic,senate,0
 Senate Homeland Security and Governmental Affairs,@HSGACDems,0,0,108,Republican,senate,0
@@ -1482,7 +1482,7 @@ Senate Homeland Security and Governmental Affairs,@HSGACDems,90,90,119,Republica
 "Senate Health, Education, Labor, and Pensions",@gophelp,0,0,116,Republican,senate,0
 "Senate Health, Education, Labor, and Pensions",@gophelp,0,0,117,Democratic,senate,0
 "Senate Health, Education, Labor, and Pensions",@gophelp,121,121,118,Democratic,senate,2
-"Senate Health, Education, Labor, and Pensions",@gophelp,159,159,119,Republican,senate,0
+"Senate Health, Education, Labor, and Pensions",@gophelp,160,160,119,Republican,senate,0
 "Senate Health, Education, Labor, and Pensions",@HELPCommitteeGOP,0,0,106,Republican,senate,0
 "Senate Health, Education, Labor, and Pensions",@HELPCommitteeGOP,0,0,107,Democratic / Republican / Democratic,senate,0
 "Senate Health, Education, Labor, and Pensions",@HELPCommitteeGOP,0,0,108,Republican,senate,0
@@ -1510,7 +1510,7 @@ Senate Judiciary,@SenateJudiciaryDemocrats,0,0,115,Republican,senate,0
 Senate Judiciary,@SenateJudiciaryDemocrats,0,0,116,Republican,senate,0
 Senate Judiciary,@SenateJudiciaryDemocrats,0,0,117,Democratic,senate,0
 Senate Judiciary,@SenateJudiciaryDemocrats,0,0,118,Democratic,senate,0
-Senate Judiciary,@SenateJudiciaryDemocrats,252,252,119,Republican,senate,4
+Senate Judiciary,@SenateJudiciaryDemocrats,263,263,119,Republican,senate,4
 Senate Small Business and Entrepreneurship,@SenateSmallBusiness,0,0,106,Republican,senate,0
 Senate Small Business and Entrepreneurship,@SenateSmallBusiness,0,0,107,Democratic / Republican / Democratic,senate,0
 Senate Small Business and Entrepreneurship,@SenateSmallBusiness,0,0,108,Republican,senate,0
