@@ -115,6 +115,9 @@ def capture_sources(args, store, run_id):
             )
         summary.update(fetcher="reqwest", requests_per_second=args.requests_per_second,
                        workers=args.workers, http_requests=fetcher.sequence)
+        summary.setdefault("accounting", {}).update(native_request_dispatches=fetcher.sequence,
+                                     http_request_starts=None,
+                                     http_request_starts_basis="unavailable; native commands are counted before worker execution")
         return summary
     finally:
         for sig, handler in previous_handlers.items():
@@ -123,7 +126,9 @@ def capture_sources(args, store, run_id):
 
 def save_summary(path, summary):
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(summary, indent=2) + "\n")
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(json.dumps(summary, indent=2) + "\n")
+    temporary.replace(path)
 
 
 def run(args, log):
@@ -176,30 +181,44 @@ def run(args, log):
     )
     with log.lock:
         log.state.update(run_id=run_id, mode='rebuild' if args.rebuild_only else 'plan' if args.plan_only else 'capture')
-    if args.rebuild_only:
-        summary = dict(mode="rebuild", catalog=rebuild_catalog(
-            store, seeds=seed_files(args.seed) if args.seed else (), workers=args.index_workers, repair=args.repair, inspect_bodies=args.inspect_bodies,
-        ))
-    elif args.plan_only:
-        progress.report('load_capture_state')
-        archive = Archive(store, run_id, repair=args.repair)
-        seeds = seed_files(args.seed)
-        for item in seeds:
-            archive.seed(item)
-        summary = dict(
-            mode="plan",
-            known_urls=len(archive.state),
-            outcomes=dict(Counter(s["outcome"] for s in archive.state.values())),
-        )
-    else:
-        summary = dict(mode="capture", **capture_sources(args, store, run_id))
-        # A later catalog failure must not hide already committed acquisitions.
-        save_summary(args.summary, {**summary, 'run_id': run_id, 'bucket': args.bucket,
-                                   'transport': args.transport, 'catalog_status': 'pending'})
-        summary['catalog'] = rebuild_catalog(
-            store, seeds=seed_files(args.seed), workers=args.index_workers, repair=args.repair, inspect_bodies=args.inspect_bodies,
-        )
-        summary['catalog_status'] = 'completed'
+    summary = dict(mode="rebuild" if args.rebuild_only else "plan" if args.plan_only else "capture",
+                   run_id=run_id, bucket=args.bucket, acquisition_status="not_run",
+                   catalog_status="not_run", planning_status="not_run")
+    active_stage = "planning_status"
+    try:
+        if args.plan_only:
+            summary["planning_status"] = "running"
+            progress.report('load_capture_state')
+            archive = Archive(store, run_id, repair=args.repair)
+            for item in seed_files(args.seed):
+                archive.seed(item)
+            summary.update(known_urls=len(archive.state),
+                           outcomes=dict(Counter(s["outcome"] for s in archive.state.values())))
+            summary["planning_status"] = "completed"
+        else:
+            if not args.rebuild_only:
+                active_stage = 'acquisition_status'
+                summary['acquisition_status'] = 'running'
+                save_summary(args.summary, summary)
+                summary.update(capture_sources(args, store, run_id))
+                summary['acquisition_status'] = 'completed'
+            active_stage = 'catalog_status'
+            summary['catalog_status'] = 'running'
+            save_summary(args.summary, summary)
+            summary['catalog'] = rebuild_catalog(
+                store, seeds=seed_files(args.seed) if args.seed else (), workers=args.index_workers,
+                repair=args.repair, inspect_bodies=args.inspect_bodies,
+            )
+            summary['catalog_status'] = 'completed'
+            summary.setdefault('accounting', {}).update(
+                filename_rows=summary['catalog'].get('rows'),
+                grouped_documents=summary['catalog'].get('document_rows'),
+            )
+    except BaseException as error:
+        summary[active_stage] = 'failed'
+        summary['error_type'] = type(error).__name__
+        save_summary(args.summary, summary)
+        raise
     summary.update(run_id=run_id, bucket=args.bucket)
     if not args.rebuild_only:
         summary["transport"] = args.transport

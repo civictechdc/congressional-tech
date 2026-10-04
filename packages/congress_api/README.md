@@ -184,14 +184,21 @@ date remain distinct from the latest inspection time.
 
 `indexes/download-state.parquet` tracks pending URLs, results and retries;
 `indexes/captures.parquet` gains new receipt references. After saving captures, the
-same run rebuilds `indexes/document-filenames.parquet` and `indexes/documents.parquet`.
+same run rebuilds the filename and document tables in an immutable
+`catalog-generations/<generation>/` directory. A conditional update to
+`indexes/catalog.json` selects both files together; readers validate that pair.
+The old root table paths serve as migration inputs when no selection exists.
 Acquisition and `--rebuild-only` use `retention/raw_catalog.py` and the existing
-`retention/document_index.py` readers. Every rebuild replays indexed migration and
+`retention/document_index.py` readers. Rebuilds replay indexed migration and
 download receipts, House state/XML, Senate state/pages, Congress meeting records
-and inventory relationships. It retains unfetched filenames, response-header
+and inventory relationships when source rules change or repair is requested.
+Routine updates reuse verified prior observations and interpret new receipts.
+The tables retain unfetched filenames, response-header
 names, redirects and parent committee/meeting metadata. Filename and body
 interpretations reuse results only while their parser fingerprints match;
-source context is reconstructed even when the capture count is unchanged.
+source context is reconstructed when its rules change, even if the capture
+count is unchanged. Temporary SQLite tables keep the large joins and grouping
+off the Python heap; unchanged document groups reuse verified prior results.
 
 To refresh the derived tables independently of acquisition:
 
@@ -264,12 +271,13 @@ content or a parsed document model. A captured HTML wrapper and its download lin
 have separate results. Failures retry after one day; 404/410 responses and HTML
 without discovered files retry after seven days.
 
-The filename table records how many capture rows its build consumed and publishes
-after the document table. If either upload fails, the next run replays retained
-evidence even when no new downloads are needed. Both tables carry the same `catalog_id`;
-readers must reject mismatched IDs (the local viewer already does). These two object
-writes are not atomic: an interrupted publication can temporarily make the pair
-unavailable until the next successful rebuild. Capture logs remain intact.
+The filename table records how many capture rows its build consumed. Publication
+uploads both immutable tables, validates their matching `catalog_id` values,
+then conditionally selects the pair through `indexes/catalog.json`. Failed or
+interrupted uploads leave the prior selected pair readable. A competing writer
+cannot replace a newer selection using an older snapshot. Readers reject corrupt
+selected files and mismatched IDs; they do not fall back to unselected root files.
+Capture logs remain intact.
 Rebuilds consume the capture-index snapshot read at startup. Concurrently added
 captures remain intact and enter the next rebuild. Receipts not yet referenced
 by that index still require the acquisition path's interrupted-run recovery.

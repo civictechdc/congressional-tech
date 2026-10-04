@@ -49,7 +49,8 @@ def main():
             result = rebuild_catalog(LocalStore(args.archive), captures,
                                      workers=args.workers, repair=args.repair,
                                      inspect_bodies=args.inspect_bodies)
-        elif (args.archive / 'indexes/document-filenames.parquet').exists():
+        elif ((args.archive / 'indexes/catalog.json').exists()
+              or (args.archive / 'indexes/document-filenames.parquet').exists()):
             # A standalone filename table can still be reinterpreted without an archive.
             result = refresh_filename_metadata(args.archive, workers=args.workers, inspect_bodies=args.inspect_bodies)
         else:

@@ -31,9 +31,14 @@ FILTERS = ('congress', 'document_family', 'document_kind', 'format')
 
 class Catalog:
     def __init__(self, path: Path):
+        from congress_api.retention.catalog_publication import local_catalog_paths
+        if path.name == 'document-filenames.parquet' and path.parent.name == 'indexes':
+            path, documents = local_catalog_paths(path.parent.parent)
+        else:
+            documents = path.with_name('documents.parquet')
         self.path = path
         self.file = pq.ParquetFile(path)
-        self.document_path = path.with_name('documents.parquet')
+        self.document_path = documents
         if not self.document_path.is_file():
             raise ValueError('Build the root document index first with index_document_filenames.py --documents-only.')
         self.document_file = pq.ParquetFile(self.document_path)

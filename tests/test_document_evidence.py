@@ -1,4 +1,5 @@
 """Regression controls for retained House records, cache markers and filenames."""
+from catalog_test_helpers import selected_path
 import gzip
 from hashlib import sha256
 import tracemalloc
@@ -39,7 +40,7 @@ def retained(root, name, data, *, url=None, path=None, **fields):
 def build(root, rows, **kwargs):
     (root / 'indexes').mkdir(exist_ok=True)
     index.write_filename_metadata(root, rows, workers=1, inspect_bodies=True, **kwargs)
-    return (pq.read_table(root / 'indexes' / name).to_pylist()
+    return (pq.read_table(selected_path(root / 'indexes' / name)).to_pylist()
             for name in ('document-filenames.parquet', 'documents.parquet'))
 
 
@@ -93,7 +94,7 @@ def test_amendment_xml_retains_native_meaning_and_replays_without_body_reads(tmp
         assert row['record_role'] == ['document']
         assert row['version_token'] == ['SA']  # Literal filename token stays intact.
         assert not row.get('version_token_code')  # No official GovInfo code inferred.
-    before = pq.read_table(tmp_path/'indexes/document-filenames.parquet')
+    before = pq.read_table(selected_path(tmp_path/'indexes/document-filenames.parquet'))
     def no_reads(key):
         raise AssertionError('Known XML contents should be cached')
     replay, _ = build(tmp_path, [source], previous=before, read_body=no_reads)
@@ -161,13 +162,13 @@ def test_recovered_cache_name_reuses_known_url_and_merges_exact_pdf_without_losi
     assert not sources[0].get('name_token')  # The cache key is not a document subject.
     source_id, document_id = sources[0]['source_id'], row['document_id']
     # Cache reuse and grouping refresh must preserve provenance and identities.
-    previous = pq.read_table(tmp_path / 'indexes/document-filenames.parquet')
+    previous = pq.read_table(selected_path(tmp_path / 'indexes/document-filenames.parquet'))
     again, docs_again = build(tmp_path, [cache, original], previous=previous)
     assert again[0]['source_id'] == source_id
     assert docs_again[0]['document_id'] == document_id
     assert again[0]['document_kind_source'] == ['recovered_filename']
     index.reindex_documents(tmp_path)
-    assert pq.read_table(tmp_path / 'indexes/documents.parquet').to_pylist() == docs_again
+    assert pq.read_table(selected_path(tmp_path / 'indexes/documents.parquet')).to_pylist() == docs_again
 
 
 def test_xml_links_can_restore_names_without_inventory_url_rows(tmp_path):
@@ -237,7 +238,7 @@ def test_recovered_metadata_is_not_reused_when_its_url_evidence_disappears(tmp_p
     cache = retained(tmp_path, encoded, b'%PDF-1.4\n')
     build(tmp_path, [cache, dict(body_key=None, filename=name,
           source_url=f'https://www.congress.gov/119/meeting/house/123/documents/{name}')])
-    previous = pq.read_table(tmp_path / 'indexes/document-filenames.parquet')
+    previous = pq.read_table(selected_path(tmp_path / 'indexes/document-filenames.parquet'))
     sources, _ = build(tmp_path, [cache], previous=previous)
     assert not sources[0].get('recovered_filename')
     assert sources[0]['document_kind'] is None
@@ -261,7 +262,7 @@ def test_body_classification_cache_outlives_the_local_filename_alias(tmp_path):
     cache = retained(tmp_path, encoded, data)
     original = retained(tmp_path, name, data, url=url, media_type=['application/pdf'], http_status=['200'])
     build(tmp_path, [cache, original])
-    previous = pq.read_table(tmp_path / 'indexes/document-filenames.parquet')
+    previous = pq.read_table(selected_path(tmp_path / 'indexes/document-filenames.parquet'))
     sources, _ = build(tmp_path, [original], previous=previous,
                        read_body=lambda _: pytest.fail('Unchanged bytes should use prior classification'))
     assert sources[0]['record_role'] == ['error-response']
@@ -271,7 +272,7 @@ def test_body_classification_cache_outlives_the_local_filename_alias(tmp_path):
 def test_body_cache_is_invalidated_when_the_body_reader_changes(tmp_path, monkeypatch):
     row = retained(tmp_path, '123.xml', b'<witness-list/>')
     build(tmp_path, [row])
-    previous = pq.read_table(tmp_path / 'indexes/document-filenames.parquet')
+    previous = pq.read_table(selected_path(tmp_path / 'indexes/document-filenames.parquet'))
     monkeypatch.setattr(index, 'evidence_fingerprint', lambda: 'new-body-reader')
     reads = []
     sources, _ = build(tmp_path, [row], previous=previous,

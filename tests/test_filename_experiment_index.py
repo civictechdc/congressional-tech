@@ -1,4 +1,5 @@
 """Preserve source assertions and meaningful distinctions when publishing metadata."""
+from catalog_test_helpers import selected_path
 from hashlib import sha256
 import importlib.util
 from pathlib import Path
@@ -15,8 +16,8 @@ def test_empty_successful_bodies_do_not_identify_unrelated_documents(tmp_path):
                  media_type=['application/pdf'], http_status=['200']) for name in ('a', 'b')]
     path = tmp_path / 'document-filenames.parquet'
     index.write_document_indexes(path, rows, index.SOURCE_SCHEMA)
-    sources = pq.read_table(path).to_pylist()
-    documents = pq.read_table(path.with_name('documents.parquet')).to_pylist()
+    sources = pq.read_table(selected_path(path)).to_pylist()
+    documents = pq.read_table(selected_path(path.with_name('documents.parquet'))).to_pylist()
     assert len(documents) == 2
     assert len({row['document_id'] for row in sources}) == 2
     assert all(row['body_key'] == empty and row['http_status'] == ['200'] for row in sources)
@@ -30,7 +31,7 @@ def test_one_canonical_publication_code_in_tables_without_changing_engine(tmp_pa
     assert before['publication_code_code'] == before['publication_type'] == ['hhrg']
     index.write_filename_metadata(tmp_path, [dict(body_key=None, filename=name, source_url=None)], workers=1)
     for name in ('document-filenames.parquet', 'documents.parquet'):
-        table = pq.read_table(tmp_path / 'indexes' / name)
+        table = pq.read_table(selected_path(tmp_path / 'indexes' / name))
         assert 'publication_code_code' not in table.column_names
         assert table['publication_type'].to_pylist() == [['hhrg']]
         assert table['publication_code'].to_pylist() == [['HHRG']]
@@ -45,7 +46,7 @@ def test_code_consolidation_keeps_distinct_or_unpaired_readings(tmp_path):
                  version_number_token=['2'])]
     path = tmp_path / 'document-filenames.parquet'
     index.write_document_indexes(path, rows, schema)
-    table = pq.read_table(path)
+    table = pq.read_table(selected_path(path))
     assert table['publication_code_code'].to_pylist() == [['hhrg']]
     assert table['publication_type'].to_pylist() == [None]
     assert table['field_marker'].to_pylist() != table['field_marker_label'].to_pylist()
@@ -60,7 +61,7 @@ def test_literal_and_source_congress_and_document_types_stay_separate(tmp_path):
                dict(body_key=None, filename='JaneDoe.pdf', source_url=None,
                     source_document_type=['Witness Statement'])]
     index.write_filename_metadata(tmp_path, sources, workers=1)
-    rows = pq.read_table(tmp_path / 'indexes/document-filenames.parquet').to_pylist()
+    rows = pq.read_table(selected_path(tmp_path / 'indexes/document-filenames.parquet')).to_pylist()
     bill, person = rows
     assert bill['congress'] == ['107'] and bill['source_congress'] == ['114']
     assert person['source_document_type'] == ['Witness Statement']
@@ -76,7 +77,7 @@ def test_old_publication_field_filter_uses_canonical_column(tmp_path):
     path = tmp_path / 'indexes/document-filenames.parquet'
     # Ensure the fixture exercises the new schema even against the old writer.
     for target in (path, path.with_name('documents.parquet')):
-        table = pq.read_table(target)
+        table = pq.read_table(selected_path(target))
         if 'publication_code_code' in table.column_names:
             pq.write_table(table.drop(['publication_code_code']), target)
     script = Path(__file__).parents[1] / 'docs/youtube-coverage/research/scripts/view_document_filenames.py'

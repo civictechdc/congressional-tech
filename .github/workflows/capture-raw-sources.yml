@@ -22,6 +22,15 @@ on:
       - 'packages/congress_api/src/congress_api/models/**'
       - 'packages/congress_shared/src/congress_shared/globals.py'
       - 'packages/congress_shared/src/congress_shared/data/**'
+      - 'scripts/benchmark_core_rebuild.py'
+      - 'tests/test_core_benchmark.py'
+      - 'tests/test_core_source_context.py'
+      - 'tests/test_catalog_publication.py'
+      - 'tests/test_catalog_consumers.py'
+      - 'tests/test_catalog_staging.py'
+      - 'tests/test_standalone_catalog_publication.py'
+      - 'tests/catalog_test_helpers.py'
+      - 'packages/congress_api/src/congress_api/retention/catalog_*.py'
       - '.github/scripts/offline-python.py'
       - '.github/scripts/finalize-raw-source.py'
       - '.github/workflows/capture-raw-sources.yml'
@@ -122,12 +131,16 @@ jobs:
           path: .cache/raw-source-verified
           key: raw-verified-v1-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}-${{ steps.runtime.outputs.key }}
       - name: Verify capture and recovery offline
+        env:
+          CORE_BENCHMARK_REPORT: core-benchmark-smoke.json
         if: steps.verified.outputs.cache-hit != 'true'
         run: >-
           python .github/scripts/offline-python.py -m pytest -q
           tests/test_raw_source_sync.py tests/test_source_capture.py tests/test_r2_archive_store.py
           tests/test_raw_catalog.py tests/test_raw_rebuild.py tests/test_incremental_catalog.py
-          tests/test_raw_progress.py
+          tests/test_raw_progress.py tests/test_core_benchmark.py
+          tests/test_core_source_context.py tests/test_catalog_publication.py tests/test_catalog_staging.py tests/test_catalog_consumers.py
+          tests/test_standalone_catalog_publication.py
           .github/tests/test_raw_source_finalizer.py
           tests/test_document_filename_index.py tests/test_document_filename_viewer.py
           tests/test_congress_api_imports.py tests/test_document_link_probe.py
@@ -244,6 +257,7 @@ jobs:
           path: |
             raw-capture-summary.json
             raw-capture-summary.progress.json
+            core-benchmark-smoke.json
           if-no-files-found: ignore
 
   finalize:

@@ -116,3 +116,20 @@ def test_catalog_version_uses_head_without_downloading_the_table():
         # HEAD used for change detection must not authorize replacing that index.
         assert key not in store.index_etags
         stub.assert_no_pending_responses()
+
+
+def test_catalog_selector_uses_snapshot_etag_even_after_another_read():
+    from congress_api.retention.catalog_publication import MANIFEST_KEY
+    c = client()
+    data = b'new selection'
+    with Stubber(c) as stub:
+        stub.add_client_error(
+            'put_object', service_error_code='PreconditionFailed', http_status_code=412,
+            expected_params={'Bucket': 'archive', 'Key': MANIFEST_KEY, 'Body': data,
+                             'ContentMD5': base64.b64encode(hashlib.md5(data).digest()).decode(),
+                             'ContentType': 'application/octet-stream', 'IfMatch': 'old-etag'})
+        store = R2Store(c, 'archive')
+        store.index_etags[MANIFEST_KEY] = 'new-etag'
+        with pytest.raises(RuntimeError, match='Concurrent'):
+            store.put_catalog_manifest(data, expected_version='old-etag')
+        stub.assert_no_pending_responses()

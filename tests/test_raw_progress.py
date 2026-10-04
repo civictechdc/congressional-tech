@@ -1,4 +1,5 @@
 """Progress must remain observable during work and truthful after a failure."""
+from catalog_test_helpers import selected_path
 import io
 import json
 import logging
@@ -125,10 +126,15 @@ def test_rebuild_reports_real_stages_and_preserves_output(tmp_path):
     stages = [event['stage'] for event in events]
     assert stages.index('load_indexes') < stages.index('extract_filenames')
     assert stages.index('inspect_document_contents') < stages.index('write_document_tables')
-    assert stages.index('validate_document_tables') < stages.index('publish_documents')
-    assert stages.index('publish_documents') < stages.index('publish_filenames')
+    assert stages.index('validate_document_tables') < stages.index('publish_catalog_files')
+    assert stages.index('publish_catalog_files') < stages.index('select_catalog_generation')
+    assert stages.index('select_catalog_generation') < stages.index('catalog_published')
+    # Progress heartbeats and shutdown repeat the current stage snapshot.
+    transitions = [stage for i, stage in enumerate(stages) if not i or stage != stages[i - 1]]
+    assert transitions.count('catalog_published') == 1
     assert events[-1]['status'] == 'completed'
-    assert events[-1]['completed'] == events[-1]['total'] == 2
+    assert events[-1]['completed'] == events[-1]['total'] == 1
+    assert events[-1]['unit'] == 'generations'
     assert events[-1]['counters']['objects_read'] >= 3
     assert result['rows'] == len(before)
     assert table(store).to_pylist() == before
@@ -145,7 +151,7 @@ def test_progress_with_spawned_filename_workers_preserves_metadata(tmp_path):
             root = tmp_path / str(workers)
             (root / 'indexes').mkdir(parents=True)
             index.write_filename_metadata(root, rows, workers=workers)
-            results.append(pq.read_table(root / 'indexes/document-filenames.parquet').to_pylist())
+            results.append(pq.read_table(selected_path(root / 'indexes/document-filenames.parquet')).to_pylist())
     assert results[0] == results[1]
 
 
@@ -174,3 +180,16 @@ def test_running_heartbeat_has_expiry_and_memory_measurement(tmp_path):
         assert datetime.fromisoformat(state['heartbeat_expires_at']) > datetime.fromisoformat(state['updated_at'])
         assert state['memory']['process_peak_bytes'] > 0
     assert json.loads(path.read_text())['heartbeat_expires_at'] is None
+
+
+def test_planning_failure_does_not_claim_acquisition_or_publication_ran(tmp_path, monkeypatch):
+    from congress_api.cli import raw_sync
+    def fail(*args, **kwargs):
+        raise OSError('planning state unavailable')
+    monkeypatch.setattr(raw_sync, 'Archive', fail)
+    summary = tmp_path / 'plan.json'
+    with pytest.raises(OSError):
+        raw_sync.main(['--plan-only', '--local-mirror', str(tmp_path), '--summary', str(summary)])
+    result = json.loads(summary.read_text())
+    assert result['planning_status'] == 'failed'
+    assert result['acquisition_status'] == result['catalog_status'] == 'not_run'

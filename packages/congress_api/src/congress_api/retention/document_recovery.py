@@ -30,27 +30,58 @@ def retained_path(path):
                   'hearing-text/', path or '')
 
 
-def recover_sources(rows, captures, *, read_receipt):
+def recover_sources(rows, captures, *, read_receipt, working=None):
     """Return source rows with all proved body versions and original evidence kept."""
     from congress_api.retention import document_index as index
 
-    rows = list(rows)
-    missing = defaultdict(list)
-    local = defaultdict(list)
-    wanted = set()
+    if working is None:
+        rows = list(rows)
+        missing, local, wanted = defaultdict(list), defaultdict(list), set()
+    else:
+        staged = working.mapping("recovery_rows")
+        for number, row in enumerate(rows):
+            identity = tuple(row.get(field) for field in ("body_key", "filename", "source_url"))
+            if identity in staged:
+                existing = staged[identity]
+                for field, values in row.items():
+                    if isinstance(values,list):
+                        existing[field] = index.merge_values(field, existing.get(field), values)
+                staged[identity] = existing
+            else:
+                staged[identity] = row
+        rows = staged.values()
+        missing = working.mapping("recovery_missing", list)
+        local = working.mapping("recovery_local", list)
+        wanted = working.mapping("recovery_wanted")
+    def lookup(observations):
+        return observations if working is None else (staged[key] for key in observations)
+    def remember(url):
+        if working is None:
+            wanted.add(url)
+        else:
+            wanted[url] = True
+    def identify(row):
+        return tuple(row.get(field) for field in ('body_key', 'filename', 'source_url'))
     for row in rows:
         if not row.get('body_key') and row.get('source_url'):
-            missing[row['source_url']].append(row)
-            wanted.add(row['source_url'])
+            key = row['source_url']
+            observations = missing[key]
+            observations.append(row if working is None else identify(row))
+            missing[key] = observations
+            remember(row['source_url'])
             for occurrence in row.get('source_occurrences') or []:
                 if occurrence.get('source_association_basis') == ['publisher_redirect']:
-                    wanted.update(occurrence.get('source_associated_url') or [])
+                    for associated in occurrence.get('source_associated_url') or []:
+                        remember(associated)
         elif row.get('body_key') and not row.get('source_url'):
             for path in row.get('source_paths') or []:
-                local[(row['body_key'], retained_path(path))].append(row)
+                key = (row['body_key'], retained_path(path))
+                observations = local[key]
+                observations.append(row if working is None else identify(row))
+                local[key] = observations
     if not missing and not local:
         return rows
-    references = defaultdict(lambda: defaultdict(list))
+    references = (defaultdict(lambda: defaultdict(list)) if working is None else working.recovery_references())
     schema = captures.schema_arrow if hasattr(captures, 'schema_arrow') else captures.schema
     required = {'body_key', 'receipt_key', 'receipt_line', 'pointer_json', 'context_url'}
     if not required <= set(schema.names):
@@ -68,15 +99,21 @@ def recover_sources(rows, captures, *, read_receipt):
             selected = pc.or_(selected, pc.fill_null(pc.match_substring_regex(table['source_file'],
                 r'/(?:xml_path_families|pdf_xml_probe)/(?:attempts|inventory)\.jsonl$'), False))
         for capture in table.filter(selected).to_pylist():
-            references[capture['receipt_key']][capture['receipt_line']].append(capture)
+            if working is None:
+                key = capture['receipt_key']
+                references[key][capture['receipt_line']].append(capture)
+            else:
+                references.append(capture)
 
-    recovered = {}
-    replaced = set()
+    recovered = {} if working is None else working.mapping("recovered")
+    replaced = set() if working is None else working.mapping("replaced")
 
     def merge(row, values):
         for field, items in values.items():
             if items:
                 row[field] = index.merge_values(field, row.get(field), items)
+        if working is not None and identify(row) in staged:
+            staged[identify(row)] = row
 
     def locate(row, capture, number, **extra):
         occurrence = {field: sorted(values) for field, values in index.context_values(
@@ -85,14 +122,27 @@ def recover_sources(rows, captures, *, read_receipt):
             source_occurrence_scope='capture', **extra).items()}
         merge(row, {**occurrence, 'source_occurrences': [occurrence]})
 
-    for key, lines in sorted(references.items()):
+    receipts = sorted(references.items()) if working is None else ((key,None) for key in references.receipts())
+    for key, lines in receipts:
+        remaining = sum(len(rows) for rows in lines.values()) if working is None else references.count(key)
+        if working is not None:
+            indexed_lines = iter(references.lines(key))
+            next_line = next(indexed_lines,None)
         payload = read_receipt(key)
         if payload is None:
             raise ValueError(f'Missing capture receipt: {key}')
         with gzip.open(BytesIO(payload), 'rt', encoding='utf-8') as stream:
             for number, line in enumerate(stream, 1):
-                selected = lines.pop(number, None)
-                if selected:
+                if working is None:
+                    selected = lines.pop(number,None)
+                    selected_count = len(selected or [])
+                else:
+                    selected_count = next_line[1] if next_line is not None and next_line[0] == number else 0
+                    selected = references.captures(key,number) if selected_count else ()
+                    if selected_count:
+                        next_line = next(indexed_lines,None)
+                if selected_count:
+                    remaining -= selected_count
                     record = json.loads(line)['record']
                     for capture in selected:
                         # These collectors explicitly record generated XML candidates.
@@ -100,7 +150,7 @@ def recover_sources(rows, captures, *, read_receipt):
                         if any(file.endswith(f'/{folder}/{name}.jsonl')
                                for folder in ('xml_path_families', 'pdf_xml_probe')
                                for name in ('attempts', 'inventory')):
-                            for row in missing.get(record.get('xml_url'), ()):
+                            for row in lookup(missing.get(record.get('xml_url'), ())):
                                 facts = index.response_metadata({**capture, 'pointer_json': '[]'}, record)
                                 merge(row, facts)
                                 locate(row, capture, number, source_capture_url=record.get('xml_url'),
@@ -117,7 +167,7 @@ def recover_sources(rows, captures, *, read_receipt):
                         observed_urls = {u for u in (capture['context_url'], owner.get('requested_url'),
                             owner.get('final_url'), owner.get('url')) if isinstance(u, str) and u}
                         for url in observed_urls:
-                            for original in missing.get(url, ()):
+                            for original in lookup(missing.get(url, ())):
                                 if not capture.get('body_key'):
                                     if any(facts.values()):
                                         merge(original, facts)
@@ -127,20 +177,29 @@ def recover_sources(rows, captures, *, read_receipt):
                                 row = recovered.setdefault(identity, {**original, 'body_key': capture['body_key']})
                                 merge(row, facts)
                                 locate(row, capture, number, source_capture_url=sorted(observed_urls))
-                                replaced.add(id(original))
-                        for row in local.get((capture['body_key'], retained_path(capture.get('original_path'))), ()):
+                                recovered[identity] = row
+                                if working is None:
+                                    replaced.add(identify(original))
+                                else:
+                                    replaced[identify(original)] = True
+                        for row in lookup(local.get((capture['body_key'], retained_path(capture.get('original_path'))), ())):
                             merge(row, facts)
                             locate(row, capture, number, source_capture_url=sorted(observed_urls))
-                if not lines:
+                if not remaining:
                     break
-        if lines:
+        if remaining:
             raise ValueError(f'Capture index references missing receipt lines: {key}')
     # Coalesce an existing body/name/URL row while preserving every source value.
-    result = {}
-    for row in [*(row for row in rows if id(row) not in replaced), *recovered.values()]:
+    result = {} if working is None else working.mapping("recovery_result")
+    def originals():
+        return (row for row in rows if identify(row) not in replaced)
+    from itertools import chain
+    for row in chain(originals(), recovered.values()):
         identity = tuple(row.get(field) for field in ('body_key', 'filename', 'source_url'))
         if identity in result:
-            merge(result[identity], {k: v for k, v in row.items() if isinstance(v, list)})
+            existing = result[identity]
+            merge(existing, {k: v for k, v in row.items() if isinstance(v, list)})
+            result[identity] = existing
         else:
             result[identity] = row
-    return list(result.values())
+    return list(result.values()) if working is None else result.values()

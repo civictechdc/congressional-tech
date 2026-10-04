@@ -1,4 +1,5 @@
 """Raw receipts must become queryable metadata, including after publication failure."""
+from catalog_test_helpers import selected_path
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -12,7 +13,10 @@ from test_raw_source_sync import MemoryStore, response
 
 
 def table(store, key=FILENAMES):
-    return pq.read_table(pa.BufferReader(store.read(key)))
+    from congress_api.retention.catalog_publication import read_catalog
+    snapshot = read_catalog(store) if key in (FILENAMES, DOCUMENTS) else None
+    payload = (snapshot.filenames if key == FILENAMES else snapshot.documents) if snapshot else store.read(key)
+    return pq.read_table(selected_path(pa.BufferReader(payload)))
 
 
 def initialize(tmp_path):
@@ -30,7 +34,7 @@ def initialize(tmp_path):
     )
     store = MemoryStore()
     for key in (FILENAMES, DOCUMENTS):
-        store.objects[key] = (tmp_path / key).read_bytes()
+        store.objects[key] = selected_path(tmp_path / key).read_bytes()
     return store
 
 
@@ -113,7 +117,7 @@ def test_failed_filename_publication_replays_delta_without_fetch(tmp_path):
     original_put = store.put
 
     def failed_put(key, *args, **kwargs):
-        if key == FILENAMES:
+        if key.startswith("catalog-generations/") and key.endswith("/document-filenames.parquet"):
             raise OSError("simulated second table upload failure")
         return original_put(key, *args, **kwargs)
 
@@ -122,8 +126,9 @@ def test_failed_filename_publication_replays_delta_without_fetch(tmp_path):
         rebuild_catalog(store, a.captures, workers=1)
     assert (
         table(store).schema.metadata[b"catalog_id"]
-        != table(store, DOCUMENTS).schema.metadata[b"catalog_id"]
+        == table(store, DOCUMENTS).schema.metadata[b"catalog_id"]
     )
+    assert not any(row["filename"] == "New-testimony.pdf" for row in table(store).to_pylist())
     store.put = original_put
     run_sync(
         Archive(store, "recover"),
@@ -204,10 +209,16 @@ def test_metadata_only_refresh_preserves_capture_outcome(tmp_path):
     )
     a.save()
     rebuild_catalog(store, a.captures, workers=1)
-    for key in (FILENAMES, DOCUMENTS):
-        (tmp_path / key).write_bytes(store.objects[key])
+    from congress_api.retention.catalog_publication import read_catalog
+    snapshot = read_catalog(store)
+    for key, payload in ((FILENAMES, snapshot.filenames), (DOCUMENTS, snapshot.documents)):
+        (tmp_path / key).write_bytes(payload)
+    from congress_api.retention.catalog_cache import LocalStore
+    from congress_api.retention.catalog_publication import publish_catalog
+    local = LocalStore(tmp_path)
+    publish_catalog(local, tmp_path / FILENAMES, tmp_path / DOCUMENTS, previous=read_catalog(local))
     index.refresh_filename_metadata(tmp_path, workers=1)
-    rows = pq.read_table(tmp_path / FILENAMES).to_pylist()
+    rows = pq.read_table(selected_path(tmp_path / FILENAMES)).to_pylist()
     assert next(r for r in rows if r["filename"] == "a.pdf")["capture_outcome"] == [
         "incomplete"
     ]
@@ -288,7 +299,7 @@ def test_recurring_catalog_preserves_body_evidence_without_reading_unchanged_bod
             retained(tmp_path, '124.xml', b'<witness-list meeting-id="HMKP124"/>')]
     index.write_filename_metadata(tmp_path, rows, workers=1)
     for key in (FILENAMES, DOCUMENTS):
-        store.objects[key] = (tmp_path / key).read_bytes()
+        store.objects[key] = selected_path(tmp_path / key).read_bytes()
     for row in rows:
         store.objects[row['body_key']] = (tmp_path / row['body_key']).read_bytes()
     before = table(store).to_pylist()

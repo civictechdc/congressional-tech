@@ -141,7 +141,16 @@ jobs:
           -e packages/youtube_api -e 'packages/congress_api[archive,test]' -e apps/committee_youtube 'PyYAML>=6,<7'
 
       - name: Test source parsing and refresh decisions
+        env:
+          CORE_BENCHMARK_REPORT: core-benchmark-smoke.json
         run: python .github/scripts/offline-python.py -m pytest -q tests packages/committee_meeting/tests packages/house-naming/tests .github/tests
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: committee-core-qualification-${{ github.run_id }}-${{ github.run_attempt }}
+          path: core-benchmark-smoke.json
+          if-no-files-found: ignore
 
       - name: Read House repository records
         id: house_records

@@ -1,4 +1,5 @@
 """Useful filename values survive flattening; parser diagnostics do not."""
+from catalog_test_helpers import selected_path
 import gzip
 import json
 from pathlib import Path
@@ -43,8 +44,8 @@ def test_precise_categories_survive_both_parquet_tables_without_retyping_sources
                     source_document_type=[native_type]) for name, _, native_type in cases]
     # No bodies or receipts: the consumer only interprets supplied filenames.
     index.write_filename_metadata(tmp_path, sources, workers=1)
-    filenames = pq.read_table(tmp_path / 'indexes/document-filenames.parquet').to_pylist()
-    documents = pq.read_table(tmp_path / 'indexes/documents.parquet').to_pylist()
+    filenames = pq.read_table(selected_path(tmp_path / 'indexes/document-filenames.parquet')).to_pylist()
+    documents = pq.read_table(selected_path(tmp_path / 'indexes/documents.parquet')).to_pylist()
     for rows in (filenames, documents):
         by_name = {row['filename']: row for row in rows}
         for name, kind, native_type in cases:
@@ -60,7 +61,7 @@ def test_role_wording_survives_both_tables_without_person_or_source_inference(tm
                   source_document_type=['Witness Statement'], source_committee_code=['hsii00'])
     index.write_filename_metadata(tmp_path, [source], workers=1)
     for filename in ('document-filenames.parquet', 'documents.parquet'):
-        row, = pq.read_table(tmp_path / 'indexes' / filename).to_pylist()
+        row, = pq.read_table(selected_path(tmp_path / 'indexes' / filename)).to_pylist()
         assert row['subject_role_wording'] == ['Vice Chairman']
         assert row['subject_role_wording_code'] == ['vice-chair']
         assert row['subject_role_modifier'] == ['Acting']
@@ -80,12 +81,12 @@ def test_metadata_refresh_keeps_source_rows_and_identity_without_reopening_evide
                   media_type=['application/pdf'], http_status=['200'])
     schema = pa.schema([*index.SOURCE_SCHEMA, ('obsolete_metadata', index.STRINGS)])
     index.write_document_indexes(path, [{**source, 'obsolete_metadata': ['old parser']}], schema)
-    before = pq.read_table(path)
+    before = pq.read_table(selected_path(path))
     # The fixture intentionally has no receipts, bodies, captures or inventories.
     run = subprocess.run([sys.executable, str(SCRIPT), str(tmp_path), '--metadata-only',
                           '--workers', '1'], check=True, capture_output=True, text=True)
     result = json.loads(run.stdout)
-    after = pq.read_table(path)
+    after = pq.read_table(selected_path(path))
     assert result['rows'] == 1
     assert after.select(list(source)).to_pylist() == [source]
     assert all(after[name].to_pylist() == [None] for name in index.RESPONSE_FIELDS)
@@ -213,7 +214,7 @@ def test_build_keeps_body_coverage_and_merges_repeated_name_origins(tmp_path):
     write_inventory(tmp_path/'inventory', [], [])
     subprocess.run([sys.executable, str(SCRIPT), str(tmp_path), '--inventory-dir',
                     str(tmp_path/'inventory'), '--workers', '1'], check=True, capture_output=True)
-    table = pq.read_table(tmp_path/'indexes/document-filenames.parquet')
+    table = pq.read_table(selected_path(tmp_path/'indexes/document-filenames.parquet'))
     actual = table.to_pylist()
     assert len(actual) == 4
     assert {r['body_key'] for r in actual} == {'one', 'two', 'unknown'}
@@ -402,15 +403,15 @@ def test_document_indexes_keep_unknown_files_and_can_refresh_without_parsing(tmp
     monkeypatch.setattr(index, 'extract', fail)
     monkeypatch.setattr(index, 'collect_names', fail)
     assert index.reindex_documents(root)['document_rows'] == 1
-    source = pq.read_table(path)
-    document = pq.read_table(path.with_name('documents.parquet'))
+    source = pq.read_table(selected_path(path))
+    document = pq.read_table(selected_path(path.with_name('documents.parquet')))
     assert source['body_key'].to_pylist() == [None]
     assert document['body_keys'].to_pylist() == [None]
     assert document['source_urls'].to_pylist() == [['https://x.test/unfetched.pdf']]
     assert source.schema.metadata[b'catalog_id'] == document.schema.metadata[b'catalog_id']
     first_id = document['document_id'].to_pylist()
     index.reindex_documents(root)
-    assert pq.read_table(path.with_name('documents.parquet'))['document_id'].to_pylist() == first_id
+    assert pq.read_table(selected_path(path.with_name('documents.parquet')))['document_id'].to_pylist() == first_id
 
 
 def source_meeting(event='1001', congress=119, chamber='House', committee='hsif14'):
@@ -560,24 +561,24 @@ def test_source_refresh_preserves_parser_fields_ids_and_alias_context(tmp_path):
           for url in ['https://docs.test/report.pdf','https://alias.test/report.pdf']]
     schema=pa.schema([*index.SOURCE_SCHEMA,('committee_code', index.STRINGS)])
     index.write_document_indexes(path,rows,schema)
-    before=pq.read_table(path)
+    before=pq.read_table(selected_path(path))
     context=index.DocumentSources();context.add_meeting(source_meeting())
     index.refresh_source_metadata(tmp_path,context)
-    after=pq.read_table(path)
+    after=pq.read_table(selected_path(path))
     unchanged=[name for name in before.column_names
                if name not in {'document_kind', 'document_kind_source', 'document_family'}]
     assert before.select(unchanged).equals(after.select(unchanged),check_metadata=False)
     assert after['document_kind'].to_pylist()==[['support-document'],None]
     assert after['document_kind_source'].to_pylist()==[['source_document_type'],None]
     assert after['document_family'].to_pylist()==[['supporting-material'],None]
-    docs=pq.read_table(path.with_name('documents.parquet')).to_pylist()
+    docs=pq.read_table(selected_path(path.with_name('documents.parquet'))).to_pylist()
     assert len(docs)==1 and docs[0]['source_committee_code']==['hsif14']
     assert docs[0]['committee_code']==['IF14']
     assert after.to_pylist()[1]['source_committee_code'] is None
     # A filename-only refresh keeps the previously retained source context.
     subprocess.run([sys.executable, str(SCRIPT), str(tmp_path), '--metadata-only',
                     '--workers', '1'], check=True, capture_output=True)
-    assert pq.read_table(path)['source_committee_code'].to_pylist()==[['hsif14'],None]
+    assert pq.read_table(selected_path(path))['source_committee_code'].to_pylist()==[['hsif14'],None]
 
 
 def test_source_metadata_cli_reads_retained_records_without_fetching(tmp_path):
@@ -605,7 +606,8 @@ def test_source_metadata_cli_reads_retained_records_without_fetching(tmp_path):
     run=subprocess.run([sys.executable,str(SCRIPT),str(tmp_path),'--source-metadata-only'],
                        check=True,capture_output=True,text=True)
     assert json.loads(run.stdout)['rows'] >= 1
-    record=next(row for row in pq.read_table(path.with_name('documents.parquet')).to_pylist()
+    from congress_api.retention.catalog_publication import local_catalog_paths
+    record=next(row for row in pq.read_table(selected_path(local_catalog_paths(tmp_path)[1])).to_pylist()
                 if row['source_url']=='https://legacy.test/report.pdf')
     assert record['source_committee_code']==['hsif14']
     assert record['source_document_type']==['BR']
@@ -635,7 +637,7 @@ def test_discovery_fixes_survive_both_parquet_tables(tmp_path):
                     source_document_type=['Unchanged publisher value']) for i, (name, _) in enumerate(cases)]
     index.write_filename_metadata(tmp_path, sources, workers=1)
     for filename in ('document-filenames.parquet', 'documents.parquet'):
-        by_name = {name: r for r in pq.read_table(tmp_path / 'indexes' / filename).to_pylist()
+        by_name = {name: r for r in pq.read_table(selected_path(tmp_path / 'indexes' / filename)).to_pylist()
                    for name in (r.get('filenames') or [r['filename']])}
         for name, expected in cases:
             assert {key: by_name[name].get(key) for key in expected} == expected

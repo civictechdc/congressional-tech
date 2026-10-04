@@ -68,6 +68,12 @@ class R2Store:
             self.index_etags[key] = result["ETag"]
         return True
 
+    def put_catalog_manifest(self, data, *, expected_version):
+        """Use the selector version captured before this catalog build."""
+        from congress_api.retention.catalog_publication import MANIFEST_KEY
+        self.index_etags[MANIFEST_KEY] = expected_version
+        return self.put(MANIFEST_KEY, data)
+
     def version(self, key):
         """Read an object's version without downloading its contents."""
         from botocore.exceptions import ClientError

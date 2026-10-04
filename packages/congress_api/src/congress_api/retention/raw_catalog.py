@@ -3,11 +3,10 @@
 The published filename table is the reusable inventory. New receipts add facts;
 source-parser changes or explicit repair replay parent evidence. Document-body
 inspection is opt-in. Preserve prior tables before replacement.
-Documents publish first and filenames last using the store's conditional writes.
-Readers must check matching catalog_id values, including after an interrupted run.
+Immutable table pairs publish together through one conditional selector update.
+Readers validate the selected files and their matching catalog_id values.
 """
 
-from collections import defaultdict
 from hashlib import sha256
 import json
 from pathlib import Path
@@ -20,6 +19,8 @@ import pyarrow.parquet as pq
 from congress_api.parsers.source_family import family as source_family
 from congress_api.retention import document_index as index
 from congress_api.retention import raw_progress as progress
+from congress_api.retention.catalog_staging import WorkingCatalog
+from congress_api.retention.catalog_publication import read_catalog, publish_catalog
 from congress_api.retention.document_evidence import read_retained_body
 from congress_api.retention.document_recovery import recover_sources, recovery_fingerprint
 from congress_api.retention.catalog_cache import (
@@ -32,7 +33,20 @@ DOCUMENTS = "indexes/documents.parquet"
 
 
 def rebuild_catalog(store, captures=None, *, seeds=(), workers=4, repair=False, inspect_bodies=False):
-    """Publish derived tables only; never instantiate or save acquisition state."""
+    """Publish derived tables using temporary, bounded working state."""
+    with TemporaryDirectory(prefix="raw-catalog-") as directory:
+        root = Path(directory)
+        (root / "indexes").mkdir()
+        working = WorkingCatalog(root / "working.sqlite")
+        try:
+            return _rebuild_catalog(store, captures, seeds=seeds, workers=workers,
+                                    repair=repair, inspect_bodies=inspect_bodies,
+                                    working=working, root=root)
+        finally:
+            working.close()
+
+
+def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies, working, root):
     def read(key):
         data = store.read(key)
         progress.advance('objects_read')
@@ -48,12 +62,13 @@ def rebuild_catalog(store, captures=None, *, seeds=(), workers=4, repair=False, 
         del data
     if captures.schema.remove_metadata() != CAPTURE_SCHEMA:
         raise ValueError("Unexpected capture index schema")
-    previous_bytes = read(FILENAMES)
+    snapshot = read_catalog(store, read=read)
+    previous_bytes = snapshot.filenames
     # Keep compressed input and stream the columns each stage needs. Decoding
     # every nested occurrence here duplicates a multi-gigabyte working set.
     previous = pq.ParquetFile(pa.BufferReader(previous_bytes)) if previous_bytes else None
     # Read both ETags before publication; also retain any unmatched prior pair.
-    previous_documents = read(DOCUMENTS)
+    previous_documents = snapshot.documents
     meta = (previous.schema_arrow.metadata or {}) if previous is not None else {}
     previous_rows = previous.metadata.num_rows if previous is not None else 0
     if int(meta.get(b"raw_capture_rows", b"0")) > len(captures):
@@ -78,10 +93,14 @@ def rebuild_catalog(store, captures=None, *, seeds=(), workers=4, repair=False, 
             and meta.get(b'house_naming_fingerprint') == index.parser_fingerprint().encode()
             and (not inspect_bodies or meta.get(b'body_evidence_fingerprint') == index.evidence_fingerprint().encode())
             and (pq.read_schema(pa.BufferReader(previous_documents)).metadata or {}).get(b'catalog_id') == meta.get(b'catalog_id')):
+        if snapshot.manifest is None:
+            (root / FILENAMES).write_bytes(previous_bytes)
+            (root / DOCUMENTS).write_bytes(previous_documents)
+            publish_catalog(store, root / FILENAMES, root / DOCUMENTS, previous=snapshot)
         progress.report('catalog_unchanged')
-        return {'unchanged': True, 'rows': previous_rows, 'catalog_id': meta[b'catalog_id'].decode(),
-                'raw_capture_rows': capture_rows}
-    sources, context = {}, index.DocumentSources()
+        return {'unchanged': True, 'rows': previous_rows, 'document_rows': pq.ParquetFile(pa.BufferReader(previous_documents)).metadata.num_rows,
+                'catalog_id': meta[b'catalog_id'].decode(), 'raw_capture_rows': capture_rows}
+    sources, context = working.mapping("sources"), index.DocumentSources(working=working)
     if reusable:
         pending = captures.slice(0, cursor).filter(pc.is_in(captures.slice(0, cursor)['body_key'],
             value_set=pa.array(sorted(deferred_sources), type=pa.string())))
@@ -94,6 +113,7 @@ def rebuild_catalog(store, captures=None, *, seeds=(), workers=4, repair=False, 
         for field, items in values.items():
             if items:
                 row[field] = index.merge_values(field, row.get(field), items)
+        sources[key] = row
         return row
 
     progress.report('restore_previous_source_metadata', total=previous_rows,
@@ -214,25 +234,45 @@ def rebuild_catalog(store, captures=None, *, seeds=(), workers=4, repair=False, 
                 add(None, name, url, filename_origins=[basis] if name else [],
                     source_occurrences=[occurrence])
 
-    captured = defaultdict(list)
-    for (body, name, url), row in sources.items():
+    captured = working.mapping("captured", list)
+    for key, row in sources.items():
+        body, name, url = key
         if body and url:
-            captured[(name, url)].append(row)
-    for key in list(sources):
+            keys = captured[(name, url)]
+            keys.append(key)
+            captured[(name, url)] = keys
+    for key in sources:
         body, name, url = key
         if body is None and (name, url) in captured:
             old = sources.pop(key)
-            for row in captured[(name, url)]:
+            for target in captured[(name, url)]:
+                row = sources[target]
                 for field, items in old.items():
                     if isinstance(items, list):
                         row[field] = index.merge_values(field, row.get(field), items)
-    for row in progress.track(sources.values(), 'associate_source_metadata', unit='source_rows'):
+                sources[target] = row
+    for key, row in progress.track(sources.items(), 'associate_source_metadata', unit='source_rows'):
         for field, values in context.for_url(row.get("source_url")).items():
             row[field] = index.merge_values(field, row.get(field), values)
+        sources[key] = row
+    # Every row now owns its paired source observations. Release parent lookup
+    # pages before recovery builds its own indexed working rows.
+    context = None
+    for name in ("occurrences","occurrence_urls","extra_filters","transfers","meetings","events"):
+        working.connection.execute(f"DROP TABLE IF EXISTS {name}")
     progress.report('recover_capture_associations')
     # A newly discovered URL can name an older body. Resolve once against the
     # complete capture inventory instead of doing overlapping recovery passes.
-    source_rows = iter(recover_sources(sources.values(), all_captures, read_receipt=read))
+    source_rows = iter(recover_sources(sources.values(), all_captures, read_receipt=read, working=working))
+    # Recovery has finished before this iterator is consumed. Reuse staging
+    # pages for interpretation instead of retaining each intermediate corpus.
+    for name in ("sources","occurrences","occurrence_urls","extra_filters","transfers","meetings","events","captured",
+                 "recovery_rows","recovery_missing","recovery_local","recovery_wanted",
+                 "recovery_references","recovery_receipts","recovered","replaced"):
+        if name == "recovery_rows" and "recovery_result" not in {
+                row[0] for row in working.connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}:
+            continue  # A no-recovery iterator still owns these input rows.
+        working.connection.execute(f"DROP TABLE IF EXISTS {name}")
     context = None
     input_digest = capture_digest(all_captures)
     del all_captures
@@ -241,33 +281,27 @@ def rebuild_catalog(store, captures=None, *, seeds=(), workers=4, repair=False, 
     # lookup tables and the capture inventory before filename/PDF processing.
     sources = None
     del captures, captured, selected, senate, downloads, recurring
-    with TemporaryDirectory(prefix="raw-catalog-") as directory:
-        root = Path(directory)
-        (root / "indexes").mkdir()
-        result = index.write_filename_metadata(
-            root, source_rows, workers=workers, previous=previous, read_body=read_body,
-            oversized_bodies=oversized_bodies, cache_store=store, reuse_results=not repair,
-            inspect_bodies=inspect_bodies,
-            metadata={"raw_capture_rows": str(capture_rows), "source_fingerprint": fingerprint,
-                      "capture_digest": input_digest, "seed_digest": seed_digest,
-                      "deferred_source_bodies": json.dumps(sorted(deferred_sources)),
-                      "retained_recovery_fingerprint": recovery_fingerprint()},
-        )
-        progress.report('validate_document_tables')
-        index.validate_document_indexes(root / FILENAMES, root / DOCUMENTS,
-                                        source_rows=result["rows"], document_rows=result["document_rows"])
-        # Retain evidence that exists only in an older generated table, including
-        # columns whose original publisher/parser basis can no longer be proved.
-        progress.report('archive_previous_tables')
-        for label, key, data in (("filenames", FILENAMES, previous_bytes),
-                                 ("documents", DOCUMENTS, previous_documents)):
-            if data is not None:
-                saved = f"catalog-history/sha256/{sha256(data).hexdigest()}/{Path(key).name}"
-                store.put(saved, data, immutable=True)
-                result[f"previous_{label}_key"] = saved
-        progress.report('publish_documents', completed=0, total=2, unit='tables')
-        store.put(DOCUMENTS, (root / DOCUMENTS).read_bytes())
-        progress.report('publish_filenames', completed=1, total=2, unit='tables')
-        store.put(FILENAMES, (root / FILENAMES).read_bytes())
-        progress.report('catalog_published', completed=2, total=2, unit='tables')
+    result = index.write_filename_metadata(
+        root, source_rows, workers=workers, previous=previous, read_body=read_body,
+        oversized_bodies=oversized_bodies, cache_store=store, reuse_results=not repair,
+        inspect_bodies=inspect_bodies, working=working, previous_documents=previous_documents,
+        metadata={"raw_capture_rows": str(capture_rows), "source_fingerprint": fingerprint,
+                  "capture_digest": input_digest, "seed_digest": seed_digest,
+                  "deferred_source_bodies": json.dumps(sorted(deferred_sources)),
+                  "retained_recovery_fingerprint": recovery_fingerprint()},
+    )
+    progress.report('validate_document_tables')
+    index.validate_document_indexes(root / FILENAMES, root / DOCUMENTS,
+                                    source_rows=result["rows"], document_rows=result["document_rows"])
+    # Retain evidence that exists only in an older generated table, including
+    # columns whose original publisher/parser basis can no longer be proved.
+    progress.report('archive_previous_tables')
+    for label, key, data in (("filenames", FILENAMES, previous_bytes),
+                             ("documents", DOCUMENTS, previous_documents)):
+        if data is not None:
+            saved = f"catalog-history/sha256/{sha256(data).hexdigest()}/{Path(key).name}"
+            store.put(saved, data, immutable=True)
+            result[f"previous_{label}_key"] = saved
+    progress.report('publish_document_snapshot')
+    result.update(publish_catalog(store, root / FILENAMES, root / DOCUMENTS, previous=snapshot))
     return {k: v for k, v in result.items() if k not in ("output", "documents_output")}

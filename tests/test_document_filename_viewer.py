@@ -1,3 +1,4 @@
+from catalog_test_helpers import selected_path
 import importlib.util
 from pathlib import Path
 
@@ -192,7 +193,7 @@ def test_viewer_reads_persisted_identity_and_preference_without_reinterpreting_s
         ('file.pdf', 'https://x.test/file.pdf', 'pdf', 'application/pdf', '200'),
     ])
     path = tmp_path / 'documents.parquet'
-    table = pq.read_table(path)
+    table = pq.read_table(selected_path(path))
     field = table.schema.field('filename')
     table = table.set_column(table.schema.get_field_index('filename'), field, pa.array(['Chosen in root index.pdf']))
     pq.write_table(table, path)
@@ -206,7 +207,7 @@ def test_viewer_reads_persisted_identity_and_preference_without_reinterpreting_s
 def test_mixed_index_generations_fail_clearly(tmp_path):
     catalog_from_sources(tmp_path, [('file.pdf', 'https://x.test/file.pdf', 'pdf', 'application/pdf', '200')])
     path = tmp_path / 'documents.parquet'
-    table = pq.read_table(path)
+    table = pq.read_table(selected_path(path))
     pq.write_table(table.replace_schema_metadata({**table.schema.metadata, b'catalog_id': b'different'}), path)
     with pytest.raises(ValueError, match='different builds'):
         viewer.Catalog(tmp_path / 'test.parquet')
@@ -223,7 +224,7 @@ def test_missing_kind_filters_document_groups_and_combines_with_search(tmp_path)
     # Test both representations of an absent kind without changing grouping.
     for name in ('test.parquet', 'documents.parquet'):
         path = tmp_path / name
-        table = pq.read_table(path)
+        table = pq.read_table(selected_path(path))
         kinds = [['testimony'] if filename == 'typed.pdf' else [] if filename == 'empty.pdf' else None
                  for filename in table['filename'].to_pylist()]
         table = table.set_column(table.schema.get_field_index('document_kind'),
@@ -269,7 +270,7 @@ def test_default_document_scope_keeps_capture_records_available_separately(tmp_p
              '123.none': 'capture-state', 'error.pdf': 'error-response'}
     for filename in ('test.parquet', 'documents.parquet'):
         path = tmp_path / filename
-        table = pq.read_table(path)
+        table = pq.read_table(selected_path(path))
         table = table.set_column(table.schema.get_field_index('record_role'),
             table.schema.field('record_role'), pa.array([[roles[x]] for x in table['filename'].to_pylist()]))
         pq.write_table(table, path)
@@ -299,3 +300,18 @@ def test_recovered_publisher_name_is_searchable_without_losing_literal_cache_sea
     assert catalog.search({'q': cache})['total'] == 1
     assert catalog.search({'q': name})['rows'][0]['filename'] == name
     assert catalog.record(0)['filename'] == cache
+
+
+def test_viewer_resolves_selected_generation_when_legacy_root_is_stale(tmp_path):
+    from congress_api.retention.catalog_cache import LocalStore
+    from congress_api.retention.catalog_publication import read_catalog, publish_catalog
+    (tmp_path / 'indexes').mkdir()
+    index.write_filename_metadata(tmp_path, [dict(filename='Smith Statement.pdf', body_key=None,
+                                                  source_url='https://x.test/statement')], workers=1)
+    store = LocalStore(tmp_path)
+    path = tmp_path / 'indexes/document-filenames.parquet'
+    publish_catalog(store, selected_path(path), selected_path(path.with_name('documents.parquet')), previous=read_catalog(store))
+    path.write_bytes(b'stale interrupted legacy root')
+    catalog = viewer.Catalog(path)
+    assert catalog.search({'q': 'Smith'})['total'] == 1
+    assert 'catalog-generations' in catalog.path.parts

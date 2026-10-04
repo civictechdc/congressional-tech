@@ -54,6 +54,17 @@ def response(url, body, media="application/pdf", status=200, **extra):
     )
 
 
+def test_accounting_counts_legacy_body_references_without_digests():
+    store = MemoryStore()
+    store.objects["indexes/captures.parquet"] = encode_table(pa.Table.from_pylist([
+        {"body_key": "bodies/legacy.gz"}, {"body_key": "bodies/legacy.gz"},
+        {"body_key": "bodies/other.gz"}, {"body_key": None}, {"body_key": ""},
+    ], schema=CAPTURE_SCHEMA))
+    result = run_sync(Archive(store, "legacy-accounting"), [],
+                      fetch=lambda _: pytest.fail("No URL was scheduled"), limit=0)
+    assert result["accounting"]["unique_retained_body_keys"] == 2
+
+
 def test_capture_links_and_resume_without_repeating_successes():
     store = MemoryStore()
     calls = []
@@ -508,3 +519,64 @@ def test_stop_saves_state_and_does_not_continue_to_later_work():
         run_sync(Archive(store, 'stopped'), [{'url': url}],
                  fetch=lambda _: pytest.fail('Stop request ignored'), stop=stop)
     assert Archive(store, 'resumed').state[url]['outcome'] == 'pending'
+
+
+def test_collector_exception_drains_other_inflight_successes():
+    import threading
+    barrier = threading.Barrier(2)
+    store = MemoryStore()
+    def fetch(url):
+        barrier.wait(timeout=2)
+        if url.endswith('a.pdf'):
+            raise OSError('collector failed')
+        return response(url, b'%PDF-1.7\n%%EOF')
+    with pytest.raises(OSError, match='collector failed'):
+        run_sync(Archive(store, 'partial'),
+                 [{'url': 'https://example.gov/a.pdf'}, {'url': 'https://example.gov/b.pdf'}],
+                 fetch=fetch, workers=2)
+    recovered = Archive(store, 'resume')
+    assert recovered.state['https://example.gov/b.pdf']['outcome'] == 'saved'
+    assert recovered.state['https://example.gov/a.pdf']['outcome'] == 'pending'
+
+
+def test_accounting_distinguishes_urls_tasks_usable_results_and_bodies():
+    store = MemoryStore()
+    seeds = [{'url': f'https://example.gov/{name}.pdf'} for name in ('a', 'b', 'failed')]
+    result = run_sync(Archive(store, 'units'), seeds,
+                      fetch=lambda url: response(url, b'%PDF-1.7\n%%EOF')
+                      if 'failed' not in url else response(url, b'not found', status=404), workers=1)
+    units = result['accounting']
+    assert units['known_urls'] == units['capture_tasks_submitted'] == units['capture_tasks_completed'] == 3
+    assert units['usable_capture_results'] == 2
+    # Identical successful bytes share one retained key, while the failure has its own.
+    assert units['unique_retained_body_keys'] == 2
+    assert units['url_outcomes'] == {'saved': 2, 'http_error': 1}
+
+
+@pytest.mark.parametrize('failed_prefix,receipt_durable', [
+    ('bodies/', False), ('receipts/', False),
+    ('indexes/download-state.parquet', True), ('indexes/captures.parquet', True),
+])
+def test_recovery_at_each_acquisition_write_boundary(failed_prefix, receipt_durable):
+    class InterruptedStore(MemoryStore):
+        interrupted = False
+        def put(self, key, body, **kwargs):
+            if key.startswith(failed_prefix) and not self.interrupted:
+                self.interrupted = True
+                raise OSError('write interrupted')
+            return super().put(key, body, **kwargs)
+    store = InterruptedStore()
+    url = 'https://example.gov/recover.pdf'
+    with pytest.raises(OSError, match='write interrupted'):
+        run_sync(Archive(store, 'interrupted'), [{'url': url}],
+                 fetch=lambda u: response(u, b'%PDF-1.7\n%%EOF'), workers=1)
+    calls = []
+    def retry(u):
+        calls.append(u)
+        return response(u, b'%PDF-1.7\n%%EOF')
+    run_sync(Archive(store, 'recovered'), [{'url': url}], fetch=retry, workers=1)
+    assert calls == ([] if receipt_durable else [url])
+    assert Archive(store, 'check').state[url]['outcome'] == 'saved'
+    # A body-only orphan is safe to reuse, but cannot replace missing provenance.
+    assert len(store.keys('bodies/')) == 1
+    assert len(store.keys('receipts/')) == 1

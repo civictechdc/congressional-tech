@@ -1,4 +1,5 @@
 """Rebuild from retained evidence, without acquiring or rewinding capture state."""
+from catalog_test_helpers import selected_path
 import gzip
 import json
 from hashlib import sha256
@@ -61,7 +62,7 @@ def test_unchanged_capture_replays_current_senate_interpretation(tmp_path):
         source_document_type=['other'], source_document_type_basis=['senate_parser_fallback'])], workers=1,
         metadata={'raw_capture_rows': '1'})
     for key in (FILENAMES, DOCUMENTS):
-        store.objects[key] = (tmp_path / key).read_bytes()
+        store.objects[key] = selected_path(tmp_path / key).read_bytes()
     rebuild_catalog(store, table(store, CAPTURES_KEY), workers=1)
     row = next(r for r in table(store).to_pylist() if r['source_url'] == url)
     assert row['document_kind'] == ['transcript']
@@ -74,7 +75,7 @@ def test_legacy_remote_only_facts_are_archived_without_inventing_native_basis(tm
         source_url='https://example.gov/opaque.pdf', source_document_type=['witness statement'],
         source_document_label=['witness statement: Jane Doe'])], workers=1)
     for key in (FILENAMES, DOCUMENTS):
-        store.objects[key] = (tmp_path / key).read_bytes()
+        store.objects[key] = selected_path(tmp_path / key).read_bytes()
     # Older tables did not distinguish filename classification from context.
     legacy = table(store).drop(['document_kind_source'])
     store.objects[FILENAMES] = encode_table(legacy)
@@ -298,7 +299,7 @@ def test_capture_role_requires_one_matching_receipt_and_pointer(tmp_path):
         ])
     (tmp_path / 'indexes').mkdir()
     index.write_filename_metadata(tmp_path, [source], workers=1)
-    row, = pq.read_table(tmp_path / FILENAMES).to_pylist()
+    row, = pq.read_table(selected_path(tmp_path / FILENAMES)).to_pylist()
     assert row['record_role'] == ['document']
     assert row.get('source_record_type') is None
 
@@ -330,7 +331,7 @@ def test_capture_state_is_released_and_summary_saved_before_rebuild(tmp_path, mo
         assert references[0]() is None, 'Acquisition state remains live during the catalog join'
         assert {sig: signal.getsignal(sig) for sig in handlers} == handlers
         saved = json.loads(summary.read_text())
-        assert saved['attempted'] == 2 and saved['catalog_status'] == 'pending'
+        assert saved['attempted'] == 2 and saved['catalog_status'] == 'running'
         raise OSError('catalog interrupted')
     monkeypatch.setattr(raw_sync, 'Archive', Collection)
     monkeypatch.setattr(raw_sync, 'RustFetcher', Fetcher)
@@ -342,5 +343,11 @@ def test_capture_state_is_released_and_summary_saved_before_rebuild(tmp_path, mo
         monkeypatch.setenv(key, 'fixture')
     with pytest.raises(OSError, match='catalog interrupted'):
         raw_sync.main(['--transport', 'direct', '--summary', str(summary)])
-    assert json.loads(summary.read_text())['attempted'] == 2
+    saved = json.loads(summary.read_text())
+    assert saved['attempted'] == 2
+    assert saved['acquisition_status'] == 'completed'
+    assert saved['catalog_status'] == 'failed'
+    assert saved['error_type'] == 'OSError'
+    assert saved['accounting']['native_request_dispatches'] == 2
+    assert saved['accounting']['http_request_starts'] is None
     assert json.loads(summary.with_suffix('.progress.json').read_text())['status'] == 'failed'

@@ -1,4 +1,5 @@
 """Saved response validity and paired link origins must survive catalog paths."""
+from catalog_test_helpers import selected_path
 import gzip
 import json
 
@@ -47,7 +48,7 @@ def test_source_refresh_recovers_historical_validation_without_fetching(tmp_path
     assert not unrelated.get('source_occurrences')
     index.refresh_source_metadata(tmp_path, index.DocumentSources())
     for name in ('documents.parquet', 'document-filenames.parquet'):
-        row, = pq.read_table(tmp_path / 'indexes' / name).to_pylist()
+        row, = pq.read_table(selected_path(tmp_path / 'indexes' / name)).to_pylist()
         assert row['response_usable'] == ['false']
         assert row['response_body_complete'] == ['true']
         assert row['response_format'] == ['pdf_missing_eof']
@@ -59,7 +60,7 @@ def test_source_refresh_recovers_historical_validation_without_fetching(tmp_path
         stream.write(json.dumps({'record': {'attempt': {'url': source['source_url'],
             'raw_path': 'old.gz', 'usable': True, 'body_complete': True, 'http_status': 200}}}) + '\n')
     index.refresh_source_metadata(tmp_path, index.DocumentSources())
-    row, = pq.read_table(tmp_path / 'indexes/document-filenames.parquet').to_pylist()
+    row, = pq.read_table(selected_path(tmp_path / 'indexes/document-filenames.parquet')).to_pylist()
     assert row['response_usable'] == ['false', 'true']
     assert row['record_role'] == ['document']
 
@@ -70,7 +71,7 @@ def test_unusable_pdf_bytes_do_not_join_unrelated_documents(tmp_path):
                  media_type=['application/pdf'], http_status=['200'], response_usable=['false'],
                  response_body_complete=['true'], response_format=['pdf_missing_eof']) for i in range(2)]
     index.write_filename_metadata(tmp_path, rows, workers=1)
-    docs = pq.read_table(tmp_path / 'indexes/documents.parquet').to_pylist()
+    docs = pq.read_table(selected_path(tmp_path / 'indexes/documents.parquet')).to_pylist()
     assert len(docs) == 2
     assert all(r['response_usable'] == ['false'] for r in docs)
     assert all(r['record_role'] == ['error-response'] for r in docs)
@@ -87,14 +88,14 @@ def test_occurrences_keep_labels_with_their_own_parents_across_aliases_and_refre
             for i, label in enumerate(('Article', 'Supporting attachment'))]
     index.write_filename_metadata(tmp_path, rows, workers=1)
     path = tmp_path / 'indexes/document-filenames.parquet'
-    original = pq.read_table(path)
-    docs, = pq.read_table(path.with_name('documents.parquet')).to_pylist()
+    original = pq.read_table(selected_path(path))
+    docs, = pq.read_table(selected_path(path.with_name('documents.parquet'))).to_pylist()
     assert pa.types.is_struct(original.schema.field('source_occurrences').type.value_type)
     pairs = {(tuple(r['source_page_url']), tuple(r['source_link_label'])) for r in docs['source_occurrences']}
     assert pairs == {(('https://committee.test/0',), ('Article',)),
                      (('https://committee.test/1',), ('Supporting attachment',))}
     index.refresh_filename_metadata(tmp_path, workers=1)
-    refreshed = pq.read_table(path)
+    refreshed = pq.read_table(selected_path(path))
     assert original['source_occurrences'] == refreshed['source_occurrences']
     assert original['response_usable'] == refreshed['response_usable']
     assert json.dumps(docs['source_occurrences'])  # Plain values remain API serializable.
@@ -106,12 +107,12 @@ def test_explicit_label_kind_is_recomputed_and_does_not_override_filename(tmp_pa
                   source_document_type=['other'], source_label_document_kind=['article'])
     index.write_filename_metadata(tmp_path, [source], workers=1)
     path = tmp_path / 'indexes/document-filenames.parquet'
-    row, = pq.read_table(path).to_pylist()
+    row, = pq.read_table(selected_path(path)).to_pylist()
     assert row['document_kind'] == ['article']
     assert row['document_kind_source'] == ['source_link_label']
     index.write_filename_metadata(tmp_path, [{**source, 'source_label_document_kind': None}],
-                                  workers=1, previous=pq.read_table(path))
-    row, = pq.read_table(path).to_pylist()
+                                  workers=1, previous=pq.read_table(selected_path(path)))
+    row, = pq.read_table(selected_path(path)).to_pylist()
     assert row['document_kind'] is None
     row = dict(document_kind=['transcript'], source_label_document_kind=['article'])
     index.fill_document_kind(row)

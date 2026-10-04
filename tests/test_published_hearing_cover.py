@@ -1,4 +1,5 @@
 """Only an explicit publication cover supplies a content-derived hearing kind."""
+from catalog_test_helpers import selected_path
 from pathlib import Path
 
 import pytest
@@ -137,9 +138,9 @@ def test_source_refresh_persists_cover_metadata_and_preserves_identity(tmp_path)
     schema = pa.schema([*SOURCE_SCHEMA, ('document_kind', STRINGS)])
     write_document_indexes(index, [dict(filename='Burma.pdf', source_url='https://www.foreign.senate.gov/opaque',
                                       body_key=key, media_type=['application/pdf'], http_status=['200'])], schema)
-    before, = pq.read_table(index).to_pylist()
+    before, = pq.read_table(selected_path(index)).to_pylist()
     refresh_source_metadata(tmp_path)
-    after, = pq.read_table(index).to_pylist()
+    after, = pq.read_table(selected_path(index)).to_pylist()
     assert after['source_id'] == before['source_id']
     assert after['document_id'] == before['document_id']
     assert after['document_kind'] == ['published-hearing']

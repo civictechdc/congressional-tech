@@ -21,7 +21,8 @@ ROOT = Path(__file__).resolve().parents[4]
 
 
 def archive_reader(root, *, live=False):
-    table = None if live else pq.read_table(root / 'indexes/document-filenames.parquet',
+    from congress_api.retention.catalog_publication import local_catalog_paths
+    table = None if live else pq.read_table(local_catalog_paths(root)[0],
         columns=['source_url', 'body_key', 'media_type', 'http_status'])
 
     def read(url, *, max_bytes):

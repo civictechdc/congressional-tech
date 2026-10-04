@@ -1,4 +1,5 @@
 """The routine update reuses completed work without dropping raw source context."""
+from catalog_test_helpers import selected_path
 
 from copy import deepcopy
 
@@ -92,7 +93,7 @@ def test_filename_cache_independent_of_body_fields_and_negative_cover_is_cached(
         evidence, "document_cover", lambda body: calls.append(body) or {}
     )
     index.write_filename_metadata(tmp_path, [dict(source)], workers=1, inspect_bodies=True)
-    before = pa.parquet.read_table(tmp_path / "indexes/document-filenames.parquet")
+    before = pa.parquet.read_table(selected_path(tmp_path / "indexes/document-filenames.parquet"))
     assert len(calls) == 1
 
     def forbidden(*args, **kwargs):
@@ -194,13 +195,15 @@ def test_failed_publication_rebuilds_from_receipts_without_hidden_source_state()
     before = deepcopy(store.objects)
     put = store.put
     def fail(key, *args, **kwargs):
-        if key == "indexes/documents.parquet":
+        if key.startswith("catalog-generations/") and key.endswith("/documents.parquet"):
             raise OSError("publication interrupted")
         return put(key, *args, **kwargs)
     store.put = fail
     with pytest.raises(OSError, match="publication interrupted"):
         rebuild_catalog(store, workers=1)
-    assert store.objects == before
+    assert all(store.objects[key] == value for key, value in before.items())
+    assert "indexes/catalog.json" not in store.objects
+    assert all(key in before or key.startswith("catalog-generations/") for key in store.objects)
     store.put = put
     rebuild_catalog(store, workers=1)
     assert table(store).num_rows > 0
@@ -373,10 +376,9 @@ def test_new_imported_filename_rows_are_not_hidden_by_a_previous_checkpoint(tmp_
         ],
         workers=1,
     )
-    for key in ("document-filenames", "documents"):
-        store.objects[f"indexes/{key}.parquet"] = (
-            tmp_path / f"indexes/{key}.parquet"
-        ).read_bytes()
+    from congress_api.retention.catalog_publication import read_catalog, publish_catalog
+    publish_catalog(store, selected_path(tmp_path / "indexes/document-filenames.parquet"), selected_path(tmp_path / "indexes/documents.parquet"),
+                    previous=read_catalog(store))
     rebuild_catalog(store, workers=1)
     assert any(row["filename"] == "new.pdf" for row in table(store).to_pylist())
 
@@ -466,8 +468,10 @@ def test_default_rebuild_uses_receipts_and_names_without_opening_document_bodies
     row, = table(store).to_pylist()
     assert row['document_kind'] == ['witness-statement']
     assert row['source_document_type'] == ['Witness Statement']
+    from congress_api.retention.catalog_publication import read_catalog, MANIFEST_KEY
+    snapshot = read_catalog(store)
     assert {key for key in store.writes} == {
-        'indexes/document-filenames.parquet', 'indexes/documents.parquet'}
+        snapshot.manifest['files']['filenames']['key'], snapshot.manifest['files']['documents']['key'], MANIFEST_KEY}
 
 
 def test_explicit_body_inspection_preserves_readings_on_later_metadata_only_update(monkeypatch):
@@ -504,10 +508,10 @@ def test_same_filename_does_not_transfer_content_facts_to_replacement_bytes(tmp_
     (tmp_path / 'indexes').mkdir()
     old = retained(tmp_path, '123.xml', b'<witness-list meeting-id="HMKP1"/>')
     index.write_filename_metadata(tmp_path, [old], workers=1, inspect_bodies=True)
-    before = pa.parquet.read_table(tmp_path / 'indexes/document-filenames.parquet')
+    before = pa.parquet.read_table(selected_path(tmp_path / 'indexes/document-filenames.parquet'))
     new = {**old, 'body_key': 'different-bytes'}
     index.write_filename_metadata(tmp_path, [new], workers=1, previous=before)
-    row, = pa.parquet.read_table(tmp_path / 'indexes/document-filenames.parquet').to_pylist()
+    row, = pa.parquet.read_table(selected_path(tmp_path / 'indexes/document-filenames.parquet')).to_pylist()
     assert row.get('source_record_type') is None
     assert row.get('source_record_identifier') is None
 
@@ -537,7 +541,7 @@ def test_explicit_source_kind_avoids_unnecessary_pdf_read(tmp_path):
     def forbidden(key):
         pytest.fail(f'Already typed document unnecessarily downloaded: {key}')
     index.write_filename_metadata(tmp_path, [source], workers=1, read_body=forbidden)
-    row, = pa.parquet.read_table(tmp_path / 'indexes/document-filenames.parquet').to_pylist()
+    row, = pa.parquet.read_table(selected_path(tmp_path / 'indexes/document-filenames.parquet')).to_pylist()
     assert row['document_kind'] == ['witness-statement']
     assert row['document_kind_source'] == ['source_document_type']
 
@@ -551,7 +555,7 @@ def test_source_kind_does_not_skip_structured_xml_evidence(tmp_path):
     source['source_document_type'] = ['Committee Amendment']
     (tmp_path / 'indexes').mkdir()
     index.write_filename_metadata(tmp_path, [source], workers=1, inspect_bodies=True)
-    row, = pa.parquet.read_table(tmp_path / 'indexes/document-filenames.parquet').to_pylist()
+    row, = pa.parquet.read_table(selected_path(tmp_path / 'indexes/document-filenames.parquet')).to_pylist()
     assert row.get('content_amendment_degree') == ['first']
     assert row['content_legis_num'] == ['H.R. 123']
     assert row['source_document_type'] == ['Committee Amendment']

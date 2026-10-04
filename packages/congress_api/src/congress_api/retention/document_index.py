@@ -571,7 +571,22 @@ def prepare_document_indexes(rows, schema):
     return rows, source_schema, documents, document_schema
 
 
-def write_document_indexes(destination, rows, schema):
+def write_document_indexes(destination, rows, schema, *, working=None, previous=None, previous_documents=None, reuse_groups=True):
+    from congress_api.retention.catalog_staging import write_grouped_indexes, WorkingCatalog
+    if working is not None:
+        return write_grouped_indexes(destination, rows, schema, working=working,
+                                     previous=previous, previous_documents=previous_documents, reuse_groups=reuse_groups)
+    from tempfile import TemporaryDirectory
+    with TemporaryDirectory(prefix="document-working-") as directory:
+        state = WorkingCatalog(Path(directory) / "working.sqlite")
+        try:
+            return write_grouped_indexes(destination, rows, schema, working=state,
+                                         previous=previous, previous_documents=previous_documents, reuse_groups=reuse_groups)
+        finally:
+            state.close()
+
+
+def _legacy_write_document_indexes(destination, rows, schema):
     rows, source_schema, documents, document_schema = prepare_document_indexes(
         rows, schema
     )
@@ -612,23 +627,37 @@ def write_document_indexes(destination, rows, schema):
 
 def validate_document_indexes(source_path, document_path, *, source_rows=None, document_rows=None):
     """Validate the actual paired files before either destination is replaced."""
-    source_ids = pq.read_table(source_path, columns=["source_id", "document_id"])
-    document_ids = pq.read_table(document_path, columns=["source_id", "document_id"])
-    source_meta = source_ids.schema.metadata or {}
-    document_meta = document_ids.schema.metadata or {}
+    from tempfile import TemporaryDirectory
+    import sqlite3
+    source_file, document_file = pq.ParquetFile(source_path), pq.ParquetFile(document_path)
+    source_meta, document_meta = source_file.schema_arrow.metadata or {}, document_file.schema_arrow.metadata or {}
     if not source_meta.get(b"catalog_id") or source_meta[b"catalog_id"] != document_meta.get(b"catalog_id"):
         raise ValueError("Document/source catalog_id values do not match")
-    sources = source_ids["source_id"].to_pylist()
-    groups = source_ids["document_id"].to_pylist()
-    preferred = document_ids["source_id"].to_pylist()
-    documents = document_ids["document_id"].to_pylist()
-    if (source_rows is not None and len(sources) != source_rows
-            or document_rows is not None and len(documents) != document_rows
-            or any(value is None for values in (sources, groups, preferred, documents) for value in values)
-            or len(set(sources)) != len(sources) or len(set(documents)) != len(documents)
-            or set(groups) != set(documents)
-            or not set(zip(preferred, documents)) <= set(zip(sources, groups))):
+    if (source_rows is not None and source_file.metadata.num_rows != source_rows
+            or document_rows is not None and document_file.metadata.num_rows != document_rows):
         raise ValueError("Document/source index references do not match")
+    with TemporaryDirectory(prefix="validate-catalog-") as directory:
+        db = sqlite3.connect(Path(directory) / "references.sqlite")
+        try:
+            db.executescript('PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA cache_size=-8192; '
+                             'CREATE TABLE sources(source_id TEXT PRIMARY KEY NOT NULL,document_id TEXT NOT NULL); '
+                             'CREATE INDEX source_groups ON sources(document_id); '
+                             'CREATE TABLE documents(document_id TEXT PRIMARY KEY NOT NULL,source_id TEXT NOT NULL);')
+            for file, table in ((source_file, "sources"), (document_file, "documents")):
+                for batch in file.iter_batches(columns=["source_id", "document_id"], batch_size=4096):
+                    records = batch.to_pylist()
+                    if table == "sources":
+                        db.executemany('INSERT INTO sources VALUES (?,?)', ((row['source_id'],row['document_id']) for row in records))
+                    else:
+                        db.executemany('INSERT INTO documents VALUES (?,?)', ((row['document_id'],row['source_id']) for row in records))
+            invalid = (db.execute('SELECT 1 FROM sources s LEFT JOIN documents d ON s.document_id=d.document_id WHERE d.document_id IS NULL LIMIT 1').fetchone()
+                       or db.execute('SELECT 1 FROM documents d LEFT JOIN sources s ON d.source_id=s.source_id AND d.document_id=s.document_id WHERE s.source_id IS NULL LIMIT 1').fetchone())
+            if invalid:
+                raise ValueError("Document/source index references do not match")
+        except sqlite3.IntegrityError as error:
+            raise ValueError("Document/source index references do not match") from error
+        finally:
+            db.close()
 
 
 def compact(value):
@@ -826,6 +855,7 @@ def add_name(names, body, filename, url, basis, source=None, metadata=None):
         entry["source_paths"].add(source)
     for field, values in (metadata or {}).items():
         entry[field].update(values)
+    names[(body, filename, url)] = entry
 
 
 # These describe where a document URL was listed. They never overwrite fields
@@ -944,7 +974,8 @@ class DocumentSources:
     matching supplies provenance or document identity.
     """
 
-    def __init__(self, urls=None):
+    def __init__(self, urls=None, *, working=None):
+        self.working = working
         self.urls = {http_url(url) or url for url in urls} if urls is not None else None
         self.occurrences = defaultdict(dict)
         self.extra_filters = {}
@@ -952,6 +983,13 @@ class DocumentSources:
         self.transfers = defaultdict(list)
         self.meetings = {}
         self.events = defaultdict(set)
+        if working is not None:
+            self.occurrences = working.occurrence_store()
+            self.extra_filters = working.mapping("extra_filters")
+            self.transfers = working.mapping("transfers", list)
+            self.meetings = working.mapping("meetings")
+            self.events = working.mapping("events", set)
+            self.by_url = SourceFilters(self.occurrences, self.extra_filters)
 
     def add_url(self, url, values):
         if isinstance(url, str):
@@ -971,8 +1009,13 @@ class DocumentSources:
                      if key in SOURCE_OCCURRENCE_FIELDS and items}
             extra = {key: items for key, items in extra.items() if items}
             if extra:
-                merge_context(self.extra_filters.setdefault(url, {}), extra)
-                self.occurrences.setdefault(url, {})
+                filters = self.extra_filters.get(url, {})
+                merge_context(filters, extra)
+                self.extra_filters[url] = filters
+                if self.working is None:
+                    self.occurrences.setdefault(url, {})
+                else:
+                    self.occurrences.ensure(url)
             pending = [(url, occurrence) for occurrence in values.get("source_occurrences") or []]
         else:
             pending = [(url, values)]
@@ -989,9 +1032,12 @@ class DocumentSources:
             # representative locator. The captures index retains every receipt.
             identity = sha256(json.dumps({key: items for key, items in occurrence.items()
                 if not key.startswith("source_receipt_")}, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
-            if identity in self.occurrences[destination]:
+            if self.working is None:
+                if identity in self.occurrences[destination]:
+                    continue
+                self.occurrences[destination][identity] = occurrence
+            elif not self.occurrences.insert(destination,identity,occurrence):
                 continue
-            self.occurrences[destination][identity] = occurrence
             for target, association in self.transfers.get(destination, []):
                 # Each transferred occurrence retains its original parent/link.
                 # Association fields describe this edge, never document identity.
@@ -1017,8 +1063,15 @@ class DocumentSources:
                == {k: v for k, v in association.items() if not k.startswith("source_receipt_")}
                for target, previous in self.transfers[requested]):
             return
-        self.transfers[requested].append(edge)
-        for occurrence in list(self.occurrences.get(requested, {}).values()):
+        transfers = self.transfers[requested]
+        transfers.append(edge)
+        self.transfers[requested] = transfers
+        observations = self.occurrences.get(requested, {}).values()
+        # Resident dictionaries need a snapshot before cycles add entries.
+        # The disk iterator captures its insertion limit without loading rows.
+        if self.working is None:
+            observations = list(observations)
+        for occurrence in observations:
             self.add_url(final, self.transfer_occurrence(occurrence, association))
 
     def restore_association(self, url, occurrence):
@@ -1033,9 +1086,10 @@ class DocumentSources:
     def for_url(self, url):
         url = (http_url(url) or url) if isinstance(url, str) else url
         result = {key: sorted(values) for key, values in self.by_url.get(url, {}).items() if values}
-        if self.occurrences.get(url):
-            result["source_occurrences"] = [self.occurrences[url][key]
-                                            for key in sorted(self.occurrences[url])]
+        observations = self.occurrences.get(url)
+        if observations:
+            result["source_occurrences"] = ([observations[key] for key in sorted(observations)]
+                                            if self.working is None else list(observations.sorted_values()))
         return result
 
     def add_link(self, link, receipt=None):
@@ -1120,8 +1174,9 @@ class DocumentSources:
 
     def refresh_meeting_context(self):
         """Join later meeting facts to earlier links using their scoped event ID."""
-        for url, observations in list(self.occurrences.items()):
-            for occurrence in list(observations.values()):
+        for url, observations in self.occurrences.items():
+            snapshot = list(observations.values()) if self.working is None else observations.values()
+            for occurrence in snapshot:
                 events = occurrence.get('source_meeting_id') or []
                 chambers = occurrence.get('source_chamber') or []
                 congresses = occurrence.get('source_congress') or []
@@ -1172,8 +1227,12 @@ class DocumentSources:
                         source_committee_url=committee.get("url"),
                     ),
                 )
-        self.events[key[2]].add(key)
-        merge_context(self.meetings.setdefault(key, {}), values)
+        events = self.events[key[2]]
+        events.add(key)
+        self.events[key[2]] = events
+        meeting = self.meetings.get(key, {})
+        merge_context(meeting, values)
+        self.meetings[key] = meeting
         # A child inherits meeting facts, not every archive copy's locator.
         merge_context(values, receipt or {})
         self.add_url(record.get("_url"), values)
@@ -1467,43 +1526,51 @@ def add_retained_senate_pages(context, captures, read_body):
 
 
 def retained_records(captures, read_receipt, *, stage='replay_capture_receipts'):
-    """Read each referenced receipt line once, with all its indexed body pointers."""
+    """Read referenced receipt lines with an indexed, disposable position map."""
+    from tempfile import TemporaryDirectory
+    import sqlite3
     progress.report(stage, completed=0, total=len(captures), unit='capture_rows')
     completed = reported = 0
-    references = defaultdict(lambda: defaultdict(list))
     batches = captures.to_batches(max_chunksize=65536)
-    # Keep row positions while grouping; decoding every URL, path and body
-    # field here duplicates the whole capture inventory as Python objects.
-    for batch_number, batch in enumerate(batches):
-        for position, row in enumerate(batch.select(["receipt_key", "receipt_line"]).to_pylist()):
-            if not row.get("receipt_key") or type(row.get("receipt_line")) is not int or row["receipt_line"] < 1:
-                raise ValueError("Invalid capture receipt locator")
-            references[row["receipt_key"]][row["receipt_line"]].append((batch_number, position))
-    for key, lines in sorted(references.items()):
-        payload = read_receipt(key)
-        if payload is None:
-            raise ValueError(f"Missing capture receipt: {key}")
-        with gzip.open(BytesIO(payload), "rt", encoding="utf-8") as stream:
-            for number, line in enumerate(stream, 1):
-                positions = lines.pop(number, None)
-                if positions:
-                    rows = []
-                    # Taking from the original batch avoids repeatedly joining
-                    # every Arrow chunk for each small receipt lookup.
-                    for batch_number, group in groupby(positions, key=lambda item: item[0]):
-                        selected = pa.array([position for _, position in group], type=pa.int64())
-                        rows.extend(batches[batch_number].take(selected).to_pylist())
-                    yield json.loads(line)["record"], rows, context_values(
-                        source_receipt_key=key, source_receipt_line=number)
-                    completed += len(rows)
-                    if completed - reported >= 1000:
-                        progress.report(stage, completed=completed, total=len(captures), unit='capture_rows')
-                        reported = completed
-                if not lines:
-                    break
-        if lines:
-            raise ValueError(f"Capture index references missing receipt lines: {key}")
-    progress.report(stage, completed=completed, total=len(captures), unit='capture_rows')
+    with TemporaryDirectory(prefix="receipt-positions-") as directory:
+        db = sqlite3.connect(Path(directory) / "positions.sqlite")
+        try:
+            db.executescript('PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA cache_size=-8192; '
+                             'CREATE TABLE positions(receipt TEXT,line INTEGER,batch INTEGER,position INTEGER); '
+                             'CREATE INDEX receipt_lines ON positions(receipt,line,batch,position);')
+            for batch_number,batch in enumerate(batches):
+                records = []
+                for position,row in enumerate(batch.select(["receipt_key","receipt_line"]).to_pylist()):
+                    if not row.get('receipt_key') or type(row.get('receipt_line')) is not int or row['receipt_line'] < 1:
+                        raise ValueError("Invalid capture receipt locator")
+                    records.append((row['receipt_key'],row['receipt_line'],batch_number,position))
+                db.executemany('INSERT INTO positions VALUES (?,?,?,?)',records)
+            for key, in db.execute('SELECT DISTINCT receipt FROM positions ORDER BY receipt'):
+                payload = read_receipt(key)
+                if payload is None:
+                    raise ValueError(f"Missing capture receipt: {key}")
+                remaining, = db.execute('SELECT count(*) FROM positions WHERE receipt=?',(key,)).fetchone()
+                with gzip.open(BytesIO(payload),"rt",encoding="utf-8") as stream:
+                    for number,line in enumerate(stream,1):
+                        positions = db.execute('SELECT batch,position FROM positions WHERE receipt=? AND line=? ORDER BY batch,position',(key,number))
+                        rows = []
+                        for batch_number,group in groupby(positions,key=lambda item:item[0]):
+                            selected = pa.array([position for _,position in group],type=pa.int64())
+                            rows.extend(batches[batch_number].take(selected).to_pylist())
+                        if rows:
+                            yield json.loads(line)['record'],rows,context_values(source_receipt_key=key,source_receipt_line=number)
+                            completed += len(rows)
+                            remaining -= len(rows)
+                            if completed-reported >= 1000:
+                                progress.report(stage,completed=completed,total=len(captures),unit='capture_rows')
+                                reported = completed
+                        if not remaining:
+                            break
+                if remaining:
+                    raise ValueError(f"Capture index references missing receipt lines: {key}")
+        finally:
+            db.close()
+    progress.report(stage,completed=completed,total=len(captures),unit='capture_rows')
 
 
 def add_retained_house_documents(context, captures, read_body):
@@ -1718,17 +1785,32 @@ def refresh_response_metadata(root, rows):
 
 
 def refresh_source_metadata(root, context=None):
+    """Refresh source facts from one captured selected pair, then publish together."""
+    from tempfile import TemporaryDirectory
+    from congress_api.retention.catalog_staging import WorkingCatalog
+    from congress_api.retention.catalog_cache import LocalStore
+    from congress_api.retention.catalog_publication import read_catalog
+    snapshot = read_catalog(LocalStore(root))
+    if snapshot.filenames is None:
+        raise ValueError("Missing filename index")
+    with TemporaryDirectory(prefix="source-refresh-") as directory:
+        working = WorkingCatalog(Path(directory) / "working.sqlite")
+        try:
+            staged = Path(directory) / "output"
+            (staged / "indexes").mkdir(parents=True)
+            return _refresh_source_metadata(root, context, working=working,snapshot=snapshot, output_root=staged)
+        finally:
+            working.close()
+
+
+def _refresh_source_metadata(root, context, *, working, snapshot, output_root):
     """Refresh retained provenance and response facts, then regroup without parsing names."""
-    path = root / "indexes/document-filenames.parquet"
-    source = pq.ParquetFile(path)
+    from congress_api.retention.catalog_staging import DiskRows
+    source = pq.ParquetFile(pa.BufferReader(snapshot.filenames))
+    path = output_root / "indexes/document-filenames.parquet"
     if context is None:
-        urls = {
-            url
-            for url in source.read(columns=["source_url"])["source_url"].to_pylist()
-            if url
-        }
-        context = read_document_sources(root, urls)
-    rows, columns = [], set()
+        context = read_document_sources(root, context=DocumentSources(working=working))
+    rows, columns = DiskRows(working.connection, "source_refresh_rows"), set()
     for batch in source.iter_batches(batch_size=4096):
         for row in batch.to_pylist():
             # A partial replay cannot retract publisher facts already retained
@@ -1752,13 +1834,16 @@ def refresh_source_metadata(root, context=None):
             columns.update(added)
             rows.append({**row, **added})
     del context  # Rows now retain their occurrences; release lookup/transfer maps.
-    refresh_response_metadata(root, rows)
+    for batch in rows.batches():
+        refresh_response_metadata(root, [row for _, row in batch])
     columns.update(field for row in rows for field in row
                    if field in SOURCE_CONTEXT_FIELDS | set(RESPONSE_FIELDS) | {"source_record_type"})
     # Response roles depend on newly read facts, not another body download.
     for row in rows:
         apply_response_role(row)
-    enrich_document_covers(rows, read_body=lambda key: read_retained_body(root, key))
+    body_cache = working.mapping("source_refresh_bodies")
+    for batch in rows.batches():
+        enrich_document_covers([row for _, row in batch], read_body=lambda key: read_retained_body(root, key), cached=body_cache)
     columns.update(field for field in (*COVER_FIELDS, 'body_format')
                    if any(row.get(field) for row in rows))
     schema = pa.schema(
@@ -1768,7 +1853,7 @@ def refresh_source_metadata(root, context=None):
         ],
         metadata=source.schema_arrow.metadata,
     )
-    return dict(
+    result = dict(
         rows=len(rows),
         source_context_rows=sum(
             bool(
@@ -1778,11 +1863,13 @@ def refresh_source_metadata(root, context=None):
             )
             for r in rows
         ),
-        **write_document_indexes(path, rows, schema),
+        **write_document_indexes(path, rows, schema, working=working),
     )
 
+    return publish_local_result(root,path,result,snapshot)
 
-def collect_names(root, inventory_dir, families=FAMILIES):
+
+def collect_names(root, inventory_dir, families=FAMILIES, *, working=None):
     captures = pq.ParquetFile(root / "indexes/captures.parquet")
     table = captures.read(
         columns=[
@@ -1810,52 +1897,25 @@ def collect_names(root, inventory_dir, families=FAMILIES):
                              type=pa.string())
         selected = pc.or_(selected, pc.and_(pages, pc.is_in(table["context_url"], value_set=downloads)))
     table = table.filter(selected)
-    by_receipt = defaultdict(lambda: defaultdict(list))
-    bodies, names = set(), {}
-    for row in table.to_pylist():
-        by_receipt[row["receipt_key"]][row["receipt_line"]].append(row)
-        if row["body_key"]:
-            bodies.add(row["body_key"])
-    for receipt_key, lines in sorted(by_receipt.items()):
-        with gzip.open(root / receipt_key, "rt", encoding="utf-8") as stream:
-            for line_number, line in enumerate(stream, 1):
-                rows = lines.pop(line_number, None)
-                if rows:
-                    receipt = json.loads(line)
-                    for row in rows:
-                        if row["body_key"]:
-                            metadata = response_metadata(row, receipt["record"])
-                            located = source_names(row, receipt["record"]) or [
-                                (None, None, None, None)
-                            ]
-                            for filename, basis, url, source in located:
-                                add_name(
-                                    names,
-                                    row["body_key"],
-                                    filename,
-                                    url,
-                                    basis,
-                                    source,
-                                    metadata,
-                                )
-                        elif row["context_url"]:
-                            for filename, basis in url_document_names(
-                                row["context_url"]
-                            ):
-                                add_name(
-                                    names, None, filename, row["context_url"], basis
-                                )
-                    if any(row["body_key"] is None for row in rows):
-                        for filename, basis, url in inventory_names(receipt["record"]):
-                            add_name(names, None, filename, url, basis)
-                if not lines:
-                    break
-        if lines:
-            raise ValueError(f"Index references missing receipt lines: {receipt_key}")
+    bodies = set()
+    names = {} if working is None else working.mapping("inventory_names")
+    for record,rows,_ in retained_records(table,lambda key:(root / key).read_bytes()):
+        for row in rows:
+            if row['body_key']:
+                bodies.add(row['body_key'])
+                metadata = response_metadata(row,record)
+                for filename,basis,url,source in source_names(row,record) or [(None,None,None,None)]:
+                    add_name(names,row['body_key'],filename,url,basis,source,metadata)
+            elif row['context_url']:
+                for filename,basis in url_document_names(row['context_url']):
+                    add_name(names,None,filename,row['context_url'],basis)
+        if any(row['body_key'] is None for row in rows):
+            for filename,basis,url in inventory_names(record):
+                add_name(names,None,filename,url,basis)
 
     # The full filename corpus includes URL-query and response-header names,
     # even when their corresponding files have never been downloaded.
-    catalog = {}
+    catalog = {} if working is None else working.mapping("inventory_catalog")
     for batch in pq.ParquetFile(inventory_dir / "filenames.parquet").iter_batches(
         columns=["filename_key", "filename", "variants"]
     ):
@@ -1866,10 +1926,12 @@ def collect_names(root, inventory_dir, families=FAMILIES):
     known_variants = {
         filename for variants in catalog.values() for filename in variants
     }
-    by_url = defaultdict(set)
+    by_url = defaultdict(set) if working is None else working.mapping("inventory_urls", set)
     for _, filename, url in names:
         if url and filename:
-            by_url[url].add(filename)
+            spellings = by_url[url]
+            spellings.add(filename)
+            by_url[url] = spellings
     for batch in pq.ParquetFile(inventory_dir / "urls.parquet").iter_batches(
         columns=["url", "filename_keys"]
     ):
@@ -1900,11 +1962,13 @@ def collect_names(root, inventory_dir, families=FAMILIES):
     # Link only a filename/URL pair actually present in a capture. A URL can
     # serve different documents over time; neither URL nor basename alone
     # establishes which response supplied an inventory-only filename.
-    captured_pairs = defaultdict(set)
+    captured_pairs = defaultdict(set) if working is None else working.mapping("inventory_pairs", set)
     for body, filename, url in names:
         if body and url:
-            captured_pairs[(filename, url)].add(body)
-    for key in list(names):
+            found = captured_pairs[(filename, url)]
+            found.add(body)
+            captured_pairs[(filename, url)] = found
+    for key in list(names) if working is None else names:
         body, filename, url = key
         if body is None and (filename, url) in captured_pairs:
             origins = names.pop(key)
@@ -1915,6 +1979,7 @@ def collect_names(root, inventory_dir, families=FAMILIES):
                 )
                 for field in origins:
                     entry[field].update(origins[field])
+                names[(body,filename,url)] = entry
     # A nameless reference does not create another filename row when that same
     # body already has a named reference elsewhere in the retained evidence.
     named_bodies = {
@@ -2010,9 +2075,28 @@ def parser_fingerprint():
 
 def write_filename_metadata(
     root, source_rows, *, workers=4, previous=None, metadata=None, read_body=None,
-    oversized_bodies=(), cache_store=None, reuse_results=True, inspect_bodies=False
+    oversized_bodies=(), cache_store=None, reuse_results=True, inspect_bodies=False, working=None, previous_documents=None, publication_snapshot=None, output_root=None
 ):
     """Interpret supplied source rows; acquisition and storage discovery stay outside."""
+    if working is None:
+        from tempfile import TemporaryDirectory
+        from congress_api.retention.catalog_staging import WorkingCatalog
+        with TemporaryDirectory(prefix="filename-working-") as directory:
+            working = WorkingCatalog(Path(directory) / "working.sqlite")
+            try:
+                from congress_api.retention.catalog_cache import LocalStore
+                from congress_api.retention.catalog_publication import read_catalog
+                local_store = LocalStore(root)
+                snapshot = publication_snapshot or read_catalog(local_store)
+                staged = Path(directory) / "output"
+                (staged / "indexes").mkdir(parents=True)
+                result = write_filename_metadata(root, source_rows, workers=workers, previous=previous,
+                    metadata=metadata, read_body=read_body, oversized_bodies=oversized_bodies,
+                    cache_store=cache_store, reuse_results=reuse_results,
+                    inspect_bodies=inspect_bodies, working=working, previous_documents=previous_documents, output_root=staged)
+                return publish_local_result(root, staged / "indexes/document-filenames.parquet", result, snapshot)
+            finally:
+                working.close()
     started = time.monotonic()
     previous_schema = (previous.schema_arrow if isinstance(previous, pq.ParquetFile) else previous.schema) if previous is not None else None
     def previous_batches(columns=None):
@@ -2023,21 +2107,28 @@ def write_filename_metadata(
     from congress_api.retention.document_recovery import recover_sources, recovery_fingerprint
     if (root / 'indexes/captures.parquet').exists():
         source_rows = recover_sources(source_rows, pq.ParquetFile(root / 'indexes/captures.parquet'),
-            read_receipt=lambda key: (root / key).read_bytes())
+            read_receipt=lambda key: (root / key).read_bytes(), working=working)
         metadata = {**(metadata or {}), 'retained_recovery_fingerprint': recovery_fingerprint()}
-    inputs = defaultdict(list)
-    bodies, names = set(), set()
+    from congress_api.retention.catalog_staging import DiskRows
+    inputs = working.mapping("filename_inputs")
+    rows = DiskRows(working.connection, "filename_rows")
+    bodies, names = working.mapping("filename_bodies"), working.mapping("filename_names")
     for source in source_rows:
-        inputs[(source["filename"], source["source_url"])].append(source)
+        inputs[(source["filename"], source["source_url"])] = True
+        rows.append(source)
         if source["body_key"]:
-            bodies.add(source["body_key"])
+            bodies[source["body_key"]] = True
         if source["filename"]:
-            names.add(source["filename"])
+            names[source["filename"]] = True
+    # The source iterator is exhausted and filename_rows owns every input.
+    # Release either recovery's coalesced output or its no-recovery stage.
+    for name in ("recovery_result","recovery_rows"):
+        working.connection.execute(f"DROP TABLE IF EXISTS {name}")
     fingerprint = parser_fingerprint()
     progress.report('reuse_cached_metadata')
-    from congress_api.retention.catalog_cache import LocalStore, load_results, result_checkpoint
+    from congress_api.retention.catalog_cache import LocalStore, result_checkpoint
     cache_store = cache_store or LocalStore(root)
-    cached = {}
+    cached = working.mapping("filename_results")
     body_fingerprint = evidence_fingerprint()
     if not inspect_bodies and previous_schema is not None:
         # A metadata-only update preserves earlier content readings. Replacing
@@ -2045,7 +2136,16 @@ def write_filename_metadata(
         body_fingerprint = (previous_schema.metadata or {}).get(
             b'body_evidence_fingerprint', body_fingerprint.encode()).decode()
     reuse_bodies = reuse_results or not inspect_bodies
-    body_cache = load_results(cache_store, 'bodies', body_fingerprint, ('reader', 'body_key'), reuse=reuse_results)
+    body_cache = working.mapping("body_results")
+    payload = cache_store.read("indexes/processing/bodies.parquet") if reuse_results else None
+    if payload:
+        cached_file = pq.ParquetFile(pa.BufferReader(payload))
+        if (cached_file.schema_arrow.metadata or {}).get(b"parser_fingerprint") == body_fingerprint.encode():
+            for batch in cached_file.iter_batches(batch_size=4096):
+                for row in batch.to_pylist():
+                    key = (row.pop("reader"), row.pop("body_key"))
+                    body_cache[key] = {field: value for field, value in row.items() if value is not None}
+    del payload
     if reuse_bodies and previous is not None and (previous_schema.metadata or {}).get(b"body_evidence_fingerprint") == body_fingerprint.encode():
         for batch in previous_batches([k for k in (BODY_FIELDS | {"body_key"}) if k in previous_schema.names]):
             for row in batch.to_pylist():
@@ -2079,46 +2179,43 @@ def write_filename_metadata(
                              and any(value in DERIVED_KIND_SOURCES for value in row.get("document_kind_source") or []))
                 })
     if not reuse_results:
-        cached = {}
+        cached.clear()
         if inspect_bodies:
-            body_cache = {}
+            body_cache.clear()
     checkpoint_bodies = result_checkpoint(cache_store, 'bodies', body_fingerprint,
                                          ('reader', 'body_key'), body_cache)
-    pending = [key for key in inputs if key not in cached]
-    def collect(parsed):
-        for key, fields in progress.track(zip(pending, parsed), 'extract_filenames',
-                                         total=len(pending), unit='filenames'):
+    pending_count = sum(key not in cached for key in inputs)
+    pending = (key for key in inputs if key not in cached)
+    def collect(keys, parsed):
+        for key, fields in progress.track(zip(keys, parsed), 'extract_filenames',
+                                         total=pending_count, unit='filenames'):
             cached[key] = fields
+    # Bound executor submission as well as Arrow output; pool.map eagerly
+    # submits its iterable on supported Python versions.
+    from itertools import islice
     if workers == 1:
-        collect(map(extract, pending))
-    elif pending:
+        for key in progress.track(pending, 'extract_filenames', total=pending_count, unit='filenames'):
+            cached[key] = extract(key)
+    elif pending_count:
         with ProcessPoolExecutor(max_workers=workers, mp_context=get_context('spawn')) as pool:
-            collect(pool.map(extract, pending, chunksize=128))
-
-    rows, columns = (
-        [],
-        {
-            key
-            for group in inputs.values()
-            for row in group
-            for key in row
-            if key in SOURCE_CONTEXT_FIELDS | {"capture_outcome"} and row[key]
-        },
-    )
+            while batch := list(islice(pending, 512)):
+                collect(batch, pool.map(extract, batch, chunksize=128))
+    columns = set()
     input_count = len(inputs)
-    for key in list(inputs):
-        columns.update(cached[key])
-        # Consume one group at a time so callers supplying an iterator do not
-        # retain a second complete set of source dictionaries during assembly.
-        rows.extend({**row, **cached[key]} for row in inputs.pop(key))
-    del inputs, source_rows
+    for row in rows:
+        fields = cached[(row["filename"], row["source_url"])]
+        columns.update(fields)
+        row.update(fields)
+        columns.update(key for key, value in row.items()
+                       if key in SOURCE_CONTEXT_FIELDS | {"capture_outcome"} and value)
+    del source_rows
     progress.report('inspect_document_contents', completed=0, unit='distinct_body_attempts')
     def interpret(key):
         if key not in cached:
             cached[key] = extract(key)
         return cached[key]
-    deferred_bodies = set()
-    attempted_bodies = set()
+    deferred_bodies = working.mapping("deferred_bodies")
+    attempted_bodies = working.mapping("attempted_bodies")
     supplied_reader = read_body or (lambda key: read_retained_body(root, key))
     def inspect_body(key):
         if not inspect_bodies:
@@ -2128,26 +2225,43 @@ def write_filename_metadata(
             return None  # Missing bytes retry next run; known size limits stay skipped.
         data = supplied_reader(key)
         if data is None:
-            deferred_bodies.add(key)
-        attempted_bodies.add(key)
+            deferred_bodies[key] = True
+        attempted_bodies[key] = True
         progress.report('inspect_document_contents', completed=len(attempted_bodies), unit='distinct_body_attempts')
         return data
     try:
-        enrich_sources(rows, read_body=inspect_body,
-                       extract=interpret, cached=body_cache)
-        # Preserve native XML/format facts before applying source kinds. Only
-        # the optional PDF-cover fallback can be skipped for a known kind.
-        # Regrouping below recomputes these fallbacks across aliases.
-        for row in rows:
-            fill_document_kind(row)
-        enrich_document_covers(rows, read_body=inspect_body, cached=body_cache)
+        recovered_urls = working.mapping("recovered_urls", set)
+        shared_body_fields = working.mapping("shared_body_fields")
+        # The first pass establishes native XML facts and cache-name URL facts.
+        # The second pass can then recover aliases whose metadata appeared later.
+        for pass_number in range(2):
+            for batch in rows.batches():
+                records = [row for _, row in batch]
+                enrich_sources(records, read_body=inspect_body, extract=interpret,
+                               cached=body_cache, urls=recovered_urls, initialize_roles=pass_number == 0,
+                               shared_body_fields=shared_body_fields)
+        for batch in rows.batches():
+            records = [row for _, row in batch]
+            for row in records:
+                fill_document_kind(row)
+            enrich_document_covers(records, read_body=inspect_body, cached=body_cache)
+        # Content readings follow identical bytes even when discovered in a
+        # later batch. Reapply cached evidence, without another body transfer.
+        for batch in rows.batches():
+            records = [row for _, row in batch]
+            enrich_sources(records, read_body=lambda key: None, extract=interpret,
+                           cached=body_cache, urls=recovered_urls, initialize_roles=False,
+                           shared_body_fields=shared_body_fields)
+            enrich_document_covers(records, read_body=lambda key: None, cached=body_cache)
     finally:
         if inspect_bodies:
             checkpoint_bodies(force=True)
     cached.clear()
     body_cache.clear()
+    shared_body_fields.clear()
     progress.report('apply_response_metadata', total=len(rows), unit='source_rows')
-    refresh_response_metadata(root, rows)
+    for batch in rows.batches():
+        refresh_response_metadata(root, [row for _, row in batch])
     for row in rows:
         apply_response_role(row)
     columns.update(key for row in rows for key, value in row.items()
@@ -2166,22 +2280,20 @@ def write_filename_metadata(
             **(metadata or {}),
         },
     )
-    destination = root / "indexes/document-filenames.parquet"
-    if {row["body_key"] for row in rows if row["body_key"]} != bodies:
+    destination = (output_root or root) / "indexes/document-filenames.parquet"
+    if any(row["body_key"] not in bodies for row in rows if row["body_key"]):
         raise ValueError("Filename table does not cover every selected retained body")
-    if names != {row["filename"] for row in rows if row["filename"]}:
+    if any(row["filename"] not in names for row in rows if row["filename"]):
         raise ValueError("Filename table does not cover every known spelling")
-    document_stats = write_document_indexes(destination, rows, schema)
+    document_stats = write_document_indexes(destination, rows, schema, working=working, previous=previous, previous_documents=previous_documents, reuse_groups=reuse_results)
     return dict(
         rows=len(rows),
         **document_stats,
         distinct_bodies=len(bodies),
-        distinct_filenames=len(
-            {row["filename"] for row in rows if row["filename"] is not None}
-        ),
+        distinct_filenames=len(names),
         rows_without_retained_body=sum(row["body_key"] is None for row in rows),
         parser_inputs=input_count,
-        parsed_inputs=len(pending),
+        parsed_inputs=pending_count,
         output=str(destination),
         output_bytes=destination.stat().st_size,
         elapsed_seconds=round(time.monotonic() - started),
@@ -2189,8 +2301,27 @@ def write_filename_metadata(
 
 
 def build(root, inventory_dir, *, workers=4, families=FAMILIES, inspect_bodies=False):
+    from tempfile import TemporaryDirectory
+    from congress_api.retention.catalog_staging import WorkingCatalog
+    from congress_api.retention.catalog_cache import LocalStore
+    from congress_api.retention.catalog_publication import read_catalog
+    store = LocalStore(root)
+    snapshot = read_catalog(store)
+    with TemporaryDirectory(prefix="inventory-working-") as directory:
+        working = WorkingCatalog(Path(directory) / "working.sqlite")
+        try:
+            staged = Path(directory) / "output"
+            (staged / "indexes").mkdir(parents=True)
+            result = _build(root,inventory_dir,workers=workers,families=families,
+                            inspect_bodies=inspect_bodies,working=working,output_root=staged)
+            return publish_local_result(root,staged / "indexes/document-filenames.parquet",result,snapshot)
+        finally:
+            working.close()
+
+
+def _build(root, inventory_dir, *, workers, families, inspect_bodies, working, output_root):
     names, capture_rows, bodies, known_variants = collect_names(
-        root, inventory_dir, families
+        root, inventory_dir, families, working=working
     )
     print(
         compact(
@@ -2203,7 +2334,7 @@ def build(root, inventory_dir, *, workers=4, families=FAMILIES, inspect_bodies=F
         ),
         flush=True,
     )
-    context = read_document_sources(root, {url for _, _, url in names if url})
+    context = read_document_sources(root,context=DocumentSources(working=working))
     sources = (
         dict(
             body_key=body,
@@ -2215,7 +2346,7 @@ def build(root, inventory_dir, *, workers=4, families=FAMILIES, inspect_bodies=F
         for (body, filename, url), origins in names.items()
     )
     return dict(
-        write_filename_metadata(root, sources, workers=workers, inspect_bodies=inspect_bodies),
+        write_filename_metadata(root, sources, workers=workers, inspect_bodies=inspect_bodies, working=working, output_root=output_root),
         capture_rows=capture_rows,
         known_inventory_spellings=len(known_variants),
     )
@@ -2223,7 +2354,12 @@ def build(root, inventory_dir, *, workers=4, families=FAMILIES, inspect_bodies=F
 
 def refresh_filename_metadata(root, *, workers=4, inspect_bodies=False):
     """Reinterpret names and selected retained bodies without discovery or acquisition."""
-    source = pq.ParquetFile(root / "indexes/document-filenames.parquet")
+    from congress_api.retention.catalog_cache import LocalStore
+    from congress_api.retention.catalog_publication import read_catalog
+    snapshot = read_catalog(LocalStore(root))
+    if snapshot.filenames is None:
+        raise ValueError("Missing filename index")
+    source = pq.ParquetFile(pa.BufferReader(snapshot.filenames))
     fields = [
         *[name for name in SOURCE_SCHEMA.names if name in source.schema_arrow.names],
         *sorted(
@@ -2236,20 +2372,38 @@ def refresh_filename_metadata(root, *, workers=4, inspect_bodies=False):
         for batch in source.iter_batches(columns=fields)
         for row in batch.to_pylist()
     )
-    return write_filename_metadata(root, rows, workers=workers, previous=source, inspect_bodies=inspect_bodies, metadata={
+    return write_filename_metadata(root, rows, workers=workers, previous=source, inspect_bodies=inspect_bodies, publication_snapshot=snapshot, previous_documents=snapshot.documents, metadata={
         key.decode(): value.decode() for key, value in (source.schema_arrow.metadata or {}).items()
         if key in {b'raw_capture_rows', b'retained_recovery_fingerprint'}})
 
 
 def reindex_documents(root):
-    """Refresh document grouping from existing fields without rerunning extraction."""
-    path = root / "indexes/document-filenames.parquet"
-    source = pq.ParquetFile(path)
-    rows = [
-        {key: value for key, value in row.items() if value is not None}
-        for batch in source.iter_batches(batch_size=4096)
-        for row in batch.to_pylist()
-    ]
-    return dict(
-        rows=len(rows), **write_document_indexes(path, rows, source.schema_arrow)
-    )
+    """Refresh grouping from one input snapshot and stage its complete replacement."""
+    from tempfile import TemporaryDirectory
+    from congress_api.retention.catalog_cache import LocalStore
+    from congress_api.retention.catalog_publication import read_catalog
+    snapshot = read_catalog(LocalStore(root))
+    if snapshot.filenames is None:
+        raise ValueError("Missing filename index")
+    source = pq.ParquetFile(pa.BufferReader(snapshot.filenames))
+    rows = ({key:value for key,value in row.items() if value is not None}
+            for batch in source.iter_batches(batch_size=4096) for row in batch.to_pylist())
+    with TemporaryDirectory(prefix="document-reindex-") as directory:
+        path = Path(directory) / "document-filenames.parquet"
+        result = dict(rows=source.metadata.num_rows, **write_document_indexes(path,rows,source.schema_arrow))
+        return publish_local_result(root,path,result,snapshot)
+
+
+def publish_local_result(root, filename_path, result, snapshot):
+    """Select staged files and return durable selected paths, preserving legacy roots."""
+    from congress_api.retention.catalog_cache import LocalStore
+    from congress_api.retention.catalog_publication import publish_catalog
+    selected = publish_catalog(LocalStore(root),filename_path,filename_path.with_name("documents.parquet"),previous=snapshot)
+    return {**result, **selected, "output":str(root / selected['filenames_key']),
+            "documents_output":str(root / selected['documents_key'])}
+
+
+def selected_filename_path(root):
+    """Read the selected generation; retain filename-only legacy refresh input."""
+    from congress_api.retention.catalog_publication import MANIFEST_KEY, local_catalog_paths
+    return local_catalog_paths(root)[0] if (root / MANIFEST_KEY).is_file() else root / "indexes/document-filenames.parquet"

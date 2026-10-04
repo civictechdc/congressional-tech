@@ -1,4 +1,5 @@
 """A paired Judiciary nomination-page link can establish support purpose, not letter form."""
+from catalog_test_helpers import selected_path
 import pyarrow.parquet as pq
 import pytest
 
@@ -130,17 +131,17 @@ def test_rebuild_recomputes_context_and_does_not_cache_it_as_filename_meaning(tm
                source_occurrences=[occurrence()])
     index.write_filename_metadata(tmp_path, [row], workers=1)
     path = tmp_path/'indexes/document-filenames.parquet'
-    first = pq.read_table(path)
+    first = pq.read_table(selected_path(path))
     saved, = first.to_pylist()
     assert saved['document_kind'] == ['nomination-support']
     index.reindex_documents(tmp_path)
-    same, = pq.read_table(path).to_pylist()
+    same, = pq.read_table(selected_path(path)).to_pylist()
     assert same == saved
     # A full filename rebuild may reuse cached filename extraction. Context
     # must still disappear when its supporting occurrence is removed.
     clean = {**row, 'source_occurrences': None}
     index.write_filename_metadata(tmp_path, [clean], workers=1, previous=first)
-    removed, = pq.read_table(path).to_pylist()
+    removed, = pq.read_table(selected_path(path)).to_pylist()
     assert removed['document_kind'] is removed['document_family'] is None
     assert removed['source_id'] == saved['source_id']
     assert removed['document_id'] == saved['document_id']
@@ -153,9 +154,9 @@ def test_document_aliases_share_family_without_promoting_one_alias_broad_fallbac
             for i,name in enumerate(['Aramayo Support for de Alba.pdf', 'Aramayo Letter of Support for de Alba.pdf'])]
     index.write_filename_metadata(tmp_path, rows, workers=1)
     path = tmp_path/'indexes/document-filenames.parquet'
-    before = pq.read_table(path.with_name('documents.parquet'))
+    before = pq.read_table(selected_path(path.with_name('documents.parquet')))
     document, = before.to_pylist()
     assert document['document_kind'] == ['letter-of-support']
     assert document['document_family'] == ['letter', 'nomination-support']
     index.reindex_documents(tmp_path)
-    assert before.equals(pq.read_table(path.with_name('documents.parquet')))
+    assert before.equals(pq.read_table(selected_path(path.with_name('documents.parquet'))))

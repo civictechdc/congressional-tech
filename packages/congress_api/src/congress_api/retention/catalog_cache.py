@@ -37,9 +37,32 @@ class LocalStore:
         try:
             with os.fdopen(fd, "wb") as stream:
                 stream.write(data)
+                stream.flush()
+                os.fsync(stream.fileno())
             os.replace(temporary, path)
+            directory = os.open(path.parent, os.O_RDONLY)
+            try:
+                os.fsync(directory)
+            finally:
+                os.close(directory)
         finally:
             Path(temporary).unlink(missing_ok=True)
+
+
+    def put_catalog_manifest(self, data, *, expected_version):
+        """Compare and replace the selector while holding a local writer lock."""
+        import fcntl
+        from congress_api.retention.catalog_publication import MANIFEST_KEY
+        lock = self.root / 'indexes/.catalog.lock'
+        lock.parent.mkdir(parents=True, exist_ok=True)
+        with lock.open('a+b') as stream:
+            fcntl.flock(stream, fcntl.LOCK_EX)
+            current = self.read(MANIFEST_KEY)
+            version = sha256(current).hexdigest() if current is not None else None
+            if version != expected_version:
+                raise RuntimeError('Concurrent catalog update; selected snapshot preserved')
+            self.put(MANIFEST_KEY, data)
+
 
 
 def load_results(store, name, fingerprint, keys, *, reuse=True):
@@ -99,14 +122,14 @@ def capture_digest(table):
 
 def source_fingerprint():
     """Source interpretation changes independently of filename and PDF-cover rules."""
-    from congress_api.retention import document_index, document_recovery, raw_catalog
+    from congress_api.retention import document_index, document_recovery, raw_catalog, catalog_staging
     from congress_api import parsers, models
 
     paths = [
         Path(__file__),
         *(
             Path(module.__file__)
-            for module in (document_index, document_recovery, raw_catalog)
+            for module in (document_index, document_recovery, raw_catalog, catalog_staging)
         ),
     ]
     for module in (parsers, models):

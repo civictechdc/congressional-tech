@@ -5,6 +5,8 @@ from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 from datetime import datetime, timezone
 import time
 
+import pyarrow.compute as pc
+
 from congress_api.models.content import RawContent
 from congress_api.parsers.archive_links import inspect_capture
 from congress_api.retention.raw_archive import BodyLimitExceeded
@@ -52,6 +54,7 @@ def run_sync(
     active = {}
     submitted = 0
     fatal = False
+    collector_error = None
 
     def acquire(state):
         if state.get("body_key") and not state.get("links_scanned"):
@@ -94,12 +97,21 @@ def run_sync(
                     state = queue.popleft()
                     active[pool.submit(acquire, state)] = state
                     submitted += 1
+                    progress.advance("capture_tasks_submitted")
                 if not active:
                     break
                 done, _ = wait(active, timeout=1, return_when=FIRST_COMPLETED)
                 for future in done:
                     state = active.pop(future)
-                    response, mode = future.result()
+                    try:
+                        response, mode = future.result()
+                    except Exception as error:
+                        # Drain successes already in flight before saving and failing.
+                        collector_error = collector_error or error
+                        fatal = True
+                        counts["collector_failed_tasks"] += 1
+                        progress.advance("collector_failed_tasks")
+                        continue
                     outcome, links = inspect_capture(response, replay=mode == "replay")
                     for link in links:
                         link["parent_url"] = state["url"]
@@ -116,6 +128,8 @@ def run_sync(
                     )
                     counts[outcome] += 1
                     counts[mode] += 1
+                    progress.advance("capture_tasks_completed")
+                    progress.advance("usable_capture_results", int(outcome == "saved"))
                     progress.report('acquire_sources', completed=counts['fetch'] + counts['replay'],
                                     unit='capture_attempts')
                     counts["zyte_fallbacks"] += bool(response.get("prior_attempts"))
@@ -133,6 +147,8 @@ def run_sync(
     finally:
         progress.report('save_capture_indexes')
         archive.save()
+    if collector_error is not None:
+        raise collector_error
     if stop and stop.is_set():
         raise InterruptedError("Capture stopped; completed receipts and state were saved.")
     if fatal:
@@ -141,6 +157,23 @@ def run_sync(
         )
     return dict(
         counts,
+        accounting={
+            "known_urls": len(archive.state),
+            "known_urls_basis": "distinct normalized URLs in download state; includes source pages and retryable failures",
+            "urls_by_source_family": dict(Counter(row.get("family") or "unknown" for row in archive.state.values())),
+            "usable_capture_results_basis": "this run's completed tasks classified saved; includes linked source pages",
+            "unique_retained_body_keys_basis": "distinct nonempty body keys referenced by the saved capture index; includes error/provider bytes and does not check storage existence",
+            "excluded_media_urls": sum(row["outcome"] == "excluded_media" for row in archive.state.values()),
+            "capture_tasks_submitted": submitted,
+            "capture_tasks_completed": counts["fetch"] + counts["replay"],
+            "fetch_tasks_completed": counts["fetch"],
+            "retained_replays_completed": counts["replay"],
+            "usable_capture_results": counts["saved"],
+            "unique_retained_body_keys": pc.count_distinct(pc.filter(
+                archive.captures["body_key"], pc.not_equal(archive.captures["body_key"], "")
+            )).as_py(),
+            "url_outcomes": dict(Counter(row["outcome"] for row in archive.state.values())),
+        },
         attempted=submitted,
         known_urls=len(archive.state),
         remaining=sum(

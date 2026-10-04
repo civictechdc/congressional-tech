@@ -165,11 +165,17 @@ class Archive:
                     )
         # Add every known document URL, including files not yet downloaded.
         # Only a changed catalog can introduce additional unqueued document URLs.
-        version = getattr(store, 'version', lambda key: None)('indexes/document-filenames.parquet')
+        from congress_api.retention.catalog_publication import FILENAMES, MANIFEST_KEY, read_catalog
+        # The selector changes only after both immutable tables are uploaded.
+        object_version = getattr(store, 'version', lambda key: None)
+        version = object_version(MANIFEST_KEY)
+        if version == 'missing':
+            version = object_version(FILENAMES)
         self.filename_version = version
         names = None
         if repair or version is None or saved_metadata.get(b'filename_version') != str(version).encode():
-            names = store.read('indexes/document-filenames.parquet')
+            snapshot = read_catalog(store)
+            names = snapshot.filenames
         if names:
             table = pq.read_table(
                 pa.BufferReader(names),

@@ -30,8 +30,19 @@ The two public tables retain distinct views of the same catalog:
 
 | File | Contents |
 | --- | --- |
-| `indexes/document-filenames.parquet` | Exact file/URL observations, receipt locators, source context and per-filename fields |
-| `indexes/documents.parquet` | Grouped documents, extracted metadata and all known aliases |
+| `catalog-generations/<generation>/document-filenames.parquet` | Exact file/URL observations, receipt locators, source context and per-filename fields |
+| `catalog-generations/<generation>/documents.parquet` | Grouped documents, extracted metadata and all known aliases |
+
+`indexes/catalog.json` selects both immutable files together after their IDs,
+checksums, and row counts pass validation. Consumers read this selection once
+and use the named pair. Root `indexes/document-filenames.parquet` and
+`indexes/documents.parquet` are migration inputs only when no selection exists.
+A corrupt or incomplete selected generation fails instead of falling back to
+unselected roots. An interrupted generation upload leaves the last selected
+pair readable. A competing writer must pass the conditional selection update.
+Local commands stage outputs outside the archive, preserving legacy root files
+even during the first migration. Their results return the selected generation's
+file paths.
 
 Raw receipts and bodies remain authoritative. The capture index locates those
 receipts; the filename table is the reusable inventory. There is no additional
@@ -56,7 +67,8 @@ and last published inventory; there is no promise of resuming its internal join.
 
 Acquisition loads download state, applies new capture rows and imports changed
 inventory URLs. Unindexed receipt batches recover interrupted acquisition.
-No additional database, service or queue is introduced.
+The rebuild uses a disposable local SQLite database to bound metadata joins
+and grouping. It is working storage, not a new source authority or service.
 
 ## Commands
 
@@ -117,7 +129,9 @@ All R2 writers share the `raw-source-mirror` concurrency group with
 Before replacement, it validates the paired tables and preserves exact previous
 table bytes in `catalog-history/sha256/`. Conditional writes reject competing
 index updates. Readers must check matching `catalog_id` values; interrupted
-publication may leave an unmatched pair, which the next update repairs.
+publication leaves the previous selected pair readable. Legacy root files may
+already be unmatched; the rebuild can repair them by publishing a validated
+generation.
 
 The Actions summary and retained artifact include operation, revision, publication
 result and progress. Live progress is also available at
@@ -136,3 +150,38 @@ failure evidence, boundaries, changes and verification limits.
 
 The workflow allows four hours. Capture remains bounded to 90 minutes, leaving
 time for updating metadata or an explicitly requested repair.
+
+
+## Operational accounting and qualification
+
+The summary records acquisition, catalog publication, and planning statuses
+separately. A catalog failure leaves `acquisition_status=completed` and
+`catalog_status=failed` when collection already finished. A collector failure
+drains successful tasks already in flight, saves their receipts and state, and
+fails acquisition before publication. Failures identify their exception type
+without placing exception payloads in status reports.
+
+`accounting` names each counting unit: distinct normalized URLs, submitted and
+completed capture tasks, native request dispatches, usable capture results,
+unique retained body keys, filename rows, and grouped documents. URL outcomes
+and source-family membership explain exclusions, failures, and source pages.
+Native dispatch counts describe commands queued before worker execution; actual
+wire HTTP starts remain unknown. Stored bodies include failed responses and
+provider bytes. Grouped document metadata can describe uncaptured files. These
+counts cannot be interpreted as interchangeable totals.
+
+The offline CI gate tests each acquisition write boundary, partial collector
+failure, offline publisher rebuild, immutable-pair selection, bounded staging,
+source context, and the pinned benchmark on a small fixture. Both committee
+updates and raw capture upload the fixture qualification report when validation
+runs. Successful validation caches include revision and dependency identity.
+
+For a full source/index snapshot benchmark, use
+[`scripts/benchmark_core_rebuild.py`](../../scripts/benchmark_core_rebuild.py)
+as described in [`core-workflow-qualification.md`](../../docs/core-workflow-qualification.md).
+It pins consumed source/index inputs, seeds, and published outputs; records time,
+reads and stage memory; and compares hashes of complete records with a reference
+pair, preserving duplicate counts. Linux aggregate process
+memory is sampled across worker children; other platforms report parent memory
+and leave the aggregate budget unqualified. Below 8 GiB for a full Linux
+metadata rebuild remains a target until that full run is executed and retained.

@@ -254,12 +254,12 @@ def marker_fields(data):
     return fields
 
 
-def enrich_sources(rows, *, read_body, extract, cached=None):
+def enrich_sources(rows, *, read_body, extract, cached=None, urls=None, initialize_roles=True, shared_body_fields=None):
     """Read native content/format facts; PDF covers are a separate fallback stage.
 
     Original filenames, URLs, types and statuses stay intact.
     """
-    urls = defaultdict(set)
+    urls = urls if urls is not None else defaultdict(set)
     cached = cached if cached is not None else {}
 
     def remember(url):
@@ -269,7 +269,10 @@ def enrich_sources(rows, *, read_body, extract, cached=None):
                     and parts.hostname in {'congress.gov', 'www.congress.gov'}
                     and re.fullmatch(r'/\d+/meeting/house/\d+/documents/[^/]+', parts.path)
                     and not parts.query and not parts.fragment):
-                urls[legacy_house_cache_name(url)].add(url)
+                key = legacy_house_cache_name(url)
+                candidates = urls[key]
+                candidates.add(url)
+                urls[key] = candidates
         except ValueError:
             pass
 
@@ -282,7 +285,8 @@ def enrich_sources(rows, *, read_body, extract, cached=None):
     for row in rows:
         if row.get('source_url'):
             remember(row['source_url'])
-        row['record_role'] = ['error-response' if row.get('source_record_type') == ['error-page']
+        if initialize_roles:
+            row['record_role'] = ['error-response' if row.get('source_record_type') == ['error-page']
                               else 'source-record' if row.get('source_record_type') else 'document']
         paths = row.get('source_paths') or []
         if (not row.get('source_url') and row.get('filename_origins') == ['retained_path']
@@ -312,7 +316,13 @@ def enrich_sources(rows, *, read_body, extract, cached=None):
             for url in fields.get('source_record_document_url', ()):
                 remember(url)
 
-    body_fields = {key: fields for (family, key), fields in cached.items() if family == 'document'}
+    # Share only evidence admitted by the original per-call body pass. A typed
+    # XML alias alone does not opt into native evidence; an anonymous alias can
+    # establish it for identical bytes in a later batch.
+    body_fields = shared_body_fields if shared_body_fields is not None else {}
+    for row in rows:
+        if ('document', row.get('body_key')) in cached:
+            body_fields.setdefault(row['body_key'], cached[('document', row['body_key'])])
     for row in rows:
         name = row.get('filename') or ''
         encoded = ENCODED_NAME.match(name)
@@ -367,7 +377,8 @@ def enrich_document_covers(rows, *, read_body, cached=None):
     identical bytes across aliases; capture failures stay capture-specific.
     """
     cached = cached if cached is not None else {}
-    covers = {key: fields for (reader, key), fields in cached.items() if reader == 'cover'}
+    covers = {row['body_key']: cached[('cover', row['body_key'])]
+              for row in rows if ('cover', row.get('body_key')) in cached}
     covers.update({row['body_key']: {key: row[key] for key in COVER_FIELDS if row.get(key)}
               for row in rows if row.get('body_key') and row.get('content_document_kind')
               and row.get('body_format') == ['pdf']})

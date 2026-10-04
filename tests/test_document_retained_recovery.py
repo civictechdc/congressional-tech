@@ -1,4 +1,5 @@
 """Replay retained evidence without inventing downloads, aliases, or successes."""
+from catalog_test_helpers import selected_path
 import gzip
 import json
 from io import BytesIO
@@ -28,8 +29,8 @@ def build(root, rows, bodies=None, **kwargs):
     (root / 'indexes').mkdir(exist_ok=True)
     index.write_filename_metadata(root, rows, workers=1, inspect_bodies=True,
                                   read_body=lambda key: (bodies or {}).get(key), **kwargs)
-    return (pq.read_table(root / 'indexes/document-filenames.parquet').to_pylist(),
-            pq.read_table(root / 'indexes/documents.parquet').to_pylist())
+    return (pq.read_table(selected_path(root / 'indexes/document-filenames.parquet')).to_pylist(),
+            pq.read_table(selected_path(root / 'indexes/documents.parquet')).to_pylist())
 
 
 def source(name=None, url=None, body=None, **fields):
@@ -189,7 +190,7 @@ def test_probe_facts_survive_a_source_context_only_refresh(tmp_path):
         {'xml_url': url, 'pdf_url': url.replace('.xml', '.pdf'), 'status': 'not_found', 'http_status': 404})])
     build(tmp_path, [source('Vita.xml', url)])
     index.refresh_source_metadata(tmp_path, index.DocumentSources())
-    row, = pq.read_table(tmp_path / 'indexes/document-filenames.parquet').to_pylist()
+    row, = pq.read_table(selected_path(tmp_path / 'indexes/document-filenames.parquet')).to_pylist()
     assert row['source_probe_status'] == ['not_found']
     assert row['record_role'] == ['capture-state']
 
@@ -197,10 +198,10 @@ def test_probe_facts_survive_a_source_context_only_refresh(tmp_path):
 def test_anonymous_xml_body_cache_replays_without_rereading(tmp_path):
     row = source(body='xml')
     build(tmp_path, [row], {'xml': b'<witness-list meeting-id="HMKP123"/>'})
-    previous = pq.read_table(tmp_path / 'indexes/document-filenames.parquet')
+    previous = pq.read_table(selected_path(tmp_path / 'indexes/document-filenames.parquet'))
     index.write_filename_metadata(tmp_path, [row], workers=1, inspect_bodies=True, previous=previous,
         read_body=lambda _: pytest.fail('Immutable XML meaning should be cached'))
-    assert pq.read_table(tmp_path / 'indexes/document-filenames.parquet').to_pylist() == previous.to_pylist()
+    assert pq.read_table(selected_path(tmp_path / 'indexes/document-filenames.parquet')).to_pylist() == previous.to_pylist()
 
 
 def test_recurring_catalog_replays_old_consumed_receipts_and_new_attempts(tmp_path):
@@ -214,18 +215,19 @@ def test_recurring_catalog_replays_old_consumed_receipts_and_new_attempts(tmp_pa
         {'xml_url': url, 'pdf_url': url.replace('.xml', '.pdf'), 'status': 'not_found', 'http_status': 404})])
     store = MemoryStore()
     for path in (FILENAMES, DOCUMENTS, 'receipts.jsonl.gz'):
-        store.objects[path] = (tmp_path / path).read_bytes()
-    captures = pa.Table.from_pylist(pq.read_table(tmp_path / 'indexes/captures.parquet').to_pylist(), schema=CAPTURE_SCHEMA)
+        store.objects[path] = selected_path(tmp_path / path).read_bytes()
+    captures = pa.Table.from_pylist(pq.read_table(selected_path(tmp_path / 'indexes/captures.parquet')).to_pylist(), schema=CAPTURE_SCHEMA)
     rebuild_catalog(store, captures, workers=1, inspect_bodies=True)
-    first = pq.read_table(pa.BufferReader(store.read(FILENAMES)))
+    from test_raw_catalog import table
+    first = table(store)
     assert first.to_pylist()[0]['source_probe_status'] == ['not_found']
     rebuild_catalog(store, captures, workers=1, inspect_bodies=True)
-    assert pq.read_table(pa.BufferReader(store.read(FILENAMES))).to_pylist() == first.to_pylist()
+    assert table(store).to_pylist() == first.to_pylist()
     # A later metadata-only attempt must be consumed even though it is not a download receipt.
     capture = {**captures.to_pylist()[0], 'receipt_key': 'next.jsonl.gz'}
     store.objects['next.jsonl.gz'] = gzip.compress(json.dumps({'record': {
         'xml_url': url, 'pdf_url': url.replace('.xml', '.pdf'), 'status': 'blocked', 'http_status': 403}}).encode())
     rebuild_catalog(store, pa.Table.from_pylist([*captures.to_pylist(), capture], schema=captures.schema), workers=1, inspect_bodies=True)
-    row, = pq.read_table(pa.BufferReader(store.read(FILENAMES))).to_pylist()
+    row, = table(store).to_pylist()
     assert row['source_probe_status'] == ['blocked', 'not_found']
     assert row['http_status'] == ['403', '404']

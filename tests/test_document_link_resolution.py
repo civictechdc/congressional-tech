@@ -1,4 +1,5 @@
 """Resolve catalog aliases only from observed anchors; retain anonymous evidence."""
+from catalog_test_helpers import selected_path
 from copy import deepcopy
 import gzip
 import json
@@ -107,7 +108,7 @@ def test_anonymous_source_page_keeps_capture_locator_without_inventing_url(tmp_p
             for body in ['house-page', 'unknown-body']]
     index.write_filename_metadata(tmp_path, rows, workers=1)
     path = tmp_path / 'indexes/document-filenames.parquet'
-    before = pq.read_table(path)
+    before = pq.read_table(selected_path(path))
     page, unknown = before.to_pylist()
     assert page['record_role'] == ['source-record']
     assert page['source_record_type'] == ['committee-meeting-page']
@@ -120,10 +121,10 @@ def test_anonymous_source_page_keeps_capture_locator_without_inventing_url(tmp_p
     assert unknown['record_role'] == ['document']
     assert not unknown.get('source_record_type')
     index.refresh_source_metadata(tmp_path, index.DocumentSources())
-    after = pq.read_table(path)
+    after = pq.read_table(selected_path(path))
     assert before.to_pylist() == after.to_pylist()
     index.refresh_filename_metadata(tmp_path, workers=1)
-    assert before.to_pylist() == pq.read_table(path).to_pylist()
+    assert before.to_pylist() == pq.read_table(selected_path(path)).to_pylist()
 
 
 def test_cached_filename_metadata_cannot_type_another_anonymous_body(tmp_path):
@@ -133,9 +134,9 @@ def test_cached_filename_metadata_cannot_type_another_anonymous_body(tmp_path):
     rows = [dict(body_key=body, filename=None, source_url=None, media_type=['text/html'])
             for body in ['unknown-body', 'house-page']]
     index.write_filename_metadata(tmp_path, rows, workers=1)
-    previous = pq.read_table(tmp_path / 'indexes/document-filenames.parquet')
+    previous = pq.read_table(selected_path(tmp_path / 'indexes/document-filenames.parquet'))
     index.write_filename_metadata(tmp_path, rows, workers=1, previous=previous)
-    after = pq.read_table(tmp_path / 'indexes/document-filenames.parquet')
+    after = pq.read_table(selected_path(tmp_path / 'indexes/document-filenames.parquet'))
     assert previous.to_pylist() == after.to_pylist()
 
 
