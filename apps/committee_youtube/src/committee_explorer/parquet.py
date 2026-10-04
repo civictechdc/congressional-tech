@@ -11,7 +11,7 @@ from urllib.parse import urlsplit
 
 import pyarrow as pa
 import pyarrow.parquet as pq
-from congress_api.adapters.committees import HIERARCHY_SOURCE, hierarchy_from_code
+from congress_api.matching.committees import HIERARCHY_SOURCE, hierarchy_from_code
 from congress_api.adapters.meetings import category, document_title, event_page
 from congress_api.matching.meetings import meeting_access, meeting_type
 

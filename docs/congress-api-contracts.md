@@ -47,6 +47,47 @@ New Senate page associations record matcher version `2`; retained unversioned
 associations keep their prior version `1`. These changes do not require refetching
 source files or changing source-parser versions.
 
+## Shared source interpretation
+
+The helpers below accept retained source values and return facts or decisions
+without constructing `committee_meeting` records. Core workflows and adapters
+use the same interpretation. Adapters continue to own normalized record types,
+application identifiers, relationships and provenance formatting.
+
+| Input and shared owner | Result and limits |
+| --- | --- |
+| Senate state: `matching.senate_events` | Validates source-only event admission and reconciles dated access, roundtable types and explicit no-broadcast notices. Source notices and matching dates remain required evidence. |
+| Receipts: `parsers.observations` | Separates valid observation times, live source checks and caption observations. A failed refresh does not erase an earlier successful observation; an undated negative result stays unknown. |
+| Recording tokens and URLs: `parsers.media.recording_reference` | Returns provider, native identifier, optional Senate scope, identity key and supplied URL. YouTube privacy embeds use the same video identity as ordinary embeds. Output-specific identifiers remain in adapters. |
+| Publisher document codes and labels: `parsers.document_types.document_type` | Returns a literal document meaning. House collection, meeting adapters and retained indexes map that meaning to their respective output categories. For example, `TC` means table of contents; the coarse meeting category is `hearing_record`. |
+| Committee codes: `matching.committees` | Validates Congress-scoped source identities and derives hierarchy. Native committee identity remains separate from aliases used for recording-channel lookup. |
+| Reviewed committee decisions: `matching.committee_adjustments.reviewed_adjustments` | Returns separately cited, Congress-scoped metadata overlays. It does not modify publisher observations or invent terms beyond explicitly reviewed additions. The publication snapshots the core decision file. |
+| YouTube rows: `youtube_api.interpretation` | `source_time` requires an explicit date basis and preserves the original field/value. `availability_facts` distinguishes a successful API omission from web-player availability and keeps automatic-caption availability unknown. |
+
+Provider recognition preserves published recording IDs. The application applies
+`native-recording-provider-keys` migration version `1` before adapting native
+meetings and records its result in the publication's `coverage.json`. It aliases
+unambiguous material, version, representation and meeting-link keys. When public
+IDs conflict, the native record keeps its source key and both allocated identities
+remain distinct. Newly imported recordings use the shared provider key.
+If the prior parser incorrectly recognized a provider in a foreign URL or a
+partial identifier, the corrected association uses separate graph keys. The
+receipt records the correction reason and old/new IDs for all four record
+types. Existing registry bindings and historical issue subjects remain intact;
+the rejected URL cannot become part of a genuine provider recording.
+
+`youtube-analyze --date-basis playlist_added` retains the historical default:
+`publishedAt` is the playlist-item timestamp. `--date-basis video_publication`
+uses `videoPublishedAt` with no playlist fallback. UTC date ranges include the
+start and exclude the end, so adjacent Congresses never count a video twice.
+Missing or invalid timestamps are excluded and reported; the stored
+source rows and report columns remain unchanged.
+
+Focused regressions exercise the shared helpers and their consumer paths,
+including missing dates, dated and undated absence, committee scope, literal
+document codes and provider URL boundaries. Import-fence tests prevent source
+helpers from depending on application adapters or normalized record models.
+
 ## Commands and artifacts
 
 These ten production console script names are stable. Default data paths are relative

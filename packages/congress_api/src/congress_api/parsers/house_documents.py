@@ -11,6 +11,7 @@ import xml.etree.ElementTree as ET
 from congress_api.models.house import HouseMeetingXML, HouseWitnessListXML
 from congress_api.parsers.house_xml import parse_house_meeting, parse_house_witnesses
 from congress_api.parsers.text import text
+from congress_api.parsers.document_types import DOCUMENT_TYPE_MEANINGS
 
 FAILED = "There was an error retrieving data for this meeting"
 
@@ -39,10 +40,20 @@ WITNESS = re.compile(r"<h3 class=\"witPanelHeader\">(.*?)</h3>|<p><strong>(.*?)<
 
 
 ## SD says only "support document"; its description supplies the more specific kind when there is one.
-XML_KINDS = {"WS": "witness statement", "WT": "truth in testimony", "WB": "witness biography", "WD": "witness support document",
-             "HT": "transcript", "HW": "witness list", "HQ": "questions for the record", "MS": "member statement", "CV": "recorded vote",
-             "CR": "report", "FR": "report", "BR": "bill or amendment", "CA": "bill or amendment", "HA": "bill or amendment",
-             "FA": "bill or amendment", "HM": "hearing record", "HC": "hearing record", "SD": "support document"}
+# The collector's historical kinds are coarser than literal publisher meanings.
+COLLECTOR_KINDS = {
+    "witness-statement": "witness statement", "testimony-disclosure": "truth in testimony",
+    "witness-biography": "witness biography", "witness-support": "witness support document",
+    "member-statement": "member statement", "transcript": "transcript", "witness-list": "witness list",
+    "questions-for-record": "questions for the record", "committee-vote": "recorded vote",
+    "committee-report": "report", "conference-report": "report", "legislative-text": "bill or amendment",
+    "committee-amendment": "bill or amendment", "interchamber-amendment": "bill or amendment",
+    "floor-amendment": "bill or amendment", "member-roster": "hearing record", "cover-page": "hearing record",
+    "table-of-contents": "hearing record", "support-document": "support document",
+}
+XML_KINDS = {alias.upper(): COLLECTOR_KINDS[meaning]
+             for alias, meaning in DOCUMENT_TYPE_MEANINGS.items()
+             if len(alias) == 2 and meaning in COLLECTOR_KINDS}
 
 
 WITNESS_FIELDS = "event_id name position organization panel honorific first middle last suffix retired location behalf_of witness_type testified bioguide_id".split()

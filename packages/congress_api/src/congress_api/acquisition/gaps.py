@@ -14,6 +14,7 @@ from pypdf.errors import PyPdfError
 from congress_api.acquisition.refresh import due
 from congress_api.models.content import RawContent
 from congress_api.parsers import witness_pdf as witness_lists
+from congress_api.parsers.observations import latest_check_failed
 from congress_api.parsers.senate_player import archive_url, live_url, player_url
 from congress_api.retention.document_evidence import legacy_house_cache_name
 from congress_api.transport import http
@@ -29,7 +30,7 @@ def get_witnesses(key, url, state, version, day, today, offline, seed_cache=None
     if complete:
         if offline:
             return saved["people"]
-        failed = (saved.get("last_check") or {}).get("outcome") == "error"
+        failed = latest_check_failed(saved)
         # A missing file can appear without a package revision. Retry negatives
         # weekly, and failed refreshes next run, even for an unchanged print.
         unchanged_print = package and saved.get("version") == version and not saved.get("absent")

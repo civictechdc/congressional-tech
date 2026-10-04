@@ -1,11 +1,14 @@
 """Congress.gov's documented committee-code hierarchy; no name matching."""
 
-import re
-
 from committee_meeting.committees import Committee, CommitteeTerm
 from committee_meeting.common import Identifier, Ref
 
-HIERARCHY_SOURCE = 'https://github.com/LibraryOfCongress/api.congress.gov/blob/main/Documentation/CommitteeEndpoint.md'
+from congress_api.matching.committees import (
+    HIERARCHY_SOURCE as HIERARCHY_SOURCE,
+    hierarchy_from_code as hierarchy_from_code,
+    source_committee_key as source_committee_key,
+    source_committee_keys as source_committee_keys,
+)
 
 
 def committee_lookup(records):
@@ -22,27 +25,6 @@ def committee_lookup(records):
                     raise ValueError(f'Ambiguous committee identifier: {key}')
                 lookup[key] = value
     return lookup
-
-
-def source_committee_key(row):
-    """A retained GPO committee code is independent of its print's chamber."""
-    code = str(row.get('committee_code') or '').strip().lower()
-    if not re.fullmatch(r'[hsj][a-z0-9]{3}\d{2}', code):
-        return None
-    try:
-        congress = int(row.get('congress'))
-    except (ValueError, TypeError):
-        return None
-    if isinstance(row.get('congress'), bool) or congress <= 0:
-        return None
-    return congress, code
-
-
-def source_committee_keys(row):
-    """Every explicit body, with the legacy single-code field as a fallback."""
-    codes = [str(row.get('committee_code') or '')] + str(row.get('committee_codes') or '').split(';')
-    return tuple(dict.fromkeys(key for code in codes
-                              if (key := source_committee_key({**row, 'committee_code': code}))))
 
 
 def ensure_committee_term(congress, code, name, context, provenance, existing):
@@ -68,10 +50,3 @@ def ensure_committee_term(congress, code, name, context, provenance, existing):
         identifiers=(Identifier(scheme='congress.gov:committee', value=code, scope=str(congress)),),
         provenance=provenance,
     )
-
-
-def hierarchy_from_code(code):
-    """The last two digits are 00 for a full committee, otherwise a child."""
-    if not isinstance(code, str) or not re.fullmatch(r'[hsj][a-z0-9]{3}\d{2}', code, re.I):
-        return 'unknown', None
-    return ('full', None) if code.endswith('00') else ('subcommittee', code[:4] + '00')

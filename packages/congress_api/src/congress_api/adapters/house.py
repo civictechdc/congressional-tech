@@ -10,15 +10,13 @@ from committee_meeting.materials import DocumentDetails, MaterialLink
 from committee_meeting.meetings import Affiliation, Appearance, Panel, Person, RecordedName
 
 from congress_api.adapters.common import digest, material_records, observed_time, ref, web_url, witness_roles
-from congress_api.adapters.meetings import category
+from congress_api.adapters.meetings import category, DOCUMENT_CATEGORIES as MEETING_DOCUMENT_CATEGORIES
+from congress_api.parsers.document_types import DOCUMENT_TYPE_MEANINGS
 from congress_api.models.house import HouseParsedRecord
 
-DOCUMENT_CATEGORIES = {
-    "WS": "statement", "WT": "disclosure", "WB": "biography", "WD": "supporting",
-    "HT": "transcript", "HW": "witness_list", "HQ": "questions_for_record", "MS": "statement",
-    "CV": "vote", "CR": "report", "FR": "report", "BR": "bill_text", "CA": "amendment",
-    "HA": "amendment", "FA": "amendment", "HM": "hearing_record", "HC": "hearing_record",
-}
+DOCUMENT_CATEGORIES = {alias.upper(): MEETING_DOCUMENT_CATEGORIES[meaning]
+                       for alias, meaning in DOCUMENT_TYPE_MEANINGS.items()
+                       if len(alias) == 2 and alias != 'sd' and meaning in MEETING_DOCUMENT_CATEGORIES}
 
 
 def value(meta, path):

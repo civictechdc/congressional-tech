@@ -10,7 +10,8 @@ import time
 
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from tinydb import Query, TinyDB
+from tinydb import TinyDB
+from youtube_api.interpretation import DATE_FIELDS, DateBasis, availability_facts, source_time
 
 from congress_shared.globals import add_global_args, add_youtube_args, CONGRESS_METADATA
 
@@ -54,7 +55,10 @@ def main(
     tinydb_dir: Path = DEFAULT_TINYDB_DIR,
     channels_csv_path: Path = DEFAULT_CHANNELS_CSV,
     nthreads=None,
+    date_basis: DateBasis = "playlist_added",
 ) -> None:
+    if date_basis not in DATE_FIELDS:
+        raise ValueError(f"Unknown YouTube date basis: {date_basis}")
     init_time = time.time()
     final_reports = []
     ## problems are collected so the report still covers every committee it can,
@@ -109,6 +113,7 @@ def main(
                     CONGRESS_METADATA.keys(),
                     CONGRESS_METADATA.values(),
                     itertools.repeat(chamber),
+                    itertools.repeat(date_basis),
                 )
 
                 if nthreads > 1:
@@ -133,8 +138,8 @@ def main(
                 ## validate that we didn't accidentally exclude any videos
                 if total_count != running_count:
                     errors.append(
-                        f"{handle} ({committee_name}): {total_count - running_count} videos are"
-                        " outside the congress date ranges and were excluded from reporting."
+                        f"{handle} ({committee_name}): {total_count - running_count} videos"
+                        f" lack a usable {date_basis} date or fall outside the congress date ranges and were excluded from reporting."
                     )
                 ## add this handle's rows (committees can have several handles)
                 final_reports.extend(reports)
@@ -159,23 +164,22 @@ def generate_report_for_congress_number(
     congress_number: int,
     meta: dict[str, any],
     chamber: str,
+    date_basis: DateBasis = "playlist_added",
 ):
-    start_date = meta["start"]
-    end_date = meta["end"]
-    if end_date == "present":
-        ## publishedAt is a full timestamp, so "today" as a bare date would
-        ##  exclude videos published today; use an open end instead
-        end_date = "9999-12-31"
-
-    ## videos have:
-    ##  "publishedAt": "2025-07-23T23:26:16Z",
-
+    if date_basis not in DATE_FIELDS:
+        raise ValueError(f"Unknown YouTube date basis: {date_basis}")
+    start_date = datetime.date.fromisoformat(meta["start"])
+    end_date = (None if meta["end"] == "present"
+                else datetime.date.fromisoformat(meta["end"]))
     all_videos = _TINYDB.table(f"youtube_videos_{handle}")
-    ## First filter videos by date range
-    video = Query()
-    videos_in_date_range = all_videos.search(
-        (video.publishedAt >= start_date) & (video.publishedAt <= end_date)
-    )
+    # Keep the historical playlist-added default explicit. Publication reports
+    # do not fall back to that field when videoPublishedAt is missing.
+    videos_in_date_range = [
+        row for row in all_videos
+        if (instant := source_time(row, basis=date_basis).instant) is not None
+        and start_date <= instant.date()
+        and (end_date is None or instant.date() < end_date)
+    ]
 
     ## metric #1: total number of videos
     congress_count = len(videos_in_date_range)
@@ -189,8 +193,10 @@ def generate_report_for_congress_number(
     )
 
     ## metric #3: videos with captions published
+    evaluated_at = datetime.datetime.now(datetime.timezone.utc)
     with_captions_count = sum(
-        1 for video in videos_in_date_range if video.get("caption") is True
+        1 for video in videos_in_date_range
+        if availability_facts(video, evaluated_at=evaluated_at).captions.status == "available"
     )
 
     row = EventIdReport(
@@ -244,6 +250,12 @@ def parse_args_and_run():
         default=None,
         help="Number of threads to use (default: all available threads)."
         " Should be an integer or 'None'.",
+    )
+
+    parser.add_argument(
+        "--date-basis", choices=tuple(DATE_FIELDS), default="playlist_added",
+        help="Date used for congress ranges: playlist_added (historical default) or "
+             "video_publication (requires videoPublishedAt; no playlist fallback).",
     )
 
     ## ignore the unknown args

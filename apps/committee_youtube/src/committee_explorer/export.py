@@ -18,7 +18,6 @@ from committee_meeting.common import Ref
 from committee_meeting.provenance import Citation, Method, RetainedContent
 from committee_meeting.publication import ExportPartition, InputSnapshot, PublicationManifest, SourceScope
 from congress_api.adapters import (
-    committee_adjustments,
     committee_metadata,
     findings,
     gpo,
@@ -27,6 +26,8 @@ from congress_api.adapters import (
     transcripts,
     video_matches,
 )
+from congress_api.matching import committee_adjustments
+from congress_api.matching.senate_events import official_events
 from congress_api.adapters import meetings as native
 from congress_api.adapters import recordings as curated_recordings
 from congress_api.adapters.committees import committee_lookup, ensure_committee_term
@@ -39,6 +40,7 @@ from .history import load_history, migrate_history, save_history
 from .ids import IdRegistry
 from .issues import apply_decisions
 from .query import write_queries
+from .recording_ids import retain_recording_ids
 
 VERSION = "0.1.0"
 LOGGER = logging.getLogger(__name__)
@@ -118,7 +120,6 @@ def _retain_senate_meeting_ids(rows, senate_state, ids):
     """
     from collections import defaultdict
 
-    from congress_api.adapters.senate import official_events
     from congress_api.models.senate import workflow_record
 
     native_by_event = defaultdict(list)
@@ -235,7 +236,9 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=
                 retained_ids = _retain_senate_meeting_ids(rows, senate_input[1], ids)
                 if retained_ids:
                     reconciliation.append({'provider': 'senate.committees', 'retained_meeting_id_aliases': retained_ids})
-            assembly.add(native.records(rows, ctx))
+            recording_keys, recording_migration = retain_recording_ids(rows, ids)
+            reconciliation.append(recording_migration)
+            assembly.add(native.records(rows, ctx, recording_keys=recording_keys))
             if committees_path:
                 committee_context, committee_body = context(committees_path, 'congress.gov:committees')
                 committee_rows = [json.loads(line) for line in committee_body.splitlines() if line.strip()]
@@ -306,7 +309,7 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=
                             data = {host: {**site, 'pages': {url: page for url, page in site.get('pages', {}).items()
                                     if selected_events.intersection(map(str, workflow_record(site, url, page).get('events') or ()))}}
                                     for host, site in data.items()}
-                        for event in senate.official_events(data):
+                        for event in official_events(data):
                             source = c.source(f"senate-page|{event['host']}|{event['url']}", event['page'], event['url'])
                             evidence = c.evidence(source, selector='/event')
                             missing = list(ensure_committee_term(event['congress'], event['committee_code'],

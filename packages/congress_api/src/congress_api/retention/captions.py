@@ -8,6 +8,7 @@ from pathlib import Path
 
 from congress_api.models.media import ArchiveProbe, CaptionReceipt
 from congress_api.parsers.senate_player import parse_player_url
+from congress_api.parsers.observations import last_successful_caption_check
 from congress_api.retention.tables import read_csv
 
 RECEIPTS = "caption_receipts"
@@ -35,9 +36,9 @@ def _write_receipt(out_dir: Path, url: str, receipt: dict) -> None:
     receipt["observed_at"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     if receipt.get('outcome') == 'error' and path.exists():
         previous = json.loads(path.read_text())
-        successful = previous.get('last_successful') if previous.get('outcome') == 'error' else previous
-        if successful and successful.get('outcome') in ('available', 'not_found'):
-            receipt['last_successful'] = {k: v for k, v in successful.items() if k != 'last_successful'}
+        successful = last_successful_caption_check(previous)
+        if successful:
+            receipt['last_successful'] = successful
     _write_text(path, json.dumps(CaptionReceipt.model_validate(receipt).source_dict(), ensure_ascii=False, indent=2) + "\n")
 
 

@@ -14,10 +14,11 @@ import re
 
 from congress_api.matching.captions import text_source
 from congress_api.matching.committees import codes_of
-from congress_api.matching.gpo_videos import EVENT_ID, VIDEO_ID
+from congress_api.matching.gpo_videos import EVENT_ID
 from congress_api.matching.meetings import NOT_HELD, TRANSCRIPT, meeting_access, meeting_type
 from congress_api.matching.prints import attached_prints, match_prints, same_day_title_groups, title_key
-from congress_api.parsers.senate_player import COMM, STREAM, parse_player_url
+from congress_api.parsers.senate_player import COMM, STREAM
+from congress_api.parsers.media import youtube_video_id, senate_player_reference
 
 ## House committees whose joint hearings with their Senate counterpart the Senate studio records
 SENATE_COUNTERPART = {"hsvr00": "vetaff", "hsas00": "armed", "hsfa00": "foreign", "hsju00": "judiciary", "hsap00": "approps", "hsag00": "ag", "hsbu00": "budget", "hssm00": "smbiz"}
@@ -100,11 +101,11 @@ def assigned_by_package(hearing_videos):
 
 def _place_assigned(token, youtube, senate, other):
     """Put one assigned token on the index field completeness already treats as a recording."""
-    if parse_player_url(token):
+    if senate_player_reference(token):
         senate.append(token)
     elif token.startswith(("http://", "https://")):
-        if match := VIDEO_ID.search(token):
-            youtube.append(match.group(1))
+        if video := youtube_video_id(token):
+            youtube.append(video)
         else:
             other.append(token)
     else:
@@ -140,9 +141,9 @@ def build(meetings, gpo, videos, documents, pages, recordings, probed, yt_caps, 
         codes = codes_of(m)
         packages = prints[m["eventId"]]
         urls = [v.get("url", "") for v in (m.get("videos") or [])]
-        youtube = list(dict.fromkeys([VIDEO_ID.search(u).group(1) for u in urls if VIDEO_ID.search(u)] + vid_by_eid.get(m["eventId"], [])
+        youtube = list(dict.fromkeys([video for u in urls if (video := youtube_video_id(u))] + vid_by_eid.get(m["eventId"], [])
                                      + [v for v in found[m["eventId"]] if not v.startswith("http")]))
-        senate = [u for u in urls if parse_player_url(u)] or [u for comm in senate_comms(m, codes) for u in probed.get((comm, m["date"][:10]), [])]
+        senate = [u for u in urls if senate_player_reference(u)] or [u for comm in senate_comms(m, codes) for u in probed.get((comm, m["date"][:10]), [])]
         rows.append({"event_id": m["eventId"], "congress": m["congress"], "chamber": m.get("chamber", ""), "type": m.get("type", ""), "date": m["date"][:10],
                      "committees": ";".join(codes), "title": (m.get("title") or "").strip(), "gpo_packages": packages, "youtube_ids": youtube, "senate_urls": senate,
                      "other_recordings": " ".join(v for v in found[m["eventId"]] if v.startswith("http")),

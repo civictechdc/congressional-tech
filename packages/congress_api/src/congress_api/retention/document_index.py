@@ -59,6 +59,7 @@ from congress_api.retention.document_evidence import (
 from congress_api.parsers.source_family import family as source_family
 from congress_api.parsers.document_links import http_url
 from congress_api.parsers.document_cover import COVER_FIELDS
+from congress_api.parsers.document_types import DOCUMENT_TYPE_MEANINGS, document_type
 
 
 FAMILIES = (
@@ -109,33 +110,7 @@ DERIVED_KIND_SOURCES = frozenset({"source_document_type", "source_link_label", "
 
 # Publisher document types and their XML codes, mapped to the catalog's kinds.
 # This is index policy, not filename interpretation. Do not infer from link titles.
-SOURCE_DOCUMENT_KINDS = {
-    alias.casefold(): kind
-    for kind, aliases in [
-        ("witness-statement", ("Witness Statement", "WS")),
-        ("testimony-disclosure", ("Witness Truth in Testimony", "truth in testimony", "WT")),
-        ("witness-biography", ("Witness Biography", "WB")),
-        ("witness-support", ("Witness Support Document", "WD")),
-        ("member-statement", ("Member Statement", "Member Statements", "MS")),
-        ("committee-amendment", ("Committee Amendment", "CA")),
-        ("interchamber-amendment", ("House or Senate Amendment", "HA")),
-        ("floor-amendment", ("Floor Amendment", "FA")),
-        ("committee-vote", ("Committee Recorded Vote", "CV")),
-        ("committee-report", ("Committee Report", "CR")),
-        ("conference-report", ("Conference Report", "FR")),
-        ("legislative-text", ("Bills and Resolutions", "BR", "legislative text")),
-        ("summary", ("summary",)),
-        ("support-document", ("Support Document", "SD")),
-        ("transcript", ("Hearing: Transcript", "transcript", "HT")),
-        ("witness-list", ("Hearing: Witness List", "witness list", "HW")),
-        ("questions-for-record", ("Hearing: Questions for the Record", "questions for the record", "HQ")),
-        ("member-roster", ("Hearing: Member Roster", "HM")),
-        ("cover-page", ("Hearing: Cover Page", "HC")),
-        ("table-of-contents", ("Hearing: Table of Contents", "TC")),
-        ("questionnaire", ("questionnaire",)),
-    ]
-    for alias in aliases
-}
+SOURCE_DOCUMENT_KINDS = dict(DOCUMENT_TYPE_MEANINGS)
 
 
 def fill_document_kind(row):
@@ -235,7 +210,7 @@ def _select_document_kind(row):
     inferred = {'inventory_inference', 'house_parser_inference', 'senate_parser_inference', 'senate_parser_fallback'}
     explicit = {scope(o) for o in trusted if scope(o) and any(
         basis.startswith('publisher') for basis in o.get('source_document_type_basis') or [])
-        and any(' '.join(value.split()).casefold() in SOURCE_DOCUMENT_KINDS
+        and any(document_type(value) is not None
                 for value in o.get('source_document_type') or [])}
     # A publisher's own member section corrects an older witness guess for
     # this exact page/link. Preserve both observations and unrelated parents.
@@ -248,7 +223,7 @@ def _select_document_kind(row):
                    if occurrences else row.get("source_label_document_kind") or [])
     kinds = {
         kind for value in source_types
-        if (kind := SOURCE_DOCUMENT_KINDS.get(" ".join(value.split()).casefold()))
+        if (kind := document_type(value))
     }
     row["document_kind"] = sorted(kinds) or None
     row["document_kind_source"] = ["source_document_type"] if kinds else None

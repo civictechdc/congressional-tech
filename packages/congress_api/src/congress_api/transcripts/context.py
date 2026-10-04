@@ -204,8 +204,14 @@ def context_for_event(event_id: str, package_id: str = "") -> HearingContext:
         if p.role in ("member", "chair", "ranking_member") and p.bioguide_id in leg:
             l = leg[p.bioguide_id]; p.party = p.party or l["party"]; p.state = p.state or l["state"]
             p.honorific = "Senator" if l["chamber"] == "sen" else HONORIFIC.get(l["gender"], p.honorific or "Mr.")
-    from congress_api.matching.gpo_videos import VIDEO_ID
-    from congress_api.parsers.senate_player import parse_player_url
-    urls = [v.get("url", "") for v in (m.get("videos") or [])]
-    return HearingContext(header=header, participants=participants, youtube_ids=[VIDEO_ID.search(u).group(1) for u in urls if VIDEO_ID.search(u)],
-                          senate_urls=[u for u in urls if parse_player_url(u)], scheduled_time_et=et_time(m.get("date", "")) if m.get("date") else "")
+    youtube, senate = recording_sources(m)
+    return HearingContext(header=header, participants=participants, youtube_ids=youtube,
+                          senate_urls=senate, scheduled_time_et=et_time(m.get("date", "")) if m.get("date") else "")
+
+
+def recording_sources(meeting):
+    """Interpret supplied meeting player URLs without loading participant context."""
+    from congress_api.parsers.media import youtube_video_id, senate_player_reference
+    urls = [v.get("url", "") for v in (meeting.get("videos") or [])]
+    return ([video for url in urls if (video := youtube_video_id(url))],
+            [url for url in urls if senate_player_reference(url)])

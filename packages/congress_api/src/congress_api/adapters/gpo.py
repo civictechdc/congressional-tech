@@ -18,7 +18,8 @@ from committee_meeting.materials import (
 )
 from committee_meeting.provenance import AlternativeValue, FieldEvidence, Method
 
-from congress_api.adapters.committees import committee_lookup, ensure_committee_term, source_committee_keys
+from congress_api.adapters.committees import committee_lookup, ensure_committee_term
+from congress_api.matching.committees import source_committee_keys
 from congress_api.adapters.common import AdapterContext, MeetingLookupKey, meeting_lookup_key, reported_time, web_url
 from congress_api.matching.reviewed_committees import reviewed
 

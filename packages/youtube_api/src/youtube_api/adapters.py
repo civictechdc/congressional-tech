@@ -8,10 +8,11 @@ channel identity from a handle/playlist or publication time from another event.
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
-from datetime import datetime, timezone
 import math
 from typing import Any
 from urllib.parse import quote
+
+from youtube_api.interpretation import availability_facts, source_time
 
 from committee_meeting.assessments import Assessment
 from committee_meeting.committees import Channel
@@ -94,16 +95,13 @@ def records(
             or not math.isfinite(duration) or duration < 0
         )
         version_ref = Ref(kind="material_version", id=context.ids("material_version", key + "|reported-edition"))
-        publication = None
-        if row.get("videoPublishedAt"):
-            try:
-                instant = datetime.fromisoformat(row["videoPublishedAt"].replace("Z", "+00:00"))
-                if instant.tzinfo is not None:
-                    instant = instant.astimezone(timezone.utc)
-                    publication = ReportedTime(date=instant.date(), time=instant.time(), timezone="UTC",
-                                               precision="second", original=row["videoPublishedAt"])
-            except (ValueError, TypeError, AttributeError):
-                pass  # The unparsed source value remains available in the source record.
+        publication_time = source_time(row, basis="video_publication")
+        instant = publication_time.instant
+        publication = (
+            ReportedTime(date=instant.date(), time=instant.time(), timezone="UTC",
+                         precision="second", original=publication_time.original)
+            if instant is not None else None
+        )
         yield MaterialVersion(
             id=version_ref.id, material=material_ref, published_at=publication,
             duration_seconds=None if invalid_duration else duration,
@@ -129,35 +127,22 @@ def records(
                 explanation="The retained publishedAt field is the playlist-item timestamp. It remains in the source record.",
                 detected_at=context.now, provenance=context.evidence(source, selector=pointer + "/publishedAt"),
             )
-        observed_at = None
-        try:
-            checked = datetime.fromisoformat(row.get("details_checked_at", "").replace("Z", "+00:00"))
-            if checked.tzinfo is not None and checked <= context.now:
-                observed_at = checked
-        except (ValueError, TypeError, AttributeError):
-            pass
+        facts = availability_facts(row, evaluated_at=context.now)
         if row.get("available") is False:
             yield Assessment(
                 id=context.ids("assessment", key + "|api-availability"), subject=material_ref,
-                aspect="reachability", status="not_found" if observed_at else "unknown",
-                evaluated_at=context.now, observed_at=observed_at, provider="youtube",
-                scope="YouTube Data API videos.list response for this video ID; the web player was not checked.",
-                explanation="The API omitted this video from a successful response. This does not establish whether it was deleted, made private, or can be played elsewhere.",
+                aspect="reachability", status=facts.api.status,
+                evaluated_at=context.now, observed_at=facts.api.observed_at, provider="youtube",
+                scope=facts.api.scope, explanation=facts.api.explanation,
                 provenance=context.evidence(source, selector=pointer + "/available"),
             )
-        caption = row.get("caption")
         yield Assessment(
             id=context.ids("assessment", key + "|captions"), subject=material_ref,
-            aspect="captions", status="available" if caption is True else "unknown",
-            evaluated_at=context.now, observed_at=observed_at, provider="youtube",
-            scope="Retained YouTube contentDetails.caption flag; automatic captions were not checked.",
-            explanation=(
-                "The retained API flag reports published captions; no caption bytes or language were acquired."
-                if caption is True else
-                "The retained flag does not establish whether automatic captions are available."
-                if caption is False else "The retained metadata has no confirmed caption availability."
-            ),
-            provenance=context.evidence(source, selector=pointer + "/caption") if "caption" in row else evidence,
+            aspect="captions", status=facts.captions.status,
+            evaluated_at=context.now, observed_at=facts.captions.observed_at, provider="youtube",
+            scope=facts.captions.scope, explanation=facts.captions.explanation,
+            provenance=context.evidence(source, selector=pointer + "/" + facts.captions.field)
+            if facts.captions.field else evidence,
         )
         associations = (meetings or {}).get(video, ())
         if associations:

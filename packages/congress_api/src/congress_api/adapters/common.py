@@ -16,6 +16,8 @@ def meeting_lookup_key(congress: int, chamber: str, event_id: str) -> MeetingLoo
     return (congress, chamber, event_id)
 from urllib.parse import urlsplit
 
+from congress_api.parsers.observations import observed_time as observed_time
+
 from committee_meeting.common import Identifier, Ref, ReportedTime
 from committee_meeting.materials import (
     DocumentDetails,
@@ -63,13 +65,6 @@ def reported_time(value):
                         precision="second" if len(value.split("T")[-1].split("+")[0]) >= 8 else "minute", original=value)
 
 
-def observed_time(raw, now):
-    """Use an explicit, zoned source acquisition time; never infer freshness."""
-    try:
-        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
-        return parsed if parsed.tzinfo is not None and parsed <= now else None
-    except (AttributeError, TypeError, ValueError):
-        return None
 
 
 @dataclass

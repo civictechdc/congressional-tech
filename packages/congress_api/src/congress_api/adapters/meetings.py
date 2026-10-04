@@ -21,6 +21,9 @@ from committee_meeting.provenance import FieldEvidence
 
 from congress_api.adapters.common import digest, material_records, observed_time, ref, reported_time, web_url
 from congress_api.matching.meetings import meeting_access, meeting_type
+from congress_api.parsers import media
+from congress_api.parsers.document_types import document_type
+from congress_api.adapters.recordings import normalized_reference
 
 
 def chamber(value):
@@ -66,19 +69,33 @@ def event_page(url):
     return parsed.hostname in ("congress.gov", "www.congress.gov") and parsed.path.startswith("/event/")
 
 
+# The normalized meeting schema intentionally groups several native document types.
+DOCUMENT_CATEGORIES = {
+    "witness-statement": "statement", "member-statement": "statement",
+    "testimony-disclosure": "disclosure", "witness-biography": "biography",
+    "witness-support": "supporting", "support-document": "supporting", "summary": "supporting",
+    "committee-amendment": "amendment", "interchamber-amendment": "amendment", "floor-amendment": "amendment",
+    "committee-vote": "vote", "committee-report": "report", "conference-report": "report",
+    "legislative-text": "bill_text", "transcript": "transcript", "witness-list": "witness_list",
+    "questions-for-record": "questions_for_record", "member-roster": "hearing_record",
+    "cover-page": "hearing_record", "table-of-contents": "hearing_record",
+}
+
+
 def category(row):
     native = str(row.get("documentType") or row.get("kind") or "").strip().lower()
     # These labels describe the document itself; a title mentioning a bill or
     # witness must not replace the publisher's more specific classification.
-    explicit = {
-        "hearing: questions for the record": "questions_for_record",
-        "committee report": "report", "conference report": "report",
-        "hearing: member roster": "hearing_record", "hearing: cover page": "hearing_record",
-        "hearing: table of contents": "hearing_record",
-        "legislative text": "bill_text", "committee amendment": "amendment", "summary": "supporting",
+    # Preserve this consumer's existing priority: these specific literal labels
+    # outrank titles; generic types still permit its historical title fallback.
+    explicit_labels = {
+        "hearing: questions for the record", "committee report", "conference report",
+        "hearing: member roster", "hearing: cover page", "hearing: table of contents",
+        "legislative text", "committee amendment", "summary",
     }
-    if native in explicit:
-        return explicit[native]
+    meaning = document_type(native)
+    if native in explicit_labels and meaning in DOCUMENT_CATEGORIES:
+        return DOCUMENT_CATEGORIES[meaning]
     text = f"{row.get('documentType', '')} {row.get('kind', '')} {row.get('name', '')}".lower()
     for needle, value in (("truth in testimony", "disclosure"), ("transcript", "transcript"), ("witness list", "witness_list"), ("statement", "statement"),
                           ("testimony", "statement"), ("biograph", "biography"), ("disclosure", "disclosure"),
@@ -108,7 +125,7 @@ def related_item_identity(family, item, congress):
     return ic, f"congress.gov|{ic}|{typ}|{number}", kind, f"{typ} {number}", f"{typ}/{number}"
 
 
-def records(rows, context):
+def records(rows, context, *, recording_keys=None):
     from congress_api.models.congress import CommitteeMeeting
     for raw in rows:
         row = CommitteeMeeting.model_validate(raw).source_dict()
@@ -208,19 +225,11 @@ def records(rows, context):
                 provider = None
                 identifiers = ()
                 if recording and url:
-                    from congress_api.matching.gpo_videos import VIDEO_ID
-                    match = VIDEO_ID.search(url)
-                    if match:
-                        provider = "youtube"
-                        dkey = "youtube|" + match.group(1)
-                        identifiers = (Identifier(scheme="youtube.video", value=match.group(1)),)
-                    else:
-                        from congress_api.parsers.senate_player import parse_player_url
-                        player = parse_player_url(url)
-                        if player:
-                            provider = "senate"
-                            dkey = "senate|" + "|".join(player)
-                            identifiers = (Identifier(scheme="senate.filename", value=player[1], scope=player[0]),)
+                    parsed = media.recording_reference(url)
+                    if parsed and parsed.provider:
+                        source_key = dkey
+                        dkey, _, provider, identifiers = normalized_reference(parsed)
+                        dkey = (recording_keys or {}).get(source_key, dkey)
                 yield from material_records(context, ev, dkey, title=document_title(d), urls=[url] if url else [],
                                              subject=ref(meeting), role="recording" if recording else "vote_record" if cat == "vote" else cat if cat in ("transcript", "statement", "biography", "disclosure", "amendment", "questions_for_record") else "supporting",
                                              details=RecordingDetails(medium="video", provider=provider) if recording else DocumentDetails(category=cat), identifiers=identifiers)

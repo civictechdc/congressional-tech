@@ -1,46 +1,35 @@
 """Import retained manual meeting-recording associations without rematching."""
 
-import re
 from collections import defaultdict
 
 from committee_meeting.common import Identifier
 from committee_meeting.issues import DataIssue
 from committee_meeting.materials import RecordingDetails
 
-from congress_api.adapters.common import digest, material_records, ref, web_url
+from congress_api.adapters.common import digest, material_records, ref
+from congress_api.parsers import media
+
+
+def normalized_reference(parsed):
+    """Map parsed source identity into the normalized model's identifier scheme."""
+    if parsed.provider == "youtube":
+        identifiers = (Identifier(scheme="youtube.video", value=parsed.identifier),)
+    elif parsed.provider == "senate":
+        identifiers = (Identifier(scheme="senate.filename", value=parsed.identifier, scope=parsed.scope),)
+    else:
+        identifiers = (Identifier(scheme="url", value=parsed.url),)
+    return parsed.key, parsed.url, parsed.provider, identifiers
 
 
 def offsite_reference(url):
-    """Shared offsite player identity for curated findings and GPO match rows."""
-    return "offsite|" + url, url, None, (Identifier(scheme="url", value=url),)
+    """Compatibility wrapper for explicitly offsite normalized findings."""
+    return normalized_reference(media.offsite_reference(url))
 
 
 def recording_reference(token):
-    """Use the same recording identity for native pages and curated findings."""
-    from urllib.parse import urlsplit
-
-    from congress_api.matching.gpo_videos import VIDEO_ID
-    from congress_api.parsers.senate_player import parse_player_url
-
-    if not isinstance(token, str):
-        return None
-    url = web_url(token)
-    if re.fullmatch(r"[A-Za-z0-9_-]{11}", token):
-        return "youtube|" + token, "https://www.youtube.com/watch?v=" + token, "youtube", (Identifier(scheme="youtube.video", value=token),)
-    if not url:
-        return None
-    parsed = urlsplit(url)
-    host = (parsed.hostname or "").removeprefix("www.")
-    if host in ("youtube.com", "youtu.be", "youtube-nocookie.com"):
-        youtube = VIDEO_ID.search(url.replace("youtube-nocookie.com", "youtube.com"))
-        if youtube:
-            video = youtube.group(1)
-            return "youtube|" + video, url, "youtube", (Identifier(scheme="youtube.video", value=video),)
-    if host == "senate.gov" and parsed.path.rstrip("/") == "/isvp":
-        player = parse_player_url(url)
-        if player:
-            return "senate|" + "|".join(player), url, "senate", (Identifier(scheme="senate.filename", value=player[1], scope=player[0]),)
-    return offsite_reference(url)
+    """Compatibility wrapper; provider interpretation belongs to the source parser."""
+    parsed = media.recording_reference(token)
+    return normalized_reference(parsed) if parsed else None
 
 
 def records(rows, context, *, meetings):

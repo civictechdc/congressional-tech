@@ -78,9 +78,9 @@ The default output is `congress_shared`'s `data/youtube_event_id_report.csv`. `-
 
 CSV columns, from `EventIdReport`: `committee_name`, `handle`, `total_videos`, `missing_event_id`, `congress_number`, `control`, `chamber`, `with_captions`.
 
-A video counts for a congress when `publishedAt` falls in that congress's date range from `congress_metadata.json`. An end date of `present` is treated as `9999-12-31`. An event id is present when the title or description matches `.*(\d{6}|eventid).*`, case insensitive. `missing_event_id` is the videos in range that fail that test. `with_captions` counts stored records whose `caption` field is `True` (YouTube's `contentDetails.caption` at fetch time). `chamber` comes from the first character of the `systemCode` (`h` house, `j` joint, `s` senate). `control` is the chamber's control string from the congress metadata.
+The date basis is explicit: `--date-basis playlist_added` is the historical default and reads `publishedAt`, the timestamp from `playlistItems.snippet` for addition to the uploads playlist. `--date-basis video_publication` reads only `videoPublishedAt`, retained from `videos.list.snippet.publishedAt`; it never substitutes a playlist timestamp. Dates are interpreted in UTC; ranges in `congress_metadata.json` include the start and exclude the end so adjacent Congresses never count a video twice. An end date of `present` is open. Missing, invalid, or timezone-free timestamps remain unknown and are excluded from date counts. An event id is present when the title or description matches `.*(\d{6}|eventid).*`, case insensitive. `missing_event_id` is the videos in range that fail that test. `with_captions` counts stored records whose `caption` field is `True` (YouTube's `contentDetails.caption` at fetch time). `chamber` comes from the first character of the `systemCode` (`h` house, `j` joint, `s` senate). `control` is the chamber's control string from the congress metadata.
 
-This command calls `get_all_committee_handless` with member channels off, so personal chair channels are in the TinyDB after `youtube-fetch` and stay out of this report. Videos whose `publishedAt` falls outside every congress range are left out of the counts. The CSV is still written when some committees fail or when videos fall outside the ranges. The process then exits 1.
+This command calls `get_all_committee_handless` with member channels off, so personal chair channels are in the TinyDB after `youtube-fetch` and stay out of this report. Videos missing a usable timestamp for the chosen basis or falling outside every congress range are left out of the counts. The CSV is still written when some committees fail or when videos fall outside the ranges. The process then exits 1.
 
 ### Caption text
 
@@ -153,3 +153,21 @@ Empty `__init__.py` files mark packages and define no API.
 `src/youtube_api/adapters.py` translates retained channel and video metadata into
 the committee-meeting model without downloading new data. Publication belongs
 to the application exporter.
+
+### Shared source interpretation
+
+`youtube_api.interpretation` uses only the Python standard library and imports
+neither collectors, storage, adapters nor `committee_meeting`.
+`source_time(row, basis=...)` returns the chosen meaning, native field, original
+value and parsed UTC instant. `availability_facts(row, evaluated_at=...)` returns
+API and caption facts with source fields, observation times, scopes and limits.
+The adapter chooses video publication; the analysis command chooses its explicit
+report basis. Neither helper changes retained inputs or identifiers.
+
+A successful, dated `videos.list` omission establishes only API absence for that
+ID. It does not establish deletion, privacy or web playback. Missing, invalid or
+future check times leave absence unknown. A true `contentDetails.caption` flag
+reports published captions without establishing language or downloaded bytes;
+false or missing flags leave automatic-caption availability unknown. The collector
+retains previous API items after an omission and writes the new availability
+observation separately; it clears the current caption and duration claims.

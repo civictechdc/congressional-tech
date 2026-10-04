@@ -1,8 +1,6 @@
 """Adapt retained Senate committee pages without fetching or rematching them."""
 
 from collections import Counter, defaultdict
-from copy import deepcopy
-from datetime import date
 from urllib.parse import urlsplit
 
 from committee_meeting.assessments import Assessment
@@ -24,8 +22,9 @@ from congress_api.adapters.meetings import category
 from congress_api.adapters.recordings import recording_reference
 from congress_api.matching.meetings import meeting_access, meeting_type
 from congress_api.matching.senate_corrections import DATE_CORRECTIONS, selected_date
-from congress_api.models.senate import SenatePage, SenateSite, normalize_senate_state
-from congress_api.parsers.senate_page import DATE, OWN, SITE, attachment_page, written_day
+from congress_api.parsers.senate_page import OWN, attachment_page
+from congress_api.matching.senate_events import prepared_state, official_events, dated_access, no_broadcast_notices, reconciled_event_type, source_only_event_allowed
+from congress_api.parsers.observations import live_receipt, latest_check_failed
 
 MATCH_METHOD = Method(name="senate.records.match_pages", version="1")
 
@@ -57,68 +56,6 @@ def _attachment_aliases(page):
     return aliases, skipped
 
 
-def _live_receipt(record, url, now):
-    """Legacy checked dates are scheduling state, not retrieval evidence."""
-    check = record.get("observation_check") or record.get("last_check") or {}
-    if not isinstance(check, dict) or check.get("mode") != "live":
-        return None
-    for receipt in reversed(check.get("receipts") or []):
-        if not isinstance(receipt, dict) or receipt.get("url") != url:
-            continue
-        expected = {200: "retrieved", 404: "not_found"}.get(receipt.get("status_code"))
-        if expected is None or receipt.get("outcome") != expected:
-            continue
-        observed = observed_time(receipt.get("completed_at"), now)
-        if observed is not None:
-            return observed, expected
-    return None
-
-
-def _site_data(site):
-    if isinstance(site, SenateSite):
-        return site.source_dict()
-    pages = site.get("pages") or {}
-    if any(isinstance(page, SenatePage) for page in pages.values()):
-        return {**site, "pages": {url: page.source_dict() if isinstance(page, SenatePage) else page for url, page in pages.items()}}
-    return site
-
-
-def _prepared(state):
-    """Lift workflow off page copies without changing the caller's retained state."""
-    prepared = {}
-    for host, site in state.items():
-        prepared[host] = deepcopy(_site_data(site))
-    return normalize_senate_state(prepared)
-
-
-def official_events(state):
-    """Validated source-owned events for metadata discovery and offline admission."""
-    codes = {host: code for code, host in SITE.items()}
-    state = _prepared(state)
-    for host, site in sorted(state.items()):
-        site = _site_data(site)
-        if host not in codes:
-            continue
-        for url, page in sorted((site.get("pages") or {}).items()):
-            event = page.get("event")
-            if page.get("absent") or page.get("status") == "error" or not isinstance(event, dict):
-                continue
-            if not event.get("title") or event.get("url") != url or (urlsplit(url).hostname or "").removeprefix("www.") != host:
-                continue
-            try:
-                day = date.fromisoformat(selected_date(url, event))
-            except (ValueError, TypeError, KeyError):
-                continue
-            # Congresses since 1935 begin January 3. This collector's explicit
-            # historical boundary is much later; dates before that stay raw.
-            if day.year < 1935:
-                continue
-            year = day.year - (1 if (day.month, day.day) < (1, 3) else 0)
-            congress = (year - 1789) // 2 + 1
-            yield {"host": host, "url": url, "page": page, "event": event,
-                   "congress": congress, "committee_code": codes[host]}
-
-
 def records(state, context, *, meetings, committee_terms=None, meeting_records=None, occurrence_records=None):
     """Normalize native SenatePage/SenateSite models or legacy saved dictionaries.
 
@@ -130,7 +67,7 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
     """
     committee_terms, meeting_records = committee_terms or {}, meeting_records or {}
     occurrences = dict(occurrence_records or {})
-    state = _prepared(state)
+    state = prepared_state(state)
     events = {event["url"]: event for event in official_events(state)}
     by_event = defaultdict(list)
     for (_, _, event), meeting in meetings.items():
@@ -138,7 +75,6 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
             raise ValueError("Senate meeting lookup must contain meeting references")
         by_event[str(event)].append(meeting)
     for host, site in sorted(state.items()):
-        site = _site_data(site)
         listing_check = site.get("last_check") or {}
         if (isinstance(listing_check, dict) and listing_check.get("mode") == "live") or site.get("source_bodies"):
             payload = {"host": host, "last_check": listing_check}
@@ -171,9 +107,9 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
             record = (site.get("workflow") or {}).get(url) or {}
             key = f"senate-page|{host}|{url}"
             source = context.source(key, page, url)
-            live = _live_receipt(record, url, context.now)
+            live = live_receipt(record, url, context.now)
             check = record.get("last_check") or {}
-            failed = isinstance(check, dict) and check.get("mode") == "live" and check.get("outcome") == "error"
+            failed = latest_check_failed(record, live_only=True)
             previous_retrieval = observed_time(page.get("retrieved_at"), context.now) if isinstance(check, dict) and check.get("mode") == "live" else None
             if live or previous_retrieval:
                 source = source.model_copy(update={"retrieved_at": live[0] if live else previous_retrieval})
@@ -240,7 +176,7 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                                 selector=f"/events/{index}", evidence_source=workflow_source)
             official = events.get(url)
             event = official["event"] if official else None
-            if official and not matched and not seen_events and not record.get("candidate_events"):
+            if official and not matched and source_only_event_allowed(record):
                 # The official URL is the provider identity. Congress numbers
                 # organize the proceeding; no Congress.gov event ID is invented.
                 term = committee_terms.get((official["congress"], official["committee_code"]))
@@ -279,7 +215,7 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                     evidence = original.provenance.model_copy(update={"citations": original.provenance.citations + tuple(citation for citation in event_evidence.citations if citation not in original.provenance.citations)})
                     fields = original.field_evidence
                     kind = original.meeting_type
-                    if event.get("type") == "Roundtable" and kind != "roundtable":
+                    if reconciled_event_type(event, kind) != kind:
                         selected = context.evidence(source, selector="/event/type")
                         field = FieldEvidence(path="/meeting_type", selected=selected,
                                               alternatives=(AlternativeValue(value=kind, provenance=original.provenance),),
@@ -297,21 +233,14 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
 
             # Only explicit publisher access labels and the event's own date
             # can fill an existing sitting. Generic hearing types prove neither.
-            labels = {item.get("text", "").strip(" :").casefold(): index
-                      for index, item in enumerate((page.get("page_metadata") or {}).get("heading_prefixes") or [])}
-            access_labels = {"open": "open", "closed": "closed", "open/closed": "partly_closed", "open and closed": "partly_closed"}
-            stated = {access_labels[label] for label in labels if label in access_labels}
-            dated_lines = [(index, written_day(found)) for index, line in enumerate(page.get("lines") or [])
-                           if line.strip().casefold().startswith("date:") and (found := DATE.search(line))]
-            page_days = {date.fromisoformat(selected_date(url, event))} if event else {day for _, day in dated_lines if day}
-            if len(stated) == 1 and len(page_days) == 1:
-                access = next(iter(stated))
-                label_index = next(index for label, index in labels.items() if access_labels.get(label) == access)
-                label_evidence = context.evidence(source, selector=f"/page_metadata/heading_prefixes/{label_index}")
-                date_evidence = context.evidence(source, selector="/event/date" if event else f"/lines/{dated_lines[0][0]}")
+            access_observation = dated_access(url, page, event)
+            if access_observation:
+                access = access_observation.access
+                label_evidence = context.evidence(source, selector=access_observation.label_selector)
+                date_evidence = context.evidence(source, selector=access_observation.date_selector)
                 for meeting, match_evidence in matched.values():
                     sittings = [item for item in occurrences.values() if item.meeting.id == meeting.id
-                                and item.scheduled_start and item.scheduled_start.date in page_days]
+                                and item.scheduled_start and item.scheduled_start.date == access_observation.day]
                     if len(sittings) != 1:
                         continue
                     original = sittings[0]
@@ -335,16 +264,14 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                     occurrences[updated.id] = updated
                     yield updated
 
-            for message_index, message in enumerate((page.get("page_metadata") or {}).get("video_messages") or []):
-                if message.get("text", "").strip().casefold() != "there is no video broadcast for this event.":
-                    continue
+            for message_index, message in no_broadcast_notices(page):
                 notice_evidence = context.evidence(source, selector=f"/page_metadata/video_messages/{message_index}")
                 for meeting, match_evidence in matched.values():
                     yield Assessment(id=context.ids("assessment", key + "|no-video-broadcast|" + meeting.id),
                         subject=meeting, aspect="recording", status="not_applicable", evaluated_at=context.now,
                         observed_at=live[0] if live else previous_retrieval, provider=context.provider,
                         scope="Video broadcast by the committee for the event on " + url,
-                        explanation=message["text"],
+                        explanation=message,
                         provenance=notice_evidence.model_copy(update={"citations": notice_evidence.citations + match_evidence.citations}))
 
             # Embedded publishers identify recordings more precisely than a
