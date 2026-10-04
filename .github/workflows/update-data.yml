@@ -136,10 +136,12 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install packages
-        run: pip install -e packages/house-naming -e packages/committee_meeting -e packages/congress_shared -e packages/youtube_api -e 'packages/congress_api[test]' -e apps/committee_youtube
+        run: >-
+          pip install -e 'packages/house-naming[test]' -e packages/committee_meeting -e packages/congress_shared
+          -e packages/youtube_api -e 'packages/congress_api[archive,test]' -e apps/committee_youtube 'PyYAML>=6,<7'
 
       - name: Test source parsing and refresh decisions
-        run: python -m pytest -q
+        run: python .github/scripts/offline-python.py -m pytest -q tests packages/committee_meeting/tests packages/house-naming/tests .github/tests
 
       - name: Read House repository records
         id: house_records
