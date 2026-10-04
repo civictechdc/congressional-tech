@@ -5,7 +5,7 @@ Searches never read that column. Internal model objects are folded into the
 meeting, witness or material they describe, not published as navigation steps.
 """
 import json
-from collections import defaultdict
+from collections import defaultdict, deque
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -65,6 +65,15 @@ def sources_of(record):
         for alternative in evidence.get('alternatives', []):
             citations += alternative.get('provenance', {}).get('citations', [])
     return {c['source']['id'] for c in citations}
+
+
+def _write_table(rows, schema, path, *, row_group_size):
+    """Convert one row group at a time instead of duplicating the full table."""
+    with pq.ParquetWriter(path, schema, compression='snappy', write_statistics=True) as writer:
+        # An empty table still needs the same empty row group as write_table.
+        for start in range(0, max(1, len(rows)), row_group_size):
+            table = pa.Table.from_pylist(rows[start:start + row_group_size], schema=schema)
+            writer.write_table(table, row_group_size=row_group_size)
 
 
 def write_tables(records, sources, query_rows, stage, descriptor):
@@ -224,11 +233,16 @@ def write_tables(records, sources, query_rows, stage, descriptor):
         elif kind == 'material_version':
             versions[id] = (record['material']['id'], record.get('label'), record.get('published_at'), sources_of(record))
         elif kind == 'representation':
-            formats[record['version']['id']].append(record)
+            # Field disagreements and ownership were handled above. Retain
+            # only the file fields and citation IDs needed to build links.
+            file_info = {key: record[key] for key in ('locations', 'format_label', 'media_type', 'sha256') if key in record}
+            file_info['source_ids'] = sources_of(record)
+            formats[record['version']['id']].append(file_info)
         elif kind == 'material_link':
             links.append((record['material']['id'], record['subject']['kind'], record['subject']['id'], sources_of(record)))
         elif kind == 'occurrence':
             occurrences[record['meeting']['id']].append(record)
+    del native_documents, native_meetings, reviewed_document_types, committee_documents
     for id, entries in formats.items():
         if id not in versions: continue
         material_id, label, published, version_sources = versions[id]
@@ -239,11 +253,12 @@ def write_tables(records, sources, query_rows, stage, descriptor):
         # The routine placeholder is an implementation detail, not an edition label.
         if label and label.rstrip('.') in PLACEHOLDER_LABELS: label = None
         for record in entries:
-            row['source_ids'].extend(version_sources | sources_of(record))
+            row['source_ids'].extend(version_sources | record['source_ids'])
             for location in record.get('locations', []):
                 row['files'].append({'url': location['url'], 'label': record.get('format_label') or record.get('media_type') or location['role'],
                                      'role': location['role'], 'media_type': record.get('media_type'), 'version': label,
                                      'published_at': (published or {}).get('date'), 'sha256': record.get('sha256')})
+    del versions, formats
     amendment_groups = defaultdict(list)
     for record in context_records.values():
         if record['kind'] == 'amendment_group':
@@ -292,6 +307,7 @@ def write_tables(records, sources, query_rows, stage, descriptor):
             label = f"{action['kind'].capitalize()} {action.get('number') or ''}".strip()
             row['facts'].append({'label': label, 'value': (action.get('description') or action.get('question') or 'Listed action') + ' (no attached file)'})
             row['source_ids'].extend(sources_of(action))
+    del links, context_records, meeting_subjects, subjects, amendment_groups, attached_actions
     for id, entries in occurrences.items():
         row = rows['meeting'].get(id)
         if row is None: continue
@@ -305,6 +321,7 @@ def write_tables(records, sources, query_rows, stage, descriptor):
                 if isinstance(value, str) and value: row['facts'].append({'label': key.replace('_', ' '), 'value': value})
             if row['access'] == 'unknown' and record.get('access') not in (None, 'unknown'):
                 row['access'] = record['access']
+    del occurrences
     for row in rows['material'].values():
         if len(set(row['meeting_ids'])) == 1: row['meeting_id'] = row['meeting_ids'][0]
         meetings = [rows['meeting'][id] for id in row['meeting_ids'] if id in rows['meeting']]
@@ -341,6 +358,7 @@ def write_tables(records, sources, query_rows, stage, descriptor):
         if owner is not None:
             issue['subject_kind'], issue['subject_id'] = subject
             if issue.get('status') == 'open': owner['issue_count'] += 1
+    del conflict_facts, owners
     for id, parent_code in committee_parents.items():
         row = rows['committee_term'][id]
         if not row['parent_committee_id']: row['parent_committee_id'] = committee_codes.get(parent_code)
@@ -368,15 +386,13 @@ def write_tables(records, sources, query_rows, stage, descriptor):
             if populated:
                 raise ValueError(f"{kind} {row['id']} has populated fields outside its table schema: {populated}")
         path = TABLES[kind] + '.parquet'
-        pq.write_table(pa.Table.from_pylist(values, schema=TABLE_SCHEMAS[kind]), Path(stage) / path,
-                       compression='snappy', row_group_size=2048, write_statistics=True)
+        _write_table(values, TABLE_SCHEMAS[kind], Path(stage) / path, row_group_size=2048)
         if (Path(stage) / path).stat().st_size >= 100_000_000:
             raise ValueError(f'{path} exceeds GitHub file limit; partition this table before publishing')
         descriptor(path, 'details', 'committee_explorer.parquet.' + kind, len(values), media_type='application/vnd.apache.parquet')
     source_rows.sort(key=lambda r: r['id'])
     def write_sources(path, values):
-        pq.write_table(pa.Table.from_pylist(values, schema=SOURCE_SCHEMA), Path(stage) / path,
-                       compression='snappy', row_group_size=512, write_statistics=True)
+        _write_table(values, SOURCE_SCHEMA, Path(stage) / path, row_group_size=512)
     write_sources('sources.parquet', source_rows)
     if (Path(stage) / 'sources.parquet').stat().st_size < 100_000_000:
         descriptor('sources.parquet', 'sources', 'committee_explorer.parquet.source_record', len(source_rows), media_type='application/vnd.apache.parquet')
@@ -396,13 +412,18 @@ def write_tables(records, sources, query_rows, stage, descriptor):
 
 def write_catalog(catalog, current, stage, descriptor, write, evidence_states):
     from .query import write_queries
-    query_rows, info = [], {}
+    query_rows, info = deque(), {}
     def collect(path, value, role, schema_name, count, **kwargs):
         if schema_name == 'committee_explorer.query-rows': query_rows.extend(value['rows'])
         elif schema_name == 'committee_explorer.queries': info.update(value)
     write_queries(catalog, current, collect, evidence_states=evidence_states, include_relations=False)
+    def consume_query_rows():
+        # The table builder copies each row before enrichment. Release its
+        # original immediately instead of keeping both sets until publication.
+        while query_rows:
+            yield query_rows.popleft()
     write_tables((r.model_dump(mode='json') for r in catalog.records),
-                 (s.model_dump(mode='json') for s in catalog.sources), query_rows, stage, descriptor)
+                 (s.model_dump(mode='json') for s in catalog.sources), consume_query_rows(), stage, descriptor)
     info.pop('partitions', None)
     info.update(storage='parquet', query_columns=QUERY_COLUMNS)
     write('queries.json', info, 'index', 'committee_explorer.queries', len(info['kinds']))

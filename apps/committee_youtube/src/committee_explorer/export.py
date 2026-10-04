@@ -6,6 +6,7 @@ import gzip
 import hashlib
 import io
 import json
+import logging
 import shutil
 import tempfile
 from collections import ChainMap, Counter, defaultdict
@@ -40,6 +41,7 @@ from .issues import apply_decisions
 from .query import write_queries
 
 VERSION = "0.1.0"
+LOGGER = logging.getLogger(__name__)
 
 
 def encode(value):
@@ -200,6 +202,7 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=
         assembly = Assembly(previous, ids=ids, now=now)
         snapshots, scopes, reconciliation = [], [], []
         def context(path, provider, limitations=()):
+            LOGGER.info('Reading retained %s input', provider)
             raw, body = read(path)
             return source_context(raw, provider, limitations), body
 
@@ -215,276 +218,285 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=
                                             revision=revision if provider in ("congress.gov", "docs.house.gov", "senate.committees", "youtube", "meeting-inventory") else None,
                                             imported_at=now, last_attempt_at=checked_at, last_attempt_status=status, limitations=tuple(limitations)))
             return AdapterContext(now, input_id, provider, ids)
-        ctx, body = context(meetings, "congress.gov", ("Legacy native records lack per-record retrieval timestamps.",))
-        rows = [json.loads(line) for line in body.splitlines() if line.strip()]
-        rows.sort(key=native.meeting_key)
-        all_meetings = rows
-        total = len(rows)
-        if limit:
-            rows = rows[:limit]
-        senate_input = None
-        if senate_state:
-            senate_context, senate_body = context(senate_state, 'senate.committees',
-                ('Legacy checked dates may reflect seed import; live retrieval is established only by explicit receipts.',))
-            senate_data = json.loads(senate_body)
-            senate_input = (senate_context, senate_data)
-            retained_ids = _retain_senate_meeting_ids(rows, senate_data, ids)
-            if retained_ids:
-                reconciliation.append({'provider': 'senate.committees', 'retained_meeting_id_aliases': retained_ids})
-        assembly.add(native.records(rows, ctx))
-        if committees_path:
-            committee_context, committee_body = context(committees_path, 'congress.gov:committees')
-            committee_rows = [json.loads(line) for line in committee_body.splitlines() if line.strip()]
-            selected_congresses = {int(row['congress']) for row in rows}
+        def assemble_inputs():
+            """Keep adapter scratch data out of graph validation and publication."""
+            ctx, body = context(meetings, "congress.gov", ("Legacy native records lack per-record retrieval timestamps.",))
+            rows = [json.loads(line) for line in body.splitlines() if line.strip()]
+            rows.sort(key=native.meeting_key)
+            all_meetings = rows
+            total = len(rows)
             if limit:
-                committee_rows = [row for row in committee_rows if int(row['congress']) in selected_congresses]
-            for item in committee_metadata.records(committee_rows, committee_context, assembly.records):
-                # Metadata fills unknown classifications rather than treating
-                # the former unknown value as a competing source assertion.
+                rows = rows[:limit]
+            senate_input = None
+            if senate_state:
+                senate_context, senate_body = context(senate_state, 'senate.committees',
+                    ('Legacy checked dates may reflect seed import; live retrieval is established only by explicit receipts.',))
+                senate_input = (senate_context, json.loads(senate_body))
+                retained_ids = _retain_senate_meeting_ids(rows, senate_input[1], ids)
+                if retained_ids:
+                    reconciliation.append({'provider': 'senate.committees', 'retained_meeting_id_aliases': retained_ids})
+            assembly.add(native.records(rows, ctx))
+            if committees_path:
+                committee_context, committee_body = context(committees_path, 'congress.gov:committees')
+                committee_rows = [json.loads(line) for line in committee_body.splitlines() if line.strip()]
+                selected_congresses = {int(row['congress']) for row in rows}
+                if limit:
+                    committee_rows = [row for row in committee_rows if int(row['congress']) in selected_congresses]
+                for item in committee_metadata.records(committee_rows, committee_context, assembly.records):
+                    # Metadata fills unknown classifications rather than treating
+                    # the former unknown value as a competing source assertion.
+                    key = (item.kind, item.id)
+                    into = assembly.sources if item.kind == 'source_record' else assembly.records
+                    into[key] = item
+                    assembly.current.add(key)
+                scopes.append(SourceScope(provider='congress.gov:committees', scope='Official Congress-scoped committee lists',
+                                          status='partial' if limit else 'included', input_snapshot_ids=(committee_context.input_id,),
+                                          explanation=f'Imported {len(committee_rows)} retained committee records; committees with no retained meetings may also appear.'))
+            else:
+                scopes.append(SourceScope(provider='congress.gov:committees', scope='Official Congress-scoped committee lists',
+                                          status='not_collected', explanation='No retained committee metadata supplied; names do not establish committee type.'))
+            reconciliation.append({"provider": "congress.gov", "input_records": total, "selected_records": len(rows),
+                                   "distinct_selected_identities": len({native.meeting_key(r) for r in rows})})
+            lookup = {(int(r["congress"]), native.chamber(r.get("chamber")), str(r["eventId"])):
+                      Ref(kind="meeting", id=ids("meeting", native.meeting_key(r))) for r in rows}
+            scopes.insert(0, SourceScope(provider="congress.gov", scope="retained committee meeting records, all statuses", status="partial" if len(rows)<total else "included",
+                                      input_snapshot_ids=(ctx.input_id,), explanation=f"Imported {len(rows)} of {total} retained records. Retention is not proof of complete upstream coverage."))
+            # Load document metadata before supplemental events so every explicitly
+            # identified committee can be linked without requiring a meeting match.
+            gpo_context, gpo_review_context, gpo_rows, all_gpo = None, None, [], []
+            gpo_evidence = {}
+            if gpo_evidence_path:
+                from congress_api.retention.gpo import read as read_gpo_evidence
+                evidence_context, _ = context(gpo_evidence_path, "govinfo:upstream")
+                gpo_evidence = read_gpo_evidence(gpo_evidence_path)
+                scopes.append(SourceScope(provider="govinfo:upstream", scope="retained MODS and transcript observations",
+                    status="included", input_snapshot_ids=(evidence_context.input_id,),
+                    explanation="Original bytes and acquisition metadata; cached replay is not a new upstream retrieval."))
+            if gpo_path:
+                gpo_context, content = context(gpo_path, "govinfo", ("CSV does not preserve all raw MODS metadata or downloaded transcript bytes.",))
+                gpo_review_context, _ = context(reviewed_committees.__file__, 'gpo.committee-review')
+                all_gpo = list(csv.DictReader(io.StringIO(content.decode())))
+                gpo_rows = all_gpo
+                if limit:
+                    selected = [r for r in all_gpo if (int(r["congress"]), native.chamber(r["chamber"]), r["event_id"]) in lookup]
+                    selected_ids = {r["package_id"] for r in selected}
+                    gpo_rows = selected + [r for r in all_gpo if r["package_id"] not in selected_ids][:limit]
+                assembly.add(gpo.committee_records(gpo_rows, gpo_context, existing=assembly.records, review_context=gpo_review_context, evidence_by_package=gpo_evidence))
+
+            sources = (("docs.house.gov", house_state, house, "House parsed source state"),)
+            if senate_state:
+                from congress_api.adapters import senate
+                from congress_api.models.senate import workflow_record
+                sources += (("senate.committees", senate_state, senate, "Senate parsed source state"),)
+            supplemental = []
+            for provider, path, adapter, label in sources:
+                if path:
+                    if provider == 'senate.committees':
+                        c, data = senate_input
+                    else:
+                        c, content = context(path, provider, ("Legacy checked dates may reflect seed import; live retrieval is established only by explicit receipts.",))
+                        data = json.loads(content)
+                    if provider == "docs.house.gov" and limit:
+                        data = {k: v for k, v in data.items() if any(x[2] == str(k) for x in lookup)}
+                    if provider == "senate.committees":
+                        if limit:
+                            # A bounded rehearsal must not admit every source-only
+                            # historical event in the full retained Senate cache.
+                            selected_events = {key[2] for key in lookup}
+                            data = {host: {**site, 'pages': {url: page for url, page in site.get('pages', {}).items()
+                                    if selected_events.intersection(map(str, workflow_record(site, url, page).get('events') or ()))}}
+                                    for host, site in data.items()}
+                        for event in senate.official_events(data):
+                            source = c.source(f"senate-page|{event['host']}|{event['url']}", event['page'], event['url'])
+                            evidence = c.evidence(source, selector='/event')
+                            missing = list(ensure_committee_term(event['congress'], event['committee_code'],
+                                           event['committee_code'], c, evidence, assembly.records))
+                            if missing:
+                                assembly.add([source, *missing])
+                    supplemental.append((provider, adapter, data, c))
+                    reconciliation.append({"provider": provider, "selected_top_level_entries": len(data)})
+                    scopes.append(SourceScope(provider=provider, scope=label, status="partial", input_snapshot_ids=(c.input_id,), explanation="Retained supplemental source records; uncollected meetings and unsupported layouts are not covered."))
+                else:
+                    scopes.append(SourceScope(provider=provider, scope=label, status="not_collected", explanation="No input was supplied to this offline export."))
+            if not senate_state:
+                scopes.append(SourceScope(provider="senate.committees", scope="Senate parsed source state", status="not_collected", explanation="No input was supplied to this offline export."))
+
+            adjustment_context, _ = context(committee_adjustments.__file__, 'committee-review')
+            selected_congresses = {int(row['congress']) for row in rows} if limit else None
+            for item in committee_metadata.adjustment_records(adjustment_context, assembly.records, congresses=selected_congresses):
                 key = (item.kind, item.id)
                 into = assembly.sources if item.kind == 'source_record' else assembly.records
                 into[key] = item
                 assembly.current.add(key)
-            scopes.append(SourceScope(provider='congress.gov:committees', scope='Official Congress-scoped committee lists',
-                                      status='partial' if limit else 'included', input_snapshot_ids=(committee_context.input_id,),
-                                      explanation=f'Imported {len(committee_rows)} retained committee records; committees with no retained meetings may also appear.'))
-        else:
-            scopes.append(SourceScope(provider='congress.gov:committees', scope='Official Congress-scoped committee lists',
-                                      status='not_collected', explanation='No retained committee metadata supplied; names do not establish committee type.'))
-        reconciliation.append({"provider": "congress.gov", "input_records": total, "selected_records": len(rows),
-                               "distinct_selected_identities": len({native.meeting_key(r) for r in rows})})
-        lookup = {(int(r["congress"]), native.chamber(r.get("chamber")), str(r["eventId"])):
-                  Ref(kind="meeting", id=ids("meeting", native.meeting_key(r))) for r in rows}
-        scopes.insert(0, SourceScope(provider="congress.gov", scope="retained committee meeting records, all statuses", status="partial" if len(rows)<total else "included",
-                                  input_snapshot_ids=(ctx.input_id,), explanation=f"Imported {len(rows)} of {total} retained records. Retention is not proof of complete upstream coverage."))
-        # Load document metadata before supplemental events so every explicitly
-        # identified committee can be linked without requiring a meeting match.
-        gpo_context, gpo_review_context, gpo_rows, all_gpo = None, None, [], []
-        gpo_evidence = {}
-        if gpo_evidence_path:
-            from congress_api.retention.gpo import read as read_gpo_evidence
-            evidence_context, _ = context(gpo_evidence_path, "govinfo:upstream")
-            gpo_evidence = read_gpo_evidence(gpo_evidence_path)
-            scopes.append(SourceScope(provider="govinfo:upstream", scope="retained MODS and transcript observations",
-                status="included", input_snapshot_ids=(evidence_context.input_id,),
-                explanation="Original bytes and acquisition metadata; cached replay is not a new upstream retrieval."))
-        if gpo_path:
-            gpo_context, content = context(gpo_path, "govinfo", ("CSV does not preserve all raw MODS metadata or downloaded transcript bytes.",))
-            gpo_review_context, _ = context(reviewed_committees.__file__, 'gpo.committee-review')
-            all_gpo = list(csv.DictReader(io.StringIO(content.decode())))
-            gpo_rows = all_gpo
-            if limit:
-                selected = [r for r in all_gpo if (int(r["congress"]), native.chamber(r["chamber"]), r["event_id"]) in lookup]
-                selected_ids = {r["package_id"] for r in selected}
-                gpo_rows = selected + [r for r in all_gpo if r["package_id"] not in selected_ids][:limit]
-            assembly.add(gpo.committee_records(gpo_rows, gpo_context, existing=assembly.records, review_context=gpo_review_context, evidence_by_package=gpo_evidence))
-
-        sources = (("docs.house.gov", house_state, house, "House parsed source state"),)
-        if senate_state:
-            from congress_api.adapters import senate
-            from congress_api.models.senate import workflow_record
-            sources += (("senate.committees", senate_state, senate, "Senate parsed source state"),)
-        supplemental = []
-        for provider, path, adapter, label in sources:
-            if path:
+            scopes.append(SourceScope(provider='committee-review', scope='Reviewed committee metadata corrections', status='included',
+                                      input_snapshot_ids=(adjustment_context.input_id,),
+                                      explanation='Cited corrections preserve original source names and classifications.'))
+            committees = committee_lookup(assembly.records.values())
+            # Assembly validates and copies incoming models. Stream the originals so
+            # a second complete GPO corpus does not survive alongside those copies.
+            LOGGER.info('Assembling retained GPO records')
+            if gpo_path:
+                assembly.add(gpo.records(gpo_rows, gpo_context, meetings=lookup, committees=committees,
+                    review_context=gpo_review_context, evidence_by_package=gpo_evidence))
+            file_records = [record for record in assembly.records.values()
+                            if record.kind in {'material', 'material_version', 'representation'}]
+            known_gpo_files = gpo.primary_rendition_index(file_records)
+            for provider, adapter, data, c in supplemental:
+                LOGGER.info('Assembling retained %s records', provider)
+                c.known_materials = known_gpo_files
+                options = {'meetings': lookup}
                 if provider == 'senate.committees':
-                    c, data = senate_input
-                else:
-                    c, content = context(path, provider, ("Legacy checked dates may reflect seed import; live retrieval is established only by explicit receipts.",))
-                    data = json.loads(content)
-                if provider == "docs.house.gov" and limit:
-                    data = {k: v for k, v in data.items() if any(x[2] == str(k) for x in lookup)}
-                if provider == "senate.committees":
-                    if limit:
-                        # A bounded rehearsal must not admit every source-only
-                        # historical event in the full retained Senate cache.
-                        selected_events = {key[2] for key in lookup}
-                        data = {host: {**site, 'pages': {url: page for url, page in site.get('pages', {}).items()
-                                if selected_events.intersection(map(str, workflow_record(site, url, page).get('events') or ()))}}
-                                for host, site in data.items()}
-                    for event in senate.official_events(data):
-                        source = c.source(f"senate-page|{event['host']}|{event['url']}", event['page'], event['url'])
-                        evidence = c.evidence(source, selector='/event')
-                        missing = list(ensure_committee_term(event['congress'], event['committee_code'],
-                                       event['committee_code'], c, evidence, assembly.records))
-                        if missing:
-                            assembly.add([source, *missing])
-                supplemental.append((provider, adapter, data, c))
-                reconciliation.append({"provider": provider, "selected_top_level_entries": len(data)})
-                scopes.append(SourceScope(provider=provider, scope=label, status="partial", input_snapshot_ids=(c.input_id,), explanation="Retained supplemental source records; uncollected meetings and unsupported layouts are not covered."))
-            else:
-                scopes.append(SourceScope(provider=provider, scope=label, status="not_collected", explanation="No input was supplied to this offline export."))
-        if not senate_state:
-            scopes.append(SourceScope(provider="senate.committees", scope="Senate parsed source state", status="not_collected", explanation="No input was supplied to this offline export."))
-
-        adjustment_context, _ = context(committee_adjustments.__file__, 'committee-review')
-        selected_congresses = {int(row['congress']) for row in rows} if limit else None
-        for item in committee_metadata.adjustment_records(adjustment_context, assembly.records, congresses=selected_congresses):
-            key = (item.kind, item.id)
-            into = assembly.sources if item.kind == 'source_record' else assembly.records
-            into[key] = item
-            assembly.current.add(key)
-        scopes.append(SourceScope(provider='committee-review', scope='Reviewed committee metadata corrections', status='included',
-                                  input_snapshot_ids=(adjustment_context.input_id,),
-                                  explanation='Cited corrections preserve original source names and classifications.'))
-        committees = committee_lookup(assembly.records.values())
-        assembled_gpo = list(gpo.records(gpo_rows, gpo_context, meetings=lookup, committees=committees,
-            review_context=gpo_review_context, evidence_by_package=gpo_evidence)) if gpo_path else []
-        assembly.add(assembled_gpo)
-        known_gpo_files = gpo.primary_rendition_index(assembled_gpo)
-        for provider, adapter, data, c in supplemental:
-            c.known_materials = known_gpo_files
-            options = {'meetings': lookup}
-            if provider == 'senate.committees':
-                options.update(committee_terms=committees,
-                               meeting_records={r.id: r for r in assembly.records.values() if r.kind == 'meeting'},
-                               occurrence_records={r.id: r for r in assembly.records.values() if r.kind == 'occurrence'})
-            assembly.add(adapter.records(data, c, **options))
-
-        versions, print_versions = {}, {}
-        print_decisions = []
-        if gpo_path:
-            c, data = gpo_context, gpo_rows
-            assembled = assembled_gpo
-            reconciliation.append({"provider": "govinfo", "input_records": len(all_gpo), "selected_records": len(data),
-                                   "distinct_selected_identities": len({r['package_id'] for r in data})})
-            mats = {r.id: r for r in assembled if r.kind == "material"}
-            for r in assembled:
-                if r.kind == "material_version":
-                    for identifier in mats[r.material.id].identifiers:
-                        if "govinfo" in identifier.scheme or "gpo" in identifier.scheme:
-                            versions[("govinfo", identifier.value)] = Ref(kind=r.kind, id=r.id)
-                            print_versions[identifier.value] = (Ref(kind="material", id=r.material.id), Ref(kind=r.kind, id=r.id))
-            from congress_api.matching.meetings import in_inventory_scope
-            from congress_api.matching.prints import match_prints
-            # The matcher owns its existing scope/rules. Ambiguous unscoped IDs
-            # are excluded from association output rather than merged.
-            eligible = [r for r in all_meetings if in_inventory_scope(r)]
-            match_prints(eligible, all_gpo, decisions=print_decisions)
-            selected_events = {key[2] for key in lookup}
-            print_decisions = [d for d in print_decisions if d["event_id"] in selected_events and d["package_id"] in print_versions]
-            if print_decisions:
-                raw_decisions = encode(print_decisions)
-                input_id = "print-matches:" + sha(raw_decisions)
-                snapshots.append(InputSnapshot(id=input_id, provider="congress_api.inventory.prints", artifact=RetainedContent(uri="inputs/print-decisions.json", sha256=sha(raw_decisions)),
-                                               imported_at=now, limitations=("Derived offline from retained meeting and GPO inputs, using existing matcher rules.",)))
-                scopes.append(SourceScope(provider="congress_api.inventory.prints", scope="print-to-meeting associations", status="included", input_snapshot_ids=(input_id,),
-                                          explanation="Existing matcher decisions computed from all supplied native/GPO context before applying the export selection."))
-                match_ctx = AdapterContext(now, input_id, "congress_api.inventory.prints", ids)
-                assembly.add(findings.print_links(print_decisions, match_ctx, meetings=lookup, versions=print_versions))
-                linked = {r.material.id: r.provenance for r in assembly.records.values()
-                          if r.kind == "material_link" and r.role == "transcript" and r.subject.kind == "meeting"}
-                from committee_meeting.issues import IssueResolution
-                for key, issue in list(assembly.records.items()):
-                    if issue.kind == "data_issue" and issue.category == "unlinked" and issue.subject.id in linked:
-                        assembly.add([issue.model_copy(update={"status": "resolved", "resolution": IssueResolution(decided_at=now,
-                            explanation="The existing print matcher supplied a supported association; its method and evidence remain on the link.", provenance=linked[issue.subject.id])})])
-            scopes.append(SourceScope(provider="govinfo", scope="retained GPO package metadata", status="partial" if limit else "included", input_snapshot_ids=(c.input_id, gpo_review_context.input_id), explanation=f"Imported {len(data)} packages; explicit committee IDs and cited document reviews establish committee ownership. Explicit event IDs and existing print matching rules separately supply meeting associations."))
-        else:
-            scopes.append(SourceScope(provider="govinfo", scope="GPO packages", status="not_collected", explanation="No GPO input was supplied."))
-        if youtube_dir:
-            from youtube_api import adapters as youtube
-            for path in sorted(Path(youtube_dir).glob("youtube_*.json")):
-                c, content = context(path, "youtube")
-                data = json.loads(content)
-                videos = [v for table, entries in data.items() if table.startswith("youtube_videos_") for v in entries.values()]
-                for channel in data.get("youtube_channels", {}).values():
-                    assembly.add([c.source("youtube-channel|" + str(channel.get("handle") or channel.get("channelId")), channel)])
-                input_videos = len(videos)
-                if limit:
-                    videos = sorted(videos, key=lambda v: v["videoId"])[:limit]
-                # Provider IDs in native video URLs are explicit associations.
-                # The metadata adapter receives their source evidence unchanged.
-                associations = defaultdict(list)
-                for link in assembly.records.values():
-                    if link.kind == "material_link" and link.role == "recording" and link.subject.kind == "meeting":
-                        material = assembly.records[("material", link.material.id)]
-                        for identifier in material.identifiers:
-                            if identifier.scheme == "youtube.video":
-                                associations[identifier.value].append((link.subject, link.provenance))
-                imported = list(youtube.records(videos, c, meetings=associations))
-                assembly.add(imported)
-                reconciliation.append({"provider": "youtube", "input": path.name, "input_records": input_videos,
-                                       "selected_records": len(videos), "distinct_selected_identities": len({v['videoId'] for v in videos})})
-                video_materials = {r.id: r for r in imported if r.kind == "material"}
-                for r in imported:
+                    options.update(committee_terms=committees,
+                                   meeting_records={r.id: r for r in assembly.records.values() if r.kind == 'meeting'},
+                                   occurrence_records={r.id: r for r in assembly.records.values() if r.kind == 'occurrence'})
+                assembly.add(adapter.records(data, c, **options))
+            versions, print_versions = {}, {}
+            print_decisions = []
+            if gpo_path:
+                c, data = gpo_context, gpo_rows
+                reconciliation.append({"provider": "govinfo", "input_records": len(all_gpo), "selected_records": len(data),
+                                       "distinct_selected_identities": len({r['package_id'] for r in data})})
+                mats = {r.id: r for r in file_records if r.kind == "material"}
+                for r in file_records:
                     if r.kind == "material_version":
-                        for identifier in video_materials[r.material.id].identifiers:
-                            if identifier.scheme == "youtube.video":
-                                versions[("youtube", identifier.value)] = Ref(kind=r.kind, id=r.id)
-                scopes.append(SourceScope(provider="youtube", scope=path.name, status="partial", input_snapshot_ids=(c.input_id,), explanation="Retained metadata only; caption availability and reachability have not been checked by this export."))
-        else:
-            scopes.append(SourceScope(provider="youtube", scope="YouTube video metadata", status="not_collected", explanation="Only links carried by other supplied inputs are represented."))
-        if recordings_path:
-            c, content = context(recordings_path, "curated-recordings")
-            decisions = list(csv.DictReader(io.StringIO(content.decode())))
-            assembly.add(curated_recordings.records(decisions, c, meetings=lookup))
-            reconciliation.append({"provider": "curated-recordings", "input_records": len(decisions), "selected_records": len(decisions)})
-            scopes.append(SourceScope(provider="curated-recordings", scope="retained manual meeting-recording associations", status="included", input_snapshot_ids=(c.input_id,), explanation="Original notes and discovery method retained; links do not prove full coverage or current reachability."))
-        else:
-            scopes.append(SourceScope(provider="curated-recordings", scope="manual meeting-recording associations", status="not_collected", explanation="No retained manual associations supplied."))
-        # Retained decisions enrich known identities; they do not trigger acquisition.
-        materials = {r.id: r for r in assembly.records.values() if r.kind == "material"}
-        material_versions = {r.material.id: Ref(kind=r.kind, id=r.id) for r in assembly.records.values() if r.kind == "material_version"}
-        recordings, inventory_materials = {}, {}
-        for material in materials.values():
-            for identifier in material.identifiers:
-                if identifier.scheme in ("youtube.video", "senate.filename"):
-                    provider = "youtube" if identifier.scheme == "youtube.video" else "senate"
-                    inventory_materials[(provider, identifier.value)] = Ref(kind="material", id=material.id)
-                    if material.id in material_versions:
-                        recordings[identifier.value] = (Ref(kind="material", id=material.id), material_versions[material.id])
-                        versions[(provider, identifier.value)] = material_versions[material.id]
-        recordings.update(_recording_urls(assembly.records.values()))
-        if video_matches_path:
-            c, content = context(video_matches_path, "gpo-video-matches")
-            decisions = list(csv.DictReader(io.StringIO(content.decode())))
-            packages = {key: pair[0] for key, pair in print_versions.items()}
-            package_by_material = {v.id: k for k, v in packages.items()}
-            package_meetings = defaultdict(list)
-            package_evidence = defaultdict(list)
-            for record in assembly.records.values():
-                if record.kind == "material_link" and record.subject.kind == "meeting" and record.material.id in package_by_material:
-                    package_meetings[package_by_material[record.material.id]].append(record.subject)
-                    package_evidence[(package_by_material[record.material.id], record.subject.id)].append(record.provenance)
-            assembly.add(video_matches.records(decisions, c, packages=packages, recordings=recordings,
-                package_meetings=package_meetings, package_evidence=package_evidence))
-            reconciliation.append({"provider": "gpo-video-matches", "input_records": len(decisions), "selected_records": len(decisions)})
-            scopes.append(SourceScope(provider="gpo-video-matches", scope="retained package recording decisions", status="included", input_snapshot_ids=(c.input_id,), explanation="Aggregate matcher evidence retained; only single-meeting, single-date package associations create meeting links."))
-        else:
-            scopes.append(SourceScope(provider="gpo-video-matches", scope="package recording decisions", status="not_collected", explanation="No retained decisions supplied."))
-        if inventory_state:
-            for material in assembly.records.values():
-                if material.kind == "material":
-                    for identifier in material.identifiers:
-                        if identifier.scheme in ("youtube.video", "senate.filename"):
-                            provider = "youtube" if identifier.scheme == "youtube.video" else "senate"
-                            inventory_materials[(provider, identifier.value)] = Ref(kind="material", id=material.id)
-            c, content = context(inventory_state, "meeting-inventory")
-            data = json.loads(content)
-            assembly.add(inventory.records(data, c, meetings=lookup, materials=inventory_materials))
-            reconciliation.append({"provider": "meeting-inventory", "input_records": sum(len(v) for v in data.values() if isinstance(v, dict)), "families": {k: len(v) for k,v in data.items() if isinstance(v,dict)}})
-            scopes.append(SourceScope(provider="meeting-inventory", scope="retained caption, archive and witness observations", status="included", input_snapshot_ids=(c.input_id,), explanation="Unsupported ownership and cache-derived dates remain explicit issues; no caption content is invented."))
-        else:
-            scopes.append(SourceScope(provider="meeting-inventory", scope="caption, archive and witness observations", status="not_collected", explanation="No retained inventory supplied."))
-        if recovered_witnesses:
-            c, content = context(recovered_witnesses, "recovered-witnesses")
-            data = list(csv.DictReader(io.StringIO(content.decode())))
-            from .recovered import reuse_appearances
-            assembly.add(reuse_appearances(inventory.records({}, c, meetings=lookup, recovered_witnesses=data), assembly))
-            reconciliation.append({"provider": "recovered-witnesses", "input_records": len(data), "selected_records": len(data), "distinct_rows": len({json.dumps(r,sort_keys=True) for r in data})})
-            scopes.append(SourceScope(provider="recovered-witnesses", scope="retained recovered witness rows", status="included", input_snapshot_ids=(c.input_id,), explanation="Unique explicit event associations supply listed appearances; title-derived nominees remain inferred. Unique matching originating appearances retain their identity and richer fields."))
-        else:
-            scopes.append(SourceScope(provider="recovered-witnesses", scope="recovered witness rows", status="not_collected", explanation="No recovered witness table supplied."))
-        for path in transcript_files:
-            path = Path(path)
-            body = path.read_bytes()
-            c = source_context(body, "transcript-artifact")
-            source = transcripts.TranscriptInput(data=body, name=path.name, uri=path.resolve().as_uri())
-            assembly.add(transcripts.records([source], c, meetings=lookup, source_versions=versions))
-            scopes.append(SourceScope(provider="transcript-artifact", scope=path.name, status="included", input_snapshot_ids=(c.input_id,), explanation="Existing local artifact imported; no text generation or acquisition performed."))
-        if not transcript_files:
-            scopes.append(SourceScope(provider="transcript-artifact", scope="retained transcript bodies", status="not_collected", explanation="No body artifacts were supplied; metadata links do not establish captured or searchable text."))
+                        for identifier in mats[r.material.id].identifiers:
+                            if "govinfo" in identifier.scheme or "gpo" in identifier.scheme:
+                                versions[("govinfo", identifier.value)] = Ref(kind=r.kind, id=r.id)
+                                print_versions[identifier.value] = (Ref(kind="material", id=r.material.id), Ref(kind=r.kind, id=r.id))
+                from congress_api.matching.meetings import in_inventory_scope
+                from congress_api.matching.prints import match_prints
+                # The matcher owns its existing scope/rules. Ambiguous unscoped IDs
+                # are excluded from association output rather than merged.
+                eligible = [r for r in all_meetings if in_inventory_scope(r)]
+                match_prints(eligible, all_gpo, decisions=print_decisions)
+                selected_events = {key[2] for key in lookup}
+                print_decisions = [d for d in print_decisions if d["event_id"] in selected_events and d["package_id"] in print_versions]
+                if print_decisions:
+                    raw_decisions = encode(print_decisions)
+                    input_id = "print-matches:" + sha(raw_decisions)
+                    snapshots.append(InputSnapshot(id=input_id, provider="congress_api.inventory.prints", artifact=RetainedContent(uri="inputs/print-decisions.json", sha256=sha(raw_decisions)),
+                                                   imported_at=now, limitations=("Derived offline from retained meeting and GPO inputs, using existing matcher rules.",)))
+                    scopes.append(SourceScope(provider="congress_api.inventory.prints", scope="print-to-meeting associations", status="included", input_snapshot_ids=(input_id,),
+                                              explanation="Existing matcher decisions computed from all supplied native/GPO context before applying the export selection."))
+                    match_ctx = AdapterContext(now, input_id, "congress_api.inventory.prints", ids)
+                    assembly.add(findings.print_links(print_decisions, match_ctx, meetings=lookup, versions=print_versions))
+                    linked = {r.material.id: r.provenance for r in assembly.records.values()
+                              if r.kind == "material_link" and r.role == "transcript" and r.subject.kind == "meeting"}
+                    from committee_meeting.issues import IssueResolution
+                    for key, issue in list(assembly.records.items()):
+                        if issue.kind == "data_issue" and issue.category == "unlinked" and issue.subject.id in linked:
+                            assembly.add([issue.model_copy(update={"status": "resolved", "resolution": IssueResolution(decided_at=now,
+                                explanation="The existing print matcher supplied a supported association; its method and evidence remain on the link.", provenance=linked[issue.subject.id])})])
+                scopes.append(SourceScope(provider="govinfo", scope="retained GPO package metadata", status="partial" if limit else "included", input_snapshot_ids=(c.input_id, gpo_review_context.input_id), explanation=f"Imported {len(data)} packages; explicit committee IDs and cited document reviews establish committee ownership. Explicit event IDs and existing print matching rules separately supply meeting associations."))
+            else:
+                scopes.append(SourceScope(provider="govinfo", scope="GPO packages", status="not_collected", explanation="No GPO input was supplied."))
+            if youtube_dir:
+                from youtube_api import adapters as youtube
+                for path in sorted(Path(youtube_dir).glob("youtube_*.json")):
+                    c, content = context(path, "youtube")
+                    data = json.loads(content)
+                    videos = [v for table, entries in data.items() if table.startswith("youtube_videos_") for v in entries.values()]
+                    for channel in data.get("youtube_channels", {}).values():
+                        assembly.add([c.source("youtube-channel|" + str(channel.get("handle") or channel.get("channelId")), channel)])
+                    input_videos = len(videos)
+                    if limit:
+                        videos = sorted(videos, key=lambda v: v["videoId"])[:limit]
+                    # Provider IDs in native video URLs are explicit associations.
+                    # The metadata adapter receives their source evidence unchanged.
+                    associations = defaultdict(list)
+                    for link in assembly.records.values():
+                        if link.kind == "material_link" and link.role == "recording" and link.subject.kind == "meeting":
+                            material = assembly.records[("material", link.material.id)]
+                            for identifier in material.identifiers:
+                                if identifier.scheme == "youtube.video":
+                                    associations[identifier.value].append((link.subject, link.provenance))
+                    imported = list(youtube.records(videos, c, meetings=associations))
+                    assembly.add(imported)
+                    reconciliation.append({"provider": "youtube", "input": path.name, "input_records": input_videos,
+                                           "selected_records": len(videos), "distinct_selected_identities": len({v['videoId'] for v in videos})})
+                    video_materials = {r.id: r for r in imported if r.kind == "material"}
+                    for r in imported:
+                        if r.kind == "material_version":
+                            for identifier in video_materials[r.material.id].identifiers:
+                                if identifier.scheme == "youtube.video":
+                                    versions[("youtube", identifier.value)] = Ref(kind=r.kind, id=r.id)
+                    scopes.append(SourceScope(provider="youtube", scope=path.name, status="partial", input_snapshot_ids=(c.input_id,), explanation="Retained metadata only; caption availability and reachability have not been checked by this export."))
+            else:
+                scopes.append(SourceScope(provider="youtube", scope="YouTube video metadata", status="not_collected", explanation="Only links carried by other supplied inputs are represented."))
+            if recordings_path:
+                c, content = context(recordings_path, "curated-recordings")
+                decisions = list(csv.DictReader(io.StringIO(content.decode())))
+                assembly.add(curated_recordings.records(decisions, c, meetings=lookup))
+                reconciliation.append({"provider": "curated-recordings", "input_records": len(decisions), "selected_records": len(decisions)})
+                scopes.append(SourceScope(provider="curated-recordings", scope="retained manual meeting-recording associations", status="included", input_snapshot_ids=(c.input_id,), explanation="Original notes and discovery method retained; links do not prove full coverage or current reachability."))
+            else:
+                scopes.append(SourceScope(provider="curated-recordings", scope="manual meeting-recording associations", status="not_collected", explanation="No retained manual associations supplied."))
+            # Retained decisions enrich known identities; they do not trigger acquisition.
+            materials = {r.id: r for r in assembly.records.values() if r.kind == "material"}
+            material_versions = {r.material.id: Ref(kind=r.kind, id=r.id) for r in assembly.records.values() if r.kind == "material_version"}
+            recordings, inventory_materials = {}, {}
+            for material in materials.values():
+                for identifier in material.identifiers:
+                    if identifier.scheme in ("youtube.video", "senate.filename"):
+                        provider = "youtube" if identifier.scheme == "youtube.video" else "senate"
+                        inventory_materials[(provider, identifier.value)] = Ref(kind="material", id=material.id)
+                        if material.id in material_versions:
+                            recordings[identifier.value] = (Ref(kind="material", id=material.id), material_versions[material.id])
+                            versions[(provider, identifier.value)] = material_versions[material.id]
+            recordings.update(_recording_urls(assembly.records.values()))
+            if video_matches_path:
+                c, content = context(video_matches_path, "gpo-video-matches")
+                decisions = list(csv.DictReader(io.StringIO(content.decode())))
+                packages = {key: pair[0] for key, pair in print_versions.items()}
+                package_by_material = {v.id: k for k, v in packages.items()}
+                package_meetings = defaultdict(list)
+                package_evidence = defaultdict(list)
+                for record in assembly.records.values():
+                    if record.kind == "material_link" and record.subject.kind == "meeting" and record.material.id in package_by_material:
+                        package_meetings[package_by_material[record.material.id]].append(record.subject)
+                        package_evidence[(package_by_material[record.material.id], record.subject.id)].append(record.provenance)
+                assembly.add(video_matches.records(decisions, c, packages=packages, recordings=recordings,
+                    package_meetings=package_meetings, package_evidence=package_evidence))
+                reconciliation.append({"provider": "gpo-video-matches", "input_records": len(decisions), "selected_records": len(decisions)})
+                scopes.append(SourceScope(provider="gpo-video-matches", scope="retained package recording decisions", status="included", input_snapshot_ids=(c.input_id,), explanation="Aggregate matcher evidence retained; only single-meeting, single-date package associations create meeting links."))
+            else:
+                scopes.append(SourceScope(provider="gpo-video-matches", scope="package recording decisions", status="not_collected", explanation="No retained decisions supplied."))
+            if inventory_state:
+                for material in assembly.records.values():
+                    if material.kind == "material":
+                        for identifier in material.identifiers:
+                            if identifier.scheme in ("youtube.video", "senate.filename"):
+                                provider = "youtube" if identifier.scheme == "youtube.video" else "senate"
+                                inventory_materials[(provider, identifier.value)] = Ref(kind="material", id=material.id)
+                c, content = context(inventory_state, "meeting-inventory")
+                data = json.loads(content)
+                assembly.add(inventory.records(data, c, meetings=lookup, materials=inventory_materials))
+                reconciliation.append({"provider": "meeting-inventory", "input_records": sum(len(v) for v in data.values() if isinstance(v, dict)), "families": {k: len(v) for k,v in data.items() if isinstance(v,dict)}})
+                scopes.append(SourceScope(provider="meeting-inventory", scope="retained caption, archive and witness observations", status="included", input_snapshot_ids=(c.input_id,), explanation="Unsupported ownership and cache-derived dates remain explicit issues; no caption content is invented."))
+            else:
+                scopes.append(SourceScope(provider="meeting-inventory", scope="caption, archive and witness observations", status="not_collected", explanation="No retained inventory supplied."))
+            if recovered_witnesses:
+                c, content = context(recovered_witnesses, "recovered-witnesses")
+                data = list(csv.DictReader(io.StringIO(content.decode())))
+                from .recovered import reuse_appearances
+                assembly.add(reuse_appearances(inventory.records({}, c, meetings=lookup, recovered_witnesses=data), assembly))
+                reconciliation.append({"provider": "recovered-witnesses", "input_records": len(data), "selected_records": len(data), "distinct_rows": len({json.dumps(r,sort_keys=True) for r in data})})
+                scopes.append(SourceScope(provider="recovered-witnesses", scope="retained recovered witness rows", status="included", input_snapshot_ids=(c.input_id,), explanation="Unique explicit event associations supply listed appearances; title-derived nominees remain inferred. Unique matching originating appearances retain their identity and richer fields."))
+            else:
+                scopes.append(SourceScope(provider="recovered-witnesses", scope="recovered witness rows", status="not_collected", explanation="No recovered witness table supplied."))
+            for path in transcript_files:
+                path = Path(path)
+                body = path.read_bytes()
+                c = source_context(body, "transcript-artifact")
+                source = transcripts.TranscriptInput(data=body, name=path.name, uri=path.resolve().as_uri())
+                assembly.add(transcripts.records([source], c, meetings=lookup, source_versions=versions))
+                scopes.append(SourceScope(provider="transcript-artifact", scope=path.name, status="included", input_snapshot_ids=(c.input_id,), explanation="Existing local artifact imported; no text generation or acquisition performed."))
+            if not transcript_files:
+                scopes.append(SourceScope(provider="transcript-artifact", scope="retained transcript bodies", status="not_collected", explanation="No body artifacts were supplied; metadata links do not establish captured or searchable text."))
+            return print_decisions
+
+        print_decisions = assemble_inputs()
+        LOGGER.info('Validating %d records and %d source observations', len(assembly.records), len(assembly.sources))
         catalog = assembly.finish()
         if previous is not None: previous.close()
         if issue_decisions:
@@ -590,6 +602,7 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=
             write("coverage.json", report, "coverage", "committee_explorer.coverage", len(report["metrics"]))
             if format == "parquet":
                 from .parquet import write_catalog
+                LOGGER.info('Writing Parquet publication')
                 write_catalog(catalog, assembly.current, stage, descriptor, write, evidence_states)
             else:
                 write_queries(catalog, assembly.current, write, evidence_states=evidence_states)
@@ -607,7 +620,9 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=
             history_records = ChainMap(assembly.records, assembly.sources)
             if issue_decisions:
                 history_records = {(r.kind,r.id):r for values in (catalog.records,catalog.sources) for r in values}
+            LOGGER.info('Saving retained issue history')
             save_history(state, publication_id, history_records)
+            LOGGER.info('Saving persistent IDs')
             ids.save()
             release = output / "releases" / publication_id
             release.parent.mkdir(exist_ok=True)
@@ -634,6 +649,7 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=
 
 
 def main():
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(name)s: %(message)s')
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--format", choices=("json", "parquet"), default="parquet")
     p.add_argument("--meetings", type=Path, required=True)

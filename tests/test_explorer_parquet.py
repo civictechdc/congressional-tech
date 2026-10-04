@@ -1,11 +1,70 @@
 """Verify browser tables against source-backed records, including missing links."""
 import json
+import subprocess
+import sys
+import tracemalloc
 
 import pyarrow.parquet as pq
 import pytest
 from committee_explorer.browser import package, verify
 from committee_explorer.export import export
 from test_explorer_export import NOW, native, write_meetings
+
+
+@pytest.mark.parametrize('count', [0, 1, 512, 1025])
+def test_batched_parquet_preserves_file_bytes(tmp_path, count):
+    import pyarrow as pa
+    from committee_explorer.parquet import SOURCE_SCHEMA, _write_table
+
+    rows = [dict(id=str(i), provider='test', payload=json.dumps({'text': 'évidence' * (i % 13)}))
+            for i in range(count)]
+    expected, actual = tmp_path / 'expected.parquet', tmp_path / 'actual.parquet'
+    pq.write_table(pa.Table.from_pylist(rows, schema=SOURCE_SCHEMA), expected,
+                   compression='snappy', row_group_size=512, write_statistics=True)
+    _write_table(rows, SOURCE_SCHEMA, actual, row_group_size=512)
+    assert actual.read_bytes() == expected.read_bytes()
+
+
+def test_parquet_source_conversion_has_bounded_arrow_memory(tmp_path):
+    # A separate process gives Arrow a fresh allocation counter. Converting all
+    # 32 MiB of payloads at once exceeds this budget; one row group fits easily.
+    script = '''
+import sys
+import pyarrow as pa
+from committee_explorer.parquet import SOURCE_SCHEMA, _write_table
+rows = [dict(id=str(i), payload='evidence' * 512) for i in range(8193)]
+_write_table(rows, SOURCE_SCHEMA, sys.argv[1], row_group_size=512)
+print(pa.default_memory_pool().max_memory())
+'''
+    result = subprocess.run([sys.executable, '-c', script, str(tmp_path / 'sources.parquet')],
+                            capture_output=True, text=True, check=True, timeout=30)
+    assert int(result.stdout) < 16 * 1024 * 1024
+    assert pq.read_metadata(tmp_path / 'sources.parquet').num_rows == 8193
+
+
+def test_file_link_building_does_not_retain_complete_representation_payloads(tmp_path):
+    from committee_explorer.parquet import write_tables
+
+    def records():
+        yield dict(kind='material', id='document')
+        yield dict(kind='material_version', id='version', material={'id': 'document', 'kind': 'material'})
+        for i in range(1000):
+            yield dict(kind='representation', id=str(i), version={'id': 'version', 'kind': 'material_version'},
+                       media_type='application/pdf', locations=[{'url': f'https://example.org/{i}.pdf', 'role': 'download'}],
+                       provenance={'explanation': str(i) + 'evidence ' * 8192,
+                                   'citations': [{'source': {'id': 'source'}}]})
+
+    tracemalloc.start()
+    try:
+        write_tables(records(), [], [dict(kind='material', id='document', type='document')],
+                     tmp_path, lambda *a, **k: None)
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    assert peak < 16 * 1024 * 1024
+    row = pq.read_table(tmp_path / 'materials.parquet').to_pylist()[0]
+    assert len(row['files']) == 1000
+    assert row['source_ids'] == ['source']
 
 
 def test_direct_committee_material_links_preserve_scope_and_lifecycle_without_meetings(tmp_path):

@@ -38,5 +38,7 @@ class IdRegistry:
     def save(self):
         self.path.parent.mkdir(parents=True, exist_ok=True)
         tmp = self.path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(self.values, sort_keys=True, ensure_ascii=False, indent=1) + "\n")
+        with tmp.open('w', encoding='utf-8') as stream:
+            json.dump(self.values, stream, sort_keys=True, ensure_ascii=False, indent=1)
+            stream.write('\n')
         tmp.replace(self.path)

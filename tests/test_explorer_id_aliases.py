@@ -11,6 +11,22 @@ from test_explorer_export import native, run, write_meetings
 URL = 'https://www.indian.senate.gov/hearings/tribal-infrastructure-roundtable/'
 
 
+def test_id_registry_save_streams_large_keys_without_changing_bytes(tmp_path):
+    import tracemalloc
+
+    registry = IdRegistry(tmp_path / 'ids.json')
+    registry.values = {f'{i}: évidence ' + 'x' * 32768: str(i) for i in range(1024)}
+    expected = (json.dumps(registry.values, sort_keys=True, ensure_ascii=False, indent=1) + '\n').encode()
+    tracemalloc.start()
+    try:
+        registry.save()
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    assert registry.path.read_bytes() == expected
+    assert peak < 8 * 1024 * 1024
+
+
 def source_state(events=(), urls=(URL,)):
     return {'indian.senate.gov': {'pages': {url: {
         'title': 'Roundtable on tribal infrastructure',
