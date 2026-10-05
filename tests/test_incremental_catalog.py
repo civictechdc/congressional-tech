@@ -14,6 +14,24 @@ from test_raw_rebuild import retain
 from test_raw_source_sync import MemoryStore
 
 
+def test_new_rows_do_not_reinterpret_saved_filename_metadata(tmp_path):
+    """A saved interpretation survives a parser revision; explicit rebuild replaces it."""
+    old = dict(body_key=None, filename='saved.pdf', source_url='https://example.gov/saved.pdf')
+    previous = pa.Table.from_pylist([{**old, 'document_kind': ['saved-interpretation'],
+                                     'document_kind_source': ['filename']}]).replace_schema_metadata(
+        {'house_naming_fingerprint': 'older-rules'})
+    added = dict(body_key=None, filename='new.pdf', source_url='https://example.gov/new.pdf')
+    result = index.write_filename_metadata(tmp_path, [old, added], previous=previous, workers=1)
+    rows = pa.parquet.read_table(result['output']).to_pylist()
+    assert next(r for r in rows if r['filename'] == 'saved.pdf')['document_kind'] == ['saved-interpretation']
+    assert result['parsed_inputs'] == 1
+    result = index.write_filename_metadata(tmp_path, [old, added], previous=previous,
+                                           workers=1, reuse_results=False)
+    rows = pa.parquet.read_table(result['output']).to_pylist()
+    assert next(r for r in rows if r['filename'] == 'saved.pdf')['document_kind'] != ['saved-interpretation']
+    assert result['parsed_inputs'] == 2
+
+
 def test_second_update_reads_no_receipts_or_bodies_and_publishes_nothing():
     store = MemoryStore()
     retain(
@@ -99,14 +117,20 @@ def test_filename_cache_independent_of_body_fields_and_negative_cover_is_cached(
     def forbidden(*args, **kwargs):
         pytest.fail("Completed filename/body interpretation was repeated")
 
-    # The fingerprint is deliberately pinned: this tests reuse, not invalidation.
-    fingerprint = index.parser_fingerprint()
-    monkeypatch.setattr(index, "parser_fingerprint", lambda: fingerprint)
+    # Code changes do not invalidate saved interpretations, including negatives.
+    monkeypatch.setattr(index, "parser_fingerprint", lambda: 'new-filename-rules')
+    monkeypatch.setattr(index, "evidence_fingerprint", lambda: 'new-body-reader')
     monkeypatch.setattr(index, "extract", forbidden)
     index.write_filename_metadata(
         tmp_path, [dict(source)], workers=1, previous=before, read_body=forbidden, inspect_bodies=True
     )
     assert len(calls) == 1
+
+    with monkeypatch.context() as forced:
+        forced.setattr(index, 'extract', lambda key: {})
+        index.write_filename_metadata(tmp_path, [dict(source)], workers=1, previous=before,
+                                      inspect_bodies=True, reuse_results=False)
+    assert len(calls) == 2
 
 
 def test_saved_download_state_does_not_reload_unchanged_filename_table():
@@ -127,7 +151,7 @@ def test_saved_download_state_does_not_reload_unchanged_filename_table():
     }
 
 
-def test_parser_change_and_repair_reprocess_retained_sources(monkeypatch):
+def test_parser_change_reuses_metadata_until_explicit_repair(monkeypatch):
     from congress_api.retention import raw_catalog
 
     store = MemoryStore()
@@ -154,8 +178,9 @@ def test_parser_change_and_repair_reprocess_retained_sources(monkeypatch):
     monkeypatch.setattr(
         raw_catalog, "source_fingerprint", lambda: "changed-source-parser"
     )
-    rebuild_catalog(store, workers=1)
-    assert receipt in reads
+    result = rebuild_catalog(store, workers=1)
+    assert result["unchanged"] is True
+    assert receipt not in reads
     reads.clear()
     rebuild_catalog(store, workers=1)
     assert receipt not in reads

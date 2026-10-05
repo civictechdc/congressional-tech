@@ -1,12 +1,27 @@
-"""Disposable, indexed working state for derived catalogs.
+"""Disposable working state for derived catalogs.
 
-SQLite files live only in a rebuild's temporary directory. Retained receipts and
-published Parquet remain the authorities; staging never survives publication.
+Parquet streams filename rows; SQLite indexes shared facts and document groups.
+Both live in temporary directories. Retained receipts and published Parquet
+remain the authorities; staging never survives publication.
 """
-from collections.abc import Mapping, MutableMapping
+from collections.abc import ItemsView, Mapping, MutableMapping, ValuesView
 import json
 import pickle
 import sqlite3
+
+
+class DiskItems(ItemsView):
+    def __iter__(self):
+        mapping = self._mapping
+        for key, value in mapping.connection.execute(f'SELECT key,value FROM {mapping.name} ORDER BY rowid'):
+            yield pickle.loads(key), pickle.loads(value)
+
+
+class DiskValues(ValuesView):
+    def __iter__(self):
+        mapping = self._mapping
+        for value, in mapping.connection.execute(f'SELECT value FROM {mapping.name} ORDER BY rowid'):
+            yield pickle.loads(value)
 
 
 class DiskMap(MutableMapping):
@@ -38,13 +53,18 @@ class DiskMap(MutableMapping):
     def __len__(self):
         return self.connection.execute(f'SELECT count(*) FROM {self.name}').fetchone()[0]
     def get(self, key, default=None):
-        return self[key] if key in self else default
+        result = self.connection.execute(f'SELECT value FROM {self.name} WHERE key=?', (pickle.dumps(key),)).fetchone()
+        return pickle.loads(result[0]) if result is not None else default
     def setdefault(self, key, default=None):
         if key not in self:
             self[key] = default
         return self[key]
     def clear(self):
         self.connection.execute(f'DELETE FROM {self.name}')
+    def items(self):
+        return DiskItems(self)
+    def values(self):
+        return DiskValues(self)
 
 
 class OccurrenceRows(Mapping):
@@ -148,7 +168,7 @@ class WorkingCatalog:
 
 
 class DiskRows:
-    """Replayable row sequence; each mutation is saved before the next row."""
+    """Read detached rows; explicitly save changed batches with write=True."""
     def __init__(self, connection, name='rows'):
         self.connection, self.name = connection, name
         connection.execute(f'CREATE TABLE IF NOT EXISTS {name} (id INTEGER PRIMARY KEY, value BLOB NOT NULL)')
@@ -158,28 +178,71 @@ class DiskRows:
         return self.connection.execute(f'SELECT count(*) FROM {self.name}').fetchone()[0]
     def items(self):
         for key, payload in self.connection.execute(f'SELECT id,value FROM {self.name} ORDER BY id'):
-            row = pickle.loads(payload)
-            yield key, row
-            updated = pickle.dumps(row)
-            if updated != payload:
-                self.connection.execute(f'UPDATE {self.name} SET value=? WHERE id=?', (updated, key))
+            yield key, pickle.loads(payload)
     def __iter__(self):
         for _, row in self.items():
             yield row
-    def batches(self, size=4096):
-        pending = []
-        for key, row in self.items():
-            pending.append((key, row))
-            if len(pending) == size:
-                yield pending
-                self.save(pending)
-                pending = []
-        if pending:
-            yield pending
-            self.save(pending)
-    def save(self, items):
-        self.connection.executemany(f'UPDATE {self.name} SET value=? WHERE id=?',
-                                   ((pickle.dumps(row), key) for key, row in items))
+    def batches(self, size=4096, *, write=False):
+        cursor = self.connection.execute(f'SELECT id,value FROM {self.name} ORDER BY id')
+        while original := cursor.fetchmany(size):
+            batch = [(key, pickle.loads(payload)) for key, payload in original]
+            yield batch
+            if write:
+                changed = ((updated, key) for (key, row), (_, payload) in zip(batch, original)
+                           if (updated := pickle.dumps(row)) != payload)
+                self.connection.executemany(f'UPDATE {self.name} SET value=? WHERE id=?', changed)
+
+
+class ParquetRows:
+    """Write-once batches awaiting facts from later rows in the source stream."""
+    def __init__(self, directory, schema_for_columns, batch_size=256):
+        self.directory, self.schema_for_columns = directory, schema_for_columns
+        directory.mkdir(parents=True)
+        self.batch_size, self.count = batch_size, 0
+        self.pending, self.parts = [], []
+
+    def _write(self, path, rows):
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+        columns = sorted({key for row in rows for key in row})
+        table = pa.Table.from_pylist(rows, schema=self.schema_for_columns(columns))
+        temporary = path.with_suffix('.tmp')
+        pq.write_table(table, temporary, compression='zstd')
+        temporary.replace(path)
+
+    def _flush(self):
+        if self.pending:
+            path = self.directory / f'{len(self.parts)}.parquet'
+            self._write(path, self.pending)
+            self.parts.append(path)
+            self.pending = []
+
+    def append(self, row):
+        self.pending.append(row)
+        self.count += 1
+        if len(self.pending) == self.batch_size:
+            self._flush()
+
+    def __len__(self):
+        return self.count
+
+    def batches(self):
+        """Read the immutable spool once; never rewrite an enriched batch."""
+        import pyarrow.parquet as pq
+        self._flush()
+        for path in self.parts:
+            with pq.ParquetFile(path) as reader:
+                for batch in reader.iter_batches(batch_size=self.batch_size, use_threads=False):
+                    records = batch.to_pylist()
+                    for row in records:
+                        if row.get('source_occurrences'):
+                            row['source_occurrences'] = [{key: value for key, value in occurrence.items() if value is not None}
+                                                         for occurrence in row['source_occurrences']]
+                    yield records
+
+    def __iter__(self):
+        for batch in self.batches():
+            yield from batch
 
 
 def write_grouped_indexes(destination, rows, schema, *, working, previous=None, previous_documents=None, reuse_groups=True):
@@ -205,8 +268,7 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
     policy.update(inspect.getsource(index.fill_document_kind).encode())
     grouping_fingerprint = policy.hexdigest()
     previous_schema = (previous.schema_arrow if hasattr(previous,'schema_arrow') else previous.schema) if previous is not None else None
-    reusable = (reuse_groups and previous_schema is not None and
-                (previous_schema.metadata or {}).get(b'document_grouping_fingerprint') == grouping_fingerprint.encode())
+    reusable = reuse_groups and previous_schema is not None
 
     db = working.connection
     staged = DiskRows(db, 'group_rows')
@@ -232,16 +294,19 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
         return row
 
     def signature(row):
-        return sha256(json.dumps({k: v for k, v in row.items() if v is not None and k != 'document_id'},
-                                 sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+        # Family is derived from kind/context during grouping, never an input.
+        values = {k: v for k, v in row.items() if v is not None and k not in {'document_id', 'document_family'}}
+        if values.get('source_occurrences'):
+            # Null struct fields are an Arrow representation detail, not new
+            # source evidence that warrants recomputing a saved interpretation.
+            values['source_occurrences'] = index.merge_values('source_occurrences', values['source_occurrences'])
+        return sha256(json.dumps(values, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
 
-    if reusable and (schema.metadata or {}).get(b'source_fingerprint') != (previous_schema.metadata or {}).get(b'source_fingerprint'):
-        reusable = False
     if reusable and previous_documents is not None:
         previous_document_schema = (pq.read_schema(pa.BufferReader(previous_documents)) if isinstance(previous_documents,bytes) else previous_documents.schema_arrow)
         reusable = (previous_document_schema.metadata or {}).get(b'catalog_id') == (previous_schema.metadata or {}).get(b'catalog_id')
     if reusable and previous_documents is not None:
-        batches = previous.iter_batches(batch_size=4096) if hasattr(previous, 'iter_batches') else previous.to_batches(max_chunksize=4096)
+        batches = previous.iter_batches(batch_size=256) if hasattr(previous, 'iter_batches') else previous.to_batches(max_chunksize=256)
         for batch in batches:
             for row in batch.to_pylist():
                 original = dict(row)
@@ -249,7 +314,7 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
                 db.execute('INSERT OR REPLACE INTO prior_sources VALUES (?,?,?,?)',
                            (row['source_id'], original.get('document_id'), signature(row), pickle.dumps(original)))
         documents = pq.ParquetFile(pa.BufferReader(previous_documents)) if isinstance(previous_documents, bytes) else previous_documents
-        for batch in documents.iter_batches(batch_size=4096):
+        for batch in documents.iter_batches(batch_size=256):
             for row in batch.to_pylist():
                 db.execute('INSERT OR REPLACE INTO prior_documents VALUES (?,?)', (row['document_id'], pickle.dumps(row)))
 
@@ -291,14 +356,18 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
     for key, in db.execute('SELECT id FROM parents ORDER BY id'):
         db.execute('INSERT INTO members VALUES (?,?)', (root(key),key))
 
+    # Streaming interpretation discovers its columns while rows are consumed.
+    schema = schema() if callable(schema) else schema
+
     # Determine the final schema once, then write bounded source batches. The
     # old assembler remains the semantic oracle for one connected component.
     if 'publication_code_code' in schema.names:
         redundant = all(not row.get('publication_code_code') or row['publication_code_code'] == row.get('publication_type') for row in staged)
         if redundant:
             schema = pa.schema([field for field in schema if field.name != 'publication_code_code'], metadata=schema.metadata)
-            for row in staged:
-                row.pop('publication_code_code', None)
+            for batch in staged.batches(write=True):
+                for _, row in batch:
+                    row.pop('publication_code_code', None)
     for field in ('document_kind','document_kind_source','document_family','record_role','source_record_type'):
         if field not in schema.names:
             schema = schema.append(pa.field(field,index.STRINGS))
@@ -413,7 +482,7 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
                         row['document_id'] = document['document_id']
                         index.fill_document_kind(row)
                     pending.append(row)
-                    if len(pending) == 4096:
+                    if len(pending) == 1024:
                         writer.write_table(pa.Table.from_pylist(pending,schema=source_schema))
                         pending = []
             if pending:
@@ -422,7 +491,7 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
             pending = []
             for payload, in db.execute('SELECT value FROM output_documents ORDER BY sort_name,id'):
                 pending.append(pickle.loads(payload))
-                if len(pending) == 4096:
+                if len(pending) == 1024:
                     writer.write_table(pa.Table.from_pylist(pending,schema=document_schema))
                     pending = []
             if pending:

@@ -83,7 +83,7 @@ def test_metadata_refresh_keeps_source_rows_and_identity_without_reopening_evide
     index.write_document_indexes(path, [{**source, 'obsolete_metadata': ['old parser']}], schema)
     before = pq.read_table(selected_path(path))
     # The fixture intentionally has no receipts, bodies, captures or inventories.
-    run = subprocess.run([sys.executable, str(SCRIPT), str(tmp_path), '--metadata-only',
+    run = subprocess.run([sys.executable, str(SCRIPT), str(tmp_path), '--rebuild',
                           '--workers', '1'], check=True, capture_output=True, text=True)
     result = json.loads(run.stdout)
     after = pq.read_table(selected_path(path))

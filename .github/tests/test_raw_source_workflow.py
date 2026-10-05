@@ -19,7 +19,7 @@ WORKFLOW = yaml.load(WORKFLOW_PATH.read_text(), Loader=yaml.BaseLoader)
 STEPS = WORKFLOW["jobs"]["capture"]["steps"]
 SELECT = next(step for step in STEPS if step.get("id") == "operation")
 PUBLISH = next(step for step in STEPS if step.get("id") == "sync")
-SUMMARY = next(step for step in STEPS if step.get("name") == "Show publication summary")
+SUMMARY = next(step for step in STEPS if step.get("name") == "Show operation summary")
 
 
 def run_step(step, directory, **env):
@@ -54,18 +54,20 @@ def recording_command(tmp_path):
 
 
 @pytest.mark.parametrize(
-    ("event", "requested", "expected"),
+    ("event", "requested", "schedule", "expected"),
     [
-        ("push", "", "rebuild"),
-        ("push", "capture", "rebuild"),
-        ("workflow_dispatch", "rebuild", "rebuild"),
-        ("workflow_dispatch", "capture", "capture"),
-        ("schedule", "", "capture"),
-        ("workflow_run", "", "capture"),
+        ("push", "", "", "update"),
+        ("push", "capture", "", "update"),
+        ("workflow_dispatch", "rebuild", "", "rebuild"),
+        ("workflow_dispatch", "update", "", "update"),
+        ("workflow_dispatch", "capture", "", "capture"),
+        ("schedule", "", "23 */6 * * *", "capture"),
+        ("schedule", "", "23 3 * * *", "update"),
+        ("workflow_run", "", "", "capture"),
     ],
 )
 def test_events_execute_one_command_in_the_selected_mode(
-    tmp_path, recording_command, event, requested, expected
+    tmp_path, recording_command, event, requested, schedule, expected
 ):
     output = tmp_path / "outputs"
     result = run_step(
@@ -73,6 +75,7 @@ def test_events_execute_one_command_in_the_selected_mode(
         tmp_path,
         EVENT_NAME=event,
         INPUT_MODE=requested,
+        EVENT_SCHEDULE=schedule,
         GITHUB_OUTPUT=str(output),
     )
     assert result.returncode == 0, result.stderr
@@ -92,10 +95,11 @@ def test_events_execute_one_command_in_the_selected_mode(
         "raw-capture-summary.json",
     ]
     assert args[-2:] == ["--seed", "pipeline-data/meeting-inventory/senate.json.gz"]
-    if expected == "rebuild":
-        assert args[6:-2] == ["--rebuild-only"]
+    if expected in {"update", "rebuild"}:
+        assert args[6:-2] == [f"--{expected}-only"]
     else:
         assert "--rebuild-only" not in args
+        assert "--capture-only" in args
         assert args[args.index("--limit") + 1] == "31"
         assert args[args.index("--transport") + 1] == "direct"
         assert "--fetcher-binary" in args
@@ -105,6 +109,8 @@ def test_events_execute_one_command_in_the_selected_mode(
 
     parsed = parser().parse_args(args)
     assert parsed.rebuild_only is (expected == "rebuild")
+    assert parsed.update_only is (expected == "update")
+    assert parsed.capture_only is (expected == "capture")
     assert parsed.inspect_bodies is False
 
 
@@ -133,7 +139,7 @@ def test_rebuild_workflow_arguments_execute_without_acquisition(
 
     def rebuild(actual_store, *, seeds=(), workers, repair=False, inspect_bodies=False):
         assert inspect_bodies is False
-        assert not repair
+        assert repair
         assert actual_store is store
         calls.append((workers, list(seeds)))
         return {"catalog_id": "rebuilt"}
@@ -161,6 +167,7 @@ def test_rebuild_workflow_arguments_execute_without_acquisition(
         ("pull_request", "rebuild"),
         ("workflow_dispatch", ""),
         ("workflow_dispatch", "typo"),
+        ("schedule", ""),
     ],
 )
 def test_unsupported_events_and_manual_modes_fail_closed(tmp_path, event, mode):
@@ -197,6 +204,7 @@ def test_failed_command_or_missing_receipt_fails_the_step(
         ("rebuild", "success", "success", True),
         ("rebuild", "failure", "failure", False),
         ("capture", "failure", "failure", True),
+        ("capture", "success", "success", True),
         ("", "failure", "skipped", False),
     ],
 )
@@ -219,9 +227,11 @@ def test_summary_reports_success_failure_and_setup_failure(
     assert result.returncode == 0, result.stderr
     text = summary.read_text()
     assert "Code revision: trigger-sha" in text
-    assert f"Job status: {status}; publication step: {outcome}" in text
+    assert f"Job status: {status}; sync step: {outcome}" in text
     assert ("catalog_id" in text) is receipt
-    assert ("publication is unverified" in text) is not receipt
+    assert ("operation is unverified" in text) is not receipt
+    if mode == "capture":
+        assert "tables are updated by a separate rebuild" in text
 
 
 def test_interrupted_run_keeps_last_progress_in_summary_and_artifact(tmp_path):
@@ -234,7 +244,7 @@ def test_interrupted_run_keeps_last_progress_in_summary_and_artifact(tmp_path):
     assert result.returncode == 0, result.stderr
     text = summary.read_text()
     assert 'read_house_xml' in text and '1200' in text
-    assert 'interrupted' in text and 'publication is unverified' in text
+    assert 'interrupted' in text and 'operation is unverified' in text
     artifact = next(step for step in STEPS if step.get('uses', '').startswith('actions/upload-artifact@'))
     assert 'raw-capture-summary.progress.json' in artifact['with']['path'].splitlines()
 
@@ -247,6 +257,7 @@ def test_shared_writer_lock_revision_credentials_and_single_rebuild():
     assert WORKFLOW["concurrency"] == {
         "group": "raw-source-mirror",
         "cancel-in-progress": "false",
+        "queue": "max",
     }
     assert WORKFLOW["permissions"] == {"contents": "read"}
     checkouts = [
@@ -257,6 +268,7 @@ def test_shared_writer_lock_revision_credentials_and_single_rebuild():
     assert SELECT["env"] == {
         "EVENT_NAME": "${{ github.event_name }}",
         "INPUT_MODE": "${{ inputs.mode }}",
+        "EVENT_SCHEDULE": "${{ github.event.schedule }}",
     }
     assert PUBLISH["env"]["SYNC_MODE"] == "${{ steps.operation.outputs.mode }}"
     assert (
@@ -296,8 +308,8 @@ def test_triggers_cover_parser_changes_and_exclude_generated_outputs():
         "types": ["completed"],
         "branches": ["main"],
     }
-    assert triggers["schedule"] == [{"cron": "23 */6 * * *"}]
-    assert triggers["workflow_dispatch"]["inputs"]["mode"]["default"] == "rebuild"
+    assert triggers["schedule"] == [{"cron": "23 */6 * * *"}, {"cron": "23 3 * * *"}]
+    assert triggers["workflow_dispatch"]["inputs"]["mode"]["default"] == "update"
     patterns = triggers["push"]["paths"]
     for path in [
         "packages/house-naming/src/house_naming/data/guide.json",

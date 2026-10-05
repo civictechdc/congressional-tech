@@ -86,7 +86,7 @@ def test_capture_rebuild_preserves_headers_redirects_context_and_unfetched_names
     assert result["catalog"]["document_rows"] == len(table(store, DOCUMENTS))
 
 
-def test_only_new_names_parse_until_parser_fingerprint_changes(tmp_path, monkeypatch):
+def test_only_new_names_parse_until_explicit_rebuild(tmp_path, monkeypatch):
     store = initialize(tmp_path)
     calls = []
     original = index.extract
@@ -105,6 +105,8 @@ def test_only_new_names_parse_until_parser_fingerprint_changes(tmp_path, monkeyp
     calls.clear()
     monkeypatch.setattr(index, "parser_fingerprint", lambda: "changed-rules")
     result = rebuild_catalog(store, a.captures, workers=1)
+    assert calls == [] and result['parsed_inputs'] == 0
+    result = rebuild_catalog(store, a.captures, workers=1, repair=True)
     assert len(calls) == 2 and result["parsed_inputs"] == 2
 
 

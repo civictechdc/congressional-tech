@@ -269,13 +269,13 @@ def test_body_classification_cache_outlives_the_local_filename_alias(tmp_path):
     assert sources[0]['format'] == ['html']
 
 
-def test_body_cache_is_invalidated_when_the_body_reader_changes(tmp_path, monkeypatch):
+def test_body_cache_is_reinterpreted_only_on_explicit_rebuild(tmp_path, monkeypatch):
     row = retained(tmp_path, '123.xml', b'<witness-list/>')
     build(tmp_path, [row])
     previous = pq.read_table(selected_path(tmp_path / 'indexes/document-filenames.parquet'))
     monkeypatch.setattr(index, 'evidence_fingerprint', lambda: 'new-body-reader')
     reads = []
-    sources, _ = build(tmp_path, [row], previous=previous,
+    sources, _ = build(tmp_path, [row], previous=previous, reuse_results=False,
                        read_body=lambda key: reads.append(key) or b'<committee-meeting/>')
     assert reads == [row['body_key']]
     assert sources[0]['record_role'] == ['source-record']

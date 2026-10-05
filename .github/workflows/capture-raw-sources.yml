@@ -3,7 +3,7 @@ name: Capture raw sources and rebuild document tables
 on:
   push:
     branches: [main]
-    # Code changes publish metadata from retained evidence without acquisition.
+    # Code changes update new evidence; saved interpretations require a manual rebuild.
     # Generated data and pipeline-data commits cannot trigger this path.
     paths:
       - 'packages/house-naming/src/**'
@@ -36,8 +36,11 @@ on:
       - '.github/workflows/capture-raw-sources.yml'
       - '.github/tests/test_raw_source_workflow.py'
       - '.github/tests/test_raw_source_finalizer.py'
+      - 'tests/test_raw_capture_only.py'
   schedule:
+    # Save capture batches every six hours; publish accumulated evidence daily.
     - cron: '23 */6 * * *'
+    - cron: '23 3 * * *'
   workflow_run:
     workflows: [Update committee data]
     types: [completed]
@@ -45,17 +48,17 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: Rebuild metadata from retained evidence, or capture missing sources then rebuild
+        description: Update new evidence, capture missing sources, or explicitly reinterpret all metadata
         type: choice
-        options: [rebuild, capture]
-        default: rebuild
+        options: [update, capture, rebuild]
+        default: update
         required: true
       repair:
         description: Replay all retained sources and interpretation (normally leave disabled)
         type: boolean
         default: false
       inspect_bodies:
-        description: Also inspect retained document contents (normal updates use receipts and filenames)
+        description: Update or rebuild mode - inspect retained document contents
         type: boolean
         default: false
       limit:
@@ -75,6 +78,8 @@ concurrency:
   # Keep every R2 writer in the same group, including metadata-only rebuilds.
   group: raw-source-mirror
   cancel-in-progress: false
+  # A capture batch must not replace a queued rebuild (or the reverse).
+  queue: max
 
 jobs:
   capture:
@@ -91,15 +96,23 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           INPUT_MODE: ${{ inputs.mode }}
+          EVENT_SCHEDULE: ${{ github.event.schedule }}
         run: |
           case "$EVENT_NAME" in
-            push) mode=rebuild ;;
+            push) mode=update ;;
             workflow_dispatch) mode="$INPUT_MODE" ;;
-            schedule|workflow_run) mode=capture ;;
+            workflow_run) mode=capture ;;
+            schedule)
+              case "$EVENT_SCHEDULE" in
+                '23 */6 * * *') mode=capture ;;
+                '23 3 * * *') mode=update ;;
+                *) echo "Unsupported schedule: $EVENT_SCHEDULE" >&2; exit 1 ;;
+              esac
+              ;;
             *) echo "Unsupported event: $EVENT_NAME" >&2; exit 1 ;;
           esac
           case "$mode" in
-            rebuild|capture) echo "mode=$mode" >> "$GITHUB_OUTPUT" ;;
+            update|rebuild|capture) echo "mode=$mode" >> "$GITHUB_OUTPUT" ;;
             *) echo "Unsupported operation: $mode" >&2; exit 1 ;;
           esac
       - uses: actions/checkout@v5
@@ -136,7 +149,7 @@ jobs:
         if: steps.verified.outputs.cache-hit != 'true'
         run: >-
           python .github/scripts/offline-python.py -m pytest -q
-          tests/test_raw_source_sync.py tests/test_source_capture.py tests/test_r2_archive_store.py
+          tests/test_raw_source_sync.py tests/test_raw_capture_only.py tests/test_source_capture.py tests/test_r2_archive_store.py
           tests/test_raw_catalog.py tests/test_raw_rebuild.py tests/test_incremental_catalog.py
           tests/test_raw_progress.py tests/test_core_benchmark.py
           tests/test_core_source_context.py tests/test_catalog_publication.py tests/test_catalog_staging.py tests/test_catalog_consumers.py
@@ -184,7 +197,7 @@ jobs:
         with:
           path: packages/source-fetch/target/release/source-fetch
           key: ${{ steps.fetcher.outputs.cache-primary-key }}
-      - name: Publish filename and document tables
+      - name: Capture sources or rebuild document tables
         id: sync
         env:
           CLOUDFLARE_ACCOUNT_ID: '174055408ff1560e60601c4d12c561c4'
@@ -207,9 +220,10 @@ jobs:
           done
           args=(--bucket congressional-tech-raw --index-workers 2 --summary raw-capture-summary.json)
           case "$SYNC_MODE" in
+            update) args+=(--update-only) ;;
             rebuild) args+=(--rebuild-only) ;;
             capture)
-              args+=(--fetcher-binary "$GITHUB_WORKSPACE/packages/source-fetch/target/release/source-fetch"
+              args+=(--capture-only --fetcher-binary "$GITHUB_WORKSPACE/packages/source-fetch/target/release/source-fetch"
                 --transport "$CAPTURE_TRANSPORT" --limit "$CAPTURE_LIMIT"
                 --requests-per-second 40 --workers 80 --max-seconds 5400 --max-file-mib 64)
               ;;
@@ -219,7 +233,7 @@ jobs:
           if [ "${INSPECT_BODIES:-false}" = "true" ]; then args+=(--inspect-bodies); fi
           raw-source-sync "${args[@]}" "${seeds[@]}"
           test -s raw-capture-summary.json
-      - name: Show publication summary
+      - name: Show operation summary
         if: ${{ always() }}
         env:
           SYNC_MODE: ${{ steps.operation.outputs.mode }}
@@ -229,19 +243,22 @@ jobs:
           SYNC_OUTCOME: ${{ steps.sync.outcome }}
         run: |
           {
-            echo '### Raw source document tables'
+            echo '### Raw source capture and document tables'
             echo "Operation: ${SYNC_MODE:-unresolved}; trigger: $EVENT_NAME"
             echo "Code revision: $CODE_REVISION"
             if [ -d pipeline-data/.git ]; then
               echo "Seed revision: $(git -C pipeline-data rev-parse HEAD)"
             fi
-            echo "Job status: $JOB_STATUS; publication step: ${SYNC_OUTCOME:-not run}"
+            echo "Job status: $JOB_STATUS; sync step: ${SYNC_OUTCOME:-not run}"
+            if [ "$SYNC_MODE" = capture ]; then
+              echo 'Capture mode saves receipts and retry state; document tables are updated by a separate rebuild.'
+            fi
             if [ -s raw-capture-summary.json ]; then
               echo '```json'
               cat raw-capture-summary.json
               echo '```'
             else
-              echo 'No completed publication summary was written. Check the failed step; table publication is unverified.'
+              echo 'No completed operation summary was written. Check the failed step; this operation is unverified.'
             fi
             if [ -s raw-capture-summary.progress.json ]; then
               echo 'Last recorded progress (a running status may mean the process was interrupted):'

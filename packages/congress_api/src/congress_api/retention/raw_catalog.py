@@ -1,7 +1,7 @@
 """Rebuild the paired document tables from retained receipts and source bodies.
 
 The published filename table is the reusable inventory. New receipts add facts;
-source-parser changes or explicit repair replay parent evidence. Document-body
+explicit repair replays parent evidence. Code changes preserve saved metadata. Document-body
 inspection is opt-in. Preserve prior tables before replacement.
 Immutable table pairs publish together through one conditional selector update.
 Readers validate the selected files and their matching catalog_id values.
@@ -82,7 +82,6 @@ def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies,
     fingerprint = source_fingerprint()
     cursor = int(meta.get(b'raw_capture_rows', b'0'))
     reusable = (not repair and previous is not None and 0 <= cursor <= capture_rows
-                and meta.get(b'source_fingerprint') == fingerprint.encode()
                 and meta.get(b'capture_digest') == capture_digest(captures.slice(0, cursor)).encode())
     deferred_sources = set(json.loads(meta.get(b'deferred_source_bodies', b'[]'))) if reusable else set()
     if (reusable and not deferred_sources
@@ -90,8 +89,6 @@ def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies,
                  and meta.get(b'deferred_body_reads') == b'0')
             and cursor == capture_rows and meta.get(b'seed_digest') == seed_digest.encode()
             and previous_documents is not None
-            and meta.get(b'house_naming_fingerprint') == index.parser_fingerprint().encode()
-            and (not inspect_bodies or meta.get(b'body_evidence_fingerprint') == index.evidence_fingerprint().encode())
             and (pq.read_schema(pa.BufferReader(previous_documents)).metadata or {}).get(b'catalog_id') == meta.get(b'catalog_id')):
         if snapshot.manifest is None:
             (root / FILENAMES).write_bytes(previous_bytes)

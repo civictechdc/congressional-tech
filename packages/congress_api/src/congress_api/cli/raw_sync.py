@@ -75,8 +75,12 @@ def parser():
     p.add_argument("--max-file-mib", type=positive, default=64)
     mode = p.add_mutually_exclusive_group()
     mode.add_argument("--plan-only", action="store_true")
+    mode.add_argument("--capture-only", action="store_true",
+                      help="Save captures, receipts and retry state without rebuilding document tables")
+    mode.add_argument("--update-only", action="store_true",
+                      help="Add retained evidence to document tables, preserving existing metadata; no acquisition")
     mode.add_argument("--rebuild-only", action="store_true",
-                      help="Rebuild and publish both document tables from retained R2 evidence; no acquisition")
+                      help="Explicitly reinterpret retained metadata with current rules; no acquisition")
     p.add_argument(
         "--local-mirror",
         type=Path,
@@ -131,7 +135,7 @@ def save_summary(path, summary):
     temporary.replace(path)
 
 
-def run(args, log):
+def connect_storage(args, log):
     progress.report('connect_storage')
     if args.local_mirror:
         if not args.plan_only:
@@ -174,14 +178,24 @@ def run(args, log):
                 response_checksum_validation="when_required",
             )), args.bucket)
             log.publish = lambda payload: status_store.put('status/raw-source-sync.json', payload)
-    if not args.plan_only and not args.rebuild_only and args.transport in {"auto", "zyte"}:
+    return store
+
+
+def run(args, log, *, store=None):
+    if args.capture_only and args.inspect_bodies:
+        raise SystemExit("--inspect-bodies requires a catalog rebuild; omit --capture-only")
+    if store is None:
+        store = connect_storage(args, log)
+    metadata_only = args.rebuild_only or args.update_only
+    if not args.plan_only and not metadata_only and args.transport in {"auto", "zyte"}:
         zyte.token()
     run_id = (
         datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + uuid4().hex[:12]
     )
+    mode = 'rebuild' if args.rebuild_only else 'update' if args.update_only else 'plan' if args.plan_only else 'capture'
     with log.lock:
-        log.state.update(run_id=run_id, mode='rebuild' if args.rebuild_only else 'plan' if args.plan_only else 'capture')
-    summary = dict(mode="rebuild" if args.rebuild_only else "plan" if args.plan_only else "capture",
+        log.state.update(run_id=run_id, mode=mode)
+    summary = dict(mode=mode,
                    run_id=run_id, bucket=args.bucket, acquisition_status="not_run",
                    catalog_status="not_run", planning_status="not_run")
     active_stage = "planning_status"
@@ -196,33 +210,36 @@ def run(args, log):
                            outcomes=dict(Counter(s["outcome"] for s in archive.state.values())))
             summary["planning_status"] = "completed"
         else:
-            if not args.rebuild_only:
+            if not metadata_only:
                 active_stage = 'acquisition_status'
                 summary['acquisition_status'] = 'running'
                 save_summary(args.summary, summary)
                 summary.update(capture_sources(args, store, run_id))
                 summary['acquisition_status'] = 'completed'
-            active_stage = 'catalog_status'
-            summary['catalog_status'] = 'running'
-            save_summary(args.summary, summary)
-            summary['catalog'] = rebuild_catalog(
-                store, seeds=seed_files(args.seed) if args.seed else (), workers=args.index_workers,
-                repair=args.repair, inspect_bodies=args.inspect_bodies,
-            )
-            summary['catalog_status'] = 'completed'
-            summary.setdefault('accounting', {}).update(
-                filename_rows=summary['catalog'].get('rows'),
-                grouped_documents=summary['catalog'].get('document_rows'),
-            )
+            if not args.capture_only:
+                active_stage = 'catalog_status'
+                summary['catalog_status'] = 'running'
+                save_summary(args.summary, summary)
+                summary['catalog'] = rebuild_catalog(
+                    store, seeds=seed_files(args.seed) if args.seed else (), workers=args.index_workers,
+                    repair=args.repair or args.rebuild_only, inspect_bodies=args.inspect_bodies,
+                )
+                summary['catalog_status'] = 'completed'
+                summary.setdefault('accounting', {}).update(
+                    filename_rows=summary['catalog'].get('rows'),
+                    grouped_documents=summary['catalog'].get('document_rows'),
+                )
     except BaseException as error:
         summary[active_stage] = 'failed'
         summary['error_type'] = type(error).__name__
         save_summary(args.summary, summary)
         raise
     summary.update(run_id=run_id, bucket=args.bucket)
-    if not args.rebuild_only:
+    if not metadata_only:
         summary["transport"] = args.transport
     save_summary(args.summary, summary)
+    if args.capture_only:
+        progress.report('capture_saved')
     print(json.dumps(summary, indent=2), flush=True)
 
 

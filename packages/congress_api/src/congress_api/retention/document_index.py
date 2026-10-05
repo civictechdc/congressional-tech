@@ -1809,15 +1809,16 @@ def _refresh_source_metadata(root, context, *, working, snapshot, output_root):
             columns.update(added)
             rows.append({**row, **added})
     del context  # Rows now retain their occurrences; release lookup/transfer maps.
-    for batch in rows.batches():
+    for batch in rows.batches(write=True):
         refresh_response_metadata(root, [row for _, row in batch])
     columns.update(field for row in rows for field in row
                    if field in SOURCE_CONTEXT_FIELDS | set(RESPONSE_FIELDS) | {"source_record_type"})
     # Response roles depend on newly read facts, not another body download.
-    for row in rows:
-        apply_response_role(row)
+    for batch in rows.batches(write=True):
+        for _, row in batch:
+            apply_response_role(row)
     body_cache = working.mapping("source_refresh_bodies")
-    for batch in rows.batches():
+    for batch in rows.batches(write=True):
         enrich_document_covers([row for _, row in batch], read_body=lambda key: read_retained_body(root, key), cached=body_cache)
     columns.update(field for field in (*COVER_FIELDS, 'body_format')
                    if any(row.get(field) for row in rows))
@@ -2076,29 +2077,21 @@ def write_filename_metadata(
     previous_schema = (previous.schema_arrow if isinstance(previous, pq.ParquetFile) else previous.schema) if previous is not None else None
     def previous_batches(columns=None):
         if isinstance(previous, pq.ParquetFile):
-            return previous.iter_batches(columns=columns, batch_size=4096)
-        return (previous.select(columns) if columns else previous).to_batches(max_chunksize=4096)
+            return previous.iter_batches(columns=columns, batch_size=256, use_threads=False)
+        return (previous.select(columns) if columns else previous).to_batches(max_chunksize=256)
     progress.report('prepare_filename_inputs')
     from congress_api.retention.document_recovery import recover_sources, recovery_fingerprint
     if (root / 'indexes/captures.parquet').exists():
         source_rows = recover_sources(source_rows, pq.ParquetFile(root / 'indexes/captures.parquet'),
             read_receipt=lambda key: (root / key).read_bytes(), working=working)
         metadata = {**(metadata or {}), 'retained_recovery_fingerprint': recovery_fingerprint()}
-    from congress_api.retention.catalog_staging import DiskRows
+    from congress_api.retention.catalog_staging import ParquetRows
     inputs = working.mapping("filename_inputs")
-    rows = DiskRows(working.connection, "filename_rows")
+    def row_schema(columns):
+        return pa.schema([(name, SOURCE_SCHEMA.field(name).type if name in SOURCE_SCHEMA.names
+                           else metadata_type(name)) for name in columns])
+    rows = ParquetRows((output_root or root) / "filename-rows", row_schema)
     bodies, names = working.mapping("filename_bodies"), working.mapping("filename_names")
-    for source in source_rows:
-        inputs[(source["filename"], source["source_url"])] = True
-        rows.append(source)
-        if source["body_key"]:
-            bodies[source["body_key"]] = True
-        if source["filename"]:
-            names[source["filename"]] = True
-    # The source iterator is exhausted and filename_rows owns every input.
-    # Release either recovery's coalesced output or its no-recovery stage.
-    for name in ("recovery_result","recovery_rows"):
-        working.connection.execute(f"DROP TABLE IF EXISTS {name}")
     fingerprint = parser_fingerprint()
     progress.report('reuse_cached_metadata')
     from congress_api.retention.catalog_cache import LocalStore, result_checkpoint
@@ -2115,75 +2108,37 @@ def write_filename_metadata(
     payload = cache_store.read("indexes/processing/bodies.parquet") if reuse_results else None
     if payload:
         cached_file = pq.ParquetFile(pa.BufferReader(payload))
-        if (cached_file.schema_arrow.metadata or {}).get(b"parser_fingerprint") == body_fingerprint.encode():
-            for batch in cached_file.iter_batches(batch_size=4096):
-                for row in batch.to_pylist():
-                    key = (row.pop("reader"), row.pop("body_key"))
-                    body_cache[key] = {field: value for field, value in row.items() if value is not None}
+        for batch in cached_file.iter_batches(batch_size=4096):
+            for row in batch.to_pylist():
+                key = (row.pop("reader"), row.pop("body_key"))
+                body_cache[key] = {field: value for field, value in row.items() if value is not None}
     del payload
-    if reuse_bodies and previous is not None and (previous_schema.metadata or {}).get(b"body_evidence_fingerprint") == body_fingerprint.encode():
-        for batch in previous_batches([k for k in (BODY_FIELDS | {"body_key"}) if k in previous_schema.names]):
+    source_fields = set(SOURCE_SCHEMA.names) | SOURCE_CONTEXT_FIELDS | {'capture_outcome'}
+    reuse_names = previous is not None and reuse_results and 'document_kind_source' in previous_schema.names
+    filename_fields = (set(previous_schema.names) - source_fields
+                       - {'source_id', 'document_id', 'format', 'document_kind_source'}
+                       - EVIDENCE_FIELDS - BODY_FIELDS) if reuse_names else set()
+    if previous is not None and (reuse_names or reuse_bodies):
+        selected = (filename_fields | {'filename', 'source_url', 'recovered_filename', 'document_kind_source'}
+                    if reuse_names else set())
+        if reuse_bodies:
+            selected |= BODY_FIELDS | {'body_key'}
+        # Restore filename and body results together from one projected scan.
+        for batch in previous_batches(sorted(selected & set(previous_schema.names))):
             for row in batch.to_pylist():
-                if key := body_evidence_key(row):
+                if reuse_bodies and (key := body_evidence_key(row)):
                     body_cache.setdefault(key, cached_body_fields(row, key))
-    source_fields = (
-        set(SOURCE_SCHEMA.names) | SOURCE_CONTEXT_FIELDS | {"capture_outcome"}
-    )
-    if (
-        reuse_results and previous is not None
-        and "document_kind_source" in previous_schema.names
-        and (previous_schema.metadata or {}).get(b"house_naming_fingerprint")
-        == fingerprint.encode()
-    ):
-        fields = (
-            set(previous_schema.names)
-            - source_fields
-            - {"source_id", "document_id", "format", "document_kind_source"}
-            - EVIDENCE_FIELDS - BODY_FIELDS
-        )
-        for batch in previous_batches(sorted(fields | {'filename', 'source_url', 'recovered_filename',
-                'body_format', 'cache_marker_state', 'document_kind_source'} & set(previous_schema.names))):
-            for row in batch.to_pylist():
-                if row.get("filename") is None:
-                    continue  # Anonymous bodies share no reusable filename meaning.
-                if row.get("recovered_filename"):
-                    continue  # These meanings depend on retained evidence, not just names.
-                cached.setdefault((row["filename"], row["source_url"]), {
-                    k: row[k] for k in fields if row[k] is not None
-                    and not (k == "document_kind"
-                             and any(value in DERIVED_KIND_SOURCES for value in row.get("document_kind_source") or []))
+                if not reuse_names or row.get('filename') is None or row.get('recovered_filename'):
+                    continue  # Recovered names depend on the current URL evidence.
+                cached.setdefault((row['filename'], row['source_url']), {
+                    key: row[key] for key in filename_fields if row[key] is not None
+                    and not (key == 'document_kind'
+                             and any(value in DERIVED_KIND_SOURCES for value in row.get('document_kind_source') or []))
                 })
-    if not reuse_results:
-        cached.clear()
-        if inspect_bodies:
-            body_cache.clear()
     checkpoint_bodies = result_checkpoint(cache_store, 'bodies', body_fingerprint,
                                          ('reader', 'body_key'), body_cache)
-    pending_count = sum(key not in cached for key in inputs)
-    pending = (key for key in inputs if key not in cached)
-    def collect(keys, parsed):
-        for key, fields in progress.track(zip(keys, parsed), 'extract_filenames',
-                                         total=pending_count, unit='filenames'):
-            cached[key] = fields
-    # Bound executor submission as well as Arrow output; pool.map eagerly
-    # submits its iterable on supported Python versions.
-    from itertools import islice
-    if workers == 1:
-        for key in progress.track(pending, 'extract_filenames', total=pending_count, unit='filenames'):
-            cached[key] = extract(key)
-    elif pending_count:
-        with ProcessPoolExecutor(max_workers=workers, mp_context=get_context('spawn')) as pool:
-            while batch := list(islice(pending, 512)):
-                collect(batch, pool.map(extract, batch, chunksize=128))
     columns = set()
-    input_count = len(inputs)
-    for row in rows:
-        fields = cached[(row["filename"], row["source_url"])]
-        columns.update(fields)
-        row.update(fields)
-        columns.update(key for key, value in row.items()
-                       if key in SOURCE_CONTEXT_FIELDS | {"capture_outcome"} and value)
-    del source_rows
+    pending_count = 0
     progress.report('inspect_document_contents', completed=0, unit='distinct_body_attempts')
     def interpret(key):
         if key not in cached:
@@ -2204,69 +2159,106 @@ def write_filename_metadata(
         attempted_bodies[key] = True
         progress.report('inspect_document_contents', completed=len(attempted_bodies), unit='distinct_body_attempts')
         return data
+    recovered_urls = working.mapping("recovered_urls", set)
+    shared_body_fields = working.mapping("shared_body_fields")
+    from contextlib import nullcontext
+    from itertools import islice
+    executor = (ProcessPoolExecutor(max_workers=workers, mp_context=get_context('spawn'))
+                if workers > 1 else nullcontext())
     try:
-        recovered_urls = working.mapping("recovered_urls", set)
-        shared_body_fields = working.mapping("shared_body_fields")
-        # The first pass establishes native XML facts and cache-name URL facts.
-        # The second pass can then recover aliases whose metadata appeared later.
-        for pass_number in range(2):
-            for batch in rows.batches():
-                records = [row for _, row in batch]
+        # Discover shared facts while consuming the source stream. Keep a single
+        # immutable spool: later aliases may supply evidence to earlier rows.
+        with executor as pool:
+            source_rows = iter(source_rows)
+            while records := list(islice(source_rows, 256)):
+                records = [dict(row) for row in records]
+                keys = list(dict.fromkeys((row['filename'], row['source_url']) for row in records))
+                pending = [key for key in keys if key not in cached]
+                parsed = pool.map(extract, pending, chunksize=128) if pool is not None else map(extract, pending)
+                for key, fields in zip(pending, parsed):
+                    cached[key] = fields
+                pending_count += len(pending)
+                for row in records:
+                    key = (row['filename'], row['source_url'])
+                    inputs[key] = True
+                    fields = cached[key]
+                    columns.update(fields)
+                    row.update(fields)
+                    columns.update(key for key, value in row.items()
+                                   if key in SOURCE_CONTEXT_FIELDS | {'capture_outcome'} and value)
+                    if row['body_key']:
+                        bodies[row['body_key']] = True
+                    if row['filename']:
+                        names[row['filename']] = True
                 enrich_sources(records, read_body=inspect_body, extract=interpret,
-                               cached=body_cache, urls=recovered_urls, initialize_roles=pass_number == 0,
+                               cached=body_cache, urls=recovered_urls,
                                shared_body_fields=shared_body_fields)
-        for batch in rows.batches():
-            records = [row for _, row in batch]
-            for row in records:
-                fill_document_kind(row)
-            enrich_document_covers(records, read_body=inspect_body, cached=body_cache)
-        # Content readings follow identical bytes even when discovered in a
-        # later batch. Reapply cached evidence, without another body transfer.
-        for batch in rows.batches():
-            records = [row for _, row in batch]
+                for row in records:
+                    fill_document_kind(row)
+                enrich_document_covers(records, read_body=inspect_body, cached=body_cache)
+                for row in records:
+                    rows.append(row)
+                progress.report('extract_filenames', completed=pending_count, unit='filenames')
+        # These source/recovery pages have been consumed. The spool is the only
+        # remaining row stream; caches contain shared facts, not duplicate rows.
+        del source_rows
+        for name in ('recovery_result', 'recovery_rows'):
+            working.connection.execute(f'DROP TABLE IF EXISTS {name}')
+    finally:
+        if inspect_bodies:
+            checkpoint_bodies(force=True)
+    input_count = len(inputs)
+    rows_without_body = 0
+
+    def finalized_rows():
+        nonlocal rows_without_body
+        progress.report('finalize_metadata', completed=0, total=len(rows), unit='source_rows')
+        completed = 0
+        for records in rows.batches():
             enrich_sources(records, read_body=lambda key: None, extract=interpret,
                            cached=body_cache, urls=recovered_urls, initialize_roles=False,
                            shared_body_fields=shared_body_fields)
             enrich_document_covers(records, read_body=lambda key: None, cached=body_cache)
-    finally:
-        if inspect_bodies:
-            checkpoint_bodies(force=True)
-    cached.clear()
-    body_cache.clear()
-    shared_body_fields.clear()
-    progress.report('apply_response_metadata', total=len(rows), unit='source_rows')
-    for batch in rows.batches():
-        refresh_response_metadata(root, [row for _, row in batch])
-    for row in rows:
-        apply_response_role(row)
-    columns.update(key for row in rows for key, value in row.items()
-                   if isinstance(value, list) and key not in SOURCE_SCHEMA.names)
-    if columns & set(SOURCE_SCHEMA.names):
-        raise ValueError("Extracted metadata conflicts with source locator columns")
-    schema = pa.schema(
-        [*SOURCE_SCHEMA, *[(name, metadata_type(name)) for name in sorted(columns)]],
-        metadata={
-            "format_version": "5",
-            "house_naming_version": __version__,
-            "house_naming_fingerprint": fingerprint,
-            "body_evidence_fingerprint": body_fingerprint,
-            "deferred_body_reads": str(len(deferred_bodies)),
-            "body_inspection": str(inspect_bodies).lower(),
-            **(metadata or {}),
-        },
-    )
+            refresh_response_metadata(root, records)
+            for row in records:
+                apply_response_role(row)
+                columns.update(key for key, value in row.items()
+                               if isinstance(value, list) and key not in SOURCE_SCHEMA.names)
+                if row['body_key'] and row['body_key'] not in bodies:
+                    raise ValueError('Filename table does not cover every selected retained body')
+                if row['filename'] and row['filename'] not in names:
+                    raise ValueError('Filename table does not cover every known spelling')
+                rows_without_body += row['body_key'] is None
+                yield row
+            completed += len(records)
+            progress.report('finalize_metadata', completed=completed, total=len(rows), unit='source_rows')
+        cached.clear()
+        body_cache.clear()
+        shared_body_fields.clear()
+
+    def output_schema():
+        if columns & set(SOURCE_SCHEMA.names):
+            raise ValueError("Extracted metadata conflicts with source locator columns")
+        return pa.schema(
+            [*SOURCE_SCHEMA, *[(name, metadata_type(name)) for name in sorted(columns)]],
+            metadata={
+                "format_version": "5",
+                "house_naming_version": __version__,
+                "house_naming_fingerprint": fingerprint,
+                "body_evidence_fingerprint": body_fingerprint,
+                "deferred_body_reads": str(len(deferred_bodies)),
+                "body_inspection": str(inspect_bodies).lower(),
+                **(metadata or {}),
+            },
+        )
     destination = (output_root or root) / "indexes/document-filenames.parquet"
-    if any(row["body_key"] not in bodies for row in rows if row["body_key"]):
-        raise ValueError("Filename table does not cover every selected retained body")
-    if any(row["filename"] not in names for row in rows if row["filename"]):
-        raise ValueError("Filename table does not cover every known spelling")
-    document_stats = write_document_indexes(destination, rows, schema, working=working, previous=previous, previous_documents=previous_documents, reuse_groups=reuse_results)
+    document_stats = write_document_indexes(destination, finalized_rows(), output_schema, working=working, previous=previous, previous_documents=previous_documents, reuse_groups=reuse_results)
     return dict(
         rows=len(rows),
         **document_stats,
         distinct_bodies=len(bodies),
         distinct_filenames=len(names),
-        rows_without_retained_body=sum(row["body_key"] is None for row in rows),
+        rows_without_retained_body=rows_without_body,
         parser_inputs=input_count,
         parsed_inputs=pending_count,
         output=str(destination),
@@ -2327,8 +2319,8 @@ def _build(root, inventory_dir, *, workers, families, inspect_bodies, working, o
     )
 
 
-def refresh_filename_metadata(root, *, workers=4, inspect_bodies=False):
-    """Reinterpret names and selected retained bodies without discovery or acquisition."""
+def refresh_filename_metadata(root, *, workers=4, inspect_bodies=False, repair=False):
+    """Reuse saved interpretations unless explicitly rebuilding; never acquire sources."""
     from congress_api.retention.catalog_cache import LocalStore
     from congress_api.retention.catalog_publication import read_catalog
     snapshot = read_catalog(LocalStore(root))
@@ -2347,7 +2339,7 @@ def refresh_filename_metadata(root, *, workers=4, inspect_bodies=False):
         for batch in source.iter_batches(columns=fields)
         for row in batch.to_pylist()
     )
-    return write_filename_metadata(root, rows, workers=workers, previous=source, inspect_bodies=inspect_bodies, publication_snapshot=snapshot, previous_documents=snapshot.documents, metadata={
+    return write_filename_metadata(root, rows, workers=workers, previous=source, reuse_results=not repair, inspect_bodies=inspect_bodies, publication_snapshot=snapshot, previous_documents=snapshot.documents, metadata={
         key.decode(): value.decode() for key, value in (source.schema_arrow.metadata or {}).items()
         if key in {b'raw_capture_rows', b'retained_recovery_fingerprint'}})
 

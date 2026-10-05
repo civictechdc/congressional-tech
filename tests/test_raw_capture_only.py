@@ -1,0 +1,132 @@
+"""Capture batches persist independently; a later rebuild consumes their receipts."""
+
+from io import StringIO
+import json
+import sys
+
+import pytest
+
+from congress_api.cli import raw_sync
+from congress_api.cli.raw_progress import ProgressLog
+from congress_api.retention.catalog_publication import MANIFEST_KEY
+from congress_api.retention.raw_archive import Archive, CAPTURES_KEY, STATE_KEY
+from test_raw_catalog import table
+from test_raw_source_sync import MemoryStore
+
+
+@pytest.fixture
+def worker(tmp_path):
+    """Exercise the real worker adapter against a deterministic process boundary."""
+    binary = tmp_path / "worker"
+    binary.write_text(
+        f"#!{sys.executable}\n"
+        "import json, pathlib, sys\n"
+        "for line in sys.stdin:\n"
+        "    request = json.loads(line)\n"
+        "    body = pathlib.Path(sys.argv[1]) / str(request['id'])\n"
+        "    body.write_bytes(b'%PDF-1.7\\nfixture\\n%%EOF')\n"
+        "    response = dict(body_file=str(body), http_status=200,\n"
+        "        final_url=request['url'], complete=True,\n"
+        "        response_header_items=[dict(name='Content-Type', value='application/pdf')])\n"
+        "    print(json.dumps(dict(id=request['id'], response=response)), flush=True)\n"
+    )
+    binary.chmod(0o700)
+    return binary
+
+
+def execute(tmp_path, store, *argv):
+    args = raw_sync.parser().parse_args([
+        "--transport", "direct", "--index-workers", "1", "--workers", "1",
+        "--summary", str(tmp_path / "summary.json"), *map(str, argv),
+    ])
+    with ProgressLog(args.summary.with_suffix('.progress.json'), stream=StringIO()) as log:
+        raw_sync.run(args, log, store=store)
+    return json.loads(args.summary.read_text())
+
+
+def test_capture_only_saves_and_resumes_before_separate_publication(tmp_path, worker):
+    store = MemoryStore()
+    # Start from a published empty generation, then capture a newly discovered URL.
+    execute(tmp_path, store, "--rebuild-only")
+    old_catalog = dict(store.objects)
+    old_capture_index = store.objects[CAPTURES_KEY]
+    store.writes.clear()
+    seed = tmp_path / "seed.json"
+    url = "https://example.gov/new.pdf"
+    seed.write_text(json.dumps({"url": url}))
+    result = execute(tmp_path, store, "--capture-only", "--fetcher-binary", worker,
+                     "--seed", seed)
+    assert result['acquisition_status'] == 'completed'
+    assert result['catalog_status'] == 'not_run'
+    assert 'catalog' not in result
+    assert 'filename_rows' not in result['accounting']
+    assert result['accounting']['native_request_dispatches'] == 1
+    assert Archive(store, 'read').state[url]['outcome'] == 'saved'
+    assert store.objects[CAPTURES_KEY] != old_capture_index
+    assert store.keys('receipts/') and store.keys('bodies/')
+    assert MANIFEST_KEY not in store.writes
+    assert all(store.objects[k] == v for k, v in old_catalog.items() if k != CAPTURES_KEY)
+    assert len(table(store)) == 0
+    progress = json.loads((tmp_path / 'summary.progress.json').read_text())
+    assert progress['status'] == 'completed' and progress['stage'] == 'capture_saved'
+
+    receipts = store.keys('receipts/')
+    result = execute(tmp_path, store, "--capture-only", "--fetcher-binary", worker,
+                     "--seed", seed)
+    assert result['accounting']['native_request_dispatches'] == 0
+    assert result['catalog_status'] == 'not_run'
+    assert store.keys('receipts/') == receipts
+    retained = {k: v for k, v in store.objects.items()
+                if k in {CAPTURES_KEY, STATE_KEY} or k.startswith(('receipts/', 'bodies/'))}
+    result = execute(tmp_path, store, "--rebuild-only")
+    assert result['acquisition_status'] == 'not_run'
+    assert result['catalog_status'] == 'completed'
+    assert store.objects[MANIFEST_KEY] != old_catalog[MANIFEST_KEY]
+    assert all(store.objects[k] == v for k, v in retained.items())
+    row, = table(store).to_pylist()
+    assert row['source_url'] == url and row['body_key']
+
+
+@pytest.mark.parametrize('other', ['--rebuild-only', '--update-only', '--plan-only'])
+def test_capture_only_is_mutually_exclusive(other):
+    with pytest.raises(SystemExit):
+        raw_sync.parser().parse_args(['--capture-only', other])
+
+
+def test_capture_only_rejects_body_inspection_before_storage_access(tmp_path):
+    with pytest.raises(SystemExit, match='--inspect-bodies requires a catalog rebuild'):
+        execute(tmp_path, object(), '--capture-only', '--inspect-bodies')
+
+
+def test_capture_failure_preserves_catalog_and_reports_acquisition_failure(tmp_path):
+    store = MemoryStore()
+    execute(tmp_path, store, '--rebuild-only')
+    before = dict(store.objects)
+    with pytest.raises(FileNotFoundError):
+        execute(tmp_path, store, '--capture-only', '--fetcher-binary', tmp_path / 'missing')
+    result = json.loads((tmp_path / 'summary.json').read_text())
+    assert result['acquisition_status'] == 'failed'
+    assert result['catalog_status'] == 'not_run'
+    assert result['error_type'] == 'FileNotFoundError'
+    assert store.objects == before
+
+
+def test_default_cli_still_captures_and_publishes(tmp_path, worker):
+    store = MemoryStore()
+    seed = tmp_path / 'seed.json'
+    seed.write_text('{"url":"https://example.gov/default.pdf"}')
+    result = execute(tmp_path, store, '--fetcher-binary', worker, '--seed', seed)
+    assert result['acquisition_status'] == result['catalog_status'] == 'completed'
+    row, = table(store).to_pylist()
+    assert row['filename'] == 'default.pdf' and row['body_key']
+
+
+def test_update_only_preserves_catalog_without_starting_acquisition(tmp_path):
+    store = MemoryStore()
+    execute(tmp_path, store, '--rebuild-only')
+    before = dict(store.objects)
+    result = execute(tmp_path, store, '--update-only', '--fetcher-binary', tmp_path / 'absent')
+    assert result['mode'] == 'update'
+    assert result['acquisition_status'] == 'not_run'
+    assert result['catalog']['unchanged'] is True
+    assert store.objects == before

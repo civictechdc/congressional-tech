@@ -33,7 +33,7 @@ BODY_FIELDS = FIELDS - {'recovered_filename', 'recovered_source_url'} | {
 
 
 def evidence_fingerprint():
-    """Cache immutable body meanings only while their readers are unchanged."""
+    """Identify the current readers for processing provenance, not cache expiry."""
     import congress_api.models.house as models
     import congress_api.models.xml as xml_models
     import congress_api.parsers.house_xml as house_xml

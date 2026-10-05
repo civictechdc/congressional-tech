@@ -143,7 +143,8 @@ stable labels, not Python import paths. Replay commands use `congress_api.replay
 ### Recurring raw-source capture
 
 [Capture missing raw sources](../../.github/workflows/capture-raw-sources.yml)
-runs every six hours and after `Update committee data` completes. It reads the
+runs every six hours and after `Update committee data` completes, using
+`--capture-only` to save evidence without rebuilding document tables. It reads the
 R2 mirror's capture and filename indexes plus available native records on
 `pipeline-data`. It downloads missing URLs, follows explicit document and subtitle
 links, and scans already retained bodies without refetching them. It does not
@@ -154,7 +155,7 @@ Production uses the Rust `source-fetch` reqwest worker, with **direct requests
 first and one Zyte fallback when capture fails**. It starts at most **40 HTTP
 requests per second** across direct requests, redirects, and fallbacks, with up
 to **80 concurrent source tasks**. The rate is a shared ceiling; source latency,
-archive writes, and catalog work can lower completed captures per second.
+archive writes, and file inspection can lower completed captures per second.
 The run still limits work to 5,000 downloads or retained-body scans and 90 minutes
 of collection. Manual `direct` and `zyte` modes remain available. The default
 response limit is 64 MiB; larger responses remain incomplete, never successful.
@@ -183,34 +184,51 @@ saved-text fidelity when replaying older captures. Source status and retrieval
 date remain distinct from the latest inspection time.
 
 `indexes/download-state.parquet` tracks pending URLs, results and retries;
-`indexes/captures.parquet` gains new receipt references. After saving captures, the
-same run rebuilds the filename and document tables in an immutable
+`indexes/captures.parquet` gains new receipt references. A separate rebuild,
+scheduled daily at 03:23 UTC and also available on code changes or manual dispatch,
+reads accumulated evidence and writes the filename and document tables in an immutable
 `catalog-generations/<generation>/` directory. A conditional update to
 `indexes/catalog.json` selects both files together; readers validate that pair.
 The old root table paths serve as migration inputs when no selection exists.
-Acquisition and `--rebuild-only` use `retention/raw_catalog.py` and the existing
+New captures appear in those tables after the next successful rebuild. The local
+CLI preserves combined capture-and-rebuild behavior when no mode flag is given.
+`--update-only` uses `retention/raw_catalog.py` and the existing
 `retention/document_index.py` readers. Rebuilds replay indexed migration and
 download receipts, House state/XML, Senate state/pages, Congress meeting records
-and inventory relationships when source rules change or repair is requested.
+and inventory relationships on the first build or an explicit rebuild.
 Routine updates reuse verified prior observations and interpret new receipts.
 The tables retain unfetched filenames, response-header
 names, redirects and parent committee/meeting metadata. Filename and body
-interpretations reuse results only while their parser fingerprints match;
-source context is reconstructed when its rules change, even if the capture
-count is unchanged. Temporary SQLite tables keep the large joins and grouping
-off the Python heap; unchanged document groups reuse verified prior results.
+interpretations remain reusable when code changes. Only `--rebuild-only` or
+`document-filename-index --rebuild` explicitly reapplies current rules. Body
+readings are replaced only when that rebuild also uses `--inspect-bodies`.
+Filename enrichment collects shared facts while consuming bounded source
+batches, writes each temporary Parquet batch once, and reads it once into
+grouping after later aliases are known. SQLite retains indexed lookup/grouping
+state; unchanged document groups reuse verified prior results.
+
+To save captures without updating the published tables:
+
+```sh
+raw-source-sync --capture-only --bucket congressional-tech-raw
+```
+
+This saves bodies, receipts and retry state. Its summary reports
+`acquisition_status=completed` and `catalog_status=not_run`. Successful downloads
+remain reusable by later capture runs before publication. `--inspect-bodies`
+requires a rebuild and cannot be combined with `--capture-only`.
 
 To refresh the derived tables independently of acquisition:
 
 ```sh
-raw-source-sync --rebuild-only --bucket congressional-tech-raw \
-  --index-workers 2 --summary raw-rebuild-summary.json
+raw-source-sync --update-only --bucket congressional-tech-raw \
+  --index-workers 2 --summary raw-update-summary.json
 ```
 
 This mode requires `CLOUDFLARE_ACCOUNT_ID`, `R2_ACCESS_KEY_ID` and
 `R2_SECRET_ACCESS_KEY`. It reads the R2 capture index and its retained receipts
-and necessary bodies, validates both generated tables, and publishes documents
-before filenames with the existing conditional writes. It skips acquisition,
+and necessary bodies, validates both generated tables, and atomically selects
+their immutable generation with a conditional manifest write. It skips acquisition,
 the Rust fetcher, Zyte credentials, and all capture/download-state writes.
 Optional `--seed` files supply already saved link metadata, including filenames
 whose bodies have not been captured. Reading these files does not queue or fetch
@@ -235,7 +253,7 @@ last status as `running`; the GitHub job result remains authoritative.
 The local `document-filename-index` command uses the same reporting and saves
 its latest update to `<archive>/status/document-index.json`, without uploading it.
 
-In GitHub Actions, open **Publish filename and document tables** to follow the
+In GitHub Actions, open **Capture sources or rebuild document tables** to follow the
 live log. The final job summary and downloadable artifact retain the last local
 progress file even when publication fails. Existing jobs keep the code they
 started with, so new progress reporting begins with the next updated run.

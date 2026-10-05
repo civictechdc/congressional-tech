@@ -20,8 +20,9 @@ def test_disk_rows_replays_mutations_and_map_requires_explicit_save(tmp_path):
     try:
         rows = DiskRows(state.connection)
         rows.append({'filename':'a.pdf'})
-        for row in rows:
-            row['source_url'] = 'https://example.gov/a.pdf'
+        for batch in rows.batches(write=True):
+            for _, row in batch:
+                row['source_url'] = 'https://example.gov/a.pdf'
         assert list(rows) == [{'filename':'a.pdf','source_url':'https://example.gov/a.pdf'}]
         mapping = state.mapping('facts')
         mapping['url'] = {'words':['literal']}
@@ -91,11 +92,14 @@ def test_distinct_publication_code_is_preserved(tmp_path):
         assert row['publication_code_code'] == ['literal']
 
 
-def test_policy_change_invalidates_group_reuse(tmp_path,monkeypatch):
+def test_policy_change_requires_explicit_group_rebuild(tmp_path,monkeypatch):
     schema = index.SOURCE_SCHEMA
     path = tmp_path / 'document-filenames.parquet'
     row = {**source('a.pdf','https://example.gov/a.pdf'), 'source_document_type':['Witness Statement']}
-    schema = schema.append(pa.field('source_document_type',index.STRINGS))
+    row['source_occurrences'] = [{'source_page_url': ['https://example.gov/meeting'],
+                                  'source_document_type': ['Witness Statement']}]
+    schema = schema.append(pa.field('source_document_type',index.STRINGS)).append(pa.field('capture_outcome',index.STRINGS))
+    schema = schema.append(pa.field('source_occurrences', index.metadata_type('source_occurrences')))
     index.write_document_indexes(path,[row],schema)
     previous = pq.ParquetFile(path)
     documents = path.with_name('documents.parquet').read_bytes()
@@ -105,6 +109,9 @@ def test_policy_change_invalidates_group_reuse(tmp_path,monkeypatch):
         row['document_kind'] = ['changed-policy']
     monkeypatch.setattr(index,'fill_document_kind',changed)
     result = index.write_document_indexes(path,[row],schema,previous=previous,previous_documents=documents)
+    assert result['reused_document_groups'] == 1
+    assert pq.read_table(path.with_name('documents.parquet')).to_pylist()[0]['document_kind'] != ['changed-policy']
+    result = index.write_document_indexes(path,[row],schema,previous=previous,previous_documents=documents,reuse_groups=False)
     assert result['reused_document_groups'] == 0
     assert pq.read_table(path.with_name('documents.parquet')).to_pylist()[0]['document_kind'] == ['changed-policy']
 
@@ -286,14 +293,14 @@ def test_disk_recovery_matches_resident_and_missing_line_errors(tmp_path):
                     state.close()
 
 
-def test_raw_releases_context_before_recovery_and_consumed_output_before_parse(tmp_path,monkeypatch):
+def test_raw_releases_context_before_recovery_and_consumed_output_before_grouping(tmp_path,monkeypatch):
     from congress_api.retention import raw_catalog
     from congress_api.retention.raw_archive import Archive
     from test_raw_catalog import initialize
     store=initialize(tmp_path)
     Archive(store,'lifecycle').save()
     recover=raw_catalog.recover_sources
-    extract=index.extract
+    group=index.write_document_indexes
     state=None
     checks=[]
     def tables():
@@ -305,15 +312,15 @@ def test_raw_releases_context_before_recovery_and_consumed_output_before_parse(t
         assert 'sources' in tables()
         checks.append('context released')
         return recover(*args,**kwargs)
-    def parse(key):
+    def grouping(*args, **kwargs):
         assert not tables() & {'recovery_rows','recovery_result'}
-        assert 'filename_rows' in tables()
+        assert 'filename_rows' not in tables()
         checks.append('recovery output released')
-        return extract(key)
+        return group(*args, **kwargs)
     monkeypatch.setattr(raw_catalog,'recover_sources',recovery)
     monkeypatch.setattr(index,'parser_fingerprint',lambda:'fresh-lifecycle-test')
-    monkeypatch.setattr(index,'extract',parse)
-    raw_catalog.rebuild_catalog(store,workers=1)
+    monkeypatch.setattr(index,'write_document_indexes',grouping)
+    raw_catalog.rebuild_catalog(store,workers=1,repair=True)
     assert checks == ['context released','recovery output released']
 
 
@@ -398,5 +405,39 @@ def test_document_output_order_uses_scalar_index_for_large_payloads(tmp_path):
         documents=pq.read_table(path.with_name('documents.parquet')).to_pylist()
         assert documents == sorted(documents,key=lambda row:((row['filename'] or '').casefold(),row['document_id']))
         assert sorted(label for row in documents for label in row['source_document_label']) == sorted(row['source_document_label'][0] for row in rows)
+    finally:
+        state.close()
+
+
+def test_disk_row_reads_do_not_save_and_batches_write_only_changed_rows(tmp_path):
+    state = WorkingCatalog(tmp_path / 'read-only.sqlite')
+    try:
+        rows = DiskRows(state.connection)
+        rows.append({'nested': ['first']})
+        rows.append({'nested': ['second']})
+        statements = []
+        state.connection.set_trace_callback(statements.append)
+        for row in rows:
+            row['nested'].append('detached')
+        assert list(rows) == [{'nested': ['first']}, {'nested': ['second']}]
+        assert not any(s.startswith('UPDATE') for s in statements)
+        for batch in rows.batches(write=True):
+            batch[0][1]['nested'].append('saved')
+        assert list(rows) == [{'nested': ['first', 'saved']}, {'nested': ['second']}]
+        assert sum(s.startswith('UPDATE') for s in statements) == 1
+    finally:
+        state.close()
+
+
+def test_disk_map_scans_values_without_per_key_queries(tmp_path):
+    state = WorkingCatalog(tmp_path / 'map-scan.sqlite')
+    try:
+        mapping = state.mapping('facts')
+        for number in range(10):
+            mapping[number] = {'number': number}
+        statements = []
+        state.connection.set_trace_callback(statements.append)
+        assert list(mapping.values()) == [{'number': n} for n in range(10)]
+        assert sum(s.startswith('SELECT') for s in statements) <= 2
     finally:
         state.close()

@@ -27,7 +27,8 @@ def main():
         type=Path,
         help="Directory containing filenames.parquet and urls.parquet",
     )
-    parser.add_argument('--repair', action='store_true', help='Reconstruct source inventory from receipts')
+    parser.add_argument('--rebuild', '--repair', dest='repair', action='store_true',
+                        help='Explicitly reinterpret retained metadata with current rules')
     parser.add_argument('--inspect-bodies', action='store_true', help='Also inspect retained document contents')
     # Old invocations remain valid, but all refresh modes use the same updater.
     for flag in ('--documents-only', '--metadata-only', '--source-metadata-only'):
@@ -52,7 +53,7 @@ def main():
         elif ((args.archive / 'indexes/catalog.json').exists()
               or (args.archive / 'indexes/document-filenames.parquet').exists()):
             # A standalone filename table can still be reinterpreted without an archive.
-            result = refresh_filename_metadata(args.archive, workers=args.workers, inspect_bodies=args.inspect_bodies)
+            result = refresh_filename_metadata(args.archive, workers=args.workers, inspect_bodies=args.inspect_bodies, repair=args.repair)
         else:
             parser.error('An archive capture index or existing filename table is required')
         print(json.dumps(result, indent=2), flush=True)
