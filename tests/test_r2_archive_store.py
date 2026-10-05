@@ -23,6 +23,29 @@ def client():
     )
 
 
+@pytest.mark.parametrize('value,minimum,maximum', [
+    ('', 1, 2), ('invalid', 1, 2), ('NaN', 1, 2), ('-1', 1, 2),
+    ('0', 1, 2), ('2', 2, 2), ('60', 60, 60),
+    ('Thu, 01 Jan 1970 00:00:05 GMT', 5, 5),
+    ('Wed, 31 Dec 1969 23:59:59 GMT', 1, 2),
+])
+def test_r2_retry_after_respects_server_wait_and_backoff(value, minimum, maximum):
+    from congress_api.retention.r2 import _throttle_delay
+    assert minimum <= _throttle_delay({'retry-after': value}, 1, 0) <= maximum
+
+
+@pytest.mark.parametrize('value', ['61', 'Thu, 01 Jan 1970 00:01:01 GMT'])
+def test_r2_refuses_retry_after_beyond_bounded_wait(value):
+    from congress_api.retention.r2 import _throttle_delay
+    assert _throttle_delay({'retry-after': value}, 1, 0) is False
+
+
+def test_r2_backoff_grows_with_attempts_and_caps_at_twenty_seconds():
+    from congress_api.retention.r2 import _throttle_delay
+    for attempt, base in [(1, 1), (2, 2), (3, 4), (6, 20)]:
+        assert base <= _throttle_delay({}, attempt, 0) < base + 1
+
+
 @pytest.mark.parametrize('key', ['indexes/captures.parquet', 'indexes/document-filenames.parquet', 'indexes/documents.parquet'])
 def test_index_update_uses_read_etag_and_keeps_conflict_visible(key):
     c = client()

@@ -3,7 +3,63 @@
 import base64
 import hashlib
 import asyncio
+import json
+import logging
+import random
+import time
 from contextlib import asynccontextmanager, closing
+from datetime import timezone
+from email.utils import parsedate_to_datetime
+
+
+LOGGER = logging.getLogger(__name__)
+
+
+def _throttle_delay(headers, attempt, now):
+    """Back off at least a second; refuse a server wait beyond one minute."""
+    value = headers.get('retry-after', '')
+    try:
+        if value.isdigit():
+            requested = int(value)
+        else:
+            date = parsedate_to_datetime(value)
+            requested = date.replace(tzinfo=date.tzinfo or timezone.utc).timestamp() - now
+    except (TypeError, ValueError, OverflowError):
+        requested = 0
+    if requested > 60:
+        return False  # Do not retry earlier than the server permits.
+    return max(requested, min(20, 2 ** (attempt - 1)) + random.random())
+
+
+def _configure_retries(client):
+    """Extend SDK retries for R2's HTTP 429 without a second attempt budget."""
+    # Do not invent a retry budget for clients using an implicit SDK default.
+    maximum = client.meta.config.retries.get('total_max_attempts')
+
+    def retry(*, response, attempts, operation, request_dict, **_):
+        if response is None or response[0].status_code < 400:
+            return None
+        http, parsed = response
+        status = http.status_code
+        delay = None
+        if status == 429 and maximum is not None:
+            delay = (_throttle_delay(http.headers, attempts, time.time())
+                     if attempts < maximum else False)
+        if status not in (404, 412):
+            metadata = parsed.get('ResponseMetadata', {})
+            inputs = request_dict['context'].get('input_params', {})
+            LOGGER.warning(json.dumps(dict(
+                event='r2_request_error', operation=operation.name,
+                key=inputs.get('Key'), http_status=status,
+                code=parsed.get('Error', {}).get('Code'),
+                request_id=metadata.get('RequestId') or http.headers.get('cf-ray'),
+                attempt=attempts, max_attempts=maximum, retry_delay_seconds=delay,
+            ), sort_keys=True))
+        return delay
+
+    # Public SDK extension point. The SDK owns request replay and sync/async
+    # sleeping; returning False stops even a later SDK handler's retry decision.
+    client.meta.events.register_first('needs-retry.s3', retry, unique_id='r2-http-429')
 
 
 def put_parameters(bucket, key, body, **conditions):
@@ -35,6 +91,7 @@ class AsyncBodies:
     """Async I/O for immutable bodies; index state remains with the collector."""
     def __init__(self, client, bucket):
         self.client, self.bucket = client, bucket
+        _configure_retries(client)
 
     async def put(self, key, data):
         from botocore.exceptions import ClientError
@@ -61,6 +118,7 @@ class AsyncBodies:
 class R2Store:
     def __init__(self, client, bucket, *, async_client=None):
         self.client, self.bucket = client, bucket
+        _configure_retries(client)
         self.async_client = async_client
         self.index_etags = {}
 
