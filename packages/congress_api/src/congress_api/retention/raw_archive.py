@@ -94,6 +94,37 @@ def capture_rank(row):
     )
 
 
+def prepare_capture(response, *, outcome, links, context=None, mode="fetch", scanned=True):
+    """Separate validated bytes without writing storage or mutating archive state."""
+    bodies = {}
+
+    def retain(data):
+        digest = hashlib.sha256(data).hexdigest()
+        key = f"bodies/sha256/{digest[:2]}/{digest}.gz"
+        bodies.setdefault(key, data)
+        return key
+
+    record, captures = separate({**response, "outcome": outcome, "mode": mode,
+                                "links": links, "source_context": context or {}}, retain)
+    return record, captures, bodies, scanned
+
+
+def body_payload(data):
+    """Prepare the same compressed representation for sync and async retention."""
+    digest = hashlib.sha256(data).hexdigest()
+    payload = gzip.compress(data, compresslevel=1, mtime=0)
+    return payload, dict(body_key=f"bodies/sha256/{digest[:2]}/{digest}.gz",
+                        sha256=digest, bytes=len(data),
+                        stored_sha256=hashlib.sha256(payload).hexdigest(), stored_bytes=len(payload))
+
+
+def existing_body_info(payload, info):
+    """Verify an orphan's original gzip bytes before admitting its reference."""
+    if hashlib.sha256(gzip.decompress(payload)).hexdigest() != info['sha256']:
+        raise ValueError("Stored body checksum mismatch")
+    return {**info, 'stored_sha256': hashlib.sha256(payload).hexdigest(), 'stored_bytes': len(payload)}
+
+
 class Archive:
     def __init__(self, store, run_id, *, repair=False):
         self.store, self.run_id = store, run_id
@@ -262,20 +293,12 @@ class Archive:
     def put_body(self, data):
         digest = hashlib.sha256(data).hexdigest()
         if digest not in self.body_info:
-            key = f"bodies/sha256/{digest[:2]}/{digest}.gz"
-            compressed = gzip.compress(data, compresslevel=1, mtime=0)
-            created = self.store.put(key, compressed, immutable=True)
+            compressed, info = body_payload(data)
+            created = self.store.put(info['body_key'], compressed, immutable=True)
             # An orphan from an interrupted run may use different gzip bytes.
-            actual = self.store.read(key) if created is False else compressed
-            if hashlib.sha256(gzip.decompress(actual)).hexdigest() != digest:
-                raise ValueError("Stored body checksum mismatch")
-            self.body_info[digest] = dict(
-                body_key=key,
-                sha256=digest,
-                bytes=len(data),
-                stored_sha256=hashlib.sha256(actual).hexdigest(),
-                stored_bytes=len(actual),
-            )
+            if created is False:
+                info = existing_body_info(self.store.read(info['body_key']), info)
+            self.body_info[digest] = info
         return self.body_info[digest]["body_key"]
 
     def body(self, state, max_bytes=None):
@@ -295,6 +318,19 @@ class Archive:
     def record(
         self, response, *, outcome, links, scanned=True, context=None, mode="fetch"
     ):
+        record, captures, bodies, scanned = prepare_capture(
+            response, outcome=outcome, links=links, scanned=scanned, context=context, mode=mode)
+        for data in bodies.values():
+            self.put_body(data)
+        publisher = next((c for c in captures if c['pointer'] == ['content', 'body']), None)
+        if self.metadata is not None and response.get('complete') and publisher:
+            self.metadata.record(bodies[publisher['body_key']], publisher['body_key'])
+        return self.record_prepared(record, captures, scanned=scanned)
+
+    def record_prepared(self, record, captures, *, scanned=True):
+        """Commit a capture only after all referenced bodies have been retained."""
+        response = record
+        outcome, mode = record['outcome'], record['mode']
         url = response["requested_url"]
         self.seed({"url": url})
         previous = self.state[url]
@@ -325,24 +361,6 @@ class Archive:
         content = response.get("content")
         if content:
             state.update(sha256=content["sha256"], media_type=content["media_type"])
-        original = {
-            **response,
-            "outcome": outcome,
-            "mode": mode,
-            "links": links,
-            "source_context": context or {},
-        }
-        def store_body(data):
-            key = self.put_body(data)
-            publisher = self.body_info.get((content or {}).get('sha256'))
-            if (self.metadata is not None and response.get('complete')
-                    and publisher and publisher['body_key'] == key):
-                # separate() already decoded and verified these bytes. Extract
-                # here instead of materializing/validating RawContent again.
-                self.metadata.record(data, key)
-            return key
-
-        record, captures = separate(original, store_body)
         publisher = next(
             (c for c in captures if c["pointer"] == ["content", "body"]), None
         )

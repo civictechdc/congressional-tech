@@ -12,7 +12,7 @@ import base64
 import hashlib
 from collections.abc import Callable
 
-from congress_api.models.content import RawContent
+from congress_api.models.content import CapturedBody, RawContent, content_bytes
 
 
 def _copy_json(value):
@@ -35,16 +35,18 @@ def separate(value: object, put: Callable[[bytes], str]) -> tuple[object, list[d
 
     def capture(node, key, path, *, encoding, fidelity, media_type, context):
         original = node[key]
-        data = original.encode('utf-8') if encoding == 'utf-8' else base64.b64decode(original, validate=True)
+        data = (original.data if isinstance(original, CapturedBody) else
+                original.encode('utf-8') if encoding == 'utf-8' else base64.b64decode(original, validate=True))
         entry = {
             'pointer': [*path, key], 'body_key': put(data),
-            'sha256': hashlib.sha256(data).hexdigest(), 'bytes': len(data),
+            'sha256': original.sha256 if isinstance(original, CapturedBody) else hashlib.sha256(data).hexdigest(), 'bytes': len(data),
             'string_encoding': encoding, 'fidelity': fidelity,
             'media_type': media_type, **context,
         }
         # A few providers wrap base64 across lines. Do not claim to reconstruct
         # a different spelling; unsupported base64 spellings fail explicitly.
-        if encoding == 'base64' and base64.b64encode(data).decode('ascii') != original:
+        if (encoding == 'base64' and not isinstance(original, CapturedBody)
+                and base64.b64encode(data).decode('ascii') != original):
             raise ValueError(f'Noncanonical base64 at {path + [key]}')
         node[key] = None
         captures.append(entry)
@@ -66,7 +68,11 @@ def separate(value: object, put: Callable[[bytes], str]) -> tuple[object, list[d
             if source_key in node and isinstance(node[source_key], (str, int, type(None))):
                 context[target] = node[source_key]
         if 'body_encoding' in node and 'body' in node:
-            raw = RawContent.model_validate(node)
+            if isinstance(node['body'], CapturedBody):
+                content_bytes(node)
+                raw = node['body']
+            else:
+                raw = RawContent.model_validate(node)
             capture(node, 'body', path, encoding=raw.body_encoding,
                     fidelity='exact-bytes', media_type=raw.media_type, context=context)
         if isinstance(node.get('httpResponseBody'), str) and any(

@@ -1,5 +1,6 @@
 import base64
 import json
+import pytest
 
 
 from congress_api.cli.raw_sync import parser
@@ -29,7 +30,8 @@ class Response:
 
 def test_capture_defaults_to_direct_with_fallback_and_retains_native_metadata(monkeypatch):
     defaults = parser().parse_args([])
-    assert (defaults.transport, defaults.requests_per_second, defaults.workers) == ("auto", 40, 80)
+    assert (defaults.transport, defaults.files_per_second, defaults.workers) == ("auto", 60, 80)
+    assert parser().parse_args(['--requests-per-second', '30']).files_per_second == 30
     raw = b"%PDF-1.7\n\xff\n%%EOF"
     payload = {
         "url": "https://example.gov/final.pdf",
@@ -104,3 +106,38 @@ def test_invalid_zyte_body_is_retained_without_breaking_receipt_serialization(
         == payload
     )
     separate(result, lambda body: "bodies/test")
+
+
+@pytest.mark.parametrize('url,expected', [
+    ('http://docs.house.gov/path%20name.pdf?q=a%2Fb', 'https://docs.house.gov/path%20name.pdf?q=a%2Fb'),
+    ('http://DOCS.HOUSE.GOV:80/file.pdf', 'https://DOCS.HOUSE.GOV/file.pdf'),
+    ('https://docs.house.gov/file.pdf', 'https://docs.house.gov/file.pdf'),
+    ('http://docs.house.gov:8080/file.pdf', 'http://docs.house.gov:8080/file.pdf'),
+    ('http://other.house.gov/file.pdf', 'http://other.house.gov/file.pdf'),
+    ('http://docs.house.gov.example.com/file.pdf', 'http://docs.house.gov.example.com/file.pdf'),
+])
+def test_house_https_upgrade_is_limited_to_the_verified_origin(url, expected):
+    from congress_api.transport.source_capture import request_url
+    assert request_url(url) == expected
+
+
+def test_https_upgrade_retains_source_url_without_inventing_redirects():
+    original='http://docs.house.gov/bill.pdf'
+    called=[]
+
+    class DirectResponse(Response):
+        def __init__(self, url):
+            super().__init__({})
+            self.url=url; self.headers={'content-type':'application/pdf'}
+            self.is_redirect=False; self.data=b'%PDF-1.7\n%%EOF'
+
+    class Session:
+        def get(self, url, **kwargs):
+            called.append(url)
+            return DirectResponse(url)
+
+    result=fetch_source(original,transport='direct',session=Session(),pace=False)
+    assert called==['https://docs.house.gov/bill.pdf']
+    assert result['requested_url']==original
+    assert result['request_url']==result['url']==called[0]
+    assert result['redirects']==[]

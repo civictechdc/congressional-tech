@@ -7,7 +7,7 @@ from urllib.parse import parse_qsl, urlsplit
 
 from lxml import etree
 
-from congress_api.models.content import RawContent
+from congress_api.models.content import content_bytes
 
 from congress_api.parsers.document_links import (
     document_links,
@@ -23,7 +23,7 @@ SECRET_KEYS = {"api_key", "apikey", "key", "token", "access_token", "authorizati
 def inspect_capture(response, *, replay=False):
     """Classify retained source bytes using the same rules for fallback and capture."""
     body = (
-        RawContent.model_validate(response["content"]).body_bytes()
+        content_bytes(response["content"])
         if response.get("content") else b""
     )
     links = []

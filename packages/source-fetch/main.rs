@@ -1,7 +1,7 @@
 //! Perform bounded HTTP requests for the Python capture and recovery pipeline.
 //!
 //! Read JSON requests from stdin and emit metadata plus local body paths on stdout.
-//! All external request starts share one rate limit, including redirects and Zyte.
+//! File starts share one rate limit; redirects and fallback continue the same file.
 //! Python owns URL validation, fallback decisions, source interpretation, and storage.
 // Rust guideline compliant 2026-02-21
 
@@ -44,6 +44,12 @@ impl RateLimit {
         // Schedule from now to avoid a catch-up burst after a stalled runtime.
         *next = Instant::now() + self.gap;
     }
+
+    async fn wait_for_start(&self, new_file: bool) {
+        if new_file {
+            self.wait().await;
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -59,8 +65,15 @@ struct Request {
     url: String,
     transport: Transport,
     max_bytes: usize,
+    // Older callers omit this field: count their requests conservatively.
+    #[serde(default = "default_new_file")]
+    new_file: bool,
     #[serde(default)]
     headers: BTreeMap<String, String>,
+}
+
+fn default_new_file() -> bool {
+    true
 }
 
 #[derive(Debug, Serialize)]
@@ -186,7 +199,7 @@ async fn fetch(
     for (name, value) in &request.headers {
         builder = builder.header(name, value);
     }
-    limit.wait().await;
+    limit.wait_for_start(request.new_file).await;
     match builder.send().await {
         Ok(response) => save_response(response, request, output).await,
         Err(error) => Ok(json!({"complete": false, "error": error_kind(&error)})),
@@ -198,7 +211,7 @@ async fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
     ensure!(
         args.len() == 4,
-        "Usage: source-fetch BODY_DIRECTORY REQUESTS_PER_SECOND CONCURRENCY"
+        "Usage: source-fetch BODY_DIRECTORY FILES_PER_SECOND CONCURRENCY"
     );
     let output = Arc::new(PathBuf::from(&args[1]));
     ensure!(output.is_dir(), "Body directory must already exist");
@@ -212,7 +225,7 @@ async fn main() -> Result<()> {
         .ok()
         .filter(|v| !v.is_empty())
         .map(Arc::new);
-    // Redirects return to Python for scope checking, then consume another rate slot.
+    // Redirects return to Python for scope checking and continue the same file.
     let client = Client::builder()
         .no_gzip()
         .no_brotli()
@@ -266,6 +279,30 @@ async fn main() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn omitted_file_start_flag_keeps_older_requests_rate_limited() {
+        let request: Request = serde_json::from_value(json!({
+            "id": 1, "url": "https://example.gov/a.pdf", "transport": "direct", "max_bytes": 1024
+        }))
+        .unwrap();
+        assert!(request.new_file);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn continuations_do_not_spend_a_file_start_slot() {
+        let rate = RateLimit::new(60);
+        rate.wait_for_start(true).await;
+        let first = Instant::now();
+        for _ in 0..6 {
+            rate.wait_for_start(false).await;
+        }
+        assert_eq!(Instant::now(), first);
+        rate.wait_for_start(true).await;
+        let elapsed = Instant::now() - first;
+        assert!(elapsed >= Duration::from_secs_f64(1.0 / 60.0));
+        assert!(elapsed <= Duration::from_millis(18));
+    }
 
     #[tokio::test(start_paused = true)]
     async fn rate_limit_spaces_starts_and_never_catches_up() {

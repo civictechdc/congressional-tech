@@ -134,3 +134,77 @@ def test_catalog_selector_uses_snapshot_etag_even_after_another_read():
         with pytest.raises(RuntimeError, match='Concurrent'):
             store.put_catalog_manifest(data, expected_version='old-etag')
         stub.assert_no_pending_responses()
+
+
+@pytest.mark.parametrize('outcome', ['created', 'existing', 'checksum', 'failure'])
+def test_async_body_upload_preserves_storage_checks(outcome):
+    import asyncio
+    from aiobotocore.session import get_session
+    from aiobotocore.stub import AioStubber
+    from botocore.exceptions import ClientError
+    from congress_api.retention.r2 import AsyncBodies, put_parameters
+
+    async def check():
+        async with get_session().create_client('s3', endpoint_url='https://r2.example.test',
+            region_name='auto', aws_access_key_id='test', aws_secret_access_key='test') as c:
+            data, key = b'compressed', 'bodies/sha256/ab/example.gz'
+            with AioStubber(c) as stub:
+                params = put_parameters('archive', key, data, IfNoneMatch='*')
+                if outcome in {'created', 'checksum'}:
+                    etag = hashlib.md5(data).hexdigest() if outcome == 'created' else 'wrong'
+                    stub.add_response('put_object', {'ETag': '"' + etag + '"'}, params)
+                else:
+                    stub.add_client_error('put_object',
+                        service_error_code='PreconditionFailed' if outcome == 'existing' else 'AccessDenied',
+                        http_status_code=412 if outcome == 'existing' else 403, expected_params=params)
+                store = AsyncBodies(c, 'archive')
+                if outcome == 'checksum':
+                    with pytest.raises(ValueError, match='checksum'):
+                        await store.put(key, data)
+                elif outcome == 'failure':
+                    with pytest.raises(ClientError):
+                        await store.put(key, data)
+                else:
+                    assert await store.put(key, data) is (outcome == 'created')
+                stub.assert_no_pending_responses()
+
+    asyncio.run(check())
+
+
+@pytest.mark.parametrize('length', [4, 10])
+def test_async_read_checks_length_and_closes_stream(length):
+    import asyncio
+    from aiobotocore.session import get_session
+    from aiobotocore.stub import AioStubber
+    from congress_api.retention.r2 import AsyncBodies
+
+    class Stream:
+        closed = False
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            self.closed = True
+
+        async def read(self):
+            return b'body'
+
+    async def check():
+        async with get_session().create_client('s3', endpoint_url='https://r2.example.test',
+            region_name='auto', aws_access_key_id='test', aws_secret_access_key='test') as c:
+            stream = Stream()
+            key = 'bodies/sha256/example.gz'
+            with AioStubber(c) as stub:
+                stub.add_response('get_object', {'Body': stream, 'ContentLength': length},
+                                  {'Bucket': 'archive', 'Key': key})
+                store = AsyncBodies(c, 'archive')
+                if length == 4:
+                    assert await store.read(key) == b'body'
+                else:
+                    with pytest.raises(ValueError, match='Incomplete stored object'):
+                        await store.read(key)
+                assert stream.closed
+                stub.assert_no_pending_responses()
+
+    asyncio.run(check())

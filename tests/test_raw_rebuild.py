@@ -317,12 +317,13 @@ def test_capture_state_is_released_and_summary_saved_before_rebuild(tmp_path, mo
             references.append(weakref.ref(self))
     class Fetcher:
         sequence = 2
+        file_dispatches = 1
         def __init__(self, *_args, **_kwargs): pass
         def __enter__(self): return self
         def __exit__(self, *_args): pass
-        def fetch(self, _url): pytest.fail('No real network in this test')
+        def fetch_spooled(self, _url, **_kwargs): pytest.fail('No real network in this test')
     class Store:
-        def __init__(self, *_args): pass
+        def __init__(self, *_args, **_kwargs): pass
         def put(self, *_args): pass
     summary = tmp_path / 'summary.json'
     handlers = {sig: signal.getsignal(sig) for sig in (signal.SIGINT, signal.SIGTERM)}

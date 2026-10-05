@@ -2,13 +2,76 @@
 
 import base64
 import hashlib
-from contextlib import closing
+import asyncio
+from contextlib import asynccontextmanager, closing
+
+
+def put_parameters(bucket, key, body, **conditions):
+    return dict(Bucket=bucket, Key=key, Body=body,
+                ContentMD5=base64.b64encode(hashlib.md5(body).digest()).decode(),
+                ContentType='application/gzip' if key.endswith('.gz') else 'application/octet-stream',
+                **conditions)
+
+
+def verify_upload(result, body):
+    if result['ETag'].strip('"') != hashlib.md5(body).hexdigest():
+        raise ValueError('Upload checksum mismatch')
+
+
+@asynccontextmanager
+async def threaded_bodies(store):
+    """Adapt local stores and existing injected synchronous stores."""
+    class Bodies:
+        async def put(self, key, data):
+            return await asyncio.to_thread(store.put, key, data, immutable=True)
+
+        async def read(self, key):
+            return await asyncio.to_thread(store.read, key)
+
+    yield Bodies()
+
+
+class AsyncBodies:
+    """Async I/O for immutable bodies; index state remains with the collector."""
+    def __init__(self, client, bucket):
+        self.client, self.bucket = client, bucket
+
+    async def put(self, key, data):
+        from botocore.exceptions import ClientError
+        if not key.startswith('bodies/'):
+            raise ValueError('Async body upload requires a body key')
+        try:
+            result = await self.client.put_object(**put_parameters(self.bucket, key, data, IfNoneMatch='*'))
+        except ClientError as error:
+            if error.response['Error']['Code'] in {'PreconditionFailed', '412'}:
+                return False
+            raise
+        verify_upload(result, data)
+        return True
+
+    async def read(self, key):
+        response = await self.client.get_object(Bucket=self.bucket, Key=key)
+        async with response['Body'] as stream:
+            data = await stream.read()
+        if len(data) != response['ContentLength']:
+            raise ValueError(f'Incomplete stored object: {key}')
+        return data
 
 
 class R2Store:
-    def __init__(self, client, bucket):
+    def __init__(self, client, bucket, *, async_client=None):
         self.client, self.bucket = client, bucket
+        self.async_client = async_client
         self.index_etags = {}
+
+    @asynccontextmanager
+    async def async_bodies(self):
+        if self.async_client is None:
+            async with threaded_bodies(self) as bodies:
+                yield bodies
+        else:
+            async with self.async_client() as client:
+                yield AsyncBodies(client, self.bucket)
 
     def read(self, key):
         from botocore.exceptions import ClientError
@@ -40,18 +103,8 @@ class R2Store:
                 raise ValueError("Read an index before replacing it")
             etag = self.index_etags[key]
             options.update({"IfMatch": etag} if etag else {"IfNoneMatch": "*"})
-        digest = hashlib.md5(body).digest()
         try:
-            result = self.client.put_object(
-                Bucket=self.bucket,
-                Key=key,
-                Body=body,
-                ContentMD5=base64.b64encode(digest).decode(),
-                ContentType="application/gzip"
-                if key.endswith(".gz")
-                else "application/octet-stream",
-                **options,
-            )
+            result = self.client.put_object(**put_parameters(self.bucket, key, body, **options))
         except ClientError as error:
             if error.response["Error"]["Code"] in {"PreconditionFailed", "412"}:
                 if immutable and key.startswith("bodies/"):
@@ -62,8 +115,7 @@ class R2Store:
                     f"Concurrent update or reused receipt name: {key}; published receipts remain recoverable."
                 ) from error
             raise
-        if result["ETag"].strip('"') != digest.hex():
-            raise ValueError(f"Upload checksum mismatch: {key}")
+        verify_upload(result, body)
         if key.startswith("indexes/"):
             self.index_etags[key] = result["ETag"]
         return True

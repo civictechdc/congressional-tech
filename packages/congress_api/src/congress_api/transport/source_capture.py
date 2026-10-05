@@ -4,17 +4,27 @@ import base64
 from datetime import datetime, timezone
 import json
 import threading
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlsplit, urlunsplit
 
 import requests
 
-from congress_api.models.content import RawContent
+from congress_api.models.content import CapturedBody, RawContent
 from congress_api.models.transport import SourceCapture, ZyteResponse
 from congress_api.parsers.archive_links import allowed_url
 from congress_api.transport import zyte
 from congress_api.transport.http import UA, pace_request, response_metadata
 
 _local = threading.local()
+
+
+def request_url(url):
+    """Use House's verified HTTPS origin without altering the source link."""
+    parts = urlsplit(url)
+    # The retained live test confirmed same-path HTTP -> HTTPS 301s for this
+    # origin. Other hosts and nonstandard ports retain their supplied scheme.
+    if parts.scheme == 'http' and parts.netloc.lower() in {'docs.house.gov', 'docs.house.gov:80'}:
+        return urlunsplit(('https', parts.netloc.removesuffix(':80'), parts.path, parts.query, parts.fragment))
+    return url
 
 
 def read_bounded(response, limit):
@@ -28,11 +38,13 @@ def read_bounded(response, limit):
     return b"".join(parts), getattr(response, "capture_complete", True)
 
 
-def fetch_source(url, *, transport="zyte", max_bytes=64 * 1024**2, session=None, pace=True):
+def fetch_source(url, *, transport="zyte", max_bytes=64 * 1024**2, session=None, pace=True,
+                 read=read_bounded, raw=False):
     if not allowed_url(url):
         raise ValueError("URL is outside capture scope")
     if transport not in {"zyte", "direct"}:
         raise ValueError("Unknown transport")
+    content = CapturedBody if raw else RawContent
     if session is None:
         if not hasattr(_local, "session"):
             _local.session = requests.Session()
@@ -44,19 +56,22 @@ def fetch_source(url, *, transport="zyte", max_bytes=64 * 1024**2, session=None,
         complete=False,
         retrieved_at=datetime.now(timezone.utc).isoformat(),
     )
+    initial_url = request_url(url)
+    if initial_url != url:
+        result['request_url'] = initial_url
     try:
         if transport == "zyte":
             # No browser rendering; preserve native body bytes and native headers.
-            with zyte.request(url, session=session, stream=True) as response:
+            with zyte.request(initial_url, session=session, stream=True) as response:
                 result.update(
                     provider_http_status=response.status_code,
                     provider_metadata=response_metadata(response),
                 )
-                data, complete = read_bounded(response, (max_bytes * 4 // 3) + 1024**2)
+                data, complete = read(response, (max_bytes * 4 // 3) + 1024**2)
                 if not complete:
                     result.update(
                         error=getattr(response, "capture_error", None) or "provider_response_limit",
-                        provider_content=RawContent.from_bytes(
+                        provider_content=content.from_bytes(
                             data, "application/json"
                         ),
                     )
@@ -68,7 +83,7 @@ def fetch_source(url, *, transport="zyte", max_bytes=64 * 1024**2, session=None,
                     if not isinstance(payload, dict):
                         result.update(
                             error="invalid_provider_response",
-                            provider_content=RawContent.from_bytes(
+                            provider_content=content.from_bytes(
                                 data, "application/json"
                             ),
                         )
@@ -84,14 +99,14 @@ def fetch_source(url, *, transport="zyte", max_bytes=64 * 1024**2, session=None,
                                 for h in source.httpResponseHeaders or []
                             }
                             result.update(
-                                url=source.url or url,
+                                url=source.url or initial_url,
                                 http_status=source.statusCode,
                                 response_headers=headers,
                                 response_header_items=[
                                     h.source_dict()
                                     for h in source.httpResponseHeaders or []
                                 ],
-                                content=RawContent.from_bytes(
+                                content=content.from_bytes(
                                     body[:max_bytes], headers.get("content-type", "")
                                 ),
                                 complete=len(body) <= max_bytes
@@ -103,7 +118,7 @@ def fetch_source(url, *, transport="zyte", max_bytes=64 * 1024**2, session=None,
                         else:
                             result["error"] = "provider_http_error"
         else:
-            target = url
+            target = initial_url
             result["redirects"] = []
             for _ in range(6):
                 if not allowed_url(target):
@@ -124,7 +139,7 @@ def fetch_source(url, *, transport="zyte", max_bytes=64 * 1024**2, session=None,
                         target = urljoin(target, response.headers["Location"])
                         continue
                     headers = {k.lower(): v for k, v in response.headers.items()}
-                    body, complete = read_bounded(response, max_bytes)
+                    body, complete = read(response, max_bytes)
                     result.update(
                         url=response.url,
                         http_status=response.status_code,
@@ -134,7 +149,7 @@ def fetch_source(url, *, transport="zyte", max_bytes=64 * 1024**2, session=None,
                         complete=complete
                         and response.status_code != 206
                         and "content-range" not in headers,
-                        content=RawContent.from_bytes(
+                        content=content.from_bytes(
                             body, headers.get("content-type", "")
                         ),
                     )
@@ -148,7 +163,14 @@ def fetch_source(url, *, transport="zyte", max_bytes=64 * 1024**2, session=None,
         result.update(error=type(error).__name__, complete=False)
         if "provider_response" in result:
             result.pop("provider_response")
-            result["provider_content"] = RawContent.from_bytes(data, "application/json")
-    return SourceCapture.model_validate(result).model_dump(
+            result["provider_content"] = content.from_bytes(data, "application/json")
+    # Runtime bodies are created here from the bounded reader, never accepted
+    # from serialized input. Validate transport metadata with the same model;
+    # keep acquired bytes intact until the receipt writer separates them.
+    bodies = {key: result.pop(key) for key in ('content', 'provider_content')
+              if raw and key in result}
+    capture = SourceCapture.model_validate(result).model_dump(
         mode="json", exclude_none=True
     )
+    capture.update({key: body.source_dict() for key, body in bodies.items()})
+    return capture

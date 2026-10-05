@@ -9,6 +9,7 @@ on:
       - 'packages/house-naming/src/**'
       - 'packages/house-naming/pyproject.toml'
       - 'packages/congress_api/pyproject.toml'
+      - 'packages/congress_api/uv.lock'
       - 'packages/congress_api/src/congress_api/cli/raw_sync.py'
       - 'packages/congress_api/src/congress_api/cli/raw_progress.py'
       - 'packages/congress_api/src/congress_api/cli/common.py'
@@ -39,6 +40,9 @@ on:
       - '.github/tests/test_raw_source_finalizer.py'
       - 'tests/test_raw_capture_only.py'
       - 'tests/test_capture_metadata.py'
+      - 'tests/test_async_capture*.py'
+      - 'tests/test_spooled_capture.py'
+      - 'tests/test_r2_archive_store.py'
   schedule:
     # Save capture batches every six hours; publish accumulated evidence daily.
     - cron: '23 */6 * * *'
@@ -152,6 +156,7 @@ jobs:
         run: >-
           python .github/scripts/offline-python.py -m pytest -q
           tests/test_raw_source_sync.py tests/test_raw_capture_only.py tests/test_capture_metadata.py tests/test_source_capture.py tests/test_r2_archive_store.py
+          tests/test_async_capture.py tests/test_spooled_capture.py
           tests/test_raw_catalog.py tests/test_raw_rebuild.py tests/test_incremental_catalog.py
           tests/test_raw_progress.py tests/test_core_benchmark.py
           tests/test_core_source_context.py tests/test_catalog_publication.py tests/test_catalog_staging.py tests/test_catalog_consumers.py
@@ -165,6 +170,9 @@ jobs:
           tests/test_document_metadata_preservation.py tests/test_document_source_context.py
           tests/test_senate_document_sections.py packages/house-naming/tests
           .github/tests/test_raw_source_workflow.py
+      - name: Verify async storage on loopback
+        if: steps.verified.outputs.cache-hit != 'true'
+        run: python -m pytest -q tests/test_async_capture_native.py
       - name: Mark successful code validation
         if: steps.verified.outputs.cache-hit != 'true'
         run: |
@@ -227,7 +235,7 @@ jobs:
             capture)
               args+=(--capture-only --fetcher-binary "$GITHUB_WORKSPACE/packages/source-fetch/target/release/source-fetch"
                 --transport "$CAPTURE_TRANSPORT" --limit "$CAPTURE_LIMIT"
-                --requests-per-second 40 --workers 80 --max-seconds 5400 --max-file-mib 64)
+                --files-per-second 60 --workers 80 --max-seconds 5400 --max-file-mib 64)
               ;;
             *) echo "Unsupported operation: $SYNC_MODE" >&2; exit 1 ;;
           esac

@@ -21,6 +21,7 @@ class SourceCapture(SourceModel):
     """One source response, with provider facts kept separate from the publisher."""
 
     requested_url: str
+    request_url: str | None = None
     url: str
     retrieved_at: str
     transport: str

@@ -10,7 +10,7 @@ import threading
 import requests
 
 from congress_api.parsers.archive_links import inspect_capture
-from congress_api.transport.source_capture import fetch_source
+from congress_api.transport.source_capture import fetch_source, read_bounded
 from congress_api.transport import zyte
 
 
@@ -47,10 +47,38 @@ class RustResponse:
                 yield chunk
 
 
-class RustFetcher:
-    """Multiplex thread callers over one native HTTP pool and one request limiter."""
+class _NativeSession:
+    """The requests-compatible methods used by the shared capture reader."""
 
-    def __init__(self, binary, *, requests_per_second=40, workers=80, max_bytes=64 * 1024**2):
+    def get(self, url, *, headers, timeout, stream, allow_redirects):
+        if allow_redirects or not stream:
+            raise RuntimeError("Native capture requires explicit redirects and bounded bodies")
+        return self._request(url, "direct", headers=headers)
+
+    def post(self, url, *, json, auth, timeout, stream):
+        if url != zyte.API or not stream:
+            raise RuntimeError("Unexpected provider request")
+        # Credentials stay in the inherited environment, never in request JSON.
+        return self._request(json["url"], "zyte")
+
+
+class _FileSession(_NativeSession):
+    """Charge one start slot for a file, including its redirects and fallback."""
+
+    def __init__(self, fetcher):
+        self.fetcher = fetcher
+        self.started = False
+
+    def _request(self, url, transport, **kwargs):
+        new_file = not self.started
+        self.started = True
+        return self.fetcher._request(url, transport, new_file=new_file, **kwargs)
+
+
+class RustFetcher(_NativeSession):
+    """Multiplex thread callers over one native HTTP pool and one file-start limiter."""
+
+    def __init__(self, binary, *, files_per_second=60, workers=80, max_bytes=64 * 1024**2):
         self.directory = TemporaryDirectory(prefix="source-fetch-")
         self.root = Path(self.directory.name)
         self.max_bytes = max_bytes
@@ -58,10 +86,11 @@ class RustFetcher:
         self.lock = threading.Lock()
         self.write_lock = threading.Lock()
         self.sequence = 0
+        self.file_dispatches = 0
         self.failure = None
         try:
             self.process = subprocess.Popen(
-                [str(binary), str(self.root), str(requests_per_second), str(workers)],
+                [str(binary), str(self.root), str(files_per_second), str(workers)],
                 stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1,
             )
         except BaseException:
@@ -96,16 +125,17 @@ class RustFetcher:
         for future in pending.values():
             future.set_exception(RuntimeError(message))
 
-    def _request(self, url, transport, *, headers=None):
+    def _request(self, url, transport, *, headers=None, new_file=True):
         future = Future()
         with self.lock:
             if self.failure:
                 raise RuntimeError(self.failure)
             self.sequence += 1
+            self.file_dispatches += int(new_file)
             request_id = self.sequence
             self.pending[request_id] = future
         request = dict(
-            id=request_id, url=url, transport=transport, headers=headers or {},
+            id=request_id, url=url, transport=transport, headers=headers or {}, new_file=new_file,
             max_bytes=self.max_bytes if transport == "direct" else self.max_bytes * 4 // 3 + 1024**2,
         )
         try:
@@ -115,35 +145,51 @@ class RustFetcher:
         except (OSError, ValueError) as error:
             self._fail("Could not send a request to the native transport")
             raise RuntimeError(self.failure) from error
-        result = future.result(timeout=180)
+        try:
+            result = future.result(timeout=180)
+        except Exception as error:
+            # A fatal/malformed/timed-out native command can leave a partial
+            # file. Stop its writer before releasing this request's disk quota.
+            self.process.kill()
+            self.process.wait()
+            self._fail('Native transport did not complete its response')
+            (self.root / f'{request_id}.body').unlink(missing_ok=True)
+            raise RuntimeError('Native transport did not complete its response') from error
         if "http_status" not in result:
+            (self.root / f'{request_id}.body').unlink(missing_ok=True)
             raise requests.RequestException(result.get("error", "native_request_error"))
-        return RustResponse(result, self.root)
-
-    def get(self, url, *, headers, timeout, stream, allow_redirects):
-        if allow_redirects or not stream:
-            raise RuntimeError("Native capture requires explicit redirects and bounded bodies")
-        return self._request(url, "direct", headers=headers)
-
-    def post(self, url, *, json, auth, timeout, stream):
-        if url != zyte.API or not stream:
-            raise RuntimeError("Unexpected provider request")
-        # Credentials stay in the inherited environment, never in request JSON.
-        return self._request(json["url"], "zyte")
+        try:
+            return RustResponse(result, self.root)
+        except Exception:
+            (self.root / f'{request_id}.body').unlink(missing_ok=True)
+            raise
 
     def fetch(self, url, *, transport="auto"):
+        return self._fetch(url, transport=transport)[0]
+
+    def fetch_spooled(self, url, *, before_read, transport="auto"):
+        """Leave native files on disk until the caller admits their payloads."""
+        def read(response, limit):
+            before_read()
+            return read_bounded(response, limit)
+
+        return self._fetch(url, transport=transport, read=read, raw=True)
+
+    def _fetch(self, url, *, transport, **options):
         if transport not in {"auto", "direct", "zyte"}:
             raise ValueError("Unknown transport")
+        session = _FileSession(self)
         first = fetch_source(
             url, transport="direct" if transport == "auto" else transport,
-            max_bytes=self.max_bytes, session=self, pace=False,
+            max_bytes=self.max_bytes, session=session, pace=False, **options,
         )
+        inspection = inspect_capture(first)
         if (transport != "auto" or first.get("error") == "excluded_redirect"
-                or inspect_capture(first)[0] in {"saved", "excluded_media"}):
-            return first
-        fallback = fetch_source(url, transport="zyte", max_bytes=self.max_bytes, session=self, pace=False)
+                or inspection[0] in {"saved", "excluded_media"}):
+            return first, inspection
+        fallback = fetch_source(url, transport="zyte", max_bytes=self.max_bytes, session=session, pace=False, **options)
         fallback["prior_attempts"] = [first]
-        return fallback
+        return fallback, inspect_capture(fallback)
 
     def __enter__(self):
         return self

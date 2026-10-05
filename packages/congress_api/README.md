@@ -44,10 +44,35 @@ ordinary source collectors do not require it.
 
 ## Streaming source capture
 
-`raw-source-sync` keeps downloads in flight while one collector saves completed
-responses. Before releasing a new body, the collector runs the existing format,
-House XML and PDF cover readers. It reuses saved readings by body identity,
-including unclassified results, across reader-version changes.
+`raw-source-sync` runs a bounded async capture pipeline. Rust handles publisher
+HTTP, and `aiobotocore` overlaps immutable R2 body uploads. Existing synchronous
+fetch adapters run in a bounded executor; two processing threads run validation,
+compression, House XML and PDF cover readers off the event loop. One writer
+accepts confirmed bodies, appends metadata and publishes receipts. Concurrent
+aliases share body uploads and readings. Saved readings, including unclassified
+results, survive reader-version changes. Reading and uploading each body can
+overlap; the writer waits for both before publishing its metadata and receipt.
+
+`--workers` bounds admitted files across the whole lifecycle. The default
+`--download-workers 16` bounds downloads and completed files waiting for a body
+reader. Rust streams responses into temporary files, with a separate
+`--max-spool-mib 2048` disk budget. Each download reserves room for one maximum
+provider response; redirects and fallback consume and remove the previous file
+before fetching the next. Failed native commands stop their writer and clean up
+partial files before releasing the reservation.
+
+`--max-buffer-mib 512` bounds processing payload reservations. A reader reserves
+three maximum file sizes plus 1 MiB before loading its first body, then releases
+the excess after separating actual body bytes. Files waiting for this capacity
+stay on disk, so slow processing does not restrict HTTP to two downloads. Acquired
+bytes and the fetcher's inspection result pass directly to retention; receipts
+keep their existing serialized shape. Synchronous injected fetchers and retained
+body replay still reserve memory before acquisition.
+
+The payload budget is not an RSS limit; compressed copies, provider JSON, parser
+allocations and loaded indexes add memory. A stop request closes admission,
+drains admitted files, and saves the checkpoint. The summary records cumulative
+task times by stage (these overlap), both reservation peaks, and CLI limits.
 
 Metadata goes to an incremental Parquet writer under
 `indexes/processing/body-results/<run-id>/`. It closes and uploads immutable parts
@@ -75,7 +100,7 @@ For a local capture run that also updates the document index:
 ```bash
 raw-source-sync --bucket congressional-tech-raw \
   --fetcher-binary packages/source-fetch/target/release/source-fetch \
-  --transport auto --requests-per-second 40 --workers 80 \
+  --transport auto --files-per-second 60 --workers 80 \
   --limit 20000 --max-seconds 5400 --index-workers 2 \
   --summary .cache/local-capture-summary.json
 ```
@@ -194,9 +219,9 @@ crawl site navigation or archive full video/audio files. Authenticated Congress.
 GovInfo collection and YouTube API requests remain with their existing collectors.
 
 Production uses the Rust `source-fetch` reqwest worker, with **direct requests
-first and one Zyte fallback when capture fails**. It starts at most **40 HTTP
-requests per second** across direct requests, redirects, and fallbacks, with up
-to **80 concurrent source tasks**. The rate is a shared ceiling; source latency,
+first and one Zyte fallback when capture fails**. It starts at most **60 files
+per second**; redirects and one fallback share the initial file slot, with up to
+**80 concurrent source tasks**. The rate is a shared ceiling; source latency,
 archive writes, and file inspection can lower completed captures per second.
 The run still limits work to 5,000 downloads or retained-body scans and 90 minutes
 of collection. Manual `direct` and `zyte` modes remain available. The default

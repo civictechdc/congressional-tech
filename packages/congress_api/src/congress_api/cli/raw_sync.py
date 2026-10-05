@@ -60,7 +60,8 @@ def parser():
     p.add_argument("--account-id", default=os.environ.get("CLOUDFLARE_ACCOUNT_ID"))
     p.add_argument("--transport", choices=("auto", "zyte", "direct"), default="auto")
     p.add_argument("--fetcher-binary", default="source-fetch", help="Path to the Rust reqwest worker")
-    p.add_argument("--requests-per-second", type=positive, default=40)
+    p.add_argument("--files-per-second", "--requests-per-second", type=positive, default=60,
+                   help="Maximum new file starts per second; redirects and fallback share the file slot")
     p.add_argument("--seed", action="append", type=Path, default=[],
                    help="Saved JSON/JSONL link metadata; rebuild mode reads it without acquiring URLs")
     p.add_argument(
@@ -73,6 +74,12 @@ def parser():
     p.add_argument("--index-workers", type=positive, default=2)
     p.add_argument("--max-seconds", type=positive, default=5400)
     p.add_argument("--max-file-mib", type=positive, default=64)
+    p.add_argument("--max-buffer-mib", type=positive, default=512,
+                   help="Bound in-flight body payloads; encoded representations add overhead")
+    p.add_argument("--download-workers", type=positive, default=16,
+                   help="Maximum captures downloading or awaiting a body reader")
+    p.add_argument("--max-spool-mib", type=positive, default=2048,
+                   help="Bound temporary native response files separately from processing memory")
     mode = p.add_mutually_exclusive_group()
     mode.add_argument("--plan-only", action="store_true")
     mode.add_argument("--capture-only", action="store_true",
@@ -109,17 +116,23 @@ def capture_sources(args, store, run_id):
                          for sig in (signal.SIGTERM, signal.SIGINT)}
     try:
         with RustFetcher(
-            args.fetcher_binary, requests_per_second=args.requests_per_second,
+            args.fetcher_binary, files_per_second=args.files_per_second,
             workers=args.workers, max_bytes=args.max_file_mib * 1024**2,
         ) as fetcher:
             summary = run_sync(
-                archive, seed_files(args.seed), fetch=partial(fetcher.fetch, transport=args.transport),
+                archive, seed_files(args.seed), fetch_spooled=partial(fetcher.fetch_spooled, transport=args.transport),
                 limit=args.limit, workers=args.workers, max_seconds=args.max_seconds,
                 max_bytes=args.max_file_mib * 1024**2, stop=stop,
+                max_buffer_bytes=args.max_buffer_mib * 1024**2,
+                download_workers=args.download_workers, max_spool_bytes=args.max_spool_mib * 1024**2,
             )
-        summary.update(fetcher="reqwest", requests_per_second=args.requests_per_second,
-                       workers=args.workers, http_requests=fetcher.sequence)
+        summary.update(fetcher="reqwest", files_per_second=args.files_per_second,
+                       workers=args.workers, download_workers=args.download_workers,
+                       max_buffer_mib=args.max_buffer_mib, max_spool_mib=args.max_spool_mib,
+                       http_requests=fetcher.sequence, file_dispatches=fetcher.file_dispatches)
         summary.setdefault("accounting", {}).update(native_request_dispatches=fetcher.sequence,
+                                     file_dispatches=fetcher.file_dispatches,
+                                     rate_limit_basis="new files; redirects and fallback continue the same file",
                                      http_request_starts=None,
                                      http_request_starts_basis="unavailable; native commands are counted before worker execution")
         return summary
@@ -161,14 +174,21 @@ def connect_storage(args, log):
             aws_secret_access_key=os.environ["R2_SECRET_ACCESS_KEY"],
             region_name="auto",
         )
+        storage_config = Config(
+            retries={"mode": "standard", "max_attempts": 5},
+            max_pool_connections=args.workers + 4,
+            request_checksum_calculation="when_required",
+            response_checksum_validation="when_required",
+        )
+        async_options = {}
+        if not (args.plan_only or args.rebuild_only or args.update_only):
+            from aiobotocore.session import get_session
+            async_options['async_client'] = lambda: get_session().create_client(
+                's3', **client_args, config=storage_config)
         store = R2Store(
-            boto3.client("s3", **client_args, config=Config(
-                    retries={"mode": "standard", "max_attempts": 5},
-                    max_pool_connections=args.workers + 4,
-                    request_checksum_calculation="when_required",
-                    response_checksum_validation="when_required",
-                )),
+            boto3.client("s3", **client_args, config=storage_config),
             args.bucket,
+            **async_options,
         )
         if not args.plan_only:
             # Status is best-effort and bounded; it must not hold up data work.

@@ -77,24 +77,24 @@ def server():
     thread.join()
 
 
-def test_native_40_per_second_is_concurrent_and_bounded(server):
+def test_native_60_files_per_second_is_concurrent_and_bounded(server):
     url, starts, peak = server
-    with RustFetcher(BINARY, requests_per_second=40, workers=80) as fetcher:
+    with RustFetcher(BINARY, files_per_second=60, workers=80) as fetcher:
         def get(i):
             with fetcher._request(f'{url}/{i}', 'direct') as response:
                 assert response.status_code == 200
                 assert b'%%EOF' in b''.join(response.iter_content(1024))
                 assert [h['value'] for h in response.capture_metadata['response_header_items'] if h['name'] == 'link'] == ['one', 'two']
         with ThreadPoolExecutor(max_workers=80) as pool:
-            list(pool.map(get, range(80)))
+            list(pool.map(get, range(120)))
         assert not list(fetcher.root.glob('*.body'))
     starts.sort()
     elapsed = starts[-1] - starts[0]
-    assert len(starts) == 80
+    assert len(starts) == 120
     assert peak() > 1
     # Rust's virtual-clock test asserts exact slots; this checks real network throughput.
     assert 1.9 <= elapsed < 4.0
-    print(f'Native starts: {79 / elapsed:.2f}/s; peak simultaneous server requests: {peak()}')
+    print(f'Native starts: {119 / elapsed:.2f}/s; peak simultaneous server requests: {peak()}')
 
 
 def test_native_truncation_never_becomes_a_complete_capture(server, monkeypatch):
@@ -107,14 +107,18 @@ def test_native_truncation_never_becomes_a_complete_capture(server, monkeypatch)
         assert not list(fetcher.root.glob('*.body'))
 
 
-def test_native_redirects_use_the_same_rate_limit(server, monkeypatch):
+def test_native_redirect_continues_immediately_but_next_file_waits(server, monkeypatch):
     url, starts, _ = server
     monkeypatch.setattr('congress_api.transport.source_capture.allowed_url', lambda value: value)
-    with RustFetcher(BINARY, requests_per_second=2) as fetcher:
-        result = fetch_source(url + '/redirect', transport='direct', session=fetcher, pace=False)
+    with RustFetcher(BINARY, files_per_second=1) as fetcher:
+        result = fetcher.fetch(url + '/redirect', transport='direct')
+        fetcher.fetch(url + '/second', transport='direct')
+        assert fetcher.sequence == 3 and fetcher.file_dispatches == 2
     assert result['complete'] and result['url'].endswith('/done')
     assert len(result['redirects']) == 1
-    assert len(starts) == 2 and starts[1] - starts[0] >= 0.45
+    assert len(starts) == 3
+    assert starts[1] - starts[0] < 0.8
+    assert starts[2] - starts[0] >= 0.95
 
 
 @pytest.mark.parametrize('path,complete', [('/gzip', True), ('/gzip-large', False)])
@@ -130,3 +134,27 @@ def test_compression_preserves_original_headers_and_limits_decoded_bytes(server,
     assert result['complete'] == complete
     if not complete:
         assert len(body) == 1024 and result['error'] == 'response_limit'
+
+
+def test_spooled_pipeline_downloads_ahead_with_default_memory_budget(server, monkeypatch):
+    from functools import partial
+    from congress_api.acquisition.raw_sync import run_sync
+    from congress_api.retention.raw_archive import Archive
+    from test_raw_source_sync import MemoryStore
+
+    url, starts, peak = server
+    # Only the fixture server is accepted; production scope checks stay intact.
+    monkeypatch.setattr('congress_api.transport.source_capture.allowed_url',
+                        lambda value: value if value.startswith(url + '/') else None)
+    monkeypatch.setattr('congress_api.retention.raw_archive.allowed_url',
+                        lambda value: value if value.startswith(url + '/') else None)
+    with RustFetcher(BINARY, workers=16) as fetcher:
+        store = MemoryStore()
+        result = run_sync(Archive(store, 'native-spool'),
+            [{'url': f'{url}/{i}'} for i in range(16)], workers=16, download_workers=16,
+            fetch_spooled=partial(fetcher.fetch_spooled, transport='direct'))
+        assert result['saved'] == len(starts) == 16
+        assert 4 <= peak() <= 16
+        assert result['peak_body_payload_reservation_bytes'] <= 512*1024**2
+        assert result['peak_spool_reservation_bytes'] <= 2*1024**3
+        assert not list(fetcher.root.glob('*.body'))

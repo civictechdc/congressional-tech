@@ -175,6 +175,10 @@ class CaptureMetadata:
         if body_key in self.seen:
             self.counts['reused'] += 1
             return
+        self.accept(self.reading(data, body_key))
+
+    def reading(self, data, body_key):
+        """Compute a reading off the event loop, without touching writer state."""
         fields, error = {}, None
         if len(data) > BODY_LIMIT:
             status = 'size_limit'
@@ -187,10 +191,18 @@ class CaptureMetadata:
                 status, error = 'failed', type(exc).__name__
                 if data.lstrip().startswith(b'%PDF-'):
                     fields = {'body_format': ['pdf']}
-        self.writer.append(dict(body_key=body_key, parser_fingerprint=self.fingerprint,
-                                status=status, error_type=error, **fields))
+        return dict(body_key=body_key, parser_fingerprint=self.fingerprint,
+                    status=status, error_type=error, **fields)
+
+    def accept(self, reading):
+        """The single collector admits each durable body's result once."""
+        body_key = reading['body_key']
+        if body_key in self.seen:
+            self.counts['reused'] += 1
+            return
+        self.writer.append(reading)
         self.seen.add(body_key)
-        self.counts[status] += 1
+        self.counts[reading['status']] += 1
 
     def flush(self):
         self.writer.flush()
