@@ -118,6 +118,7 @@ class Archive:
         self.additions, self.body_info, self.state = [], {}, dict(saved_state)
         self.sequence = 0
         self.pending = []
+        self.metadata = None  # Attached only for the lifetime of acquisition.
         self.day = datetime.now(timezone.utc).date().isoformat()
         indexed = set()
         position = 0
@@ -331,7 +332,17 @@ class Archive:
             "links": links,
             "source_context": context or {},
         }
-        record, captures = separate(original, self.put_body)
+        def store_body(data):
+            key = self.put_body(data)
+            publisher = self.body_info.get((content or {}).get('sha256'))
+            if (self.metadata is not None and response.get('complete')
+                    and publisher and publisher['body_key'] == key):
+                # separate() already decoded and verified these bytes. Extract
+                # here instead of materializing/validating RawContent again.
+                self.metadata.record(data, key)
+            return key
+
+        record, captures = separate(original, store_body)
         publisher = next(
             (c for c in captures if c["pointer"] == ["content", "body"]), None
         )
@@ -367,12 +378,15 @@ class Archive:
         )
         self.pending.append(receipt)
         self.apply(receipt)
-        if len(self.pending) >= 100:
+        if len(self.pending) >= (1000 if self.metadata is not None else 100):
             self.flush()
         return state
 
     def flush(self):
         """Publish bounded receipt batches; never rewrite a prior batch."""
+        if self.metadata is not None:
+            # Resume must never skip extraction whose result was not retained.
+            self.metadata.flush()
         while self.pending:
             owner = self.pending[0]["download_state"]["family"]
             batch = [r for r in self.pending if r["download_state"]["family"] == owner]

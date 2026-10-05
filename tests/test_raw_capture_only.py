@@ -117,8 +117,11 @@ def test_default_cli_still_captures_and_publishes(tmp_path, worker):
     seed.write_text('{"url":"https://example.gov/default.pdf"}')
     result = execute(tmp_path, store, '--fetcher-binary', worker, '--seed', seed)
     assert result['acquisition_status'] == result['catalog_status'] == 'completed'
+    assert result['body_metadata']['failed'] == 1  # Fixture bytes are not a readable PDF.
+    assert store.keys('indexes/processing/body-results/')
     row, = table(store).to_pylist()
     assert row['filename'] == 'default.pdf' and row['body_key']
+    assert row['body_format'] == ['pdf']
 
 
 def test_update_only_preserves_catalog_without_starting_acquisition(tmp_path):

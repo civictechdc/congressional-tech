@@ -42,6 +42,48 @@ Filename rules and corpus tooling live in the independent [house-naming package]
 The optional `archive` dependency group uses that package to build document tables;
 ordinary source collectors do not require it.
 
+## Streaming source capture
+
+`raw-source-sync` keeps downloads in flight while one collector saves completed
+responses. Before releasing a new body, the collector runs the existing format,
+House XML and PDF cover readers. It reuses saved readings by body identity,
+including unclassified results, across reader-version changes.
+
+Metadata goes to an incremental Parquet writer under
+`indexes/processing/body-results/<run-id>/`. It closes and uploads immutable parts
+at 1,000 metadata rows, 4 MiB of estimated row data, five minutes, or the next
+receipt checkpoint. The final partial part is saved on normal completion and
+graceful interruption. Bodies are uploaded first, then metadata, then capture
+receipts; an interrupted run can recover from completed receipts. Metadata
+upload errors stop receipt publication, while extraction errors retain the raw
+capture and record the error type. Body inspection retains its 16 MiB limit.
+Capture startup projects only body identities from previous parts. Catalog
+updates scan completed metadata parts to recover readings, including parts whose
+receipt upload was interrupted. This scan grows with the metadata history; it
+does not transfer the source bodies. New optional fact columns do not invalidate
+older parts.
+
+The default command saves capture indexes and then incrementally updates the
+published filename/document tables. Those updates reuse the new body facts
+without rereading document bytes. Source-page context still uses the existing
+House/Senate readers. `--capture-only` saves captures and extraction results for
+a later `--update-only` run, as used by scheduled CI. To reinterpret prior body
+metadata, explicitly use `--rebuild-only --inspect-bodies`.
+
+For a local capture run that also updates the document index:
+
+```bash
+raw-source-sync --bucket congressional-tech-raw \
+  --fetcher-binary packages/source-fetch/target/release/source-fetch \
+  --transport auto --requests-per-second 40 --workers 80 \
+  --limit 20000 --max-seconds 5400 --index-workers 2 \
+  --summary .cache/local-capture-summary.json
+```
+
+This uses the R2 and Zyte credentials from the environment. Run only one capture
+or catalog writer at a time, including CI; local commands do not participate in
+GitHub Actions concurrency groups.
+
 ## Credentials and environment
 
 Congress.gov and the GovInfo collection API share one [data.gov](https://api.data.gov) key. `congress_shared.auth.load_congress_api_key` checks, in order:

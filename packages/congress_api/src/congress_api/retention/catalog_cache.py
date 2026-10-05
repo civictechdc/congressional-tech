@@ -26,6 +26,10 @@ class LocalStore:
         path = self.root / key
         return path.read_bytes() if path.is_file() else None
 
+    def keys(self, prefix):
+        return (str(path.relative_to(self.root))
+                for path in sorted((self.root / prefix).rglob('*')) if path.is_file())
+
     def put(self, key, data, *, immutable=False):
         path = self.root / key
         path.parent.mkdir(parents=True, exist_ok=True)

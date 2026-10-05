@@ -2135,6 +2135,11 @@ def write_filename_metadata(
                     and not (key == 'document_kind'
                              and any(value in DERIVED_KIND_SOURCES for value in row.get('document_kind_source') or []))
                 })
+    if reuse_results:
+        # Capture already inspected these bytes before releasing them. Preserve
+        # published/legacy readings first, then admit newly completed results.
+        from congress_api.retention.capture_metadata import restore_body_results
+        restore_body_results(cache_store, body_cache)
     checkpoint_bodies = result_checkpoint(cache_store, 'bodies', body_fingerprint,
                                          ('reader', 'body_key'), body_cache)
     columns = set()

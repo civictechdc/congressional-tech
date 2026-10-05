@@ -16,6 +16,7 @@ on:
       - 'packages/congress_api/src/congress_api/retention/raw_*.py'
       - 'packages/congress_api/src/congress_api/retention/document_*.py'
       - 'packages/congress_api/src/congress_api/retention/catalog_cache.py'
+      - 'packages/congress_api/src/congress_api/retention/capture_metadata.py'
       - 'packages/source-fetch/**'
       - 'packages/congress_api/src/congress_api/retention/r2.py'
       - 'packages/congress_api/src/congress_api/parsers/**'
@@ -37,6 +38,7 @@ on:
       - '.github/tests/test_raw_source_workflow.py'
       - '.github/tests/test_raw_source_finalizer.py'
       - 'tests/test_raw_capture_only.py'
+      - 'tests/test_capture_metadata.py'
   schedule:
     # Save capture batches every six hours; publish accumulated evidence daily.
     - cron: '23 */6 * * *'
@@ -149,7 +151,7 @@ jobs:
         if: steps.verified.outputs.cache-hit != 'true'
         run: >-
           python .github/scripts/offline-python.py -m pytest -q
-          tests/test_raw_source_sync.py tests/test_raw_capture_only.py tests/test_source_capture.py tests/test_r2_archive_store.py
+          tests/test_raw_source_sync.py tests/test_raw_capture_only.py tests/test_capture_metadata.py tests/test_source_capture.py tests/test_r2_archive_store.py
           tests/test_raw_catalog.py tests/test_raw_rebuild.py tests/test_incremental_catalog.py
           tests/test_raw_progress.py tests/test_core_benchmark.py
           tests/test_core_source_context.py tests/test_catalog_publication.py tests/test_catalog_staging.py tests/test_catalog_consumers.py

@@ -94,10 +94,11 @@ def legislative_cover_fields(clean: str) -> dict[str, list[str]]:
     return {'content_document_kind': [kind], **fields}
 
 
-def document_cover(data: bytes) -> dict[str, list[str]]:
+def document_cover(data: bytes, *, strict: bool = False) -> dict[str, list[str]]:
     """Read at most two opening pages; unreadable or ambiguous content abstains.
 
     The caller bounds and validates the supplied body. No OCR or network access.
+    Capture can request errors to distinguish unreadable PDFs from abstentions.
     """
     if not data.lstrip().startswith(b'%PDF-'):
         return {}
@@ -119,5 +120,7 @@ def document_cover(data: bytes) -> dict[str, list[str]]:
                 if result.get('content_document_kind') == ['transcript']:
                     return result
     except (PyPdfError, ValueError, KeyError, TypeError, IndexError, RecursionError):
+        if strict:
+            raise
         return {}
     return {}

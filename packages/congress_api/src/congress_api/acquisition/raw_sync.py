@@ -11,6 +11,7 @@ from congress_api.models.content import RawContent
 from congress_api.parsers.archive_links import inspect_capture
 from congress_api.retention.raw_archive import BodyLimitExceeded
 from congress_api.retention import raw_progress as progress
+from congress_api.retention.capture_metadata import CaptureMetadata
 
 
 def run_sync(
@@ -55,6 +56,8 @@ def run_sync(
     submitted = 0
     fatal = False
     collector_error = None
+    metadata = CaptureMetadata(archive.store, archive.run_id)
+    archive.metadata = metadata
 
     def acquire(state):
         if state.get("body_key") and not state.get("links_scanned"):
@@ -101,52 +104,66 @@ def run_sync(
                 if not active:
                     break
                 done, _ = wait(active, timeout=1, return_when=FIRST_COMPLETED)
-                for future in done:
-                    state = active.pop(future)
-                    try:
-                        response, mode = future.result()
-                    except Exception as error:
-                        # Drain successes already in flight before saving and failing.
-                        collector_error = collector_error or error
-                        fatal = True
-                        counts["collector_failed_tasks"] += 1
-                        progress.advance("collector_failed_tasks")
-                        continue
-                    outcome, links = inspect_capture(response, replay=mode == "replay")
-                    for link in links:
-                        link["parent_url"] = state["url"]
-                        link["parent_sha256"] = response.get("content", {}).get(
-                            "sha256"
-                        )
-                    archive.record(
-                        response,
-                        outcome=outcome,
-                        links=links,
-                        mode=mode,
-                        context={"observations": context.get(state["url"], [])},
-                        scanned=outcome != "inspection_deferred",
+                if metadata.flush_due():
+                    archive.flush()
+                if not done:
+                    continue
+                # Consume one completion, then refill its slot immediately.
+                # A slow upload must not delay scheduling every completed slot.
+                future = next(iter(done))
+                state = active.pop(future)
+                try:
+                    response, mode = future.result()
+                except Exception as error:
+                    # Drain successes already in flight before saving and failing.
+                    collector_error = collector_error or error
+                    fatal = True
+                    counts["collector_failed_tasks"] += 1
+                    progress.advance("collector_failed_tasks")
+                    continue
+                outcome, links = inspect_capture(response, replay=mode == "replay")
+                for link in links:
+                    link["parent_url"] = state["url"]
+                    link["parent_sha256"] = response.get("content", {}).get(
+                        "sha256"
                     )
-                    counts[outcome] += 1
-                    counts[mode] += 1
-                    progress.advance("capture_tasks_completed")
-                    progress.advance("usable_capture_results", int(outcome == "saved"))
-                    progress.report('acquire_sources', completed=counts['fetch'] + counts['replay'],
-                                    unit='capture_attempts')
-                    counts["zyte_fallbacks"] += bool(response.get("prior_attempts"))
-                    for link in links:
-                        child = archive.state.get(link["url"])
-                        if (
-                            child
-                            and child["outcome"] == "pending"
-                            and child["url"] not in scheduled
-                        ):
-                            queue.append(child)
-                            scheduled.add(child["url"])
-                    if response.get("provider_http_status") in (401, 403):
-                        fatal = True
+                archive.record(
+                    response,
+                    outcome=outcome,
+                    links=links,
+                    mode=mode,
+                    context={"observations": context.get(state["url"], [])},
+                    scanned=outcome != "inspection_deferred",
+                )
+                if metadata.flush_due():
+                    archive.flush()
+                counts[outcome] += 1
+                counts[mode] += 1
+                progress.advance("capture_tasks_completed")
+                progress.advance("usable_capture_results", int(outcome == "saved"))
+                progress.report('acquire_sources', completed=counts['fetch'] + counts['replay'],
+                                unit='capture_attempts')
+                counts["zyte_fallbacks"] += bool(response.get("prior_attempts"))
+                for link in links:
+                    child = archive.state.get(link["url"])
+                    if (
+                        child
+                        and child["outcome"] == "pending"
+                        and child["url"] not in scheduled
+                    ):
+                        queue.append(child)
+                        scheduled.add(child["url"])
+                if response.get("provider_http_status") in (401, 403):
+                    fatal = True
     finally:
         progress.report('save_capture_indexes')
-        archive.save()
+        try:
+            archive.save()
+        finally:
+            try:
+                metadata.writer.close()
+            finally:
+                archive.metadata = None
     if collector_error is not None:
         raise collector_error
     if stop and stop.is_set():
@@ -157,6 +174,7 @@ def run_sync(
         )
     return dict(
         counts,
+        body_metadata=dict(metadata.counts),
         accounting={
             "known_urls": len(archive.state),
             "known_urls_basis": "distinct normalized URLs in download state; includes source pages and retryable failures",
