@@ -6,6 +6,7 @@ import re
 from urllib.parse import parse_qsl, urlsplit
 
 from lxml import etree
+from lxml.html.defs import tags as HTML_TAGS
 
 from congress_api.models.content import content_bytes
 
@@ -251,18 +252,29 @@ def inspect_body(body, url, media):
         return ("saved" if b"%%EOF" in body[-8192:] else "invalid_document"), kind
     if kind == "html":
         return "html", kind
-    if (
+    xml_hint = (
         kind == "xml"
         or urlsplit(url).path.lower().endswith(".xml")
         or media.split(";")[0] in {"application/xml", "text/xml"}
-    ):
+    )
+    # XML declarations and correct response headers are optional in practice.
+    # Infer XML only from a complete parse, never from a partial probe's prefix.
+    markup = prefix.lstrip(b"\xef\xbb\xbf \t\r\n").startswith((b"<", b"\xff\xfe", b"\xfe\xff"))
+    if xml_hint or markup:
         try:
-            etree.fromstring(
+            root = etree.fromstring(
                 body, parser=etree.XMLParser(resolve_entities=False, no_network=True)
             )
-            return "saved", "xml"
         except etree.XMLSyntaxError:
-            return "invalid_document", "xml"
+            if xml_hint:
+                return "invalid_document", "xml"
+        else:
+            name = etree.QName(root)
+            html_fragment = name.namespace == "http://www.w3.org/1999/xhtml" or (
+                not name.namespace and name.localname.lower() in HTML_TAGS
+            )
+            if xml_hint or not html_fragment:
+                return "saved", "xml"
     if body.lstrip().startswith((b"{", b"[")) and (
         "json" in media or urlsplit(url).path.endswith(".json")
     ):

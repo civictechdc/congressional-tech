@@ -276,3 +276,35 @@ def test_redirect_and_fallback_share_one_file_start(tmp_path, monkeypatch):
     assert len(result['prior_attempts'][0]['redirects']) == 1
     assert result['complete'] and second['complete']
     assert not list(tmp_path.glob('*.body'))
+
+
+@pytest.mark.parametrize('spooled', [False, True])
+def test_undeclared_xml_does_not_trigger_provider_fallback(tmp_path, monkeypatch, spooled):
+    from pathlib import Path
+    monkeypatch.setenv('ZYTE_TOKEN', 'fixture-token')
+    data = (Path(__file__).parent / 'fixtures/raw_source_floor_schedule.xml').read_bytes()
+    calls = []
+
+    class XmlFetcher(RustFetcher):
+        def __init__(self):
+            self.max_bytes = 1024**2
+
+        def _request(self, url, transport, **kwargs):
+            calls.append(transport)
+            assert transport == 'direct', 'Complete XML must not trigger a Zyte request'
+            path = tmp_path / 'xml.body'
+            path.write_bytes(data)
+            return RustResponse(dict(body_file=str(path),http_status=200,final_url=url,
+                response_header_items=[{'name':'Content-Type','value':'application/x-octet-stream'}],
+                complete=True),tmp_path)
+
+    fetcher = XmlFetcher()
+    url = 'https://example.gov/download'
+    if spooled:
+        capture, inspection = fetcher.fetch_spooled(url, before_read=lambda: None)
+        assert inspection[0] == 'saved'
+    else:
+        capture = fetcher.fetch(url)
+    assert calls == ['direct']
+    assert content_bytes(capture['content']) == data
+    assert not list(tmp_path.glob('*.body'))

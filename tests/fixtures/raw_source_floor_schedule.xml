@@ -1,0 +1,19 @@
+<floorschedule congress-num="116" week-date="2020-03-23" create-date="2020-03-26T13:26:08.653" orig-publish-date="2020-03-26T20:59:35.927" update-date="2020-03-26T20:59:35.927">
+  <current-status>P</current-status>
+  <language>en-us</language>
+  <copyright>Pursuant to Title 17 Section 105 of the United States Code, this file is not subject to copyright protection and is in the public domain.</copyright>
+  <publish-dates>
+    <publish-date date="2020-03-26T20:59:35.927" />
+  </publish-dates>
+  <category type="Items that may be considered" sort-order="5">
+    <floor-items>
+      <floor-item id="405129" add-date="2020-03-26T20:57:37.820" remove-date="" sort-order="1" publish-date="2020-03-26T20:59:35.927">
+        <legis-num>H.R. 748</legis-num>
+        <floor-text>Coronavirus Aid, Relief, and Economic Security Act </floor-text>
+        <files>
+          <file doc-url="http://docs.house.gov/billsthisweek/20200323/BILLS-116hr748.pdf" doc-type="PDF" add-date="2020-03-26T20:57:37.940" sort-order="1" publish-date="2020-03-26T20:59:35.927" />
+        </files>
+      </floor-item>
+    </floor-items>
+  </category>
+</floorschedule>

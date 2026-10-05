@@ -39,6 +39,7 @@ on:
       - '.github/tests/test_raw_source_workflow.py'
       - '.github/tests/test_raw_source_finalizer.py'
       - 'tests/test_raw_capture_only.py'
+      - 'tests/fixtures/raw_source_floor_schedule.xml'
       - 'tests/test_capture_metadata.py'
       - 'tests/test_async_capture*.py'
       - 'tests/test_spooled_capture.py'

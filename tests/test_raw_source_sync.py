@@ -580,3 +580,99 @@ def test_recovery_at_each_acquisition_write_boundary(failed_prefix, receipt_dura
     # A body-only orphan is safe to reuse, but cannot replace missing provenance.
     assert len(store.keys('bodies/')) == 1
     assert len(store.keys('receipts/')) == 1
+
+
+def test_undeclared_xml_capture_validates_bytes_and_discovers_links():
+    from pathlib import Path
+    from congress_api.parsers.archive_links import inspect_capture
+    body = (Path(__file__).parent / 'fixtures/raw_source_floor_schedule.xml').read_bytes()
+    url = 'https://docs.house.gov/floor/Download.aspx?file=/billsthisweek/20200323/20200323.xml'
+    capture = response(url, body, 'application/x-octet-stream')
+    outcome, links = inspect_capture(capture)
+    assert outcome == 'saved'
+    assert [link['url'] for link in links] == [
+        'http://docs.house.gov/billsthisweek/20200323/BILLS-116hr748.pdf']
+    assert links[0]['attributes']['doc-type'] == 'PDF'
+    assert links[0]['source_xpath'].endswith('/files/file')
+    assert RawContent.model_validate(capture['content']).body_bytes() == body
+    assert capture['content']['media_type'] == 'application/x-octet-stream'
+
+
+@pytest.mark.parametrize('body', [
+    b'<records><entry href="https://example.gov/a.pdf"/></records>',
+    b'<!-- native comment --><records xmlns="urn:publisher"><item/></records>',
+    b'\xef\xbb\xbf<source-record/>',
+    '<source-record><title>Public data</title></source-record>'.encode('utf-16'),
+])
+def test_complete_xml_needs_no_filename_or_media_hint(body):
+    from congress_api.parsers.archive_links import inspect_body
+    assert inspect_body(body, 'https://example.gov/download', 'application/octet-stream') == ('saved', 'xml')
+
+
+@pytest.mark.parametrize('body,media,outcome', [
+    (b'<records><entry>', 'application/octet-stream', 'unverified'),
+    (b'<root/><another/>', 'application/octet-stream', 'unverified'),
+    (b'<div>Unavailable</div>', 'application/octet-stream', 'unverified'),
+    (b'<x:div xmlns:x="http://www.w3.org/1999/xhtml">Unavailable</x:div>', 'application/octet-stream', 'unverified'),
+    (b'<html><body>Unavailable</body></html>', 'application/octet-stream', 'html'),
+    (b'<div>Unavailable</div>', 'text/html', 'html'),
+    (b'<title>Just a moment</title>', 'application/octet-stream', 'challenge'),
+])
+def test_xml_detection_does_not_promote_html_or_malformed_markup(body, media, outcome):
+    from congress_api.parsers.archive_links import inspect_body
+    assert inspect_body(body, 'https://example.gov/download', media)[0] == outcome
+
+
+def test_explicit_xml_hint_retains_ambiguous_root_and_strict_validation():
+    from congress_api.parsers.archive_links import inspect_body
+    assert inspect_body(b'<data/>', 'https://example.gov/download.xml', 'application/octet-stream') == ('saved', 'xml')
+    assert inspect_body(b'<data>', 'https://example.gov/download.xml', 'application/octet-stream') == ('invalid_document', 'xml')
+
+
+def test_implicit_xml_never_expands_external_entities(tmp_path):
+    from congress_api.parsers.archive_links import inspect_capture
+    secret = tmp_path / 'external.txt'
+    secret.write_text('https://example.gov/should-not-be-read.pdf')
+    body = f'<!DOCTYPE records [<!ENTITY external SYSTEM "{secret.as_uri()}">]><records><url>&external;</url></records>'.encode()
+    outcome, links = inspect_capture(response('https://example.gov/download', body, 'application/octet-stream'))
+    assert outcome == 'saved'
+    assert links == []
+
+
+def test_explicit_xml_replay_keeps_receipts_metadata_and_attempt_count():
+    from pathlib import Path
+    from congress_api.parsers.archive_links import inspect_capture
+    body = (Path(__file__).parent / 'fixtures/raw_source_floor_schedule.xml').read_bytes()
+    url = 'https://docs.house.gov/floor/Download.aspx?file=/billsthisweek/20200323/20200323.xml'
+    source = response(url, body, 'application/x-octet-stream')
+    store = MemoryStore()
+    original = Archive(store, 'xml-before')
+    original.record(source, outcome='unverified', links=[])
+    original.save()
+    old_receipts = {key: store.read(key) for key in store.keys('receipts/')}
+    old_body_keys = store.keys('bodies/')
+    # Retained negative metadata stays authoritative until an explicit rebuild.
+    metadata_key = 'indexes/processing/body-results/old/negative.parquet'
+    store.objects[metadata_key] = b'existing-unclassified-metadata'
+    store.writes.clear()
+
+    replay = Archive(store, 'xml-replayed')
+    before = dict(replay.state[url])
+    assert before['links_scanned'] and before['next_attempt_at']
+    retained = replay.body(before)
+    current = response(url, retained, before['media_type'], before['http_status'])
+    outcome, links = inspect_capture(current, replay=True)
+    assert outcome == 'saved'
+    replay.record(current, outcome=outcome, links=links, mode='replay',
+                  context={'replay_of_run': 'xml-before'})
+    replay.save()
+
+    after = Archive(store, 'resumed').state[url]
+    assert after['outcome'] == 'saved' and after['next_attempt_at'] is None
+    assert after['attempts'] == before['attempts'] == 1
+    assert after['body_key'] == before['body_key']
+    assert all(store.read(key) == payload for key,payload in old_receipts.items())
+    assert store.keys('bodies/') == old_body_keys
+    assert not any(key.startswith(('bodies/', 'indexes/processing/')) for key in store.writes)
+    assert store.read(metadata_key) == b'existing-unclassified-metadata'
+    assert replay.state[links[0]['url']]['outcome'] == 'pending'
