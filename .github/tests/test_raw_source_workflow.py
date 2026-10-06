@@ -61,8 +61,6 @@ def recording_command(tmp_path):
 @pytest.mark.parametrize(
     ("event", "requested", "schedule", "expected"),
     [
-        ("push", "", "", "update"),
-        ("push", "capture", "", "update"),
         ("workflow_dispatch", "rebuild", "", "rebuild"),
         ("workflow_dispatch", "update", "", "update"),
         ("workflow_dispatch", "capture", "", "capture"),
@@ -263,7 +261,7 @@ def test_shared_writer_lock_revision_credentials_and_single_rebuild():
     assert finalizer['needs'] == 'capture' and 'always()' in finalizer['if']
     assert finalizer['timeout-minutes'] == '5'
     assert WORKFLOW["concurrency"] == {
-        "group": "raw-source-mirror",
+        "group": "${{ github.event_name == 'push' && format('raw-source-validation-{0}', github.ref) || 'raw-source-mirror' }}",
         "cancel-in-progress": "false",
         "queue": "max",
     }
@@ -291,7 +289,7 @@ def test_shared_writer_lock_revision_credentials_and_single_rebuild():
     ]
     assert len(native) == 2
     assert all(
-        step["if"] == "steps.operation.outputs.mode == 'capture' && steps.fetcher.outputs.cache-hit != 'true'" for step in native
+        step["if"] == "(steps.operation.outputs.mode == 'capture' || steps.operation.outputs.mode == 'validate') && steps.fetcher.outputs.cache-hit != 'true'" for step in native
     )
     assert sum(step.get("run", "").count('raw-source-sync "') for step in STEPS) == 1
     assert SUMMARY["if"] == "${{ always() }}"
@@ -304,7 +302,10 @@ def test_shared_writer_lock_revision_credentials_and_single_rebuild():
     for path in WORKFLOW_PATH.parent.glob("*.yml"):
         if "R2_ACCESS_KEY_ID" in path.read_text():
             writer = yaml.load(path.read_text(), Loader=yaml.BaseLoader)
-            assert writer["concurrency"] == WORKFLOW["concurrency"], path
+            if path != WORKFLOW_PATH:
+                assert writer["concurrency"] == {
+                    "group": "raw-source-mirror", "cancel-in-progress": "false", "queue": "max",
+                }, path
 
 
 def test_triggers_cover_parser_changes_and_exclude_generated_outputs():
@@ -416,3 +417,39 @@ def test_previous_verification_requires_the_capture_destination(tmp_path, record
     assert 'Previous capture bucket does not match' in result.stderr
     assert not (tmp_path / 'previous-capture-summary.json').exists()
     assert not (tmp_path / 'invocation.json').exists()
+
+
+@pytest.mark.parametrize('requested', ['', 'capture', 'rebuild'])
+def test_push_validates_without_archive_access(tmp_path, recording_command, requested):
+    output = tmp_path / 'outputs'
+    result = run_step(SELECT, tmp_path, EVENT_NAME='push', INPUT_MODE=requested,
+                      GITHUB_OUTPUT=str(output))
+    assert result.returncode == 0, result.stderr
+    assert output.read_text() == 'mode=validate\n'
+    # Every credential-bearing step is excluded, including failure finalization.
+    for step in STEPS:
+        if 'R2_ACCESS_KEY_ID' in step.get('env', {}):
+            assert step['if'] in {
+                "steps.operation.outputs.mode != 'validate'",
+                "steps.operation.outputs.mode == 'capture'",
+                "steps.operation.outputs.mode == 'capture' && inputs.previous_summary != ''",
+            }
+    assert WORKFLOW['jobs']['finalize']['if'] == "${{ always() && github.event_name != 'push' }}"
+    seed_checkout = next(s for s in STEPS if s.get('with', {}).get('ref') == 'pipeline-data')
+    assert seed_checkout['if'] == "steps.operation.outputs.mode != 'validate'"
+    # Even if its step guard regresses, the writer rejects validation mode.
+    result = run_step(PUBLISH, tmp_path, SYNC_MODE='validate', **recording_command)
+    assert result.returncode != 0
+    assert not (tmp_path / 'invocation.json').exists()
+
+
+@pytest.mark.parametrize('status', ['success', 'failure'])
+def test_validation_summary_does_not_claim_a_data_operation(tmp_path, status):
+    summary = tmp_path / 'summary.md'
+    result = run_step(SUMMARY, tmp_path, SYNC_MODE='validate', EVENT_NAME='push',
+                      CODE_REVISION='trigger-sha', JOB_STATUS=status, SYNC_OUTCOME='skipped',
+                      GITHUB_STEP_SUMMARY=str(summary))
+    assert result.returncode == 0, result.stderr
+    assert 'Validation only; no archive reads or writes.' in summary.read_text()
+    assert f'Job status: {status}' in summary.read_text()
+    assert 'operation is unverified' not in summary.read_text()

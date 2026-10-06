@@ -8,7 +8,7 @@ explicit rebuild reinterprets existing metadata; a fresh archive is built once.
 
 | Trigger | Operation |
 | --- | --- |
-| Relevant code pushed to `main` | Update metadata; no acquisition |
+| Relevant code pushed to `main` | Validate Python and Rust; no archive reads or writes |
 | Manual dispatch, `mode=update` (default) | Add new evidence, preserving saved metadata; no acquisition |
 | Manual dispatch, `mode=rebuild` | Reinterpret all retained metadata with current rules; no acquisition |
 | Manual dispatch, `mode=capture` | Capture missing sources; leave published tables unchanged |
@@ -38,11 +38,10 @@ not a hard allocation limit. A memory stop fails the job after checkpointing.
 Every run uploads a source manifest tied to its immutable checkout. Pass
 `expected_source_digest` to refuse code or package-data differences before any
 writes. The Linux binary is compiled from the locked Rust sources; its digest
-need not match a macOS binary. Runtime dependency versions are recorded in the artifact. The archive extra pins
-PyArrow 25.0.1 to the local checkpoint writer. The current checkpoint digest hashes
-Parquet encoding, including writer-version metadata, so a library upgrade requires
-an explicit compatibility check before reading or writing capture state. CI checks
-a small retained macOS checkpoint fixture before accessing the real archive.
+need not match a macOS binary. Runtime dependency versions are recorded in the
+artifact. The archive extra still pins PyArrow 25.0.1 to verify existing legacy
+checkpoints before accessing the real archive. New checkpoints use the logical
+row digest described below; their identity does not depend on Parquet encoding.
 
 An optional `previous_summary` JSON dispatch input verifies the previous completed
 capture against the current R2 checkpoint before acquisition. Use it when moving
@@ -52,6 +51,35 @@ states, queue accounting, all new metadata parts, and a deterministic body sampl
 (200 hash-selected, 10 largest, and 25 failed). It does not reread every historical
 body or reused metadata reading. Reports and summaries are uploaded as artifacts.
 A failed job or missing verification report stops automatic continuation.
+
+## Checkpoint identity and transition
+
+New capture and catalog checkpoints store `rows-v1:<sha256>` in `capture_digest`.
+The digest includes ordered field names, types and nullability, the row count,
+and each logical row in order. Its JSON encoding preserves nulls, empty strings,
+Unicode and integer values. Arrow chunks, Parquet compression, writer-version
+footers and table metadata do not affect it. Tests fix the expected digest and
+compare retained files written by PyArrow 23.0.1 and 25.0.1.
+
+Bare 64-character digests identify the previous Parquet-based algorithm. Readers
+verify these with the original algorithm; they never accept a mismatch as a
+version migration. Reading alone does not change the archive. The next successful
+capture save or changed-evidence catalog publication writes the new digest. An
+unchanged catalog remains untouched. Keep the legacy PyArrow pin until those
+checkpoints have transitioned.
+
+A missing digest/cursor field, invalid cursor, unknown digest version or digest
+mismatch stops ordinary acquisition or updating before recovery/publication.
+A historical archive without either checkpoint field can still bootstrap. For
+an incompatible legacy checkpoint, use its original writer to verify it first;
+only explicitly requested repair/rebuild can replay after investigation. Do not
+change a saved digest to bypass verification.
+
+The new format is a forward transition. Finish any old writer before dispatching
+a new one, and update pinned continuation branches before resuming automation.
+Do not run an older revision after new checkpoints have been saved: it cannot
+understand `rows-v1` and may fall back to replay. Downgrades require an explicit
+compatibility plan; CI's shared writer lock alone does not enforce code versions.
 
 ## Table rebuild steps
 
@@ -209,6 +237,10 @@ All R2 writers share the `raw-source-mirror` concurrency group with
 up to 100 pending runs, so a new capture does not replace a queued rebuild.
 GitHub cancels additional runs if that queue is full; schedules are not guaranteed
 start times. See [GitHub's concurrency documentation](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency).
+Push validation uses a separate `raw-source-validation-<ref>` group, so code checks
+can run while a data operation holds the writer lock. It skips pipeline-data,
+credential-bearing archive steps and the status finalizer, even on failure.
+Daily and manually dispatched operations retain the shared writer lock.
 The workflow has read-only repository permissions.
 Before replacement, it validates the paired tables and preserves exact previous
 table bytes in `catalog-history/sha256/`. Conditional writes reject competing
@@ -234,8 +266,8 @@ the step. Hosted publication requires checking the resulting table pair.
 The [architecture review](../../docs/raw-source-pipeline-review.md) records the
 failure evidence, boundaries, changes and verification limits.
 
-The workflow allows four hours for setup and a capture batch or rebuild.
-Capture remains bounded to 90 minutes. Separating the jobs avoids paying the
+The workflow allows six hours for setup, capture or rebuilding, and verification.
+Capture admission remains bounded to five hours, followed by draining. Separating the jobs avoids paying the
 table rebuild cost on each capture batch; it does not reduce an individual
 rebuild's memory requirement or guarantee a shorter rebuild.
 

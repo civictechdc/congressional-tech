@@ -264,12 +264,13 @@ date remain distinct from the latest inspection time.
 
 `indexes/download-state.parquet` tracks pending URLs, results and retries;
 `indexes/captures.parquet` gains new receipt references. A separate rebuild,
-scheduled daily at 03:23 UTC and also available on code changes or manual dispatch,
+scheduled daily at 03:23 UTC and available by manual dispatch,
 reads accumulated evidence and writes the filename and document tables in an immutable
 `catalog-generations/<generation>/` directory. A conditional update to
 `indexes/catalog.json` selects both files together; readers validate that pair.
 The old root table paths serve as migration inputs when no selection exists.
-New captures appear in those tables after the next successful rebuild. The local
+New captures appear in those tables after the next successful rebuild. Code pushes
+run Python and Rust validation without archive access. The local
 CLI preserves combined capture-and-rebuild behavior when no mode flag is given.
 `--update-only` uses `retention/raw_catalog.py` and the existing
 `retention/document_index.py` readers. Rebuilds replay indexed migration and
