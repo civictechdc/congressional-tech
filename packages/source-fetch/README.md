@@ -13,7 +13,16 @@ raw-source-sync --fetcher-binary packages/source-fetch/target/release/source-fet
 
 Use the existing R2 credentials and `ZYTE_TOKEN` environment variables. The
 workflow builds the worker and supplies these settings. `auto` tries direct
-requests first, then Zyte once for failed or unusable captures. Manual `direct`
+requests first, then Zyte once for failed or unusable captures. Direct
+requests that exceed the configured byte limit stop with `size_limit`; a provider
+cannot increase that local limit. When a full, uncompressed HTTP 200 response
+declares a body larger than the cap, the worker stops before reading it. The
+receipt preserves the headers, `declared_body_bytes`, and
+`body_read_skipped=declared_size_limit`, with an empty, incomplete body.
+Unknown lengths and compressed bodies still stream within the decoded byte cap,
+retaining any partial bytes. Neither case triggers Zyte fallback. These files
+remain in the size-limit state for a separately authorized larger-file pass.
+Manual `direct`
 and `zyte` overrides remain available. New files use one shared
 60-starts-per-second limiter. Redirects and one fallback continue the same file
 without spending another slot. `--requests-per-second` remains an alias for
@@ -23,7 +32,8 @@ throughput. Retained-body inspection does not fetch a publisher again.
 
 The native process reads one JSON request per stdin line and emits one response
 per stdout line, identified by a numeric request ID. Request fields are `id`,
-`url`, `transport` (`direct` or `zyte`), `max_bytes`, optional `headers`, and
+`url`, `transport` (`direct` or `zyte`), `max_bytes`, optional `headers`, `timeout_ms`
+(defaults to 300000, maximum 900000), and
 `new_file` (defaults to `true` for older callers). Python sets `new_file=false`
 only for a file's redirects and fallback.
 Responses contain metadata and a bounded body-file path in the parent-supplied
@@ -37,7 +47,10 @@ sending the next request. All requests still share the concurrency limit. Known
 HTTP links on `docs.house.gov` start directly at HTTPS: receipts preserve the
 original `requested_url`, record the upgraded `request_url`, and retain only
 redirects actually observed. Requests have a 15-second connect timeout, a
-90-second read timeout, and a 120-second total deadline. Bodies stream to disk rather than remaining
+90-second read-idle timeout, and a five-minute total deadline, configurable with
+`--request-timeout-seconds` up to 900 seconds. The Python response wait and shutdown
+wait follow that deadline. Timeout codes survive body streaming; interrupted
+responses retain their partial bytes and error cause. Bodies stream to disk rather than remaining
 buffered for every active request in the native process. Compressed bodies are
 decoded within the body-size limit while retaining the original response headers.
 
@@ -47,11 +60,12 @@ Run the checks:
 cargo test --release --locked --manifest-path packages/source-fetch/Cargo.toml
 cargo clippy --release --locked --manifest-path packages/source-fetch/Cargo.toml -- -D warnings
 SOURCE_FETCH_BINARY="$PWD/packages/source-fetch/target/release/source-fetch" \
-  python -m pytest -q tests/test_rust_fetch.py tests/test_rust_fetch_native.py
+  python -m pytest -q tests/test_rust_fetch.py tests/test_rust_fetch_native.py tests/test_rust_fetch_size_admission_native.py
 ```
 
 Native integration tests use only a loopback HTTP server. They exercise
-concurrency, rate limiting, redirects, header retention, and body truncation.
+concurrency, rate limiting, redirects, header retention, early size admission,
+and body truncation.
 
 `reqwest-fetch-bench` retains the earlier six-URL timing experiment as a separate
 binary; it does not drive CI acquisition. Its settings are in `experiment.md`.

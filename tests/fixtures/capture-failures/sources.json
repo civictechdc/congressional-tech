@@ -1,0 +1,26 @@
+[
+  {
+    "file": "malformed-text-array.pdf.gz",
+    "source_url": "https://www.congress.gov/119/meeting/house/118339/documents/HHRG-119-GO00-20250605-SD010.pdf",
+    "sha256": "a8a170a6a268e94c692c2cd28f902001d1ea22441f00f7c63a7f4ee8775f23c6",
+    "bytes": 1569497
+  },
+  {
+    "file": "numeric-operand.pdf.gz",
+    "source_url": "https://www.congress.gov/117/meeting/house/114039/documents/HMKP-117-IF00-20210913-SD008.pdf",
+    "sha256": "72a970b3e677d7b9bac30213e9b52770a69bad80a402f5a0b96ad3c1c98ed031",
+    "bytes": 197229
+  },
+  {
+    "file": "wrapped-letter.rtfd.gz",
+    "source_url": "https://www.congress.gov/117/meeting/house/111142/documents/HHRG-117-BA00-20210204-SD004.pdf",
+    "sha256": "8669a527b8e372e5a42b78cf292f6a6327a4ce02e1d33c9cdd238a74761ae438",
+    "bytes": 193375
+  },
+  {
+    "file": "wrapped-testimony.rtfd.gz",
+    "source_url": "https://www.congress.gov/118/meeting/house/116589/witnesses/HHRG-118-WM00-Wstate-GreenblattJ-20231115.pdf",
+    "sha256": "c2a5c2acaf6934a9de44c6f76e8c38f1132a14143513aea821151281e94b0aeb",
+    "bytes": 323645
+  }
+]

@@ -78,6 +78,8 @@ def response_kind(body: bytes, media_type: str) -> str:
         return 'legacy_office'
     if prefix.startswith(b'{\\rtf'):
         return 'rtf'
+    if body.startswith(b'rtfd'):
+        return 'file_wrapper'
     if re.search(br'<(?:!doctype\s+html|html|head|body)\b', prefix, re.I):
         return 'html'
     media = media_type.split(';', 1)[0].strip().lower()

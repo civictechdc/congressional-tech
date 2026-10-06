@@ -10,7 +10,6 @@ import pytest
 
 from congress_api.acquisition.raw_sync import run_async
 from congress_api.retention.raw_archive import Archive
-from congress_api.retention.capture_metadata import CaptureMetadata
 from test_raw_source_sync import MemoryStore, response
 
 
@@ -192,41 +191,6 @@ def test_same_body_is_uploaded_and_interpreted_once_across_concurrent_aliases():
         assert len(uploads) == 1
         assert len(receipts(store)) == 8
         assert result['body_metadata'] == {'failed': 1, 'reused': 7}
-
-    asyncio.run(check())
-
-
-def test_metadata_reading_and_upload_overlap_for_one_file(monkeypatch):
-    from congress_api.acquisition import raw_sync
-    reading, release = threading.Event(), threading.Event()
-
-    class PausedReader(CaptureMetadata):
-        def reading(self, data, key):
-            reading.set()
-            assert release.wait(3), 'Upload never overlapped the document reader'
-            return super().reading(data, key)
-
-    monkeypatch.setattr(raw_sync, 'CaptureMetadata', PausedReader)
-
-    async def check():
-        uploaded = asyncio.Event()
-
-        async def upload(key, data):
-            assert await asyncio.to_thread(reading.wait, 2)
-            uploaded.set()
-
-        store = AsyncMemoryStore(upload)
-        task = asyncio.create_task(run_async(Archive(store, 'reader-overlap'),
-            [{'url': 'https://example.gov/one.pdf'}], workers=1,
-            fetch=lambda u: response(u, b'%PDF-1.7\n%%EOF')))
-        try:
-            await asyncio.wait_for(uploaded.wait(), 1)
-            assert not store.keys('receipts/')
-            assert not store.keys('indexes/processing/body-results/')
-        finally:
-            release.set()
-            await task
-        assert len(receipts(store)) == 1
 
     asyncio.run(check())
 

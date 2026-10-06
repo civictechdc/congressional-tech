@@ -70,7 +70,9 @@ def fetch_source(url, *, transport="zyte", max_bytes=64 * 1024**2, session=None,
                 data, complete = read(response, (max_bytes * 4 // 3) + 1024**2)
                 if not complete:
                     result.update(
-                        error=getattr(response, "capture_error", None) or "provider_response_limit",
+                        error=getattr(response, "capture_error", None) or (
+                            "provider_response_limit" if len(data) >= (max_bytes * 4 // 3) + 1024**2
+                            else "incomplete_response"),
                         provider_content=content.from_bytes(
                             data, "application/json"
                         ),
@@ -154,13 +156,14 @@ def fetch_source(url, *, transport="zyte", max_bytes=64 * 1024**2, session=None,
                         ),
                     )
                     if not complete:
-                        result["error"] = getattr(response, "capture_error", None) or "source_response_limit"
+                        result["error"] = getattr(response, "capture_error", None) or (
+                            "source_response_limit" if len(body) >= max_bytes else "incomplete_response")
                     break
             else:
                 result["error"] = "redirect_limit"
     except (requests.RequestException, ValueError) as error:
         # Error classes carry no credentials or secret query strings.
-        result.update(error=type(error).__name__, complete=False)
+        result.update(error=getattr(error, "capture_error", None) or type(error).__name__, complete=False)
         if "provider_response" in result:
             result.pop("provider_response")
             result["provider_content"] = content.from_bytes(data, "application/json")

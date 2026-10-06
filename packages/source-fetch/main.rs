@@ -10,7 +10,7 @@ use std::{collections::BTreeMap, env, path::PathBuf, pin::Pin, sync::Arc, time::
 use anyhow::{Context, Result, ensure};
 use async_compression::tokio::bufread::{BrotliDecoder, GzipDecoder, ZlibDecoder};
 use futures_util::TryStreamExt;
-use reqwest::{Client, Response};
+use reqwest::{Client, Response, StatusCode, header};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use tokio::{
@@ -68,12 +68,18 @@ struct Request {
     // Older callers omit this field: count their requests conservatively.
     #[serde(default = "default_new_file")]
     new_file: bool,
+    #[serde(default = "default_timeout_ms")]
+    timeout_ms: u64,
     #[serde(default)]
     headers: BTreeMap<String, String>,
 }
 
 fn default_new_file() -> bool {
     true
+}
+
+fn default_timeout_ms() -> u64 {
+    300_000
 }
 
 #[derive(Debug, Serialize)]
@@ -92,6 +98,52 @@ fn error_kind(error: &reqwest::Error) -> &'static str {
     } else {
         "request_error"
     }
+}
+
+fn body_error_kind(error: &std::io::Error) -> &'static str {
+    // StreamReader and the content decoders wrap reqwest's error. Preserve its
+    // timeout classification without serializing a message containing the URL.
+    let mut cause = error
+        .get_ref()
+        .map(|e| e as &(dyn std::error::Error + 'static));
+    while let Some(error) = cause {
+        if let Some(error) = error.downcast_ref::<reqwest::Error>() {
+            return error_kind(error);
+        }
+        cause = error.source();
+    }
+    if error.kind() == std::io::ErrorKind::TimedOut {
+        "timeout"
+    } else {
+        "body_error"
+    }
+}
+
+fn oversized_identity_response(response: &Response, request: &Request) -> Option<u64> {
+    // Encoded lengths do not describe the decoded body. Let the streaming cap
+    // handle those responses, unknown lengths, ranges, and provider payloads.
+    let headers = response.headers();
+    if !matches!(request.transport, Transport::Direct)
+        || response.status() != StatusCode::OK
+        || headers.contains_key(header::TRANSFER_ENCODING)
+        || headers.contains_key(header::CONTENT_RANGE)
+        || !headers.contains_key(header::CONTENT_LENGTH)
+        || !headers
+            .get_all(header::CONTENT_ENCODING)
+            .iter()
+            .all(|value| {
+                value
+                    .to_str()
+                    .is_ok_and(|value| value.trim().eq_ignore_ascii_case("identity"))
+            })
+    {
+        return None;
+    }
+    // reqwest exposes the HTTP body's validated exact length, not an unchecked
+    // integer from one of several possibly conflicting header fields.
+    response
+        .content_length()
+        .filter(|&length| length > request.max_bytes as u64)
 }
 
 async fn save_response(
@@ -122,6 +174,23 @@ async fn save_response(
         .unwrap_or("identity")
         .trim()
         .to_ascii_lowercase();
+    let path = output.join(format!("{}.body", request.id));
+    let mut file = tokio::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&path)
+        .await?;
+    if let Some(length) = oversized_identity_response(&response, request) {
+        // Return an empty, incomplete body with the original headers. Dropping
+        // the response releases the download slot without draining the payload.
+        metadata["body_file"] = json!(path);
+        metadata["bytes"] = json!(0);
+        metadata["complete"] = json!(false);
+        metadata["error"] = json!("response_limit");
+        metadata["body_read_skipped"] = json!("declared_size_limit");
+        metadata["declared_body_bytes"] = json!(length);
+        return Ok(metadata);
+    }
     let input = StreamReader::new(response.bytes_stream().map_err(std::io::Error::other));
     let mut reader: Pin<Box<dyn AsyncRead + Send>> = match encoding.as_str() {
         "gzip" | "x-gzip" => Box::pin(GzipDecoder::new(input)),
@@ -129,12 +198,6 @@ async fn save_response(
         "deflate" => Box::pin(ZlibDecoder::new(input)),
         _ => Box::pin(input),
     };
-    let path = output.join(format!("{}.body", request.id));
-    let mut file = tokio::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&path)
-        .await?;
     let mut bytes = 0;
     let mut complete = matches!(
         encoding.as_str(),
@@ -160,9 +223,9 @@ async fn save_response(
                     break;
                 }
             }
-            Err(_) => {
+            Err(cause) => {
                 complete = false;
-                error = Some("body_error");
+                error = Some(body_error_kind(&cause));
                 break;
             }
         }
@@ -183,6 +246,10 @@ async fn fetch(
     token: Option<&str>,
 ) -> Result<Value> {
     ensure!(request.max_bytes > 0, "Response limit must be positive");
+    ensure!(
+        (1..=900_000).contains(&request.timeout_ms),
+        "Invalid request deadline"
+    );
     let mut builder = match request.transport {
         Transport::Direct => client.get(&request.url),
         Transport::Zyte => client
@@ -195,7 +262,9 @@ async fn fetch(
                 &json!({"url": request.url, "httpResponseBody": true, "httpResponseHeaders": true}),
             ),
     };
-    builder = builder.header("Accept-Encoding", "gzip, deflate, br");
+    builder = builder
+        .header("Accept-Encoding", "gzip, deflate, br")
+        .timeout(Duration::from_millis(request.timeout_ms));
     for (name, value) in &request.headers {
         builder = builder.header(name, value);
     }
@@ -234,7 +303,7 @@ async fn main() -> Result<()> {
         .retry(reqwest::retry::never())
         .connect_timeout(Duration::from_secs(15))
         .read_timeout(Duration::from_secs(90))
-        .timeout(Duration::from_secs(120))
+        .timeout(Duration::from_millis(default_timeout_ms()))
         .build()?;
     let limit = Arc::new(RateLimit::new(rate));
     let permits = Arc::new(Semaphore::new(concurrency));

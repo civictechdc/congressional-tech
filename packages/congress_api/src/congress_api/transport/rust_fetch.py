@@ -1,17 +1,68 @@
 """Adapt one persistent, rate-limited reqwest worker to the capture reader."""
 
 from concurrent.futures import Future
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 import json
+import math
 from pathlib import Path
 import subprocess
 from tempfile import TemporaryDirectory
 import threading
+from urllib.parse import urlsplit
 
 import requests
 
 from congress_api.parsers.archive_links import inspect_capture
+from congress_api.models.content import content_bytes
 from congress_api.transport.source_capture import fetch_source, read_bounded
 from congress_api.transport import zyte
+
+
+def retry_later(response):
+    """Interpret a complete source retry hint without changing its evidence."""
+    if (response.get("transport") != "direct" or not response.get("complete")
+            or response.get("error") or response.get("http_status") not in {429, 503}):
+        return None
+    headers = response.get("response_header_items", [])
+    values = [item["value"] for item in headers if item["name"].lower() == "retry-after"]
+    if not values:
+        return None
+    delays = []
+    for raw_value in values:
+        value = raw_value.strip()
+        # Parse each raw header independently: an HTTP date itself has a comma.
+        # Reject pathological values before parsing; normal fallback still applies.
+        if not value or len(value) > 128:
+            return None
+        if value.isascii() and value.isdecimal():
+            delays.append(int(value))
+        else:
+            try:
+                target = parsedate_to_datetime(value)
+                captured = datetime.fromisoformat(response["retrieved_at"])
+                if target.tzinfo is None or captured.tzinfo is None:
+                    return None
+                delays.append(math.ceil((target - captured.astimezone(timezone.utc)).total_seconds()))
+            except (ValueError, TypeError, OverflowError, KeyError):
+                return None
+    # Multiple valid hints occur on GovInfo generation responses. Respect the
+    # longest wait while preserving every raw field and the collapsed headers.
+    delay = max(delays)
+    # Preserve long server waits; cap extreme values at a scheduling-safe
+    # 68-year horizon so they remain deferred beyond this acquisition run.
+    delay = min(2**31 - 1, max(1, delay))
+    reason = "retry_after"
+    parts = urlsplit(response["url"])
+    if (response["http_status"] == 503 and parts.hostname in {"govinfo.gov", "www.govinfo.gov"}
+            and parts.path.startswith("/content/pkg/") and parts.path.lower().endswith(".zip")
+            and b"the zip file you have requested is being generated" in content_bytes(
+                response.get("content", {})
+            ).lower()):
+        # GovInfo's generation page asks for 30 seconds while its header says 15.
+        delay = max(30, delay)
+        reason = "govinfo_zip_generation"
+    return {"delay_seconds": delay, "reason": reason}
 
 
 class RustResponse:
@@ -78,7 +129,11 @@ class _FileSession(_NativeSession):
 class RustFetcher(_NativeSession):
     """Multiplex thread callers over one native HTTP pool and one file-start limiter."""
 
-    def __init__(self, binary, *, files_per_second=60, workers=80, max_bytes=64 * 1024**2):
+    def __init__(self, binary, *, files_per_second=60, workers=80, max_bytes=64 * 1024**2,
+                 request_timeout=300):
+        if not math.isfinite(request_timeout) or not 0.001 <= request_timeout <= 900:
+            raise ValueError("Request timeout must be between 0.001 and 900 seconds")
+        self.request_timeout = request_timeout
         self.directory = TemporaryDirectory(prefix="source-fetch-")
         self.root = Path(self.directory.name)
         self.max_bytes = max_bytes
@@ -137,6 +192,7 @@ class RustFetcher(_NativeSession):
         request = dict(
             id=request_id, url=url, transport=transport, headers=headers or {}, new_file=new_file,
             max_bytes=self.max_bytes if transport == "direct" else self.max_bytes * 4 // 3 + 1024**2,
+            timeout_ms=math.ceil(self.request_timeout * 1000),
         )
         try:
             with self.write_lock:
@@ -146,7 +202,7 @@ class RustFetcher(_NativeSession):
             self._fail("Could not send a request to the native transport")
             raise RuntimeError(self.failure) from error
         try:
-            result = future.result(timeout=180)
+            result = future.result(timeout=self.request_timeout + 60)
         except Exception as error:
             # A fatal/malformed/timed-out native command can leave a partial
             # file. Stop its writer before releasing this request's disk quota.
@@ -157,7 +213,10 @@ class RustFetcher(_NativeSession):
             raise RuntimeError('Native transport did not complete its response') from error
         if "http_status" not in result:
             (self.root / f'{request_id}.body').unlink(missing_ok=True)
-            raise requests.RequestException(result.get("error", "native_request_error"))
+            error = requests.RequestException("Native request failed")
+            # Stable native codes preserve causes without exposing URLs or tokens.
+            error.capture_error = result.get("error", "native_request_error")
+            raise error
         try:
             return RustResponse(result, self.root)
         except Exception:
@@ -183,9 +242,13 @@ class RustFetcher(_NativeSession):
             url, transport="direct" if transport == "auto" else transport,
             max_bytes=self.max_bytes, session=session, pace=False, **options,
         )
+        retry = retry_later(first)
+        if retry:
+            first["retry_later"] = retry
+            return first, ("retry_later", [])
         inspection = inspect_capture(first)
         if (transport != "auto" or first.get("error") == "excluded_redirect"
-                or inspection[0] in {"saved", "excluded_media"}):
+                or inspection[0] in {"saved", "excluded_media", "size_limit", "unsupported_format"}):
             return first, inspection
         fallback = fetch_source(url, transport="zyte", max_bytes=self.max_bytes, session=session, pace=False, **options)
         fallback["prior_attempts"] = [first]
@@ -198,7 +261,7 @@ class RustFetcher(_NativeSession):
         try:
             self.process.stdin.close()
             try:
-                self.process.wait(timeout=130)
+                self.process.wait(timeout=self.request_timeout + 10)
             except subprocess.TimeoutExpired:
                 self.process.kill()
                 self.process.wait()

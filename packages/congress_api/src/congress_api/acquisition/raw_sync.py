@@ -2,9 +2,11 @@
 
 import asyncio
 from collections import Counter, deque
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from datetime import datetime, timezone
 from functools import partial
+import heapq
+import multiprocessing
 import time
 
 import pyarrow.compute as pc
@@ -12,10 +14,11 @@ import pyarrow.compute as pc
 from congress_api.models.content import RawContent
 from congress_api.parsers.archive_links import inspect_capture
 from congress_api.retention.raw_archive import (
-    BodyLimitExceeded, prepare_capture, body_payload, existing_body_info,
+    BodyLimitExceeded, prepare_capture, body_payload, existing_body_info, metadata_body_keys,
+    NON_DOWNLOAD_OUTCOMES,
 )
 from congress_api.retention import raw_progress as progress
-from congress_api.retention.capture_metadata import CaptureMetadata
+from congress_api.retention.capture_metadata import BODY_LIMIT, CaptureMetadata, read_document
 from congress_api.retention.r2 import threaded_bodies
 
 
@@ -54,15 +57,15 @@ def run_sync(archive, seeds, **options):
 
 async def run_async(
     archive, seeds, *, fetch=None, fetch_spooled=None, limit=5000, workers=8, max_seconds=5400,
-    stop=None, max_bytes=64 * 1024**2, max_buffer_bytes=512 * 1024**2,
-    download_workers=16, max_spool_bytes=2 * 1024**3,
+    stop=None, max_bytes=64 * 1024**2, max_buffer_bytes=2 * 1024**3,
+    download_workers=16, max_spool_bytes=2 * 1024**3, metadata_workers=3, initial_only=False,
 ):
     # Reserve for a direct body plus the bounded Zyte response and decoded body.
     # After separation, retain only the actual distinct byte payload reservation.
     reservation = max_bytes * 3 + 1024**2
     if max_buffer_bytes < reservation:
         raise ValueError('Body buffer must hold three maximum file sizes plus 1 MiB')
-    if workers < 1 or download_workers < 1:
+    if workers < 1 or download_workers < 1 or metadata_workers < 1:
         raise ValueError('Capture workers must be positive')
     if (fetch is None) == (fetch_spooled is None):
         raise ValueError('Supply exactly one capture fetcher')
@@ -72,16 +75,17 @@ async def run_async(
         raise ValueError('Spool buffer must hold one maximum provider response')
     context = {}
     for item in seeds:
-        url = archive.seed(item)
+        url = archive.seed(item, publisher_link=True)
         if url:
             context.setdefault(url, []).append(item)
     now = datetime.now(timezone.utc)
     queue = deque(sorted(
         (s for s in archive.state.values()
-         if s['outcome'] not in {'saved', 'excluded_media'}
+         if (s['outcome'] == 'pending' if initial_only else s['outcome'] not in NON_DOWNLOAD_OUTCOMES)
          and (not s.get('next_attempt_at') or datetime.fromisoformat(s['next_attempt_at']) <= now)),
         key=lambda s: (s['outcome'] == 'retained', s.get('checked_at') or '', s['url'])))
     scheduled = {s['url'] for s in queue}
+    delayed, retries = [], Counter()
     deadline = time.monotonic() + max_seconds
     counts, timings = Counter(), Counter()
     active, uploads, readings = set(), {}, {}
@@ -94,6 +98,7 @@ async def run_async(
     metadata = CaptureMetadata(archive.store, archive.run_id)
     archive.metadata = metadata
     loop = asyncio.get_running_loop()
+    reader_slots = asyncio.Semaphore(metadata_workers)
 
     def acquire(state, before_read):
         if state.get('body_key') and not state.get('links_scanned'):
@@ -114,16 +119,18 @@ async def run_async(
         return fetch(state['url']), 'fetch', None
 
     def prepare(response, mode, observations, inspection):
-        outcome, links = inspection if inspection is not None else inspect_capture(response, replay=mode == 'replay')
+        outcome, links = (('retry_later', []) if response.get('retry_later') else
+            inspection if inspection is not None else inspect_capture(response, replay=mode == 'replay'))
         for link in links:
             link['parent_url'] = response['requested_url']
             link['parent_sha256'] = response.get('content', {}).get('sha256')
         return prepare_capture(response, outcome=outcome, links=links, mode=mode,
-                               context={'observations': observations}, scanned=outcome != 'inspection_deferred')
+                               context={'observations': observations}, scanned=outcome != 'inspection_deferred',
+                               max_payload_bytes=reservation)
 
     def commit(result):
-        record, captures, scanned, publisher, reading = result
-        if publisher:
+        record, captures, scanned, results = result
+        for reading in results.values():
             if reading is None:
                 metadata.counts['reused'] += 1
             else:
@@ -152,10 +159,15 @@ async def run_async(
             progress.advance('collector_failed_tasks')
             return
         await in_writer(commit, result)
-        record, _, _, publisher, _ = result
-        if publisher:
-            readings.pop(publisher, None)
+        record, _, _, results = result
+        for key in results:
+            readings.pop(key, None)
         outcome, mode = record['outcome'], record['mode']
+        if outcome == 'retry_later' and retries[record['requested_url']] < 3:
+            url = record['requested_url']
+            retries[url] += 1
+            heapq.heappush(delayed, (
+                time.monotonic() + record['retry_later']['delay_seconds'], url))
         counts[outcome] += 1
         counts[mode] += 1
         counts['zyte_fallbacks'] += bool(record.get('prior_attempts'))
@@ -177,6 +189,8 @@ async def run_async(
     progress.report('acquire_sources', completed=0, unit='capture_attempts')
     with (ThreadPoolExecutor(max_workers=workers) as fetch_pool,
           ThreadPoolExecutor(max_workers=2) as cpu_pool,
+          ProcessPoolExecutor(max_workers=metadata_workers,
+                              mp_context=multiprocessing.get_context('spawn')) as reader_pool,
           ThreadPoolExecutor(max_workers=1) as writer_pool):
         body_context = getattr(archive.store, 'async_bodies', lambda: threaded_bodies(archive.store))
         try:
@@ -196,7 +210,15 @@ async def run_async(
 
                 async def read_metadata(data, key):
                     started = time.monotonic()
-                    result = await loop.run_in_executor(cpu_pool, metadata.reading, data, key)
+                    if len(data) > BODY_LIMIT:
+                        # A size-limit result needs no parsing or process copy.
+                        result = metadata.reading(data, key)
+                    else:
+                        # Bound process copies as well as active readers. Bytes
+                        # waiting for a slot remain in the parent's body budget.
+                        async with reader_slots:
+                            result = await loop.run_in_executor(reader_pool, read_document,
+                                data, key, metadata.fingerprint, metadata.inspect)
                     timings['metadata_seconds'] += time.monotonic() - started
                     return result
 
@@ -248,29 +270,32 @@ async def run_async(
                         memory.release(held - size)
                         held = size
                         changed.set()
-                        publisher = next((c['body_key'] for c in captures
-                                          if c['pointer'] == ['content', 'body'] and record.get('complete')), None)
-                        reading_task = None
-                        if publisher and publisher not in metadata.seen:
-                            if publisher not in readings:
-                                readings[publisher] = asyncio.create_task(read_metadata(data[publisher], publisher))
-                            reading_task = readings[publisher]
+                        keys = metadata_body_keys(record, captures)
+                        reading_tasks = {}
+                        for key in keys:
+                            if key not in metadata.seen:
+                                if key not in readings:
+                                    readings[key] = asyncio.create_task(read_metadata(data[key], key))
+                                reading_tasks[key] = readings[key]
                         pending = [retain(k, v) for k, v in data.items()]
-                        if reading_task:
-                            pending.append(asyncio.shield(reading_task))
+                        pending.extend(asyncio.shield(task) for task in reading_tasks.values())
                         # Reading and retention share bytes, but neither needs
                         # the other's result. Both must finish before commit.
                         results = await asyncio.gather(*pending, return_exceptions=True)
                         for result in results:
                             if isinstance(result, BaseException):
                                 raise result
-                        reading = results[-1] if reading_task else None
-                        return record, captures, scanned, publisher, reading
+                        return record, captures, scanned, {
+                            key: reading_tasks[key].result() if key in reading_tasks else None
+                            for key in keys}
                     finally:
                         memory.release(held)
 
                 try:
-                    while queue or active:
+                    while queue or active or delayed:
+                        while delayed and delayed[0][0] <= time.monotonic():
+                            _, url = heapq.heappop(delayed)
+                            queue.appendleft(archive.state[url])
                         while (queue and not fatal and len(active) < workers and submitted < limit
                                and time.monotonic() < deadline and not (stop and stop.is_set())):
                             state = queue[0]
@@ -291,7 +316,13 @@ async def run_async(
                             submitted += 1
                             progress.advance('capture_tasks_submitted')
                         if not active:
-                            break
+                            if (fatal or submitted >= limit or time.monotonic() >= deadline
+                                    or (stop and stop.is_set()) or not delayed):
+                                break
+                            # Deferred attempts consume no worker, body or spool slot.
+                            # A wait longer than this run belongs to the next checkpoint.
+                            if delayed[0][0] >= deadline:
+                                break
                         if ready.empty():
                             changed.clear()
                             try:
@@ -353,9 +384,10 @@ async def run_async(
             "url_outcomes": dict(Counter(row["outcome"] for row in archive.state.values())),
         },
         attempted=submitted,
+        initial_only=initial_only,
         known_urls=len(archive.state),
         remaining=sum(
-            s["outcome"] not in {"saved", "excluded_media"}
+            s["outcome"] not in NON_DOWNLOAD_OUTCOMES
             for s in archive.state.values()
         ),
         limit=limit,

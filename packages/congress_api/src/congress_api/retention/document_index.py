@@ -757,6 +757,10 @@ def source_names(row, record):
     """Keep header, URL, and local-only spellings distinguishable."""
     url = row["context_url"]
     owner = nearest_record(record, row["pointer_json"])
+    if json.loads(row['pointer_json'] or '[]')[:1] == ['archive_members']:
+        # The enclosing ZIP is a source locator, not a URL for its member bytes.
+        path = owner['original_name']
+        return [(Path(path).name, 'archive_member', None, path)]
     result = []
     headers = owner.get("response_headers", owner.get("headers"))
     if headers is None and isinstance(owner.get("httpResponseHeaders"), list):
@@ -826,7 +830,7 @@ def add_name(names, body, filename, url, basis, source=None, metadata=None):
     )
     if basis:
         entry["filename_origins"].add(basis)
-    if basis == "retained_path":
+    if basis in {"retained_path", "archive_member"}:
         entry["source_paths"].add(source)
     for field, values in (metadata or {}).items():
         entry[field].update(values)

@@ -4,9 +4,19 @@ import re
 
 from pypdf import PdfReader
 from pypdf.errors import PyPdfError
+from congress_api.parsers.pdf_tools import opening_page_text
 
 COVER_FIELDS = frozenset({'content_document_kind', 'content_citation', 'content_congress',
                          'content_amendment_type'})
+
+
+def _page_text(page, data, number):
+    try:
+        return page.extract_text() or ''
+    except (PyPdfError, ValueError, KeyError, TypeError, IndexError, RecursionError):
+        # A separate parser handles readable PDFs with unsupported content
+        # operands. Page selection and classification still follow the same rules.
+        return opening_page_text(data, number)
 
 
 def senate_hearing_citation(text: str) -> str | None:
@@ -110,13 +120,13 @@ def document_cover(data: bytes, *, strict: bool = False) -> dict[str, list[str]]
                 return {}
             if not pdf.pages:
                 return {}
-            first = pdf.pages[0].extract_text() or ''
+            first = _page_text(pdf.pages[0], data, 1)
             if result := document_page_fields(first):
                 return result
             # Second-page fallback is exclusively for coverless proceedings, not
             # a new cover or an opening statement embedded in a different document.
             if not first.strip() and len(pdf.pages) > 1:
-                result = document_page_fields('', pdf.pages[1].extract_text() or '')
+                result = document_page_fields('', _page_text(pdf.pages[1], data, 2))
                 if result.get('content_document_kind') == ['transcript']:
                     return result
     except (PyPdfError, ValueError, KeyError, TypeError, IndexError, RecursionError):

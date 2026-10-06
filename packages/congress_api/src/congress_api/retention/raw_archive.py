@@ -10,13 +10,18 @@ import gzip
 import hashlib
 import json
 from io import BytesIO
+from urllib.parse import urlsplit
 
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from congress_api.parsers.archive_links import allowed_url
+from congress_api.models.content import CapturedBody
+from congress_api.parsers.archive_links import allowed_url, inspect_body, related_links
 from congress_api.parsers.source_family import family
 from congress_api.retention.bundles import separate
+from congress_api.retention.archive_members import (
+    ArchiveReadError, ZipLimits, is_office_zip, iter_archive_members,
+)
 
 CAPTURE_SCHEMA = pa.schema(
     [
@@ -69,6 +74,7 @@ STATE_SCHEMA = pa.schema(
 )
 STATE_KEY = "indexes/download-state.parquet"
 CAPTURES_KEY = "indexes/captures.parquet"
+NON_DOWNLOAD_OUTCOMES = frozenset({'saved', 'excluded_media', 'excluded_probe'})
 
 
 class BodyLimitExceeded(ValueError):
@@ -94,7 +100,8 @@ def capture_rank(row):
     )
 
 
-def prepare_capture(response, *, outcome, links, context=None, mode="fetch", scanned=True):
+def prepare_capture(response, *, outcome, links, context=None, mode="fetch", scanned=True,
+                    max_payload_bytes=None):
     """Separate validated bytes without writing storage or mutating archive state."""
     bodies = {}
 
@@ -105,8 +112,104 @@ def prepare_capture(response, *, outcome, links, context=None, mode="fetch", sca
         return key
 
     record, captures = separate({**response, "outcome": outcome, "mode": mode,
-                                "links": links, "source_context": context or {}}, retain)
+                                "links": list(links), "source_context": context or {}}, retain)
+    retained_bytes = sum(map(len, bodies.values()))
+    if max_payload_bytes is not None and retained_bytes > max_payload_bytes:
+        raise BodyLimitExceeded('Separated capture bodies exceed the payload budget')
+    publisher = next((cap for cap in captures if cap['pointer'] == ['content', 'body']), None)
+    if not publisher or not record.get('complete') or outcome != 'saved':
+        return record, captures, bodies, scanned
+    data = bodies[publisher['body_key']]
+    media = (record.get('content', {}).get('media_type') or '').lower()
+    suffix = urlsplit(record.get('url') or record['requested_url']).path.lower().rsplit('.', 1)[-1]
+    office = (suffix in {'docx', 'docm', 'dotx', 'dotm', 'xlsx', 'xlsm', 'xltx', 'xltm',
+                         'pptx', 'pptm', 'potx', 'potm', 'ppsx', 'ppsm'}
+              or suffix in {'odt', 'ods', 'odp'}
+              or 'officedocument' in media or 'vnd.ms-' in media
+              or 'vnd.oasis.opendocument' in media or is_office_zip(data))
+    if office or not data.startswith((b'PK\x03\x04', b'PK\x05\x06', b'rtfd')):
+        return record, captures, bodies, scanned
+    record['archive_members'] = []
+    maximum = ZipLimits().max_total_bytes
+    member_limit = ZipLimits().max_member_bytes
+    if max_payload_bytes is not None:
+        remaining = max_payload_bytes - retained_bytes
+        # Converting the growing bytearray to bytes temporarily duplicates one
+        # member. Keep that scratch space inside the caller's reservation too;
+        # this byte accounting excludes Python object and parser overhead.
+        member_limit = min(member_limit, remaining // 2)
+        maximum = min(maximum, remaining - member_limit)
+    if maximum <= 0 or member_limit <= 0:
+        record['archive_processing'] = {'status': 'aggregate_size_limit'}
+        return record, captures, bodies, scanned
+    limits = ZipLimits(max_total_bytes=maximum, max_member_bytes=member_limit)
+    try:
+        for member in iter_archive_members(data, archive_path=publisher['body_key'], limits=limits):
+            position = len(record['archive_members'])
+            item = dict(original_name=member.original_name, entry_index=member.entry_index,
+                        parent_archive_body_key=publisher['body_key'], status=member.status,
+                        error_type=member.error_type, unsafe_name=member.unsafe_name,
+                        nested_archive=member.nested_archive, declared_bytes=member.declared_bytes,
+                        compressed_bytes=member.compressed_bytes)
+            if member.source_offset is not None:
+                item.update(container_format='apple_file_wrapper_v3_regular',
+                            source_offset=member.source_offset)
+            if member.data is not None:
+                extension = member.original_name.lower().rsplit('.', 1)[-1]
+                member_media = {'pdf': 'application/pdf', 'xml': 'application/xml',
+                                'html': 'text/html', 'htm': 'text/html', 'txt': 'text/plain',
+                                'csv': 'text/csv', 'json': 'application/json',
+                                'zip': 'application/zip'}.get(extension, 'application/octet-stream')
+                item['content'] = CapturedBody.from_bytes(member.data, member_media).source_dict()
+                item, member_captures = separate(item, retain)
+                for cap in member_captures:
+                    cap['pointer'] = ['archive_members', position, *cap['pointer']]
+                    cap['context_url'] = publisher.get('context_url') or record['requested_url']
+                    cap['original_path'] = member.original_name
+                    cap['retrieved_at'] = publisher.get('retrieved_at')
+                    cap['http_status'] = publisher.get('http_status')
+                captures.extend(member_captures)
+                member_key = member_captures[0]['body_key']
+                # Larger retained files still reach the bounded metadata reader,
+                # but link parsing stays inside that reader's 16 MiB ceiling.
+                if not member.nested_archive and len(member.data) <= 16 * 1024**2:
+                    try:
+                        member_outcome, kind = inspect_body(member.data, '', member_media)
+                        if member_outcome in {'saved', 'html'} and kind in {'xml', 'html'}:
+                            for link in related_links(member.data, '', kind):
+                                values = [value for key, value in link.get('attributes', {}).items()
+                                          if key.rsplit('}', 1)[-1] in {'href', 'url', 'doc-url', 'data', 'src'}]
+                                if kind == 'xml' and link.get('tag', '').lower() in {'url', 'uri'}:
+                                    values.append(link.get('text', '').strip())
+                                if not any(allowed_url(value) == link['url'] for value in values):
+                                    continue
+                                record['links'].append({**link, 'parent_url': record['requested_url'],
+                                    'parent_sha256': publisher['sha256'], 'member_body_key': member_key,
+                                    'archive_member': {'entry_index': member.entry_index,
+                                                       'original_name': member.original_name}})
+                    except (ValueError, UnicodeError) as exc:
+                        item['link_error_type'] = type(exc).__name__
+            record['archive_members'].append(item)
+        record['archive_processing'] = {'status': 'completed'}
+    except ArchiveReadError as exc:
+        record['archive_processing'] = {'status': exc.status, 'error_type': type(exc).__name__}
     return record, captures, bodies, scanned
+
+
+def metadata_body_keys(record, captures):
+    """Unique complete publisher and successful member bodies, in capture order."""
+    if not record.get('complete'):
+        return []
+    result = []
+    for cap in captures:
+        pointer = cap['pointer']
+        primary = pointer == ['content', 'body']
+        member = (len(pointer) == 4 and pointer[0] == 'archive_members'
+                  and pointer[2:] == ['content', 'body']
+                  and record['archive_members'][pointer[1]]['status'] == 'completed')
+        if (primary or member) and cap['body_key'] not in result:
+            result.append(cap['body_key'])
+    return result
 
 
 def body_payload(data):
@@ -171,6 +274,8 @@ class Archive:
                     }
                 if position <= cursor:
                     continue
+                if json.loads(row.get('pointer_json') or '[]')[:1] == ['archive_members']:
+                    continue  # Member bytes cannot stand in for the enclosing ZIP URL.
                 url = allowed_url(row["context_url"])
                 if not url or row["family"] in {
                     "external/provider-responses",
@@ -209,18 +314,25 @@ class Archive:
             snapshot = read_catalog(store)
             names = snapshot.filenames
         if names:
-            table = pq.read_table(
-                pa.BufferReader(names),
-                columns=[
-                    "source_url",
-                    "body_key",
-                    "format",
-                    "http_status",
-                    "media_type",
-                ],
+            from congress_api.retention.capture_url_admission import (
+                PROVENANCE_COLUMNS, publisher_download_candidate,
             )
-            for row in table.to_pylist():
-                url = self.seed({"url": row["source_url"]})
+            filename_file = pq.ParquetFile(pa.BufferReader(names))
+            columns = [
+                "source_url",
+                "body_key",
+                "format",
+                "http_status",
+                "media_type",
+            ]
+            columns.extend(name for name in PROVENANCE_COLUMNS
+                           if name in filename_file.schema_arrow.names)
+            rows = (row for batch in filename_file.iter_batches(batch_size=256, columns=columns)
+                    for row in batch.to_pylist())
+            for row in rows:
+                if not publisher_download_candidate(row):
+                    continue  # Retain probe evidence without scheduling new guesses.
+                url = self.seed({"url": row["source_url"]}, publisher_link=True)
                 if (
                     not url
                     or not row["body_key"]
@@ -267,7 +379,7 @@ class Archive:
                 self.apply(receipt)
                 self.add_index(receipt, key, line_number)
 
-    def seed(self, item):
+    def seed(self, item, *, publisher_link=False):
         url = allowed_url(item.get("url"))
         if url:
             self.state.setdefault(
@@ -288,6 +400,8 @@ class Archive:
                     links_scanned=False,
                 ),
             )
+            if publisher_link and self.state[url]['outcome'] == 'excluded_probe':
+                self.state[url].update(outcome='pending', next_attempt_at=None)
         return url
 
     def put_body(self, data):
@@ -322,9 +436,9 @@ class Archive:
             response, outcome=outcome, links=links, scanned=scanned, context=context, mode=mode)
         for data in bodies.values():
             self.put_body(data)
-        publisher = next((c for c in captures if c['pointer'] == ['content', 'body']), None)
-        if self.metadata is not None and response.get('complete') and publisher:
-            self.metadata.record(bodies[publisher['body_key']], publisher['body_key'])
+        if self.metadata is not None:
+            for key in metadata_body_keys(record, captures):
+                self.metadata.record(bodies[key], key)
         return self.record_prepared(record, captures, scanned=scanned)
 
     def record_prepared(self, record, captures, *, scanned=True):
@@ -335,7 +449,7 @@ class Archive:
         self.seed({"url": url})
         previous = self.state[url]
         now = datetime.now(timezone.utc)
-        terminal = outcome in {"saved", "excluded_media"}
+        terminal = outcome in NON_DOWNLOAD_OUTCOMES
         retry = (
             None
             if terminal or outcome == "retained"
@@ -348,6 +462,8 @@ class Archive:
                 )
             ).isoformat()
         )
+        if outcome == 'retry_later':
+            retry = (now + timedelta(seconds=response['retry_later']['delay_seconds'])).isoformat()
         state = {
             **previous,
             "outcome": outcome,
@@ -378,9 +494,11 @@ class Archive:
                 len(pointer) == 4 and pointer[0] == "prior_attempts"
                 and pointer[2:] == ["content", "body"]
             )
+            archive_member = (len(pointer) == 4 and pointer[0] == 'archive_members'
+                              and pointer[2:] == ['content', 'body'])
             cap["family"] = (
                 previous["family"]
-                if prior_source or pointer
+                if prior_source or archive_member or pointer
                 in (["content", "body"], ["provider_response", "httpResponseBody"])
                 else "external/provider-responses"
             )
@@ -429,7 +547,7 @@ class Archive:
         if (state.get("checked_at") or "") >= (previous.get("checked_at") or ""):
             self.state[state["url"]] = state
         for link in receipt["record"].get("links", []):
-            self.seed(link)
+            self.seed(link, publisher_link=True)
         for cap in receipt["captures"]:
             self.body_info[cap["sha256"]] = {
                 k: cap[k]

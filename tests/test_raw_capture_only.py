@@ -98,6 +98,12 @@ def test_capture_only_rejects_body_inspection_before_storage_access(tmp_path):
         execute(tmp_path, object(), '--capture-only', '--inspect-bodies')
 
 
+@pytest.mark.parametrize('other', ['--repair', '--update-only', '--rebuild-only', '--plan-only'])
+def test_initial_only_rejects_replay_or_non_acquisition_before_storage_access(tmp_path, other):
+    with pytest.raises(SystemExit, match='--initial-only requires acquisition'):
+        execute(tmp_path, object(), '--initial-only', other)
+
+
 def test_capture_failure_preserves_catalog_and_reports_acquisition_failure(tmp_path):
     store = MemoryStore()
     execute(tmp_path, store, '--rebuild-only')
@@ -133,3 +139,9 @@ def test_update_only_preserves_catalog_without_starting_acquisition(tmp_path):
     assert result['acquisition_status'] == 'not_run'
     assert result['catalog']['unchanged'] is True
     assert store.objects == before
+
+
+def test_capture_capacity_defaults():
+    args = raw_sync.parser().parse_args([])
+    assert args.max_buffer_mib == 2048
+    assert args.metadata_workers == 3

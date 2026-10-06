@@ -148,7 +148,10 @@ with live responses used to verify actual JSON scalar types.
 The September 28–29 manual review covered the observed JSON/XML families,
 House/Senate pages, MODS, witness PDFs, captions and supporting JSON. Full sample
 reports remain in `.cache/source-models/final-manual-{congress,house-pdf,senate-media,gpo-transcription}.md`;
-follow-up capture evidence is in `.cache/raw-source-backfill-20260928/`.
+follow-up capture evidence is in `.cache/source-history/`. The former
+`.cache/raw-source-backfill-20260928/` path remains a compatibility link for
+unchanged historical receipts and experiment manifests. Compressed bodies with
+identical archive bytes resolve to `.cache/congressional-tech-raw/`.
 These are local evaluation records, not runtime inputs or current download status.
 The review did not manually inspect every file or qualify an actual upstream
 Gemini response. Synthetic Gemini tests do not establish that qualification.
@@ -186,7 +189,7 @@ The benchmark scripts, pinned inputs, expected readings, per-page results and
 versions remain in `.cache/source-models/pdf-extractor-comparison/`.
 The paired XML/PDF inventory script and manifest remain in
 `.cache/source-models/witness-pdf-pairs/`; later download paths and hashes are in
-`.cache/raw-source-backfill-20260928/witness-pdfs/manifest.json`.
+`.cache/source-history/witness-pdfs/manifest.json`.
 
 For another witness evaluation, select active named XML witnesses and identify
 candidate PDFs using native `HW`/Witness List types, explicit descriptions or

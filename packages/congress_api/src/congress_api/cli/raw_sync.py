@@ -71,11 +71,17 @@ def parser():
         help="Maximum captures/replays per run; unfinished URLs remain queued",
     )
     p.add_argument("--workers", type=positive, default=80)
+    p.add_argument("--initial-only", action="store_true",
+                   help="Admit only pending URLs and their in-run retries; leave historical failures and retained replays alone")
     p.add_argument("--index-workers", type=positive, default=2)
     p.add_argument("--max-seconds", type=positive, default=5400)
     p.add_argument("--max-file-mib", type=positive, default=64)
-    p.add_argument("--max-buffer-mib", type=positive, default=512,
-                   help="Bound in-flight body payloads; encoded representations add overhead")
+    p.add_argument("--request-timeout-seconds", type=positive, default=300,
+                   help="Native HTTP deadline per request, at most 900 seconds; read-idle timeout remains 90 seconds")
+    p.add_argument("--metadata-workers", type=positive, default=3,
+                   help="Spawned Python processes for CPU-heavy body metadata extraction")
+    p.add_argument("--max-buffer-mib", type=positive, default=2048,
+                   help="Bound parent body payloads; process copies, parsers and indexes add overhead")
     p.add_argument("--download-workers", type=positive, default=16,
                    help="Maximum captures downloading or awaiting a body reader")
     p.add_argument("--max-spool-mib", type=positive, default=2048,
@@ -118,6 +124,7 @@ def capture_sources(args, store, run_id):
         with RustFetcher(
             args.fetcher_binary, files_per_second=args.files_per_second,
             workers=args.workers, max_bytes=args.max_file_mib * 1024**2,
+            request_timeout=args.request_timeout_seconds,
         ) as fetcher:
             summary = run_sync(
                 archive, seed_files(args.seed), fetch_spooled=partial(fetcher.fetch_spooled, transport=args.transport),
@@ -125,9 +132,12 @@ def capture_sources(args, store, run_id):
                 max_bytes=args.max_file_mib * 1024**2, stop=stop,
                 max_buffer_bytes=args.max_buffer_mib * 1024**2,
                 download_workers=args.download_workers, max_spool_bytes=args.max_spool_mib * 1024**2,
+                metadata_workers=args.metadata_workers, initial_only=args.initial_only,
             )
         summary.update(fetcher="reqwest", files_per_second=args.files_per_second,
+                       request_timeout_seconds=args.request_timeout_seconds,
                        workers=args.workers, download_workers=args.download_workers,
+                       metadata_workers=args.metadata_workers,
                        max_buffer_mib=args.max_buffer_mib, max_spool_mib=args.max_spool_mib,
                        http_requests=fetcher.sequence, file_dispatches=fetcher.file_dispatches)
         summary.setdefault("accounting", {}).update(native_request_dispatches=fetcher.sequence,
@@ -202,6 +212,8 @@ def connect_storage(args, log):
 
 
 def run(args, log, *, store=None):
+    if args.initial_only and (args.repair or args.rebuild_only or args.update_only or args.plan_only):
+        raise SystemExit("--initial-only requires acquisition without --repair")
     if args.capture_only and args.inspect_bodies:
         raise SystemExit("--inspect-bodies requires a catalog rebuild; omit --capture-only")
     if store is None:

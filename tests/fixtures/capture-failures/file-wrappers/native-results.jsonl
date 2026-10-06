@@ -1,0 +1,5 @@
+{"bytes":11,"decoded_name":"test.pdf","id":"ascii-small","name":"test.pdf","roundtrip_equal":true,"wrapper_bytes":182}
+{"bytes":0,"decoded_name":"empty.pdf","id":"ascii-empty","name":"empty.pdf","roundtrip_equal":true,"wrapper_bytes":173}
+{"bytes":13,"decoded_name":"Témoignage 日本語.pdf","id":"unicode-small","name":"Témoignage 日本語.pdf","roundtrip_equal":true,"wrapper_bytes":211}
+{"bytes":0,"decoded_name":"空.pdf","id":"unicode-empty","name":"空.pdf","roundtrip_equal":true,"wrapper_bytes":167}
+{"bytes":20000,"decoded_name":"large.pdf","id":"ascii-large","name":"large.pdf","roundtrip_equal":true,"wrapper_bytes":36456}

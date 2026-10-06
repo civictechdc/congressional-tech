@@ -308,3 +308,24 @@ def test_undeclared_xml_does_not_trigger_provider_fallback(tmp_path, monkeypatch
     assert calls == ['direct']
     assert content_bytes(capture['content']) == data
     assert not list(tmp_path.glob('*.body'))
+
+
+def test_native_pre_header_timeout_remains_a_timeout_without_secret_text(tmp_path):
+    binary = tmp_path / 'worker'
+    binary.write_text(f'''#!{sys.executable}
+import sys,json
+for line in sys.stdin:
+ r=json.loads(line)
+ print(json.dumps({{'id':r['id'],'response':{{'complete':False,'error':'timeout'}}}}),flush=True)
+''')
+    binary.chmod(0o700)
+    with RustFetcher(binary) as fetcher:
+        result = fetcher.fetch('https://example.gov/a.pdf', transport='direct')
+    assert result['error'] == 'timeout'
+    assert not result['complete']
+
+
+@pytest.mark.parametrize('timeout', [0, -1, float('inf'), float('nan'), 901])
+def test_invalid_deadline_is_rejected_before_starting_a_process(timeout):
+    with pytest.raises(ValueError, match='timeout'):
+        RustFetcher('/must-not-start', request_timeout=timeout)

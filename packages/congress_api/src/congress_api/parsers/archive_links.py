@@ -9,6 +9,9 @@ from lxml import etree
 from lxml.html.defs import tags as HTML_TAGS
 
 from congress_api.models.content import content_bytes
+from congress_api.parsers.senate import parse_page as parse_senate_page
+from congress_api.parsers.pdf_tools import readable_pdf
+from congress_api.parsers.file_wrapper import regular_file
 
 from congress_api.parsers.document_links import (
     document_links,
@@ -30,6 +33,10 @@ def inspect_capture(response, *, replay=False):
     links = []
     if response.get("error") == "retained_body_limit":
         return "inspection_deferred", links
+    if response.get("error") in {"response_limit", "source_response_limit", "provider_response_limit"}:
+        return "size_limit", links
+    if response.get("error") in {"timeout", "Timeout", "ReadTimeout", "ConnectTimeout"}:
+        return "timeout", links
     if response.get("error") or not response.get("complete"):
         return "incomplete" if body else "request_failed", links
     if response.get("http_status") != 200 and not (
@@ -41,7 +48,10 @@ def inspect_capture(response, *, replay=False):
     )
     if outcome in {"saved", "html"}:
         try:
-            links = related_links(body, response["url"], kind)
+            diagnostics = []
+            links = related_links(body, response["url"], kind, diagnostics=diagnostics)
+            if diagnostics:
+                response['link_interpretation_warnings'] = diagnostics
         except (ValueError, UnicodeError) as error:
             response["interpretation_error"] = type(error).__name__
             outcome = "parse_failed"
@@ -55,6 +65,10 @@ def allowed_url(value, base=""):
     if not url or MEDIA_FILE.search(url):
         return None
     parts = urlsplit(url)
+    # Concatenated publisher fields and their redirects are retained as evidence,
+    # but are not one download URL. Query parameters may contain valid URLs.
+    if re.search(r"https?:/+", parts.path, re.I):
+        return None
     host = parts.hostname.lower()
     if host in {
         "localhost",
@@ -168,13 +182,35 @@ def json_links(value, source="", pointer=(), context=None):
                     yield from json_links(child, source, (*pointer, index), context)
 
 
-def related_links(body, url, kind):
+def related_links(body, url, kind, *, diagnostics=None):
     if kind == "html":
-        return [
-            link.source_dict()
+        links = {
+            link.url: link.source_dict()
             for link in document_links(body, url)
             if allowed_url(link.url)
-        ]
+        }
+        host = urlsplit(url).hostname or ""
+        if host == "senate.gov" or host.endswith(".senate.gov"):
+            try:
+                page = parse_senate_page(body, url)
+            except UnicodeError as exc:
+                # The Senate source reader requires UTF-8. Keep generic links
+                # from HTML with another encoding and retain the enrichment gap.
+                if diagnostics is not None:
+                    diagnostics.append({'reader': 'senate', 'error_type': type(exc).__name__})
+                return list(links.values())
+            for document_kind, label, target in page.documents:
+                if not allowed_url(target):
+                    continue
+                metadata = page.document_metadata.get(target)
+                # Keep every literal occurrence, including distinct witness and
+                # section context, while scheduling a URL only once.
+                links[target] = {
+                    **links.get(target, {}), "url": target, "basis": "senate_document",
+                    "text": label, "context": {"document_kind": document_kind,
+                        "document_metadata": metadata.source_dict() if metadata else {}},
+                }
+        return list(links.values())
     if kind == "xml":
         tree = etree.fromstring(
             body, parser=etree.XMLParser(resolve_entities=False, no_network=True)
@@ -249,7 +285,14 @@ def inspect_body(body, url, media):
     if media.lower().startswith(("video/", "audio/")):
         return "excluded_media", kind
     if kind == "pdf":
-        return ("saved" if b"%%EOF" in body[-8192:] else "invalid_document"), kind
+        return ("saved" if b"%%EOF" in body[-8192:] or readable_pdf(body)
+                else "invalid_document"), kind
+    if kind == "file_wrapper":
+        try:
+            regular_file(body)
+        except ValueError:
+            return "unsupported_format", kind
+        return "saved", kind
     if kind == "html":
         return "html", kind
     xml_hint = (

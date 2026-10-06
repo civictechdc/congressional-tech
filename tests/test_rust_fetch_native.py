@@ -97,13 +97,15 @@ def test_native_60_files_per_second_is_concurrent_and_bounded(server):
     print(f'Native starts: {119 / elapsed:.2f}/s; peak simultaneous server requests: {peak()}')
 
 
-def test_native_truncation_never_becomes_a_complete_capture(server, monkeypatch):
+def test_native_declared_size_limit_never_becomes_a_complete_capture(server, monkeypatch):
     url, _, _ = server
     monkeypatch.setattr('congress_api.transport.source_capture.allowed_url', lambda value: value)
     with RustFetcher(BINARY, max_bytes=1024) as fetcher:
         result = fetch_source(url + '/large', transport='direct', max_bytes=1024, session=fetcher, pace=False)
         assert not result['complete'] and result['error'] == 'response_limit'
-        assert len(RawContent.model_validate(result['content']).body_bytes()) == 1024
+        assert RawContent.model_validate(result['content']).body_bytes() == b''
+        assert result['source_metadata']['body_read_skipped'] == 'declared_size_limit'
+        assert result['source_metadata']['declared_body_bytes'] > 1024
         assert not list(fetcher.root.glob('*.body'))
 
 
@@ -158,3 +160,59 @@ def test_spooled_pipeline_downloads_ahead_with_default_memory_budget(server, mon
         assert result['peak_body_payload_reservation_bytes'] <= 512*1024**2
         assert result['peak_spool_reservation_bytes'] <= 2*1024**3
         assert not list(fetcher.root.glob('*.body'))
+
+
+def test_native_body_deadline_preserves_timeout_reason_and_partial_bytes():
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, *args):
+            pass
+
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header('Content-Length', '20')
+            self.end_headers()
+            self.wfile.write(b'%PDF-1.7\n')
+            self.wfile.flush()
+            time.sleep(0.8)
+
+    server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        with RustFetcher(BINARY, request_timeout=0.25) as fetcher:
+            with fetcher._request(f'http://127.0.0.1:{server.server_port}/slow', 'direct') as response:
+                assert response.capture_error == 'timeout'
+                assert not response.capture_complete
+                assert b''.join(response.iter_content(1024)) == b'%PDF-1.7\n'
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join()
+
+
+def test_native_interrupted_body_is_not_a_timeout():
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, *args):
+            pass
+
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header('Content-Length', '200')
+            self.end_headers()
+            self.wfile.write(b'%PDF truncated')
+            self.wfile.flush()
+            self.close_connection = True
+
+    server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        with RustFetcher(BINARY) as fetcher:
+            with fetcher._request(f'http://127.0.0.1:{server.server_port}/cut', 'direct') as response:
+                assert response.capture_error == 'body_error'
+                assert not response.capture_complete
+                assert b''.join(response.iter_content(1024)) == b'%PDF truncated'
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join()

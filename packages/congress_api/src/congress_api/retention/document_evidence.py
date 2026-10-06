@@ -16,6 +16,7 @@ from zipfile import is_zipfile
 
 from congress_api.parsers.house_xml import parse_house_meeting, parse_house_witnesses
 from congress_api.parsers.document_cover import COVER_FIELDS, document_cover
+from congress_api.parsers import pdf_tools
 from congress_api.parsers.xml import parse_xml, xml_element
 
 
@@ -40,8 +41,10 @@ def evidence_fingerprint():
     import congress_api.parsers.document_cover as document_cover
     import congress_api.parsers.xml as xml
     digest = sha256()
-    for path in (__file__, models.__file__, xml_models.__file__, house_xml.__file__, xml.__file__, document_cover.__file__):
+    for path in (__file__, models.__file__, xml_models.__file__, house_xml.__file__, xml.__file__, document_cover.__file__, pdf_tools.__file__):
         digest.update(Path(path).read_bytes())
+    for tool, identity in sorted(pdf_tools.reader_versions().items()):
+        digest.update(f'{tool}={identity}\n'.encode())
     return digest.hexdigest()
 
 
@@ -206,6 +209,8 @@ def document_body_fields(data):
         return {'body_format': ['pdf']}
     if data.startswith(b'PK\x03\x04') and is_zipfile(BytesIO(data)):
         return {'body_format': ['zip']}
+    if data.startswith(b'rtfd'):
+        return {'body_format': ['file_wrapper']}
     if fields := house_record(data):
         return fields
     if re.match(br'\s*(?:<!doctype\s+html|<html)\b', data, re.I):

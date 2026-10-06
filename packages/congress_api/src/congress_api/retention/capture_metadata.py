@@ -37,6 +37,24 @@ def inspect_document(data):
     return fields
 
 
+def read_document(data, body_key, fingerprint, inspect=inspect_document):
+    """Pure, process-safe reading: no store, writer or deduplication state."""
+    fields, error = {}, None
+    if len(data) > BODY_LIMIT:
+        status = 'size_limit'
+    else:
+        try:
+            fields = inspect(data)
+            status = 'completed' if fields else 'unclassified'
+        except Exception as exc:
+            # A reader failure is evidence, not a failed raw-body upload.
+            status, error = 'failed', type(exc).__name__
+            if data.lstrip().startswith(b'%PDF-'):
+                fields = {'body_format': ['pdf']}
+    return dict(body_key=body_key, parser_fingerprint=fingerprint,
+                status=status, error_type=error, **fields)
+
+
 def saved_readings(store, *, columns=None):
     """Read completed parts individually; never concatenate the whole dataset."""
     for key in sorted(store.keys(PREFIX)):
@@ -179,20 +197,7 @@ class CaptureMetadata:
 
     def reading(self, data, body_key):
         """Compute a reading off the event loop, without touching writer state."""
-        fields, error = {}, None
-        if len(data) > BODY_LIMIT:
-            status = 'size_limit'
-        else:
-            try:
-                fields = self.inspect(data)
-                status = 'completed' if fields else 'unclassified'
-            except Exception as exc:
-                # A reader failure is evidence, not a failed raw-body upload.
-                status, error = 'failed', type(exc).__name__
-                if data.lstrip().startswith(b'%PDF-'):
-                    fields = {'body_format': ['pdf']}
-        return dict(body_key=body_key, parser_fingerprint=self.fingerprint,
-                    status=status, error_type=error, **fields)
+        return read_document(data, body_key, self.fingerprint, self.inspect)
 
     def accept(self, reading):
         """The single collector admits each durable body's result once."""

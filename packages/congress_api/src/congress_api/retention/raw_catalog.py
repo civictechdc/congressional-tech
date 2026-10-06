@@ -194,7 +194,10 @@ def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies,
             context.add_associations(record, receipt)
         for row in rows:
             is_recurring = "/download-" in (row.get("receipt_key") or "")
-            if is_recurring and json.loads(row.get("pointer_json") or "[]") not in ([], ["content", "body"]):
+            pointer = json.loads(row.get('pointer_json') or '[]')
+            member = (len(pointer) == 4 and pointer[0] == 'archive_members'
+                      and pointer[2:] == ['content', 'body'])
+            if is_recurring and not member and pointer not in ([], ["content", "body"]):
                 continue  # Provider transport and prior attempts are not this response.
             observed = index.response_metadata(row, record)
             locator = {k: sorted(v) for k, v in {**receipt, **index.context_values(
@@ -204,10 +207,13 @@ def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies,
             owner = index.nearest_record(record, row.get("pointer_json"))
             if owner.get("outcome"):
                 observed["capture_outcome"] = [owner["outcome"]]
+            if member:
+                observed['capture_outcome'] = ['saved' if owner['status'] == 'completed' else owner['status']]
+                observed['response_body_complete'] = [str(owner['status'] == 'completed').lower()]
             if row.get("body_key") or is_recurring:
                 for name, basis, url, source in index.source_names(row, record) or [(None, None, None, None)]:
                     add(row.get("body_key") or owner.get("retained_body_key"), name, url, filename_origins=[basis] if basis else [],
-                        source_paths=[source] if basis == "retained_path" else [], **observed)
+                        source_paths=[source] if basis in {"retained_path", "archive_member"} else [], **observed)
             elif row.get("context_url"):
                 for name, basis in index.url_document_names(row["context_url"]):
                     add(None, name, row["context_url"], filename_origins=[basis], **observed)
