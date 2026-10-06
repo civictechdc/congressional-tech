@@ -146,6 +146,8 @@ def test_spooled_pipeline_downloads_ahead_with_default_memory_budget(server, mon
 
     url, starts, peak = server
     # Only the fixture server is accepted; production scope checks stay intact.
+    monkeypatch.setattr('congress_api.parsers.archive_links.allowed_url',
+                        lambda value, base='': value if value.startswith(url + '/') else None)
     monkeypatch.setattr('congress_api.transport.source_capture.allowed_url',
                         lambda value: value if value.startswith(url + '/') else None)
     monkeypatch.setattr('congress_api.retention.raw_archive.allowed_url',
