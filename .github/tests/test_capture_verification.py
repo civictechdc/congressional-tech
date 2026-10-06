@@ -252,3 +252,14 @@ def test_sample_checks_raw_hash_even_when_stored_facts_agree(checkpoint):
     rehash_checkpoint(store)
     with pytest.raises(verifier.VerificationError, match='Raw body hash/length'):
         verifier.verify_run(store, summary)
+
+
+
+def test_retained_local_checkpoint_digest_survives_ci_reader():
+    # Produced with PyArrow 25.0.1 on macOS. Re-encoding with 23.0.1 changes
+    # only created_by metadata yet breaks the persisted checkpoint digest.
+    path = Path(__file__).resolve().parents[2] / 'tests/fixtures/capture-checkpoint-arrow25.parquet'
+    table = pq.read_table(path)
+    assert len(table) == 3
+    assert table.schema.equals(CAPTURE_SCHEMA, check_metadata=False)
+    assert capture_digest(table) == '66290a18d1000a475414221adc13259a347b3d6998623aed122ce79f313f2358'

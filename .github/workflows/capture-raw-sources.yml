@@ -45,6 +45,7 @@ on:
       - '.github/tests/test_raw_source_finalizer.py'
       - 'tests/test_raw_capture_only.py'
       - 'tests/fixtures/raw_source_floor_schedule.xml'
+      - 'tests/fixtures/capture-checkpoint-arrow25.parquet'
       - 'tests/test_capture_metadata.py'
       - 'tests/test_capture_url_admission.py'
       - 'tests/test_capture_delayed_retry.py'

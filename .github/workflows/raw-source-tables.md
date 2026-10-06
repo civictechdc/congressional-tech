@@ -38,7 +38,11 @@ not a hard allocation limit. A memory stop fails the job after checkpointing.
 Every run uploads a source manifest tied to its immutable checkout. Pass
 `expected_source_digest` to refuse code or package-data differences before any
 writes. The Linux binary is compiled from the locked Rust sources; its digest
-need not match a macOS binary. Runtime dependency versions are recorded separately.
+need not match a macOS binary. Runtime dependency versions are recorded in the artifact. The archive extra pins
+PyArrow 25.0.1 to the local checkpoint writer. The current checkpoint digest hashes
+Parquet encoding, including writer-version metadata, so a library upgrade requires
+an explicit compatibility check before reading or writing capture state. CI checks
+a small retained macOS checkpoint fixture before accessing the real archive.
 
 An optional `previous_summary` JSON dispatch input verifies the previous completed
 capture against the current R2 checkpoint before acquisition. Use it when moving

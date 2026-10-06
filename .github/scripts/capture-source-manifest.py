@@ -1,5 +1,6 @@
 """Record the exact project source and native binary used by a capture runner."""
 import hashlib
+from importlib.metadata import version
 import json
 from pathlib import Path
 import subprocess
@@ -23,6 +24,8 @@ def manifest(root):
 if __name__ == '__main__':
     root = Path.cwd()
     result = manifest(root)
+    result['runtime_versions'] = {name: version(name) for name in
+                                  ('pyarrow', 'pypdf', 'boto3', 'botocore', 'aiobotocore', 'lxml', 'pydantic')}
     binary = root / 'packages/source-fetch/target/release/source-fetch'
     if binary.exists():
         result['native_binary_sha256'] = hashlib.sha256(binary.read_bytes()).hexdigest()
