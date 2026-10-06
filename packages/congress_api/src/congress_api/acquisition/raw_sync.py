@@ -21,6 +21,21 @@ from congress_api.retention.raw_archive import (
 from congress_api.retention import raw_progress as progress
 from congress_api.retention.capture_metadata import BODY_LIMIT, CaptureMetadata, read_document
 from congress_api.retention.r2 import threaded_bodies
+from congress_api.retention.archive_members import ZipLimits
+
+
+RETRY_OUTCOMES = frozenset({'retry_later', 'request_failed', 'http_error', 'size_limit',
+    'resource_limit', 'invalid_document', 'unverified', 'empty', 'incomplete', 'timeout',
+    'challenge', 'parse_failed', 'unsupported_format', 'inspection_deferred'})
+
+
+def response_capacity(max_buffer_bytes, max_spool_bytes):
+    """Fit direct, provider and decoded bodies inside the existing reservations."""
+    capacity = min((max_buffer_bytes - 1024**2) // 3,
+                   (max_spool_bytes - 1024**2) * 3 // 4)
+    if capacity <= 0:
+        raise ValueError('Body and spool budgets must each exceed 1 MiB')
+    return capacity
 
 
 class _ByteBudget:
@@ -60,7 +75,8 @@ async def run_async(
     archive, seeds, *, fetch=None, fetch_spooled=None, limit=5000, workers=8, max_seconds=5400,
     stop=None, max_bytes=64 * 1024**2, max_buffer_bytes=2 * 1024**3,
     download_workers=16, max_spool_bytes=2 * 1024**3, metadata_workers=3, initial_only=False,
-    retry_outcomes=(), urls=None, reinspect_retained=False,
+    retry_outcomes=(), urls=None, reinspect_retained=False, retry_now=False,
+    resource_bounded=False,
 ):
     retry_outcomes = frozenset(retry_outcomes)
     urls = None if urls is None else frozenset(urls)
@@ -70,8 +86,12 @@ async def run_async(
         raise ValueError('Retained reinspection requires explicit URLs without retry or initial selection')
     if reinspect_retained and any(not archive.state.get(url, {}).get('body_key') for url in urls):
         raise ValueError('Every retained reinspection URL must have a retained body')
-    if retry_outcomes and (initial_only or not retry_outcomes <= {'retry_later', 'request_failed'}):
-        raise ValueError('Retry selection requires only retry_later/request_failed and no initial_only')
+    if retry_outcomes and (initial_only or not retry_outcomes <= RETRY_OUTCOMES):
+        raise ValueError('Retry selection requires failed outcomes and no initial_only')
+    if retry_outcomes - {'retry_later', 'request_failed'} and urls is None:
+        raise ValueError('Historical outcome retries require explicit URLs')
+    if retry_now and (urls is None or not retry_outcomes or reinspect_retained):
+        raise ValueError('Immediate retry requires explicit URLs and retry outcomes')
     # Reserve for a direct body plus the bounded Zyte response and decoded body.
     # After separation, retain only the actual distinct byte payload reservation.
     reservation = max_bytes * 3 + 1024**2
@@ -85,6 +105,9 @@ async def run_async(
     spool_reservation = max_bytes * 4 // 3 + 1024**2
     if fetch_spooled is not None and max_spool_bytes < spool_reservation:
         raise ValueError('Spool buffer must hold one maximum provider response')
+    archive_limits = (ZipLimits(max_archive_bytes=max_bytes,
+        max_member_bytes=reservation // 2, max_total_bytes=reservation)
+        if resource_bounded else None)
     context = {}
     for item in seeds:
         if retry_outcomes:
@@ -102,7 +125,7 @@ async def run_async(
          if (urls is None or s['url'] in urls)
          and (True if reinspect_retained else s['outcome'] in retry_outcomes if retry_outcomes else
              s['outcome'] == 'pending' if initial_only else s['outcome'] not in NON_DOWNLOAD_OUTCOMES)
-         and (reinspect_retained or not s.get('next_attempt_at') or datetime.fromisoformat(s['next_attempt_at']) <= now)),
+         and (reinspect_retained or retry_now or not s.get('next_attempt_at') or datetime.fromisoformat(s['next_attempt_at']) <= now)),
         key=lambda s: (s['outcome'] == 'retained', s.get('checked_at') or '', s['url'])))
     refusals = []
     for state in queue:
@@ -156,7 +179,7 @@ async def run_async(
             link['parent_sha256'] = response.get('content', {}).get('sha256')
         return prepare_capture(response, outcome=outcome, links=links, mode=mode,
                                context={'observations': observations}, scanned=outcome != 'inspection_deferred',
-                               max_payload_bytes=reservation)
+                               max_payload_bytes=reservation, archive_limits=archive_limits)
 
     def commit(result):
         record, captures, scanned, results = result
@@ -420,6 +443,8 @@ async def run_async(
         attempted=submitted,
         initial_only=initial_only,
         retry_outcomes=sorted(retry_outcomes),
+        retry_now=retry_now,
+        resource_bounded=resource_bounded,
         selected_urls=sorted(urls) if urls is not None else None,
         reinspect_retained=reinspect_retained,
         admission_refusals=refusals,

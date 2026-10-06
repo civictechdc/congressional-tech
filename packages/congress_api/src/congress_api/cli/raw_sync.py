@@ -12,8 +12,8 @@ import signal
 import threading
 from uuid import uuid4
 
-from congress_api.acquisition.raw_sync import run_sync
-from congress_api.cli.common import positive
+from congress_api.acquisition.raw_sync import run_sync, response_capacity, RETRY_OUTCOMES
+from congress_api.cli.common import positive, nonnegative
 from congress_api.cli.raw_progress import ProgressLog
 from congress_api.parsers.archive_links import json_links
 from congress_api.retention.raw_archive import Archive
@@ -73,15 +73,18 @@ def parser():
     p.add_argument("--workers", type=positive, default=80)
     p.add_argument("--initial-only", action="store_true",
                    help="Admit only pending URLs and their in-run retries; leave historical failures and retained replays alone")
-    p.add_argument("--retry-outcome", action="append", choices=("retry_later", "request_failed"), default=[],
-                   help="Retry only due URLs with this outcome; repeat for both. Requires --capture-only; discovered links stay pending")
+    p.add_argument("--retry-outcome", action="append", choices=sorted(RETRY_OUTCOMES), default=[],
+                   help="Retry this failed outcome; outcomes other than retry_later/request_failed require --urls")
+    p.add_argument("--retry-now", action="store_true",
+                   help="Explicitly retry selected failures before next_attempt_at; requires --urls and --retry-outcome. In-run Retry-After waits still apply")
     p.add_argument("--urls", type=Path,
                    help="JSON array of exact URLs eligible for this capture; other state remains checkpointed")
     p.add_argument("--reinspect-retained", action="store_true",
                    help="Read only the selected retained bodies, appending new readings without source HTTP; requires --urls")
     p.add_argument("--index-workers", type=positive, default=2)
     p.add_argument("--max-seconds", type=positive, default=5400)
-    p.add_argument("--max-file-mib", type=positive, default=64)
+    p.add_argument("--max-file-mib", type=nonnegative, default=64,
+                   help="Per-file policy cap; 0 removes it and uses the existing body/spool capacity")
     p.add_argument("--request-timeout-seconds", type=positive, default=300,
                    help="Native HTTP deadline per request, at most 900 seconds; read-idle timeout remains 90 seconds")
     p.add_argument("--metadata-workers", type=positive, default=3,
@@ -127,14 +130,18 @@ def capture_sources(args, store, run_id):
     previous_handlers = {sig: signal.signal(sig, lambda *_: stop.set())
                          for sig in (signal.SIGTERM, signal.SIGINT)}
     try:
+        resource_bounded = args.max_file_mib == 0
+        max_bytes = (response_capacity(args.max_buffer_mib * 1024**2, args.max_spool_mib * 1024**2)
+                     if resource_bounded else args.max_file_mib * 1024**2)
         options = dict(
             limit=args.limit, workers=args.workers, max_seconds=args.max_seconds,
-            max_bytes=args.max_file_mib * 1024**2, stop=stop,
+            max_bytes=max_bytes, stop=stop,
             max_buffer_bytes=args.max_buffer_mib * 1024**2,
             download_workers=args.download_workers, max_spool_bytes=args.max_spool_mib * 1024**2,
             metadata_workers=args.metadata_workers, initial_only=args.initial_only,
             retry_outcomes=args.retry_outcome, urls=args.selected_urls,
             reinspect_retained=args.reinspect_retained,
+            retry_now=args.retry_now, resource_bounded=resource_bounded,
         )
         if args.reinspect_retained:
             def no_fetch(url):
@@ -145,8 +152,9 @@ def capture_sources(args, store, run_id):
             return summary
         with RustFetcher(
             args.fetcher_binary, files_per_second=args.files_per_second,
-            workers=args.workers, max_bytes=args.max_file_mib * 1024**2,
+            workers=args.workers, max_bytes=max_bytes,
             request_timeout=args.request_timeout_seconds,
+            limit_basis='resource_budget' if resource_bounded else 'file_policy',
         ) as fetcher:
             summary = run_sync(
                 archive, seed_files(args.seed), fetch_spooled=partial(fetcher.fetch_spooled, transport=args.transport),
@@ -157,6 +165,7 @@ def capture_sources(args, store, run_id):
                        workers=args.workers, download_workers=args.download_workers,
                        metadata_workers=args.metadata_workers,
                        max_buffer_mib=args.max_buffer_mib, max_spool_mib=args.max_spool_mib,
+                       max_file_mib=args.max_file_mib, effective_response_capacity_bytes=max_bytes,
                        http_requests=fetcher.sequence, file_dispatches=fetcher.file_dispatches)
         summary.setdefault("accounting", {}).update(native_request_dispatches=fetcher.sequence,
                                      file_dispatches=fetcher.file_dispatches,
@@ -230,6 +239,10 @@ def connect_storage(args, log):
 
 
 def run(args, log, *, store=None):
+    if args.retry_now and (not args.urls or not args.retry_outcome or not args.capture_only or args.reinspect_retained):
+        raise SystemExit('--retry-now requires --capture-only, --urls and --retry-outcome')
+    if set(args.retry_outcome) - {'retry_later', 'request_failed'} and not args.urls:
+        raise SystemExit('Historical outcome retries require --urls')
     if args.urls and (not args.capture_only or args.repair or args.seed):
         raise SystemExit('--urls requires --capture-only without --repair or --seed')
     if args.reinspect_retained and (not args.urls or args.retry_outcome or args.initial_only):

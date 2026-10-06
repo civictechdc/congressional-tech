@@ -35,7 +35,8 @@ def inspect_capture(response, *, replay=False):
     if response.get("error") == "retained_body_limit":
         return "inspection_deferred", links
     if response.get("error") in {"response_limit", "source_response_limit", "provider_response_limit"}:
-        return "size_limit", links
+        return ("resource_limit" if response.get('body_limit_basis') == 'resource_budget'
+                else "size_limit"), links
     if response.get("error") in {"timeout", "Timeout", "ReadTimeout", "ConnectTimeout"}:
         return "timeout", links
     if response.get("error") or not response.get("complete"):

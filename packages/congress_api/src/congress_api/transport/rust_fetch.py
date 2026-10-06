@@ -130,7 +130,10 @@ class RustFetcher(_NativeSession):
     """Multiplex thread callers over one native HTTP pool and one file-start limiter."""
 
     def __init__(self, binary, *, files_per_second=60, workers=80, max_bytes=64 * 1024**2,
-                 request_timeout=300):
+                 request_timeout=300, limit_basis='file_policy'):
+        if limit_basis not in {'file_policy', 'resource_budget'}:
+            raise ValueError('Unknown response limit basis')
+        self.limit_basis = limit_basis
         if not math.isfinite(request_timeout) or not 0.001 <= request_timeout <= 900:
             raise ValueError("Request timeout must be between 0.001 and 900 seconds")
         self.request_timeout = request_timeout
@@ -242,17 +245,26 @@ class RustFetcher(_NativeSession):
             url, transport="direct" if transport == "auto" else transport,
             max_bytes=self.max_bytes, session=session, pace=False, **options,
         )
+        self._record_capacity(first)
         retry = retry_later(first)
         if retry:
             first["retry_later"] = retry
             return first, ("retry_later", [])
         inspection = inspect_capture(first)
         if (transport != "auto" or first.get("error") == "excluded_redirect"
-                or inspection[0] in {"saved", "excluded_media", "size_limit", "unsupported_format"}):
+                or inspection[0] in {"saved", "excluded_media", "size_limit", "resource_limit", "unsupported_format"}):
             return first, inspection
         fallback = fetch_source(url, transport="zyte", max_bytes=self.max_bytes, session=session, pace=False, **options)
+        self._record_capacity(fallback)
         fallback["prior_attempts"] = [first]
         return fallback, inspect_capture(fallback)
+
+    def _record_capacity(self, response):
+        # Preserve the native error and headers, distinguishing resource
+        # admission from a separately configured per-file policy.
+        if (getattr(self, 'limit_basis', 'file_policy') == 'resource_budget'
+                and response.get('error') in {'response_limit', 'source_response_limit', 'provider_response_limit'}):
+            response.update(body_limit_basis='resource_budget', body_limit_bytes=self.max_bytes)
 
     def __enter__(self):
         return self

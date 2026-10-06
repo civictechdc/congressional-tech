@@ -104,7 +104,7 @@ def capture_rank(row):
 
 
 def prepare_capture(response, *, outcome, links, context=None, mode="fetch", scanned=True,
-                    max_payload_bytes=None):
+                    max_payload_bytes=None, archive_limits=None):
     """Separate validated bytes without writing storage or mutating archive state."""
     bodies = {}
 
@@ -123,18 +123,19 @@ def prepare_capture(response, *, outcome, links, context=None, mode="fetch", sca
     if not publisher or not record.get('complete') or outcome != 'saved':
         return record, captures, bodies, scanned
     data = bodies[publisher['body_key']]
+    limits = archive_limits or ZipLimits()
     media = (record.get('content', {}).get('media_type') or '').lower()
     suffix = urlsplit(record.get('url') or record['requested_url']).path.lower().rsplit('.', 1)[-1]
     office = (suffix in {'docx', 'docm', 'dotx', 'dotm', 'xlsx', 'xlsm', 'xltx', 'xltm',
                          'pptx', 'pptm', 'potx', 'potm', 'ppsx', 'ppsm'}
               or suffix in {'odt', 'ods', 'odp'}
               or 'officedocument' in media or 'vnd.ms-' in media
-              or 'vnd.oasis.opendocument' in media or is_office_zip(data))
+              or 'vnd.oasis.opendocument' in media or is_office_zip(data, limits=limits))
     if office or not data.startswith((b'PK\x03\x04', b'PK\x05\x06', b'rtfd')):
         return record, captures, bodies, scanned
     record['archive_members'] = []
-    maximum = ZipLimits().max_total_bytes
-    member_limit = ZipLimits().max_member_bytes
+    maximum = limits.max_total_bytes
+    member_limit = limits.max_member_bytes
     if max_payload_bytes is not None:
         remaining = max_payload_bytes - retained_bytes
         # Converting the growing bytearray to bytes temporarily duplicates one
@@ -145,7 +146,7 @@ def prepare_capture(response, *, outcome, links, context=None, mode="fetch", sca
     if maximum <= 0 or member_limit <= 0:
         record['archive_processing'] = {'status': 'aggregate_size_limit'}
         return record, captures, bodies, scanned
-    limits = ZipLimits(max_total_bytes=maximum, max_member_bytes=member_limit)
+    limits = ZipLimits(**{**vars(limits), 'max_total_bytes': maximum, 'max_member_bytes': member_limit})
     try:
         for member in iter_archive_members(data, archive_path=publisher['body_key'], limits=limits):
             position = len(record['archive_members'])

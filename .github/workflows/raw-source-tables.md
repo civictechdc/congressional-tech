@@ -331,6 +331,23 @@ is checkpointed. Discovered off-list links remain pending. Combine this with
 retries; malformed legacy URLs are refused before dispatch and listed in the
 summary without counting them as downloads.
 
+Other failed outcomes, including `http_error` and `size_limit`, require both
+`--retry-outcome` and `--urls`; successful captures cannot be selected as retry
+outcomes. `--retry-now` explicitly bypasses existing `next_attempt_at` values
+for that selection. It preserves old receipts and still honors new source
+`Retry-After` waits and the three delayed retries allowed within a run.
+
+For selected larger-file recovery, `--max-file-mib 0` removes the independent
+file policy. The effective response capacity comes from the existing body and
+spool reservations, approximately 682 MiB with a 2 GiB parent body budget and
+5 GiB spool budget. This is resource-bounded admission, not unlimited memory
+or disk. A response beyond that capacity records `resource_limit`, its original
+transport error and declared length when available, without invoking Zyte for
+the local refusal. ZIP archive and member byte allowances also use the parent
+reservation; member count, directory, nesting and reader safeguards remain.
+The summary records the policy value, effective byte capacity and whether the
+selected retry overrode prior scheduling. Normal runs keep the 64 MiB default.
+
 `--reinspect-retained --urls urls.json --capture-only` instead validates only
 those retained bodies, even if they were previously inspected. It starts no
 source HTTP worker and appends new readings without replacing old metadata.
