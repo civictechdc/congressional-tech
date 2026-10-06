@@ -126,6 +126,32 @@ def test_recovery_candidate_preserves_basis_and_exact_associated_url():
     assert sources.for_url(CANDIDATE.replace('SCA_', 'Other_')) == {}
 
 
+@pytest.mark.parametrize('original, targets, basis', [
+    ('https://www.lis.gov/cgi-lis/t2GPO/https://www.gpo.gov/fdsys/pkg/BILLS-114hr456ih/pdf/BILLS-114hr456ih.pdf',
+     ['https://www.gpo.gov/fdsys/pkg/BILLS-114hr456ih/pdf/BILLS-114hr456ih.pdf'], 'lis_gpo_wrapper'),
+    ('https://example.gov/a.xmlhttps://example.gov/b.xml',
+     ['https://example.gov/a.xml', 'https://example.gov/b.xml'], 'concatenated_file_urls'),
+])
+def test_repaired_links_preserve_literal_source_and_association_in_catalog(original, targets, basis):
+    from congress_api.parsers.archive_links import capture_links
+    sources = DocumentSources()
+    receipt = {'source_receipt_key': ['receipts/source.json.gz'], 'source_receipt_line': ['1']}
+    for link in capture_links({'url': original, 'parent_url': PAGE, 'text': 'Publisher label'}):
+        sources.add_link(link, receipt)
+    for target in targets:
+        row = sources.for_url(target)
+        assert row['source_link_url'] == [original]
+        assert row['source_link_label'] == ['Publisher label']
+        assert row['source_association_basis'] == [basis]
+        assert row['source_associated_url'] == [original]
+        assert row['source_page_url'] == [PAGE]
+        assert row['source_receipt_key'] == receipt['source_receipt_key']
+        assert 'publisher_redirect' not in row['source_association_basis']
+    # Later source context follows the same established recovery relationship.
+    sources.add_url(original, {'source_document_type': {'Support Document'}})
+    assert all(sources.for_url(target)['source_document_type'] == ['Support Document'] for target in targets)
+
+
 @pytest.mark.parametrize('label,expected', [('Amy Berman - Article', ['article']), ('Dr. Gawande - Op-Ed', ['op-ed']),
     ('Article', ['article']), ('Report on article use', None), ('SCA_testimony_article.pdf', None),
     ('Support Document', None), ('Download testimony', None), ('Article about testimony', None)])

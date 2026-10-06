@@ -29,6 +29,16 @@ failures and retained-body replays for an explicit later operation. New links
 remain part of the initial population. Set it false only for a deliberate retry
 or replay run; `repair` is incompatible with initial-only acquisition.
 
+Before fetching, capture rechecks saved pending URLs. It can recover the explicit
+GPO document URL inside a LIS `/cgi-lis/t2GPO/` wrapper, or split concatenated
+complete file URLs when every part independently passes the usual scope checks.
+It does not guess missing URL components or split query parameters. The original
+value remains in download state as `repaired_url`; unrecoverable pending values
+become `excluded_scope`. These outcomes do not count as download attempts. Each
+recovered target retains its original value and repair reason in receipts and
+the catalog's existing source-association fields. Existing target captures are
+reused, and a malformed catalog row's body is never assigned to a derived target.
+
 CI uses the same Rust source and Python capture code as local operation. It runs
 60 file starts/second, 80 tasks, 48 downloads, three metadata processes, a 2 GiB
 parent buffer, 5 GiB spool and 64 MiB file cap. A five-second process-tree memory

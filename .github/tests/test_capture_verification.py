@@ -276,3 +276,29 @@ def test_legacy_checkpoint_verifies_without_migration(checkpoint):
     writes = list(store.writes)
     assert verifier.verify_run(store, summary)['verified']
     assert store.objects == before and store.writes == writes
+
+
+def test_repaired_pending_inputs_verify_without_counting_repairs_as_attempts():
+    from congress_api.acquisition.raw_sync import run_sync
+    store = MemoryStore()
+    archive = Archive(store, RUN)
+    first, second = 'https://example.gov/a.xml', 'https://example.gov/b.xml'
+    original = first + second
+    archive.seed({'url': first})
+    archive.state[original] = {**archive.state.pop(first), 'url': original}
+    archive.save()
+    # Run the real collector and verifier against a small in-memory checkpoint.
+    def fetch(url):
+        result = response(url, b'<bill/>')
+        result['content']['media_type'] = 'application/xml'
+        return result
+    summary = run_sync(Archive(store, RUN), [], fetch=fetch, initial_only=True)
+    summary.update(mode='capture', acquisition_status='completed', run_id=RUN)
+    before = dict(store.objects)
+    report = verifier.verify_run(store, summary)
+    assert report['verified'] and report['state_matches_receipts']
+    assert report['capture_index_checkpoint_matches']
+    assert report['receipts'] == summary['attempted'] == 2
+    assert report['state_outcomes'] == {'saved': 2, 'repaired_url': 1}
+    assert report['pending_urls'] == 0 and report['known_urls'] == 3
+    assert store.objects == before

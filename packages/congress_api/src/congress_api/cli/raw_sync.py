@@ -237,7 +237,8 @@ def run(args, log, *, store=None):
             progress.report('load_capture_state')
             archive = Archive(store, run_id, repair=args.repair)
             for item in seed_files(args.seed):
-                archive.seed(item)
+                archive.seed_links(item)
+            archive.admit_pending_urls()
             summary.update(known_urls=len(archive.state),
                            outcomes=dict(Counter(s["outcome"] for s in archive.state.values())))
             summary["planning_status"] = "completed"

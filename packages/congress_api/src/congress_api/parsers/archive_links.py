@@ -90,7 +90,48 @@ def allowed_url(value, base=""):
     return url
 
 
+def capture_links(item, base=""):
+    """Admit one URL, or recover explicit file URLs from two known source defects.
+
+    Transport still accepts only a single allowed URL. Repairs retain the literal
+    source value and never guess a scheme, host, filename or document version.
+    """
+    value = item.get('url')
+    if target := allowed_url(value, base):
+        return [{**item, 'url': target}]
+    if not isinstance(value, str) or re.search(r'[\s?#]', value):
+        return []  # Query/fragment boundaries and whitespace are ambiguous.
+    wrapper = re.fullmatch(r'https?://(?:www\.)?lis\.gov/cgi-lis/t2GPO/(https?://.+)', value, re.I)
+    if wrapper:
+        targets = [wrapper[1]]
+        if not allowed_url(targets[0]):
+            return []
+        inner = urlsplit(targets[0])
+        if inner.hostname not in {'gpo.gov', 'www.gpo.gov'} or not inner.path.startswith('/fdsys/pkg/'):
+            return []
+        reason = 'lis_gpo_wrapper'
+    else:
+        targets = re.split(r'(?=https?://)', value, flags=re.I)
+        if targets[0] == '':
+            targets.pop(0)
+        if len(targets) < 2:
+            return []
+        reason = 'concatenated_file_urls'
+    # All parts must be complete, independently allowed document URLs. Refuse
+    # the entire repair if any part is malformed, private, credentialed or media.
+    if not all(allowed_url(target) == target and FILE.search(target) for target in targets):
+        return []
+    return [{**item, 'url': target, 'original_url': value,
+             'url_repair': reason, 'url_position': position}
+            for position, target in enumerate(targets)]
+
+
 def json_links(value, source="", pointer=(), context=None):
+    for item in _json_links(value, source, pointer, context):
+        yield from capture_links(item)
+
+
+def _json_links(value, source="", pointer=(), context=None):
     """Read native document/link slots and literal file URLs, preserving source fields."""
     context = context or {}
     if isinstance(value, dict):
@@ -124,7 +165,7 @@ def json_links(value, source="", pointer=(), context=None):
                 }
             if (
                 isinstance(child, str)
-                and allowed_url(child)
+                and capture_links({'url': child})
                 and (
                     FILE.search(child)
                     or re.search(r"\.(?:vtt|srt|m3u8)(?:$|[?#])", child, re.I)
@@ -146,13 +187,13 @@ def json_links(value, source="", pointer=(), context=None):
                     },
                 }
             elif isinstance(child, (dict, list)):
-                yield from json_links(child, source, (*pointer, key), context)
+                yield from _json_links(child, source, (*pointer, key), context)
     elif isinstance(value, list):
         # Existing House/Senate parsed state uses [type, label, URL, ...].
         if (
             len(value) >= 3
             and isinstance(value[2], str)
-            and allowed_url(value[2])
+            and capture_links({'url': value[2]})
             and any("document" in str(p).lower() for p in pointer)
         ):
             yield {
@@ -166,7 +207,7 @@ def json_links(value, source="", pointer=(), context=None):
             for index, child in enumerate(value):
                 if (
                     isinstance(child, str)
-                    and allowed_url(child)
+                    and capture_links({'url': child})
                     and (
                         FILE.search(child)
                         or re.search(r"\.(?:vtt|srt|m3u8)(?:$|[?#])", child, re.I)
@@ -179,15 +220,15 @@ def json_links(value, source="", pointer=(), context=None):
                         "context": context,
                     }
                 else:
-                    yield from json_links(child, source, (*pointer, index), context)
+                    yield from _json_links(child, source, (*pointer, index), context)
 
 
 def related_links(body, url, kind, *, diagnostics=None):
     if kind == "html":
         links = {
-            link.url: link.source_dict()
+            candidate['url']: candidate
             for link in document_links(body, url)
-            if allowed_url(link.url)
+            for candidate in capture_links(link.source_dict())
         }
         host = urlsplit(url).hostname or ""
         if host == "senate.gov" or host.endswith(".senate.gov"):
@@ -200,16 +241,13 @@ def related_links(body, url, kind, *, diagnostics=None):
                     diagnostics.append({'reader': 'senate', 'error_type': type(exc).__name__})
                 return list(links.values())
             for document_kind, label, target in page.documents:
-                if not allowed_url(target):
-                    continue
                 metadata = page.document_metadata.get(target)
                 # Keep every literal occurrence, including distinct witness and
                 # section context, while scheduling a URL only once.
-                links[target] = {
-                    **links.get(target, {}), "url": target, "basis": "senate_document",
+                for candidate in capture_links({"url": target, "basis": "senate_document",
                     "text": label, "context": {"document_kind": document_kind,
-                        "document_metadata": metadata.source_dict() if metadata else {}},
-                }
+                        "document_metadata": metadata.source_dict() if metadata else {}}}):
+                    links[candidate['url']] = {**links.get(candidate['url'], {}), **candidate}
         return list(links.values())
     if kind == "xml":
         tree = etree.fromstring(
@@ -228,18 +266,10 @@ def related_links(body, url, kind, *, diagnostics=None):
             if tag.lower() in {"url", "uri"} and node.text:
                 values.append(node.text.strip())
             for value in values:
-                target = allowed_url(value, url)
-                if target:
-                    result.append(
-                        {
-                            "url": target,
-                            "basis": "xml_link",
-                            "tag": tag,
-                            "text": "".join(node.itertext()),
-                            "attributes": dict(node.attrib),
-                            "source_xpath": tree.getroottree().getpath(node),
-                        }
-                    )
+                result.extend(capture_links(
+                    {"url": value, "basis": "xml_link", "tag": tag,
+                     "text": "".join(node.itertext()), "attributes": dict(node.attrib),
+                     "source_xpath": tree.getroottree().getpath(node)}, url))
         return result
     if kind == "json":
         return list(json_links(json.loads(body), url))

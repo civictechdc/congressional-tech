@@ -1073,6 +1073,7 @@ class DocumentSources:
 
     def add_link(self, link, receipt=None):
         """Read a native seed or discovered link retained by recurring capture."""
+        original = link.get('original_url') if link.get('url_repair') else None
         parent = link.get("context") or {}
         self.add_meeting(parent)
         native = link.get("native") or {}
@@ -1097,7 +1098,7 @@ class DocumentSources:
             source_meeting_type=parent.get("type"),
             source_page_url=link.get("parent_url"),
             source_original_page_url=link.get("parent_url"),
-            source_link_url=link.get("url"),
+            source_link_url=original or link.get("url"),
             source_link_label=link.get("text"),
             source_document_group=group,
             source_document_type=native.get("documentType"),
@@ -1138,7 +1139,10 @@ class DocumentSources:
             basis = ("house_parser_inference" if house_tuple else
                      "senate_parser_fallback" if native["documentType"] == "other" else "senate_parser_inference") if parsed_tuple else "publisher"
             merge_context(values, context_values(source_document_type_basis=basis))
-        self.add_url(link.get("url"), values)
+        self.add_url(original or link.get("url"), values)
+        if original:
+            self.add_transfer(original, link.get('url'), {**(receipt or {}), **context_values(
+                source_association_basis=link['url_repair'], source_associated_url=original)})
 
     def event_context(self, event, chamber=None, congress=None):
         keys = self.events.get(str(event), set())

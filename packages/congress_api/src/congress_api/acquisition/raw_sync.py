@@ -12,7 +12,7 @@ import time
 import pyarrow.compute as pc
 
 from congress_api.models.content import RawContent
-from congress_api.parsers.archive_links import inspect_capture
+from congress_api.parsers.archive_links import capture_links, inspect_capture
 from congress_api.retention.raw_archive import (
     BodyLimitExceeded, prepare_capture, body_payload, existing_body_info, metadata_body_keys,
     NON_DOWNLOAD_OUTCOMES,
@@ -75,9 +75,11 @@ async def run_async(
         raise ValueError('Spool buffer must hold one maximum provider response')
     context = {}
     for item in seeds:
-        url = archive.seed(item, publisher_link=True)
-        if url:
-            context.setdefault(url, []).append(item)
+        for link in archive.seed_links(item, publisher_link=True):
+            context.setdefault(link['url'], []).append(link)
+    for link in archive.admit_pending_urls():
+        if link not in context.get(link['url'], []):
+            context.setdefault(link['url'], []).append(link)
     now = datetime.now(timezone.utc)
     queue = deque(sorted(
         (s for s in archive.state.values()
@@ -121,6 +123,7 @@ async def run_async(
     def prepare(response, mode, observations, inspection):
         outcome, links = (('retry_later', []) if response.get('retry_later') else
             inspection if inspection is not None else inspect_capture(response, replay=mode == 'replay'))
+        links = [candidate for link in links for candidate in capture_links(link)]
         for link in links:
             link['parent_url'] = response['requested_url']
             link['parent_sha256'] = response.get('content', {}).get('sha256')
@@ -176,6 +179,9 @@ async def run_async(
         progress.report('acquire_sources', completed=counts['fetch'] + counts['replay'], unit='capture_attempts')
         for link in record['links']:
             child = archive.state.get(link['url'])
+            if (link.get('url_repair') and child and child['outcome'] == 'pending'
+                    and link not in context.get(link['url'], [])):
+                context.setdefault(link['url'], []).append(link)
             if child and child['outcome'] == 'pending' and child['url'] not in scheduled:
                 queue.append(child)
                 scheduled.add(child['url'])
@@ -261,7 +267,7 @@ async def run_async(
                         timings['acquire_seconds'] += time.monotonic() - started
                         started = time.monotonic()
                         record, captures, data, scanned = await loop.run_in_executor(
-                            cpu_pool, prepare, response, mode, context.get(state['url'], []), inspection)
+                            cpu_pool, prepare, response, mode, list(context.get(state['url'], [])), inspection)
                         del response
                         timings['prepare_seconds'] += time.monotonic() - started
                         size = sum(len(value) for value in data.values())
@@ -368,7 +374,7 @@ async def run_async(
         peak_spool_reservation_bytes=spool.peak,
         accounting={
             "known_urls": len(archive.state),
-            "known_urls_basis": "distinct normalized URLs in download state; includes source pages and retryable failures",
+            "known_urls_basis": "distinct source URL values in download state; includes repaired originals, excluded values, source pages and retryable failures",
             "urls_by_source_family": dict(Counter(row.get("family") or "unknown" for row in archive.state.values())),
             "usable_capture_results_basis": "this run's completed tasks classified saved; includes linked source pages",
             "unique_retained_body_keys_basis": "distinct nonempty body keys referenced by the saved capture index; includes error/provider bytes and does not check storage existence",

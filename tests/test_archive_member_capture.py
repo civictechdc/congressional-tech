@@ -53,6 +53,19 @@ def test_parent_and_duplicate_members_retain_exact_bytes_and_provenance():
     assert len(metadata_body_keys(record, captures)) == 3
 
 
+def test_member_links_recover_explicit_concatenation_with_member_provenance():
+    urls = ['https://example.gov/a.xml', 'https://example.gov/b.xml']
+    literal = ''.join(urls)
+    record, _, _, _ = prepare(zip_bytes([
+        ('links.xml', f'<bill><document href="{literal}"/></bill>'.encode())]))
+    assert [link['url'] for link in record['links']] == urls
+    for link in record['links']:
+        assert link['original_url'] == literal
+        assert link['attributes']['href'] == literal
+        assert link['archive_member'] == {'entry_index': 0, 'original_name': 'links.xml'}
+        assert link['member_body_key']
+
+
 def test_synchronous_archive_stores_reads_and_indexes_all_members():
     store = MemoryStore()
     archive = Archive(store, 'zip-test')

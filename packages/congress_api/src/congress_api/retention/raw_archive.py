@@ -18,7 +18,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from congress_api.models.content import CapturedBody
-from congress_api.parsers.archive_links import allowed_url, inspect_body, related_links
+from congress_api.parsers.archive_links import allowed_url, capture_links, inspect_body, related_links
 from congress_api.parsers.source_family import family
 from congress_api.retention.bundles import separate
 from congress_api.retention.archive_members import (
@@ -76,7 +76,8 @@ STATE_SCHEMA = pa.schema(
 )
 STATE_KEY = "indexes/download-state.parquet"
 CAPTURES_KEY = "indexes/captures.parquet"
-NON_DOWNLOAD_OUTCOMES = frozenset({'saved', 'excluded_media', 'excluded_probe'})
+NON_DOWNLOAD_OUTCOMES = frozenset({'saved', 'excluded_media', 'excluded_probe',
+                                  'repaired_url', 'excluded_scope'})
 
 
 class BodyLimitExceeded(ValueError):
@@ -183,7 +184,8 @@ def prepare_capture(response, *, outcome, links, context=None, mode="fetch", sca
                                           if key.rsplit('}', 1)[-1] in {'href', 'url', 'doc-url', 'data', 'src'}]
                                 if kind == 'xml' and link.get('tag', '').lower() in {'url', 'uri'}:
                                     values.append(link.get('text', '').strip())
-                                if not any(allowed_url(value) == link['url'] for value in values):
+                                if not any(candidate['url'] == link['url'] for value in values
+                                           for candidate in capture_links({'url': value})):
                                     continue
                                 record['links'].append({**link, 'parent_url': record['requested_url'],
                                     'parent_sha256': publisher['sha256'], 'member_body_key': member_key,
@@ -338,7 +340,9 @@ class Archive:
             for row in rows:
                 if not publisher_download_candidate(row):
                     continue  # Retain probe evidence without scheduling new guesses.
-                url = self.seed({"url": row["source_url"]}, publisher_link=True)
+                links = self.seed_links({"url": row["source_url"]}, publisher_link=True)
+                # An aggregate catalog body cannot be assigned to a recovered URL.
+                url = links[0]['url'] if len(links) == 1 and not links[0].get('url_repair') else None
                 if (
                     not url
                     or not row["body_key"]
@@ -388,27 +392,60 @@ class Archive:
     def seed(self, item, *, publisher_link=False):
         url = allowed_url(item.get("url"))
         if url:
-            self.state.setdefault(
-                url,
-                dict(
-                    url=url,
-                    family=item.get("family") or family(url=url) or "documents",
-                    outcome="pending",
-                    body_key=None,
-                    sha256=None,
-                    media_type=None,
-                    fidelity=None,
-                    retrieved_at=None,
-                    checked_at=None,
-                    next_attempt_at=None,
-                    http_status=None,
-                    attempts=0,
-                    links_scanned=False,
-                ),
-            )
+            self._seed_url(url, item)
             if publisher_link and self.state[url]['outcome'] == 'excluded_probe':
                 self.state[url].update(outcome='pending', next_attempt_at=None)
         return url
+
+    def _seed_url(self, url, item):
+        self.state.setdefault(
+            url,
+            dict(
+                url=url,
+                family=item.get("family") or family(url=url) or "documents",
+                outcome="pending",
+                body_key=None,
+                sha256=None,
+                media_type=None,
+                fidelity=None,
+                retrieved_at=None,
+                checked_at=None,
+                next_attempt_at=None,
+                http_status=None,
+                attempts=0,
+                links_scanned=False,
+            ),
+        )
+
+    def seed_links(self, item, *, publisher_link=False):
+        """Keep a repaired source value in state; schedule its valid children once."""
+        links = capture_links(item)
+        for link in links:
+            original = link.get('original_url') if link.get('url_repair') else None
+            if original:
+                self._seed_url(original, item)
+                if self.state[original]['outcome'] == 'pending':
+                    self.state[original]['outcome'] = 'repaired_url'
+            self.seed(link, publisher_link=publisher_link)
+        return links
+
+    def admit_pending_urls(self):
+        """Recheck restored pending URLs before acquisition, preserving old evidence.
+
+        The original state row also keeps repair provenance across batch limits:
+        each run can reconstruct its children's observations without a new index.
+        Historical attempts and retained bodies remain untouched.
+        """
+        observations = []
+        rejected = [state for state in self.state.values()
+                    if state['outcome'] in {'pending', 'repaired_url'} and not allowed_url(state['url'])]
+        for state in rejected:
+            links = self.seed_links({'url': state['url'], 'family': state['family']},
+                                    publisher_link=True)
+            if not links:
+                state['outcome'] = 'excluded_scope'
+            observations.extend(links)
+        return observations
 
     def put_body(self, data):
         digest = hashlib.sha256(data).hexdigest()
@@ -553,7 +590,7 @@ class Archive:
         if (state.get("checked_at") or "") >= (previous.get("checked_at") or ""):
             self.state[state["url"]] = state
         for link in receipt["record"].get("links", []):
-            self.seed(link, publisher_link=True)
+            self.seed_links(link, publisher_link=True)
         for cap in receipt["captures"]:
             self.body_info[cap["sha256"]] = {
                 k: cap[k]
