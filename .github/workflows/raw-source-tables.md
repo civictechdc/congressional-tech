@@ -12,13 +12,42 @@ explicit rebuild reinterprets existing metadata; a fresh archive is built once.
 | Manual dispatch, `mode=update` (default) | Add new evidence, preserving saved metadata; no acquisition |
 | Manual dispatch, `mode=rebuild` | Reinterpret all retained metadata with current rules; no acquisition |
 | Manual dispatch, `mode=capture` | Capture missing sources; leave published tables unchanged |
-| Every six hours, at minute 23 UTC | Capture missing sources; leave published tables unchanged |
 | Daily at 03:23 UTC | Add accumulated evidence, preserving saved metadata; no acquisition |
-| `Update committee data` completes on `main` | Capture missing sources; leave published tables unchanged |
 
-The completion trigger accepts only runs from this repository, including failed
-collection runs with retained partial progress. Generated outputs and
-`pipeline-data` commits do not trigger this workflow.
+Acquisition uses explicit dispatches so a failed or unverified batch cannot be
+followed automatically by a scheduled capture. The population monitor dispatches
+one capture at a time after the previous job and its verification succeed.
+Generated outputs and `pipeline-data` commits do not trigger this workflow.
+
+## Verified capture batches
+
+Capture defaults to at most 20,000 attempts, including delayed retries, and five
+hours of admission. Slow admitted requests can extend the run while it drains.
+The job has a six-hour ceiling for setup, draining, checkpointing and verification.
+`initial_only=true` selects pending URLs and their in-run retries; it leaves old
+failures and retained-body replays for an explicit later operation. New links
+remain part of the initial population. Set it false only for a deliberate retry
+or replay run; `repair` is incompatible with initial-only acquisition.
+
+CI uses the same Rust source and Python capture code as local operation. It runs
+60 file starts/second, 80 tasks, 48 downloads, three metadata processes, a 2 GiB
+parent buffer, 5 GiB spool and 64 MiB file cap. A five-second process-tree memory
+sample requests graceful capture shutdown above 12 GiB; this is a sampled stop,
+not a hard allocation limit. A memory stop fails the job after checkpointing.
+
+Every run uploads a source manifest tied to its immutable checkout. Pass
+`expected_source_digest` to refuse code or package-data differences before any
+writes. The Linux binary is compiled from the locked Rust sources; its digest
+need not match a macOS binary. Runtime dependency versions are recorded separately.
+
+An optional `previous_summary` JSON dispatch input verifies the previous completed
+capture against the current R2 checkpoint before acquisition. Use it when moving
+from local capture and for each monitored continuation. The same verifier runs
+after capture. It checks full checkpoint pairing, all run receipts and latest URL
+states, queue accounting, all new metadata parts, and a deterministic body sample
+(200 hash-selected, 10 largest, and 25 failed). It does not reread every historical
+body or reused metadata reading. Reports and summaries are uploaded as artifacts.
+A failed job or missing verification report stops automatic continuation.
 
 ## Table rebuild steps
 
@@ -128,6 +157,23 @@ failed collection runs. Capture can also resume before that rebuild, using
 saved receipts and retry state to avoid repeating successful downloads.
 New files therefore remain absent from the published tables until a successful
 rebuild; dispatch `mode=update` when an earlier publication is needed.
+
+Generic ZIP downloads retain both the original archive and its file members.
+Each member keeps its exact name, entry position, parent archive body key and
+receipt pointer. Duplicate names remain distinct occurrences; identical bytes
+share storage and metadata. Members use the existing metadata reader and capture
+index. The next table update gives each member its own filename and body, with
+the ZIP URL recorded as provenance rather than a fabricated member download URL.
+Literal absolute links in member XML or HTML can add downloads; archive-relative
+paths cannot. Office packages stay intact, and nested ZIPs are retained without
+recursive expansion. Encrypted, corrupt, unsupported or oversized entries keep
+explicit processing results. Expansion is bounded by member count, directory
+size, individual and total decompressed bytes, and temporary copy space.
+
+Direct 429/503 responses with a valid `Retry-After` defer another direct attempt
+without occupying a download slot or invoking Zyte. GovInfo's ZIP generation page
+waits at least 30 seconds. Each URL gets at most three delayed retries in one run;
+all attempts count toward the run limit, and deferred state survives checkpoints.
 
 For compatibility, a local `raw-source-sync` invocation without a mode flag still
 captures and updates metadata while preserving saved interpretations. It releases the download queue, state, fetcher and signal

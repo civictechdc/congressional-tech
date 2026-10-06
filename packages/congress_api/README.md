@@ -32,6 +32,15 @@ uv pip install -e packages/committee_meeting -e packages/congress_shared \
 
 Optional tests: `uv pip install -e "packages/congress_api[test]"` (adds `pytest>=9,<10`).
 
+PDF recovery requires Poppler's `pdfinfo` and `pdftotext`: install `poppler-utils`
+on Debian/Ubuntu or `poppler` with Homebrew. The normal cover reader remains
+pypdf. Poppler handles rejected PDF structure and unsupported text operands,
+with a 16 MiB input limit, a ten-second deadline per invocation, and bounded
+stdout/stderr. It reads only the requested opening page. New metadata fingerprints
+include reader versions; existing metadata remains reusable until an explicit
+rebuild. A readable PDF structure does not prove that the publisher's document
+is complete.
+
 Runtime dependencies include `committee-meeting`, `congress-shared`, `pydantic`, `lxml`, `requests`, `pypdf[fonts]`, `google-genai`, and `yt-dlp`. Sibling packages resolve through `[tool.uv.sources]` in `pyproject.toml`.
 
 `congress-shared` supplies API key loading, default data paths, and `congress_metadata.json`. The separate `youtube-api` package collects YouTube data. These commands read its saved JSON with the standard library; TinyDB is not a congress-api dependency.
@@ -210,12 +219,12 @@ stable labels, not Python import paths. Replay commands use `congress_api.replay
 ### Recurring raw-source capture
 
 [Capture missing raw sources](../../.github/workflows/capture-raw-sources.yml)
-runs every six hours and after `Update committee data` completes, using
-`--capture-only` to save evidence without rebuilding document tables. It reads the
+runs as explicitly dispatched, verified batches using
+`--capture-only --initial-only` to save evidence without rebuilding document tables. It reads the
 R2 mirror's capture and filename indexes plus available native records on
 `pipeline-data`. It downloads missing URLs, follows explicit document and subtitle
-links, and scans already retained bodies without refetching them. It does not
-crawl site navigation or archive full video/audio files. Authenticated Congress.gov,
+links, and leaves historical retries and retained-body scans for an explicit
+later operation. It does not crawl site navigation or archive full video/audio files. Authenticated Congress.gov,
 GovInfo collection and YouTube API requests remain with their existing collectors.
 
 Production uses the Rust `source-fetch` reqwest worker, with **direct requests
@@ -223,8 +232,11 @@ first and one Zyte fallback when capture fails**. It starts at most **60 files
 per second**; redirects and one fallback share the initial file slot, with up to
 **80 concurrent source tasks**. The rate is a shared ceiling; source latency,
 archive writes, and file inspection can lower completed captures per second.
-The run still limits work to 5,000 downloads or retained-body scans and 90 minutes
-of collection. Manual `direct` and `zyte` modes remain available. The default
+CI limits each batch to 20,000 attempts (including delayed retries) and five hours
+of admission. It verifies receipts, metadata parts, checkpoint accounting and a
+body sample before the monitor may start another batch. The default local CLI
+retains its 5,000-attempt/90-minute defaults; use explicit bounds for other runs.
+Manual `direct` and `zyte` modes remain available. The default
 response limit is 64 MiB; larger responses remain incomplete, never successful.
 Increase `--max-file-mib` for a targeted run.
 

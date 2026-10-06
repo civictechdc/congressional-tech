@@ -62,6 +62,29 @@ A saved record can reference several source families. It remains together in one
 
 The reviewed inputs are `final-body-manifest.jsonl` and `final-record-manifest.jsonl` in that administration directory. Record manifests include the source family so journal headers and bodyless acquisition outcomes retain the same source context as their response records. `verification.json` reports the final receipt/index checks; older intermediate logs document the migration and its repairs.
 
+### Local backfill migration (October 2)
+
+The historical `.cache/raw-source-backfill-20260928/` path is now a compatibility
+link to `.cache/source-history/`. Existing capture receipts, frozen experiment
+manifests, and historical scripts keep their original paths and file bytes.
+The history directory links byte-identical compressed downloads to the existing
+files in `.cache/congressional-tech-raw/bodies/sha256/`. It retains other original
+file encodings, captions, metadata, and run records. Identical history files use
+independent APFS copies that share storage, preserving ordinary file paths and
+allowing either copy to change without changing the other.
+
+The migration inventory covers all 636,878 original files. Each original file
+and its replacement passed SHA-256 verification before the path switch.
+Per-file destinations and hashes are recorded in
+`output/raw-backfill-migration-20261002/files.jsonl.gz`; verification and cleanup
+results are in the same directory. Reported folder sizes include shared APFS
+blocks and are not a measure of recoverable physical disk space.
+
+Use the consolidated raw archive for new acquisition and archive-backed analysis.
+Treat `source-history/` and its compatibility path as historical, read-only inputs;
+do not resume old acquisition scripts there. The September 30 migration manifests
+remain historical evidence rather than a new filesystem inventory.
+
 ### Filename metadata
 
 `indexes/documents.parquet` has one canonical row per document group, including

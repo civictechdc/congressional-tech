@@ -4,6 +4,7 @@ from fnmatch import fnmatchcase
 import gzip
 import json
 import os
+import shutil
 from pathlib import Path
 import subprocess
 import sys
@@ -45,6 +46,10 @@ def recording_command(tmp_path):
         "    pathlib.Path('raw-capture-summary.json').write_text('{\"catalog_id\": \"fixture\"}')\n"
     )
     command.chmod(0o755)
+    (tmp_path / 'python').symlink_to(sys.executable)
+    scripts = tmp_path / '.github/scripts'
+    scripts.mkdir(parents=True)
+    shutil.copy(ROOT / '.github/scripts/capture-memory-guard.py', scripts)
     return {
         "PATH": f"{tmp_path}:{os.defpath}",
         "GITHUB_WORKSPACE": str(tmp_path),
@@ -61,9 +66,7 @@ def recording_command(tmp_path):
         ("workflow_dispatch", "rebuild", "", "rebuild"),
         ("workflow_dispatch", "update", "", "update"),
         ("workflow_dispatch", "capture", "", "capture"),
-        ("schedule", "", "23 */6 * * *", "capture"),
         ("schedule", "", "23 3 * * *", "update"),
-        ("workflow_run", "", "", "capture"),
     ],
 )
 def test_events_execute_one_command_in_the_selected_mode(
@@ -112,6 +115,11 @@ def test_events_execute_one_command_in_the_selected_mode(
     assert parsed.update_only is (expected == "update")
     assert parsed.capture_only is (expected == "capture")
     assert parsed.inspect_bodies is False
+    if expected == 'capture':
+        assert parsed.initial_only is True
+        assert (parsed.workers, parsed.download_workers, parsed.metadata_workers) == (80, 48, 3)
+        assert (parsed.max_buffer_mib, parsed.max_spool_mib, parsed.max_file_mib) == (2048, 5120, 64)
+        assert parsed.max_seconds == 18000
 
 
 def test_rebuild_workflow_arguments_execute_without_acquisition(
@@ -245,7 +253,7 @@ def test_interrupted_run_keeps_last_progress_in_summary_and_artifact(tmp_path):
     text = summary.read_text()
     assert 'read_house_xml' in text and '1200' in text
     assert 'interrupted' in text and 'operation is unverified' in text
-    artifact = next(step for step in STEPS if step.get('uses', '').startswith('actions/upload-artifact@'))
+    artifact = next(step for step in STEPS if step.get('uses', '').startswith('actions/upload-artifact@') and step.get('if') == '${{ always() }}')
     assert 'raw-capture-summary.progress.json' in artifact['with']['path'].splitlines()
 
 
@@ -290,7 +298,7 @@ def test_shared_writer_lock_revision_credentials_and_single_rebuild():
     artifact = next(
         step
         for step in STEPS
-        if step.get("uses", "").startswith("actions/upload-artifact@")
+        if step.get("uses", "").startswith("actions/upload-artifact@") and step.get("if") == "${{ always() }}"
     )
     assert artifact["if"] == "${{ always() }}"
     for path in WORKFLOW_PATH.parent.glob("*.yml"):
@@ -301,14 +309,9 @@ def test_shared_writer_lock_revision_credentials_and_single_rebuild():
 
 def test_triggers_cover_parser_changes_and_exclude_generated_outputs():
     triggers = WORKFLOW["on"]
-    assert set(triggers) == {"push", "workflow_dispatch", "schedule", "workflow_run"}
+    assert set(triggers) == {"push", "workflow_dispatch", "schedule"}
     assert triggers["push"]["branches"] == ["main"]
-    assert triggers["workflow_run"] == {
-        "workflows": ["Update committee data"],
-        "types": ["completed"],
-        "branches": ["main"],
-    }
-    assert triggers["schedule"] == [{"cron": "23 */6 * * *"}, {"cron": "23 3 * * *"}]
+    assert triggers["schedule"] == [{"cron": "23 3 * * *"}]
     assert triggers["workflow_dispatch"]["inputs"]["mode"]["default"] == "update"
     patterns = triggers["push"]["paths"]
     for path in [
@@ -367,3 +370,49 @@ def test_body_inspection_requires_explicit_dispatch_input(tmp_path, recording_co
     assert result.returncode == 0, result.stderr
     args = json.loads((tmp_path / 'invocation.json').read_text())
     assert parser().parse_args(args).inspect_bodies is True
+
+
+@pytest.mark.parametrize('limit', ['0', '-1', '20001', '1.5', 'oops', '18446744073709571616', '020000'])
+def test_capture_refuses_invalid_attempt_caps_before_start(tmp_path, recording_command, limit):
+    result = run_step(PUBLISH, tmp_path, SYNC_MODE='capture',
+                      **{**recording_command, 'CAPTURE_LIMIT': limit})
+    assert result.returncode != 0
+    assert not (tmp_path / 'invocation.json').exists()
+
+
+def test_capture_can_explicitly_select_historical_queue(tmp_path, recording_command):
+    result = run_step(PUBLISH, tmp_path, SYNC_MODE='capture', INITIAL_ONLY='false', **recording_command)
+    assert result.returncode == 0, result.stderr
+    assert '--initial-only' not in json.loads((tmp_path / 'invocation.json').read_text())
+
+
+def test_source_digest_mismatch_stops_before_acquisition(tmp_path, recording_command):
+    step = next(s for s in STEPS if s.get('name') == 'Record and check capture source revision')
+    script = tmp_path / '.github/scripts/capture-source-manifest.py'
+    script.write_text("from pathlib import Path\nPath('raw-capture-source-manifest.json').write_text('{\"source_digest\":\"actual\"}')\n")
+    result = run_step(step, tmp_path, EXPECTED_SOURCE_DIGEST='expected', **recording_command)
+    assert result.returncode != 0
+    assert 'Capture source mismatch' in result.stderr
+    assert not (tmp_path / 'invocation.json').exists()
+
+
+def test_capture_verification_brackets_the_single_writer():
+    assert PUBLISH['env']['CAPTURE_LIMIT'] == '${{ inputs.limit }}'
+    names = [step.get('name') for step in STEPS]
+    assert names.index('Verify previous capture checkpoint before writes') < names.index(PUBLISH['name'])
+    assert names.index('Verify completed capture checkpoint') > names.index(PUBLISH['name'])
+    after = next(s for s in STEPS if s.get('name') == 'Verify completed capture checkpoint')
+    assert after['if'] == "steps.operation.outputs.mode == 'capture'"
+    assert WORKFLOW['on']['workflow_dispatch']['inputs']['limit']['default'] == '20000'
+    assert WORKFLOW['on']['workflow_dispatch']['inputs']['initial_only']['default'] == 'true'
+
+
+
+def test_previous_verification_requires_the_capture_destination(tmp_path, recording_command):
+    step = next(s for s in STEPS if s.get('name') == 'Verify previous capture checkpoint before writes')
+    result = run_step(step, tmp_path, PREVIOUS_SUMMARY=json.dumps({'bucket': 'another-bucket'}),
+                      **recording_command)
+    assert result.returncode != 0
+    assert 'Previous capture bucket does not match' in result.stderr
+    assert not (tmp_path / 'previous-capture-summary.json').exists()
+    assert not (tmp_path / 'invocation.json').exists()

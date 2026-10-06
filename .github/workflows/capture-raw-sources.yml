@@ -18,6 +18,9 @@ on:
       - 'packages/congress_api/src/congress_api/retention/document_*.py'
       - 'packages/congress_api/src/congress_api/retention/catalog_cache.py'
       - 'packages/congress_api/src/congress_api/retention/capture_metadata.py'
+      - 'packages/congress_api/src/congress_api/retention/capture_url_admission.py'
+      - 'packages/congress_api/src/congress_api/retention/archive_members.py'
+      - 'packages/congress_api/src/congress_api/transport/rust_fetch.py'
       - 'packages/source-fetch/**'
       - 'packages/congress_api/src/congress_api/retention/r2.py'
       - 'packages/congress_api/src/congress_api/parsers/**'
@@ -34,6 +37,8 @@ on:
       - 'tests/catalog_test_helpers.py'
       - 'packages/congress_api/src/congress_api/retention/catalog_*.py'
       - '.github/scripts/offline-python.py'
+      - '.github/scripts/*capture*.py'
+      - '.github/tests/test_capture*.py'
       - '.github/scripts/finalize-raw-source.py'
       - '.github/workflows/capture-raw-sources.yml'
       - '.github/tests/test_raw_source_workflow.py'
@@ -41,17 +46,17 @@ on:
       - 'tests/test_raw_capture_only.py'
       - 'tests/fixtures/raw_source_floor_schedule.xml'
       - 'tests/test_capture_metadata.py'
+      - 'tests/test_capture_url_admission.py'
+      - 'tests/test_capture_delayed_retry.py'
+      - 'tests/test_archive_member*.py'
+      - 'tests/test_rust_fetch*.py'
+      - 'tests/test_capture_processes_native.py'
       - 'tests/test_async_capture*.py'
       - 'tests/test_spooled_capture.py'
       - 'tests/test_r2_archive_store.py'
   schedule:
-    # Save capture batches every six hours; publish accumulated evidence daily.
-    - cron: '23 */6 * * *'
+    # Acquisition is explicitly dispatched after the previous batch verifies.
     - cron: '23 3 * * *'
-  workflow_run:
-    workflows: [Update committee data]
-    types: [completed]
-    branches: [main]
   workflow_dispatch:
     inputs:
       mode:
@@ -69,14 +74,26 @@ on:
         type: boolean
         default: false
       limit:
-        description: Capture mode only - maximum captures or retained-body scans
+        description: Capture mode only - maximum attempts, including delayed retries (1 to 20000)
         type: number
-        default: 5000
+        default: 20000
       transport:
         description: Capture mode only - source transport (auto tries direct, then Zyte)
         type: choice
         options: [auto, zyte, direct]
         default: auto
+      initial_only:
+        description: Capture mode - only pending URLs and their in-run retries
+        type: boolean
+        default: true
+      previous_summary:
+        description: Optional completed capture summary JSON to verify before new writes
+        type: string
+        default: ''
+      expected_source_digest:
+        description: Optional source manifest SHA-256 to require before new writes
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -90,10 +107,9 @@ concurrency:
 
 jobs:
   capture:
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-24.04
-    # Collection can use 90 minutes; explicit repair may replay historical evidence.
-    timeout-minutes: 240
+    # Allow up to five hours of admission, then drain, checkpoint and verify.
+    timeout-minutes: 360
     defaults:
       run:
         shell: bash
@@ -108,10 +124,8 @@ jobs:
           case "$EVENT_NAME" in
             push) mode=update ;;
             workflow_dispatch) mode="$INPUT_MODE" ;;
-            workflow_run) mode=capture ;;
             schedule)
               case "$EVENT_SCHEDULE" in
-                '23 */6 * * *') mode=capture ;;
                 '23 3 * * *') mode=update ;;
                 *) echo "Unsupported schedule: $EVENT_SCHEDULE" >&2; exit 1 ;;
               esac
@@ -135,6 +149,8 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
+      - name: Install bounded PDF fallback tools
+        run: sudo apt-get update && sudo apt-get install --yes poppler-utils
       - name: Install capture and rebuild tools
         run: >-
           pip install -e 'packages/house-naming[test]' -e packages/committee_meeting
@@ -144,6 +160,8 @@ jobs:
         run: |
           python -m pip freeze --exclude-editable > /tmp/raw-source-dependencies.txt
           python --version >> /tmp/raw-source-dependencies.txt
+          pdfinfo -v 2>> /tmp/raw-source-dependencies.txt
+          pdftotext -v 2>> /tmp/raw-source-dependencies.txt
           echo "key=$(sha256sum /tmp/raw-source-dependencies.txt | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
       - uses: actions/cache/restore@v4
         id: verified
@@ -158,22 +176,27 @@ jobs:
           python .github/scripts/offline-python.py -m pytest -q
           tests/test_raw_source_sync.py tests/test_raw_capture_only.py tests/test_capture_metadata.py tests/test_source_capture.py tests/test_r2_archive_store.py
           tests/test_async_capture.py tests/test_spooled_capture.py
+          tests/test_capture_failure_regressions.py tests/test_pdf_reader_recovery.py tests/test_file_wrapper_capture.py
           tests/test_raw_catalog.py tests/test_raw_rebuild.py tests/test_incremental_catalog.py
           tests/test_raw_progress.py tests/test_core_benchmark.py
           tests/test_core_source_context.py tests/test_catalog_publication.py tests/test_catalog_staging.py tests/test_catalog_consumers.py
           tests/test_standalone_catalog_publication.py
           .github/tests/test_raw_source_finalizer.py
+          .github/tests/test_capture_verification.py .github/tests/test_capture_memory_guard.py .github/tests/test_capture_source_manifest.py
           tests/test_document_filename_index.py tests/test_document_filename_viewer.py
           tests/test_congress_api_imports.py tests/test_document_link_probe.py
           tests/test_rust_fetch.py
+          tests/test_rust_fetch_retry.py tests/test_capture_delayed_retry.py
+          tests/test_archive_members.py tests/test_archive_member_capture.py tests/test_archive_member_catalog.py
+          tests/test_capture_url_admission.py
           tests/test_document_evidence.py tests/test_document_retained_recovery.py
           tests/test_published_hearing_cover.py
           tests/test_document_metadata_preservation.py tests/test_document_source_context.py
           tests/test_senate_document_sections.py packages/house-naming/tests
           .github/tests/test_raw_source_workflow.py
-      - name: Verify async storage on loopback
+      - name: Verify async storage and process workers locally
         if: steps.verified.outputs.cache-hit != 'true'
-        run: python -m pytest -q tests/test_async_capture_native.py
+        run: python -m pytest -q tests/test_async_capture_native.py tests/test_capture_processes_native.py
       - name: Mark successful code validation
         if: steps.verified.outputs.cache-hit != 'true'
         run: |
@@ -202,12 +225,45 @@ jobs:
         if: steps.operation.outputs.mode == 'capture' && steps.fetcher.outputs.cache-hit != 'true'
         env:
           SOURCE_FETCH_BINARY: ${{ github.workspace }}/packages/source-fetch/target/release/source-fetch
-        run: python -m pytest -q tests/test_rust_fetch_native.py
+        run: python -m pytest -q tests/test_rust_fetch_native.py tests/test_rust_fetch_size_admission_native.py
       - uses: actions/cache/save@v4
         if: steps.operation.outputs.mode == 'capture' && steps.fetcher.outputs.cache-hit != 'true'
         with:
           path: packages/source-fetch/target/release/source-fetch
           key: ${{ steps.fetcher.outputs.cache-primary-key }}
+      - name: Record and check capture source revision
+        env:
+          EXPECTED_SOURCE_DIGEST: ${{ inputs.expected_source_digest }}
+        run: |
+          python .github/scripts/capture-source-manifest.py
+          python - <<'PYCODE'
+          import json, os
+          expected = os.environ.get('EXPECTED_SOURCE_DIGEST')
+          actual = json.load(open('raw-capture-source-manifest.json'))['source_digest']
+          if expected and expected != actual:
+              raise SystemExit(f'Capture source mismatch: expected {expected}, found {actual}')
+          PYCODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: raw-capture-source-${{ github.run_id }}-${{ github.run_attempt }}
+          path: raw-capture-source-manifest.json
+      - name: Verify previous capture checkpoint before writes
+        if: steps.operation.outputs.mode == 'capture' && inputs.previous_summary != ''
+        env:
+          CLOUDFLARE_ACCOUNT_ID: '174055408ff1560e60601c4d12c561c4'
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          PREVIOUS_SUMMARY: ${{ inputs.previous_summary }}
+        run: |
+          python - <<'PYCODE'
+          import json, os
+          from pathlib import Path
+          summary = json.loads(os.environ['PREVIOUS_SUMMARY'])
+          if summary.get('bucket', 'congressional-tech-raw') != 'congressional-tech-raw':
+              raise SystemExit('Previous capture bucket does not match the capture destination')
+          Path('previous-capture-summary.json').write_text(json.dumps(summary))
+          PYCODE
+          python .github/scripts/verify-capture-run.py --summary previous-capture-summary.json --output previous-capture-verification.json
       - name: Capture sources or rebuild document tables
         id: sync
         env:
@@ -218,7 +274,8 @@ jobs:
           SYNC_MODE: ${{ steps.operation.outputs.mode }}
           REPAIR: ${{ inputs.repair || 'false' }}
           INSPECT_BODIES: ${{ inputs.inspect_bodies || 'false' }}
-          CAPTURE_LIMIT: ${{ inputs.limit || 5000 }}
+          CAPTURE_LIMIT: ${{ inputs.limit }}
+          INITIAL_ONLY: ${{ github.event_name != 'workflow_dispatch' || inputs.initial_only }}
           CAPTURE_TRANSPORT: ${{ inputs.transport || 'auto' }}
         run: |
           seeds=()
@@ -234,16 +291,32 @@ jobs:
             update) args+=(--update-only) ;;
             rebuild) args+=(--rebuild-only) ;;
             capture)
+              if ! [[ "$CAPTURE_LIMIT" =~ ^[1-9][0-9]{0,4}$ ]] || (( CAPTURE_LIMIT < 1 || CAPTURE_LIMIT > 20000 )); then
+                echo 'Capture limit must be between 1 and 20000' >&2; exit 1
+              fi
               args+=(--capture-only --fetcher-binary "$GITHUB_WORKSPACE/packages/source-fetch/target/release/source-fetch"
                 --transport "$CAPTURE_TRANSPORT" --limit "$CAPTURE_LIMIT"
-                --files-per-second 60 --workers 80 --max-seconds 5400 --max-file-mib 64)
+                --files-per-second 60 --workers 80 --download-workers 48 --metadata-workers 3
+                --max-buffer-mib 2048 --max-spool-mib 5120 --max-seconds 18000 --max-file-mib 64)
+              if [ "${INITIAL_ONLY:-true}" = true ]; then args+=(--initial-only); fi
               ;;
             *) echo "Unsupported operation: $SYNC_MODE" >&2; exit 1 ;;
           esac
           if [ "${REPAIR:-false}" = "true" ]; then args+=(--repair); fi
           if [ "${INSPECT_BODIES:-false}" = "true" ]; then args+=(--inspect-bodies); fi
-          raw-source-sync "${args[@]}" "${seeds[@]}"
+          guard=()
+          if [ "$SYNC_MODE" = capture ]; then
+            guard=(python .github/scripts/capture-memory-guard.py --output raw-capture-memory.json --)
+          fi
+          "${guard[@]}" raw-source-sync "${args[@]}" "${seeds[@]}"
           test -s raw-capture-summary.json
+      - name: Verify completed capture checkpoint
+        if: steps.operation.outputs.mode == 'capture'
+        env:
+          CLOUDFLARE_ACCOUNT_ID: '174055408ff1560e60601c4d12c561c4'
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: python .github/scripts/verify-capture-run.py --summary raw-capture-summary.json --output raw-capture-verification.json
       - name: Show operation summary
         if: ${{ always() }}
         env:
@@ -286,11 +359,16 @@ jobs:
             raw-capture-summary.json
             raw-capture-summary.progress.json
             core-benchmark-smoke.json
+            raw-capture-source-manifest.json
+            raw-capture-memory.json
+            raw-capture-verification.json
+            previous-capture-summary.json
+            previous-capture-verification.json
           if-no-files-found: ignore
 
   finalize:
     needs: capture
-    if: ${{ always() && (github.event_name != 'workflow_run' || github.event.workflow_run.head_repository.full_name == github.repository) }}
+    if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
