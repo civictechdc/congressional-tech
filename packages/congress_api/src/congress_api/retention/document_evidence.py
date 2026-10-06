@@ -40,11 +40,14 @@ def evidence_fingerprint():
     import congress_api.parsers.house_xml as house_xml
     import congress_api.parsers.document_cover as document_cover
     import congress_api.parsers.xml as xml
+    from congress_api.parsers import image_tools
     digest = sha256()
     for path in (__file__, models.__file__, xml_models.__file__, house_xml.__file__, xml.__file__, document_cover.__file__, pdf_tools.__file__):
         digest.update(Path(path).read_bytes())
     for tool, identity in sorted(pdf_tools.reader_versions().items()):
         digest.update(f'{tool}={identity}\n'.encode())
+    digest.update(Path(image_tools.__file__).read_bytes())
+    digest.update(f'Pillow={image_tools.reader_version()}\n'.encode())
     return digest.hexdigest()
 
 
@@ -57,7 +60,7 @@ def body_evidence_key(row):
             and (row.get('source_record_type') in (['committee-meeting'], ['witness-list'])
                  or row.get('content_xml_root') == ['amendment-doc'])):
         return ('xml', row['body_key'])
-    if row.get('body_format') in (['pdf'], ['html'], ['zip']):
+    if row.get('body_format') in (['pdf'], ['html'], ['zip'], ['png'], ['jpeg']):
         return ('document', row['body_key'])
     return None
 
@@ -205,6 +208,11 @@ def document_body_fields(data):
     """Identify ambiguous bytes independently of names, headers, and HTTP status."""
     if data is None:
         return {}
+    from congress_api.parsers.image_tools import image_kind
+    if kind := image_kind(data):
+        # Format facts are distinct from capture validity, just as for PDFs.
+        # Capture validates pixels once; catalog replay must retain failed images too.
+        return {'body_format': [kind]}
     if data.lstrip().startswith(b'%PDF-'):
         return {'body_format': ['pdf']}
     if data.startswith(b'PK\x03\x04') and is_zipfile(BytesIO(data)):

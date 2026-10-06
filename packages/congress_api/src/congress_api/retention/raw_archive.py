@@ -323,7 +323,7 @@ class Archive:
             names = snapshot.filenames
         if names:
             from congress_api.retention.capture_url_admission import (
-                PROVENANCE_COLUMNS, publisher_download_candidate,
+                PROVENANCE_COLUMNS, publisher_download_candidate, independent_publisher_link,
             )
             filename_file = pq.ParquetFile(pa.BufferReader(names))
             columns = [
@@ -340,11 +340,13 @@ class Archive:
             for row in rows:
                 if not publisher_download_candidate(row):
                     continue  # Retain probe evidence without scheduling new guesses.
-                links = self.seed_links({"url": row["source_url"]}, publisher_link=True)
+                links = self.seed_links({"url": row["source_url"]},
+                                        publisher_link=independent_publisher_link(row))
                 # An aggregate catalog body cannot be assigned to a recovered URL.
                 url = links[0]['url'] if len(links) == 1 and not links[0].get('url_repair') else None
                 if (
                     not url
+                    or self.state[url]['outcome'] == 'excluded_probe'
                     or not row["body_key"]
                     or self.state[url].get("body_key")
                     or "200" not in (row["http_status"] or [])
@@ -429,7 +431,7 @@ class Archive:
             self.seed(link, publisher_link=publisher_link)
         return links
 
-    def admit_pending_urls(self):
+    def admit_pending_urls(self, urls=None):
         """Recheck restored pending URLs before acquisition, preserving old evidence.
 
         The original state row also keeps repair provenance across batch limits:
@@ -438,7 +440,8 @@ class Archive:
         """
         observations = []
         rejected = [state for state in self.state.values()
-                    if state['outcome'] in {'pending', 'repaired_url'} and not allowed_url(state['url'])]
+                    if (urls is None or state['url'] in urls)
+                    and state['outcome'] in {'pending', 'repaired_url'} and not allowed_url(state['url'])]
         for state in rejected:
             links = self.seed_links({'url': state['url'], 'family': state['family']},
                                     publisher_link=True)

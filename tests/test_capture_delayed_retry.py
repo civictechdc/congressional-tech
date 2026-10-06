@@ -3,6 +3,8 @@ import asyncio
 from datetime import datetime, timezone
 import time
 
+import pytest
+
 from congress_api.acquisition.raw_sync import run_async
 from congress_api.retention.raw_archive import Archive
 from test_async_capture import receipts
@@ -86,3 +88,64 @@ def test_initial_population_leaves_old_failures_and_retained_replays_untouched()
     assert result['attempted'] == 2
     assert result['accounting']['url_outcomes'].get('pending', 0) == 0
     assert all(archive.state[url] == row for url, row in old.items())
+
+
+def test_targeted_retry_preserves_other_states_and_future_retries():
+    store = MemoryStore()
+    archive = Archive(store, 'targeted')
+    old = {}
+    for outcome in ['pending', 'retained', 'saved', 'http_error', 'html', 'size_limit',
+                    'empty', 'invalid_document', 'unverified', 'excluded_probe']:
+        url = f'https://example.gov/{outcome}.xml'
+        archive.seed({'url': url}, publisher_link=True)
+        archive.state[url].update(outcome=outcome, next_attempt_at=None)
+        old[url] = dict(archive.state[url])
+    for outcome in ['retry_later', 'request_failed']:
+        for due in [True, False]:
+            url = f'https://example.gov/{outcome}-{due}.xml'
+            archive.seed({'url': url}, publisher_link=True)
+            archive.state[url].update(outcome=outcome,
+                next_attempt_at='2020-01-01T00:00:00+00:00' if due else '2099-01-01T00:00:00+00:00')
+            if not due:
+                old[url] = dict(archive.state[url])
+            else:
+                # A stale retained response must not turn this recovery into a replay.
+                archive.state[url].update(body_key='must-not-replay', links_scanned=False)
+    calls = []
+    def fetch(url):
+        calls.append(url)
+        return response(url, b'<a href="https://example.gov/discovered.xml">new</a>', media='text/html')
+    result = asyncio.run(run_async(archive, [], fetch=fetch, workers=1,
+        retry_outcomes=['retry_later', 'request_failed']))
+    assert set(calls) == {'https://example.gov/retry_later-True.xml',
+                          'https://example.gov/request_failed-True.xml'}
+    assert result['attempted'] == result['fetch'] == 2
+    assert result['accounting']['retained_replays_completed'] == 0
+    assert result['retry_outcomes'] == ['request_failed', 'retry_later']
+    restored = Archive(store, 'check')
+    assert all(restored.state[url] == row for url, row in old.items())
+    assert restored.state['https://example.gov/discovered.xml']['outcome'] == 'pending'
+    assert {r['record']['requested_url'] for r in receipts(store)} == set(calls)
+
+
+def test_targeted_retry_keeps_delayed_retry_and_attempt_bounds():
+    archive = Archive(MemoryStore(), 'retry-selected')
+    url = 'https://example.gov/a.zip'
+    archive.seed({'url': url}, publisher_link=True)
+    archive.state[url].update(outcome='retry_later', next_attempt_at=None)
+    result = asyncio.run(run_async(archive, [], fetch=deferred, workers=1,
+        retry_outcomes=['retry_later'], limit=2))
+    assert result['attempted'] == result['retry_later'] == 2
+
+
+@pytest.mark.parametrize('options,seeds', [
+    ({'retry_outcomes': ['retained']}, []),
+    ({'retry_outcomes': ['retry_later'], 'initial_only': True}, []),
+    ({'retry_outcomes': ['request_failed']}, [{'url': 'https://example.gov/new.xml'}]),
+])
+def test_retry_selection_rejects_broader_work_without_writes(options, seeds):
+    store = MemoryStore()
+    archive = Archive(store, 'bad-retry')
+    with pytest.raises(ValueError, match='Retry selection'):
+        asyncio.run(run_async(archive, seeds, fetch=lambda _: pytest.fail('must not fetch'), **options))
+    assert not store.writes

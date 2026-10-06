@@ -12,6 +12,7 @@ import time
 import pyarrow.compute as pc
 
 from congress_api.models.content import RawContent
+from congress_api.parsers import archive_links
 from congress_api.parsers.archive_links import capture_links, inspect_capture
 from congress_api.retention.raw_archive import (
     BodyLimitExceeded, prepare_capture, body_payload, existing_body_info, metadata_body_keys,
@@ -59,7 +60,18 @@ async def run_async(
     archive, seeds, *, fetch=None, fetch_spooled=None, limit=5000, workers=8, max_seconds=5400,
     stop=None, max_bytes=64 * 1024**2, max_buffer_bytes=2 * 1024**3,
     download_workers=16, max_spool_bytes=2 * 1024**3, metadata_workers=3, initial_only=False,
+    retry_outcomes=(), urls=None, reinspect_retained=False,
 ):
+    retry_outcomes = frozenset(retry_outcomes)
+    urls = None if urls is None else frozenset(urls)
+    if urls is not None and any(not isinstance(url, str) or not url for url in urls):
+        raise ValueError('URL selection must contain nonempty strings')
+    if reinspect_retained and (urls is None or retry_outcomes or initial_only):
+        raise ValueError('Retained reinspection requires explicit URLs without retry or initial selection')
+    if reinspect_retained and any(not archive.state.get(url, {}).get('body_key') for url in urls):
+        raise ValueError('Every retained reinspection URL must have a retained body')
+    if retry_outcomes and (initial_only or not retry_outcomes <= {'retry_later', 'request_failed'}):
+        raise ValueError('Retry selection requires only retry_later/request_failed and no initial_only')
     # Reserve for a direct body plus the bounded Zyte response and decoded body.
     # After separation, retain only the actual distinct byte payload reservation.
     reservation = max_bytes * 3 + 1024**2
@@ -75,17 +87,31 @@ async def run_async(
         raise ValueError('Spool buffer must hold one maximum provider response')
     context = {}
     for item in seeds:
+        if retry_outcomes:
+            raise ValueError('Retry selection cannot add seeds')
+        if reinspect_retained:
+            raise ValueError('Retained reinspection cannot add seeds')
         for link in archive.seed_links(item, publisher_link=True):
             context.setdefault(link['url'], []).append(link)
-    for link in archive.admit_pending_urls():
+    for link in (() if retry_outcomes or reinspect_retained else archive.admit_pending_urls(urls)):
         if link not in context.get(link['url'], []):
             context.setdefault(link['url'], []).append(link)
     now = datetime.now(timezone.utc)
     queue = deque(sorted(
         (s for s in archive.state.values()
-         if (s['outcome'] == 'pending' if initial_only else s['outcome'] not in NON_DOWNLOAD_OUTCOMES)
-         and (not s.get('next_attempt_at') or datetime.fromisoformat(s['next_attempt_at']) <= now)),
+         if (urls is None or s['url'] in urls)
+         and (True if reinspect_retained else s['outcome'] in retry_outcomes if retry_outcomes else
+             s['outcome'] == 'pending' if initial_only else s['outcome'] not in NON_DOWNLOAD_OUTCOMES)
+         and (reinspect_retained or not s.get('next_attempt_at') or datetime.fromisoformat(s['next_attempt_at']) <= now)),
         key=lambda s: (s['outcome'] == 'retained', s.get('checked_at') or '', s['url'])))
+    refusals = []
+    for state in queue:
+        if not archive_links.allowed_url(state['url']):
+            refusals.append(dict(url=state['url'], previous_outcome=state['outcome'],
+                                 reason='outside_capture_scope'))
+            state.update(outcome='excluded_scope', next_attempt_at=None)
+    refused = {row['url'] for row in refusals}
+    queue = deque(state for state in queue if state['url'] not in refused)
     scheduled = {s['url'] for s in queue}
     delayed, retries = [], Counter()
     deadline = time.monotonic() + max_seconds
@@ -97,13 +123,14 @@ async def run_async(
     spool = _ByteBudget(max_spool_bytes, changed)
     submitted = downloading = 0
     fatal, collector_error = False, None
-    metadata = CaptureMetadata(archive.store, archive.run_id)
+    metadata = CaptureMetadata(archive.store, archive.run_id,
+        refresh_body_keys={state['body_key'] for state in queue} if reinspect_retained else ())
     archive.metadata = metadata
     loop = asyncio.get_running_loop()
     reader_slots = asyncio.Semaphore(metadata_workers)
 
     def acquire(state, before_read):
-        if state.get('body_key') and not state.get('links_scanned'):
+        if reinspect_retained or (not retry_outcomes and state.get('body_key') and not state.get('links_scanned')):
             try:
                 body = archive.body(state, max_bytes=max_bytes)
             except BodyLimitExceeded:
@@ -182,7 +209,8 @@ async def run_async(
             if (link.get('url_repair') and child and child['outcome'] == 'pending'
                     and link not in context.get(link['url'], [])):
                 context.setdefault(link['url'], []).append(link)
-            if child and child['outcome'] == 'pending' and child['url'] not in scheduled:
+            if (not retry_outcomes and not reinspect_retained and child and child['outcome'] == 'pending'
+                    and child['url'] not in scheduled and (urls is None or child['url'] in urls)):
                 queue.append(child)
                 scheduled.add(child['url'])
         if record.get('provider_http_status') in (401, 403):
@@ -305,8 +333,8 @@ async def run_async(
                         while (queue and not fatal and len(active) < workers and submitted < limit
                                and time.monotonic() < deadline and not (stop and stop.is_set())):
                             state = queue[0]
-                            spooled = fetch_spooled is not None and not (
-                                state.get('body_key') and not state.get('links_scanned'))
+                            spooled = fetch_spooled is not None and not reinspect_retained and (
+                                bool(retry_outcomes) or not (state.get('body_key') and not state.get('links_scanned')))
                             if spooled:
                                 if downloading >= download_workers or not spool.fits(spool_reservation):
                                     break
@@ -391,6 +419,10 @@ async def run_async(
         },
         attempted=submitted,
         initial_only=initial_only,
+        retry_outcomes=sorted(retry_outcomes),
+        selected_urls=sorted(urls) if urls is not None else None,
+        reinspect_retained=reinspect_retained,
+        admission_refusals=refusals,
         known_urls=len(archive.state),
         remaining=sum(
             s["outcome"] not in NON_DOWNLOAD_OUTCOMES

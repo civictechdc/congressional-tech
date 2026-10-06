@@ -1,5 +1,6 @@
 """Read explicit download links from supplied HTML; never fetch or guess URLs."""
 import re
+import ipaddress
 from urllib.parse import urljoin, urlsplit, urlunsplit
 
 from lxml import etree, html
@@ -26,11 +27,30 @@ def remove_dot_segments(path):
 
 
 def http_url(value, base=''):
+    # urlsplit silently removes control characters; do not repair an authority
+    # by deleting bytes. Spaces in publisher filenames remain valid path data.
+    if not isinstance(value, str) or re.search(r'[\x00-\x1f\x7f]', value + base):
+        return None
     try:
         url = urlsplit(urljoin(base, value))
-        if url.scheme in ('https', 'http') and url.hostname and not url.username and not url.password:
-            return urlunsplit(url._replace(path=remove_dot_segments(url.path), fragment=''))
-    except ValueError:
+        if url.scheme not in ('https', 'http') or not url.hostname or '@' in url.netloc:
+            return None
+        authority = url.netloc
+        if authority.startswith('['):
+            host, separator, tail = authority[1:].partition(']')
+            if not separator or '%' in host or ipaddress.ip_address(host).version != 6:
+                return None
+        else:
+            host, separator, port = authority.partition(':')
+            tail = ':' + port if separator else ''
+            host = host.encode('idna').decode('ascii').removesuffix('.')
+            if len(host) > 253 or not all(re.fullmatch(r'[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?', label)
+                                          for label in host.split('.')):
+                return None
+        if tail and (not re.fullmatch(r':[0-9]+', tail) or url.port is None):
+            return None
+        return urlunsplit(url._replace(path=remove_dot_segments(url.path), fragment=''))
+    except (ValueError, UnicodeError):
         pass
     return None
 

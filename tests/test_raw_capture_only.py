@@ -104,6 +104,30 @@ def test_initial_only_rejects_replay_or_non_acquisition_before_storage_access(tm
         execute(tmp_path, object(), '--initial-only', other)
 
 
+@pytest.mark.parametrize('extra', [[], ['--plan-only'], ['--rebuild-only'], ['--update-only'],
+    ['--capture-only', '--repair'], ['--capture-only', '--initial-only'],
+    ['--capture-only', '--seed', 'absent.json']])
+def test_retry_selector_rejects_other_modes_before_storage(tmp_path, extra):
+    with pytest.raises(SystemExit, match='--retry-outcome requires'):
+        execute(tmp_path, object(), '--retry-outcome', 'request_failed', *extra)
+
+
+def test_cli_targeted_retry_does_not_fetch_other_failures(tmp_path, worker):
+    store = MemoryStore()
+    archive = Archive(store, 'seed-retries')
+    for outcome in ['retry_later', 'request_failed', 'http_error']:
+        url = f'https://example.gov/{outcome}.pdf'
+        archive.seed({'url': url}, publisher_link=True)
+        archive.state[url].update(outcome=outcome, next_attempt_at=None)
+    archive.save()
+    result = execute(tmp_path, store, '--capture-only', '--fetcher-binary', worker,
+        '--retry-outcome', 'retry_later', '--retry-outcome', 'request_failed')
+    assert result['attempted'] == result['fetch'] == 2
+    assert result['retry_outcomes'] == ['request_failed', 'retry_later']
+    assert result['accounting']['url_outcomes']['http_error'] == 1
+    assert result['accounting']['retained_replays_completed'] == 0
+
+
 def test_capture_failure_preserves_catalog_and_reports_acquisition_failure(tmp_path):
     store = MemoryStore()
     execute(tmp_path, store, '--rebuild-only')

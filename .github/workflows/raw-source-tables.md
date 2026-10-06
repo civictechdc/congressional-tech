@@ -29,6 +29,13 @@ failures and retained-body replays for an explicit later operation. New links
 remain part of the initial population. Set it false only for a deliberate retry
 or replay run; `repair` is incompatible with initial-only acquisition.
 
+For a targeted local recovery pass, use `--capture-only --retry-outcome retry_later
+--retry-outcome request_failed`. This selects only due URLs in those categories,
+honors their recorded retry times, and preserves the usual per-run retry bounds.
+It fetches those URLs again without replaying retained bodies. Newly discovered
+links are saved as pending for a separate initial pass. It cannot be combined with
+`--initial-only`, `--repair`, or seed files.
+
 Before fetching, capture rechecks saved pending URLs. It can recover the explicit
 GPO document URL inside a LIS `/cgi-lis/t2GPO/` wrapper, or split concatenated
 complete file URLs when every part independently passes the usual scope checks.
@@ -315,3 +322,28 @@ pair, preserving duplicate counts. Linux aggregate process
 memory is sampled across worker children; other platforms report parent memory
 and leave the aggregate budget unqualified. Below 8 GiB for a full Linux
 metadata rebuild remains a target until that full run is executed and retained.
+### Targeted local recovery
+
+`raw-source-sync --capture-only --urls urls.json` restricts scheduling to an
+explicit JSON array of source URLs. The complete archive state still loads and
+is checkpointed. Discovered off-list links remain pending. Combine this with
+`--retry-outcome retry_later --retry-outcome request_failed` for due network
+retries; malformed legacy URLs are refused before dispatch and listed in the
+summary without counting them as downloads.
+
+`--reinspect-retained --urls urls.json --capture-only` instead validates only
+those retained bodies, even if they were previously inspected. It starts no
+source HTTP worker and appends new readings without replacing old metadata.
+Every selected URL must already have a body. It cannot be combined with seeds,
+repair, initial-only or retry-outcome selection.
+
+Static PNG and JPEG validation uses Pillow, records its version in new metadata
+fingerprints, verifies structure, and decodes pixels in a disposable process.
+Reader bounds are 16 MiB input, 16 million pixels, 5 CPU seconds and 10 elapsed
+seconds; compressed PNG text is bounded separately. Linux also applies a 512 MiB
+address-space limit. Animated images remain unsupported. These reader bounds do
+not raise the capture's 64 MiB file cap. Catalog refreshes cannot reactivate an
+excluded generated probe without an independent publisher link to that URL.
+The catalog retains image format identity separately from capture validity, so
+invalid image bytes remain represented without decoding pixels again or
+interrupting a rebuild.

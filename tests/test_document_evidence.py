@@ -296,3 +296,22 @@ def test_missing_marker_keeps_capture_state_but_is_not_cached_as_completed():
                                      extract=lambda _: {}, cached=cached)[0]
     assert second['cache_marker_state'] == ['empty']
     assert ('marker', 'missing') in cached
+
+
+@pytest.mark.parametrize(('data', 'kind'), [
+    (b'\x89PNG\r\n\x1a\ntruncated', 'png'),
+    (b'\xff\xd8\xfftruncated', 'jpeg'),
+])
+def test_invalid_image_keeps_failure_evidence_without_aborting_catalog(tmp_path, data, kind):
+    source = retained(tmp_path, 'opaque-image', data,
+                      capture_outcome=['invalid_document'], response_usable=['false'])
+    sources, _ = build(tmp_path, [source])
+    row, = sources
+    assert row['body_key'] == source['body_key']
+    assert row['body_format'] == [kind]  # Format identity does not mean usable bytes.
+    assert row['record_role'] == ['error-response']
+    assert row['response_usable'] == ['false']
+    before = pq.read_table(selected_path(tmp_path / 'indexes/document-filenames.parquet'))
+    replay, _ = build(tmp_path, [source], previous=before,
+                      read_body=lambda _: pytest.fail('Known format should reuse retained facts'))
+    assert replay == sources

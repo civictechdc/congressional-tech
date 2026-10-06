@@ -73,6 +73,12 @@ def parser():
     p.add_argument("--workers", type=positive, default=80)
     p.add_argument("--initial-only", action="store_true",
                    help="Admit only pending URLs and their in-run retries; leave historical failures and retained replays alone")
+    p.add_argument("--retry-outcome", action="append", choices=("retry_later", "request_failed"), default=[],
+                   help="Retry only due URLs with this outcome; repeat for both. Requires --capture-only; discovered links stay pending")
+    p.add_argument("--urls", type=Path,
+                   help="JSON array of exact URLs eligible for this capture; other state remains checkpointed")
+    p.add_argument("--reinspect-retained", action="store_true",
+                   help="Read only the selected retained bodies, appending new readings without source HTTP; requires --urls")
     p.add_argument("--index-workers", type=positive, default=2)
     p.add_argument("--max-seconds", type=positive, default=5400)
     p.add_argument("--max-file-mib", type=positive, default=64)
@@ -121,6 +127,22 @@ def capture_sources(args, store, run_id):
     previous_handlers = {sig: signal.signal(sig, lambda *_: stop.set())
                          for sig in (signal.SIGTERM, signal.SIGINT)}
     try:
+        options = dict(
+            limit=args.limit, workers=args.workers, max_seconds=args.max_seconds,
+            max_bytes=args.max_file_mib * 1024**2, stop=stop,
+            max_buffer_bytes=args.max_buffer_mib * 1024**2,
+            download_workers=args.download_workers, max_spool_bytes=args.max_spool_mib * 1024**2,
+            metadata_workers=args.metadata_workers, initial_only=args.initial_only,
+            retry_outcomes=args.retry_outcome, urls=args.selected_urls,
+            reinspect_retained=args.reinspect_retained,
+        )
+        if args.reinspect_retained:
+            def no_fetch(url):
+                raise RuntimeError('Source HTTP is disabled during retained reinspection')
+            summary = run_sync(archive, (), fetch=no_fetch, **options)
+            summary.update(fetcher='retained', http_requests=0, file_dispatches=0)
+            summary['accounting'].update(native_request_dispatches=0, file_dispatches=0)
+            return summary
         with RustFetcher(
             args.fetcher_binary, files_per_second=args.files_per_second,
             workers=args.workers, max_bytes=args.max_file_mib * 1024**2,
@@ -128,11 +150,7 @@ def capture_sources(args, store, run_id):
         ) as fetcher:
             summary = run_sync(
                 archive, seed_files(args.seed), fetch_spooled=partial(fetcher.fetch_spooled, transport=args.transport),
-                limit=args.limit, workers=args.workers, max_seconds=args.max_seconds,
-                max_bytes=args.max_file_mib * 1024**2, stop=stop,
-                max_buffer_bytes=args.max_buffer_mib * 1024**2,
-                download_workers=args.download_workers, max_spool_bytes=args.max_spool_mib * 1024**2,
-                metadata_workers=args.metadata_workers, initial_only=args.initial_only,
+                **options,
             )
         summary.update(fetcher="reqwest", files_per_second=args.files_per_second,
                        request_timeout_seconds=args.request_timeout_seconds,
@@ -212,6 +230,18 @@ def connect_storage(args, log):
 
 
 def run(args, log, *, store=None):
+    if args.urls and (not args.capture_only or args.repair or args.seed):
+        raise SystemExit('--urls requires --capture-only without --repair or --seed')
+    if args.reinspect_retained and (not args.urls or args.retry_outcome or args.initial_only):
+        raise SystemExit('--reinspect-retained requires --urls without --retry-outcome or --initial-only')
+    args.selected_urls = None
+    if args.urls:
+        args.selected_urls = json.loads(args.urls.read_text())
+        if not isinstance(args.selected_urls, list) or any(
+                not isinstance(url, str) or not url for url in args.selected_urls):
+            raise SystemExit('--urls must contain a JSON array of nonempty URL strings')
+    if args.retry_outcome and (not args.capture_only or args.initial_only or args.repair or args.seed):
+        raise SystemExit("--retry-outcome requires --capture-only without --initial-only, --repair or --seed")
     if args.initial_only and (args.repair or args.rebuild_only or args.update_only or args.plan_only):
         raise SystemExit("--initial-only requires acquisition without --repair")
     if args.capture_only and args.inspect_bodies:
@@ -219,7 +249,7 @@ def run(args, log, *, store=None):
     if store is None:
         store = connect_storage(args, log)
     metadata_only = args.rebuild_only or args.update_only
-    if not args.plan_only and not metadata_only and args.transport in {"auto", "zyte"}:
+    if not args.plan_only and not metadata_only and not args.reinspect_retained and args.transport in {"auto", "zyte"}:
         zyte.token()
     run_id = (
         datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + uuid4().hex[:12]

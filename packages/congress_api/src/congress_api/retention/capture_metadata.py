@@ -176,7 +176,7 @@ class MetadataWriter:
 class CaptureMetadata:
     """Extract once per body, keeping only completed identities in memory."""
 
-    def __init__(self, store, run_id, *, inspect=inspect_document, **writer_options):
+    def __init__(self, store, run_id, *, inspect=inspect_document, refresh_body_keys=(), **writer_options):
         self.inspect = inspect
         self.writer = MetadataWriter(store, run_id, **writer_options)
         self.fingerprint = sha256((evidence_fingerprint() + Path(__file__).read_text()).encode()).hexdigest()
@@ -188,6 +188,9 @@ class CaptureMetadata:
             for batch in file.iter_batches(columns=['body_key'], batch_size=4096):
                 self.seen.update(batch.column(0).to_pylist())
         self.counts = Counter()
+        # Explicit retained-body validation appends a new reading without
+        # deleting any old part or refreshing unrelated bodies.
+        self.seen.difference_update(refresh_body_keys)
 
     def record(self, data, body_key):
         if body_key in self.seen:

@@ -12,6 +12,7 @@ from congress_api.models.content import content_bytes
 from congress_api.parsers.senate import parse_page as parse_senate_page
 from congress_api.parsers.pdf_tools import readable_pdf
 from congress_api.parsers.file_wrapper import regular_file
+from congress_api.parsers.image_tools import image_kind, image_info, ImageReadError
 
 from congress_api.parsers.document_links import (
     document_links,
@@ -314,6 +315,12 @@ def inspect_body(body, url, media):
         return "challenge", "html"
     if media.lower().startswith(("video/", "audio/")):
         return "excluded_media", kind
+    if image := image_kind(body):
+        try:
+            image_info(body)
+        except ImageReadError:
+            return 'invalid_document', image
+        return 'saved', image
     if kind == "pdf":
         return ("saved" if b"%%EOF" in body[-8192:] or readable_pdf(body)
                 else "invalid_document"), kind
