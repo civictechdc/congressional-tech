@@ -217,7 +217,12 @@ def test_recurring_catalog_replays_old_consumed_receipts_and_new_attempts(tmp_pa
     for path in (FILENAMES, DOCUMENTS, 'receipts.jsonl.gz'):
         store.objects[path] = selected_path(tmp_path / path).read_bytes()
     captures = pa.Table.from_pylist(pq.read_table(selected_path(tmp_path / 'indexes/captures.parquet')).to_pylist(), schema=CAPTURE_SCHEMA)
-    rebuild_catalog(store, captures, workers=1, inspect_bodies=True)
+    # The legacy cursor has no digest. Replaying it requires explicit repair.
+    before = dict(store.objects)
+    with pytest.raises(ValueError, match='checkpoint digest mismatch'):
+        rebuild_catalog(store, captures, workers=1, inspect_bodies=True)
+    assert store.objects == before
+    rebuild_catalog(store, captures, workers=1, inspect_bodies=True, repair=True)
     from test_raw_catalog import table
     first = table(store)
     assert first.to_pylist()[0]['source_probe_status'] == ['not_found']

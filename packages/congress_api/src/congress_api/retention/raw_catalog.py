@@ -24,7 +24,7 @@ from congress_api.retention.catalog_publication import read_catalog, publish_cat
 from congress_api.retention.document_evidence import read_retained_body
 from congress_api.retention.document_recovery import recover_sources, recovery_fingerprint
 from congress_api.retention.catalog_cache import (
-    capture_digest, source_fingerprint,
+    capture_digest, capture_digest_matches, source_fingerprint,
 )
 from congress_api.retention.raw_archive import CAPTURES_KEY, CAPTURE_SCHEMA, decode_table
 
@@ -81,8 +81,12 @@ def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies,
     seed_digest = sha256(json.dumps(seeds, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
     fingerprint = source_fingerprint()
     cursor = int(meta.get(b'raw_capture_rows', b'0'))
-    reusable = (not repair and previous is not None and 0 <= cursor <= capture_rows
-                and meta.get(b'capture_digest') == capture_digest(captures.slice(0, cursor)).encode())
+    checkpoint = b'raw_capture_rows' in meta or b'capture_digest' in meta
+    reusable = (not repair and previous is not None and b'raw_capture_rows' in meta and 0 <= cursor <= capture_rows
+                and capture_digest_matches(captures.slice(0, cursor), meta.get(b'capture_digest')))
+    if checkpoint and not repair and not reusable:
+        raise ValueError('Catalog capture checkpoint digest mismatch or invalid cursor; verify legacy checkpoints '
+                         'with their original PyArrow writer, or explicitly rebuild after investigation')
     deferred_sources = set(json.loads(meta.get(b'deferred_source_bodies', b'[]'))) if reusable else set()
     if (reusable and not deferred_sources
             and (not inspect_bodies or meta.get(b'body_inspection') == b'true'

@@ -2350,7 +2350,8 @@ def refresh_filename_metadata(root, *, workers=4, inspect_bodies=False, repair=F
     )
     return write_filename_metadata(root, rows, workers=workers, previous=source, reuse_results=not repair, inspect_bodies=inspect_bodies, publication_snapshot=snapshot, previous_documents=snapshot.documents, metadata={
         key.decode(): value.decode() for key, value in (source.schema_arrow.metadata or {}).items()
-        if key in {b'raw_capture_rows', b'retained_recovery_fingerprint'}})
+        if key in {b'raw_capture_rows', b'capture_digest', b'seed_digest', b'deferred_source_bodies',
+                   b'source_fingerprint', b'retained_recovery_fingerprint'}})
 
 
 def reindex_documents(root):

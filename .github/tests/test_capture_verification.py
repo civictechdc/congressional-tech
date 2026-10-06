@@ -12,7 +12,7 @@ import pytest
 
 from congress_api.models.content import RawContent
 from congress_api.retention.capture_metadata import MetadataWriter, PREFIX
-from congress_api.retention.catalog_cache import capture_digest
+from congress_api.retention.catalog_cache import capture_digest, legacy_capture_digest
 from congress_api.retention.raw_archive import Archive, CAPTURE_SCHEMA, encode_table
 
 
@@ -262,4 +262,17 @@ def test_retained_local_checkpoint_digest_survives_ci_reader():
     table = pq.read_table(path)
     assert len(table) == 3
     assert table.schema.equals(CAPTURE_SCHEMA, check_metadata=False)
-    assert capture_digest(table) == '66290a18d1000a475414221adc13259a347b3d6998623aed122ce79f313f2358'
+    assert legacy_capture_digest(table) == '66290a18d1000a475414221adc13259a347b3d6998623aed122ce79f313f2358'
+
+
+def test_legacy_checkpoint_verifies_without_migration(checkpoint):
+    store, summary = checkpoint
+    captures = pq.read_table(pa.BufferReader(store.objects['indexes/captures.parquet']))
+    state = pq.read_table(pa.BufferReader(store.objects['indexes/download-state.parquet']))
+    metadata = dict(state.schema.metadata)
+    metadata[b'capture_digest'] = legacy_capture_digest(captures).encode()
+    store.objects['indexes/download-state.parquet'] = encode_table(state.replace_schema_metadata(metadata))
+    before = dict(store.objects)
+    writes = list(store.writes)
+    assert verifier.verify_run(store, summary)['verified']
+    assert store.objects == before and store.writes == writes

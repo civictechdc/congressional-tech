@@ -7,7 +7,9 @@ bodies never create result rows. All source bytes and receipts remain authoritat
 
 from hashlib import sha256
 from pathlib import Path
+import json
 import os
+import re
 from itertools import islice
 import tempfile
 import time
@@ -114,7 +116,29 @@ def result_checkpoint(store, name, fingerprint, keys, results, *, interval=60, c
 
 
 def capture_digest(table):
-    """Check an append-only prefix, independent of Arrow's input chunk boundaries."""
+    """Versioned logical rows: independent of Parquet encoding and Arrow chunks.
+
+    Capture columns contain strings and integers. Include ordered field names,
+    types and nullability, then one JSON array per row. Ignore schema metadata;
+    it describes the checkpoint, not the captured evidence.
+    """
+    digest = sha256(b'capture-rows-v1\n')
+
+    def add(value):
+        digest.update(json.dumps(value, ensure_ascii=True, allow_nan=False,
+                                 separators=(',', ':')).encode('ascii'))
+        digest.update(b'\n')
+
+    add([[field.name, str(field.type), field.nullable] for field in table.schema])
+    add(len(table))
+    for batch in table.to_batches(max_chunksize=4096):
+        for row in zip(*(column.to_pylist() for column in batch.columns)):
+            add(row)
+    return 'rows-v1:' + digest.hexdigest()
+
+
+def legacy_capture_digest(table):
+    """Verify old checkpoints with their original, pinned Parquet writer only."""
     digest = sha256()
     for offset in range(0, len(table), 4096):
         batch = table.slice(offset, 4096).combine_chunks().to_batches()[0]
@@ -122,6 +146,22 @@ def capture_digest(table):
             encode_table(pa.Table.from_batches([batch]).replace_schema_metadata(None))
         )
     return digest.hexdigest()
+
+
+def capture_digest_matches(table, expected):
+    """Accept a verified legacy checkpoint; all subsequent writes use rows-v1.
+
+    A legacy writer mismatch never authorizes replay or bypasses verification.
+    Keep the archive's PyArrow pin until legacy checkpoints have been replaced
+    by successful, explicitly requested capture/update operations.
+    """
+    if not isinstance(expected, bytes):
+        return False
+    if expected.startswith(b'rows-v1:'):
+        return expected == capture_digest(table).encode()
+    if re.fullmatch(rb'[0-9a-f]{64}', expected):
+        return expected == legacy_capture_digest(table).encode()
+    return False
 
 
 def source_fingerprint():

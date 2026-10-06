@@ -51,19 +51,19 @@ def test_replay_migration_receipts_and_native_house_xml_without_bootstrap():
                for o in row['source_occurrences'])
 
 
-def test_unchanged_capture_replays_current_senate_interpretation(tmp_path):
+def test_explicit_rebuild_replays_current_senate_interpretation(tmp_path):
     store = initialize(tmp_path)
     page = 'https://www.foreign.senate.gov/hearings/example'
     url = 'https://www.foreign.senate.gov/opaque.pdf'
     retain(store, {}, family='senate/pages', source_file='page.html', url=page,
            body=b'<html><h2>Hearing Transcript</h2><a href="/opaque.pdf">Download</a></html>')
-    # A previous interpretation and cursor must not suppress source replay.
+    # An explicit rebuild may reinterpret a legacy cursor-only catalog.
     index.write_filename_metadata(tmp_path, [dict(body_key=None, filename='opaque.pdf', source_url=url,
         source_document_type=['other'], source_document_type_basis=['senate_parser_fallback'])], workers=1,
         metadata={'raw_capture_rows': '1'})
     for key in (FILENAMES, DOCUMENTS):
         store.objects[key] = selected_path(tmp_path / key).read_bytes()
-    rebuild_catalog(store, table(store, CAPTURES_KEY), workers=1)
+    rebuild_catalog(store, table(store, CAPTURES_KEY), workers=1, repair=True)
     row = next(r for r in table(store).to_pylist() if r['source_url'] == url)
     assert row['document_kind'] == ['transcript']
     assert 'other' not in row['source_document_type']

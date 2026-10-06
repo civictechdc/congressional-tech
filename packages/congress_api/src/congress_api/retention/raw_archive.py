@@ -1,8 +1,10 @@
 """Content-addressed bodies, immutable receipt batches, and replaceable indexes.
 
 The caller supplies object storage. Receipts are the recovery log: bodies reach
-storage before receipts; state reaches storage before the capture index. If an
-index write fails, the next run replays receipts absent from the capture index.
+storage before receipts; state reaches storage before the capture index. With a
+valid checkpoint, the next run recovers unindexed receipts. An interrupted index
+pair or mismatching checkpoint requires explicit repair after investigation;
+receipts preserve the evidence needed to repair without refetching.
 """
 
 from datetime import datetime, timedelta, timezone
@@ -244,9 +246,13 @@ class Archive:
         saved_metadata = (saved_table.schema.metadata or {}) if saved_table is not None else {}
         saved_state = {r['url']: r for r in saved_table.to_pylist()} if saved_table is not None else {}
         cursor = int(saved_metadata.get(b'capture_rows', b'0'))
-        from congress_api.retention.catalog_cache import capture_digest
-        resumed = (not repair and 0 <= cursor <= len(self.captures) and saved_metadata.get(b'capture_digest')
-                   == capture_digest(self.captures.slice(0, cursor)).encode())
+        from congress_api.retention.catalog_cache import capture_digest_matches
+        checkpoint = b'capture_rows' in saved_metadata or b'capture_digest' in saved_metadata
+        resumed = (not repair and b'capture_rows' in saved_metadata and 0 <= cursor <= len(self.captures)
+                   and capture_digest_matches(self.captures.slice(0, cursor), saved_metadata.get(b'capture_digest')))
+        if checkpoint and not repair and not resumed:
+            raise ValueError('Capture checkpoint digest mismatch or invalid cursor; verify legacy checkpoints '
+                             'with their original PyArrow writer, or explicitly repair after investigation')
         if not resumed:
             cursor = 0
         self.additions, self.body_info, self.state = [], {}, dict(saved_state)

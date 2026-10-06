@@ -362,7 +362,7 @@ def test_pipeline_seed_shapes_retain_context_and_all_xml_variants():
     assert all(link["context"]["committees"] == raw["committees"] for link in links)
 
 
-def test_s3_failure_after_state_write_recovers_capture_index_without_refetch():
+def test_s3_failure_after_state_write_requires_explicit_repair_without_refetch():
     class FailIndexOnce(MemoryStore):
         failed = False
 
@@ -381,8 +381,12 @@ def test_s3_failure_after_state_write_recovers_capture_index_without_refetch():
             fetch=lambda u: response(u, b"%PDF-1.7\n%%EOF"),
             limit=1,
         )
+    before = dict(store.objects)
+    with pytest.raises(ValueError, match='checkpoint digest mismatch or invalid cursor'):
+        Archive(store, 'unverified')
+    assert store.objects == before
     run_sync(
-        Archive(store, "recovered"),
+        Archive(store, "recovered", repair=True),
         [],
         fetch=lambda _: pytest.fail("Published receipt should recover"),
         limit=1,
@@ -574,7 +578,13 @@ def test_recovery_at_each_acquisition_write_boundary(failed_prefix, receipt_dura
     def retry(u):
         calls.append(u)
         return response(u, b'%PDF-1.7\n%%EOF')
-    run_sync(Archive(store, 'recovered'), [{'url': url}], fetch=retry, workers=1)
+    interrupted_pair = failed_prefix == 'indexes/captures.parquet'
+    if interrupted_pair:
+        before = dict(store.objects)
+        with pytest.raises(ValueError, match='checkpoint digest mismatch or invalid cursor'):
+            Archive(store, 'unverified')
+        assert store.objects == before
+    run_sync(Archive(store, 'recovered', repair=interrupted_pair), [{'url': url}], fetch=retry, workers=1)
     assert calls == ([] if receipt_durable else [url])
     assert Archive(store, 'check').state[url]['outcome'] == 'saved'
     # A body-only orphan is safe to reuse, but cannot replace missing provenance.

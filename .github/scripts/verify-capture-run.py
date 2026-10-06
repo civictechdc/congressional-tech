@@ -15,7 +15,7 @@ import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
 from congress_api.retention.capture_metadata import PREFIX, RESULT_COLUMNS, SCHEMA as METADATA_SCHEMA
-from congress_api.retention.catalog_cache import capture_digest
+from congress_api.retention.catalog_cache import capture_digest_matches
 from congress_api.retention.raw_archive import CAPTURE_SCHEMA, STATE_SCHEMA
 from congress_api.retention.r2 import R2Store
 
@@ -84,7 +84,7 @@ def verify_run(store, summary):
     require(state_file.schema_arrow.equals(STATE_SCHEMA, check_metadata=False), 'Unexpected state schema')
     checkpoint = state_file.schema_arrow.metadata or {}
     require(checkpoint.get(b'capture_rows') == str(len(captures)).encode(), 'Capture checkpoint row count mismatch')
-    require(checkpoint.get(b'capture_digest') == capture_digest(captures).encode(),
+    require(capture_digest_matches(captures, checkpoint.get(b'capture_digest')),
             'Capture checkpoint digest mismatch')
     rows = captures.filter(pc.equal(captures['source_file'], source)).to_pylist()
     indexed = defaultdict(list)
