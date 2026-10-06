@@ -231,3 +231,113 @@ def test_async_read_checks_length_and_closes_stream(length):
                 stub.assert_no_pending_responses()
 
     asyncio.run(check())
+
+
+@pytest.mark.parametrize('error_name', ['ReadTimeoutError', 'ResponseStreamingError', 'IncompleteReadError'])
+@pytest.mark.parametrize('recover', [True, False])
+def test_stream_read_retry_closes_partial_bodies_and_only_keeps_complete_etag(error_name, recover, monkeypatch):
+    from botocore.config import Config
+    from botocore import exceptions
+
+    errors = {
+        'ReadTimeoutError': lambda: exceptions.ReadTimeoutError(endpoint_url=None, error='timeout'),
+        'ResponseStreamingError': lambda: exceptions.ResponseStreamingError(error='reset'),
+        'IncompleteReadError': lambda: exceptions.IncompleteReadError(actual_bytes=1, expected_bytes=4),
+    }
+    class FailedStream(io.BytesIO):
+        def read(self, *args):
+            super().read(1)
+            raise errors[error_name]()
+
+    c = boto3.client('s3', endpoint_url='https://r2.example.test', region_name='auto',
+                     aws_access_key_id='test', aws_secret_access_key='test',
+                     config=Config(retries={'total_max_attempts': 6}))
+    key = 'indexes/test.parquet'
+    streams = [FailedStream(b'part'), FailedStream(b'part'),
+               io.BytesIO(b'whole') if recover else FailedStream(b'part')]
+    sleeps = []
+    monkeypatch.setattr('congress_api.retention.r2.time.sleep', sleeps.append)
+    with Stubber(c) as stub:
+        for i, stream in enumerate(streams):
+            stub.add_response('get_object', {'Body': stream, 'ContentLength': 5, 'ETag': f'"etag-{i}"'},
+                              {'Bucket': 'archive', 'Key': key})
+        store = R2Store(c, 'archive')
+        store.index_etags[key] = '"previous-complete"'
+        if recover:
+            assert store.read(key) == b'whole'
+            assert store.index_etags[key] == '"etag-2"'
+        else:
+            with pytest.raises(getattr(exceptions, error_name)):
+                store.read(key)
+            assert store.index_etags[key] == '"previous-complete"'
+        assert all(s.closed for s in streams)
+        assert len(sleeps) == 2 and 1 <= sleeps[0] < 2 and 2 <= sleeps[1] < 3
+        stub.assert_no_pending_responses()
+
+
+@pytest.mark.parametrize('failure', ['integrity', 'length', 'sdk'])
+def test_stream_retries_do_not_hide_other_failures(failure, monkeypatch):
+    from botocore.config import Config
+    from botocore.exceptions import ClientError
+
+    class BadStream(io.BytesIO):
+        def read(self, *args):
+            raise ValueError('checksum mismatch')
+
+    c = boto3.client('s3', endpoint_url='https://r2.example.test', region_name='auto',
+                    aws_access_key_id='test', aws_secret_access_key='test',
+                    config=Config(retries={'total_max_attempts': 6}))
+    key = 'indexes/test.parquet'
+    sleeps = []
+    monkeypatch.setattr('congress_api.retention.r2.time.sleep', sleeps.append)
+    with Stubber(c) as stub:
+        if failure == 'sdk':
+            stub.add_client_error('get_object', service_error_code='ServiceUnavailable', http_status_code=503,
+                                  expected_params={'Bucket': 'archive', 'Key': key})
+        else:
+            stream = BadStream(b'part') if failure == 'integrity' else io.BytesIO(b'part')
+            stub.add_response('get_object', {'Body': stream, 'ContentLength': 5, 'ETag': '"incomplete"'},
+                              {'Bucket': 'archive', 'Key': key})
+        store = R2Store(c, 'archive')
+        with pytest.raises(ClientError if failure == 'sdk' else ValueError):
+            store.read(key)
+        assert key not in store.index_etags and not sleeps
+        if failure != 'sdk':
+            assert stream.closed
+        stub.assert_no_pending_responses()
+
+
+def test_capture_metadata_startup_survives_an_interrupted_saved_part(monkeypatch):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from botocore.config import Config
+    from botocore.exceptions import ReadTimeoutError
+    from congress_api.retention.capture_metadata import CaptureMetadata, PREFIX, SCHEMA
+
+    row = dict(body_key='bodies/sha256/aa/saved.gz', parser_fingerprint='original', status='completed')
+    output = pa.BufferOutputStream()
+    pq.write_table(pa.Table.from_pylist([row], schema=SCHEMA), output)
+    payload = output.getvalue().to_pybytes()
+    class FailedStream(io.BytesIO):
+        def read(self, *args):
+            raise ReadTimeoutError(endpoint_url=None, error='interrupted saved part')
+    failed = FailedStream(b'partial')
+    complete = io.BytesIO(payload)
+    c = boto3.client('s3', endpoint_url='https://r2.example.test', region_name='auto',
+                    aws_access_key_id='test', aws_secret_access_key='test',
+                    config=Config(retries={'total_max_attempts': 6}))
+    monkeypatch.setattr('congress_api.retention.r2.time.sleep', lambda _: None)
+    key = PREFIX + 'previous/0001.parquet'
+    with Stubber(c) as stub:
+        stub.add_response('list_objects_v2', {'Contents': [{'Key': key}], 'IsTruncated': False},
+                          {'Bucket': 'archive', 'Prefix': PREFIX})
+        for stream in (failed, complete):
+            stub.add_response('get_object', {'Body': stream, 'ContentLength': len(payload), 'ETag': '"saved"'},
+                              {'Bucket': 'archive', 'Key': key})
+        stub.add_client_error('get_object', service_error_code='NoSuchKey', http_status_code=404,
+                              expected_params={'Bucket': 'archive', 'Key': 'indexes/processing/bodies.parquet'})
+        metadata = CaptureMetadata(R2Store(c, 'archive'), 'new-run')
+        assert metadata.seen == {row['body_key']}
+        assert not metadata.counts
+        assert failed.closed and complete.closed
+        stub.assert_no_pending_responses()

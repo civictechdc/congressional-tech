@@ -15,6 +15,25 @@ from email.utils import parsedate_to_datetime
 LOGGER = logging.getLogger(__name__)
 
 
+def _stream_read_attempts(client):
+    # SDK retries stop when GetObject returns its headers. Body consumption
+    # needs its own bound: at most three complete reads, each with SDK retries.
+    # Respect explicitly disabled retries and clients with no explicit budget.
+    return min(3, client.meta.config.retries.get('total_max_attempts', 1))
+
+
+def _stream_retry_delay(client, key, response, error, attempt):
+    maximum = _stream_read_attempts(client)
+    delay = 2 ** (attempt - 1) + random.random() if attempt < maximum else None
+    metadata = response.get('ResponseMetadata', {})
+    LOGGER.warning(json.dumps(dict(
+        event='r2_stream_read_error', key=key, error_type=type(error).__name__,
+        request_id=metadata.get('RequestId'), attempt=attempt,
+        max_attempts=maximum, retry_delay_seconds=delay,
+    ), sort_keys=True))
+    return delay
+
+
 def _throttle_delay(headers, attempt, now):
     """Back off at least a second; refuse a server wait beyond one minute."""
     value = headers.get('retry-after', '')
@@ -107,12 +126,23 @@ class AsyncBodies:
         return True
 
     async def read(self, key):
-        response = await self.client.get_object(Bucket=self.bucket, Key=key)
-        async with response['Body'] as stream:
-            data = await stream.read()
-        if len(data) != response['ContentLength']:
-            raise ValueError(f'Incomplete stored object: {key}')
-        return data
+        from aiohttp import ClientPayloadError
+        from botocore.exceptions import IncompleteReadError, ReadTimeoutError, ResponseStreamingError
+
+        for attempt in range(1, _stream_read_attempts(self.client) + 1):
+            response = await self.client.get_object(Bucket=self.bucket, Key=key)
+            try:
+                async with response['Body'] as stream:
+                    data = await stream.read()
+            except (ReadTimeoutError, ResponseStreamingError, IncompleteReadError, ClientPayloadError) as error:
+                delay = _stream_retry_delay(self.client, key, response, error, attempt)
+                if delay is None:
+                    raise
+                await asyncio.sleep(delay)
+                continue
+            if len(data) != response['ContentLength']:
+                raise ValueError(f'Incomplete stored object: {key}')
+            return data
 
 
 class R2Store:
@@ -132,23 +162,32 @@ class R2Store:
                 yield AsyncBodies(client, self.bucket)
 
     def read(self, key):
-        from botocore.exceptions import ClientError
+        from botocore.exceptions import ClientError, IncompleteReadError, ReadTimeoutError, ResponseStreamingError
 
-        try:
-            response = self.client.get_object(Bucket=self.bucket, Key=key)
-        except ClientError as error:
-            if error.response["Error"]["Code"] in {"NoSuchKey", "404"}:
-                if key.startswith("indexes/"):
-                    self.index_etags[key] = None
-                return None
-            raise
-        if key.startswith("indexes/"):
-            self.index_etags[key] = response["ETag"]
-        with closing(response["Body"]) as stream:
-            data = stream.read()
-        if len(data) != response["ContentLength"]:
-            raise ValueError(f"Incomplete stored object: {key}")
-        return data
+        for attempt in range(1, _stream_read_attempts(self.client) + 1):
+            try:
+                response = self.client.get_object(Bucket=self.bucket, Key=key)
+            except ClientError as error:
+                if error.response["Error"]["Code"] in {"NoSuchKey", "404"}:
+                    if key.startswith("indexes/"):
+                        self.index_etags[key] = None
+                    return None
+                raise
+            try:
+                with closing(response["Body"]) as stream:
+                    data = stream.read()
+            except (ReadTimeoutError, ResponseStreamingError, IncompleteReadError) as error:
+                delay = _stream_retry_delay(self.client, key, response, error, attempt)
+                if delay is None:
+                    raise
+                time.sleep(delay)
+                continue
+            if len(data) != response["ContentLength"]:
+                raise ValueError(f"Incomplete stored object: {key}")
+            # Only a complete read can authorize a later conditional write.
+            if key.startswith("indexes/"):
+                self.index_etags[key] = response["ETag"]
+            return data
 
     def put(self, key, body, *, immutable=False):
         from botocore.exceptions import ClientError
