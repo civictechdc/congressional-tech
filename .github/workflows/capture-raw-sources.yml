@@ -200,6 +200,7 @@ jobs:
           .github/tests/test_capture_verification.py .github/tests/test_capture_memory_guard.py .github/tests/test_capture_source_manifest.py
           tests/test_document_filename_index.py tests/test_document_filename_viewer.py
           tests/test_congress_api_imports.py tests/test_document_link_probe.py
+          tests/test_committee_download_wrappers.py
           tests/test_rust_fetch.py
           tests/test_rust_fetch_retry.py tests/test_capture_delayed_retry.py
           tests/test_archive_members.py tests/test_archive_member_capture.py tests/test_archive_member_catalog.py

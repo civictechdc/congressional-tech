@@ -1,5 +1,5 @@
 """Resolve one download using saved responses or bounded injected GETs."""
-from congress_api.parsers.document_links import document_links, http_url, response_kind
+from congress_api.parsers.document_links import document_links, download_query_fallback, http_url, response_kind
 from congress_api.transport.document_probe import DEFAULT_LIMIT, get_prefix
 
 
@@ -37,6 +37,11 @@ def resolve_document(url, *, saved=None, get=get_prefix, max_bytes=DEFAULT_LIMIT
             target = http_url(headers.get('location', ''), response.url) if headers.get('location') else None
             continue
         if not 200 <= response.status_code < 300:
+            fallback = download_query_fallback(response.url, response.status_code) if response.complete else None
+            if fallback:
+                links.append(fallback)
+                target = fallback.url
+                continue
             result['outcome'] = 'http_error'
             break
         body = response.content.body_bytes()[:max_bytes]

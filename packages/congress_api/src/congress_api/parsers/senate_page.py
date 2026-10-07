@@ -14,7 +14,7 @@ from lxml import html as dom
 
 from congress_api.parsers.text import text
 from congress_api.parsers.witness_names import is_name, witness
-from congress_api.parsers.document_links import feed_link
+from congress_api.parsers.document_links import feed_link, is_document_url
 
 ## where each committee keeps its hearing pages
 SITE = {"ssaf00": "agriculture.senate.gov", "ssap00": "appropriations.senate.gov", "ssas00": "armed-services.senate.gov", "ssbk00": "banking.senate.gov",
@@ -55,8 +55,16 @@ MONTHS = "jan feb mar apr may jun jul aug sep oct nov dec".split()
 DATE = re.compile(r"\b(\d{1,2})[/.](\d{1,2})[/.](\d{2,4})\b|\b((?:" + "|".join(MONTHS) + r")[a-z]*)\.? (\d{1,2})(?:st|nd|rd|th)?\s*,?\s*(\d{4})\b|\b(\d{4})-(\d{2})-(\d{2})\b", re.I)
 
 
-## a file a page links, and what its link or name says it is
-FILE = re.compile(r"<a\b[^>]*href=\"([^\"]*(?:/download/|/media-center/files/|/wp-content/uploads/|/_cache/files/|/imo/media/doc/|/services/files/|/sites/[^\"]*/files/|files\.serve|\.pdf)[^\"]*)\"[^>]*>(.*?)</a>", re.S | re.I)
+# Keep match positions for the legacy preceding-heading label; the shared
+# predicate owns which URLs are documents, including extensionless CMS routes.
+ANCHOR = re.compile(r'<a\b[^>]*href="([^"]*)"[^>]*>(.*?)</a>', re.S | re.I)
+
+
+def file_anchors(page_html, url):
+    for link in ANCHOR.finditer(page_html):
+        value = html.unescape(link.group(1)).strip()
+        if is_document_url(value, publisher_routes=True):
+            yield link, urljoin(url, value)
 
 
 KINDS = [("transcript", r"transcript"), ("questions for the record", r"qfr|questions?[ \-_]for[ \-_]the[ \-_]record|responses?[ \-_]to[ \-_](?:written[ \-_])?questions"),
@@ -234,11 +242,7 @@ def documents(page_html, url, metadata=None):
     if metadata is None:
         metadata, _, _ = source_details(page_html, url, witnesses(page_html, url))
     page_html, out = re.sub(r"<!--.*?-->", "", page_html, flags=re.S), {}
-    for link in FILE.finditer(page_html):
-        file = html.unescape(link.group(1)).strip()
-        if re.search(r"\.(jpe?g|png|gif|svg|css|js|ico)($|\?)", file, re.I):
-            continue
-        file = urljoin(url, file)
+    for link, file in file_anchors(page_html, url):
         said = text(link.group(2))
         heading = re.findall(r"<h[2-5][^>]*>(.*?)</h[2-5]>", page_html[max(0, link.start() - 2500):link.start()], re.S)
         name = text(heading[-1]) if heading and re.match(r"(download|view|read|open)\b", said, re.I) else said or file.rsplit("/", 1)[-1]
@@ -492,7 +496,7 @@ def event_details(page_html, url):
 def document_labels(page_html, url):
     """Keep the provider's exact anchor words alongside our document category."""
     page_html = re.sub(r"<!--.*?-->", "", page_html, flags=re.S)
-    return {urljoin(url, html.unescape(link.group(1)).strip()): text(link.group(2)) for link in FILE.finditer(page_html)}
+    return {target: text(link.group(2)) for link, target in file_anchors(page_html, url)}
 
 
 def source_details(page_html, url, people, *, plain=False, include_link=None):
@@ -635,10 +639,9 @@ def source_details(page_html, url, people, *, plain=False, include_link=None):
     witnesses_by_node = {card: index for card, index in witnesses_by_node.items() if index not in repeated}
     witness_metadata = {index: metadata for index, metadata in witness_metadata.items() if int(index) not in repeated}
     files = {}
-    file_path = re.compile(r"/download/|/media-center/files/|/wp-content/uploads/|/_cache/files/|/imo/media/doc/|/services/files/|/sites/.*/files/|files\.serve|\.(?:pdf|docx?|xlsx?|xml|csv|txt|rtf|vtt)(?:$|[?#])", re.I)
     for anchor in root.xpath(".//a[@href]"):
         href = urljoin(url, anchor.get("href", "").strip())
-        if (not file_path.search(href) and not (include_link and include_link(anchor))) or re.search(r"\.(jpe?g|png|gif|svg|css|js|ico)($|\?)", href, re.I):
+        if not is_document_url(href, publisher_routes=True) and not (include_link and include_link(anchor)):
             continue
         if feed_link(anchor, href):
             continue

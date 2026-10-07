@@ -1,0 +1,95 @@
+[
+  {
+    "site": "budget.house.gov",
+    "page": "https://budget.house.gov/hearing/breaking-up-health-care-monopolies-examining-the-budgetary-effects-of-health-care-consolidation",
+    "event_file": "budget-event.html",
+    "event_sha256": "81174c7bdb77f3c6e6b15eba975d8d6914a81a3008f0c8fe9931dcfeee5fb9f8",
+    "wrapper": "https://budget.house.gov/download/dr-chapin-white-testimony",
+    "wrapper_file": "budget-wrapper.html",
+    "wrapper_sha256": "0b588441304993e128e6a13f36a2af9f53d67e6617a6222f5c5b8094f2540bb5",
+    "literal_target": "https://budget.house.gov/download/dr-chapin-white-testimony?download=1",
+    "missing_urls": [
+      "https://budget.house.gov/download/dr-chapin-white-testimony",
+      "https://budget.house.gov/download/dr-benedic-ippolito-testimony",
+      "https://budget.house.gov/download/dr-adam-bruggeman-testimony",
+      "https://budget.house.gov/download/05/23/2024/sophia-tripoli-testimony"
+    ]
+  },
+  {
+    "site": "edworkforce.house.gov",
+    "page": "https://democrats-edworkforce.house.gov/hearings/04/27/2026/speech-or-silence-the-future-of-the-first-amendment-in-higher-education",
+    "event_file": "edworkforce-event.html",
+    "event_sha256": "bab7c6098a256833a8053f506310acfc66cd381c44d4f2a8e7ecb2eaafb6128e",
+    "wrapper": "https://democrats-edworkforce.house.gov/download/05/29/2026/opening-statement-2",
+    "wrapper_file": "edworkforce-wrapper.html",
+    "wrapper_sha256": "ca2c0c0d3d4cf0cef3aad55b14cd3e7e6441ff9ec6abdb4e34203056b657c2bf",
+    "literal_target": "https://democrats-edworkforce.house.gov/download/05/29/2026/opening-statement-2?download=1",
+    "missing_urls": [
+      "https://democrats-edworkforce.house.gov/download/05/29/2026/opening-statement-2",
+      "https://democrats-edworkforce.house.gov/download/04/28/2026/witness-testimony",
+      "https://democrats-edworkforce.house.gov/download/04/28/2026/witness-testimony-1",
+      "https://democrats-edworkforce.house.gov/download/04/28/2026/witness-testimony-2",
+      "https://democrats-edworkforce.house.gov/download/04/28/2026/witness-testimony-3"
+    ]
+  },
+  {
+    "site": "homeland.house.gov",
+    "page": "https://democrats-homeland.house.gov/activities/hearings/03/05/2020/resourcing-dhs-cybersecurity-and-innovation-missions-a-review-of-the-fiscal-year-2021-budget-request-for-the-cybersecurity-and-infrastructure-security-agency-and-the-science-and-technology-directorate",
+    "event_file": "homeland-event.html",
+    "event_sha256": "e950e509de2900de6a1ba2fc4938841e3d03cea7ecf16b7f4731aa01a070783a",
+    "wrapper": "https://democrats-homeland.house.gov/download/krebs-testimony-cipi",
+    "wrapper_file": "homeland-wrapper.html",
+    "wrapper_sha256": "ab3a670bc6f7eced3c79076adfc202d6dc8376200608f28de1f87d29b9d6d393",
+    "literal_target": "https://democrats-homeland.house.gov/download/krebs-testimony-cipi?download=1",
+    "missing_urls": [
+      "https://democrats-homeland.house.gov/download/krebs-testimony-cipi",
+      "https://democrats-homeland.house.gov/download/bryan-testimony-cipi"
+    ]
+  },
+  {
+    "site": "naturalresources.house.gov",
+    "page": "https://democrats-naturalresources.house.gov/hearings/-blm-disorganization-examining-the-proposed-reorganization-and-relocation-of-the-bureau-of-land-management-headquarters-to-grand-junction-colorado",
+    "event_file": "naturalresources-event.html",
+    "event_sha256": "6ae8660041d1ba24dc61838b76becfa7b9300425cdcf817f3d8dd4c79693c094",
+    "wrapper": "https://democrats-naturalresources.house.gov/download/william-perry-pendley-testimony",
+    "wrapper_file": "naturalresources-wrapper.html",
+    "wrapper_sha256": "74ae15ed5e937ab8060ec71ad4597e72600eb3d29247b2f3590437f51b6d1c18",
+    "literal_target": "https://democrats-naturalresources.house.gov/download/william-perry-pendley-testimony?download=1",
+    "missing_urls": [
+      "https://democrats-naturalresources.house.gov/download/william-perry-pendley-testimony",
+      "https://democrats-naturalresources.house.gov/download/testimony-john-freemuth-fc-ov-hrg-091019",
+      "https://democrats-naturalresources.house.gov/download/testimony-ed-shepard-fc-ov-hrg-091019",
+      "https://democrats-naturalresources.house.gov/download/updated-testimony-chairman-small-fc-ov-hrg-091019",
+      "https://democrats-naturalresources.house.gov/download/testimony-robin-brown-fc-ov-hrg-091019redacted"
+    ]
+  },
+  {
+    "site": "transportation.house.gov",
+    "page": "https://democrats-transportation.house.gov/committee-activity/hearings/-subcommittee-hearing-on-america-builds-examining-americas-freight-and-passenger-rail-network",
+    "event_file": "transportation-event.html",
+    "event_sha256": "1bdfa0222ff13792536faa6273377358baf25db0b2a3b0e1efeccf5030665737",
+    "wrapper": "https://democrats-transportation.house.gov/download/jared-cassity-testimony",
+    "wrapper_file": "transportation-wrapper.html",
+    "wrapper_sha256": "eac4d74e9004011efcfc932a74f51cdb8386c7fd8a8a01613656ea5adc598be4",
+    "literal_target": "https://democrats-transportation.house.gov/download/jared-cassity-testimony&download=1",
+    "missing_urls": [
+      "https://democrats-transportation.house.gov/download/jared-cassity-testimony",
+      "https://democrats-transportation.house.gov/download/joe-daloisio-testimony",
+      "https://democrats-transportation.house.gov/download/01/21/2025/chuck-baker-testimony",
+      "https://democrats-transportation.house.gov/download/01/22/2025/ian-jefferies-testimony"
+    ]
+  },
+  {
+    "site": "veterans.house.gov",
+    "page": "https://democrats-veterans.house.gov/events/hearings/counting-the-money-preventing-fraud-and-abuse-in-vas-bonus-payment-practices-for-va-employees",
+    "event_file": "veterans-event.html",
+    "event_sha256": "2b3545af3b2596876b521b92e2a0e48d9c237605a10d2786ab87c4e435254aa7",
+    "wrapper": "https://democrats-veterans.house.gov/download/va-workforce-dashboards",
+    "wrapper_file": "veterans-wrapper.html",
+    "wrapper_sha256": "a2be4ff2a1aa90dda10df79702d9d853ec986e7b26ebe79eab20b2a6a3830607",
+    "literal_target": "https://democrats-veterans.house.gov/download/va-workforce-dashboards?download=1",
+    "missing_urls": [
+      "https://democrats-veterans.house.gov/download/va-workforce-dashboards"
+    ]
+  }
+]

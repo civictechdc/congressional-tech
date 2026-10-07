@@ -251,7 +251,10 @@ class RustFetcher(_NativeSession):
             first["retry_later"] = retry
             return first, ("retry_later", [])
         inspection = inspect_capture(first)
+        # A known dead download route already supplies a separately queued
+        # fallback. Preserve its failed receipt; a provider cannot fix that URL.
         if (transport != "auto" or first.get("error") == "excluded_redirect"
+                or (inspection[0] == "http_error" and inspection[1])
                 or inspection[0] in {"saved", "excluded_media", "size_limit", "resource_limit", "unsupported_format"}):
             return first, inspection
         fallback = fetch_source(url, transport="zyte", max_bytes=self.max_bytes, session=session, pace=False, **options)

@@ -549,6 +549,15 @@ pending work, and restores misclassified listing pages to discovery evidence.
 Retries append request receipts, and resolved errors retain their earlier
 diagnostics in `resolved_errors`.
 
+House and Senate document readers share recognition of explicit download routes,
+including extensionless `/download/` links and `?a=Files.Serve` links. Event pages
+retain the publisher's URL and label; the existing wrapper reader follows its
+literal download link. For the observed Transportation minority-site defect only,
+a complete 404/410 from `/download/name&download=1` offers `/download/name?download=1`
+as a separately recorded fallback. Working literal URLs remain unchanged. The
+failed response survives, and the fallback consumes the normal probe-step or
+capture-attempt budget. It does not require a browser or an extra provider call.
+
 The daily workflow refreshes the official directory before these readers and
 continues up to 3,000 House site requests per run. The request limit is not a
 historical cutoff. Existing event refreshes reuse the Senate age-based schedule.

@@ -1,13 +1,50 @@
 """Read explicit download links from supplied HTML; never fetch or guess URLs."""
 import re
 import ipaddress
-from urllib.parse import urljoin, urlsplit, urlunsplit
+from urllib.parse import parse_qsl, urljoin, urlsplit, urlunsplit
 
 from congress_api.models.documents import DocumentLink
 from congress_api.parsers.page_content import page_trees
 
 FILE = re.compile(r'\.(?:pdf|xml|docx?|xlsx?|pptx?|zip|rtf|txt|csv)(?:$|[?#])', re.I)
 PROMPT = re.compile(r'(?:please )?click here[.!]?|download(?: file)?|continue|pdf|xml|docx?|xlsx?|pptx?|zip|rtf|txt|csv', re.I)
+DOCUMENT_ROUTE = re.compile(r'/(?:download|media-center/files|wp-content/uploads|_cache/files|imo/media/doc|services/files)/|/sites/.*/files/|(?:^|/)files\.serve(?:/|$)', re.I)
+ASSET = re.compile(r'\.(?:jpe?g|png|gif|svg|css|js|ico)$', re.I)
+
+
+def is_document_url(value, *, publisher_routes=False):
+    """One file/route rule for shared links and Senate occurrence metadata.
+
+    Extensionless CMS routes are meaningful in committee content, not on every
+    website. Inspect the path/query fields rather than route words in a query.
+    """
+    if FILE.search(value):
+        return True
+    if not publisher_routes:
+        return False
+    parts = urlsplit(value)
+    return bool(not ASSET.search(parts.path) and (
+        DOCUMENT_ROUTE.search(parts.path)
+        or any(k.lower() == 'a' and v.lower() == 'files.serve' for k, v in parse_qsl(parts.query))
+        or re.search(r'\.vtt$', parts.path, re.I)))
+
+
+def download_query_fallback(url, status):
+    """A derived candidate after this publisher's literal route returned 404/410.
+
+    Keep working ampersand routes and all other hosts untouched. Callers retain
+    the failed response; a candidate consumes the usual probe/queue budget.
+    """
+    if status not in {404, 410} or not http_url(url):
+        return None
+    parts = urlsplit(url)
+    if (parts.scheme != 'https' or parts.netloc.lower() != 'democrats-transportation.house.gov'
+            or parts.query or parts.fragment
+            or not re.fullmatch(r'/download/[A-Za-z0-9/_-]+&download=1', parts.path)):
+        return None
+    return DocumentLink(url=urlunsplit(parts._replace(path=parts.path.removesuffix('&download=1'), query='download=1')),
+        basis='publisher_download_query_fallback', original_url=url, http_status=status,
+        text='', tag='', attributes={})
 
 
 def remove_dot_segments(path):
@@ -82,14 +119,19 @@ def tree_document_links(tree, url, *, include_link=None):
     """One link reader for static markup and decoded publisher HTML fields."""
     bases = tree.xpath('//base[@href]/@href')
     base = (http_url(bases[0], url) if bases else None) or url
+    host = urlsplit(http_url(url) or '').hostname or ''
+    publisher_routes = host.endswith(('.house.gov', '.senate.gov')) or host in {'house.gov', 'senate.gov', 'csce.gov', 'www.csce.gov'}
     result = []
     seen = set()
     for node in tree.xpath('//a[@href] | //object[@data] | //embed[@src] | //iframe[@src] | //meta[@http-equiv]'):
         value = node.get('href') or node.get('data') or node.get('src') or ''
         label = ' '.join(node.text_content().split())
+        target = http_url(value, base) if value.strip() else None
         basis = None
         if node.tag == 'a':
-            if (FILE.search(value) or node.get('download') is not None or PROMPT.fullmatch(label)
+            # Test the literal href: resolving a skip fragment or relative news
+            # link against /download/name must not turn it into a document.
+            if ((target and is_document_url(value, publisher_routes=publisher_routes)) or node.get('download') is not None or PROMPT.fullmatch(label)
                     or 'wp-block-file__button' in node.get('class', '').split()):
                 basis = 'download_link'
             elif include_link and include_link(node):
@@ -100,7 +142,8 @@ def tree_document_links(tree, url, *, include_link=None):
         elif node.tag in ('object', 'embed', 'iframe') and (
                 node.get('type', '').lower() == 'application/pdf' or FILE.search(value)):
             basis = 'embedded_document'
-        target = http_url(value, base) if value.strip() else None
+        if node.tag == 'meta':
+            target = http_url(value, base) if value.strip() else None
         if basis and target and not feed_link(node, target) and target not in seen:
             seen.add(target)
             result.append(DocumentLink(url=target, basis=basis, text=label,

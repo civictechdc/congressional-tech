@@ -23,7 +23,7 @@ from congress_api.parsers.senate_page import (
 )
 from congress_api.parsers.text import text
 
-PARSER_VERSION = 11
+PARSER_VERSION = 12
 
 
 def parse_page(page: str | bytes, url: str) -> SenatePage:

@@ -22,7 +22,7 @@ from congress_api.retention.committees import read as read_committees
 from congress_api.retention.tables import read_state, write_state, write_csv
 from congress_api.transport.http import HttpRequestError
 
-PARSER_VERSION = 3
+PARSER_VERSION = 4
 PAGINATION_VERSION = 3
 EVENT_FIELDS = 'site page title date type status'.split()
 DOCUMENT_FIELDS = 'site page date kind name url'.split()

@@ -16,6 +16,7 @@ from congress_api.parsers.image_tools import image_kind, image_info, ImageReadEr
 
 from congress_api.parsers.document_links import (
     document_links,
+    download_query_fallback,
     http_url,
     FILE,
     response_kind,
@@ -48,7 +49,8 @@ def inspect_capture(response, *, replay=False):
     if response.get("http_status") != 200 and not (
         replay and response.get("http_status") is None
     ):
-        return "http_error", links
+        fallback = download_query_fallback(response['url'], response.get('http_status'))
+        return "http_error", capture_links(fallback.source_dict()) if fallback else []
     outcome, kind = inspect_body(
         body, response["url"], response.get("content", {}).get("media_type", "")
     )
