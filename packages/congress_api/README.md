@@ -39,7 +39,11 @@ with a 16 MiB input limit, a ten-second deadline per invocation, and bounded
 stdout/stderr. It reads only the requested opening page. New metadata fingerprints
 include reader versions; existing metadata remains reusable until an explicit
 rebuild. A readable PDF structure does not prove that the publisher's document
-is complete.
+is complete. Exact-file recovery can read larger, already-verified PDFs directly
+from disk through the same opening-page classifier. Each Poppler process has a
+ten-second deadline, a 1 MiB text-output limit, five CPU seconds and a sampled
+512 MiB resident-memory limit; Linux also limits address space to 512 MiB. This
+extracts cover facts from at most the first two pages, not full text or OCR.
 
 Runtime dependencies include `committee-meeting`, `congress-shared`, `pydantic`, `lxml`, `requests`, `pypdf[fonts]`, `google-genai`, and `yt-dlp`. Sibling packages resolve through `[tool.uv.sources]` in `pyproject.toml`.
 
@@ -90,7 +94,10 @@ receipt checkpoint. The final partial part is saved on normal completion and
 graceful interruption. Bodies are uploaded first, then metadata, then capture
 receipts; an interrupted run can recover from completed receipts. Metadata
 upload errors stop receipt publication, while extraction errors retain the raw
-capture and record the error type. Body inspection retains its 16 MiB limit.
+capture and record the error type. In-memory body inspection retains its 16 MiB
+limit; file-based PDF recovery uses the bounded reader described above. Other
+oversized formats still record `size_limit`. Existing readings remain unchanged
+unless an explicit refresh selects their body keys.
 Capture startup projects only body identities from previous parts. Catalog
 updates scan completed metadata parts to recover readings, including parts whose
 receipt upload was interrupted. This scan grows with the metadata history; it
@@ -103,6 +110,41 @@ without rereading document bytes. Source-page context still uses the existing
 House/Senate readers. `--capture-only` saves captures and extraction results for
 a later `--update-only` run, as used by scheduled CI. To reinterpret prior body
 metadata, explicitly use `--rebuild-only --inspect-bodies`.
+
+### Exact large-file recovery
+
+`congress_api.acquisition.streamed_recovery` provides `recover_zip` and
+`recover_pdf` for a finite set of reviewed publisher files. The caller supplies
+an existing `Archive`, an HTTP client, a private spool directory and a manifest
+with the exact source URL, byte length and `Last-Modified` value. PDFs also require
+the publisher's SHA-256; ZIP manifests list each member's name, size and CRC.
+Assigning a member to a document URL requires a separate publisher SHA-256.
+This library is an explicit recovery path, not an automatic retry policy.
+
+Downloads use 16 MiB ranges and 1 MiB chunks, refusing version changes, redirects,
+wrong ranges or incomplete data. A journal permits reuse only of checksum-verified
+completed ranges. The default spool allowance remains 5 GiB. Conditional R2
+writes preserve existing bodies; receipts, metadata and checkpoints use the normal
+archive path. ZIP members retain original names and positions without using those
+names as local paths or expanding nested archives. A document restored from a
+qualified member is recorded as a replay, separately from network fetches.
+
+The completed summary must pass `.github/scripts/verify-capture-run.py` before
+another recovery starts. Sampled bodies larger than 64 MiB are verified serially
+on disk, including both stored and decompressed hashes and lengths. The
+`recovery_queue.plan_recovery` helper selects a frozen campaign once, with at most
+one due follow-up for a generating GovInfo ZIP; other failures are not recycled.
+
+For an explicit metadata refresh, `read_document_file` prepares a reading from a
+hash-verified local body; `CaptureMetadata(..., refresh_body_keys=selected_keys)`
+can append it without deleting previous metadata parts. Appending a reading alone
+does not replace published classifications. A separately invoked
+`rebuild_catalog(..., body_readings=selected_readings)` applies validated completed
+PDF readings to every alias of those body keys, without downloading the bodies or
+changing unrelated readings. An explicit empty cover clears stale cover fields;
+the existing body-result cache preserves that decision in subsequent updates.
+The output records each selected body key and reader fingerprint. Ordinary
+updates continue reusing existing metadata.
 
 For a local capture run that also updates the document index:
 

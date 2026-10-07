@@ -14,7 +14,8 @@ import time
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from congress_api.parsers.document_cover import COVER_FIELDS, document_cover
+from congress_api.parsers.document_cover import COVER_FIELDS, document_cover, document_page_fields
+from congress_api.parsers.pdf_tools import page_count_file, opening_page_text_file
 from congress_api.retention.document_evidence import (
     BODY_FIELDS, document_body_fields, evidence_fingerprint,
 )
@@ -51,6 +52,43 @@ def read_document(data, body_key, fingerprint, inspect=inspect_document):
             status, error = 'failed', type(exc).__name__
             if data.lstrip().startswith(b'%PDF-'):
                 fields = {'body_format': ['pdf']}
+    return dict(body_key=body_key, parser_fingerprint=fingerprint,
+                status=status, error_type=error, **fields)
+
+
+def inspect_pdf_file(path):
+    """Read PDF opening-page facts, not full text or OCR, without body buffering."""
+    pages = page_count_file(path)
+    first = opening_page_text_file(path, 1)
+    fields = document_page_fields(first)
+    if not fields and not first.strip() and pages > 1:
+        candidate = document_page_fields('', opening_page_text_file(path, 2))
+        if candidate.get('content_document_kind') == ['transcript']:
+            fields = candidate
+    return {'body_format': ['pdf'], **fields}
+
+
+def read_document_file(path, body_key, fingerprint, inspect=inspect_document):
+    """Keep byte readers bounded; large PDFs use the bounded file-based reader.
+
+    The caller owns the immutable, already-hash-verified local file. Other large
+    formats remain refused. A completed result describes opening-page metadata,
+    never a claim that all PDF pages were parsed.
+    """
+    path = Path(path)
+    with path.open('rb') as source:
+        if path.stat().st_size <= BODY_LIMIT:
+            data = source.read(BODY_LIMIT + 1)
+            return read_document(data, body_key, fingerprint, inspect)
+        pdf = source.read(1024).lstrip().startswith(b'%PDF-')
+    fields, error, status = {}, None, 'size_limit'
+    if pdf:
+        fields = {'body_format': ['pdf']}
+        try:
+            fields = inspect_pdf_file(path)
+            status = 'completed'
+        except Exception as exc:
+            status, error = 'failed', type(exc).__name__
     return dict(body_key=body_key, parser_fingerprint=fingerprint,
                 status=status, error_type=error, **fields)
 
@@ -201,6 +239,13 @@ class CaptureMetadata:
     def reading(self, data, body_key):
         """Compute a reading off the event loop, without touching writer state."""
         return read_document(data, body_key, self.fingerprint, self.inspect)
+
+    def record_file(self, path, body_key):
+        """Read a retained spool file once, preserving all previous readings."""
+        if body_key in self.seen:
+            self.counts['reused'] += 1
+            return
+        self.accept(read_document_file(path, body_key, self.fingerprint, self.inspect))
 
     def accept(self, reading):
         """The single collector admits each durable body's result once."""

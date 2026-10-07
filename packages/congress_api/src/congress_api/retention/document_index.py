@@ -2057,11 +2057,42 @@ def parser_fingerprint():
     return digest.hexdigest()
 
 
+def validated_body_readings(readings):
+    """Accept only explicit completed PDF readings, keyed by immutable body identity.
+
+    Callers qualify the body hash and reading provenance before choosing these
+    overrides. Normal updates never select a newer reading automatically.
+    """
+    from congress_api.retention.capture_metadata import RESULT_COLUMNS
+    selected = {}
+    for row in readings:
+        if not isinstance(row, Mapping):
+            raise ValueError('Expected an explicit completed PDF body reading')
+        key = row.get('body_key', '')
+        fingerprint = row.get('parser_fingerprint')
+        if not isinstance(key, str) or not isinstance(fingerprint, str):
+            raise ValueError('Expected body identity and parser fingerprint strings')
+        match = re.fullmatch(r'bodies/sha256/([a-f0-9]{2})/([a-f0-9]{64})\.gz', key)
+        if (match is None or match[1] != match[2][:2] or key in selected
+                or row.get('status') != 'completed' or row.get('error_type') is not None
+                or row.get('body_format') != ['pdf']
+                or not re.fullmatch(r'[a-f0-9]{64}', fingerprint)
+                or set(row) - set(RESULT_COLUMNS) - BODY_FIELDS
+                or any(value is not None and (not isinstance(value, list)
+                                             or any(not isinstance(v, str) for v in value))
+                       for name, value in row.items() if name in BODY_FIELDS)):
+            raise ValueError('Expected distinct qualified completed PDF body readings')
+        selected[key] = dict(row)
+    return selected
+
+
 def write_filename_metadata(
     root, source_rows, *, workers=4, previous=None, metadata=None, read_body=None,
-    oversized_bodies=(), cache_store=None, reuse_results=True, inspect_bodies=False, working=None, previous_documents=None, publication_snapshot=None, output_root=None
+    oversized_bodies=(), cache_store=None, reuse_results=True, inspect_bodies=False, working=None, previous_documents=None, publication_snapshot=None, output_root=None,
+    body_readings=(),
 ):
-    """Interpret supplied source rows; acquisition and storage discovery stay outside."""
+    """Interpret supplied source rows; optional body readings are explicit overrides."""
+    body_readings = validated_body_readings(body_readings)
     if working is None:
         from tempfile import TemporaryDirectory
         from congress_api.retention.catalog_staging import WorkingCatalog
@@ -2077,7 +2108,8 @@ def write_filename_metadata(
                 result = write_filename_metadata(root, source_rows, workers=workers, previous=previous,
                     metadata=metadata, read_body=read_body, oversized_bodies=oversized_bodies,
                     cache_store=cache_store, reuse_results=reuse_results,
-                    inspect_bodies=inspect_bodies, working=working, previous_documents=previous_documents, output_root=staged)
+                    inspect_bodies=inspect_bodies, working=working, previous_documents=previous_documents, output_root=staged,
+                    body_readings=body_readings.values())
                 return publish_local_result(root, staged / "indexes/document-filenames.parquet", result, snapshot)
             finally:
                 working.close()
@@ -2148,6 +2180,16 @@ def write_filename_metadata(
         # published/legacy readings first, then admit newly completed results.
         from congress_api.retention.capture_metadata import restore_body_results
         restore_body_results(cache_store, body_cache)
+    for key, reading in body_readings.items():
+        fields = {name: value for name, value in reading.items()
+                  if name in BODY_FIELDS and value is not None}
+        # Replace just these explicitly chosen results, including a deliberate
+        # empty cover. Do not let old XML facts or an earlier citation resurface.
+        body_cache[('xml', key)] = {}
+        body_cache[('document', key)] = {name: value for name, value in fields.items()
+                                       if name not in COVER_FIELDS}
+        body_cache[('cover', key)] = {name: value for name, value in fields.items()
+                                    if name in COVER_FIELDS}
     checkpoint_bodies = result_checkpoint(cache_store, 'bodies', body_fingerprint,
                                          ('reader', 'body_key'), body_cache)
     columns = set()
@@ -2192,6 +2234,9 @@ def write_filename_metadata(
                     cached[key] = fields
                 pending_count += len(pending)
                 for row in records:
+                    if row.get('body_key') in body_readings:
+                        for name in BODY_FIELDS:
+                            row.pop(name, None)
                     key = (row['filename'], row['source_url'])
                     inputs[key] = True
                     fields = cached[key]
@@ -2221,7 +2266,16 @@ def write_filename_metadata(
         if inspect_bodies:
             checkpoint_bodies(force=True)
     input_count = len(inputs)
+    if any(key not in bodies for key in body_readings):
+        raise ValueError('Selected PDF reading has no supplied retained source row')
+    if body_readings and not inspect_bodies:
+        # Explicit empty covers must survive future ordinary updates; otherwise
+        # old immutable capture readings could repopulate a cleared citation.
+        checkpoint_bodies(force=True)
     rows_without_body = 0
+    reading_provenance = json.loads((previous_schema.metadata or {}).get(
+        b'body_reading_overrides', b'{}')) if previous_schema is not None and reuse_bodies else {}
+    reading_provenance.update({key: row['parser_fingerprint'] for key, row in body_readings.items()})
 
     def finalized_rows():
         nonlocal rows_without_body
@@ -2262,6 +2316,8 @@ def write_filename_metadata(
                 "deferred_body_reads": str(len(deferred_bodies)),
                 "body_inspection": str(inspect_bodies).lower(),
                 **(metadata or {}),
+                **({'body_reading_overrides': json.dumps(reading_provenance, sort_keys=True)}
+                   if reading_provenance else {}),
             },
         )
     destination = (output_root or root) / "indexes/document-filenames.parquet"
@@ -2274,6 +2330,7 @@ def write_filename_metadata(
         rows_without_retained_body=rows_without_body,
         parser_inputs=input_count,
         parsed_inputs=pending_count,
+        **({'refreshed_body_readings': len(body_readings)} if body_readings else {}),
         output=str(destination),
         output_bytes=destination.stat().st_size,
         elapsed_seconds=round(time.monotonic() - started),

@@ -1,5 +1,6 @@
 """Verify checkpoint/receipt/body/metadata seams using only an injected store."""
 from copy import deepcopy
+from datetime import datetime, timedelta, timezone
 import gzip
 from hashlib import sha256
 import importlib.util
@@ -21,6 +22,21 @@ SPEC = importlib.util.spec_from_file_location('capture_verifier', SCRIPT)
 verifier = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(verifier)
 RUN = '20261006T010203Z-0123456789ab'
+
+
+@pytest.fixture(autouse=True)
+def fixed_capture_clock(monkeypatch):
+    # Keep receipt paths on the fixture run's date while preserving receipt order.
+    class FixtureClock(datetime):
+        tick = 0
+
+        @classmethod
+        def now(cls, tz=None):
+            cls.tick += 1
+            value = cls(2026, 10, 6, 1, 2, 3, tzinfo=timezone.utc) + timedelta(microseconds=cls.tick)
+            return value.astimezone(tz) if tz else value.replace(tzinfo=None)
+
+    monkeypatch.setattr('congress_api.retention.raw_archive.datetime', FixtureClock)
 
 
 class MemoryStore:

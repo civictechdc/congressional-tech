@@ -32,8 +32,10 @@ FILENAMES = "indexes/document-filenames.parquet"
 DOCUMENTS = "indexes/documents.parquet"
 
 
-def rebuild_catalog(store, captures=None, *, seeds=(), workers=4, repair=False, inspect_bodies=False):
-    """Publish derived tables using temporary, bounded working state."""
+def rebuild_catalog(store, captures=None, *, seeds=(), workers=4, repair=False, inspect_bodies=False,
+                    body_readings=()):
+    """Publish derived tables; explicitly supplied PDF readings refresh only their bodies."""
+    body_readings = index.validated_body_readings(body_readings)
     with TemporaryDirectory(prefix="raw-catalog-") as directory:
         root = Path(directory)
         (root / "indexes").mkdir()
@@ -41,12 +43,13 @@ def rebuild_catalog(store, captures=None, *, seeds=(), workers=4, repair=False, 
         try:
             return _rebuild_catalog(store, captures, seeds=seeds, workers=workers,
                                     repair=repair, inspect_bodies=inspect_bodies,
-                                    working=working, root=root)
+                                    working=working, root=root, body_readings=body_readings)
         finally:
             working.close()
 
 
-def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies, working, root):
+def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies, working, root,
+                     body_readings):
     def read(key):
         data = store.read(key)
         progress.advance('objects_read')
@@ -75,6 +78,11 @@ def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies,
         raise ValueError("Capture index was truncated since the last catalog rebuild")
     all_captures = captures
     capture_rows = len(captures)
+    if body_readings:
+        present = set(captures.filter(pc.is_in(captures['body_key'], value_set=pa.array(
+            sorted(body_readings), type=pa.string())))['body_key'].to_pylist())
+        if present != set(body_readings):
+            raise ValueError('Selected PDF reading has no retained capture')
     body_limit = 16 * 1024**2
     oversized_bodies = set(captures.filter(pc.greater(captures['bytes'], body_limit))['body_key'].to_pylist())
     seeds = list(seeds)
@@ -88,7 +96,7 @@ def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies,
         raise ValueError('Catalog capture checkpoint digest mismatch or invalid cursor; verify legacy checkpoints '
                          'with their original PyArrow writer, or explicitly rebuild after investigation')
     deferred_sources = set(json.loads(meta.get(b'deferred_source_bodies', b'[]'))) if reusable else set()
-    if (reusable and not deferred_sources
+    if (reusable and not deferred_sources and not body_readings
             and (not inspect_bodies or meta.get(b'body_inspection') == b'true'
                  and meta.get(b'deferred_body_reads') == b'0')
             and cursor == capture_rows and meta.get(b'seed_digest') == seed_digest.encode()
@@ -104,7 +112,7 @@ def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies,
     sources, context = working.mapping("sources"), index.DocumentSources(working=working)
     if reusable:
         pending = captures.slice(0, cursor).filter(pc.is_in(captures.slice(0, cursor)['body_key'],
-            value_set=pa.array(sorted(deferred_sources), type=pa.string())))
+            value_set=pa.array(sorted(deferred_sources | set(body_readings)), type=pa.string())))
         captures = pa.concat_tables([pending, captures.slice(cursor)])
         del pending
 
@@ -292,6 +300,7 @@ def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies,
         root, source_rows, workers=workers, previous=previous, read_body=read_body,
         oversized_bodies=oversized_bodies, cache_store=store, reuse_results=not repair,
         inspect_bodies=inspect_bodies, working=working, previous_documents=previous_documents,
+        body_readings=body_readings.values(),
         metadata={"raw_capture_rows": str(capture_rows), "source_fingerprint": fingerprint,
                   "capture_digest": input_digest, "seed_digest": seed_digest,
                   "deferred_source_bodies": json.dumps(sorted(deferred_sources)),

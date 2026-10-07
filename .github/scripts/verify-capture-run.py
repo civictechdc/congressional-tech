@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import re
+from tempfile import TemporaryDirectory
 
 import pyarrow as pa
 import pyarrow.compute as pc
@@ -178,8 +179,32 @@ def verify_run(store, summary):
                 f'Raw body hash/length mismatch: {key}')
         return len(data), len(payload)
 
+    # Large bodies are checked serially on disk: two gigabyte-sized samples
+    # must not multiply the verifier's resident memory or spool requirement.
+    large = {key for key in sampled if max(bodies[key]['bytes'], bodies[key]['stored_bytes']) > 64 * 1024**2
+             and hasattr(store, 'read_file')}
+    sizes = []
+    for key in sorted(large):
+        row = bodies[key]
+        with TemporaryDirectory(prefix='capture-verify-') as directory:
+            path = Path(directory) / 'body.gz'
+            store.read_file(key, path, max_bytes=row['stored_bytes'])
+            with path.open('rb') as source:
+                import hashlib
+                stored_hash = hashlib.file_digest(source, 'sha256').hexdigest()
+            require(path.stat().st_size == row['stored_bytes'] and stored_hash == row['stored_sha256'],
+                    f'Stored body hash/length mismatch: {key}')
+            digest, count = sha256(), 0
+            with gzip.open(path, 'rb') as source:
+                while chunk := source.read(1024**2):
+                    count += len(chunk)
+                    require(count <= row['bytes'], f'Raw body length exceeds receipt: {key}')
+                    digest.update(chunk)
+            require(count == row['bytes'] and digest.hexdigest() == row['sha256'],
+                    f'Raw body hash/length mismatch: {key}')
+            sizes.append((count, row['stored_bytes']))
     with ThreadPoolExecutor(max_workers=16) as pool:
-        sizes = list(pool.map(verify_body, sorted(sampled)))
+        sizes.extend(pool.map(verify_body, sorted(sampled - large)))
     parts = sorted(store.keys(f'{PREFIX}{run_id}/'))
     statuses = Counter()
     metadata_rows = 0

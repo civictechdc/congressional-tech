@@ -217,6 +217,63 @@ class R2Store:
             self.index_etags[key] = result["ETag"]
         return True
 
+    def put_file(self, key, path):
+        """Conditionally retain an immutable body without loading it in memory."""
+        from pathlib import Path
+        from botocore.exceptions import ClientError
+        if not key.startswith('bodies/'):
+            raise ValueError('File upload requires a body key')
+        with Path(path).open('rb') as source:
+            digest = hashlib.file_digest(source, 'md5')
+            import os
+            length = os.fstat(source.fileno()).st_size
+            source.seek(0)
+            try:
+                result = self.client.put_object(
+                    Bucket=self.bucket, Key=key, Body=source, ContentLength=length,
+                    ContentMD5=base64.b64encode(digest.digest()).decode(),
+                    ContentType='application/gzip', IfNoneMatch='*')
+            except ClientError as error:
+                if error.response['Error']['Code'] in {'PreconditionFailed', '412'}:
+                    return False
+                raise
+        if result['ETag'].strip('"') != digest.hexdigest():
+            raise ValueError('Upload checksum mismatch')
+        return True
+
+    def read_file(self, key, path, *, max_bytes):
+        """Read a bounded immutable body to disk; pin its version across retries."""
+        from pathlib import Path
+        from botocore.exceptions import IncompleteReadError, ReadTimeoutError, ResponseStreamingError
+        if not key.startswith('bodies/') or max_bytes < 0:
+            raise ValueError('File read requires a body key and a nonnegative bound')
+        etag = None
+        for attempt in range(1, _stream_read_attempts(self.client) + 1):
+            response = self.client.get_object(Bucket=self.bucket, Key=key,
+                                              **({'IfMatch': etag} if etag else {}))
+            try:
+                with closing(response['Body']) as source:
+                    if response['ContentLength'] > max_bytes:
+                        raise ValueError('Stored object exceeds file budget')
+                    if etag is not None and response['ETag'] != etag:
+                        raise ValueError('Stored object changed during file read')
+                    etag = response['ETag']
+                    count = 0
+                    with Path(path).open('wb') as destination:
+                        while chunk := source.read(1024**2):
+                            count += len(chunk)
+                            if count > max_bytes:
+                                raise ValueError('Stored object exceeds file budget')
+                            destination.write(chunk)
+                    if count != response['ContentLength']:
+                        raise ValueError('Incomplete stored object')
+                    return count
+            except (IncompleteReadError, ReadTimeoutError, ResponseStreamingError) as error:
+                delay = _stream_retry_delay(self.client, key, response, error, attempt)
+                if delay is None:
+                    raise
+                time.sleep(delay)
+
     def put_catalog_manifest(self, data, *, expected_version):
         """Use the selector version captured before this catalog build."""
         from congress_api.retention.catalog_publication import MANIFEST_KEY

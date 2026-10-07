@@ -294,6 +294,14 @@ class Archive:
                 }:
                     continue
                 self.seed({"url": url, "family": row["family"]})
+                # A 200 header also accompanies interrupted streams and challenge
+                # pages. Only a primary successful capture can seed usable bytes;
+                # failed/prior responses remain immutable evidence.
+                pointer = json.loads(row.get('pointer_json') or '[]')
+                captured = row.get('reference_kind') == 'capture'
+                if (pointer[:1] == ['prior_attempts']
+                        or captured and row.get('resolution') not in {'saved', 'retained'}):
+                    continue
                 if row["body_key"] and row["http_status"] in (None, 200):
                     previous = self.state[url]
                     if previous.get("body_key") and capture_rank(
@@ -350,6 +358,7 @@ class Archive:
                     or self.state[url]['outcome'] == 'excluded_probe'
                     or not row["body_key"]
                     or self.state[url].get("body_key")
+                    or self.state[url].get("checked_at")
                     or "200" not in (row["http_status"] or [])
                 ):
                     continue

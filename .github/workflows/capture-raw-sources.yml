@@ -14,6 +14,8 @@ on:
       - 'packages/congress_api/src/congress_api/cli/raw_progress.py'
       - 'packages/congress_api/src/congress_api/cli/common.py'
       - 'packages/congress_api/src/congress_api/acquisition/raw_sync.py'
+      - 'packages/congress_api/src/congress_api/acquisition/streamed_recovery.py'
+      - 'packages/congress_api/src/congress_api/acquisition/recovery_queue.py'
       - 'packages/congress_api/src/congress_api/retention/raw_*.py'
       - 'packages/congress_api/src/congress_api/retention/document_*.py'
       - 'packages/congress_api/src/congress_api/retention/catalog_cache.py'
@@ -56,6 +58,12 @@ on:
       - 'tests/test_async_capture*.py'
       - 'tests/test_spooled_capture.py'
       - 'tests/test_r2_archive_store.py'
+      - 'tests/test_r2_body_files*.py'
+      - 'tests/test_capture_state_completeness.py'
+      - 'tests/test_streamed_recovery.py'
+      - 'tests/test_recovery_queue.py'
+      - 'tests/test_pdf_file_metadata.py'
+      - 'tests/test_pdf_metadata_refresh.py'
   schedule:
     # Acquisition is explicitly dispatched after the previous batch verifies.
     - cron: '23 3 * * *'
@@ -181,6 +189,9 @@ jobs:
           tests/test_raw_source_sync.py tests/test_raw_capture_only.py tests/test_capture_metadata.py tests/test_source_capture.py tests/test_r2_archive_store.py
           tests/test_async_capture.py tests/test_spooled_capture.py
           tests/test_capture_failure_regressions.py tests/test_pdf_reader_recovery.py tests/test_file_wrapper_capture.py
+          tests/test_capture_state_completeness.py tests/test_streamed_recovery.py
+          tests/test_recovery_queue.py tests/test_r2_body_files.py tests/test_pdf_file_metadata.py
+          tests/test_pdf_metadata_refresh.py
           tests/test_raw_catalog.py tests/test_raw_rebuild.py tests/test_incremental_catalog.py tests/test_capture_checkpoint.py
           tests/test_raw_progress.py tests/test_core_benchmark.py
           tests/test_core_source_context.py tests/test_catalog_publication.py tests/test_catalog_staging.py tests/test_catalog_consumers.py
@@ -200,7 +211,7 @@ jobs:
           .github/tests/test_raw_source_workflow.py
       - name: Verify async storage and process workers locally
         if: steps.verified.outputs.cache-hit != 'true'
-        run: python -m pytest -q tests/test_async_capture_native.py tests/test_capture_processes_native.py
+        run: python -m pytest -q tests/test_async_capture_native.py tests/test_capture_processes_native.py tests/test_r2_body_files_native.py
       - name: Mark successful code validation
         if: steps.verified.outputs.cache-hit != 'true'
         run: |
