@@ -66,7 +66,8 @@ def listing_records(body, url):
 
     ASP.NET event cards and Drupal view rows contain the actual listed records.
     Pagination, filter controls and changing site chrome sit outside these rows.
-    Unknown layouts return None so callers can use discovered detail links.
+    Explicit empty calendars return []; unknown layouts return None so callers
+    can use discovered detail links.
     """
     try:
         root = html.fromstring(body, parser=html.HTMLParser(no_network=True))
@@ -81,16 +82,28 @@ def listing_records(body, url):
                       './/*[contains(concat(" ",normalize-space(@class)," ")," views-view-responsive-grid__item ")]')
     rows = [row for row in rows if not row.xpath('ancestor::footer | ancestor::header | ancestor::nav | ancestor::aside')]
     if not rows:
+        if listing_url(url):
+            messages = root.xpath('.//*[contains(concat(" ",normalize-space(@class)," ")," errormsg ")]')
+            if any(' '.join(node.text_content().split()).lower().rstrip('.') == 'no events found'
+                   for node in messages if not node.xpath('ancestor::footer | ancestor::header | ancestor::nav | ancestor::aside')):
+                return []
         return None
     return sorted({json.dumps([' '.join(row.text_content().split()), sorted({
         target for a in row.xpath('.//a[@href]') if (target := http_url(a.get('href'), url))
     })], ensure_ascii=False) for row in rows})
 
 
-def query_url(url, **values):
+def pagination_field(name):
+    """Query fields shared by listing discovery, filter resets and loop checks."""
+    return name.lower() == 'page' or name.lower().startswith(('pagenum_', 'mt_page'))
+
+
+def query_url(url, *, reset_pagination=False, **values):
     parts = urlsplit(url)
     query = dict(parse_qsl(parts.query))
     query.update({k: str(v) for k, v in values.items()})
+    if reset_pagination:
+        query = {k: v for k, v in query.items() if not pagination_field(k)}
     return urlunsplit(parts._replace(query=urlencode(query), fragment=''))
 
 
@@ -131,7 +144,8 @@ def _html_tasks(body, url):
             continue
         if NEWS.search(path) and not path.startswith('/media/announcement/'):
             continue
-        pagination = listing and (re.search(r'[?&](?:page|pagenum_\w+|mt_page)=|/page/\d+', target, re.I)
+        pagination = listing and (any(pagination_field(k) for k, _ in parse_qsl(urlsplit(target).query))
+                                  or re.search(r'/page/\d+', path)
                                   or node.get('rel') in {'next', 'prev'})
         if EVENT.search(path) or pagination or (listing and EVENT.search(label)) or path == '/media/announcements':
             out.append(task(target, 'event' if event_url(target) else 'html', parent=url))
@@ -149,7 +163,8 @@ def _html_tasks(body, url):
                 defaults = {node.get('name'): node.get('value', '') for node in form.xpath('.//input[@type="hidden"][@name]')}
                 for option in select.xpath('.//option[@value]'):
                     if re.fullmatch(r'\d{2,4}', option.get('value', '')):
-                        out.append(task(query_url(destination, **defaults, **{select.get('name'): option.get('value')}), parent=url))
+                        values = {**defaults, select.get('name'): option.get('value')}
+                        out.append(task(query_url(destination, reset_pagination=True, **values), parent=url))
     return out
 
 

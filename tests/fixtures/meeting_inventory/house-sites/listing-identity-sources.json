@@ -1,0 +1,64 @@
+[
+  {
+    "file": "financialservices-minority-calendar.html",
+    "url": "https://democrats-financialservices.house.gov/events/default.aspx?Congress=113&Page=2",
+    "sha256": "3700bfb8becdde6549f9d947e08579f7284084e95ad5c78967582ffe3129fff7",
+    "retrieved_at": "2026-10-07T16:45:52.055476+00:00",
+    "retained_from": "house-source-diagnostics-20261007T183352Z/identity-samples.json"
+  },
+  {
+    "file": "foreignaffairs-iraq.html",
+    "url": "https://democrats-foreignaffairs.house.gov/hearings?ContentRecord_id=0002BAF4-9BE2-48AA-97E6-AA6D7D4A22DC",
+    "sha256": "75ba846f13e38d9f8d4aff18f817e01019ff118122b6d08c5f75208811b9a4ea",
+    "retrieved_at": "2026-10-07T18:11:46.660500+00:00",
+    "retained_from": "house-source-diagnostics-20261007T183352Z/identity-samples.json"
+  },
+  {
+    "file": "foreignaffairs-arctic.html",
+    "url": "https://democrats-foreignaffairs.house.gov/hearings?ContentRecord_id=000EA873-925F-4F2B-A20F-56B9F0C0EA8B",
+    "sha256": "74b6c4100e03e0da629857549d266f7d0dcd48da301fbbc572314df8ef223217",
+    "retrieved_at": "2026-10-07T17:46:49.117480+00:00",
+    "retained_from": "house-source-diagnostics-20261007T183352Z/identity-samples.json"
+  },
+  {
+    "file": "intelligence-amendment.html",
+    "url": "https://intelligence.house.gov/event/adopted-amendment-in-the-nature-of-a-substitue-by-chairman-rogers/",
+    "sha256": "cc30e288e4af17e4d38517764d2194bde6255af2efcf36dda0a9ef57938488d5",
+    "retrieved_at": "2026-10-07T05:30:02.945609+00:00",
+    "retained_from": "house-source-diagnostics-20261007T183352Z/identity-samples.json"
+  },
+  {
+    "file": "transportation-water.html",
+    "url": "https://democrats-transportation.house.gov/committee-activity/hearings/-americas-water-resources-infrastructure-approaches-to-enhanced-project-delivery",
+    "sha256": "88c103512c0a97d9baa81aaf7c2d1f24f5b80df9cd91293aa30eb1723287bf1d",
+    "retrieved_at": "2026-10-07T14:20:39.550012+00:00",
+    "retained_from": "house-source-diagnostics-20261007T183352Z/identity-samples.json"
+  },
+  {
+    "file": "veterans-fertility.html",
+    "url": "https://democrats-veterans.house.gov/events/hearings/protecting-the-freedom-to-build-a-family-fertility-care-and-ivf-access-for-veterans",
+    "sha256": "53e1c95cd80ef5c0ea8014769466977db8cacc65a76b731e090bba63cea54da9",
+    "retrieved_at": "2026-10-07T08:12:24.151452+00:00",
+    "retained_from": "house-source-diagnostics-20261007T183352Z/identity-samples.json"
+  },
+  {
+    "file": "waysandmeans-default.html",
+    "url": "https://democrats-waysandmeans.house.gov/committee-activity/markups/markup-default-prevention-legislation",
+    "sha256": "5e7ffafb6073d84d7da8c6a81b162690c7fb879d3ffa890eaa241c3f0424e239",
+    "retrieved_at": "2026-10-07T08:38:42.390715+00:00",
+    "retained_from": "house-source-diagnostics-20261007T183352Z/identity-samples.json"
+  },
+  {
+    "file": "waysandmeans-kidney.html",
+    "url": "https://democrats-waysandmeans.house.gov/legislation/hearings/health-subcommittee-hearing-improving-kidney-health-through-better-prevention",
+    "sha256": "d3f774f541d7f4af008c975ccc98cfd7a01956167c06b892d8793c60a0f5cf1e",
+    "retrieved_at": "2026-10-07T08:18:46.163340+00:00",
+    "retained_from": "house-source-diagnostics-20261007T183352Z/identity-samples.json"
+  },
+  {
+    "file": "financialservices-empty-calendar.html",
+    "url": "https://financialservices.house.gov/calendar/default.aspx?EventTypeID=311&Page=3&Congress=111",
+    "sha256": "bb0740a0177e28f9522435ed224b7885c2ec44eecfb3a5118ddff77fff2700e1",
+    "retained_from": "house-source-diagnostics-20261007T183352Z/retained-evidence.json"
+  }
+]

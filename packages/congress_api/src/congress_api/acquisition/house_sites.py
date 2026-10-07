@@ -16,15 +16,15 @@ from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit
 
 from congress_api.acquisition.refresh import due
 from congress_api.acquisition.house import request, timestamp
-from congress_api.parsers.committee_discovery import discover, key, task, comparison_key, listing_records, page_link_exclusion, UnrecognizedSitemap
+from congress_api.parsers.committee_discovery import discover, key, task, comparison_key, listing_records, page_link_exclusion, pagination_field, UnrecognizedSitemap
 from congress_api.parsers.committee_pages import event_identity, parse_event_page, same_site, listing_url
 from congress_api.models.content import content_bytes
 from congress_api.retention.committees import read as read_committees
 from congress_api.retention.tables import read_state, write_state, write_csv
 from congress_api.transport.http import HttpRequestError, RequestPacer
 
-PARSER_VERSION = 4
-PAGINATION_VERSION = 3
+PARSER_VERSION = 5
+PAGINATION_VERSION = 4
 EVENT_FIELDS = 'site page title date type status'.split()
 DOCUMENT_FIELDS = 'site page date kind name url'.split()
 COVERAGE_FIELDS = 'site history events pending failed unavailable unrecognized_events discovery_gaps status'.split()
@@ -137,7 +137,7 @@ def _check_pagination(saved, item, links, *, source_body=None):
     """Stop servers that ignore a page/offset instead of walking forever."""
     parsed = urlsplit(item['url'])
     query = parse_qsl(parsed.query, keep_blank_values=True)
-    pages = {k for k, _ in query if k.lower() == 'page' or k.lower().startswith(('pagenum_', 'mt_page'))}
+    pages = {k for k, _ in query if pagination_field(k)}
     body = item.get('body', {})
     if not pages and 'offset' not in body and '/page/' not in parsed.path:
         return

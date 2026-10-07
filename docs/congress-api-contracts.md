@@ -177,6 +177,8 @@ are not separate owners. The AST registry test catches new or changed constants.
 
 | Owner | Version | What it governs / consumer |
 | --- | --- | --- |
+| `acquisition.house_sites.PARSER_VERSION` | `5` | Retained House committee pages; shared ASP.NET listing recognition and explicit subject headings; offline House reparse and bounded refresh |
+| `acquisition.house_sites.PAGINATION_VERSION` | `4` | Derived listing fingerprints; explicit empty calendars do not fingerprint navigation; old fingerprints are discarded when new records are checked |
 | `parsers.house_evidence.SCHEMA_VERSION` | `"1.1"` | House evidence; House reader refresh queue and House replay |
 | `parsers.senate.PARSER_VERSION` | `11` | Parsed Senate pages; retains CSCE testimony-field roles, explicit biography labels, event dates, and surrounding link paragraphs; bounded maintenance and Senate replay |
 | `parsers.gpo_hearings.PARSER_VERSION` | `"3"` | GPO CSV/evidence interpretation; fetch and cached replay |
@@ -199,6 +201,15 @@ advance an acquisition time during replay. Breaking storage/identity changes
 need an explicit migration and version decision, not an incidental counter bump.
 `write_state` preserves sorted compact UTF-8 JSON and gzip `mtime=0`; changes to
 that serialization require a state major-version migration.
+
+House parser version 5 uses the existing `house-committee-sites --offline
+--reparse` path on a stopped collection. It rebuilds event readings from retained
+bytes and returns misclassified listings to discovery sources. Bodies, request
+receipts, acquisition timestamps, queues and error history stay intact. Explicit
+publisher subject headings take precedence over unrelated headings; conflicting
+subjects and unqualified dates remain unknown. GET archive filters reset only
+query pagination fields; literal pagination links and other filters remain.
+Reparsing does not retry old requests or remove earlier pagination diagnostics.
 
 ## Adapter identity policy
 

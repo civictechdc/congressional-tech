@@ -49,11 +49,20 @@ def discovery_links(body, url):
 def event_title(tree):
     """Prefer a subject heading over a category banner or empty site logo."""
     generic = {'hearings', 'hearing', 'events', 'calendar', 'meetings', 'business meetings', 'markups', 'home'}
-    for xpath in ('//*[contains(@class,"newsie-titler") or (contains(@class,"middleheadline") and not(self::h3))]', '//article[contains(concat(" ",normalize-space(@class)," ")," post ")]//h2[@class="title"]', '//main//h1', '//h1', '//main//h2'):
-        titles = list(dict.fromkeys(' '.join(n.text_content().split()) for n in tree.xpath(xpath)))
+    subject = ('//*[self::h1 or self::h2][contains(concat(" ",normalize-space(@class)," ")," main_page_title ")] | '
+               '//article[contains(concat(" ",normalize-space(@class)," ")," post ")]'
+               '//*[self::h1 or self::h2][contains(concat(" ",normalize-space(@class)," ")," title ")]')
+    selectors = ((subject, True),
+                 ('//*[contains(@class,"newsie-titler") or (contains(@class,"middleheadline") and not(self::h3))]', False),
+                 ('//main//h1', False), ('//h1', False), ('//main//h2', False))
+    for xpath, explicit in selectors:
+        headings = [n for n in tree.xpath(xpath) if not n.xpath('ancestor::nav | ancestor::footer | ancestor::aside')]
+        titles = list(dict.fromkeys(' '.join(n.text_content().split()) for n in headings))
         titles = [t for t in titles if t and t.lower() not in generic]
         if len(titles) == 1:
             return titles[0]
+        if titles and explicit:
+            return ''  # Conflicting subject headings cannot be resolved by a generic banner.
     return ''
 
 
@@ -62,7 +71,7 @@ def listing_url(url):
     parsed = urlsplit(url)
     if {k.lower() for k in parse_qs(parsed.query)} & {'eventid', 'contentrecord_id', 'id'}:
         return False
-    return bool(re.search(r'/(?:events?|hearings?|meetings?|business-meetings|markups?|calendar|calendars|schedule)(?:/(?:all|past|upcoming|archive|page/\d+|\d{4}))?/?$|/calendar/(?:eventslisting|list)\.aspx$', parsed.path, re.I))
+    return bool(re.search(r'/(?:events?|hearings?|meetings?|business-meetings|markups?|calendar|calendars|schedule)(?:/(?:all|past|upcoming|archive|page/\d+|\d{4}))?/?$|/(?:calendar|events?)/(?:default|eventslisting|list|schedule)\.aspx$', parsed.path, re.I))
 
 
 def event_identity(body, url=''):
