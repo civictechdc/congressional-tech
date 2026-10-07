@@ -549,6 +549,19 @@ pending work, and restores misclassified listing pages to discovery evidence.
 Retries append request receipts, and resolved errors retain their earlier
 diagnostics in `resolved_errors`.
 
+The collector shares the existing HTTP retry, connection-pooling and host-pacing
+client. `--workers` defaults to 8 (range 1–32), with at most one request per
+committee in flight. A slow committee does not block other committees. Workers
+fetch responses and receipts; one coordinator parses them, updates queues and
+writes the existing checkpoint every 25 completed requests. In-flight requests
+remain pending in checkpoints until applied. The request limit includes all
+admitted work. SIGINT/SIGTERM stop admission, drain requests and write the final
+checkpoint and CSVs; an intentional stop exits with status 2. These signals do
+not retrofit graceful shutdown into an already-running older collector.
+House checkpoints use gzip level 3 to reduce compression CPU at the cost of a
+larger compressed file. The decoded state, atomic replacement and checkpoint
+frequency are unchanged; other state writers keep their existing compression.
+
 House and Senate document readers share recognition of explicit download routes,
 including extensionless `/download/` links and `?a=Files.Serve` links. Event pages
 retain the publisher's URL and label; the existing wrapper reader follows its

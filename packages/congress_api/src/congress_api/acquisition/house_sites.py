@@ -6,10 +6,12 @@ queue; it never declares unvisited pages complete. Source bytes, failed checks
 and unmatched event pages remain available for the XML fallback and raw mirror.
 """
 from collections import deque
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from datetime import date
 import hashlib
 import json
 import re
+from threading import Event
 from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit
 
 from congress_api.acquisition.refresh import due
@@ -66,24 +68,31 @@ def _enqueue(saved, queue, queued, item, *, today, refresh, force=False):
     queue.append(item)
 
 
-def _read(saved, item, *, today, get):
-    # Retrying an observation appends its new request receipt; the failed
-    # attempts remain evidence rather than disappearing on the next success.
-    receipts = list(saved['sources'].get(key(item), {}).get('receipts', []))
-    previous_receipts = len(receipts)
-    observation = dict(url=item['url'], kind=item['kind'], receipts=receipts)
-    saved['sources'][key(item)] = observation
+def _fetch(item, get):
+    """Workers own only their response and receipts, never collection state."""
+    receipts = []
     try:
         response = get(item['url'], receipts, **({'json_body': item['body']} if 'body' in item else {}))
-    except HttpRequestError as error:
-        if item['kind'] in OPTIONAL_INDEXES and error.status in {401, 403, 404, 410}:
+        return response, receipts, None
+    except (RuntimeError, ValueError, OSError) as error:
+        return None, receipts, error
+
+
+def _read(saved, item, fetched, *, today):
+    # Retrying an observation appends its new request receipt; the failed
+    # attempts remain evidence rather than disappearing on the next success.
+    response, new_receipts, error = fetched
+    receipts = [*saved['sources'].get(key(item), {}).get('receipts', []), *new_receipts]
+    observation = dict(url=item['url'], kind=item['kind'], receipts=receipts)
+    saved['sources'][key(item)] = observation
+    if new_receipts and (body := receipts[-1].pop('content', None)):
+        observation['content'] = body
+        receipts[-1]['sha256'] = body['sha256']
+    if error is not None:
+        if isinstance(error, HttpRequestError) and item['kind'] in OPTIONAL_INDEXES and error.status in {401, 403, 404, 410}:
             observation.update(status=error.status, discovery_gap='index_not_available')
             return []
-        raise
-    finally:
-        if len(receipts) > previous_receipts and (body := receipts[-1].pop('content', None)):
-            observation['content'] = body
-            receipts[-1]['sha256'] = body['sha256']
+        raise error
     observation['final_url'] = getattr(response, 'url', None) or item['url']
     final = observation['final_url']
     if not any(same_site(final, home) for home in [saved['home'], *saved.get('linked_sites', {})]):
@@ -119,7 +128,6 @@ def _read(saved, item, *, today, get):
         observation.pop('content', None)
         observation['page_url'] = final
         saved['pages'][final] = page
-        saved['done'][key(task(final))] = dict(url=final, kind='event')
     _check_pagination(saved, item, links, source_body=body)
     return links
 
@@ -162,8 +170,12 @@ def resolve_error(saved, identifier, resolution):
             dict(failure=previous, resolved_at=timestamp(), resolution=resolution))
 
 
-def collect(rows, state, *, today, get, limit=None, refresh_limit=450, sites=None, checkpoint=lambda _: None):
-    """Fairly visit every site; persist pending work instead of hiding a page cap."""
+def collect(rows, state, *, today, get, limit=None, refresh_limit=450, sites=None,
+            checkpoint=lambda _: None, workers=8, stop=None):
+    """Fetch across sites; one coordinator owns parsing, queues and checkpoints."""
+    if not 1 <= workers <= 32:
+        raise ValueError('workers must be between 1 and 32')
+    stop = stop if stop is not None else Event()
     owners = directory(rows)
     if not owners:
         raise ValueError('The retained committee directory contains no House websites')
@@ -190,7 +202,7 @@ def collect(rows, state, *, today, get, limit=None, refresh_limit=450, sites=Non
                 _enqueue(saved, queue, queued[host], error['request'], today=today, refresh=refresh, force=True)
             for item in seeds(saved['home']):
                 _enqueue(saved, queue, queued[host], item, today=today, refresh=refresh)
-    attempted = 0
+    attempted = completed = 0
     def save():
         for host in selected:
             saved = state[host]
@@ -203,39 +215,72 @@ def collect(rows, state, *, today, get, limit=None, refresh_limit=450, sites=Non
                 'no_recognized_events' if not saved['pages'] else
                 'queue_exhausted_with_gaps' if any(o.get('discovery_gap') for o in saved['sources'].values()) else 'discovered_queue_exhausted')
         checkpoint(state)
-    while any(queues.values()) and (limit is None or attempted < limit):
-        for host in selected:
-            if not queues[host] or (limit is not None and attempted >= limit):
-                continue
-            saved = state[host]
-            item = queues[host].popleft()
-            identifier = key(item)
-            queued[host].remove(identifier)
-            if identifier in saved['done']:
-                continue
-            if RESOURCE.search(urlsplit(item['url']).path):
-                saved['done'][identifier] = dict(url=item['url'], kind=item['kind'], outcome='excluded_resource')
-                continue
-            attempted += 1
-            # A failed request is retried on a later discovery cycle, never
-            # repeatedly re-enqueued through this cycle's navigation links.
-            saved['done'][identifier] = dict(url=item['url'], kind=item['kind'])
-            try:
-                links = _read(saved, item, today=today, get=get)
-                resolve_error(saved, identifier, 'successful_request')
-                for linked in links:
-                    _enqueue(saved, queues[host], queued[host], linked, today=today, refresh=refresh)
-            except (RuntimeError, ValueError, OSError) as error:
-                saved['errors'][identifier] = dict(request=item, checked_at=timestamp(), error=str(error))
-            if not queues[host]:
-                saved['discovery_checked'] = today.isoformat()
-                saved['parser_version'] = PARSER_VERSION
-            if attempted % 25 == 0:
-                save()
+    schedule, active, busy = deque(selected), {}, set()
+    failure = None
+    with ThreadPoolExecutor(min(workers, len(selected))) as pool:
+        while True:
+            for _ in range(len(schedule)):
+                if failure or stop.is_set() or len(active) >= workers or (limit is not None and attempted >= limit):
+                    break
+                host = schedule.popleft()
+                schedule.append(host)
+                if host in busy:
+                    continue
+                saved, queue = state[host], queues[host]
+                while queue:
+                    item = queue[0]
+                    identifier = key(item)
+                    if RESOURCE.search(urlsplit(item['url']).path):
+                        saved['done'][identifier] = dict(url=item['url'], kind=item['kind'], outcome='excluded_resource')
+                    if identifier not in saved['done']:
+                        break
+                    queue.popleft()
+                    queued[host].remove(identifier)
+                if not queue:
+                    continue
+                # Leave admitted requests pending until their results are
+                # applied. Checkpoints can therefore resume an interrupted fetch.
+                active[pool.submit(_fetch, item, get)] = (host, item)
+                busy.add(host)
+                attempted += 1
+            if not active:
+                break
+            ready, _ = wait(active, return_when=FIRST_COMPLETED)
+            for future in ready:
+                host, item = active.pop(future)
+                busy.remove(host)
+                saved, identifier = state[host], key(item)
+                try:
+                    fetched = future.result()
+                    try:
+                        links = _read(saved, item, fetched, today=today)
+                        resolve_error(saved, identifier, 'successful_request')
+                        for linked in links:
+                            _enqueue(saved, queues[host], queued[host], linked, today=today, refresh=refresh)
+                    except (RuntimeError, ValueError, OSError) as error:
+                        saved['errors'][identifier] = dict(request=item, checked_at=timestamp(), error=str(error))
+                except BaseException as error:
+                    # An unexpected bug stops admission, but other admitted
+                    # responses still drain into the final checkpoint.
+                    failure = failure or error
+                    continue
+                queues[host].popleft()
+                queued[host].remove(identifier)
+                if final := saved['sources'].get(identifier, {}).get('page_url'):
+                    saved['done'][key(task(final))] = dict(url=final, kind='event')
+                saved['done'][identifier] = dict(url=item['url'], kind=item['kind'])
+                completed += 1
+                if not queues[host]:
+                    saved['discovery_checked'] = today.isoformat()
+                    saved['parser_version'] = PARSER_VERSION
+                if completed % 25 == 0:
+                    save()
     save()
+    if failure:
+        raise failure
     return dict(requests=attempted, sites=len(selected), pending=sum(len(q) for q in queues.values()),
                 failed=sum(len(state[h]['errors']) for h in selected), events=sum(len(state[h]['pages']) for h in selected),
-                discovery_gaps=sum(state[h]['coverage']['discovery_gaps'] for h in selected))
+                discovery_gaps=sum(state[h]['coverage']['discovery_gaps'] for h in selected), stopped=stop.is_set())
 
 
 def reparse_pages(state):
@@ -290,7 +335,8 @@ def outputs(state, output_dir):
     write_csv(output_dir / 'house_site_documents.csv', documents, DOCUMENT_FIELDS)
 
 
-def main(committees, state_dir, output_dir, *, as_of=None, offline=False, reparse=False, site=None, limit=None, refresh_limit=450, zyte=False):
+def main(committees, state_dir, output_dir, *, as_of=None, offline=False, reparse=False, site=None, limit=None, refresh_limit=450, zyte=False,
+         workers=8, stop=None):
     if limit is not None and limit < 0 or refresh_limit < 0:
         raise ValueError('Collection and refresh limits must be nonnegative')
     if reparse and not offline:
@@ -308,15 +354,15 @@ def main(committees, state_dir, output_dir, *, as_of=None, offline=False, repars
         result = dict(mode='offline')
         if reparse:
             result.update(reparse_pages(state))
-            write_state(path, state)
+            write_state(path, state, compresslevel=3)
     else:
         def persist(value):
-            write_state(path, value)
+            write_state(path, value, compresslevel=3)
             write_coverage(value, output_dir)
         result = collect(rows, state, today=today, get=lambda url, checks, **kw: request(url, zyte, checks, **kw),
-                         limit=limit, refresh_limit=refresh_limit, sites=site, checkpoint=persist)
+                         limit=limit, refresh_limit=refresh_limit, sites=site, checkpoint=persist, workers=workers, stop=stop)
     outputs(state, output_dir)
     print(json.dumps(result, sort_keys=True), flush=True)
-    if not offline and result['failed']:
+    if not offline and result['failed'] and not result.get('stopped'):
         raise RuntimeError(f"House site collection retained {result['failed']} failed requests; see house-sites.json.gz")
     return result

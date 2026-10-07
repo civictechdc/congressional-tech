@@ -55,12 +55,12 @@ def read_state(path):
         return json.load(f)
 
 
-def write_state(path, state):
+def write_state(path, state, *, compresslevel=9):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".tmp")
     try:
-        temporary.write_bytes(gzip.compress(json.dumps(state, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode(), mtime=0))
+        temporary.write_bytes(gzip.compress(json.dumps(state, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode(), compresslevel=compresslevel, mtime=0))
         temporary.replace(path)
     finally:
         temporary.unlink(missing_ok=True)
