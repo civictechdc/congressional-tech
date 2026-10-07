@@ -1,6 +1,6 @@
 # congress-api
 
-`congress-api` collects congressional committee hearing metadata from Congress.gov, GovInfo, chamber committee sites, and Senate ISVP video. It retains publisher-shaped source records, joins them into meeting inventories, and can produce normalized transcripts. Ten console scripts are the primary interface; library code under `src/congress_api/` backs those commands and the [`committee-meeting`](../committee_meeting/README.md) adapters.
+`congress-api` collects congressional committee hearing metadata from Congress.gov, GovInfo, chamber committee sites, and Senate ISVP video. It retains publisher-shaped source records, joins them into meeting inventories, and can produce normalized transcripts. Console scripts are the primary interface; library code under `src/congress_api/` backs those commands and the [`committee-meeting`](../committee_meeting/README.md) adapters.
 
 | Name | Value |
 | --- | --- |
@@ -235,6 +235,7 @@ stable labels, not Python import paths. Replay commands use `congress_api.replay
 | --- | --- | --- |
 | `congress-committees` | `cli.committees` | Gzip JSONL of `CommitteeSnapshot` rows |
 | `congress-meetings` | `cli.meetings` | `congress_meetings.jsonl.gz` |
+| `house-committee-sites` | `cli.house_sites` | All-history site events/documents + `house-sites.json.gz` |
 | `house-meeting-records` | `cli.house` | House CSVs + `house.json.gz` state |
 | `senate-meeting-records` | `cli.senate` | Senate CSVs + `senate.json.gz` state |
 | `meeting-inventory` | `cli.inventory` | Inventory CSVs + `inventory.json.gz` |
@@ -506,9 +507,62 @@ gpo-transcripts --out-dir ~/transcripts --congress 118
 
 Run in order (see [meeting state](../../docs/youtube-coverage/meeting-state.md)):
 
-1. **`house-meeting-records`** — requires `--gpo-path`, `--meetings`, `--state-dir`, `--output-dir`. Optional `--seed-cache`, `--offline`, `--as-of`, `--refresh-limit`, `--limit`, `--zyte`, `--threads`.
-2. **`senate-meeting-records`** — same shared flags via `cli.common.source_args`; optional `--site`, `--since`, `--refresh-limit`, `--limit`.
-3. **`meeting-inventory`** — joins meetings, GPO CSV, video match CSV, TinyDB/YouTube inputs, House/Senate CSVs from `--output-dir`, optional caption indexes (`--youtube-caption-index`, `--senate-caption-index`), and `--recordings`.
+1. **`house-committee-sites`** — requires `--committees`, `--state-dir`, `--output-dir`. Collects every discoverable event across all available history, with no native-meeting prerequisite or date cutoff. `--limit` bounds requests and saves the remaining queue; `--site` limits a run to named directory hosts.
+2. **`house-meeting-records`** — requires `--gpo-path`, `--meetings`, `--state-dir`, `--output-dir`. Optional `--seed-cache`, `--offline`, `--as-of`, `--refresh-limit`, `--limit`, `--zyte`, `--threads`.
+3. **`senate-meeting-records`** — same shared flags via `cli.common.source_args`; optional `--site`, `--since`, `--refresh-limit`, `--limit`.
+4. **`meeting-inventory`** — joins meetings, GPO CSV, video match CSV, TinyDB/YouTube inputs, House/Senate CSVs from `--output-dir`, optional caption indexes (`--youtube-caption-index`, `--senate-caption-index`), and `--recordings`.
+
+The House site collector uses `detail.committeeWebsiteUrl` from the retained
+Congress.gov directory, including former committees. It follows literal event
+links, pagination, offered archive-year filters, sitemaps and supported public
+calendar APIs. Explicitly linked official minority/archived sites and official
+homepage redirects retain their relationship to the directory entry. It does
+not guess document filenames or traverse arbitrary external sites.
+
+```bash
+python -m congress_api.cli.house_sites \
+  --committees pipeline-data/congress_committees.jsonl.gz \
+  --state-dir pipeline-data/meeting-inventory --output-dir apps/committee_youtube/data \
+  --limit 3000 --refresh-limit 450
+```
+
+`house-sites.json.gz` retains exact HTML/JSON, request receipts, parsed event
+pages, discovered links and each site's pending queue. Its CSV views are
+`house_site_events.csv` and `house_site_documents.csv`; the small
+`house_site_coverage.csv` updates at each checkpoint. Unmatched pages and pages
+with unrecognized dates remain in those outputs; an unknown date is never
+replaced with an article publication date. Repeated pagination fails visibly.
+404 links, unavailable optional indexes and failed requests have separate
+coverage counts. A drained discovered queue does not prove the publisher has
+exposed every historical event. `--offline` only reads saved state. After stopping
+collection, `--offline --reparse` rebuilds parsed readings from the retained
+original bodies without HTTP requests. It preserves receipts, request times and
+pending work, and restores misclassified listing pages to discovery evidence.
+
+The daily workflow refreshes the official directory before these readers and
+continues up to 3,000 House site requests per run. The request limit is not a
+historical cutoff. Existing event refreshes reuse the Senate age-based schedule.
+A partial failure saves the queue and the last usable pages. Raw capture receives
+this state as another seed; this collector itself downloads no linked files.
+
+The XML reader's `--committees` argument enables its **retained-page fallback**.
+It uses these same site observations when central documents are absent, the
+repository check fails, or `--failed-urls PATH` identifies a failed document URL
+(one URL per line). Matching requires the same official committee and page date,
+plus an explicit House event link or the native title's subject words. Ambiguous
+matches stay unassigned. Added links keep their page URL, digest and selector;
+original XML links remain intact, and alternate URLs are not declared byte
+identical. Complete unmatched site events remain available in the separate site
+outputs and raw-source context; they are not fabricated Congress.gov meetings.
+
+House and Senate share document-link/context readers, refresh scheduling, HTTP
+pacing and state/bundle retention. The XML fallback performs no extra committee
+HTTP requests. Energy & Commerce's Next.js event fields and browser-style JSON
+POST calendar are supported explicitly, including embedded testimony links and
+labeled attachment records. HTML opening statements qualify through their own
+labels or event sections. Witness associations use the link's own card or
+explicit witness line; navigation links and feeds are excluded. Listing-page
+dates do not establish an event, and generic publication dates remain unknown.
 
 Shared source flags (`source_args`): `--meetings`, `--state-dir`, `--output-dir`, `--seed-cache`, `--offline`, `--as-of`.
 

@@ -128,6 +128,8 @@ def family(source="", url="", pointer=(), media_type=""):
         if "listing" in combined:
             return "senate/listings"
         return "senate/pages"
+    if path.endswith("house-sites.json.gz"):
+        return "house/pages"
     if "house" in combined:
         if (
             "witness_xml" in combined

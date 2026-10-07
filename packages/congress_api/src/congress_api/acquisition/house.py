@@ -13,11 +13,13 @@ refreshed per run, oldest checks first. --zyte is only a backfill option.
 """
 
 import collections
+from copy import deepcopy
 import re
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
 
 from congress_api.acquisition.refresh import due
+from congress_api.acquisition.house_fallback import CommitteeFallback, merge_documents, needs_fallback
 from congress_api.matching.house import DOCUMENT_FIELDS, document_rows
 from congress_api.matching.meetings import NOT_HELD, TRANSCRIPT, is_hearing
 from congress_api.matching.prints import attached_prints, match_prints
@@ -28,6 +30,7 @@ from congress_api.parsers.house_documents import AMENDMENT_FIELDS, WITNESS_FIELD
 from congress_api.parsers.house_evidence import SCHEMA_VERSION
 from congress_api.parsers.house_xml import parse_house_meeting, parse_house_witnesses
 from congress_api.retention.house import seed, timestamp
+from congress_api.retention.committees import read as read_committees
 from congress_api.retention.tables import read_csv, read_meetings, read_state, write_csv, write_state
 from congress_api.transport import http
 
@@ -39,19 +42,24 @@ def lacking(m, packages):
         or (is_hearing(m) and not m.get("witnesses")) or not (packages or transcript))
 
 
-def request(url, through_zyte, receipts, allowed=(200, 404)):
+def request(url, through_zyte, receipts, allowed=(200, 404), *, json_body=None):
     """Record the retry helper's final outcome, not its unobserved inner attempts."""
     receipt = {"url": url, "started_at": timestamp()}
     receipts.append(receipt)
+    options = {}
+    if json_body is not None:
+        options = dict(method="POST", json_body=json_body, json_content_type="text/plain;charset=UTF-8")
+        receipt.update(method="POST", request_json=json_body)
     try:
-        response = http.get_with_retry(None, url, allowed=allowed, through_zyte=through_zyte)
+        response = http.get_with_retry(None, url, allowed=allowed, through_zyte=through_zyte, **options)
     except (RuntimeError, ValueError, OSError) as error:
         receipt.update(completed_at=timestamp(), outcome="error", error=str(error))
         raise
     receipt.update(completed_at=timestamp(), status_code=response.status_code,
                    outcome="not_found" if response.status_code == 404 else "retrieved")
     if response.status_code == 200:
-        receipt["content"] = RawContent.from_bytes(response.content, "application/xml" if url.lower().endswith(".xml") else "text/html").source_dict()
+        media = "application/json" if json_body is not None else "application/xml" if url.lower().endswith(".xml") else "text/html"
+        receipt["content"] = RawContent.from_bytes(response.content, media).source_dict()
     return response
 
 
@@ -80,17 +88,41 @@ def fetch_xml(urls, expected, through_zyte, receipts=None):
     return None, ""
 
 
-def fetch(m, previous, through_zyte=False, *, check=None):
+def fetch(m, previous, through_zyte=False, *, check=None, fallback=None, failed_urls=()):
     """Fetch one observation with actual UTC check times, independent of --as-of."""
     check = check if check is not None else {}
     check.update(started_at=timestamp(), mode="live", receipts=[])
+    primary_error = None
     try:
         result = _fetch(m, previous, through_zyte, check["receipts"])
     except (RuntimeError, ValueError, OSError, ET.ParseError) as error:
         check.update(completed_at=timestamp(), outcome="error", error=str(error))
-        raise
+        if fallback is None:
+            raise
+        primary_error = error
+        result = deepcopy(previous) if previous.get('evidence') else parsed(None, None, '', 'unfetched')
+    reason = 'repository_error' if primary_error else needs_fallback(m, result, failed_urls)
+    if not reason and previous.get('committee_fallback'):
+        reason = 'refresh_retained_committee_page'
+    retained = previous.get('committee_fallback')
+    if fallback is not None and reason:
+        report = fallback.find(m, retained)
+        report['reason'] = reason
+        if report['status'] == 'matched':
+            retained = report
+            result.pop('committee_fallback_check', None)
+        else:
+            result['committee_fallback_check'] = report
+    if retained and retained.get('status') == 'matched':
+        merge_documents(result, deepcopy(retained))
+        if primary_error:
+            result['repository_status'] = 'error'
+    if primary_error and not (retained and retained.get('status') == 'matched'):
+        # Keep failed discovery evidence in the caller's saved last_check.
+        check['committee_fallback'] = result.get('committee_fallback_check')
+        raise primary_error
     absent = result["status"] == "absent" or (result["status"] == "page" and result["page_status"] == "no_meeting_data")
-    check.update(completed_at=timestamp(), outcome="not_found" if absent else "present")
+    check.update(completed_at=timestamp(), outcome="error" if primary_error else "not_found" if absent else "present")
     result["last_check"] = check
     if any(receipt["outcome"] == "retrieved" for receipt in check["receipts"]):
         result["retrieved_at"] = check["completed_at"]
@@ -133,7 +165,7 @@ def _fetch(m, previous, through_zyte, receipts):
 
 
 def main(meetings, gpo_path, state_dir, output_dir, seed_cache=None, offline=False, as_of=None,
-         refresh_limit=400, limit=None, zyte=False, threads=1):
+         refresh_limit=400, limit=None, zyte=False, threads=1, committees=None, failed_urls=()):
     """Offline mode uses saved usable entries or seed inputs, still writes state/CSVs,
     and raises for selected entries with no usable result. It never refreshes HTTP.
 
@@ -148,17 +180,38 @@ def main(meetings, gpo_path, state_dir, output_dir, seed_cache=None, offline=Fal
     ms, gpo = read_meetings(meetings), read_csv(gpo_path)
     path = state_dir / "house.json.gz"
     state = read_state(path)
+    failed_urls = frozenset(failed_urls)
+    def known_failure(m):
+        return needs_fallback(m, state.get(m['eventId'], {}), failed_urls) == 'known_failed_document'
     prints = match_prints(ms, gpo)
-    selected = [m for m in ms if lacking(m, prints[m["eventId"]])]
+    selected = [m for m in ms if lacking(m, prints[m["eventId"]]) or
+                (m.get('chamber') != 'Senate' and not NOT_HELD.match(m.get('title') or '') and known_failure(m))]
+    if committees is not None and not committees.exists():
+        raise FileNotFoundError(committees)
+    rows = read_committees(committees or meetings.with_name('congress_committees.jsonl.gz'))
+    fallback = CommitteeFallback(rows, read_state(state_dir / 'house-sites.json.gz')) if rows else None
     totals, errors = collections.Counter(selected=len(selected)), []
     if seed_cache:
         for m in selected:
             if (m["eventId"] not in state or state[m["eventId"]].get("status") == "error") and (result := seed(m, seed_cache)) is not None:
                 state[m["eventId"]] = {**result, "checked": as_of.isoformat(), "version": m.get("updateDate", "")}
                 totals["seeded"] += 1
+    # New committee evidence can supplement saved XML immediately, without
+    # waiting for an old repository record's next network refresh.
+    if fallback:
+        for m in selected:
+            saved = state.get(m['eventId'], {})
+            reason = needs_fallback(m, saved, failed_urls)
+            if saved.get('evidence') and reason:
+                report = fallback.find(m)
+                report['reason'] = reason
+                if report['status'] == 'matched' and report != saved.get('committee_fallback'):
+                    merge_documents(saved, report)
+                    totals['retained committee supplements'] += 1
     # A parser upgrade joins the bounded unchanged-record queue. It must not
     # turn an old seed into thousands of immediate requests.
     pending = [m for m in selected if state.get(m["eventId"], {}).get("status") == "error"
+               or known_failure(m)
                or state.get(m["eventId"], {}).get("evidence", {}).get("schema_version") != SCHEMA_VERSION
                or due(state.get(m["eventId"]), m["date"], m.get("updateDate", ""), as_of)]
     changed, aged = [], []
@@ -170,7 +223,8 @@ def main(meetings, gpo_path, state_dir, output_dir, seed_cache=None, offline=Fal
     def fetch_one(m):
         check = {}
         try:
-            return fetch(m, state.get(m["eventId"], {}), zyte, check=check), "", check
+            options = dict(fallback=fallback, failed_urls=failed_urls) if fallback is not None else {}
+            return fetch(m, state.get(m["eventId"], {}), zyte, check=check, **options), "", check
         except (RuntimeError, ValueError, OSError, ET.ParseError) as error:
             return None, f"{m['eventId']}: {error}", check
     with ThreadPoolExecutor(threads) as pool:
@@ -193,7 +247,7 @@ def main(meetings, gpo_path, state_dir, output_dir, seed_cache=None, offline=Fal
     found_docs, found_witnesses, found_amendments = [], [], []
     for m in selected:
         e = m["eventId"]
-        if not lacking(m, prints[e]):
+        if not lacking(m, prints[e]) and not known_failure(m):
             continue
         saved = state[e]
         have = {d["url"] for d in (m.get("meetingDocuments") or []) + (m.get("witnessDocuments") or []) if d.get("url")}

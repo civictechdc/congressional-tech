@@ -44,3 +44,22 @@ def test_meeting_validation_installs_its_archive_and_filename_test_dependencies(
     assert 'packages/congress_api[archive,test]' in install
     assert 'packages/house-naming[test]' in install
     assert 'PyYAML' in install
+
+
+def test_house_directory_and_site_pages_precede_xml_fallback_and_save_partial_progress():
+    workflow = yaml.load((ROOT / '.github/workflows/update-data.yml').read_text(), Loader=yaml.BaseLoader)
+    jobs = workflow['jobs']
+    assert jobs['committees']['needs'] == 'congress'
+    assert 'committees' in jobs['meetings']['needs']
+    steps = jobs['meetings']['steps']
+    sites = next(step for step in steps if step.get('id') == 'house_sites')
+    house = next(step for step in steps if step.get('id') == 'house_records')
+    assert steps.index(sites) < steps.index(house)
+    assert '--committees pipeline-data/congress_committees.jsonl.gz' in sites['run']
+    assert '--limit 3000' in sites['run'] and '--since' not in sites['run']
+    assert "steps.house_sites.outcome == 'failure'" in house['if']
+    save = next(step for step in steps if step.get('name') == 'Save pipeline data snapshot')
+    assert "steps.house_records.outcome == 'failure'" in save['if']
+    raw = yaml.load((ROOT / '.github/workflows/capture-raw-sources.yml').read_text(), Loader=yaml.BaseLoader)
+    assert any('pipeline-data/meeting-inventory/house-sites.json.gz' in step.get('run', '')
+               for step in raw['jobs']['capture']['steps'])

@@ -306,7 +306,8 @@ class HouseFileObservation(SourceModel):
 
 
 class HouseDocumentGroup(SourceModel):
-    source: Literal['meeting_xml', 'witness_xml', 'html']
+    source: Literal['meeting_xml', 'witness_xml', 'html', 'committee_html']
+    source_url: str | None = None
     selector: str
     source_order: int
     active: bool

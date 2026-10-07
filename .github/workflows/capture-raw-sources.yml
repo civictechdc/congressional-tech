@@ -299,6 +299,7 @@ jobs:
             pipeline-data/congress_meetings.jsonl.gz \
             pipeline-data/gpo-evidence.jsonl.gz \
             pipeline-data/meeting-inventory/house.json.gz \
+            pipeline-data/meeting-inventory/house-sites.json.gz \
             pipeline-data/meeting-inventory/senate.json.gz; do
             if [ -f "$path" ]; then seeds+=(--seed "$path"); fi
           done

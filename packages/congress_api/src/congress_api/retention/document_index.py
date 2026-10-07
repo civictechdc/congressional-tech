@@ -1239,11 +1239,21 @@ class DocumentSources:
 
     def add_senate(self, state, receipt=None, *, read_body=None):
         from congress_api.parsers.senate import parsed
-        from congress_api.parsers.senate_page import SITE, document_context
+        from congress_api.parsers.senate_page import SITE
+        self._add_committee_pages(state, receipt, read_body=read_body, parse_page=lambda raw, url: parsed(raw.decode("utf-8", "replace"), url),
+            publishers={host: [code] for code, host in SITE.items()}, chamber='senate')
 
+    def add_house_sites(self, state, receipt=None, *, read_body=None):
+        from congress_api.parsers.committee_pages import parse_event_page
+        publishers = {host: sorted({row['code'] for row in site.get('committees', [])})
+                      for host, site in state.items() if isinstance(site, dict)} if isinstance(state, dict) else {}
+        self._add_committee_pages(state, receipt, read_body=read_body, parse_page=parse_event_page,
+                                  publishers=publishers, chamber='house')
+
+    def _add_committee_pages(self, state, receipt, *, read_body, parse_page, publishers, chamber):
+        from congress_api.parsers.senate_page import document_context
         if not isinstance(state, dict):
             return
-        publishers = {host: code for code, host in SITE.items()}
         for host, site in state.items():
             if not isinstance(site, dict):
                 continue
@@ -1264,7 +1274,7 @@ class DocumentSources:
                         # Refresh the discovered links and their witnesses too;
                         # old parser output may not contain a newly recognized
                         # anchor. Keep the original byte digest as its locator.
-                        page = {**page, **parsed(raw.decode("utf-8", "replace"), url)}
+                        page = {**page, **parse_page(raw, url)}
                         metadata_by_url = page.get("document_metadata") or {}
                         event = page.get("event") or event
                 context = context_values(
@@ -1273,9 +1283,9 @@ class DocumentSources:
                     source_page_title=page.get("title"),
                     source_page_date=event.get("date"),
                     source_page_type=event.get("type"),
-                    source_publisher_committee_code=publishers.get(host.removeprefix("www.")),
                     source_page_sha256=digest,
                 )
+                merge_context(context, {"source_publisher_committee_code": publishers.get(host.removeprefix("www."), [])})
                 merge_context(context, receipt or {})
                 # Preserve existing confirmed matches, never candidate_events.
                 for event_id in workflow.get("events") or []:
@@ -1299,7 +1309,7 @@ class DocumentSources:
                             source_document_group="page.documents",
                             source_document_type=context_kind or kind,
                             source_document_type_basis=context_basis if context_kind else
-                                "senate_parser_fallback" if kind == "other" else "senate_parser_inference",
+                                f"{chamber}_parser_fallback" if kind == "other" else f"{chamber}_parser_inference",
                             source_document_label=label,
                             source_link_url=document_url,
                             source_link_context=anchor.get("paragraph_text"),
@@ -1368,6 +1378,8 @@ class DocumentSources:
                     continue
                 attributes = (file.get("metadata") or {}).get("attributes") or {}
                 self.add_url(file.get("url"), {**(receipt or {}), **context_values(
+                    source_page_url=group.get("source_url"),
+                    source_page_sha256=group.get("source_sha256"),
                     source_link_url=file.get("url"), source_capture_pointer=file.get("selector"),
                     source_document_group=group.get("source"), source_witness_name=witness.get("name"),
                     source_document_type=group.get("type") or group.get("legacy_kind"),
@@ -1623,6 +1635,8 @@ def read_document_sources(root=None, urls=None, *, captures=None, read_receipt=N
     wanted = urls
     for record, receipt in records("senate/pages", "senate.json.gz"):
         context.add_senate(record, receipt, read_body=read_body)
+    for record, receipt in records(None, "house-sites.json.gz"):
+        context.add_house_sites(record, receipt, read_body=read_body)
     for record, receipt in records(None, "house.json.gz"):
         context.add_house(record, receipt)
     add_retained_house_documents(context, captures, read_body)

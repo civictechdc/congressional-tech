@@ -14,6 +14,7 @@ from lxml import html as dom
 
 from congress_api.parsers.text import text
 from congress_api.parsers.witness_names import is_name, witness
+from congress_api.parsers.document_links import feed_link
 
 ## where each committee keeps its hearing pages
 SITE = {"ssaf00": "agriculture.senate.gov", "ssap00": "appropriations.senate.gov", "ssas00": "armed-services.senate.gov", "ssbk00": "banking.senate.gov",
@@ -75,7 +76,7 @@ def sections(page_html, levels):
     return [s for s in re.split(rf"(?=<h[{levels}]\b)", page_html) if not (s.startswith("<h") and re.search(r"statement|remarks", text(s.split("</h")[0]), re.I))]
 
 
-def witnesses(page_html, url):
+def witnesses(page_html, url, *, plain=False):
     """The witnesses a hearing page lists, by whichever of the seven layouts it uses."""
     page_html, out = re.sub(r"<!--.*?-->", "", page_html, flags=re.S), []
     if "capigacr-widget-card" in page_html:
@@ -128,6 +129,9 @@ def witnesses(page_html, url):
             names = re.findall(r"<h[34] class=\"jet-listing-dynamic-field__content\">(.*?)</h[34]>", item, re.S)
             if names:
                 out.append(person(" ".join(names), re.findall(r"<(?:div|p) class=\"jet-listing-dynamic-field__content\">(.*?)</(?:div|p)>", item, re.S), url))
+    if plain:
+        root = dom.fromstring(page_html)
+        out += [{**witness(line), 'page': url} for _, line in plain_witness_links(root)]
     seen = set()
     return [w for w in out if is_name(w["name"]) and not (w["name"] in seen or seen.add(w["name"]))]
 
@@ -148,7 +152,7 @@ def section_document_kind(metadata):
             kind = "transcript"
         elif re.fullmatch(r"(?:(?:witness|written|prepared) )?testimony(?: on the following bills| submitted for the record)?", heading, re.I):
             kind = "witness statement"
-        elif re.fullmatch(r"member statements?", heading, re.I):
+        elif re.fullmatch(r"(?:member|opening) statements?", heading, re.I):
             kind = "member statement"
         elif re.fullmatch(r"legislation", heading, re.I):
             kind = "legislative text"
@@ -174,6 +178,12 @@ def _document_occurrence_context(occurrence):
     labels = occurrence.get("labels") or []
     card = occurrence.get("witness_card") or {}
     attributes = occurrence.get("attributes") or []
+    if not kind and re.match(r"^Read\b.{0,100}\bopening statement\b", occurrence.get('line_text') or occurrence.get('paragraph_text', ''), re.I):
+        kind, basis = 'member statement', 'publisher_paragraph_label'
+    if not kind and card.get('layout') == 'plain-witness-line':
+        literal = literal_document_kind(' '.join(labels), ' '.join(a.get('href', '') for a in attributes))
+        if literal in {'other', 'member statement', 'witness statement'}:
+            kind, basis = 'witness statement', 'publisher_witness_line'
     if not kind and any(re.fullmatch(r"(?:Witness |Panelist |Speaker )?Biograph(?:y|ies)",
                                     label.strip(), re.I) for label in labels):
         kind, basis = "witness biography", "publisher_link_label"
@@ -236,6 +246,33 @@ def documents(page_html, url, metadata=None):
     return list(out.values())
 
 
+def text_lines(node):
+    """Visible br-separated lines, with the anchors belonging to each line."""
+    result = [dict(text='', anchors=[])]
+    def visit(current):
+        if not isinstance(current.tag, str) or current.tag in {'script', 'style'}:
+            return
+        if current.tag == 'br':
+            result.append(dict(text='', anchors=[]))
+            return
+        if current.tag == 'a':
+            result[-1]['anchors'].append(current)
+        result[-1]['text'] += current.text or ''
+        for child in current:
+            visit(child)
+            result[-1]['text'] += child.tail or ''
+    visit(node)
+    for line in result:
+        line['text'] = ' '.join(line['text'].split())
+    return result
+
+
+def link_line(anchor):
+    blocks = anchor.xpath('ancestor::p[1] | ancestor::li[1]')
+    block = blocks[-1] if blocks else anchor
+    return next((line for line in text_lines(block) if anchor in line['anchors']), dict(text='', anchors=[]))
+
+
 def paragraph_headings(paragraph, anchor=None):
     """Bold labels on their own visual line also delimit a publisher section.
 
@@ -247,7 +284,16 @@ def paragraph_headings(paragraph, anchor=None):
     nodes = list(paragraph.iter())
     limit = nodes.index(anchor) if anchor is not None else len(nodes)
     result, start = [], 0
-    for node in paragraph.xpath(".//strong|.//b"):
+    # Some House templates put the exact section label on a br-separated
+    # line, including inside one long italic/bold paragraph.
+    for line in text_lines(paragraph):
+        if anchor is not None and anchor in line['anchors']:
+            break
+        if not line['anchors'] and re.fullmatch(r'(?:witness(?:es| list)?|opening statements?)\s*:?', line['text'], re.I):
+            heading = dom.Element('span')
+            heading.text = line['text']
+            result.append(heading)
+    for node in paragraph.xpath(".//strong|.//b|.//u[not(.//strong or .//b)]"):
         written = dom.tostring(node, encoding="unicode", with_tail=False)
         position = markup.find(written, start)
         if position < 0:
@@ -292,6 +338,9 @@ def link_headings(anchor):
                 headings.extend(sibling.xpath("./div[contains(concat(' ', normalize-space(@class), ' '), ' Heading--sectionTitle ')]/h2"))
             elif sibling.tag == "p":
                 headings.extend(paragraph_headings(sibling))
+            elif sibling.tag == 'div' and not sibling.xpath('.//a') and re.fullmatch(
+                    r'witness(?:es| list)?\s*:?', ' '.join(sibling.text_content().split()), re.I):
+                headings.append(sibling)
         # Commerce introduces one amendment list with its bill/substitute.
         # The introduction does not describe links after that list.
         if branch.tag in {"ul", "ol"}:
@@ -313,6 +362,37 @@ def link_headings(anchor):
             break
         branch = ancestor
     return []
+
+
+def plain_witness_links(root):
+    """Explicit witness sections with a name on the link or its local line.
+
+    A generic testimony button can refer to the immediately preceding paragraph
+    only. Never search backwards across another paragraph or section. Keep the
+    publisher's complete line; shared name parsing supplies the compact fields.
+    """
+    for anchor in root.xpath('.//a[@href]'):
+        headings = link_headings(anchor)
+        if len(headings) != 1 or not re.fullmatch(r'witness(?:es| list)?\s*:?', headings[0], re.I):
+            continue
+        label = ' '.join(anchor.text_content().split())
+        candidates = [label]
+        blocks = anchor.xpath('ancestor::li[1] | ancestor::p[1]')
+        for block in reversed(blocks):
+            if len(block.xpath('.//a[@href]')) != 1:
+                continue
+            line = ' '.join(block.text_content().split())
+            candidates.append(line.removesuffix(label).rstrip(' -'))
+            previous = block.getprevious()
+            if (line == label and previous is not None and previous.tag == 'p'
+                    and not previous.xpath('.//a[@href]')):
+                candidates.append(' '.join(previous.text_content().split()))
+        def named(line):
+            name = witness(line)['name']
+            return is_name(name) and all(word[:1].isupper() or word in {'de', 'del', 'van', 'von', 'da', 'di', 'la'} for word in name.split())
+        line = next((line for line in candidates if named(line)), None)
+        if line:
+            yield anchor, line
 
 
 def century_year(year: int) -> int:
@@ -415,7 +495,7 @@ def document_labels(page_html, url):
     return {urljoin(url, html.unescape(link.group(1)).strip()): text(link.group(2)) for link in FILE.finditer(page_html)}
 
 
-def source_details(page_html, url, people):
+def source_details(page_html, url, people, *, plain=False, include_link=None):
     """Keep page content, links and explicit witness-card ownership.
 
     Existing witness rows and document triples remain unchanged for stable source
@@ -539,6 +619,16 @@ def source_details(page_html, url, people):
             index = matches[0]
             witness_metadata[str(index)] = metadata
             witnesses_by_node[card] = index
+    if plain:
+        for anchor, line in plain_witness_links(root):
+            if any(parent in cards_by_node for parent in anchor.iterancestors()):
+                continue
+            metadata = dict(layout='plain-witness-line', name=line, text=line, attributes=dict(anchor.attrib), fields=[])
+            cards_by_node[anchor] = metadata
+            matches = by_name.get(witness(line)['name'], [])
+            if len(matches) == 1:
+                witnesses_by_node[anchor] = matches[0]
+                witness_metadata[str(matches[0])] = metadata
     # Separate cards with the same parsed name are not proof that their people
     # are identical. The older witness list may already have deduplicated names.
     repeated = {index for index, count in Counter(witnesses_by_node.values()).items() if count > 1}
@@ -548,9 +638,9 @@ def source_details(page_html, url, people):
     file_path = re.compile(r"/download/|/media-center/files/|/wp-content/uploads/|/_cache/files/|/imo/media/doc/|/services/files/|/sites/.*/files/|files\.serve|\.(?:pdf|docx?|xlsx?|xml|csv|txt|rtf|vtt)(?:$|[?#])", re.I)
     for anchor in root.xpath(".//a[@href]"):
         href = urljoin(url, anchor.get("href", "").strip())
-        if not file_path.search(href) or re.search(r"\.(jpe?g|png|gif|svg|css|js|ico)($|\?)", href, re.I):
+        if (not file_path.search(href) and not (include_link and include_link(anchor))) or re.search(r"\.(jpe?g|png|gif|svg|css|js|ico)($|\?)", href, re.I):
             continue
-        if (anchor.get("type") or "").lower() in ("application/rss+xml", "application/atom+xml") or re.search(r"/(?:rss|atom|sitemap)\.xml(?:$|[?#])", href, re.I):
+        if feed_link(anchor, href):
             continue
         entry = files.setdefault(href, {"labels": [], "attributes": [], "container_attributes": [], "witness_indexes": [], "occurrences": []})
         label = value(anchor)
@@ -559,6 +649,8 @@ def source_details(page_html, url, people):
         paragraphs = anchor.xpath("ancestor::p[1]")
         if paragraphs and (paragraph := " ".join(paragraphs[0].text_content().split())):
             occurrence["paragraph_text"] = paragraph
+        if plain and (line := link_line(anchor)['text']):
+            occurrence['line_text'] = line
         if label and label not in entry["labels"]:
             entry["labels"].append(label)
         attributes = dict(anchor.attrib)
@@ -566,7 +658,7 @@ def source_details(page_html, url, people):
             entry["attributes"].append(attributes)
         # The closest card wins; retain each anchor separately so two anchors
         # for one URL cannot cross-pair their labels and witness ownership.
-        for ancestor in anchor.iterancestors():
+        for ancestor in [anchor, *anchor.iterancestors()]:
             attributes = {key: value for key, value in ancestor.attrib.items() if key.startswith("data-")}
             if has(ancestor, "witness__field-testimony"):
                 attributes["class"] = ancestor.get("class")

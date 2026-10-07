@@ -3,9 +3,8 @@ import re
 import ipaddress
 from urllib.parse import urljoin, urlsplit, urlunsplit
 
-from lxml import etree, html
-
 from congress_api.models.documents import DocumentLink
+from congress_api.parsers.page_content import page_trees
 
 FILE = re.compile(r'\.(?:pdf|xml|docx?|xlsx?|pptx?|zip|rtf|txt|csv)(?:$|[?#])', re.I)
 PROMPT = re.compile(r'(?:please )?click here[.!]?|download(?: file)?|continue|pdf|xml|docx?|xlsx?|pptx?|zip|rtf|txt|csv', re.I)
@@ -55,12 +54,32 @@ def http_url(value, base=''):
     return None
 
 
+def feed_link(node, url):
+    """Publisher feeds describe a site, not an attached document."""
+    return ((node.get('type') or '').lower() in {'application/rss+xml', 'application/atom+xml'}
+            or bool(re.search(r'/(?:rss|atom|sitemap)\.xml(?:$|[?#])', url, re.I)))
+
+
 def document_links(body: bytes, url: str) -> list[DocumentLink]:
     """Keep publisher labels/attributes, including malformed-but-working & URLs."""
-    try:
-        tree = html.fromstring(body, parser=html.HTMLParser(no_network=True))
-    except (etree.ParserError, ValueError):
-        return []
+    return links_from_trees(page_trees(body), url)
+
+
+def links_from_trees(trees, url, *, include_link=None):
+    """Use one link reader and URL deduplication for each supplied page tree."""
+    result, seen = [], set()
+    for selector, tree in trees:
+        for link in tree_document_links(tree, url, include_link=include_link):
+            if link.url not in seen:
+                seen.add(link.url)
+                if selector:
+                    link = link.model_copy(update={'source_selector': selector})
+                result.append(link)
+    return result
+
+
+def tree_document_links(tree, url, *, include_link=None):
+    """One link reader for static markup and decoded publisher HTML fields."""
     bases = tree.xpath('//base[@href]/@href')
     base = (http_url(bases[0], url) if bases else None) or url
     result = []
@@ -73,6 +92,8 @@ def document_links(body: bytes, url: str) -> list[DocumentLink]:
             if (FILE.search(value) or node.get('download') is not None or PROMPT.fullmatch(label)
                     or 'wp-block-file__button' in node.get('class', '').split()):
                 basis = 'download_link'
+            elif include_link and include_link(node):
+                basis = 'publisher_document_context'
         elif node.tag == 'meta' and node.get('http-equiv', '').lower() == 'refresh':
             if match := re.fullmatch(r'\s*\d+(?:\.\d+)?\s*;\s*url\s*=\s*(.+?)\s*', node.get('content', ''), re.I):
                 value, basis = match[1].strip('\'"'), 'meta_refresh'
@@ -80,7 +101,7 @@ def document_links(body: bytes, url: str) -> list[DocumentLink]:
                 node.get('type', '').lower() == 'application/pdf' or FILE.search(value)):
             basis = 'embedded_document'
         target = http_url(value, base) if value.strip() else None
-        if basis and target and target not in seen:
+        if basis and target and not feed_link(node, target) and target not in seen:
             seen.add(target)
             result.append(DocumentLink(url=target, basis=basis, text=label,
                                        tag=node.tag, attributes=dict(node.attrib)))

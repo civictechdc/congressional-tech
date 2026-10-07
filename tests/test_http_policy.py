@@ -149,3 +149,34 @@ def test_transcription_gpo_keeps_direct_html_capture(tmp_path, monkeypatch):
     assert calls == [('https://example.gov/transcript.htm', {'timeout': 60, 'headers': {'User-Agent': 'Mozilla/5.0'}})]
     captured = json.loads((tmp_path / 'source/CHRG-test.json').read_text())
     assert body_bytes(captured) == data and captured['acquisition'] == 'http'
+
+
+def test_read_only_post_uses_shared_request_retry_and_same_body(unpaced):
+    calls = []
+    query = {'start': '2025-09-18', 'limit': 20}
+    def request(method, url, **kwargs):
+        calls.append((method, kwargs))
+        return response(503 if len(calls) < 2 else 200)
+    http.get_with_retry(SimpleNamespace(request=request), URL, method='POST', json_body=query)
+    assert len(calls) == 2
+    assert all(method == 'POST' and kwargs['json'] == query for method, kwargs in calls)
+    with pytest.raises(ValueError, match='require POST'):
+        http.get_with_retry(SimpleNamespace(request=request), URL, json_body=query)
+    assert len(calls) == 2
+
+
+def test_read_only_post_through_zyte_preserves_publisher_method_and_json(unpaced, monkeypatch):
+    import base64
+    calls = []
+    monkeypatch.setenv('ZYTE_TOKEN', 'test-token')
+    def post(url, **kwargs):
+        calls.append((url, kwargs))
+        payload = {'statusCode': 200, 'httpResponseBody': base64.b64encode(b'{}').decode(), 'httpResponseHeaders': []}
+        return SimpleNamespace(status_code=200, json=lambda: payload)
+    query = {'start': '2025-09-18', 'limit': 20}
+    result = http.get_with_retry(SimpleNamespace(post=post), URL, method='POST', json_body=query, through_zyte=True)
+    assert result.content == b'{}'
+    sent = calls[0][1]['json']
+    assert sent['httpRequestMethod'] == 'POST'
+    assert json.loads(sent['httpRequestText']) == query
+    assert sent['customHttpRequestHeaders'] == [{'name': 'Content-Type', 'value': 'application/json'}]

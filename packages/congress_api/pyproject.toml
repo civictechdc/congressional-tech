@@ -24,6 +24,7 @@ test = ["pytest>=9,<10"]
 
 [project.scripts]
 raw-source-sync = "congress_api.cli.raw_sync:main"
+house-committee-sites = "congress_api.cli.house_sites:parse_args_and_run"
 house-meeting-records = "congress_api.cli.house:parse_args_and_run"
 senate-meeting-records = "congress_api.cli.senate:parse_args_and_run"
 meeting-inventory = "congress_api.cli.inventory:parse_args_and_run"

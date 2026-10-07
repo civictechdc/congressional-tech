@@ -1,0 +1,26 @@
+[
+  {
+    "file": "agriculture-cftc.html",
+    "url": "https://agriculture.house.gov/calendar/eventsingle.aspx?EventID=8039",
+    "sha256": "2593f7b800646f4d69a885cd457044e0ec0328075269db187f84137de037eacd",
+    "visual_evidence": "output/playwright/house-quality-20261007/agriculture.png"
+  },
+  {
+    "file": "judiciary-sanctuary.html",
+    "url": "https://judiciary.house.gov/committee-activity/hearings/continuing-tragedy-sanctuary-laws",
+    "sha256": "d7e0933b2e872fbd901a5bdccaed9ab69356b233928cdbca413072176add924f",
+    "visual_evidence": "output/playwright/house-quality-20261007/judiciary.png"
+  },
+  {
+    "file": "judiciary-listing.html",
+    "url": "https://judiciary.house.gov/committee-activity/business-meetings/all",
+    "sha256": "b5861cb4fe8100c839833b7b6ebd369bc68423b422bedf4952f0675360ba5c67",
+    "visual_evidence": "output/playwright/house-quality-20261007/judiciary-listing.png"
+  },
+  {
+    "file": "science-biotech.html",
+    "url": "https://science.house.gov/hearings?ContentRecord_id=3B4AB1A4-09C2-41DC-9358-4E519B538E06",
+    "sha256": "954dfe47310eb98767bdabea0b616926ffd68818d54f340609d1eaa20263f673",
+    "visual_evidence": "output/playwright/house-quality-20261007/science.png"
+  }
+]

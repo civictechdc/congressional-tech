@@ -118,8 +118,8 @@ jobs:
             "$DATA_DIR/gpo_hearings.csv" "$DATA_DIR/gpo_hearing_videos.csv" "$DATA_DIR/gpo_hearing_video_coverage.csv"
 
   meetings:
-    needs: congress
-    # Its own job: the readers depend on docs.house.gov and 22 committee sites, and a failure there must not
+    needs: [congress, committees]
+    # Its own job: the readers depend on docs.house.gov and committee sites, and a failure there must not
     # hold back the GPO and video outputs above. Runs on the last saved snapshot if the Congress job failed.
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
@@ -152,10 +152,19 @@ jobs:
           path: core-benchmark-smoke.json
           if-no-files-found: ignore
 
+      - name: Read House committee sites across all discoverable history
+        id: house_sites
+        run: |
+          house-committee-sites --committees pipeline-data/congress_committees.jsonl.gz \
+            --state-dir pipeline-data/meeting-inventory --output-dir "$DATA_DIR" \
+            --limit 3000 --refresh-limit 450
+
       - name: Read House repository records
         id: house_records
+        if: ${{ !cancelled() && (steps.house_sites.outcome == 'success' || steps.house_sites.outcome == 'failure') }}
         run: |
           house-meeting-records --meetings pipeline-data/congress_meetings.jsonl.gz \
+            --committees pipeline-data/congress_committees.jsonl.gz \
             --gpo-path "$DATA_DIR/gpo_hearings.csv" --state-dir pipeline-data/meeting-inventory \
             --output-dir "$DATA_DIR" --refresh-limit 400
 
@@ -187,11 +196,12 @@ jobs:
           .github/scripts/commit-and-push.sh "Updated meeting inventory" \
             "$DATA_DIR/hearing_text_sources.csv" "$DATA_DIR/meetings_without_records.csv" \
             "$DATA_DIR/house_documents_found.csv" "$DATA_DIR/house_witnesses_found.csv" "$DATA_DIR/house_amendments_found.csv" \
+            "$DATA_DIR/house_site_events.csv" "$DATA_DIR/house_site_documents.csv" "$DATA_DIR/house_site_coverage.csv" \
             "$DATA_DIR/senate_hearing_pages_found.csv" "$DATA_DIR/senate_witnesses_found.csv" "$DATA_DIR/senate_documents_found.csv" \
             "$DATA_DIR/meeting_completeness.csv" "$DATA_DIR/meeting_witnesses.csv"
 
   committees:
-    needs: meetings
+    needs: congress
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:

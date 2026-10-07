@@ -90,7 +90,7 @@ def pace_request(url, *, through_zyte=False):
         _next[pace_key] = time.monotonic() + gap
 
 
-def get_with_retry(session, url, params=None, attempts=3, *, method="GET", allowed=(200,), through_zyte=False):
+def get_with_retry(session, url, params=None, attempts=3, *, method="GET", allowed=(200,), through_zyte=False, json_body=None, json_content_type="application/json"):
     """Return a response or raise, without putting API keys from query strings in errors."""
     if session is None:
         if not hasattr(_local, "session"):
@@ -99,18 +99,27 @@ def get_with_retry(session, url, params=None, attempts=3, *, method="GET", allow
     host = urlsplit(url).hostname
     pace_key = f"zyte:{host}" if through_zyte else host
     status = "request error"
+    if json_body is not None and method != "POST":
+        raise ValueError("JSON request bodies require POST")
     for attempt in range(attempts):
         pace_request(url, through_zyte=through_zyte)
         try:
             if through_zyte:
-                status, body, header_items = zyte.decode(zyte.request(url, session))
+                options = {"json_body": json_body, "json_content_type": json_content_type} if json_body is not None else {}
+                status, body, header_items = zyte.decode(zyte.request(url, session, **options))
                 response = requests.Response()
                 response.status_code, response._content, response.url = status, body, url
                 response.encoding = "utf-8"
                 for item in header_items:
                     response.headers[item.name] = item.value
             else:
-                response = session.request(method, url, params=params, timeout=60, headers=UA)
+                options = {"json": json_body} if json_body is not None else {}
+                headers = dict(UA)
+                if json_body is not None and json_content_type != "application/json":
+                    import json
+                    options = {"data": json.dumps(json_body)}
+                    headers["Content-Type"] = json_content_type
+                response = session.request(method, url, params=params, timeout=60, headers=headers, **options)
                 status = response.status_code
             COUNTS[f"{'Zyte' if through_zyte else method} {host} {status}"] += 1
             if status in allowed:
