@@ -180,3 +180,70 @@ def test_read_only_post_through_zyte_preserves_publisher_method_and_json(unpaced
     assert sent['httpRequestMethod'] == 'POST'
     assert json.loads(sent['httpRequestText']) == query
     assert sent['customHttpRequestHeaders'] == [{'name': 'Content-Type', 'value': 'application/json'}]
+
+
+@pytest.fixture
+def clock(monkeypatch):
+    now = [100.0]
+    monkeypatch.setattr(http.time, 'monotonic', lambda: now[0])
+    monkeypatch.setattr(http.time, 'sleep', lambda delay: now.__setitem__(0, now[0] + delay))
+    monkeypatch.setattr(http, '_next', defaultdict(float))
+    return now
+
+
+def test_shared_request_pacer_spaces_threads_and_does_not_accumulate_idle_credit(clock):
+    from concurrent.futures import ThreadPoolExecutor
+    pacer = http.RequestPacer(30)
+    with ThreadPoolExecutor(30) as pool:
+        list(pool.map(lambda _: pacer(), range(61)))
+    assert clock[0] == pytest.approx(102)
+    clock[0] = 200
+    pacer()
+    assert clock[0] == 200
+    pacer()
+    assert clock[0] == pytest.approx(200 + 1 / 30)
+
+
+@pytest.mark.parametrize('rate', [0, -1, float('nan'), float('inf')])
+def test_request_pacer_rejects_invalid_rates(rate):
+    with pytest.raises(ValueError, match='positive finite'):
+        http.RequestPacer(rate)
+
+
+def test_rate_limit_spans_hosts_retries_and_calendar_posts_without_removing_backoff(clock):
+    starts = []
+    def request(method, url, **kwargs):
+        starts.append((clock[0], method, kwargs))
+        return response(503 if len(starts) == 2 else 200)
+    session = SimpleNamespace(request=request)
+    pacer = http.RequestPacer(30)
+    http.get_with_retry(session, 'https://a.house.gov/event', request_pacer=pacer)
+    http.get_with_retry(session, 'https://b.house.gov/calendar', method='POST', json_body={'month': 10}, request_pacer=pacer)
+    assert [s[0] for s in starts] == pytest.approx([100, 100 + 1 / 30, 102 + 1 / 30])
+    assert all(s[1] == 'POST' and s[2]['json'] == {'month': 10} for s in starts[1:])
+
+
+def test_global_wait_preserves_host_spacing_and_docs_refusal_delay(clock):
+    pacer = http.RequestPacer(1)
+    pacer()  # Another host used the global slot.
+    starts = []
+    def request(*args, **kwargs):
+        starts.append(clock[0])
+        return response(403 if len(starts) == 1 else 200)
+    session = SimpleNamespace(request=request)
+    http.get_with_retry(session, 'https://docs.house.gov/event', request_pacer=pacer)
+    http.get_with_retry(session, 'https://docs.house.gov/event', request_pacer=pacer)
+    assert starts == pytest.approx([101, 161, 162.2])
+
+
+def test_zyte_attempts_use_the_same_global_pacer(clock, monkeypatch):
+    starts = []
+    def request(*args, **kwargs):
+        starts.append(clock[0])
+        return None
+    monkeypatch.setattr(http.zyte, 'request', request)
+    monkeypatch.setattr(http.zyte, 'decode', lambda _: (200, b'{}', []))
+    pacer = http.RequestPacer(30)
+    for host in ('a', 'b'):
+        http.get_with_retry(None, f'https://{host}.house.gov/', through_zyte=True, request_pacer=pacer)
+    assert starts == pytest.approx([100, 100 + 1 / 30])

@@ -25,6 +25,7 @@ def parse_args_and_run(argv=None):
     parser.add_argument('--limit', type=nonnegative, help='request budget; preserve the queue for continuation')
     parser.add_argument('--refresh-limit', type=nonnegative, default=450)
     parser.add_argument('--workers', type=positive, default=8, help='concurrent committee requests (1–32); at most one per committee')
+    parser.add_argument('--requests-per-second', type=positive, help='total top-level HTTP attempts/sec across committees, including retries; host pacing still applies')
     parser.add_argument('--as-of', type=dt.date.fromisoformat)
     parser.add_argument('--offline', action='store_true')
     parser.add_argument('--reparse', action='store_true', help='with --offline, rebuild readings from retained bodies; stop live collection first')

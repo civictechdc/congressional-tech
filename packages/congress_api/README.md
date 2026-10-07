@@ -551,7 +551,13 @@ diagnostics in `resolved_errors`.
 
 The collector shares the existing HTTP retry, connection-pooling and host-pacing
 client. `--workers` defaults to 8 (range 1–32), with at most one request per
-committee in flight. A slow committee does not block other committees. Workers
+committee in flight. `--requests-per-second 30 --workers 30` sets a shared ceiling
+of 30 top-level HTTP attempts per second, including retries and calendar POSTs.
+The shared client spaces starts without accumulating burst credit; per-host
+pacing and refusal backoff still apply. Redirect hops remain managed by Requests.
+Omitting the rate option preserves the existing host-only pacing. This is a
+ceiling: site latency, parsing and checkpoint writes can keep throughput below it.
+A slow committee does not block other committees. Workers
 fetch responses and receipts; one coordinator parses them, updates queues and
 writes the existing checkpoint every 25 completed requests. In-flight requests
 remain pending in checkpoints until applied. The request limit includes all

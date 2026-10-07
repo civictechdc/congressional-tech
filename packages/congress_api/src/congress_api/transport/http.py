@@ -15,6 +15,7 @@ describes received headers; callers decide whether to retain that metadata.
 """
 
 import collections
+import math
 import threading
 import time
 from contextlib import nullcontext
@@ -37,6 +38,22 @@ _next = collections.defaultdict(float)
 
 
 _local = threading.local()
+
+
+class RequestPacer:
+    """Space top-level HTTP attempts across threads, including retries, without bursts."""
+
+    def __init__(self, requests_per_second):
+        if not math.isfinite(requests_per_second) or requests_per_second <= 0:
+            raise ValueError('requests_per_second must be positive finite')
+        self.gap = 1 / requests_per_second
+        self.lock = threading.Lock()
+        self.next_start = 0.0
+
+    def __call__(self):
+        with self.lock:
+            time.sleep(max(0, self.next_start - time.monotonic()))
+            self.next_start = time.monotonic() + self.gap
 
 
 class HttpRequestError(RuntimeError):
@@ -97,17 +114,19 @@ def response_metadata(response: requests.Response) -> dict:
     }
 
 
-def pace_request(url, *, through_zyte=False):
+def pace_request(url, *, through_zyte=False, request_pacer=None):
     """Share the publisher request-start limit across HTTP implementations."""
     host = urlsplit(url).hostname
     pace_key = f"zyte:{host}" if through_zyte else host
     gap = 0 if through_zyte else 1.2 if host == "docs.house.gov" else 0.2
     with nullcontext() if through_zyte else _locks[host]:
         time.sleep(max(0, _next[pace_key] - time.monotonic()))
+        if request_pacer is not None:
+            request_pacer()
         _next[pace_key] = time.monotonic() + gap
 
 
-def get_with_retry(session, url, params=None, attempts=3, *, method="GET", allowed=(200,), through_zyte=False, json_body=None, json_content_type="application/json"):
+def get_with_retry(session, url, params=None, attempts=3, *, method="GET", allowed=(200,), through_zyte=False, json_body=None, json_content_type="application/json", request_pacer=None):
     """Return a response or raise, without putting API keys from query strings in errors."""
     if session is None:
         if not hasattr(_local, "session"):
@@ -121,7 +140,7 @@ def get_with_retry(session, url, params=None, attempts=3, *, method="GET", allow
         raise ValueError("JSON request bodies require POST")
     for attempt in range(attempts):
         attempted = attempt + 1
-        pace_request(url, through_zyte=through_zyte)
+        pace_request(url, through_zyte=through_zyte, request_pacer=request_pacer)
         try:
             if through_zyte:
                 options = {"json_body": json_body, "json_content_type": json_content_type} if json_body is not None else {}

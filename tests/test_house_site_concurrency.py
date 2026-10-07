@@ -174,13 +174,14 @@ def test_cli_signal_requests_drain_and_restores_handlers(monkeypatch, tmp_path):
 
     def run(**kwargs):
         assert kwargs['workers'] == 3 and not kwargs['stop'].is_set()
+        assert kwargs['requests_per_second'] == 30
         signal.getsignal(signal.SIGTERM)(signal.SIGTERM, None)
         assert kwargs['stop'].is_set()
 
     monkeypatch.setattr(cli, 'main', run)
     with pytest.raises(SystemExit, match='2'):
         cli.parse_args_and_run(['--committees', str(tmp_path / 'committees'), '--state-dir', str(tmp_path),
-                               '--output-dir', str(tmp_path), '--workers', '3'])
+                               '--output-dir', str(tmp_path), '--workers', '3', '--requests-per-second', '30'])
     assert {sig: signal.getsignal(sig) for sig in before} == before
 
 
@@ -221,3 +222,38 @@ def test_main_passes_worker_bound_and_exports_a_requested_stop_with_retained_err
     result = house_sites.main(directory, tmp_path, tmp_path, workers=3, stop=stop)
     assert result['stopped'] and levels == [3]
     assert (tmp_path / 'house_site_documents.csv').exists()
+
+
+def test_main_shares_one_pacer_with_every_house_transport_request(tmp_path, monkeypatch):
+    import gzip
+    import json
+    from types import SimpleNamespace
+    from congress_api.acquisition import house
+    directory = tmp_path / 'committees.jsonl.gz'
+    directory.write_bytes(gzip.compress((json.dumps(DIRECTORY[0]) + '\n').encode()))
+    seen = []
+
+    def request(*args, **kwargs):
+        seen.append(kwargs)
+        return SimpleNamespace(status_code=404)
+
+    def collect(rows, state, *, get, workers, **kwargs):
+        assert workers == 30
+        get('https://a.house.gov/event', [])
+        get('https://b.house.gov/calendar', [], json_body={'month': 10})
+        return {'requests': 2, 'pending': 0, 'failed': 0}
+
+    monkeypatch.setattr(house.http, 'get_with_retry', request)
+    monkeypatch.setattr(house_sites, 'collect', collect)
+    house_sites.main(directory, tmp_path, tmp_path, workers=30, requests_per_second=30)
+    assert seen[0]['request_pacer'] is seen[1]['request_pacer']
+    assert seen[1]['method'] == 'POST' and seen[1]['json_body'] == {'month': 10}
+
+
+@pytest.mark.parametrize('value', ['0', '-1', 'nan', 'inf'])
+def test_cli_rejects_invalid_rate_before_collection(tmp_path, monkeypatch, value):
+    from congress_api.cli import house_sites as cli
+    monkeypatch.setattr(cli, 'main', lambda **kw: pytest.fail('invalid rate reached collection'))
+    with pytest.raises(SystemExit, match='2'):
+        cli.parse_args_and_run(['--committees', str(tmp_path / 'committees'), '--state-dir', str(tmp_path),
+                               '--output-dir', str(tmp_path), '--requests-per-second', value])

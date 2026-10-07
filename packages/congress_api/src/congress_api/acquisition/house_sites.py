@@ -21,7 +21,7 @@ from congress_api.parsers.committee_pages import event_identity, parse_event_pag
 from congress_api.models.content import content_bytes
 from congress_api.retention.committees import read as read_committees
 from congress_api.retention.tables import read_state, write_state, write_csv
-from congress_api.transport.http import HttpRequestError
+from congress_api.transport.http import HttpRequestError, RequestPacer
 
 PARSER_VERSION = 4
 PAGINATION_VERSION = 3
@@ -349,11 +349,12 @@ def outputs(state, output_dir):
 
 
 def main(committees, state_dir, output_dir, *, as_of=None, offline=False, reparse=False, site=None, limit=None, refresh_limit=450, zyte=False,
-         workers=8, stop=None):
+         workers=8, requests_per_second=None, stop=None):
     if limit is not None and limit < 0 or refresh_limit < 0:
         raise ValueError('Collection and refresh limits must be nonnegative')
     if reparse and not offline:
         raise ValueError('Reparsing requires --offline and a stopped collector')
+    request_pacer = RequestPacer(requests_per_second) if requests_per_second is not None else None
     today = as_of or date.today()
     if not committees.exists():
         raise FileNotFoundError(committees)
@@ -372,7 +373,8 @@ def main(committees, state_dir, output_dir, *, as_of=None, offline=False, repars
         def persist(value):
             write_state(path, value, compresslevel=3)
             write_coverage(value, output_dir)
-        result = collect(rows, state, today=today, get=lambda url, checks, **kw: request(url, zyte, checks, **kw),
+        options = {'request_pacer': request_pacer} if request_pacer is not None else {}
+        result = collect(rows, state, today=today, get=lambda url, checks, **kw: request(url, zyte, checks, **options, **kw),
                          limit=limit, refresh_limit=refresh_limit, sites=site, checkpoint=persist, workers=workers, stop=stop)
     outputs(state, output_dir)
     print(json.dumps(result, sort_keys=True), flush=True)

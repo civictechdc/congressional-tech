@@ -42,7 +42,7 @@ def lacking(m, packages):
         or (is_hearing(m) and not m.get("witnesses")) or not (packages or transcript))
 
 
-def request(url, through_zyte, receipts, allowed=(200, 404), *, json_body=None):
+def request(url, through_zyte, receipts, allowed=(200, 404), *, json_body=None, request_pacer=None):
     """Record the retry helper's final outcome, not its unobserved inner attempts."""
     receipt = {"url": url, "started_at": timestamp()}
     receipts.append(receipt)
@@ -50,6 +50,8 @@ def request(url, through_zyte, receipts, allowed=(200, 404), *, json_body=None):
     if json_body is not None:
         options = dict(method="POST", json_body=json_body, json_content_type="text/plain;charset=UTF-8")
         receipt.update(method="POST", request_json=json_body)
+    if request_pacer is not None:
+        options['request_pacer'] = request_pacer
     try:
         response = http.get_with_retry(None, url, allowed=allowed, through_zyte=through_zyte, **options)
     except (RuntimeError, ValueError, OSError) as error:
