@@ -42,9 +42,26 @@ _local = threading.local()
 class HttpRequestError(RuntimeError):
     """Failed transport with a status callers can inspect without parsing text."""
 
-    def __init__(self, message, status):
+    def __init__(self, message, status, *, attempts=0, exception_types=()):
         super().__init__(message)
         self.status = status
+        self.details = dict(status=status, attempts=attempts, exception_types=list(exception_types))
+
+
+def exception_types(error):
+    """Keep bounded error classes, never exception messages containing secrets."""
+    pending, seen, result = [error], set(), []
+    while pending and len(seen) < 8:
+        current = pending.pop()
+        if not isinstance(current, BaseException) or id(current) in seen:
+            continue
+        seen.add(id(current))
+        name = type(current).__name__
+        if name not in result:
+            result.append(name)
+        pending.extend(value for value in [current.__cause__, current.__context__,
+                       getattr(current, 'reason', None), *current.args] if isinstance(value, BaseException))
+    return result
 
 
 def response_metadata(response: requests.Response) -> dict:
@@ -99,9 +116,11 @@ def get_with_retry(session, url, params=None, attempts=3, *, method="GET", allow
     host = urlsplit(url).hostname
     pace_key = f"zyte:{host}" if through_zyte else host
     status = "request error"
+    attempted, failure_types = 0, []
     if json_body is not None and method != "POST":
         raise ValueError("JSON request bodies require POST")
     for attempt in range(attempts):
+        attempted = attempt + 1
         pace_request(url, through_zyte=through_zyte)
         try:
             if through_zyte:
@@ -122,10 +141,12 @@ def get_with_retry(session, url, params=None, attempts=3, *, method="GET", allow
                 response = session.request(method, url, params=params, timeout=60, headers=headers, **options)
                 status = response.status_code
             COUNTS[f"{'Zyte' if through_zyte else method} {host} {status}"] += 1
+            failure_types = []
             if status in allowed:
                 return response
-        except requests.RequestException:
+        except requests.RequestException as error:
             status = "request error"
+            failure_types = exception_types(error)
             COUNTS[f"{method} {host} request error"] += 1
         ## A refusal is retryable, including a site's 200 challenge when a caller rejects its format.
         delay = 60 if status == 403 and host == "docs.house.gov" and not through_zyte else 2 ** (attempt + 1)
@@ -133,4 +154,6 @@ def get_with_retry(session, url, params=None, attempts=3, *, method="GET", allow
             _next[pace_key] = max(_next[pace_key], time.monotonic() + delay)
         if isinstance(status, int) and status not in (202, 403, 408, 429, 500, 502, 503, 504, 520):
             break
-    raise HttpRequestError(f"{method} {host}{urlsplit(url).path}: {status}", status)
+    detail = f" ({', '.join(failure_types)}; {attempted} attempts)" if failure_types else ''
+    raise HttpRequestError(f"{method} {host}{urlsplit(url).path}: {status}{detail}", status,
+                           attempts=attempted, exception_types=failure_types) from None

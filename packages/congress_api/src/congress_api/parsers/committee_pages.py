@@ -49,7 +49,7 @@ def discovery_links(body, url):
 def event_title(tree):
     """Prefer a subject heading over a category banner or empty site logo."""
     generic = {'hearings', 'hearing', 'events', 'calendar', 'meetings', 'business meetings', 'markups', 'home'}
-    for xpath in ('//h1', '//article[contains(concat(" ",normalize-space(@class)," ")," post ")]//h2[@class="title"]', '//*[contains(@class,"newsie-titler") or (contains(@class,"middleheadline") and not(self::h3))]', '//main//h2'):
+    for xpath in ('//*[contains(@class,"newsie-titler") or (contains(@class,"middleheadline") and not(self::h3))]', '//article[contains(concat(" ",normalize-space(@class)," ")," post ")]//h2[@class="title"]', '//main//h1', '//h1', '//main//h2'):
         titles = list(dict.fromkeys(' '.join(n.text_content().split()) for n in tree.xpath(xpath)))
         titles = [t for t in titles if t and t.lower() not in generic]
         if len(titles) == 1:

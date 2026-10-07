@@ -25,6 +25,43 @@ def key(request):
     return json.dumps([request['url'], request.get('body')], separators=(',', ':'), sort_keys=True)
 
 
+def comparison_key(request):
+    """Compare independent query fields without rewriting the source URL.
+
+    Stable sorting preserves the order of repeated values for the same field.
+    Source receipt and queue keys deliberately remain literal.
+    """
+    parts = urlsplit(request['url'])
+    pairs = sorted(parse_qsl(parts.query, keep_blank_values=True), key=lambda pair: pair[0])
+    return key({**request, 'url': parts._replace(query=urlencode(pairs), fragment='').geturl()})
+
+
+def listing_records(body, url):
+    """Fingerprint explicit listing rows, not their shared hearing references.
+
+    ASP.NET event cards and Drupal view rows contain the actual listed records.
+    Pagination, filter controls and changing site chrome sit outside these rows.
+    Unknown layouts return None so callers can use discovered detail links.
+    """
+    try:
+        root = html.fromstring(body, parser=html.HTMLParser(no_network=True))
+    except (etree.ParserError, ValueError):
+        return None
+    # Drupal also uses views-row for footer office addresses. Those are site
+    # chrome, not evidence that two hearing listings contain the same records.
+    main = root.xpath('//main | //*[@role="main"]')
+    root = main[0] if main else root
+    rows = root.xpath('.//article[contains(concat(" ",normalize-space(@class)," ")," article-item ")] | '
+                      './/*[contains(concat(" ",normalize-space(@class)," ")," views-row ")] | '
+                      './/*[contains(concat(" ",normalize-space(@class)," ")," views-view-responsive-grid__item ")]')
+    rows = [row for row in rows if not row.xpath('ancestor::footer | ancestor::header | ancestor::nav | ancestor::aside')]
+    if not rows:
+        return None
+    return sorted({json.dumps([' '.join(row.text_content().split()), sorted({
+        target for a in row.xpath('.//a[@href]') if (target := http_url(a.get('href'), url))
+    })], ensure_ascii=False) for row in rows})
+
+
 def query_url(url, **values):
     parts = urlsplit(url)
     query = dict(parse_qsl(parts.query))

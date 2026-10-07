@@ -197,6 +197,11 @@ completion. A supplied session is used directly; `session=None` uses a thread-lo
 session. See `tests/test_http_policy.py`, `test_http_response_metadata.py`,
 `test_zyte_capture.py`, and caption source tests.
 
+Exhausted gateway failures report the attempt count and bounded exception class
+names, including nested DNS failures. Exception messages and query parameters
+are excluded from these diagnostics. House request receipts retain the same
+structured failure details.
+
 ## Package layout
 
 Files are grouped by responsibility, with provider names inside each group:
@@ -531,13 +536,18 @@ pages, discovered links and each site's pending queue. Its CSV views are
 `house_site_events.csv` and `house_site_documents.csv`; the small
 `house_site_coverage.csv` updates at each checkpoint. Unmatched pages and pages
 with unrecognized dates remain in those outputs; an unknown date is never
-replaced with an article publication date. Repeated pagination fails visibly.
+replaced with an article publication date. Pagination compares actual listing
+rows where available, so distinct bills can refer to the same hearing. Query
+parameter order is normalized only for comparison; original URLs remain in
+receipts and queue entries. Repeated records on different pages fail visibly.
 404 links, unavailable optional indexes and failed requests have separate
 coverage counts. A drained discovered queue does not prove the publisher has
 exposed every historical event. `--offline` only reads saved state. After stopping
 collection, `--offline --reparse` rebuilds parsed readings from the retained
 original bodies without HTTP requests. It preserves receipts, request times and
 pending work, and restores misclassified listing pages to discovery evidence.
+Retries append request receipts, and resolved errors retain their earlier
+diagnostics in `resolved_errors`.
 
 The daily workflow refreshes the official directory before these readers and
 continues up to 3,000 House site requests per run. The request limit is not a

@@ -1,0 +1,44 @@
+[
+  {
+    "file": "smallbusiness-zte.html",
+    "url": "https://smallbusiness.house.gov/calendar/eventsingle.aspx?EventID=400997",
+    "sha256": "1a2f0e42075db0dc6e25ab5ad0c53ab3a4f7f8a4895807a16ca9d46ecfe493ce",
+    "source": "retained publisher response from 2026-10-07 older-event diagnosis"
+  },
+  {
+    "file": "smallbusiness-page2.html",
+    "url": "https://smallbusiness.house.gov/calendar/eventslisting.aspx?Congress=111&Page=2",
+    "sha256": "9ed90418f81de0c7cf007e7e2ea973802e58f1ce4067ccd17566c5fb4b0fa0d0",
+    "source": "retained publisher response from 2026-10-07 older-event diagnosis"
+  },
+  {
+    "file": "foreignaffairs-bills-page2.html",
+    "url": "https://foreignaffairs.house.gov/committee-activity/bills?page=2",
+    "sha256": "c4edd89414378106703a3373d1aa705ab103ed0b4e7ea5c738e58c888b301a62",
+    "source": "retained publisher response from 2026-10-07 older-event diagnosis"
+  },
+  {
+    "file": "foreignaffairs-bills-page1.html",
+    "url": "https://foreignaffairs.house.gov/committee-activity/bills?page=1",
+    "sha256": "2dab301bcc13747dde02d2d524d3cc0f6a2c4be451c386fa046b95c3ae7522b9",
+    "source": "retained publisher response from 2026-10-07 older-event diagnosis"
+  },
+  {
+    "file": "cha-hearings-page1.html",
+    "url": "https://cha.house.gov/committee-activity/hearings/all?page=1",
+    "sha256": "03235d60f4c5882dd0fe6e560c3d00678a90e3054202ed9435189b7a35977990",
+    "source": "Exact retained House committee response"
+  },
+  {
+    "file": "cha-hearings-page2.html",
+    "url": "https://cha.house.gov/committee-activity/hearings/all?page=2",
+    "sha256": "33b56b77734f58b82d50c7f48c65b95fe19a2da24d9285777e058e20a7c799a9",
+    "source": "Exact retained House committee response"
+  },
+  {
+    "file": "smallbusiness-empty-listing.html",
+    "url": "https://smallbusiness.house.gov/calendar/eventslisting.aspx?Timeframe=All&Page=1&Congress=117",
+    "sha256": "1748721532ca7fd308c3f42de245bb80b10dcf49d1b09191051548fba92e09fc",
+    "source": "Exact retained House committee response"
+  }
+]

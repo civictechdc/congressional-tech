@@ -94,7 +94,9 @@ def test_failures_preserve_usable_page_and_receipts_and_retry_on_later_run():
     result = house_sites.collect(DIRECTORY, state, today=date(2027, 10, 7), get=get)
     site = state['energycommerce.house.gov']
     assert result['failed'] == 1 and site['pages'][PAGE] == old
-    assert site['sources'][key(task(PAGE))]['receipts'][0]['error'] == 'HTTP 503'
+    receipts = site['sources'][key(task(PAGE))]['receipts']
+    assert receipts[0]['status_code'] == 200 and receipts[-1]['error'] == 'HTTP 503'
+    assert len(receipts) == 2
     assert sum(u == PAGE for u, _ in calls) == 1
     get, _ = client(fixture_site())
     result = house_sites.collect(DIRECTORY, state, today=date(2027, 10, 7), get=get)

@@ -14,7 +14,7 @@ from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit
 
 from congress_api.acquisition.refresh import due
 from congress_api.acquisition.house import request, timestamp
-from congress_api.parsers.committee_discovery import RESOURCE, discover, key, task
+from congress_api.parsers.committee_discovery import RESOURCE, discover, key, task, comparison_key, listing_records
 from congress_api.parsers.committee_pages import event_identity, parse_event_page, same_site, listing_url
 from congress_api.models.content import content_bytes
 from congress_api.parsers.document_links import FILE
@@ -22,7 +22,8 @@ from congress_api.retention.committees import read as read_committees
 from congress_api.retention.tables import read_state, write_state, write_csv
 from congress_api.transport.http import HttpRequestError
 
-PARSER_VERSION = 2
+PARSER_VERSION = 3
+PAGINATION_VERSION = 3
 EVENT_FIELDS = 'site page title date type status'.split()
 DOCUMENT_FIELDS = 'site page date kind name url'.split()
 COVERAGE_FIELDS = 'site history events pending failed unavailable unrecognized_events discovery_gaps status'.split()
@@ -49,7 +50,7 @@ def seeds(home):
 def _enqueue(saved, queue, queued, item, *, today, refresh, force=False):
     url = item['url']
     if item['kind'] == 'site_home' and (urlsplit(url).hostname or '').endswith('.house.gov'):
-        saved.setdefault('linked_sites', {})[url] = item.get('discovered_from')
+        saved.setdefault('linked_sites', {}).setdefault(url, item.get('discovered_from'))
     if not any(same_site(url, home) for home in [saved['home'], *saved.get('linked_sites', {})]) or (FILE.search(url) and item['kind'] not in {'sitemap', 'robots'}) or RESOURCE.search(urlsplit(url).path):
         return
     identifier = key(item)
@@ -66,7 +67,10 @@ def _enqueue(saved, queue, queued, item, *, today, refresh, force=False):
 
 
 def _read(saved, item, *, today, get):
-    receipts = []
+    # Retrying an observation appends its new request receipt; the failed
+    # attempts remain evidence rather than disappearing on the next success.
+    receipts = list(saved['sources'].get(key(item), {}).get('receipts', []))
+    previous_receipts = len(receipts)
     observation = dict(url=item['url'], kind=item['kind'], receipts=receipts)
     saved['sources'][key(item)] = observation
     try:
@@ -77,7 +81,7 @@ def _read(saved, item, *, today, get):
             return []
         raise
     finally:
-        if receipts and (body := receipts[-1].pop('content', None)):
+        if len(receipts) > previous_receipts and (body := receipts[-1].pop('content', None)):
             observation['content'] = body
             receipts[-1]['sha256'] = body['sha256']
     observation['final_url'] = getattr(response, 'url', None) or item['url']
@@ -116,29 +120,46 @@ def _read(saved, item, *, today, get):
         observation['page_url'] = final
         saved['pages'][final] = page
         saved['done'][key(task(final))] = dict(url=final, kind='event')
-    _check_pagination(saved, item, links)
+    _check_pagination(saved, item, links, source_body=body)
     return links
 
 
-def _check_pagination(saved, item, links):
+def _check_pagination(saved, item, links, *, source_body=None):
     """Stop servers that ignore a page/offset instead of walking forever."""
     parsed = urlsplit(item['url'])
-    query = dict(parse_qsl(parsed.query))
-    pages = {k: v for k, v in query.items() if k.lower() == 'page' or k.lower().startswith(('pagenum_', 'mt_page'))}
+    query = parse_qsl(parsed.query, keep_blank_values=True)
+    pages = {k for k, _ in query if k.lower() == 'page' or k.lower().startswith(('pagenum_', 'mt_page'))}
     body = item.get('body', {})
     if not pages and 'offset' not in body and '/page/' not in parsed.path:
         return
-    events = sorted({link['url'] for link in links if link['kind'] == 'event'})
-    if not events:
+    records = listing_records(source_body, item['url']) if source_body is not None and item['kind'] not in {'calendar_api', 'wordpress_posts'} else None
+    # For other layouts include discovered detail pages, not just event URLs.
+    # Different bill pages can legitimately refer to the same markup hearing.
+    if records is None:
+        records = sorted({comparison_key(link) for link in links if link['kind'] == 'event'
+                          or link['kind'] == 'html' and not listing_url(link['url'])
+                          and urlsplit(link['url']).path != parsed.path})
+    if not records:
         return
-    series = key({**item, 'url': parsed._replace(path=re.sub(r'/page/\d+', '/page/', parsed.path),
-                 query=urlencode({k: v for k, v in query.items() if k not in pages})).geturl(),
+    series = comparison_key({**item, 'url': parsed._replace(path=re.sub(r'/page/\d+(?=/|$)', '/page/', parsed.path),
+                 query=urlencode([(k, v) for k, v in query if k not in pages])).geturl(),
                  **({'body': {k: v for k, v in body.items() if k != 'offset'}} if body else {})})
-    digest = hashlib.sha256(json.dumps(events).encode()).hexdigest()
+    digest = hashlib.sha256(json.dumps(records).encode()).hexdigest()
+    if saved.get('pagination_version') != PAGINATION_VERSION:
+        saved['pagination'] = {}
+        saved['pagination_version'] = PAGINATION_VERSION
     previous = saved.setdefault('pagination', {}).setdefault(series, {})
-    if digest in previous and previous[digest] != key(item):
-        raise ValueError('Listing repeated the same events at a different page or offset')
-    previous[digest] = key(item)
+    current = comparison_key(item)
+    if digest in previous and previous[digest] != current:
+        raise ValueError('Listing repeated the same records at a different page or offset')
+    previous[digest] = current
+
+
+def resolve_error(saved, identifier, resolution):
+    """Clear a current failure while retaining the original diagnostic."""
+    if previous := saved['errors'].pop(identifier, None):
+        saved.setdefault('resolved_errors', {}).setdefault(identifier, []).append(
+            dict(failure=previous, resolved_at=timestamp(), resolution=resolution))
 
 
 def collect(rows, state, *, today, get, limit=None, refresh_limit=450, sites=None, checkpoint=lambda _: None):
@@ -201,7 +222,7 @@ def collect(rows, state, *, today, get, limit=None, refresh_limit=450, sites=Non
             saved['done'][identifier] = dict(url=item['url'], kind=item['kind'])
             try:
                 links = _read(saved, item, today=today, get=get)
-                saved['errors'].pop(identifier, None)
+                resolve_error(saved, identifier, 'successful_request')
                 for linked in links:
                     _enqueue(saved, queues[host], queued[host], linked, today=today, refresh=refresh)
             except (RuntimeError, ValueError, OSError) as error:

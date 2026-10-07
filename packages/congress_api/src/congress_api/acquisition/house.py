@@ -54,6 +54,8 @@ def request(url, through_zyte, receipts, allowed=(200, 404), *, json_body=None):
         response = http.get_with_retry(None, url, allowed=allowed, through_zyte=through_zyte, **options)
     except (RuntimeError, ValueError, OSError) as error:
         receipt.update(completed_at=timestamp(), outcome="error", error=str(error))
+        if isinstance(error, http.HttpRequestError):
+            receipt['transport_failure'] = error.details
         raise
     receipt.update(completed_at=timestamp(), status_code=response.status_code,
                    outcome="not_found" if response.status_code == 404 else "retrieved")
