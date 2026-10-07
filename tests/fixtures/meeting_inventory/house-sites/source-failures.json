@@ -1,0 +1,347 @@
+{
+  "observed_at": "2026-10-07",
+  "provenance": "Bounded direct probes; literal href/text extracted from retained HTTP 200 parent bodies. PDF prefixes are not full document verification.",
+  "links": [
+    {
+      "failure": "https://budget.house.gov/hearing/linktr.ee/HouseBudgetGOP",
+      "parent": "https://budget.house.gov/hearing/markup-notice-house-committee-on-the-budget",
+      "parent_status": 200,
+      "literal_matches": [
+        {
+          "literal_href": "linktr.ee/HouseBudgetGOP",
+          "text": "social media.",
+          "source_selector": ""
+        }
+      ],
+      "parent_sha256": "018fd53c38e80f2195b736c475a1e42be8cb0d210e12a6477a2cddc0e194c119",
+      "reject_from_discovery": true
+    },
+    {
+      "failure": "https://democrats-homeland.house.gov/activities/hearings/Mr.%20Kevin%20Frazier,%20AI%20Innovation%20and%20Law%20Fellow,%20University%20of%20Texas%20School%20of%20Law",
+      "parent": "https://democrats-homeland.house.gov/activities/hearings/securing-global-communications-an-examination-of-foreign-adversary-threats-to-subsea-cable-infrastructure",
+      "parent_status": 200,
+      "literal_matches": [
+        {
+          "literal_href": "Mr.%20Kevin%20Frazier,%20AI%20Innovation%20and%20Law%20Fellow,%20University%20of%20Texas%20School%20of%20Law",
+          "text": "Mr. Kevin Frazier, AI Innovation and Law Fellow, University of Texas School of Law (Democratic Witness)",
+          "source_selector": ""
+        }
+      ],
+      "parent_sha256": "433cf8f66b01248fe1761efd800de8ed42944658c5d816ed7a6118135562d692",
+      "reject_from_discovery": false
+    },
+    {
+      "failure": "https://democrats-naturalresources.house.gov/hearings/bit.ly/2JrHFqS%20",
+      "parent": "https://democrats-naturalresources.house.gov/hearings/on-the-weaponization-of-the-national-environmental-policy-act-and-the-implications-of-environmental-lawfare",
+      "parent_status": 200,
+      "literal_matches": [
+        {
+          "literal_href": "bit.ly/2JrHFqS%20",
+          "text": "Republicans Hold Yet Another Hearing to Attack a Bedrock Environmental Law that Protects Taxpayers",
+          "source_selector": ""
+        }
+      ],
+      "parent_sha256": "e72ea3a66554f99007bf2008b26828d82f13837f7eec373d3d1bba4c524a478b",
+      "reject_from_discovery": true
+    },
+    {
+      "failure": "https://smallbusiness.house.gov/calendar/<iframe%20width=",
+      "parent": "https://smallbusiness.house.gov/calendar/eventsingle.aspx?EventID=398852",
+      "parent_status": 200,
+      "literal_matches": [
+        {
+          "literal_href": "<iframe%20width=",
+          "text": "Hearing Video",
+          "source_selector": ""
+        }
+      ],
+      "parent_sha256": "9165f4b49dd1e941124e2a19531342e86b77da82e267a88c7d6ce745d64dca91",
+      "reject_from_discovery": true
+    },
+    {
+      "failure": "https://democrats-transportation.house.gov/committee-activity/hearings/%20https:/transportation.house.gov/download/neguse-co-02",
+      "parent": "https://democrats-transportation.house.gov/committee-activity/hearings/full-committee-hearing-committee-on-transportation-and-infrastructure-members-day-hearing",
+      "parent_status": 200,
+      "literal_matches": [
+        {
+          "literal_href": "%20https:/transportation.house.gov/download/neguse-co-02",
+          "text": "Rep. Joe Neguse (CO-02)",
+          "source_selector": ""
+        }
+      ],
+      "parent_sha256": "e9a080cbee6d3c7081735cb44f0059c4b47fcf1b02768ca38ae25e4796a4a85d",
+      "reject_from_discovery": true
+    },
+    {
+      "failure": "https://democrats-transportation.house.gov/committee-activity/hearings/06/12/2020/Perry%20138",
+      "parent": "https://democrats-transportation.house.gov/committee-activity/hearings/06/12/2020/full-committee-markup",
+      "parent_status": 200,
+      "literal_matches": [
+        {
+          "literal_href": "Perry%20138",
+          "text": "Perry 138",
+          "source_selector": ""
+        }
+      ],
+      "parent_sha256": "2155c97ea04a2d5908239f33197240b8e194558a754861cb37055eff5137a79e",
+      "reject_from_discovery": false
+    },
+    {
+      "failure": "https://democrats-veterans.house.gov/events/hearings/On%20Thursday,%20April%2016,%202026%20at%202:00%20PM,%20the%20Subcommittee%20on%20Economic%20Opportunity%20will%20conduct%20an%20Oversight%20hearing%20entitled,%20“Bounce%20Houses,%20Drones,%20and%20Massage%20Chairs:%20A%20Review%20of%20VA’s%20Purchase%20History%20in%20the%20Veteran%20Readiness%20and%20Employment%20Program”.%20%20Documents%20for%20the%20hearing%20can%20be%20found%20on%20the%20Committee%20Repository%20here:%20https:/docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=119164",
+      "parent": "https://democrats-veterans.house.gov/events/hearings/-bounce-houses-drones-and-massage-chairs-a-review-of-vas-purchase-history-in-the-veteran-readiness-and-employment-program",
+      "parent_status": 200,
+      "literal_matches": [
+        {
+          "literal_href": "On%20Thursday,%20April%2016,%202026%20at%202:00%20PM,%20the%20Subcommittee%20on%20Economic%20Opportunity%20will%20conduct%20an%20Oversight%20hearing%20entitled,%20“Bounce%20Houses,%20Drones,%20and%20Massage%20Chairs:%20A%20Review%20of%20VA’s%20Purchase%20History%20in%20the%20Veteran%20Readiness%20and%20Employment%20Program”.%20%20Documents%20for%20the%20hearing%20can%20be%20found%20on%20the%20Committee%20Repository%20here:%20https:/docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=119164",
+          "text": "here",
+          "source_selector": ""
+        }
+      ],
+      "parent_sha256": "2dfef14691dc0c1ff3172ca2e18a0b6be61730bfa5099deb640ea03d38dc1405",
+      "reject_from_discovery": true
+    }
+  ],
+  "sitemaps": [
+    {
+      "url": "https://democrats-edworkforce.house.gov/sitemap.xml",
+      "body": "https://democrats-edworkforce.house.gov/",
+      "sha256": "7fb9d367a5d1a7a83db6400f855ce082bb9dcd85b64a8ed61bab44124429299b"
+    },
+    {
+      "url": "https://budget.house.gov/sitemap.xml",
+      "body": "https://budget.house.gov/",
+      "sha256": "1107471c734c01c807659645991a2861218fff35832ccbb5496308ecd035539e"
+    },
+    {
+      "url": "https://democrats-homeland.house.gov/sitemap.xml",
+      "body": "https://democrats-homeland.house.gov/",
+      "sha256": "be404b28141898b5f2f0855a1b27270b7e53f2f55b545b789c6201995540f029"
+    },
+    {
+      "url": "https://democrats-naturalresources.house.gov/sitemap.xml",
+      "body": "https://democrats-naturalresources.house.gov/",
+      "sha256": "16a856abdfb69a87079665edea67cf9779f9bfa5856aa2ca7068dcb3726622d0"
+    },
+    {
+      "url": "https://oversightdemocrats.house.gov/sitemap.xml",
+      "body": "https://oversightdemocrats.house.gov/",
+      "sha256": "66ddb6067b1a0233f45bba8a9d566addcdabb9235b1fb5ab7752bc4fded58d84"
+    },
+    {
+      "url": "https://democrats-veterans.house.gov/sitemap.xml",
+      "body": "https://democrats-veterans.house.gov/\n       \n\t   \n\n\t   \n\t\t   \n\t   \n\t   \n\t\t   \n\t   \n\t   \n\t\t   \n\t   \n\t   \n\n\t   \t   OnError\n\n           \n                    \n\n\n\t               \n\n\n                    \n                    \n\n\t               \n\n           \n\n\n    ",
+      "sha256": "9c935361ceb5a9395fbc52844cad3f89320d3bc2a012d123c437a3c44c684763"
+    },
+    {
+      "url": "https://democrats-transportation.house.gov/sitemap.xml",
+      "body": "https://democrats-transportation.house.gov/",
+      "sha256": "7fd87c16778408fcddc1330ca01bd8344bee60866b7251c97baeb1d582f0ec0f"
+    }
+  ],
+  "downloads": [
+    {
+      "url": "https://democrats-transportation.house.gov/download/02-26-2019-hearing-on-climate-ssm?download=1",
+      "pdf_prefix": "%PDF-1.5",
+      "status": 200,
+      "original_url": "https://democrats-transportation.house.gov/download/02-26-2019-hearing-on-climate-ssm&download=1"
+    },
+    {
+      "url": "https://democrats-transportation.house.gov/download/03-04-2026-edpbem-hearing_-hon-edward-c-forst_-testimony?download=1",
+      "pdf_prefix": "%PDF-1.4",
+      "status": 200,
+      "original_url": "https://democrats-transportation.house.gov/download/03-04-2026-edpbem-hearing_-hon-edward-c-forst_-testimony&download=1"
+    },
+    {
+      "url": "https://democrats-transportation.house.gov/download/04-28-2026-cgmt-hearing_-admiral-lunday_-testimony?download=1",
+      "pdf_prefix": "%PDF-1.6",
+      "status": 200,
+      "original_url": "https://democrats-transportation.house.gov/download/04-28-2026-cgmt-hearing_-admiral-lunday_-testimony&download=1"
+    },
+    {
+      "url": "https://democrats-transportation.house.gov/download/07-09-2024-rph-hearing_-dillon-olvera_-testimony?download=1",
+      "pdf_prefix": "%PDF-1.6",
+      "status": 200,
+      "original_url": "https://democrats-transportation.house.gov/download/07-09-2024-rph-hearing_-dillon-olvera_-testimony&download=1"
+    },
+    {
+      "url": "https://democrats-transportation.house.gov/download/07-09-2024-rph-hearing_-heather-arias_-testimony?download=1",
+      "pdf_prefix": "%PDF-1.6",
+      "status": 200,
+      "original_url": "https://democrats-transportation.house.gov/download/07-09-2024-rph-hearing_-heather-arias_-testimony&download=1"
+    },
+    {
+      "url": "https://democrats-transportation.house.gov/download/07-09-2024-rph-hearing_-roger-nober_-testimony?download=1",
+      "pdf_prefix": "%PDF-1.3",
+      "status": 200,
+      "original_url": "https://democrats-transportation.house.gov/download/07-09-2024-rph-hearing_-roger-nober_-testimony&download=1"
+    },
+    {
+      "url": "https://democrats-transportation.house.gov/download/07-09-2024-rph-hearing_-yural-yal_-testimony?download=1",
+      "pdf_prefix": "%PDF-1.7",
+      "status": 200,
+      "original_url": "https://democrats-transportation.house.gov/download/07-09-2024-rph-hearing_-yural-yal_-testimony&download=1"
+    },
+    {
+      "url": "https://democrats-transportation.house.gov/download/07-10-2024-aviation-hearing_-joanne-damato_-testimony?download=1",
+      "pdf_prefix": "%PDF-1.4",
+      "status": 200,
+      "original_url": "https://democrats-transportation.house.gov/download/07-10-2024-aviation-hearing_-joanne-damato_-testimony&download=1"
+    },
+    {
+      "url": "https://democrats-transportation.house.gov/download/07-10-2024-aviation-hearing_-matthew-montgomery_-testimony?download=1",
+      "pdf_prefix": "%PDF-1.6",
+      "status": 200,
+      "original_url": "https://democrats-transportation.house.gov/download/07-10-2024-aviation-hearing_-matthew-montgomery_-testimony&download=1"
+    },
+    {
+      "url": "https://democrats-transportation.house.gov/download/07-10-2024-aviation-hearing_-michael-robbins_-testimony?download=1",
+      "pdf_prefix": "%PDF-1.3",
+      "status": 200,
+      "original_url": "https://democrats-transportation.house.gov/download/07-10-2024-aviation-hearing_-michael-robbins_-testimony&download=1"
+    },
+    {
+      "url": "https://democrats-transportation.house.gov/download/09-30-2021-hearing_-dr-wendy-edelberg-testimony?download=1",
+      "pdf_prefix": "%PDF-1.7",
+      "status": 200,
+      "original_url": "https://democrats-transportation.house.gov/download/09-30-2021-hearing_-dr-wendy-edelberg-testimony&download=1"
+    },
+    {
+      "url": "https://democrats-transportation.house.gov/download/09-30-2021-hearing_-greg-regan-testimony?download=1",
+      "pdf_prefix": "%PDF-1.5",
+      "status": 200,
+      "original_url": "https://democrats-transportation.house.gov/download/09-30-2021-hearing_-greg-regan-testimony&download=1"
+    },
+    {
+      "url": "https://democrats-transportation.house.gov/download/09-30-2021-hearing_-juan-ortiz-testimony?download=1",
+      "pdf_prefix": "%PDF-1.5",
+      "status": 200,
+      "original_url": "https://democrats-transportation.house.gov/download/09-30-2021-hearing_-juan-ortiz-testimony&download=1"
+    },
+    {
+      "url": "https://democrats-transportation.house.gov/download/09-30-2021-hearing_-michael-boskin-testimony?download=1",
+      "pdf_prefix": "%PDF-1.7",
+      "status": 200,
+      "original_url": "https://democrats-transportation.house.gov/download/09-30-2021-hearing_-michael-boskin-testimony&download=1"
+    },
+    {
+      "url": "https://democrats-transportation.house.gov/download/09-30-2021-hearing_-paul-skoutelas-testimony?download=1",
+      "pdf_prefix": "%PDF-1.7",
+      "status": 200,
+      "original_url": "https://democrats-transportation.house.gov/download/09-30-2021-hearing_-paul-skoutelas-testimony&download=1"
+    },
+    {
+      "url": "https://democrats-transportation.house.gov/download/2021-11-17-hearing-testimony_-anne-reinke?download=1",
+      "pdf_prefix": "%PDF-1.7",
+      "status": 200,
+      "original_url": "https://democrats-transportation.house.gov/download/2021-11-17-hearing-testimony_-anne-reinke&download=1"
+    },
+    {
+      "url": "https://democrats-transportation.house.gov/download/2021-11-17-hearing-testimony_-chris-spear?download=1",
+      "pdf_prefix": "%PDF-1.5",
+      "status": 200,
+      "original_url": "https://democrats-transportation.house.gov/download/2021-11-17-hearing-testimony_-chris-spear&download=1"
+    },
+    {
+      "url": "https://democrats-transportation.house.gov/download/2021-11-17-hearing-testimony_-david-hc-correll-updated?download=1",
+      "pdf_prefix": "%PDF-1.7",
+      "status": 200,
+      "original_url": "https://democrats-transportation.house.gov/download/2021-11-17-hearing-testimony_-david-hc-correll-updated&download=1"
+    },
+    {
+      "url": "https://democrats-transportation.house.gov/download/2021-11-17-hearing-testimony_-greg-regan?download=1",
+      "pdf_prefix": "%PDF-1.7",
+      "status": 200,
+      "original_url": "https://democrats-transportation.house.gov/download/2021-11-17-hearing-testimony_-greg-regan&download=1"
+    },
+    {
+      "url": "https://democrats-transportation.house.gov/download/2021-11-17-hearing-testimony_-ian-jefferies?download=1",
+      "pdf_prefix": "%PDF-1.7",
+      "status": 200,
+      "original_url": "https://democrats-transportation.house.gov/download/2021-11-17-hearing-testimony_-ian-jefferies&download=1"
+    },
+    {
+      "url": "https://democrats-transportation.house.gov/download/2021-11-17-hearing-witness-bio_-mario-cordero?download=1",
+      "pdf_prefix": "%PDF-1.6",
+      "status": 200,
+      "original_url": "https://democrats-transportation.house.gov/download/2021-11-17-hearing-witness-bio_-mario-cordero&download=1"
+    },
+    {
+      "url": "https://democrats-transportation.house.gov/download/20211027-markup_-gsa-resolution-chart?download=1",
+      "pdf_prefix": "%PDF-1.7",
+      "status": 200,
+      "original_url": "https://democrats-transportation.house.gov/download/20211027-markup_-gsa-resolution-chart&download=1"
+    },
+    {
+      "url": "https://democrats-transportation.house.gov/download/227-mark-up-ssm?download=1",
+      "pdf_prefix": "%PDF-1.5",
+      "status": 200,
+      "original_url": "https://democrats-transportation.house.gov/download/227-mark-up-ssm&download=1"
+    },
+    {
+      "url": "https://democrats-transportation.house.gov/download/afa-2019-09-26-aviation-hearing-subcommittee-hearing-testimony?download=1",
+      "pdf_prefix": "%PDF-1.6",
+      "status": 200,
+      "original_url": "https://democrats-transportation.house.gov/download/afa-2019-09-26-aviation-hearing-subcommittee-hearing-testimony&download=1"
+    },
+    {
+      "url": "https://democrats-transportation.house.gov/download/alpa-2019-09-26-aviation-subcommittee-hearing-testimony-?download=1",
+      "pdf_prefix": "%PDF-1.4",
+      "status": 200,
+      "original_url": "https://democrats-transportation.house.gov/download/alpa-2019-09-26-aviation-subcommittee-hearing-testimony-&download=1"
+    },
+    {
+      "url": "https://democrats-transportation.house.gov/download/aopa-2019-09-26-aviation-subcommittee-hearing-testimony?download=1",
+      "pdf_prefix": "%PDF-1.7",
+      "status": 200,
+      "original_url": "https://democrats-transportation.house.gov/download/aopa-2019-09-26-aviation-subcommittee-hearing-testimony&download=1"
+    },
+    {
+      "url": "https://democrats-transportation.house.gov/download/ca-carey-hearing-testimony-?download=1",
+      "pdf_prefix": "%PDF-1.6",
+      "status": 200,
+      "original_url": "https://democrats-transportation.house.gov/download/ca-carey-hearing-testimony-&download=1"
+    },
+    {
+      "url": "https://democrats-transportation.house.gov/download/dot-2019-09-26-aviation-subcommittee-hearing-testimony?download=1",
+      "pdf_prefix": "%PDF-1.6",
+      "status": 200,
+      "original_url": "https://democrats-transportation.house.gov/download/dot-2019-09-26-aviation-subcommittee-hearing-testimony&download=1"
+    },
+    {
+      "url": "https://democrats-transportation.house.gov/download/faa-2019-09-26-aviation-subcommittee-hearing-testimony?download=1",
+      "pdf_prefix": "%PDF-1.5",
+      "status": 200,
+      "original_url": "https://democrats-transportation.house.gov/download/faa-2019-09-26-aviation-subcommittee-hearing-testimony&download=1"
+    },
+    {
+      "url": "https://democrats-transportation.house.gov/download/gsa-resolutions-july-markup?download=1",
+      "pdf_prefix": "%PDF-1.6",
+      "status": 200,
+      "original_url": "https://democrats-transportation.house.gov/download/gsa-resolutions-july-markup&download=1"
+    },
+    {
+      "url": "https://democrats-transportation.house.gov/download/hr-539-preventing-disaster-revictimization-act?download=1",
+      "pdf_prefix": "%PDF-1.4",
+      "status": 200,
+      "original_url": "https://democrats-transportation.house.gov/download/hr-539-preventing-disaster-revictimization-act&download=1"
+    },
+    {
+      "url": "https://democrats-transportation.house.gov/download/ncl-2019-09-26-aviation-subcommittee-hearing-testimony?download=1",
+      "pdf_prefix": "%PDF-1.3",
+      "status": 200,
+      "original_url": "https://democrats-transportation.house.gov/download/ncl-2019-09-26-aviation-subcommittee-hearing-testimony&download=1"
+    },
+    {
+      "url": "https://democrats-transportation.house.gov/download/phmsa-hearing-ssm-april-2?download=1",
+      "pdf_prefix": "%PDF-1.5",
+      "status": 200,
+      "original_url": "https://democrats-transportation.house.gov/download/phmsa-hearing-ssm-april-2&download=1"
+    },
+    {
+      "url": "https://democrats-transportation.house.gov/download/pva-2019-09-26-aviation-subcommittee-hearing-testimony?download=1",
+      "pdf_prefix": "%PDF-1.7",
+      "status": 200,
+      "original_url": "https://democrats-transportation.house.gov/download/pva-2019-09-26-aviation-subcommittee-hearing-testimony&download=1"
+    }
+  ]
+}

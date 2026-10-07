@@ -16,10 +16,9 @@ from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit
 
 from congress_api.acquisition.refresh import due
 from congress_api.acquisition.house import request, timestamp
-from congress_api.parsers.committee_discovery import RESOURCE, discover, key, task, comparison_key, listing_records
+from congress_api.parsers.committee_discovery import discover, key, task, comparison_key, listing_records, page_link_exclusion, UnrecognizedSitemap
 from congress_api.parsers.committee_pages import event_identity, parse_event_page, same_site, listing_url
 from congress_api.models.content import content_bytes
-from congress_api.parsers.document_links import FILE
 from congress_api.retention.committees import read as read_committees
 from congress_api.retention.tables import read_state, write_state, write_csv
 from congress_api.transport.http import HttpRequestError
@@ -53,7 +52,7 @@ def _enqueue(saved, queue, queued, item, *, today, refresh, force=False):
     url = item['url']
     if item['kind'] == 'site_home' and (urlsplit(url).hostname or '').endswith('.house.gov'):
         saved.setdefault('linked_sites', {}).setdefault(url, item.get('discovered_from'))
-    if not any(same_site(url, home) for home in [saved['home'], *saved.get('linked_sites', {})]) or (FILE.search(url) and item['kind'] not in {'sitemap', 'robots'}) or RESOURCE.search(urlsplit(url).path):
+    if not any(same_site(url, home) for home in [saved['home'], *saved.get('linked_sites', {})]) or _exclude(saved, item):
         return
     identifier = key(item)
     if identifier in saved['done'] or identifier in queued:
@@ -110,12 +109,14 @@ def _read(saved, item, fetched, *, today):
     body = response.content
     try:
         links = discover(body, {**item, 'url': observation['final_url']}, headers=getattr(response, 'headers', {}))
-    except ValueError:
-        if item['kind'] == 'sitemap' and re.search(br'<html(?:\s|>)', body[:4096], re.I):
+    except UnrecognizedSitemap as error:
+        observation['discovery_error'] = str(error)
+        if re.search(br'<html(?:\s|>)', body[:4096], re.I):
             observation['discovery_gap'] = 'sitemap_returned_html'
             links = discover(body, task(final))
         else:
-            raise
+            observation['discovery_gap'] = 'sitemap_unrecognized'
+            links = []
     if item['kind'] == 'site_home' or item['kind'] == 'home' and not same_site(final, item['url']):
         links += seeds(final)[1:]
     identity = event_identity(body, observation['final_url']) if item['kind'] not in {'home', 'site_home', 'robots', 'sitemap', 'calendar_api', 'wordpress_types', 'wordpress_posts'} else None
@@ -170,6 +171,19 @@ def resolve_error(saved, identifier, resolution):
             dict(failure=previous, resolved_at=timestamp(), resolution=resolution))
 
 
+def _exclude(saved, item):
+    # Apply the same rules to new links and requests saved by older versions.
+    # These records describe admission decisions, never completed downloads.
+    reason = None if item['kind'] in {'robots', 'sitemap'} else page_link_exclusion(item['url'])
+    if not reason:
+        return False
+    identifier = key(item)
+    saved['done'][identifier] = dict(item, outcome='excluded_' + reason)
+    if identifier in saved.get('errors', {}):
+        resolve_error(saved, identifier, 'excluded_' + reason)
+    return True
+
+
 def collect(rows, state, *, today, get, limit=None, refresh_limit=450, sites=None,
             checkpoint=lambda _: None, workers=8, stop=None):
     """Fetch across sites; one coordinator owns parsing, queues and checkpoints."""
@@ -198,7 +212,7 @@ def collect(rows, state, *, today, get, limit=None, refresh_limit=450, sites=Non
             saved['pagination'] = {}
             # Retry failed current listing/page observations on the next run;
             # the HTTP client still owns retries within each request.
-            for error in saved['errors'].values():
+            for error in list(saved['errors'].values()):
                 _enqueue(saved, queue, queued[host], error['request'], today=today, refresh=refresh, force=True)
             for item in seeds(saved['home']):
                 _enqueue(saved, queue, queued[host], item, today=today, refresh=refresh)
@@ -230,8 +244,7 @@ def collect(rows, state, *, today, get, limit=None, refresh_limit=450, sites=Non
                 while queue:
                     item = queue[0]
                     identifier = key(item)
-                    if RESOURCE.search(urlsplit(item['url']).path):
-                        saved['done'][identifier] = dict(url=item['url'], kind=item['kind'], outcome='excluded_resource')
+                    _exclude(saved, item)
                     if identifier not in saved['done']:
                         break
                     queue.popleft()

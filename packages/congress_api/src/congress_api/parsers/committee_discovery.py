@@ -5,16 +5,41 @@ Congress.gov directory, not another hardcoded list of House domains.
 """
 import json
 import re
-from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
+from urllib.parse import parse_qsl, unquote, urlencode, urljoin, urlsplit, urlunsplit
 
 from lxml import etree, html
 
 from congress_api.parsers.committee_pages import calendar_links, same_site, listing_url
-from congress_api.parsers.document_links import FILE, http_url
+from congress_api.parsers.document_links import http_url, is_document_url
 
 EVENT = re.compile(r'hearings?|events?|calendar|meetings?|mark[ -]?ups?|briefings?|listening.session|roundtables?|committee-activity|schedule|archiv', re.I)
 RESOURCE = re.compile(r'\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp)$', re.I)
 NEWS = re.compile(r'/(?:news|press|press-releases?|releases?|media/videos|media/press)', re.I)
+
+
+class UnrecognizedSitemap(ValueError):
+    """An optional discovery endpoint did not supply a supported sitemap."""
+
+
+def page_link_exclusion(value, base=''):
+    """Keep obvious non-page links out of discovery, without rewriting them.
+
+    Inspect only the path for embedded markup/URLs; queries may contain both.
+    Two observed external link services were published without their scheme.
+    Other dotted paths, explicit ./ paths and names with spaces stay literal.
+    """
+    target = http_url(value, base)
+    if not target:
+        return 'malformed_link'
+    path = unquote(urlsplit(target).path)
+    if re.search(r'<\s*/?[a-z][\w:-]*(?:\s|>|/)|https?:/', path, re.I) or re.match(
+            r'^(?:bit\.ly|linktr\.ee)/', unquote(value), re.I):
+        return 'malformed_link'
+    if is_document_url(target, publisher_routes=True):
+        return 'document_link'
+    if RESOURCE.search(urlsplit(target).path):
+        return 'resource'
+    return None
 
 
 def task(url, kind='html', *, body=None, parent=None):
@@ -97,7 +122,7 @@ def _html_tasks(body, url):
         label = ' '.join(node.text_content().split())
         if target and not same_site(target, url) and (urlsplit(target).hostname or '').endswith('.house.gov') and re.fullmatch(r'(?:archived?|minority)(?: site| website)?', label, re.I):
             out.append(task(target, 'site_home', parent=url))
-        if not target or not same_site(target, url) or FILE.search(target) or RESOURCE.search(urlsplit(target).path) or href.startswith('#') or '/wp-json/' in urlsplit(target).path:
+        if not target or not same_site(target, url) or page_link_exclusion(href, url) or href.startswith('#') or '/wp-json/' in urlsplit(target).path:
             continue
         path = urlsplit(target).path
         # WordPress month calendars have unbounded previous/next months. Their
@@ -169,14 +194,14 @@ def discover(body, request, *, headers=None):
         try:
             root = etree.fromstring(body, parser=etree.XMLParser(resolve_entities=False, no_network=True))
         except (etree.XMLSyntaxError, ValueError) as error:
-            raise ValueError('Unrecognized sitemap response') from error
+            raise UnrecognizedSitemap('Unrecognized sitemap response') from error
         name = etree.QName(root).localname
         if name not in {'urlset', 'sitemapindex'}:
-            raise ValueError('Unrecognized sitemap response')
+            raise UnrecognizedSitemap('Unrecognized sitemap response')
         return [task(node.text, 'sitemap' if name == 'sitemapindex' else 'event' if event_url(node.text or '') else 'html', parent=url)
                 for node in root.xpath('//*[local-name()="loc"]') if http_url(node.text) and same_site(node.text, url)
                 and (name == 'sitemapindex' or EVENT.search(urlsplit(node.text).path))
-                and not (name == 'urlset' and (NEWS.search(urlsplit(node.text).path) or FILE.search(node.text)))]
+                and not (name == 'urlset' and (NEWS.search(urlsplit(node.text).path) or page_link_exclusion(node.text)))]
     out = _html_tasks(body, url)
     if kind in {'home', 'site_home'}:
         # Shared ASP.NET committee calendar template. The public list's "All"
