@@ -23,6 +23,10 @@ from congress_api.parsers.document_links import (
 
 MEDIA_FILE = re.compile(r"\.(?:mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:$|[?#])", re.I)
 SECRET_KEYS = {"api_key", "apikey", "key", "token", "access_token", "authorization"}
+ARCHIVE_REPLAY_PATHS = {
+    "web.archive.org": r"/web/[0-9]{14}(?:id_)?/(https?://.+)",
+    "webarchive.loc.gov": r"/all/[0-9]{14}(?:id_)?/(https?://.+)",
+}
 
 
 def inspect_capture(response, *, replay=False):
@@ -70,7 +74,17 @@ def allowed_url(value, base=""):
     # Concatenated publisher fields and their redirects are retained as evidence,
     # but are not one download URL. Query parameters may contain valid URLs.
     if re.search(r"https?:/+", parts.path, re.I):
-        return None
+        # Timestamped web-archive replays deliberately embed the original URL.
+        # Admit only these known layouts and independently validate the original.
+        pattern = ARCHIVE_REPLAY_PATHS.get(parts.netloc.lower())
+        replay = re.fullmatch(pattern, parts.path) if pattern else None
+        if not replay:
+            return None
+        original = replay[1] + ("?" + parts.query if parts.query else "")
+        original = http_url(original)
+        if (not original or urlsplit(original).hostname in ARCHIVE_REPLAY_PATHS
+                or not allowed_url(original)):
+            return None
     host = parts.hostname.lower()
     if host in {
         "localhost",

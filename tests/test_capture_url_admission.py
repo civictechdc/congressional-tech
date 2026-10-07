@@ -74,6 +74,57 @@ def test_query_embedded_url_remains_a_valid_download_url():
     assert allowed_url(url) == url
 
 
+@pytest.mark.parametrize('prefix', [
+    'https://web.archive.org/web/20250610160415id_/',
+    'https://web.archive.org/web/20250610160415/',
+    'https://webarchive.loc.gov/all/20110707213402/',
+])
+def test_timestamped_archive_replay_retains_archive_and_original_urls(prefix):
+    url = prefix + 'https://example.gov/statement.pdf?edition=1'
+    assert allowed_url(url) == url
+    assert capture_links({'url': url}) == [{'url': url}]
+
+
+@pytest.mark.parametrize('url', [
+    'https://web.archive.org.evil.example/web/20250610160415/https://example.gov/a.pdf',
+    'https://web.archive.org:8443/web/20250610160415/https://example.gov/a.pdf',
+    'https://web.archive.org/web/*/https://example.gov/a.pdf',
+    'https://web.archive.org/web/2025/https://example.gov/a.pdf',
+    'https://web.archive.org/save/https://example.gov/a.pdf',
+    'https://webarchive.loc.gov/other/20110707213402/https://example.gov/a.pdf',
+    'https://web.archive.org/web/20250610160415/http://127.0.0.1/a.pdf',
+    'https://web.archive.org/web/20250610160415/http://localhost/a.pdf',
+    'https://web.archive.org/web/20250610160415/https://user:pass@example.gov/a.pdf',
+    'https://web.archive.org/web/20250610160415/https://example.gov/a.pdf?token=secret',
+    'https://web.archive.org/web/20250610160415/https://example.gov/a.xmlhttps://example.gov/b.xml',
+    'https://web.archive.org/web/20250610160415/https://example.gov/a.mp4',
+    'https://web.archive.org/web/20250610160415/https://api.govinfo.gov/a.xml',
+    'https://web.archive.org/web/20250610160415/https://webarchive.loc.gov/all/20110707213402/https://example.gov/a.pdf',
+    'https://web.archive.org/web/20250610160415/https://[bad/a.pdf',
+])
+def test_archive_layout_does_not_bypass_original_url_restrictions(url):
+    assert allowed_url(url) is None
+
+
+def test_archived_capture_survives_checkpoint_without_replacing_original_failure():
+    from test_raw_source_sync import response
+    original = 'https://example.gov/statement.pdf'
+    replay = 'https://web.archive.org/web/20250610160415id_/' + original
+    store = MemoryStore()
+    archive = Archive(store, 'archive-recovery')
+    archive.record(response(original, b'not found', status=404), outcome='http_error', links=[])
+    before = dict(archive.state[original])
+    archived = response(replay, b'%PDF-1.7\nfixture\n%%EOF')
+    archived['source_associations'] = [{'original_url': original,
+        'target_url': replay, 'basis': 'archived_original_url'}]
+    archive.record(archived, outcome='saved', links=[])
+    archive.save()
+    restored = Archive(store, 'reopen')
+    assert restored.state[original] == before
+    assert restored.state[replay]['outcome'] == 'saved'
+    assert restored.state[replay]['family'] == 'external/wayback'
+
+
 def test_excluded_probe_stays_deferred_until_independent_publisher_seed():
     from congress_api.acquisition.raw_sync import run_sync
     from test_raw_source_sync import response
