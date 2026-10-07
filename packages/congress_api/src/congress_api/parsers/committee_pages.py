@@ -10,7 +10,7 @@ from copy import deepcopy
 
 from congress_api.models.content import RawContent
 
-from congress_api.matching.gpo_videos import words
+from congress_api.parsers.text import words
 from congress_api.parsers.document_links import FILE, links_from_trees, http_url
 from congress_api.parsers.page_content import page_data, page_trees
 from congress_api.parsers.senate_page import (DATE, literal_document_kind, written_day,

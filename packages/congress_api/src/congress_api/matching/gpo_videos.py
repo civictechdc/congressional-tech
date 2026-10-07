@@ -31,9 +31,7 @@ import datetime as dt
 import re
 
 from congress_api.parsers.gpo_hearings import is_multi_hearing_volume
-
-STOP = set("the a an of and to in on for with from at by is are be as or its it this that hearing hearings "
-           "subcommittee committee house u.s. us part examining examine review oversight markup meeting full".split())
+from congress_api.parsers.text import STOP, words
 
 
 CLIP_SECONDS = 1200
@@ -56,10 +54,6 @@ VIDEO_ID = re.compile(r"(?:youtube\.com/(?:watch\?(?:.*&)?v=|live/|embed/|shorts
 
 
 MONTHS = {m: i + 1 for i, m in enumerate("jan feb mar apr may jun jul aug sep oct nov dec".split())}
-
-
-def words(s):
-    return {w for w in re.findall(r"[a-z0-9]+", (s or "").lower()) if w not in STOP and len(w) > 2}
 
 
 def similarity(a, b):
