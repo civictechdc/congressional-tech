@@ -42,7 +42,8 @@ def lacking(m, packages):
         or (is_hearing(m) and not m.get("witnesses")) or not (packages or transcript))
 
 
-def request(url, through_zyte, receipts, allowed=(200, 404), *, json_body=None, request_pacer=None):
+def request(url, through_zyte, receipts, allowed=(200, 404), *, json_body=None, request_pacer=None,
+            attempts=None, strict_zyte=False, retain_status_bodies=False):
     """Record the retry helper's final outcome, not its unobserved inner attempts."""
     receipt = {"url": url, "started_at": timestamp()}
     receipts.append(receipt)
@@ -52,16 +53,28 @@ def request(url, through_zyte, receipts, allowed=(200, 404), *, json_body=None, 
         receipt.update(method="POST", request_json=json_body)
     if request_pacer is not None:
         options['request_pacer'] = request_pacer
+    if attempts is not None:
+        options['attempts'] = attempts
+    if strict_zyte:
+        options['strict_zyte'] = True
+    if retain_status_bodies:
+        receipt['transport'] = 'zyte' if through_zyte else 'direct'
     try:
         response = http.get_with_retry(None, url, allowed=allowed, through_zyte=through_zyte, **options)
     except (RuntimeError, ValueError, OSError) as error:
         receipt.update(completed_at=timestamp(), outcome="error", error=str(error))
         if isinstance(error, http.HttpRequestError):
             receipt['transport_failure'] = error.details
+        if isinstance(error, http.ZyteApiError):
+            receipt['provider_http_status'] = error.provider_http_status
         raise
     receipt.update(completed_at=timestamp(), status_code=response.status_code,
                    outcome="not_found" if response.status_code == 404 else "retrieved")
-    if response.status_code == 200:
+    if hasattr(response, 'provider_http_status'):
+        receipt['provider_http_status'] = response.provider_http_status
+    if retain_status_bodies:
+        receipt['final_url'] = response.url
+    if response.status_code == 200 or retain_status_bodies:
         media = "application/json" if json_body is not None else "application/xml" if url.lower().endswith(".xml") else "text/html"
         receipt["content"] = RawContent.from_bytes(response.content, media).source_dict()
     return response

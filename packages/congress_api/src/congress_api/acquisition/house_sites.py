@@ -49,6 +49,37 @@ def seeds(home):
             task(urljoin(home, '/sitemap.xml'), 'sitemap')]
 
 
+def request_with_fallback(url, receipts, *, json_body=None, request_pacer=None):
+    """Try the publisher, then one explicit Zyte request; retain both outcomes."""
+    options = dict(json_body=json_body, request_pacer=request_pacer, retain_status_bodies=True)
+    first = len(receipts)
+    direct = proxy = None
+    direct_error = proxy_error = None
+    try:
+        direct = request(url, False, receipts, allowed=range(200, 600), **options)
+    except (RuntimeError, ValueError, OSError) as error:
+        direct_error = error
+    direct_receipt = receipts[-1]
+    if direct is None or direct.status_code != 200:
+        try:
+            proxy = request(url, True, receipts, allowed=range(200, 600), attempts=1, strict_zyte=True, **options)
+        except (RuntimeError, ValueError, OSError) as error:
+            proxy_error = error
+    for receipt in receipts[first:]:
+        receipt['selected'] = False
+    # A complete literal absence remains authoritative unless Zyte recovers a
+    # successful response. Provider errors never masquerade as publisher HTTP.
+    use_proxy = proxy is not None and (proxy.status_code == 200 or direct is None
+                or direct.status_code not in UNAVAILABLE_STATUSES and proxy.status_code in UNAVAILABLE_STATUSES)
+    selected = proxy if use_proxy else direct
+    if selected is None:
+        raise direct_error or proxy_error
+    (receipts[-1] if use_proxy else direct_receipt)['selected'] = True
+    if selected.status_code not in {200, *UNAVAILABLE_STATUSES}:
+        raise HttpRequestError(f'Committee publisher returned HTTP {selected.status_code}', selected.status_code)
+    return selected
+
+
 def _enqueue(saved, queue, queued, item, *, today, refresh, force=False):
     url = item['url']
     if item['kind'] == 'site_home' and (urlsplit(url).hostname or '').endswith('.house.gov'):
@@ -78,16 +109,30 @@ def _fetch(item, get):
         return None, receipts, error
 
 
-def _read(saved, item, fetched, *, today, check_pagination=True):
+def _read(saved, item, fetched, *, today, check_pagination=True, retain_previous=False):
     # Retrying an observation appends its new request receipt; the failed
     # attempts remain evidence rather than disappearing on the next success.
     response, new_receipts, error = fetched
-    receipts = [*saved['sources'].get(key(item), {}).get('receipts', []), *new_receipts]
+    previous = saved['sources'].get(key(item), {})
+    receipts = [*previous.get('receipts', []), *new_receipts]
     observation = dict(url=item['url'], kind=item['kind'], receipts=receipts)
+    history = [*previous.get('content_history', [])]
+    if retain_previous:
+        if previous.get('content') and previous['content'] not in history:
+            history.append(previous['content'])
+    if history:
+        observation['content_history'] = history
     saved['sources'][key(item)] = observation
-    if new_receipts and (body := receipts[-1].pop('content', None)):
+    chosen = next((r for r in reversed(new_receipts) if r.get('selected')), None)
+    if chosen is None and new_receipts and not any('selected' in r for r in new_receipts):
+        chosen = new_receipts[-1]
+    if chosen is not None and (body := chosen.pop('content', None)):
         observation['content'] = body
-        receipts[-1]['sha256'] = body['sha256']
+        chosen['sha256'] = body['sha256']
+        if retain_previous and history:
+            observation['content_history'] = [old for old in history if old['sha256'] != body['sha256']]
+            if not observation['content_history']:
+                observation.pop('content_history')
     if error is not None:
         if isinstance(error, HttpRequestError) and item['kind'] in OPTIONAL_INDEXES and error.status in {401, 403, 404, 410}:
             observation.update(status=error.status, discovery_gap='index_not_available')
@@ -129,9 +174,14 @@ def _read(saved, item, fetched, *, today, check_pagination=True):
     identity = event_identity(body, observation['final_url']) if item['kind'] not in {'home', 'site_home', 'robots', 'sitemap', 'calendar_api', 'wordpress_types', 'wordpress_posts'} else None
     if not listing_url(final) and (item['kind'] == 'event' or identity):
         page = parse_event_page(body, observation['final_url'])
+        old_body = saved['pages'].get(final, {}).get('raw_html')
+        if retain_previous and old_body and old_body['sha256'] != page['raw_html']['sha256']:
+            history = observation.setdefault('content_history', [])
+            if not any(old['sha256'] == old_body['sha256'] for old in history):
+                history.append(old_body)
         page.update(checked=today.isoformat(), version='', parser_version=PARSER_VERSION)
-        if receipts:
-            page['retrieved_at'] = receipts[-1].get('completed_at')
+        if chosen is not None:
+            page['retrieved_at'] = chosen.get('completed_at')
         # The successful page owns its exact body; discovery references it.
         observation.pop('content', None)
         observation['page_url'] = final
@@ -206,7 +256,7 @@ def _retry_records(rows):
 
 
 def _retry_selection(rows, state, owners):
-    """Validate exact saved failures before changing any queue or observation."""
+    """Validate saved failures or literal unavailable observations before mutation."""
     selected = {}
     for row in _retry_records(rows):
         host, item = row['site'], row['request']
@@ -220,8 +270,12 @@ def _retry_selection(rows, state, owners):
         failure = saved.get('errors', {}).get(identifier)
         # Resolved targets may be present when resuming the same manifest.
         previous = [failure] if failure else [r['failure'] for r in saved.get('resolved_errors', {}).get(identifier, [])]
-        if not any(p.get('request') == item for p in previous):
-            raise ValueError('Retry request does not match an exact saved failure')
+        source = saved.get('sources', {}).get(identifier, {})
+        unavailable = (source.get('status') in UNAVAILABLE_STATUSES
+                       and source.get('url') == item['url'] and source.get('kind') == item['kind'])
+        completed = source.get('retry_request') == item and source.get('retry_selection')
+        if not any(p.get('request') == item for p in previous) and not unavailable and not completed:
+            raise ValueError('Retry request does not match a saved failure or unavailable observation')
         if not any(same_site(item['url'], home) for home in [owners[host]['home'], *saved.get('linked_sites', {})]):
             raise ValueError('Retry request is outside the retained committee sites')
         targets[identifier] = item
@@ -260,7 +314,9 @@ def collect(rows, state, *, today, get, limit=None, refresh_limit=450, sites=Non
         if not retrying:
             saved.update(owners[host])
         if retrying and not saved.get('retry_selection'):
-            queue = deque(item for identifier, item in targets[host].items() if identifier in saved['errors'])
+            queue = deque(item for identifier, item in targets[host].items()
+                          if saved['sources'].get(identifier, {}).get('retry_selection') != retry_id
+                          and (identifier in saved['errors'] or saved['sources'].get(identifier, {}).get('status') in UNAVAILABLE_STATUSES))
         else:
             queue = deque(saved['pending'])
         queued[host] = {key(item) for item in queue}
@@ -341,13 +397,19 @@ def collect(rows, state, *, today, get, limit=None, refresh_limit=450, sites=Non
                 try:
                     fetched = future.result()
                     try:
-                        links = _read(saved, item, fetched, today=today, check_pagination=not retrying)
+                        links = _read(saved, item, fetched, today=today, check_pagination=not retrying, retain_previous=retrying)
                         outcome = 'unavailable' if saved['sources'][identifier].get('status') in UNAVAILABLE_STATUSES else 'successful_request'
                         resolve_error(saved, identifier, outcome)
                         for linked in [] if retrying else links:
                             _enqueue(saved, queues[host], queued[host], linked, today=today, refresh=refresh)
                     except (RuntimeError, ValueError, OSError) as error:
+                        if retrying and (previous := saved['errors'].get(identifier)):
+                            history = saved.setdefault('error_history', {}).setdefault(identifier, [])
+                            if not history or history[-1] != previous:
+                                history.append(previous)
                         saved['errors'][identifier] = dict(request=item, checked_at=timestamp(), error=str(error))
+                    if retrying:
+                        saved['sources'][identifier].update(retry_request=item, retry_selection=retry_id)
                 except BaseException as error:
                     # An unexpected bug stops admission, but other admitted
                     # responses still drain into the final checkpoint.
@@ -372,7 +434,9 @@ def collect(rows, state, *, today, get, limit=None, refresh_limit=450, sites=Non
                 discovery_gaps=sum(state[h]['coverage']['discovery_gaps'] for h in selected), stopped=stop.is_set())
     if retrying:
         result.update(mode='retry_requests', retained_failed=result['failed'],
-                      failed=sum(len(set(targets[h]) & set(state[h]['errors']) - queued[h]) for h in selected))
+                      failed=sum(len(set(targets[h]) & set(state[h]['errors']) - queued[h]) for h in selected),
+                      excluded=sum(str(state[h]['done'].get(identifier, {}).get('outcome', '')).startswith('excluded_')
+                                   for h in selected for identifier in targets[h]))
     return result
 
 
@@ -428,12 +492,14 @@ def outputs(state, output_dir):
     write_csv(output_dir / 'house_site_documents.csv', documents, DOCUMENT_FIELDS)
 
 
-def main(committees, state_dir, output_dir, *, as_of=None, offline=False, reparse=False, site=None, limit=None, refresh_limit=450, zyte=False,
+def main(committees, state_dir, output_dir, *, as_of=None, offline=False, reparse=False, site=None, limit=None, refresh_limit=450, zyte=False, zyte_fallback=False,
          workers=8, requests_per_second=None, stop=None, retry_requests=None):
     if limit is not None and limit < 0 or refresh_limit < 0:
         raise ValueError('Collection and refresh limits must be nonnegative')
     if reparse and not offline:
         raise ValueError('Reparsing requires --offline and a stopped collector')
+    if zyte and zyte_fallback:
+        raise ValueError('--zyte and --zyte-fallback are mutually exclusive')
     if retry_requests is not None and (offline or reparse or site):
         raise ValueError('--retry-requests cannot be combined with --offline, --reparse or --site')
     retry_rows = _retry_records(json.loads(retry_requests.read_text())) if retry_requests is not None else None
@@ -457,7 +523,9 @@ def main(committees, state_dir, output_dir, *, as_of=None, offline=False, repars
             write_state(path, value, compresslevel=3)
             write_coverage(value, output_dir)
         options = {'request_pacer': request_pacer} if request_pacer is not None else {}
-        result = collect(rows, state, today=today, get=lambda url, checks, **kw: request(url, zyte, checks, **options, **kw),
+        get = (lambda url, checks, **kw: request_with_fallback(url, checks, **options, **kw)) if zyte_fallback else (
+              lambda url, checks, **kw: request(url, zyte, checks, **options, **kw))
+        result = collect(rows, state, today=today, get=get,
                          limit=limit, refresh_limit=refresh_limit, sites=site, retry_requests=retry_rows,
                          checkpoint=persist, workers=workers, stop=stop)
     outputs(state, output_dir)

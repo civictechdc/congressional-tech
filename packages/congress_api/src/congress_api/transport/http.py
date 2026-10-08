@@ -65,6 +65,14 @@ class HttpRequestError(RuntimeError):
         self.details = dict(status=status, attempts=attempts, exception_types=list(exception_types))
 
 
+class ZyteApiError(RuntimeError):
+    """The extraction service failed before establishing a publisher response."""
+
+    def __init__(self, status):
+        super().__init__(f'Zyte API returned HTTP {status}; publisher status unknown')
+        self.provider_http_status = status
+
+
 def exception_types(error):
     """Keep bounded error classes, never exception messages containing secrets."""
     pending, seen, result = [error], set(), []
@@ -126,7 +134,7 @@ def pace_request(url, *, through_zyte=False, request_pacer=None):
         _next[pace_key] = time.monotonic() + gap
 
 
-def get_with_retry(session, url, params=None, attempts=3, *, method="GET", allowed=(200,), through_zyte=False, json_body=None, json_content_type="application/json", request_pacer=None):
+def get_with_retry(session, url, params=None, attempts=3, *, method="GET", allowed=(200,), through_zyte=False, json_body=None, json_content_type="application/json", request_pacer=None, strict_zyte=False):
     """Return a response or raise, without putting API keys from query strings in errors."""
     if session is None:
         if not hasattr(_local, "session"):
@@ -144,9 +152,15 @@ def get_with_retry(session, url, params=None, attempts=3, *, method="GET", allow
         try:
             if through_zyte:
                 options = {"json_body": json_body, "json_content_type": json_content_type} if json_body is not None else {}
-                status, body, header_items = zyte.decode(zyte.request(url, session, **options))
+                provider = zyte.request(url, session, **options)
+                if strict_zyte and provider.status_code != 200:
+                    raise ZyteApiError(provider.status_code)
+                status, body, header_items = zyte.decode(provider)
                 response = requests.Response()
                 response.status_code, response._content, response.url = status, body, url
+                if strict_zyte:
+                    response.url = provider.json().get('url') or url
+                    response.provider_http_status = provider.status_code
                 response.encoding = "utf-8"
                 for item in header_items:
                     response.headers[item.name] = item.value
