@@ -75,7 +75,14 @@ def test_redirect_loop_and_total_step_limit():
     result = resolve_document(url, saved={url: response(url, status=302, Location='/a')})
     assert result['outcome'] == 'loop'
     result = resolve_document(url, saved={url: response(url, b'<a href="/a">Download</a>')})
+    assert result['outcome'] == 'no_download_link'
+    assert result['links'] == []
+    assert len(result['responses']) == 1
+    result = resolve_document(url, saved={
+        url: response(url, b'<a href="/b">Download</a>'),
+        'https://x.test/b': response('https://x.test/b', b'<a href="/a">Download</a>')})
     assert result['outcome'] == 'loop'
+    assert len(result['responses']) == 2
 
 
 @pytest.mark.parametrize(('body', 'kind'), [(b'PK\x03\x04data', 'zip'), (b'{\\rtf1 data}', 'rtf'),

@@ -61,10 +61,12 @@ ANCHOR = re.compile(r'<a\b[^>]*href="([^"]*)"[^>]*>(.*?)</a>', re.S | re.I)
 
 
 def file_anchors(page_html, url):
+    page_url = http_url(url)
     for link in ANCHOR.finditer(page_html):
         value = html.unescape(link.group(1)).strip()
-        if is_document_url(value, publisher_routes=True):
-            yield link, urljoin(url, value)
+        target = urljoin(url, value)
+        if is_document_url(value, publisher_routes=True) and http_url(target) != page_url:
+            yield link, target
 
 
 KINDS = [("transcript", r"transcript"), ("questions for the record", r"qfr|questions?[ \-_]for[ \-_]the[ \-_]record|responses?[ \-_]to[ \-_](?:written[ \-_])?questions"),
@@ -746,8 +748,10 @@ def source_details_tree(root, url, people, *, plain=False, include_link=None):
     witnesses_by_node = {card: index for card, index in witnesses_by_node.items() if index not in repeated}
     witness_metadata = {index: metadata for index, metadata in witness_metadata.items() if int(index) not in repeated}
     files, file_nodes = {}, set()
+    page_url = http_url(url)
     for anchor in root.xpath(".//a[@href]"):
-        if not http_url(anchor.get('href', ''), url):
+        target = http_url(anchor.get('href', ''), url)
+        if not target or target == page_url:
             continue
         href = urljoin(url, anchor.get("href", "").strip(' '))
         if not is_document_url(href, publisher_routes=True) and not (include_link and include_link(anchor)):

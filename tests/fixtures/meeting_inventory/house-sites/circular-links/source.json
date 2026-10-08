@@ -1,0 +1,22 @@
+{
+  "url": "https://democrats-edworkforce.house.gov/download/02/05/2024/delaune-testimony",
+  "sha256": "ab127eb3beeee030fb6351f8182e376633da79d7fa1bb64009546caed932862b",
+  "event": {
+    "date": "2024-02-06",
+    "selector": "displayed event heading/date",
+    "title": "\"Protecting Missing and Exploited Children\"",
+    "url": "https://democrats-edworkforce.house.gov/download/02/05/2024/delaune-testimony"
+  },
+  "documents": [
+    [
+      "member statement",
+      "Bonamici Opening Statement",
+      "https://democrats-edworkforce.house.gov/download/02/06/2024/bonamici-opening-statement"
+    ],
+    [
+      "witness statement",
+      "Download Testimony",
+      "https://democrats-edworkforce.house.gov/download/02/05/2024/delaune-testimony"
+    ]
+  ]
+}

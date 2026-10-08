@@ -122,7 +122,8 @@ def tree_document_links(tree, url, *, include_link=None):
     """One link reader for static markup and decoded publisher HTML fields."""
     bases = tree.xpath('//base[@href]/@href')
     base = (http_url(bases[0], url) if bases else None) or url
-    host = urlsplit(http_url(url) or '').hostname or ''
+    page_url = http_url(url)
+    host = urlsplit(page_url or '').hostname or ''
     publisher_routes = host.endswith(('.house.gov', '.senate.gov')) or host in {'house.gov', 'senate.gov', 'csce.gov', 'www.csce.gov'}
     result = []
     seen = set()
@@ -147,7 +148,7 @@ def tree_document_links(tree, url, *, include_link=None):
             basis = 'embedded_document'
         if node.tag == 'meta':
             target = http_url(value, base) if value.strip() else None
-        if basis and target and not feed_link(node, target) and target not in seen:
+        if basis and target and target != page_url and not feed_link(node, target) and target not in seen:
             seen.add(target)
             result.append(DocumentLink(url=target, basis=basis, text=label,
                                        tag=node.tag, attributes=dict(node.attrib)))
