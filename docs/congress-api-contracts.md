@@ -178,7 +178,7 @@ are not separate owners. The AST registry test catches new or changed constants.
 | Owner | Version | What it governs / consumer |
 | --- | --- | --- |
 | `acquisition.house_sites.PARSER_VERSION` | `5` | Retained House committee pages; shared ASP.NET listing recognition and explicit subject headings; offline House reparse and bounded refresh |
-| `acquisition.house_sites.PAGINATION_VERSION` | `4` | Derived listing fingerprints; explicit empty calendars do not fingerprint navigation; old fingerprints are discarded when new records are checked |
+| `acquisition.house_sites.PAGINATION_VERSION` | `5` | Derived listing fingerprints; explicit empty calendars and unrelated site alerts do not contribute navigation; old fingerprints are discarded when new records are checked |
 | `parsers.house_evidence.SCHEMA_VERSION` | `"1.1"` | House evidence; House reader refresh queue and House replay |
 | `parsers.senate.PARSER_VERSION` | `11` | Parsed Senate pages; retains CSCE testimony-field roles, explicit biography labels, event dates, and surrounding link paragraphs; bounded maintenance and Senate replay |
 | `parsers.gpo_hearings.PARSER_VERSION` | `"3"` | GPO CSV/evidence interpretation; fetch and cached replay |

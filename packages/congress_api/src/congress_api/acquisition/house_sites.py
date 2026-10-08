@@ -24,11 +24,12 @@ from congress_api.retention.tables import read_state, write_state, write_csv
 from congress_api.transport.http import HttpRequestError, RequestPacer
 
 PARSER_VERSION = 5
-PAGINATION_VERSION = 4
+PAGINATION_VERSION = 5
 EVENT_FIELDS = 'site page title date type status'.split()
 DOCUMENT_FIELDS = 'site page date kind name url'.split()
 COVERAGE_FIELDS = 'site history events pending failed unavailable unrecognized_events discovery_gaps status'.split()
 OPTIONAL_INDEXES = {'robots', 'sitemap', 'wordpress_types', 'calendar_index_hint'}
+UNAVAILABLE_STATUSES = {404, 410}
 
 
 def directory(rows):
@@ -91,6 +92,12 @@ def _read(saved, item, fetched, *, today):
         if isinstance(error, HttpRequestError) and item['kind'] in OPTIONAL_INDEXES and error.status in {401, 403, 404, 410}:
             observation.update(status=error.status, discovery_gap='index_not_available')
             return []
+        if isinstance(error, HttpRequestError) and error.status in UNAVAILABLE_STATUSES:
+            # The shared client raises for 410. Preserve that exact receipt,
+            # but classify the page's terminal response separately from a
+            # transient failure. Earlier successful pages remain retained.
+            observation['status'] = error.status
+            return []
         raise error
     observation['final_url'] = getattr(response, 'url', None) or item['url']
     final = observation['final_url']
@@ -100,7 +107,7 @@ def _read(saved, item, fetched, *, today):
         else:
             raise ValueError('Official committee request redirected to another site')
     observation.update(status=response.status_code, kind=item['kind'])
-    if response.status_code == 404:
+    if response.status_code in UNAVAILABLE_STATUSES:
         # A literal dead link is a recorded unavailability, not a transient
         # transport failure. Coverage reports it separately from parsed pages.
         return []
@@ -224,7 +231,7 @@ def collect(rows, state, *, today, get, limit=None, refresh_limit=450, sites=Non
             saved['coverage'] = dict(pending=len(saved['pending']), failed=len(saved['errors']), events=len(saved['pages']),
                 unrecognized_events=sum(not p.get('event') for p in saved['pages'].values()),
                 discovery_gaps=sum(bool(o.get('discovery_gap')) for o in saved['sources'].values()),
-                unavailable=sum(o.get('status') == 404 and o.get('kind') not in OPTIONAL_INDEXES for o in saved['sources'].values()),
+                unavailable=sum(o.get('status') in UNAVAILABLE_STATUSES and o.get('kind') not in OPTIONAL_INDEXES for o in saved['sources'].values()),
                 history='all discoverable', status='pending' if saved['pending'] else 'failed' if saved['errors'] else
                 'no_recognized_events' if not saved['pages'] else
                 'queue_exhausted_with_gaps' if any(o.get('discovery_gap') for o in saved['sources'].values()) else 'discovered_queue_exhausted')
@@ -267,7 +274,8 @@ def collect(rows, state, *, today, get, limit=None, refresh_limit=450, sites=Non
                     fetched = future.result()
                     try:
                         links = _read(saved, item, fetched, today=today)
-                        resolve_error(saved, identifier, 'successful_request')
+                        outcome = 'unavailable' if saved['sources'][identifier].get('status') in UNAVAILABLE_STATUSES else 'successful_request'
+                        resolve_error(saved, identifier, outcome)
                         for linked in links:
                             _enqueue(saved, queues[host], queued[host], linked, today=today, refresh=refresh)
                     except (RuntimeError, ValueError, OSError) as error:

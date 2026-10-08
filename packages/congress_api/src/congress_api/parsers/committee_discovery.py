@@ -137,6 +137,12 @@ def _html_tasks(body, url):
             out.append(task(target, 'site_home', parent=url))
         if not target or not same_site(target, url) or page_link_exclusion(href, url) or href.startswith('#') or '/wp-json/' in urlsplit(target).path:
             continue
+        # A site-wide alert's relative link can inherit /hearings/ from any
+        # parent page. Require event evidence in the link itself, while keeping
+        # explicit calendar/archive links and event IDs in these notices.
+        if not EVENT.search(href + ' ' + label) and node.xpath(
+                'ancestor::*[@role="alert" or contains(concat(" ", normalize-space(@class), " "), " alert ")]'):
+            continue
         path = urlsplit(target).path
         # WordPress month calendars have unbounded previous/next months. Their
         # event archives, REST indexes and sitemaps enumerate actual entries.

@@ -1,0 +1,22 @@
+{
+  "file": "science-relative-alert.html",
+  "url": "https://democrats-science.house.gov/hearings/06/15/2022/investigating-the-nature-of-matter-energy-space-and-time",
+  "sha256": "73ccff7920f566f951a85d733767a3f43fbfaafe6a52960ab9c7d4ef18f36017",
+  "event": {
+    "date": "2022-06-22",
+    "selector": "displayed event heading/date",
+    "title": "Investigating the Nature of Matter, Energy, Space, and Time",
+    "url": "https://democrats-science.house.gov/hearings/06/15/2022/investigating-the-nature-of-matter-energy-space-and-time"
+  },
+  "documents": 13,
+  "retrieved_at": "2026-10-07T23:14:35.412739+00:00",
+  "source_checkpoint": {
+    "source": "/Users/mikewolfd/Work/congressional-tech/.cache/house-committee-fallback-20261007/collection/house-sites.json.gz",
+    "inode": 757465923,
+    "compressed_bytes": 553578180,
+    "compressed_sha256": "a95f68fe759df7059afd6623c2892dfe20d2c40321423ae61b2a04e3fb8971df",
+    "checkpoint_mtime": "2026-10-07T23:49:50.184913+00:00",
+    "completed_at": "2026-10-07T23:51:01.356840+00:00",
+    "seconds": 39.98161487500329
+  }
+}

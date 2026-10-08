@@ -540,8 +540,12 @@ replaced with an article publication date. Pagination compares actual listing
 rows where available, so distinct bills can refer to the same hearing. Query
 parameter order is normalized only for comparison; original URLs remain in
 receipts and queue entries. Repeated records on different pages fail visibly.
-404 links, unavailable optional indexes and failed requests have separate
-coverage counts. A drained discovered queue does not prove the publisher has
+404/410 links, unavailable optional indexes and failed requests have separate
+coverage counts. A 410 retains the HTTP client's original error receipt but is
+counted as an unavailable page, not a transient request failure. Existing saved
+pages and earlier diagnostics remain retained. Unrelated site-alert links need
+event evidence in their own href or label; inheriting a hearing directory alone
+does not qualify them for discovery. A drained discovered queue does not prove the publisher has
 exposed every historical event. `--offline` only reads saved state. After stopping
 collection, `--offline --reparse` rebuilds parsed readings from the retained
 original bodies without HTTP requests. It preserves receipts, request times and
