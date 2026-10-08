@@ -23,8 +23,8 @@ from congress_api.retention.committees import read as read_committees
 from congress_api.retention.tables import read_state, write_state, write_csv
 from congress_api.transport.http import HttpRequestError, RequestPacer
 
-PARSER_VERSION = 5
-PAGINATION_VERSION = 5
+PARSER_VERSION = 6
+PAGINATION_VERSION = 6
 EVENT_FIELDS = 'site page title date type status'.split()
 DOCUMENT_FIELDS = 'site page date kind name url'.split()
 COVERAGE_FIELDS = 'site history events pending failed unavailable unrecognized_events discovery_gaps status'.split()
@@ -78,7 +78,7 @@ def _fetch(item, get):
         return None, receipts, error
 
 
-def _read(saved, item, fetched, *, today):
+def _read(saved, item, fetched, *, today, check_pagination=True):
     # Retrying an observation appends its new request receipt; the failed
     # attempts remain evidence rather than disappearing on the next success.
     response, new_receipts, error = fetched
@@ -136,7 +136,8 @@ def _read(saved, item, fetched, *, today):
         observation.pop('content', None)
         observation['page_url'] = final
         saved['pages'][final] = page
-    _check_pagination(saved, item, links, source_body=body)
+    if check_pagination:
+        _check_pagination(saved, item, links, source_body=body)
     return links
 
 
@@ -191,7 +192,50 @@ def _exclude(saved, item):
     return True
 
 
-def collect(rows, state, *, today, get, limit=None, refresh_limit=450, sites=None,
+def _retry_records(rows):
+    """Reject malformed manifests before loading the large collection state."""
+    if not isinstance(rows, list) or not rows:
+        raise ValueError('Retry requests must be a nonempty list of {site, request} records')
+    for row in rows:
+        if not isinstance(row, dict) or not isinstance(row.get('site'), str) or not isinstance(row.get('request'), dict):
+            raise ValueError('Each retry record requires a site and an original request')
+        item = row['request']
+        if not isinstance(item.get('url'), str) or not isinstance(item.get('kind'), str):
+            raise ValueError('Retry request requires its original URL and kind')
+    return rows
+
+
+def _retry_selection(rows, state, owners):
+    """Validate exact saved failures before changing any queue or observation."""
+    selected = {}
+    for row in _retry_records(rows):
+        host, item = row['site'], row['request']
+        if host not in owners or host not in state:
+            raise ValueError('Retry site is absent from retained official site state')
+        identifier = key(item)
+        targets = selected.setdefault(host, {})
+        if identifier in targets:
+            raise ValueError('Duplicate retry request')
+        saved = state[host]
+        failure = saved.get('errors', {}).get(identifier)
+        # Resolved targets may be present when resuming the same manifest.
+        previous = [failure] if failure else [r['failure'] for r in saved.get('resolved_errors', {}).get(identifier, [])]
+        if not any(p.get('request') == item for p in previous):
+            raise ValueError('Retry request does not match an exact saved failure')
+        if not any(same_site(item['url'], home) for home in [owners[host]['home'], *saved.get('linked_sites', {})]):
+            raise ValueError('Retry request is outside the retained committee sites')
+        targets[identifier] = item
+    selection_id = hashlib.sha256(json.dumps({host: sorted(targets) for host, targets in selected.items()}, sort_keys=True).encode()).hexdigest()
+    for host, targets in selected.items():
+        saved = state[host]
+        if any(targets.get(key(item)) != item for item in saved.get('pending', [])):
+            raise ValueError('Retry selection would interrupt unrelated pending work')
+        if saved.get('retry_selection') and saved['retry_selection'] != selection_id:
+            raise ValueError('Resume pending retries with the same retry manifest')
+    return selected, selection_id
+
+
+def collect(rows, state, *, today, get, limit=None, refresh_limit=450, sites=None, retry_requests=None,
             checkpoint=lambda _: None, workers=8, stop=None):
     """Fetch across sites; one coordinator owns parsing, queues and checkpoints."""
     if not 1 <= workers <= 32:
@@ -202,15 +246,29 @@ def collect(rows, state, *, today, get, limit=None, refresh_limit=450, sites=Non
         raise ValueError('The retained committee directory contains no House websites')
     if sites and set(sites) - set(owners):
         raise ValueError('Requested site is absent from the retained official committee directory')
-    selected = sorted(host for host in owners if not sites or host in sites)
+    retrying = retry_requests is not None
+    if retrying and sites:
+        raise ValueError('Retry requests select their own sites; do not also select sites')
+    targets, retry_id = _retry_selection(retry_requests, state, owners) if retrying else (None, None)
+    selected = sorted(targets if retrying else (host for host in owners if not sites or host in sites))
+    if not retrying and any(state.get(host, {}).get('retry_selection') for host in selected):
+        raise ValueError('Pending targeted retries require the same retry manifest')
     queues, queued = {}, {}
     refresh = [refresh_limit]
     for host in selected:
         saved = state.setdefault(host, dict(pages={}, sources={}, done={}, pending=[], errors={}))
-        saved.update(owners[host])
-        queue = deque(saved['pending'])
+        if not retrying:
+            saved.update(owners[host])
+        if retrying and not saved.get('retry_selection'):
+            queue = deque(item for identifier, item in targets[host].items() if identifier in saved['errors'])
+        else:
+            queue = deque(saved['pending'])
         queued[host] = {key(item) for item in queue}
         queues[host] = queue
+        if retrying:
+            for item in queue:
+                saved['done'].pop(key(item), None)
+            continue
         if not queue:
             last = saved.get('discovery_checked')
             if last and (today - date.fromisoformat(last)).days < 7 and not saved['errors'] and saved.get('parser_version') == PARSER_VERSION:
@@ -228,6 +286,13 @@ def collect(rows, state, *, today, get, limit=None, refresh_limit=450, sites=Non
         for host in selected:
             saved = state[host]
             saved['pending'] = list(queues[host])
+            if retrying:
+                if any(queues.values()):
+                    # Keep drained sites in this run until every selected site
+                    # drains, so a resumed run does not repeat their failures.
+                    saved['retry_selection'] = retry_id
+                else:
+                    saved.pop('retry_selection', None)
             saved['coverage'] = dict(pending=len(saved['pending']), failed=len(saved['errors']), events=len(saved['pages']),
                 unrecognized_events=sum(not p.get('event') for p in saved['pages'].values()),
                 discovery_gaps=sum(bool(o.get('discovery_gap')) for o in saved['sources'].values()),
@@ -236,6 +301,9 @@ def collect(rows, state, *, today, get, limit=None, refresh_limit=450, sites=Non
                 'no_recognized_events' if not saved['pages'] else
                 'queue_exhausted_with_gaps' if any(o.get('discovery_gap') for o in saved['sources'].values()) else 'discovered_queue_exhausted')
         checkpoint(state)
+    if retrying and any(queues.values()):
+        # Persist the bounded resume guard before admitting the first request.
+        save()
     schedule, active, busy = deque(selected), {}, set()
     failure = None
     with ThreadPoolExecutor(min(workers, len(selected))) as pool:
@@ -273,10 +341,10 @@ def collect(rows, state, *, today, get, limit=None, refresh_limit=450, sites=Non
                 try:
                     fetched = future.result()
                     try:
-                        links = _read(saved, item, fetched, today=today)
+                        links = _read(saved, item, fetched, today=today, check_pagination=not retrying)
                         outcome = 'unavailable' if saved['sources'][identifier].get('status') in UNAVAILABLE_STATUSES else 'successful_request'
                         resolve_error(saved, identifier, outcome)
-                        for linked in links:
+                        for linked in [] if retrying else links:
                             _enqueue(saved, queues[host], queued[host], linked, today=today, refresh=refresh)
                     except (RuntimeError, ValueError, OSError) as error:
                         saved['errors'][identifier] = dict(request=item, checked_at=timestamp(), error=str(error))
@@ -291,7 +359,7 @@ def collect(rows, state, *, today, get, limit=None, refresh_limit=450, sites=Non
                     saved['done'][key(task(final))] = dict(url=final, kind='event')
                 saved['done'][identifier] = dict(url=item['url'], kind=item['kind'])
                 completed += 1
-                if not queues[host]:
+                if not queues[host] and not retrying:
                     saved['discovery_checked'] = today.isoformat()
                     saved['parser_version'] = PARSER_VERSION
                 if completed % 25 == 0:
@@ -299,9 +367,13 @@ def collect(rows, state, *, today, get, limit=None, refresh_limit=450, sites=Non
     save()
     if failure:
         raise failure
-    return dict(requests=attempted, sites=len(selected), pending=sum(len(q) for q in queues.values()),
+    result = dict(requests=attempted, sites=len(selected), pending=sum(len(q) for q in queues.values()),
                 failed=sum(len(state[h]['errors']) for h in selected), events=sum(len(state[h]['pages']) for h in selected),
                 discovery_gaps=sum(state[h]['coverage']['discovery_gaps'] for h in selected), stopped=stop.is_set())
+    if retrying:
+        result.update(mode='retry_requests', retained_failed=result['failed'],
+                      failed=sum(len(set(targets[h]) & set(state[h]['errors']) - queued[h]) for h in selected))
+    return result
 
 
 def reparse_pages(state):
@@ -357,11 +429,14 @@ def outputs(state, output_dir):
 
 
 def main(committees, state_dir, output_dir, *, as_of=None, offline=False, reparse=False, site=None, limit=None, refresh_limit=450, zyte=False,
-         workers=8, requests_per_second=None, stop=None):
+         workers=8, requests_per_second=None, stop=None, retry_requests=None):
     if limit is not None and limit < 0 or refresh_limit < 0:
         raise ValueError('Collection and refresh limits must be nonnegative')
     if reparse and not offline:
         raise ValueError('Reparsing requires --offline and a stopped collector')
+    if retry_requests is not None and (offline or reparse or site):
+        raise ValueError('--retry-requests cannot be combined with --offline, --reparse or --site')
+    retry_rows = _retry_records(json.loads(retry_requests.read_text())) if retry_requests is not None else None
     request_pacer = RequestPacer(requests_per_second) if requests_per_second is not None else None
     today = as_of or date.today()
     if not committees.exists():
@@ -383,7 +458,8 @@ def main(committees, state_dir, output_dir, *, as_of=None, offline=False, repars
             write_coverage(value, output_dir)
         options = {'request_pacer': request_pacer} if request_pacer is not None else {}
         result = collect(rows, state, today=today, get=lambda url, checks, **kw: request(url, zyte, checks, **options, **kw),
-                         limit=limit, refresh_limit=refresh_limit, sites=site, checkpoint=persist, workers=workers, stop=stop)
+                         limit=limit, refresh_limit=refresh_limit, sites=site, retry_requests=retry_rows,
+                         checkpoint=persist, workers=workers, stop=stop)
     outputs(state, output_dir)
     print(json.dumps(result, sort_keys=True), flush=True)
     if not offline and result['failed'] and not result.get('stopped'):

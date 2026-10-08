@@ -22,6 +22,7 @@ def parse_args_and_run(argv=None):
     parser.add_argument('--state-dir', type=Path, required=True)
     parser.add_argument('--output-dir', type=Path, required=True)
     parser.add_argument('--site', action='append', help='official hostname; otherwise visit every directory site')
+    parser.add_argument('--retry-requests', type=Path, help='JSON list of exact saved {site, request} failures; no seeds or new discovery; use the same file to resume')
     parser.add_argument('--limit', type=nonnegative, help='request budget; preserve the queue for continuation')
     parser.add_argument('--refresh-limit', type=nonnegative, default=450)
     parser.add_argument('--workers', type=positive, default=8, help='concurrent committee requests (1–32); at most one per committee')

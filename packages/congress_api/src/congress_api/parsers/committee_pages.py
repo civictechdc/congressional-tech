@@ -71,7 +71,7 @@ def listing_url(url):
     parsed = urlsplit(url)
     if {k.lower() for k in parse_qs(parsed.query)} & {'eventid', 'contentrecord_id', 'id'}:
         return False
-    return bool(re.search(r'/(?:events?|hearings?|meetings?|business-meetings|markups?|calendar|calendars|schedule)(?:/(?:all|past|upcoming|archive|page/\d+|\d{4}))?/?$|/(?:calendar|events?)/(?:default|eventslisting|list|schedule)\.aspx$', parsed.path, re.I))
+    return bool(re.search(r'/(?:committee-activity|events?|hearings?|meetings?|business-meetings|markups?|calendar|calendars|schedule)(?:/(?:all|past|upcoming|archive|page/\d+|\d{4}))?/?$|/(?:calendar|events?)/(?:default|eventslisting|list|schedule)\.aspx$', parsed.path, re.I))
 
 
 def event_identity(body, url=''):
