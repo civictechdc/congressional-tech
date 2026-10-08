@@ -14,7 +14,7 @@ from lxml import html as dom
 
 from congress_api.parsers.text import text
 from congress_api.parsers.witness_names import is_name, witness
-from congress_api.parsers.document_links import feed_link, is_document_url
+from congress_api.parsers.document_links import feed_link, http_url, is_document_url
 
 ## where each committee keeps its hearing pages
 SITE = {"ssaf00": "agriculture.senate.gov", "ssap00": "appropriations.senate.gov", "ssas00": "armed-services.senate.gov", "ssbk00": "banking.senate.gov",
@@ -68,7 +68,7 @@ def file_anchors(page_html, url):
 
 
 KINDS = [("transcript", r"transcript"), ("questions for the record", r"qfr|questions?[ \-_]for[ \-_]the[ \-_]record|responses?[ \-_]to[ \-_](?:written[ \-_])?questions"),
-         ("questionnaire", r"questionnaire"), ("witness biography", r"\bbio(?:graphy)?\b|/bio_"), ("witness statement", r"testimony"), ("member statement", r"statement")]
+         ("questionnaire", r"questionnaire"), ("witness biography", r"\bbio(?:graphy)?\b|/bio_"), ("witness statement", r"testimony"), ("member statement", r"state?ment")]
 
 AMENDMENT_LIST = re.compile(r".+\bas (?:amended|modified) by(?::(?:\s*PASSED BY VOICE VOTE)?)?", re.I)
 
@@ -156,8 +156,10 @@ def section_document_kind(metadata):
         headings = occurrence.get("headings") or []
         heading = headings[0].strip().rstrip(":").strip() if len(headings) == 1 else ""
         kind = None
-        if re.fullmatch(r"(?:hearing |related )?transcripts?", heading, re.I):
+        if re.fullmatch(r"(?:hearing |related |markup )?transcripts?", heading, re.I):
             kind = "transcript"
+        elif re.fullmatch(r"legislative reports?", heading, re.I):
+            kind = "committee report"
         elif re.fullmatch(r"(?:(?:witness|written|prepared) )?testimony(?: on the following bills| submitted for the record)?", heading, re.I):
             kind = "witness statement"
         elif re.fullmatch(r"(?:member|opening) statements?", heading, re.I):
@@ -173,8 +175,13 @@ def section_document_kind(metadata):
     return kinds[0] if kinds[0] and all(kind == kinds[0] for kind in kinds) else None
 
 
+TRANSCRIPT_LABEL = re.compile(r'(?:(?:official|hearing|markup) )?transcript|printed hearing text', re.I)
+
+
 def literal_document_kind(label, url):
     """The existing link-word inference, independent of page structure."""
+    if TRANSCRIPT_LABEL.fullmatch(label.strip()):
+        return 'transcript'
     return next((kind for kind, pattern in KINDS
         if re.search(pattern, f"{label} {url.rsplit('/', 1)[-1]}", re.I)), "other")
 
@@ -314,6 +321,33 @@ def paragraph_headings(paragraph, anchor=None):
     return result
 
 
+def table_column_heading(anchor):
+    """Use a simple document table's explicit column label, not nearby prose.
+
+    Legacy House markup tables use td cells for their header row. Spans,
+    irregular rows, or links in that row leave column ownership ambiguous.
+    """
+    cells = anchor.xpath('ancestor::*[self::td or self::th][1]')
+    tables = anchor.xpath('ancestor::table[1]')
+    if not cells or not tables or cells[0].getparent().tag != 'tr':
+        return None
+    cell, table = cells[0], tables[0]
+    row = cell.getparent()
+    rows = table.xpath('./tr | ./thead/tr | ./tbody/tr | ./tfoot/tr')
+    if row not in rows or row is rows[0]:
+        return None
+    header = rows[0].xpath('./th | ./td')
+    if not header or rows[0].xpath('.//a'):
+        return None
+    for preceding in rows[:rows.index(row) + 1]:
+        columns = preceding.xpath('./th | ./td')
+        if len(columns) != len(header) or any(
+                c.get('colspan', '1') != '1' or c.get('rowspan', '1') != '1' for c in columns):
+            return None
+    heading = ' '.join(header[row.xpath('./th | ./td').index(cell)].text_content().split())
+    return heading if section_document_kind({'headings': [heading]}) else None
+
+
 def link_headings(anchor):
     """Find the closest enclosing section's heading in DOM order.
 
@@ -364,6 +398,8 @@ def link_headings(anchor):
                 "Hearing__section", "vcard", "capigacr-widget-card", "paragraph--witness",
                 "field-collection-item-field-hearing-new-witness", "jet-listing-grid__item"}:
             break
+        if ancestor.tag in {'td', 'th'} and (heading := table_column_heading(anchor)):
+            return [heading]
         branch = ancestor
     return []
 
@@ -500,6 +536,13 @@ def document_labels(page_html, url):
 
 
 def source_details(page_html, url, people, *, plain=False, include_link=None):
+    if not page_html.strip():
+        return {}, {}, {}
+    root = dom.fromstring(page_html, parser=dom.HTMLParser(remove_comments=True))
+    return source_details_tree(root, url, people, plain=plain, include_link=include_link)
+
+
+def source_details_tree(root, url, people, *, plain=False, include_link=None):
     """Keep page content, links and explicit witness-card ownership.
 
     Existing witness rows and document triples remain unchanged for stable source
@@ -507,9 +550,6 @@ def source_details(page_html, url, people, *, plain=False, include_link=None):
     is never enough to attach a document; it must be inside a recognized card
     containing exactly one already parsed witness.
     """
-    if not page_html.strip():
-        return {}, {}, {}
-    root = dom.fromstring(page_html, parser=dom.HTMLParser(remove_comments=True))
     def has(node, token):
         return token in (node.get("class") or "").split()
     def nodes(node, token):
@@ -638,13 +678,16 @@ def source_details(page_html, url, people, *, plain=False, include_link=None):
     repeated = {index for index, count in Counter(witnesses_by_node.values()).items() if count > 1}
     witnesses_by_node = {card: index for card, index in witnesses_by_node.items() if index not in repeated}
     witness_metadata = {index: metadata for index, metadata in witness_metadata.items() if int(index) not in repeated}
-    files = {}
+    files, file_nodes = {}, set()
     for anchor in root.xpath(".//a[@href]"):
-        href = urljoin(url, anchor.get("href", "").strip())
+        if not http_url(anchor.get('href', ''), url):
+            continue
+        href = urljoin(url, anchor.get("href", "").strip(' '))
         if not is_document_url(href, publisher_routes=True) and not (include_link and include_link(anchor)):
             continue
         if feed_link(anchor, href):
             continue
+        file_nodes.add(anchor)
         entry = files.setdefault(href, {"labels": [], "attributes": [], "container_attributes": [], "witness_indexes": [], "occurrences": []})
         label = value(anchor)
         occurrence = {"labels": [label] if label else [], "attributes": [dict(anchor.attrib)],
@@ -681,5 +724,5 @@ def source_details(page_html, url, people, *, plain=False, include_link=None):
     # Retain their literal destinations without interpreting or following them.
     page_metadata["links"] = [{"text": value(anchor), "attributes": dict(anchor.attrib)}
                               for anchor in root.xpath(".//a[@href]")
-                              if urljoin(url, anchor.get("href", "").strip()) not in files]
+                              if anchor not in file_nodes]
     return files, witness_metadata, page_metadata

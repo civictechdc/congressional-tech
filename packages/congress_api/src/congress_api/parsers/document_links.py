@@ -18,6 +18,7 @@ def is_document_url(value, *, publisher_routes=False):
     Extensionless CMS routes are meaningful in committee content, not on every
     website. Inspect the path/query fields rather than route words in a query.
     """
+    value = value.strip(' ')
     if FILE.search(value):
         return True
     if not publisher_routes:
@@ -68,7 +69,9 @@ def http_url(value, base=''):
     if not isinstance(value, str) or re.search(r'[\x00-\x1f\x7f]', value + base):
         return None
     try:
-        url = urlsplit(urljoin(base, value))
+        # HTML links may surround a URL with spaces. Keep internal and escaped
+        # spaces as path data; the caller retains the untouched attribute.
+        url = urlsplit(urljoin(base, value.strip(' ')))
         if url.scheme not in ('https', 'http') or not url.hostname or '@' in url.netloc:
             return None
         authority = url.netloc
@@ -140,7 +143,7 @@ def tree_document_links(tree, url, *, include_link=None):
             if match := re.fullmatch(r'\s*\d+(?:\.\d+)?\s*;\s*url\s*=\s*(.+?)\s*', node.get('content', ''), re.I):
                 value, basis = match[1].strip('\'"'), 'meta_refresh'
         elif node.tag in ('object', 'embed', 'iframe') and (
-                node.get('type', '').lower() == 'application/pdf' or FILE.search(value)):
+                node.get('type', '').lower() == 'application/pdf' or is_document_url(value)):
             basis = 'embedded_document'
         if node.tag == 'meta':
             target = http_url(value, base) if value.strip() else None

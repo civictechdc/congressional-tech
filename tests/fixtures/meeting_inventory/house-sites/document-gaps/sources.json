@@ -1,0 +1,142 @@
+[
+  {
+    "file": "agriculture-opening-statment.html",
+    "url": "https://democrats-agriculture.house.gov/calendar/eventsingle.aspx?EventID=2187",
+    "site": "agriculture.house.gov",
+    "sample_id": "s004",
+    "sha256": "610b23a41149c26c49652760514a3616f21d7cdbfc69d3bf34860279b3defae7",
+    "expected": [
+      {
+        "url": "https://democrats-agriculture.house.gov/news/documentsingle.aspx?DocumentID=2191",
+        "literal_href": "/news/documentsingle.aspx?DocumentID=2191",
+        "label": "Chair Spanberger's Opening Statment",
+        "kind": "member statement"
+      }
+    ],
+    "baseline_event": {
+      "title": "Title II Conservation Programs: Exploring Climate Smart Practices",
+      "date": "2021-05-12",
+      "selector": "displayed event heading/date",
+      "url": "https://democrats-agriculture.house.gov/calendar/eventsingle.aspx?EventID=2187"
+    },
+    "baseline_documents": [
+      [
+        "transcript",
+        "Hearing Transcript Title II Conservation Programs: Exploring Climate-Smart Practices 5/12/2021",
+        "https://democrats-agriculture.house.gov/UploadedFiles/117-05_-_45387.pdf"
+      ]
+    ]
+  },
+  {
+    "file": "science-report-transcript-labeled.html",
+    "url": "https://democrats-science.house.gov/markups/full-committee-markup-energy-research-development-demonstration-and-commercial-application-act-of-2005",
+    "site": "science.house.gov",
+    "sample_id": "s097",
+    "sha256": "577b88310ac3d9ccf6ede9012417021059d06a62704c197d5e94b2a97422a087",
+    "expected": [
+      {
+        "url": "https://thomas.loc.gov/cgi-bin/cpquery/o?cp109:&&report=hr216p1.109&",
+        "literal_href": "https://thomas.loc.gov/cgi-bin/cpquery/o?cp109:&&report=hr216p1.109&",
+        "label": "109-216 (Part I)",
+        "kind": "committee report"
+      },
+      {
+        "url": "https://thomas.loc.gov/cgi-bin/cpquery/O?cp109:&            &report=hr216p1.109&            &dbname=cp109&            &start_from=XXII.+PROCEEDINGS+OF+THE+FULL+COMMITTEE+MARKUP&            &up_to=Appendix&",
+        "literal_href": "https://thomas.loc.gov/cgi-bin/cpquery/O?cp109:&            &report=hr216p1.109&            &dbname=cp109&            &start_from=XXII.+PROCEEDINGS+OF+THE+FULL+COMMITTEE+MARKUP&            &up_to=Appendix&",
+        "label": "Read here",
+        "kind": "transcript"
+      }
+    ],
+    "baseline_event": {
+      "title": "Full Committee Markup Energy Research, Development, Demonstration, and Commercial Application Act of 2005",
+      "date": "2005-02-10",
+      "selector": "displayed event heading/date",
+      "url": "https://democrats-science.house.gov/markups/full-committee-markup-energy-research-development-demonstration-and-commercial-application-act-of-2005"
+    },
+    "baseline_documents": []
+  },
+  {
+    "file": "science-report-transcript-empty.html",
+    "url": "https://democrats-science.house.gov/markups/full-committee-markup-h-con-res-95",
+    "site": "science.house.gov",
+    "sample_id": "s099",
+    "sha256": "0b4639c45d7c849096dbba8ba9d0afdde0861d6ffeb47cf49f592408517248eb",
+    "expected": [
+      {
+        "url": "https://thomas.loc.gov/cgi-bin/cpquery/o?cp110:&&report=hr038.110&",
+        "literal_href": "https://thomas.loc.gov/cgi-bin/cpquery/o?cp110:&&report=hr038.110&",
+        "label": "",
+        "kind": "committee report"
+      },
+      {
+        "url": "https://thomas.loc.gov/cgi-bin/cpquery/O?cp110:&&report=hr038.110&&dbname=cp110&&start_from=XX.+PROCEEDINGS+OF+THE+FULL+COMMITTEE+MARKUP&&up_to=Appendix:&",
+        "literal_href": "https://thomas.loc.gov/cgi-bin/cpquery/O?cp110:&&report=hr038.110&&dbname=cp110&&start_from=XX.+PROCEEDINGS+OF+THE+FULL+COMMITTEE+MARKUP&&up_to=Appendix:&",
+        "label": "",
+        "kind": "transcript"
+      }
+    ],
+    "baseline_event": {
+      "title": "Full Committee Markup -- H. Con. Res. 95",
+      "date": "2007-04-25",
+      "selector": "displayed event heading/date",
+      "url": "https://democrats-science.house.gov/markups/full-committee-markup-h-con-res-95"
+    },
+    "baseline_documents": [
+      [
+        "member statement",
+        "Download the opening statement text.",
+        "https://democrats-science.house.gov/sites/democrats.science.house.gov/files/migrated/Media/File/Commdocs/markups/full/25apr/bg_opening_statement.pdf"
+      ]
+    ]
+  },
+  {
+    "file": "transportation-transcript-whitespace.html",
+    "url": "https://transportation.house.gov/calendar/eventsingle.aspx?EventID=407347",
+    "site": "transportation.house.gov",
+    "sample_id": "s120",
+    "sha256": "8e1615cb8e70a350266c776d046661a8b0a308a10a430e8b8c759ad4e3afc5f1",
+    "expected": [
+      {
+        "url": "https://www.govinfo.gov/content/pkg/CHRG-118hhrg59352/pdf/CHRG-118hhrg59352.pdf",
+        "literal_href": "https://www.govinfo.gov/content/pkg/CHRG-118hhrg59352/pdf/CHRG-118hhrg59352.pdf ",
+        "label": "Official Transcript",
+        "kind": "transcript"
+      }
+    ],
+    "baseline_event": {
+      "title": "From Headquarters Building to Field Offices: Examining the FBI\u2019s Real Estate Needs and Strategy",
+      "date": "2024-04-10",
+      "selector": "displayed event heading/date",
+      "url": "https://transportation.house.gov/calendar/eventsingle.aspx?EventID=407347"
+    },
+    "baseline_documents": [
+      [
+        "witness statement",
+        "Witness Testimony",
+        "https://transportation.house.gov/UploadedFiles/04-10-2024_EDPBEM_Hearing_-_Elliot_Doomes_-_Testimony.pdf"
+      ],
+      [
+        "witness statement",
+        "Witness Testimony",
+        "https://transportation.house.gov/UploadedFiles/04-10-2024_EDPBEM_Hearing_-_Nicholas_Dimos_-_Testimony.pdf"
+      ]
+    ]
+  },
+  {
+    "file": "ways-html-transcript.html",
+    "url": "https://waysandmeans.house.gov/event/request-for-written-comments-on-the-extension-of-permanent-normal-trade-relations-status-to-armenia-moldova-and-laos/",
+    "site": "waysandmeans.house.gov",
+    "sample_id": "s128",
+    "sha256": "2015015dab53cae7b052f8375fbcc0b10d13c3f2a613d4380c6332707a9e02ac",
+    "expected": [
+      {
+        "url": "https://waysandmeans.house.gov/Media/transcript/9812.html",
+        "literal_href": "/Media/transcript/9812.html",
+        "label": "Transcript",
+        "kind": "transcript"
+      }
+    ],
+    "baseline_event": null,
+    "baseline_documents": []
+  }
+]
