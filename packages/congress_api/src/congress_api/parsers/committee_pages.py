@@ -13,8 +13,8 @@ from congress_api.models.content import RawContent
 from congress_api.parsers.text import words
 from congress_api.parsers.document_links import FILE, links_from_trees, http_url
 from congress_api.parsers.page_content import page_data, page_trees
-from congress_api.parsers.senate_page import (DATE, TRANSCRIPT_LABEL, literal_document_kind, written_day,
-    lines, witnesses, source_details_tree, document_kind, link_headings, link_line, table_column_heading)
+from congress_api.parsers.senate_page import (DATE, literal_document_kind, written_day,
+    lines, witnesses, source_details_tree, document_kind, link_headings, link_line, table_column_heading, related_page)
 
 def calendar_links(body, url):
     """Use the publisher's literal slugs and its documented /events/ route."""
@@ -114,16 +114,16 @@ def event_identity(body, url=''):
     return None
 
 
-def publisher_document_link(anchor):
+def publisher_document_link(anchor, page_url=''):
     """HTML documents qualify through their own label or local event section."""
     href = (anchor.get('href') or '').strip()
     if not href or href.startswith('#'):
         return False
+    if (related_page(anchor, page_url) or {}).get('document_kind'):
+        return True
     label = ' '.join(anchor.text_content().split())
     # Preserve the publisher's observed "Statment" spelling in the label.
     if re.search(r'\b(?:(?:opening|prepared) state?ment|written testimony)\b', label, re.I):
-        return True
-    if TRANSCRIPT_LABEL.fullmatch(label):
         return True
     headings = link_headings(anchor)
     if headings and headings == [table_column_heading(anchor)]:
@@ -144,7 +144,7 @@ def content_trees(body):
 
 
 def committee_document_links(body, url):
-    return [] if listing_url(url) else links_from_trees(content_trees(body), url, include_link=publisher_document_link)
+    return [] if listing_url(url) else links_from_trees(content_trees(body), url, include_link=lambda anchor: publisher_document_link(anchor, url))
 
 
 def parse_event_page(body, url):
@@ -168,7 +168,7 @@ def parse_event_page(body, url):
     people = witnesses(markup, url, plain=True)
     # Reuse the parsed tree: HTML serialization escapes spaces in href values,
     # which would detach occurrence context from the original document URL.
-    metadata, people_metadata, page_metadata = source_details_tree(combined, url, people, plain=True, include_link=publisher_document_link)
+    metadata, people_metadata, page_metadata = source_details_tree(combined, url, people, plain=True, include_link=lambda anchor: publisher_document_link(anchor, url))
     documents = []
     for link in committee_document_links(body, url):
         detail = metadata.setdefault(link.url, {})

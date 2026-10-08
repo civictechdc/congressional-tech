@@ -8,7 +8,7 @@ import datetime as dt
 import html
 import re
 from collections import Counter
-from urllib.parse import urljoin, urlsplit
+from urllib.parse import parse_qs, urljoin, urlsplit
 
 from lxml import html as dom
 
@@ -188,8 +188,9 @@ def literal_document_kind(label, url):
 
 def _document_occurrence_context(occurrence):
     """Interpret one link using only its own heading, label, field, and card."""
-    kind = section_document_kind(occurrence)
-    basis = "publisher_section_heading" if kind else None
+    related = occurrence.get('related_page') or {}
+    kind = related.get('document_kind') or section_document_kind(occurrence)
+    basis = related['basis'] if related.get('document_kind') else "publisher_section_heading" if kind else None
     labels = occurrence.get("labels") or []
     card = occurrence.get("witness_card") or {}
     attributes = occurrence.get("attributes") or []
@@ -348,7 +349,7 @@ def table_column_heading(anchor):
     return heading if section_document_kind({'headings': [heading]}) else None
 
 
-def link_headings(anchor):
+def link_headings(anchor, *, skip_panels=False):
     """Find the closest enclosing section's heading in DOM order.
 
     Foreign Relations and Aging wrap the heading in Hearing__sectionHeading.
@@ -389,6 +390,10 @@ def link_headings(anchor):
                     " ".join(previous.text_content().split())):
                 headings.append(previous)
         headings = [node for node in headings if node.text_content().strip()]
+        if skip_panels:
+            headings = [node for node in headings if not re.fullmatch(
+                r'panel\s*:?\s*(?:\d+|[ivx]+|one|two|three|four)\s*:?',
+                ' '.join(node.text_content().split()), re.I)]
         if headings:
             # Inline tags can split a word ("Question<a>...</a>s") or precede
             # punctuation; keep the publisher's contiguous text intact.
@@ -402,6 +407,68 @@ def link_headings(anchor):
             return [heading]
         branch = ancestor
     return []
+
+
+def related_page(anchor, page_url):
+    """Qualify a source link's purpose without asserting destination content.
+
+    Document paths/fields designate a document page. A witness name or a
+    repository points to relevant material but does not identify a file.
+    """
+    literal = anchor.get('href', '')
+    if not literal.strip() or literal.strip().startswith('#') or anchor.xpath(
+            'ancestor::nav | ancestor::aside | ancestor::footer | ancestor::*[@role="navigation" or @role="contentinfo"]'):
+        return None
+    target = http_url(literal, page_url)
+    if not target:
+        return None
+    # Existing direct files keep their established occurrence context.
+    if is_document_url(target, publisher_routes=True):
+        return None
+    parts = urlsplit(target)
+    if parts.hostname == 'docs.house.gov' and re.fullmatch(
+            r'/Committee/Calendar/By(?:Event|Day)\.aspx', parts.path, re.I):
+        result = dict(url=target, role='repository', basis='publisher_repository_url')
+        for key, values in parse_qs(parts.query).items():
+            field = {'eventid': 'event_ids', 'dayid': 'day_ids'}.get(key.lower())
+            if field:
+                result.setdefault(field, []).extend(values)
+        return result
+    if (parts.hostname or '').endswith(('.house.gov', '.senate.gov')):
+        match = re.fullmatch(r'/(witness-testimony|submission-for-the-record|hearing-transcript|opening-statement)/[^/]+/?', parts.path, re.I)
+        if match:
+            kind = {'witness-testimony': 'witness statement', 'submission-for-the-record': 'support document',
+                    'hearing-transcript': 'transcript', 'opening-statement': 'member statement'}[match[1].lower()]
+            return dict(url=target, role='document', document_kind=kind, basis='publisher_document_path')
+    label = ' '.join(anchor.text_content().split())
+    if re.fullmatch(r'watch\s+webcast', label, re.I):
+        return dict(url=target, role='media', basis='publisher_media_label')
+    if TRANSCRIPT_LABEL.fullmatch(label):
+        return dict(url=target, role='document', document_kind='transcript', basis='publisher_document_label')
+    headings = link_headings(anchor, skip_panels=True)
+    witness_section = len(headings) == 1 and re.fullmatch(r'witness(?:es| list)?\s*:?', headings[0], re.I)
+    submission_section = len(headings) == 1 and re.fullmatch(r'submissions? for (?:the )?record\s*:?', headings[0], re.I)
+    # Field evidence must be local. Never inherit a role through a separate
+    # section or override its heading with an outer witness container.
+    for ancestor in anchor.iterancestors():
+        classes = set((ancestor.get('class') or '').split())
+        if ancestor.tag == 'p' and 'hearing-transcript' in classes:
+            return dict(url=target, role='document', document_kind='transcript', basis='publisher_transcript_field')
+        previous = ancestor.getprevious()
+        marked_list = ('item-list' in classes and previous is not None and previous.tag == 'h2'
+                       and 'migrated-submissions-record' in (previous.get('class') or '').split())
+        if ((ancestor.get('id') == 'statement-for-the-record' or marked_list) and submission_section
+                and parts.hostname == urlsplit(page_url).hostname and re.fullmatch(r'/node/\d+/?', parts.path)):
+            return dict(url=target, role='document', document_kind='support document',
+                        basis='publisher_submission_section', headings=headings)
+        if (not headings or witness_section) and classes & {
+                'view-id-max_witness_list', 'evo-hearing__field-evo-witnesses'}:
+            return dict(url=target, role='witness_reference', basis='publisher_witness_field', headings=headings)
+        if ancestor.tag in {'section', 'article', 'main'}:
+            break
+    if witness_section:
+        return dict(url=target, role='witness_reference', basis='publisher_witness_section', headings=headings)
+    return None
 
 
 def plain_witness_links(root):
@@ -692,6 +759,8 @@ def source_details_tree(root, url, people, *, plain=False, include_link=None):
         label = value(anchor)
         occurrence = {"labels": [label] if label else [], "attributes": [dict(anchor.attrib)],
                       "container_attributes": [], "witness_indexes": [], "headings": link_headings(anchor)}
+        if related := related_page(anchor, url):
+            occurrence['related_page'] = related
         paragraphs = anchor.xpath("ancestor::p[1]")
         if paragraphs and (paragraph := " ".join(paragraphs[0].text_content().split())):
             occurrence["paragraph_text"] = paragraph
@@ -721,8 +790,13 @@ def source_details_tree(root, url, people, *, plain=False, include_link=None):
                     entry[field].append(item)
         entry["occurrences"].append(occurrence)
     # Non-file links can identify bills, nominations or witness organizations.
-    # Retain their literal destinations without interpreting or following them.
-    page_metadata["links"] = [{"text": value(anchor), "attributes": dict(anchor.attrib)}
-                              for anchor in root.xpath(".//a[@href]")
-                              if anchor not in file_nodes]
+    # Retain literal destinations and explicit publisher roles without following them.
+    page_metadata['links'] = []
+    for anchor in root.xpath('.//a[@href]'):
+        if anchor in file_nodes:
+            continue
+        entry = dict(text=value(anchor), attributes=dict(anchor.attrib))
+        if related := related_page(anchor, url):
+            entry['related_page'] = related
+        page_metadata['links'].append(entry)
     return files, witness_metadata, page_metadata

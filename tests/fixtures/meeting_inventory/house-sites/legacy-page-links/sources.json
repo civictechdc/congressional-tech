@@ -1,0 +1,330 @@
+[
+  {
+    "id": "t001",
+    "url": "https://democrats-agriculture.house.gov/calendar/eventsingle.aspx?EventID=2330",
+    "file": "t001.html",
+    "sha256": "1843c97421ea58bcdb1d4231fa431c0a573f09af8c01ae98040ae8ad62662b51",
+    "links": [
+      {
+        "url": "https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=114169",
+        "literal_href": "https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=114169",
+        "label": "All additional information for this event can be found here.",
+        "old_classification": "event_repository"
+      }
+    ]
+  },
+  {
+    "id": "t090",
+    "url": "https://veterans.house.gov/calendar/eventsingle.aspx?EventID=6494",
+    "file": "t090.html",
+    "sha256": "7603a738aa327d58587f72166989835513aff330e3f41efc1ea6ee905302a9bb",
+    "links": [
+      {
+        "url": "https://docs.house.gov/Committee/Calendar/ByDay.aspx?DayID=07102024",
+        "literal_href": "https://docs.house.gov/Committee/Calendar/ByDay.aspx?DayID=07102024",
+        "label": "here",
+        "old_classification": "event_repository"
+      }
+    ]
+  },
+  {
+    "id": "t118",
+    "url": "https://veterans.house.gov/calendar/eventsingle.aspx?EventID=1098",
+    "file": "t118.html",
+    "sha256": "b87749a6a08d9b2b2a84947b24543ea9ff5d61bf54c7c5f7cbc2d047d8edb067",
+    "links": [
+      {
+        "url": "https://veterans.house.gov/node/52598",
+        "literal_href": "/node/52598",
+        "label": "Adrian M. Atizado, Deputy National Legislative Director, Disabled American Veterans",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/node/52599",
+        "literal_href": "/node/52599",
+        "label": "Carl Blake, Associate Executive Director for Government Relations, Paralyzed Veterans of America",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/node/52600",
+        "literal_href": "/node/52600",
+        "label": "Duane Williams, Georgia Leadership, Fellow Iraq and Afghanistan Veterans of America",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/node/52601",
+        "literal_href": "/node/52601",
+        "label": "Baligh Yehia M.D. Assistant Deputy Undersecretary for Health for Community Care, Veterans Health Administration, U.S. Department of Veterans Affairs",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/node/52602",
+        "literal_href": "/node/52602",
+        "label": "Military Officers Association of America",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/node/52603",
+        "literal_href": "/node/52603",
+        "label": "Veterans of Foreign Wars of the United States",
+        "old_classification": "publisher_content_wrapper"
+      }
+    ]
+  },
+  {
+    "id": "t141",
+    "url": "https://veterans.house.gov/calendar/eventsingle.aspx?EventID=1166",
+    "file": "t141.html",
+    "sha256": "a290211fa81e82c007ecb5186306eb52d0dec72ec274f7e9400e450209cb7f71",
+    "links": [
+      {
+        "url": "https://veterans.house.gov/witness-testimony/tim-jurgens",
+        "literal_href": "/witness-testimony/tim-jurgens",
+        "label": "Tim Jurgens, Commander, American Legion Department of South Dakota",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/witness-testimony/bryan-brewer",
+        "literal_href": "/witness-testimony/bryan-brewer",
+        "label": "Bryan Brewer, President, Oglala Sioux Tribe",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/witness-testimony/robert-nelson",
+        "literal_href": "/witness-testimony/robert-nelson",
+        "label": "Robert Nelson, Veteran",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/witness-testimony/amanda-campbell-community-stakeholder",
+        "literal_href": "/witness-testimony/amanda-campbell-community-stakeholder",
+        "label": "Amanda Campbell, Community Stakeholder",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/witness-testimony/patrick-russell",
+        "literal_href": "/witness-testimony/patrick-russell",
+        "label": "Patrick Russell, Co-Chair, Hot Springs Save the VA Committee",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/witness-testimony/larry-zimmerman",
+        "literal_href": "/witness-testimony/larry-zimmerman",
+        "label": "Larry Zimmerman, Secretary, Department of Veterans Affairs, State of South Dakota",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/witness-testimony/steven-julius-md-chief-medical-center-and-acting-director",
+        "literal_href": "/witness-testimony/steven-julius-md-chief-medical-center-and-acting-director",
+        "label": "Steven Julius M.D., Chief Medical Center and Acting Director, Veterans Integrated Service Network 23, Veterans Health Administration, U.S. Department of Veterans Affairs",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/witness-testimony/stephen-distasio-director-va-black-hills-health-care-system",
+        "literal_href": "/witness-testimony/stephen-distasio-director-va-black-hills-health-care-system",
+        "label": "Accompanied by: Stephen DiStasio, Director, VA Black Hills Health Care System, Veterans Integrated Service Network (VISN) 23, Veterans Health Administration, U.S. Department of Veterans Affairs",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/submission-for-the-record/senator-tim-johnson",
+        "literal_href": "/submission-for-the-record/senator-tim-johnson",
+        "label": "Senator Tim Johnson",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/submission-for-the-record/senator-john-thune",
+        "literal_href": "/submission-for-the-record/senator-john-thune",
+        "label": "Senator John Thune",
+        "old_classification": "publisher_content_wrapper"
+      }
+    ]
+  },
+  {
+    "id": "t164",
+    "url": "https://veterans.house.gov/calendar/eventsingle.aspx?EventID=919",
+    "file": "t164.html",
+    "sha256": "3d42735f10ac914a0fbae22dfa3d8ac2025ddbf3991b2f14947f0ea13cebd8c8",
+    "links": [
+      {
+        "url": "https://veterans.house.gov/witness-testimony/mr-nigel-cary",
+        "literal_href": "/witness-testimony/mr-nigel-cary",
+        "label": "Mr. Nigel Cary, President, Cox Construction Company",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/witness-testimony/mr-louis-j-celli-jr-2",
+        "literal_href": "/witness-testimony/mr-louis-j-celli-jr-2",
+        "label": "Mr. Louis J. Celli Jr., Director, Legislative Division, The American Legion",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/witness-testimony/ms-michelle-mackin",
+        "literal_href": "/witness-testimony/ms-michelle-mackin",
+        "label": "Ms. Michele Mackin, Director, Acquisition and Sourcing Management, Government Accountability Office",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/witness-testimony/mr-william-sisk",
+        "literal_href": "/witness-testimony/mr-william-sisk",
+        "label": "Mr. William Sisk, Deputy Commissioner, Federal Acquisition Service, General Services Administration",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/witness-testimony/mr-major-l-clark-iii",
+        "literal_href": "/witness-testimony/mr-major-l-clark-iii",
+        "label": "Mr. Major L. Clark, III, Assistant Chief Counsel for Procurement, Office of Advocacy, Small Business Administration",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/witness-testimony/mr-jan-frye",
+        "literal_href": "/witness-testimony/mr-jan-frye",
+        "label": "Mr. Jan Frye, Deputy Assistant Secretary, Office of Acquisitions and Logistics, Department of Veterans Affairs",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/witness-testimony/mr-philip-matkovsky-0",
+        "literal_href": "/witness-testimony/mr-philip-matkovsky-0",
+        "label": "Mr. Philip Matkovsky, Assistant Deputy Under Secretary for Health for Administrative Operations, Veterans Health Administration",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/submission-for-the-record/fedbid-inc",
+        "literal_href": "/submission-for-the-record/fedbid-inc",
+        "label": "FedBid, Inc.",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/submission-for-the-record/council-on-federal-procurement-of-architectural-engineering-services",
+        "literal_href": "/submission-for-the-record/council-on-federal-procurement-of-architectural-engineering-services",
+        "label": "Council on Federal Procurement of Architectural & Engineering Services (COFPAES)",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/submission-for-the-record/national-electrical-contractors-association",
+        "literal_href": "/submission-for-the-record/national-electrical-contractors-association",
+        "label": "National Electrical Contractors Association",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/node/50092",
+        "literal_href": "/node/50092",
+        "label": "Contracting Away Accountability \u2013 Reverse Auctions in Federal Agency Acquisitions",
+        "old_classification": "publisher_content_wrapper"
+      }
+    ]
+  },
+  {
+    "id": "t187",
+    "url": "https://veterans.house.gov/calendar/eventsingle.aspx?EventID=908",
+    "file": "t187.html",
+    "sha256": "a02cc544aa7129469d296387e36460410101b6ac00545dcc17e7c81edc8eac46",
+    "links": [
+      {
+        "url": "https://veterans.house.gov/witness-testimony/jack-hoadley-phd",
+        "literal_href": "/witness-testimony/jack-hoadley-phd",
+        "label": "Jack Hoadley, Ph.D., Health Policy Institute, Research Professor, Georgetown University, Washington, DC",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/witness-testimony/frank-r-lichtenberg-phd",
+        "literal_href": "/witness-testimony/frank-r-lichtenberg-phd",
+        "label": "Frank R. Lichtenberg, Ph.D., Columbia University, New York, NY, Courtney C. Brown Professor of Business, and Research Associate, National Bureau of Economic Research",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/witness-testimony/richard-f-weidman-9",
+        "literal_href": "/witness-testimony/richard-f-weidman-9",
+        "label": "Richard F. Weidman, Vietnam Veterans of America, Executive Director for Policy and Government Affairs",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/witness-testimony/william-ray-bullman-mam",
+        "literal_href": "/witness-testimony/william-ray-bullman-mam",
+        "label": "William Ray Bullman, M.A.M., National Council on Patient Information and Education, Executive Vice President, Bethesda, MD",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/witness-testimony/solomon-iyasu-md-mph",
+        "literal_href": "/witness-testimony/solomon-iyasu-md-mph",
+        "label": "Solomon Iyasu, M.D., MPH, Office of Surveillance and Epidemiology, Center for Drug Evaluation and Research, Director, Division of Epidemiology, Food and Drug Administration, U.S. Department of Health and Human Services",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/witness-testimony/belinda-j-finn-1",
+        "literal_href": "/witness-testimony/belinda-j-finn-1",
+        "label": "Belinda J. Finn, Office of Inspector General, Assistant Inspector General for Audits and Evaluations, U.S. Department of Veterans Affairs",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/witness-testimony/irene-barnett-phd",
+        "literal_href": "/witness-testimony/irene-barnett-phd",
+        "label": "Irene Barnett, Ph.D., Office of Inspector General, U.S. Department of Veterans Affairs, Audit Manager, Bedford Office for Audits and Evaluations",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/witness-testimony/michael-a-valentino-rph-mhsa",
+        "literal_href": "/witness-testimony/michael-a-valentino-rph-mhsa",
+        "label": "Michael A. Valentino, R.Ph., MHSA, Veterans Health Administration, U.S. Department of Veterans Affairs, Chief Consultant, Pharmacy Benefits Management Services",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/witness-testimony/chester-b-good-md-mph",
+        "literal_href": "/witness-testimony/chester-b-good-md-mph",
+        "label": "Chester B. Good, M.D., MPH, Veterans Health Administration U.S. Department of Veterans Affairs, Chair, Veterans Affairs Medical Advisory Panel",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/witness-testimony/paul-tibbits-md-2",
+        "literal_href": "/witness-testimony/paul-tibbits-md-2",
+        "label": "Paul Tibbits, M.D., Office of Information and Technology, U.S. Department of Veterans Affairs, Deputy Chief Information Officer for Enterprise Development",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/submission-for-the-record/hon-cliff-stearns-2",
+        "literal_href": "/submission-for-the-record/hon-cliff-stearns-2",
+        "label": "Hon. Cliff Stearns",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/submission-for-the-record/american-federation-of-government-employees-afl-cio-1",
+        "literal_href": "/submission-for-the-record/american-federation-of-government-employees-afl-cio-1",
+        "label": "American Federation of Government Employees, AFL-CIO",
+        "old_classification": "publisher_content_wrapper"
+      },
+      {
+        "url": "https://veterans.house.gov/hearing-transcript/is-the-us-department-of-veterans-affairs-va-meeting-the-pharmaceutical-needs-of",
+        "literal_href": "/hearing-transcript/is-the-us-department-of-veterans-affairs-va-meeting-the-pharmaceutical-needs-of",
+        "label": "Is the VA Meeting the Pharmaceutical Needs of Veterans? An Examination of the VA National Formulary, etc",
+        "old_classification": "publisher_content_wrapper"
+      }
+    ]
+  },
+  {
+    "id": "t019",
+    "url": "https://chinaselectcommittee.house.gov/committee-activity/hearings/hearing-notice-ccp-transnational-repression-the-party-s-effort-to-silence-and-coerce-critics-overseas",
+    "file": "t019.html",
+    "sha256": "42a558ddcb574242f825b567be1c820222ff74c8d492b4af974317fe3277dfd2",
+    "links": [
+      {
+        "url": "https://teams.microsoft.com/l/message/48:notes/1702574755310?context=%7B%22contextType%22%3A%22chat%22%7D",
+        "literal_href": "https://teams.microsoft.com/l/message/48:notes/1702574755310?context=%7B%22contextType%22%3A%22chat%22%7D",
+        "label": "Ms. Anna Kwok",
+        "old_classification": "ambiguous_publisher_witness_link"
+      }
+    ]
+  },
+  {
+    "id": "s126",
+    "file": "s126.html",
+    "sha256": "c4c6ab36d4d3be735842f5b73ad881790906d980a2c93db7d7d66882cb365987",
+    "url": "https://veterans.house.gov/calendar/eventsingle.aspx?EventID=1026",
+    "links": [
+      {
+        "url": "https://veterans.house.gov/node/49264",
+        "literal_href": "/node/49264",
+        "label": "National Organization of Veterans\u2019 Advocates",
+        "old_classification": "legacy_page_link"
+      }
+    ]
+  }
+]
