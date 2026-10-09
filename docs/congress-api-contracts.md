@@ -177,10 +177,10 @@ are not separate owners. The AST registry test catches new or changed constants.
 
 | Owner | Version | What it governs / consumer |
 | --- | --- | --- |
-| `acquisition.house_sites.PARSER_VERSION` | `5` | Retained House committee pages; shared ASP.NET listing recognition and explicit subject headings; offline House reparse and bounded refresh |
+| `acquisition.house_sites.PARSER_VERSION` | `10` | Retained House committee pages; explicit document-page pointers and local document roles; offline House reparse and bounded refresh |
 | `acquisition.house_sites.PAGINATION_VERSION` | `5` | Derived listing fingerprints; explicit empty calendars and unrelated site alerts do not contribute navigation; old fingerprints are discarded when new records are checked |
 | `parsers.house_evidence.SCHEMA_VERSION` | `"1.1"` | House evidence; House reader refresh queue and House replay |
-| `parsers.senate.PARSER_VERSION` | `11` | Parsed Senate pages; retains CSCE testimony-field roles, explicit biography labels, event dates, and surrounding link paragraphs; bounded maintenance and Senate replay |
+| `parsers.senate.PARSER_VERSION` | `16` | Parsed Senate pages; shared explicit document labels and local occurrence roles; bounded maintenance and Senate replay |
 | `parsers.gpo_hearings.PARSER_VERSION` | `"3"` | GPO CSV/evidence interpretation; fetch and cached replay |
 | `parsers.witness_pdf.PARSER_VERSION` | `2` | PDF/MODS witness observations; retained with names and bytes |
 | `transcripts.senate.CAPTURE_VERSION` | `"3"` | Caption-capture completeness; stale receipts trigger recapture |
@@ -210,6 +210,15 @@ publisher subject headings take precedence over unrelated headings; conflicting
 subjects and unqualified dates remain unknown. GET archive filters reset only
 query pagination fields; literal pagination links and other filters remain.
 Reparsing does not retry old requests or remove earlier pagination diagnostics.
+
+House version 10 and Senate version 16 qualify document roles from the literal
+link label, a local document row or witness field, and explicit publication
+routes. A document's own designation takes priority over a broad heading.
+House document-page admission uses that same context reader; media, registration
+and repository links remain generic references with their source attributes.
+Direct PDF links remain files even when their label says Committee Repository.
+These readings identify publisher pointers, not verified destination contents.
+No destination is fetched or decoded into a replacement URL during parsing.
 
 ## Adapter identity policy
 

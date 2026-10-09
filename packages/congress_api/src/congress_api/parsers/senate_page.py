@@ -8,7 +8,7 @@ import datetime as dt
 import html
 import re
 from collections import Counter
-from urllib.parse import parse_qs, urljoin, urlsplit
+from urllib.parse import parse_qs, unquote, urljoin, urlsplit
 
 from lxml import html as dom
 
@@ -180,10 +180,35 @@ def section_document_kind(metadata):
 TRANSCRIPT_LABEL = re.compile(r'(?:(?:official|hearing|markup) )?transcript|printed hearing text', re.I)
 
 
+def explicit_document_kind(label):
+    """A document's own designation takes priority over a broad section title."""
+    label = label.strip()
+    if re.match(r'responses?\b.*\bquestions?\b.*\bfor the record\b', label, re.I):
+        return 'questions for the record'
+    if re.fullmatch(r'statement submitted for (?:the )?record', label, re.I):
+        return 'support document'
+    if re.match(r'(?:text of (?:H\.?\s*R\.?|S\.)\s*\d+|bill text\b)', label, re.I):
+        return 'legislative text'
+    if re.fullmatch(r'(?:hearing|meeting) (?:notice|advisory)', label, re.I):
+        return 'hearing notice'
+    if re.fullmatch(r'Monetary Policy Report|[HS]\.\s*Rept\.\s*\d+-\d+(?:,?\s*Part\s*\d+)?', label, re.I):
+        return 'committee report'
+    if (re.search(r'\bopening state?ment\b', label, re.I)
+            and re.search(r'\b(?:ranking member|committee chair(?:man|woman)?|representative|rep)\b', label, re.I)):
+        return 'member statement'
+    if re.search(r'\bwitness state?ment\b', label, re.I) or re.match(r'testimony from\b', label, re.I):
+        return 'witness statement'
+    if re.match(r'statement of\b.*\bcommittee chairman\b', label, re.I):
+        return 'member statement'
+    return None
+
+
 def literal_document_kind(label, url):
     """The existing link-word inference, independent of page structure."""
     if TRANSCRIPT_LABEL.fullmatch(label.strip()):
         return 'transcript'
+    if kind := explicit_document_kind(label):
+        return kind
     return next((kind for kind, pattern in KINDS
         if re.search(pattern, f"{label} {url.rsplit('/', 1)[-1]}", re.I)), "other")
 
@@ -191,9 +216,12 @@ def literal_document_kind(label, url):
 def _document_occurrence_context(occurrence):
     """Interpret one link using only its own heading, label, field, and card."""
     related = occurrence.get('related_page') or {}
-    kind = related.get('document_kind') or section_document_kind(occurrence)
-    basis = related['basis'] if related.get('document_kind') else "publisher_section_heading" if kind else None
     labels = occurrence.get("labels") or []
+    explicit = [explicit_document_kind(label) for label in labels]
+    label_kind = explicit[0] if explicit and explicit[0] and all(k == explicit[0] for k in explicit) else None
+    kind = label_kind or related.get('document_kind') or section_document_kind(occurrence)
+    basis = ('publisher_link_label' if label_kind else related['basis'] if related.get('document_kind')
+             else "publisher_section_heading" if kind else None)
     card = occurrence.get("witness_card") or {}
     attributes = occurrence.get("attributes") or []
     if not kind and re.match(r"^Read\b.{0,100}\bopening statement\b", occurrence.get('line_text') or occurrence.get('paragraph_text', ''), re.I):
@@ -324,8 +352,8 @@ def paragraph_headings(paragraph, anchor=None):
     return result
 
 
-def table_column_heading(anchor):
-    """Use a simple document table's explicit column label, not nearby prose.
+def table_columns(anchor):
+    """Locate cells in a regular table without guessing through merged cells.
 
     Legacy House markup tables use td cells for their header row. Spans,
     irregular rows, or links in that row leave column ownership ambiguous.
@@ -347,7 +375,15 @@ def table_column_heading(anchor):
         if len(columns) != len(header) or any(
                 c.get('colspan', '1') != '1' or c.get('rowspan', '1') != '1' for c in columns):
             return None
-    heading = ' '.join(header[row.xpath('./th | ./td').index(cell)].text_content().split())
+    return cell, header, row.xpath('./th | ./td')
+
+
+def table_column_heading(anchor):
+    """Use a simple document table's explicit column label, not nearby prose."""
+    if not (columns := table_columns(anchor)):
+        return None
+    cell, header, cells = columns
+    heading = ' '.join(header[cells.index(cell)].text_content().split())
     return heading if section_document_kind({'headings': [heading]}) else None
 
 
@@ -411,6 +447,28 @@ def link_headings(anchor, *, skip_panels=False):
     return []
 
 
+def local_table_label(anchor):
+    """Read an explicit two-column document row or a publisher GroupTitle row.
+
+    Never infer a role from a neighboring record, merged data cell, or an
+    unlabelled table. Layout tables may contain unrelated links in later rows.
+    """
+    rows = anchor.xpath('ancestor::tr[1]')
+    if not rows:
+        return None
+    row = rows[0]
+    if columns := table_columns(anchor):
+        cell, header, cells = columns
+        if ([' '.join(c.text_content().split()).lower() for c in header] == ['name', 'document']
+                and cell is cells[1] and not cells[0].xpath('.//a')):
+            return ' '.join(cells[0].text_content().split())
+    for previous in row.itersiblings(preceding=True):
+        titles = previous.xpath('./td | ./th')
+        if len(titles) == 1 and 'grouptitle' in (titles[0].get('class') or '').lower().split():
+            return ' '.join(titles[0].text_content().split()) or None
+    return None
+
+
 def related_page(anchor, page_url):
     """Qualify a source link's purpose without asserting destination content.
 
@@ -424,11 +482,27 @@ def related_page(anchor, page_url):
     target = http_url(literal, page_url)
     if not target:
         return None
-    # Existing direct files keep their established occurrence context.
-    if is_document_url(target, publisher_routes=True):
-        return None
     parts = urlsplit(target)
-    if parts.hostname == 'docs.house.gov' and re.fullmatch(
+    direct = is_document_url(target, publisher_routes=True)
+    label = ' '.join(anchor.text_content().split())
+    line = link_line(anchor)
+    headings = link_headings(anchor, skip_panels=True)
+    # Normalize formatting for comparison only; preserve the original headings.
+    heading = headings[0].replace('\u200b', '').strip().rstrip(':').strip() if len(headings) == 1 else ''
+    def purpose(role, basis, kind=None):
+        result = dict(url=target, role=role, basis=basis)
+        if kind:
+            result['document_kind'] = kind
+        return result
+    def document(kind, basis):
+        return purpose('document', basis, kind)
+    if not direct:
+        blocks = anchor.xpath('ancestor::*[self::p or self::li or self::td][1]')
+        unavailable_text = (blocks[0].text_content() if blocks and len(blocks[0].xpath('.//a[@href]')) == 1
+                            else line['text'] if len(line['anchors']) == 1 else '')
+        if re.search(r'\bnot yet available\b', unavailable_text, re.I):
+            return purpose('unavailable', 'publisher_unavailable_label')
+    if not direct and parts.hostname == 'docs.house.gov' and re.fullmatch(
             r'/Committee/Calendar/By(?:Event|Day)\.aspx', parts.path, re.I):
         result = dict(url=target, role='repository', basis='publisher_repository_url')
         for key, values in parse_qs(parts.query).items():
@@ -436,19 +510,86 @@ def related_page(anchor, page_url):
             if field:
                 result.setdefault(field, []).extend(values)
         return result
+    # A direct PDF remains a file even if its label says Committee Repository.
+    # Non-file intake and media must not inherit an earlier witness/statement
+    # heading or the generic "click here" download rule.
+    if not direct:
+        generic_prompt = bool(re.fullmatch(r'(?:please )?(?:click )?here[.!]?', label, re.I))
+        if (re.fullmatch(r'(?:register(?: here)?|registration)', label, re.I)
+                or (generic_prompt and len(line['anchors']) == 1 and re.search(r'\b(?:to register|register here)\b', line['text'], re.I))):
+            return purpose('registration', 'publisher_registration_label')
+        media_label = re.fullmatch(r'(?:(?:watch|view) (?:the )?(?:archived |full )?)?(?:webcast|video|live[ -]?stream)|(?:YouTube|USTREAM)(?: channel)?|watch', label, re.I)
+        media_line = ((generic_prompt or re.search(r'\bUSTREAM site\b', label, re.I)) and len(line['anchors']) == 1 and re.search(
+            r'\b(?:watch (?:the )?(?:archived )?video|view the full video|live[ -]?stream(?:ed)?|livestream(?:ed)?)\b', line['text'], re.I))
+        if media_label or media_line:
+            return purpose('media', 'publisher_media_label')
+        if re.match(r'(?:hearing recap|press release)\s*:', label, re.I):
+            return purpose('related_coverage', 'publisher_coverage_label')
+    if kind := explicit_document_kind(label):
+        return document(kind, 'publisher_document_label')
+    table_label = local_table_label(anchor)
+    if label and table_label:
+        kind = explicit_document_kind(table_label)
+        if TRANSCRIPT_LABEL.fullmatch(table_label):
+            kind = 'transcript'
+        if kind:
+            return document(kind, 'publisher_document_row')
+    witness_section = bool(re.fullmatch(r'witness(?:es| list)?', heading, re.I))
+    ancestors = list(anchor.iterancestors())
+    local_classes = set()
+    for ancestor in ancestors:
+        local_classes.update((ancestor.get('class') or '').split())
+        if ancestor.tag in {'section', 'article', 'main'}:
+            break
+    witness_field = bool(local_classes & {'evo-hearing__field-evo-witnesses', 'witness-document'})
+    statement_label = re.search(r'\b(?:state?ment|testimony)\b', label, re.I)
+    if ((witness_field or witness_section) and statement_label
+            and literal_document_kind(label, '') in {'member statement', 'witness statement'}):
+        return document('witness statement', 'publisher_witness_field' if witness_field else 'publisher_witness_section')
+    if ('witness-document' in local_classes and re.fullmatch(r'document', label, re.I)
+            and literal_document_kind(label, target) in {'other', 'member statement', 'witness statement'}):
+        return document('witness statement', 'publisher_witness_document_field')
+    # An explicit filename designation is useful with a statement label;
+    # generic Wstate tokens alone do not establish witness ownership.
+    if statement_label and re.search(r'\bwitness statement\b', unquote(parts.path).replace('-', ' ').replace('_', ' '), re.I):
+        return document('witness statement', 'publisher_witness_document_label')
+    if direct:
+        return None
+    if len(line['anchors']) == 1:
+        if re.fullmatch(r'witness testimony can be found\s+here\.?', line['text'], re.I):
+            return document('witness statement', 'publisher_testimony_line')
+        if re.search(r'\btext of\s+' + re.escape(label) + r'(?=[,.\s]|$)', line['text'], re.I) and re.match(r'H\.?\s*R\.?\s*\d+', label, re.I):
+            return document('legislative text', 'publisher_bill_text_line')
+    if parts.hostname in {'congress.gov', 'www.congress.gov'} and re.fullmatch(
+            r'/bill/\d+(?:st|nd|rd|th)-congress/[a-z-]+/\d+/text(?:/[^/]+)?/?', parts.path, re.I):
+        return document('legislative text', 'publisher_bill_text_url')
     if (parts.hostname or '').endswith(('.house.gov', '.senate.gov')):
+        if re.fullmatch(r'/(?:publications/report|committee-report)/[^/]+/?', parts.path, re.I):
+            return document('committee report', 'publisher_report_path')
+        if re.fullmatch(r'/opening-statements', parts.path, re.I) and any(k.lower() == 'id' and v for k, v in parse_qs(parts.query).items()):
+            return document('member statement', 'publisher_document_path')
         match = re.fullmatch(r'/(witness-testimony|submission-for-the-record|hearing-transcript|opening-statement)/[^/]+/?', parts.path, re.I)
         if match:
             kind = {'witness-testimony': 'witness statement', 'submission-for-the-record': 'support document',
                     'hearing-transcript': 'transcript', 'opening-statement': 'member statement'}[match[1].lower()]
             return dict(url=target, role='document', document_kind=kind, basis='publisher_document_path')
-    label = ' '.join(anchor.text_content().split())
-    if re.fullmatch(r'watch\s+webcast', label, re.I):
-        return dict(url=target, role='media', basis='publisher_media_label')
+    if label and re.fullmatch(r'(?:opening|member) statements?', heading, re.I):
+        return document('member statement', 'publisher_section_heading')
     if TRANSCRIPT_LABEL.fullmatch(label):
         return dict(url=target, role='document', document_kind='transcript', basis='publisher_document_label')
-    headings = link_headings(anchor, skip_panels=True)
-    witness_section = len(headings) == 1 and re.fullmatch(r'witness(?:es| list)?\s*:?', headings[0], re.I)
+    # Individually cited research has a specific publication route and local
+    # study/report prose. A publication index or an organization home does not.
+    research_path = (re.fullmatch(r'/(?:science/article/pii/[^/]+|article/[^/]+/fulltext|publications/[^/]+)/?', parts.path)
+                     or (parts.hostname in {'gao.gov', 'www.gao.gov'} and re.fullmatch(r'/products/[^/]+/?', parts.path)))
+    if research_path and re.search(r'\b(?:study|research|report)\b', line['text'], re.I):
+        return document('support document', 'publisher_research_citation')
+    if re.search(r'\b(?:(?:opening|prepared) state?ment|written testimony)\b', label, re.I):
+        return document('witness statement' if re.search(r'written testimony', label, re.I) else 'member statement',
+                        'publisher_document_label')
+    if headings and headings == [table_column_heading(anchor)]:
+        return document(section_document_kind({'headings': headings}), 'publisher_document_column')
+    if len(line['anchors']) == 1 and re.match(r'^Read\b.{0,100}\bopening statement\b', line['text'], re.I):
+        return document('member statement', 'publisher_paragraph_label')
     submission_section = len(headings) == 1 and re.fullmatch(r'submissions? for (?:the )?record\s*:?', headings[0], re.I)
     # Field evidence must be local. Never inherit a role through a separate
     # section or override its heading with an outer witness container.
@@ -611,7 +752,7 @@ def source_details(page_html, url, people, *, plain=False, include_link=None):
     return source_details_tree(root, url, people, plain=plain, include_link=include_link)
 
 
-def source_details_tree(root, url, people, *, plain=False, include_link=None):
+def source_details_tree(root, url, people, *, plain=False, include_link=None, exclude_link=None):
     """Keep page content, links and explicit witness-card ownership.
 
     Existing witness rows and document triples remain unchanged for stable source
@@ -750,6 +891,8 @@ def source_details_tree(root, url, people, *, plain=False, include_link=None):
     files, file_nodes = {}, set()
     page_url = http_url(url)
     for anchor in root.xpath(".//a[@href]"):
+        if exclude_link and exclude_link(anchor):
+            continue
         target = http_url(anchor.get('href', ''), url)
         if not target or target == page_url:
             continue

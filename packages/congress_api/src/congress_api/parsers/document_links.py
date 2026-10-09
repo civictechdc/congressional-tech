@@ -105,11 +105,11 @@ def document_links(body: bytes, url: str) -> list[DocumentLink]:
     return links_from_trees(page_trees(body), url)
 
 
-def links_from_trees(trees, url, *, include_link=None):
+def links_from_trees(trees, url, *, include_link=None, exclude_link=None):
     """Use one link reader and URL deduplication for each supplied page tree."""
     result, seen = [], set()
     for selector, tree in trees:
-        for link in tree_document_links(tree, url, include_link=include_link):
+        for link in tree_document_links(tree, url, include_link=include_link, exclude_link=exclude_link):
             if link.url not in seen:
                 seen.add(link.url)
                 if selector:
@@ -118,7 +118,7 @@ def links_from_trees(trees, url, *, include_link=None):
     return result
 
 
-def tree_document_links(tree, url, *, include_link=None):
+def tree_document_links(tree, url, *, include_link=None, exclude_link=None):
     """One link reader for static markup and decoded publisher HTML fields."""
     bases = tree.xpath('//base[@href]/@href')
     base = (http_url(bases[0], url) if bases else None) or url
@@ -133,6 +133,8 @@ def tree_document_links(tree, url, *, include_link=None):
         target = http_url(value, base) if value.strip() else None
         basis = None
         if node.tag == 'a':
+            if exclude_link and exclude_link(node):
+                continue
             # Test the literal href: resolving a skip fragment or relative news
             # link against /download/name must not turn it into a document.
             if ((target and is_document_url(value, publisher_routes=publisher_routes)) or node.get('download') is not None or PROMPT.fullmatch(label)

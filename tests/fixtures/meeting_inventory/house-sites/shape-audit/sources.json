@@ -1,0 +1,1560 @@
+{
+  "source": "Completed retained-source investigation; original body bytes and URLs, no destinations fetched.",
+  "baseline_commit": "9aaf6971e96d9fe25bf39769da5ab01511c6f977",
+  "cases": [
+    {
+      "id": "c002",
+      "url": "https://agriculture.house.gov/calendar/eventsingle.aspx?EventID=2415",
+      "sha256": "e424660e933b4a29577802e3cde06f155ffe0c800026215362fe975a6a23e187",
+      "file": "c002.html.gz",
+      "critical": [
+        {
+          "id": "c002-8",
+          "target": "https://www.dropbox.com/s/zgbttbvi7l96hic/4.29.15%20Forestry%20SubCmte.wmv?dl=0",
+          "disposition": "retained_wrong_role",
+          "role": "webcast",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "other"
+          ],
+          "context": "Click here to watch archived video",
+          "attributes": [
+            "https://www.dropbox.com/s/zgbttbvi7l96hic/4.29.15%20Forestry%20SubCmte.wmv?dl=0"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "c003",
+      "url": "https://democrats-appropriations.house.gov/events/hearings/oversight-hearing-mental-health-needs-of-children-in-hhs-custody",
+      "sha256": "ff7d78b0ced12b89f77d38518585578f373915f9244bd02089382c869ff472dc",
+      "file": "c003.html.gz",
+      "critical": [
+        {
+          "id": "c003-01",
+          "target": "http://docs.house.gov/meetings/AP/AP07/20190918/109932/HHRG-116-AP07-Wstate-HayesJ-20190918.pdf",
+          "disposition": "retained_wrong_role",
+          "role": "witness_statement",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "member statement"
+          ],
+          "context": "Witnesses section: Hayes Statement",
+          "attributes": [
+            "http://docs.house.gov/meetings/AP/AP07/20190918/109932/HHRG-116-AP07-Wstate-HayesJ-20190918.pdf"
+          ]
+        },
+        {
+          "id": "c003-03",
+          "target": "http://docs.house.gov/meetings/AP/AP07/20190918/109932/HHRG-116-AP07-Wstate-MaxwellA-20190918.pdf",
+          "disposition": "retained_wrong_role",
+          "role": "witness_statement",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "member statement"
+          ],
+          "context": "Witnesses section: Maxwell Statement",
+          "attributes": [
+            "http://docs.house.gov/meetings/AP/AP07/20190918/109932/HHRG-116-AP07-Wstate-MaxwellA-20190918.pdf"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "c004",
+      "url": "https://democrats-appropriations.house.gov/events/hearings/export-and-finance-agencies-budget-request-for-fy2021",
+      "sha256": "61c348f200aa6ae9f459fb3ca87ca5b81574dadc86ba5196a6e1f1b940be001b",
+      "file": "c004.html.gz",
+      "critical": [
+        {
+          "id": "c004-01",
+          "target": "http://docs.house.gov/meetings/AP/AP04/20200304/110621/HHRG-116-AP04-Wstate-BoehlerA-20200304.pdf",
+          "disposition": "retained_wrong_role",
+          "role": "witness_statement",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "member statement"
+          ],
+          "context": "Witnesses: Written Statement",
+          "attributes": [
+            "http://docs.house.gov/meetings/AP/AP04/20200304/110621/HHRG-116-AP04-Wstate-BoehlerA-20200304.pdf"
+          ]
+        },
+        {
+          "id": "c004-03",
+          "target": "http://docs.house.gov/meetings/AP/AP04/20200304/110621/HHRG-116-AP04-Wstate-HardyT-20200304.pdf",
+          "disposition": "retained_wrong_role",
+          "role": "witness_statement",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "member statement"
+          ],
+          "context": "Witnesses: Written Statement",
+          "attributes": [
+            "http://docs.house.gov/meetings/AP/AP04/20200304/110621/HHRG-116-AP04-Wstate-HardyT-20200304.pdf"
+          ]
+        },
+        {
+          "id": "c004-05",
+          "target": "http://docs.house.gov/meetings/AP/AP04/20200304/110621/HHRG-116-AP04-Wstate-ReedK-20200304.pdf",
+          "disposition": "retained_wrong_role",
+          "role": "witness_statement",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "member statement"
+          ],
+          "context": "Witnesses: Written Statement",
+          "attributes": [
+            "http://docs.house.gov/meetings/AP/AP04/20200304/110621/HHRG-116-AP04-Wstate-ReedK-20200304.pdf"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "c007",
+      "url": "https://democrats-budget.house.gov/legislation/hearings/presidents-2021-budget",
+      "sha256": "1dec4627d09859de14b93fe4fa353dfd029e34b0bdf59b1d3185f817c8a533ae",
+      "file": "c007.html.gz",
+      "critical": [
+        {
+          "id": "c007-1",
+          "target": "https://democrats-budget.house.gov/publications/report/destructive-and-irrational-trump-budget",
+          "disposition": "confirmed_local_omission",
+          "role": "report_page",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "Explicit Reports on the Presidents Budget / Hearing Documents section",
+          "attributes": [
+            "//democrats-budget.house.gov/publications/report/destructive-and-irrational-trump-budget",
+            "//democrats-budget.house.gov/publications/report/destructive-and-irrational-trump-budget"
+          ]
+        },
+        {
+          "id": "c007-2",
+          "target": "https://democrats-budget.house.gov/publications/report/trump-budget-devastates-rural-america",
+          "disposition": "confirmed_local_omission",
+          "role": "report_page",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "Explicit Reports on the Presidents Budget / Hearing Documents section",
+          "attributes": [
+            "//democrats-budget.house.gov/publications/report/trump-budget-devastates-rural-america"
+          ]
+        },
+        {
+          "id": "c007-3",
+          "target": "https://democrats-budget.house.gov/publications/report/states-and-localities-power-economy-trump-budget-pulls-plug",
+          "disposition": "confirmed_local_omission",
+          "role": "report_page",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "Explicit Reports on the Presidents Budget / Hearing Documents section",
+          "attributes": [
+            "//democrats-budget.house.gov/publications/report/states-and-localities-power-economy-trump-budget-pulls-plug"
+          ]
+        },
+        {
+          "id": "c007-4",
+          "target": "https://democrats-budget.house.gov/publications/report/president-trump-s-extreme-budget-cuts-hurt-veterans",
+          "disposition": "confirmed_local_omission",
+          "role": "report_page",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "Explicit Reports on the Presidents Budget / Hearing Documents section",
+          "attributes": [
+            "//democrats-budget.house.gov/publications/report/president-trump-s-extreme-budget-cuts-hurt-veterans"
+          ]
+        },
+        {
+          "id": "c007-5",
+          "target": "https://democrats-budget.house.gov/publications/report/trump-budget-priorities-vulnerable-families-and-communities-sacrificed-extend",
+          "disposition": "confirmed_local_omission",
+          "role": "report_page",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "Explicit Reports on the Presidents Budget / Hearing Documents section",
+          "attributes": [
+            "//democrats-budget.house.gov/publications/report/trump-budget-priorities-vulnerable-families-and-communities-sacrificed-extend"
+          ]
+        },
+        {
+          "id": "c007-6",
+          "target": "https://democrats-budget.house.gov/publications/report/president-s-2021-health-and-human-services-budget",
+          "disposition": "confirmed_local_omission",
+          "role": "report_page",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "Explicit Reports on the Presidents Budget / Hearing Documents section",
+          "attributes": [
+            "//democrats-budget.house.gov/publications/report/president-s-2021-health-and-human-services-budget"
+          ]
+        },
+        {
+          "id": "c007-7",
+          "target": "https://democrats-budget.house.gov/publications/report/trump-s-vision-more-dangerous-and-polluted-future",
+          "disposition": "confirmed_local_omission",
+          "role": "report_page",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "Explicit Reports on the Presidents Budget / Hearing Documents section",
+          "attributes": [
+            "//democrats-budget.house.gov/publications/report/trump-s-vision-more-dangerous-and-polluted-future"
+          ]
+        },
+        {
+          "id": "c007-8",
+          "target": "https://democrats-budget.house.gov/publications/report/trump-s-irrational-budget-undercuts-our-national-security",
+          "disposition": "confirmed_local_omission",
+          "role": "report_page",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "Explicit Reports on the Presidents Budget / Hearing Documents section",
+          "attributes": [
+            "//democrats-budget.house.gov/publications/report/trump-s-irrational-budget-undercuts-our-national-security"
+          ]
+        },
+        {
+          "id": "c007-9",
+          "target": "https://democrats-budget.house.gov/publications/report/trump-budget-priorities-pad-tax-cuts-corporations-and-stiff-middle-class",
+          "disposition": "confirmed_local_omission",
+          "role": "report_page",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "Explicit Reports on the Presidents Budget / Hearing Documents section",
+          "attributes": [
+            "//democrats-budget.house.gov/publications/report/trump-budget-priorities-pad-tax-cuts-corporations-and-stiff-middle-class"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "c008",
+      "url": "https://democrats-budget.house.gov/legislation/hearings/protecting-our-democracy-reasserting-congress-power-purse",
+      "sha256": "2cd4d62cc4822b17602160daa1bf40318258fd0e834c72c36caa46dc1c6208e7",
+      "file": "c008.html.gz",
+      "critical": [
+        {
+          "id": "c008-01",
+          "target": "https://democrats-budget.house.gov/publications/report/protecting-our-democracy-reasserting-congress-power-purse",
+          "disposition": "confirmed_local_omission",
+          "role": "hearing_document_page",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "Hearing Documents: Protecting our Democracy: Reasserting Congress' Power of the Purse",
+          "attributes": [
+            "//democrats-budget.house.gov/publications/report/protecting-our-democracy-reasserting-congress-power-purse"
+          ]
+        },
+        {
+          "id": "c008-03",
+          "target": "https://democrats-budget.house.gov/publications/report/power-purse-reasserting-congress-authority-and-protecting-our-democracy-through",
+          "disposition": "confirmed_local_omission",
+          "role": "hearing_document_page",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "Hearing Documents: The Power of the Purse: Reasserting Congress' Authority and Protecting our Democracy through the Congressional Power of the Purse Act",
+          "attributes": [
+            "//democrats-budget.house.gov/publications/report/power-purse-reasserting-congress-authority-and-protecting-our-democracy-through"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "c018",
+      "url": "https://democrats-foreignaffairs.house.gov/hearings?ContentRecord_id=5CA1CD0C-E7BE-44AE-BF4F-D8E9DDEB2B0F",
+      "sha256": "7020046c248e3b1e1a79060bb079f788ba48d6928a5e44dbc3f49bb3cd085542",
+      "file": "c018.html.gz",
+      "critical": [
+        {
+          "id": "c018-6",
+          "target": "http://docs.house.gov/meetings/FA/FA00/20150225/103066/HHRG-114-FA00-20150225-SD003.pdf",
+          "disposition": "retained_wrong_role",
+          "role": "questions_for_record",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "transcript"
+          ],
+          "context": "FY2016 Foreign Affairs Budget hearing, February25,2015; ",
+          "attributes": [
+            "http://docs.house.gov/meetings/FA/FA00/20150225/103066/HHRG-114-FA00-20150225-SD003.pdf"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "c021",
+      "url": "https://humanrightscommission.house.gov/events/hearings/human-rights-violations-sudan",
+      "sha256": "6729fc86e5430923830e12c51d2fd5c23b0d8599b7ad4d8443d70e23dedf9608",
+      "file": "c021.html.gz",
+      "critical": [
+        {
+          "id": "c021-06",
+          "target": "https://humanrightscommission.house.gov/sites/evo-subsites/humanrightscommission.house.gov/files/evo-media-document/eric-reeves.pdf",
+          "disposition": "retained_wrong_role",
+          "role": "record_submission",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "member statement"
+          ],
+          "context": "Submitted for the Record: Statement Submitted for the Record",
+          "attributes": [
+            "//humanrightscommission.house.gov/sites/evo-subsites/humanrightscommission.house.gov/files/evo-media-document/eric-reeves.pdf"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "c031",
+      "url": "https://science.house.gov/2023/2/full-committee-business-meeting",
+      "sha256": "698d0c41864cf3e896580bdcdfaf14665972a3007defb0f2e1f486250afdeb05",
+      "file": "c031.html.gz",
+      "critical": [
+        {
+          "id": "c031-1",
+          "target": "https://republicans-science.house.gov/opening-statements?ID=E5483CD1-14B0-4ABD-82FA-EE949FACB4F8",
+          "disposition": "confirmed_local_omission",
+          "role": "member_statement",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "Statement: Chairman Frank Lucas",
+          "attributes": [
+            "https://republicans-science.house.gov/opening-statements?ID=E5483CD1-14B0-4ABD-82FA-EE949FACB4F8"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "c034",
+      "url": "https://democrats-selectcommitteeontheccp.house.gov/committee-activity/hearings/risky-business-growing-peril-american-companies-china",
+      "sha256": "74a857ec39bfc115c896c1fa258796521cd7df2b672899a775db51489ffa055a",
+      "file": "c034.html.gz",
+      "critical": [],
+      "negative_control": true
+    },
+    {
+      "id": "c043",
+      "url": "https://democrats-energycommerce.house.gov/committee-activity/hearings/hearing-on-examining-us-public-health-preparedness-for-and-response",
+      "sha256": "6b4d8cf91b3733aa59ab5fd983d37922458070f0c18a7078c473cdeef6135635",
+      "file": "c043.html.gz",
+      "critical": [],
+      "negative_control": true
+    },
+    {
+      "id": "c054",
+      "url": "https://science.house.gov/markups?ID=E245405F-A474-42E4-BFED-00A56ACDC959",
+      "sha256": "8d32c19a717d5f1f42dabd5e4637d1f86f0fcb0b8337d395cd0f1ba012add5ce",
+      "file": "c054.html.gz",
+      "critical": [
+        {
+          "id": "c054-01",
+          "target": "https://www.congress.gov/bill/111th-congress/house-bill/1580/text/eh",
+          "disposition": "confirmed_local_omission",
+          "role": "legislation",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "Markup body explicitly links the two bills approved as amended; Opening Statement identifies Ralph Hall; Related Documents labels each amendment roster and voting results.",
+          "attributes": [
+            "https://www.congress.gov/bill/111th-congress/house-bill/1580/text/eh"
+          ]
+        },
+        {
+          "id": "c054-02",
+          "target": "https://www.congress.gov/bill/111th-congress/house-bill/1145/text?q=%7B%22search%22%3A%5B%22%5C%22National+Water+Research+and+Development+Initiative+Act+of+2009%2C%5C%22+1145+the%22%5D%7D&resultIndex=1",
+          "disposition": "confirmed_local_omission",
+          "role": "legislation",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "Markup body explicitly links the two bills approved as amended; Opening Statement identifies Ralph Hall; Related Documents labels each amendment roster and voting results.",
+          "attributes": [
+            "https://www.congress.gov/bill/111th-congress/house-bill/1145/text?q=%7B%22search%22%3A%5B%22%5C%22National+Water+Research+and+Development+Initiative+Act+of+2009%2C%5C%22+1145+the%22%5D%7D&amp;resultIndex=1"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "c056",
+      "url": "https://oversight.house.gov/hearing/transportation-security-are-our-airports-safe/",
+      "sha256": "bc4184ed033a07eb1045d54fc10bb602f7470d0e79d6f3e1d70295ac299d4502",
+      "file": "c056.html.gz",
+      "critical": [
+        {
+          "id": "c056-04",
+          "target": "https://oversight.house.gov/wp-content/uploads/2015/05/TSA-Statement.pdf",
+          "disposition": "retained_wrong_role",
+          "role": "witness_testimony",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "member statement"
+          ],
+          "context": "Witnesses and testimonies associates Document with Roth, Grover or Ron; Related Documents table labels TSA testimony and Transcript in adjacent name cell. Combined testimony/bio filenames are single references.",
+          "attributes": [
+            "https://oversight.house.gov/wp-content/uploads/2015/05/TSA-Statement.pdf"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "c057",
+      "url": "https://appropriations.house.gov/events/hearings/member-day-3",
+      "sha256": "6faa6df6f82f6430c414b372fb6af7f09069233f4f371888c6f043f703887fc5",
+      "file": "c057.html.gz",
+      "critical": [],
+      "negative_control": true
+    },
+    {
+      "id": "d012",
+      "url": "https://waysandmeans.house.gov/event/hearing-on-the-social-security-administrations-provisions-in-the-american-recovery-and-reinvestment-act-of-2009/",
+      "sha256": "624b4680311825899f98a917c7c2da3823bd7a4218da61d5937b42d943465f54",
+      "file": "d012.html.gz",
+      "critical": [
+        {
+          "id": "d012-01",
+          "target": "https://waysandmeans.house.gov/hearings.asp?formmode=view&id=7672",
+          "disposition": "confirmed_local_omission",
+          "role": "hearing_notice",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "Hearing Advisory table row, anchor repeats exact hearing title.",
+          "attributes": [
+            "https://waysandmeans.house.gov/hearings.asp?formmode=view&amp;id=7672"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "d018",
+      "url": "https://democrats-veterans.house.gov/events/hearings/cybersecurity-and-risk-management-at-va-addressing-ongoing-challenges-and-moving-forward",
+      "sha256": "5fe4c3ed81cbd6ec50637b46114b8e46c1d2073026fbb5003dcce61c4af81bd6",
+      "file": "d018.html.gz",
+      "critical": [
+        {
+          "id": "d018-root-related-role",
+          "target": "https://www.youtube.com/channel/UCvI8xjyh45-XAJbfPcjUdbQ",
+          "disposition": "retained_wrong_role",
+          "role": "webcast",
+          "scope": "related_page_metadata",
+          "baseline_kinds": [],
+          "context": "This meeting will be livestreamed on Youtube; all hearing documents are delegated to the repository.",
+          "attributes": [
+            "https://www.youtube.com/channel/UCvI8xjyh45-XAJbfPcjUdbQ"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "d019",
+      "url": "https://veterans.house.gov/calendar/eventsingle.aspx?EventID=1523",
+      "sha256": "61c9f33bab2c776a217fb79d13a373a9615feb7cd56bde0e8295595c2d155f10",
+      "file": "d019.html.gz",
+      "critical": [],
+      "negative_control": true
+    },
+    {
+      "id": "d025",
+      "url": "https://appropriations.house.gov/events/hearings/fy-2019-department-defense-posture-and-budget-closed",
+      "sha256": "e64dff90f6e497d0db136feaedffa0a4fec5f0a51dba06ac30875384e3edf8d5",
+      "file": "d025.html.gz",
+      "critical": [
+        {
+          "id": "d025-1",
+          "target": "https://cradmin-clerk.house.gov/repository/AP/AP02/20180425/108220/HHRG-115-AP02-Wstate-MattisJ-20180425.pdf",
+          "disposition": "retained_wrong_role",
+          "role": "witness_statement",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "member statement"
+          ],
+          "context": "James N. Mattis, Secretary of Defense: Statement",
+          "attributes": [
+            "https://cradmin-clerk.house.gov/repository/AP/AP02/20180425/108220/HHRG-115-AP02-Wstate-MattisJ-20180425.pdf"
+          ]
+        },
+        {
+          "id": "d025-2",
+          "target": "https://cradmin-clerk.house.gov/repository/AP/AP02/20180425/108220/HHRG-115-AP02-Wstate-DunfordJrJ-20180425.pdf",
+          "disposition": "retained_wrong_role",
+          "role": "witness_statement",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "member statement"
+          ],
+          "context": "General Joseph Dunford Jr: Statement",
+          "attributes": [
+            "https://cradmin-clerk.house.gov/repository/AP/AP02/20180425/108220/HHRG-115-AP02-Wstate-DunfordJrJ-20180425.pdf"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "d060",
+      "url": "https://edworkforce.house.gov/calendar/eventsingle.aspx?EventID=413555",
+      "sha256": "856d51bd22089a418a3a089d18aef25bfda25efa5d1a4d5ab5eb702adf7e86c4",
+      "file": "d060.html.gz",
+      "critical": [
+        {
+          "id": "d060-root-related-role",
+          "target": "https://edworkforce.house.gov/news/documentsingle.aspx?DocumentID=413624",
+          "disposition": "retained_wrong_role",
+          "role": "related_coverage",
+          "scope": "related_page_metadata",
+          "baseline_kinds": [],
+          "context": "Hearing Recap heading and Hearing Recap anchor explicitly designate editorial coverage after the witness list.",
+          "attributes": [
+            "https://edworkforce.house.gov/news/documentsingle.aspx?DocumentID=413624"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "d063",
+      "url": "https://homeland.house.gov/hearing/subcommittee-on-counterterrorism-law-enforcement-and-intelligence-markup/",
+      "sha256": "d47cafe4ed13d35806612e631bdf0ab529f115bb545429f4e04ef660b7144c39",
+      "file": "d063.html.gz",
+      "critical": [],
+      "negative_control": true
+    },
+    {
+      "id": "d093",
+      "url": "https://democrats-budget.house.gov/legislation/hearings/oversight-congressional-budget-office",
+      "sha256": "b799f7dedbdf636ddd4d2b851f8f926ea5e5ac2ca15dc23b909a237ede5c0683",
+      "file": "d093.html.gz",
+      "critical": [
+        {
+          "id": "d093-B-1",
+          "target": "http://docs.house.gov/meetings/BU/BU00/20251118/118658/HHRG-119-BU00-Wstate-SwagelP-20251118.pdf",
+          "disposition": "retained_wrong_role",
+          "role": "witness statement",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "member statement"
+          ],
+          "context": "Witnesses: The Honorable Phillip Swagel, Ph.D., Director, Congressional Budget Office; adjacent Witness Statement. Baseline kind is member statement.",
+          "attributes": [
+            "http://docs.house.gov/meetings/BU/BU00/20251118/118658/HHRG-119-BU00-Wstate-SwagelP-20251118.pdf"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "d095",
+      "url": "https://democrats-budget.house.gov/legislation/hearings/department-defense-fy-2023-budget",
+      "sha256": "d523cad312e78f522846b2e1e506fbec0a2cc47935a4d5b6b61adeba8d486951",
+      "file": "d095.html.gz",
+      "critical": [
+        {
+          "id": "d095-1",
+          "target": "https://democrats-budget.house.gov/publications/report/biden-budget-reinvests-foundations-our-nation-s-strength",
+          "disposition": "confirmed_local_omission",
+          "role": "report_page",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "Hearing Documents explicitly labels REPORT.",
+          "attributes": [
+            "//democrats-budget.house.gov/publications/report/biden-budget-reinvests-foundations-our-nation-s-strength"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "d104",
+      "url": "https://democrats-science.house.gov/markups/full-committee-markup-h-con-res-76",
+      "sha256": "29099754843aa6b0e40055d01f8a7e822339ca106361b1c06fae19d248bf2a88",
+      "file": "d104.html.gz",
+      "critical": [],
+      "negative_control": true
+    },
+    {
+      "id": "d115",
+      "url": "https://ethics.house.gov/event/new-employee-ethics-training-8/",
+      "sha256": "eaa2e14da096c40d9434edae360cc5f3af352fc3034e5901aa350bf2c26e6602",
+      "file": "d115.html.gz",
+      "critical": [
+        {
+          "id": "d115-B-1",
+          "target": "https://registerme.house.gov/dev_students.asp?action=browse&main=Ethics&sub1=New+Employee+Training&misc=847",
+          "disposition": "retained_wrong_role",
+          "role": "registration",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "other"
+          ],
+          "context": "Training description explicitly says To register and account creation; same URL261 is Pre-Register Now.",
+          "attributes": [
+            "https://registerme.house.gov/dev_students.asp?action=browse&amp;main=Ethics&amp;sub1=New+Employee+Training&amp;misc=847",
+            "https://registerme.house.gov/dev_students.asp?action=browse&#038;main=Ethics&#038;sub1=New+Employee+Training&#038;misc=847"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "d120",
+      "url": "https://ethics.house.gov/event/live-general-ethics-training-20/",
+      "sha256": "859494f4a48b2c1267a5945e73ee36cd76b398c26d17881243e41bc0c38bb958",
+      "file": "d120.html.gz",
+      "critical": [],
+      "negative_control": true
+    },
+    {
+      "id": "d127",
+      "url": "https://ethics.house.gov/event/new-employee-ethics-training-12/",
+      "sha256": "5dc117c51ac5ce47757435d557f2594f959a3b8a3d90d4bf1fcf6516156a4c10",
+      "file": "d127.html.gz",
+      "critical": [
+        {
+          "id": "d127-1",
+          "target": "https://registerme.house.gov/dev_students.asp?action=browse&main=Ethics&sub1=New+Employee+Training&misc=847",
+          "disposition": "retained_wrong_role",
+          "role": "registration_intake",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "other"
+          ],
+          "context": "To register click here; explicit course enrollment.",
+          "attributes": [
+            "https://registerme.house.gov/dev_students.asp?action=browse&amp;main=Ethics&amp;sub1=New+Employee+Training&amp;misc=847",
+            "https://registerme.house.gov/dev_students.asp?action=browse&#038;main=Ethics&#038;sub1=New+Employee+Training&#038;misc=847"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "d131",
+      "url": "https://ethics.house.gov/event/new-employee-ethics-training-14/",
+      "sha256": "180d07539a95020db4c47b347741c3f02303771a594a6761fc2095495661f8ce",
+      "file": "d131.html.gz",
+      "critical": [
+        {
+          "id": "d131-B-1",
+          "target": "https://registerme.house.gov/dev_students.asp?action=browse&main=Ethics&sub1=New+Employee+Training&misc=847",
+          "disposition": "retained_wrong_role",
+          "role": "registration",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "other"
+          ],
+          "context": "To Register: click here; create an account. Second occurrence is Pre-Register Now at line 261.",
+          "attributes": [
+            "https://registerme.house.gov/dev_students.asp?action=browse&amp;main=Ethics&amp;sub1=New+Employee+Training&amp;misc=847",
+            "https://registerme.house.gov/dev_students.asp?action=browse&#038;main=Ethics&#038;sub1=New+Employee+Training&#038;misc=847"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "d137",
+      "url": "https://appropriations.house.gov/events/hearings/fy-2019-us-securities-and-exchange-commission",
+      "sha256": "1cd4dc8b9ea10bc5fc531fed5f9039bd4c55582b7823bfb3da294575f678d7d6",
+      "file": "d137.html.gz",
+      "critical": [
+        {
+          "id": "d137-01",
+          "target": "http://docs.house.gov/meetings/AP/AP23/20180426/108233/HHRG-115-AP23-Wstate-ClaytonJ-20180426.pdf",
+          "disposition": "retained_wrong_role",
+          "role": "witness_statement",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "member statement"
+          ],
+          "context": "Statement anchor follows Witness / The Honorable Jay Clayton / Chairman / Securities and Exchange Commissions.",
+          "attributes": [
+            "http://docs.house.gov/meetings/AP/AP23/20180426/108233/HHRG-115-AP23-Wstate-ClaytonJ-20180426.pdf"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "d140",
+      "url": "https://judiciary.house.gov/committee-activity/hearings/hearing-on-to-delay-are-patent-settlements-that-delay-generic-drug",
+      "sha256": "db65b95a1cc1d26ed6d8f261af1c7726758f68a3da0fd11d5bb3f349174fb866",
+      "file": "d140.html.gz",
+      "critical": [],
+      "negative_control": true
+    },
+    {
+      "id": "d149",
+      "url": "https://democrats-armedservices.house.gov/hearings?ID=36F04848-0CFF-45B7-8F6C-CF7237477392",
+      "sha256": "c8076fca71c69fb8540dc9ebba820e5147d3e8bbc8c102de24a136e75868eab9",
+      "file": "d149.html.gz",
+      "critical": [
+        {
+          "id": "d149-2",
+          "target": "https://democrats-armedservices.house.gov/?a=Files.Serve&File_id=6EAB6BF0-4A55-404C-B89A-DFD72241996D",
+          "disposition": "retained_wrong_role",
+          "role": "witness_statement",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "member statement"
+          ],
+          "context": "Related Files: Hon. Hunter & LtGen Moore Witness Statement.pdf, joint testimony for the two named witnesses",
+          "attributes": [
+            "/?a=Files.Serve&File_id=6EAB6BF0-4A55-404C-B89A-DFD72241996D"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "d151",
+      "url": "https://democrats-waysandmeans.house.gov/legislation/hearings/social-security-subcommittee-hearing-challenges-facing-next-social-security",
+      "sha256": "104eff27f8351f9b5883503587d5ef6e86b4c42043f05d3371f5d70e2c1bf475",
+      "file": "d151.html.gz",
+      "critical": [],
+      "negative_control": true
+    },
+    {
+      "id": "d160",
+      "url": "https://armedservices.house.gov/calendar/eventsingle.aspx?EventID=3606",
+      "sha256": "f61daaefd87d0150661bf4f27cbc55510e1bbfccccab52d860062113ca03d019",
+      "file": "d160.html.gz",
+      "critical": [],
+      "negative_control": true
+    },
+    {
+      "id": "d164",
+      "url": "https://intelligence.house.gov/event/postponed-open-hearing-entitled-todays-reform-for-tomorrows-victory-strategic-transformation-of-u-s-counterintelligence-2/",
+      "sha256": "4a2ebf6403b955754385565cac70cbe20b0e5a67e450364a10bda3a969748bd7",
+      "file": "d164.html.gz",
+      "critical": [
+        {
+          "id": "d164-1",
+          "target": "https://urldefense.com/v3/__https:/www.youtube.com/@gophouseintelligencecommit715/streams__;!!Bg5easoyC-OII2vlEqY8mTBrtW-N4OJKAQ!IYby_kGGdMRq5EOjNEdip-ftD-YT6qcZDMnOBDLWHyMUSguJucUgZ1J3WDYXbFTvVom2iEG1Wwj9BUMZjPQyxOdW4xxKLWOHsSlua4XTUcgfqcEv$",
+          "disposition": "retained_wrong_role",
+          "role": "webcast",
+          "scope": "related_page_metadata",
+          "baseline_kinds": [],
+          "context": "The body announces July 23 at 10:30 in HVC210 and names Quattrocki, Van Cleave, Bullard and Kohler without testimony links. Sole local target is a URLDefense-wrapped YouTube channel streams link, a generic media dependency rather than event recording or document. Publication metadata conflicts across migration fields and must not substitute for the body hearing date. Complete JSON-LD is self/breadcrumb/search metadata; all attributes and hidden form values inspected. GravityForms hidden state base64 decodes to [\"[]\",\"778c602e270af668c42840d3c2232727\"], not document markup. Shared scripts and complete encoded emoji payload read; no static local document target found.",
+          "attributes": [
+            "https://urldefense.com/v3/__https:/www.youtube.com/@gophouseintelligencecommit715/streams__;!!Bg5easoyC-OII2vlEqY8mTBrtW-N4OJKAQ!IYby_kGGdMRq5EOjNEdip-ftD-YT6qcZDMnOBDLWHyMUSguJucUgZ1J3WDYXbFTvVom2iEG1Wwj9BUMZjPQyxOdW4xxKLWOHsSlua4XTUcgfqcEv$"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "d171",
+      "url": "https://appropriations.house.gov/events/hearings/oversight-hearing-national-aeronautics-and-space-administration-0",
+      "sha256": "32d864b1cf86d0b700bb04c83da51451f2e5a5b13164e34bf6e903e5266c8bfc",
+      "file": "d171.html.gz",
+      "critical": [],
+      "negative_control": true
+    },
+    {
+      "id": "d187",
+      "url": "https://oversight.house.gov/hearing/evaluating-privacy-security-and-fraud-concerns-with-obamacares-information-sharing-apparatus/",
+      "sha256": "df687b092bd814b2975b7afc1a2083fbdeb6db2a2cff31a4102bf242e24f9f92",
+      "file": "d187.html.gz",
+      "critical": [
+        {
+          "id": "d187-B-1",
+          "target": "http://1.usa.gov/1bFN9c4",
+          "disposition": "confirmed_local_omission",
+          "role": "witness-associated document pointer",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "Document link in named agency witness card; shortened destination not fetched",
+          "attributes": [
+            "http://1.usa.gov/1bFN9c4"
+          ]
+        },
+        {
+          "id": "d187-B-2",
+          "target": "http://1.usa.gov/15KASAq",
+          "disposition": "confirmed_local_omission",
+          "role": "witness-associated document pointer",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "Document link in named agency witness card; shortened destination not fetched",
+          "attributes": [
+            "http://1.usa.gov/15KASAq"
+          ]
+        },
+        {
+          "id": "d187-B-3",
+          "target": "http://1.usa.gov/12DvLBo",
+          "disposition": "confirmed_local_omission",
+          "role": "witness-associated document pointer",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "Document link in named agency witness card; shortened destination not fetched",
+          "attributes": [
+            "http://1.usa.gov/12DvLBo"
+          ]
+        },
+        {
+          "id": "d187-B-4",
+          "target": "http://1.usa.gov/18lArjP",
+          "disposition": "confirmed_local_omission",
+          "role": "witness-associated document pointer",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "Document link in named agency witness card; shortened destination not fetched",
+          "attributes": [
+            "http://1.usa.gov/18lArjP"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "d196",
+      "url": "https://democrats-science.house.gov/markups/hr-3479-natural-hazards-risk-reduction-act-of-2011",
+      "sha256": "00ded561c213a240b38f9d7b6206053e35dc17be0118990f2d92a3fc410981ae",
+      "file": "d196.html.gz",
+      "critical": [
+        {
+          "id": "d196-2",
+          "target": "https://democrats-science.house.gov/sites/republicans.science.house.gov/files/documents/Bills_Amendments/BILLS-112hr3479ih.pdf",
+          "disposition": "retained_wrong_role",
+          "role": "bill_text",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "member statement"
+          ],
+          "context": "Text of H.R.3479",
+          "attributes": [
+            "https://democrats-science.house.gov/sites/republicans.science.house.gov/files/documents/Bills_Amendments/BILLS-112hr3479ih.pdf"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "d210",
+      "url": "https://oversight.house.gov/hearing/irs-reviewing-its-legal-obligations-document-preservation-and-data-security/",
+      "sha256": "08c34476a8cb14cc3f64ffb2c99ccaa3822be50577a693dc9c1f75f64ba52293",
+      "file": "d210.html.gz",
+      "critical": [
+        {
+          "id": "d210-1",
+          "target": "https://oversight.house.gov/wp-content/uploads/2016/02/IRS-Statement-2-11-Document-Preservation.pdf",
+          "disposition": "retained_wrong_role",
+          "role": "witness_statement",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "member statement"
+          ],
+          "context": "Same PDF designated under all three witness cards at 562, 570, 578.",
+          "attributes": [
+            "https://oversight.house.gov/wp-content/uploads/2016/02/IRS-Statement-2-11-Document-Preservation.pdf",
+            "https://oversight.house.gov/wp-content/uploads/2016/02/IRS-Statement-2-11-Document-Preservation.pdf",
+            "https://oversight.house.gov/wp-content/uploads/2016/02/IRS-Statement-2-11-Document-Preservation.pdf"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "d213",
+      "url": "https://judiciary.house.gov/committee-activity/hearings/hearing-health-care-consolidation-and-competition-after-ppaca",
+      "sha256": "8422c511900f83cd4df0e0ef8c7e3b5b1eeb57d78adb504c8e757c0420e1d39e",
+      "file": "d213.html.gz",
+      "critical": [
+        {
+          "id": "d213-B-1",
+          "target": "https://judiciary.house.gov/_files/news/Statement%20IP%20Health%20Care%20Consolidation.html",
+          "disposition": "confirmed_local_omission",
+          "role": "member_statement",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "Statement of Judiciary Committee Chairman Lamar Smith ... Hearing on Health Care Consolidation and Competition After PPACA, adjacent to Hearing PDF within evo-hearing__body.",
+          "attributes": [
+            "//judiciary.house.gov/_files/news/Statement%20IP%20Health%20Care%20Consolidation.html"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "d214",
+      "url": "https://judiciary.house.gov/committee-activity/hearings/subject-regulation-nation-obama-administrations-regulatory-expansion-vs",
+      "sha256": "e7d76bf464a96e344601347601498ececbcef0036ef7c035dedc5db0ed44c02c",
+      "file": "d214.html.gz",
+      "critical": [
+        {
+          "id": "d214-B-1",
+          "target": "https://judiciary.house.gov/_files/news/Statement%20Regulation%20Nation.html",
+          "disposition": "confirmed_local_omission",
+          "role": "member statement page",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "Statement of Judiciary Committee Chairman Lamar Smith / Full Committee Hearing on Regulation Nation",
+          "attributes": [
+            "//judiciary.house.gov/_files/news/Statement%20Regulation%20Nation.html"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "d216",
+      "url": "https://agriculture.house.gov/calendar/eventsingle.aspx?EventID=7532",
+      "sha256": "ff227749bff8396fd6e16915dfc0fe98167925a463d6e5b76c5849b209ace4ce",
+      "file": "d216.html.gz",
+      "critical": [],
+      "negative_control": true
+    },
+    {
+      "id": "d227",
+      "url": "https://democrats-homeland.house.gov/activities/hearings/examining-the-federal-air-marshal-service-and-its-readiness-to-meet-the-evolving-threat",
+      "sha256": "8d0768a3ccd639f4f4cb8e69ae4b6890734b645e0c3c01bd8e80bc3180e23b97",
+      "file": "d227.html.gz",
+      "critical": [
+        {
+          "id": "d227-2",
+          "target": "https://www.ustream.tv/channel/hclive08",
+          "disposition": "retained_wrong_role",
+          "role": "webcast",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "member statement"
+          ],
+          "context": "To view full video of this hearing, click here for USTREAM site; generic channel destination not verified.",
+          "attributes": [
+            "https://www.ustream.tv/channel/hclive08"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "d233",
+      "url": "https://oversight.house.gov/hearing/examining-the-export-import-banks-mandates/",
+      "sha256": "e6dc119d93f923149923c7978e0e53e0981172a3598d87e0987090a522bf0d11",
+      "file": "d233.html.gz",
+      "critical": [
+        {
+          "id": "d233-1",
+          "target": "https://oversight.house.gov/wp-content/uploads/2015/04/Hochberg-Ex-Im-4-30-Statement.pdf",
+          "disposition": "retained_wrong_role",
+          "role": "witness_statement",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "member statement"
+          ],
+          "context": "Witnesses and testimonies: Fred Hochberg Document",
+          "attributes": [
+            "https://oversight.house.gov/wp-content/uploads/2015/04/Hochberg-Ex-Im-4-30-Statement.pdf"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "d237",
+      "url": "https://democrats-naturalresources.house.gov/hearings/subcommittee-hearing-on-the-department-of-the-interior",
+      "sha256": "930536a2f25d74f473dcc67ce96f02578941471e636fc9f2d259eb2a8761f2b2",
+      "file": "d237.html.gz",
+      "critical": [],
+      "negative_control": true
+    },
+    {
+      "id": "d238",
+      "url": "https://foreignaffairs.house.gov/committee-activity/hearings/an-urgent-appeal-let-bishop-alvarez-go",
+      "sha256": "eecf3a2c01e8a8068a13490646a8d747047b1e910846318ed8a2874ddd7b9517",
+      "file": "d238.html.gz",
+      "critical": [
+        {
+          "id": "d238-B-1",
+          "target": "https://foreignaffairs.house.gov/sites/evo-subsites/republicans-foreignaffairs.house.gov/files/migrated/uploads/2023/11/20231127-Revised-GH.HR_.IO-Hearing-Notice-on-Bishop-Alvarez.pdf",
+          "disposition": "retained_wrong_role",
+          "role": "hearing_notice",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "member statement"
+          ],
+          "context": "Documents list: Hearing notice, adjacent to Committee repository; baseline member statement contradicts explicit source label.",
+          "attributes": [
+            "//foreignaffairs.house.gov/sites/evo-subsites/republicans-foreignaffairs.house.gov/files/migrated/uploads/2023/11/20231127-Revised-GH.HR_.IO-Hearing-Notice-on-Bishop-Alvarez.pdf"
+          ]
+        },
+        {
+          "id": "d238-B-2",
+          "target": "https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=116604",
+          "disposition": "retained_wrong_role",
+          "role": "repository",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "member statement"
+          ],
+          "context": "Explicit Committee repository anchor in Documents list is promoted into member-statement inventory; contents of destination were not inspected.",
+          "attributes": [
+            "https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=116604"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "d239",
+      "url": "https://science.house.gov/markups?ID=8199CA4B-5CD5-489D-B68C-D0C0585CC6B0",
+      "sha256": "5e54f8e20aae7d9acb54e607b1b80398ba1e046e34a618354dd872bb66f07bdc",
+      "file": "d239.html.gz",
+      "critical": [
+        {
+          "id": "d239-1",
+          "target": "https://www.congress.gov/bill/111th-congress/house-bill/3246/text/eh?q=%7B%22search%22%3A%5B%22%5C%22Advanced+Vehicle+Technology+Act+of+2009%2C%5C%22+3246+the%22%5D%7D&resultIndex=1",
+          "disposition": "confirmed_local_omission",
+          "role": "bill_text_page",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "H.R.3246 bill text under markup outcome.",
+          "attributes": [
+            "https://www.congress.gov/bill/111th-congress/house-bill/3246/text/eh?q=%7B%22search%22%3A%5B%22%5C%22Advanced+Vehicle+Technology+Act+of+2009%2C%5C%22+3246+the%22%5D%7D&amp;resultIndex=1"
+          ]
+        },
+        {
+          "id": "d239-2",
+          "target": "https://www.congress.gov/bill/111th-congress/house-bill/3165/text",
+          "disposition": "confirmed_local_omission",
+          "role": "bill_text_page",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "H.R.3165 bill text under markup outcome.",
+          "attributes": [
+            "https://www.congress.gov/bill/111th-congress/house-bill/3165/text"
+          ]
+        },
+        {
+          "id": "d239-3",
+          "target": "https://www.congress.gov/bill/111th-congress/house-bill/3029/text?q=%7B%22search%22%3A%5B%22%5C%22To+establish+a+research%2C+development%2C+and+technology+demonstration+program+to+improve+the+efficiency+of+gas+turbines+used+in+combined+cycle+power+generation+systems%2C%5C%22+3029%22%5D%7D&resultIndex=1",
+          "disposition": "confirmed_local_omission",
+          "role": "bill_text_page",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "H.R.3029 bill text under markup outcome.",
+          "attributes": [
+            "https://www.congress.gov/bill/111th-congress/house-bill/3029/text?q=%7B%22search%22%3A%5B%22%5C%22To+establish+a+research%2C+development%2C+and+technology+demonstration+program+to+improve+the+efficiency+of+gas+turbines+used+in+combined+cycle+power+generation+systems%2C%5C%22+3029%22%5D%7D&amp;resultIndex=1"
+          ]
+        },
+        {
+          "id": "d239-4",
+          "target": "https://www.congress.gov/bill/111th-congress/house-bill/3247/text?q=%7B%22search%22%3A%5B%22%5C%22To+establish+a+social+and+behavioral+sciences+research+program+at+the+Department+of+Energy%2C+and+for+other+purposes%2C%5C%22+3247%22%5D%7D&resultIndex=1",
+          "disposition": "confirmed_local_omission",
+          "role": "bill_text_page",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "H.R.3247 bill text under markup outcome.",
+          "attributes": [
+            "https://www.congress.gov/bill/111th-congress/house-bill/3247/text?q=%7B%22search%22%3A%5B%22%5C%22To+establish+a+social+and+behavioral+sciences+research+program+at+the+Department+of+Energy%2C+and+for+other+purposes%2C%5C%22+3247%22%5D%7D&amp;resultIndex=1"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "h006",
+      "url": "https://waysandmeans.house.gov/event/h-r-1023-the-ricky-ray-hemophilia-relief-fund-act-of-1998/",
+      "sha256": "455b907ec736fc615f1ef0915082d0066638f0f29f50d1a8fba0ac27bd2c7bcf",
+      "file": "h006.html.gz",
+      "critical": [
+        {
+          "id": "h006-3",
+          "target": "http://thomas.loc.gov/cgi-bin/cpquery/z?cp105:hr465p2:",
+          "disposition": "confirmed_local_omission",
+          "role": "report",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "Explicit H.Rept.105-465, Part2 link in markup body designates this report.",
+          "attributes": [
+            "http://thomas.loc.gov/cgi-bin/cpquery/z?cp105:hr465p2:"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "h013",
+      "url": "https://democrats-financialservices.house.gov/events/eventsingle.aspx?EventID=398920",
+      "sha256": "a057ae5ac215b9432e1c76bd97b6db62f6d7f8e7ea61dca5aafa9c126d8a8487",
+      "file": "h013.html.gz",
+      "critical": [
+        {
+          "id": "h013-B-1",
+          "target": "https://democrats-financialservices.house.gov/news/documentsingle.aspx?DocumentID=398926",
+          "disposition": "confirmed_local_omission",
+          "role": "member statement page",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "Opening Statements \u2192 Ranking Member Maxine Waters (Text). Explicit individual text material; baseline retains generic href but has no document entry.",
+          "attributes": [
+            "/news/documentsingle.aspx?DocumentID=398926"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "h018",
+      "url": "https://democrats-budget.house.gov/legislation/markups/markup-republican-reconciliation-legislation",
+      "sha256": "97b6d8e79be408feaddc6f65f22981521998bd40f0107628824e40fbb1c0f543",
+      "file": "h018.html.gz",
+      "critical": [
+        {
+          "id": "h018-B-1",
+          "target": "https://democrats-budget.house.gov/publication/hr-3708-prevent-december-government-shutdown-act",
+          "disposition": "confirmed_local_omission",
+          "role": "bill text page",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "Democratic motion says replace it with the text of H.R.3708, with individual publication target.",
+          "attributes": [
+            "//democrats-budget.house.gov/publication/hr-3708-prevent-december-government-shutdown-act"
+          ]
+        },
+        {
+          "id": "h018-B-2",
+          "target": "https://democrats-budget.house.gov/committee-report/2015-reconciliation-legislation-irresponsible-futile-attack-women%25E2%2580%2599s-health-care-and",
+          "disposition": "confirmed_local_omission",
+          "role": "committee report page",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "Meeting Documents\u2192Related Content identifies this individual committee-report about the markup; percent escapes preserved without repairing target.",
+          "attributes": [
+            "//democrats-budget.house.gov/committee-report/2015-reconciliation-legislation-irresponsible-futile-attack-women%25E2%2580%2599s-health-care-and"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "h034",
+      "url": "https://democrats-waysandmeans.house.gov/legislation/markups/markup-highway-transportation-funding",
+      "sha256": "929cff78f0117b9d048b62d2a72f178369e825ff0b908f5d6c63ea9ec9b149b2",
+      "file": "h034.html.gz",
+      "critical": [],
+      "negative_control": true
+    },
+    {
+      "id": "h039",
+      "url": "https://oversightdemocrats.house.gov/committee-activity/hearings/identifying-preventing-and-treating-childhood-trauma-a-pervasive-public-health-issue-that-needs-greater-federal-attention",
+      "sha256": "b6008b09a8cfcab4f1bad5c5f3381f0496a3de136bd791ed11b47ab1c1da4fbd",
+      "file": "h039.html.gz",
+      "critical": [
+        {
+          "id": "h039-4",
+          "target": "http://www.sciencedirect.com/science/article/pii/S0749379719301436",
+          "disposition": "confirmed_local_omission",
+          "role": "research_article",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "CDC and Kaiser Permanente conducted a landmark study; 'conducted' links to an individual article route",
+          "attributes": [
+            "http://www.sciencedirect.com/science/article/pii/S0749379719301436"
+          ]
+        },
+        {
+          "id": "h039-8",
+          "target": "https://www.gao.gov/products/GAO-19-388",
+          "disposition": "confirmed_local_omission",
+          "role": "report",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "GAO recently issued a report on Children Affected by Trauma, reviewing six states",
+          "attributes": [
+            "https://www.gao.gov/products/GAO-19-388"
+          ]
+        },
+        {
+          "id": "h039-05",
+          "target": "http://www.childtrends.org/publications/prevalence-adverse-childhood-experiences-nationally-state-race-ethnicity",
+          "disposition": "confirmed_local_omission",
+          "role": "supporting_document",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "Background research citation: Extensive, followed by research demonstrates and specific health-outcome claim.",
+          "attributes": [
+            "http://www.childtrends.org/publications/prevalence-adverse-childhood-experiences-nationally-state-race-ethnicity"
+          ]
+        },
+        {
+          "id": "h039-06",
+          "target": "http://www.academicpedsjnl.net/article/S1876-2859(17)30324-8/fulltext",
+          "disposition": "confirmed_local_omission",
+          "role": "supporting_document",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "Background research citation linked word research, specific fulltext article route.",
+          "attributes": [
+            "http://www.academicpedsjnl.net/article/S1876-2859(17)30324-8/fulltext"
+          ]
+        },
+        {
+          "id": "h039-07",
+          "target": "http://www.sciencedirect.com/science/article/pii/S169726001730039X?via%3Dihub",
+          "disposition": "confirmed_local_omission",
+          "role": "supporting_document",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "Background research citation linked word demonstrates; literal encoded query preserved.",
+          "attributes": [
+            "http://www.sciencedirect.com/science/article/pii/S169726001730039X?via%3Dihub"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "h048",
+      "url": "https://democrats-financialservices.house.gov/events/eventsingle.aspx?EventID=399310",
+      "sha256": "55e6e57df0595614b2de102372d90d33e23236cbab2cdce9dd98eb2c5ce5b203",
+      "file": "h048.html.gz",
+      "critical": [
+        {
+          "id": "h048-2",
+          "target": "https://democrats-financialservices.house.gov/UploadedFiles/07.15.2015_Monetary_Policy_Report.pdf",
+          "disposition": "retained_wrong_role",
+          "role": "report",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "witness statement"
+          ],
+          "context": "Monetary Policy Report July 15",
+          "attributes": [
+            "/UploadedFiles/07.15.2015_Monetary_Policy_Report.pdf"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "h065",
+      "url": "https://veterans.house.gov/calendar/EventSingle.aspx?EventID=7934",
+      "sha256": "0ad6606fce70e0e88d400af838ffe49a193407fa21cd41232d15767e313b2778",
+      "file": "h065.html.gz",
+      "critical": [],
+      "negative_control": true
+    },
+    {
+      "id": "h075",
+      "url": "https://democrats-veterans.house.gov/events/hearings/legislative-presentation-of-veterans-of-foreign-wars-of-the-united-statesand-multi-vsos-jwv-wwp-taps-moaa-amvets-gsw-moph-bva-nacvso",
+      "sha256": "b9902b08b124d46ffda7af0c2bfcd0ae6721bcb5791e5266f4a530798b48599b",
+      "file": "h075.html.gz",
+      "critical": [
+        {
+          "id": "h075-B-2",
+          "target": "https://www.youtube.com/channel/UC0ADPBDC8KdU52IxuW-_X5g",
+          "disposition": "retained_wrong_role",
+          "role": "media_channel",
+          "scope": "related_page_metadata",
+          "baseline_kinds": [],
+          "context": "The explicit livestream-on-YouTube sentence designates a media channel. The baseline related_page annotation calls this witness_reference based on the nearby WITNESS LIST heading. This finding concerns generic metadata role only.",
+          "attributes": [
+            "https://www.youtube.com/channel/UC0ADPBDC8KdU52IxuW-_X5g",
+            "https://www.youtube.com/channel/UC0ADPBDC8KdU52IxuW-_X5g"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "r002",
+      "url": "https://appropriations.house.gov/events/hearings/fy19-budget-hearing-army",
+      "sha256": "8e36a5e0445e022ae906ce4ac5fc012124595482983a443172276fd687dadc16",
+      "file": "r002.html.gz",
+      "critical": [
+        {
+          "id": "r002-1",
+          "target": "http://docs.house.gov/meetings/AP/AP02/20180315/107985/HHRG-115-AP02-Wstate-EsperD-20180315.pdf",
+          "disposition": "retained_wrong_role",
+          "role": "witness_statement",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "member statement"
+          ],
+          "context": "Statement below Mark T. Esper, Secretary of Army",
+          "attributes": [
+            "http://docs.house.gov/meetings/AP/AP02/20180315/107985/HHRG-115-AP02-Wstate-EsperD-20180315.pdf"
+          ]
+        },
+        {
+          "id": "r002-2",
+          "target": "http://docs.house.gov/meetings/AP/AP02/20180315/107985/HHRG-115-AP02-Wstate-MilleyM-20180315.pdf",
+          "disposition": "retained_wrong_role",
+          "role": "witness_statement",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "member statement"
+          ],
+          "context": "Statement below General Mark A. Milley, Army Chief of Staff",
+          "attributes": [
+            "http://docs.house.gov/meetings/AP/AP02/20180315/107985/HHRG-115-AP02-Wstate-MilleyM-20180315.pdf"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "r008",
+      "url": "https://democrats-veterans.house.gov/events/hearings/modernizing-veteran-education-in-the-shadow-of-covid-19",
+      "sha256": "bad10cf5d5a6b0bb66910e6f3f98cabad52bc631b971f0d8007d821469d0abab",
+      "file": "r008.html.gz",
+      "critical": [
+        {
+          "id": "r008-1",
+          "target": "https://www.youtube.com/channel/UCvI8xjyh45-XAJbfPcjUdbQ",
+          "disposition": "retained_wrong_role",
+          "role": "webcast",
+          "scope": "related_page_metadata",
+          "baseline_kinds": [],
+          "context": "This hearing will be livestreamed on Youtube; channel-only destination, exact stream unknown.",
+          "attributes": [
+            "https://www.youtube.com/channel/UCvI8xjyh45-XAJbfPcjUdbQ"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "r010",
+      "url": "https://foreignaffairs.house.gov/committee-activity/hearings/full-committee-organizational-meeting-119th-congress",
+      "sha256": "dc6efebb16de0f299153759966c243a5807307d2b77a17d9e06ae2fd0550e064",
+      "file": "r010.html.gz",
+      "critical": [
+        {
+          "id": "r010-B-1",
+          "target": "https://foreignaffairs.house.gov/sites/evo-subsites/republicans-foreignaffairs.house.gov/files/migrated/uploads/2024/12/Hearing-Notice-12.11.24-Revised.pdf",
+          "disposition": "retained_wrong_role",
+          "role": "meeting notice",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "member statement"
+          ],
+          "context": "Exact anchor Meeting notice under broad Opening Statements heading. Explicit label contradicts baseline member statement kind.",
+          "attributes": [
+            "//foreignaffairs.house.gov/sites/evo-subsites/republicans-foreignaffairs.house.gov/files/migrated/uploads/2024/12/Hearing-Notice-12.11.24-Revised.pdf"
+          ]
+        },
+        {
+          "id": "r010-B-2",
+          "target": "https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=117833",
+          "disposition": "retained_wrong_role",
+          "role": "committee repository",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "member statement"
+          ],
+          "context": "Committee repository anchor leads event repository, but baseline promotes to member statement document.",
+          "attributes": [
+            "https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=117833"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "r021",
+      "url": "https://democrats-foreignaffairs.house.gov/hearings?ContentRecord_id=1D4AF0FB-202C-4600-80E7-8C5935F61B4A",
+      "sha256": "d14680f1bdbcf2f79ad9959dabbbc75134706412d55bcb4e354aeab7ea0cc42d",
+      "file": "r021.html.gz",
+      "critical": [],
+      "negative_control": true
+    },
+    {
+      "id": "r026",
+      "url": "https://democrats-waysandmeans.house.gov/legislation/hearings/oversight-subcommittee-hearing-debt-limit",
+      "sha256": "27cd8ca5e8c948424a645e7af3e155c7d75b983a92b453329a27191631e20862",
+      "file": "r026.html.gz",
+      "critical": [],
+      "negative_control": true
+    },
+    {
+      "id": "r037",
+      "url": "https://oversight.house.gov/hearing/the-national-guard-state-partnership-program-strengthening-u-s-security-one-partnership-at-a-time/",
+      "sha256": "145288d69a3acf1675de1debc77adc3398e44446d7ccd46f371fba6afda043b4",
+      "file": "r037.html.gz",
+      "critical": [
+        {
+          "id": "r037-B-1",
+          "target": "https://oversight.house.gov/wp-content/uploads/2025/06/Joint-Written-Statement.pdf",
+          "disposition": "retained_wrong_role",
+          "role": "witness_statement",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "member statement"
+          ],
+          "context": "Mamaux, Deputy Assistant Secretary at DoD, owns this Document occurrence under Witnesses and testimonies.",
+          "attributes": [
+            "https://oversight.house.gov/wp-content/uploads/2025/06/Joint-Written-Statement.pdf",
+            "https://oversight.house.gov/wp-content/uploads/2025/06/Joint-Written-Statement.pdf"
+          ]
+        },
+        {
+          "id": "r037-B-2",
+          "target": "https://oversight.house.gov/wp-content/uploads/2025/06/Joint-Written-Statement.pdf",
+          "disposition": "retained_wrong_role",
+          "role": "witness_statement",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "member statement"
+          ],
+          "context": "Edwards, NGB Director of Strategic Plans and Policy, owns this second occurrence of the same joint statement.",
+          "attributes": [
+            "https://oversight.house.gov/wp-content/uploads/2025/06/Joint-Written-Statement.pdf",
+            "https://oversight.house.gov/wp-content/uploads/2025/06/Joint-Written-Statement.pdf"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "r038",
+      "url": "https://energycommerce.house.gov/events/fueling-the-21st-century-wireless-economy",
+      "sha256": "f9dd44c7235c59b716a8c8a0d66e7456e74ddda73456b09279d9ccb7a49c2efe",
+      "file": "r038.html.gz",
+      "critical": [],
+      "negative_control": true
+    },
+    {
+      "id": "r050",
+      "url": "https://homeland.house.gov/hearing/test/",
+      "sha256": "3ac451a64c828272e8ecf62ae77c65a3d25e0ae3751e2f398106274ce982a46b",
+      "file": "r050.html.gz",
+      "critical": [
+        {
+          "id": "r050-01",
+          "target": "https://urldefense.com/v3/__https://house.us11.list-manage.com/track/click?u=98549d605f077248c2019d3db&id=610f471665&e=8ce9f5c341__;!!Bg5easoyC-OII2vlEqY8mTBrtW-N4OJKAQ!PZ9pKvt6LlJB6nj4T_LwE08I5hotgtx2xD3j1V3VKRkmFfcmB5-bb3k9qNwJDnuPVFrWnblZkf2u0DmR5TfUj997orvKL0nQC1F5sLM37m8z5unGoTND1dM$",
+          "disposition": "confirmed_local_omission",
+          "role": "witness_statement",
+          "scope": "document_inventory",
+          "baseline_kinds": [],
+          "context": "After Vice Admiral Thomas G. Allan, Deputy Commandant for Mission Support, U.S. Coast Guard: Witness testimony can be found here.",
+          "attributes": [
+            "https://urldefense.com/v3/__https://house.us11.list-manage.com/track/click?u=98549d605f077248c2019d3db&amp;id=610f471665&amp;e=8ce9f5c341__;!!Bg5easoyC-OII2vlEqY8mTBrtW-N4OJKAQ!PZ9pKvt6LlJB6nj4T_LwE08I5hotgtx2xD3j1V3VKRkmFfcmB5-bb3k9qNwJDnuPVFrWnblZkf2u0DmR5TfUj997orvKL0nQC1F5sLM37m8z5unGoTND1dM$"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "r054",
+      "url": "https://armedservices.house.gov/calendar/eventsingle.aspx?EventID=3542",
+      "sha256": "84f4f242001e66518f5beb9a832341468e976ecefb40124b21ad160facb1497d",
+      "file": "r054.html.gz",
+      "critical": [
+        {
+          "id": "r054-1",
+          "target": "https://armedservices.house.gov/sites/evo-subsites/republicans-armedservices.house.gov/files/SPF%20Budget%20Hearing%20Joint%20Witness%20Statement.pdf",
+          "disposition": "retained_wrong_role",
+          "role": "witness_statement",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "member statement"
+          ],
+          "context": "Meeting Documents: The Honorable Nickolas H. Guertin, Assistant Secretary of the Navy (Research, Development, and Acquisition), Opening Statement.",
+          "attributes": [
+            "/sites/evo-subsites/republicans-armedservices.house.gov/files/SPF%20Budget%20Hearing%20Joint%20Witness%20Statement.pdf",
+            "/sites/evo-subsites/republicans-armedservices.house.gov/files/SPF%20Budget%20Hearing%20Joint%20Witness%20Statement.pdf",
+            "/sites/evo-subsites/republicans-armedservices.house.gov/files/SPF%20Budget%20Hearing%20Joint%20Witness%20Statement.pdf"
+          ]
+        },
+        {
+          "id": "r054-2",
+          "target": "https://armedservices.house.gov/sites/evo-subsites/republicans-armedservices.house.gov/files/SPF%20Budget%20Hearing%20Joint%20Witness%20Statement.pdf",
+          "disposition": "retained_wrong_role",
+          "role": "witness_statement",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "member statement"
+          ],
+          "context": "Meeting Documents: Vice Admiral James Pitts, Deputy Chief of Naval Operations for Warfighting Requirements and Capabilities, Opening Statement.",
+          "attributes": [
+            "/sites/evo-subsites/republicans-armedservices.house.gov/files/SPF%20Budget%20Hearing%20Joint%20Witness%20Statement.pdf",
+            "/sites/evo-subsites/republicans-armedservices.house.gov/files/SPF%20Budget%20Hearing%20Joint%20Witness%20Statement.pdf",
+            "/sites/evo-subsites/republicans-armedservices.house.gov/files/SPF%20Budget%20Hearing%20Joint%20Witness%20Statement.pdf"
+          ]
+        },
+        {
+          "id": "r054-3",
+          "target": "https://armedservices.house.gov/sites/evo-subsites/republicans-armedservices.house.gov/files/SPF%20Budget%20Hearing%20Joint%20Witness%20Statement.pdf",
+          "disposition": "retained_wrong_role",
+          "role": "witness_statement",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "member statement"
+          ],
+          "context": "Meeting Documents: Lieutenant General Karsten S. Heckl, Deputy Commandant, Combat Development and Integration, Opening Statement.",
+          "attributes": [
+            "/sites/evo-subsites/republicans-armedservices.house.gov/files/SPF%20Budget%20Hearing%20Joint%20Witness%20Statement.pdf",
+            "/sites/evo-subsites/republicans-armedservices.house.gov/files/SPF%20Budget%20Hearing%20Joint%20Witness%20Statement.pdf",
+            "/sites/evo-subsites/republicans-armedservices.house.gov/files/SPF%20Budget%20Hearing%20Joint%20Witness%20Statement.pdf"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "r061",
+      "url": "https://energycommerce.house.gov/events/bioresearch-labs-and-inactivation-of-dangerous-pathogens",
+      "sha256": "eedd52e2f8eee669db8c30323b0efc42eecdab4b5ecc14f158dde4ee24ac686d",
+      "file": "r061.html.gz",
+      "critical": [],
+      "negative_control": true
+    },
+    {
+      "id": "r067",
+      "url": "https://waysandmeans.house.gov/event/hearing-on-strengthening-social-securitys-customer-service/",
+      "sha256": "c655af08572d63e48a5c8c97dee69a447c742de288272c974cc23f62f6a0a85c",
+      "file": "r067.html.gz",
+      "critical": [
+        {
+          "id": "r067-2",
+          "target": "https://www.youtube.com/watch?v=SvLOBkYuII4",
+          "disposition": "retained_wrong_role",
+          "role": "webcast",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "other"
+          ],
+          "context": "Live stream available at the following link: Click Here.",
+          "attributes": [
+            "https://www.youtube.com/watch?v=SvLOBkYuII4"
+          ]
+        }
+      ],
+      "negative_control": false
+    },
+    {
+      "id": "r072",
+      "url": "https://democrats-appropriations.house.gov/events/hearings/us-customs-and-border-protection-resource-management-and-operational-priorities",
+      "sha256": "1050805b799942a65abb9fa5b1794a7058d15cb8e1c010e53d1562d41954bda4",
+      "file": "r072.html.gz",
+      "critical": [
+        {
+          "id": "r072-1",
+          "target": "http://docs.house.gov/meetings/AP/AP15/20210519/112654/HHRG-117-AP15-Wstate-MillerT-20210519.pdf",
+          "disposition": "retained_wrong_role",
+          "role": "witness_statement",
+          "scope": "document_inventory",
+          "baseline_kinds": [
+            "member statement"
+          ],
+          "context": "Statement inside Troy Miller's witness card; CBP official, not a Member of Congress.",
+          "attributes": [
+            "http://docs.house.gov/meetings/AP/AP15/20210519/112654/HHRG-117-AP15-Wstate-MillerT-20210519.pdf"
+          ]
+        }
+      ],
+      "negative_control": false
+    }
+  ]
+}
