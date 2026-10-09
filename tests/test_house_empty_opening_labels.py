@@ -39,3 +39,10 @@ def test_specific_document_evidence_precedes_generic_testimony_or_opening_sectio
     assert hashlib.sha256(body).hexdigest() == source['sha256']
     page = parse_event_page(body, source['url'])
     assert all(document in page['documents'] for document in source['expected'])
+
+
+@pytest.mark.parametrize('label', ['Printed Hearing Text', 'Hearing Transcript', 'Transcript'])
+def test_explicit_transcript_label_precedes_inherited_opening_heading(label):
+    page = parse_event_page(f'<h2>Opening Statements</h2><a href="/legacy/item">{label}</a>'.encode(),
+                            'https://example.house.gov/hearings/item')
+    assert page['documents'] == [['transcript', label, 'https://example.house.gov/legacy/item']]

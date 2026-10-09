@@ -211,7 +211,7 @@ subjects and unqualified dates remain unknown. GET archive filters reset only
 query pagination fields; literal pagination links and other filters remain.
 Reparsing does not retry old requests or remove earlier pagination diagnostics.
 
-House version 11 and Senate version 17 qualify document roles from the literal
+House version 12 and Senate version 18 qualify document roles from the literal
 link label, a local document row or witness field, and explicit publication
 routes. A document's own designation takes priority over a broad heading.
 House document-page admission uses that same context reader; media, registration

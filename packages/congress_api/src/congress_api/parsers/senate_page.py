@@ -576,12 +576,12 @@ def related_page(anchor, page_url):
     if any(ancestor.tag == 'p' and 'hearing-transcript' in (ancestor.get('class') or '').split()
            for ancestor in ancestors):
         return document('transcript', 'publisher_transcript_field')
+    if TRANSCRIPT_LABEL.fullmatch(label):
+        return dict(url=target, role='document', document_kind='transcript', basis='publisher_document_label')
     # The explicit section also qualifies empty publisher anchors; requiring
     # visible text here would discard their existing occurrence context.
     if re.fullmatch(r'(?:opening|member) statements?', heading, re.I):
         return document('member statement', 'publisher_section_heading')
-    if TRANSCRIPT_LABEL.fullmatch(label):
-        return dict(url=target, role='document', document_kind='transcript', basis='publisher_document_label')
     # Individually cited research has a specific publication route and local
     # study/report prose. A publication index or an organization home does not.
     research_path = (re.fullmatch(r'/(?:science/article/pii/[^/]+|article/[^/]+/fulltext|publications/[^/]+)/?', parts.path)
