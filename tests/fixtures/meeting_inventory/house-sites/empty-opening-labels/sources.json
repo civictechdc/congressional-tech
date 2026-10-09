@@ -1,0 +1,126 @@
+[
+  {
+    "url": "https://armedservices.house.gov/calendar/eventsingle.aspx?EventID=6462",
+    "file": "6462.html.gz",
+    "sha256": "370de49089fb7be4610447c6ccd381aafccaba6156cc6261f44f766aeaf1153d",
+    "expected": [
+      {
+        "url": "https://armedservices.house.gov/news/documentsingle.aspx?DocumentID=6505",
+        "occurrences": [
+          {
+            "attributes": [
+              {
+                "href": "https://armedservices.house.gov/news/documentsingle.aspx?DocumentID=6505",
+                "target": "_blank"
+              }
+            ],
+            "container_attributes": [],
+            "headings": [
+              "Opening Statement:"
+            ],
+            "labels": [
+              "Readiness Subcommittee Chairman Jack Bergman (R-MI)"
+            ],
+            "line_text": "Readiness Subcommittee Chairman Jack Bergman (R-MI)",
+            "witness_indexes": []
+          },
+          {
+            "attributes": [
+              {
+                "href": "https://armedservices.house.gov/news/documentsingle.aspx?DocumentID=6505"
+              }
+            ],
+            "container_attributes": [],
+            "headings": [
+              "Opening Statement:"
+            ],
+            "labels": [],
+            "witness_indexes": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "url": "https://edworkforce.house.gov/calendar/eventsingle.aspx?EventID=407702",
+    "file": "407702.html.gz",
+    "sha256": "5702f5a09be7f5fb8fdb11e4065e9b27f342a4d44980eb8f2426b14e561304e7",
+    "expected": [
+      {
+        "url": "https://republicans-edlabor.house.gov/news/documentsingle.aspx?DocumentID=407689",
+        "occurrences": [
+          {
+            "attributes": [
+              {
+                "href": "https://republicans-edlabor.house.gov/news/documentsingle.aspx?DocumentID=407689"
+              }
+            ],
+            "container_attributes": [],
+            "headings": [
+              "Opening Statement:"
+            ],
+            "labels": [],
+            "line_text": "Republican Leader Virginia Foxx (R-NC)",
+            "witness_indexes": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "url": "https://democrats-financialservices.house.gov/events/eventsingle.aspx?EventID=400351",
+    "file": "400351.html.gz",
+    "sha256": "44a93f6ec33cde816729b6c1a5d0234d25e6d328614dd2304dff8180bf432290",
+    "expected": [
+      {
+        "url": "https://democrats-financialservices.house.gov/news/documentsingle.aspx?DocumentID=400370",
+        "occurrences": [
+          {
+            "attributes": [
+              {
+                "href": "/news/documentsingle.aspx?DocumentID=400370"
+              }
+            ],
+            "container_attributes": [],
+            "headings": [
+              "Opening Statements"
+            ],
+            "labels": [],
+            "line_text": "Ranking Member Maxine Waters [Text]",
+            "witness_indexes": []
+          },
+          {
+            "attributes": [
+              {
+                "href": "/news/documentsingle.aspx?DocumentID=400370"
+              }
+            ],
+            "container_attributes": [],
+            "headings": [
+              "Opening Statements"
+            ],
+            "labels": [
+              "Text"
+            ],
+            "line_text": "Ranking Member Maxine Waters [Text]",
+            "witness_indexes": []
+          },
+          {
+            "attributes": [
+              {
+                "href": "/news/documentsingle.aspx?DocumentID=400370"
+              }
+            ],
+            "container_attributes": [],
+            "headings": [
+              "Opening Statements"
+            ],
+            "labels": [],
+            "line_text": "Ranking Member Maxine Waters [Text]",
+            "witness_indexes": []
+          }
+        ]
+      }
+    ]
+  }
+]

@@ -544,7 +544,7 @@ def related_page(anchor, page_url):
     witness_field = bool(local_classes & {'evo-hearing__field-evo-witnesses', 'witness-document'})
     statement_label = re.search(r'\b(?:state?ment|testimony)\b', label, re.I)
     if ((witness_field or witness_section) and statement_label
-            and literal_document_kind(label, '') in {'member statement', 'witness statement'}):
+            and literal_document_kind(label, target) in {'member statement', 'witness statement'}):
         return document('witness statement', 'publisher_witness_field' if witness_field else 'publisher_witness_section')
     if ('witness-document' in local_classes and re.fullmatch(r'document', label, re.I)
             and literal_document_kind(label, target) in {'other', 'member statement', 'witness statement'}):
@@ -573,7 +573,12 @@ def related_page(anchor, page_url):
             kind = {'witness-testimony': 'witness statement', 'submission-for-the-record': 'support document',
                     'hearing-transcript': 'transcript', 'opening-statement': 'member statement'}[match[1].lower()]
             return dict(url=target, role='document', document_kind=kind, basis='publisher_document_path')
-    if label and re.fullmatch(r'(?:opening|member) statements?', heading, re.I):
+    if any(ancestor.tag == 'p' and 'hearing-transcript' in (ancestor.get('class') or '').split()
+           for ancestor in ancestors):
+        return document('transcript', 'publisher_transcript_field')
+    # The explicit section also qualifies empty publisher anchors; requiring
+    # visible text here would discard their existing occurrence context.
+    if re.fullmatch(r'(?:opening|member) statements?', heading, re.I):
         return document('member statement', 'publisher_section_heading')
     if TRANSCRIPT_LABEL.fullmatch(label):
         return dict(url=target, role='document', document_kind='transcript', basis='publisher_document_label')
@@ -595,8 +600,6 @@ def related_page(anchor, page_url):
     # section or override its heading with an outer witness container.
     for ancestor in anchor.iterancestors():
         classes = set((ancestor.get('class') or '').split())
-        if ancestor.tag == 'p' and 'hearing-transcript' in classes:
-            return dict(url=target, role='document', document_kind='transcript', basis='publisher_transcript_field')
         previous = ancestor.getprevious()
         marked_list = ('item-list' in classes and previous is not None and previous.tag == 'h2'
                        and 'migrated-submissions-record' in (previous.get('class') or '').split())
