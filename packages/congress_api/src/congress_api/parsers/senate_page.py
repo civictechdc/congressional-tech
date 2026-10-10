@@ -15,6 +15,7 @@ from lxml import html as dom
 from congress_api.parsers.text import text
 from congress_api.parsers.witness_names import is_name, witness
 from congress_api.parsers.document_links import feed_link, http_url, is_document_url
+from congress_api.parsers.document_types import document_type
 
 ## where each committee keeps its hearing pages
 SITE = {"ssaf00": "agriculture.senate.gov", "ssap00": "appropriations.senate.gov", "ssas00": "armed-services.senate.gov", "ssbk00": "banking.senate.gov",
@@ -156,7 +157,7 @@ def section_document_kind(metadata):
     kinds = []
     for occurrence in occurrences:
         headings = occurrence.get("headings") or []
-        heading = headings[0].strip().rstrip(":").strip() if len(headings) == 1 else ""
+        heading = headings[0].strip().lstrip('>').strip().rstrip(":").strip() if len(headings) == 1 else ""
         kind = None
         if re.fullmatch(r"(?:hearing |related |markup )?transcripts?", heading, re.I):
             kind = "transcript"
@@ -182,19 +183,28 @@ TRANSCRIPT_LABEL = re.compile(r'(?:(?:official|hearing|markup) )?transcript|prin
 
 def explicit_document_kind(label):
     """A document's own designation takes priority over a broad section title."""
-    label = label.strip()
+    label = ' '.join(label.replace('_', ' ').split())
+    # Reuse the publisher vocabulary, but not its two-letter XML codes as
+    # free-text HTML labels. Comparing separators never changes source text.
+    forms = {'testimony-disclosure': 'truth in testimony', 'witness-biography': 'witness biography'}
+    if len(label) > 2 and (meaning := document_type(label)) in forms:
+        return forms[meaning]
     if re.match(r'responses?\b.*\bquestions?\b.*\bfor the record\b', label, re.I):
         return 'questions for the record'
-    if re.fullmatch(r'statement submitted for (?:the )?record', label, re.I):
+    if re.match(r'statement (?:submitted )?for (?:the )?record(?:$|,)', label, re.I):
+        return 'support document'
+    if re.match(r'(?:instructions (?:for|on) submitting testimony|(?:rules of procedure and )?statement of policy)\b', label, re.I):
+        return 'support document'
+    if re.fullmatch(r'(?:conference )?action release', label, re.I):
         return 'support document'
     if re.match(r'(?:text of (?:H\.?\s*R\.?|S\.)\s*\d+|bill text\b)', label, re.I):
         return 'legislative text'
     if re.fullmatch(r'(?:hearing|meeting) (?:notice|advisory)', label, re.I):
         return 'hearing notice'
-    if re.fullmatch(r'Monetary Policy Report|[HS]\.\s*Rept\.\s*\d+-\d+(?:,?\s*Part\s*\d+)?', label, re.I):
+    if re.fullmatch(r'Monetary Policy Report|(?:[HS]\.\s*|Conference Report )Rept\.\s*\d+-\d+(?:,?\s*(?:Part|Pt\.)\s*\d+)?', label, re.I):
         return 'committee report'
-    if (re.search(r'\bopening state?ment\b', label, re.I)
-            and re.search(r'\b(?:ranking member|committee chair(?:man|woman)?|representative|rep)\b', label, re.I)):
+    if (re.search(r'\bopening (?:state?ments?|remarks)\b', label, re.I)
+            and re.search(r'\b(?:ranking member|(?:sub)?committee chair(?:man|woman)?|representative|rep)\b', label, re.I)):
         return 'member statement'
     if re.search(r'\bwitness state?ment\b', label, re.I) or re.match(r'testimony from\b', label, re.I):
         return 'witness statement'
@@ -209,6 +219,11 @@ def literal_document_kind(label, url):
         return 'transcript'
     if kind := explicit_document_kind(label):
         return kind
+    # An unspecified set of opening statements does not identify its speakers
+    # as members. Local witness/member evidence can still supply that role.
+    if (re.search(r'\bopening statements\b', label, re.I)
+            and not re.search(r'\btranscript\b', label, re.I)):
+        return 'other'
     return next((kind for kind, pattern in KINDS
         if re.search(pattern, f"{label} {url.rsplit('/', 1)[-1]}", re.I)), "other")
 
@@ -249,7 +264,7 @@ def _document_occurrence_context(occurrence):
     if kind == "committee amendment" and any(re.fullmatch(
             r"(?:amendment )?summar(?:y|ies)", label.strip(), re.I) for label in labels):
         kind, basis = "summary", "publisher_link_label"
-    primary_witness_file = any("Button--hearingLink" in (a.get("class") or "").split() for a in attributes)
+    primary_witness_file = any(set((a.get("class") or "").split()) & {'Button--hearingLink', 'hearing-pdf'} for a in attributes)
     if not kind and primary_witness_file and (card or len(occurrence.get("witness_indexes") or []) == 1):
         urls = [a.get("href", "") for a in attributes]
         literal = literal_document_kind(" ".join(labels), " ".join(urls))
@@ -288,23 +303,31 @@ def documents(page_html, url, metadata=None):
     return list(out.values())
 
 
-def text_lines(node):
+def text_lines(node, *, local=False):
     """Visible br-separated lines, with the anchors belonging to each line."""
-    result = [dict(text='', anchors=[])]
+    result = [dict(text='', anchors=[], spans=[])]
     def visit(current):
         if not isinstance(current.tag, str) or current.tag in {'script', 'style'}:
             return
-        if current.tag == 'br':
-            result.append(dict(text='', anchors=[]))
+        if current.tag == 'br' or (local and current is not node and current.tag in {
+                'p', 'li', 'div', 'table', 'ul', 'ol', 'section', 'article'}):
+            result.append(dict(text='', anchors=[], spans=[]))
             return
         if current.tag == 'a':
             result[-1]['anchors'].append(current)
+            if local:
+                line, start = result[-1], len(result[-1]['text'])
         result[-1]['text'] += current.text or ''
         for child in current:
             visit(child)
             result[-1]['text'] += child.tail or ''
+        if local and current.tag == 'a' and line is result[-1]:
+            line['spans'].append((current, start, len(line['text'])))
     visit(node)
     for line in result:
+        raw = line['text']
+        line['spans'] = [(anchor, ' '.join(raw[:start].split()), ' '.join(raw[end:].split()))
+                         for anchor, start, end in line['spans']]
         line['text'] = ' '.join(line['text'].split())
     return result
 
@@ -315,7 +338,66 @@ def link_line(anchor):
     return next((line for line in text_lines(block) if anchor in line['anchors']), dict(text='', anchors=[]))
 
 
-def paragraph_headings(paragraph, anchor=None):
+def link_clause(anchor):
+    """Anchor-adjacent prose, without nested lists or neighboring block text.
+
+    Keep a line's preceding/following words separate: a vote following one bill
+    must not classify that bill, and a registration prompt must not exclude the
+    next testimony link. A br-separated document label stays inside its block.
+    """
+    blocks = anchor.xpath('ancestor::*[self::p or self::li or self::td or self::div][1]')
+    block = blocks[0] if blocks else anchor
+    previous = ''
+    for line in text_lines(block, local=True):
+        for node, before, after in line['spans']:
+            if node is anchor:
+                return dict(before=before, after=after, text=line['text'], previous=previous,
+                            block=block, anchors=line['anchors'])
+        if line['text']:
+            previous = line['text'] if not line['anchors'] else ''
+    return dict(before='', after='', text='', previous='', block=block, anchors=[])
+
+
+def local_document_kind(anchor, label, clause):
+    """Read an explicit document designation attached to this particular link."""
+    before, after = clause['before'], clause['after']
+    if re.search(r'\brecorded vote\b[^()]*\(\s*$', before, re.I):
+        return 'recorded vote'
+    if re.search(r'\bopening (?:statement|remarks)\b', label, re.I) and re.match(
+            r'from (?:the )?(?:(?:full |sub)?committee chairman|ranking member|representative)\b', after, re.I):
+        return 'member statement'
+    if (re.search(r'\bhearing (?:advisory|notice)(?: is)? available\s*$', before, re.I)
+            or (re.fullmatch(r'advisory', label, re.I) and re.match(r'announcing the hearing\b', after, re.I))):
+        return 'hearing notice'
+    # A label on the preceding visual line (or adjacent list row) designates
+    # the PDF hyperlink, including redirects with a visible PDF address.
+    if re.fullmatch(r'PDF\s*:', before, re.I):
+        designation = clause['previous']
+        previous = clause['block'].getprevious()
+        if not designation and previous is not None and previous.tag == clause['block'].tag and not previous.xpath('.//a'):
+            designation = ' '.join(previous.text_content().split())
+        if kind := explicit_document_kind(designation):
+            return kind
+    # A single inline lead-in may designate several semicolon-separated bills
+    # as statements. Require that every anchor in that line is a bill label.
+    if (re.match(r'^(?:Chairman|Chairwoman|Ranking Member)\s+[^:;]{1,100}\bStatements? on\s+', clause['text'], re.I)
+            and all(re.fullmatch(r'H\.?\s*R\.?\s*\d+', ' '.join(a.text_content().split()), re.I) for a in clause['anchors'])):
+        return 'member statement'
+    if (re.match(r'^According to\b.{1,180}\breport$', before, re.I)
+            and label and not re.fullmatch(r'here', label, re.I)):
+        return 'support document'
+    if re.search(r'\badoption of(?: the)?$', before, re.I) and re.search(r'\bDeclaration\b', label):
+        return 'support document'
+    block = clause['block']
+    previous = block.getprevious()
+    if (block.tag == 'p' and previous is not None and previous.tag == 'p' and not previous.xpath('.//a')
+            and re.fullmatch(r'\[?Submissions? for the Record(?: follow)?\s*:?\]?', ' '.join(previous.text_content().split()), re.I)
+            and not re.match(r'submit\b', label, re.I)):
+        return 'support document'
+    return None
+
+
+def paragraph_headings(paragraph, anchor=None, *, classification=False):
     """Bold labels on their own visual line also delimit a publisher section.
 
     EPW embeds these lines in paragraphs using repeated br tags. Inline emphasis
@@ -343,7 +425,8 @@ def paragraph_headings(paragraph, anchor=None):
         start = position + len(written)
         # A bold file title is not a new section. EPW's linked QFR heading
         # is an explicit section label and can name its own download.
-        if node.xpath(".//a") and not section_document_kind({"headings": [" ".join(node.text_content().split())]}):
+        linked = node.xpath(".//a | ancestor::a" if classification else ".//a")
+        if linked and not section_document_kind({"headings": [" ".join(node.text_content().split())]}):
             continue
         before = re.split(r"<br\b[^>]*>", markup[:position])[-1]
         after = re.split(r"<br\b[^>]*>", markup[start:])[0]
@@ -387,17 +470,19 @@ def table_column_heading(anchor):
     return heading if section_document_kind({'headings': [heading]}) else None
 
 
-def link_headings(anchor, *, skip_panels=False):
+def link_headings(anchor, *, skip_panels=False, nodes=False, classification=False):
     """Find the closest enclosing section's heading in DOM order.
 
     Foreign Relations and Aging wrap the heading in Hearing__sectionHeading.
     Do not cross a separate section, navigation region, or witness card to find
     a heading. An adjacent section's heading never describes this anchor.
+    Classification ignores linked file titles; observations retain the original
+    heading behavior used by occurrence metadata and witness extraction.
     """
     heading_tags = {"h1", "h2", "h3", "h4", "h5", "h6"}
     branch = anchor
     for ancestor in anchor.iterancestors():
-        headings = paragraph_headings(ancestor, anchor) if ancestor.tag == "p" else []
+        headings = paragraph_headings(ancestor, anchor, classification=classification) if ancestor.tag == "p" else []
         # Indian Affairs places a bold label and several bill links in one
         # paragraph. Its label describes those files, not the next paragraph.
         inline = (ancestor.tag == "p" and not (ancestor.text or "").strip()
@@ -414,7 +499,7 @@ def link_headings(anchor, *, skip_panels=False):
             elif "AdditionalContent" in (sibling.get("class") or "").split() and not sibling.xpath(".//a"):
                 headings.extend(sibling.xpath("./div[contains(concat(' ', normalize-space(@class), ' '), ' Heading--sectionTitle ')]/h2"))
             elif sibling.tag == "p":
-                headings.extend(paragraph_headings(sibling))
+                headings.extend(paragraph_headings(sibling, classification=classification))
             elif sibling.tag == 'div' and not sibling.xpath('.//a') and re.fullmatch(
                     r'witness(?:es| list)?\s*:?', ' '.join(sibling.text_content().split()), re.I):
                 headings.append(sibling)
@@ -435,13 +520,17 @@ def link_headings(anchor, *, skip_panels=False):
         if headings:
             # Inline tags can split a word ("Question<a>...</a>s") or precede
             # punctuation; keep the publisher's contiguous text intact.
-            return [" ".join(headings[-1].text_content().split())]
+            return [headings[-1]] if nodes else [" ".join(headings[-1].text_content().split())]
         classes = set((ancestor.get("class") or "").split())
         if ancestor.tag in {"section", "article", "nav", "aside", "footer", "main"} or classes & {
                 "Hearing__section", "vcard", "capigacr-widget-card", "paragraph--witness",
                 "field-collection-item-field-hearing-new-witness", "jet-listing-grid__item"}:
             break
         if ancestor.tag in {'td', 'th'} and (heading := table_column_heading(anchor)):
+            if nodes:
+                node = dom.Element('span')
+                node.text = heading
+                return [node]
             return [heading]
         branch = ancestor
     return []
@@ -457,6 +546,18 @@ def local_table_label(anchor):
     if not rows:
         return None
     row = rows[0]
+    # A row-wide label can designate the sole item in the immediately next
+    # row. Other populated cells or merged data cells make ownership unclear.
+    cells = row.xpath('./td | ./th')
+    previous = row.getprevious()
+    titles = previous.xpath('./td | ./th') if previous is not None and previous.tag == 'tr' else []
+    if (len(titles) == 1 and titles[0].get('colspan', '1') == str(len(cells))
+            and not titles[0].xpath('.//a') and len(row.xpath('.//a[@href]')) == 1
+            and all(c.get('colspan', '1') == c.get('rowspan', '1') == '1' for c in cells)
+            and all(not c.text_content().strip() for c in cells if anchor not in c.iterdescendants())):
+        designation = ' '.join(titles[0].text_content().split())
+        if explicit_document_kind(designation) or section_document_kind({'headings': [designation]}):
+            return designation
     if columns := table_columns(anchor):
         cell, header, cells = columns
         if ([' '.join(c.text_content().split()).lower() for c in header] == ['name', 'document']
@@ -469,6 +570,67 @@ def local_table_label(anchor):
     return None
 
 
+def _has_class(node, token):
+    return token in (node.get('class') or '').split()
+
+
+def _class_nodes(node, token):
+    return [child for child in node.iter() if _has_class(child, token)]
+
+
+def _node_value(node):
+    return text(dom.tostring(node, encoding='unicode', with_tail=False))
+
+
+def participant_card_identity(node):
+    """Recognize the maintained participant layouts and their source names."""
+    if not isinstance(node.tag, str):
+        return None
+    family = next((token for token in ('capigacr-widget-card', 'vcard', 'paragraph--witness',
+        'field-collection-item-field-hearing-new-witness', 'jet-listing-grid__item') if _has_class(node, token)), None)
+    if not family and node.tag == 'li' and len(_class_nodes(node, 'witness-content')) == 1:
+        family = 'witness-content'
+    if not family and node.tag == 'li' and _has_class(node, 'list-group-item') and (
+            _class_nodes(node, 'full-name') or _class_nodes(node, 'person')):
+        family = 'list-group-item'
+    if not family:
+        return None
+    selectors = {'capigacr-widget-card': 'capigacr-widget-card__title', 'vcard': 'fn',
+                 'paragraph--witness': 'witness__field-name', 'field-collection-item-field-hearing-new-witness': 'group-header',
+                 'list-group-item': 'full-name'}
+    if family in selectors:
+        names = _class_nodes(node, selectors[family])
+        if not names and family == 'list-group-item':
+            names = _class_nodes(node, 'person')
+        raw_name = ' '.join(_node_value(name) for name in names)
+        if family == 'vcard':
+            raw_name = ' '.join(_node_value(name) for name in _class_nodes(node, 'honorific-prefix')) + ' ' + raw_name
+    elif family == 'jet-listing-grid__item':
+        raw_name = ' '.join(_node_value(child) for child in node.iter() if child.tag in ('h3', 'h4')
+                            and _has_class(child, 'jet-listing-dynamic-field__content'))
+    else:
+        headings = node.xpath('.//h2|.//h3|.//h4|.//h5')
+        above = node.xpath('.//p')
+        raw_name = _node_value(headings[-1]) if headings else (_node_value(above[0]) if above else '')
+        raw_name = re.sub(r'^\d+\.\s*', '', raw_name)
+    return (family, raw_name) if raw_name.strip() else None
+
+
+def participant_card_role(card):
+    """Read the same explicit member containers used by source metadata."""
+    for ancestor in card.iterancestors():
+        if _has_class(ancestor, 'Hearing__additionalContentSection--members'):
+            return 'member'
+        if ancestor.tag == 'ol' and _has_class(ancestor, 'members'):
+            sections = ancestor.xpath('ancestor::section[1]')
+            titles = sections[0].xpath('./h2 | ./div[@class="sectionhead"]/h2') if sections else []
+            if len(titles) == 1 and re.fullmatch(r'Member Statements', _node_value(titles[0]), re.I):
+                return 'member'
+        if _has_class(ancestor, 'capigacr-widget-card__panel-section'):
+            break
+    return None
+
+
 def related_page(anchor, page_url):
     """Qualify a source link's purpose without asserting destination content.
 
@@ -477,19 +639,27 @@ def related_page(anchor, page_url):
     """
     literal = anchor.get('href', '')
     if not literal.strip() or literal.strip().startswith('#') or anchor.xpath(
-            'ancestor::nav | ancestor::aside | ancestor::footer | ancestor::*[@role="navigation" or @role="contentinfo"]'):
+            'ancestor::nav | ancestor::aside | ancestor::footer | ancestor::*[@role="navigation" or @role="contentinfo"]'
+            ' | ancestor::*[contains(concat(" ",normalize-space(@class)," ")," second-level-nav ")]'):
         return None
     target = http_url(literal, page_url)
-    if not target:
-        return None
-    parts = urlsplit(target)
-    direct = is_document_url(target, publisher_routes=True)
+    parts = urlsplit(target or '')
+    # Fragment-bearing roots are source references, not homepage documents.
+    # Invalid authorities stay literal metadata; never repair them here.
+    uncertainty = ('invalid_target' if not target else 'fragment_target'
+                   if '#' in literal and literal.split('#', 1)[1] and parts.path in {'', '/'} else None)
+    direct = bool(target and is_document_url(target, publisher_routes=True))
     label = ' '.join(anchor.text_content().split())
     line = link_line(anchor)
-    headings = link_headings(anchor, skip_panels=True)
+    clause = link_clause(anchor)
+    heading_nodes = link_headings(anchor, skip_panels=True, nodes=True, classification=True)
+    headings = [' '.join(node.text_content().split()) for node in heading_nodes]
     # Normalize formatting for comparison only; preserve the original headings.
     heading = headings[0].replace('\u200b', '').strip().rstrip(':').strip() if len(headings) == 1 else ''
     def purpose(role, basis, kind=None):
+        if uncertainty:
+            return (dict(role='source_document_reference', basis=basis, document_kind=kind,
+                         literal_href=literal, uncertainty=uncertainty) if kind else None)
         result = dict(url=target, role=role, basis=basis)
         if kind:
             result['document_kind'] = kind
@@ -503,7 +673,7 @@ def related_page(anchor, page_url):
         if re.search(r'\bnot yet available\b', unavailable_text, re.I):
             return purpose('unavailable', 'publisher_unavailable_label')
     if not direct and parts.hostname == 'docs.house.gov' and re.fullmatch(
-            r'/Committee/Calendar/By(?:Event|Day)\.aspx', parts.path, re.I):
+            r'/Committee/(?:Calendar/By(?:Event|Day)\.aspx|Committees\.aspx|Search/[^/]+/?)', parts.path, re.I):
         result = dict(url=target, role='repository', basis='publisher_repository_url')
         for key, values in parse_qs(parts.query).items():
             field = {'eventid': 'event_ids', 'dayid': 'day_ids'}.get(key.lower())
@@ -515,18 +685,26 @@ def related_page(anchor, page_url):
     # heading or the generic "click here" download rule.
     if not direct:
         generic_prompt = bool(re.fullmatch(r'(?:please )?(?:click )?here[.!]?', label, re.I))
-        if (re.fullmatch(r'(?:register(?: here)?|registration)', label, re.I)
-                or (generic_prompt and len(line['anchors']) == 1 and re.search(r'\b(?:to register|register here)\b', line['text'], re.I))):
+        if re.match(r'^please click here to submit (?:a |your )?(?:statement|testimony|letter)\b', label, re.I):
+            return purpose('submission_intake', 'publisher_submission_prompt')
+        if (re.fullmatch(r'(?:(?:pre[ -]?)?register(?: here| now)?|registration)', label, re.I)
+                or (generic_prompt and re.search(r'\b(?:to register|register here)\s*,?\s*$', clause['before'], re.I))):
             return purpose('registration', 'publisher_registration_label')
-        media_label = re.fullmatch(r'(?:(?:watch|view) (?:the )?(?:archived |full )?)?(?:webcast|video|live[ -]?stream)|(?:YouTube|USTREAM)(?: channel)?|watch', label, re.I)
+        media_label = re.fullmatch(r'(?:(?:watch|view) (?:the )?(?:archived |full )?)?(?:webcast|video|live[ -]?stream)|(?:hearing )?audio|(?:YouTube|USTREAM)(?: channel)?|watch', label, re.I)
         media_line = ((generic_prompt or re.search(r'\bUSTREAM site\b', label, re.I)) and len(line['anchors']) == 1 and re.search(
             r'\b(?:watch (?:the )?(?:archived )?video|view the full video|live[ -]?stream(?:ed)?|livestream(?:ed)?)\b', line['text'], re.I))
         if media_label or media_line:
             return purpose('media', 'publisher_media_label')
-        if re.match(r'(?:hearing recap|press release)\s*:', label, re.I):
+        if (re.match(r'(?:hearing recap|press release)\s*:', label, re.I)
+                or (generic_prompt and re.search(r'\bfor more information on (?:the|this) bill\s*,?\s*$', clause['before'], re.I))
+                or re.fullmatch(r'(?:\w+\s+){0,4}witnesses (?:last week|at (?:the|a) (?:previous|prior) hearing)', label, re.I)):
             return purpose('related_coverage', 'publisher_coverage_label')
     if kind := explicit_document_kind(label):
         return document(kind, 'publisher_document_label')
+    if uncertainty and re.fullmatch(r'Testimony', label, re.I):
+        return document('witness statement', 'publisher_document_label')
+    if kind := local_document_kind(anchor, label, clause):
+        return document(kind, 'publisher_local_designation')
     table_label = local_table_label(anchor)
     if label and table_label:
         kind = explicit_document_kind(table_label)
@@ -541,13 +719,47 @@ def related_page(anchor, page_url):
         local_classes.update((ancestor.get('class') or '').split())
         if ancestor.tag in {'section', 'article', 'main'}:
             break
-    witness_field = bool(local_classes & {'evo-hearing__field-evo-witnesses', 'witness-document'})
-    statement_label = re.search(r'\b(?:state?ment|testimony)\b', label, re.I)
-    if ((witness_field or witness_section) and statement_label
-            and literal_document_kind(label, target) in {'member statement', 'witness statement'}):
-        return document('witness statement', 'publisher_witness_field' if witness_field else 'publisher_witness_section')
+    # Bold names inside an explicit witness field are participant labels, not
+    # a new document section. Keep real headings (including Key Documents)
+    # and separately enclosed sections as boundaries.
+    name_heading = False
+    if len(heading_nodes) == 1 and heading_nodes[0].tag in {'strong', 'b'}:
+        name = witness(heading)['name']
+        paragraphs = heading_nodes[0].xpath('ancestor::p[1]')
+        described = bool(paragraphs and len(' '.join(paragraphs[0].text_content().split())) > len(heading) + 2)
+        name_heading = (is_name(name) and not re.search(r'\b(?:documents?|materials?|files?|resources?|information|organizations?)\b', name, re.I)
+                        and (name != heading or described))
+    witness_field = bool((not headings or witness_section or name_heading) and local_classes & {
+        'view-id-max_witness_list', 'evo-hearing__field-evo-witnesses', 'witness-document'})
+    opening_prompt = (re.fullmatch(r'here', label, re.I)
+                      and re.match(r'^(?:Read|View)\b.{0,100}\bopening state?ment$', clause['before'], re.I))
+    statement_label = opening_prompt or re.search(r'\b(?:state?ment|testimony|opening remarks)\b', label, re.I)
+    statement_document = statement_label and literal_document_kind(label, target or '') in {
+        'other', 'member statement', 'witness statement'}
+    if opening_prompt:
+        # Occupational titles in generic prompts do not change a participant's
+        # role. Reuse source metadata's nearest named card, within this section.
+        for ancestor in ancestors:
+            if identity := participant_card_identity(ancestor):
+                _, raw_name = identity
+                if (not headings or witness_section or name_heading
+                        or witness(heading)['name'] == witness(raw_name)['name']):
+                    member = participant_card_role(ancestor) == 'member'
+                    return document('member statement' if member else 'witness statement',
+                                    'publisher_member_card' if member else 'publisher_witness_card')
+                break
+            if ancestor.tag in {'section', 'article', 'main'}:
+                break
+    # A participant field owns its statement. Outside that bounded field, a
+    # local chairman prompt can follow a witness list in the same paragraph.
+    if witness_field and statement_document:
+        return document('witness statement', 'publisher_witness_field')
+    if opening_prompt and re.search(r'\b(?:chairman|chairwoman|ranking member|representative|rep|senator|sen)\b', clause['before'], re.I):
+        return document('member statement', 'publisher_local_designation')
+    if witness_section and statement_document:
+        return document('witness statement', 'publisher_witness_section')
     if ('witness-document' in local_classes and re.fullmatch(r'document', label, re.I)
-            and literal_document_kind(label, target) in {'other', 'member statement', 'witness statement'}):
+            and literal_document_kind(label, target or '') in {'other', 'member statement', 'witness statement'}):
         return document('witness statement', 'publisher_witness_document_field')
     # An explicit filename designation is useful with a statement label;
     # generic Wstate tokens alone do not establish witness ownership.
@@ -577,24 +789,28 @@ def related_page(anchor, page_url):
            for ancestor in ancestors):
         return document('transcript', 'publisher_transcript_field')
     if TRANSCRIPT_LABEL.fullmatch(label):
-        return dict(url=target, role='document', document_kind='transcript', basis='publisher_document_label')
+        return document('transcript', 'publisher_document_label')
     # The explicit section also qualifies empty publisher anchors; requiring
     # visible text here would discard their existing occurrence context.
     if re.fullmatch(r'(?:opening|member) statements?', heading, re.I):
         return document('member statement', 'publisher_section_heading')
+    if re.fullmatch(r'(?:hearing|meeting) (?:advisory|notice)', heading, re.I):
+        return document('hearing notice', 'publisher_section_heading')
     # Individually cited research has a specific publication route and local
     # study/report prose. A publication index or an organization home does not.
     research_path = (re.fullmatch(r'/(?:science/article/pii/[^/]+|article/[^/]+/fulltext|publications/[^/]+)/?', parts.path)
                      or (parts.hostname in {'gao.gov', 'www.gao.gov'} and re.fullmatch(r'/products/[^/]+/?', parts.path)))
     if research_path and re.search(r'\b(?:study|research|report)\b', line['text'], re.I):
         return document('support document', 'publisher_research_citation')
-    if re.search(r'\b(?:(?:opening|prepared) state?ment|written testimony)\b', label, re.I):
+    if re.search(r'\b(?:(?:opening|prepared) state?ment|opening remarks|written testimony)\b', label, re.I):
         return document('witness statement' if re.search(r'written testimony', label, re.I) else 'member statement',
                         'publisher_document_label')
     if headings and headings == [table_column_heading(anchor)]:
         return document(section_document_kind({'headings': headings}), 'publisher_document_column')
     if len(line['anchors']) == 1 and re.match(r'^Read\b.{0,100}\bopening statement\b', line['text'], re.I):
         return document('member statement', 'publisher_paragraph_label')
+    if uncertainty:
+        return None
     submission_section = len(headings) == 1 and re.fullmatch(r'submissions? for (?:the )?record\s*:?', headings[0], re.I)
     # Field evidence must be local. Never inherit a role through a separate
     # section or override its heading with an outer witness container.
@@ -607,8 +823,7 @@ def related_page(anchor, page_url):
                 and parts.hostname == urlsplit(page_url).hostname and re.fullmatch(r'/node/\d+/?', parts.path)):
             return dict(url=target, role='document', document_kind='support document',
                         basis='publisher_submission_section', headings=headings)
-        if (not headings or witness_section) and classes & {
-                'view-id-max_witness_list', 'evo-hearing__field-evo-witnesses'}:
+        if witness_field and classes & {'view-id-max_witness_list', 'evo-hearing__field-evo-witnesses'}:
             return dict(url=target, role='witness_reference', basis='publisher_witness_field', headings=headings)
         if ancestor.tag in {'section', 'article', 'main'}:
             break
@@ -763,12 +978,7 @@ def source_details_tree(root, url, people, *, plain=False, include_link=None, ex
     is never enough to attach a document; it must be inside a recognized card
     containing exactly one already parsed witness.
     """
-    def has(node, token):
-        return token in (node.get("class") or "").split()
-    def nodes(node, token):
-        return [child for child in node.iter() if has(child, token)]
-    def value(node):
-        return text(dom.tostring(node, encoding="unicode", with_tail=False))
+    has, nodes, value = _has_class, _class_nodes, _node_value
     # Matching uses a set of text lines; retained evidence must also preserve
     # paragraph/panel order and repeated text. Scripts and styles are not prose.
     blocks = {"div", "p", "li", "ul", "ol", "h1", "h2", "h3", "h4", "h5", "h6", "tr", "td", "th", "table",
@@ -817,38 +1027,11 @@ def source_details_tree(root, url, people, *, plain=False, include_link=None, ex
         by_name.setdefault(row["name"], []).append(index)
     cards = []
     for node in root.iter():
-        if not isinstance(node.tag, str):
-            continue
-        family = next((token for token in ("capigacr-widget-card", "vcard", "paragraph--witness",
-            "field-collection-item-field-hearing-new-witness", "jet-listing-grid__item") if has(node, token)), None)
-        if not family and node.tag == "li" and len(nodes(node, "witness-content")) == 1:
-            family = "witness-content"
-        if not family and node.tag == "li" and has(node, "list-group-item") and (nodes(node, "full-name") or nodes(node, "person")):
-            family = "list-group-item"
-        if family:
-            cards.append((node, family))
+        if identity := participant_card_identity(node):
+            cards.append((node, *identity))
     witnesses_by_node, witness_metadata, cards_by_node = {}, {}, {}
-    for card, family in cards:
-        selectors = {"capigacr-widget-card": "capigacr-widget-card__title", "vcard": "fn",
-                     "paragraph--witness": "witness__field-name", "field-collection-item-field-hearing-new-witness": "group-header",
-                     "list-group-item": "full-name"}
-        if family in selectors:
-            names = nodes(card, selectors[family])
-            if not names and family == "list-group-item":
-                names = nodes(card, "person")
-            raw_name = " ".join(value(node) for node in names)
-            if family == "vcard":
-                raw_name = " ".join(value(node) for node in nodes(card, "honorific-prefix")) + " " + raw_name
-        elif family == "jet-listing-grid__item":
-            raw_name = " ".join(value(node) for node in card.iter() if node.tag in ("h3", "h4") and has(node, "jet-listing-dynamic-field__content"))
-        else:
-            headings = card.xpath(".//h2|.//h3|.//h4|.//h5")
-            above = card.xpath(".//p")
-            raw_name = value(headings[-1]) if headings else (value(above[0]) if above else "")
-            raw_name = re.sub(r"^\d+\.\s*", "", raw_name)
-        matches = by_name.get(witness(raw_name)["name"], []) if raw_name.strip() else []
-        if not raw_name.strip():
-            continue
+    for card, family, raw_name in cards:
+        matches = by_name.get(witness(raw_name)["name"], [])
         fields = []
         field_classes = {"title", "org", "occupation", "organization", "member-detail-item", "locality", "region",
                          "witness__field-position", "witness__field-organization", "jet-listing-dynamic-field__content"}
@@ -859,9 +1042,9 @@ def source_details_tree(root, url, people, *, plain=False, include_link=None, ex
                 if written := value(node):
                     fields.append({"class": node.get("class", ""), "text": written})
         metadata = {"layout": family, "name": raw_name.strip(), "text": value(card), "attributes": dict(card.attrib), "fields": fields}
+        if role := participant_card_role(card):
+            metadata['role'] = role
         for ancestor in card.iterancestors():
-            if has(ancestor, "Hearing__additionalContentSection--members"):
-                metadata["role"] = "member"
             if has(ancestor, "capigacr-widget-card__panel-section"):
                 headings = nodes(ancestor, "capigacr-widget-card__panel-section-title")
                 if len(headings) == 1:

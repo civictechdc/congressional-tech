@@ -122,7 +122,7 @@ def publisher_document_link(anchor, page_url=''):
 def non_document_link(anchor, page_url):
     """A named media/intake/repository link overrides generic download prompts."""
     return (related_page(anchor, page_url) or {}).get('role') in {
-        'media', 'registration', 'repository', 'related_coverage', 'unavailable'}
+        'media', 'registration', 'submission_intake', 'repository', 'related_coverage', 'unavailable', 'source_document_reference'}
 
 
 def content_trees(body):

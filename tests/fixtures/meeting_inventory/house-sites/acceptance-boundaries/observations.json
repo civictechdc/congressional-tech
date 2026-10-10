@@ -1,0 +1,581 @@
+{
+  "schema": "retained-observation-preservation-v1",
+  "basis": "Pinned baseline observations; purpose and kind changes are checked separately. These four pages are within the original 850.",
+  "baseline_sha256": "7492c6b60e13abef16d5984604700aafddd41bdb0c6c2444678da406cf34e0e8",
+  "pages": {
+    "p0064": {
+      "witnesses": [],
+      "occurrences": {
+        "https://smallbusiness.house.gov/uploadedfiles/2-22-2016_friedman_testimony.pdf": [
+          {
+            "labels": [
+              "Testimony"
+            ],
+            "attributes": [
+              {
+                "href": "/uploadedfiles/2-22-2016_friedman_testimony.pdf"
+              }
+            ],
+            "container_attributes": [],
+            "witness_indexes": [],
+            "headings": [],
+            "line_text": "Testimony"
+          }
+        ],
+        "https://smallbusiness.house.gov/uploadedfiles/2-22-2016_bland_testimony.pdf": [
+          {
+            "labels": [
+              "Testimony"
+            ],
+            "attributes": [
+              {
+                "href": "/uploadedfiles/2-22-2016_bland_testimony.pdf"
+              }
+            ],
+            "container_attributes": [],
+            "witness_indexes": [],
+            "headings": [],
+            "line_text": "Testimony"
+          }
+        ],
+        "https://smallbusiness.house.gov/UploadedFiles/2-22-2016_Bland_Disclosure.pdf": [
+          {
+            "labels": [
+              "Disclosure"
+            ],
+            "attributes": [
+              {
+                "href": "/UploadedFiles/2-22-2016_Bland_Disclosure.pdf"
+              }
+            ],
+            "container_attributes": [],
+            "witness_indexes": [],
+            "headings": [],
+            "line_text": "Disclosure"
+          }
+        ],
+        "https://smallbusiness.house.gov/uploadedfiles/2-22-2016_dimarino_testimony.pdf": [
+          {
+            "labels": [
+              "Testimony"
+            ],
+            "attributes": [
+              {
+                "href": "/uploadedfiles/2-22-2016_dimarino_testimony.pdf"
+              }
+            ],
+            "container_attributes": [],
+            "witness_indexes": [],
+            "headings": [],
+            "line_text": "Testimony"
+          }
+        ],
+        "https://smallbusiness.house.gov/UploadedFiles/2-22-16_DiMarino_Disclosure.pdf": [
+          {
+            "labels": [
+              "Disclosure"
+            ],
+            "attributes": [
+              {
+                "href": "/UploadedFiles/2-22-16_DiMarino_Disclosure.pdf"
+              }
+            ],
+            "container_attributes": [],
+            "witness_indexes": [],
+            "headings": [],
+            "line_text": "Disclosure"
+          }
+        ],
+        "https://smallbusiness.house.gov/uploadedfiles/2-22-2016_davis_testimony.pdf": [
+          {
+            "labels": [
+              "Testimony"
+            ],
+            "attributes": [
+              {
+                "href": "/uploadedfiles/2-22-2016_davis_testimony.pdf"
+              }
+            ],
+            "container_attributes": [],
+            "witness_indexes": [],
+            "headings": [],
+            "paragraph_text": "Ms. Nekisia Davis Founder and Owner Early Bird Foods & Co., LLC. Brooklyn, NY Testimony Disclosure",
+            "line_text": "Testimony"
+          }
+        ],
+        "https://smallbusiness.house.gov/uploadedfiles/2-22-2016_jacobs_testimony.pdf": [
+          {
+            "labels": [
+              "Testimony"
+            ],
+            "attributes": [
+              {
+                "href": "/uploadedfiles/2-22-2016_jacobs_testimony.pdf"
+              }
+            ],
+            "container_attributes": [],
+            "witness_indexes": [],
+            "headings": [],
+            "paragraph_text": "Mr. Edward Jacobs FXE Industries Brooklyn Navy Yard Brooklyn, NY Testimony Disclosure Hearing Materials Hearing Memo Hearing Notice Witness List",
+            "line_text": "Testimony"
+          }
+        ],
+        "https://smallbusiness.house.gov/uploadedfiles/2-22-16_full_field_hearing_memo.pdf": [
+          {
+            "labels": [
+              "Hearing Memo"
+            ],
+            "attributes": [
+              {
+                "href": "/uploadedfiles/2-22-16_full_field_hearing_memo.pdf"
+              }
+            ],
+            "container_attributes": [],
+            "witness_indexes": [],
+            "headings": [],
+            "paragraph_text": "Mr. Edward Jacobs FXE Industries Brooklyn Navy Yard Brooklyn, NY Testimony Disclosure Hearing Materials Hearing Memo Hearing Notice Witness List",
+            "line_text": "Hearing Memo"
+          }
+        ],
+        "https://smallbusiness.house.gov/uploadedfiles/2-22-2016_full_notice.pdf": [
+          {
+            "labels": [
+              "Hearing Notice"
+            ],
+            "attributes": [
+              {
+                "href": "/uploadedfiles/2-22-2016_full_notice.pdf"
+              }
+            ],
+            "container_attributes": [],
+            "witness_indexes": [],
+            "headings": [],
+            "paragraph_text": "Mr. Edward Jacobs FXE Industries Brooklyn Navy Yard Brooklyn, NY Testimony Disclosure Hearing Materials Hearing Memo Hearing Notice Witness List",
+            "line_text": "Hearing Notice"
+          }
+        ],
+        "https://smallbusiness.house.gov/uploadedfiles/2-22-2016_full_witness_list.pdf": [
+          {
+            "labels": [
+              "Witness List"
+            ],
+            "attributes": [
+              {
+                "href": "/uploadedfiles/2-22-2016_full_witness_list.pdf"
+              }
+            ],
+            "container_attributes": [],
+            "witness_indexes": [],
+            "headings": [
+              "Hearing Notice"
+            ],
+            "paragraph_text": "Mr. Edward Jacobs FXE Industries Brooklyn Navy Yard Brooklyn, NY Testimony Disclosure Hearing Materials Hearing Memo Hearing Notice Witness List",
+            "line_text": "Witness List"
+          }
+        ]
+      }
+    },
+    "p0562": {
+      "witnesses": [],
+      "occurrences": {
+        "https://armedservices.house.gov/sites/evo-subsites/republicans-armedservices.house.gov/files/2023%20SOLIC-USSOCOM%20Posture%20-%20Maier-Fenton%20-%20Statement%20(FINAL).pdf": [
+          {
+            "labels": [
+              "Mr. Christopher Maier Opening Statements"
+            ],
+            "attributes": [
+              {
+                "href": "/sites/evo-subsites/republicans-armedservices.house.gov/files/2023%20SOLIC-USSOCOM%20Posture%20-%20Maier-Fenton%20-%20Statement%20(FINAL).pdf"
+              }
+            ],
+            "container_attributes": [],
+            "witness_indexes": [],
+            "headings": [],
+            "paragraph_text": "Mr. Christopher Maier Opening Statements",
+            "line_text": "Mr. Christopher Maier Opening Statements"
+          },
+          {
+            "labels": [
+              "General Bryan P. Fenton, United States Army Opening Statements"
+            ],
+            "attributes": [
+              {
+                "href": "/sites/evo-subsites/republicans-armedservices.house.gov/files/2023%20SOLIC-USSOCOM%20Posture%20-%20Maier-Fenton%20-%20Statement%20(FINAL).pdf"
+              }
+            ],
+            "container_attributes": [],
+            "witness_indexes": [],
+            "headings": [
+              "Mr. Christopher Maier Opening Statements"
+            ],
+            "paragraph_text": "General Bryan P. Fenton, United States Army Opening Statements",
+            "line_text": "General Bryan P. Fenton, United States Army Opening Statements"
+          }
+        ]
+      }
+    },
+    "p0686": {
+      "witnesses": [
+        {
+          "name": "Simone Ledeen",
+          "honorific": "Ms.",
+          "position": "",
+          "organization": "",
+          "page": "https://foreignaffairs.house.gov/committee-activity/hearings/iran-s-proxy-in-yemen-the-houthi-threat-middle-east-stability-global-shipping-and-u-s-servicemembers"
+        }
+      ],
+      "occurrences": {
+        "https://foreignaffairs.house.gov/sites/evo-subsites/republicans-foreignaffairs.house.gov/files/migrated/uploads/2024/02/2.14-Hearing-Notice79.pdf": [
+          {
+            "labels": [
+              "Hearing notice"
+            ],
+            "attributes": [
+              {
+                "href": "//foreignaffairs.house.gov/sites/evo-subsites/republicans-foreignaffairs.house.gov/files/migrated/uploads/2024/02/2.14-Hearing-Notice79.pdf"
+              }
+            ],
+            "container_attributes": [
+              {
+                "data-off-canvas-main-canvas": ""
+              }
+            ],
+            "witness_indexes": [],
+            "headings": [
+              "Documents:"
+            ],
+            "line_text": "Hearing notice"
+          }
+        ],
+        "https://docs.house.gov/meetings/FA/FA13/20240214/116760/HHRG-118-FA13-Wstate-LedeenS-20240214.pdf": [
+          {
+            "labels": [
+              "Ms. Simone Ledeen"
+            ],
+            "attributes": [
+              {
+                "href": "https://docs.house.gov/meetings/FA/FA13/20240214/116760/HHRG-118-FA13-Wstate-LedeenS-20240214.pdf"
+              }
+            ],
+            "container_attributes": [],
+            "witness_indexes": [
+              0
+            ],
+            "headings": [
+              "Witnesses"
+            ],
+            "paragraph_text": "Ms. Simone Ledeen Former Deputy Assistant Secretary of Defense for the Middle East U.S. Department of Defense",
+            "line_text": "Ms. Simone Ledeen",
+            "witness_card": {
+              "layout": "plain-witness-line",
+              "name": "Ms. Simone Ledeen",
+              "text": "Ms. Simone Ledeen",
+              "attributes": {
+                "href": "https://docs.house.gov/meetings/FA/FA13/20240214/116760/HHRG-118-FA13-Wstate-LedeenS-20240214.pdf"
+              },
+              "fields": []
+            }
+          }
+        ],
+        "https://docs.house.gov/meetings/FA/FA13/20240214/116760/HHRG-118-FA13-Wstate-PollackK-20240214.pdf": [
+          {
+            "labels": [
+              "Dr. Kenneth Pollack"
+            ],
+            "attributes": [
+              {
+                "href": "https://docs.house.gov/meetings/FA/FA13/20240214/116760/HHRG-118-FA13-Wstate-PollackK-20240214.pdf"
+              }
+            ],
+            "container_attributes": [
+              {
+                "data-off-canvas-main-canvas": ""
+              }
+            ],
+            "witness_indexes": [],
+            "headings": [
+              "Ms. Simone Ledeen"
+            ],
+            "paragraph_text": "Dr. Kenneth Pollack Former CIA Analyst and NSC Director for the Persian Gulf",
+            "line_text": "Dr. Kenneth Pollack"
+          }
+        ],
+        "https://docs.house.gov/meetings/FA/FA13/20240214/116760/HHRG-118-FA13-Wstate-AltermanJ-20240214.pdf": [
+          {
+            "labels": [
+              "Dr. Jon Alterman"
+            ],
+            "attributes": [
+              {
+                "href": "https://docs.house.gov/meetings/FA/FA13/20240214/116760/HHRG-118-FA13-Wstate-AltermanJ-20240214.pdf"
+              }
+            ],
+            "container_attributes": [
+              {
+                "data-off-canvas-main-canvas": ""
+              }
+            ],
+            "witness_indexes": [],
+            "headings": [
+              "Dr. Kenneth Pollack"
+            ],
+            "paragraph_text": "Dr. Jon Alterman Senior Vice President Center for Strategic and International Studies",
+            "line_text": "Dr. Jon Alterman"
+          }
+        ]
+      }
+    },
+    "p0759": {
+      "witnesses": [
+        {
+          "name": "John B. Wood",
+          "honorific": "Mr.",
+          "position": "",
+          "organization": "",
+          "page": "https://science.house.gov/hearings?ID=CB8AE848-8CE5-4717-91D6-1BEF2DDEFDEF"
+        }
+      ],
+      "occurrences": {
+        "https://science.house.gov/sites/republicans.science.house.gov/files/documents/HHRG-114-SY15-WState-S000583-20160108.pdf": [
+          {
+            "labels": [
+              "Chairman Lamar Smith (R-Texas)"
+            ],
+            "attributes": [
+              {
+                "href": "/sites/republicans.science.house.gov/files/documents/HHRG-114-SY15-WState-S000583-20160108.pdf"
+              }
+            ],
+            "container_attributes": [],
+            "witness_indexes": [],
+            "headings": [
+              "Opening Statements"
+            ],
+            "paragraph_text": "Chairman Lamar Smith (R-Texas)",
+            "line_text": "Chairman Lamar Smith (R-Texas)"
+          }
+        ],
+        "https://science.house.gov/sites/republicans.science.house.gov/files/documents/HHRG-114-SY15-WState-C001105-20160108.pdf": [
+          {
+            "labels": [
+              "Research and Technology Subcommittee Chairwoman Barbara Comstock (R-Va.)"
+            ],
+            "attributes": [
+              {
+                "href": "/sites/republicans.science.house.gov/files/documents/HHRG-114-SY15-WState-C001105-20160108.pdf"
+              }
+            ],
+            "container_attributes": [],
+            "witness_indexes": [],
+            "headings": [
+              "Chairman Lamar Smith (R-Texas)"
+            ],
+            "paragraph_text": "Research and Technology Subcommittee Chairwoman Barbara Comstock (R-Va.)",
+            "line_text": "Research and Technology Subcommittee Chairwoman Barbara Comstock (R-Va.)"
+          }
+        ],
+        "https://science.house.gov/sites/republicans.science.house.gov/files/documents/HHRG-114-SY15-WState-L000583-20160108.pdf": [
+          {
+            "labels": [
+              "Oversight Subcommittee Chairman Barry Loudermilk (R-Ga.)"
+            ],
+            "attributes": [
+              {
+                "href": "/sites/republicans.science.house.gov/files/documents/HHRG-114-SY15-WState-L000583-20160108.pdf"
+              }
+            ],
+            "container_attributes": [],
+            "witness_indexes": [],
+            "headings": [
+              "Research and Technology Subcommittee Chairwoman Barbara Comstock (R-Va.)"
+            ],
+            "paragraph_text": "Oversight Subcommittee Chairman Barry Loudermilk (R-Ga.)",
+            "line_text": "Oversight Subcommittee Chairman Barry Loudermilk (R-Ga.)"
+          }
+        ],
+        "https://science.house.gov/sites/republicans.science.house.gov/files/documents/HHRG-114-SY15-WState-JWood-20160108.pdf": [
+          {
+            "labels": [
+              "Mr. John B. Wood"
+            ],
+            "attributes": [
+              {
+                "href": "/sites/republicans.science.house.gov/files/documents/HHRG-114-SY15-WState-JWood-20160108.pdf"
+              }
+            ],
+            "container_attributes": [],
+            "witness_indexes": [
+              0
+            ],
+            "headings": [
+              "Witnesses"
+            ],
+            "paragraph_text": "Mr. John B. Wood Chief Executive Officer and Chairman, Telos Corporation [Truth in Testomony]",
+            "line_text": "Mr. John B. Wood",
+            "witness_card": {
+              "layout": "plain-witness-line",
+              "name": "Mr. John B. Wood",
+              "text": "Mr. John B. Wood",
+              "attributes": {
+                "href": "/sites/republicans.science.house.gov/files/documents/HHRG-114-SY15-WState-JWood-20160108.pdf"
+              },
+              "fields": []
+            }
+          }
+        ],
+        "https://science.house.gov/sites/republicans.science.house.gov/files/documents/HHRG-114-SY15-TTF-JWood-20160108.pdf": [
+          {
+            "labels": [
+              "[Truth in Testomony]"
+            ],
+            "attributes": [
+              {
+                "href": "/sites/republicans.science.house.gov/files/documents/HHRG-114-SY15-TTF-JWood-20160108.pdf"
+              }
+            ],
+            "container_attributes": [],
+            "witness_indexes": [],
+            "headings": [
+              "Mr. John B. Wood"
+            ],
+            "paragraph_text": "Mr. John B. Wood Chief Executive Officer and Chairman, Telos Corporation [Truth in Testomony]",
+            "line_text": "[Truth in Testomony]"
+          }
+        ],
+        "https://science.house.gov/sites/republicans.science.house.gov/files/documents/HHRG-114-SY15-WState-MCasado-20160108.pdf": [
+          {
+            "labels": [
+              "Dr. Martin Casado"
+            ],
+            "attributes": [
+              {
+                "href": "/sites/republicans.science.house.gov/files/documents/HHRG-114-SY15-WState-MCasado-20160108.pdf"
+              }
+            ],
+            "container_attributes": [],
+            "witness_indexes": [],
+            "headings": [
+              "Mr. John B. Wood"
+            ],
+            "paragraph_text": "Dr. Martin Casado Senior Vice President and General Manager, Networking and Security Business Unit, VMWare [Truth in Testomony]",
+            "line_text": "Dr. Martin Casado"
+          }
+        ],
+        "https://science.house.gov/sites/republicans.science.house.gov/files/documents/HHRG-114-SY15-TTF-MCasado-20160108.pdf": [
+          {
+            "labels": [
+              "[Truth in Testomony]"
+            ],
+            "attributes": [
+              {
+                "href": "/sites/republicans.science.house.gov/files/documents/HHRG-114-SY15-TTF-MCasado-20160108.pdf"
+              }
+            ],
+            "container_attributes": [],
+            "witness_indexes": [],
+            "headings": [
+              "Dr. Martin Casado"
+            ],
+            "paragraph_text": "Dr. Martin Casado Senior Vice President and General Manager, Networking and Security Business Unit, VMWare [Truth in Testomony]",
+            "line_text": "[Truth in Testomony]"
+          }
+        ],
+        "https://science.house.gov/sites/republicans.science.house.gov/files/documents/HHRG-114-SY15-WState-KSchneider-20160108.pdf": [
+          {
+            "labels": [
+              "Mr. Ken Schneider"
+            ],
+            "attributes": [
+              {
+                "href": "/sites/republicans.science.house.gov/files/documents/HHRG-114-SY15-WState-KSchneider-20160108.pdf"
+              }
+            ],
+            "container_attributes": [],
+            "witness_indexes": [],
+            "headings": [
+              "Dr. Martin Casado"
+            ],
+            "paragraph_text": "Mr. Ken Schneider Vice President of Technology Strategy, Symantec Corporation [Truth in Testomony]",
+            "line_text": "Mr. Ken Schneider"
+          }
+        ],
+        "https://science.house.gov/sites/republicans.science.house.gov/files/documents/HHRG-114-SY15-TTF-KSchneider-20160108.pdf": [
+          {
+            "labels": [
+              "[Truth in Testomony]"
+            ],
+            "attributes": [
+              {
+                "href": "/sites/republicans.science.house.gov/files/documents/HHRG-114-SY15-TTF-KSchneider-20160108.pdf"
+              }
+            ],
+            "container_attributes": [],
+            "witness_indexes": [],
+            "headings": [
+              "Mr. Ken Schneider"
+            ],
+            "paragraph_text": "Mr. Ken Schneider Vice President of Technology Strategy, Symantec Corporation [Truth in Testomony]",
+            "line_text": "[Truth in Testomony]"
+          }
+        ],
+        "https://science.house.gov/sites/republicans.science.house.gov/files/documents/HHRG-114-SY15-WState-LClinton-20160108.pdf": [
+          {
+            "labels": [
+              "Mr. Larry Clinton"
+            ],
+            "attributes": [
+              {
+                "href": "/sites/republicans.science.house.gov/files/documents/HHRG-114-SY15-WState-LClinton-20160108.pdf"
+              }
+            ],
+            "container_attributes": [],
+            "witness_indexes": [],
+            "headings": [
+              "Mr. Ken Schneider"
+            ],
+            "paragraph_text": "Mr. Larry Clinton President and Chief Executive Officer, Internet Security Alliance [Truth in Testomony]",
+            "line_text": "Mr. Larry Clinton"
+          }
+        ],
+        "https://science.house.gov/sites/republicans.science.house.gov/files/documents/HHRG-114-SY15-TTF-LClinton-20160108_0.pdf": [
+          {
+            "labels": [
+              "[Truth in Testomony]"
+            ],
+            "attributes": [
+              {
+                "href": "/sites/republicans.science.house.gov/files/documents/HHRG-114-SY15-TTF-LClinton-20160108_0.pdf"
+              }
+            ],
+            "container_attributes": [],
+            "witness_indexes": [],
+            "headings": [
+              "Mr. Larry Clinton"
+            ],
+            "paragraph_text": "Mr. Larry Clinton President and Chief Executive Officer, Internet Security Alliance [Truth in Testomony]",
+            "line_text": "[Truth in Testomony]"
+          }
+        ],
+        "https://science.house.gov/index.cfm?a=Files.serve&file_id=9870AEBA-1A63-4446-AFB0-092D495FE074": [
+          {
+            "labels": [
+              "Hearing Charter"
+            ],
+            "attributes": [
+              {
+                "href": "/index.cfm?a=Files.serve&file_id=9870AEBA-1A63-4446-AFB0-092D495FE074"
+              }
+            ],
+            "container_attributes": [],
+            "witness_indexes": [],
+            "headings": [
+              "Cybersecurity: What the Federal Government Can Learn from the Private Sector"
+            ],
+            "paragraph_text": "Hearing Charter",
+            "line_text": "Hearing Charter"
+          }
+        ]
+      }
+    }
+  }
+}

@@ -190,6 +190,18 @@ def test_retained_house_layouts_keep_event_dates_and_document_links(row):
     assert content_bytes(page['raw_html']) == body
 
 
+def test_retained_agriculture_chair_statement_has_local_publisher_designation():
+    fixture = Path(__file__).parent / 'fixtures/meeting_inventory/house-sites/agriculture.html'
+    body = fixture.read_bytes()
+    page = parse_event_page(body, 'https://agriculture.house.gov/calendar/EventSingle.aspx?EventID=8264')
+    target = 'https://agriculture.house.gov/news/documentsingle.aspx?DocumentID=8267'
+    assert ['member statement', 'here', target] in page['documents']
+    occurrence, = page['document_metadata'][target]['occurrences']
+    assert f'Read Chairman Thompson\'s opening statement <a href="{target}">here</a>.'.encode() in body
+    assert occurrence['related_page']['basis'] == 'publisher_local_designation'
+    assert occurrence['attributes'][0]['href'] == target
+
+
 def test_browser_style_json_body_reaches_shared_transport(monkeypatch):
     from congress_api.acquisition.house import request
     from congress_api.transport import http

@@ -1,0 +1,305 @@
+{
+  "schema": "house-correction-boundary-fixtures-v1",
+  "basis": "Parent850v1 diagnostic differences checked against retained publisher contexts. These are exposed regression cases, not fresh acceptance.",
+  "original_audit_preserved": true,
+  "non850_new_cases": [],
+  "pages": [
+    {
+      "sample_id": "p0064",
+      "url": "https://smallbusiness.house.gov/calendar/eventsingle.aspx?EventID=398844",
+      "file": "p0064.html.gz",
+      "body_sha256": "30cc1762bf2d8018e061bacafd1e9572de45fcb76a1cab6f454be40f2f1a654b",
+      "gzip_sha256": "a42eb8768444c918e68cdc4da9f7df6485268e6a8b400c62a0935f441bb59124",
+      "expected_documents": [
+        [
+          "other",
+          "Witness List",
+          "https://smallbusiness.house.gov/uploadedfiles/2-22-2016_full_witness_list.pdf"
+        ]
+      ],
+      "excluded_targets": [
+        "https://www.youtube.com/watch?v=g7Zubj6Ctl4"
+      ]
+    },
+    {
+      "sample_id": "p0154",
+      "url": "https://appropriations.house.gov/events/hearings/federal-communications-commission-budget-request-fy2021",
+      "file": "p0154.html.gz",
+      "body_sha256": "17e14c716c8fde0b8619fe0010faa0feb2d0ea86679de92b205d1dd3b09bf018",
+      "gzip_sha256": "3d6a3d380e7b0231f4e3b54863942f6f3e0caf2174f272acab6f7bc6b9931eb2",
+      "expected_documents": [
+        [
+          "witness statement",
+          "Pai Opening Statement",
+          "http://docs.house.gov/meetings/AP/AP23/20200311/110696/HHRG-116-AP23-Wstate-PaiA-20200311.pdf"
+        ],
+        [
+          "witness statement",
+          "Rosenworcel Opening Statement",
+          "http://docs.house.gov/meetings/AP/AP23/20200311/110696/HHRG-116-AP23-Wstate-RosenworcelJ-20200311.pdf"
+        ]
+      ],
+      "excluded_targets": []
+    },
+    {
+      "sample_id": "p0201",
+      "url": "https://democrats-financialservices.house.gov/events/eventsingle.aspx?EventID=400919",
+      "file": "p0201.html.gz",
+      "body_sha256": "9161911c53b6874b0eebb873cf018ab41c47338016d48e641b37ec899764de4a",
+      "gzip_sha256": "d8e1f9460b36ee147f6c02cb429e1358e923a3bc723a330286399738ffaa8aa2",
+      "expected_documents": [],
+      "excluded_targets": [
+        "https://democrats-financialservices.house.gov/resources/truth-in-testimony.htm"
+      ]
+    },
+    {
+      "sample_id": "p0226",
+      "url": "https://foreignaffairs.house.gov/committee-activity/hearings/subcommittee-hearing-the-dangers-reporting-human-rights",
+      "file": "p0226.html.gz",
+      "body_sha256": "e3dfb611bfbb7feee3cbf80ef680d016994fe0ad4f2c89938aaf0d0557529fb4",
+      "gzip_sha256": "4dc29cfcf05157024500cea7d5e10cdbc71712e6650436156dd32719b307cf37",
+      "expected_documents": [
+        [
+          "witness statement",
+          "full text of statement",
+          "https://docs.house.gov/meetings/FA/FA16/20190516/109482/HHRG-116-FA16-Wstate-CengizH-20190516.pdf"
+        ],
+        [
+          "witness statement",
+          "full text of statement",
+          "https://docs.house.gov/meetings/FA/FA16/20190516/109482/HHRG-116-FA16-Wstate-HojaG-20190516.pdf"
+        ],
+        [
+          "witness statement",
+          "full text of statement",
+          "https://docs.house.gov/meetings/FA/FA16/20190516/109482/HHRG-116-FA16-Wstate-RepucciS-20190516.pdf"
+        ],
+        [
+          "witness statement",
+          "full text of statement",
+          "https://docs.house.gov/meetings/FA/FA16/20190516/109482/HHRG-116-FA16-Wstate-SimonJ-20190516.pdf"
+        ]
+      ],
+      "excluded_targets": []
+    },
+    {
+      "sample_id": "p0291",
+      "url": "https://democrats-financialservices.house.gov/events/eventsingle.aspx?EventID=398894",
+      "file": "p0291.html.gz",
+      "body_sha256": "d187158b8dc1e6927805766da75c26359ad3868426f20c8022d14346374a2fb0",
+      "gzip_sha256": "0552c8597231363d3af77fd9f8dd32cacf124531f14b1cac2a9b03a51bf51e1b",
+      "expected_documents": [],
+      "excluded_targets": [
+        "https://democrats-financialservices.house.gov/resources/truth-in-testimony.htm"
+      ]
+    },
+    {
+      "sample_id": "p0316",
+      "url": "https://democrats-financialservices.house.gov/events/eventsingle.aspx?EventID=407639",
+      "file": "p0316.html.gz",
+      "body_sha256": "4d2b99727fc02cbc4bdd151566667ad717e0badcad637bd5f9dfb555deae7f87",
+      "gzip_sha256": "628451c0356123130f7cae113e1297506222f1e517e4d6ac519ce58fbad14bca",
+      "expected_documents": [],
+      "excluded_targets": [
+        "https://democrats-financialservices.house.gov/resources/truth-in-testimony.htm"
+      ]
+    },
+    {
+      "sample_id": "p0354",
+      "url": "https://democrats-appropriations.house.gov/events/hearings/department-of-the-treasury-budget-request-for-fy2021",
+      "file": "p0354.html.gz",
+      "body_sha256": "04a56b1602bfe72c21e992fbe3dde1ebbc3d3d9c4b7ca0e0d27fd2cab742f2fb",
+      "gzip_sha256": "c4d68f8d67a5d73ca959f6fee7ad82f244b0a62592b276d38863bf025f5afa6f",
+      "expected_documents": [
+        [
+          "witness statement",
+          "Mnuchin Statement",
+          "http://docs.house.gov/meetings/AP/AP23/20200304/110615/HHRG-116-AP23-Wstate-MnuchinS-20200304.pdf"
+        ]
+      ],
+      "excluded_targets": []
+    },
+    {
+      "sample_id": "p0393",
+      "url": "https://democrats-financialservices.house.gov/events/eventsingle.aspx?EventID=400240",
+      "file": "p0393.html.gz",
+      "body_sha256": "5537328f574bd2a9d9cf7ba6e4cc9c223dc7966c7c8da1ca5e620b603a24f8fb",
+      "gzip_sha256": "04461be623a3173dd9613db11b8653cfcd779390c8eb0b0fba51c8c9268384e2",
+      "expected_documents": [],
+      "excluded_targets": [
+        "https://democrats-financialservices.house.gov/resources/truth-in-testimony.htm"
+      ]
+    },
+    {
+      "sample_id": "p0405",
+      "url": "https://democrats-financialservices.house.gov/events/eventsingle.aspx?EventID=400257",
+      "file": "p0405.html.gz",
+      "body_sha256": "b6eb7bfcddf15c49bfd0608f1a4dc562abf7adce2e7e6d38ce7d9309bc6ff483",
+      "gzip_sha256": "c86544427f6851bec74109ece2cc7c37cdc1c2ca259064c898b36245bf6dc022",
+      "expected_documents": [],
+      "excluded_targets": [
+        "https://democrats-financialservices.house.gov/resources/truth-in-testimony.htm"
+      ]
+    },
+    {
+      "sample_id": "p0554",
+      "url": "https://foreignaffairs.house.gov/committee-activity/hearings/the-historic-american-alliance-with-europe",
+      "file": "p0554.html.gz",
+      "body_sha256": "b3758da41d0f8957cf28c5922590d9d4db41e7c0dbfe6996c3827da4c86b9568",
+      "gzip_sha256": "4ab93b4e9a771b0220a55bcc75028e0c4e398ffda5d9434c632a0a8ba0dcb48e",
+      "expected_documents": [
+        [
+          "witness statement",
+          "full text of statement",
+          "https://docs.house.gov/meetings/FA/FA14/20190326/109187/HHRG-116-FA14-Wstate-BrandsH-20190326.pdf"
+        ],
+        [
+          "witness statement",
+          "full text of statement",
+          "https://docs.house.gov/meetings/FA/FA14/20190326/109187/HHRG-116-FA14-Wstate-BurnsN-20190326.pdf"
+        ],
+        [
+          "witness statement",
+          "full text of statement",
+          "https://docs.house.gov/meetings/FA/FA14/20190326/109187/HHRG-116-FA14-Wstate-ConleyH-20190326.pdf"
+        ],
+        [
+          "witness statement",
+          "full text of statement",
+          "https://docs.house.gov/meetings/FA/FA14/20190326/109187/HHRG-116-FA14-Wstate-WormuthC-20190326.pdf"
+        ]
+      ],
+      "excluded_targets": []
+    },
+    {
+      "sample_id": "p0563",
+      "url": "https://democrats-waysandmeans.house.gov/legislation/hearings/human-resources-subcommittee-hearing-increasing-adoptions-foster-care",
+      "file": "p0563.html.gz",
+      "body_sha256": "9e194a30d449bfc6f370e7dfbfba2981dd5baf178b99350117455807fc089168",
+      "gzip_sha256": "0244991736994801581bd848421d4a8b9fee6db86d4fc5143bb574a34cea7536",
+      "expected_documents": [],
+      "excluded_targets": [
+        "https://democrats-waysandmeans.house.gov/committeesubmissions/"
+      ]
+    },
+    {
+      "sample_id": "p0704",
+      "url": "https://democrats-financialservices.house.gov/events/eventsingle.aspx?EventID=401846",
+      "file": "p0704.html.gz",
+      "body_sha256": "c7a4416555e6e519d99d3a621c21a100e93b10c82dec319a37a52ba35e2e1522",
+      "gzip_sha256": "316382b1185affa0576f2d76cd24fea6315ce820c2cdf1aa83c5b6e5ac146eca",
+      "expected_documents": [],
+      "excluded_targets": [
+        "https://democrats-financialservices.house.gov/resources/truth-in-testimony.htm"
+      ]
+    },
+    {
+      "sample_id": "p0739",
+      "url": "https://democrats-appropriations.house.gov/events/hearings/department-of-the-treasury-oversight-hearing",
+      "file": "p0739.html.gz",
+      "body_sha256": "345c26606aa921ab2b5f759d494141ad2d4f5830c4b30b376da98c25575b0608",
+      "gzip_sha256": "b0c4ae12aa40168e811f54c6c4a853753ac84390ba67adc1bcde86bf00e983d0",
+      "expected_documents": [
+        [
+          "witness statement",
+          "Yellen Statement",
+          "http://docs.house.gov/meetings/AP/AP23/20210527/112693/HHRG-117-AP23-Wstate-YellenJ-20210527.pdf"
+        ]
+      ],
+      "excluded_targets": []
+    },
+    {
+      "sample_id": "p0770",
+      "url": "https://democrats-energycommerce.house.gov/committee-activity/markups/full-committee-markup-of-health-communications-and-energy-bills-april-26",
+      "file": "p0770.html.gz",
+      "body_sha256": "3aa28b49fc8e4ca1274643d5139b8152ed841718ef1dc7a68137a50088baa3ac",
+      "gzip_sha256": "4f0274322baf639e1e6904cfe7632793ea0f0a28e5d3d6ceac7f7ef41752ca64",
+      "expected_documents": [
+        [
+          "transcript",
+          "Preliminary Transcript (Opening Statements)",
+          "https://democrats-energycommerce.house.gov/sites/evo-subsites/democrats-energycommerce.house.gov/files/042616%20FC%20Markup%20of%2022%20Bills%20-%20Opening%20Statements.pdf"
+        ]
+      ],
+      "excluded_targets": []
+    },
+    {
+      "sample_id": "p0793",
+      "url": "https://foreignaffairs.house.gov/committee-activity/hearings/subcommittee-hearing-dollar-diplomacy-or-debt-trap-examining-china-s-role-in-the-western-hemisphere",
+      "file": "p0793.html.gz",
+      "body_sha256": "c9098d2ba3cf07aea6257d8085c5e6722492204be98ff3adae2bad9a6e86bba4",
+      "gzip_sha256": "5249922cef27d884868ac1ad1fa0d01441ee6a6146ab333ed10758fb1e877d47",
+      "expected_documents": [
+        [
+          "witness statement",
+          "full text of statement",
+          "https://docs.house.gov/meetings/FA/FA07/20190509/109459/HHRG-116-FA07-Wstate-FonsecaB-20190509.pdf"
+        ],
+        [
+          "witness statement",
+          "full text of statement",
+          "https://docs.house.gov/meetings/FA/FA07/20190509/109459/HHRG-116-FA07-Wstate-MyersM-20190509.pdf"
+        ],
+        [
+          "witness statement",
+          "full text of statement",
+          "https://docs.house.gov/meetings/FA/FA07/20190509/109459/HHRG-116-FA07-Wstate-WalkerC-20190509.pdf"
+        ]
+      ],
+      "excluded_targets": []
+    },
+    {
+      "sample_id": "p0831",
+      "url": "https://democrats-appropriations.house.gov/events/hearings/office-of-management-and-budget-fy22-budget-request",
+      "file": "p0831.html.gz",
+      "body_sha256": "de8e990e8a466a0a04f68a94f4077fe823a243e1e01f10b36cf76f43bb6d2784",
+      "gzip_sha256": "36e653f65b8a2076147501fa25b6ffac47037930214244c159cf49c0b043a1f5",
+      "expected_documents": [
+        [
+          "witness statement",
+          "Acting Director Young Statement",
+          "http://docs.house.gov/meetings/AP/AP23/20210609/112738/HHRG-117-AP23-Wstate-YoungS-20210609.pdf"
+        ]
+      ],
+      "excluded_targets": []
+    },
+    {
+      "sample_id": "p0846",
+      "url": "https://democrats-financialservices.house.gov/events/eventsingle.aspx?EventID=398902",
+      "file": "p0846.html.gz",
+      "body_sha256": "fe5fb44536727d076e4e3834977eac04066fd6ba381fb7b1bc0e1da7653d823d",
+      "gzip_sha256": "e0f6452d539afeb5fe54d1beed24c065e4ce2f00056cf3411b3624171e7b8c72",
+      "expected_documents": [],
+      "excluded_targets": [
+        "https://democrats-financialservices.house.gov/resources/truth-in-testimony.htm"
+      ]
+    },
+    {
+      "sample_id": "p0562",
+      "url": "https://armedservices.house.gov/calendar/eventsingle.aspx?EventID=3616",
+      "file": "p0562.html.gz",
+      "body_sha256": "7c7a47a0401f6f6ab91da63f3cd8e470a78116e53c37af43c2dd89112a50273c",
+      "gzip_sha256": "0b51bc97d73e8f524a6c266a55419a103aed3be407b8ff50deb4db7714ed4c13",
+      "expected_documents": [],
+      "excluded_targets": []
+    },
+    {
+      "sample_id": "p0686",
+      "url": "https://foreignaffairs.house.gov/committee-activity/hearings/iran-s-proxy-in-yemen-the-houthi-threat-middle-east-stability-global-shipping-and-u-s-servicemembers",
+      "file": "p0686.html.gz",
+      "body_sha256": "216c08edd662b2fe520a0de59a92f0e4f0a845466d3fc227f2359b6b513ece2e",
+      "gzip_sha256": "1935223a432f79e385bad953121ae04c85fcc5dcfde566c77155e90f4290657a",
+      "expected_documents": [],
+      "excluded_targets": []
+    },
+    {
+      "sample_id": "p0759",
+      "url": "https://science.house.gov/hearings?ID=CB8AE848-8CE5-4717-91D6-1BEF2DDEFDEF",
+      "file": "p0759.html.gz",
+      "body_sha256": "49812812a3f537f156367eb2b74bec788f70363631c45f76c6f1c2ee6e6b89c0",
+      "gzip_sha256": "c24815289d1c2595c67d93e593a3f8b88f8b3c7cb6a7de884bef63642aa8bf22",
+      "expected_documents": [],
+      "excluded_targets": []
+    }
+  ]
+}
