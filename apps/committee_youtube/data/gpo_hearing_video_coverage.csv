@@ -820,7 +820,7 @@ congress,committee_code,committee_name,status,hearings
 118,hsap00,Appropriations,full_recording,32
 118,hsap00,Appropriations,not_public,1
 118,hsas00,Armed Services,full_recording,80
-118,hsba00,Financial Services,full_recording,112
+118,hsba00,Financial Services,full_recording,115
 118,hsbu00,Budget,full_recording,14
 118,hsed00,Education & Workforce,full_recording,57
 118,hsfa00,Foreign Affairs,full_recording,127
@@ -863,11 +863,11 @@ congress,committee_code,committee_name,status,hearings
 118,sseg00,Senate Energy and Natural Resources,full_recording_offsite,36
 118,ssev00,Senate Environment and Public Works,full_recording,53
 118,ssev00,Senate Environment and Public Works,full_recording_offsite,16
-118,ssfi00,Senate Finance,full_recording_offsite,44
-118,ssfi00,Senate Finance,no_video_found,1
+118,ssfi00,Senate Finance,full_recording_offsite,45
+118,ssfi00,Senate Finance,no_video_found,2
 118,ssfr00,Senate Foreign Relations,before_channel,1
 118,ssfr00,Senate Foreign Relations,full_recording_offsite,53
-118,ssga00,Senate Homeland Security and Governmental Affairs,full_recording_offsite,59
+118,ssga00,Senate Homeland Security and Governmental Affairs,full_recording_offsite,60
 118,sshr00,"Senate Health, Education, Labor, and Pensions",full_recording,13
 118,sshr00,"Senate Health, Education, Labor, and Pensions",full_recording_offsite,27
 118,ssju00,Senate Judiciary,full_recording_offsite,91
@@ -880,27 +880,27 @@ congress,committee_code,committee_name,status,hearings
 119,hsap00,Appropriations,full_recording,24
 119,hsap00,Appropriations,not_public,2
 119,hsas00,Armed Services,full_recording,18
-119,hsba00,Financial Services,full_recording,65
+119,hsba00,Financial Services,full_recording,66
 119,hsed00,Education & Workforce,full_recording,37
-119,hsfa00,Foreign Affairs,full_recording,35
-119,hsgo00,Oversight and Government Reform,full_recording,82
+119,hsfa00,Foreign Affairs,full_recording,37
+119,hsgo00,Oversight and Government Reform,full_recording,83
 119,hsha00,House Administration,full_recording,25
-119,hshm00,Homeland Security,full_recording,43
-119,hsif00,Energy & Commerce,full_recording,45
+119,hshm00,Homeland Security,full_recording,44
+119,hsif00,Energy & Commerce,full_recording,46
 119,hsii00,Natural Resources,full_recording,32
-119,hsju00,Judiciary,full_recording,77
+119,hsju00,Judiciary,full_recording,78
 119,hspw00,Transportation and Infrastructure,full_recording,33
-119,hsru00,Rules,full_recording,1
+119,hsru00,Rules,full_recording,2
 119,hssm00,Small Business,full_recording,36
 119,hssy00,"Science,Space,and Technology",full_recording,8
 119,hsvr00,Veterans' Affairs,full_recording,55
 119,hswm00,Ways and Means,full_recording,4
 119,jcpk00,Congressional-Executive Commission on China,full_recording,5
-119,jcse00,Helsinki Commission,full_recording,16
+119,jcse00,Helsinki Commission,full_recording,18
 119,jsec00,Joint Economic Committee,full_recording,2
 119,slia00,Senate Indian Affairs,full_recording_offsite,8
 119,slin00,,full_recording_offsite,6
-119,spag00,Senate Aging,full_recording,13
+119,spag00,Senate Aging,full_recording,14
 119,spag00,Senate Aging,full_recording_offsite,18
 119,ssaf00,,full_recording_offsite,22
 119,ssap00,Senate Appropriations,full_recording_offsite,9
@@ -909,8 +909,8 @@ congress,committee_code,committee_name,status,hearings
 119,ssbk00,"Senate Banking, Housing, and Urban Affairs",full_recording,3
 119,ssbu00,Senate Budget,full_recording,1
 119,ssbu00,Senate Budget,full_recording_offsite,2
-119,sscm00,"Senate Commerce, Science, and Transportation",full_recording,34
-119,sscm00,"Senate Commerce, Science, and Transportation",full_recording_offsite,26
+119,sscm00,"Senate Commerce, Science, and Transportation",full_recording,35
+119,sscm00,"Senate Commerce, Science, and Transportation",full_recording_offsite,27
 119,sseg00,Senate Energy and Natural Resources,full_recording,9
 119,sseg00,Senate Energy and Natural Resources,full_recording_offsite,17
 119,ssev00,Senate Environment and Public Works,full_recording,4
@@ -918,11 +918,12 @@ congress,committee_code,committee_name,status,hearings
 119,ssev00,Senate Environment and Public Works,not_public,1
 119,ssfr00,Senate Foreign Relations,full_recording_offsite,15
 119,ssga00,Senate Homeland Security and Governmental Affairs,full_recording,1
-119,ssga00,Senate Homeland Security and Governmental Affairs,full_recording_offsite,15
+119,ssga00,Senate Homeland Security and Governmental Affairs,full_recording_offsite,18
 119,sshr00,"Senate Health, Education, Labor, and Pensions",full_recording,8
 119,sshr00,"Senate Health, Education, Labor, and Pensions",full_recording_offsite,4
 119,ssju00,Senate Judiciary,before_channel,1
-119,ssju00,Senate Judiciary,full_recording_offsite,38
+119,ssju00,Senate Judiciary,full_recording_offsite,39
+119,ssju00,Senate Judiciary,no_video_found,3
 119,sssb00,Senate Small Business and Entrepreneurship,full_recording,2
 119,sssb00,Senate Small Business and Entrepreneurship,full_recording_offsite,14
 119,sssb00,Senate Small Business and Entrepreneurship,not_public,1
