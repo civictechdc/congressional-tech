@@ -701,6 +701,11 @@ def related_page(anchor, page_url):
             return purpose('related_coverage', 'publisher_coverage_label')
     if kind := explicit_document_kind(label):
         return document(kind, 'publisher_document_label')
+    # Cited statements in resource/submission sections are supporting material;
+    # an outer witness container does not make them hearing testimony.
+    if (re.fullmatch(r'resources|submitted for the record', heading, re.I)
+            and re.match(r'(?:joint )?statement\b', label, re.I)):
+        return document('support document', 'publisher_support_section')
     if uncertainty and re.fullmatch(r'Testimony', label, re.I):
         return document('witness statement', 'publisher_document_label')
     if kind := local_document_kind(anchor, label, clause):

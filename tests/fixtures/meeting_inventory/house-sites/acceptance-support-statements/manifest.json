@@ -1,0 +1,43 @@
+[
+  {
+    "file": "enforced-disappearance-bangladesh.html.gz",
+    "url": "https://humanrightscommission.house.gov/events/hearings/enforced-disappearance-bangladesh",
+    "body_sha256": "014cc5d605eea8e6171d87fe3e9121145c05df9da1cb8d9449c6963a3523f808",
+    "expected": [
+      [
+        "support document",
+        "Statement by Michelle Bachelet, UN High Commissioner for Human Rights, urging review of Digital Security Act following death in custody of writer",
+        "https://www.ohchr.org/SP/NewsEvents/Pages/DisplayNews.aspx?NewsID=26815&LangID=E"
+      ]
+    ]
+  },
+  {
+    "file": "human-rights-and-freedom-expression-morocco.html.gz",
+    "url": "https://humanrightscommission.house.gov/events/hearings/human-rights-and-freedom-expression-morocco",
+    "body_sha256": "8e6233161723a99a469db2b96d750d797925e18d601fada21eb45b73bcea77f4",
+    "expected": [
+      [
+        "support document",
+        "Joint Statement to Moroccan Authorities: Release Omar Radi and Guarantee Fair Trial Proceedings",
+        "https://pomed.org/joint-statement-to-moroccan-authorities-release-omar-radi-and-guarantee-fair-trial-proceedings/"
+      ]
+    ]
+  },
+  {
+    "file": "ortega-government-and-human-cost-repression-nicaragua-political-prisoners-0.html.gz",
+    "url": "https://humanrightscommission.house.gov/events/hearings/ortega-government-and-human-cost-repression-nicaragua-political-prisoners-0",
+    "body_sha256": "fa38abba44a82ca8e3f41e5b37e9a0fa328c7ddf12b97341f5c3c29ee8332c34",
+    "expected": [
+      [
+        "support document",
+        "Joint Statement on the Human Rights Situation in Nicaragua",
+        "https://geneva.usmission.gov/2021/06/22/joint-statement-on-nicaragua-at-the-human-rights-council/"
+      ],
+      [
+        "support document",
+        "Statement of Concern About Increasing Political Repression in Nicaragua Ahead of the 2021 Election",
+        "https://sites.google.com/view/nicaragua2021letter/home"
+      ]
+    ]
+  }
+]
