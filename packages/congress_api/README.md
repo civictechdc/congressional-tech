@@ -58,34 +58,44 @@ ordinary source collectors do not require it.
 ## Streaming source capture
 
 `raw-source-sync` runs a bounded async capture pipeline. Rust handles publisher
-HTTP, and `aiobotocore` overlaps immutable R2 body uploads. Existing synchronous
-fetch adapters run in a bounded executor; two processing threads run validation,
-compression, House XML and PDF cover readers off the event loop. One writer
-accepts confirmed bodies, appends metadata and publishes receipts. Concurrent
-aliases share body uploads and readings. Saved readings, including unclassified
-results, survive reader-version changes. Reading and uploading each body can
-overlap; the writer waits for both before publishing its metadata and receipt.
+HTTP. Native direct responses stay as files through retention: the shared
+`retention.body_files` helper hashes and compresses in chunks, then uploads through
+`R2Store.put_file()`. Exact large-file recovery uses the same helper. In-memory
+adapters and decoded Zyte responses retain their bounded asynchronous byte path.
+One writer accepts confirmed bodies, appends metadata and publishes receipts.
+Concurrent aliases share body uploads and readings. Reading and uploading can
+overlap; both finish before the writer publishes a receipt.
 
 `--workers` bounds admitted files across the whole lifecycle. The default
-`--download-workers 16` bounds downloads and completed files waiting for a body
-reader. Rust streams responses into temporary files, with a separate
-`--max-spool-mib 2048` disk budget. Each download reserves room for one maximum
-provider response; redirects and fallback consume and remove the previous file
-before fetching the next. Failed native commands stop their writer and clean up
-partial files before releasing the reservation.
+`--download-workers 16` bounds downloads and file-upload threads. Rust streams
+responses into temporary files, with a separate `--max-spool-mib 2048` disk budget.
+Each capture reserves a maximum direct body plus a maximum provider response or
+compressed scratch file. The reservation stays held until both metadata reading
+and upload finish; failed attempts remain owned until their receipts are prepared.
+Files and compression scratch are removed on success or failure. Native command
+failures stop their writer before releasing capacity.
 
-`--max-buffer-mib 512` bounds processing payload reservations. A reader reserves
-three maximum file sizes plus 1 MiB before loading its first body, then releases
-the excess after separating actual body bytes. Files waiting for this capacity
-stay on disk, so slow processing does not restrict HTTP to two downloads. Acquired
-bytes and the fetcher's inspection result pass directly to retention; receipts
-keep their existing serialized shape. Synchronous injected fetchers and retained
-body replay still reserve memory before acquisition.
+`--max-buffer-mib` bounds processing payload reservations (default 2048 MiB).
+A reader reserves three maximum file sizes plus 1 MiB before processing a response.
+It releases excess capacity after separation, charging only payloads still held
+as bytes. Ordinary PDFs with an EOF marker use prefix/tail validation without
+whole-body buffering; other formats and malformed PDFs keep their existing
+bounded parsers. Metadata workers receive file paths instead of body copies and
+preserve the normal 16 MiB metadata limit. Zyte JSON/base64 decoding, archive-member
+expansion and retained-body replay still use bounded memory. Receipts keep their
+existing serialized shape, hashes, source statuses and fallback evidence.
+
+The internal `RustFetcher.fetch_spooled()` transfers native-file ownership to its
+caller. The caller must keep the fetcher open, wait for every reader/upload, and
+close those capture files. `raw_sync` manages this lifetime; `fetch()` remains the
+byte-returning compatibility interface.
 
 The payload budget is not an RSS limit; compressed copies, provider JSON, parser
 allocations and loaded indexes add memory. A stop request closes admission,
 drains admitted files, and saves the checkpoint. The summary records cumulative
 task times by stage (these overlap), both reservation peaks, and CLI limits.
+`file_body_uploads` counts file uploads; `file_retention_seconds` includes their
+compression and upload. `body_upload_seconds` keeps its existing byte-upload meaning.
 
 Metadata goes to an incremental Parquet writer under
 `indexes/processing/body-results/<run-id>/`. It closes and uploads immutable parts

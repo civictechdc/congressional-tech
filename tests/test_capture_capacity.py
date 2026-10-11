@@ -22,8 +22,8 @@ from test_raw_source_sync import MemoryStore, response
 def test_capacity_fits_both_reservations(buffer, spool):
     cap = response_capacity(buffer * 1024**2, spool * 1024**2)
     assert cap * 3 + 1024**2 <= buffer * 1024**2
-    assert cap * 4 // 3 + 1024**2 <= spool * 1024**2
-    assert (cap + 1) * 3 + 1024**2 > buffer * 1024**2 or (cap + 1) * 4 // 3 + 1024**2 > spool * 1024**2
+    assert cap * 7 // 3 + 1024**2 <= spool * 1024**2
+    assert (cap + 1) * 3 + 1024**2 > buffer * 1024**2 or (cap + 1) * 7 // 3 + 1024**2 > spool * 1024**2
 
 
 @pytest.mark.parametrize('buffer,spool', [(1024, 2048), (2048, 1024)])

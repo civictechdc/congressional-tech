@@ -8,7 +8,7 @@ from urllib.parse import parse_qsl, urlsplit
 from lxml import etree
 from lxml.html.defs import tags as HTML_TAGS
 
-from congress_api.models.content import content_bytes
+from congress_api.models.content import CapturedFile, content_body
 from congress_api.parsers.senate import parse_page as parse_senate_page
 from congress_api.parsers.pdf_tools import readable_pdf
 from congress_api.parsers.file_wrapper import regular_file
@@ -33,7 +33,7 @@ ARCHIVE_REPLAY_PATHS = {
 def inspect_capture(response, *, replay=False):
     """Classify retained source bytes using the same rules for fallback and capture."""
     body = (
-        content_bytes(response["content"])
+        content_body(response["content"])
         if response.get("content") else b""
     )
     links = []
@@ -51,6 +51,18 @@ def inspect_capture(response, *, replay=False):
     ):
         fallback = download_query_fallback(response['url'], response.get('http_status'))
         return "http_error", capture_links(fallback.source_dict()) if fallback else []
+    if isinstance(body, CapturedFile):
+        # Ordinary complete PDFs need only the existing signature/EOF checks.
+        # Other formats and malformed PDFs keep the existing bounded parsers.
+        prefix = body.prefix()
+        media = response.get('content', {}).get('media_type', '')
+        if response_kind(prefix, media) == 'pdf':
+            with body.path.open('rb') as source:
+                source.seek(max(0, len(body) - 8192))
+                tail = source.read(8192)
+            if b'%%EOF' in tail:
+                return inspect_body(prefix + tail, response['url'], media)[0], []
+        body = body.read_bytes()
     outcome, kind = inspect_body(
         body, response["url"], response.get("content", {}).get("media_type", "")
     )

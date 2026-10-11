@@ -10,7 +10,7 @@ import pytest
 
 from congress_api.acquisition.raw_sync import run_sync
 from congress_api.models.content import RawContent
-from congress_api.models.content import CapturedBody, content_bytes
+from congress_api.models.content import CapturedBody, CapturedFile, content_bytes, close_capture_files
 from congress_api.retention.bundles import restore, separate
 from congress_api.retention.raw_archive import Archive
 from congress_api.transport.rust_fetch import RustFetcher, RustResponse
@@ -163,18 +163,18 @@ def test_spooled_bytes_restore_the_same_capture_without_json_body_roundtrips(tmp
 
     def before_read():
         gates.append(True)
-        assert len(list(tmp_path.glob('*.body'))) == 1
+        assert 1 <= len(list(tmp_path.glob('*.body'))) <= 2
 
     current, inspection = fetcher.fetch_spooled(url, before_read=before_read)
-    assert gates and not list(tmp_path.glob('*.body'))
+    assert gates and list(tmp_path.glob('*.body'))
     field = 'content' if 'content' in current else 'provider_content'
-    assert isinstance(current[field]['body'], CapturedBody)
+    assert isinstance(current[field]['body'], (CapturedBody, CapturedFile))
     assert content_bytes(current[field]) == RawContent.model_validate(old[field]).body_bytes()
     objects = {}
 
     def put(data):
         key = str(len(objects))
-        objects[key] = data
+        objects[key] = data.read_bytes() if isinstance(data, CapturedFile) else data
         return key
 
     record, captures = separate(current, put)
@@ -188,6 +188,8 @@ def test_spooled_bytes_restore_the_same_capture_without_json_body_roundtrips(tmp
         return value
 
     assert without_clock(restored) == without_clock(old)
+    close_capture_files(current)
+    assert not list(tmp_path.glob("*.body"))
 
 
 def test_fatal_native_failure_removes_its_partial_file(tmp_path):
@@ -307,6 +309,7 @@ def test_undeclared_xml_does_not_trigger_provider_fallback(tmp_path, monkeypatch
         capture = fetcher.fetch(url)
     assert calls == ['direct']
     assert content_bytes(capture['content']) == data
+    close_capture_files(capture)
     assert not list(tmp_path.glob('*.body'))
 
 

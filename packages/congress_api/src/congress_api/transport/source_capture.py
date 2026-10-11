@@ -8,7 +8,7 @@ from urllib.parse import urljoin, urlsplit, urlunsplit
 
 import requests
 
-from congress_api.models.content import CapturedBody, RawContent
+from congress_api.models.content import CapturedBody, CapturedFile, RawContent
 from congress_api.models.transport import SourceCapture, ZyteResponse
 from congress_api.parsers.archive_links import allowed_url
 from congress_api.transport import zyte
@@ -39,7 +39,7 @@ def read_bounded(response, limit):
 
 
 def fetch_source(url, *, transport="zyte", max_bytes=64 * 1024**2, session=None, pace=True,
-                 read=read_bounded, raw=False):
+                 read=read_bounded, read_direct=None, raw=False):
     if not allowed_url(url):
         raise ValueError("URL is outside capture scope")
     if transport not in {"zyte", "direct"}:
@@ -141,7 +141,7 @@ def fetch_source(url, *, transport="zyte", max_bytes=64 * 1024**2, session=None,
                         target = urljoin(target, response.headers["Location"])
                         continue
                     headers = {k.lower(): v for k, v in response.headers.items()}
-                    body, complete = read(response, max_bytes)
+                    body, complete = (read_direct or read)(response, max_bytes)
                     result.update(
                         url=response.url,
                         http_status=response.status_code,
@@ -151,7 +151,7 @@ def fetch_source(url, *, transport="zyte", max_bytes=64 * 1024**2, session=None,
                         complete=complete
                         and response.status_code != 206
                         and "content-range" not in headers,
-                        content=content.from_bytes(
+                        content=body if isinstance(body, CapturedFile) else content.from_bytes(
                             body, headers.get("content-type", "")
                         ),
                     )

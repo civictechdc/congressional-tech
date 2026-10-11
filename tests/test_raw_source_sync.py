@@ -32,6 +32,20 @@ class MemoryStore:
         self.objects[key] = body
         self.writes.append(key)
 
+    def put_file(self, key, path):
+        from pathlib import Path
+        if key in self.objects:
+            return False
+        self.put(key, Path(path).read_bytes(), immutable=True)
+        return True
+
+    def read_file(self, key, path, *, max_bytes):
+        from pathlib import Path
+        data = self.read(key)
+        if data is None or len(data) > max_bytes:
+            raise ValueError('Stored object exceeds file budget or is missing')
+        Path(path).write_bytes(data)
+
     def version(self, key):
         from hashlib import sha256
         return sha256(self.objects[key]).hexdigest() if key in self.objects else 'missing'

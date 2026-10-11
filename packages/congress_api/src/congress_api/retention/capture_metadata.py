@@ -68,12 +68,13 @@ def inspect_pdf_file(path):
     return {'body_format': ['pdf'], **fields}
 
 
-def read_document_file(path, body_key, fingerprint, inspect=inspect_document):
+def read_document_file(path, body_key, fingerprint, inspect=inspect_document, *, large_pdf=True):
     """Keep byte readers bounded; large PDFs use the bounded file-based reader.
 
     The caller owns the immutable, already-hash-verified local file. Other large
     formats remain refused. A completed result describes opening-page metadata,
-    never a claim that all PDF pages were parsed.
+    never a claim that all PDF pages were parsed. Normal capture passes
+    large_pdf=False to preserve its existing metadata size limit.
     """
     path = Path(path)
     with path.open('rb') as source:
@@ -82,7 +83,7 @@ def read_document_file(path, body_key, fingerprint, inspect=inspect_document):
             return read_document(data, body_key, fingerprint, inspect)
         pdf = source.read(1024).lstrip().startswith(b'%PDF-')
     fields, error, status = {}, None, 'size_limit'
-    if pdf:
+    if pdf and large_pdf:
         fields = {'body_format': ['pdf']}
         try:
             fields = inspect_pdf_file(path)

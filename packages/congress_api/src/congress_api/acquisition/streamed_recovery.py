@@ -25,12 +25,7 @@ from congress_api.retention.archive_members import (
 )
 from congress_api.retention.capture_metadata import CaptureMetadata
 
-CHUNK = 1024**2
-
-
-def file_digest(path, algorithm="sha256"):
-    with Path(path).open("rb") as f:
-        return hashlib.file_digest(f, algorithm).hexdigest()
+from congress_api.retention.body_files import CHUNK, file_digest, retain_body_file
 
 
 def download_ranges(
@@ -133,36 +128,8 @@ def retain_file(archive, path, scratch):
         if info["bytes"] != size:
             raise ValueError("Retained body identity has a different length")
         return info
-    key = f"bodies/sha256/{digest[:2]}/{digest}.gz"
-    with path.open("rb") as source, scratch.open("wb") as destination:
-        with gzip.GzipFile(
-            filename="", fileobj=destination, mode="wb", compresslevel=1, mtime=0
-        ) as zipped:
-            while chunk := source.read(CHUNK):
-                zipped.write(chunk)
-    created = archive.store.put_file(key, scratch)
-    if created is False:
-        # Conditional conflict may be an earlier orphan with different gzip bytes.
-        archive.store.read_file(key, scratch, max_bytes=size + size // 100 + CHUNK)
-        actual = hashlib.sha256()
-        raw_size = 0
-        with gzip.open(scratch, "rb") as f:
-            while chunk := f.read(CHUNK):
-                raw_size += len(chunk)
-                if raw_size > size:
-                    raise ValueError("Stored body length mismatch")
-                actual.update(chunk)
-        if actual.hexdigest() != digest or raw_size != size:
-            raise ValueError("Stored body checksum mismatch")
-    info = dict(
-        body_key=key,
-        sha256=digest,
-        bytes=size,
-        stored_sha256=file_digest(scratch),
-        stored_bytes=scratch.stat().st_size,
-    )
+    info = retain_body_file(archive.store, path, scratch, expected_sha256=digest)
     archive.body_info[digest] = info
-    scratch.unlink()
     return info
 
 

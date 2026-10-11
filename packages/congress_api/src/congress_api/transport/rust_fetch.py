@@ -14,7 +14,7 @@ from urllib.parse import urlsplit
 import requests
 
 from congress_api.parsers.archive_links import inspect_capture
-from congress_api.models.content import content_bytes
+from congress_api.models.content import CapturedFile, content_bytes
 from congress_api.transport.source_capture import fetch_source, read_bounded
 from congress_api.transport import zyte
 
@@ -69,6 +69,7 @@ class RustResponse:
     """Response metadata and a bounded body, already read by reqwest."""
 
     def __init__(self, result, root):
+        self.detached = False
         self.path = Path(result["body_file"])
         if self.path.parent != root:
             raise RuntimeError("Native transport returned a body outside its directory")
@@ -90,7 +91,8 @@ class RustResponse:
         return self
 
     def __exit__(self, *args):
-        self.path.unlink(missing_ok=True)
+        if not self.detached:
+            self.path.unlink(missing_ok=True)
 
     def iter_content(self, chunk_size):
         with self.path.open("rb") as stream:
@@ -230,12 +232,29 @@ class RustFetcher(_NativeSession):
         return self._fetch(url, transport=transport)[0]
 
     def fetch_spooled(self, url, *, before_read, transport="auto"):
-        """Leave native files on disk until the caller admits their payloads."""
+        """Transfer native file ownership to the collector; provider JSON stays bounded."""
+        files = []
+
         def read(response, limit):
             before_read()
             return read_bounded(response, limit)
 
-        return self._fetch(url, transport=transport, read=read, raw=True)
+        def read_direct(response, limit):
+            before_read()
+            body = CapturedFile(response.path, response.headers.get('content-type', ''))
+            if len(body) > limit:
+                raise ValueError('Native body exceeded its configured limit')
+            response.detached = True
+            files.append(body)
+            return body, response.capture_complete
+
+        try:
+            return self._fetch(url, transport=transport, read=read,
+                               read_direct=read_direct, raw=True)
+        except BaseException:
+            for body in files:
+                body.close()
+            raise
 
     def _fetch(self, url, *, transport, **options):
         if transport not in {"auto", "direct", "zyte"}:

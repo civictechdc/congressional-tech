@@ -8,10 +8,12 @@ from functools import partial
 import heapq
 import multiprocessing
 import time
+from tempfile import TemporaryDirectory
+from pathlib import Path
 
 import pyarrow.compute as pc
 
-from congress_api.models.content import RawContent
+from congress_api.models.content import CapturedFile, RawContent, capture_files, close_capture_files
 from congress_api.parsers import archive_links
 from congress_api.parsers.archive_links import capture_links, inspect_capture
 from congress_api.retention.raw_archive import (
@@ -19,8 +21,9 @@ from congress_api.retention.raw_archive import (
     NON_DOWNLOAD_OUTCOMES,
 )
 from congress_api.retention import raw_progress as progress
-from congress_api.retention.capture_metadata import BODY_LIMIT, CaptureMetadata, read_document
+from congress_api.retention.capture_metadata import BODY_LIMIT, CaptureMetadata, read_document, read_document_file
 from congress_api.retention.r2 import threaded_bodies
+from congress_api.retention.body_files import retain_body_file
 from congress_api.retention.archive_members import ZipLimits
 
 
@@ -32,7 +35,7 @@ RETRY_OUTCOMES = frozenset({'retry_later', 'request_failed', 'http_error', 'size
 def response_capacity(max_buffer_bytes, max_spool_bytes):
     """Fit direct, provider and decoded bodies inside the existing reservations."""
     capacity = min((max_buffer_bytes - 1024**2) // 3,
-                   (max_spool_bytes - 1024**2) * 3 // 4)
+                   ((max_spool_bytes - 1024**2 + 1) * 3 - 1) // 7)
     if capacity <= 0:
         raise ValueError('Body and spool budgets must each exceed 1 MiB')
     return capacity
@@ -101,10 +104,11 @@ async def run_async(
         raise ValueError('Capture workers must be positive')
     if (fetch is None) == (fetch_spooled is None):
         raise ValueError('Supply exactly one capture fetcher')
-    # One native response file per capture at a time, including provider JSON.
-    spool_reservation = max_bytes * 4 // 3 + 1024**2
+    # Keep the direct attempt through fallback, plus provider JSON or compressed
+    # scratch. This reservation lasts until upload AND metadata reading finish.
+    spool_reservation = max_bytes * 7 // 3 + 1024**2
     if fetch_spooled is not None and max_spool_bytes < spool_reservation:
-        raise ValueError('Spool buffer must hold one maximum provider response')
+        raise ValueError('Spool buffer must hold direct and provider/compressed response files')
     archive_limits = (ZipLimits(max_archive_bytes=max_bytes,
         max_member_bytes=reservation // 2, max_total_bytes=reservation)
         if resource_bounded else None)
@@ -246,20 +250,32 @@ async def run_async(
     progress.report('acquire_sources', completed=0, unit='capture_attempts')
     with (ThreadPoolExecutor(max_workers=workers) as fetch_pool,
           ThreadPoolExecutor(max_workers=2) as cpu_pool,
+          ThreadPoolExecutor(max_workers=download_workers) as file_pool,
           ProcessPoolExecutor(max_workers=metadata_workers,
                               mp_context=multiprocessing.get_context('spawn')) as reader_pool,
           ThreadPoolExecutor(max_workers=1) as writer_pool):
         body_context = getattr(archive.store, 'async_bodies', lambda: threaded_bodies(archive.store))
         try:
             async with body_context() as bodies:
+                def upload_file(data):
+                    with TemporaryDirectory(prefix='retain-', dir=data.path.parent) as directory:
+                        return retain_body_file(archive.store, data.path, Path(directory) / 'body.gz',
+                                                expected_sha256=data.sha256)
+
                 async def upload(data):
-                    payload, info = await loop.run_in_executor(cpu_pool, body_payload, data)
-                    started = time.monotonic()
-                    created = await bodies.put(info['body_key'], payload)
-                    if created is False:
-                        actual = await bodies.read(info['body_key'])
-                        info = await loop.run_in_executor(cpu_pool, existing_body_info, actual, info)
-                    timings['body_upload_seconds'] += time.monotonic() - started
+                    if isinstance(data, CapturedFile):
+                        started = time.monotonic()
+                        info = await loop.run_in_executor(file_pool, upload_file, data)
+                        timings['file_retention_seconds'] += time.monotonic() - started
+                        counts['file_body_uploads'] += 1
+                    else:
+                        payload, info = await loop.run_in_executor(cpu_pool, body_payload, data)
+                        started = time.monotonic()
+                        created = await bodies.put(info['body_key'], payload)
+                        if created is False:
+                            actual = await bodies.read(info['body_key'])
+                            info = await loop.run_in_executor(cpu_pool, existing_body_info, actual, info)
+                        timings['body_upload_seconds'] += time.monotonic() - started
                     counts['body_uploads'] += 1
                     # Only this event loop mutates confirmed body identities.
                     archive.body_info[info['sha256']] = info
@@ -267,7 +283,12 @@ async def run_async(
 
                 async def read_metadata(data, key):
                     started = time.monotonic()
-                    if len(data) > BODY_LIMIT:
+                    if isinstance(data, CapturedFile):
+                        async with reader_slots:
+                            result = await loop.run_in_executor(reader_pool, partial(
+                                read_document_file, data.path, key, metadata.fingerprint,
+                                metadata.inspect, large_pdf=False))
+                    elif len(data) > BODY_LIMIT:
                         # A size-limit result needs no parsing or process copy.
                         result = metadata.reading(data, key)
                     else:
@@ -295,6 +316,8 @@ async def run_async(
                 async def process(state, spooled):
                     nonlocal downloading
                     held = 0 if spooled else reservation
+                    response = None
+                    files = []
 
                     async def reserve_memory():
                         nonlocal held
@@ -313,15 +336,16 @@ async def run_async(
                             response, mode, inspection = await loop.run_in_executor(fetch_pool, acquire, state, before_read)
                         finally:
                             if spooled:
-                                spool.release(spool_reservation)
                                 downloading -= 1
+                        files = list(capture_files(response))
                         timings['acquire_seconds'] += time.monotonic() - started
                         started = time.monotonic()
                         record, captures, data, scanned = await loop.run_in_executor(
                             cpu_pool, prepare, response, mode, list(context.get(state['url'], [])), inspection)
-                        del response
+                        response = None  # Drop provider JSON/byte copies before retention.
                         timings['prepare_seconds'] += time.monotonic() - started
-                        size = sum(len(value) for value in data.values())
+                        size = sum(len(value) for value in data.values()
+                                   if not isinstance(value, CapturedFile))
                         if size > held:
                             raise ValueError('Capture exceeded its reserved body payload budget')
                         memory.release(held - size)
@@ -346,6 +370,10 @@ async def run_async(
                             key: reading_tasks[key].result() if key in reading_tasks else None
                             for key in keys}
                     finally:
+                        close_capture_files(files)
+                        close_capture_files(response)
+                        if spooled:
+                            spool.release(spool_reservation)
                         memory.release(held)
 
                 try:

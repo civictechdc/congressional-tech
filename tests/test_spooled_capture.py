@@ -34,7 +34,7 @@ def test_downloads_fill_separate_spool_while_processing_waits():
         task = asyncio.create_task(run_async(Archive(store, 'spooled'),
             [{'url': f'https://example.gov/{i}.pdf'} for i in range(4)],
             fetch_spooled=fetch, workers=4, download_workers=4, max_bytes=1024**2,
-            max_buffer_bytes=4*1024**2, max_spool_bytes=10*1024**2))
+            max_buffer_bytes=4*1024**2, max_spool_bytes=16*1024**2))
         try:
             assert await asyncio.to_thread(downloaded.wait, 2)
             await asyncio.wait_for(upload_started.wait(), 2)
@@ -45,7 +45,7 @@ def test_downloads_fill_separate_spool_while_processing_waits():
         result = await asyncio.wait_for(task, 5)
         assert result['saved'] == 4
         assert result['peak_body_payload_reservation_bytes'] <= 4*1024**2
-        assert result['peak_spool_reservation_bytes'] <= 10*1024**2
+        assert result['peak_spool_reservation_bytes'] <= 16*1024**2
 
     asyncio.run(check())
 
@@ -71,7 +71,7 @@ def test_spool_budget_blocks_new_downloads_until_files_are_consumed():
         task = asyncio.create_task(run_async(Archive(store, 'disk-bound'),
             [{'url': f'https://example.gov/{i}.pdf'} for i in range(4)],
             fetch_spooled=fetch, workers=4, max_bytes=1024**2,
-            max_spool_bytes=3*1024**2))
+            max_spool_bytes=4*1024**2))
         try:
             assert await asyncio.to_thread(entered.wait, 2)
             await asyncio.sleep(.02)
@@ -80,7 +80,7 @@ def test_spool_budget_blocks_new_downloads_until_files_are_consumed():
             release.set()
         result = await asyncio.wait_for(task, 5)
         assert result['saved'] == 4
-        assert result['peak_spool_reservation_bytes'] <= 3*1024**2
+        assert result['peak_spool_reservation_bytes'] <= 4*1024**2
 
     asyncio.run(check())
 

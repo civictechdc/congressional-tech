@@ -17,7 +17,7 @@ from urllib.parse import urlsplit
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from congress_api.models.content import CapturedBody
+from congress_api.models.content import CapturedBody, CapturedFile
 from congress_api.parsers.archive_links import allowed_url, capture_links, inspect_body, related_links
 from congress_api.parsers.source_family import family
 from congress_api.retention.bundles import separate
@@ -109,7 +109,7 @@ def prepare_capture(response, *, outcome, links, context=None, mode="fetch", sca
     bodies = {}
 
     def retain(data):
-        digest = hashlib.sha256(data).hexdigest()
+        digest = data.sha256 if isinstance(data, CapturedFile) else hashlib.sha256(data).hexdigest()
         key = f"bodies/sha256/{digest[:2]}/{digest}.gz"
         bodies.setdefault(key, data)
         return key
@@ -123,6 +123,11 @@ def prepare_capture(response, *, outcome, links, context=None, mode="fetch", sca
     if not publisher or not record.get('complete') or outcome != 'saved':
         return record, captures, bodies, scanned
     data = bodies[publisher['body_key']]
+    if isinstance(data, CapturedFile):
+        if not data.prefix(4).startswith((b'PK\x03\x04', b'PK\x05\x06', b'rtfd')):
+            return record, captures, bodies, scanned
+        # Archive expansion keeps its existing aggregate and member bounds.
+        data = data.read_bytes()
     limits = archive_limits or ZipLimits()
     media = (record.get('content', {}).get('media_type') or '').lower()
     suffix = urlsplit(record.get('url') or record['requested_url']).path.lower().rsplit('.', 1)[-1]

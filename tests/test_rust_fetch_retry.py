@@ -48,13 +48,14 @@ def test_govinfo_generation_keeps_direct_evidence_and_schedules_thirty_seconds(t
     url = 'https://www.govinfo.gov/content/pkg/CHRG-119hhrg00001.zip'
     with RustFetcher(binary) as fetcher:
         result, inspection = fetcher.fetch_spooled(url, before_read=lambda: None)
-        assert not list(fetcher.root.glob('*.body'))
+        body = content_bytes(result['content'])
+        assert list(fetcher.root.glob('*.body'))
     assert inspection == ('retry_later', [])
     assert result['retry_later'] == {'delay_seconds': 30, 'reason': 'govinfo_zip_generation'}
     assert result['http_status'] == 503 and result['complete']
     assert result['response_headers']['retry-after'] == '15'
     assert {'name': 'Retry-After', 'value': '15'} in result['response_header_items']
-    assert content_bytes(result['content']) == GENERATION_BODY
+    assert body == GENERATION_BODY
     assert 'prior_attempts' not in result
     assert [json.loads(line)['transport'] for line in calls.read_text().splitlines()] == ['direct']
 
@@ -128,12 +129,13 @@ def test_govinfo_duplicate_retry_after_preserves_fields_and_uses_longest(tmp_pat
     url = 'https://www.govinfo.gov/content/pkg/CHRG-119hhrg00001.zip'
     with RustFetcher(binary) as fetcher:
         result, inspection = fetcher.fetch_spooled(url, before_read=lambda: None)
+        body = content_bytes(result['content'])
     assert inspection == ('retry_later', [])
     assert result['retry_later'] == {'delay_seconds': 30, 'reason': 'govinfo_zip_generation'}
     assert result['response_headers']['retry-after'] == '15'
     assert [h['value'] for h in result['response_header_items']
             if h['name'].lower() == 'retry-after'] == ['30', '15']
-    assert content_bytes(result['content']) == GENERATION_BODY
+    assert body == GENERATION_BODY
     assert len(calls.read_text().splitlines()) == 1
 
 
