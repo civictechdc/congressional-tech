@@ -60,7 +60,25 @@ def document_page_fields(first: str, second: str = '') -> dict[str, list[str]]:
            or re.search(r'^TESTIMONY\s*\nBEFORE (?:THE )?(?:SPECIAL )?COMMITTEE\b', clean[:900], re.M))
           and senate and committee and 'BEFORE' in compact):
         kind = 'witness-statement'
-    return legislative_cover_fields(clean) or ({'content_document_kind': [kind]} if kind else {})
+    return committee_resolution_fields(clean) or legislative_cover_fields(clean) or ({'content_document_kind': [kind]} if kind else {})
+
+
+def committee_resolution_fields(clean: str) -> dict[str, list[str]]:
+    """Require an explicit House committee heading and operative resolution.
+
+    A filename, subject reference, or resolution quoted in ordinary prose cannot
+    establish this form. The classification makes no claim about adoption.
+    """
+    if not re.match(r'IN THE COMMITTEE ON [^\n]+ OF THE HOUSE OF REPRESENTATIVES\s*\n', clean):
+        return {}
+    heading = re.search(r'^RESOLUTION\s*$', clean, re.M)
+    if heading is None or not re.search(r'^RESOLVED\s*,?\s+THAT\b', clean[heading.end():], re.M):
+        return {}
+    fields = {'content_document_kind': ['committee-resolution']}
+    congress = re.search(r'\b(\d{1,3})(?:ST|ND|RD|TH)\s+CONGRESS\b', clean[:heading.start()])
+    if congress:
+        fields['content_congress'] = [congress[1]]
+    return fields
 
 
 def legislative_cover_fields(clean: str) -> dict[str, list[str]]:

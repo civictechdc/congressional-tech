@@ -202,13 +202,75 @@ Browse `indexes/document-filenames.parquet` without a build or another export:
 .venv/bin/python docs/youtube-coverage/research/scripts/view_document_filenames.py
 ```
 
-Open <http://127.0.0.1:8785>. Search any column, filter by Congress, document kind,
-format, or saved-response status, and select a filename to see all populated
-metadata. Empty fields are optional. Filters and selected rows are kept in the
-URL; row links refer to positions in this particular Parquet export. The Format
-column and filter use the saved response media type when available and the
-literal filename extension otherwise. Saved HTTP statuses stay visible, so a
-retained error response is not presented as a successful document download.
+Open <http://127.0.0.1:8785>. The viewer prefers the synced catalog in
+`.cache/filename-viewer-r2` when its manifest exists; pass a Parquet path to choose
+another catalog. Publication and local sync times appear when a matching sync
+receipt is available (expand Snapshot & downloads for exact times). The viewer
+does not automatically refresh the catalog.
+
+Search any column, filter by Congress, document kind, format, or saved-response
+status, and select a filename. The review panel separates the published
+classification, publisher website and referring pages, filename findings, and
+observations read from the saved document. Missing classification is explicit.
+Fallback filename text is not presented as a verified author. Source history,
+alternate URLs, receipt locations, and every raw field remain available in
+expandable sections; empty fields are optional.
+
+The opening summary places published classification beside findings read from
+saved contents. Repeated measure and code/label fields collapse into human
+facts; raw values remain under Technical details. Congress interpretations that
+compete or exceed the current/historical range are flagged, with source Congress
+shown separately. The reader comparison includes both published and current
+values, available versions, and extraction diagnostics rather than asserting a
+cause from version labels. For example, `BILLS-1117s2126-SUS.pdf` currently has a
+lexical reading of `111` and a convention reading of `1117`; source context says
+`117`. The viewer does not choose a correction or rewrite the catalog.
+
+Common search fields appear first; Find another field searches every field by
+label or raw name. Secondary filters collapse, result counts and pagination
+stay visible while scrolling, and the page number accepts direct navigation.
+Phone widths use a vertical result list. Long opening-page text has an explicit
+Show full page text action instead of a second scrolling region.
+
+Referring-page titles and link text stay attached to their original source
+observations. Archive paths never stand in for a referring website. Recovery
+candidates and missing referring pages are labeled. The saved-file action opens
+the retained bytes; the publisher action opens the original web URL.
+The source overview lists each website page once, groups recorded HTTP/HTTPS
+forms without assuming a redirect, and collapses API, feed, and XML references.
+Full per-observation relationships remain available for inspection.
+
+Copied review links include the source ID and catalog ID. A different catalog
+returns an explicit mismatch instead of silently selecting another row. Legacy
+numeric row links still work within their original snapshot and convert to
+source links when opened. Format uses detected saved contents, then the response
+media type, then the filename extension. Saved HTTP statuses remain visible.
+The saved-response filter applies to the entire grouped entry: “No saved
+response” requires every source URL to lack saved bytes, and “Has saved response”
+requires at least one saved response. Searches and other filters may match an
+unsaved alias without hiding a saved response on another URL in the same group.
+Choose All records to include unfetched source/API references as well as
+documents. Groups whose every URL is a confirmed `api.congress.gov/v3/` endpoint
+appear under Source & capture records, with contextual names such as
+“Senate hearing 1 · Congress 116.” Groups containing a document URL retain their
+document scope. This is a viewer scope correction; the published role and all
+original source records remain intact and downloadable.
+
+Saved-file access checks `.cache/filename-viewer-r2` and
+`.cache/congressional-tech-raw`; repeat `--body-root PATH` to include other local
+archives. To read missing objects from the `congressional-tech-raw` R2 bucket,
+pass `--r2-account-id ACCOUNT_ID` (or set `CLOUDFLARE_ACCOUNT_ID`). Authentication
+uses `CLOUDFLARE_API_TOKEN` or the existing macOS Wrangler login; use
+`--cloudflare-profile PATH` for another Wrangler TOML profile. Reads cache exact
+objects locally and never modify R2 or the published catalog.
+
+The viewer verifies each saved body's SHA-256 before serving it, with a 64 MiB
+compressed and decoded size limit. PDFs up to 16 MiB can also show their page
+count and text from the first two pages using Poppler's `pdfinfo` and `pdftotext`.
+Content classification appears separately from published metadata. This bounded
+inspection does not perform OCR or establish that every PDF page is readable.
+Capture timestamps and response details are shown only after matching a receipt
+to the saved body; response headers and cookies are excluded.
 
 The root index builder strips query-shaped suffixes from preferred filenames and groups the
 same endpoint's `download=1` variants. It also groups successful document captures
