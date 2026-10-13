@@ -166,22 +166,23 @@ function referenceRole(value) {
 function renderOrigin(origin,apiReference,observationCount) {
  const el=section('origin','Where this URL came from'), unique=new Map();
  const urlKey=value=>{const url=sourceUrl(value);return url?url.host+url.pathname+url.search+url.hash:null;};
+ const edgeKey=value=>sourceUrl(value)?.href;
  const edges=new Map(), ancestors=[], targets=new Set(), covered=new Set();
  for(const page of origin.pages) if(page.urls.length===1&&page.link_urls.length===1&&page.relationship!=='Possible source page') {
-  const from=urlKey(page.urls[0]),to=urlKey(page.link_urls[0]);if(!from||!to||from===to)continue;
+  const from=edgeKey(page.urls[0]),to=edgeKey(page.link_urls[0]);if(!from||!to||from===to)continue;
   if(!edges.has(from))edges.set(from,[]);edges.get(from).push({page,to});
   if(page.relationship==='Linked through'){ancestors.push(page);targets.add(to);}
  }
  for(const redirect of origin.redirects) {
-  const from=urlKey(redirect.original);if(!edges.has(from))edges.set(from,[]);
-  edges.get(from).push({to:urlKey(redirect.final),redirect:true});
+  const from=edgeKey(redirect.original);if(!edges.has(from))edges.set(from,[]);
+  edges.get(from).push({to:edgeKey(redirect.final),redirect:true});
  }
- const roots=ancestors.filter(page=>!targets.has(urlKey(page.urls[0]))||(page.types||[]).some(type=>/hearing/i.test(type))), rendered=new Set();
+ const roots=ancestors.filter(page=>!targets.has(edgeKey(page.urls[0]))||(page.types||[]).some(type=>/hearing/i.test(type))), rendered=new Set();
  for(const root of roots) {
-  const start=urlKey(root.urls[0]);if(rendered.has(start))continue;
+  const start=edgeKey(root.urls[0]);if(rendered.has(start))continue;
   const queue=[{url:start,path:[]}],visited=new Set([start]);let path;
   for(let i=0;i<queue.length;i++) {
-   const current=queue[i];if(current.url===urlKey(origin.file_url)){path=current.path;break;}
+   const current=queue[i];if(current.url===edgeKey(origin.file_url)){path=current.path;break;}
    for(const edge of edges.get(current.url)||[]) if(!visited.has(edge.to)) {
     visited.add(edge.to);queue.push({url:edge.to,path:[...current.path,edge]});
    }

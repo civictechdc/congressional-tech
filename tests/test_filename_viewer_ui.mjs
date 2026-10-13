@@ -144,6 +144,20 @@ test('ambiguous page and link lists remain references, not an invented hearing p
   } finally {dom.window.close();}
 });
 
+test('a displayed provenance path requires the recorded URL scheme to match', async()=>{
+  const linked=structuredClone(entry);
+  linked.origin.pages=[
+    {urls:['https://news.test/article'],titles:[],link_labels:[],link_urls:[final],relationship:'Recorded source page'},
+    {urls:['https://committee.test/hearing'],titles:[],types:['hearing notice'],
+      link_labels:[],link_urls:['http://news.test/article'],relationship:'Linked through'},
+  ];
+  const {dom,get}=await app(async url=>({ok:true,json:async()=>url.startsWith('/api/entry/')?linked:evidence}));
+  try {
+    assert.equal(get('origin').querySelector('.source-chain'),null);
+    assert.match(get('origin').textContent,/Related source/);
+  } finally {dom.window.close();}
+});
+
 test('switching a source prevents late content from replacing the current selection', async()=>{
   let finishOld;
   const {dom,w,get} = await app(async url=>{
