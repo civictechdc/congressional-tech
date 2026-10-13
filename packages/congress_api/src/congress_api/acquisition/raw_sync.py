@@ -29,7 +29,7 @@ from congress_api.retention.archive_members import ZipLimits
 
 RETRY_OUTCOMES = frozenset({'retry_later', 'request_failed', 'http_error', 'size_limit',
     'resource_limit', 'invalid_document', 'unverified', 'empty', 'incomplete', 'timeout',
-    'challenge', 'parse_failed', 'unsupported_format', 'inspection_deferred'})
+    'challenge', 'parse_failed', 'unsupported_format', 'inspection_deferred', 'html'})
 
 
 def response_capacity(max_buffer_bytes, max_spool_bytes):
