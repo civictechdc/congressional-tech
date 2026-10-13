@@ -1,6 +1,7 @@
 import { parquetMetadataAsync, parquetReadObjects } from 'hyparquet';
 import { compressors } from 'hyparquet-compressors';
 import { observationReader } from './filename-observations.mjs';
+import { loadPublication } from './filename-publication.mjs';
 
 const filters = ['congress', 'document_family', 'document_kind', 'format'];
 const sourceColumns = ['filename','source_url','source_id','body_key','format','record_role'];
@@ -68,10 +69,10 @@ export function rangeFile(url, byteLength, fetcher = fetch) {
   return { slice, file: signal => ({ byteLength, slice: (start, end) => slice(start, end, signal) }) };
 }
 
-export async function createFilenameCatalog(manifestUrl, fetcher = fetch) {
-  const response = await fetcher(manifestUrl);
-  if (!response.ok) throw new Error('The filename catalog is not published yet.');
-  const manifest = await response.json(), { info, files } = manifest;
+export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalogId) {
+  const publication = await loadPublication(manifestUrl, fetcher, catalogId);
+  manifestUrl = publication.url;
+  const manifest = publication.manifest, { info, files } = manifest;
   if (manifest.version !== 2) throw new Error('Unsupported filename catalog version.');
   const url = path => new URL(path, manifestUrl).href;
   async function binary(name) {

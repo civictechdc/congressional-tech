@@ -122,6 +122,8 @@ jobs:
     runs-on: ubuntu-24.04
     # Allow up to five hours of admission, then drain, checkpoint and verify.
     timeout-minutes: 360
+    outputs:
+      mode: ${{ steps.operation.outputs.mode }}
     defaults:
       run:
         shell: bash
@@ -355,7 +357,7 @@ jobs:
             fi
             echo "Job status: $JOB_STATUS; sync step: ${SYNC_OUTCOME:-not run}"
             if [ "$SYNC_MODE" = capture ]; then
-              echo 'Capture mode saves receipts and retry state; document tables are updated by a separate rebuild.'
+              echo 'Capture mode saves receipts and retry state; after verification, the dependent job updates the catalog.'
             fi
             if [ "$SYNC_MODE" = validate ]; then
               echo 'Validation only; no archive reads or writes.'
@@ -387,6 +389,59 @@ jobs:
             previous-capture-summary.json
             previous-capture-verification.json
           if-no-files-found: ignore
+
+  update_catalog_after_capture:
+    needs: [capture, finalize]
+    if: needs.capture.outputs.mode == 'capture' && needs.capture.result == 'success' && needs.finalize.result == 'success'
+    # Shares the workflow's raw-source-mirror lock. Acquisition has already
+    # drained, checkpointed and passed Verify completed capture checkpoint.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v5
+        with:
+          ref: pipeline-data
+          path: pipeline-data
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install metadata update tools
+        run: >-
+          pip install -e packages/house-naming -e packages/committee_meeting
+          -e packages/congress_shared -e 'packages/congress_api[archive]'
+      - name: Update catalog from the verified capture
+        env:
+          CLOUDFLARE_ACCOUNT_ID: '174055408ff1560e60601c4d12c561c4'
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          seeds=()
+          for path in pipeline-data/congress_meetings.jsonl.gz pipeline-data/gpo-evidence.jsonl.gz \
+            pipeline-data/meeting-inventory/house.json.gz pipeline-data/meeting-inventory/house-sites.json.gz \
+            pipeline-data/meeting-inventory/senate.json.gz; do
+            if [ -f "$path" ]; then seeds+=(--seed "$path"); fi
+          done
+          raw-source-sync --bucket congressional-tech-raw --index-workers 2 --update-only \
+            --summary catalog-update-summary.json "${seeds[@]}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: catalog-update-${{ github.run_id }}-${{ github.run_attempt }}
+          path: catalog-update-summary*.json
+          if-no-files-found: ignore
+      - name: Finalize catalog progress
+        if: always()
+        env:
+          CLOUDFLARE_ACCOUNT_ID: '174055408ff1560e60601c4d12c561c4'
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          CAPTURE_RESULT: ${{ job.status }}
+        run: python .github/scripts/finalize-raw-source.py
 
   finalize:
     needs: capture

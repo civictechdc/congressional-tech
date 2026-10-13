@@ -4,12 +4,29 @@ The public `/filenames/` page reads Parquet in a Web Worker using Hyparquet.
 It needs no Python service and receives no R2 credentials. It shares the reviewed
 HTML and presentation code with the optional local viewer.
 
-The Pages build downloads `indexes/catalog.json` from `congressional-tech-raw`,
+GitHub Pages serves the interface. Filename-viewer data lives in R2 under
+`congressional-tech-raw/viewer-publications/`, served at
+`https://congressional-viewer-data.mdeeb.workers.dev/` (also available at
+`https://congressional-data.spicygov.ai/`) by the read-only Worker in
+`apps/viewer-data`. It accepts only known publication paths and GET/HEAD;
+it cannot expose archive bodies, receipts, source indexes, or bucket listings.
+The bucket remains private and the browser receives no storage credentials.
+
+The data publisher reads `indexes/catalog.json` from `congressional-tech-raw`,
 then the exact immutable documents and filenames pair selected by that manifest.
 It verifies both SHA-256 hashes, byte sizes, row counts, and catalog IDs. The
 publication script repacks those files with larger row groups and verifies every
 value and the full Arrow schema after rewriting. No catalog data is committed to
 Git. The original R2 objects remain unchanged.
+
+The publisher uploads a complete dataset to a unique `releases/<id>/` directory
+and reads back every uploaded byte to verify its hash. It checks the public
+manifest, byte ranges and cross-origin headers before selecting the release.
+A conditional write updates `viewer-publications/manifest.json` only if no other
+viewer publisher has advanced it, after rechecking the raw catalog selector.
+If the raw catalog advances during publication, the previous viewer stays
+selected and the next scheduled check publishes the new generation.
+`catalogs/<catalog_id>.json` retains old review links. Release files never change.
 
 The browser publication contains:
 
@@ -66,8 +83,12 @@ columns at a time. Nested observations use the bounded JSON blocks, so selecting
 one row does not expand neighboring sources' observation lists. The reader still
 returns all source fields for technical review and copied JSON. Nested-observation search streams row
 groups, and compressed bytes and ordinary query columns have bounded caches.
-The UI cancels superseded searches and details. A mismatched snapshot link is
-rejected rather than silently showing a different record.
+The UI cancels superseded searches and details. Review links load their retained
+snapshot; missing snapshots fail visibly. The browser rechecks the latest pointer
+on focus and every minute while visible. A new-data notice offers the latest
+snapshot while preserving filters and the stable source ID. It never swaps the
+data beneath an open review. Mutable pointers use `no-store`; release files have
+immutable cache headers.
 
 Saved-file status and content findings describe the published catalog. The
 static page does not retrieve private R2 bodies, recheck file hashes, inspect PDF
@@ -78,24 +99,33 @@ Receipt files, archived bodies, and credentials are not published by this build.
 ## Build and check
 
 Install the existing Python archive dependencies and the site npm dependencies.
-To publish from an already downloaded catalog:
+To publish the currently selected catalog using the existing R2 credentials:
 
 ```sh
-python apps/site/scripts/publish-filename-viewer.py --source .cache/filename-viewer-r2
+python apps/site/scripts/publish-viewer-r2.py --report viewer-publication.json
 npm run build --workspace apps/site
 npm run preview --workspace apps/site -- --port 8791
 ```
 
-For an authenticated build, use `--fetch` with `CLOUDFLARE_ACCOUNT_ID`,
-`R2_ACCESS_KEY_ID`, and `R2_SECRET_ACCESS_KEY` set in the build environment.
-The checked-in Pages workflow already uses repository secrets for this step.
-Do not place those values in frontend configuration.
+Set `CLOUDFLARE_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, and `R2_SECRET_ACCESS_KEY`
+only in the publisher environment. Pages no longer needs these credentials.
+The command skips unchanged catalogs before downloading or repacking anything.
+`--prepared <directory>` reuses a verified local viewer publication only if its
+source manifest equals the selected R2 catalog. `--archive-only --prepared ...`
+retains an older snapshot without changing the current selection.
+
+For local data development, build with
+`PUBLIC_FILENAME_MANIFEST_URL=/congressional-tech/data/filenames/manifest.json`
+and generate the local files with `publish-filename-viewer.py --source ...`.
+Normal local previews use the same R2 publication as the website.
+Deploy the file-serving Worker with `npm run deploy --workspace viewer-data`.
 
 ```sh
 npm run test:explorer --workspace apps/site
 npm run check:explorer-types --workspace apps/site
+npm test --workspace viewer-data
 npx --workspace apps/site --no-install astro check
-pytest tests/test_document_filename_viewer.py tests/test_published_hearing_cover.py
+pytest .github/tests/test_viewer_r2.py .github/tests/test_filename_publication.py .github/tests/test_raw_source_workflow.py
 ```
 
 The browser tests generate actual Parquet, compare static query results with the
@@ -103,11 +133,16 @@ Python catalog, verify complete detail records, test cancellation and invalid
 byte ranges, and exercise the shared metadata panel. `PYTHON` can select the
 fixture interpreter; `EXPLORER_PYTHON` selects the existing Explorer interpreter.
 
-Pages deploys after site changes, a manual dispatch, or a successful non-push
-archive workflow on `main`. Every build rereads the selected R2 snapshot and
-checks the total publication against the existing one-billion-byte budget.
-Publication manifest version 2 uses a `viewer-v2` directory beneath the R2
-generation, separating its assets from older viewer layouts. Build into a clean
-output directory when switching layouts; retaining old generated assets counts
-against the size budget. Snapshots show their publication date and catalog identity. An already open tab
-keeps its selected snapshot; reload after an update if its files are unavailable.
+Pages deploys interface changes independently. `publish-filename-viewer.yml`
+publishes after successful non-push archive workflows and checks every 30 minutes
+for catalogs selected by local recovery runs. It writes only the viewer prefix
+and has a separate publication lock. It never runs acquisition or catalog updates.
+
+Future GitHub capture batches update the catalog in a dependent job only after
+capture verification and finalization succeed. That job retains the existing
+`raw-source-mirror` workflow lock. Update/rebuild modes already publish a catalog;
+validation-only code pushes never write archive data. The daily metadata update
+remains available as a fallback. Active pinned local recovery runs are unchanged.
+
+The UI distinguishes catalog update time from viewer publication time. These are
+snapshot dates, not a claim that every ongoing fetch has already been included.

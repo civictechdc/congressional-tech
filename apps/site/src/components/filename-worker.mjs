@@ -3,10 +3,10 @@ let catalog;
 const requests = new Map();
 self.onmessage = async ({ data }) => {
   if (data.cancel) { requests.get(data.cancel)?.abort(); return; }
-  const { id, url, manifest } = data, controller = new AbortController();
+  const { id, url, manifest, snapshot } = data, controller = new AbortController();
   requests.set(id, controller);
   try {
-    catalog ||= createFilenameCatalog(manifest).catch(error => { catalog = null; throw error; });
+    catalog ||= createFilenameCatalog(manifest, fetch, snapshot).catch(error => { catalog = null; throw error; });
     const reader = await catalog;
     controller.signal.throwIfAborted();
     const request = new URL(url, manifest), query = Object.fromEntries(request.searchParams);

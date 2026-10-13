@@ -1,5 +1,5 @@
 // This endpoint serves published viewer files only. It cannot list or write R2.
-const publicationPath = /^(?:manifest\.json|catalogs\/[a-f0-9]{32}\.json|releases\/[a-f0-9]{32}\/(?:manifest\.json|[a-f0-9]{32}\/viewer-v2\/(?:[a-z-]+\.(?:parquet|bin|json)|ids\/[a-f0-9]{2}\.bin)))$/;
+const publicationPath = /^(?:manifest\.json|catalogs\/[a-f0-9]{32}\.json|releases\/[a-f0-9]{32}\/(?:manifest\.json|[a-f0-9]{32}\/viewer-v2\/(?:[a-z_-]+\.(?:parquet|bin|json)|ids\/[a-f0-9]{2}\.bin)))$/;
 const prefix = 'viewer-publications/';
 
 export default {

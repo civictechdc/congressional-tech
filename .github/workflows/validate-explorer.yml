@@ -5,6 +5,7 @@ on:
     paths:
       - "apps/committee_youtube/**"
       - "apps/site/**"
+      - "apps/viewer-data/**"
       - "packages/committee_meeting/**"
       - "packages/congress_api/**"
       - "packages/house-naming/**"
@@ -56,6 +57,8 @@ jobs:
       - name: Check Astro and TypeScript
         working-directory: apps/site
         run: npx --no-install astro check
+      - name: Test the read-only R2 endpoint
+        run: npm test --workspace viewer-data
       - name: Build the static site
         working-directory: apps/site
         run: npm run build

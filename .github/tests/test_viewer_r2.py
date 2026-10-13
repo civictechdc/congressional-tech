@@ -120,3 +120,17 @@ def test_legacy_bootstrap_never_downloads_a_different_catalog(prepared, tmp_path
     monkeypatch.setattr(publication.urllib.request, 'urlopen', read)
     assert publication.bootstrap_pages({'catalog_id': 'different'}, tmp_path) is None
     assert calls == [publication.PAGES_MANIFEST]
+
+
+def test_public_reads_retry_transient_service_failures(monkeypatch):
+    attempts = []
+    def read(request, **kwargs):
+        attempts.append(request.full_url)
+        if len(attempts) < 3:
+            raise publication.urllib.error.HTTPError(request.full_url, 503, 'Unavailable', {}, None)
+        return Body(b'ok')
+    monkeypatch.setattr(publication.urllib.request, 'urlopen', read)
+    monkeypatch.setattr(publication.time, 'sleep', lambda seconds: None)
+    with publication.open_public(publication.public_request('https://data.test/manifest.json')) as response:
+        assert response.read() == b'ok'
+    assert len(attempts) == 3

@@ -10,8 +10,10 @@ import json
 import os
 from pathlib import Path, PurePosixPath
 import tempfile
+import time
 import urllib.request
 import urllib.parse
+import urllib.error
 import uuid
 
 from botocore.exceptions import ClientError
@@ -27,6 +29,20 @@ USER_AGENT = 'congressional-tech-viewer-publisher/1.0 (+https://github.com/civic
 def public_request(url, headers=None):
     # Identify our automated verifier; Cloudflare rejects the generic urllib UA.
     return urllib.request.Request(url, headers={'User-Agent': USER_AGENT, **(headers or {})})
+
+
+def open_public(request, *, timeout=60):
+    for attempt in range(4):
+        try:
+            return urllib.request.urlopen(request, timeout=timeout)
+        except urllib.error.HTTPError as error:
+            if error.code not in (429, 500, 502, 503, 504) or attempt == 3:
+                raise
+            error.close()
+        except urllib.error.URLError:
+            if attempt == 3:
+                raise
+        time.sleep(2 ** attempt)
 
 
 def encoded(value):
@@ -92,14 +108,25 @@ def public_probe(base, pointer, manifest):
     """Check the actual public read path, including browser range/CORS headers."""
     manifest_url = base + pointer['manifest']
     request = public_request(manifest_url, {'Origin': 'https://civictechdc.github.io'})
-    with urllib.request.urlopen(request, timeout=60) as response:
+    with open_public(request) as response:
         if json.load(response) != manifest or response.headers.get('Access-Control-Allow-Origin') != '*':
             raise ValueError('Public manifest or browser access differs.')
+    # Detail views need the navigation and observation files as well as Parquet.
+    def check_file(item):
+        request = public_request(urllib.parse.urljoin(manifest_url, item['path']), {
+            'Origin': 'https://civictechdc.github.io'})
+        request.method = 'HEAD'
+        with open_public(request) as response:
+            if (response.status != 200 or int(response.headers.get('Content-Length', -1)) != item['bytes']
+                    or response.headers.get('Access-Control-Allow-Origin') != '*'):
+                raise ValueError('Public supporting file validation failed: ' + item['path'])
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        list(pool.map(check_file, manifest['files'].values()))
     for name in ('filenames', 'documents', 'browse', 'document_summaries'):
         item = manifest['files'][name]
         request = public_request(urllib.parse.urljoin(manifest_url, item['path']), {
             'Origin': 'https://civictechdc.github.io', 'Range': 'bytes=0-3'})
-        with urllib.request.urlopen(request, timeout=60) as response:
+        with open_public(request) as response:
             if (response.status != 206 or response.headers.get('Content-Range') != f"bytes 0-3/{item['bytes']}"
                     or response.read() != b'PAR1' or response.headers.get('Access-Control-Allow-Origin') != '*'
                     or 'content-range' not in response.headers.get('Access-Control-Expose-Headers', '').lower()):
@@ -164,7 +191,7 @@ def upload(client, root, manifest, *, previous_etag, selected_etag, public_url=P
     actual, _, _ = read_json(client, PREFIX + 'manifest.json')
     if actual != pointer:
         raise ValueError('Selected viewer manifest failed readback.')
-    with urllib.request.urlopen(public_request(public_url + 'manifest.json'), timeout=60) as response:
+    with open_public(public_request(public_url + 'manifest.json')) as response:
         if json.load(response) != pointer:
             raise ValueError('Public viewer manifest differs from the selected publication.')
     return dict(result, status='published')
@@ -173,7 +200,7 @@ def upload(client, root, manifest, *, previous_etag, selected_etag, public_url=P
 def bootstrap_pages(selected, root):
     """One-time migration reuses the current public files when their source matches."""
     try:
-        with urllib.request.urlopen(public_request(PAGES_MANIFEST), timeout=30) as response:
+        with open_public(public_request(PAGES_MANIFEST), timeout=30) as response:
             manifest = json.load(response)
     except (OSError, ValueError):
         return None
@@ -190,7 +217,7 @@ def bootstrap_pages(selected, root):
     def download(name):
         path = root / name
         path.parent.mkdir(parents=True, exist_ok=True)
-        with urllib.request.urlopen(public_request(urllib.parse.urljoin(PAGES_MANIFEST, name)), timeout=120) as response, path.open('wb') as output:
+        with open_public(public_request(urllib.parse.urljoin(PAGES_MANIFEST, name)), timeout=120) as response, path.open('wb') as output:
             while data := response.read(8 * 1024 * 1024):
                 output.write(data)
     print('Migrating the matching verified Pages publication', flush=True)

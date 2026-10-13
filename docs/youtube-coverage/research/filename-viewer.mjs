@@ -376,8 +376,8 @@ try {
  $('summary').textContent=`${number(info.documents)} documents · ${number(info.capture_records)} source/capture entries`;
  $('summary').title=`${number(info.rows)} source rows · ${number(info.api_reference_groups||0)} API-only groups identified by URL`;
  $('snapshot').textContent=info.remote_last_modified?'Snapshot '+new Date(info.remote_last_modified).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}):'Snapshot date not recorded';
- $('snapshot-detail').textContent=info.remote_last_modified?'Published '+dateLabel(info.remote_last_modified)+(info.synced_at?' · Local copy synced '+dateLabel(info.synced_at):''):'';
- if(info.published_at) $('snapshot-detail').append(node('p','Viewer published '+dateLabel(info.published_at)+'. Downloads preserve every catalog value in browser-optimized Parquet files.'));
+ $('snapshot-detail').textContent=info.remote_last_modified?'Catalog updated '+dateLabel(info.remote_last_modified)+(info.synced_at?' · Local copy synced '+dateLabel(info.synced_at):''):'';
+ if(info.published_at) $('snapshot-detail').append(node('p','Viewer data published '+dateLabel(info.published_at)+'. This snapshot contains the catalog’s recorded results; fetches still being processed appear after the next catalog update.'));
  $('snapshot-detail').append(node('p',number(info.rows)+' source rows · '+number(info.api_reference_groups||0)+' API-only groups identified by URL.'));
  const options=commonFields.filter(key=>info.fields.includes(key)).map(key=>{const option=node('option',label(key));option.value=key;return option;});
  const advanced=node('option','Find another field…');advanced.value='__advanced__';$('field').replaceChildren(...options,advanced);

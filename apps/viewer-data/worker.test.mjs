@@ -3,6 +3,18 @@ import assert from 'node:assert/strict';
 import worker from './worker.mjs';
 
 const path = `releases/${'a'.repeat(32)}/${'b'.repeat(32)}/viewer-v2/browse.parquet`;
+test('all published table and navigation filenames are readable', async () => {
+  const env = {PUBLICATIONS: {async head() {
+    return {size: 8, httpEtag: '"id"', uploaded: new Date(), writeHttpMetadata() {}};
+  }}};
+  for (const filename of ['browse.parquet', 'documents.parquet', 'filenames.parquet',
+    'document-summaries.parquet', 'document_rows.bin', 'flags.bin', 'groups.bin',
+    'preferred.bin', 'observation-index.json', 'observation-rows.bin', 'observations.bin',
+    'ids/00.bin', 'ids/ff.bin']) {
+    const request = new Request('https://data.test/' + path.replace('browse.parquet', filename), {method: 'HEAD'});
+    assert.equal((await worker.fetch(request, env)).status, 200, filename);
+  }
+});
 test('only viewer publication paths are readable and writes never reach R2', async () => {
   const env = {PUBLICATIONS: {get() {throw new Error('Archive access attempted');}}};
   for (const value of ['indexes/catalog.json', 'bodies/file', 'receipts/file', 'manifest.json/../indexes/catalog.json', '%2e%2e/indexes/catalog.json']) {
