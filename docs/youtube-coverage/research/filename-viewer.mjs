@@ -14,7 +14,7 @@ const filenameDate = value => { const date=new Date(value+'T00:00:00Z'); return 
 const dateLabel = value => { const date=new Date(value); return Number.isNaN(date.valueOf()) ? value : new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'long'}).format(date); };
 function node(tag, text, className) { const el=document.createElement(tag); if(text !== undefined) el.textContent=text; if(className) el.className=className; return el; }
 function sourceUrl(value) { try { const url=new URL(value); return ['http:','https:'].includes(url.protocol)&&!url.username&&!url.password ? url : null; } catch { return null; } }
-async function api(url, signal) { const res=await fetch(url,{signal}); const data=await res.json(); if(!res.ok) throw new Error(data.error || 'Could not read the catalog.'); return data; }
+async function api(url, signal) { if(window.filenameViewerApi) return window.filenameViewerApi(url,signal); const res=await fetch(url,{signal}); const data=await res.json(); if(!res.ok) throw new Error(data.error || 'Could not read the catalog.'); return data; }
 function currentQuery() { const p=new URLSearchParams(); for(const key of keys) if($(key).value && !(key==='field' && $(key).value==='filename')) p.set(key,$(key).value); if(page>1) p.set('page',page); return p; }
 function saveUrl(mode='replaceState') { const p=currentQuery(); if($('detail').open && $('detail').dataset.row) { p.set('source',$('detail').dataset.row); p.set('catalog',$('detail').dataset.catalog || info.catalog_id); } history[mode](null,'',`${location.pathname}${p.size?'?'+p:''}`); }
 const secondaryKeys = ['congress','document_family','document_kind','format'];
@@ -141,7 +141,7 @@ function renderSummary(entry) {
  fact(dl,'Published kind',row.document_kind?.map(friendly).join(' · ')||'Unclassified',row.document_kind?.length?'Evidence: '+(row.document_kind_source?.map(friendly).join(' · ')||'Not recorded'):null);
  const formats=source.format?.map(formatLabel).join(' · ');
  fact(dl,'Format',formats||'Unknown',formats?(source.body_format?.length?'Detected from saved bytes.':source.media_type?.length?'Reported by the server.':'Inferred from filename.'):null);
- fact(dl,'Saved response',source.body_key?'Available':entry.sources.some(item=>item.retained)?'Available on another URL in this group':'None recorded',source.record_role?.includes('error-response')?'The saved response was marked as failed.':source.response_usable?.includes('false')?'The saved response was marked unusable.':null);
+ fact(dl,'Saved response',source.body_key?(entry.published_only?'Recorded in R2':'Available'):entry.sources.some(item=>item.retained)?'Available on another URL in this group':'None recorded',source.record_role?.includes('error-response')?'The saved response was marked as failed.':source.response_usable?.includes('false')?'The saved response was marked unusable.':null);
  const context=[source.source_committee_name?.join(' · '),!source.congress?.length&&source.source_congress?.length?'Congress '+source.source_congress.join(' · '):null].filter(Boolean);
  if(context.length) fact(dl,'Source context',context.join(' · '));
  if(source.congress?.length) {
@@ -222,7 +222,8 @@ function renderFilename(entry) {
  }
  if(!dl.childElementCount) el.append(node('p','No descriptive facts extracted from this filename.','empty-state'));
  else el.append(dl);
- const support=node('details');support.append(node('summary','Filename origin and reader comparison'));
+ const support=node('details');support.append(node('summary',reading?'Filename origin and reader comparison':'Filename origin'));
+ if(entry.published_only) support.append(node('p',`Published house-naming results · version ${info.house_naming_version}. This page reads the catalog snapshot; it does not rerun the naming rules.`,'section-note'));
  if(row.filename_origins?.length) support.append(node('p','Filename obtained from: '+row.filename_origins.map(friendly).join(' · ')));
  if(entry.api_reference) support.append(node('p','Literal URL-derived filename: '+row.filename));
  if(reading) {
@@ -245,6 +246,15 @@ function renderOccurrences(occurrences) {
 function webUrlOrText(value) { return sourceUrl(value)?link(value):node('span',typeof value==='object'?JSON.stringify(value):String(value)); }
 async function loadEvidence(entry,controller) {
  const el=section('saved-evidence','Saved response evidence'), summary=$('content-summary');
+ if(entry.published_only) {
+  const content=Object.entries(entry.record).filter(([key,value])=>key.startsWith('content_')&&present(value));
+  summary.hidden=!content.length;
+  summary.replaceChildren(node('p','Saved contents · published findings','link-caption'));
+  for(const [key,value] of content) summary.append(node('p',label(key)+': '+display(value)));
+  el.hidden=!entry.record.body_key;
+  if(entry.record.body_key) { el.append(node('p','The catalog records a saved response in R2. This static page does not fetch private archive files or recheck their contents.','section-note')); const dl=node('dl',undefined,'facts'); fact(dl,'R2 object',entry.record.body_key); el.append(dl); }
+  return;
+ }
  if(!entry.saved_file_available) { el.hidden=true; return; } el.hidden=false;
  el.append(node('p','Reading the saved file and checking its hash…','section-note'));
  try {
@@ -293,10 +303,13 @@ $('copy').addEventListener('click',async()=>{try{await navigator.clipboard.write
 $('share').addEventListener('click',async()=>{try{saveUrl();await navigator.clipboard.writeText(location.href);$('share-status').textContent='Copied';}catch{$('share-status').textContent='Clipboard unavailable';}});
 window.addEventListener('popstate',()=>{const row=restore();load();if(row!==null)openDetail(row.id,false,row.catalog);else closeDetail(false);});
 try {
- info=await api('/api/info'); $('summary').textContent=`${number(info.documents)} documents · ${number(info.capture_records)} source/capture entries`;
+ info=await api('/api/info');
+ if(info.downloads) { document.querySelector('a[href="/data.parquet"]').href=info.downloads.documents; document.querySelector('a[href="/sources.parquet"]').href=info.downloads.filenames; }
+ $('summary').textContent=`${number(info.documents)} documents · ${number(info.capture_records)} source/capture entries`;
  $('summary').title=`${number(info.rows)} source rows · ${number(info.api_reference_groups||0)} API-only groups identified by URL`;
  $('snapshot').textContent=info.remote_last_modified?'Snapshot '+new Date(info.remote_last_modified).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}):'Snapshot date not recorded';
  $('snapshot-detail').textContent=info.remote_last_modified?'Published '+dateLabel(info.remote_last_modified)+(info.synced_at?' · Local copy synced '+dateLabel(info.synced_at):''):'';
+ if(info.published_at) $('snapshot-detail').append(node('p','Viewer published '+dateLabel(info.published_at)+'. Downloads preserve every catalog value in browser-optimized Parquet files.'));
  $('snapshot-detail').append(node('p',number(info.rows)+' source rows · '+number(info.api_reference_groups||0)+' API-only groups identified by URL.'));
  const options=commonFields.filter(key=>info.fields.includes(key)).map(key=>{const option=node('option',label(key));option.value=key;return option;});
  const advanced=node('option','Find another field…');advanced.value='__advanced__';$('field').replaceChildren(...options,advanced);

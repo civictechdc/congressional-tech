@@ -10,7 +10,7 @@
     "migrate": "node scripts/migrate-content.mjs",
     "generate:explorer-types": "node scripts/generate-explorer-types.mjs",
     "check:explorer-types": "node scripts/generate-explorer-types.mjs --check",
-    "test:explorer": "node --test src/components/explorer/*.test.mjs ../../docs/youtube-coverage/committee-explorer-charts.test.mjs"
+    "test:explorer": "node --test src/components/explorer/*.test.mjs src/components/filename-catalog.test.mjs ../../tests/test_filename_viewer_ui.mjs ../../docs/youtube-coverage/committee-explorer-charts.test.mjs"
   },
   "dependencies": {
     "@astrojs/react": "^4.4.0",
@@ -18,6 +18,7 @@
     "@fontsource/source-sans-3": "^5.2.5",
     "astro": "^5.13.0",
     "hyparquet": "1.31.2",
+    "hyparquet-compressors": "1.1.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },
@@ -25,6 +26,7 @@
     "@astrojs/check": "^0.9.9",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
+    "jsdom": "30.1.2",
     "json-schema-to-typescript": "16.0.0",
     "typescript": "^5.8.0"
   }

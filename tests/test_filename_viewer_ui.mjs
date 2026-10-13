@@ -1,12 +1,12 @@
 // DOM interaction tests, with mocked data and no browser or network access.
-// npm install --prefix .cache/filename-viewer-tests --no-save --ignore-scripts jsdom
+// npm install --workspace apps/site
 // node --test tests/test_filename_viewer_ui.mjs
 import {readFile} from 'node:fs/promises';
 import {createRequire} from 'node:module';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 
-const require = createRequire(new URL('../.cache/filename-viewer-tests/package.json', import.meta.url));
+const require = createRequire(new URL('../apps/site/package.json', import.meta.url));
 const {JSDOM} = require('jsdom');
 const html = await readFile(new URL('../docs/youtube-coverage/research/filename-viewer.html', import.meta.url), 'utf8');
 const script = await readFile(new URL('../docs/youtube-coverage/research/filename-viewer.mjs', import.meta.url), 'utf8');
@@ -207,5 +207,21 @@ test('closing a direct review link restores search; a clicked row restores its b
     get('close-detail').click();assert.equal(w.document.activeElement,get('q'));
     const button=get('rows').querySelector('button');button.focus();button.click();await flush();
     get('close-detail').click();assert.equal(w.document.activeElement,button);
+  } finally {dom.window.close();}
+});
+
+test('static publication shows recorded evidence without claiming live inspection or rerunning rules', async()=>{
+  const published=structuredClone(entry);
+  published.saved_file_available=false;published.published_only=true;published.reading=null;
+  published.record.content_congress=['116'];
+  const {dom,get,requests}=await app(async url=>({ok:true,json:async()=>published}));
+  try {
+    assert.equal(get('saved-link').hidden,true);
+    assert.match(get('document-summary').textContent,/Recorded in R2/);
+    assert.match(get('content-summary').textContent,/published findings/);
+    assert.match(get('content-summary').textContent,/116/);
+    assert.match(get('saved-evidence').textContent,/does not fetch private archive files/);
+    assert.match(get('filename-findings').textContent,/does not rerun/);
+    assert.equal(requests.some(url=>url.startsWith('/api/evidence/')),false);
   } finally {dom.window.close();}
 });

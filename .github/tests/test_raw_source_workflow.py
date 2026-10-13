@@ -302,7 +302,10 @@ def test_shared_writer_lock_revision_credentials_and_single_rebuild():
     for path in WORKFLOW_PATH.parent.glob("*.yml"):
         if "R2_ACCESS_KEY_ID" in path.read_text():
             writer = yaml.load(path.read_text(), Loader=yaml.BaseLoader)
-            if path != WORKFLOW_PATH:
+            # Pages reads a hash-verified immutable generation. It does not
+            # write R2 objects or participate in the archive writer lock.
+            # Its read-only client calls are checked in test_filename_publication.
+            if path != WORKFLOW_PATH and path.name != 'deploy-pages.yml':
                 assert writer["concurrency"] == {
                     "group": "raw-source-mirror", "cancel-in-progress": "false", "queue": "max",
                 }, path

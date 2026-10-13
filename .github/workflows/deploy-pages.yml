@@ -8,6 +8,12 @@ on:
     paths:
       - "apps/site/**"
       - ".github/workflows/deploy-pages.yml"
+      - "docs/youtube-coverage/research/filename-viewer.*"
+      - "docs/youtube-coverage/research/scripts/view_document_filenames.py"
+  workflow_run:
+    workflows: ["Capture raw sources and rebuild document tables"]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       code_revision:
@@ -30,6 +36,9 @@ concurrency:
 
 jobs:
   build:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event != 'push')
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -46,7 +55,7 @@ jobs:
       - name: Install publication verifier
         run: >-
           pip install -e packages/house-naming -e packages/committee_meeting -e packages/congress_shared
-          -e packages/youtube_api -e packages/congress_api -e apps/committee_youtube
+          -e packages/youtube_api -e "packages/congress_api[archive]" -e apps/committee_youtube
       - name: Verify and stage only published browser files
         run: |
           python - <<'PYTHON'
@@ -63,6 +72,12 @@ jobs:
               # First rollout can reuse the existing catalog without reassembly.
               migrate(source, target)
           PYTHON
+      - name: Verify and publish the filename catalog from R2
+        env:
+          CLOUDFLARE_ACCOUNT_ID: '174055408ff1560e60601c4d12c561c4'
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: python apps/site/scripts/publish-filename-viewer.py --fetch
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
