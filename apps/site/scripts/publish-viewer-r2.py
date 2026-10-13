@@ -21,6 +21,12 @@ PREFIX = 'viewer-publications/'
 PUBLIC_URL = 'https://congressional-viewer-data.mdeeb.workers.dev/'
 PUBLISHER_VERSION = 1
 PAGES_MANIFEST = 'https://civictechdc.github.io/congressional-tech/data/filenames/manifest.json'
+USER_AGENT = 'congressional-tech-viewer-publisher/1.0 (+https://github.com/civictechdc/congressional-tech)'
+
+
+def public_request(url, headers=None):
+    # Identify our automated verifier; Cloudflare rejects the generic urllib UA.
+    return urllib.request.Request(url, headers={'User-Agent': USER_AGENT, **(headers or {})})
 
 
 def encoded(value):
@@ -85,13 +91,13 @@ def put_json(client, key, value, **condition):
 def public_probe(base, pointer, manifest):
     """Check the actual public read path, including browser range/CORS headers."""
     manifest_url = base + pointer['manifest']
-    request = urllib.request.Request(manifest_url, headers={'Origin': 'https://civictechdc.github.io'})
+    request = public_request(manifest_url, {'Origin': 'https://civictechdc.github.io'})
     with urllib.request.urlopen(request, timeout=60) as response:
         if json.load(response) != manifest or response.headers.get('Access-Control-Allow-Origin') != '*':
             raise ValueError('Public manifest or browser access differs.')
     for name in ('filenames', 'documents', 'browse', 'document_summaries'):
         item = manifest['files'][name]
-        request = urllib.request.Request(urllib.parse.urljoin(manifest_url, item['path']), headers={
+        request = public_request(urllib.parse.urljoin(manifest_url, item['path']), {
             'Origin': 'https://civictechdc.github.io', 'Range': 'bytes=0-3'})
         with urllib.request.urlopen(request, timeout=60) as response:
             if (response.status != 206 or response.headers.get('Content-Range') != f"bytes 0-3/{item['bytes']}"
@@ -158,7 +164,7 @@ def upload(client, root, manifest, *, previous_etag, selected_etag, public_url=P
     actual, _, _ = read_json(client, PREFIX + 'manifest.json')
     if actual != pointer:
         raise ValueError('Selected viewer manifest failed readback.')
-    with urllib.request.urlopen(public_url + 'manifest.json', timeout=60) as response:
+    with urllib.request.urlopen(public_request(public_url + 'manifest.json'), timeout=60) as response:
         if json.load(response) != pointer:
             raise ValueError('Public viewer manifest differs from the selected publication.')
     return dict(result, status='published')
@@ -167,7 +173,7 @@ def upload(client, root, manifest, *, previous_etag, selected_etag, public_url=P
 def bootstrap_pages(selected, root):
     """One-time migration reuses the current public files when their source matches."""
     try:
-        with urllib.request.urlopen(PAGES_MANIFEST, timeout=30) as response:
+        with urllib.request.urlopen(public_request(PAGES_MANIFEST), timeout=30) as response:
             manifest = json.load(response)
     except (OSError, ValueError):
         return None
@@ -184,7 +190,7 @@ def bootstrap_pages(selected, root):
     def download(name):
         path = root / name
         path.parent.mkdir(parents=True, exist_ok=True)
-        with urllib.request.urlopen(urllib.parse.urljoin(PAGES_MANIFEST, name), timeout=120) as response, path.open('wb') as output:
+        with urllib.request.urlopen(public_request(urllib.parse.urljoin(PAGES_MANIFEST, name)), timeout=120) as response, path.open('wb') as output:
             while data := response.read(8 * 1024 * 1024):
                 output.write(data)
     print('Migrating the matching verified Pages publication', flush=True)

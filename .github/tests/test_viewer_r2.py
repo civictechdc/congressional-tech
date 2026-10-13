@@ -104,3 +104,19 @@ def test_archiving_old_review_does_not_change_latest(prepared, monkeypatch):
     store = Store(prepared[1])
     assert publish(store, prepared, monkeypatch, archive_only=True)['status'] == 'archived'
     assert 'viewer-publications/manifest.json' not in store.data
+
+
+def test_public_verification_identifies_the_publisher_without_credentials():
+    request = publication.public_request('https://data.test/manifest.json', {'Origin': 'https://civictechdc.github.io'})
+    assert request.get_header('User-agent') == publication.USER_AGENT
+    assert request.get_header('Authorization') is None
+
+
+def test_legacy_bootstrap_never_downloads_a_different_catalog(prepared, tmp_path, monkeypatch):
+    calls = []
+    def read(request, **kwargs):
+        calls.append(request.full_url)
+        return Body(publication.encoded(prepared[1]))
+    monkeypatch.setattr(publication.urllib.request, 'urlopen', read)
+    assert publication.bootstrap_pages({'catalog_id': 'different'}, tmp_path) is None
+    assert calls == [publication.PAGES_MANIFEST]
