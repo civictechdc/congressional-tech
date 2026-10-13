@@ -18,7 +18,7 @@ from botocore.exceptions import ClientError
 
 BUCKET = 'congressional-tech-raw'
 PREFIX = 'viewer-publications/'
-PUBLIC_URL = 'https://congressional-data.spicygov.ai/'
+PUBLIC_URL = 'https://congressional-viewer-data.mdeeb.workers.dev/'
 PUBLISHER_VERSION = 1
 PAGES_MANIFEST = 'https://civictechdc.github.io/congressional-tech/data/filenames/manifest.json'
 
