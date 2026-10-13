@@ -124,7 +124,7 @@ def upload(client, root, manifest, *, previous_etag, selected_etag, public_url=P
         response = client.get_object(Bucket=BUCKET, Key=key)
         actual = hashlib.sha256()
         with response['Body'] as stream:
-            for part in stream.iter_chunks(8 * 1024 * 1024):
+            while part := stream.read(8 * 1024 * 1024):
                 actual.update(part)
         if response['ContentLength'] != path.stat().st_size or actual.hexdigest() != expected:
             raise ValueError('Uploaded object failed readback: ' + name)

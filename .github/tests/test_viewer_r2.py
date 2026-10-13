@@ -17,10 +17,7 @@ publication = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(publication)
 
 
-class Body(io.BytesIO):
-    def iter_chunks(self, size):
-        while data := self.read(size):
-            yield data
+Body = io.BytesIO
 
 
 class Store:
