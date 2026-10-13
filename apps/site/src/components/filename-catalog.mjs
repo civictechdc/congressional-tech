@@ -1,5 +1,6 @@
 import { parquetMetadataAsync, parquetReadObjects } from 'hyparquet';
 import { compressors } from 'hyparquet-compressors';
+import { observationReader } from './filename-observations.mjs';
 
 const filters = ['congress', 'document_family', 'document_kind', 'format'];
 const sourceColumns = ['filename','source_url','source_id','body_key','format','record_role'];
@@ -69,7 +70,7 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch) {
   const response = await fetcher(manifestUrl);
   if (!response.ok) throw new Error('The filename catalog is not published yet.');
   const manifest = await response.json(), { info, files } = manifest;
-  if (manifest.version !== 1) throw new Error('Unsupported filename catalog version.');
+  if (manifest.version !== 2) throw new Error('Unsupported filename catalog version.');
   const url = path => new URL(path, manifestUrl).href;
   async function binary(name) {
     const response = await fetcher(url(files[name].path));
@@ -78,13 +79,33 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch) {
     if (bytes.byteLength !== files[name].bytes) throw new Error('Incomplete catalog navigation index.');
     return bytes;
   }
-  const [groupBuffer, preferredBuffer, documentBuffer, flagBuffer] = await Promise.all(['groups','preferred','document_rows','flags'].map(binary));
-  const groups = new Uint32Array(groupBuffer), preferred = new Uint32Array(preferredBuffer), documentRows = new Uint32Array(documentBuffer), flags = new Uint8Array(flagBuffer);
-  if (groups.length !== info.rows || preferred.length !== info.entries || documentRows.length !== info.entries || flags.length !== info.entries) throw new Error('Catalog index counts disagree.');
-  const first = new Int32Array(info.entries).fill(-1), next = new Int32Array(info.rows);
-  for (let source = info.rows - 1; source >= 0; source--) {
-    if (groups[source] >= info.entries) throw new Error('Invalid catalog group.');
-    next[source] = first[groups[source]]; first[groups[source]] = source;
+  // Shared index loads outlive individual queries; cancellation is checked by
+  // each caller so typing cannot cancel an index another request is using.
+  const indexes = new Map();
+  function index(name) {
+    if (!indexes.has(name)) indexes.set(name, binary(name).then(buffer => {
+      const array = name === 'flags' ? new Uint8Array(buffer) : new Uint32Array(buffer);
+      if (array.length !== (name === 'groups' ? info.rows : info.entries)) throw new Error('Catalog index counts disagree.');
+      if (name === 'groups' && array.some(group => group >= info.entries)) throw new Error('Invalid catalog group.');
+      return array;
+    }).catch(error => { indexes.delete(name); throw error; }));
+    return indexes.get(name);
+  }
+  let membership;
+  async function membersOf(group) {
+    if (!membership) {
+      const groups = await index('groups');
+      if (!membership) {
+        const first = new Int32Array(info.entries).fill(-1), next = new Int32Array(info.rows);
+        for (let source = info.rows - 1; source >= 0; source--) {
+          next[source] = first[groups[source]]; first[groups[source]] = source;
+        }
+        membership = { first, next };
+      }
+    }
+    const members = [];
+    for (let source = membership.first[group]; source !== -1; source = membership.next[source]) members.push(source);
+    return members;
   }
   const tables = new Map(), columnCache = new Map();
   async function table(name, signal) {
@@ -96,16 +117,56 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch) {
     const spans = metadata.row_groups.map(group => {
       const start = offset; offset += Number(group.num_rows);
       const chunks = group.columns.map(column => column.meta_data);
-      return { start, end: offset, byteStart: Math.min(...chunks.map(column => Number(column.dictionary_page_offset ?? column.data_page_offset))),
-        byteEnd: Math.max(...chunks.map(column => Number(column.dictionary_page_offset ?? column.data_page_offset) + Number(column.total_compressed_size))) };
+      return { start, end: offset, chunks };
     });
     const result = { buffer, metadata, spans }; tables.set(name, result); return result;
   }
+  async function prefetchColumns(name, start, end, columns, signal) {
+    const { buffer, spans } = await table(name, signal);
+    const ranges = [];
+    for (const span of spans) if (span.end > start && span.start < end) {
+      for (const chunk of span.chunks) if (!columns || columns.includes(chunk.path_in_schema[0])) {
+        const start = Number(chunk.dictionary_page_offset ?? chunk.data_page_offset);
+        ranges.push([start, start + Number(chunk.total_compressed_size)]);
+      }
+    }
+    ranges.sort((a, b) => a[0] - b[0]);
+    const merged = [];
+    for (const range of ranges) {
+      const last = merged.at(-1);
+      if (last && range[0] <= last[1] + 1024) last[1] = Math.max(last[1], range[1]);
+      else merged.push([...range]);
+    }
+    for (const [start, end] of merged) await buffer.slice(start, end, signal);
+  }
   async function read(name, start, end, columns, signal, prefetch = false) {
-    const { buffer, metadata, spans } = await table(name, signal);
-    if (prefetch) for (const span of spans) if (span.end > start && span.start < end) await buffer.slice(span.byteStart, span.byteEnd, signal);
+    const { buffer, metadata } = await table(name, signal);
+    if (prefetch) await prefetchColumns(name, start, end, columns, signal);
     const rows = await parquetReadObjects({ file: buffer.file(signal), metadata, compressors, columns, rowStart: start, rowEnd: end });
     signal?.throwIfAborted(); return rows.map(normalized);
+  }
+  let observations;
+  async function sourceRecord(row, signal) {
+    const columns = info.fields.filter(name => name !== 'source_occurrences');
+    await prefetchColumns('filenames', row, row + 1, columns, signal);
+    const record = {};
+    // Wide reads allocate every physical column at once, even for one row.
+    // Small batches bound that work without changing the downloadable schema.
+    for (let start = 0; start < columns.length; start += 8) {
+      Object.assign(record, (await read('filenames', row, row + 1, columns.slice(start, start + 8), signal))[0]);
+    }
+    if (!observations) {
+      const response = await fetcher(url(files.observation_index.path), { signal });
+      if (!response.ok) throw new Error('Could not load the observation index.');
+      const index = await response.json();
+      if (index.references.rows !== info.rows) throw new Error('Observation rows disagree with the publication.');
+      observations = observationReader(index,
+        rangeFile(url(files.observations.path), files.observations.bytes, fetcher),
+        rangeFile(url(files.observation_rows.path), files.observation_rows.bytes, fetcher));
+    }
+    record.source_occurrences = await observations.read(row, signal);
+    // Keep the original field order for copied JSON and technical metadata.
+    return Object.fromEntries(info.fields.map(name => [name, record[name]]));
   }
   async function selected(name, positions, columns, signal) {
     const { spans } = await table(name, signal), result = new Map();
@@ -138,8 +199,12 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch) {
     if (!['','yes','no'].includes(query.retained || '') || !['','all','capture-records'].includes(query.scope || '')) throw new Error('Unknown catalog filter.');
     const selectedFilters = filters.filter(key => query[key] && query[key] !== '__null__');
     for (const key of selectedFilters) if (!info.facets[key].includes(query[key])) throw new Error(`Unknown ${key} filter.`);
+    const [preferred, flags] = await Promise.all(['preferred', 'flags'].map(index));
+    signal?.throwIfAborted();
     const mask = new Uint8Array(info.entries).fill(needle || selectedFilters.length ? 0 : 1);
     if (needle || selectedFilters.length) {
+      const groups = await index('groups');
+      signal?.throwIfAborted();
       // Nested observations can be large: stream those row groups without
       // retaining the entire million-row evidence column in memory.
       const stream = needle && field === 'source_occurrences';
@@ -188,14 +253,17 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch) {
     throw new Error('Source record is not present in this catalog.');
   }
   async function entry(identity, catalog, signal) {
-    const row = await resolve(identity, catalog, signal), group = groups[row], members = [];
-    for (let source = first[group]; source !== -1; source = next[source]) members.push(source);
-    const [record] = await selected('filenames', [row], undefined, signal);
-    const [document] = await selected('documents', [documentRows[group]], undefined, signal);
+    const row = await resolve(identity, catalog, signal);
+    const [groups, preferred, documentRows] = await Promise.all(['groups', 'preferred', 'document_rows'].map(index));
+    signal?.throwIfAborted();
+    const group = groups[row], members = await membersOf(group);
+    const record = await sourceRecord(row, signal);
+    const [document] = await selected('document_summaries', [documentRows[group]], undefined, signal);
     const sources = await selected('filenames', members, sourceColumns, signal);
     const bodies = sources.map(source => source.body_key);
     for (const source of sources) { source.retained = source.body_key != null; delete source.body_key; }
-    const [canonical] = row === preferred[group] ? [record] : await selected('filenames', [preferred[group]], undefined, signal);
+    const canonical = row === preferred[group] ? record : await sourceRecord(preferred[group], signal);
+    document.source_id = canonical.source_id;
     return { record, document, filename: document.filename, sources, catalog_id: info.catalog_id, api_reference: apiReference(record.source_url),
       origin: sourceContext(record), document_origin: sourceContext(canonical), reading: null, saved_file_available: false, published_only: true,
       sources_share_saved_file: !!bodies[0] && bodies.every(value => value === bodies[0]) };

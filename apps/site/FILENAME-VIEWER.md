@@ -15,6 +15,14 @@ The browser publication contains:
 
 - Complete source and grouped-document Parquet files, retaining all columns.
 - A filename-sorted Parquet table for displaying result pages.
+- A three-column document summary for details. The group's source ID comes from
+  its preferred source, whose identity the catalog validates during publication.
+- A shared observation dictionary and per-source reference lists, stored as
+  independently Brotli-compressed JSON blocks. Each compressed part expands to
+  at most 1 MiB. Identical observations share storage; the reader restores every
+  original observation, null field, duplicate, and ordering. Oversized individual
+  values span multiple parts. The publisher reconstructs and compares all source
+  observation lists against Arrow before writing the manifest.
 - Small binary arrays mapping source rows to groups, preferred sources, original
   document rows, and group status. Integers are unsigned 32-bit little-endian.
   Status bits are saved response (1), document scope (2), missing kind (4), missing
@@ -29,8 +37,16 @@ same source row; missing classification filters check the grouped document.
 only an unfetched alias. Choose “All records” to include API/source references.
 Nested source observations retain their original page, title, and link grouping.
 
-Queries load only needed columns over validated HTTP byte ranges. Full metadata
-is read only for selected detail rows. Nested-observation search streams row
+Catalog information loads just the manifest. Ordinary browsing loads flags and
+preferred-source rows; searching loads group mappings, and opening a detail
+loads document-row mappings and builds group membership lists. Concurrent
+queries share pending navigation loads without sharing cancellation.
+
+Queries load only needed columns over validated HTTP byte ranges. Detail reads
+prefetch only requested columns and decode ordinary source metadata eight
+columns at a time. Nested observations use the bounded JSON blocks, so selecting
+one row does not expand neighboring sources' observation lists. The reader still
+returns all source fields for technical review and copied JSON. Nested-observation search streams row
 groups, and compressed bytes and ordinary query columns have bounded caches.
 The UI cancels superseded searches and details. A mismatched snapshot link is
 rejected rather than silently showing a different record.
@@ -72,5 +88,8 @@ fixture interpreter; `EXPLORER_PYTHON` selects the existing Explorer interpreter
 Pages deploys after site changes, a manual dispatch, or a successful non-push
 archive workflow on `main`. Every build rereads the selected R2 snapshot and
 checks the total publication against the existing one-billion-byte budget.
-Snapshots show their publication date and catalog identity. An already open tab
+Publication manifest version 2 uses a `viewer-v2` directory beneath the R2
+generation, separating its assets from older viewer layouts. Build into a clean
+output directory when switching layouts; retaining old generated assets counts
+against the size budget. Snapshots show their publication date and catalog identity. An already open tab
 keeps its selected snapshot; reload after an update if its files are unavailable.

@@ -6,6 +6,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { createFilenameCatalog, rangeFile, sourceContext } from './filename-catalog.mjs';
+import { observationReader } from './filename-observations.mjs';
+import { brotliCompressSync } from 'node:zlib';
 
 async function localFetch(url, options = {}) {
   options.signal?.throwIfAborted();
@@ -22,7 +24,21 @@ test('static Parquet queries match the Python catalog and preserve complete sour
   const folder = await mkdtemp(join(tmpdir(), 'filename-catalog-'));
   try {
     execFileSync(process.env.PYTHON || 'python3', [fileURLToPath(new URL('../../scripts/filename-test-fixture.py', import.meta.url)), folder]);
-    const reader = await createFilenameCatalog(pathToFileURL(join(folder,'public/manifest.json')), localFetch);
+    const requests = [];
+    const reader = await createFilenameCatalog(pathToFileURL(join(folder,'public/manifest.json')), (url, options) => {
+      requests.push(new URL(url).pathname);
+      return localFetch(url, options);
+    });
+    assert.equal(requests.length, 1, 'catalog information only loads the manifest');
+    await reader.search({});
+    await reader.search({scope:'all', retained:'no'});
+    assert.ok(!requests.some(path => /(?:groups|document_rows)\.bin$/.test(path)), 'browsing defers search and detail indexes');
+    await reader.search({q:'alias'});
+    assert.equal(requests.filter(path => path.endsWith('/groups.bin')).length, 1);
+    assert.ok(!requests.some(path => path.endsWith('/document_rows.bin')), 'search does not load detail navigation');
+    await reader.entry('0');
+    assert.equal(requests.filter(path => path.endsWith('/document_rows.bin')).length, 1);
+
     const expected = JSON.parse(await readFile(join(folder,'expected.json')));
     for (const { query, result } of expected) {
       for (const row of result.rows) { delete row.source_id; delete row.document_id; }
@@ -42,7 +58,63 @@ test('static Parquet queries match the Python catalog and preserve complete sour
     await assert.rejects(reader.search({field:'missing'}), /Unknown search field/);
     const controller = new AbortController(); controller.abort();
     await assert.rejects(reader.search({q:'anything'}, controller.signal), {name:'AbortError'});
+
+    let release, started;
+    const pending = new Promise(resolve => { release = resolve; });
+    const loading = new Promise(resolve => { started = resolve; });
+    let groupLoads = 0;
+    const concurrent = await createFilenameCatalog(pathToFileURL(join(folder,'public/manifest.json')), async (url, options) => {
+      if (new URL(url).pathname.endsWith('/groups.bin')) { groupLoads++; started(); await pending; }
+      return localFetch(url, options);
+    });
+    const cancelled = new AbortController();
+    const first = concurrent.search({q:'alias'}, cancelled.signal);
+    const rejected = assert.rejects(first, {name:'AbortError'});
+    await loading;
+    const second = concurrent.search({q:'alias'});
+    cancelled.abort(); release();
+    await rejected;
+    assert.equal((await second).total, 1, 'a cancelled query does not cancel a shared index load');
+    assert.equal(groupLoads, 1);
+    let attempts = 0;
+    const retrying = await createFilenameCatalog(pathToFileURL(join(folder,'public/manifest.json')), (url, options) => {
+      if (new URL(url).pathname.endsWith('/groups.bin') && attempts++ === 0) return new Response('', {status:503});
+      return localFetch(url, options);
+    });
+    await assert.rejects(retrying.search({q:'alias'}), /navigation index/);
+    assert.equal((await retrying.search({q:'alias'})).total, 1, 'failed lazy loads can retry');
+    assert.equal(attempts, 2);
   } finally { await rm(folder, { recursive: true, force: true }); }
+});
+
+test('bounded observation parts preserve large values, UTF-8, nulls, duplicates and ordering', async () => {
+  function packed(rows) {
+    const raw = Buffer.from(JSON.stringify(rows)), chunks = [], parts = [];
+    let offset = 0;
+    for (let start = 0; start < raw.length; start += 71) {
+      const piece = raw.subarray(start, start + 71), compressed = brotliCompressSync(piece);
+      chunks.push(compressed); parts.push([offset, compressed.length, piece.length]); offset += compressed.length;
+    }
+    const bytes = Buffer.concat(chunks);
+    return { descriptor: {rows:rows.length, blocks:[{start:0,count:rows.length,parts}]},
+      file: {slice: async (start, end) => bytes.buffer.slice(bytes.byteOffset + start, bytes.byteOffset + end)} };
+  }
+  const label = 'Witness 🏛️ José '.repeat(300);
+  const data = packed([{label:[label], empty:[]}, null, {label:['Second']}]);
+  const refs = packed([[2,0,2,1], [], null]);
+  const index = {version:1,max_part_bytes:71,fields:['label','empty','missing'],observations:data.descriptor,references:refs.descriptor};
+  const reader = observationReader(index, data.file, refs.file);
+  assert.deepEqual(await reader.read(0), [
+    {label:['Second'],empty:null,missing:null}, {label:[label],empty:[],missing:null},
+    {label:['Second'],empty:null,missing:null}, null,
+  ]);
+  assert.deepEqual(await reader.read(1), []);
+  assert.equal(await reader.read(2), null);
+  await assert.rejects(reader.read(3), /Invalid observation reference/);
+  const controller = new AbortController(); controller.abort();
+  await assert.rejects(reader.read(0, controller.signal), {name:'AbortError'});
+  const bad = observationReader({...index, max_part_bytes:70}, data.file, refs.file);
+  await assert.rejects(bad.read(0), /block size/);
 });
 
 test('range reads reject full-file fallbacks, incorrect ranges and truncated bytes', async () => {

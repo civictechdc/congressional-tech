@@ -11,6 +11,8 @@ import pyarrow.parquet as pq
 spec = importlib.util.spec_from_file_location('publisher', Path(__file__).with_name('publish-filename-viewer.py'))
 publisher = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(publisher)
+# Small parts exercise multi-part values in the real Python-to-browser path.
+publisher.observations.BLOCK_BYTES = 128
 root = Path(sys.argv[1])
 generation = 'a' * 32
 catalog_id = 'b' * 32
@@ -36,6 +38,8 @@ for i, (filename, url, body, group, role, kind) in enumerate([
                format=['pdf'] if filename.endswith('.pdf') else None, congress=['117'] if i == 2 else None)
     if i == 2:
         row['source_occurrences'] = [dict(source_page_url=['https://committee.test/hearing'], source_page_title=['Hearing page'], source_link_label=['Witness name'], source_occurrence_scope=['anchor'])]
+        row['source_occurrences'].append(dict(row['source_occurrences'][0]))
+        row['source_occurrences'].append(dict(source_page_url=None, source_page_title=[], source_link_label=['José 🏛️'], source_occurrence_scope=None))
     if i == 4:
         row['recovered_filename'] = ['Recovered witness.pdf']
     rows.append(row)

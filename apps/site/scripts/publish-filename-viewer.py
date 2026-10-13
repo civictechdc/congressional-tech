@@ -26,6 +26,9 @@ VIEWER = ROOT / 'docs/youtube-coverage/research/scripts/view_document_filenames.
 spec = importlib.util.spec_from_file_location('filename_viewer', VIEWER)
 viewer = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(viewer)
+spec = importlib.util.spec_from_file_location('filename_observations', Path(__file__).with_name('filename_observations.py'))
+observations = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(observations)
 
 
 def digest(path):
@@ -86,8 +89,8 @@ def publish(root, target, modified=None):
     target.mkdir(parents=True, exist_ok=True)
     # Generation-specific paths prevent a stale tab from mixing data from
     # different snapshots. Removed files fail visibly and require a reload.
-    output = target / manifest['generation']
-    output.mkdir(exist_ok=True)
+    output = target / manifest['generation'] / 'viewer-v2'
+    output.mkdir(parents=True, exist_ok=True)
     files = {}
 
     def describe(name, path, rows=None):
@@ -112,6 +115,23 @@ def publish(root, target, modified=None):
                 raise ValueError('Repacking changed catalog values.')
         describe(name, path, source.metadata.num_rows)
         print(f'{name}: {path.stat().st_size:,} bytes; all values verified', flush=True)
+
+    source = pq.ParquetFile(root / manifest['files']['filenames']['key'])
+    observations.publish_observations(source, output)
+    for name, filename in [('observations', 'observations.bin'), ('observation_rows', 'observation-rows.bin'), ('observation_index', 'observation-index.json')]:
+        describe(name, output / filename)
+    print('Source observations: every reconstructed value verified', flush=True)
+    document_file = pq.ParquetFile(root / manifest['files']['documents']['key'])
+    names = ['filename', 'document_kind', 'document_kind_source']
+    summary = document_file.read(columns=[name for name in names if name in document_file.schema_arrow.names])
+    for name in names:
+        if name not in summary.column_names:
+            summary = summary.append_column(name, pa.nulls(len(summary), type=pa.list_(pa.string())))
+    path = output / 'document-summaries.parquet'
+    pq.write_table(summary, path, row_group_size=8192, compression='zstd', compression_level=9)
+    if not pq.read_table(path).equals(summary):
+        raise ValueError('Document summary values changed.')
+    describe('document_summaries', path, len(summary))
 
     order = catalog.order.to_pylist()
     position = [0] * len(order)
@@ -157,7 +177,7 @@ def publish(root, target, modified=None):
 
     info = dict(catalog.info, generation=manifest['generation'], remote_last_modified=modified or catalog.info.get('remote_last_modified'))
     info.pop('synced_at', None)
-    publication = dict(version=1, published_at=datetime.now(timezone.utc).isoformat(), info=info, files=files,
+    publication = dict(version=2, published_at=datetime.now(timezone.utc).isoformat(), info=info, files=files,
                        source_manifest=manifest, ids=str(ids.relative_to(target)) + '/')
     (target / 'manifest.json').write_text(json.dumps(publication, ensure_ascii=False, separators=(',', ':')))
     print(f'Publication: {sum(p.stat().st_size for p in target.rglob("*") if p.is_file()):,} bytes', flush=True)
