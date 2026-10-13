@@ -32,6 +32,7 @@ on:
       - 'scripts/benchmark_core_rebuild.py'
       - 'tests/test_core_benchmark.py'
       - 'tests/test_core_source_context.py'
+      - 'tests/test_document_source_lineage.py'
       - 'tests/test_catalog_publication.py'
       - 'tests/test_catalog_consumers.py'
       - 'tests/test_catalog_staging.py'
@@ -198,7 +199,7 @@ jobs:
           tests/test_standalone_catalog_publication.py
           .github/tests/test_raw_source_finalizer.py
           .github/tests/test_capture_verification.py .github/tests/test_capture_memory_guard.py .github/tests/test_capture_source_manifest.py
-          tests/test_document_filename_index.py tests/test_document_filename_viewer.py
+          tests/test_document_filename_index.py
           tests/test_congress_api_imports.py tests/test_document_link_probe.py
           tests/test_committee_download_wrappers.py
           tests/test_house_sites.py tests/test_house_history_repairs.py tests/test_house_site_concurrency.py tests/test_house_source_failures.py tests/test_http_policy.py
@@ -208,12 +209,12 @@ jobs:
           tests/test_capture_url_admission.py
           tests/test_document_evidence.py tests/test_document_retained_recovery.py
           tests/test_published_hearing_cover.py
-          tests/test_document_metadata_preservation.py tests/test_document_source_context.py
+          tests/test_document_metadata_preservation.py tests/test_document_source_context.py tests/test_document_source_lineage.py
           tests/test_senate_document_sections.py packages/house-naming/tests
           .github/tests/test_raw_source_workflow.py
       - name: Verify async storage and process workers locally
         if: steps.verified.outputs.cache-hit != 'true'
-        run: python -m pytest -q tests/test_async_capture_native.py tests/test_capture_processes_native.py tests/test_r2_body_files_native.py
+        run: python -m pytest -q tests/test_async_capture_native.py tests/test_capture_processes_native.py tests/test_r2_body_files_native.py tests/test_document_filename_viewer.py
       - name: Mark successful code validation
         if: steps.verified.outputs.cache-hit != 'true'
         run: |

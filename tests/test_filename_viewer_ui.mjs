@@ -109,6 +109,41 @@ test('snapshot error does not display another record or enable its actions', asy
   } finally {dom.window.close();}
 });
 
+test('transitive provenance shows an ordered hearing-to-page-to-file chain', async()=>{
+  const linked=structuredClone(entry),hearing='https://committee.test/hearing',article='https://news.test/article';
+  linked.origin.pages=[
+    {urls:[article],titles:['UN article'],link_labels:['Event programme'],link_urls:[final],relationship:'Recorded source page'},
+    {urls:[hearing],titles:['Armed Conflict and Starvation'],dates:['2022-04-12'],types:['hearing notice'],
+      link_labels:['Yemen'],link_urls:[article],relationship:'Linked through'},
+  ];
+  const {dom,get}=await app(async url=>({ok:true,json:async()=>url.startsWith('/api/entry/')?linked:evidence}));
+  try {
+    const chain=get('origin').querySelector('.source-chain');
+    assert.ok(chain);
+    assert.deepEqual([...chain.querySelectorAll('a')].map(a=>a.href),[hearing,article]);
+    assert.match(get('origin').textContent,/Associated hearing/);
+    assert.match(chain.textContent,/Armed Conflict and Starvation.*April 12, 2022.*Yemen.*UN article.*Event programme.*This file/s);
+    assert.equal(get('origin').querySelectorAll('a[href="'+article+'"]').length,1);
+    assert.equal(get('origin').querySelectorAll('.publisher-label').length,0);
+    assert.doesNotMatch(get('origin').textContent,/Possible source page/);
+  } finally {dom.window.close();}
+});
+
+test('ambiguous page and link lists remain references, not an invented hearing path', async()=>{
+  const linked=structuredClone(entry),hearing='https://committee.test/hearing',article='https://news.test/article';
+  linked.origin.pages=[
+    {urls:[article],titles:[],link_labels:[],link_urls:[final],relationship:'Recorded source page'},
+    {urls:[hearing,'https://committee.test/other'],titles:[],types:['hearing notice'],
+      link_labels:['Yemen'],link_urls:[article],relationship:'Linked through'},
+  ];
+  const {dom,get}=await app(async url=>({ok:true,json:async()=>url.startsWith('/api/entry/')?linked:evidence}));
+  try {
+    assert.equal(get('origin').querySelector('.source-chain'),null);
+    assert.equal(get('origin').querySelectorAll('a[href="'+hearing+'"]').length,1);
+    assert.match(get('origin').textContent,/Related source/);
+  } finally {dom.window.close();}
+});
+
 test('switching a source prevents late content from replacing the current selection', async()=>{
   let finishOld;
   const {dom,w,get} = await app(async url=>{

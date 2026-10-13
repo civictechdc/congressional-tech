@@ -30,6 +30,7 @@ from congress_api.retention.raw_archive import CAPTURES_KEY, CAPTURE_SCHEMA, dec
 
 FILENAMES = "indexes/document-filenames.parquet"
 DOCUMENTS = "indexes/documents.parquet"
+SOURCE_LINEAGE_VERSION = '1'
 
 
 def rebuild_catalog(store, captures=None, *, seeds=(), workers=4, repair=False, inspect_bodies=False,
@@ -96,7 +97,8 @@ def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies,
         raise ValueError('Catalog capture checkpoint digest mismatch or invalid cursor; verify legacy checkpoints '
                          'with their original PyArrow writer, or explicitly rebuild after investigation')
     deferred_sources = set(json.loads(meta.get(b'deferred_source_bodies', b'[]'))) if reusable else set()
-    if (reusable and not deferred_sources and not body_readings
+    lineage_refresh = reusable and meta.get(b'source_lineage_version') != SOURCE_LINEAGE_VERSION.encode()
+    if (reusable and not lineage_refresh and not deferred_sources and not body_readings
             and (not inspect_bodies or meta.get(b'body_inspection') == b'true'
                  and meta.get(b'deferred_body_reads') == b'0')
             and cursor == capture_rows and meta.get(b'seed_digest') == seed_digest.encode()
@@ -149,6 +151,17 @@ def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies,
             restored += len(batch)
             progress.report('restore_previous_source_metadata', completed=restored,
                             total=previous_rows, unit='source_rows')
+
+    if lineage_refresh:
+        # Backfill discovery relationships once from receipt metadata. Existing
+        # filename interpretations, saved bodies and download state stay valid.
+        prior = all_captures.slice(0, cursor)
+        prior = prior.filter(pc.fill_null(pc.match_substring(prior['receipt_key'], '/download-'), False))
+        for record, _, receipt in index.retained_records(prior, read, stage='restore_source_lineage'):
+            if isinstance(record, dict):
+                for link in [*record.get('source_context', {}).get('observations', []), *record.get('links', [])]:
+                    context.add_link(link, receipt)
+        del prior
 
     def read_body(key):
         # The archive already records original byte lengths. Do not transfer a
@@ -244,6 +257,8 @@ def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies,
     # Keep it even when its parent metadata arrives in a later capture batch.
     for edges in context.transfers.values():
         for url, values in edges:
+            if values.get('source_association_basis') == ['linked_page']:
+                continue  # The paired page/link observation restores this edge.
             occurrence = {**values, "source_occurrence_scope": ["association"]}
             for name, basis in index.url_document_names(url) or [(index.url_filename(url), "url_path")]:
                 add(None, name, url, filename_origins=[basis] if name else [],
@@ -302,6 +317,7 @@ def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies,
         inspect_bodies=inspect_bodies, working=working, previous_documents=previous_documents,
         body_readings=body_readings.values(),
         metadata={"raw_capture_rows": str(capture_rows), "source_fingerprint": fingerprint,
+                  "source_lineage_version": SOURCE_LINEAGE_VERSION,
                   "capture_digest": input_digest, "seed_digest": seed_digest,
                   "deferred_source_bodies": json.dumps(sorted(deferred_sources)),
                   "retained_recovery_fingerprint": recovery_fingerprint()},

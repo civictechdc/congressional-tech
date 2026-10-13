@@ -131,3 +131,19 @@ test('source provenance preserves multi-value associations and rejects unsafe UR
   const result = sourceContext({ source_url: 'javascript:bad()', source_occurrences: [{ source_page_url:['https://a.test/','https://b.test/'],source_page_title:['A','B'],source_occurrence_scope:['anchor'] }] });
   assert.equal(result.file_url, null); assert.equal(result.pages.length, 1); assert.deepEqual(result.pages[0].titles, ['A','B']);
 });
+
+test('inherited provenance retains hearing evidence without inventing a file redirect', () => {
+  const result = sourceContext({source_url:'https://files.test/programme.pdf', source_occurrences:[{
+    source_original_page_url:['https://committee.test/hearing'],
+    source_link_url:['https://news.test/article'], source_link_label:['Yemen'],
+    source_page_type:['hearing notice'], source_page_date:['2022-04-12'],
+    source_occurrence_scope:['linked_ancestor'],
+    source_association_basis:['linked_page','publisher_redirect'],
+    source_associated_url:['https://news.test/old-article'],
+  }]});
+  assert.equal(result.pages[0].relationship, 'Linked through');
+  assert.deepEqual(result.pages[0].types, ['hearing notice']);
+  assert.deepEqual(result.pages[0].dates, ['2022-04-12']);
+  assert.deepEqual(result.pages[0].link_urls, ['https://news.test/article']);
+  assert.deepEqual(result.redirects, []);
+});

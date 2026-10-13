@@ -57,7 +57,7 @@ from congress_api.retention.document_evidence import (
     enrich_sources, enrich_document_covers, read_retained_body, response_failed, apply_response_role,
 )
 from congress_api.parsers.source_family import family as source_family
-from congress_api.parsers.document_links import http_url
+from congress_api.parsers.document_links import feed_link, http_url
 from congress_api.parsers.document_cover import COVER_FIELDS
 from congress_api.parsers.document_types import DOCUMENT_TYPE_MEANINGS, document_type
 
@@ -1017,13 +1017,52 @@ class DocumentSources:
                 self.occurrences[destination][identity] = occurrence
             elif not self.occurrences.insert(destination,identity,occurrence):
                 continue
+            self.restore_link(occurrence)
             for target, association in self.transfers.get(destination, []):
                 # Each transferred occurrence retains its original parent/link.
                 # Association fields describe this edge, never document identity.
                 pending.append((target, self.transfer_occurrence(occurrence, association)))
 
     @staticmethod
+    def collection_url(url):
+        # A feed/sitemap lists unrelated events. Traversing it would turn
+        # site navigation into a claimed relationship between those events.
+        try:
+            return feed_link({}, url) or bool(re.search(
+                r'[-_](?:rss|atom|sitemap)\.xml$', urlsplit(url).path, re.I))
+        except ValueError:
+            return False
+
+    @staticmethod
     def transfer_occurrence(occurrence, association):
+        observed = {'publisher_redirect', 'retained_html_link', 'linked_page'}
+        if 'linked_page' in association.get('source_association_basis', []):
+            pages = occurrence.get('source_original_page_url') or occurrence.get('source_page_url') or []
+            if any(DocumentSources.collection_url(url) for url in [*pages, *(occurrence.get('source_link_url') or [])]):
+                return {}
+        if occurrence.get('source_occurrence_scope') == ['linked_ancestor']:
+            # A candidate match cannot establish another step in this path.
+            # Redirects retain the same ancestor edge instead of making a new
+            # observation for every route through a redirect cycle.
+            return (dict(occurrence) if all(basis in observed
+                    for basis in association.get('source_association_basis') or []) else {})
+        if 'linked_page' in association.get('source_association_basis', []):
+            # A link carries its ancestors' page/meeting relationships, never
+            # another document's type, author, capture, or body identity.
+            if (any(basis not in observed for basis in occurrence.get('source_association_basis') or [])
+                    or not occurrence.get('source_link_url') or not any(occurrence.get(key) for key in (
+                    'source_original_page_url', 'source_page_url', 'source_meeting_id',
+                    'source_meeting_title', 'source_committee_code', 'source_committee_name'))):
+                return {}
+            result = {key: values for key, values in occurrence.items()
+                      if not key.startswith(('source_document_', 'source_witness_',
+                          'source_participant_', 'source_label_', 'source_capture_', 'source_probe_'))}
+            result['source_occurrence_scope'] = ['linked_ancestor']
+            result['source_association_basis'] = sorted(set(result.get('source_association_basis', [])) | {'linked_page'})
+            # Keep the original edge and its receipt unchanged. Path-specific
+            # values would multiply on every cycle; exact edge identities reach
+            # a fixed point even when links arrive in reverse order.
+            return result
         result = dict(occurrence)
         for field, values in association.items():
             if field.startswith("source_receipt_") and result.get(field):
@@ -1035,6 +1074,9 @@ class DocumentSources:
         requested = (http_url(requested) or requested) if isinstance(requested, str) else requested
         final = (http_url(final) or final) if isinstance(final, str) else final
         if not all(isinstance(url, str) and url for url in (requested, final)) or requested == final:
+            return
+        if ('linked_page' in values.get('source_association_basis', [])
+                and any(self.collection_url(url) for url in (requested, final))):
             return
         association = {key: sorted(items) for key, items in values.items() if items}
         edge = (final, association)
@@ -1062,6 +1104,20 @@ class DocumentSources:
         for original in occurrence.get("source_associated_url") or []:
             self.add_transfer(original, url, values)
 
+    def restore_link(self, occurrence):
+        """Recover one observed edge; flat lists never establish URL pairings."""
+        if occurrence.get('source_occurrence_scope') in (['capture'], ['association'], ['linked_ancestor']):
+            return
+        if any(basis not in {'publisher_redirect', 'retained_html_link'}
+               for basis in occurrence.get('source_association_basis') or []):
+            return
+        pages = occurrence.get('source_original_page_url') or occurrence.get('source_page_url') or []
+        links = occurrence.get('source_link_url') or []
+        if len(pages) == len(links) == 1:
+            self.add_transfer(pages[0], links[0], {
+                **{key: values for key, values in occurrence.items() if key.startswith('source_receipt_')},
+                **context_values(source_association_basis='linked_page', source_associated_url=pages[0])})
+
     def for_url(self, url):
         url = (http_url(url) or url) if isinstance(url, str) else url
         result = {key: sorted(values) for key, values in self.by_url.get(url, {}).items() if values}
@@ -1073,6 +1129,20 @@ class DocumentSources:
 
     def add_link(self, link, receipt=None):
         """Read a native seed or discovered link retained by recurring capture."""
+        for occurrence in link.get('publisher_occurrences') or []:
+            if not isinstance(occurrence, dict):
+                continue
+            page, target = http_url(occurrence.get('page') or ''), http_url(occurrence.get('url') or link.get('url') or '')
+            if not page or not target:
+                continue
+            values = context_values(source_page_url=page, source_original_page_url=page,
+                source_page_title=occurrence.get('title'), source_page_date=occurrence.get('date'),
+                source_page_type=occurrence.get('kind'), source_link_url=target,
+                source_link_label=occurrence.get('name'), source_occurrence_scope='anchor')
+            merge_context(values, receipt or {})
+            self.add_url(target, values)
+            self.add_transfer(page, target, {**(receipt or {}), **context_values(
+                source_association_basis='linked_page', source_associated_url=page)})
         original = link.get('original_url') if link.get('url_repair') else None
         parent = link.get("context") or {}
         self.add_meeting(parent)
@@ -1113,16 +1183,6 @@ class DocumentSources:
                 parent.get("eventId"), parent.get("chamber"), parent.get("congress")
             ),
         )
-        # A linked file inherits the known meeting/page context, but not a
-        # different document's label or type simply because that page linked it.
-        merge_context(
-            values,
-            {
-                k: v
-                for k, v in self.by_url.get(http_url(link.get("parent_url") or '') or link.get("parent_url"), {}).items()
-                if not k.startswith(("source_document_", "source_link_", "source_witness_", "source_participant_", "source_receipt_", "source_associat", "source_label_"))
-            },
-        )
         for committee in parent.get("committees") or []:
             merge_context(
                 values,
@@ -1140,6 +1200,10 @@ class DocumentSources:
                      "senate_parser_fallback" if native["documentType"] == "other" else "senate_parser_inference") if parsed_tuple else "publisher"
             merge_context(values, context_values(source_document_type_basis=basis))
         self.add_url(original or link.get("url"), values)
+        if link.get('parent_url'):
+            self.add_transfer(link['parent_url'], original or link.get('url'),
+                {**(receipt or {}), **context_values(source_association_basis='linked_page',
+                                                  source_associated_url=link['parent_url'])})
         if original:
             self.add_transfer(original, link.get('url'), {**(receipt or {}), **context_values(
                 source_association_basis=link['url_repair'], source_associated_url=original)})
@@ -2425,7 +2489,7 @@ def refresh_filename_metadata(root, *, workers=4, inspect_bodies=False, repair=F
     )
     return write_filename_metadata(root, rows, workers=workers, previous=source, reuse_results=not repair, inspect_bodies=inspect_bodies, publication_snapshot=snapshot, previous_documents=snapshot.documents, metadata={
         key.decode(): value.decode() for key, value in (source.schema_arrow.metadata or {}).items()
-        if key in {b'raw_capture_rows', b'capture_digest', b'seed_digest', b'deferred_source_bodies',
+        if key in {b'raw_capture_rows', b'capture_digest', b'seed_digest', b'deferred_source_bodies', b'source_lineage_version',
                    b'source_fingerprint', b'retained_recovery_fingerprint'}})
 
 

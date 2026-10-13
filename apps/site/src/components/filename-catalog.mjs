@@ -26,13 +26,15 @@ export function sourceContext(record) {
   const pages = [], redirects = [], seen = new Set();
   for (const observation of record.source_occurrences?.length ? record.source_occurrences : [record]) {
     const basis = values(observation.source_association_basis);
-    if (basis.includes('publisher_redirect') && file_url) for (const original of values(observation.source_associated_url)) {
+    if (basis.includes('publisher_redirect') && !basis.includes('linked_page') && file_url) for (const original of values(observation.source_associated_url)) {
       if (validUrl(original) && original !== file_url && !redirects.some(row => row.original === original)) redirects.push({ original, final: file_url });
     }
     const urls = [...new Set(['source_original_page_url','source_page_url'].flatMap(key => values(observation[key])))].filter(value => validUrl(value) && value !== file_url && !recovered_urls.includes(value));
     if (!urls.length) continue;
     const page = { urls, titles: values(observation.source_page_title), link_labels: values(observation.source_link_label), link_urls: values(observation.source_link_url).filter(validUrl),
-      relationship: basis.some(value => !['publisher_redirect','retained_html_link'].includes(value)) ? 'Possible source page' : JSON.stringify(observation.source_occurrence_scope) === '["anchor"]' ? 'Linked from' : 'Recorded source page' };
+      relationship: basis.some(value => !['publisher_redirect','retained_html_link','linked_page'].includes(value)) ? 'Possible source page' : basis.includes('linked_page') ? 'Linked through' : JSON.stringify(observation.source_occurrence_scope) === '["anchor"]' ? 'Linked from' : 'Recorded source page' };
+    if (observation.source_page_type?.length) page.types = values(observation.source_page_type);
+    if (observation.source_page_date?.length) page.dates = values(observation.source_page_date);
     const key = JSON.stringify(page);
     if (!seen.has(key)) { pages.push(page); seen.add(key); }
   }

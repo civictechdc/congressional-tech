@@ -37,6 +37,24 @@ same source row; missing classification filters check the grouped document.
 only an unfetched alias. Choose “All records” to include API/source references.
 Nested source observations retain their original page, title, and link grouping.
 
+Recorded links also carry their upstream hearing/page relationships. Receipt
+`publisher_occurrences` are interpreted as individual page-to-URL observations;
+descendants retain those observations as `linked_ancestor` with `linked_page`
+evidence. Original labels and receipt locators remain paired. An inherited
+relationship does not transfer another document's type, witness, or saved body,
+and it does not merge the linked files into one document group. Links may arrive
+in either order; duplicate observations and cycles reach a fixed point.
+Tentative matches, such as similar filenames, do not establish transitive
+relationships. Redirect cycles retain one copy of each inherited observation.
+Sitewide RSS/Atom feeds and sitemaps remain direct references; they do not
+connect unrelated events through their shared navigation links.
+
+The next catalog update automatically backfills older recurring receipts once,
+then records `source_lineage_version` in the Parquet metadata. This replay uses
+retained receipt metadata and existing source observations. The viewer shows a
+hearing-to-page-to-file chain when those individual URL pairings establish a
+complete path; ambiguous flat URL lists remain separate source notes.
+
 Catalog information loads just the manifest. Ordinary browsing loads flags and
 preferred-source rows; searching loads group mappings, and opening a detail
 loads document-row mappings and builds group membership lists. Concurrent

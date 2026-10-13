@@ -171,7 +171,7 @@ def test_filename_refresh_preserves_catalog_checkpoint_for_next_update(tmp_path)
     before = decode_table(read_catalog(store).filenames).schema.metadata
     refresh_filename_metadata(tmp_path, workers=1)
     after = decode_table(read_catalog(store).filenames).schema.metadata
-    for key in (b'raw_capture_rows', b'capture_digest', b'seed_digest', b'deferred_source_bodies',
+    for key in (b'raw_capture_rows', b'capture_digest', b'seed_digest', b'deferred_source_bodies', b'source_lineage_version',
                 b'source_fingerprint', b'retained_recovery_fingerprint'):
         assert after[key] == before[key]
     assert rebuild_catalog(store, workers=1)['unchanged'] is True

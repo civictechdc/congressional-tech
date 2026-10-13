@@ -80,11 +80,11 @@ def source_context(record):
     occurrences = record.get('source_occurrences') or []
     for observation in occurrences or [record]:
         basis = observation.get('source_association_basis') or []
-        if 'publisher_redirect' in basis and file_url:
+        if 'publisher_redirect' in basis and 'linked_page' not in basis and file_url:
             for original in observation.get('source_associated_url') or []:
                 if web_url(original) and original != file_url and (original, file_url) not in redirects:
                     redirects.append((original, file_url))
-        candidates = any(value not in ('publisher_redirect', 'retained_html_link') for value in basis)
+        candidates = any(value not in ('publisher_redirect', 'retained_html_link', 'linked_page') for value in basis)
         urls = list(dict.fromkeys(value for key in ('source_original_page_url', 'source_page_url')
                                  for value in observation.get(key) or [] if web_url(value)))
         urls = [value for value in urls if value != file_url and value not in recovered]
@@ -96,7 +96,12 @@ def source_context(record):
                     link_labels=observation.get('source_link_label') or [],
                     link_urls=[value for value in observation.get('source_link_url') or [] if web_url(value)],
                     relationship='Possible source page' if candidates else
+                    'Linked through' if 'linked_page' in basis else
                     'Linked from' if observation.get('source_occurrence_scope') == ['anchor'] else 'Recorded source page')
+        if observation.get('source_page_type'):
+            page['types'] = observation['source_page_type']
+        if observation.get('source_page_date'):
+            page['dates'] = observation['source_page_date']
         identity = json.dumps(page, sort_keys=True)
         if identity not in seen:
             pages.append(page)

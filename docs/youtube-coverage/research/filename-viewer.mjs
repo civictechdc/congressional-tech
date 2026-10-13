@@ -166,6 +166,39 @@ function referenceRole(value) {
 function renderOrigin(origin,apiReference,observationCount) {
  const el=section('origin','Where this URL came from'), unique=new Map();
  const urlKey=value=>{const url=sourceUrl(value);return url?url.host+url.pathname+url.search+url.hash:null;};
+ const edges=new Map(), ancestors=[], targets=new Set(), covered=new Set();
+ for(const page of origin.pages) if(page.urls.length===1&&page.link_urls.length===1&&page.relationship!=='Possible source page') {
+  const from=urlKey(page.urls[0]),to=urlKey(page.link_urls[0]);if(!from||!to||from===to)continue;
+  if(!edges.has(from))edges.set(from,[]);edges.get(from).push({page,to});
+  if(page.relationship==='Linked through'){ancestors.push(page);targets.add(to);}
+ }
+ for(const redirect of origin.redirects) {
+  const from=urlKey(redirect.original);if(!edges.has(from))edges.set(from,[]);
+  edges.get(from).push({to:urlKey(redirect.final),redirect:true});
+ }
+ const roots=ancestors.filter(page=>!targets.has(urlKey(page.urls[0]))||(page.types||[]).some(type=>/hearing/i.test(type))), rendered=new Set();
+ for(const root of roots) {
+  const start=urlKey(root.urls[0]);if(rendered.has(start))continue;
+  const queue=[{url:start,path:[]}],visited=new Set([start]);let path;
+  for(let i=0;i<queue.length;i++) {
+   const current=queue[i];if(current.url===urlKey(origin.file_url)){path=current.path;break;}
+   for(const edge of edges.get(current.url)||[]) if(!visited.has(edge.to)) {
+    visited.add(edge.to);queue.push({url:edge.to,path:[...current.path,edge]});
+   }
+  }
+  if(!path)continue;rendered.add(start);
+  const group=node('div',undefined,'source-path'),list=node('ol',undefined,'source-chain');
+  group.append(node('p',(root.types||[]).some(type=>/hearing/i.test(type))?'Associated hearing':'Related source','link-caption'));
+  for(const edge of path) if(edge.page) {
+   const page=edge.page,value=page.urls[0],url=sourceUrl(value),item=node('li');covered.add(urlKey(value));
+   const title=page.titles.length===1?page.titles[0]:url.hostname.replace(/^www\./,'')+url.pathname+url.search;
+   item.append(link(value,title+' ↗'));
+   if(page.dates?.length===1)item.append(node('p',filenameDate(page.dates[0]),'link-caption'));
+   if(page.link_labels.length===1)item.append(node('p','Linked as “'+page.link_labels[0]+'”','link-caption'));
+   list.append(item);
+  }
+  list.append(node('li','This file','chain-current'));group.append(list);el.append(group);
+ }
  for(const page of origin.pages) for(const value of page.urls) {
   const url=sourceUrl(value); if(!url)continue;
   const key=urlKey(value);
@@ -181,11 +214,12 @@ function renderOrigin(origin,apiReference,observationCount) {
   return block;
  }
  for(const item of human) {
+  if(covered.has(urlKey(item.url)))continue;
   // A single observed page/title pair can name the link. Multi-page
   // observations stay intact in technical details and never supply a label.
   const titles=[...new Set(item.pages.filter(page=>page.urls.length===1&&page.titles.length===1).map(page=>page.titles[0]))];
   const relationships=new Set(item.pages.map(page=>page.relationship));
-  const caption=relationships.has('Linked from')?'Found on':relationships.has('Recorded source page')?'Source page':'Possible source page';
+  const caption=relationships.has('Linked from')?'Found on':relationships.has('Linked through')?'Related source':relationships.has('Recorded source page')?'Source page':'Possible source page';
   const url=sourceUrl(item.url),title=titles.length===1?titles[0]:url.hostname.replace(/^www\./,'')+url.pathname+url.search;
   const block=destination(item.url,title);block.prepend(node('p',caption,'link-caption'));el.append(block);
  }
@@ -193,7 +227,7 @@ function renderOrigin(origin,apiReference,observationCount) {
   if(origin.file_url)el.append(destination(origin.file_url,apiReference?'API endpoint':'Publisher file'));
   el.append(node('p',origin.pages.length?'No referring website page recorded.':'Referring page not recorded for this source.','empty-state'));
  }
- const labels=[...new Set(origin.pages.flatMap(page=>page.link_labels).filter(present))];
+ const labels=[...new Set(origin.pages.filter(page=>page.relationship!=='Linked through'&&!page.urls.some(value=>covered.has(urlKey(value)))).flatMap(page=>page.link_labels).filter(present))];
  if(labels.length) {
   const block=node('div',undefined,'publisher-label');
   block.append(node('p',labels.length===1?'Publisher’s link text':'Publisher’s link text · '+labels.length+' versions','link-caption'));
