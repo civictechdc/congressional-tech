@@ -90,9 +90,9 @@ test('referring page labels stay paired and candidate pages remain qualified', a
   const {dom,get} = await app(async url=>({ok:true,json:async()=>url.startsWith('/api/entry/')?linked:evidence}));
   try {
     assert.doesNotMatch(get('origin').textContent,/Referring page not recorded/);
-    assert.match(get('origin').textContent,/Linked from/);
+    assert.match(get('origin').textContent,/Found on/);
     assert.match(get('origin').textContent,/Possible source page/);
-    assert.match(get('origin').textContent,/Recorded page titles: Unpaired title/);
+    assert.doesNotMatch(get('origin').textContent,/Unpaired title/); // No invented page/title pairing.
     assert.equal(get('origin').querySelector('img'),null);
     assert.equal([...get('origin').querySelectorAll('a')].find(a=>a.textContent.startsWith('<img')).href,
       'https://committee.test/hearing');
@@ -157,9 +157,9 @@ test('source overview deduplicates URLs and separates machine evidence from webs
   try {
     assert.equal([...get('origin').querySelectorAll('a')].filter(a=>a.href==='https://committee.test/hearing').length,1);
     assert.equal(get('origin').querySelectorAll(':scope > .provenance-item').length,1);
-    const machine=[...get('origin').querySelectorAll('details')].find(el=>el.textContent.includes('API, feed or data'));
-    assert.match(get('origin').textContent,/2 recorded URL forms/);
-    assert.equal(machine.open,false); assert.match(machine.textContent,/API record/); assert.match(machine.textContent,/Feed/);
+    const machine=get('origin').querySelector('.supporting-links');
+    assert.equal([...get('origin').querySelectorAll('a')].filter(a=>a.href==='http://committee.test/hearing').length,0);
+    assert.equal(machine.open,false); assert.match(machine.textContent,/Senate hearing 1/); assert.match(machine.textContent,/Feed/);
   } finally {dom.window.close();}
 });
 
@@ -223,5 +223,52 @@ test('static publication shows recorded evidence without claiming live inspectio
     assert.match(get('saved-evidence').textContent,/does not fetch private archive files/);
     assert.match(get('filename-findings').textContent,/does not rerun/);
     assert.equal(requests.some(url=>url.startsWith('/api/evidence/')),false);
+  } finally {dom.window.close();}
+});
+
+test('repeated hearing observations become one source note without discarding original evidence', async()=>{
+  const hearing='https://www.rules.senate.gov/hearings/dara-lindenbaum';
+  const apiUrl='https://api.congress.gov/v3/committee-meeting/117/senate/332244';
+  const download='https://www.rules.senate.gov/download/dana-lindenbaum';
+  const linkText='Transcript_Nomination Hearing of Dara Lindenbaum.pdf';
+  const observed=structuredClone(entry);
+  observed.origin={file_url:final,recovered_urls:[],redirects:[{original:download,final}],pages:[
+    {urls:[hearing,apiUrl],titles:['Nomination Hearing'],link_labels:[linkText],link_urls:[download],relationship:'Linked from'},
+    {urls:[hearing,apiUrl],titles:['Nomination Hearing'],link_labels:[],link_urls:[download],relationship:'Recorded source page'},
+    {urls:[apiUrl,hearing],titles:['Nomination Hearing'],link_labels:[linkText],link_urls:[download],relationship:'Recorded source page'},
+    {urls:[hearing],titles:['Nomination Hearing'],link_labels:[linkText],link_urls:[download],relationship:'Linked from'},
+  ]};
+  observed.record.source_occurrences=observed.origin.pages.map((page,i)=>({source_page_url:page.urls,source_page_title:page.titles,
+    source_link_label:page.link_labels,source_link_url:page.link_urls,source_receipt_line:[String(i+1)]}));
+  const before=JSON.stringify(observed.record);
+  const {dom,w,get}=await app(async url=>({ok:true,json:async()=>url.startsWith('/api/entry/')?observed:evidence}));
+  try {
+    const links=[...get('origin').querySelectorAll('a')];
+    for(const url of [hearing,apiUrl,download])assert.equal(links.filter(a=>a.href===url).length,1);
+    assert.equal(get('origin').querySelectorAll('blockquote').length,1);
+    assert.equal(get('origin').querySelector('blockquote').textContent,linkText);
+    assert.equal(links.find(a=>a.href===hearing).textContent,'Nomination Hearing ↗');
+    assert.doesNotMatch(get('origin').textContent,/Recorded page and link associations|Recorded page titles/);
+    const evidenceButton=get('origin').querySelector('button');assert.equal(evidenceButton.textContent,'View 4 source observations');
+    evidenceButton.click();
+    assert.equal(get('technical').open,true);assert.equal(get('field-search').value,'source_occurrences');
+    assert.equal(get('detail-data').querySelectorAll('details').length,4);
+    assert.match(get('detail-data').textContent,/Receipt line/);
+    assert.equal(JSON.stringify(observed.record),before);
+    assert.equal(w.document.activeElement,get('technical').querySelector('summary'));
+  } finally {dom.window.close();}
+});
+
+test('compact heading expands without altering the filename and resets on the next record', async()=>{
+  const {dom,get}=await app();
+  try {
+    const full=get('detail-title').textContent;
+    get('title-toggle').click();
+    assert.equal(get('title-toggle').getAttribute('aria-expanded'),'true');
+    assert.equal(get('detail-title').textContent,full);
+    assert.equal(get('detail-title').classList.contains('expanded'),true);
+    get('source-variants').querySelectorAll('button')[1].click();await flush();
+    assert.equal(get('title-toggle').getAttribute('aria-expanded'),'false');
+    assert.equal(get('detail-title').classList.contains('expanded'),false);
   } finally {dom.window.close();}
 });
