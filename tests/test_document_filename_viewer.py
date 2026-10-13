@@ -1,5 +1,8 @@
 from catalog_test_helpers import selected_path
 import importlib.util
+import gzip
+from hashlib import sha256
+import json
 from pathlib import Path
 
 import pyarrow as pa
@@ -150,6 +153,29 @@ def test_grouping_prefers_saved_pdf_and_retains_raw_rows_and_filter_behavior(tmp
     assert catalog.search({'retained': 'no'})['total'] == 1
     assert catalog.search({'q': 'nothing'})['total'] == 0
     assert catalog.search({'page': '999', 'limit': '1'})['page'] == 2
+
+
+def test_saved_response_filter_checks_all_links_in_each_group(tmp_path):
+    catalog = catalog_from_sources(tmp_path, [
+        ('statement&download=1', 'https://x.test/statement&download=1', None, None, None),
+        ('statement', 'https://x.test/statement', 'saved-pdf', 'application/pdf', '200'),
+        ('missing', 'https://x.test/missing', None, None, None),
+        ('missing&download=1', 'https://x.test/missing&download=1', None, None, None),
+    ])
+    missing = catalog.search({'retained': 'no'})
+    assert missing['total'] == 1
+    assert missing['rows'][0]['filename'] == 'missing'
+    assert missing['rows'][0]['source_count'] == 2
+    assert missing['rows'][0]['retained'] is False
+    saved = catalog.search({'retained': 'yes'})
+    assert saved['total'] == 1
+    assert saved['rows'][0]['retained'] is True
+    # The name search matches only the unsaved alias, but retention describes
+    # the whole group. Other filters must not hide the successful download.
+    query = {'field': 'source_url', 'q': 'https://x.test/statement&download=1'}
+    assert catalog.search({**query, 'retained': 'no'})['total'] == 0
+    assert catalog.search({**query, 'retained': 'yes'})['total'] == 1
+    assert catalog.search({'q': 'statement', 'retained': 'no', 'scope': 'all'})['total'] == 0
 
 
 def test_identical_download_and_direct_pdf_share_one_entry_with_both_sources(tmp_path):
@@ -315,3 +341,179 @@ def test_viewer_resolves_selected_generation_when_legacy_root_is_stale(tmp_path)
     catalog = viewer.Catalog(path)
     assert catalog.search({'q': 'Smith'})['total'] == 1
     assert 'catalog-generations' in catalog.path.parts
+
+
+def test_review_link_uses_source_identity_and_refuses_another_snapshot(tmp_path):
+    catalog = catalog_from_sources(tmp_path, [
+        ('a.pdf', 'https://x.test/a.pdf', 'same-body', 'application/pdf', '200'),
+        ('b.pdf', 'https://x.test/b.pdf', 'same-body', 'application/pdf', '200'),
+    ])
+    source_id = catalog.record(1)['source_id']
+    assert catalog.resolve(source_id, catalog.info['catalog_id']) == 1
+    assert catalog.resolve('1') == 1  # Existing bookmarks still open.
+    with pytest.raises(viewer.SnapshotChanged, match='different catalog snapshot'):
+        catalog.resolve(source_id, 'older-snapshot')
+    with pytest.raises(ValueError, match='not present'):
+        catalog.resolve('999')
+    assert catalog.entry(1)['sources_share_saved_file'] is True
+
+
+def test_origin_distinguishes_redirects_from_referring_pages_and_archive_paths():
+    final, original = 'https://committee.test/file.pdf', 'https://committee.test/File.pdf'
+    origin = viewer.source_context(dict(source_url=final, source_occurrences=[dict(
+        source_association_basis=['publisher_redirect'], source_associated_url=[original],
+        source_receipt_key=['receipts/run.jsonl.gz'], source_capture_file=['ci/run'],
+        source_page_url=[final, 'file:///archive/page.html', 'javascript:alert(1)'])]))
+    assert origin == dict(file_url=final, recovered_urls=[], pages=[],
+                          redirects=[dict(original=original, final=final)])
+
+
+def test_origin_keeps_page_and_link_observations_together():
+    observations = [dict(source_original_page_url=['https://committee.test/one'],
+                         source_page_title=['First hearing'], source_link_label=['Witness statement'],
+                         source_link_url=['https://committee.test/file.pdf'], source_occurrence_scope=['anchor']),
+                    dict(source_page_url=['https://committee.test/two', 'https://committee.test/three'],
+                         source_page_title=['Unpaired title'], source_association_basis=['filename_match'])]
+    origin = viewer.source_context(dict(source_url='https://committee.test/file.pdf',
+        source_occurrences=observations, source_page_url=['https://wrong.test/flattened']))
+    assert len(origin['pages']) == 2
+    assert origin['pages'][0]['relationship'] == 'Linked from'
+    assert origin['pages'][0]['titles'] == ['First hearing']
+    assert origin['pages'][0]['link_labels'] == ['Witness statement']
+    assert origin['pages'][1]['urls'] == ['https://committee.test/two', 'https://committee.test/three']
+    assert origin['pages'][1]['relationship'] == 'Possible source page'
+    assert 'https://wrong.test/flattened' not in str(origin)
+
+
+def test_recovery_candidates_are_not_presented_as_original_urls():
+    origin = viewer.source_context(dict(recovered_source_url=['https://committee.test/candidate.pdf']))
+    assert origin['file_url'] is None and origin['pages'] == []
+    assert origin['recovered_urls'] == ['https://committee.test/candidate.pdf']
+    assert viewer.web_url('https://user:password@example.test/file') is None
+
+
+def retained_file(tmp_path, data):
+    digest = sha256(data).hexdigest()
+    key = f'bodies/sha256/{digest[:2]}/{digest}.gz'
+    path = tmp_path / key
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(gzip.compress(data))
+    return key
+
+
+def test_saved_file_hash_must_match_before_it_can_be_served(tmp_path):
+    key = retained_file(tmp_path, b'original saved content')
+    files = viewer.RetainedFiles([], tmp_path)
+    assert files.body({'body_key': key}) == b'original saved content'
+    (tmp_path / key).write_bytes(gzip.compress(b'changed bytes'))
+    with pytest.raises(ValueError, match='digest mismatch'):
+        files.body({'body_key': key})
+    with pytest.raises(ValueError, match='Invalid retained-object'):
+        files.compressed('receipts/../../private.jsonl.gz')
+    with pytest.raises(FileNotFoundError, match='Configure R2 access'):
+        files.body({'body_key': key.replace(key.split('/')[-1][:64], '0' * 64)})
+
+
+def test_capture_receipt_checks_body_association_and_omits_response_secrets(tmp_path):
+    key = retained_file(tmp_path, b'original')
+    receipt_key = 'receipts/test.jsonl.gz'
+    receipt = tmp_path / receipt_key
+    receipt.parent.mkdir()
+    receipt.write_bytes(gzip.compress(('\n'.join(json.dumps(item) for item in [
+        dict(captures=[dict(body_key='another-body')], record=dict(retrieved_at='wrong')),
+        dict(captures=[dict(body_key=key)], record=dict(retrieved_at='2026-10-11T01:39:53Z',
+             requested_url='https://x.test/File.pdf', url='https://x.test/file.pdf',
+             http_status=200, complete=True, headers={'set-cookie': 'secret'})),
+    ])).encode()))
+    files = viewer.RetainedFiles([], tmp_path)
+    result = files.receipt(dict(body_key=key, source_occurrences=[
+        dict(source_receipt_key=[receipt_key], source_receipt_line=['1', '2'])]))
+    assert result == dict(retrieved_at='2026-10-11T01:39:53Z', requested_url='https://x.test/File.pdf',
+                         url='https://x.test/file.pdf', http_status=200, complete=True)
+    assert files.receipt(dict(body_key='unrelated', source_occurrences=[
+        dict(source_receipt_key=[receipt_key], source_receipt_line=['2'])])) is None
+
+
+def test_content_inspection_is_separate_from_published_metadata(tmp_path):
+    pdf = (Path(__file__).parent / 'fixtures/meeting_inventory/senate-burma-hearing-cover.pdf').read_bytes()
+    record = dict(body_key=retained_file(tmp_path, pdf), document_kind=None)
+    result = viewer.RetainedFiles([], tmp_path).inspect(record)
+    assert result['verified'] and result['sha256'] == sha256(pdf).hexdigest()
+    assert result['content_fields']['content_document_kind'] == ['published-hearing']
+    assert result['page_count'] >= 1 and result['pages'][0]['number'] == 1
+    assert record['document_kind'] is None
+
+
+def test_filename_fallback_exposes_its_uncertainty():
+    reading = viewer.filename_reading('01.30.2019_-_resolution_by_cmw.pdf', 'https://x.test/file.pdf')
+    assert reading['recognized_convention'] is False
+    assert reading['metadata']['name_token'] == ['resolution_by_cmw']
+    assert any('not a verified person' in (f['note'] or '') for f in reading['observations'])
+
+
+@pytest.mark.parametrize('as_pdf', [False, True])
+def test_http_saved_file_verifies_bytes_and_refuses_stale_links_and_other_hosts(tmp_path, as_pdf):
+    from threading import Thread
+    from urllib.error import HTTPError
+    from urllib.request import Request, urlopen
+    data = b'An exact saved response, not executable HTML.'
+    if as_pdf:
+        data = (Path(__file__).parent / 'fixtures/meeting_inventory/senate-burma-hearing-cover.pdf').read_bytes()
+    key = retained_file(tmp_path, data)
+    catalog = catalog_from_sources(tmp_path, [('response.txt', 'https://x.test/file', key, 'text/plain', '200')])
+    catalog.retained = viewer.RetainedFiles([], tmp_path)
+    source = catalog.record(0)['source_id']
+    server = viewer.ThreadingHTTPServer(('127.0.0.1', 0), viewer.handler_for(catalog))
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    base = f'http://127.0.0.1:{server.server_port}'
+    try:
+        with urlopen(base + f'/saved/{source}?catalog=' + catalog.info['catalog_id']) as response:
+            assert response.read() == data
+            assert response.headers['Content-Type'] == ('application/pdf' if as_pdf else 'application/octet-stream')
+            assert response.headers['Content-Disposition'].startswith('inline;' if as_pdf else 'attachment;')
+            assert ('sandbox' in response.headers['Content-Security-Policy']) is not as_pdf
+        for path in [f'/saved/{source}', f'/api/entry/{source}', f'/api/evidence/{source}']:
+            with pytest.raises(HTTPError) as error:
+                urlopen(base + path + '?catalog=older')
+            assert error.value.code == 409
+        with pytest.raises(HTTPError) as error:
+            urlopen(Request(base + '/api/info', headers={'Host': 'unrelated.test'}))
+        assert error.value.code == 403
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join()
+
+
+def test_api_only_groups_are_source_records_and_mixed_groups_stay_documents(tmp_path):
+    catalog = catalog_from_sources(tmp_path, [
+        ('1', 'https://api.congress.gov/v3/hearing/116/senate/1?format=json', None, None, None),
+        ('2', 'https://api.congress.gov/v3/hearing/116/senate/2?format=json', 'shared', 'application/pdf', '200'),
+        ('hearing.pdf', 'https://committee.test/hearing.pdf', 'shared', 'application/pdf', '200'),
+        ('3', 'https://committee.test/3', None, None, None),
+    ])
+    assert catalog.info['api_reference_groups'] == 1
+    assert catalog.search({'retained': 'no'})['total'] == 1
+    assert catalog.search({'retained': 'no', 'scope': 'all'})['total'] == 2
+    references = catalog.search({'retained': 'no', 'scope': 'capture-records'})
+    assert references['total'] == 1
+    assert references['rows'][0]['api_reference']['title'] == 'Senate hearing 1 · Congress 116'
+    assert catalog.entry(references['rows'][0]['_row'])['api_reference']['title'] == 'Senate hearing 1 · Congress 116'
+    assert catalog.search({'retained': 'yes'})['total'] == 1
+    # Original published roles are retained even when the viewer corrects scope.
+    assert catalog.record(references['rows'][0]['_row'])['record_role'] == ['document']
+
+
+def test_api_reference_requires_an_exact_host_and_endpoint():
+    assert viewer.api_reference('https://api.congress.gov.evil.test/v3/hearing/1') is None
+    assert viewer.api_reference('https://committee.test/v3/hearing/1') is None
+    assert viewer.api_reference('https://api.congress.gov/assets/report.pdf') is None
+    assert viewer.api_reference('https://api.congress.gov/v3/committee-meeting/117/house/114489')['title'] == 'House committee meeting 114489 · Congress 117'
+
+
+def test_congress_conflict_reports_both_reader_boundaries_without_correction():
+    reading = viewer.filename_reading('BILLS-1117s2126-SUS.pdf', None)
+    assert reading['metadata']['congress'] == ['111', '1117']
+    assert 'legislative-file reads 111' in reading['diagnostics'][0]
+    assert 'bill-suspension-numbered convention reads 1117' in reading['diagnostics'][0]

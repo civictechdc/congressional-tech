@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from congress_api.parsers.document_cover import document_cover, senate_hearing_citation
+from congress_api.parsers.document_cover import document_cover, document_page_fields, senate_hearing_citation
 from congress_api.retention.document_evidence import enrich_document_covers
 from congress_api.retention.document_index import fill_document_kind, refresh_source_metadata
 
@@ -20,6 +20,34 @@ COMMITTEE ON FOREIGN RELATIONS
 UNITED STATES SENATE
 ONE HUNDRED SEVENTEENTH CONGRESS
 FIRST SESSION'''
+
+COMMITTEE_RESOLUTION = '''IN THE COMMITTEE ON FINANCIAL SERVICES OF THE HOUSE OF REPRESENTATIVES
+116TH CONGRESS, 1ST SESSION
+JANUARY 30, 2019
+RESOLUTION
+Offered by Ms. Waters
+Electing Majority Members to the subcommittees of the Committee on Financial Services.
+Resolved, That the following majority Members of the Committee are elected.'''
+
+
+def test_explicit_committee_resolution_form_provides_kind_and_congress():
+    assert document_page_fields(COMMITTEE_RESOLUTION) == {
+        'content_document_kind': ['committee-resolution'], 'content_congress': ['116']}
+
+
+@pytest.mark.parametrize('text', [
+    'A report about a resolution\n' + COMMITTEE_RESOLUTION,
+    COMMITTEE_RESOLUTION.replace('RESOLUTION\n', 'LETTER\n'),
+    COMMITTEE_RESOLUTION.replace('Resolved, That', 'We discuss whether'),
+    COMMITTEE_RESOLUTION.replace('HOUSE OF REPRESENTATIVES', 'STATE ASSEMBLY'),
+    'Resolution by CMW.pdf',
+])
+def test_resolution_reference_or_incomplete_form_does_not_supply_kind(text):
+    assert document_page_fields(text) == {}
+
+
+def test_resolution_in_later_page_does_not_override_opening_document():
+    assert document_page_fields('A report on committee membership', COMMITTEE_RESOLUTION) == {}
 
 
 def test_actual_pdf_cover_yields_publication_identity():
