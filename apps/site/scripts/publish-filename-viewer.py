@@ -101,7 +101,7 @@ def publish(root, target, modified=None):
     for name in ('documents', 'filenames'):
         source = pq.ParquetFile(root / manifest['files'][name]['key'])
         path = output / f'{name}.parquet'
-        with pq.ParquetWriter(path, source.schema_arrow, compression='zstd', compression_level=9) as writer:
+        with pq.ParquetWriter(path, source.schema_arrow, compression='zstd', compression_level=19) as writer:
             for batch in source.iter_batches(batch_size=8192):
                 table = pa.Table.from_batches([batch], schema=source.schema_arrow)
                 writer.write_table(table, row_group_size=8192)
