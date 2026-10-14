@@ -9,6 +9,19 @@ import json
 import pickle
 import sqlite3
 
+_MISSING = object()
+
+
+def sparse_row(row):
+    """Do not duplicate Arrow's null padding in the temporary row store."""
+    result = {key: value for key, value in row.items() if value is not None}
+    if result.get('source_occurrences'):
+        result['source_occurrences'] = [
+            {key: value for key, value in occurrence.items() if value is not None}
+            if occurrence is not None else None
+            for occurrence in result['source_occurrences']]
+    return result
+
 
 class DiskItems(ItemsView):
     def __iter__(self):
@@ -35,8 +48,9 @@ class DiskMap(MutableMapping):
         if result is None:
             if self.factory is None:
                 raise KeyError(key)
-            self[key] = self.factory()
-            return self[key]
+            value = self.factory()
+            self[key] = value
+            return value
         return pickle.loads(result[0])
     def __setitem__(self, key, value):
         self.connection.execute(f'INSERT INTO {self.name} VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',
@@ -56,9 +70,11 @@ class DiskMap(MutableMapping):
         result = self.connection.execute(f'SELECT value FROM {self.name} WHERE key=?', (pickle.dumps(key),)).fetchone()
         return pickle.loads(result[0]) if result is not None else default
     def setdefault(self, key, default=None):
-        if key not in self:
+        value = self.get(key, _MISSING)
+        if value is _MISSING:
             self[key] = default
-        return self[key]
+            return default
+        return value
     def clear(self):
         self.connection.execute(f'DELETE FROM {self.name}')
     def items(self):
@@ -253,6 +269,7 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
     merges and splits; an unavailable prior pair falls back to full combination.
     """
     from collections import defaultdict
+    from array import array
     from hashlib import sha256
     from uuid import uuid4
     from congress_api.retention import document_index as index
@@ -272,13 +289,14 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
 
     db = working.connection
     staged = DiskRows(db, 'group_rows')
-    db.executescript('''CREATE TABLE parents(id INTEGER PRIMARY KEY, parent INTEGER NOT NULL);
-        CREATE TABLE aliases(kind TEXT NOT NULL,key TEXT NOT NULL,id INTEGER NOT NULL,PRIMARY KEY(kind,key));
+    db.executescript('''CREATE TABLE aliases(kind TEXT NOT NULL,key TEXT NOT NULL,id INTEGER NOT NULL,PRIMARY KEY(kind,key));
         CREATE TABLE members(component INTEGER NOT NULL,id INTEGER PRIMARY KEY);
         CREATE INDEX component_members ON members(component,id);
         CREATE TABLE prior_sources(source_id TEXT PRIMARY KEY, document_id TEXT, signature TEXT, value BLOB);
         CREATE INDEX prior_group ON prior_sources(document_id);
         CREATE TABLE prior_documents(document_id TEXT PRIMARY KEY,value BLOB);
+        CREATE TABLE current_sources(id INTEGER PRIMARY KEY,source_id TEXT,signature TEXT);
+        CREATE TABLE components(component INTEGER PRIMARY KEY,source_count INTEGER,previous_document TEXT);
         CREATE TABLE output_documents(sort_name TEXT,id TEXT PRIMARY KEY,value BLOB);
         CREATE INDEX output_document_order ON output_documents(sort_name,id);''')
 
@@ -309,24 +327,29 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
         batches = previous.iter_batches(batch_size=256) if hasattr(previous, 'iter_batches') else previous.to_batches(max_chunksize=256)
         for batch in batches:
             for row in batch.to_pylist():
-                original = dict(row)
+                original = sparse_row(row)
                 normalize(row)
                 db.execute('INSERT OR REPLACE INTO prior_sources VALUES (?,?,?,?)',
                            (row['source_id'], original.get('document_id'), signature(row), pickle.dumps(original)))
         documents = pq.ParquetFile(pa.BufferReader(previous_documents)) if isinstance(previous_documents, bytes) else previous_documents
         for batch in documents.iter_batches(batch_size=256):
             for row in batch.to_pylist():
-                db.execute('INSERT OR REPLACE INTO prior_documents VALUES (?,?)', (row['document_id'], pickle.dumps(row)))
+                db.execute('INSERT OR REPLACE INTO prior_documents VALUES (?,?)', (row['document_id'], pickle.dumps(sparse_row(row))))
+
+    # Only integer parent pointers are resident: eight bytes per source row.
+    # Payloads and aliases remain on disk. Preserve the existing union order.
+    parents = array('Q', [0])
 
     def root(key):
         visited = []
         while True:
-            parent, = db.execute('SELECT parent FROM parents WHERE id=?', (key,)).fetchone()
+            parent = parents[key]
             if parent == key:
                 break
             visited.append(key)
             key = parent
-        db.executemany('UPDATE parents SET parent=? WHERE id=?', ((key, item) for item in visited))
+        for item in visited:
+            parents[item] = key
         return key
 
     def join(kind, alias, key):
@@ -335,13 +358,15 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
         if previous_alias is None:
             db.execute('INSERT INTO aliases VALUES (?,?,?)', (kind, encoded, key))
         else:
-            db.execute('UPDATE parents SET parent=? WHERE id=?', (root(previous_alias[0]), root(key)))
+            parents[root(key)] = root(previous_alias[0])
 
     index.progress.report('group_documents', completed=0, unit='source_rows')
     for key, row in enumerate(rows, 1):
         normalize(row)
-        staged.append(row)
-        db.execute('INSERT INTO parents VALUES (?,?)', (key,key))
+        staged.append(sparse_row(row))
+        parents.append(key)
+        if reusable and previous_documents is not None:
+            db.execute('INSERT INTO current_sources VALUES (?,?,?)', (key,row['source_id'],signature(row)))
         endpoint = index.entry_key(row.get('filename'), row.get('source_url'), key)
         resolved = row.get('source_resolved_url')
         if endpoint == ('row', key) and row.get('source_url') and resolved and len(resolved) == 1:
@@ -353,8 +378,8 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
             join('body', body, key)
         if key % 4096 == 0:
             index.progress.report('group_documents', completed=key, unit='source_rows')
-    for key, in db.execute('SELECT id FROM parents ORDER BY id'):
-        db.execute('INSERT INTO members VALUES (?,?)', (root(key),key))
+    db.executemany('INSERT INTO members VALUES (?,?)', ((root(key),key) for key in range(1,len(parents))))
+    del parents
 
     # Streaming interpretation discovers its columns while rows are consumed.
     schema = schema() if callable(schema) else schema
@@ -366,8 +391,10 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
         if redundant:
             schema = pa.schema([field for field in schema if field.name != 'publication_code_code'], metadata=schema.metadata)
             for batch in staged.batches(write=True):
-                for _, row in batch:
+                for key, row in batch:
                     row.pop('publication_code_code', None)
+                    if reusable and previous_documents is not None:
+                        db.execute('UPDATE current_sources SET signature=? WHERE id=?',(signature(row),key))
     for field in ('document_kind','document_kind_source','document_family','record_role','source_record_type'):
         if field not in schema.names:
             schema = schema.append(pa.field(field,index.STRINGS))
@@ -384,6 +411,9 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
     document_path = destination.with_name('documents.parquet')
     temporary_document = document_path.with_suffix('.parquet.tmp')
     def component_rows(component):
+        if resident_rows is not None:
+            yield from resident_rows
+            return
         for payload, in db.execute('SELECT r.value FROM members m JOIN group_rows r ON r.id=m.id WHERE component=? ORDER BY m.id', (component,)):
             yield pickle.loads(payload)
 
@@ -449,40 +479,62 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
         document.update(filenames=sorted(filenames) or None,source_urls=sorted(urls) or None,body_keys=sorted(retained_bodies) or None)
         return document
 
-    index.progress.report('combine_document_metadata', completed=0, unit='document_groups')
+    index.progress.report('compare_document_groups')
+    if reusable and previous_documents is not None:
+        # Compare scalar signatures in one indexed pass. An unchanged group
+        # must contain every prior member, preventing stale reuse after splits.
+        db.executescript('''CREATE TABLE prior_counts(document_id TEXT PRIMARY KEY,source_count INTEGER);
+            INSERT INTO prior_counts SELECT document_id,count(*) FROM prior_sources GROUP BY document_id;
+            INSERT INTO components
+            SELECT m.component,count(*),CASE WHEN count(p.source_id)=count(*)
+                AND min(c.signature=p.signature)=1
+                AND min(p.document_id)=max(p.document_id)
+                AND count(*)=max(n.source_count)
+                THEN min(p.document_id) END
+            FROM members m JOIN current_sources c ON c.id=m.id
+            LEFT JOIN prior_sources p ON p.source_id=c.source_id
+            LEFT JOIN prior_counts n ON n.document_id=p.document_id
+            GROUP BY m.component;''')
+    else:
+        db.execute('INSERT INTO components SELECT component,count(*),NULL FROM members GROUP BY component')
+    group_count, = db.execute('SELECT count(*) FROM components').fetchone()
+    index.progress.report('combine_document_metadata', completed=0, total=group_count, unit='document_groups')
     index.progress.report('write_document_tables', completed=0, unit='rows')
     try:
         with pq.ParquetWriter(temporary_source, source_schema, compression='zstd') as writer:
-            for component, in db.execute('SELECT DISTINCT component FROM members ORDER BY component'):
-                document = None
-                old_document_id = None
-                unchanged, count = True, 0
-                for row in component_rows(component):
-                    count += 1
-                    old = db.execute('SELECT document_id,signature FROM prior_sources WHERE source_id=?',(row['source_id'],)).fetchone()
-                    if old is None or old[1] != signature(row) or old_document_id is not None and old_document_id != old[0]:
-                        unchanged = False
-                        break
-                    old_document_id = old[0]
-                if unchanged and old_document_id is not None:
-                    prior_count, = db.execute('SELECT count(*) FROM prior_sources WHERE document_id=?',(old_document_id,)).fetchone()
-                    candidate = db.execute('SELECT value FROM prior_documents WHERE document_id=?',(old_document_id,)).fetchone()
-                    if count == prior_count and candidate is not None:
-                        document = pickle.loads(candidate[0])
-                        reused += 1
+            for component, count, previous_payload in db.execute('''
+                    SELECT c.component,c.source_count,p.value FROM components c
+                    LEFT JOIN prior_documents p ON p.document_id=c.previous_document ORDER BY c.component'''):
+                resident_rows = None
+                document = pickle.loads(previous_payload) if previous_payload is not None else None
                 is_reused = document is not None
-                if document is None:
+                if is_reused:
+                    reused += 1
+                else:
+                    # Most components are small. Decode those rows once while
+                    # retaining the streaming path for large evidence groups.
+                    if count <= 128:
+                        payloads = []
+                        size = 0
+                        for payload, in db.execute('SELECT r.value FROM members m JOIN group_rows r ON r.id=m.id WHERE component=? ORDER BY m.id',(component,)):
+                            size += len(payload)
+                            if size > 8*1024**2:
+                                break
+                            payloads.append(payload)
+                        else:
+                            resident_rows = [pickle.loads(payload) for payload in payloads]
+                        del payloads
                     document = combine(component)
                     recomputed += 1
                 document_count += 1
                 if document_count % 1000 == 0:
-                    index.progress.report('combine_document_metadata', completed=document_count, unit='document_groups')
+                    index.progress.report('combine_document_metadata', completed=document_count, total=group_count, unit='document_groups')
                 db.execute('INSERT INTO output_documents VALUES (?,?,?)', ((document.get('filename') or '').casefold(), document['document_id'], pickle.dumps(document)))
-                for row in component_rows(component):
-                    if is_reused:
-                        payload, = db.execute('SELECT value FROM prior_sources WHERE source_id=?',(row['source_id'],)).fetchone()
-                        row = pickle.loads(payload)
-                    else:
+                output_rows = (pickle.loads(payload) for payload, in db.execute('''
+                    SELECT p.value FROM members m JOIN current_sources c ON c.id=m.id
+                    JOIN prior_sources p ON p.source_id=c.source_id WHERE m.component=? ORDER BY m.id''',(component,))) if is_reused else component_rows(component)
+                for row in output_rows:
+                    if not is_reused:
                         row['document_id'] = document['document_id']
                         index.fill_document_kind(row)
                     pending.append(row)

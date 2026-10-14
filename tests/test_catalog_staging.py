@@ -441,3 +441,75 @@ def test_disk_map_scans_values_without_per_key_queries(tmp_path):
         assert sum(s.startswith('SELECT') for s in statements) <= 2
     finally:
         state.close()
+
+
+def test_disk_map_defaults_are_detached_and_do_not_repeat_reads(tmp_path):
+    state=WorkingCatalog(tmp_path/'defaults.sqlite')
+    try:
+        calls=[]
+        mapping=state.mapping('defaults',lambda:calls.append(1) or [])
+        queries=[]
+        state.connection.set_trace_callback(queries.append)
+        value=mapping['new'];value.append('unsaved')
+        assert mapping['new']==[] and len(calls)==1
+        mapping['null']=None
+        assert mapping.setdefault('null',['replacement']) is None
+        for i in range(20):
+            mapping.setdefault(i,{'values':[]})['values'].append('unsaved')
+        assert all(mapping[i]=={'values':[]} for i in range(20))
+        assert sum(q.startswith('SELECT') for q in queries)<=44
+    finally:
+        state.close()
+
+
+def test_sparse_grouping_keeps_null_empty_and_paired_observations(tmp_path):
+    schema = pa.schema([*index.SOURCE_SCHEMA,
+        ('capture_outcome',index.STRINGS), ('source_document_label',index.STRINGS),
+        ('source_occurrences',index.metadata_type('source_occurrences'))])
+    rows = [
+        {**source('a.pdf','https://example.gov/a.pdf','body-a'), 'source_document_label':None,
+         'source_occurrences':[{'source_page_url':['https://committee.test/hearing'],
+                                'source_link_label':[], 'source_page_title':None}]},
+        {**source('b.pdf','https://example.gov/b.pdf','body-b'), 'source_document_label':[]},
+        {**source('c.pdf','https://example.gov/c.pdf','body-c'), 'source_document_label':['']},
+    ]
+    # Include the same null padding introduced by an actual Parquet round trip.
+    rows = pa.Table.from_pylist(rows,schema=schema).to_pylist()
+    expected_sources,_,expected_documents,_ = index.prepare_document_indexes([dict(r) for r in rows],schema)
+    path = tmp_path/'document-filenames.parquet'
+    index.write_document_indexes(path,rows,schema)
+    for file,expected in [(path,expected_sources),(path.with_name('documents.parquet'),expected_documents)]:
+        actual = pq.read_table(file)
+        assert semantic(actual) == semantic(pa.Table.from_pylist(expected,schema=actual.schema))
+    previous = pq.ParquetFile(path)
+    documents = path.with_name('documents.parquet').read_bytes()
+    result = index.write_document_indexes(path,rows,schema,previous=previous,previous_documents=documents)
+    assert result['reused_document_groups'] == 3
+    assert result['recomputed_document_groups'] == 0
+
+
+def test_large_components_and_payloads_keep_streaming_semantics(tmp_path):
+    schema = pa.schema([*index.SOURCE_SCHEMA,('capture_outcome',index.STRINGS),
+        ('source_document_label',index.STRINGS)])
+    rows = [{**source(f'{i}.pdf',f'https://example.gov/{i}.pdf','shared-body'),
+             'source_document_label':[f'Label {i}']} for i in range(140)]
+    rows.append({**source('large.pdf','https://example.gov/large.pdf','separate-body'),
+                 'source_document_label':['z'*(8*1024**2+1)]})
+    expected_sources,_,expected_documents,_ = index.prepare_document_indexes([dict(r) for r in rows],schema)
+    path=tmp_path/'document-filenames.parquet'
+    index.write_document_indexes(path,rows,schema)
+    for file,expected in [(path,expected_sources),(path.with_name('documents.parquet'),expected_documents)]:
+        actual=pq.read_table(file)
+        assert semantic(actual)==semantic(pa.Table.from_pylist(expected,schema=actual.schema))
+
+
+def test_redundant_publication_code_does_not_invalidate_group_reuse(tmp_path):
+    schema=pa.schema([*index.SOURCE_SCHEMA,('publication_code_code',index.STRINGS),
+        ('publication_type',index.STRINGS),('capture_outcome',index.STRINGS)])
+    rows=[{**source('a.pdf','https://example.gov/a.pdf'),
+           'publication_code_code':['report'],'publication_type':['report']}]
+    path=tmp_path/'document-filenames.parquet'
+    index.write_document_indexes(path,rows,schema)
+    result=index.write_document_indexes(path,rows,schema,previous=pq.ParquetFile(path),
+        previous_documents=path.with_name('documents.parquet').read_bytes())
+    assert result['reused_document_groups']==1

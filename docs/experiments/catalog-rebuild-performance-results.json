@@ -1,0 +1,365 @@
+{
+  "sample": {
+    "catalog_id": "9eb191117dbf4ba9ad8b3b03a9c0c6a4",
+    "source_sha256": "7d9e5759555951dcb5b3ef3eeecf9b34bb36c98baa1f7231099f8955acba4861",
+    "source_rows": 1024227,
+    "row_groups": [
+      0,
+      26,
+      51,
+      77,
+      103,
+      128,
+      154,
+      179,
+      205,
+      231,
+      256,
+      282,
+      308,
+      333,
+      359,
+      385,
+      410,
+      436,
+      462,
+      487,
+      513,
+      538,
+      564,
+      590,
+      615,
+      641,
+      667,
+      692,
+      718,
+      744,
+      769,
+      795,
+      821,
+      846,
+      872,
+      897,
+      923,
+      949,
+      974,
+      1000
+    ],
+    "sample_rows": 10211,
+    "sample_bytes": 61014071,
+    "sample_sha256": "048e67ca45535f8805155160fe657c81134f952d8cec2e5ee3833c02680dbf35"
+  },
+  "scope": "Grouping component only, not a full rebuild. Each paired export preserves all values, types, order, and metadata except generated catalog identity and implementation fingerprint.",
+  "results": [
+    {
+      "repeat": 1,
+      "case": "cold",
+      "arm": "baseline",
+      "rows": 10211,
+      "seconds": 10.871831167023629,
+      "sqlite_bytes": 192471040,
+      "sql_statements": 215872,
+      "peak_rss_bytes": 760741888,
+      "reused_groups": 0,
+      "recomputed_groups": 7262
+    },
+    {
+      "repeat": 1,
+      "case": "unchanged",
+      "arm": "baseline",
+      "rows": 10211,
+      "seconds": 16.15880220802501,
+      "sqlite_bytes": 501755904,
+      "sql_statements": 160141,
+      "peak_rss_bytes": 866697216,
+      "reused_groups": 7262,
+      "recomputed_groups": 0
+    },
+    {
+      "repeat": 1,
+      "case": "sparse",
+      "arm": "baseline",
+      "rows": 10211,
+      "seconds": 13.744214790989645,
+      "sqlite_bytes": 501096448,
+      "sql_statements": 161358,
+      "peak_rss_bytes": 911867904,
+      "reused_groups": 7159,
+      "recomputed_groups": 103
+    },
+    {
+      "repeat": 1,
+      "case": "cold",
+      "arm": "candidate",
+      "rows": 10211,
+      "seconds": 6.486224166001193,
+      "sqlite_bytes": 109699072,
+      "sql_statements": 155380,
+      "peak_rss_bytes": 743882752,
+      "reused_groups": 0,
+      "recomputed_groups": 7262
+    },
+    {
+      "repeat": 1,
+      "case": "unchanged",
+      "arm": "candidate",
+      "rows": 10211,
+      "seconds": 7.720121499965899,
+      "sqlite_bytes": 217145344,
+      "sql_statements": 92908,
+      "peak_rss_bytes": 912441344,
+      "reused_groups": 7262,
+      "recomputed_groups": 0
+    },
+    {
+      "repeat": 1,
+      "case": "sparse",
+      "arm": "candidate",
+      "rows": 10211,
+      "seconds": 8.325419874978252,
+      "sqlite_bytes": 217391104,
+      "sql_statements": 94432,
+      "peak_rss_bytes": 961265664,
+      "reused_groups": 7159,
+      "recomputed_groups": 103
+    },
+    {
+      "repeat": 2,
+      "case": "cold",
+      "arm": "baseline",
+      "rows": 10211,
+      "seconds": 10.885445082909428,
+      "sqlite_bytes": 192471040,
+      "sql_statements": 215872,
+      "peak_rss_bytes": 763904000,
+      "reused_groups": 0,
+      "recomputed_groups": 7262
+    },
+    {
+      "repeat": 2,
+      "case": "unchanged",
+      "arm": "baseline",
+      "rows": 10211,
+      "seconds": 15.00830941600725,
+      "sqlite_bytes": 501755904,
+      "sql_statements": 160141,
+      "peak_rss_bytes": 936280064,
+      "reused_groups": 7262,
+      "recomputed_groups": 0
+    },
+    {
+      "repeat": 2,
+      "case": "sparse",
+      "arm": "baseline",
+      "rows": 10211,
+      "seconds": 14.410945666022599,
+      "sqlite_bytes": 501096448,
+      "sql_statements": 161358,
+      "peak_rss_bytes": 971849728,
+      "reused_groups": 7159,
+      "recomputed_groups": 103
+    },
+    {
+      "repeat": 2,
+      "case": "cold",
+      "arm": "candidate",
+      "rows": 10211,
+      "seconds": 6.66381291707512,
+      "sqlite_bytes": 109699072,
+      "sql_statements": 155380,
+      "peak_rss_bytes": 741539840,
+      "reused_groups": 0,
+      "recomputed_groups": 7262
+    },
+    {
+      "repeat": 2,
+      "case": "unchanged",
+      "arm": "candidate",
+      "rows": 10211,
+      "seconds": 7.7116786249680445,
+      "sqlite_bytes": 217145344,
+      "sql_statements": 92908,
+      "peak_rss_bytes": 904921088,
+      "reused_groups": 7262,
+      "recomputed_groups": 0
+    },
+    {
+      "repeat": 2,
+      "case": "sparse",
+      "arm": "candidate",
+      "rows": 10211,
+      "seconds": 7.858134249923751,
+      "sqlite_bytes": 217391104,
+      "sql_statements": 94432,
+      "peak_rss_bytes": 916602880,
+      "reused_groups": 7159,
+      "recomputed_groups": 103
+    },
+    {
+      "repeat": 3,
+      "case": "cold",
+      "arm": "baseline",
+      "rows": 10211,
+      "seconds": 11.073733999975957,
+      "sqlite_bytes": 192471040,
+      "sql_statements": 215872,
+      "peak_rss_bytes": 766476288,
+      "reused_groups": 0,
+      "recomputed_groups": 7262
+    },
+    {
+      "repeat": 3,
+      "case": "unchanged",
+      "arm": "baseline",
+      "rows": 10211,
+      "seconds": 15.821887667058036,
+      "sqlite_bytes": 501755904,
+      "sql_statements": 160141,
+      "peak_rss_bytes": 945537024,
+      "reused_groups": 7262,
+      "recomputed_groups": 0
+    },
+    {
+      "repeat": 3,
+      "case": "sparse",
+      "arm": "baseline",
+      "rows": 10211,
+      "seconds": 14.64321458293125,
+      "sqlite_bytes": 501096448,
+      "sql_statements": 161358,
+      "peak_rss_bytes": 984924160,
+      "reused_groups": 7159,
+      "recomputed_groups": 103
+    },
+    {
+      "repeat": 3,
+      "case": "cold",
+      "arm": "candidate",
+      "rows": 10211,
+      "seconds": 6.7151094999862835,
+      "sqlite_bytes": 109699072,
+      "sql_statements": 155380,
+      "peak_rss_bytes": 742817792,
+      "reused_groups": 0,
+      "recomputed_groups": 7262
+    },
+    {
+      "repeat": 3,
+      "case": "unchanged",
+      "arm": "candidate",
+      "rows": 10211,
+      "seconds": 7.656656290986575,
+      "sqlite_bytes": 217145344,
+      "sql_statements": 92908,
+      "peak_rss_bytes": 905871360,
+      "reused_groups": 7262,
+      "recomputed_groups": 0
+    },
+    {
+      "repeat": 3,
+      "case": "sparse",
+      "arm": "candidate",
+      "rows": 10211,
+      "seconds": 7.531031124992296,
+      "sqlite_bytes": 217391104,
+      "sql_statements": 94432,
+      "peak_rss_bytes": 941162496,
+      "reused_groups": 7159,
+      "recomputed_groups": 103
+    }
+  ],
+  "summary": [
+    {
+      "case": "cold",
+      "median_seconds": {
+        "baseline": 10.885445082909428,
+        "candidate": 6.66381291707512
+      },
+      "speedup": 1.6335160092830556,
+      "sqlite_bytes": {
+        "baseline": 192471040,
+        "candidate": 109699072
+      },
+      "all_paired_values_and_order_equal": true
+    },
+    {
+      "case": "unchanged",
+      "median_seconds": {
+        "baseline": 15.821887667058036,
+        "candidate": 7.7116786249680445
+      },
+      "speedup": 2.0516788155346135,
+      "sqlite_bytes": {
+        "baseline": 501755904,
+        "candidate": 217145344
+      },
+      "all_paired_values_and_order_equal": true
+    },
+    {
+      "case": "sparse",
+      "median_seconds": {
+        "baseline": 14.410945666022599,
+        "candidate": 7.858134249923751
+      },
+      "speedup": 1.8338889624038215,
+      "sqlite_bytes": {
+        "baseline": 501096448,
+        "candidate": 217391104
+      },
+      "all_paired_values_and_order_equal": true
+    }
+  ],
+  "map_defaults": [
+    {
+      "repeat": 0,
+      "arm": "baseline",
+      "seconds": 0.16831099998671561,
+      "selects": 80000
+    },
+    {
+      "repeat": 0,
+      "arm": "candidate",
+      "seconds": 0.1070976669434458,
+      "selects": 40000
+    },
+    {
+      "repeat": 1,
+      "arm": "baseline",
+      "seconds": 0.1631724580656737,
+      "selects": 80000
+    },
+    {
+      "repeat": 1,
+      "arm": "candidate",
+      "seconds": 0.10193087498191744,
+      "selects": 40000
+    },
+    {
+      "repeat": 2,
+      "arm": "baseline",
+      "seconds": 0.1601603749440983,
+      "selects": 80000
+    },
+    {
+      "repeat": 2,
+      "arm": "candidate",
+      "seconds": 0.10142487508710474,
+      "selects": 40000
+    }
+  ],
+  "native_compatibility": {
+    "rows": 1000,
+    "cases": [
+      "cold",
+      "unchanged",
+      "sparse"
+    ],
+    "constructed_fields": [
+      "hearing_resources: native publisher format",
+      "hearing_resources: endpoint candidate",
+      "state_outcome: pending"
+    ],
+    "both_exports_exact_values_types_order": true,
+    "baseline_runtime_sha256": "1f5e9cbe35495ffa72012c7bdac24b0bae4e804d49ee275b47e82fd5835da478"
+  }
+}

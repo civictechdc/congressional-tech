@@ -36,6 +36,7 @@ on:
       - 'tests/test_catalog_publication.py'
       - 'tests/test_catalog_consumers.py'
       - 'tests/test_catalog_staging.py'
+      - 'tests/test_catalog_availability.py'
       - 'tests/test_standalone_catalog_publication.py'
       - 'tests/catalog_test_helpers.py'
       - 'packages/congress_api/src/congress_api/retention/catalog_*.py'
@@ -197,7 +198,7 @@ jobs:
           tests/test_pdf_metadata_refresh.py
           tests/test_raw_catalog.py tests/test_raw_rebuild.py tests/test_incremental_catalog.py tests/test_capture_checkpoint.py
           tests/test_raw_progress.py tests/test_core_benchmark.py
-          tests/test_core_source_context.py tests/test_catalog_publication.py tests/test_catalog_staging.py tests/test_catalog_consumers.py
+          tests/test_core_source_context.py tests/test_catalog_publication.py tests/test_catalog_staging.py tests/test_catalog_availability.py tests/test_catalog_consumers.py
           tests/test_standalone_catalog_publication.py
           .github/tests/test_raw_source_finalizer.py
           .github/tests/test_capture_verification.py .github/tests/test_capture_memory_guard.py .github/tests/test_capture_source_manifest.py
