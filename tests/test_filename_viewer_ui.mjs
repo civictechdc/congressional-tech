@@ -5,6 +5,7 @@ import {readFile} from 'node:fs/promises';
 import {createRequire} from 'node:module';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
+import {showPublicationUpdate} from '../apps/site/src/components/filename-publication.mjs';
 
 const require = createRequire(new URL('../apps/site/package.json', import.meta.url));
 const {JSDOM} = require('jsdom');
@@ -27,6 +28,27 @@ const evidence = {verified: true, bytes: 108272, page_count: 2, pages: [{number:
   content_fields: {content_document_kind: ['committee-resolution'], content_congress: ['116']},
   receipt: {retrieved_at: '2026-10-11T01:39:53Z', http_status: 200, complete: true}};
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
+
+test('new data is reachable inside an open detail panel and follows the selected file', () => {
+  const dom = new JSDOM(html, {url: 'https://viewer.test/?source=first&catalog=old'});
+  try {
+    const {document, location, history} = dom.window;
+    showPublicationUpdate({catalogId: 'latest', document, location});
+    const notice = document.querySelector('dialog [data-catalog-update]');
+    assert.ok(notice);
+    assert.equal(notice.hidden, false);
+    const link = notice.querySelector('a');
+    assert.equal(new URL(link.href).searchParams.get('source'), 'first');
+    history.replaceState(null, '', '?source=second&catalog=old&q=hearing');
+    link.onfocus();
+    assert.equal(new URL(link.href).searchParams.get('source'), 'second');
+    assert.equal(new URL(link.href).searchParams.get('catalog'), 'latest');
+    assert.equal(new URL(link.href).searchParams.get('q'), 'hearing');
+    showPublicationUpdate({message: 'This review snapshot could not be loaded.', document, location});
+    assert.match(notice.textContent, /could not be loaded/);
+    assert.equal(new URL(link.href).searchParams.has('catalog'), false);
+  } finally { dom.window.close(); }
+});
 
 async function app(respond) {
   const dom = new JSDOM(html, {url: 'https://viewer.test/?row=12', runScripts: 'outside-only'});

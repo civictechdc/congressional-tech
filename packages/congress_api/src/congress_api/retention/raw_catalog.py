@@ -28,6 +28,7 @@ from congress_api.retention.catalog_cache import (
 )
 from congress_api.retention.raw_archive import CAPTURES_KEY, CAPTURE_SCHEMA, STATE_KEY, STATE_SCHEMA, decode_table
 from congress_api.retention.catalog_availability import annotate_availability
+from congress_api.retention.catalog_lineage import refresh_lineage_pair, replay_discovery
 
 FILENAMES = "indexes/document-filenames.parquet"
 DOCUMENTS = "indexes/documents.parquet"
@@ -105,7 +106,7 @@ def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies,
                          'with their original PyArrow writer, or explicitly rebuild after investigation')
     deferred_sources = set(json.loads(meta.get(b'deferred_source_bodies', b'[]'))) if reusable else set()
     lineage_refresh = reusable and meta.get(b'source_lineage_version') != SOURCE_LINEAGE_VERSION.encode()
-    if (reusable and not lineage_refresh and not deferred_sources and not body_readings
+    if (reusable and not deferred_sources and not body_readings
             and (not inspect_bodies or meta.get(b'body_inspection') == b'true'
                  and meta.get(b'deferred_body_reads') == b'0')
             and cursor == capture_rows and meta.get(b'seed_digest') == seed_digest.encode()
@@ -113,6 +114,10 @@ def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies,
             and meta.get(b'availability_policy') == b'1'
             and previous_documents is not None
             and (pq.read_schema(pa.BufferReader(previous_documents)).metadata or {}).get(b'catalog_id') == meta.get(b'catalog_id')):
+        if lineage_refresh:
+            result = refresh_lineage_pair(previous, pq.ParquetFile(pa.BufferReader(previous_documents)),
+                captures, read, root=root, working=working, version=SOURCE_LINEAGE_VERSION)
+            return _publish_result(store, root, snapshot, result)
         if snapshot.manifest is None:
             (root / FILENAMES).write_bytes(previous_bytes)
             (root / DOCUMENTS).write_bytes(previous_documents)
@@ -164,13 +169,7 @@ def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies,
     if lineage_refresh:
         # Backfill discovery relationships once from receipt metadata. Existing
         # filename interpretations, saved bodies and download state stay valid.
-        prior = all_captures.slice(0, cursor)
-        prior = prior.filter(pc.fill_null(pc.match_substring(prior['receipt_key'], '/download-'), False))
-        for record, _, receipt in index.retained_records(prior, read, stage='restore_source_lineage'):
-            if isinstance(record, dict):
-                for link in [*record.get('source_context', {}).get('observations', []), *record.get('links', [])]:
-                    context.add_link(link, receipt)
-        del prior
+        replay_discovery(context, all_captures.slice(0, cursor), read)
 
     def read_body(key):
         # The archive already records original byte lengths. Do not transfer a
@@ -336,14 +335,18 @@ def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies,
                   "deferred_source_bodies": json.dumps(sorted(deferred_sources)),
                   "retained_recovery_fingerprint": recovery_fingerprint()},
     )
+    return _publish_result(store, root, snapshot, result)
+
+
+def _publish_result(store, root, snapshot, result):
     progress.report('validate_document_tables')
     index.validate_document_indexes(root / FILENAMES, root / DOCUMENTS,
                                     source_rows=result["rows"], document_rows=result["document_rows"])
     # Retain evidence that exists only in an older generated table, including
     # columns whose original publisher/parser basis can no longer be proved.
     progress.report('archive_previous_tables')
-    for label, key, data in (("filenames", FILENAMES, previous_bytes),
-                             ("documents", DOCUMENTS, previous_documents)):
+    for label, key, data in (("filenames", FILENAMES, snapshot.filenames),
+                             ("documents", DOCUMENTS, snapshot.documents)):
         if data is not None:
             saved = f"catalog-history/sha256/{sha256(data).hexdigest()}/{Path(key).name}"
             store.put(saved, data, immutable=True)

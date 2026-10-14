@@ -61,3 +61,18 @@ export function latestReviewUrl(href, catalogId) {
   else url.searchParams.delete('catalog');
   return url.href;
 }
+
+// Show the same action in the workspace and inside its modal inspector.
+export function showPublicationUpdate({catalogId, message = 'New data available.',
+                                       document: doc = document, location: loc = location} = {}) {
+  for (const notice of doc.querySelectorAll('[data-catalog-update]')) {
+    notice.hidden = false;
+    notice.querySelector('span').textContent = message;
+    const link = notice.querySelector('a');
+    const refresh = () => { link.href = latestReviewUrl(loc.href, catalogId); };
+    refresh();
+    link.onclick = refresh;
+    link.onfocus = refresh;
+    link.onpointerdown = refresh;
+  }
+}

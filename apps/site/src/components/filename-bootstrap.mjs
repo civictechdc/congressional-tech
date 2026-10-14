@@ -1,4 +1,4 @@
-import { filenameManifestUrl, watchPublication, latestReviewUrl } from './filename-publication.mjs';
+import { filenameManifestUrl, watchPublication, showPublicationUpdate } from './filename-publication.mjs';
 const manifest = import.meta.env.PUBLIC_FILENAME_MANIFEST_URL || filenameManifestUrl;
 const snapshot = new URLSearchParams(location.search).get('catalog');
 const worker = new Worker(new URL('./filename-worker.mjs', import.meta.url), { type: 'module' });
@@ -7,19 +7,11 @@ const pending = new Map(); let sequence = 0;
 worker.onmessage = ({ data }) => {
   const call = pending.get(data.id); if (!call) return;
   if (data.error && snapshot && !stopWatching) {
-    const notice = document.getElementById('catalog-update');
-    notice.hidden = false;
-    notice.firstChild.textContent = 'This review snapshot could not be loaded. ';
-    const link = document.getElementById('catalog-update-link');
-    link.href = latestReviewUrl(location.href);
+    showPublicationUpdate({message: 'This review snapshot could not be loaded.'});
   }
   if (data.result?.catalog_id && !stopWatching) {
     stopWatching = watchPublication({url: manifest, current: data.result.catalog_id, currentRecovery: data.result.recovery_sha256, onUpdate: latest => {
-      const notice = document.getElementById('catalog-update');
-      const link = document.getElementById('catalog-update-link');
-      notice.hidden = false;
-      link.href = latestReviewUrl(location.href, latest.catalog_id);
-      link.onclick = () => { link.href = latestReviewUrl(location.href, latest.catalog_id); };
+      showPublicationUpdate({catalogId: latest.catalog_id});
     }});
   }
   call.finish(); data.error ? call.reject(new Error(data.error)) : call.resolve(data.result);

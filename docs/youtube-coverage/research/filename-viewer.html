@@ -24,7 +24,7 @@ h1 { font-size:28px; line-height:1.2; letter-spacing:-.03em; margin:0 0 10px; fo
 .downloads > summary { padding:8px 0; }
 #snapshot-detail { line-height:1.6; color:var(--muted); }
 .downloads a { display:block; margin-top:12px; text-decoration:none; }
-#catalog-update { font-size:13px; line-height:1.6; padding:8px 0; margin:0; }
+[data-catalog-update] { font-size:13px; line-height:1.6; padding:8px 0; margin:0; }
 main { padding:20px 32px; }
 label { display:flex; flex-direction:column; gap:7px; font-size:12px; font-weight:550; color:var(--muted); }
 input,select { min-width:0; min-height:40px; padding:9px 11px; border:1px solid #c9d2d9; border-radius:5px; color:var(--ink); background:white; font-size:14px; max-width:100%; }
@@ -200,7 +200,7 @@ dd { margin:0; font-size:13px; line-height:1.6; overflow-wrap:anywhere; }
 </style>
 </head>
 <body>
-<header><div><p class="eyebrow">Congressional archive</p><h1>Document filenames</h1><p id="summary">Reading the catalog…</p><p id="snapshot"></p><p id="catalog-update" hidden role="status">New data available. <a id="catalog-update-link">Load latest data →</a></p></div><details class="downloads"><summary>Data &amp; downloads</summary><div id="snapshot-detail"></div><a class="download" href="/data.parquet" download>Document groups · Parquet ↗</a><a class="download" href="/sources.parquet" download>Individual sources · Parquet ↗</a></details></header>
+<header><div><p class="eyebrow">Congressional archive</p><h1>Document filenames</h1><p id="summary">Reading the catalog…</p><p id="snapshot"></p><p id="catalog-update" data-catalog-update hidden role="status"><span>New data available.</span> <a id="catalog-update-link">Load latest data →</a></p></div><details class="downloads"><summary>Data &amp; downloads</summary><div id="snapshot-detail"></div><a class="download" href="/data.parquet" download>Document groups · Parquet ↗</a><a class="download" href="/sources.parquet" download>Individual sources · Parquet ↗</a></details></header>
 <main>
 <form id="search-form" role="search" inert>
 <div class="controls primary-controls">
@@ -227,7 +227,7 @@ dd { margin:0; font-size:13px; line-height:1.6; overflow-wrap:anywhere; }
 </main>
 <dialog id="detail" aria-labelledby="detail-title">
 <div class="detail-head"><div class="detail-top"><div class="detail-identity"><h2 id="detail-title">Loading…</h2><button id="title-toggle" class="quiet" type="button" aria-expanded="false" aria-controls="detail-title" hidden>Full filename</button></div><button id="close-detail" class="outline" aria-label="Close details">Close ×</button></div><a id="saved-link" class="primary-link" target="_blank" rel="noopener noreferrer" hidden>Open saved file ↗</a></div>
-<div class="detail-secondary"><p id="detail-selected" hidden></p><div class="detail-actions"><a id="source-link" target="_blank" rel="noopener noreferrer" hidden>Open source URL ↗</a><button id="share" class="quiet" disabled>Copy review link</button><span id="share-status" role="status"></span></div></div>
+<div class="detail-secondary"><p data-catalog-update hidden role="status"><span>New data available.</span> <a>Load latest data →</a></p><p id="detail-selected" hidden></p><div class="detail-actions"><a id="source-link" target="_blank" rel="noopener noreferrer" hidden>Open source URL ↗</a><button id="share" class="quiet" disabled>Copy review link</button><span id="share-status" role="status"></span></div></div>
 <section id="document-summary" class="inspector-section" aria-label="Document summary"></section>
 <section id="origin" class="inspector-section" aria-label="Where this file came from"></section>
 <section id="filename-findings" class="inspector-section" aria-label="Filename findings"></section>

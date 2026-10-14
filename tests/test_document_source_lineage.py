@@ -135,13 +135,22 @@ def test_catalog_update_backfills_old_receipts_without_refetching_bodies(tmp_pat
         old.setattr(DocumentSources, 'add_link', lambda self, link, receipt=None:
                     add_link(self, {k:v for k,v in link.items() if k != 'publisher_occurrences'}, receipt))
         raw_catalog.rebuild_catalog(store, archive.captures, workers=1)
-    before = table(store).to_pylist()
+    before_tables = [table(store, key) for key in (raw_catalog.FILENAMES, raw_catalog.DOCUMENTS)]
+    before = before_tables[0].to_pylist()
     assert not any(HEARING in (o.get('source_original_page_url') or []) for r in before
                    for o in r.get('source_occurrences') or [])
     read, reads = store.read, []
     monkeypatch.setattr(store, 'read', lambda key: reads.append(key) or read(key))
     result = raw_catalog.rebuild_catalog(store, archive.captures, workers=1)
     assert not result.get('unchanged')
+    assert result['receipt_records_replayed'] == 1
+    assert result['sources_with_parent_after'] > result['sources_with_parent_before']
+    from congress_api.retention.document_index import SOURCE_CONTEXT_FIELDS
+    for old, key in zip(before_tables, (raw_catalog.FILENAMES, raw_catalog.DOCUMENTS)):
+        new = table(store, key)
+        protected = [f for f in old.column_names if f not in SOURCE_CONTEXT_FIELDS]
+        assert old.select(protected).equals(new.select(protected))
+        assert new.schema.metadata[b'source_lineage_version'] == b'1'
     after = table(store).to_pylist()
     child = next(r for r in after if r['source_url'] == FILE)
     assert HEARING in child['source_original_page_url']
@@ -149,3 +158,54 @@ def test_catalog_update_backfills_old_receipts_without_refetching_bodies(tmp_pat
     assert {r['document_id'] for r in before} == {r['document_id'] for r in after}
     assert not any(key.startswith('bodies/') for key in reads)
     assert raw_catalog.rebuild_catalog(store, archive.captures, workers=1)['unchanged']
+
+
+def test_later_download_batches_inherit_old_and_new_parent_evidence(tmp_path):
+    from congress_api.retention.raw_catalog import rebuild_catalog
+    from congress_api.retention.raw_archive import Archive
+    from test_raw_catalog import initialize, table
+    from test_raw_source_sync import response
+    store = initialize(tmp_path)
+    first = Archive(store, 'first-file')
+    first.record(response(ARTICLE, b'<html>file link</html>', 'text/html'), outcome='saved',
+                 links=[dict(url=FILE, parent_url=ARTICLE, text='Background file')])
+    first.save()
+    rebuild_catalog(store, workers=1)
+    child_id = next(r['source_id'] for r in table(store).to_pylist() if r['source_url'] == FILE)
+    second = Archive(store, 'later-parent')
+    second.record(response(ARTICLE, b'<html>file link</html>', 'text/html'), outcome='saved', links=[],
+        context={'observations': [dict(url=ARTICLE, publisher_occurrences=[
+            dict(page=HEARING, name='Yemen', url=ARTICLE)])]})
+    second.save()
+    rebuild_catalog(store, workers=1)
+    child = next(r for r in table(store).to_pylist() if r['source_id'] == child_id)
+    assert HEARING in child['source_original_page_url']
+    third = Archive(store, 'new-file')
+    new_url = 'https://example.org/new-attachment.pdf'
+    third.record(response(FILE, b'%PDF-new'), outcome='saved', links=[dict(url=new_url, parent_url=FILE)])
+    third.save()
+    rebuild_catalog(store, workers=1)
+    descendant = next(r for r in table(store).to_pylist() if r['source_url'] == new_url)
+    assert HEARING in descendant['source_original_page_url']
+    assert any(o.get('source_occurrence_scope') == ['linked_ancestor']
+               and o.get('source_original_page_url') == [HEARING] for o in descendant['source_occurrences'])
+
+
+def test_missing_retained_receipt_cannot_mark_backfill_complete(tmp_path, monkeypatch):
+    from congress_api.retention import raw_catalog
+    from congress_api.retention.raw_archive import Archive
+    from test_raw_catalog import initialize
+    from test_raw_source_sync import response
+    store = initialize(tmp_path)
+    archive = Archive(store, 'missing-receipt')
+    archive.record(response(FILE, b'%PDF-saved'), outcome='saved', links=[])
+    archive.save()
+    with monkeypatch.context() as old:
+        old.setattr(raw_catalog, 'SOURCE_LINEAGE_VERSION', '0')
+        raw_catalog.rebuild_catalog(store, workers=1)
+    selected = store.read('indexes/catalog.json')
+    key = archive.captures['receipt_key'][0].as_py()
+    del store.objects[key]
+    with pytest.raises(ValueError, match='Missing capture receipt'):
+        raw_catalog.rebuild_catalog(store, workers=1)
+    assert store.read('indexes/catalog.json') == selected
