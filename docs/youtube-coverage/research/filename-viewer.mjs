@@ -144,7 +144,7 @@ async function openDetail(id, update=true, catalog=info.catalog_id) {
   }
  }
  const url=sourceUrl(data.source_url); if(url) { $('source-link').href=url.href; $('source-link').textContent=entry.api_reference?'Open API record ↗':'Open source URL ↗'; $('source-link').hidden=false; }
- if(entry.saved_file_available) { $('saved-link').hidden=false; $('saved-link').textContent=data.body_format?.includes('pdf')?'Open saved PDF ↗':'Open saved file ↗'; $('saved-link').href='/saved/'+encodeURIComponent(data.source_id)+'?catalog='+encodeURIComponent(entry.catalog_id); }
+ if(entry.saved_file_available||sourceUrl(entry.saved_file_url)) { $('saved-link').hidden=false; $('saved-link').textContent='Open saved copy ↗'; $('saved-link').href=entry.saved_file_url||'/saved/'+encodeURIComponent(data.source_id)+'?catalog='+encodeURIComponent(entry.catalog_id); }
  $('technical').hidden=false; document.querySelector('.detail-secondary').hidden=false; renderDetails(); loadEvidence(entry,controller); }
  catch(error) { if(error.name!=='AbortError'&&controller===detailController) { setDetailTitle('Record unavailable'); $('document-summary').hidden=false; $('document-summary').append(node('p',error.message)); const retry=node('button','Retry this record','outline');retry.addEventListener('click',()=>openDetail(id,false,catalog));$('document-summary').append(retry); } }
  finally { if(controller===detailController)$('detail').setAttribute('aria-busy','false'); }
@@ -167,7 +167,7 @@ function renderSummary(entry) {
  if(formats)formatValue.append(node('span',' · '+(source.body_format?.length?'saved bytes':source.media_type?.length?'server-reported':'filename only'),'inline-note'));
  fact(dl,'Format',formatValue);
  const recovery=source.recovery||entry.recovery, recovered=recovery?.recovery_status==='recovered';
- const savedNotes=[(source.body_key||recovered)&&entry.published_only?'Stored in R2; file access unavailable here.':null,!recovered&&source.record_role?.includes('error-response')?'The saved response was marked as failed.':!recovered&&source.response_usable?.includes('false')?'The saved response was marked unusable.':!recovered&&source.response_body_complete?.includes('false')?'The saved response is incomplete.':null].filter(Boolean);
+ const savedNotes=[(source.body_key||recovered)&&entry.published_only&&!entry.saved_file_url?'Stored in R2; file access unavailable here.':null,!recovered&&source.record_role?.includes('error-response')?'The saved response was marked as failed.':!recovered&&source.response_usable?.includes('false')?'The saved response was marked unusable.':!recovered&&source.response_body_complete?.includes('false')?'The saved response is incomplete.':null].filter(Boolean);
  fact(dl,'Saved response',recovered?(source.recovery?'Recovered':'Recovered on another URL in this group'):source.body_key?(entry.published_only?'Saved':'Available'):entry.sources.some(item=>item.retained)?'Saved on another URL in this group':'None recorded',savedNotes.join(' '));
  if(recovered&&recovery.kind&&!(source.format?.length===1&&source.format[0]===recovery.kind))fact(dl,'Recovered format',formatLabel(recovery.kind));
  if(source.state_outcome?.some(value=>!['saved','retained','html'].includes(value))) fact(dl,recovered?'Original URL fetch':'Recorded fetch',source.state_outcome.map(friendly).join(' · '),source.state_checked_at?.length===1?'Recorded '+dateLabel(source.state_checked_at[0]):null);

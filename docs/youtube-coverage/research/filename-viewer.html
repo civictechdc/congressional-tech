@@ -93,9 +93,9 @@ footer { display:flex; justify-content:space-between; gap:14px; align-items:cent
 #detail-title.expanded { display:block; }
 #title-toggle { font-size:12px; padding:5px 0; min-height:30px; }
 #close-detail { flex-shrink:0; }
-.primary-link { display:inline-block; margin-top:12px; color:white; background:var(--accent); border-radius:5px; padding:10px 14px; font-size:13px; text-decoration:none; }
 .detail-secondary { padding:8px 24px 0; }
 .detail-actions { display:flex; flex-wrap:wrap; align-items:center; gap:4px 16px; font-size:13px; }
+.detail-actions a { display:inline-flex; align-items:center; min-height:44px; }
 #detail-selected { margin:6px 0; color:var(--muted); font-size:12px; overflow-wrap:anywhere; }
 .inspector-section { padding:22px 24px; border-bottom:1px solid var(--line); }
 .inspector-section h3 { margin:0 0 16px; font-size:15px; font-weight:650; }
@@ -226,8 +226,8 @@ dd { margin:0; font-size:13px; line-height:1.6; overflow-wrap:anywhere; }
 <footer><span>Related URLs and identical saved files share one entry.</span><button id="back-to-results" type="button" class="quiet">Back to top ↑</button></footer>
 </main>
 <dialog id="detail" aria-labelledby="detail-title">
-<div class="detail-head"><div class="detail-top"><div class="detail-identity"><h2 id="detail-title">Loading…</h2><button id="title-toggle" class="quiet" type="button" aria-expanded="false" aria-controls="detail-title" hidden>Full filename</button></div><button id="close-detail" class="outline" aria-label="Close details">Close ×</button></div><a id="saved-link" class="primary-link" target="_blank" rel="noopener noreferrer" hidden>Open saved file ↗</a></div>
-<div class="detail-secondary"><p data-catalog-update hidden role="status"><span>New data available.</span> <a>Load latest data →</a></p><p id="detail-selected" hidden></p><div class="detail-actions"><a id="source-link" target="_blank" rel="noopener noreferrer" hidden>Open source URL ↗</a><button id="share" class="quiet" disabled>Copy review link</button><span id="share-status" role="status"></span></div></div>
+<div class="detail-head"><div class="detail-top"><div class="detail-identity"><h2 id="detail-title">Loading…</h2><button id="title-toggle" class="quiet" type="button" aria-expanded="false" aria-controls="detail-title" hidden>Full filename</button></div><button id="close-detail" class="outline" aria-label="Close details">Close ×</button></div></div>
+<div class="detail-secondary"><p data-catalog-update hidden role="status"><span>New data available.</span> <a>Load latest data →</a></p><p id="detail-selected" hidden></p><div class="detail-actions"><a id="source-link" target="_blank" rel="noopener noreferrer" hidden>Open source URL ↗</a><a id="saved-link" target="_blank" rel="noopener noreferrer" hidden>Open saved copy ↗</a><button id="share" class="quiet" disabled>Copy review link</button><span id="share-status" role="status"></span></div></div>
 <section id="document-summary" class="inspector-section" aria-label="Document summary"></section>
 <section id="origin" class="inspector-section" aria-label="Where this file came from"></section>
 <section id="filename-findings" class="inspector-section" aria-label="Filename findings"></section>

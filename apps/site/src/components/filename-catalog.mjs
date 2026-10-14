@@ -11,6 +11,14 @@ const normalized = value => value == null ? null : Array.isArray(value) ? value.
 const values = value => Array.isArray(value) ? value : value == null ? [] : [value];
 const validUrl = value => { try { const url = new URL(value); return /^https?:$/.test(url.protocol) && !url.username && !url.password ? url : null; } catch { return null; } };
 
+export function savedCopyUrl(record, groupRecovery, manifestUrl) {
+  const recovery = record.recovery || groupRecovery;
+  const key = recovery?.recovery_status === 'recovered' ? recovery.body_key : record.body_key;
+  const match = /^bodies\/sha256\/([a-f0-9]{2})\/([a-f0-9]{64})\.gz$/.exec(key || '');
+  if (!match || match[1] !== match[2].slice(0, 2) || !validUrl(manifestUrl)) return null;
+  return new URL(`/saved/${match[2]}/${encodeURIComponent(record.filename || 'saved-copy')}`, manifestUrl).href;
+}
+
 export function apiReference(value) {
   const url = validUrl(value);
   if (url?.hostname !== 'api.congress.gov' || !url.pathname.startsWith('/v3/')) return null;
@@ -280,7 +288,8 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
     if (recovered) Object.assign(document, {recovery: recovered[0], recoveries: recovered});
     return { record, document, filename: document.filename, sources, catalog_id: info.catalog_id, api_reference: apiReference(record.source_url),
       ...(recovered ? {recovery: recovered[0], recoveries: recovered} : {}),
-      origin: sourceContext(record), document_origin: sourceContext(canonical), reading: null, saved_file_available: false, published_only: true,
+      origin: sourceContext(record), document_origin: sourceContext(canonical), reading: null, saved_file_available: false,
+      saved_file_url: savedCopyUrl(record, recovered?.[0], manifestUrl), published_only: true,
       sources_share_saved_file: !!bodies[0] && bodies.every(value => value === bodies[0]) };
   }
   return { info: { ...info, recovery_sha256: publication.recovery?.sha256, downloads: { documents: url(files.documents.path), filenames: url(files.filenames.path), recoveries: publication.recovery?.url }, published_at: manifest.published_at }, search, entry };

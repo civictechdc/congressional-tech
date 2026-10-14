@@ -5,10 +5,26 @@ import { mkdtemp, readFile, open, stat, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
-import { createFilenameCatalog, rangeFile, sourceContext } from './filename-catalog.mjs';
+import { createFilenameCatalog, rangeFile, sourceContext, savedCopyUrl } from './filename-catalog.mjs';
 import { observationReader } from './filename-observations.mjs';
 import { brotliCompressSync } from 'node:zlib';
 import { createHash } from 'node:crypto';
+
+test('saved-copy links prefer accepted recoveries and preserve the original record', () => {
+  const manifest = 'https://data.test/releases/catalog/manifest.json';
+  const body = hash => `bodies/sha256/${hash.slice(0, 2)}/${hash}.gz`;
+  const originalHash = 'a'.repeat(64), recoveredHash = 'b'.repeat(64);
+  const record = {filename: 'Hearing #1.pdf', body_key: body(originalHash)};
+  const recovered = {recovery_status: 'recovered', body_key: body(recoveredHash)};
+  assert.equal(savedCopyUrl(record, null, manifest), `https://data.test/saved/${originalHash}/Hearing%20%231.pdf`);
+  assert.match(savedCopyUrl({...record, recovery: recovered}, null, manifest), new RegExp('/saved/' + recoveredHash + '/'));
+  assert.match(savedCopyUrl(record, recovered, manifest), new RegExp('/saved/' + recoveredHash + '/'));
+  assert.equal(record.body_key, body(originalHash));
+  assert.equal(savedCopyUrl({body_key: null}, null, manifest), null);
+  assert.equal(savedCopyUrl({body_key: 'receipts/private.json'}, null, manifest), null);
+  assert.equal(savedCopyUrl({body_key: `bodies/sha256/ff/${originalHash}.gz`}, null, manifest), null);
+  assert.equal(savedCopyUrl(record, null, 'file:///manifest.json'), null);
+});
 
 async function localFetch(url, options = {}) {
   options.signal?.throwIfAborted();

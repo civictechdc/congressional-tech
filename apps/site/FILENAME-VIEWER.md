@@ -8,9 +8,21 @@ GitHub Pages serves the interface. Filename-viewer data lives in R2 under
 `congressional-tech-raw/viewer-publications/`, served at
 `https://congressional-viewer-data.mdeeb.workers.dev/` (also available at
 `https://congressional-data.spicygov.ai/`) by the read-only Worker in
-`apps/viewer-data`. It accepts only known publication paths and GET/HEAD;
-it cannot expose archive bodies, receipts, source indexes, or bucket listings.
-The bucket remains private and the browser receives no storage credentials.
+`apps/viewer-data`. It accepts only known publication paths and exact saved-body
+hashes through GET/HEAD. This route does not serve receipts or source indexes.
+The bucket also has direct public object access at
+`https://pub-1b36ca710ab14e7f8e65813c41761724.r2.dev/`, enabled at the owner's request.
+That endpoint exposes known object paths, including receipts and indexes; it does
+not list the bucket. The viewer uses the existing Worker for production data and
+decoded saved copies. Browsers receive no storage credentials.
+
+“Open saved copy” uses the selected source's retained body, preferring an accepted
+recovery when available. A group recovery is explicitly labeled as belonging to
+another URL. The Worker streams the stored gzip object as its original bytes:
+PDFs open in the browser; other formats download without running archived HTML
+on the data host. Saved copies ignore Range requests and return the whole file,
+since compressed-storage offsets do not describe decoded-file offsets. This
+requires no new data export or per-file publishing step.
 
 The data publisher reads `indexes/catalog.json` from `congressional-tech-raw`,
 then the exact immutable documents and filenames pair selected by that manifest.
@@ -91,10 +103,10 @@ data beneath an open review. Mutable pointers use `no-store`; release files have
 immutable cache headers.
 
 Saved-file status and content findings describe the published catalog. The
-static page does not retrieve private R2 bodies, recheck file hashes, inspect PDF
-pages, or rerun house-naming. Those operations remain in the local Python viewer;
-the public page labels its evidence accordingly and links to the publisher copy.
-Receipt files, archived bodies, and credentials are not published by this build.
+static page does not recheck file hashes, inspect PDF pages, or rerun house-naming.
+Those operations remain in the local Python viewer; the public page labels its
+evidence accordingly and links to both the publisher and retained copy. Archive
+objects remain in R2 rather than being duplicated into the Pages build.
 
 ## Build and check
 

@@ -304,6 +304,21 @@ test('static publication shows recorded evidence without claiming live inspectio
   } finally {dom.window.close();}
 });
 
+test('published saved-copy action sits beside the original without invoking local evidence services', async()=>{
+  const published=structuredClone(entry);
+  Object.assign(published,{saved_file_available:false,published_only:true,reading:null,saved_file_url:'https://data.test/saved/hash/Recovered.pdf'});
+  const {dom,get,requests}=await app(async()=>({ok:true,json:async()=>published}));
+  try {
+    assert.equal(get('saved-link').hidden,false);
+    assert.equal(get('saved-link').textContent,'Open saved copy ↗');
+    assert.equal(get('saved-link').href,published.saved_file_url);
+    assert.equal(get('source-link').href,final);
+    assert.equal(get('saved-link').parentElement,get('source-link').parentElement);
+    assert.doesNotMatch(get('document-summary').textContent,/file access unavailable/);
+    assert.equal(requests.some(url=>url.startsWith('/api/evidence/')),false);
+  } finally {dom.window.close();}
+});
+
 test('repeated hearing observations become one source note without discarding original evidence', async()=>{
   const hearing='https://www.rules.senate.gov/hearings/dara-lindenbaum';
   const apiUrl='https://api.congress.gov/v3/committee-meeting/117/senate/332244';
