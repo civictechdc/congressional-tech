@@ -64,6 +64,7 @@ function congressIssue(values, source=[]) {
 function measureLabel(value) {
  const match=/^(hconres|sconres|hjres|sjres|hres|sres|hr|s)(\d+)$/i.exec(value);
  if(!match) return value;
+ if(match[2].length>5)return value+' · Needs review';
  const names={hr:['H.R.','House bill'],s:['S.','Senate bill'],hres:['H.Res.','House resolution'],sres:['S.Res.','Senate resolution'],hjres:['H.J.Res.','House joint resolution'],sjres:['S.J.Res.','Senate joint resolution'],hconres:['H.Con.Res.','House concurrent resolution'],sconres:['S.Con.Res.','Senate concurrent resolution']};
  const [prefix,name]=names[match[1].toLowerCase()]; return `${prefix} ${match[2]} — ${name}`;
 }
@@ -311,7 +312,8 @@ function renderFilename(entry) {
  el.append(node('p','Interpreted from the filename; not verified against the document.','section-note'));
  consumed.add('congress');
  if(row.measure_references?.length) {
-  fact(dl,'Measure',row.measure_references.map(measureLabel).join(' · ')); consumed.add('measure_references');
+  const unusual=row.measure_references.some(value=>/\d{6,}$/.test(value));
+  fact(dl,unusual?'Measure · Review':'Measure',row.measure_references.map(measureLabel).join(' · '),unusual?'An unusually long number may be a publisher identifier rather than a legislative measure.':null); consumed.add('measure_references');
   const parsed=row.measure_references.map(value=>/^([a-z]+)(\d+)$/i.exec(value)).filter(Boolean),types=parsed.map(match=>match[1].toLowerCase()),numbers=parsed.map(match=>match[2]);
   if(row.measure_number?.every(value=>numbers.includes(value)))consumed.add('measure_number');
   for(const key of ['measure_token','measure_token_code','measure_type']) if(row[key]?.every(value=>types.includes(value.toLowerCase())))consumed.add(key);

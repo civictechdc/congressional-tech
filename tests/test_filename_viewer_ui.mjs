@@ -432,3 +432,16 @@ test('accepted recovery is usable without erasing the original fetch outcome or 
     assert.equal(JSON.stringify(recovered.record),before);
   } finally {dom.window.close();}
 });
+
+test('long article identifiers are not confidently presented as legislative measures', async()=>{
+  const article=structuredClone(entry);
+  Object.assign(article.record,{filename:'S169726001730039X',measure_references:['s169726001730039'],measure_number:['169726001730039'],measure_token:['s'],measure_token_label:['Senate Bill']});
+  const {dom,get}=await app(async url=>({ok:true,json:async()=>url.startsWith('/api/entry/')?article:evidence}));
+  try {
+    const findings=get('filename-findings').querySelector('dl').textContent;
+    assert.match(findings,/s169726001730039 · Needs review/);
+    assert.match(findings,/publisher identifier/);
+    assert.doesNotMatch(findings,/Senate bill/i);
+    assert.match(get('detail-data').textContent,/measure_references.*s169726001730039/s);
+  } finally {dom.window.close();}
+});
