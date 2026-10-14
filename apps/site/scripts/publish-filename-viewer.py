@@ -26,9 +26,6 @@ VIEWER = ROOT / 'docs/youtube-coverage/research/scripts/view_document_filenames.
 spec = importlib.util.spec_from_file_location('filename_viewer', VIEWER)
 viewer = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(viewer)
-spec = importlib.util.spec_from_file_location('filename_observations', Path(__file__).with_name('filename_observations.py'))
-observations = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(observations)
 
 
 def digest(path):
@@ -116,11 +113,6 @@ def publish(root, target, modified=None):
         describe(name, path, source.metadata.num_rows)
         print(f'{name}: {path.stat().st_size:,} bytes; all values verified', flush=True)
 
-    source = pq.ParquetFile(root / manifest['files']['filenames']['key'])
-    observations.publish_observations(source, output)
-    for name, filename in [('observations', 'observations.bin'), ('observation_rows', 'observation-rows.bin'), ('observation_index', 'observation-index.json')]:
-        describe(name, output / filename)
-    print('Source observations: every reconstructed value verified', flush=True)
     document_file = pq.ParquetFile(root / manifest['files']['documents']['key'])
     names = ['filename', 'document_kind', 'document_kind_source']
     summary = document_file.read(columns=[name for name in names if name in document_file.schema_arrow.names])
@@ -177,7 +169,7 @@ def publish(root, target, modified=None):
 
     info = dict(catalog.info, generation=manifest['generation'], remote_last_modified=modified or catalog.info.get('remote_last_modified'))
     info.pop('synced_at', None)
-    publication = dict(version=2, published_at=datetime.now(timezone.utc).isoformat(), info=info, files=files,
+    publication = dict(version=3, published_at=datetime.now(timezone.utc).isoformat(), info=info, files=files,
                        source_manifest=manifest, ids=str(ids.relative_to(target)) + '/')
     (target / 'manifest.json').write_text(json.dumps(publication, ensure_ascii=False, separators=(',', ':')))
     print(f'Publication: {sum(p.stat().st_size for p in target.rglob("*") if p.is_file()):,} bytes', flush=True)
