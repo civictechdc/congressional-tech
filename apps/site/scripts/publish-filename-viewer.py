@@ -29,6 +29,9 @@ spec.loader.exec_module(viewer)
 spec = importlib.util.spec_from_file_location('filename_observations', Path(__file__).with_name('filename_observations.py'))
 observations = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(observations)
+spec = importlib.util.spec_from_file_location('filename_details', Path(__file__).with_name('filename_details.py'))
+details = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(details)
 
 
 def digest(path):
@@ -122,16 +125,9 @@ def publish(root, target, modified=None):
         describe(name, output / filename)
     print('Source observations: every reconstructed value verified', flush=True)
     document_file = pq.ParquetFile(root / manifest['files']['documents']['key'])
-    names = ['filename', 'document_kind', 'document_kind_source']
-    summary = document_file.read(columns=[name for name in names if name in document_file.schema_arrow.names])
-    for name in names:
-        if name not in summary.column_names:
-            summary = summary.append_column(name, pa.nulls(len(summary), type=pa.list_(pa.string())))
-    path = output / 'document-summaries.parquet'
-    pq.write_table(summary, path, row_group_size=8192, compression='zstd', compression_level=9)
-    if not pq.read_table(path).equals(summary):
-        raise ValueError('Document summary values changed.')
-    describe('document_summaries', path, len(summary))
+    detail_path = output / 'details.parquet'
+    detail_info = details.publish_details(source, detail_path)
+    describe('details', detail_path, detail_info['rows'])
 
     order = catalog.order.to_pylist()
     position = [0] * len(order)
@@ -145,7 +141,7 @@ def publish(root, target, modified=None):
                   (4 if not catalog.documents['document_kind'][value].as_py() else 0) |
                   (8 if not catalog.documents['document_family'][value].as_py() else 0) |
                   (16 if value in catalog.api_entries else 0) for value in order)
-    for name, values in [('groups', group), ('preferred', preferred), ('document_rows', order)]:
+    for name, values in [('groups', group), ('preferred', preferred)]:
         path = output / f'{name}.bin'
         write_u32(path, values)
         describe(name, path)
@@ -155,7 +151,9 @@ def publish(root, target, modified=None):
 
     # IDs are resolved when a row is opened; carrying both hashes on every
     # list row would duplicate tens of megabytes without displaying them.
-    browse = catalog.documents.take(catalog.order).drop(['body_key', 'source_id', 'document_id'])
+    browse = catalog.documents.take(catalog.order).drop([name for name in ['body_key', 'source_id', 'document_id', 'extension', 'recovered_filename', 'response_result'] if name in catalog.documents.column_names])
+    basis = document_file.read(columns=['document_kind_source']).take(catalog.order) if 'document_kind_source' in document_file.schema_arrow.names else pa.table({'document_kind_source': pa.nulls(len(browse), type=pa.list_(pa.string()))})
+    browse = browse.append_column('document_kind_source', basis.column(0))
     browse = browse.append_column('source_count', pa.array([len(catalog.members[value]) for value in order], type=pa.uint32()))
     browse = browse.append_column('retained', pa.array([bool(catalog.saved_responses[value]) for value in order]))
     path = output / 'browse.parquet'
@@ -177,7 +175,7 @@ def publish(root, target, modified=None):
 
     info = dict(catalog.info, generation=manifest['generation'], remote_last_modified=modified or catalog.info.get('remote_last_modified'))
     info.pop('synced_at', None)
-    publication = dict(version=2, published_at=datetime.now(timezone.utc).isoformat(), info=info, files=files,
+    publication = dict(version=5, published_at=datetime.now(timezone.utc).isoformat(), info=info, files=files,
                        source_manifest=manifest, ids=str(ids.relative_to(target)) + '/')
     (target / 'manifest.json').write_text(json.dumps(publication, ensure_ascii=False, separators=(',', ':')))
     print(f'Publication: {sum(p.stat().st_size for p in target.rglob("*") if p.is_file()):,} bytes', flush=True)

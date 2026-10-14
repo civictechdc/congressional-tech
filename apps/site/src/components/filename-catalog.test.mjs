@@ -54,21 +54,41 @@ test('static Parquet queries match the Python catalog and preserve complete sour
     assert.equal(requests.filter(path => path.endsWith('/groups.bin')).length, 1);
     assert.ok(!requests.some(path => path.endsWith('/document_rows.bin')), 'search does not load detail navigation');
     await reader.entry('0');
-    assert.equal(requests.filter(path => path.endsWith('/document_rows.bin')).length, 1);
+    assert.equal(requests.filter(path => path.endsWith('/document_rows.bin')).length, 0);
+    assert(requests.some(path => path.endsWith('/details.parquet')));
 
     const expected = JSON.parse(await readFile(join(folder,'expected.json')));
     for (const { query, result } of expected) {
-      for (const row of result.rows) { delete row.source_id; delete row.document_id; }
+      for (const row of result.rows) { for(const key of ['source_id','document_id','extension','recovered_filename','response_result'])delete row[key]; row.document_kind_source=null; }
       assert.deepEqual(await reader.search(query), result, JSON.stringify(query));
     }
     const sources = JSON.parse(await readFile(join(folder,'source-records.json')));
     for (const source of sources) {
       const detail = await reader.entry(source.source_id, 'b'.repeat(32));
-      assert.deepEqual(detail.record, source);
+      assert.equal(detail.record_complete, false);
+      assert.equal('source_occurrences' in detail.record, false);
+      assert.deepEqual(await reader.technical(source.source_id, 'b'.repeat(32), undefined, true), source);
       assert.equal(detail.saved_file_available, false);
       assert.equal(detail.published_only, true);
     }
     assert.equal((await reader.entry('0')).sources.length, 2);
+    const typed=await reader.entry('1');
+    assert.equal(typed.facts.http_status,200);assert.equal(typed.facts.response_usable,true);
+    assert.equal(typed.facts.response_body_complete,null);assert.equal(typed.facts.completeness_conflict,true);
+    assert.equal(typed.facts.state_checked_at,'2026-10-14T13:00:00.000Z');
+    assert.deepEqual(typed.record.response_body_complete,['true','false']);
+    const firstPage=await reader.observationPage('2',undefined,{limit:2});
+    assert.equal(firstPage.total,3);assert.equal(firstPage.next,2);
+    assert.deepEqual(firstPage.items,sources[2].source_occurrences.slice(0,2));
+    const secondPage=await reader.observationPage('2',undefined,{offset:2,limit:2});
+    assert.equal(secondPage.next,null);assert.deepEqual(secondPage.items,sources[2].source_occurrences.slice(2));
+    assert.equal((await reader.observationPage('0')).is_null,true);
+    const freshRequests=[];
+    const fresh=await createFilenameCatalog(pathToFileURL(join(folder,'public/manifest.json')),(url,options)=>{freshRequests.push(new URL(url).pathname);return localFetch(url,options);});
+    await fresh.entry('2');
+    assert(!freshRequests.some(path=>path.endsWith('/filenames.parquet')),'ordinary details never read the archival source table');
+    assert(!freshRequests.some(path=>path.endsWith('/documents.parquet')||path.endsWith('/document-summaries.parquet')));
+
     assert.deepEqual((await reader.entry('2')).origin.pages[0].titles, ['Hearing page']);
     await assert.rejects(reader.entry('0', 'stale'), /different catalog snapshot/);
     await assert.rejects(reader.entry('unknown'), /not present/);
@@ -197,14 +217,14 @@ test('accepted recoveries update saved filtering and summaries without changing 
     assert.ok(results.rows.every(row=>row.retained && row.recovery.recovery_status==='recovered'));
     for(const position of positions) {
       const detail=await reader.entry(String(position));
-      assert.deepEqual(detail.record,{...originals[position],recovery:recoveries[positions.indexOf(position)]});
+      assert.deepEqual(await reader.technical(String(position),undefined,undefined,true),{...originals[position],recovery:recoveries[positions.indexOf(position)]});
       assert.equal(detail.recovery.recovery_status,'recovered');
       assert.equal(detail.document.recovery.recovery_status,'recovered');
       assert.equal(detail.sources.find(source=>source.source_id===originals[position].source_id).retained,true);
       assert.equal(detail.saved_file_available,false,'status does not claim a public body download exists');
     }
     const canonical=await reader.entry('1');
-    assert.deepEqual(canonical.record,originals[1]);
+    assert.deepEqual(await reader.technical('1',undefined,undefined,true),originals[1]);
     assert.equal(canonical.recovery.original_url,originals[0].source_url);
     const damaged = async (url,options) => String(url).endsWith('/recovery-status.json') ? new Response(Buffer.from('{}')) : fetcher(url,options);
     await assert.rejects(createFilenameCatalog(root,damaged),/failed verification/);

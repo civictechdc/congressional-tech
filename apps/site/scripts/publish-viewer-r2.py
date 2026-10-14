@@ -22,7 +22,7 @@ from filename_recoveries import ACCEPTED_KEY, accepted_rows, index_recoveries
 BUCKET = 'congressional-tech-raw'
 PREFIX = 'viewer-publications/'
 PUBLIC_URL = 'https://congressional-viewer-data.mdeeb.workers.dev/'
-PUBLISHER_VERSION = 1
+PUBLISHER_VERSION = 5
 PAGES_MANIFEST = 'https://civictechdc.github.io/congressional-tech/data/filenames/manifest.json'
 USER_AGENT = 'congressional-tech-viewer-publisher/1.0 (+https://github.com/civictechdc/congressional-tech)'
 
@@ -68,8 +68,8 @@ def read_json(client, key, *, optional=False):
 
 def prepared_files(root, manifest):
     """Allow only manifest-declared files and the bounded source-ID shards."""
-    if manifest.get('version') != 2:
-        raise ValueError('Expected viewer manifest version 2.')
+    if manifest.get('version') not in (2, 5):
+        raise ValueError('Unsupported viewer manifest version.')
     selected = manifest['source_manifest']
     if selected['catalog_id'] != manifest['info']['catalog_id']:
         raise ValueError('Viewer and source catalog identities differ.')
@@ -185,8 +185,9 @@ def public_probe(base, pointer, manifest):
                 raise ValueError('Public supporting file validation failed: ' + item['path'])
     with ThreadPoolExecutor(max_workers=6) as pool:
         list(pool.map(check_file, manifest['files'].values()))
-    for name in ('filenames', 'documents', 'browse', 'document_summaries'):
-        item = manifest['files'][name]
+    for name, item in manifest['files'].items():
+        if not item['path'].endswith('.parquet'):
+            continue
         request = public_request(urllib.parse.urljoin(manifest_url, item['path']), {
             'Origin': 'https://civictechdc.github.io', 'Range': 'bytes=0-3'})
         with open_public(request) as response:

@@ -5,6 +5,7 @@ const pretty = value => value.replaceAll('-', ' ').replace(/^./, x => x.toUpperC
 const formatLabel = value => value.includes('/') ? value : value.toUpperCase();
 const display = value => value && typeof value === 'object' ? (Array.isArray(value) ? value.map(display).join(' · ') : JSON.stringify(value)) : (value ?? '—');
 const savedLabel = row => row.recovery?.recovery_status==='recovered' ? 'Recovered' : !row.retained ? 'No saved response' : row.record_role?.includes('error-response') ? 'Saved failed response' : row.response_usable?.includes('false') || row.response_body_complete?.includes('false') ? 'Saved · needs review' : 'Saved';
+let detailEntry, technicalPromise, technicalReady = false, observationData;
 let info, page = 1, pages = 1, rowData, searchController, detailController, detailOpener, timer, searchField = 'filename';
 const fieldLabels = {body_key:'Saved file location',filename:'Filename',source_url:'Publisher URL',filename_origins:'Filename obtained from',media_type:'Server-reported type',http_status:'HTTP response',response_usable:'Recorded usability assessment',response_body_complete:'Complete response saved',response_format:'Response format check',response_result:'Response diagnostic',capture_outcome:'Capture result',body_format:'Detected file format',format:'File format',extension:'Filename extension',name_token:'Remaining filename text',date_token:'Date text in filename',date_token_candidates:'Possible filename dates',document_kind:'Document classification',document_family:'Classification family',document_kind_source:'Classification evidence',source_capture_file:'Capture run',source_capture_pointer:'Path within captured record',source_receipt_key:'Receipt file',source_receipt_line:'Receipt line (one-based)',source_occurrences:'Related source observations',source_occurrence_scope:'Observation type',source_id:'Source record ID',document_id:'Grouped document ID',source_associated_url:'Associated original URL',source_association_basis:'URL relationship evidence',source_original_page_url:'Original referring page',source_page_url:'Recorded source page',source_page_title:'Source page title',source_link_label:'Publisher link text',source_link_url:'Recorded link URL',source_capture_url:'Capture request URL',source_chamber:'Chamber from source',source_congress:'Congress from source',source_committee_name:'Committee from source',congress:'Congress from filename',content_document_kind:'Document kind from PDF',content_congress:'Congress from PDF',content_citation:'Publication citation'};
 Object.assign(fieldLabels,{state_outcome:'Latest fetch result',state_family:'Capture source family',state_body_key:'Current saved response location',state_checked_at:'Last fetch check',state_retrieved_at:'Response retrieved at',hearing_package_id:'Related hearing package',hearing_resources:'Related hearing resources'});
@@ -121,21 +122,21 @@ function closeDetail(update=true) {
 }
 async function openDetail(id, update=true, catalog=info.catalog_id) {
  if(!$('detail').open) detailOpener=document.activeElement;
- detailController?.abort(); const controller=detailController=new AbortController(); rowData=null; $('detail').dataset.row=String(id); $('detail').dataset.catalog=catalog || info.catalog_id; setDetailTitle('Loading…'); $('detail-data').replaceChildren(); $('field-count').textContent=''; $('field-search').value=''; $('show-empty').checked=false; $('copy').disabled=true; $('share').disabled=true; $('source-link').hidden=true; $('saved-link').hidden=true; $('detail-selected').hidden=true; $('copy-status').textContent=''; $('share-status').textContent='';
+ detailController?.abort(); const controller=detailController=new AbortController(); rowData=null; detailEntry=null; technicalPromise=null; technicalReady=false; observationData=null; $('detail').dataset.row=String(id); $('detail').dataset.catalog=catalog || info.catalog_id; setDetailTitle('Loading…'); $('detail-data').replaceChildren(); $('field-count').textContent=''; $('field-search').value=''; $('show-empty').checked=false; $('copy').disabled=true; $('share').disabled=true; $('source-link').hidden=true; $('saved-link').hidden=true; $('detail-selected').hidden=true; $('copy-status').textContent=''; $('share-status').textContent='';
  for(const section of ['document-summary','origin','filename-findings','saved-evidence']) { $(section).replaceChildren(); $(section).hidden=true; }
  document.querySelector('.detail-secondary').hidden=true;
  $('technical').open=false; $('technical').hidden=true; $('detail').setAttribute('aria-busy','true'); $('source-history').hidden=true; $('source-history').querySelector('details').open=false; $('detail').scrollTop=0;
  $('source-variants').replaceChildren(); $('source-variants').hidden=true;
  if(!$('detail').open) $('detail').showModal(); if(update) saveUrl('pushState');
- try { const entry=await api('/api/entry/'+encodeURIComponent(id)+'?catalog='+encodeURIComponent(catalog || info.catalog_id),controller.signal); if(controller!==detailController) return; const data=entry.record; rowData=data; $('detail').dataset.row=data.source_id; $('detail').dataset.catalog=entry.catalog_id; saveUrl(); setDetailTitle(identity({...data,filename:entry.filename,api_reference:entry.api_reference}),entry.api_reference?'title':'filename'); $('copy').disabled=false; $('share').disabled=false;
+ try { const entry=await api('/api/entry/'+encodeURIComponent(id)+'?catalog='+encodeURIComponent(catalog || info.catalog_id),controller.signal); if(controller!==detailController) return; const data=entry.record; rowData=data; detailEntry=entry; $('detail').dataset.row=data.source_id; $('detail').dataset.catalog=entry.catalog_id; saveUrl(); setDetailTitle(identity({...data,filename:entry.filename,api_reference:entry.api_reference}),entry.api_reference?'title':'filename'); $('copy').disabled=false; $('share').disabled=false;
  if(data.filename!==entry.filename) { $('detail-selected').hidden=false; $('detail-selected').textContent='Selected source filename: '+(data.filename || 'Not recorded'); }
- renderSummary(entry); renderOrigin(entry.origin,entry.api_reference,data.source_occurrences?.length||0,data.recovery||entry.recovery); renderFilename(entry);
+ renderSummary(entry); renderCurrentOrigin(); renderFilename(entry);
  if(entry.sources.length>1) {
   $('source-history').hidden=false; $('source-variants-caption').textContent=`${entry.sources.length} source records in this group`;
   $('source-variants').hidden=false;
   $('source-variants').append(node('p',entry.sources_share_saved_file?'These URLs share one saved file. Select a URL to inspect its source record.':'These URLs belong to this grouped entry. Select a source to inspect its own metadata.'));
   for(const source of entry.sources) {
-   const redirects=entry.document_origin.redirects;
+   const redirects=entry.document_origin?.redirects || entry.origin.redirects;
    const role=redirects.some(r=>r.original===source.source_url)?'Original URL':redirects.some(r=>r.final===source.source_url)?'Redirect destination':'Alternate source URL';
    const caption=[role,source.format?.map(formatLabel).join(' · ') || 'Unknown format',savedLabel(source)].join(' · ');
    const button=node('button',caption,'outline'); button.setAttribute('aria-pressed',String(source.source_id===data.source_id));
@@ -145,7 +146,7 @@ async function openDetail(id, update=true, catalog=info.catalog_id) {
  }
  const url=sourceUrl(data.source_url); if(url) { $('source-link').href=url.href; $('source-link').textContent=entry.api_reference?'Open API record ↗':'Open source URL ↗'; $('source-link').hidden=false; }
  if(entry.saved_file_available||sourceUrl(entry.saved_file_url)) { $('saved-link').hidden=false; $('saved-link').textContent='Open saved copy ↗'; $('saved-link').href=entry.saved_file_url||'/saved/'+encodeURIComponent(data.source_id)+'?catalog='+encodeURIComponent(entry.catalog_id); }
- $('technical').hidden=false; document.querySelector('.detail-secondary').hidden=false; renderDetails(); loadEvidence(entry,controller); }
+ $('technical').hidden=false; document.querySelector('.detail-secondary').hidden=false; loadEvidence(entry,controller); }
  catch(error) { if(error.name!=='AbortError'&&controller===detailController) { setDetailTitle('Record unavailable'); $('document-summary').hidden=false; $('document-summary').append(node('p',error.message)); const retry=node('button','Retry this record','outline');retry.addEventListener('click',()=>openDetail(id,false,catalog));$('document-summary').append(retry); } }
  finally { if(controller===detailController)$('detail').setAttribute('aria-busy','false'); }
 }
@@ -167,7 +168,7 @@ function renderSummary(entry) {
  if(formats)formatValue.append(node('span',' · '+(source.body_format?.length?'saved bytes':source.media_type?.length?'server-reported':'filename only'),'inline-note'));
  fact(dl,'Format',formatValue);
  const recovery=source.recovery||entry.recovery, recovered=recovery?.recovery_status==='recovered';
- const savedNotes=[(source.body_key||recovered)&&entry.published_only&&!entry.saved_file_url?'Stored in R2; file access unavailable here.':null,!recovered&&source.record_role?.includes('error-response')?'The saved response was marked as failed.':!recovered&&source.response_usable?.includes('false')?'The saved response was marked unusable.':!recovered&&source.response_body_complete?.includes('false')?'The saved response is incomplete.':null].filter(Boolean);
+ const savedNotes=[(source.body_key||recovered)&&entry.published_only&&!entry.saved_file_url?'Stored in R2; file access unavailable here.':null,!recovered&&source.record_role?.includes('error-response')?'The saved response was marked as failed.':!recovered&&source.response_usable?.includes('false')?'The saved response was marked unusable.':!recovered&&entry.facts?.completeness_conflict?'Recorded completeness assessments disagree.':!recovered&&source.response_body_complete?.includes('false')?'The saved response is incomplete.':null].filter(Boolean);
  fact(dl,'Saved response',recovered?(source.recovery?'Recovered':'Recovered on another URL in this group'):source.body_key?(entry.published_only?'Saved':'Available'):entry.sources.some(item=>item.retained)?'Saved on another URL in this group':'None recorded',savedNotes.join(' '));
  if(recovered&&recovery.kind&&!(source.format?.length===1&&source.format[0]===recovery.kind))fact(dl,'Recovered format',formatLabel(recovery.kind));
  if(source.state_outcome?.some(value=>!['saved','retained','html'].includes(value))) fact(dl,recovered?'Original URL fetch':'Recorded fetch',source.state_outcome.map(friendly).join(' · '),source.state_checked_at?.length===1?'Recorded '+dateLabel(source.state_checked_at[0]):null);
@@ -295,7 +296,7 @@ function renderOrigin(origin,apiReference,observationCount,recovery) {
  }
  if(observationCount) {
   const button=node('button',`View ${number(observationCount)} source observation${observationCount===1?'':'s'}`,'quiet evidence-link');button.type='button';button.setAttribute('aria-controls','technical');
-  button.addEventListener('click',()=>{$('technical').open=true;$('field-search').value='source_occurrences';renderDetails();$('technical').scrollIntoView({block:'start'});$('technical').querySelector('summary').focus({preventScroll:true});});supporting.append(button);
+  button.addEventListener('click',()=>{$('technical').open=true;$('field-search').value='source_occurrences';ensureTechnical();$('technical').scrollIntoView({block:'start'});$('technical').querySelector('summary').focus({preventScroll:true});});supporting.append(button);
  }
  if(supporting.childElementCount>1)el.append(supporting);
 }
@@ -309,7 +310,7 @@ function isFilenameFragment(key) {
  return (/(?:^|_)(?:token|marker|wording|prefix|suffix|placeholder|remainder)(?:_|$)/.test(key) || /^(?:opaque|local|generic|ambiguous)_/.test(key) || /^(?:extension|embedded_extension|label|name_token)$/.test(key) || /_code$/.test(key));
 }
 function showFields(query) {
- $('technical').open=true; $('field-search').value=query; renderDetails();
+ $('technical').open=true; $('field-search').value=query; ensureTechnical();
  $('technical').scrollIntoView({block:'start'}); $('field-search').focus({preventScroll:true});
 }
 function renderFilename(entry) {
@@ -336,7 +337,7 @@ function renderFilename(entry) {
  if(hasFindings)el.append(node('p','Unverified filename interpretations.','section-note'),dl);
  else {el.replaceChildren();el.classList.add('compact');}
  const support=node('details');support.append(node('summary',hasFindings?'How this filename was read':'Filename analysis'));
- if(fields.length) { const inspect=node('button',`Inspect ${number(fields.length)} filename fields`,'quiet evidence-link');inspect.type='button';inspect.addEventListener('click',()=>showFields('Filename interpretations'));support.append(inspect); }
+ if(entry.filename_field_count||fields.length) { const inspect=node('button','Inspect filename fields','quiet evidence-link');inspect.type='button';inspect.addEventListener('click',()=>showFields('Filename interpretations'));support.append(inspect); }
  if(entry.published_only) support.append(node('p',`Published house-naming results · version ${info.house_naming_version}. This page reads the catalog snapshot; it does not rerun the naming rules.`,'section-note'));
  if(row.filename_origins?.length) support.append(node('p','Filename obtained from: '+row.filename_origins.map(friendly).join(' · ')));
  if(entry.api_reference) support.append(node('p','Literal URL-derived filename: '+row.filename));
@@ -353,8 +354,33 @@ function renderFilename(entry) {
  el.append(support);
 }
 function renderOccurrences(occurrences) {
- const el=node('div');
- occurrences.forEach((occurrence,index)=>{ const details=node('details'), scope=occurrence.source_occurrence_scope?.map(friendly).join(' · ') || 'Source observation'; details.append(node('summary',`${index+1}. ${scope}`)); const dl=node('dl',undefined,'facts'); for(const [key,value] of Object.entries(occurrence)) if(present(value)) { const values=node('span'); [].concat(value).forEach((v,i)=>{if(i)values.append(document.createElement('br'));values.append(webUrlOrText(v));}); fact(dl,label(key),values); } details.append(dl); el.append(details); });
+ const el=node('div'), offset=observationData?.offset || 0;
+ if(observationData) {
+  const total=observationData.total;
+  el.append(node('p',total?`${number(offset+1)}–${number(offset+occurrences.length)} of ${number(total)} observations`:'No source observations recorded.','section-note'));
+ }
+ occurrences.forEach((occurrence,index)=>{
+  const details=node('details'), scope=occurrence?.source_occurrence_scope?.map(friendly).join(' · ') || 'Source observation';
+  details.append(node('summary',`${number(offset+index+1)}. ${scope}`));
+  let rendered=false;
+  details.addEventListener('toggle',()=>{
+   if(!details.open||rendered)return;rendered=true;
+   const dl=node('dl',undefined,'facts');
+   for(const [key,value] of Object.entries(occurrence||{})) if(present(value)) {
+    const values=node('span');[].concat(value).forEach((v,i)=>{if(i)values.append(document.createElement('br'));values.append(webUrlOrText(v));});fact(dl,label(key),values);
+   }
+   details.append(dl);
+  });
+  el.append(details);
+ });
+ if(observationData&&(offset||observationData.next!==null)) {
+  const nav=node('div',undefined,'actions');
+  for(const [caption,start] of [['Previous observations',offset?Math.max(0,offset-20):null],['Next observations',observationData.next]]) {
+   const button=node('button',caption,'outline');button.type='button';button.disabled=start===null;
+   button.addEventListener('click',async()=>{button.disabled=true;try{await loadObservationPage(start);renderDetails();}catch(error){if(error.name!=='AbortError'){button.disabled=false;el.append(node('p',error.message,'warning'));}}});nav.append(button);
+  }
+  el.append(nav);
+ }
  return el;
 }
 
@@ -401,8 +427,77 @@ function fieldCategory(key) {
  if(nonFilename.has(key))return 'Download and storage';
  return 'Filename interpretations';
 }
+function detailUrl(kind, suffix='') {
+ return `/api/${kind}/${encodeURIComponent($('detail').dataset.row)}?catalog=${encodeURIComponent($('detail').dataset.catalog)}${suffix}`;
+}
+async function loadObservationPage(offset=0) {
+ const controller=detailController;
+ const result=await api(detailUrl('observations',`&offset=${offset}&limit=20`),controller.signal);
+ if(controller!==detailController)return;
+ observationData=result;rowData.source_occurrences=result.is_null?null:result.items;
+}
+async function ensureTechnical() {
+ if(!detailEntry||technicalReady){if(technicalReady)renderDetails();return;}
+ if(technicalPromise)return technicalPromise;
+ const controller=detailController;
+ $('detail-data').replaceChildren(node('p','Loading recorded fields…','section-note'));
+ technicalPromise=(async()=>{
+  if(detailEntry.record_complete===false) {
+   const record=await api(detailUrl('technical'),controller.signal);
+   if(controller!==detailController)return;
+   rowData=record;
+   await loadObservationPage();
+  }
+  if(controller!==detailController)return;
+  technicalReady=true;renderDetails();
+ })().catch(error=>{
+  if(controller===detailController&&error.name!=='AbortError') {
+   $('detail-data').replaceChildren(node('p',error.message,'warning'));
+   const retry=node('button','Retry recorded fields','outline');retry.addEventListener('click',ensureTechnical);$('detail-data').append(retry);
+  }
+ }).finally(()=>{if(controller===detailController)technicalPromise=null;});
+ return technicalPromise;
+}
+function renderCurrentOrigin() {
+ const entry=detailEntry;
+ renderOrigin(entry.origin,entry.api_reference,entry.observation_count??entry.record.source_occurrences?.length??0,entry.record.recovery||entry.recovery);
+ if(entry.origin_next!=null) {
+  const empty=$('origin').querySelector('.empty-state');if(empty)empty.textContent='More source evidence is available below.';
+  const more=node('button','More source pages','quiet evidence-link');more.type='button';
+  more.addEventListener('click',async()=>{
+   const controller=detailController;more.disabled=true;more.textContent='Loading source pages…';
+   try {
+    const result=await api(detailUrl('origin',`&offset=${entry.origin_next}&limit=20`),controller.signal);
+    if(controller!==detailController)return;
+    entry.origin.pages.push(...result.origin.pages);entry.origin.redirects.push(...result.origin.redirects);entry.origin_next=result.next;renderCurrentOrigin();
+   } catch(error) {if(controller===detailController&&error.name!=='AbortError'){more.disabled=false;more.textContent='Retry source pages';more.title=error.message;}}
+  });$('origin').append(more);
+ }
+}
+function renderFieldValues(key, value) {
+ const items=Array.isArray(value)?value:[value], el=node('div');let offset=0;
+ function draw(focus) {
+  el.replaceChildren();
+  for(const item of items.slice(offset,offset+20)) {
+   if(item&&typeof item==='object')el.append(node('pre',JSON.stringify(item,null,2),'pdf-text'));
+   else {const line=node('div');line.append(webUrlOrText(item));el.append(line);}
+  }
+  if(items.length>20) {
+   el.append(node('p',`${number(offset+1)}–${number(Math.min(offset+20,items.length))} of ${number(items.length)} values`,'section-note'));
+   const nav=node('div',undefined,'actions');
+   for(const [caption,delta] of [['Previous values',-20],['Next values',20]]) {
+    const button=node('button',caption,'outline');button.type='button';button.setAttribute('aria-label',caption+' for '+label(key));
+    button.disabled=offset+delta<0||offset+delta>=items.length;
+    button.addEventListener('click',()=>{offset+=delta;draw(caption);});nav.append(button);
+   }
+   el.append(nav);
+   if(focus)[...nav.children].find(button=>button.textContent===focus)?.focus({preventScroll:true});
+  }
+ }
+ draw();return el;
+}
 function renderDetails() {
- if(!rowData) return;
+ if(!rowData||!technicalReady) return;
  const q=$('field-search').value.toLowerCase(); const populated=Object.values(rowData).filter(v=>v!==null&&v!==''&&(!Array.isArray(v)||v.length)).length;
  const entries=Object.entries(rowData).filter(([key,value])=>($('show-empty').checked || present(value)) && (!q || [label(key),key,fieldCategory(key),String(display(value))].some(text=>text.toLowerCase().includes(q))));
  $('field-count').textContent=`${entries.length} ${entries.length===1?'field':'fields'} shown · ${populated} with values · ${Object.keys(rowData).length} total`;
@@ -412,7 +507,7 @@ function renderDetails() {
  for(const [title,values] of groups) {
   if(!values.length)continue;
   const group=node('section',undefined,'field-category'),dl=node('dl',undefined,'field-group');group.append(node('h4',title),dl);
-  for(const [key,value] of values) { const entry=node('div',undefined,'entry'); const term=node('dt',label(key)); term.append(node('span',key,'raw-key')); entry.append(term); const dd=node('dd'); if(!present(value)) dd.append(node('span','Not recorded','muted')); else if(key==='source_occurrences'&&Array.isArray(value))dd.append(renderOccurrences(value)); else for(const item of Array.isArray(value)?value:[value]) { if(item && typeof item==='object') dd.append(node('pre',JSON.stringify(item,null,2),'pdf-text')); else { const line=node('div'); line.append(webUrlOrText(item)); dd.append(line); } } if(key==='name_token'&&present(value))dd.append(node('span','Unmatched filename text; not a verified person, author, or identifier.','fact-note'));entry.append(dd); dl.append(entry); }
+  for(const [key,value] of values) { const entry=node('div',undefined,'entry'); const term=node('dt',label(key)); term.append(node('span',key,'raw-key')); entry.append(term); const dd=node('dd'); if(!present(value)) dd.append(node('span','Not recorded','muted')); else if(key==='source_occurrences'&&Array.isArray(value))dd.append(renderOccurrences(value)); else dd.append(renderFieldValues(key,value)); if(key==='name_token'&&present(value))dd.append(node('span','Unmatched filename text; not a verified person, author, or identifier.','fact-note'));entry.append(dd); dl.append(entry); }
   sections.push(group);
  }
  $('detail-data').replaceChildren(...(entries.length?sections:[node('p','No fields match this search.','muted')]));
@@ -442,8 +537,9 @@ if(window.ResizeObserver)new ResizeObserver(updateTitleToggle).observe($('detail
 $('close-detail').addEventListener('click',()=>closeDetail());
 $('detail').addEventListener('cancel',event=>{event.preventDefault();closeDetail();});
 $('detail').addEventListener('click',event=>{if(event.target===$('detail') && event.clientX<$('detail').getBoundingClientRect().left) closeDetail();});
+$('technical').addEventListener('toggle',()=>{if($('technical').open)ensureTechnical();});
 $('field-search').addEventListener('input',renderDetails); $('show-empty').addEventListener('change',renderDetails);
-$('copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(JSON.stringify(rowData,null,2));$('copy-status').textContent='Copied';}catch{$('copy-status').textContent='Clipboard unavailable';}});
+$('copy').addEventListener('click',async()=>{const controller=detailController;$('copy').disabled=true;$('copy-status').textContent='Preparing complete metadata…';try{const record=detailEntry.record_complete===false?await api(detailUrl('full'),controller.signal):rowData;if(controller!==detailController)return;await navigator.clipboard.writeText(JSON.stringify(record,null,2));$('copy-status').textContent='Copied';}catch(error){if(controller===detailController&&error.name!=='AbortError')$('copy-status').textContent='Could not copy complete metadata: '+error.message;}finally{if(controller===detailController)$('copy').disabled=false;}});
 $('share').addEventListener('click',async()=>{try{saveUrl();await navigator.clipboard.writeText(location.href);$('share-status').textContent='Copied';}catch{$('share-status').textContent='Clipboard unavailable';}});
 window.addEventListener('popstate',()=>{const row=restore();load();if(row!==null)openDetail(row.id,false,row.catalog);else closeDetail(false);});
 try {

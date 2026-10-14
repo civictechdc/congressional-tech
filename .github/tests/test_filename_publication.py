@@ -55,7 +55,7 @@ def test_corrupted_input_is_rejected_before_publication(catalog, tmp_path):
 
 def test_publication_includes_bounded_provenance_lookup(catalog):
     manifest = json.loads((catalog / 'public/manifest.json').read_text())
-    assert manifest['version'] == 2
+    assert manifest['version'] == 5
     for name in ('observations', 'observation_rows', 'observation_index'):
         item = manifest['files'][name]
         assert (catalog / 'public' / item['path']).stat().st_size == item['bytes']
@@ -69,3 +69,21 @@ def test_generation_cannot_escape_the_selected_snapshot(catalog):
     manifest['files']['filenames']['key'] = 'catalog-generations/' + manifest['generation'] + '/../other.parquet'
     with pytest.raises(ValueError, match='Invalid immutable catalog location'):
         publication.verify(catalog, manifest)
+
+
+def test_compact_serving_tables_replace_redundant_summary_and_mapping(catalog):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    manifest = json.loads((catalog / 'public/manifest.json').read_text())
+    assert 'document_summaries' not in manifest['files']
+    assert 'document_rows' not in manifest['files']
+    browse = pq.ParquetFile(catalog / 'public' / manifest['files']['browse']['path'])
+    assert 'document_kind_source' in browse.schema_arrow.names
+    assert not {'extension', 'recovered_filename', 'response_result'} & set(browse.schema_arrow.names)
+    detail = pq.ParquetFile(catalog / 'public' / manifest['files']['details']['path'])
+    assert detail.schema_arrow.field('http_status').type == pa.uint16()
+    assert detail.schema_arrow.field('response_usable').type == pa.bool_()
+    assert detail.schema_arrow.field('state_checked_at').type == pa.timestamp('ms', tz='UTC')
+    assert 'source_occurrences' not in detail.schema_arrow.names
+    assert 'document_id' not in detail.schema_arrow.names
+    assert detail.metadata.num_rows == manifest['info']['rows']

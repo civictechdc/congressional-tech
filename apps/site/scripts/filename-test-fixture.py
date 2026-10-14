@@ -19,7 +19,7 @@ catalog_id = 'b' * 32
 folder = root / 'catalog-generations' / generation
 folder.mkdir(parents=True)
 (root / 'indexes').mkdir()
-columns = list(publisher.viewer.LIST_COLUMNS) + ['source_occurrences', 'content_document_kind']
+columns = list(publisher.viewer.LIST_COLUMNS) + ['source_occurrences', 'content_document_kind', 'state_checked_at']
 scalar = {'filename','source_url','body_key','source_id','document_id'}
 observation = pa.list_(pa.struct([(key, pa.list_(pa.string())) for key in ['source_page_url','source_page_title','source_link_label','source_occurrence_scope']]))
 schema = pa.schema([(key, observation if key == 'source_occurrences' else pa.string() if key in scalar else pa.list_(pa.string())) for key in columns], metadata={b'catalog_id': catalog_id.encode(), b'house_naming_version': b'fixture'})
@@ -36,6 +36,8 @@ for i, (filename, url, body, group, role, kind) in enumerate([
     row.update(filename=filename, source_url=url, body_key=body, source_id=hashlib.sha256(str(i).encode()).hexdigest(),
                document_id=group, record_role=[role], document_kind=kind, document_family=['statement'] if kind else None,
                format=['pdf'] if filename.endswith('.pdf') else None, congress=['117'] if i == 2 else None)
+    if i == 1:
+        row.update(http_status=['200'], response_usable=['true'], response_body_complete=['true','false'], state_checked_at=['2026-10-14T09:00:00-04:00'])
     if i == 2:
         row['source_occurrences'] = [dict(source_page_url=['https://committee.test/hearing'], source_page_title=['Hearing page'], source_link_label=['Witness name'], source_occurrence_scope=['anchor'])]
         row['source_occurrences'].append(dict(row['source_occurrences'][0]))

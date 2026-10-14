@@ -10,8 +10,19 @@ self.onmessage = async ({ data }) => {
     const reader = await catalog;
     controller.signal.throwIfAborted();
     const request = new URL(url, manifest), query = Object.fromEntries(request.searchParams);
-    const result = request.pathname === '/api/info' ? reader.info : request.pathname === '/api/rows' ? await reader.search(query, controller.signal)
-      : await reader.entry(decodeURIComponent(request.pathname.split('/').at(-1)), query.catalog, controller.signal);
+    const identity = decodeURIComponent(request.pathname.split('/').at(-1));
+    let result;
+    if (request.pathname === '/api/info') result = reader.info;
+    else if (request.pathname === '/api/rows') result = await reader.search(query, controller.signal);
+    else if (request.pathname.startsWith('/api/technical/') || request.pathname.startsWith('/api/full/')) result = await reader.technical(identity, query.catalog, controller.signal, request.pathname.startsWith('/api/full/'));
+    else if (request.pathname.startsWith('/api/observations/') || request.pathname.startsWith('/api/origin/')) {
+      const origin = request.pathname.startsWith('/api/origin/');
+      result = await reader.observationPage(identity, query.catalog, {...query, origin}, controller.signal);
+      if (origin) {
+        const record = await reader.technicalOrigin(identity, query.catalog, controller.signal);
+        result = {origin: reader.sourceContext({...record, source_occurrences: result.items.filter(Boolean)}), next: result.next};
+      }
+    } else result = await reader.entry(identity, query.catalog, controller.signal);
     if (!controller.signal.aborted) self.postMessage({ id, result });
   } catch (error) { if (!controller.signal.aborted) self.postMessage({ id, error: error.message }); }
   finally { controller.abort(); requests.delete(id); }

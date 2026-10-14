@@ -80,6 +80,7 @@ test('review shows publisher, catalog uncertainty, saved evidence and stable lin
     assert.match(get('saved-link').href,/\/saved\/stable-final\?catalog=snapshot$/);
     assert.match(get('document-summary').textContent,/Unclassified/);
     assert.doesNotMatch(get('filename-findings').textContent,/Remaining filename text|resolution_by_cmw/);
+    get('technical').open=true;get('technical').dispatchEvent(new dom.window.Event('toggle'));await flush();
     assert.match(get('detail-data').textContent,/not a verified person/);
     assert.match(get('filename-findings').textContent,/January 30, 2019/);
     assert.match(get('document-summary').textContent,/Committee resolution/);
@@ -93,13 +94,15 @@ test('review shows publisher, catalog uncertainty, saved evidence and stable lin
     assert.match(w.location.search,/source=stable-final/);
     assert.match(w.location.search,/catalog=snapshot/);
     assert.equal(new URL(w.location.href).searchParams.has('row'),false);
-    assert.equal(get('technical').open,false);
+    assert.equal(get('technical').open,true);
     get('field-search').value='Remaining filename text';
     get('field-search').dispatchEvent(new w.Event('input'));
+    get('technical').open=true;get('technical').dispatchEvent(new dom.window.Event('toggle'));await flush();
     assert.match(get('detail-data').textContent,/resolution_by_cmw/);
     get('field-search').value='source_congress';
     get('show-empty').checked=true;
     get('show-empty').dispatchEvent(new w.Event('change'));
+    get('technical').open=true;get('technical').dispatchEvent(new dom.window.Event('toggle'));await flush();
     assert.match(get('detail-data').textContent,/Not recorded/);
   } finally {dom.window.close();}
 });
@@ -221,6 +224,7 @@ test('bill facts consolidate aliases and expose Congress conflicts without losin
     assert.match(get('document-summary').textContent,/Competing filename readings/);
     assert.match(get('document-summary').textContent,/Source: 117/);
     assert.match(get('document-summary').textContent,/Filename and source values disagree/);
+    get('technical').open=true;get('technical').dispatchEvent(new dom.window.Event('toggle'));await flush();
     assert.match(get('detail-data').textContent,/measure_token_code/);
   } finally {dom.window.close();}
 });
@@ -298,6 +302,7 @@ test('static publication shows recorded evidence without claiming live inspectio
     assert.match(get('content-summary').textContent,/116/);
     assert.match(get('document-summary').textContent,/file access unavailable here/);
     assert.equal(get('saved-evidence').hidden,true);
+    get('technical').open=true;get('technical').dispatchEvent(new dom.window.Event('toggle'));await flush();
     assert.match(get('detail-data').textContent,/bodies\/sha256\/hidden-from-summary.gz/);
     assert.match(get('filename-findings').textContent,/does not rerun/);
     assert.equal(requests.some(url=>url.startsWith('/api/evidence/')),false);
@@ -345,7 +350,10 @@ test('repeated hearing observations become one source note without discarding or
     const evidenceButton=get('origin').querySelector('button');assert.equal(evidenceButton.textContent,'View 4 source observations');
     evidenceButton.click();
     assert.equal(get('technical').open,true);assert.equal(get('field-search').value,'source_occurrences');
+    get('technical').open=true;get('technical').dispatchEvent(new dom.window.Event('toggle'));await flush();
     assert.equal(get('detail-data').querySelectorAll('details').length,4);
+    get('technical').open=true;get('technical').dispatchEvent(new dom.window.Event('toggle'));await flush();
+    for(const item of get('detail-data').querySelectorAll('details')){item.open=true;item.dispatchEvent(new dom.window.Event('toggle'));}await flush();
     assert.match(get('detail-data').textContent,/Receipt line/);
     assert.equal(JSON.stringify(observed.record),before);
     assert.equal(w.document.activeElement,get('technical').querySelector('summary'));
@@ -376,7 +384,9 @@ test('download state and related hearing resources are not filename interpretati
   try {
     assert.match(get('document-summary').textContent,/Recorded fetchPending/);
     assert.doesNotMatch(get('filename-findings').textContent,/pending|state|CHRG|package.pdf|hearing resources/i);
+    get('technical').open=true;get('technical').dispatchEvent(new dom.window.Event('toggle'));await flush();
     assert.match(get('detail-data').textContent,/pending|Pending/);
+    get('technical').open=true;get('technical').dispatchEvent(new dom.window.Event('toggle'));await flush();
     assert.match(get('detail-data').textContent,/endpoint_package_candidate/);
   } finally {dom.window.close();}
 });
@@ -391,12 +401,16 @@ test('parser fragments are secondary, all original fields remain searchable by p
   try {
     assert.doesNotMatch(get('filename-findings').querySelector('dl').textContent,/Day token|Month token|Unclassified identifier|Unresolved short date|Nomination/);
     assert.doesNotMatch(get('filename-findings').querySelector('dl').textContent,/Subject text|An appointment/);
+    get('technical').open=true;get('technical').dispatchEvent(new dom.window.Event('toggle'));await flush();
     assert.match(get('detail-data').textContent,/Subject text.*An appointment/s);
+    get('technical').open=true;get('technical').dispatchEvent(new dom.window.Event('toggle'));await flush();
     const raw=[...get('detail-data').querySelectorAll('.raw-key')].map(el=>el.textContent);
     for(const key of ['day_token','month_token','generic_identifier','short_date_token','name_token','state_outcome']) assert(raw.includes(key),key);
     get('filename-findings').querySelector('button').click();
     assert.equal(get('technical').open,true);
+    get('technical').open=true;get('technical').dispatchEvent(new dom.window.Event('toggle'));await flush();
     assert.match(get('detail-data').textContent,/day_token/);
+    get('technical').open=true;get('technical').dispatchEvent(new dom.window.Event('toggle'));await flush();
     assert.doesNotMatch(get('detail-data').textContent,/state_outcome/);
     assert.equal(w.document.activeElement,get('field-search'));
     assert.equal(JSON.stringify(parsed.record),before);
@@ -411,6 +425,7 @@ test('source-page classification remains visible when it disagrees with filename
   try {
     assert.match(get('document-summary').textContent,/Filename kindNomination/);
     assert.match(get('document-summary').textContent,/Source-page kindTranscriptInferred from page metadata/);
+    get('technical').open=true;get('technical').dispatchEvent(new dom.window.Event('toggle'));await flush();
     assert.match(get('detail-data').textContent,/senate_parser_inference/);
   } finally {dom.window.close();}
 });
@@ -469,6 +484,7 @@ test('accepted recovery is usable without erasing the original fetch outcome or 
     assert.equal(get('source-link').href,final);
     assert.equal(get('origin').querySelector('.recovery-source a').href,recovery.recovered_url);
     assert.doesNotMatch(get('origin').textContent,/Recovered URL candidate/);
+    get('technical').open=true;get('technical').dispatchEvent(new dom.window.Event('toggle'));await flush();
     assert.match(get('detail-data').textContent,/user_accepted_url_variant/);
     assert.doesNotMatch(get('filename-findings').textContent,/recovered.gz|user_accepted/);
     assert.equal(JSON.stringify(recovered.record),before);
@@ -484,6 +500,7 @@ test('long article identifiers are not confidently presented as legislative meas
     assert.match(findings,/s169726001730039 · Needs review/);
     assert.match(findings,/publisher identifier/);
     assert.doesNotMatch(findings,/Senate bill/i);
+    get('technical').open=true;get('technical').dispatchEvent(new dom.window.Event('toggle'));await flush();
     assert.match(get('detail-data').textContent,/measure_references.*s169726001730039/s);
   } finally {dom.window.close();}
 });
@@ -502,8 +519,84 @@ test('a filename with only raw fragments has one compact disclosure and retains 
     assert.equal(section.querySelector('details').open,false);
     assert.equal(section.querySelector('summary').textContent,'Filename analysis');
     assert.doesNotMatch(section.textContent,/No additional|Raw filename fragments/);
+    get('technical').open=true;get('technical').dispatchEvent(new dom.window.Event('toggle'));await flush();
     assert.match(get('detail-data').textContent,/subject_token.*resolution/s);
     assert.equal(get('source-link').textContent,'Open source URL ↗');
     assert.equal(JSON.stringify(sparse.record),before);
+  } finally {dom.window.close();}
+});
+
+test('published details defer technical reads, page observations, and copy complete metadata explicitly', async()=>{
+  const initial=structuredClone(entry);
+  initial.record_complete=false;initial.published_only=true;initial.reading=null;initial.saved_file_available=false;
+  initial.observation_count=42;initial.origin_next=20;initial.saved_file_url='https://data.test/saved/hash/copy.pdf';
+  delete initial.record.source_occurrences;delete initial.record.name_token;
+  const all=Array.from({length:42},(_,i)=>({source_occurrence_scope:['anchor'],source_receipt_line:[String(i+1)],source_page_title:['Observation '+i]}));
+  const full={...record,source_occurrences:all};
+  const {dom,w,get,requests}=await app(async url=>{
+    const route=new URL(url,'https://viewer.test');let value;
+    if(route.pathname.startsWith('/api/entry/'))value=initial;
+    else if(route.pathname.startsWith('/api/technical/')){value={...full};delete value.source_occurrences;}
+    else if(route.pathname.startsWith('/api/observations/')){const offset=Number(route.searchParams.get('offset'));value={items:all.slice(offset,offset+20),offset,total:42,next:offset+20<42?offset+20:null,is_null:false};}
+    else if(route.pathname.startsWith('/api/origin/'))value={origin:{pages:[{urls:['https://committee.test/hearing'],titles:['A recorded hearing'],link_urls:[final],link_labels:[],relationship:'Linked from'}],redirects:[]},next:null};
+    else if(route.pathname.startsWith('/api/full/'))value=full;
+    else throw Error('Unexpected request '+url);
+    return {ok:true,json:async()=>structuredClone(value)};
+  });
+  try {
+    assert.equal(get('technical').open,false);assert.equal(get('detail-data').childElementCount,0);
+    assert(!requests.some(url=>/\/api\/(technical|observations|full)\//.test(url)));
+    assert.equal(get('saved-link').hidden,false);
+    const more=[...get('origin').querySelectorAll('button')].find(button=>button.textContent==='More source pages');
+    more.click();await flush();assert.match(get('origin').textContent,/A recorded hearing/);
+    assert(![...get('origin').querySelectorAll('button')].some(button=>button.textContent==='More source pages'));
+    get('technical').open=true;await flush();await flush();
+    assert.equal(requests.filter(url=>url.startsWith('/api/technical/')).length,1);
+    assert.equal(get('detail-data').querySelectorAll('details').length,20);
+    assert.match(get('detail-data').textContent,/1–20 of 42 observations/);
+    assert.doesNotMatch(get('detail-data').textContent,/Observation 0/,'closed observations do not build their contents');
+    const first=get('detail-data').querySelector('details');first.open=true;first.dispatchEvent(new w.Event('toggle'));await flush();
+    assert.match(first.textContent,/Observation 0/);
+    [...get('detail-data').querySelectorAll('button')].find(button=>button.textContent==='Next observations').click();await flush();
+    assert.equal(get('detail-data').querySelectorAll('details').length,20);
+    assert.match(get('detail-data').textContent,/21–40 of 42 observations/);
+    let copied;
+    Object.defineProperty(w.navigator,'clipboard',{value:{writeText:async text=>{copied=text;}}});
+    get('copy').click();await flush();
+    assert.equal(JSON.parse(copied).source_occurrences.length,42);
+    assert.equal(requests.filter(url=>url.startsWith('/api/full/')).length,1);
+  } finally {dom.window.close();}
+});
+
+test('failed technical evidence can retry without discarding the useful detail', async()=>{
+  const initial={...structuredClone(entry),record_complete:false,published_only:true,saved_file_available:false,reading:null};
+  let attempts=0;
+  const {dom,w,get}=await app(async url=>{
+    if(url.startsWith('/api/technical/')){if(++attempts===1)throw Error('Temporary evidence failure');return {ok:true,json:async()=>record};}
+    if(url.startsWith('/api/observations/'))return {ok:true,json:async()=>({items:[],total:0,offset:0,next:null,is_null:true})};
+    return {ok:true,json:async()=>initial};
+  });
+  try {
+    get('technical').open=true;await flush();await flush();
+    assert.match(get('detail-data').textContent,/Temporary evidence failure/);
+    assert.equal(get('source-link').href,final);
+    get('detail-data').querySelector('button').click();await flush();
+    assert.equal(attempts,2);assert.match(get('detail-data').textContent,/resolution_by_cmw/);
+  } finally {dom.window.close();}
+});
+
+test('long flat evidence lists also render one page without dropping values', async()=>{
+  const current=structuredClone(entry);current.record.source_page_url=Array.from({length:45},(_,i)=>`https://committee.test/page/${i}`);
+  const {dom,w,get}=await app(async url=>({ok:true,json:async()=>url.startsWith('/api/entry/')?current:evidence}));
+  try {
+    get('technical').open=true;await flush();
+    const field=[...get('detail-data').querySelectorAll('.entry')].find(el=>el.querySelector('.raw-key')?.textContent==='source_page_url');
+    assert.equal(field.querySelectorAll('a').length,20);
+    assert.match(field.textContent,/1–20 of 45 values/);
+    [...field.querySelectorAll('button')].find(button=>button.textContent==='Next values').click();
+    assert.equal(field.querySelectorAll('a').length,20);assert.match(field.textContent,/21–40 of 45 values/);
+    [...field.querySelectorAll('button')].find(button=>button.textContent==='Next values').click();
+    assert.equal(field.querySelectorAll('a').length,5);assert.match(field.textContent,/41–45 of 45 values/);
+    assert.equal(current.record.source_page_url.length,45);
   } finally {dom.window.close();}
 });

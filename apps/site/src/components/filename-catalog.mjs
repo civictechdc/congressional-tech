@@ -7,7 +7,7 @@ import { loadRecoveries } from './filename-recoveries.mjs';
 const filters = ['congress', 'document_family', 'document_kind', 'format'];
 const sourceColumns = ['filename','source_url','source_id','body_key','format','record_role'];
 const text = value => (Array.isArray(value) ? value.map(item => typeof item === 'object' ? JSON.stringify(item) : item).join(' | ') : value ?? '').toString().toLowerCase();
-const normalized = value => value == null ? null : Array.isArray(value) ? value.map(normalized) : typeof value === 'object' ? Object.fromEntries(Object.entries(value).map(([key, item]) => [key, normalized(item)])) : value;
+const normalized = value => value == null ? null : value instanceof Date ? value.toISOString() : Array.isArray(value) ? value.map(normalized) : typeof value === 'object' ? Object.fromEntries(Object.entries(value).map(([key, item]) => [key, normalized(item)])) : value;
 const values = value => Array.isArray(value) ? value : value == null ? [] : [value];
 const validUrl = value => { try { const url = new URL(value); return /^https?:$/.test(url.protocol) && !url.username && !url.password ? url : null; } catch { return null; } };
 
@@ -82,7 +82,7 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
   const publication = await loadPublication(manifestUrl, fetcher, catalogId);
   manifestUrl = publication.url;
   const manifest = publication.manifest, { info, files } = manifest;
-  if (manifest.version !== 2) throw new Error('Unsupported filename catalog version.');
+  if (![2, 5].includes(manifest.version)) throw new Error('Unsupported filename catalog version.');
   const recovery = await loadRecoveries(publication.recovery, info, fetcher);
   const url = path => new URL(path, manifestUrl).href;
   async function binary(name) {
@@ -159,7 +159,20 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
     signal?.throwIfAborted(); return rows.map(normalized);
   }
   let observations;
-  async function sourceRecord(row, signal) {
+  const originColumns = ['source_association_basis','source_associated_url','source_original_page_url','source_page_url','source_page_title','source_link_label','source_link_url','source_occurrence_scope','source_page_type','source_page_date'];
+  async function observationStore(signal) {
+    if (!observations) {
+      const response = await fetcher(url(files.observation_index.path), {signal});
+      if (!response.ok) throw new Error('Could not load the observation index.');
+      const descriptor = await response.json();
+      if (descriptor.references.rows !== info.rows) throw new Error('Observation rows disagree with the publication.');
+      observations = observationReader(descriptor,
+        rangeFile(url(files.observations.path), files.observations.bytes, fetcher),
+        rangeFile(url(files.observation_rows.path), files.observation_rows.bytes, fetcher));
+    }
+    return observations;
+  }
+  async function scalarRecord(row, signal) {
     const columns = info.fields.filter(name => name !== 'source_occurrences');
     await prefetchColumns('filenames', row, row + 1, columns, signal);
     const record = {};
@@ -168,16 +181,11 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
     for (let start = 0; start < columns.length; start += 8) {
       Object.assign(record, (await read('filenames', row, row + 1, columns.slice(start, start + 8), signal))[0]);
     }
-    if (!observations) {
-      const response = await fetcher(url(files.observation_index.path), { signal });
-      if (!response.ok) throw new Error('Could not load the observation index.');
-      const index = await response.json();
-      if (index.references.rows !== info.rows) throw new Error('Observation rows disagree with the publication.');
-      observations = observationReader(index,
-        rangeFile(url(files.observations.path), files.observations.bytes, fetcher),
-        rangeFile(url(files.observation_rows.path), files.observation_rows.bytes, fetcher));
-    }
-    record.source_occurrences = await observations.read(row, signal);
+    return record;
+  }
+  async function sourceRecord(row, signal) {
+    const record = await scalarRecord(row, signal);
+    record.source_occurrences = await (await observationStore(signal)).read(row, signal);
     // Keep the original field order for copied JSON and technical metadata.
     return Object.fromEntries(info.fields.map(name => [name, record[name]]));
   }
@@ -218,8 +226,7 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
     if (needle || selectedFilters.length) {
       const groups = await index('groups');
       signal?.throwIfAborted();
-      // Nested observations can be large: stream those row groups without
-      // retaining the entire million-row evidence column in memory.
+      // Search each unique observation once, then map matches to source groups.
       const stream = needle && field === 'source_occurrences';
       const names = [...new Set([...selectedFilters, ...(needle && !stream ? [field, ...(field === 'filename' && info.fields.includes('recovered_filename') ? ['recovered_filename'] : [])] : [])])];
       const loaded = new Map();
@@ -229,9 +236,8 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
         return selectedFilters.every(key => values(loaded.get(key)[source]).some(value => (key === 'format' ? value.toLowerCase() : value) === query[key]));
       };
       if (stream) {
-        for (const span of (await table('filenames', signal)).spans) {
-          const rows = await read('filenames', span.start, span.end, [field], signal);
-          for (let i = 0; i < rows.length; i++) if (matches(span.start + i, rows[i][field])) mask[groups[span.start + i]] = 1;
+        for await (const source of (await observationStore(signal)).matchingSources(needle, signal)) {
+          if (selectedFilters.every(key => values(loaded.get(key)[source]).some(value => (key === 'format' ? value.toLowerCase() : value) === query[key]))) mask[groups[source]] = 1;
         }
       } else for (let source = 0; source < info.rows; source++) if (matches(source, loaded.get(field)?.[source])) mask[groups[source]] = 1;
     }
@@ -268,29 +274,72 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
     }
     throw new Error('Source record is not present in this catalog.');
   }
+  async function detailRecord(row, signal) {
+    if (!files.details) {
+      // Old immutable publications remain readable without eager nested evidence.
+      const record = await scalarRecord(row, signal);
+      return {record, facts: null};
+    }
+    const [data] = await read('details', row, row + 1, undefined, signal, true);
+    const {filename_readings, fact_alternatives, filename_field_count, ...record} = data;
+    const facts = {};
+    for (const name of ['http_status','response_usable','response_body_complete','record_role','state_checked_at','state_retrieved_at']) {
+      if (!(name in record)) continue;
+      facts[name] = record[name];
+      record[name] = record[name] == null ? null : [String(record[name])];
+    }
+    for (const item of fact_alternatives || []) record[item.field] = item.values;
+    for (const item of filename_readings || []) record[item.field] = item.values;
+    facts.completeness_conflict = new Set(record.response_body_complete || []).size > 1;
+    return {record, facts, filename_field_count};
+  }
+  async function observationPage(identity, catalog, options = {}, signal) {
+    const row = await resolve(identity, catalog, signal);
+    const offset = Math.max(0, Math.trunc(Number(options.offset) || 0));
+    const limit = Math.max(1, Math.min(100, Math.trunc(Number(options.limit) || 20)));
+    return (await observationStore(signal)).page(row, {offset, limit, ...(options.origin ? {columns: originColumns} : {})}, signal);
+  }
+  async function technical(identity, catalog, signal, full = false) {
+    const row = await resolve(identity, catalog, signal);
+    const record = full ? await sourceRecord(row, signal) : await scalarRecord(row, signal);
+    if (recovery.sources.has(row)) record.recovery = recovery.sources.get(row);
+    return record;
+  }
+  async function technicalOrigin(identity, catalog, signal) {
+    const row = await resolve(identity, catalog, signal);
+    return (await read(files.details ? 'details' : 'filenames', row, row + 1,
+      ['source_url','recovered_source_url'].filter(name => info.fields.includes(name)), signal, true))[0];
+  }
   async function entry(identity, catalog, signal) {
     const row = await resolve(identity, catalog, signal);
-    const [groups, preferred, documentRows] = await Promise.all(['groups', 'preferred', 'document_rows'].map(index));
-    signal?.throwIfAborted();
+    const [groups, preferred] = await Promise.all(['groups', 'preferred'].map(index));
     const group = groups[row], members = await membersOf(group);
-    const record = await sourceRecord(row, signal);
+    const {record, facts, filename_field_count} = await detailRecord(row, signal);
     if (recovery.sources.has(row)) record.recovery = recovery.sources.get(row);
-    const [document] = await selected('document_summaries', [documentRows[group]], undefined, signal);
-    const sources = await selected('filenames', members, sourceColumns, signal);
+    const [document] = files.document_summaries
+      ? await selected('document_summaries', [(await index('document_rows'))[group]], undefined, signal)
+      : await selected('browse', [group], ['filename','document_kind','document_kind_source'], signal);
+    const sources = await selected(files.details ? 'details' : 'filenames', members, files.details ? [...sourceColumns, 'fact_alternatives'] : sourceColumns, signal);
+    if (files.details) for (const source of sources) {
+      source.record_role = source.fact_alternatives?.find(item => item.field === 'record_role')?.values ?? (source.record_role == null ? null : [source.record_role]);
+      delete source.fact_alternatives;
+    }
     const bodies = sources.map(source => source.body_key);
     for (const source of sources) { source.retained = source.body_key != null; delete source.body_key; }
-    sources.forEach((source, i) => {
-      if (recovery.sources.has(members[i])) Object.assign(source, {retained: true, recovery: recovery.sources.get(members[i])});
-    });
-    const canonical = row === preferred[group] ? record : await sourceRecord(preferred[group], signal);
-    document.source_id = canonical.source_id;
+    sources.forEach((source, i) => { if (recovery.sources.has(members[i])) Object.assign(source, {retained: true, recovery: recovery.sources.get(members[i])}); });
+    document.source_id = sources[members.indexOf(preferred[group])].source_id;
     const recovered = recovery.groups.get(group);
     if (recovered) Object.assign(document, {recovery: recovered[0], recoveries: recovered});
-    return { record, document, filename: document.filename, sources, catalog_id: info.catalog_id, api_reference: apiReference(record.source_url),
-      ...(recovered ? {recovery: recovered[0], recoveries: recovered} : {}),
-      origin: sourceContext(record), document_origin: sourceContext(canonical), reading: null, saved_file_available: false,
-      saved_file_url: savedCopyUrl(record, recovered?.[0], manifestUrl), published_only: true,
-      sources_share_saved_file: !!bodies[0] && bodies.every(value => value === bodies[0]) };
+    const evidence = await (await observationStore(signal)).page(row, {limit: 20, columns: originColumns}, signal);
+    const origin = sourceContext({...record, source_occurrences: evidence.items.filter(Boolean)});
+    const canonicalEvidence = row === preferred[group] ? evidence : await (await observationStore(signal)).page(preferred[group], {limit: 20, columns: originColumns}, signal);
+    const canonicalSource = sources[members.indexOf(preferred[group])];
+    const documentOrigin = row === preferred[group] ? origin : sourceContext({...canonicalSource, source_occurrences: canonicalEvidence.items.filter(Boolean)});
+    return {record, document, facts, filename_field_count, filename: document.filename, sources, catalog_id: info.catalog_id,
+      api_reference: apiReference(record.source_url), ...(recovered ? {recovery: recovered[0], recoveries: recovered} : {}),
+      origin, document_origin: {redirects: documentOrigin.redirects}, observation_count: evidence.total, origin_next: evidence.next, record_complete: false,
+      reading: null, saved_file_available: false, saved_file_url: savedCopyUrl(record, recovered?.[0], manifestUrl), published_only: true,
+      sources_share_saved_file: !!bodies[0] && bodies.every(value => value === bodies[0])};
   }
-  return { info: { ...info, recovery_sha256: publication.recovery?.sha256, downloads: { documents: url(files.documents.path), filenames: url(files.filenames.path), recoveries: publication.recovery?.url }, published_at: manifest.published_at }, search, entry };
+  return { info: { ...info, recovery_sha256: publication.recovery?.sha256, downloads: { documents: url(files.documents.path), filenames: url(files.filenames.path), recoveries: publication.recovery?.url }, published_at: manifest.published_at }, search, entry, technical, technicalOrigin, observationPage, sourceContext };
 }
