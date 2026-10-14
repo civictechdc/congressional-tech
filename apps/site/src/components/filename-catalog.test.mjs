@@ -6,8 +6,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { createFilenameCatalog, rangeFile, sourceContext, savedCopyUrl } from './filename-catalog.mjs';
-import { observationReader } from './filename-observations.mjs';
-import { brotliCompressSync } from 'node:zlib';
+import init from 'parquet-wasm/esm';
+import {readParquetRows} from './filename-parquet.mjs';
+await init({module_or_path: await readFile(new URL(import.meta.resolve('parquet-wasm/esm/parquet_wasm_bg.wasm')))});
 import { createHash } from 'node:crypto';
 
 test('saved-copy links prefer accepted recoveries and preserve the original record', () => {
@@ -67,6 +68,7 @@ test('static Parquet queries match the Python catalog and preserve complete sour
       assert.deepEqual(detail.record, source);
       assert.equal(detail.saved_file_available, false);
       assert.equal(detail.published_only, true);
+      assert.ok(!requests.some(path => /observations\.bin|observation-/.test(path)), 'details read the original Parquet without sidecars');
     }
     assert.equal((await reader.entry('0')).sources.length, 2);
     assert.deepEqual((await reader.entry('2')).origin.pages[0].titles, ['Hearing page']);
@@ -104,34 +106,38 @@ test('static Parquet queries match the Python catalog and preserve complete sour
   } finally { await rm(folder, { recursive: true, force: true }); }
 });
 
-test('bounded observation parts preserve large values, UTF-8, nulls, duplicates and ordering', async () => {
-  function packed(rows) {
-    const raw = Buffer.from(JSON.stringify(rows)), chunks = [], parts = [];
-    let offset = 0;
-    for (let start = 0; start < raw.length; start += 71) {
-      const piece = raw.subarray(start, start + 71), compressed = brotliCompressSync(piece);
-      chunks.push(compressed); parts.push([offset, compressed.length, piece.length]); offset += compressed.length;
-    }
-    const bytes = Buffer.concat(chunks);
-    return { descriptor: {rows:rows.length, blocks:[{start:0,count:rows.length,parts}]},
-      file: {slice: async (start, end) => bytes.buffer.slice(bytes.byteOffset + start, bytes.byteOffset + end)} };
-  }
-  const label = 'Witness 🏛️ José '.repeat(300);
-  const data = packed([{label:[label], empty:[]}, null, {label:['Second']}]);
-  const refs = packed([[2,0,2,1], [], null]);
-  const index = {version:1,max_part_bytes:71,fields:['label','empty','missing'],observations:data.descriptor,references:refs.descriptor};
-  const reader = observationReader(index, data.file, refs.file);
-  assert.deepEqual(await reader.read(0), [
-    {label:['Second'],empty:null,missing:null}, {label:[label],empty:[],missing:null},
-    {label:['Second'],empty:null,missing:null}, null,
-  ]);
-  assert.deepEqual(await reader.read(1), []);
-  assert.equal(await reader.read(2), null);
-  await assert.rejects(reader.read(3), /Invalid observation reference/);
-  const controller = new AbortController(); controller.abort();
-  await assert.rejects(reader.read(0, controller.signal), {name:'AbortError'});
-  const bad = observationReader({...index, max_part_bytes:70}, data.file, refs.file);
-  await assert.rejects(bad.read(0), /block size/);
+test('direct Parquet observations preserve Unicode, nulls, duplicates and order', async () => {
+  const folder = await mkdtemp(join(tmpdir(), 'filename-nested-'));
+  try {
+    const path = join(folder, 'nested.parquet');
+    execFileSync(process.env.PYTHON || 'python3', ['-c', `
+import sys, pyarrow as pa, pyarrow.parquet as pq
+label = 'Witness 🏛️ José ' * 300
+field = pa.struct([('label', pa.list_(pa.string())), ('empty', pa.list_(pa.string())), ('missing', pa.list_(pa.string()))])
+rows = [[{'label':['Second']}, {'label':[label], 'empty':[]}, {'label':['Second']}, None], [], None]
+pq.write_table(pa.table({'source_occurrences':pa.array(rows, type=pa.list_(field))}), sys.argv[1], compression='zstd')
+`, path]);
+    const file = rangeFile(pathToFileURL(path), (await stat(path)).size, localFetch);
+    const rows = await readParquetRows(file.file(), {offset:0, limit:3});
+    const label = 'Witness 🏛️ José '.repeat(300);
+    assert.deepEqual(rows.map(row=>row.source_occurrences), [[
+      {label:['Second'],empty:null,missing:null}, {label:[label],empty:[],missing:null},
+      {label:['Second'],empty:null,missing:null}, null,
+    ], [], null]);
+    const controller = new AbortController(); controller.abort();
+    await assert.rejects(readParquetRows(file.file(controller.signal), {limit:1}), /abort/i);
+    await assert.rejects(readParquetRows(rangeFile('https://bad.test/', 10, async()=>new Response(new Uint8Array(10))).file(), {limit:1}), /range/i);
+    const failed = rangeFile(pathToFileURL(path), (await stat(path)).size, async (url, options) => {
+      if (options.headers.Range.startsWith('bytes=4-')) throw new Error('Connection lost');
+      return localFetch(url, options);
+    });
+    // Fail during the row-group fetch, after metadata succeeds. The same reader
+    // must still be usable afterwards rather than trapping inside Wasm.
+    const {parquetMetadataAsync} = await import('hyparquet');
+    const metadata = await parquetMetadataAsync(file.file());
+    await assert.rejects(readParquetRows(failed.file(), {limit:1}, undefined, metadata), /Connection lost/);
+    assert.deepEqual((await readParquetRows(file.file(), {limit:3})).map(row=>row.source_occurrences), rows.map(row=>row.source_occurrences));
+  } finally { await rm(folder, {recursive:true, force:true}); }
 });
 
 test('range reads reject full-file fallbacks, incorrect ranges and truncated bytes', async () => {
@@ -142,6 +148,15 @@ test('range reads reject full-file fallbacks, incorrect ranges and truncated byt
   const file = rangeFile('https://test/file', 10, async () => { calls++; return new Response(new Uint8Array([0,1,2,3,4,5,6,7,8,9]), {status:206,headers:{'Content-Range':'bytes 0-9/10'}}); });
   await file.slice(0, 10);
   assert.deepEqual([...new Uint8Array(await file.slice(2, 4))], [2,3]); assert.equal(calls, 1);
+  let pieces = 0;
+  const adjacent = rangeFile('https://test/file', 10, async (_url, options) => {
+    pieces++;
+    const [start, end] = options.headers.Range.slice(6).split('-').map(Number);
+    return new Response(Uint8Array.from({length:end-start+1}, (_, i)=>start+i), {status:206,headers:{'Content-Range':`bytes ${start}-${end}/10`}});
+  });
+  await adjacent.slice(0,5); await adjacent.slice(5,10);
+  assert.deepEqual([...new Uint8Array(await adjacent.slice(1,9))], [1,2,3,4,5,6,7,8]);
+  assert.equal(pieces,2,'contiguous cached pieces avoid another footer download');
 });
 
 test('source provenance preserves multi-value associations and rejects unsafe URLs', () => {

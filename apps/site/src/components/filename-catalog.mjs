@@ -1,6 +1,5 @@
 import { parquetMetadataAsync, parquetReadObjects } from 'hyparquet';
 import { compressors } from 'hyparquet-compressors';
-import { observationReader } from './filename-observations.mjs';
 import { loadPublication } from './filename-publication.mjs';
 import { loadRecoveries } from './filename-recoveries.mjs';
 
@@ -60,6 +59,20 @@ export function rangeFile(url, byteLength, fetcher = fetch) {
       cache.delete(key); cache.set(key, item);
       return item.bytes.slice(start - item.start, end - item.start);
     }
+    // Metadata readers may split the footer differently. Join cached adjacent
+    // pieces so a second decoder does not download that same footer again.
+    const pieces = []; let cursor = start;
+    while (cursor < end) {
+      const item = [...cache.values()].find(item => item.start <= cursor && item.end > cursor);
+      if (!item) break;
+      const next = Math.min(item.end, end);
+      pieces.push(new Uint8Array(item.bytes, cursor - item.start, next - cursor)); cursor = next;
+    }
+    if (cursor === end) {
+      const bytes = new Uint8Array(end - start); let offset = 0;
+      for (const piece of pieces) { bytes.set(piece, offset); offset += piece.length; }
+      return bytes.buffer;
+    }
     const response = await fetcher(url, { signal, headers: { Range: `bytes=${start}-${end - 1}` } });
     if (response.status !== 206 || response.headers.get('Content-Range') !== `bytes ${start}-${end - 1}/${byteLength}`) {
       await response.body?.cancel();
@@ -78,11 +91,11 @@ export function rangeFile(url, byteLength, fetcher = fetch) {
   return { slice, file: signal => ({ byteLength, slice: (start, end) => slice(start, end, signal) }) };
 }
 
-export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalogId) {
+export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalogId, wasmUrl) {
   const publication = await loadPublication(manifestUrl, fetcher, catalogId);
   manifestUrl = publication.url;
   const manifest = publication.manifest, { info, files } = manifest;
-  if (manifest.version !== 2) throw new Error('Unsupported filename catalog version.');
+  if (![2, 3].includes(manifest.version)) throw new Error('Unsupported filename catalog version.');
   const recovery = await loadRecoveries(publication.recovery, info, fetcher);
   const url = path => new URL(path, manifestUrl).href;
   async function binary(name) {
@@ -158,27 +171,20 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
     const rows = await parquetReadObjects({ file: buffer.file(signal), metadata, compressors, columns, rowStart: start, rowEnd: end });
     signal?.throwIfAborted(); return rows.map(normalized);
   }
-  let observations;
   async function sourceRecord(row, signal) {
-    const columns = info.fields.filter(name => name !== 'source_occurrences');
+    const {readParquetRows} = await import('./filename-parquet.mjs');
+    signal?.throwIfAborted();
+    const columns = info.fields.filter(name => name !== 'source_occurrences'), record = {};
     await prefetchColumns('filenames', row, row + 1, columns, signal);
-    const record = {};
-    // Wide reads allocate every physical column at once, even for one row.
-    // Small batches bound that work without changing the downloadable schema.
+    // Ordinary metadata stays on the existing small-column path. Wasm handles
+    // only the nested provenance that otherwise expands whole JS row groups.
     for (let start = 0; start < columns.length; start += 8) {
       Object.assign(record, (await read('filenames', row, row + 1, columns.slice(start, start + 8), signal))[0]);
     }
-    if (!observations) {
-      const response = await fetcher(url(files.observation_index.path), { signal });
-      if (!response.ok) throw new Error('Could not load the observation index.');
-      const index = await response.json();
-      if (index.references.rows !== info.rows) throw new Error('Observation rows disagree with the publication.');
-      observations = observationReader(index,
-        rangeFile(url(files.observations.path), files.observations.bytes, fetcher),
-        rangeFile(url(files.observation_rows.path), files.observation_rows.bytes, fetcher));
-    }
-    record.source_occurrences = await observations.read(row, signal);
-    // Keep the original field order for copied JSON and technical metadata.
+    const {buffer, metadata} = await table('filenames', signal);
+    const [nested] = await readParquetRows(buffer.file(signal), {offset: row, limit: 1, columns: ['source_occurrences']}, wasmUrl, metadata);
+    Object.assign(record, nested);
+    signal?.throwIfAborted();
     return Object.fromEntries(info.fields.map(name => [name, record[name]]));
   }
   async function selected(name, positions, columns, signal) {

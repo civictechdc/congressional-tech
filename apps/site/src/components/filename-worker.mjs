@@ -1,4 +1,5 @@
 import { createFilenameCatalog } from './filename-catalog.mjs';
+import wasmUrl from 'parquet-wasm/esm/parquet_wasm_bg.wasm?url';
 let catalog;
 const requests = new Map();
 self.onmessage = async ({ data }) => {
@@ -6,7 +7,7 @@ self.onmessage = async ({ data }) => {
   const { id, url, manifest, snapshot } = data, controller = new AbortController();
   requests.set(id, controller);
   try {
-    catalog ||= createFilenameCatalog(manifest, fetch, snapshot).catch(error => { catalog = null; throw error; });
+    catalog ||= createFilenameCatalog(manifest, fetch, snapshot, wasmUrl).catch(error => { catalog = null; throw error; });
     const reader = await catalog;
     controller.signal.throwIfAborted();
     const request = new URL(url, manifest), query = Object.fromEntries(request.searchParams);
