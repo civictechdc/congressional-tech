@@ -2334,7 +2334,8 @@ def write_filename_metadata(
                     columns.update(fields)
                     row.update(fields)
                     columns.update(key for key, value in row.items()
-                                   if key in SOURCE_CONTEXT_FIELDS | AVAILABILITY_FIELDS | {'capture_outcome'} and value)
+                                   if key in SOURCE_CONTEXT_FIELDS | AVAILABILITY_FIELDS
+                                   | {'capture_outcome', 'record_role', 'source_record_type', 'source_record_identifier'} and value)
                     if row['body_key']:
                         bodies[row['body_key']] = True
                     if row['filename']:
@@ -2491,7 +2492,8 @@ def refresh_filename_metadata(root, *, workers=4, inspect_bodies=False, repair=F
     fields = [
         *[name for name in SOURCE_SCHEMA.names if name in source.schema_arrow.names],
         *sorted(
-            (SOURCE_CONTEXT_FIELDS | {"capture_outcome"})
+            (SOURCE_CONTEXT_FIELDS | AVAILABILITY_FIELDS
+             | {"capture_outcome", "record_role", "source_record_type", "source_record_identifier"})
             & set(source.schema_arrow.names)
         ),
     ]
@@ -2503,6 +2505,7 @@ def refresh_filename_metadata(root, *, workers=4, inspect_bodies=False, repair=F
     return write_filename_metadata(root, rows, workers=workers, previous=source, reuse_results=not repair, inspect_bodies=inspect_bodies, publication_snapshot=snapshot, previous_documents=snapshot.documents, metadata={
         key.decode(): value.decode() for key, value in (source.schema_arrow.metadata or {}).items()
         if key in {b'raw_capture_rows', b'capture_digest', b'seed_digest', b'deferred_source_bodies', b'source_lineage_version',
+                   b'source_lineage_overlay', b'download_state_digest', b'download_state_rows', b'availability_policy',
                    b'source_fingerprint', b'retained_recovery_fingerprint'}})
 
 

@@ -140,7 +140,7 @@ def test_availability_survives_static_publication(tmp_path):
     pdf=saved('CHRG-118shrg53528')
     missing=dict(url='https://committee.test/missing',outcome='pending')
     rows=list(annotate_availability([dict(body_key=None, filename='53528', source_url=api,
-        source_occurrences=[dict(kind='source_record', source_page_url=api)])], state(pdf,missing)))
+        source_occurrences=[dict(source_occurrence_scope=['source_record'], source_page_url=[api])])], state(pdf,missing)))
     index.write_filename_metadata(tmp_path,rows,workers=1)
     output=tmp_path/'public'
     publication=publisher.publish(tmp_path,output)
@@ -155,3 +155,19 @@ def test_availability_survives_static_publication(tmp_path):
     unavailable=next(row for row in sources if row['source_url']==missing['url'])
     assert unavailable['record_role']==['capture-state']
     assert unavailable['state_outcome']==['pending']
+
+
+def test_filename_refresh_preserves_availability_and_structured_resources(tmp_path):
+    from congress_api.retention.catalog_publication import local_catalog_paths
+    import pyarrow.parquet as pq
+
+    api = 'https://api.congress.gov/v3/hearing/118/senate/53528?format=json'
+    rows = list(annotate_availability(
+        [dict(body_key=None, filename='53528', source_url=api)],
+        state(saved('CHRG-118shrg53528'), dict(url='https://committee.test/pending', outcome='pending'))))
+    index.write_filename_metadata(tmp_path, rows, workers=1)
+    before = [pq.read_table(path) for path in local_catalog_paths(tmp_path)]
+    index.refresh_filename_metadata(tmp_path, workers=1)
+    after = [pq.read_table(path) for path in local_catalog_paths(tmp_path)]
+    for original, refreshed in zip(before, after, strict=True):
+        assert original.equals(refreshed)

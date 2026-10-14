@@ -137,7 +137,10 @@ def test_rebuild_reports_real_stages_and_preserves_output(tmp_path):
     assert events[-1]['unit'] == 'generations'
     assert events[-1]['counters']['objects_read'] >= 3
     assert result['rows'] == len(before)
-    assert table(store).to_pylist() == before
+    after = table(store).to_pylist()
+    assert [{key: row[key] for key in old} for row, old in zip(after, before, strict=True)] == before
+    assert after[0]['state_outcome'] == ['pending']
+    assert after[0]['state_family'] == ['documents']
 
 
 def test_progress_with_spawned_filename_workers_preserves_metadata(tmp_path):
