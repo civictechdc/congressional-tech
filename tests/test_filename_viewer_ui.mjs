@@ -416,7 +416,7 @@ test('accepted recovery is usable without erasing the original fetch outcome or 
   const recovery={original_url:final,recovered_url:'https://web.archive.org/web/20220101/https://committee.test/resolution.pdf',
     body_key:'bodies/sha256/recovered.gz',kind:'html',recovery_status:'recovered',recovery_basis:'user_accepted_url_variant'};
   Object.assign(recovered.record,{body_key:null,state_outcome:['http_404'],recovery});
-  recovered.recovery=recovery;recovered.published_only=true;recovered.saved_file_available=false;
+  recovered.recovery=recovery;recovered.origin.recovered_urls=[recovery.recovered_url];recovered.published_only=true;recovered.saved_file_available=false;
   const before=JSON.stringify(recovered.record);
   const {dom,get}=await app(async()=>({ok:true,json:async()=>recovered}));
   try {
@@ -426,6 +426,7 @@ test('accepted recovery is usable without erasing the original fetch outcome or 
     assert.doesNotMatch(get('document-summary').textContent,/review required|candidate/i);
     assert.equal(get('source-link').href,final);
     assert.equal(get('origin').querySelector('.recovery-source a').href,recovery.recovered_url);
+    assert.doesNotMatch(get('origin').textContent,/Recovered URL candidate/);
     assert.match(get('detail-data').textContent,/user_accepted_url_variant/);
     assert.doesNotMatch(get('filename-findings').textContent,/recovered.gz|user_accepted/);
     assert.equal(JSON.stringify(recovered.record),before);

@@ -30,7 +30,7 @@ The [field guide](filename-viewer-field-guide.csv) inventories all **347 existin
 - 53 source and provenance fields.
 - 15 download and storage fields.
 - 8 saved-content findings.
-- 259 filename interpretation fields, including 173 parser fragments kept out of the primary reading surface.
+- 259 filename interpretation fields, including 173 parser fragments kept out of the primary filename-findings section.
 
 The additional computed `recovery` object belongs with Download and storage. No source values or naming rules are changed by this interface pass. Reviewing the schema and representative values does not constitute revalidating every record in the corpus.
 
@@ -39,3 +39,5 @@ The additional computed `recovery` object belongs with Download and storage. No 
 Visual checks cover desktop and phone results; primary and advanced filters; empty searches; saved, unsaved, API, conflicting, and unavailable entries; transitive hearing provenance; source switching; searchable raw fields; and local saved-text expansion. Real catalog records cover the normal and provenance paths. Explicitly labeled local fixtures cover error and saved-content paths unavailable through the public static viewer.
 
 Regression tests cover exact preservation of original fields, source pairing, contradictory classifications, recovery labels, asynchronous selection, empty/error recovery, filter discoverability, and existing group-level saved-response semantics. Production publication and its live checks are recorded separately from local review evidence.
+
+The freshness check also detects recovery-status changes within the same catalog, so an open viewer can offer the updated status without waiting for a new catalog ID.

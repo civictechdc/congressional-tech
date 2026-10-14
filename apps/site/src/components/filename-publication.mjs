@@ -31,10 +31,10 @@ export async function loadPublication(url, fetcher = fetch, catalogId) {
 
 export async function latestPublication(url, fetcher = fetch) {
   const value = await read(url, fetcher);
-  return {catalog_id: value.catalog_id || value.info?.catalog_id, published_at: value.published_at};
+  return {catalog_id: value.catalog_id || value.info?.catalog_id, published_at: value.published_at, recovery_sha256: value.recovery?.sha256};
 }
 
-export function watchPublication({url, current, onUpdate, onError = () => {}, fetcher = fetch,
+export function watchPublication({url, current, currentRecovery, onUpdate, onError = () => {}, fetcher = fetch,
                                   window: win = window, document: doc = document}) {
   let pending = false, stopped = false;
   async function check() {
@@ -42,7 +42,7 @@ export function watchPublication({url, current, onUpdate, onError = () => {}, fe
     pending = true;
     try {
       const latest = await latestPublication(url, fetcher);
-      if (!stopped && latest.catalog_id && latest.catalog_id !== current) onUpdate(latest);
+      if (!stopped && latest.catalog_id && (latest.catalog_id !== current || latest.recovery_sha256 !== currentRecovery)) onUpdate(latest);
     } catch (error) { if (!stopped) onError(error); }
     finally { pending = false; }
   }

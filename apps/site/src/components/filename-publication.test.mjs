@@ -47,3 +47,14 @@ test('opening latest keeps filters and stable source identity but drops position
   assert.equal(url.searchParams.has('row'), false);
   assert.equal(new URL(latestReviewUrl(url)).searchParams.has('catalog'), false);
 });
+
+test('a recovery-only update notifies an open viewer on the same catalog', async()=>{
+  const win=new EventTarget(),doc=new EventTarget();let tick,sha='old';const updates=[];
+  win.setInterval=fn=>{tick=fn;return 1;};win.clearInterval=()=>{};doc.visibilityState='visible';
+  const stop=watchPublication({url:'https://data.test/manifest.json',current:'same',currentRecovery:'old',window:win,document:doc,
+    fetcher:async()=>Response.json({catalog_id:'same',recovery:{sha256:sha}}),onUpdate:value=>updates.push(value)});
+  await new Promise(setImmediate);assert.equal(updates.length,0);
+  sha='new';await tick();assert.equal(updates.length,1);
+  assert.equal(updates[0].catalog_id,'same');assert.equal(updates[0].recovery_sha256,'new');
+  stop();
+});

@@ -14,7 +14,7 @@ worker.onmessage = ({ data }) => {
     link.href = latestReviewUrl(location.href);
   }
   if (data.result?.catalog_id && !stopWatching) {
-    stopWatching = watchPublication({url: manifest, current: data.result.catalog_id, onUpdate: latest => {
+    stopWatching = watchPublication({url: manifest, current: data.result.catalog_id, currentRecovery: data.result.recovery_sha256, onUpdate: latest => {
       const notice = document.getElementById('catalog-update');
       const link = document.getElementById('catalog-update-link');
       notice.hidden = false;

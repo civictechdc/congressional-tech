@@ -283,5 +283,5 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
       origin: sourceContext(record), document_origin: sourceContext(canonical), reading: null, saved_file_available: false, published_only: true,
       sources_share_saved_file: !!bodies[0] && bodies.every(value => value === bodies[0]) };
   }
-  return { info: { ...info, downloads: { documents: url(files.documents.path), filenames: url(files.filenames.path) }, published_at: manifest.published_at }, search, entry };
+  return { info: { ...info, recovery_sha256: publication.recovery?.sha256, downloads: { documents: url(files.documents.path), filenames: url(files.filenames.path), recoveries: publication.recovery?.url }, published_at: manifest.published_at }, search, entry };
 }
