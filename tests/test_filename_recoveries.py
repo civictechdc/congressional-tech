@@ -56,6 +56,15 @@ def test_duplicate_acceptance_and_non_http_urls_are_rejected(tmp_path):
         accepted_rows([dict(accepted[0], recovered_url='javascript:bad()')])
 
 
+@pytest.mark.parametrize('basis', ['verified_archive_capture', 'official_document_identifier'])
+def test_recovery_basis_survives_publication(tmp_path, basis):
+    accepted, manifest, _ = fixture(tmp_path)
+    accepted[0]['recovery_basis'] = basis
+    assert index_recoveries(tmp_path, manifest, accepted)['recoveries'] == accepted
+    with pytest.raises(ValueError):
+        accepted_rows([dict(accepted[0], recovery_basis='unverified_guess')])
+
+
 def test_future_publications_reindex_durable_acceptance(tmp_path, monkeypatch):
     accepted, manifest, _ = fixture(tmp_path)
     monkeypatch.setattr(publisher, 'read_json', lambda client, key, **kw: ({'version': 1, 'recoveries': accepted}, 'etag', None) if key == ACCEPTED_KEY else None)

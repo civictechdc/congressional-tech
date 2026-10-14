@@ -20,7 +20,8 @@ def accepted_rows(rows):
             if url.scheme not in ('http', 'https') or not url.hostname or url.username or url.password:
                 raise ValueError('Invalid recovery URL.')
         if (value['original_url'] in seen or value['recovery_status'] != 'recovered'
-                or value['recovery_basis'] != 'user_accepted_url_variant'
+                or value['recovery_basis'] not in {'user_accepted_url_variant',
+                    'verified_archive_capture', 'official_document_identifier'}
                 or value['kind'] not in ('pdf', 'html', 'xml')
                 or not re.fullmatch(r'bodies/sha256/[a-f0-9]{2}/[a-f0-9]{64}\.gz', value['body_key'])):
             raise ValueError('Invalid or duplicate accepted recovery.')
