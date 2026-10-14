@@ -2,6 +2,7 @@ import { parquetMetadataAsync, parquetReadObjects } from 'hyparquet';
 import { compressors } from 'hyparquet-compressors';
 import { observationReader } from './filename-observations.mjs';
 import { loadPublication } from './filename-publication.mjs';
+import { loadRecoveries } from './filename-recoveries.mjs';
 
 const filters = ['congress', 'document_family', 'document_kind', 'format'];
 const sourceColumns = ['filename','source_url','source_id','body_key','format','record_role'];
@@ -74,6 +75,7 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
   manifestUrl = publication.url;
   const manifest = publication.manifest, { info, files } = manifest;
   if (manifest.version !== 2) throw new Error('Unsupported filename catalog version.');
+  const recovery = await loadRecoveries(publication.recovery, info, fetcher);
   const url = path => new URL(path, manifestUrl).href;
   async function binary(name) {
     const response = await fetcher(url(files[name].path));
@@ -227,7 +229,7 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
     }
     const found = [];
     for (let group = 0; group < mask.length; group++) {
-      const flag = flags[group];
+      const flag = flags[group] | (recovery.groups.has(group) ? 1 : 0);
       if (!mask[group] || (query.retained && !!(flag & 1) !== (query.retained === 'yes')) ||
           (!query.scope && !(flag & 2)) || (query.scope === 'capture-records' && (flag & 2)) ||
           (query.document_kind === '__null__' && !(flag & 4)) || (query.document_family === '__null__' && !(flag & 8))) continue;
@@ -236,6 +238,9 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
     const limit = Math.max(1, Math.min(100, Number(query.limit) || 50)), pages = Math.max(1, Math.ceil(found.length / limit)), page = Math.max(1, Math.min(pages, Number(query.page) || 1));
     const chosen = found.slice((page - 1) * limit, page * limit), rows = await selected('browse', chosen, undefined, signal);
     rows.forEach((row, i) => { row._row = preferred[chosen[i]]; row.api_reference = flags[chosen[i]] & 16 ? apiReference(row.source_url) : null; });
+    rows.forEach((row, i) => {
+      if (recovery.groups.has(chosen[i])) Object.assign(row, {retained: true, recovery: recovery.groups.get(chosen[i])[0], recoveries: recovery.groups.get(chosen[i])});
+    });
     signal?.throwIfAborted();
     return { rows, total: found.length, page, pages, limit };
   }
@@ -261,13 +266,20 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
     signal?.throwIfAborted();
     const group = groups[row], members = await membersOf(group);
     const record = await sourceRecord(row, signal);
+    if (recovery.sources.has(row)) record.recovery = recovery.sources.get(row);
     const [document] = await selected('document_summaries', [documentRows[group]], undefined, signal);
     const sources = await selected('filenames', members, sourceColumns, signal);
     const bodies = sources.map(source => source.body_key);
     for (const source of sources) { source.retained = source.body_key != null; delete source.body_key; }
+    sources.forEach((source, i) => {
+      if (recovery.sources.has(members[i])) Object.assign(source, {retained: true, recovery: recovery.sources.get(members[i])});
+    });
     const canonical = row === preferred[group] ? record : await sourceRecord(preferred[group], signal);
     document.source_id = canonical.source_id;
+    const recovered = recovery.groups.get(group);
+    if (recovered) Object.assign(document, {recovery: recovered[0], recoveries: recovered});
     return { record, document, filename: document.filename, sources, catalog_id: info.catalog_id, api_reference: apiReference(record.source_url),
+      ...(recovered ? {recovery: recovered[0], recoveries: recovered} : {}),
       origin: sourceContext(record), document_origin: sourceContext(canonical), reading: null, saved_file_available: false, published_only: true,
       sources_share_saved_file: !!bodies[0] && bodies.every(value => value === bodies[0]) };
   }

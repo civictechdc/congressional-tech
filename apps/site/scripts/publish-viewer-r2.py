@@ -17,6 +17,7 @@ import urllib.error
 import uuid
 
 from botocore.exceptions import ClientError
+from filename_recoveries import ACCEPTED_KEY, accepted_rows, index_recoveries
 
 BUCKET = 'congressional-tech-raw'
 PREFIX = 'viewer-publications/'
@@ -104,6 +105,68 @@ def put_json(client, key, value, **condition):
                       ContentType='application/json', CacheControl='no-store', **condition)
 
 
+def store_recovery_index(client, value):
+    payload = encoded(value)
+    sha256 = hashlib.sha256(payload).hexdigest()
+    # Use the gateway's existing immutable publication path allowlist.
+    path = f'releases/{sha256[:32]}/{sha256[32:]}/viewer-v2/recovery-status.json'
+    try:
+        put_json(client, PREFIX + path, value, IfNoneMatch='*')
+    except ClientError as error:
+        if error.response['Error']['Code'] not in ('PreconditionFailed', '412'):
+            raise
+    response = client.get_object(Bucket=BUCKET, Key=PREFIX + path)
+    with response['Body'] as stream:
+        if stream.read() != payload:
+            raise ValueError('Recovery status failed complete readback.')
+    return {'path': path, 'bytes': len(payload), 'sha256': sha256}
+
+
+def recovery_for_publication(client, root, manifest):
+    accepted, _, _ = read_json(client, ACCEPTED_KEY, optional=True)
+    if accepted is None:
+        return None
+    return store_recovery_index(client, index_recoveries(root, manifest, accepted['recoveries']))
+
+
+def accept_recoveries(client, root, rows, *, public_url=PUBLIC_URL):
+    """Amend only viewer status; reuse every existing publication payload."""
+    selected, selected_etag, _ = read_json(client, 'indexes/catalog.json')
+    pointer, pointer_etag, _ = read_json(client, PREFIX + 'manifest.json')
+    manifest = json.loads((root / 'manifest.json').read_text())
+    remote_manifest, _, _ = read_json(client, PREFIX + pointer['manifest'])
+    if (pointer['source_manifest'] != selected or manifest['source_manifest'] != selected
+            or manifest['files'] != remote_manifest['files'] or manifest['info']['catalog_id'] != pointer['catalog_id']):
+        raise ValueError('Recovery status requires the currently selected viewer publication.')
+    accepted = {'version': 1, 'recoveries': accepted_rows(rows)}
+    index = index_recoveries(root, manifest, accepted['recoveries'])
+    previous, _, _ = read_json(client, ACCEPTED_KEY, optional=True)
+    if previous is not None and previous != accepted:
+        raise ValueError('A different accepted recovery mapping already exists.')
+    if previous is None:
+        put_json(client, ACCEPTED_KEY, accepted, IfNoneMatch='*')
+    readback, _, _ = read_json(client, ACCEPTED_KEY)
+    if readback != accepted:
+        raise ValueError('Accepted recovery mapping failed readback.')
+    descriptor = store_recovery_index(client, index)
+    with open_public(public_request(public_url + descriptor['path'], {'Origin': 'https://civictechdc.github.io'})) as response:
+        if (response.read() != encoded(index) or response.headers.get('Access-Control-Allow-Origin') != '*'):
+            raise ValueError('Public recovery status or browser access differs.')
+    fresh, fresh_etag, _ = read_json(client, 'indexes/catalog.json')
+    if fresh != selected or fresh_etag != selected_etag:
+        raise ValueError('Catalog changed while preparing recovery status.')
+    updated = dict(pointer, recovery=descriptor)
+    if updated != pointer:
+        put_json(client, PREFIX + 'manifest.json', updated, IfMatch=pointer_etag)
+    with open_public(public_request(public_url + 'manifest.json')) as response:
+        if json.load(response) != updated:
+            raise ValueError('Public recovery pointer differs.')
+    return {'status': 'recovery_updated', 'catalog_id': pointer['catalog_id'],
+            'accepted_recoveries': len(accepted['recoveries']), 'affected_sources': len(index['sources']),
+            'affected_groups': len(index['groups']), 'recovery': descriptor,
+            'catalog_payloads_reused': True, 'raw_catalog_unchanged': True}
+
+
 def public_probe(base, pointer, manifest):
     """Check the actual public read path, including browser range/CORS headers."""
     manifest_url = base + pointer['manifest']
@@ -143,6 +206,9 @@ def upload(client, root, manifest, *, previous_etag, selected_etag, public_url=P
     pointer = {'version': 1, 'publisher_version': PUBLISHER_VERSION, 'catalog_id': manifest['info']['catalog_id'],
                'source_manifest': manifest['source_manifest'], 'published_at': manifest['published_at'],
                'manifest': release + 'manifest.json'}
+    recovery = recovery_for_publication(client, root, manifest)
+    if recovery:
+        pointer['recovery'] = recovery
 
     def transfer(item):
         name, path = item
@@ -270,10 +336,16 @@ if __name__ == '__main__':
     parser.add_argument('--archive-only', action='store_true', help='Retain a previous review snapshot without selecting it.')
     parser.add_argument('--public-url', default=PUBLIC_URL)
     parser.add_argument('--report', type=Path)
+    parser.add_argument('--accept-recoveries', type=Path, help='Mark retained URL variants recovered without rebuilding or uploading catalog tables; requires --prepared.')
     args = parser.parse_args()
     client = boto3.client('s3', endpoint_url=f'https://{os.environ["CLOUDFLARE_ACCOUNT_ID"]}.r2.cloudflarestorage.com',
                           aws_access_key_id=os.environ['R2_ACCESS_KEY_ID'], aws_secret_access_key=os.environ['R2_SECRET_ACCESS_KEY'], region_name='auto')
-    result = run(client, prepared=args.prepared, public_url=args.public_url, archive_only=args.archive_only)
+    if args.accept_recoveries:
+        if not args.prepared or args.archive_only:
+            parser.error('--accept-recoveries requires --prepared and cannot be combined with --archive-only')
+        result = accept_recoveries(client, args.prepared, json.loads(args.accept_recoveries.read_text()), public_url=args.public_url)
+    else:
+        result = run(client, prepared=args.prepared, public_url=args.public_url, archive_only=args.archive_only)
     if args.report:
         args.report.write_text(json.dumps(result, indent=2) + '\n')
     print(json.dumps(result, indent=2))

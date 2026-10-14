@@ -9,6 +9,7 @@ async function read(url, fetcher) {
 
 export async function loadPublication(url, fetcher = fetch, catalogId) {
   let manifest = await read(url, fetcher);
+  let recovery;
   if (manifest.version === 1 && manifest.manifest) {
     if (catalogId && catalogId !== manifest.catalog_id) {
       if (!/^[a-f0-9]{32}$/.test(catalogId)) throw new Error('Invalid catalog snapshot.');
@@ -16,12 +17,16 @@ export async function loadPublication(url, fetcher = fetch, catalogId) {
       if (manifest.catalog_id !== catalogId) throw new Error('Catalog locator identity mismatch.');
     }
     if (!/^releases\/[a-f0-9]{32}\/manifest\.json$/.test(manifest.manifest)) throw new Error('Invalid publication location.');
+    if (manifest.recovery) {
+      if (!/^releases\/[a-f0-9]{32}\/[a-f0-9]{32}\/viewer-v2\/recovery-status\.json$/.test(manifest.recovery.path)) throw new Error('Invalid recovery status location.');
+      recovery = {...manifest.recovery, url: new URL(manifest.recovery.path, url).href};
+    }
     const identity = manifest.catalog_id;
     url = new URL(manifest.manifest, url).href;
     manifest = await read(url, fetcher);
     if (manifest.info?.catalog_id !== identity) throw new Error('Catalog publication identity mismatch.');
   }
-  return {manifest, url};
+  return {manifest, url, recovery};
 }
 
 export async function latestPublication(url, fetcher = fetch) {

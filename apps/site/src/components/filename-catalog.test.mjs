@@ -8,6 +8,7 @@ import { pathToFileURL, fileURLToPath } from 'node:url';
 import { createFilenameCatalog, rangeFile, sourceContext } from './filename-catalog.mjs';
 import { observationReader } from './filename-observations.mjs';
 import { brotliCompressSync } from 'node:zlib';
+import { createHash } from 'node:crypto';
 
 async function localFetch(url, options = {}) {
   options.signal?.throwIfAborted();
@@ -146,4 +147,56 @@ test('inherited provenance retains hearing evidence without inventing a file red
   assert.deepEqual(result.pages[0].dates, ['2022-04-12']);
   assert.deepEqual(result.pages[0].link_urls, ['https://news.test/article']);
   assert.deepEqual(result.redirects, []);
+});
+
+test('accepted recoveries update saved filtering and summaries without changing original source values', async () => {
+  const folder = await mkdtemp(join(tmpdir(), 'filename-recovery-'));
+  try {
+    execFileSync(process.env.PYTHON || 'python3', [fileURLToPath(new URL('../../scripts/filename-test-fixture.py', import.meta.url)), folder]);
+    const root = pathToFileURL(join(folder,'public/manifest.json')).href;
+    const manifest = JSON.parse(await readFile(new URL(root)));
+    const groupBytes = await readFile(new URL(manifest.files.groups.path, root));
+    const originals = JSON.parse(await readFile(join(folder,'source-records.json')));
+    const positions = [0,2,5];
+    const recoveries = positions.map(row => ({original_url: originals[row].source_url, recovered_url:`http://archive.test/${row}.pdf`,
+      body_key:`bodies/sha256/aa/${'a'.repeat(64)}.gz`, kind:'pdf', recovery_status:'recovered', recovery_basis:'user_accepted_url_variant'}));
+    const data = {version:1,catalog_id:manifest.info.catalog_id,rows:manifest.info.rows,entries:manifest.info.entries,recoveries,
+      sources: positions.map((row,i)=>[row,i]), groups:positions.map((row,i)=>[groupBytes.readUInt32LE(row*4),[i]])};
+    const bytes = Buffer.from(JSON.stringify(data));
+    const sha256 = createHash('sha256').update(bytes).digest('hex');
+    const statusPath = hash => `releases/${hash.slice(0,32)}/${hash.slice(32)}/viewer-v2/recovery-status.json`;
+    const descriptor = {path:statusPath(sha256),bytes:bytes.length,sha256};
+    const pointer = {version:1,catalog_id:manifest.info.catalog_id,manifest:`releases/${'c'.repeat(32)}/manifest.json`,recovery:descriptor};
+    // Keep fixture payload paths at their original location while exercising the real pointer/sidecar path.
+    const remote = structuredClone(manifest);
+    for(const item of Object.values(remote.files)) item.path = new URL(item.path,root).href;
+    remote.ids = new URL(remote.ids,root).href;
+    const fetcher = (url,options) => String(url)===root ? Promise.resolve(Response.json(pointer))
+      : String(url).endsWith('/recovery-status.json') ? Promise.resolve(new Response(bytes))
+      : String(url).includes('/releases/') ? Promise.resolve(Response.json(remote)) : localFetch(url,options);
+    const reader = await createFilenameCatalog(root, fetcher);
+    assert.equal((await reader.search({q:'unfetched',retained:'no'})).total,0);
+    const results = await reader.search({q:'unfetched',retained:'yes'});
+    assert.equal(results.total,2);
+    assert.ok(results.rows.every(row=>row.retained && row.recovery.recovery_status==='recovered'));
+    for(const position of positions) {
+      const detail=await reader.entry(String(position));
+      assert.deepEqual(detail.record,{...originals[position],recovery:recoveries[positions.indexOf(position)]});
+      assert.equal(detail.recovery.recovery_status,'recovered');
+      assert.equal(detail.document.recovery.recovery_status,'recovered');
+      assert.equal(detail.sources.find(source=>source.source_id===originals[position].source_id).retained,true);
+      assert.equal(detail.saved_file_available,false,'status does not claim a public body download exists');
+    }
+    const canonical=await reader.entry('1');
+    assert.deepEqual(canonical.record,originals[1]);
+    assert.equal(canonical.recovery.original_url,originals[0].source_url);
+    const damaged = async (url,options) => String(url).endsWith('/recovery-status.json') ? new Response(Buffer.from('{}')) : fetcher(url,options);
+    await assert.rejects(createFilenameCatalog(root,damaged),/failed verification/);
+    const wrong = {...data,catalog_id:'d'.repeat(32)};
+    const wrongBytes=Buffer.from(JSON.stringify(wrong));
+    const wrongHash=createHash('sha256').update(wrongBytes).digest('hex');
+    await assert.rejects(createFilenameCatalog(root,(url,options)=>String(url)===root
+      ? Promise.resolve(Response.json({...pointer,recovery:{path:statusPath(wrongHash),bytes:wrongBytes.length,sha256:wrongHash}}))
+      : String(url).endsWith('/recovery-status.json') ? Promise.resolve(new Response(wrongBytes)) : fetcher(url,options)),/different catalog/);
+  } finally { await rm(folder,{recursive:true,force:true}); }
 });
