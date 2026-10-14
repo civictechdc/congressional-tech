@@ -321,3 +321,18 @@ test('compact heading expands without altering the filename and resets on the ne
     assert.equal(get('detail-title').classList.contains('expanded'),false);
   } finally {dom.window.close();}
 });
+
+
+test('download state and related hearing resources are not filename interpretations', async()=>{
+  const current=structuredClone(entry);
+  Object.assign(current.record,{state_outcome:['pending'],state_family:['documents'],
+    state_checked_at:['2026-10-13T12:00:00Z'],hearing_package_id:['CHRG-118shrg53528'],
+    hearing_resources:[{url:'https://www.govinfo.gov/package.pdf',association_basis:'endpoint_package_candidate'}]});
+  const {dom,get}=await app(async url=>({ok:true,json:async()=>url.startsWith('/api/entry/')?current:evidence}));
+  try {
+    assert.match(get('document-summary').textContent,/Latest fetchPending/);
+    assert.doesNotMatch(get('filename-findings').textContent,/pending|state|CHRG|package.pdf|hearing resources/i);
+    assert.match(get('detail-data').textContent,/pending|Pending/);
+    assert.match(get('detail-data').textContent,/endpoint_package_candidate/);
+  } finally {dom.window.close();}
+});
