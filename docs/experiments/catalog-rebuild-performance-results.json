@@ -361,5 +361,28 @@
     ],
     "both_exports_exact_values_types_order": true,
     "baseline_runtime_sha256": "1f5e9cbe35495ffa72012c7bdac24b0bae4e804d49ee275b47e82fd5835da478"
+  },
+  "observation_verification": {
+    "verification-baseline-800.json": {
+      "arm": "baseline",
+      "start_reference_block": 800,
+      "source_rows": 32768,
+      "seconds": 60.73979575000703,
+      "passed": true,
+      "timeout": false
+    },
+    "verification-candidate-800.json": {
+      "arm": "candidate",
+      "start_reference_block": 800,
+      "source_rows": 32768,
+      "seconds": 44.92396008397918,
+      "passed": true,
+      "timeout": false
+    },
+    "verification-candidate-full.json": {
+      "source_rows": 1672092,
+      "seconds": 101.34794345800765,
+      "all_values_verified": true
+    }
   }
 }

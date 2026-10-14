@@ -4,7 +4,6 @@ Repeated observations share a dictionary entry. Each block contains JSON with
 null struct fields omitted; the schema restores them on read. Large individual
 values span independently compressed parts instead of increasing decode size.
 """
-from collections import OrderedDict
 import hashlib
 import json
 
@@ -79,40 +78,78 @@ def publish_observations(source, output):
 
 
 def verify_observations(source, output, index):
-    import bisect
-    cache = OrderedDict()
-    starts = [block['start'] for block in index['observations']['blocks']]
+    """Check every value using a disk dictionary, decoding each block once."""
+    import sqlite3
+    import tempfile
+    from pathlib import Path
+
+    fields = [field.name for field in source.schema_arrow.field('source_occurrences').type.value_type]
+    if index['fields'] != fields:
+        raise ValueError('Observation schema changed.')
 
     def read_block(name, block):
-        key = (name, block['start'])
-        if key not in cache:
-            pieces = []
-            with (output / f'{name}.bin').open('rb') as stream:
-                for offset, size, decoded in block['parts']:
-                    stream.seek(offset)
-                    pieces.append(pa.decompress(stream.read(size), decoded, codec='brotli').to_pybytes())
-            cache[key] = json.loads(b''.join(pieces))
-            if len(cache[key]) != block['count']:
-                raise ValueError('Observation block count mismatch.')
-        cache.move_to_end(key)
-        while len(cache) > 8:
-            cache.popitem(last=False)
-        return cache[key]
+        pieces = []
+        with (output / f'{name}.bin').open('rb') as stream:
+            for offset, size, decoded in block['parts']:
+                stream.seek(offset)
+                pieces.append(pa.decompress(stream.read(size), decoded, codec='brotli').to_pybytes())
+        values = json.loads(b''.join(pieces))
+        if len(values) != block['count']:
+            raise ValueError('Observation block count mismatch.')
+        return values
 
-    def restore(reference):
-        block = index['observations']['blocks'][bisect.bisect_right(starts, reference) - 1]
-        value = read_block('observations', block)[reference - block['start']]
-        return None if value is None else {field: value.get(field) for field in index['fields']}
+    def canonical(value):
+        # Match the browser's schema restoration, preserving null observations,
+        # list order, duplicates, and null versus empty field values.
+        return json_bytes(None if value is None else
+                          {field: value[field] for field in fields if value.get(field) is not None})
 
-    def reconstructed():
-        for block in index['references']['blocks']:
-            for refs in read_block('observation-rows', block):
-                yield None if refs is None else [restore(ref) for ref in refs]
+    with tempfile.TemporaryDirectory(prefix='observation-check-') as folder:
+        db = sqlite3.connect(str(Path(folder) / 'values.sqlite'))
+        try:
+            db.executescript('PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; '
+                             'PRAGMA cache_size=-8192; '
+                             'CREATE TABLE observations(id INTEGER PRIMARY KEY,value BLOB NOT NULL);')
+            count = 0
+            for block in index['observations']['blocks']:
+                if block['start'] != count:
+                    raise ValueError('Observation dictionary is not contiguous.')
+                values = read_block('observations', block)
+                db.executemany('INSERT INTO observations VALUES (?,?)',
+                               ((count + i, canonical(value)) for i, value in enumerate(values)))
+                count += len(values)
+            if count != index['observations']['rows']:
+                raise ValueError('Observation dictionary row count mismatch.')
 
-    actual = reconstructed()
-    for batch in source.iter_batches(batch_size=128, columns=['source_occurrences']):
-        for expected in batch.column(0).to_pylist():
-            if next(actual) != expected:
-                raise ValueError('Observation publication changed source values.')
-    if next(actual, False) is not False:
-        raise ValueError('Unexpected trailing observation rows.')
+            def reference_rows():
+                start = 0
+                for block in index['references']['blocks']:
+                    if block['start'] != start:
+                        raise ValueError('Observation references are not contiguous.')
+                    yield from read_block('observation-rows', block)
+                    start += block['count']
+
+            references = reference_rows()
+            sentinel = object()
+            checked = 0
+            for batch in source.iter_batches(batch_size=128, columns=['source_occurrences']):
+                for expected in batch.column(0).to_pylist():
+                    refs = next(references, sentinel)
+                    if refs is sentinel or (expected is None) != (refs is None):
+                        raise ValueError('Observation publication changed source values.')
+                    if expected is not None:
+                        if len(refs) != len(expected):
+                            raise ValueError('Observation publication changed source values.')
+                        for ref, value in zip(refs, expected, strict=True):
+                            if type(ref) is not int or ref < 0:
+                                raise ValueError('Invalid observation reference.')
+                            stored = db.execute('SELECT value FROM observations WHERE id=?', (ref,)).fetchone()
+                            if stored is None or stored[0] != canonical(value):
+                                raise ValueError('Observation publication changed source values.')
+                    checked += 1
+                    if checked % 65536 == 0:
+                        print(f'Verified source observations: {checked:,}', flush=True)
+            if next(references, sentinel) is not sentinel or checked != index['references']['rows']:
+                raise ValueError('Unexpected observation row count.')
+        finally:
+            db.close()

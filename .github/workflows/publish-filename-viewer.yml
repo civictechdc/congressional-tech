@@ -13,6 +13,8 @@ on:
     branches: [main]
     paths:
       - 'apps/site/scripts/publish-viewer-r2.py'
+      - 'apps/site/scripts/filename_observations.py'
+      - 'tests/test_filename_observations.py'
       - '.github/workflows/publish-filename-viewer.yml'
 
 permissions:
@@ -40,8 +42,10 @@ jobs:
           python-version: '3.12'
       - name: Install catalog publication tools
         run: >-
-          pip install -e packages/house-naming -e packages/committee_meeting
+          pip install pytest -e packages/house-naming -e packages/committee_meeting
           -e packages/congress_shared -e 'packages/congress_api[archive]'
+      - name: Verify lossless observation publication
+        run: python -m pytest -q tests/test_filename_observations.py
       - name: Publish only a changed, verified catalog
         env:
           CLOUDFLARE_ACCOUNT_ID: '174055408ff1560e60601c4d12c561c4'

@@ -46,3 +46,15 @@ PYTHONPATH=packages/congress_api/src python scripts/benchmark_catalog_grouping.p
 ```
 
 Repeat three times in alternating order. Compare both files in each `cold`, `unchanged`, and `sparse` directory with Arrow `Table.equals`, then compare schema metadata excluding only `catalog_id` and `document_grouping_fingerprint`. Timing includes SQL tracing in both arms. macOS reports `ru_maxrss` in bytes; the portable harness retains platform-native units explicitly.
+
+## Follow-up: browser publication verification
+
+During the actual publication, a process sample showed repeated JSON decoding and garbage collection in `verify_observations`. The original eight-block cache repeatedly reconstructed a large shared dictionary. A diagnostic middle window of 32,768 source records used 211,917 references and decoded 12,076 dictionary blocks; the entire dictionary contains only 2,857 blocks (3,930,981 observations, 2.99 GB uncompressed).
+
+Before timing, `.cache/filename-lineage/verification-performance-plan.txt` recorded an exact-value SQLite lookup candidate, a five-minute per-run bound, and a prefix sample. The prefix did not reproduce the slowdown (125 block decodes), so a recorded diagnostic revision added the middle window before collecting timings. Both runs checked the same 32 reference blocks beginning at block 800. The existing verifier passed in 60.74 seconds; the candidate passed in 44.92 seconds, including decoding the entire dictionary and building its disposable SQLite index. This is one comparison under concurrent publication load, not a population speed estimate.
+
+The candidate then verified the complete, already-published 1,672,092-row source table in 101.35 seconds. It decodes each dictionary block once, stores canonical observation bytes in a temporary SQLite table, and compares each referenced value exactly. No hash approximation replaces value comparison. It retains null versus empty values, repeated observations, source and observation order, Unicode, and multipart values. It also reports row progress.
+
+Tradeoff: verification uses a temporary disk dictionary instead of repeatedly materializing cached JSON blocks; SQLite's page cache is bounded at 8 MiB, and the temporary database is deleted when verification finishes or fails. There is no persistent duplicate data system. The active publisher finished with the original verifier and was not restarted; its verified files were published through the shared R2 publisher. The faster verifier applies to future automatic publications.
+
+Regression checks reject changed values, reordered or missing references, null/empty substitutions, invalid IDs, incorrect offsets, trailing rows, and schema changes. A decompression-count test requires each dictionary and reference part to be decoded exactly once. The existing Python publication and browser-reader checks also pass. The scheduled publisher now runs these checks before publishing.
