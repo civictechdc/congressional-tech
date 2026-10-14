@@ -57,7 +57,8 @@ test('review shows publisher, catalog uncertainty, saved evidence and stable lin
     assert.equal(get('source-link').href,final);
     assert.match(get('saved-link').href,/\/saved\/stable-final\?catalog=snapshot$/);
     assert.match(get('document-summary').textContent,/Unclassified/);
-    assert.match(get('filename-findings').textContent,/not a verified person/);
+    assert.doesNotMatch(get('filename-findings').textContent,/Remaining filename text|resolution_by_cmw/);
+    assert.match(get('detail-data').textContent,/not a verified person/);
     assert.match(get('filename-findings').textContent,/January 30, 2019/);
     assert.match(get('document-summary').textContent,/Committee resolution/);
     assert.match(get('document-summary').textContent,/116/);
@@ -226,7 +227,7 @@ test('unsaved API identity and comparison do not claim missing format or content
     assert.doesNotMatch(get('document-summary').textContent,/inferred from filename|recognizable type/);
     assert.match(get('filename-findings').textContent,/Literal URL-derived filename: 1/);
     const comparison=get('filename-findings').querySelector('table');
-    assert.match(comparison.textContent,/Generic identifier—1/);
+    assert.match(comparison.textContent,/Unclassified identifier—1/);
     assert.match(get('filename-findings').textContent,/Equal version labels do not establish identical/);
     assert.equal(get('saved-evidence').hidden,true);
   } finally {dom.window.close();}
@@ -269,7 +270,9 @@ test('static publication shows recorded evidence without claiming live inspectio
     assert.match(get('document-summary').textContent,/Recorded in R2/);
     assert.match(get('content-summary').textContent,/published findings/);
     assert.match(get('content-summary').textContent,/116/);
-    assert.match(get('saved-evidence').textContent,/does not fetch private archive files/);
+    assert.match(get('document-summary').textContent,/private file access is unavailable here/);
+    assert.equal(get('saved-evidence').hidden,true);
+    assert.match(get('detail-data').textContent,/bodies\/sha256\/hidden-from-summary.gz/);
     assert.match(get('filename-findings').textContent,/does not rerun/);
     assert.equal(requests.some(url=>url.startsWith('/api/evidence/')),false);
   } finally {dom.window.close();}
@@ -334,5 +337,97 @@ test('download state and related hearing resources are not filename interpretati
     assert.doesNotMatch(get('filename-findings').textContent,/pending|state|CHRG|package.pdf|hearing resources/i);
     assert.match(get('detail-data').textContent,/pending|Pending/);
     assert.match(get('detail-data').textContent,/endpoint_package_candidate/);
+  } finally {dom.window.close();}
+});
+
+test('parser fragments are secondary, all original fields remain searchable by purpose', async()=>{
+  const parsed=structuredClone(entry);
+  Object.assign(parsed.record,{day_token:['20'],month_token:['September'],generic_identifier:['00'],
+    short_date_token:['210915'],label:['nomination'],subject_token:['An appointment'],state_outcome:['pending']});
+  parsed.document={...parsed.record,document_kind:['nomination']};
+  const before=JSON.stringify(parsed.record);
+  const {dom,w,get}=await app(async url=>({ok:true,json:async()=>url.startsWith('/api/entry/')?parsed:evidence}));
+  try {
+    assert.doesNotMatch(get('filename-findings').querySelector('dl').textContent,/Day token|Month token|Unclassified identifier|Unresolved short date|Nomination/);
+    assert.match(get('filename-findings').querySelector('dl').textContent,/Subject textAn appointment/);
+    const raw=[...get('detail-data').querySelectorAll('.raw-key')].map(el=>el.textContent);
+    for(const key of ['day_token','month_token','generic_identifier','short_date_token','name_token','state_outcome']) assert(raw.includes(key),key);
+    get('filename-findings').querySelector('button').click();
+    assert.equal(get('technical').open,true);
+    assert.match(get('detail-data').textContent,/day_token/);
+    assert.doesNotMatch(get('detail-data').textContent,/state_outcome/);
+    assert.equal(w.document.activeElement,get('field-search'));
+    assert.equal(JSON.stringify(parsed.record),before);
+  } finally {dom.window.close();}
+});
+
+test('source-page classification remains visible when it disagrees with filename classification', async()=>{
+  const parsed=structuredClone(entry);
+  Object.assign(parsed.record,{document_kind:['nomination'],source_document_type:['transcript'],source_document_type_basis:['senate_parser_inference']});
+  parsed.document={...parsed.record};
+  const {dom,get}=await app(async url=>({ok:true,json:async()=>url.startsWith('/api/entry/')?parsed:evidence}));
+  try {
+    assert.match(get('document-summary').textContent,/Document kindNomination/);
+    assert.match(get('document-summary').textContent,/Source-page kindTranscriptA separate interpretation/);
+    assert.match(get('detail-data').textContent,/senate_parser_inference/);
+  } finally {dom.window.close();}
+});
+
+test('empty results and search errors provide recovery without stale pagination', async()=>{
+  const {dom,w,get}=await app();
+  try {
+    get('close-detail').click();
+    w.filenameViewerApi=async()=>({rows:[],total:0,page:1,pages:0,limit:50});
+    get('q').value='no match';
+    get('search-form').dispatchEvent(new w.Event('submit',{cancelable:true}));await flush();
+    assert.equal(get('empty').hidden,false);
+    assert.equal(w.document.querySelector('.pager').hidden,true);
+    assert.equal(get('reset').disabled,false);
+    w.filenameViewerApi=async()=>{throw new Error('Temporary range failure');};
+    get('search-form').dispatchEvent(new w.Event('submit',{cancelable:true}));await flush();
+    assert.equal(get('empty').hidden,true);
+    assert.equal(get('error').hidden,false);
+    assert.match(get('error-message').textContent,/Temporary range failure/);
+    assert.equal(get('results').inert,false);
+    w.filenameViewerApi=async()=>({rows:[],total:0,page:1,pages:0,limit:50});
+    get('retry').click();await flush();
+    assert.equal(get('error').hidden,true);
+    assert.equal(get('empty').hidden,false);
+  } finally {dom.window.close();}
+});
+
+test('search-field selection remains discoverable when filters are collapsed', async()=>{
+  const {dom,w,get}=await app();
+  try {
+    get('close-detail').click();
+    get('field').value='source_url';get('field').dispatchEvent(new w.Event('change'));await flush();
+    assert.match(get('filters-caption').textContent,/Search: Publisher URL/);
+    assert.equal(get('q').placeholder,'Search publisher url…');
+    get('reset').click();await flush();
+    assert.equal(get('field').value,'filename');assert.equal(get('reset').disabled,true);
+    get('field').value='__advanced__';get('field').dispatchEvent(new w.Event('change'));
+    get('close-field-picker').click();assert.equal(get('advanced-field').hidden,true);
+    assert.equal(w.document.activeElement,get('field'));
+  } finally {dom.window.close();}
+});
+
+test('accepted recovery is usable without erasing the original fetch outcome or URLs', async()=>{
+  const recovered=structuredClone(entry);
+  const recovery={original_url:final,recovered_url:'https://web.archive.org/web/20220101/https://committee.test/resolution.pdf',
+    body_key:'bodies/sha256/recovered.gz',kind:'html',recovery_status:'recovered',recovery_basis:'user_accepted_url_variant'};
+  Object.assign(recovered.record,{body_key:null,state_outcome:['http_404'],recovery});
+  recovered.recovery=recovery;recovered.published_only=true;recovered.saved_file_available=false;
+  const before=JSON.stringify(recovered.record);
+  const {dom,get}=await app(async()=>({ok:true,json:async()=>recovered}));
+  try {
+    assert.match(get('document-summary').textContent,/Saved responseRecovered/);
+    assert.match(get('document-summary').textContent,/Recovered formatHTML/);
+    assert.match(get('document-summary').textContent,/Original URL fetchHTTP 404/);
+    assert.doesNotMatch(get('document-summary').textContent,/review required|candidate/i);
+    assert.equal(get('source-link').href,final);
+    assert.equal(get('origin').querySelector('.recovery-source a').href,recovery.recovered_url);
+    assert.match(get('detail-data').textContent,/user_accepted_url_variant/);
+    assert.doesNotMatch(get('filename-findings').textContent,/recovered.gz|user_accepted/);
+    assert.equal(JSON.stringify(recovered.record),before);
   } finally {dom.window.close();}
 });
