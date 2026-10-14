@@ -166,14 +166,14 @@ def capture_digest_matches(table, expected):
 
 def source_fingerprint():
     """Source interpretation changes independently of filename and PDF-cover rules."""
-    from congress_api.retention import document_index, document_recovery, raw_catalog, catalog_staging
+    from congress_api.retention import document_index, document_recovery, raw_catalog, catalog_staging, catalog_availability
     from congress_api import parsers, models
 
     paths = [
         Path(__file__),
         *(
             Path(module.__file__)
-            for module in (document_index, document_recovery, raw_catalog, catalog_staging)
+            for module in (document_index, document_recovery, raw_catalog, catalog_staging, catalog_availability)
         ),
     ]
     for module in (parsers, models):

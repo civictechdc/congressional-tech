@@ -60,6 +60,7 @@ from congress_api.parsers.source_family import family as source_family
 from congress_api.parsers.document_links import feed_link, http_url
 from congress_api.parsers.document_cover import COVER_FIELDS
 from congress_api.parsers.document_types import DOCUMENT_TYPE_MEANINGS, document_type
+from congress_api.retention.catalog_availability import FIELDS as AVAILABILITY_FIELDS, RESOURCE_FIELDS
 
 
 FAMILIES = (
@@ -487,12 +488,15 @@ def prepare_document_indexes(rows, schema):
             row["document_id"] = document_id
             for key, value in row.items():
                 if isinstance(value, list):
-                    if key != "source_occurrences":
+                    if key not in {"source_occurrences", "hearing_resources"}:
                         values[key].update(value)
         document.update({key: sorted(value) for key, value in values.items() if value})
         occurrences = merge_values("source_occurrences", *[row.get("source_occurrences") for row in sources])
         if occurrences:
             document["source_occurrences"] = occurrences
+        resources = merge_values("hearing_resources", *[row.get("hearing_resources") for row in sources])
+        if resources:
+            document["hearing_resources"] = resources
         # A successful document and its error/marker history can share an endpoint.
         # The group's role describes its usable document; each source keeps its role.
         roles = values["record_role"]
@@ -643,10 +647,16 @@ def metadata_type(name):
     """Keep source occurrences paired in Arrow, without serializing them as JSON."""
     if name == "source_occurrences":
         return pa.list_(pa.struct([(field, STRINGS) for field in SOURCE_OCCURRENCE_FIELDS]))
+    if name == "hearing_resources":
+        return pa.list_(pa.struct([(field, pa.string()) for field in RESOURCE_FIELDS]))
     return STRINGS
 
 
 def merge_values(field, *groups):
+    if field == "hearing_resources":
+        values = {json.dumps({k: v for k, v in item.items() if v is not None}, sort_keys=True): item
+                  for group in groups for item in group or []}
+        return [values[key] for key in sorted(values)]
     if field != "source_occurrences":
         return sorted({value for group in groups if group for value in group})
     # Arrow fills absent struct fields with null on readback. Normalize those
@@ -1753,6 +1763,9 @@ def capture_record_type(family, pointer_json):
 
 def apply_capture_record_role(row):
     """Keep receipt/pointer pairs together when recognizing embedded source HTML."""
+    if row.get('source_record_type') == ['download-state']:
+        row['record_role'] = ['capture-state']
+        return
     if row.get("source_record_type"):
         return
     for occurrence in row.get("source_occurrences") or []:
@@ -2231,7 +2244,7 @@ def write_filename_metadata(
                 key = (row.pop("reader"), row.pop("body_key"))
                 body_cache[key] = {field: value for field, value in row.items() if value is not None}
     del payload
-    source_fields = set(SOURCE_SCHEMA.names) | SOURCE_CONTEXT_FIELDS | {'capture_outcome'}
+    source_fields = set(SOURCE_SCHEMA.names) | SOURCE_CONTEXT_FIELDS | AVAILABILITY_FIELDS | {'capture_outcome'}
     reuse_names = previous is not None and reuse_results and 'document_kind_source' in previous_schema.names
     filename_fields = (set(previous_schema.names) - source_fields
                        - {'source_id', 'document_id', 'format', 'document_kind_source'}
@@ -2321,7 +2334,7 @@ def write_filename_metadata(
                     columns.update(fields)
                     row.update(fields)
                     columns.update(key for key, value in row.items()
-                                   if key in SOURCE_CONTEXT_FIELDS | {'capture_outcome'} and value)
+                                   if key in SOURCE_CONTEXT_FIELDS | AVAILABILITY_FIELDS | {'capture_outcome'} and value)
                     if row['body_key']:
                         bodies[row['body_key']] = True
                     if row['filename']:

@@ -9,7 +9,7 @@ import pyarrow.parquet as pq
 import pytest
 
 from congress_api.retention import document_index as index
-from congress_api.retention.raw_archive import CAPTURE_SCHEMA, CAPTURES_KEY, STATE_KEY, encode_table
+from congress_api.retention.raw_archive import CAPTURE_SCHEMA, CAPTURES_KEY, STATE_KEY, STATE_SCHEMA, encode_table
 from congress_api.retention.raw_catalog import rebuild_catalog, FILENAMES, DOCUMENTS
 from test_raw_source_sync import MemoryStore
 from test_raw_catalog import table, initialize
@@ -90,7 +90,9 @@ def test_legacy_remote_only_facts_are_archived_without_inventing_native_basis(tm
 def test_rebuild_only_cli_skips_acquisition_and_preserves_newer_state(tmp_path, monkeypatch):
     from congress_api.cli import raw_sync
     store = initialize(tmp_path)
-    store.objects[STATE_KEY] = b'newer download state'
+    store.objects[STATE_KEY] = encode_table(pa.Table.from_pylist([
+        dict(url='https://example.gov/new.pdf', outcome='pending', attempts=0),
+    ], schema=STATE_SCHEMA))
     # Include a capture absent from the old derived tables.
     retain(store, {'url': 'https://example.gov/new.pdf'}, family='documents', source_file='receipts.jsonl',
            url='https://example.gov/new.pdf', body=b'%PDF-1.7\n%%EOF')

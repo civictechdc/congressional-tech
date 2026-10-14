@@ -393,6 +393,7 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
         filenames, urls, bodies, retained_bodies = set(), set(), set(), set()
         occurrences = working.mapping("combined_occurrences")
         occurrences.clear()
+        hearing_resources = []
         filename_kind = False
         # Only the one resulting document's value sets remain resident. Source
         # dictionaries and occurrence inputs stream from the component index.
@@ -402,8 +403,9 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
             if preferred is None or priority(row) > priority(preferred):
                 preferred = row
             for field, value in row.items():
-                if isinstance(value, list) and field != 'source_occurrences':
+                if isinstance(value, list) and field not in {'source_occurrences', 'hearing_resources'}:
                     values[field].update(value)
+            hearing_resources = index.merge_values('hearing_resources', hearing_resources, row.get('hearing_resources'))
             for occurrence in row.get('source_occurrences') or []:
                 occurrences[index.compact(occurrence)] = occurrence
             for field, target in (('filename', filenames),('source_url', urls),('body_key', retained_bodies)):
@@ -438,6 +440,8 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
         paired = index.merge_values('source_occurrences', list(occurrences.values()))
         if paired:
             document['source_occurrences'] = paired
+        if hearing_resources:
+            document['hearing_resources'] = hearing_resources
         document['record_role'] = [next(role for role in ('document','source-record','error-response','capture-state') if role in values['record_role'])]
         index.fill_document_kind(document)
         if filename_kind:

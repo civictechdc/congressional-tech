@@ -26,7 +26,8 @@ from congress_api.retention.document_recovery import recover_sources, recovery_f
 from congress_api.retention.catalog_cache import (
     capture_digest, capture_digest_matches, source_fingerprint,
 )
-from congress_api.retention.raw_archive import CAPTURES_KEY, CAPTURE_SCHEMA, decode_table
+from congress_api.retention.raw_archive import CAPTURES_KEY, CAPTURE_SCHEMA, STATE_KEY, STATE_SCHEMA, decode_table
+from congress_api.retention.catalog_availability import annotate_availability
 
 FILENAMES = "indexes/document-filenames.parquet"
 DOCUMENTS = "indexes/documents.parquet"
@@ -79,6 +80,12 @@ def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies,
         raise ValueError("Capture index was truncated since the last catalog rebuild")
     all_captures = captures
     capture_rows = len(captures)
+    state_bytes = read(STATE_KEY)
+    state_digest = sha256(state_bytes or b'').hexdigest()
+    state = decode_table(state_bytes) if state_bytes is not None else pa.Table.from_pylist([], schema=STATE_SCHEMA)
+    if state.schema.remove_metadata() != STATE_SCHEMA:
+        raise ValueError('Unexpected download state schema')
+    del state_bytes
     if body_readings:
         present = set(captures.filter(pc.is_in(captures['body_key'], value_set=pa.array(
             sorted(body_readings), type=pa.string())))['body_key'].to_pylist())
@@ -102,6 +109,8 @@ def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies,
             and (not inspect_bodies or meta.get(b'body_inspection') == b'true'
                  and meta.get(b'deferred_body_reads') == b'0')
             and cursor == capture_rows and meta.get(b'seed_digest') == seed_digest.encode()
+            and meta.get(b'download_state_digest') == state_digest.encode()
+            and meta.get(b'availability_policy') == b'1'
             and previous_documents is not None
             and (pq.read_schema(pa.BufferReader(previous_documents)).metadata or {}).get(b'catalog_id') == meta.get(b'catalog_id')):
         if snapshot.manifest is None:
@@ -294,6 +303,9 @@ def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies,
     # A newly discovered URL can name an older body. Resolve once against the
     # complete capture inventory instead of doing overlapping recovery passes.
     source_rows = iter(recover_sources(sources.values(), all_captures, read_receipt=read, working=working))
+    hearing_captures = all_captures.filter(pc.equal(all_captures['family'], 'congress/hearings'))
+    hearing_records = ((record, rows) for record, rows, _ in index.retained_records(hearing_captures, read))
+    source_rows = annotate_availability(source_rows, state, hearing_records=hearing_records, working=working)
     # Recovery has finished before this iterator is consumed. Reuse staging
     # pages for interpretation instead of retaining each intermediate corpus.
     for name in ("sources","occurrences","occurrence_urls","extra_filters","transfers","meetings","events","captured",
@@ -319,6 +331,8 @@ def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies,
         metadata={"raw_capture_rows": str(capture_rows), "source_fingerprint": fingerprint,
                   "source_lineage_version": SOURCE_LINEAGE_VERSION,
                   "capture_digest": input_digest, "seed_digest": seed_digest,
+                  "download_state_digest": state_digest, "download_state_rows": str(len(state)),
+                  "availability_policy": "1",
                   "deferred_source_bodies": json.dumps(sorted(deferred_sources)),
                   "retained_recovery_fingerprint": recovery_fingerprint()},
     )
