@@ -53,11 +53,15 @@ def test_corrupted_input_is_rejected_before_publication(catalog, tmp_path):
         publication.verify(catalog, manifest)
 
 
-def test_publication_keeps_provenance_in_parquet_without_custom_sidecars(catalog):
+def test_publication_includes_bounded_provenance_lookup(catalog):
     manifest = json.loads((catalog / 'public/manifest.json').read_text())
-    assert manifest['version'] == 3
-    assert not {'observations', 'observation_rows', 'observation_index'} & manifest['files'].keys()
-    assert not list((catalog / 'public').rglob('observation*'))
+    assert manifest['version'] == 2
+    for name in ('observations', 'observation_rows', 'observation_index'):
+        item = manifest['files'][name]
+        assert (catalog / 'public' / item['path']).stat().st_size == item['bytes']
+    index = json.loads((catalog / 'public' / manifest['files']['observation_index']['path']).read_text())
+    assert index['references']['rows'] == manifest['info']['rows']
+    assert index['max_part_bytes'] <= 1024 * 1024
 
 
 def test_generation_cannot_escape_the_selected_snapshot(catalog):

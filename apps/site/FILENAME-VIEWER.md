@@ -1,7 +1,6 @@
 # Static filename viewer
 
-The public `/filenames/` page reads Parquet in a Web Worker using Hyparquet for
-filtering and ordinary metadata, and Parquet-Wasm for nested source provenance.
+The public `/filenames/` page reads Parquet in a Web Worker using Hyparquet.
 It needs no Python service and receives no R2 credentials. It shares the reviewed
 HTML and presentation code with the optional local viewer.
 
@@ -47,6 +46,12 @@ The browser publication contains:
 - A filename-sorted Parquet table for displaying result pages.
 - A three-column document summary for details. The group's source ID comes from
   its preferred source, whose identity the catalog validates during publication.
+- A shared observation dictionary and per-source reference lists, stored as
+  independently Brotli-compressed JSON blocks. Each compressed part expands to
+  at most 1 MiB. Identical observations share storage; the reader restores every
+  original observation, null field, duplicate, and ordering. Oversized individual
+  values span multiple parts. The publisher reconstructs and compares all source
+  observation lists against Arrow before writing the manifest.
 - Small binary arrays mapping source rows to groups, preferred sources, original
   document rows, and group status. Integers are unsigned 32-bit little-endian.
   Status bits are saved response (1), document scope (2), missing kind (4), missing
@@ -85,22 +90,17 @@ loads document-row mappings and builds group membership lists. Concurrent
 queries share pending navigation loads without sharing cancellation.
 
 Queries load only needed columns over validated HTTP byte ranges. Detail reads
-decode ordinary source metadata eight columns at a time. A lazily loaded
-Parquet-Wasm 0.9.0 module reads `source_occurrences` directly from the same
-Parquet file; Apache Arrow converts only the selected record to JavaScript.
-The range adapter finishes cancellable network reads before handing those bytes
-to Wasm, since this library version can trap on rejected asynchronous I/O.
-Adjacent cached footer ranges are joined rather than fetched twice. All original
-fields, nulls, duplicates, and ordering remain available for review and copied
-JSON. Compressed bytes and ordinary query columns have bounded caches.
-
-The reader accepts existing version 2 publications and version 3 publications.
-Version 3 omits the redundant observation dictionary, source-reference list, and
-their JSON index. Existing immutable releases remain readable; the next catalog
-publication uses the simpler format without rebuilding the raw archive.
-Wasm adds a 5.25 MB module (about 1.67 MB gzipped) on the first detail read, not
-on ordinary browsing. This is a maintenance simplification, not a blanket speed
-or memory improvement; see the [measured migration report](../../docs/youtube-coverage/research/parquet-wasm-migration.md).
+prefetch only requested columns and decode ordinary source metadata eight
+columns at a time. Nested observations use the bounded JSON blocks, so selecting
+one row does not expand neighboring sources' observation lists. The reader still
+returns all source fields for technical review and copied JSON. Nested-observation search streams row
+groups, and compressed bytes and ordinary query columns have bounded caches.
+The compact provenance files are deliberate performance indexes over the full
+Parquet data. A direct Parquet-Wasm detail reader was reverted after it increased
+latency and memory; see the [paired measurements](../../docs/youtube-coverage/research/filename-performance-regression.md).
+The publisher verifies every reconstructed observation against the original
+Parquet before publication. These indexes preserve all provenance rather than
+trading evidence for speed.
 The UI cancels superseded searches and details. Review links load their retained
 snapshot; missing snapshots fail visibly. The browser rechecks the latest pointer
 on focus and every minute while visible. A new-data notice offers the latest

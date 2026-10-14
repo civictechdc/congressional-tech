@@ -10,5 +10,4 @@ export default defineConfig({
   base: '/congressional-tech',
   output: 'static',
   integrations: [react()],
-  vite: {worker: {format: 'es'}},
 });

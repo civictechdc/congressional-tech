@@ -11,6 +11,8 @@ import pyarrow.parquet as pq
 spec = importlib.util.spec_from_file_location('publisher', Path(__file__).with_name('publish-filename-viewer.py'))
 publisher = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(publisher)
+# Small parts exercise multi-part values in the real Python-to-browser path.
+publisher.observations.BLOCK_BYTES = 128
 root = Path(sys.argv[1])
 generation = 'a' * 32
 catalog_id = 'b' * 32

@@ -15,8 +15,10 @@ on:
       - 'apps/site/scripts/publish-viewer-r2.py'
       - 'apps/site/scripts/publish-filename-viewer.py'
       - 'apps/site/scripts/filename-test-fixture.py'
+      - 'apps/site/scripts/filename_observations.py'
       - 'apps/site/scripts/filename_recoveries.py'
       - 'tests/test_filename_recoveries.py'
+      - 'tests/test_filename_observations.py'
       - '.github/tests/test_filename_publication.py'
       - '.github/tests/test_viewer_r2.py'
       - '.github/workflows/publish-filename-viewer.yml'
@@ -49,7 +51,7 @@ jobs:
           pip install pytest -e packages/house-naming -e packages/committee_meeting
           -e packages/congress_shared -e 'packages/congress_api[archive]'
       - name: Verify publication fidelity and recovery mapping
-        run: PYTHONPATH=apps/site/scripts python -m pytest -q .github/tests/test_filename_publication.py .github/tests/test_viewer_r2.py tests/test_filename_recoveries.py
+        run: PYTHONPATH=apps/site/scripts python -m pytest -q .github/tests/test_filename_publication.py .github/tests/test_viewer_r2.py tests/test_filename_recoveries.py tests/test_filename_observations.py
       - name: Publish only a changed, verified catalog
         env:
           CLOUDFLARE_ACCOUNT_ID: '174055408ff1560e60601c4d12c561c4'

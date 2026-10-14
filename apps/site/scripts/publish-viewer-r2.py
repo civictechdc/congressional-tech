@@ -68,8 +68,8 @@ def read_json(client, key, *, optional=False):
 
 def prepared_files(root, manifest):
     """Allow only manifest-declared files and the bounded source-ID shards."""
-    if manifest.get('version') not in (2, 3):
-        raise ValueError('Expected viewer manifest version 2 or 3.')
+    if manifest.get('version') != 2:
+        raise ValueError('Expected viewer manifest version 2.')
     selected = manifest['source_manifest']
     if selected['catalog_id'] != manifest['info']['catalog_id']:
         raise ValueError('Viewer and source catalog identities differ.')
@@ -174,7 +174,7 @@ def public_probe(base, pointer, manifest):
     with open_public(request) as response:
         if json.load(response) != manifest or response.headers.get('Access-Control-Allow-Origin') != '*':
             raise ValueError('Public manifest or browser access differs.')
-    # Detail views need the navigation files as well as Parquet.
+    # Detail views need the navigation and observation files as well as Parquet.
     def check_file(item):
         request = public_request(urllib.parse.urljoin(manifest_url, item['path']), {
             'Origin': 'https://civictechdc.github.io'})
@@ -270,7 +270,7 @@ def bootstrap_pages(selected, root):
             manifest = json.load(response)
     except (OSError, ValueError):
         return None
-    if manifest.get('version') not in (2, 3) or manifest.get('source_manifest') != selected:
+    if manifest.get('version') != 2 or manifest.get('source_manifest') != selected:
         return None
     expected = selected['generation'] + '/viewer-v2/'
     names = [item['path'] for item in manifest['files'].values()]

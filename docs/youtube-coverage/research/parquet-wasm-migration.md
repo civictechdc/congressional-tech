@@ -2,7 +2,12 @@
 
 October 14, 2026. Catalog `5272bb4b85ed4549b1fcc3008077bf6d`.
 
-The filename viewer now reads nested provenance directly from `filenames.parquet`
+**Historical experiment, subsequently reverted for performance.** The measured
+latency and memory regressions below did not justify removing the compact
+provenance lookup. See [the correction and paired measurements](filename-performance-regression.md).
+The original experiment and its evidence remain below.
+
+The migration made the filename viewer read nested provenance directly from `filenames.parquet`
 with Parquet-Wasm 0.9.0 and Apache Arrow 21.2.0. Hyparquet 1.31.2 still handles
 filters and ordinary metadata. This removes a separate provenance encoding and
 its writer/reader. It is a maintenance and publication simplification, with a
