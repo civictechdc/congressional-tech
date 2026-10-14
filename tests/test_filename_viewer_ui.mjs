@@ -123,9 +123,12 @@ test('transitive provenance shows an ordered hearing-to-page-to-file chain', asy
     assert.ok(chain);
     assert.deepEqual([...chain.querySelectorAll('a')].map(a=>a.href),[hearing,article]);
     assert.match(get('origin').textContent,/Associated hearing/);
-    assert.match(chain.textContent,/Armed Conflict and Starvation.*April 12, 2022.*Yemen.*UN article.*Event programme.*This file/s);
+    assert.match(chain.textContent,/Armed Conflict and Starvation.*April 12, 2022.*UN article.*This file/s);
     assert.equal(get('origin').querySelectorAll('a[href="'+article+'"]').length,1);
-    assert.equal(get('origin').querySelectorAll('.publisher-label').length,0);
+    const supporting=get('origin').querySelector('.supporting-links');
+    assert.equal(supporting.open,false);
+    assert.match(supporting.textContent,/committee.test.*Yemen.*news.test.*Event programme/s);
+    assert.doesNotMatch(chain.textContent,/Yemen|Event programme/);
     assert.doesNotMatch(get('origin').textContent,/Possible source page/);
   } finally {dom.window.close();}
 });
@@ -174,6 +177,7 @@ test('switching a source prevents late content from replacing the current select
     get('source-variants').querySelectorAll('button')[1].click();
     await flush();
     assert.match(get('detail-selected').textContent,/Resolution.pdf/);
+    assert.match(get('document-summary').textContent,/Group kind/);
     assert.match(get('saved-evidence').textContent,/456 bytes/);
     finishOld();
     await flush();
@@ -267,10 +271,10 @@ test('static publication shows recorded evidence without claiming live inspectio
   const {dom,get,requests}=await app(async url=>({ok:true,json:async()=>published}));
   try {
     assert.equal(get('saved-link').hidden,true);
-    assert.match(get('document-summary').textContent,/Recorded in R2/);
+    assert.match(get('document-summary').textContent,/Stored in R2/);
     assert.match(get('content-summary').textContent,/published findings/);
     assert.match(get('content-summary').textContent,/116/);
-    assert.match(get('document-summary').textContent,/private file access is unavailable here/);
+    assert.match(get('document-summary').textContent,/file access unavailable here/);
     assert.equal(get('saved-evidence').hidden,true);
     assert.match(get('detail-data').textContent,/bodies\/sha256\/hidden-from-summary.gz/);
     assert.match(get('filename-findings').textContent,/does not rerun/);
@@ -333,7 +337,7 @@ test('download state and related hearing resources are not filename interpretati
     hearing_resources:[{url:'https://www.govinfo.gov/package.pdf',association_basis:'endpoint_package_candidate'}]});
   const {dom,get}=await app(async url=>({ok:true,json:async()=>url.startsWith('/api/entry/')?current:evidence}));
   try {
-    assert.match(get('document-summary').textContent,/Latest fetchPending/);
+    assert.match(get('document-summary').textContent,/Recorded fetchPending/);
     assert.doesNotMatch(get('filename-findings').textContent,/pending|state|CHRG|package.pdf|hearing resources/i);
     assert.match(get('detail-data').textContent,/pending|Pending/);
     assert.match(get('detail-data').textContent,/endpoint_package_candidate/);
@@ -349,7 +353,8 @@ test('parser fragments are secondary, all original fields remain searchable by p
   const {dom,w,get}=await app(async url=>({ok:true,json:async()=>url.startsWith('/api/entry/')?parsed:evidence}));
   try {
     assert.doesNotMatch(get('filename-findings').querySelector('dl').textContent,/Day token|Month token|Unclassified identifier|Unresolved short date|Nomination/);
-    assert.match(get('filename-findings').querySelector('dl').textContent,/Subject textAn appointment/);
+    assert.doesNotMatch(get('filename-findings').querySelector('dl').textContent,/Subject text|An appointment/);
+    assert.match(get('detail-data').textContent,/Subject text.*An appointment/s);
     const raw=[...get('detail-data').querySelectorAll('.raw-key')].map(el=>el.textContent);
     for(const key of ['day_token','month_token','generic_identifier','short_date_token','name_token','state_outcome']) assert(raw.includes(key),key);
     get('filename-findings').querySelector('button').click();
@@ -363,12 +368,12 @@ test('parser fragments are secondary, all original fields remain searchable by p
 
 test('source-page classification remains visible when it disagrees with filename classification', async()=>{
   const parsed=structuredClone(entry);
-  Object.assign(parsed.record,{document_kind:['nomination'],source_document_type:['transcript'],source_document_type_basis:['senate_parser_inference']});
+  Object.assign(parsed.record,{document_kind:['nomination'],document_kind_source:['filename'],source_document_type:['transcript'],source_document_type_basis:['senate_parser_inference']});
   parsed.document={...parsed.record};
   const {dom,get}=await app(async url=>({ok:true,json:async()=>url.startsWith('/api/entry/')?parsed:evidence}));
   try {
-    assert.match(get('document-summary').textContent,/Document kindNomination/);
-    assert.match(get('document-summary').textContent,/Source-page kindTranscriptA separate interpretation/);
+    assert.match(get('document-summary').textContent,/Filename kindNomination/);
+    assert.match(get('document-summary').textContent,/Source-page kindTranscriptInferred from page metadata/);
     assert.match(get('detail-data').textContent,/senate_parser_inference/);
   } finally {dom.window.close();}
 });
@@ -443,5 +448,25 @@ test('long article identifiers are not confidently presented as legislative meas
     assert.match(findings,/publisher identifier/);
     assert.doesNotMatch(findings,/Senate bill/i);
     assert.match(get('detail-data').textContent,/measure_references.*s169726001730039/s);
+  } finally {dom.window.close();}
+});
+
+
+test('a filename with only raw fragments has one compact disclosure and retains every source field', async()=>{
+  const sparse=structuredClone(entry);
+  Object.assign(sparse.record,{date_token_candidates:null,subject_token:['resolution'],document_kind:['resolution'],document_kind_source:['filename']});
+  sparse.document=sparse.record;sparse.published_only=true;sparse.reading=null;sparse.saved_file_available=false;
+  const before=JSON.stringify(sparse.record);
+  const {dom,get}=await app(async()=>({ok:true,json:async()=>sparse}));
+  try {
+    const section=get('filename-findings');
+    assert.equal(section.querySelector('h3'),null);
+    assert.equal(section.querySelectorAll('details').length,1);
+    assert.equal(section.querySelector('details').open,false);
+    assert.equal(section.querySelector('summary').textContent,'Filename analysis');
+    assert.doesNotMatch(section.textContent,/No additional|Raw filename fragments/);
+    assert.match(get('detail-data').textContent,/subject_token.*resolution/s);
+    assert.equal(get('source-link').textContent,'Open source URL ↗');
+    assert.equal(JSON.stringify(sparse.record),before);
   } finally {dom.window.close();}
 });

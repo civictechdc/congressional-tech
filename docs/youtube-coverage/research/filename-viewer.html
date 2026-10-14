@@ -85,6 +85,7 @@ footer { display:flex; justify-content:space-between; gap:14px; align-items:cent
 #error p { margin:0 0 10px; }
 #detail { margin:0 0 0 auto; height:100dvh; max-height:100dvh; width:min(680px,96vw); max-width:96vw; border:0; border-left:1px solid var(--line); padding:0; background:white; box-shadow:-12px 0 60px #17242e12; color:var(--ink); overscroll-behavior:contain; }
 #detail::backdrop { background:#17242e44; }
+.detail-head:has(#detail-title.expanded) { position:relative; }
 .detail-head { position:sticky; top:0; padding:20px 24px 16px; background:white; border-bottom:1px solid var(--line); z-index:3; }
 .detail-top { display:flex; justify-content:space-between; align-items:start; gap:16px; }
 #detail-title { font-size:17px; font-weight:600; line-height:1.5; overflow-wrap:anywhere; margin:0; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
@@ -104,6 +105,8 @@ dl { margin:0; }
 dt { color:var(--muted); }
 .facts dt { font-size:12px; line-height:1.65; margin:0; }
 dd { margin:0; font-size:13px; line-height:1.6; overflow-wrap:anywhere; }
+.inline-note { color:var(--muted); font-size:12px; }
+.inspector-section.compact { padding-top:10px; padding-bottom:10px; }
 .fact-note { display:block; font-size:12px; line-height:1.55; color:var(--muted); margin-top:3px; }
 #content-summary { border-left:2px solid var(--line); padding-left:12px; margin-top:18px; }
 #content-summary .classification { font-size:16px; font-weight:600; margin:4px 0; }
@@ -139,7 +142,7 @@ dd { margin:0; font-size:13px; line-height:1.6; overflow-wrap:anywhere; }
 #field-count,#copy-status,#share-status { font-size:12px; color:var(--muted); }
 .source-path { margin:14px 0; }
 .source-chain { list-style:none; padding:0; margin:8px 0 0; }
-.source-chain li { position:relative; padding:0 0 20px 20px; border-left:1px solid var(--line); margin-left:4px; font-size:13px; line-height:1.6; overflow-wrap:anywhere; }
+.source-chain li { position:relative; padding:0 0 14px 20px; border-left:1px solid var(--line); margin-left:4px; font-size:13px; line-height:1.6; overflow-wrap:anywhere; }
 .source-chain li::before { content:""; position:absolute; left:-4px; top:7px; width:7px; height:7px; border-radius:50%; background:var(--muted); }
 .source-chain li:last-child { border-left-color:transparent; padding-bottom:0; color:var(--muted); }
 .source-chain a { font-weight:550; }
@@ -224,7 +227,7 @@ dd { margin:0; font-size:13px; line-height:1.6; overflow-wrap:anywhere; }
 </main>
 <dialog id="detail" aria-labelledby="detail-title">
 <div class="detail-head"><div class="detail-top"><div class="detail-identity"><h2 id="detail-title">Loading…</h2><button id="title-toggle" class="quiet" type="button" aria-expanded="false" aria-controls="detail-title" hidden>Full filename</button></div><button id="close-detail" class="outline" aria-label="Close details">Close ×</button></div><a id="saved-link" class="primary-link" target="_blank" rel="noopener noreferrer" hidden>Open saved file ↗</a></div>
-<div class="detail-secondary"><p id="detail-selected" hidden></p><div class="detail-actions"><a id="source-link" target="_blank" rel="noopener noreferrer" hidden>Open publisher copy ↗</a><button id="share" class="quiet" disabled>Copy review link</button><span id="share-status" role="status"></span></div></div>
+<div class="detail-secondary"><p id="detail-selected" hidden></p><div class="detail-actions"><a id="source-link" target="_blank" rel="noopener noreferrer" hidden>Open source URL ↗</a><button id="share" class="quiet" disabled>Copy review link</button><span id="share-status" role="status"></span></div></div>
 <section id="document-summary" class="inspector-section" aria-label="Document summary"></section>
 <section id="origin" class="inspector-section" aria-label="Where this file came from"></section>
 <section id="filename-findings" class="inspector-section" aria-label="Filename findings"></section>

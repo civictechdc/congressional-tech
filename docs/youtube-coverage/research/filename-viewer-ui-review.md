@@ -41,3 +41,14 @@ Visual checks cover desktop and phone results; primary and advanced filters; emp
 Regression tests cover exact preservation of original fields, source pairing, contradictory classifications, recovery labels, asynchronous selection, empty/error recovery, filter discoverability, and existing group-level saved-response semantics. Production publication and its live checks are recorded separately from local review evidence.
 
 The freshness check also detects recovery-status changes within the same catalog, so an open viewer can offer the updated status without waiting for a new catalog ID.
+
+
+## Follow-up mobile review — October 14, 2026
+
+Visual thesis: a quiet reading surface with the file identity, saved status, and source trail visible before optional evidence.
+
+Content plan: concise facts first, hearing and website relationships second, useful filename clues third, then raw fields. Empty findings and repeated publisher text become disclosures.
+
+Interaction thesis: retain the short drawer entrance and action hover feedback; use native disclosures for evidence, and let an expanded filename scroll away so it cannot monopolize a small screen. Reduced motion remains supported.
+
+The deployed 390px view still repeated the filename as subject text, placed several evidence controls after each source, and used verbose per-field notes. It also called unverified URLs a publisher copy and presented pending fetch state as if it were live. The follow-up removes the redundant summary heading, abbreviates routine evidence labels, consolidates source evidence into one disclosure, collapses filename analysis when it has no independent findings, and labels links and fetch state explicitly. Original field values and the proven hearing-to-file chain are retained.
