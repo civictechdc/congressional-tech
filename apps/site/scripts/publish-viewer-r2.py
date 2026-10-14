@@ -220,14 +220,13 @@ def upload(client, root, manifest, *, previous_etag, selected_etag, public_url=P
         client.upload_file(str(path), BUCKET, key, ExtraArgs={
             'ContentType': content_type, 'CacheControl': 'public, max-age=31536000, immutable',
             'Metadata': {'sha256': expected}})
-        # Read back actual bytes; multipart ETags are not content hashes.
-        response = client.get_object(Bucket=BUCKET, Key=key)
-        actual = hashlib.sha256()
-        with response['Body'] as stream:
-            while part := stream.read(8 * 1024 * 1024):
-                actual.update(part)
-        if response['ContentLength'] != path.stat().st_size or actual.hexdigest() != expected:
-            raise ValueError('Uploaded object failed readback: ' + name)
+        # Managed downloads retry interrupted ranges. Still verify every byte;
+        # multipart ETags are not content hashes.
+        with tempfile.TemporaryDirectory(prefix='viewer-readback-') as folder:
+            downloaded = Path(folder) / 'object'
+            client.download_file(BUCKET, key, str(downloaded))
+            if downloaded.stat().st_size != path.stat().st_size or digest(downloaded) != expected:
+                raise ValueError('Uploaded object failed readback: ' + name)
         if path.stat().st_size > 1_000_000:
             print(f'Verified {name}: {path.stat().st_size:,} bytes', flush=True)
         return path.stat().st_size

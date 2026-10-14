@@ -48,6 +48,10 @@ class Store:
     def upload_file(self, path, bucket, key, ExtraArgs):
         self.put_object(Bucket=bucket, Key=key, Body=Path(path).read_bytes())
 
+    def download_file(self, bucket, key, path):
+        with self.get_object(Bucket=bucket, Key=key)['Body'] as stream:
+            Path(path).write_bytes(stream.read())
+
 
 @pytest.fixture(scope='module')
 def prepared(tmp_path_factory):
@@ -76,6 +80,17 @@ def test_complete_upload_selects_only_after_readback_and_keeps_catalog_identity(
 def test_corrupt_readback_does_not_select_partial_publication(prepared, monkeypatch):
     store = Store(prepared[1]); store.corrupt = True
     with pytest.raises(ValueError, match='readback'):
+        publish(store, prepared, monkeypatch)
+    assert 'viewer-publications/manifest.json' not in store.data
+
+
+def test_interrupted_download_does_not_select_partial_publication(prepared, monkeypatch):
+    store = Store(prepared[1])
+    def interrupted(bucket, key, path):
+        Path(path).write_bytes(b'partial response')
+        raise OSError('connection lost')
+    monkeypatch.setattr(store, 'download_file', interrupted)
+    with pytest.raises(OSError, match='connection lost'):
         publish(store, prepared, monkeypatch)
     assert 'viewer-publications/manifest.json' not in store.data
 
