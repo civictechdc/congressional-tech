@@ -22,7 +22,7 @@ def accepted_rows(rows):
         if (value['original_url'] in seen or value['recovery_status'] != 'recovered'
                 or value['recovery_basis'] not in {'user_accepted_url_variant',
                     'verified_archive_capture', 'official_document_identifier'}
-                or value['kind'] not in ('pdf', 'html', 'xml')
+                or value['kind'] not in ('pdf', 'html', 'xml', 'doc', 'video')
                 or not re.fullmatch(r'bodies/sha256/[a-f0-9]{2}/[a-f0-9]{64}\.gz', value['body_key'])):
             raise ValueError('Invalid or duplicate accepted recovery.')
         seen.add(value['original_url'])

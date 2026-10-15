@@ -65,8 +65,10 @@ def test_recovery_basis_survives_publication(tmp_path, basis):
         accepted_rows([dict(accepted[0], recovery_basis='unverified_guess')])
 
 
-def test_future_publications_reindex_durable_acceptance(tmp_path, monkeypatch):
+@pytest.mark.parametrize('kind', ['pdf', 'doc', 'video'])
+def test_future_publications_reindex_durable_acceptance(tmp_path, monkeypatch, kind):
     accepted, manifest, _ = fixture(tmp_path)
+    accepted[0]['kind'] = kind
     monkeypatch.setattr(publisher, 'read_json', lambda client, key, **kw: ({'version': 1, 'recoveries': accepted}, 'etag', None) if key == ACCEPTED_KEY else None)
     stored = []
     monkeypatch.setattr(publisher, 'store_recovery_index', lambda client, value: stored.append(value) or {'path': 'recovery.json'})
