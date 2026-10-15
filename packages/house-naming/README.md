@@ -339,6 +339,22 @@ Exact reviewed mirror URLs can qualify an occurrence without extending the
 convention to every file on that mirror. The publisher does not identify the
 issuing committee, person, meeting, or completeness of a document.
 
+Catalog 3.1 adds reviewed House publisher layouts for memoranda, hearing charters,
+notices, witness lists, disclosures, opening statements, votes and amendments.
+Transportation's bounded `SSM` marker reads as a committee memorandum; Natural
+Resources' joined name/testimony/date layouts read as testimony. These rules
+preserve the literal `document_wording` span and require an allowed outer file
+extension. For example, a PDF filename can qualify while `hearing_memo.pdf.jpg`
+does not. The strict naming validator remains unchanged.
+
+These are filename hints, not body verification. The catalog's separate source
+reader can fill a missing kind from attributable publisher link labels and
+headings. It retains each occurrence and abstains when considered anchors disagree
+or contain unknown claims. A guessed URL variant cannot establish association;
+legacy anchors without association metadata require an exact known source URL.
+The October 2026 experiment records the body checks, replay totals and deferred
+patterns in `docs/experiments/filename-patterns-20261015/INTEGRATION.txt`.
+
 `parse_filename(..., source_url=...)` and `house-naming extract NAME --source-url
 URL` accept the same context. Supply the source of that particular occurrence;
 the reader does not discover provenance from a basename. The names-only corpus

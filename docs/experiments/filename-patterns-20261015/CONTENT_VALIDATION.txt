@@ -1,0 +1,47 @@
+Content validation continuation
+===============================
+
+Result: output/filename-patterns-20261015/content-validation-v1/report.html
+
+Three fresh filenames per candidate rule give 36 sample slots across 35 distinct
+documents. Add both conflicts and the excluded amendment-about-votes control for
+38 documents. The sample prioritizes publisher, candidate-status and marker
+diversity, using a deterministic SHA-256 order for ties. It excludes all examples
+shown in the original rule-review table. Body availability is checked only after
+the sample is frozen. This is a targeted diagnostic sample, not a precision test.
+
+Commands from the repository root:
+
+  .venv/bin/python docs/experiments/filename-patterns-20261015/content_validation.py prepare --output output/filename-patterns-20261015/content-validation-new
+  .venv/bin/python docs/experiments/filename-patterns-20261015/content_validation.py fetch --output output/filename-patterns-20261015/content-validation-new --account-id <configured-account-id>
+  .venv/bin/python docs/experiments/filename-patterns-20261015/content_validation.py publishers --output output/filename-patterns-20261015/content-validation-new
+
+Retained-object reads use the existing viewer adapter. The local Cloudflare
+credential can list the account but all 38 object reads were denied. These failures
+remain in retrieval.json/.jsonl. Publisher fallback makes bounded GET requests to
+the recorded source aliases. It keeps separate receipts and compares downloaded
+PDF hashes to the frozen retained-body hashes. Every downloaded PDF matched.
+No remote writes, catalog writes, publication, or production parser edits occurred.
+
+All 38 documents had their complete first page reviewed for document kind. Five
+scans used rendered page images; the two conflicts and three vote records also
+received image checks. The first resume page in the disclosure attachment was
+checked separately. This is not full-document factual verification or a finding
+that every page has the same kind. pdftotext and pdfinfo outputs are retained.
+
+content_adjudications.json records the manual findings for this exact sample.
+content_report.py joins those findings to document IDs and body digests, verifies
+all hashes and sample counts, and writes the review CSV, report and verification.
+It is intentionally tied to content-validation-v1; do not apply its positional
+annotations to a different sample. Run:
+
+  .venv/bin/python docs/experiments/filename-patterns-20261015/content_report.py
+
+Outcomes: 33 fresh candidate documents support the proposed kind; two support
+member remarks but not an explicitly established opening-statement subtype.
+Both conflicts are memoranda. The excluded vote-topic control is an amendment.
+All 12 rules have three new sample slots, but none is production-qualified.
+
+Before promotion, document primary-purpose classification for hybrid forms, decide
+the hearing-charter taxonomy, and validate broader publisher/layout scopes with
+random held-out examples and hard negatives. Keep unknowns and source conflicts.

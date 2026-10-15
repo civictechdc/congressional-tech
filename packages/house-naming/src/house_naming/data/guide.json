@@ -1,6 +1,6 @@
 {
   "id": "house-document-naming",
-  "catalog_version": "3.0.0",
+  "catalog_version": "3.1.0",
   "document": {
     "title": "Document Naming Conventions",
     "version": "1.2.1",
@@ -26998,6 +26998,633 @@
       "field_readings": {
         "document_abbreviation": {
           "category": "transcript"
+        }
+      }
+    },
+    {
+      "id": "publisher-house-memo",
+      "scope": "source-stem",
+      "priority": 0,
+      "scan_stage": "supplemental",
+      "pattern": "(?!(?:[a-f0-9]{64}\\.)?(?:HHRG|HMTG|HMKP|BILLS|CRPT)[ _-]).*?(?P<document_wording>(?:hearing|markup|briefing|background|committee|dem(?:ocratic)?)[\\s_.-]*memo(?:randum)?(?![a-z])|memo[\\s_.-]+(?:he|ep|ee|cat|cmt|oi|fc)(?![a-z])).*",
+      "source_hosts": [
+        "agriculture.house.gov",
+        "appropriations.house.gov",
+        "democrats-edworkforce.house.gov",
+        "democrats-energycommerce.house.gov",
+        "democrats-judiciary.house.gov",
+        "democrats-science.house.gov",
+        "edworkforce.house.gov",
+        "energycommerce.house.gov",
+        "financialservices.house.gov",
+        "judiciary.house.gov",
+        "naturalresources.house.gov",
+        "oversight.house.gov",
+        "oversightdemocrats.house.gov",
+        "republicans-science.house.gov",
+        "science.house.gov",
+        "smallbusiness.house.gov",
+        "transportation.house.gov",
+        "veterans.house.gov",
+        "waysandmeans.house.gov",
+        "www.agriculture.house.gov",
+        "www.appropriations.house.gov",
+        "www.democrats-edworkforce.house.gov",
+        "www.democrats-energycommerce.house.gov",
+        "www.democrats-judiciary.house.gov",
+        "www.democrats-science.house.gov",
+        "www.edworkforce.house.gov",
+        "www.energycommerce.house.gov",
+        "www.financialservices.house.gov",
+        "www.judiciary.house.gov",
+        "www.naturalresources.house.gov",
+        "www.oversight.house.gov",
+        "www.oversightdemocrats.house.gov",
+        "www.republicans-science.house.gov",
+        "www.science.house.gov",
+        "www.smallbusiness.house.gov",
+        "www.transportation.house.gov",
+        "www.veterans.house.gov",
+        "www.waysandmeans.house.gov"
+      ],
+      "source_extensions": [
+        "pdf",
+        "doc",
+        "docx",
+        "rtf",
+        "txt"
+      ],
+      "description": "Publisher-scoped literal layout reviewed against retained PDF contents in the October 2026 filename study. Preserve existing literal identifiers and dates; no speaker identity or body verification is inferred.",
+      "field_readings": {
+        "document_wording": {
+          "category": "committee-memorandum",
+          "note": "Publisher-qualified document-kind hint; original wording and span retained."
+        }
+      }
+    },
+    {
+      "id": "publisher-house-local-memo",
+      "scope": "source-stem",
+      "priority": 0,
+      "scan_stage": "supplemental",
+      "pattern": "(?!(?:[a-f0-9]{64}\\.)?(?:HHRG|HMTG|HMKP|BILLS|CRPT)[ _-]).*?(?P<document_wording>(?<![a-z])(?:fl|emr|iana|iiana|wpo|fc|cm|mpt|fi|oi|hi)[\\s_.-]*(?:hearing|hrg)?[\\s_.-]*memo|hrg[\\s_.-]*memo|hearingmemo).*",
+      "source_hosts": [
+        "financialservices.house.gov",
+        "naturalresources.house.gov",
+        "smallbusiness.house.gov",
+        "www.financialservices.house.gov",
+        "www.naturalresources.house.gov",
+        "www.smallbusiness.house.gov"
+      ],
+      "source_extensions": [
+        "pdf",
+        "doc",
+        "docx",
+        "rtf",
+        "txt"
+      ],
+      "description": "Publisher-scoped literal layout reviewed against retained PDF contents in the October 2026 filename study. Preserve existing literal identifiers and dates; no speaker identity or body verification is inferred.",
+      "field_readings": {
+        "document_wording": {
+          "category": "committee-memorandum",
+          "note": "Publisher-qualified document-kind hint; original wording and span retained."
+        }
+      }
+    },
+    {
+      "id": "publisher-house-charter",
+      "scope": "source-stem",
+      "priority": 0,
+      "scan_stage": "supplemental",
+      "pattern": "(?!(?:[a-f0-9]{64}\\.)?(?:HHRG|HMTG|HMKP|BILLS|CRPT)[ _-]).*?(?P<document_wording>(?<![a-z])charter(?![a-z])).*",
+      "source_hosts": [
+        "democrats-science.house.gov",
+        "republicans-science.house.gov",
+        "science.house.gov",
+        "www.democrats-science.house.gov",
+        "www.republicans-science.house.gov",
+        "www.science.house.gov"
+      ],
+      "source_extensions": [
+        "pdf",
+        "doc",
+        "docx",
+        "rtf",
+        "txt"
+      ],
+      "description": "Publisher-scoped literal layout reviewed against retained PDF contents in the October 2026 filename study. Preserve existing literal identifiers and dates; no speaker identity or body verification is inferred.",
+      "field_readings": {
+        "document_wording": {
+          "category": "hearing-charter",
+          "note": "Publisher-qualified document-kind hint; original wording and span retained."
+        }
+      }
+    },
+    {
+      "id": "publisher-house-notice",
+      "scope": "source-stem",
+      "priority": 0,
+      "scan_stage": "supplemental",
+      "pattern": "(?!(?:[a-f0-9]{64}\\.)?(?:HHRG|HMTG|HMKP|BILLS|CRPT)[ _-]).*?(?P<document_wording>(?:hearing|hrg|hrng|markup)[\\s_.-]*(?:notice|ntc)(?![a-z])).*",
+      "source_hosts": [
+        "agriculture.house.gov",
+        "appropriations.house.gov",
+        "democrats-edworkforce.house.gov",
+        "democrats-energycommerce.house.gov",
+        "democrats-judiciary.house.gov",
+        "democrats-science.house.gov",
+        "edworkforce.house.gov",
+        "energycommerce.house.gov",
+        "financialservices.house.gov",
+        "judiciary.house.gov",
+        "naturalresources.house.gov",
+        "oversight.house.gov",
+        "oversightdemocrats.house.gov",
+        "republicans-science.house.gov",
+        "science.house.gov",
+        "smallbusiness.house.gov",
+        "transportation.house.gov",
+        "veterans.house.gov",
+        "waysandmeans.house.gov",
+        "www.agriculture.house.gov",
+        "www.appropriations.house.gov",
+        "www.democrats-edworkforce.house.gov",
+        "www.democrats-energycommerce.house.gov",
+        "www.democrats-judiciary.house.gov",
+        "www.democrats-science.house.gov",
+        "www.edworkforce.house.gov",
+        "www.energycommerce.house.gov",
+        "www.financialservices.house.gov",
+        "www.judiciary.house.gov",
+        "www.naturalresources.house.gov",
+        "www.oversight.house.gov",
+        "www.oversightdemocrats.house.gov",
+        "www.republicans-science.house.gov",
+        "www.science.house.gov",
+        "www.smallbusiness.house.gov",
+        "www.transportation.house.gov",
+        "www.veterans.house.gov",
+        "www.waysandmeans.house.gov"
+      ],
+      "source_extensions": [
+        "pdf",
+        "doc",
+        "docx",
+        "rtf",
+        "txt"
+      ],
+      "description": "Publisher-scoped literal layout reviewed against retained PDF contents in the October 2026 filename study. Preserve existing literal identifiers and dates; no speaker identity or body verification is inferred.",
+      "field_readings": {
+        "document_wording": {
+          "category": "meeting-notice",
+          "note": "Publisher-qualified document-kind hint; original wording and span retained."
+        }
+      }
+    },
+    {
+      "id": "publisher-house-advisory",
+      "scope": "source-stem",
+      "priority": 0,
+      "scan_stage": "supplemental",
+      "pattern": "(?!(?:[a-f0-9]{64}\\.)?(?:HHRG|HMTG|HMKP|BILLS|CRPT)[ _-]).*?(?P<document_wording>(?<![a-z])advisory(?![a-z])).*",
+      "source_hosts": [
+        "waysandmeans.house.gov",
+        "www.waysandmeans.house.gov"
+      ],
+      "source_extensions": [
+        "pdf",
+        "doc",
+        "docx",
+        "rtf",
+        "txt"
+      ],
+      "description": "Publisher-scoped literal layout reviewed against retained PDF contents in the October 2026 filename study. Preserve existing literal identifiers and dates; no speaker identity or body verification is inferred.",
+      "field_readings": {
+        "document_wording": {
+          "category": "meeting-notice",
+          "note": "Publisher-qualified document-kind hint; original wording and span retained."
+        }
+      }
+    },
+    {
+      "id": "publisher-house-witness-list",
+      "scope": "source-stem",
+      "priority": 0,
+      "scan_stage": "supplemental",
+      "pattern": "(?!(?:[a-f0-9]{64}\\.)?(?:HHRG|HMTG|HMKP|BILLS|CRPT)[ _-]).*?(?P<document_wording>(?:witness[\\s_.-]*list|wtns[\\s_.-]*l(?:is)?s?t)(?=update|revised|[^a-z]|$)).*",
+      "source_hosts": [
+        "agriculture.house.gov",
+        "appropriations.house.gov",
+        "democrats-edworkforce.house.gov",
+        "democrats-energycommerce.house.gov",
+        "democrats-judiciary.house.gov",
+        "democrats-science.house.gov",
+        "edworkforce.house.gov",
+        "energycommerce.house.gov",
+        "financialservices.house.gov",
+        "judiciary.house.gov",
+        "naturalresources.house.gov",
+        "oversight.house.gov",
+        "oversightdemocrats.house.gov",
+        "republicans-science.house.gov",
+        "science.house.gov",
+        "smallbusiness.house.gov",
+        "transportation.house.gov",
+        "veterans.house.gov",
+        "waysandmeans.house.gov",
+        "www.agriculture.house.gov",
+        "www.appropriations.house.gov",
+        "www.democrats-edworkforce.house.gov",
+        "www.democrats-energycommerce.house.gov",
+        "www.democrats-judiciary.house.gov",
+        "www.democrats-science.house.gov",
+        "www.edworkforce.house.gov",
+        "www.energycommerce.house.gov",
+        "www.financialservices.house.gov",
+        "www.judiciary.house.gov",
+        "www.naturalresources.house.gov",
+        "www.oversight.house.gov",
+        "www.oversightdemocrats.house.gov",
+        "www.republicans-science.house.gov",
+        "www.science.house.gov",
+        "www.smallbusiness.house.gov",
+        "www.transportation.house.gov",
+        "www.veterans.house.gov",
+        "www.waysandmeans.house.gov"
+      ],
+      "source_extensions": [
+        "pdf",
+        "doc",
+        "docx",
+        "rtf",
+        "txt"
+      ],
+      "description": "Publisher-scoped literal layout reviewed against retained PDF contents in the October 2026 filename study. Preserve existing literal identifiers and dates; no speaker identity or body verification is inferred.",
+      "field_readings": {
+        "document_wording": {
+          "category": "witness-list",
+          "note": "Publisher-qualified document-kind hint; original wording and span retained."
+        }
+      }
+    },
+    {
+      "id": "publisher-house-disclosure",
+      "scope": "source-stem",
+      "priority": 0,
+      "scan_stage": "supplemental",
+      "pattern": "(?!(?:[a-f0-9]{64}\\.)?(?:HHRG|HMTG|HMKP|BILLS|CRPT)[ _-])(?!.*(?:whistle[\\s_.-]*blower|protected[\\s_.-]*disclosure|financial[\\s_.-]*disclosure|6103)).*?(?P<document_wording>disclosure|(?<![a-z])ttf(?![a-z])|truth[\\s_.-]+in[\\s_.-]+(?:testimony|testifying)).*",
+      "source_hosts": [
+        "appropriations.house.gov",
+        "democrats-edworkforce.house.gov",
+        "democrats-science.house.gov",
+        "edworkforce.house.gov",
+        "naturalresources.house.gov",
+        "republicans-science.house.gov",
+        "science.house.gov",
+        "smallbusiness.house.gov",
+        "waysandmeans.house.gov",
+        "www.appropriations.house.gov",
+        "www.democrats-edworkforce.house.gov",
+        "www.democrats-science.house.gov",
+        "www.edworkforce.house.gov",
+        "www.naturalresources.house.gov",
+        "www.republicans-science.house.gov",
+        "www.science.house.gov",
+        "www.smallbusiness.house.gov",
+        "www.waysandmeans.house.gov"
+      ],
+      "source_extensions": [
+        "pdf",
+        "doc",
+        "docx",
+        "rtf",
+        "txt"
+      ],
+      "description": "Publisher-scoped literal layout reviewed against retained PDF contents in the October 2026 filename study. Preserve existing literal identifiers and dates; no speaker identity or body verification is inferred.",
+      "field_readings": {
+        "document_wording": {
+          "category": "testimony-disclosure",
+          "note": "Publisher-qualified document-kind hint; original wording and span retained."
+        }
+      }
+    },
+    {
+      "id": "publisher-house-malformed-ttf",
+      "scope": "source-stem",
+      "priority": 0,
+      "scan_stage": "supplemental",
+      "pattern": ".*?(?P<document_wording>HHRG[\\s_.-]*\\d{3}[\\s_.-]*(?:[A-Z]{2}\\d{0,2}[\\s_.-]*){1,2}TTF(?![a-z])).*",
+      "source_hosts": [
+        "democrats-science.house.gov",
+        "financialservices.house.gov",
+        "republicans-science.house.gov",
+        "science.house.gov",
+        "www.democrats-science.house.gov",
+        "www.financialservices.house.gov",
+        "www.republicans-science.house.gov",
+        "www.science.house.gov"
+      ],
+      "source_extensions": [
+        "pdf",
+        "doc",
+        "docx",
+        "rtf",
+        "txt"
+      ],
+      "description": "Publisher-scoped literal layout reviewed against retained PDF contents in the October 2026 filename study. Preserve existing literal identifiers and dates; no speaker identity or body verification is inferred.",
+      "field_readings": {
+        "document_wording": {
+          "category": "testimony-disclosure",
+          "note": "Publisher-qualified document-kind hint; original wording and span retained."
+        }
+      }
+    },
+    {
+      "id": "publisher-house-opening",
+      "scope": "source-stem",
+      "priority": 0,
+      "scan_stage": "supplemental",
+      "pattern": "(?!(?:[a-f0-9]{64}\\.)?(?:HHRG|HMTG|HMKP|BILLS|CRPT)[ _-]).*?(?P<document_wording>opening[\\s_.-]*(?:statement|state|stat|stmt)|(?<![a-z])(?:br|fp|dd|gg|eec)[\\s_.-]+opening(?![a-z])|(?<![a-z])opening[\\s_.-]+(?:ep|he|oi|cat|cmt|dccp)(?![a-z])).*",
+      "source_hosts": [
+        "agriculture.house.gov",
+        "appropriations.house.gov",
+        "democrats-edworkforce.house.gov",
+        "democrats-energycommerce.house.gov",
+        "democrats-judiciary.house.gov",
+        "democrats-science.house.gov",
+        "edworkforce.house.gov",
+        "energycommerce.house.gov",
+        "financialservices.house.gov",
+        "judiciary.house.gov",
+        "naturalresources.house.gov",
+        "oversight.house.gov",
+        "oversightdemocrats.house.gov",
+        "republicans-science.house.gov",
+        "science.house.gov",
+        "smallbusiness.house.gov",
+        "transportation.house.gov",
+        "veterans.house.gov",
+        "waysandmeans.house.gov",
+        "www.agriculture.house.gov",
+        "www.appropriations.house.gov",
+        "www.democrats-edworkforce.house.gov",
+        "www.democrats-energycommerce.house.gov",
+        "www.democrats-judiciary.house.gov",
+        "www.democrats-science.house.gov",
+        "www.edworkforce.house.gov",
+        "www.energycommerce.house.gov",
+        "www.financialservices.house.gov",
+        "www.judiciary.house.gov",
+        "www.naturalresources.house.gov",
+        "www.oversight.house.gov",
+        "www.oversightdemocrats.house.gov",
+        "www.republicans-science.house.gov",
+        "www.science.house.gov",
+        "www.smallbusiness.house.gov",
+        "www.transportation.house.gov",
+        "www.veterans.house.gov",
+        "www.waysandmeans.house.gov"
+      ],
+      "source_extensions": [
+        "pdf",
+        "doc",
+        "docx",
+        "rtf",
+        "txt"
+      ],
+      "description": "Publisher-scoped literal layout reviewed against retained PDF contents in the October 2026 filename study. Preserve existing literal identifiers and dates; no speaker identity or body verification is inferred.",
+      "field_readings": {
+        "document_wording": {
+          "category": "opening-statement",
+          "note": "Publisher-qualified document-kind hint; original wording and span retained."
+        }
+      }
+    },
+    {
+      "id": "publisher-house-resources-opening",
+      "scope": "source-stem",
+      "priority": 0,
+      "scan_stage": "supplemental",
+      "pattern": "(?!(?:[a-f0-9]{64}\\.)?(?:HHRG|HMTG|HMKP|BILLS|CRPT)[ _-]).*?(?P<document_wording>(?:lamborn|fleming|hastings|bishop|young|mcclintock|chairmanhastings|chairman)opening(?:stat)?).*",
+      "source_hosts": [
+        "naturalresources.house.gov",
+        "www.naturalresources.house.gov"
+      ],
+      "source_extensions": [
+        "pdf",
+        "doc",
+        "docx",
+        "rtf",
+        "txt"
+      ],
+      "description": "Publisher-scoped literal layout reviewed against retained PDF contents in the October 2026 filename study. Preserve existing literal identifiers and dates; no speaker identity or body verification is inferred.",
+      "field_readings": {
+        "document_wording": {
+          "category": "opening-statement",
+          "note": "Publisher-qualified document-kind hint; original wording and span retained."
+        }
+      }
+    },
+    {
+      "id": "publisher-house-vote",
+      "scope": "source-stem",
+      "priority": 0,
+      "scan_stage": "supplemental",
+      "pattern": "(?!(?:[a-f0-9]{64}\\.)?(?:HHRG|HMTG|HMKP|BILLS|CRPT)[ _-])(?!.*(?:(?:amendment|amndt|amend|amdt)[\\s_.-]+.*?(?:on|to|regarding|about)[\\s_.-]+(?:recorded[\\s_.-]*votes?|roll[\\s_.-]*calls?))).*?(?P<document_wording>(?<![a-z])(?:rcv?[\\s_.-]*\\d+|record(?:ed)?[\\s_.-]*votes?|roll[\\s_.-]*call|vote[\\s_.-]*(?:record|sheet)|voting[\\s_.-]*record)).*",
+      "source_hosts": [
+        "agriculture.house.gov",
+        "appropriations.house.gov",
+        "democrats-edworkforce.house.gov",
+        "democrats-energycommerce.house.gov",
+        "democrats-judiciary.house.gov",
+        "democrats-science.house.gov",
+        "edworkforce.house.gov",
+        "energycommerce.house.gov",
+        "financialservices.house.gov",
+        "judiciary.house.gov",
+        "naturalresources.house.gov",
+        "oversight.house.gov",
+        "oversightdemocrats.house.gov",
+        "republicans-science.house.gov",
+        "science.house.gov",
+        "smallbusiness.house.gov",
+        "transportation.house.gov",
+        "veterans.house.gov",
+        "waysandmeans.house.gov",
+        "www.agriculture.house.gov",
+        "www.appropriations.house.gov",
+        "www.democrats-edworkforce.house.gov",
+        "www.democrats-energycommerce.house.gov",
+        "www.democrats-judiciary.house.gov",
+        "www.democrats-science.house.gov",
+        "www.edworkforce.house.gov",
+        "www.energycommerce.house.gov",
+        "www.financialservices.house.gov",
+        "www.judiciary.house.gov",
+        "www.naturalresources.house.gov",
+        "www.oversight.house.gov",
+        "www.oversightdemocrats.house.gov",
+        "www.republicans-science.house.gov",
+        "www.science.house.gov",
+        "www.smallbusiness.house.gov",
+        "www.transportation.house.gov",
+        "www.veterans.house.gov",
+        "www.waysandmeans.house.gov"
+      ],
+      "source_extensions": [
+        "pdf",
+        "doc",
+        "docx",
+        "rtf",
+        "txt"
+      ],
+      "description": "Publisher-scoped literal layout reviewed against retained PDF contents in the October 2026 filename study. Preserve existing literal identifiers and dates; no speaker identity or body verification is inferred.",
+      "field_readings": {
+        "document_wording": {
+          "category": "committee-vote",
+          "note": "Publisher-qualified document-kind hint; original wording and span retained."
+        }
+      }
+    },
+    {
+      "id": "publisher-house-amendment",
+      "scope": "source-stem",
+      "priority": 0,
+      "scan_stage": "supplemental",
+      "pattern": "(?!(?:[a-f0-9]{64}\\.)?(?:HHRG|HMTG|HMKP|BILLS|CRPT)[ _-])(?!.*(?:(?<![a-z])(?:rcv?[\\s_.-]*\\d+|record(?:ed)?[\\s_.-]*votes?|roll[\\s_.-]*call|vote[\\s_.-]*(?:record|sheet)|voting[\\s_.-]*record)))(?!.*(?:(?<![a-z])(?:vote|votes|voting|roster|list|memo|notice|summary|description|report|opening|testimony)(?![a-z]))).*?(?P<document_wording>(?<![a-z])amendment(?![a-z])|(?<![a-z])amend[\\s_.-]*\\d+|(?<![a-z])amdt(?![a-z]).*?(?<![a-z])text(?![a-z])).*",
+      "source_hosts": [
+        "agriculture.house.gov",
+        "appropriations.house.gov",
+        "democrats-edworkforce.house.gov",
+        "democrats-energycommerce.house.gov",
+        "democrats-judiciary.house.gov",
+        "democrats-science.house.gov",
+        "edworkforce.house.gov",
+        "energycommerce.house.gov",
+        "financialservices.house.gov",
+        "judiciary.house.gov",
+        "naturalresources.house.gov",
+        "oversight.house.gov",
+        "oversightdemocrats.house.gov",
+        "republicans-science.house.gov",
+        "science.house.gov",
+        "smallbusiness.house.gov",
+        "transportation.house.gov",
+        "veterans.house.gov",
+        "waysandmeans.house.gov",
+        "www.agriculture.house.gov",
+        "www.appropriations.house.gov",
+        "www.democrats-edworkforce.house.gov",
+        "www.democrats-energycommerce.house.gov",
+        "www.democrats-judiciary.house.gov",
+        "www.democrats-science.house.gov",
+        "www.edworkforce.house.gov",
+        "www.energycommerce.house.gov",
+        "www.financialservices.house.gov",
+        "www.judiciary.house.gov",
+        "www.naturalresources.house.gov",
+        "www.oversight.house.gov",
+        "www.oversightdemocrats.house.gov",
+        "www.republicans-science.house.gov",
+        "www.science.house.gov",
+        "www.smallbusiness.house.gov",
+        "www.transportation.house.gov",
+        "www.veterans.house.gov",
+        "www.waysandmeans.house.gov"
+      ],
+      "source_extensions": [
+        "pdf",
+        "doc",
+        "docx",
+        "rtf",
+        "txt"
+      ],
+      "description": "Publisher-scoped literal layout reviewed against retained PDF contents in the October 2026 filename study. Preserve existing literal identifiers and dates; no speaker identity or body verification is inferred.",
+      "field_readings": {
+        "document_wording": {
+          "category": "amendment",
+          "note": "Publisher-qualified document-kind hint; original wording and span retained."
+        }
+      }
+    },
+    {
+      "id": "publisher-house-transportation-ssm",
+      "scope": "source-stem",
+      "priority": 0,
+      "scan_stage": "supplemental",
+      "pattern": "(?!(?:[a-f0-9]{64}\\.)?(?:HHRG|HMTG|HMKP|BILLS|CRPT)[ _-])(?!.*addendum).*?(?P<document_wording>(?<![a-z])ssm(?![a-z])).*",
+      "source_hosts": [
+        "archives113-transportation.house.gov",
+        "democrats-transportation.house.gov",
+        "transportation.house.gov",
+        "www.archives113-transportation.house.gov",
+        "www.democrats-transportation.house.gov",
+        "www.transportation.house.gov"
+      ],
+      "source_extensions": [
+        "pdf",
+        "doc",
+        "docx",
+        "rtf",
+        "txt"
+      ],
+      "description": "Publisher-scoped literal layout reviewed against retained PDF contents in the October 2026 filename study. Preserve existing literal identifiers and dates; no speaker identity or body verification is inferred.",
+      "field_readings": {
+        "document_wording": {
+          "category": "committee-memorandum",
+          "note": "Publisher-qualified document-kind hint; original wording and span retained."
+        }
+      }
+    },
+    {
+      "id": "publisher-house-financial-meeting-memo",
+      "scope": "source-stem",
+      "priority": 0,
+      "scan_stage": "supplemental",
+      "pattern": "\\d[\\d._-]{5,10}[_.-]+(?P<document_wording>(?:(?:fc|tf|housing|meeting|markup)[_.-]+)+memo)",
+      "source_hosts": [
+        "democrats-financialservices.house.gov",
+        "financialservices.house.gov",
+        "www.democrats-financialservices.house.gov",
+        "www.financialservices.house.gov"
+      ],
+      "source_extensions": [
+        "pdf",
+        "doc",
+        "docx",
+        "rtf",
+        "txt"
+      ],
+      "description": "Publisher-scoped literal layout reviewed against retained PDF contents in the October 2026 filename study. Preserve existing literal identifiers and dates; no speaker identity or body verification is inferred.",
+      "field_readings": {
+        "document_wording": {
+          "category": "committee-memorandum",
+          "note": "Publisher-qualified document-kind hint; original wording and span retained."
+        }
+      }
+    },
+    {
+      "id": "publisher-house-resources-joined-testimony",
+      "scope": "source-stem",
+      "priority": 0,
+      "scan_stage": "supplemental",
+      "pattern": "(?P<document_wording>(?:\\d[\\d_.-]*testimony[a-z]+|[a-z]+testimony[\\d_.-]+))",
+      "source_hosts": [
+        "naturalresources.house.gov",
+        "www.naturalresources.house.gov"
+      ],
+      "source_extensions": [
+        "pdf",
+        "doc",
+        "docx",
+        "rtf",
+        "txt"
+      ],
+      "description": "Publisher-scoped literal layout reviewed against retained PDF contents in the October 2026 filename study. Preserve existing literal identifiers and dates; no speaker identity or body verification is inferred.",
+      "field_readings": {
+        "document_wording": {
+          "category": "testimony",
+          "note": "Publisher-qualified document-kind hint; original wording and span retained."
         }
       }
     }

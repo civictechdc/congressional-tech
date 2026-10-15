@@ -1,0 +1,18 @@
+annotated-types==0.8.0
+attrs==26.1.0
+cloudpickle==3.1.2
+-e file:///Users/mikewolfd/Work/congressional-tech/packages/house-naming
+joblib==1.6.0
+jsonschema==4.26.0
+jsonschema-specifications==2025.9.1
+numpy==2.5.4
+pyarrow==21.0.0
+pydantic==2.14.1
+pydantic-core==2.50.1
+referencing==0.37.0
+rpds-py==2026.9.1
+scikit-learn==1.7.2
+scipy==1.18.1
+threadpoolctl==3.7.0
+typing-extensions==4.16.0
+typing-inspection==0.4.4

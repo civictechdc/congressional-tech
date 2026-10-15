@@ -1,0 +1,64 @@
+Filename pattern discovery — October 15, 2026
+
+Open the completed report:
+  output/filename-patterns-20261015/report.html
+
+The report is standalone HTML. CSV and JSON download links expect the files
+beside it. A local viewer is also available at http://127.0.0.1:8797/report.html
+while its server is running.
+
+Working directory:
+  /Users/mikewolfd/Work/congressional-tech
+
+Runtime:
+  .cache/filename-pattern-nlp-venv/bin/python
+  Exact installed distributions are recorded in requirements.lock. The editable
+  house-naming package points to this checkout. No production environment was changed.
+
+Frozen inputs:
+  input-manifest.json identifies and hashes the selected Parquet pair.
+  public-pointer.json records the public release selection read for this run.
+  output/filename-patterns-20261015/documents.parquet retains original selected
+  records, including source_occurrences. source-status.json records whether any
+  alias meets the published viewer's saved-response policy.
+  The source-role and saved-response helpers came from the release-producing
+  viewer-retained-sync worktree, identified explicitly in extract.py.
+
+Commands:
+  .venv/bin/python docs/experiments/filename-patterns-20261015/extract.py
+  .cache/filename-pattern-nlp-venv/bin/python docs/experiments/filename-patterns-20261015/analyze.py
+  .cache/filename-pattern-nlp-venv/bin/python docs/experiments/filename-patterns-20261015/report.py
+  .cache/filename-pattern-nlp-venv/bin/python docs/experiments/filename-patterns-20261015/verify.py
+
+Extraction deliberately refuses to overwrite frozen inputs. To perform a new
+experiment, choose a new output directory and preserve this run. Analysis and
+report generation can replay the frozen inputs; copy outputs first if comparing
+settings. reviews.json contains assistant judgments, not model-generated gold labels.
+
+Outputs:
+  ranked-groups.csv — all descriptive groups across the three methods.
+  filename-assignments.csv — every distinct filename and primary disposition.
+  filename-records.jsonl — original name, catalog document IDs, formats, example
+    source URLs and labels, and analysis-only normalized text.
+  templates.json / similarity-groups.json / hdbscan-groups.json — full memberships.
+  reviewed-groups.json — 25 sampled group reviews, including boundary examples.
+  tail-review-sample.json — ten deterministic ungrouped filename examples.
+  neighbors.npz / hdbscan-labels.json — raw model outputs.
+  stats.json / verification.json — results, checks, runtime, and artifact hashes.
+
+Scope and interpretation:
+  No additional filter was available to reproduce the estimate of 7,500. The
+  frozen selection covers all named unclassified document groups, with captions,
+  generic names, and missing filenames explicitly accounted for. Current catalog
+  record-role assignments can themselves need review (for example, meeting XML).
+  Group counts are discovery coverage, not classification accuracy. There is no
+  held-out label evaluation because no automatic classification rule was adopted.
+
+Execution notes:
+  The first generic urllib request was rejected with HTTP 403. The maintained
+  publisher User-Agent succeeded; no security or authentication setting changed.
+  Initial report and verification runs were interrupted after repeated NPZ
+  decompression was identified. The helpers now load arrays once. Analysis results
+  were unchanged; the interrupted verification log is retained. The first browser
+  visit returned 404 while the report was still being generated, then succeeded
+  after generation. No catalog records, published kinds, or remote state changed.

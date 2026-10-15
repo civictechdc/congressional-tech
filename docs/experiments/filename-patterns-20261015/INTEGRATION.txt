@@ -1,0 +1,131 @@
+Document-kind hints integrated locally — October 15, 2026
+========================================================
+
+Result
+------
+The maintained readers assign kinds to 9,427 previously unclassified document
+groups, covering 9,410 distinct filenames. Filename and publisher rules supply
+6,142 assignments; attributable source context supplies 3,285. The replay resolves
+28.1% of the 33,548 records admitted by this experiment's document-role gate.
+This is an 80/20 pass over usable hints, not 80% resolution of every unknown.
+
+All 657,103 frozen IDs are conserved. The 623,555 records flagged for role review
+are separate from the 24,121 eligible unresolved records. These include 464,498
+media/image records, 143,422 meeting/package XML records, 15,553 HTML records,
+45 event/index endpoints and 37 archives. A role flag is not a deletion decision.
+
+The local code is integrated and tested. No production catalog was rebuilt or
+published. The original full catalog parquet is no longer present locally, so
+this report does not claim coverage of unnamed records or the full catalog.
+
+Implementation
+--------------
+house-naming catalog 3.1.0 adds 15 publisher-qualified literal filename layouts.
+They retain wording spans, dates, identifiers and strict validation behavior.
+Allowed outer extensions prevent a name such as hearing_memo.pdf.jpg from taking
+a new document kind. Existing official naming slots are not repurposed.
+
+The index reader calls document_label_kind only as a missing-kind fallback.
+Existing filename, content and typed-source meanings retain their precedence.
+The fallback considers source_occurrences, never an unpaired flat label union.
+It requires official House/Senate publisher pages and attributable anchor links;
+legacy anchors without association-basis metadata must match an exact known
+source URL. Unknown or disagreeing considered claims abstain. User-accepted URL
+variants do not prove the associated page label describes the fetched document.
+Source-derived kinds are cleared and recomputed during cached source refresh.
+
+Primary-kind convention: describe purpose. A hearing notice can be formatted as
+a memorandum; an opening statement can appear in a press release; a witness list
+can contain an agenda. Keep the underlying wording and source claims. The new
+hearing-charter kind identifies explicitly titled charter documents. Filename
+inference never asserts that a particular matched body was reviewed.
+
+Evidence
+--------
+The complete original grouping CSV has 6,753 rows, with three sample slots where
+possible and two for small groups. Its SHA-256 is
+9a323c4256fc4975e5f518f40efbd0836a2b57028f8c5c2533bd844b6d0da37b.
+Similarity groups were used for discovery, never as classification labels.
+
+The earlier 38-document check supported 33 fresh rule examples, resolved two
+misleading source-label conflicts to memoranda, confirmed one vote-topic amendment
+exclusion, and left two conference OS opening subtypes unconfirmed. The latter
+shorthand was not promoted.
+
+The integration check selected 61 fresh documents across 23 kind/evidence-source
+strata before checking download availability. All 61 match retained hashes and
+support their assigned kinds. Three opening-statement subtypes depend on explicit
+publisher labels; their PDF first pages confirm member statements, not the subtype.
+
+The final residual check selected three documents per seven proposed conventions.
+18 retrieved PDFs match retained hashes and support six promoted patterns. Three
+joint-committee MState URLs returned 404; that candidate family was not promoted.
+There was no replacement sampling to hide unavailable documents.
+
+Content review covers the complete first page of each retrieved PDF, plus the
+specific additional pages recorded in the adjudications. Scans were viewed as
+images. This is document-kind checking, not full-document factual verification.
+Small stratified and purposeful samples do not establish population precision.
+
+Verification
+------------
+4,561 house-naming tests and 517 selected catalog tests pass. New tests cover
+positive layouts, source scope, literal spans, unchanged strict parsing, ambiguous
+topic words, media extensions, conflicting anchors, unproven associations and
+actual paired-table writes with cached source-context refresh.
+
+The first focused integration tests failed before implementation. The final
+residual fixtures likewise gave 12 failures before the added rules, then 70
+focused tests passed. The full final suites ran after the maintained code changes.
+
+integration_audit.py replays the actual retained-file wrapper and fill_document_kind
+on every eligible frozen record, considers its recorded URL aliases, checks ID
+conservation and hashes the unchanged input. integration_report.py independently
+joins every result to the baseline, checks current reader fingerprints/source
+hashes, verifies every retrieved PDF digest and checks the final test logs.
+
+Reproduce the maintained-reader replay from the repository root:
+
+  PYTHONPATH=packages/house-naming/src:packages/congress_api/src .venv/bin/python docs/experiments/filename-patterns-20261015/integration_audit.py output/filename-patterns-20261015/integration-new
+
+Use a new output directory. To reverify the recorded final v3 run and reports:
+
+  PYTHONPATH=packages/house-naming/src:packages/congress_api/src .venv/bin/python docs/experiments/filename-patterns-20261015/integration_report.py
+
+Reviewable outputs under output/filename-patterns-20261015:
+  integration-v3/report.html — results, evidence and links
+  integration-v3/classifications.csv — all 9,427 assignments with provenance
+  integration-v3/results.jsonl.gz — every frozen ID and outcome
+  integration-v3/verification.json — conservation, tests and residual counts
+  integration-v3/remaining-sample.csv — deterministic 100-record PDF sample
+  integration-content-v1/adjudications.csv — all 61 fresh content checks
+  residual-content-v1/adjudications.csv — all 21 final sample outcomes
+  content-validation-v1/report.html — earlier 38-document review
+
+Stopping decision and path forward
+---------------------------------
+The prior integrated pass found 9,180 assignments. The last bounded extension
+adds 247, a 2.7% increase; it changes no previously assigned kinds. Inspection of
+all 100 filenames and available labels in the deterministic remaining-PDF sample
+shows many surname/date/number filenames, generic labels and uncertain associations.
+
+Of 829 remaining records with recognized source-label hints, 802 have a known
+hint attached through an unproven URL variant. Recover exact page-to-document
+associations before using those labels. This count is diagnostic, not a claim
+that all 802 would classify after recovery; other occurrences may still disagree.
+
+There are 13,825 unresolved PDF-format records and 9,724 XML-format records.
+The remaining broad filename searches include 358 amendment-like names, 183
+malformed statement slots, 123 opening-like names, 97 vote-like names, 80 memo-like
+names, 68 testimony-like names and one SSM addendum. These overlap and include
+topic mentions, other document forms and ambiguous publisher conventions.
+
+Keep these deferred rather than treating every matching word as the document's
+kind. Follow-up work can combine body/title extraction, verified source recovery,
+and native publisher formats: for example, 42 PLAW names and 168 abbreviated bill
+PDF names remain recognizable leads. The 655 numbered hearing-like PDF names
+need publisher/content qualification. Science WState filenames can describe
+members, so that malformed slot must not automatically imply witness role.
+
+This completes the high-yield hint pass. Full retained-source rebuilding,
+publication and the broader content-classification phase remain separate work.
