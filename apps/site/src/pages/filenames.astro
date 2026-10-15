@@ -9,6 +9,7 @@ if (!css || !body) throw new Error('Filename viewer template is missing its styl
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href={`${import.meta.env.BASE_URL}/favicon.svg`} />
     <title>Document filenames · Congressional Tech</title>
     <meta name="description" content="Review filename classifications, publisher provenance, and saved-response coverage across the congressional document archive." />
     <style is:global set:html={css}></style>

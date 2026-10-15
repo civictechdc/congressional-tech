@@ -252,7 +252,7 @@ test('unsaved API identity and comparison do not claim missing format or content
   const {dom,get}=await app(async()=>({ok:true,json:async()=>unsaved}));
   try {
     assert.equal(get('detail-title').textContent,unsaved.api_reference.title);
-    assert.equal(get('source-link').textContent,'Open API record ↗');
+    assert.equal(get('source-link').firstElementChild.textContent,'Open API record ↗');
     assert.match(get('document-summary').textContent,/FormatUnknown/);
     assert.doesNotMatch(get('document-summary').textContent,/inferred from filename|recognizable type/);
     assert.match(get('filename-findings').textContent,/Literal URL-derived filename: 1/);
@@ -315,11 +315,13 @@ test('published saved-copy action sits beside the original without invoking loca
   const {dom,get,requests}=await app(async()=>({ok:true,json:async()=>published}));
   try {
     assert.equal(get('saved-link').hidden,false);
-    assert.equal(get('saved-link').textContent,'Open saved copy ↗');
+    assert.equal(get('saved-link').firstElementChild.textContent,'Open saved copy ↗');
+    assert.match(get('saved-link').textContent,/R2 archive/);
+    assert.match(get('source-link').textContent,/committee.test/);
     assert.equal(get('saved-link').href,published.saved_file_url);
     assert.equal(get('source-link').href,final);
     assert.equal(get('saved-link').parentElement,get('source-link').parentElement);
-    assert.doesNotMatch(get('document-summary').textContent,/file access unavailable/);
+    assert.doesNotMatch(get('document-summary').textContent,/Saved response|file access unavailable/);
     assert.equal(requests.some(url=>url.startsWith('/api/evidence/')),false);
   } finally {dom.window.close();}
 });
@@ -521,7 +523,7 @@ test('a filename with only raw fragments has one compact disclosure and retains 
     assert.doesNotMatch(section.textContent,/No additional|Raw filename fragments/);
     get('technical').open=true;get('technical').dispatchEvent(new dom.window.Event('toggle'));await flush();
     assert.match(get('detail-data').textContent,/subject_token.*resolution/s);
-    assert.equal(get('source-link').textContent,'Open source URL ↗');
+    assert.equal(get('source-link').firstElementChild.textContent,'Open original URL ↗');
     assert.equal(JSON.stringify(sparse.record),before);
   } finally {dom.window.close();}
 });
@@ -598,5 +600,60 @@ test('long flat evidence lists also render one page without dropping values', as
     [...field.querySelectorAll('button')].find(button=>button.textContent==='Next values').click();
     assert.equal(field.querySelectorAll('a').length,5);assert.match(field.textContent,/41–45 of 45 values/);
     assert.equal(current.record.source_page_url.length,45);
+  } finally {dom.window.close();}
+});
+
+test('multiple classifications and committees remain inspectable without reading as a single finding', async()=>{
+  const mixed=structuredClone(entry);
+  Object.assign(mixed.record,{document_kind:['member-statement','witness-statement'],document_kind_source:['source_document_type'],
+    source_document_type:['member statement','other','witness statement'],source_document_type_basis:['senate_parser_inference'],
+    source_committee_name:['Senate Finance','Senate Finance Subcommittee on Health Care']});
+  mixed.document=mixed.record;mixed.published_only=true;mixed.reading=null;
+  const before=JSON.stringify(mixed.record);
+  const {dom,get}=await app(async()=>({ok:true,json:async()=>mixed}));
+  try {
+    const facts=get('document-summary');
+    assert.match(facts.textContent,/Multiple recorded kinds/);
+    assert.doesNotMatch(facts.textContent,/Source-page kind/);
+    const disclosures=[...facts.querySelectorAll('details')];
+    assert.equal(disclosures.length,2);assert(disclosures.every(item=>!item.open));
+    assert.match(disclosures[0].textContent,/Member statement.*Witness statement.*Inferred source-page readings/s);
+    assert.match(disclosures[1].textContent,/2 recorded committees.*Senate Finance Subcommittee on Health Care/s);
+    assert.equal(JSON.stringify(mixed.record),before);
+  } finally {dom.window.close();}
+});
+
+test('saved errors and recovered copies have distinct actions while retaining recovery evidence', async()=>{
+  const failed=structuredClone(entry);
+  Object.assign(failed,{published_only:true,reading:null,saved_file_available:false,saved_file_url:'https://data.test/saved/hash/response.html'});
+  failed.record.record_role=['error-response'];
+  const errorApp=await app(async()=>({ok:true,json:async()=>failed}));
+  try {
+    assert.match(errorApp.get('saved-link').textContent,/Open saved response.*Failed response.*R2 archive/);
+    assert.doesNotMatch(errorApp.get('saved-link').textContent,/Open saved copy/);
+  } finally {errorApp.dom.window.close();}
+  const recovered=structuredClone(failed),original='https://committee.test/RESOLUTION.pdf';
+  recovered.record.recovery={recovery_status:'recovered',original_url:original,recovered_url:final,kind:'pdf'};
+  const recoveredApp=await app(async()=>({ok:true,json:async()=>recovered}));
+  try {
+    const {get}=recoveredApp;
+    assert.match(get('saved-link').textContent,/Open saved copy.*Recovered copy.*R2 archive/);
+    assert.doesNotMatch(get('saved-link').textContent,/Failed response/);
+    assert.match(get('origin').querySelector('.recovery-source').textContent,/Saved copy recovered from/);
+    const oldLink=get('origin').querySelector(`a[href="${original}"]`);
+    assert(oldLink.closest('details'));assert.equal(oldLink.closest('details').open,false);
+    assert.equal(get('origin').querySelectorAll(`a[href="${original}"]`).length,1);
+    assert.match(get('origin').textContent,/Referring page not recorded/);
+  } finally {recoveredApp.dom.window.close();}
+});
+
+test('source-page dates stay with their observed page and ambiguous dates are not selected', async()=>{
+  const dated=structuredClone(entry);
+  dated.origin.pages=[{urls:['https://committee.test/hearing'],titles:[],link_labels:[],link_urls:[final],relationship:'Linked from',dates:['2024-02-06']},
+    {urls:['https://committee.test/one','https://committee.test/two'],titles:[],link_labels:[],link_urls:[final],relationship:'Recorded source page',dates:['2023-01-01']}];
+  const {dom,get}=await app(async url=>({ok:true,json:async()=>url.startsWith('/api/entry/')?dated:evidence}));
+  try {
+    assert.match(get('origin').textContent,/Recorded date: February 6, 2024/);
+    assert.doesNotMatch(get('origin').textContent,/January 1, 2023/);
   } finally {dom.window.close();}
 });

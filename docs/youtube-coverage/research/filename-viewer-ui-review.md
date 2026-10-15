@@ -52,3 +52,16 @@ Content plan: concise facts first, hearing and website relationships second, use
 Interaction thesis: retain the short drawer entrance and action hover feedback; use native disclosures for evidence, and let an expanded filename scroll away so it cannot monopolize a small screen. Reduced motion remains supported.
 
 The deployed 390px view still repeated the filename as subject text, placed several evidence controls after each source, and used verbose per-field notes. It also called unverified URLs a publisher copy and presented pending fetch state as if it were live. The follow-up removes the redundant summary heading, abbreviates routine evidence labels, consolidates source evidence into one disclosure, collapses filename analysis when it has no independent findings, and labels links and fetch state explicitly. Original field values and the proven hearing-to-file chain are retained.
+
+## Deployed-app review after the serving-layout release — October 14, 2026
+
+Reviewed the published results at 390px and 1440px, plus mobile details for the UN hearing-to-article chain, Schondelmeyer testimony, a recovered Judiciary transcript, and the Finance record with 12,147 observations. The revision keeps the same quiet surface and native disclosures, with website and saved-copy actions first, provenance next, and detailed evidence on demand.
+
+- Original and saved links now have separate, aligned touch targets. The original shows its hostname; the saved copy identifies the R2 archive and any recovery. Failed responses say **Open saved response**, so a stored error page does not look like a usable document.
+- Routine saved status appears beside the action instead of repeating in the facts. Missing copies, conflicting completeness, and unusable responses still receive explicit explanations.
+- **Where it came from** preserves the hearing → intermediate page → file chain. Direct page dates appear only when the recorded page/date association is unambiguous. Repeated “Found on” captions are consolidated.
+- Recovery locations are labeled **Saved copy recovered from**. Additional pre-recovery URLs remain under Source evidence, and missing referring pages remain explicitly unknown.
+- Multiple classifications and committee names start collapsed, with the original readings and their basis available inside. They no longer read as one definitive description of the file.
+- Counts say **source records**, and records without a URL or filename receive an explicit label instead of a blank source selector.
+
+Local verification: 31 UI tests and 11 catalog/publication tests pass; the production build passes. Screenshots cover 320px, 390px, and 1440px. Normal and recovered saved-copy endpoints return HTTP 200 with PDF content types. Opening the detail view still leaves technical metadata unloaded. This is a presentation change; no catalog, recovery mapping, or published data object is rewritten. Browser evidence is under `output/playwright/` in the viewer worktree.

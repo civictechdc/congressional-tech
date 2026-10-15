@@ -94,8 +94,13 @@ footer { display:flex; justify-content:space-between; gap:14px; align-items:cent
 #title-toggle { font-size:12px; padding:5px 0; min-height:30px; }
 #close-detail { flex-shrink:0; }
 .detail-secondary { padding:8px 24px 0; }
-.detail-actions { display:flex; flex-wrap:wrap; align-items:center; gap:4px 16px; font-size:13px; }
-.detail-actions a { display:inline-flex; align-items:center; min-height:44px; }
+.detail-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px 18px; font-size:13px; }
+.detail-actions:has(a[hidden]) { grid-template-columns:minmax(0,1fr); }
+.detail-actions a { display:flex; flex-direction:column; align-items:start; min-height:48px; padding:6px 0; line-height:1.5; text-decoration:none; overflow-wrap:anywhere; }
+.detail-actions a > span:first-child { text-decoration:underline; text-underline-offset:3px; }
+.detail-actions .link-caption { font-weight:400; }
+.detail-share { display:flex; align-items:center; gap:8px; }
+.detail-share .quiet { padding-left:0; }
 #detail-selected { margin:6px 0; color:var(--muted); font-size:12px; overflow-wrap:anywhere; }
 .inspector-section { padding:22px 24px; border-bottom:1px solid var(--line); }
 .inspector-section h3 { margin:0 0 16px; font-size:15px; font-weight:650; }
@@ -105,6 +110,9 @@ dl { margin:0; }
 dt { color:var(--muted); }
 .facts dt { font-size:12px; line-height:1.65; margin:0; }
 dd { margin:0; font-size:13px; line-height:1.6; overflow-wrap:anywhere; }
+.facts details > summary { padding:0; font-weight:400; }
+.facts details ul { padding-left:18px; margin:8px 0 0; }
+.facts details li + li { margin-top:6px; }
 .inline-note { color:var(--muted); font-size:12px; }
 .inspector-section.compact { padding-top:10px; padding-bottom:10px; }
 .fact-note { display:block; font-size:12px; line-height:1.55; color:var(--muted); margin-top:3px; }
@@ -116,7 +124,7 @@ dd { margin:0; font-size:13px; line-height:1.6; overflow-wrap:anywhere; }
 .publisher-label blockquote { margin:6px 0 0; padding-left:12px; border-left:2px solid var(--line); font-size:13px; line-height:1.6; overflow-wrap:anywhere; }
 .evidence-link { padding:10px 0 0; font-size:12px; }
 #technical { scroll-margin-top:130px; }
-.provenance-item a { display:block; overflow-wrap:anywhere; font-size:13px; }
+.provenance-item a { display:block; overflow-wrap:anywhere; font-size:13px; line-height:1.55; }
 .link-caption { color:var(--muted); font-size:12px!important; margin:3px 0!important; }
 .inspector-section details > summary { font-size:13px; font-weight:550; padding:10px 0; }
 .pdf-text { white-space:pre-wrap; overflow-wrap:anywhere; font-size:12px; line-height:1.65; font-family:inherit; margin:10px 0; }
@@ -178,7 +186,7 @@ dd { margin:0; font-size:13px; line-height:1.6; overflow-wrap:anywhere; }
  #detail-title { font-size:16px; }
  #close-detail { min-height:40px; }
  .detail-secondary { padding:8px 18px 0; }
- .detail-actions { gap:3px 8px; }
+ .detail-actions { gap:8px 16px; }
  .inspector-section { padding:20px 18px; }
  .facts { grid-template-columns:106px minmax(0,1fr); gap:11px 14px; }
  #technical > summary { padding:20px 18px; }
@@ -227,7 +235,7 @@ dd { margin:0; font-size:13px; line-height:1.6; overflow-wrap:anywhere; }
 </main>
 <dialog id="detail" aria-labelledby="detail-title">
 <div class="detail-head"><div class="detail-top"><div class="detail-identity"><h2 id="detail-title">Loading…</h2><button id="title-toggle" class="quiet" type="button" aria-expanded="false" aria-controls="detail-title" hidden>Full filename</button></div><button id="close-detail" class="outline" aria-label="Close details">Close ×</button></div></div>
-<div class="detail-secondary"><p data-catalog-update hidden role="status"><span>New data available.</span> <a>Load latest data →</a></p><p id="detail-selected" hidden></p><div class="detail-actions"><a id="source-link" target="_blank" rel="noopener noreferrer" hidden>Open source URL ↗</a><a id="saved-link" target="_blank" rel="noopener noreferrer" hidden>Open saved copy ↗</a><button id="share" class="quiet" disabled>Copy review link</button><span id="share-status" role="status"></span></div></div>
+<div class="detail-secondary"><p data-catalog-update hidden role="status"><span>New data available.</span> <a>Load latest data →</a></p><p id="detail-selected" hidden></p><div class="detail-actions"><a id="source-link" target="_blank" rel="noopener noreferrer" hidden>Open original URL ↗</a><a id="saved-link" target="_blank" rel="noopener noreferrer" hidden>Open saved copy ↗</a></div><div class="detail-share"><button id="share" class="quiet" disabled>Copy review link</button><span id="share-status" role="status"></span></div></div>
 <section id="document-summary" class="inspector-section" aria-label="Document summary"></section>
 <section id="origin" class="inspector-section" aria-label="Where this file came from"></section>
 <section id="filename-findings" class="inspector-section" aria-label="Filename findings"></section>

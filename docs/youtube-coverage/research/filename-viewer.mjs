@@ -82,7 +82,7 @@ function renderRows(data) {
   if(url) { const a=link(url.href,url.hostname.replace(/^www\./,'')+' ↗'); a.className='source'; a.title=url.href; meta.append(a); if(!row.source_url) meta.append(node('span','Recovered URL candidate','muted')); }
   const role=row.record_role?.[0];
   if(!row.api_reference&&role&&role!=='document'&&!(role==='error-response'&&row.retained)) first.append(node('div',({'capture-state':'Fetch record','error-response':'Fetch failed'})[role]||pretty(role),'muted'));
-  if(row.source_count>1) meta.append(node('span',`${number(row.source_count)} sources`,'muted'));
+  if(row.source_count>1) meta.append(node('span',`${number(row.source_count)} source records`,'muted'));
   first.append(meta);
   const formats=row.format?.map(formatLabel).join(' · ')||'Unknown';
   const format=node('td',formats);
@@ -134,18 +134,24 @@ async function openDetail(id, update=true, catalog=info.catalog_id) {
  if(entry.sources.length>1) {
   $('source-history').hidden=false; $('source-variants-caption').textContent=`${entry.sources.length} source records in this group`;
   $('source-variants').hidden=false;
-  $('source-variants').append(node('p',entry.sources_share_saved_file?'These URLs share one saved file. Select a URL to inspect its source record.':'These URLs belong to this grouped entry. Select a source to inspect its own metadata.'));
+  $('source-variants').append(node('p',entry.sources_share_saved_file?'These records share one saved file. Select a record to inspect it.':'Select a source record to inspect its own metadata.'));
   for(const source of entry.sources) {
    const redirects=entry.document_origin?.redirects || entry.origin.redirects;
-   const role=redirects.some(r=>r.original===source.source_url)?'Original URL':redirects.some(r=>r.final===source.source_url)?'Redirect destination':'Alternate source URL';
+   const role=!source.source_url?'Source record':redirects.some(r=>r.original===source.source_url)?'Original URL':redirects.some(r=>r.final===source.source_url)?'Redirect destination':'Alternate source URL';
    const caption=[role,source.format?.map(formatLabel).join(' · ') || 'Unknown format',savedLabel(source)].join(' · ');
    const button=node('button',caption,'outline'); button.setAttribute('aria-pressed',String(source.source_id===data.source_id));
-   button.append(node('span',source.source_url || source.filename,'source'));
+   button.append(node('span',source.source_url || source.filename || 'No URL or filename recorded','source'));
    button.addEventListener('click',()=>openDetail(source.source_id)); $('source-variants').append(button);
   }
  }
- const url=sourceUrl(data.source_url); if(url) { $('source-link').href=url.href; $('source-link').textContent=entry.api_reference?'Open API record ↗':'Open source URL ↗'; $('source-link').hidden=false; }
- if(entry.saved_file_available||sourceUrl(entry.saved_file_url)) { $('saved-link').hidden=false; $('saved-link').textContent='Open saved copy ↗'; $('saved-link').href=entry.saved_file_url||'/saved/'+encodeURIComponent(data.source_id)+'?catalog='+encodeURIComponent(entry.catalog_id); }
+ const url=sourceUrl(data.source_url); if(url) {
+  $('source-link').href=url.href; $('source-link').replaceChildren(node('span',entry.api_reference?'Open API record ↗':'Open original URL ↗'),node('span',url.hostname.replace(/^www\./,''),'link-caption')); $('source-link').hidden=false;
+ }
+ if(entry.saved_file_available||sourceUrl(entry.saved_file_url)) {
+  const recovered=(data.recovery||entry.recovery)?.recovery_status==='recovered',failed=!recovered&&data.record_role?.includes('error-response');
+  const caption=[recovered?(data.recovery?'Recovered copy':'Recovered via related URL'):failed?'Failed response':null,entry.published_only?'R2 archive':'Saved in archive'].filter(Boolean).join(' · ');
+  $('saved-link').hidden=false; $('saved-link').replaceChildren(node('span',failed?'Open saved response ↗':'Open saved copy ↗'),node('span',caption,'link-caption')); $('saved-link').href=entry.saved_file_url||'/saved/'+encodeURIComponent(data.source_id)+'?catalog='+encodeURIComponent(entry.catalog_id);
+ }
  $('technical').hidden=false; document.querySelector('.detail-secondary').hidden=false; loadEvidence(entry,controller); }
  catch(error) { if(error.name!=='AbortError'&&controller===detailController) { setDetailTitle('Record unavailable'); $('document-summary').hidden=false; $('document-summary').append(node('p',error.message)); const retry=node('button','Retry this record','outline');retry.addEventListener('click',()=>openDetail(id,false,catalog));$('document-summary').append(retry); } }
  finally { if(controller===detailController)$('detail').setAttribute('aria-busy','false'); }
@@ -153,13 +159,24 @@ async function openDetail(id, update=true, catalog=info.catalog_id) {
 function link(value, text) { const url=sourceUrl(value); if(!url) return node('span',value || 'Not recorded'); const a=node('a',text || url.href); a.href=url.href; a.target='_blank'; a.rel='noopener noreferrer'; return a; }
 function fact(dl, title, value, note) { dl.append(node('dt',title)); const dd=node('dd'); dd.append(value instanceof Node ? value : node('span',String(value))); if(note) dd.append(node('span',note,'fact-note')); dl.append(dd); }
 function section(id, title) { const el=$(id); el.hidden=false; el.replaceChildren(node('h3',title)); return el; }
+function recordedList(values, caption) {
+ const details=node('details'),list=node('ul');details.append(node('summary',caption),list);
+ values.forEach(value=>list.append(node('li',value)));return details;
+}
 function renderSummary(entry) {
  const el=$('document-summary'), row=entry.document, source=entry.record, dl=node('dl',undefined,'facts');
  el.hidden=false; el.replaceChildren();
  if(entry.api_reference) fact(dl,'Entry type','Source/API reference','Identified from the Congress.gov API URL. Published role: '+(source.record_role?.map(friendly).join(' · ')||'Not recorded')+'.');
  const filenameKind=row.document_kind_source?.length===1&&row.document_kind_source[0]==='filename', groupKind=source.source_id!==row.source_id;
- fact(dl,groupKind?'Group kind':filenameKind?'Filename kind':'Document kind',row.document_kind?.map(friendly).join(' · ')||'Unclassified',filenameKind&&groupKind?'From the group’s filename.':row.document_kind?.length&&!filenameKind?(row.document_kind_source?.length?'Based on '+row.document_kind_source.map(value=>friendly(value).toLowerCase()).join(' · ')+'.':'Classification evidence not recorded.'):null);
- if(source.source_document_type?.length && source.source_document_type.some(value=>!row.document_kind?.includes(value))) {
+ const multipleKinds=row.document_kind?.length>1;
+ if(multipleKinds) {
+  const kinds=node('div','Multiple recorded kinds');
+  const readings=recordedList(row.document_kind.map(friendly),'Review classifications');
+  readings.append(node('p',(groupKind?'From the grouped records.':'From this source record.')+(row.document_kind_source?.length?' Based on '+row.document_kind_source.map(value=>friendly(value).toLowerCase()).join(' · ')+'.':''),'section-note'));
+  if(source.source_document_type?.length)readings.append(node('p',(source.source_document_type_basis?.some(value=>/inference|parser/.test(value))?'Inferred source-page readings: ':'Source-page readings: ')+source.source_document_type.map(friendly).join(' · '),'section-note'));
+  kinds.append(readings);fact(dl,'Document kind',kinds);
+ } else fact(dl,groupKind?'Group kind':filenameKind?'Filename kind':'Document kind',row.document_kind?.map(friendly).join(' · ')||'Unclassified',filenameKind&&groupKind?'From the group’s filename.':row.document_kind?.length&&!filenameKind?(row.document_kind_source?.length?'Based on '+row.document_kind_source.map(value=>friendly(value).toLowerCase()).join(' · ')+'.':'Classification evidence not recorded.'):null);
+ if(!multipleKinds && source.source_document_type?.length && source.source_document_type.some(value=>!row.document_kind?.includes(value))) {
   const inferred=source.source_document_type_basis?.some(value=>/inference|parser/.test(value));
   fact(dl,'Source-page kind',source.source_document_type.map(friendly).join(' · '),inferred?'Inferred from page metadata.':null);
  }
@@ -168,11 +185,11 @@ function renderSummary(entry) {
  if(formats)formatValue.append(node('span',' · '+(source.body_format?.length?'saved bytes':source.media_type?.length?'server-reported':'filename only'),'inline-note'));
  fact(dl,'Format',formatValue);
  const recovery=source.recovery||entry.recovery, recovered=recovery?.recovery_status==='recovered';
- const savedNotes=[(source.body_key||recovered)&&entry.published_only&&!entry.saved_file_url?'Stored in R2; file access unavailable here.':null,!recovered&&source.record_role?.includes('error-response')?'The saved response was marked as failed.':!recovered&&source.response_usable?.includes('false')?'The saved response was marked unusable.':!recovered&&entry.facts?.completeness_conflict?'Recorded completeness assessments disagree.':!recovered&&source.response_body_complete?.includes('false')?'The saved response is incomplete.':null].filter(Boolean);
- fact(dl,'Saved response',recovered?(source.recovery?'Recovered':'Recovered on another URL in this group'):source.body_key?(entry.published_only?'Saved':'Available'):entry.sources.some(item=>item.retained)?'Saved on another URL in this group':'None recorded',savedNotes.join(' '));
+ const savedNotes=[(source.body_key||recovered)&&entry.published_only&&!entry.saved_file_url?'Stored in R2; file access unavailable here.':null,!recovered&&!source.record_role?.includes('error-response')&&source.response_usable?.includes('false')?'The saved response was marked unusable.':!recovered&&entry.facts?.completeness_conflict?'Recorded completeness assessments disagree.':!recovered&&source.response_body_complete?.includes('false')?'The saved response is incomplete.':null].filter(Boolean);
+ if(!(entry.saved_file_available||sourceUrl(entry.saved_file_url))||savedNotes.length)fact(dl,'Saved response',recovered?(source.recovery?'Recovered':'Recovered on another URL in this group'):source.body_key?(source.record_role?.includes('error-response')?'Marked failed':entry.published_only?'Saved':'Available'):entry.sources.some(item=>item.retained)?'Saved on another URL in this group':'None recorded',savedNotes.join(' '));
  if(recovered&&recovery.kind&&!(source.format?.length===1&&source.format[0]===recovery.kind))fact(dl,'Recovered format',formatLabel(recovery.kind));
  if(source.state_outcome?.some(value=>!['saved','retained','html'].includes(value))) fact(dl,recovered?'Original URL fetch':'Recorded fetch',source.state_outcome.map(friendly).join(' · '),source.state_checked_at?.length===1?'Recorded '+dateLabel(source.state_checked_at[0]):null);
- if(source.source_committee_name?.length) fact(dl,'Committee',source.source_committee_name.join(' · '));
+ if(source.source_committee_name?.length) fact(dl,'Committee',source.source_committee_name.length>1?recordedList(source.source_committee_name,number(source.source_committee_name.length)+' recorded committees'):source.source_committee_name[0]);
  if(!source.congress?.length&&source.source_congress?.length) fact(dl,'Source Congress',source.source_congress.join(' · '));
  if(source.congress?.length) {
   const warning=congressIssue(source.congress,source.source_congress),value=node('span','Filename: '+display(source.congress));
@@ -201,7 +218,7 @@ function pageLink(value,title) {
  return block;
 }
 function renderOrigin(origin,apiReference,observationCount,recovery) {
- const el=section('origin','Source trail'), unique=new Map(), linkEvidence=[];
+ const el=section('origin','Where it came from'), unique=new Map(), linkEvidence=[];
  const urlKey=value=>{const url=sourceUrl(value);return url?url.host+url.pathname+url.search+url.hash:null;};
  const edgeKey=value=>sourceUrl(value)?.href;
  const edges=new Map(), ancestors=[], targets=new Set(), covered=new Set();
@@ -251,6 +268,7 @@ function renderOrigin(origin,apiReference,observationCount,recovery) {
   block.append(link(value,title+' ↗'),node('p',caption||url.hostname.replace(/^www\./,''),'link-caption'));
   return block;
  }
+ let previousCaption;
  for(const item of human) {
   if(covered.has(urlKey(item.url)))continue;
   // A single observed page/title pair can name the link. Multi-page
@@ -258,7 +276,12 @@ function renderOrigin(origin,apiReference,observationCount,recovery) {
   const titles=[...new Set(item.pages.filter(page=>page.urls.length===1&&page.titles.length===1).map(page=>page.titles[0]))];
   const relationships=new Set(item.pages.map(page=>page.relationship));
   const caption=relationships.has('Linked from')?'Found on':relationships.has('Linked through')?'Related source':relationships.has('Recorded source page')?'Source page':'Possible source page';
-  const block=node('div',undefined,'provenance-item');block.append(node('p',caption,'link-caption'),pageLink(item.url,titles.length===1?titles[0]:null));el.append(block);
+  const block=node('div',undefined,'provenance-item');
+  if(caption!==previousCaption)block.append(node('p',caption,'link-caption'));
+  previousCaption=caption;block.append(pageLink(item.url,titles.length===1?titles[0]:null));
+  const dates=[...new Set(item.pages.filter(page=>page.urls.length===1).flatMap(page=>page.dates||[]))];
+  if(dates.length===1)block.append(node('p','Recorded date: '+filenameDate(dates[0]),'link-caption'));
+  el.append(block);
  }
  if(!human.length) {
   if(origin.file_url&&!(recovery?.recovery_status==='recovered'&&sourceUrl(recovery.recovered_url)?.hostname===sourceUrl(origin.file_url)?.hostname))el.append(node('p',(apiReference?'API host: ':'Source host: ')+sourceUrl(origin.file_url).hostname,'link-caption'));
@@ -280,7 +303,7 @@ function renderOrigin(origin,apiReference,observationCount,recovery) {
   supporting.append(destination(item.url,title,url.hostname+(match?' · Congress '+match[2]:'')));
  }
  const shown=new Set([...references.map(item=>urlKey(item.url)),urlKey(origin.file_url)]);
- // The destination is already available through Open source URL. Only
+ // The destination is already available through Open original URL. Only
  // additional original or recovered URLs belong in this disclosure.
  for(const redirect of origin.redirects) if(!shown.has(urlKey(redirect.original))) {
   shown.add(urlKey(redirect.original));supporting.append(destination(redirect.original,'Original download link','Redirects to the publisher file'));
@@ -290,8 +313,8 @@ function renderOrigin(origin,apiReference,observationCount,recovery) {
  }
  if(recovery?.recovery_status==='recovered') {
   const block=node('div',undefined,'provenance-item recovery-source');
-  block.append(node('p',[recovery.original_url,recovery.recovered_url].includes(origin.file_url)?'Recovery URL':'Recovery URL in this group','link-caption'),pageLink(recovery.recovered_url));
-  if(recovery.original_url!==origin.file_url)block.append(node('p','Original URL','link-caption'),link(recovery.original_url));
+  block.append(node('p',[recovery.original_url,recovery.recovered_url].includes(origin.file_url)?'Saved copy recovered from':'Saved copy recovered through another URL in this group','link-caption'),pageLink(recovery.recovered_url));
+  if(recovery.original_url!==origin.file_url&&!shown.has(urlKey(recovery.original_url)))supporting.append(destination(recovery.original_url,'Original URL before recovery',sourceUrl(recovery.original_url)?.hostname));
   el.append(block);
  }
  if(observationCount) {
