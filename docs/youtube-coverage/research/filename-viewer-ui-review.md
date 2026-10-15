@@ -63,5 +63,6 @@ Reviewed the published results at 390px and 1440px, plus mobile details for the 
 - Recovery locations are labeled **Saved copy recovered from**. Additional pre-recovery URLs remain under Source evidence, and missing referring pages remain explicitly unknown.
 - Multiple classifications and committee names start collapsed, with the original readings and their basis available inside. They no longer read as one definitive description of the file.
 - Counts say **source records**, and records without a URL or filename receive an explicit label instead of a blank source selector.
+- Evidence pagination uses separated touch targets and returns focus and scroll position to the new page's field heading, for both source observations and long lists of values.
 
 Local verification: 31 UI tests and 11 catalog/publication tests pass; the production build passes. Screenshots cover 320px, 390px, and 1440px. Normal and recovered saved-copy endpoints return HTTP 200 with PDF content types. Opening the detail view still leaves technical metadata unloaded. This is a presentation change; no catalog, recovery mapping, or published data object is rewritten. Browser evidence is under `output/playwright/` in the viewer worktree.

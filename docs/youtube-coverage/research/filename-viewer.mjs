@@ -400,7 +400,7 @@ function renderOccurrences(occurrences) {
   const nav=node('div',undefined,'actions');
   for(const [caption,start] of [['Previous observations',offset?Math.max(0,offset-20):null],['Next observations',observationData.next]]) {
    const button=node('button',caption,'outline');button.type='button';button.disabled=start===null;
-   button.addEventListener('click',async()=>{button.disabled=true;try{await loadObservationPage(start);renderDetails();}catch(error){if(error.name!=='AbortError'){button.disabled=false;el.append(node('p',error.message,'warning'));}}});nav.append(button);
+   button.addEventListener('click',async()=>{const controller=detailController;button.disabled=true;try{await loadObservationPage(start);if(controller!==detailController)return;renderDetails();focusField('source_occurrences');}catch(error){if(error.name!=='AbortError'){button.disabled=false;el.append(node('p',error.message,'warning'));}}});nav.append(button);
   }
   el.append(nav);
  }
@@ -497,6 +497,10 @@ function renderCurrentOrigin() {
   });$('origin').append(more);
  }
 }
+function focusField(key) {
+ const heading=[...$('detail-data').querySelectorAll('dt')].find(term=>term.dataset.field===key);
+ heading?.focus({preventScroll:true});heading?.scrollIntoView({block:'start'});
+}
 function renderFieldValues(key, value) {
  const items=Array.isArray(value)?value:[value], el=node('div');let offset=0;
  function draw(focus) {
@@ -514,7 +518,7 @@ function renderFieldValues(key, value) {
     button.addEventListener('click',()=>{offset+=delta;draw(caption);});nav.append(button);
    }
    el.append(nav);
-   if(focus)[...nav.children].find(button=>button.textContent===focus)?.focus({preventScroll:true});
+   if(focus)focusField(key);
   }
  }
  draw();return el;
@@ -530,7 +534,7 @@ function renderDetails() {
  for(const [title,values] of groups) {
   if(!values.length)continue;
   const group=node('section',undefined,'field-category'),dl=node('dl',undefined,'field-group');group.append(node('h4',title),dl);
-  for(const [key,value] of values) { const entry=node('div',undefined,'entry'); const term=node('dt',label(key)); term.append(node('span',key,'raw-key')); entry.append(term); const dd=node('dd'); if(!present(value)) dd.append(node('span','Not recorded','muted')); else if(key==='source_occurrences'&&Array.isArray(value))dd.append(renderOccurrences(value)); else dd.append(renderFieldValues(key,value)); if(key==='name_token'&&present(value))dd.append(node('span','Unmatched filename text; not a verified person, author, or identifier.','fact-note'));entry.append(dd); dl.append(entry); }
+  for(const [key,value] of values) { const entry=node('div',undefined,'entry'); const term=node('dt',label(key)); term.tabIndex=-1;term.dataset.field=key;term.append(node('span',key,'raw-key')); entry.append(term); const dd=node('dd'); if(!present(value)) dd.append(node('span','Not recorded','muted')); else if(key==='source_occurrences'&&Array.isArray(value))dd.append(renderOccurrences(value)); else dd.append(renderFieldValues(key,value)); if(key==='name_token'&&present(value))dd.append(node('span','Unmatched filename text; not a verified person, author, or identifier.','fact-note'));entry.append(dd); dl.append(entry); }
   sections.push(group);
  }
  $('detail-data').replaceChildren(...(entries.length?sections:[node('p','No fields match this search.','muted')]));

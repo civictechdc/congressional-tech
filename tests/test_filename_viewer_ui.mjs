@@ -562,6 +562,7 @@ test('published details defer technical reads, page observations, and copy compl
     [...get('detail-data').querySelectorAll('button')].find(button=>button.textContent==='Next observations').click();await flush();
     assert.equal(get('detail-data').querySelectorAll('details').length,20);
     assert.match(get('detail-data').textContent,/21–40 of 42 observations/);
+    assert.equal(w.document.activeElement.dataset.field,'source_occurrences');
     let copied;
     Object.defineProperty(w.navigator,'clipboard',{value:{writeText:async text=>{copied=text;}}});
     get('copy').click();await flush();
@@ -597,6 +598,7 @@ test('long flat evidence lists also render one page without dropping values', as
     assert.match(field.textContent,/1–20 of 45 values/);
     [...field.querySelectorAll('button')].find(button=>button.textContent==='Next values').click();
     assert.equal(field.querySelectorAll('a').length,20);assert.match(field.textContent,/21–40 of 45 values/);
+    assert.equal(w.document.activeElement.dataset.field,'source_page_url');
     [...field.querySelectorAll('button')].find(button=>button.textContent==='Next values').click();
     assert.equal(field.querySelectorAll('a').length,5);assert.match(field.textContent,/41–45 of 45 values/);
     assert.equal(current.record.source_page_url.length,45);
