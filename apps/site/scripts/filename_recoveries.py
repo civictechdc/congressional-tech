@@ -6,6 +6,8 @@ from urllib.parse import urlsplit
 
 import pyarrow.parquet as pq
 
+from filename_aliases import catalog_aliases
+
 ACCEPTED_KEY = 'viewer-publications/recoveries/accepted.json'
 FIELDS = ('original_url', 'recovered_url', 'body_key', 'kind', 'recovery_status', 'recovery_basis')
 
@@ -31,7 +33,7 @@ def accepted_rows(rows):
 
 
 def index_recoveries(root, manifest, rows):
-    """Read two existing columns; never rewrite catalog tables or original state."""
+    """Index accepted and catalog-derived links without rewriting source values."""
     rows = accepted_rows(rows)
     info = manifest['info']
     paths = {}
@@ -47,8 +49,10 @@ def index_recoveries(root, manifest, rows):
     groups = [value[0] for value in struct.iter_unpack('<I', paths['groups'].read_bytes())]
     if len(groups) != info['rows'] or any(group >= info['entries'] for group in groups):
         raise ValueError('Recovery group counts disagree with catalog.')
+    accepted_count = len(rows)
+    rows += catalog_aliases(paths['filenames'], rows)
     by_original = {row['original_url']: i for i, row in enumerate(rows)}
-    by_saved = {(row['recovered_url'], row['body_key']): i for i, row in enumerate(rows)}
+    by_saved = {(row['recovered_url'], row['body_key']): i for i, row in enumerate(rows[:accepted_count])}
     sources = []
     group_matches = {}
     position = 0

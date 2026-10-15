@@ -131,19 +131,7 @@ async function openDetail(id, update=true, catalog=info.catalog_id) {
  try { const entry=await api('/api/entry/'+encodeURIComponent(id)+'?catalog='+encodeURIComponent(catalog || info.catalog_id),controller.signal); if(controller!==detailController) return; const data=entry.record; rowData=data; detailEntry=entry; $('detail').dataset.row=data.source_id; $('detail').dataset.catalog=entry.catalog_id; saveUrl(); setDetailTitle(identity({...data,filename:entry.filename,api_reference:entry.api_reference,video_reference:entry.video_reference}),entry.api_reference||entry.video_reference?'title':'filename'); $('copy').disabled=false; $('share').disabled=false;
  if(data.filename!==entry.filename) { $('detail-selected').hidden=false; $('detail-selected').textContent='Selected source filename: '+(data.filename || 'Not recorded'); }
  renderSummary(entry); renderCurrentOrigin(); renderFilename(entry);
- if(entry.sources.length>1) {
-  $('source-history').hidden=false; $('source-variants-caption').textContent=`${entry.sources.length} source records in this group`;
-  $('source-variants').hidden=false;
-  $('source-variants').append(node('p',entry.sources_share_saved_file?'These records share one saved file. Select a record to inspect it.':'Select a source record to inspect its own metadata.'));
-  for(const source of entry.sources) {
-   const redirects=entry.document_origin?.redirects || entry.origin.redirects;
-   const role=!source.source_url?'Source record':redirects.some(r=>r.original===source.source_url)?'Original URL':redirects.some(r=>r.final===source.source_url)?'Redirect destination':'Alternate source URL';
-   const caption=[role,source.format?.map(formatLabel).join(' · ') || 'Unknown format',savedLabel(source)].join(' · ');
-   const button=node('button',caption,'outline'); button.setAttribute('aria-pressed',String(source.source_id===data.source_id));
-   button.append(node('span',source.source_url || source.filename || 'No URL or filename recorded','source'));
-   button.addEventListener('click',()=>openDetail(source.source_id)); $('source-variants').append(button);
-  }
- }
+ renderSources(entry);
  const url=sourceUrl(data.source_url); if(url) {
   $('source-link').href=url.href; $('source-link').replaceChildren(node('span',entry.video_reference?'Watch video ↗':entry.api_reference?'Open API record ↗':'Open original URL ↗'),node('span',url.hostname.replace(/^www\./,''),'link-caption')); $('source-link').hidden=false;
  }
@@ -154,9 +142,38 @@ async function openDetail(id, update=true, catalog=info.catalog_id) {
   const caption=[webpage&&entry.video_reference?'Webpage only':null,recovered?(data.recovery?'Recovered copy':'Recovered via related URL'):failed?'Failed response':null,entry.published_only?'R2 archive':'Saved in archive'].filter(Boolean).join(' · ');
   $('saved-link').hidden=false; $('saved-link').replaceChildren(node('span',failed?'Open saved response ↗':webpage?'Open saved webpage ↗':entry.video_reference?'Open saved response ↗':'Open saved copy ↗'),node('span',caption,'link-caption')); $('saved-link').href=entry.saved_file_url||'/saved/'+encodeURIComponent(data.source_id)+'?catalog='+encodeURIComponent(entry.catalog_id);
  }
- $('technical').hidden=false; document.querySelector('.detail-secondary').hidden=false; loadEvidence(entry,controller); }
+ $('technical').hidden=false; document.querySelector('.detail-secondary').hidden=false; loadEvidence(entry,controller); if(entry.origin_pending)loadEntryOrigin(entry,controller); }
  catch(error) { if(error.name!=='AbortError'&&controller===detailController) { setDetailTitle('Record unavailable'); $('document-summary').hidden=false; $('document-summary').append(node('p',error.message)); const retry=node('button','Retry this record','outline');retry.addEventListener('click',()=>openDetail(id,false,catalog));$('document-summary').append(retry); } }
  finally { if(controller===detailController)$('detail').setAttribute('aria-busy','false'); }
+}
+function renderSources(entry) {
+ const focused=$('source-variants').contains(document.activeElement)?document.activeElement.dataset.source:null;
+ $('source-variants').replaceChildren();
+ if(entry.sources.length>1) {
+  $('source-history').hidden=false; $('source-variants-caption').textContent=`${entry.sources.length} source records in this group`;
+  $('source-variants').hidden=false;
+  $('source-variants').append(node('p',entry.sources_share_saved_file?'These records share one saved file. Select a record to inspect it.':'Select a source record to inspect its own metadata.'));
+  for(const source of entry.sources) {
+   const redirects=entry.document_origin?.redirects || entry.origin.redirects;
+   const role=!source.source_url?'Source record':entry.origin_pending?'Source URL':redirects.some(r=>r.original===source.source_url)?'Original URL':redirects.some(r=>r.final===source.source_url)?'Redirect destination':'Alternate source URL';
+   const caption=[role,source.format?.map(formatLabel).join(' · ') || 'Unknown format',savedLabel(source)].join(' · ');
+   const button=node('button',caption,'outline'); button.dataset.source=source.source_id; button.setAttribute('aria-pressed',String(source.source_id===entry.record.source_id));
+   button.append(node('span',source.source_url || source.filename || 'No URL or filename recorded','source'));
+   button.addEventListener('click',()=>openDetail(source.source_id)); $('source-variants').append(button);
+   if(focused===source.source_id)button.focus({preventScroll:true});
+  }
+ }
+}
+async function loadEntryOrigin(entry, controller) {
+ try {
+  const context=await api(detailUrl('entry-origin'),controller.signal);
+  if(controller!==detailController||controller.signal.aborted)return;
+  Object.assign(entry,context);renderCurrentOrigin();renderSources(entry);
+ } catch(error) {
+  if(controller!==detailController||controller.signal.aborted||error.name==='AbortError')return;
+  const el=section('origin','Source pages');el.append(node('p','Source pages could not be loaded. '+error.message,'warning'));
+  const retry=node('button','Retry source pages','outline');retry.addEventListener('click',()=>{retry.disabled=true;loadEntryOrigin(entry,controller);});el.append(retry);
+ }
 }
 function link(value, text) { const url=sourceUrl(value); if(!url) return node('span',value || 'Not recorded'); const a=node('a',text || url.href); a.href=url.href; a.target='_blank'; a.rel='noopener noreferrer'; return a; }
 function fact(dl, title, value, note) { dl.append(node('dt',title)); const dd=node('dd'); dd.append(value instanceof Node ? value : node('span',String(value))); if(note) dd.append(node('span',note,'fact-note')); dl.append(dd); }
@@ -486,6 +503,7 @@ async function ensureTechnical() {
 }
 function renderCurrentOrigin() {
  const entry=detailEntry;
+ if(entry.origin_pending) {const el=section('origin','Source pages');el.append(node('p','Loading source pages…','section-note'));return;}
  renderOrigin(entry.origin,entry.api_reference,entry.observation_count??entry.record.source_occurrences?.length??0,entry.record.recovery||entry.recovery);
  if(entry.origin_next!=null) {
   const empty=$('origin').querySelector('.empty-state');if(empty)empty.textContent='More source evidence is available below.';
@@ -586,5 +604,5 @@ try {
  const options=commonFields.filter(key=>info.fields.includes(key)).map(key=>{const option=node('option',label(key));option.value=key;return option;});
  const advanced=node('option','Find another field…');advanced.value='__advanced__';$('field').replaceChildren(...options,advanced);
  for(const key of secondaryKeys) { const values=[...info.facets[key]]; if(key==='congress') values.sort((a,b)=>Number(b)-Number(a));for(const value of values) {const text=key.startsWith('document_')?pretty(value):key==='format'?formatLabel(value):congressIssue([value])?value+' · Needs review':value;const option=node('option',text);option.value=value;$(key).append(option);} }
- const row=restore(); if(row!==null)openDetail(row.id,false,row.catalog);await load();
+ const row=restore(); if(row!==null)await openDetail(row.id,false,row.catalog);await load();
 } catch(error) { $('error-message').textContent=error.message; $('error').hidden=false; $('summary').textContent='Catalog unavailable'; $('result-count').textContent='Results unavailable'; document.querySelector('.pager').hidden=true; $('results').setAttribute('aria-busy','false'); }

@@ -690,3 +690,64 @@ test('a recovered HTML response is labeled as a webpage despite the original PDF
   try {assert.match(get('saved-link').textContent,/Open saved webpage.*Recovered copy.*R2 archive/);}
   finally {dom.window.close();}
 });
+
+test('saved link renders before provenance, then source labels update without reopening', async () => {
+  let finishOrigin;
+  const pending = new Promise(resolve => { finishOrigin = resolve; });
+  const deferred = {...entry, origin_pending: true, origin: {...origin, redirects: []}, document_origin: {redirects: []}};
+  const {dom, get} = await app(url => url.startsWith('/api/entry-origin/') ? pending
+    : Promise.resolve({ok:true, json:async()=>url.startsWith('/api/entry/') ? deferred : evidence}));
+  try {
+    assert.equal(get('saved-link').hidden, false);
+    assert.equal(get('detail-title').textContent, record.filename);
+    assert.equal(get('detail').getAttribute('aria-busy'), 'false');
+    assert.match(get('origin').textContent, /Loading source pages/);
+    assert.doesNotMatch(get('origin').textContent, /not recorded/);
+    get('source-variants').querySelectorAll('button')[1].focus();
+    finishOrigin({ok:true, json:async()=>({origin_pending:false, origin, document_origin:origin, observation_count:1, origin_next:null})});
+    await flush(); await flush();
+    assert.doesNotMatch(get('origin').textContent, /Loading source pages/);
+    assert.match(get('source-variants').textContent, /Original URL/);
+    assert.match(get('source-variants').textContent, /Redirect destination/);
+    assert.equal(dom.window.document.activeElement.dataset.source, 'stable-original');
+    assert.equal(get('saved-link').hidden, false);
+  } finally {dom.window.close();}
+});
+
+test('provenance failure preserves the saved link and supports retry', async () => {
+  let attempts = 0;
+  const deferred = {...entry, origin_pending:true};
+  const {dom, get} = await app(url => {
+    if (url.startsWith('/api/entry-origin/')) {
+      if (!attempts++) return {ok:false, json:async()=>({error:'Temporary failure'})};
+      return {ok:true, json:async()=>({origin_pending:false, origin, document_origin:origin, observation_count:1, origin_next:null})};
+    }
+    return {ok:true, json:async()=>url.startsWith('/api/entry/') ? deferred : evidence};
+  });
+  try {
+    assert.equal(get('saved-link').hidden, false);
+    assert.match(get('origin').textContent, /could not be loaded/);
+    get('origin').querySelector('button').click(); await flush(); await flush();
+    assert.equal(attempts,2);
+    assert.doesNotMatch(get('origin').textContent, /could not be loaded/);
+    assert.equal(get('saved-link').hidden, false);
+  } finally {dom.window.close();}
+});
+
+test('late provenance cannot overwrite another selected source', async () => {
+  let finishOrigin;
+  const pending = new Promise(resolve => {finishOrigin=resolve;});
+  const {dom, get} = await app(url => {
+    if (url.startsWith('/api/entry-origin/')) return pending;
+    const selected=url.includes('stable-original') ? {...entry, record:{...record,source_id:'stable-original'}, origin:{...origin,pages:[]}} : {...entry,origin_pending:true};
+    return {ok:true,json:async()=>url.startsWith('/api/entry/') ? selected : evidence};
+  });
+  try {
+    get('source-variants').querySelectorAll('button')[1].click();await flush();
+    assert.equal(get('detail').dataset.row,'stable-original');
+    finishOrigin({ok:true,json:async()=>({origin_pending:false,origin:{...origin,pages:[{urls:['https://wrong.test/'],titles:['Stale page'],link_labels:[],link_urls:[],relationship:'Linked from'}]},document_origin:origin})});
+    await flush();await flush();
+    assert.doesNotMatch(get('origin').textContent,/Stale page|wrong.test/);
+    assert.equal(get('detail').dataset.row,'stable-original');
+  } finally {dom.window.close();}
+});

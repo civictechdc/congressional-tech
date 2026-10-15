@@ -87,3 +87,31 @@ def test_compact_serving_tables_replace_redundant_summary_and_mapping(catalog):
     assert 'source_occurrences' not in detail.schema_arrow.names
     assert 'document_id' not in detail.schema_arrow.names
     assert detail.metadata.num_rows == manifest['info']['rows']
+
+
+def test_detail_navigation_preserves_members_and_preferred_sources(catalog):
+    from array import array
+    import struct
+    manifest = json.loads((catalog / 'public/manifest.json').read_text())
+    def integers(name):
+        values = array('I')
+        values.frombytes((catalog / 'public' / manifest['files'][name]['path']).read_bytes())
+        if sys.byteorder != 'little':
+            values.byteswap()
+        return values
+    groups, preferred = integers('groups'), integers('preferred')
+    members = integers('detail_members')
+    packed = (catalog / 'public' / manifest['files']['detail_navigation']['path']).read_bytes()
+    assert len(packed) == len(groups) * 16
+    assert len(members) == len(groups)
+    for row, expected_group in enumerate(groups):
+        group, selected, offset, count = struct.unpack_from('<IIII', packed, row * 16)
+        assert group == expected_group
+        assert selected == preferred[group]
+        assert list(members[offset:offset + count]) == [i for i, value in enumerate(groups) if value == group]
+
+
+@pytest.mark.parametrize('groups,preferred', [([1], [0]), ([0], [1]), ([0, 1], [1, 0]), ([0], [0, 0])])
+def test_detail_navigation_rejects_invalid_group_and_preferred_links(tmp_path, groups, preferred):
+    with pytest.raises(ValueError):
+        publication.navigation.publish_navigation(groups, preferred, tmp_path)

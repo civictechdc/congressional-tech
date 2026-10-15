@@ -111,7 +111,7 @@ def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies,
                  and meta.get(b'deferred_body_reads') == b'0')
             and cursor == capture_rows and meta.get(b'seed_digest') == seed_digest.encode()
             and meta.get(b'download_state_digest') == state_digest.encode()
-            and meta.get(b'availability_policy') == b'1'
+            and meta.get(b'availability_policy') == b'2'
             and previous_documents is not None
             and (pq.read_schema(pa.BufferReader(previous_documents)).metadata or {}).get(b'catalog_id') == meta.get(b'catalog_id')):
         if lineage_refresh:
@@ -331,7 +331,7 @@ def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies,
                   "source_lineage_version": SOURCE_LINEAGE_VERSION,
                   "capture_digest": input_digest, "seed_digest": seed_digest,
                   "download_state_digest": state_digest, "download_state_rows": str(len(state)),
-                  "availability_policy": "1",
+                  "availability_policy": "2",
                   "deferred_source_bodies": json.dumps(sorted(deferred_sources)),
                   "retained_recovery_fingerprint": recovery_fingerprint()},
     )

@@ -17,6 +17,7 @@ on:
       - 'apps/site/scripts/filename-test-fixture.py'
       - 'apps/site/scripts/filename_observations.py'
       - 'apps/site/scripts/filename_details.py'
+      - 'apps/site/scripts/filename_navigation.py'
       - 'apps/site/scripts/filename_recoveries.py'
       - 'tests/test_filename_recoveries.py'
       - 'tests/test_filename_observations.py'

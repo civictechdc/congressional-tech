@@ -171,3 +171,142 @@ def test_filename_refresh_preserves_availability_and_structured_resources(tmp_pa
     after = [pq.read_table(path) for path in local_catalog_paths(tmp_path)]
     for original, refreshed in zip(before, after, strict=True):
         assert original.equals(refreshed)
+
+
+@pytest.mark.parametrize('disk_staging', [False, True])
+def test_state_retained_body_is_exposed_without_rewriting_existing_observation(tmp_path, disk_staging):
+    url = 'https://www.govinfo.gov/metadata/pkg/CHRG-117shrg45248/mods.xml'
+    current = dict(url=url, body_key='bodies/retained.xml', outcome='retained', http_status=200,
+                   media_type='application/xml')
+    original = dict(body_key=None, filename='mods.xml', source_url=url,
+                    source_page_title=['Publisher reference'],
+                    source_occurrences=[dict(source_occurrence_scope=['source_record'], source_page_url=[url])])
+    from congress_api.retention.catalog_staging import WorkingCatalog
+    working = WorkingCatalog(tmp_path / 'availability.sqlite') if disk_staging else None
+    try:
+        rows = list(annotate_availability([original], state(current), working=working))
+    finally:
+        if working is not None:
+            working.close()
+    assert len(rows) == 2
+    assert rows[0]['body_key'] is None
+    assert rows[0]['source_page_title'] == ['Publisher reference']
+    assert rows[1]['body_key'] == current['body_key']
+    assert rows[1]['source_paths'] == [STATE_KEY]
+    assert 'source_receipt_key' not in rows[1]
+    assert list(annotate_availability(rows, state(current))) == rows
+    index.write_filename_metadata(tmp_path, rows, workers=1)
+    from congress_api.retention.catalog_publication import local_catalog_paths
+    import importlib.util
+    from pathlib import Path
+    script = Path(__file__).resolve().parents[1] / 'apps/site/scripts/publish-filename-viewer.py'
+    spec = importlib.util.spec_from_file_location('retained_publication', script)
+    publisher = importlib.util.module_from_spec(spec); spec.loader.exec_module(publisher)
+    output = tmp_path / 'public'
+    publication = publisher.publish(tmp_path, output)
+    flags = (output / publication['files']['flags']['path']).read_bytes()
+    assert len(flags) == 1 and flags[0] & 1
+    import pyarrow.parquet as pq
+    details = pq.read_table(output / publication['files']['details']['path']).to_pylist()
+    assert any(r['body_key'] == current['body_key'] for r in details)
+
+
+@pytest.mark.parametrize('outcome,status', [('pending', None), ('http_error', 404)])
+def test_failed_state_does_not_add_a_successful_body_to_an_existing_url(outcome, status):
+    url = 'https://example.gov/file.pdf'
+    rows = list(annotate_availability([dict(source_url=url, body_key=None, filename='file.pdf')],
+        state(dict(url=url, body_key='bodies/error.html', outcome=outcome, http_status=status))))
+    assert len(rows) == 1 and rows[0]['body_key'] is None
+
+
+@pytest.mark.parametrize('media,exposed', [('video/x-ms-wmv', False), ('video/mp4', False),
+                                         ('video/x-ms-wvx', True), ('application/xml', True)])
+def test_publication_keeps_video_locations_without_saved_video_links(tmp_path, media, exposed):
+    import importlib.util
+    from pathlib import Path
+    import pyarrow.parquet as pq
+    url = 'https://committee.example/recording'
+    body = 'bodies/sha256/aa/' + 'a' * 64 + '.gz'
+    rows = [dict(source_url=url, filename='recording', body_key=body, media_type=[media],
+                 source_occurrences=[dict(source_occurrence_scope=['capture'], source_capture_url=[url])])]
+    index.write_filename_metadata(tmp_path, rows, workers=1)
+    script = Path(__file__).resolve().parents[1] / 'apps/site/scripts/publish-filename-viewer.py'
+    spec = importlib.util.spec_from_file_location('video_policy_publication', script)
+    publisher = importlib.util.module_from_spec(spec); spec.loader.exec_module(publisher)
+    output = tmp_path / 'public'
+    publication = publisher.publish(tmp_path, output)
+    flags = (output / publication['files']['flags']['path']).read_bytes()
+    assert bool(flags[0] & 1) is exposed
+    detail, = pq.read_table(output / publication['files']['details']['path']).to_pylist()
+    assert detail['body_key'] == (body if exposed else None)
+    assert detail['source_url'] == url
+    original, = pq.read_table(output / publication['files']['filenames']['path']).to_pylist()
+    assert original['body_key'] == body
+
+
+@pytest.mark.parametrize('evidence,exposed', [
+    ({'http_status': ['404']}, False),
+    ({'http_status': ['200'], 'response_usable': ['false']}, False),
+    ({'capture_outcome': ['empty']}, False),
+    ({'capture_outcome': ['request_failed']}, False),
+    ({'http_status': ['200'], 'capture_outcome': ['retry_later']}, False),
+    ({'http_status': ['200'], 'capture_outcome': ['size_limit']}, False),
+    ({'state_outcome': ['http_error'], 'http_status': ['200']}, True),
+    ({'response_body_complete': ['false']}, False),
+    ({'source_record_type': ['error-page']}, False),
+    ({'http_status': ['200'], 'response_usable': ['true']}, True),
+    ({'state_outcome': ['retained'], 'media_type': ['application/xml']}, True),
+])
+def test_saved_response_flags_and_links_use_capture_evidence(tmp_path, evidence, exposed):
+    import importlib.util
+    from pathlib import Path
+    import pyarrow.parquet as pq
+    body = 'bodies/error-or-content'
+    rows = [dict(source_url='https://example.gov/document', filename='document', body_key=body, source_occurrences=[dict(source_occurrence_scope=['capture'], source_capture_url=['https://example.gov/document'])], **evidence)]
+    index.write_filename_metadata(tmp_path, rows, workers=1)
+    script = Path(__file__).resolve().parents[1] / 'apps/site/scripts/publish-filename-viewer.py'
+    spec = importlib.util.spec_from_file_location('saved_policy_publication', script)
+    publisher = importlib.util.module_from_spec(spec); spec.loader.exec_module(publisher)
+    output = tmp_path / 'public'
+    publication = publisher.publish(tmp_path, output)
+    flags = (output / publication['files']['flags']['path']).read_bytes()
+    assert bool(flags[0] & 1) is exposed
+    detail, = pq.read_table(output / publication['files']['details']['path']).to_pylist()
+    assert detail['body_key'] == (body if exposed else None)
+    original, = pq.read_table(output / publication['files']['filenames']['path']).to_pylist()
+    assert original['body_key'] == body
+
+
+def test_html_reviews_bind_exact_source_and_body():
+    from congress_api.retention.saved_responses import content_reviews, saved_response
+    reviews = content_reviews()
+    assert reviews
+    for (url, body), usable in reviews.items():
+        row = dict(source_url=url, body_key=body, media_type=['text/html'], http_status=['200'])
+        assert saved_response(row) is usable
+        assert not saved_response(dict(row, response_body_complete=['false']))
+        assert not saved_response(dict(row, http_status=['503']))
+        if usable:
+            assert not saved_response(dict(row, source_url=url+'?different', response_usable=['false']))
+        else:
+            assert saved_response(dict(row, body_key=body+'different', response_usable=['true']))
+
+
+def test_reviewed_error_page_is_unavailable_under_a_redirect_alias():
+    from congress_api.retention.saved_responses import reviewed_error_bodies, saved_response
+    assert reviewed_error_bodies()
+    for body in reviewed_error_bodies():
+        assert not saved_response(dict(source_url='https://another.example/redirect-target',
+            body_key=body, http_status=['200'], response_usable=['true'], media_type=['text/html']))
+
+
+def test_govinfo_homepage_is_not_a_saved_hearing_response():
+    from congress_api.retention.saved_responses import saved_response
+    row = dict(source_url='http://frwebgate.access.gpo.gov/cgi-bin/ getdoc.cgi?dbname=107_house_hearings&docid=f:80978.pdf',
+               body_key='bodies/sha256/fc/fcdfbdddc99482aa9e7713ef97561448c14c6b8028d88e2ad6abc28c1c85333c.gz',
+               media_type=['text/html'], http_status=['200'], response_body_complete=['true'],
+               capture_outcome=['saved'], record_role=['document'])
+    assert not saved_response(row)
+    assert saved_response(dict(row, source_url='https://www.govinfo.gov/content/pkg/CHRG-107hhrg80978/pdf/CHRG-107hhrg80978.pdf',
+        body_key='bodies/sha256/27/2719a915b0c73b9df39eb6344525f3680212d9c2b8ab596dfb6a4da4af7e32f7.gz',
+        media_type=['application/pdf'], response_usable=['true']))

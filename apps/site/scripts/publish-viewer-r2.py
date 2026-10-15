@@ -22,7 +22,7 @@ from filename_recoveries import ACCEPTED_KEY, accepted_rows, index_recoveries
 BUCKET = 'congressional-tech-raw'
 PREFIX = 'viewer-publications/'
 PUBLIC_URL = 'https://congressional-viewer-data.mdeeb.workers.dev/'
-PUBLISHER_VERSION = 6
+PUBLISHER_VERSION = 9
 PAGES_MANIFEST = 'https://civictechdc.github.io/congressional-tech/data/filenames/manifest.json'
 USER_AGENT = 'congressional-tech-viewer-publisher/1.0 (+https://github.com/civictechdc/congressional-tech)'
 
@@ -124,9 +124,8 @@ def store_recovery_index(client, value):
 
 def recovery_for_publication(client, root, manifest):
     accepted, _, _ = read_json(client, ACCEPTED_KEY, optional=True)
-    if accepted is None:
-        return None
-    return store_recovery_index(client, index_recoveries(root, manifest, accepted['recoveries']))
+    index = index_recoveries(root, manifest, accepted['recoveries'] if accepted else [])
+    return store_recovery_index(client, index) if index['recoveries'] else None
 
 
 def accept_recoveries(client, root, rows, *, public_url=PUBLIC_URL):

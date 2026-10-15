@@ -106,7 +106,7 @@ def annotate_availability(rows, state, *, hearing_records=(), working=None):
                 resources[package].append(dict(package_id=package, url=item['url'],
                     body_key=item['body_key'], format=kind,
                     outcome=item['outcome']))
-    seen = set() if working is None else working.mapping('availability_seen')
+    seen = {} if working is None else working.mapping('availability_seen')
     package_cache = {}
     authoritative = {}
     for record, captures in hearing_records:
@@ -152,13 +152,14 @@ def annotate_availability(rows, state, *, hearing_records=(), working=None):
 
     for row in rows:
         url = row.get('source_url')
-        if working is None:
-            seen.add(url)
-        else:
-            seen[url] = True
+        current = by_url.get(url)
+        # A link-only row does not expose a saved copy. Keep its original facts
+        # and add one state-backed source when the current body is absent.
+        matches = bool(current and row.get('body_key') == current.get('body_key'))
+        seen[url] = seen.get(url, False) or matches
         yield annotate(row)
     for url, item in by_url.items():
-        if url in seen:
+        if url in seen and (seen[url] or not retained(item)):
             continue
         success = retained(item)
         row = dict(body_key=item.get('body_key'), filename=url_filename(url), source_url=url,

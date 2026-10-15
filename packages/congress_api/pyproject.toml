@@ -63,3 +63,6 @@ transcripts = ["models", "parsers", "matching", "retention", "transport"]
 replay = ["parsers", "matching", "retention", "acquisition"]
 adapters = ["models", "parsers", "matching"]
 cli = ["models", "parsers", "matching", "retention", "transport", "acquisition", "transcripts", "replay", "adapters"]
+
+[tool.setuptools.package-data]
+"congress_api.retention" = ["saved_response_reviews.json"]

@@ -22,6 +22,8 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, quote, urlsplit
 from urllib.request import Request, urlopen
 
+from congress_api.retention.saved_responses import FIELDS as SAVED_FIELDS, saved_response
+
 import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
@@ -34,7 +36,8 @@ LIST_COLUMNS = ('filename', 'source_url', 'body_key', 'congress', 'document_kind
                 'extension', 'committee_code', 'measure_references', 'media_type', 'http_status',
                 'source_id', 'document_id', 'format', 'record_role', 'body_format',
                 'response_usable', 'response_body_complete', 'response_format', 'response_result',
-                'recovered_filename', 'recovered_source_url', 'source_congress')
+                'recovered_filename', 'recovered_source_url', 'source_congress',
+                'source_record_type', 'capture_outcome', 'state_outcome')
 FILTERS = ('congress', 'document_family', 'document_kind', 'format')
 
 
@@ -289,8 +292,12 @@ class Catalog:
         for row_id, entry in enumerate(self.entry_ids):
             self.members[entry].append(row_id)
         self.saved_responses = bytearray(len(self.documents))
-        for row_id in pc.indices_nonzero(pc.is_valid(self.table['body_key'])).to_pylist():
-            self.saved_responses[self.entry_ids[row_id]] = 1
+        row_id = 0
+        for batch in self.table.select([name for name in SAVED_FIELDS if name in self.fields]).to_batches(max_chunksize=8192):
+            for row in batch.to_pylist():
+                if saved_response(row):
+                    self.saved_responses[self.entry_ids[row_id]] = 1
+                row_id += 1
         self.preferred_sources = [sources[key] for key in self.documents['source_id'].to_pylist()]
         self.order = pc.sort_indices(self.documents, sort_keys=[('filename', 'ascending')])
         self.document_entries = set(
@@ -448,10 +455,11 @@ class Catalog:
         record = self.record(row_id)
         ids = self.members[self.entry_ids[row_id]]
         sources = self.table.take(pa.array(ids, type=pa.int64())).to_pylist()
-        bodies = [source.get('body_key') for source in sources]
+        bodies = [source.get('body_key') if saved_response(source) else None for source in sources]
         for source, source_id in zip(sources, ids):
             source['_row'] = source_id
-            source['retained'] = source.pop('body_key') is not None
+            source['retained'] = saved_response(source)
+            source.pop('body_key')
         filename = self.documents['filename'][self.entry_ids[row_id]].as_py()
         position = self.entry_ids[row_id]
         group = bisect_right(self.document_starts, position) - 1
@@ -464,7 +472,7 @@ class Catalog:
                 'origin': source_context(record),
                 'document_origin': source_context(self.record(self.preferred_sources[position])),
                 'sources_share_saved_file': bool(bodies and bodies[0] and len(set(bodies)) == 1),
-                'saved_file_available': bool(self.retained and record.get('body_key'))}
+                'saved_file_available': bool(self.retained and saved_response(record))}
 
     @lru_cache(maxsize=16)
     def evidence(self, row_id):

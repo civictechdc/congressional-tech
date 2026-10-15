@@ -133,6 +133,29 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
     for (let source = membership.first[group]; source !== -1; source = membership.next[source]) members.push(source);
     return members;
   }
+  const navigationFiles = new Map();
+  function navigationFile(name, length) {
+    const part = files[name];
+    if (!part || part.bytes !== length) throw new Error('Invalid detail navigation index.');
+    if (!navigationFiles.has(name)) navigationFiles.set(name, rangeFile(url(part.path), part.bytes, fetcher));
+    return navigationFiles.get(name);
+  }
+  async function navigation(row, signal) {
+    if (!files.detail_navigation && !files.detail_members) {
+      const [groups, preferred] = await Promise.all(['groups', 'preferred'].map(index));
+      const group = groups[row];
+      return {group, preferred: preferred[group], members: await membersOf(group)};
+    }
+    const bytes = await navigationFile('detail_navigation', info.rows * 16).slice(row * 16, (row + 1) * 16, signal);
+    const view = new DataView(bytes);
+    const group = view.getUint32(0, true), preferred = view.getUint32(4, true);
+    const offset = view.getUint32(8, true), count = view.getUint32(12, true);
+    if (group >= info.entries || preferred >= info.rows || !count || offset + count > info.rows) throw new Error('Invalid detail navigation record.');
+    const packed = await navigationFile('detail_members', info.rows * 4).slice(offset * 4, (offset + count) * 4, signal);
+    const data = new DataView(packed), members = Array.from({length: count}, (_, i) => data.getUint32(i * 4, true));
+    if (!members.includes(row) || !members.includes(preferred) || members.some((member, i) => member >= info.rows || (i && member <= members[i - 1]))) throw new Error('Invalid detail group membership.');
+    return {group, preferred, members};
+  }
   const tables = new Map(), columnCache = new Map();
   async function table(name, signal) {
     if (tables.has(name)) return tables.get(name);
@@ -271,10 +294,13 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
     signal?.throwIfAborted();
     return { rows, total: found.length, page, pages, limit };
   }
+  const resolved = new Map();
   async function resolve(identity, catalog, signal) {
+    signal?.throwIfAborted();
     if (catalog && catalog !== info.catalog_id) throw new Error('This link belongs to a different catalog snapshot. Close this panel and select the document in the current results.');
     if (/^\d{1,11}$/.test(identity) && Number(identity) < info.rows) return Number(identity);
     if (!/^[a-f0-9]{64}$/.test(identity)) throw new Error('Source record is not present in this catalog.');
+    if (resolved.has(identity)) return resolved.get(identity);
     const response = await fetcher(url(manifest.ids + identity.slice(0, 2) + '.bin'), { signal });
     if (!response.ok) throw new Error('Could not resolve the source record.');
     const buffer = await response.arrayBuffer(), bytes = new Uint8Array(buffer), view = new DataView(buffer);
@@ -283,6 +309,8 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
     for (let offset = 0; offset < bytes.length; offset += 36) if (wanted.every((value, i) => value === bytes[offset + i])) {
       const row = view.getUint32(offset + 32, true);
       if (row >= info.rows) throw new Error('Invalid source ID index.');
+      if (resolved.size >= 256) resolved.delete(resolved.keys().next().value);
+      resolved.set(identity, row);
       return row;
     }
     throw new Error('Source record is not present in this catalog.');
@@ -321,12 +349,11 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
   async function technicalOrigin(identity, catalog, signal) {
     const row = await resolve(identity, catalog, signal);
     return (await read(files.details ? 'details' : 'filenames', row, row + 1,
-      ['source_url','recovered_source_url'].filter(name => info.fields.includes(name)), signal, true))[0];
+      ['source_url','recovered_source_url', ...originColumns].filter(name => info.fields.includes(name)), signal, true))[0];
   }
-  async function entry(identity, catalog, signal) {
+  async function entry(identity, catalog, signal, options = {}) {
     const row = await resolve(identity, catalog, signal);
-    const [groups, preferred] = await Promise.all(['groups', 'preferred'].map(index));
-    const group = groups[row], members = await membersOf(group);
+    const {group, preferred, members} = await navigation(row, signal);
     const {record, facts, filename_field_count} = await detailRecord(row, signal);
     if (recovery.sources.has(row)) record.recovery = recovery.sources.get(row);
     const [document] = files.document_summaries
@@ -340,19 +367,31 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
     const bodies = sources.map(source => source.body_key);
     for (const source of sources) { source.retained = source.body_key != null; delete source.body_key; }
     sources.forEach((source, i) => { if (recovery.sources.has(members[i])) Object.assign(source, {retained: true, recovery: recovery.sources.get(members[i])}); });
-    document.source_id = sources[members.indexOf(preferred[group])].source_id;
+    document.source_id = sources[members.indexOf(preferred)].source_id;
     const recovered = recovery.groups.get(group);
     if (recovered) Object.assign(document, {recovery: recovered[0], recoveries: recovered});
-    const evidence = await (await observationStore(signal)).page(row, {limit: 20, columns: originColumns}, signal);
-    const origin = sourceContext({...record, source_occurrences: evidence.items.filter(Boolean)});
-    const canonicalEvidence = row === preferred[group] ? evidence : await (await observationStore(signal)).page(preferred[group], {limit: 20, columns: originColumns}, signal);
-    const canonicalSource = sources[members.indexOf(preferred[group])];
-    const documentOrigin = row === preferred[group] ? origin : sourceContext({...canonicalSource, source_occurrences: canonicalEvidence.items.filter(Boolean)});
+    const context = options.deferOrigin ? {origin_pending: true, origin: sourceContext(record), document_origin: {redirects: []}}
+      : await entryOrigin(identity, catalog, signal, {row, preferred, record, canonicalSource: sources[members.indexOf(preferred)]});
     return {record, document, facts, filename_field_count, filename: document.filename, sources, catalog_id: info.catalog_id,
       api_reference: apiReference(record.source_url), video_reference: videoReference(record.source_url), ...(recovered ? {recovery: recovered[0], recoveries: recovered} : {}),
-      origin, document_origin: {redirects: documentOrigin.redirects}, observation_count: evidence.total, origin_next: evidence.next, record_complete: false,
+      ...context, record_complete: false,
       reading: null, saved_file_available: false, saved_file_url: savedCopyUrl(record, recovered?.[0], manifestUrl), published_only: true,
       sources_share_saved_file: !!bodies[0] && bodies.every(value => value === bodies[0])};
   }
-  return { info: { ...info, recovery_sha256: publication.recovery?.sha256, downloads: { documents: url(files.documents.path), filenames: url(files.filenames.path), recoveries: publication.recovery?.url }, published_at: manifest.published_at }, search, entry, technical, technicalOrigin, observationPage, sourceContext };
+  async function entryOrigin(identity, catalog, signal, known) {
+    const row = known?.row ?? await resolve(identity, catalog, signal);
+    const preferred = known?.preferred ?? (await navigation(row, signal)).preferred;
+    const record = known?.record ?? await technicalOrigin(String(row), catalog, signal);
+    const store = await observationStore(signal);
+    const evidence = await store.page(row, {limit: 20, columns: originColumns}, signal);
+    const origin = sourceContext({...record, source_occurrences: evidence.items.filter(Boolean)});
+    let documentOrigin = origin;
+    if (row !== preferred) {
+      const canonical = known?.canonicalSource ?? await technicalOrigin(String(preferred), catalog, signal);
+      const canonicalEvidence = await store.page(preferred, {limit: 20, columns: originColumns}, signal);
+      documentOrigin = sourceContext({...canonical, source_occurrences: canonicalEvidence.items.filter(Boolean)});
+    }
+    return {origin_pending: false, origin, document_origin: {redirects: documentOrigin.redirects}, observation_count: evidence.total, origin_next: evidence.next};
+  }
+  return { info: { ...info, recovery_sha256: publication.recovery?.sha256, downloads: { documents: url(files.documents.path), filenames: url(files.filenames.path), recoveries: publication.recovery?.url }, published_at: manifest.published_at }, search, entry, entryOrigin, technical, technicalOrigin, observationPage, sourceContext };
 }

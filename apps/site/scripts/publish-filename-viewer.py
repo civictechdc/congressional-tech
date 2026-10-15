@@ -33,6 +33,10 @@ spec = importlib.util.spec_from_file_location('filename_details', Path(__file__)
 details = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(details)
 
+spec = importlib.util.spec_from_file_location('filename_navigation', Path(__file__).with_name('filename_navigation.py'))
+navigation = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(navigation)
+
 
 def digest(path):
     with path.open('rb') as stream:
@@ -145,6 +149,8 @@ def publish(root, target, modified=None):
     for name, values in [('groups', group), ('preferred', preferred)]:
         path = output / f'{name}.bin'
         write_u32(path, values)
+        describe(name, path)
+    for name, path in navigation.publish_navigation(group, preferred, output).items():
         describe(name, path)
     path = output / 'flags.bin'
     path.write_bytes(flags)

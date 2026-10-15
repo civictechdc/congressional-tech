@@ -16,11 +16,22 @@ That endpoint exposes known object paths, including receipts and indexes; it doe
 not list the bucket. The viewer uses the existing Worker for production data and
 decoded saved copies. Browsers receive no storage credentials.
 
+Catalog alias links use `source_resolved_url` or a recognized URL wrapper only when
+the target has one usable retained body. Conflicting destinations and body versions
+remain unresolved. The recovery index preserves each literal source URL and is
+rebuilt for every publication, including catalogs without manual recoveries.
+
 “Open saved copy” uses the selected source's retained body, preferring an accepted
 recovery when available. A group recovery is explicitly labeled as belonging to
 another URL. The Worker streams the stored gzip object as its original bytes:
 PDFs open in the browser; other formats download without running archived HTML
-on the data host. Saved copies ignore Range requests and return the whole file,
+on the data host. Saved-response flags and saved-copy links exclude failed or incomplete captures,
+known error pages, reviewed unusable HTML, and video payloads. Genuine reviewed
+HTML and XML playlists remain available. Reviews bind decisions to exact source
+URLs and body digests. Identified error pages remain excluded through redirect
+aliases. Full source exports retain original evidence.
+
+Saved copies ignore Range requests and return the whole file,
 since compressed-storage offsets do not describe decoded-file offsets. This
 requires no new data export or per-file publishing step.
 
@@ -56,6 +67,12 @@ The browser publication contains:
   document rows, and group status. Integers are unsigned 32-bit little-endian.
   Status bits are saved response (1), document scope (2), missing kind (4), missing
   family (8), and API-only group (16).
+- Direct detail navigation in `detail-navigation.bin`: each source row has four
+  unsigned 32-bit little-endian values (group, preferred source row, member
+  offset, member count). `detail-members.bin` contains the ordered source rows
+  for each group. The browser range-reads 16 bytes and that group's member slice;
+  it checks bounds, ordering, and inclusion of the selected/preferred sources.
+  The publisher verifies every row and group before declaring both files.
 - 256 source-ID prefix files. Each entry contains a 32-byte SHA-256 source ID and
   its four-byte little-endian row position, allowing stable review links without
   loading all IDs on startup.
@@ -85,9 +102,11 @@ hearing-to-page-to-file chain when those individual URL pairings establish a
 complete path; ambiguous flat URL lists remain separate source notes.
 
 Catalog information loads just the manifest. Ordinary browsing loads flags and
-preferred-source rows; searching loads group mappings, and opening a detail
-loads document-row mappings and builds group membership lists. Concurrent
-queries share pending navigation loads without sharing cancellation.
+preferred-source rows; searching loads group mappings. New publications let
+individual details bypass those global arrays through the direct navigation
+files. Older publications retain the global-index fallback. Resolved source IDs
+have a bounded per-reader cache. Concurrent queries share pending global index
+loads without sharing cancellation.
 
 Queries load only needed columns over validated HTTP byte ranges. Detail reads
 prefetch only requested columns and decode ordinary source metadata eight
@@ -101,6 +120,11 @@ latency and memory; see the [paired measurements](../../docs/youtube-coverage/re
 The publisher verifies every reconstructed observation against the original
 Parquet before publication. These indexes preserve all provenance rather than
 trading evidence for speed.
+The static detail panel displays the file and saved-copy action before loading
+source-page provenance. The provenance request also restores canonical redirect
+labels for alternate sources; failures leave the file usable and offer a retry.
+Deep links finish their initial detail response before starting the result-list
+search. Local Python viewers can still return a complete detail in one response.
 The UI cancels superseded searches and details. Review links load their retained
 snapshot; missing snapshots fail visibly. The browser rechecks the latest pointer
 on focus and every minute while visible. A new-data notice offers the latest

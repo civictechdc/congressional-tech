@@ -10,7 +10,7 @@ test('all published table and navigation filenames are readable', async () => {
   }}};
   for (const filename of ['browse.parquet', 'documents.parquet', 'filenames.parquet',
     'document-summaries.parquet', 'document_rows.bin', 'flags.bin', 'groups.bin',
-    'preferred.bin', 'observation-index.json', 'observation-rows.bin', 'observations.bin',
+    'preferred.bin', 'detail-navigation.bin', 'detail-members.bin', 'observation-index.json', 'observation-rows.bin', 'observations.bin',
     'ids/00.bin', 'ids/ff.bin']) {
     const request = new Request('https://data.test/' + path.replace('browse.parquet', filename), {method: 'HEAD'});
     assert.equal((await worker.fetch(request, env)).status, 200, filename);

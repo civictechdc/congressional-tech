@@ -134,3 +134,34 @@ def test_status_only_publication_uses_conditional_pointer_and_preserves_catalog(
     publisher.accept_recoveries(Client(), tmp_path, accepted)
     assert writes[before:][0][0].startswith(publisher.PREFIX + 'releases/')
     assert len(writes[before:]) == 1
+
+
+def alias_fixture(tmp_path):
+    accepted, manifest, rows = fixture(tmp_path)
+    rows[2]['source_url'] = '../file.pdf'
+    for row in rows:
+        row['source_resolved_url'] = [accepted[0]['recovered_url']] if row is rows[2] else None
+    pq.write_table(pa.Table.from_pylist(rows), tmp_path / 'filenames.parquet')
+    path = tmp_path / 'filenames.parquet'
+    manifest['files']['filenames'].update(bytes=path.stat().st_size, sha256=hashlib.sha256(path.read_bytes()).hexdigest())
+    return accepted, manifest, rows
+
+
+def test_catalog_alias_attaches_saved_copy_to_original_group(tmp_path):
+    accepted, manifest, rows = alias_fixture(tmp_path)
+    result = index_recoveries(tmp_path, manifest, accepted)
+    assert result['sources'] == [[0, 0], [1, 0], [2, 1]]
+    assert result['groups'] == [[0, [0]], [1, [0]], [2, [1]]]
+    assert result['recoveries'][1]['original_url'] == '../file.pdf'
+    assert result['recoveries'][1]['body_key'] == accepted[0]['body_key']
+    assert result['recoveries'][0] == accepted[0]
+    assert pq.read_table(tmp_path / 'filenames.parquet').to_pylist() == rows
+
+
+def test_aliases_publish_without_any_manual_acceptances(tmp_path, monkeypatch):
+    _, manifest, _ = alias_fixture(tmp_path)
+    monkeypatch.setattr(publisher, 'read_json', lambda *args, **kwargs: (None, None, None))
+    stored = []
+    monkeypatch.setattr(publisher, 'store_recovery_index', lambda client, value: stored.append(value) or {'path': 'recovery.json'})
+    assert publisher.recovery_for_publication(None, tmp_path, manifest) == {'path': 'recovery.json'}
+    assert stored[0]['groups'] == [[2, [0]]]

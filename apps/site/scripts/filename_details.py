@@ -4,6 +4,8 @@ import re
 import hashlib
 import json
 
+from congress_api.retention.saved_responses import FIELDS as SAVED_FIELDS, saved_response
+
 import pyarrow as pa
 import pyarrow.parquet as pq
 
@@ -68,11 +70,15 @@ def publish_details(source, path):
     encode = lambda table: json.dumps(table.to_pylist(), ensure_ascii=False, separators=(',', ':'), default=lambda value: value.isoformat()).encode()
     count = 0
     with pq.ParquetWriter(path, schema, compression='zstd', compression_level=9, write_page_index=True) as writer:
-        for batch in source.iter_batches(batch_size=8192, columns=list(dict.fromkeys(core + typed + readings))):
+        for batch in source.iter_batches(batch_size=8192, columns=list(dict.fromkeys(core + typed + readings + [name for name in SAVED_FIELDS if name in names]))):
             result = []
             for row in batch.to_pylist():
                 has_observations = next(counts) > 0
                 record = {name: None if name in ORIGIN and has_observations else row[name] for name in core}
+                # The full source export retains failed-response evidence.
+                # Only usable content receives a saved-copy link in the viewer.
+                if not saved_response(row):
+                    record['body_key'] = None
                 record['fact_alternatives'] = []
                 for name in typed:
                     value = typed_value(name, row[name])

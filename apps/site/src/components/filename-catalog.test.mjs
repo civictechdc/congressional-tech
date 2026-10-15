@@ -90,7 +90,30 @@ test('static Parquet queries match the Python catalog and preserve complete sour
     assert.equal((await reader.observationPage('0')).is_null,true);
     const freshRequests=[];
     const fresh=await createFilenameCatalog(pathToFileURL(join(folder,'public/manifest.json')),(url,options)=>{freshRequests.push(new URL(url).pathname);return localFetch(url,options);});
-    await fresh.entry('2');
+    const deferred = await fresh.entry('2', undefined, undefined, {deferOrigin: true});
+    assert.equal(deferred.origin_pending, true);
+    assert(!freshRequests.some(path => /(?:groups|preferred|observation-rows|observations)\.bin$/.test(path)), 'initial detail avoids global indexes and provenance');
+    assert(freshRequests.some(path => path.endsWith('/detail-navigation.bin')));
+    assert(freshRequests.some(path => path.endsWith('/detail-members.bin')));
+    const context = await fresh.entryOrigin('2');
+    const complete = await reader.entry('2');
+    assert.deepEqual({...deferred, ...context}, complete, 'deferred provenance reconstructs the complete detail');
+    const legacy = await createFilenameCatalog(pathToFileURL(join(folder,'public/manifest.json')), async (url, options) => {
+      if (String(url).endsWith('/manifest.json')) {
+        const manifest = JSON.parse(await readFile(new URL(url)));
+        delete manifest.files.detail_navigation; delete manifest.files.detail_members;
+        return Response.json(manifest);
+      }
+      return localFetch(url, options);
+    });
+    for (const source of sources) assert.deepEqual(await fresh.entry(source.source_id), await legacy.entry(source.source_id), 'direct and legacy navigation agree for every fixture source');
+    const corrupt = await createFilenameCatalog(pathToFileURL(join(folder,'public/manifest.json')), async (url, options) => {
+      const response = await localFetch(url, options);
+      if (!String(url).endsWith('/detail-members.bin')) return response;
+      const bytes = await response.arrayBuffer(); new DataView(bytes).setUint32(0, sources.length, true);
+      return new Response(bytes, {status: response.status, headers: response.headers});
+    });
+    await assert.rejects(corrupt.entry('0'), /Invalid detail group membership/);
     assert(!freshRequests.some(path=>path.endsWith('/filenames.parquet')),'ordinary details never read the archival source table');
     assert(!freshRequests.some(path=>path.endsWith('/documents.parquet')||path.endsWith('/document-summaries.parquet')));
 
@@ -199,7 +222,8 @@ test('inherited provenance retains hearing evidence without inventing a file red
   assert.deepEqual(result.redirects, []);
 });
 
-test('accepted recoveries update saved filtering and summaries without changing original source values', async () => {
+for (const basis of ['user_accepted_url_variant', 'resolved_source_url']) {
+test(`${basis} updates saved filtering and summaries without changing original source values`, async () => {
   const folder = await mkdtemp(join(tmpdir(), 'filename-recovery-'));
   try {
     execFileSync(process.env.PYTHON || 'python3', [fileURLToPath(new URL('../../scripts/filename-test-fixture.py', import.meta.url)), folder]);
@@ -209,7 +233,7 @@ test('accepted recoveries update saved filtering and summaries without changing 
     const originals = JSON.parse(await readFile(join(folder,'source-records.json')));
     const positions = [0,2,5];
     const recoveries = positions.map(row => ({original_url: originals[row].source_url, recovered_url:`http://archive.test/${row}.pdf`,
-      body_key:`bodies/sha256/aa/${'a'.repeat(64)}.gz`, kind:'pdf', recovery_status:'recovered', recovery_basis:'user_accepted_url_variant'}));
+      body_key:`bodies/sha256/aa/${'a'.repeat(64)}.gz`, kind:'pdf', recovery_status:'recovered', recovery_basis:basis}));
     const data = {version:1,catalog_id:manifest.info.catalog_id,rows:manifest.info.rows,entries:manifest.info.entries,recoveries,
       sources: positions.map((row,i)=>[row,i]), groups:positions.map((row,i)=>[groupBytes.readUInt32LE(row*4),[i]])};
     const bytes = Buffer.from(JSON.stringify(data));
@@ -249,4 +273,16 @@ test('accepted recoveries update saved filtering and summaries without changing 
       ? Promise.resolve(Response.json({...pointer,recovery:{path:statusPath(wrongHash),bytes:wrongBytes.length,sha256:wrongHash}}))
       : String(url).endsWith('/recovery-status.json') ? Promise.resolve(new Response(wrongBytes)) : fetcher(url,options)),/different catalog/);
   } finally { await rm(folder,{recursive:true,force:true}); }
+});
+}
+
+
+test('relative source aliases link through the verified body without changing source text', () => {
+  const record = {filename:'statement.pdf', source_url:'../docs/statement.pdf', body_key:null};
+  const before = structuredClone(record);
+  const recovery = {original_url:record.source_url, recovered_url:'https://committee.test/docs/statement.pdf',
+    body_key:`bodies/sha256/aa/${'a'.repeat(64)}.gz`, recovery_status:'recovered', recovery_basis:'resolved_source_url'};
+  assert.equal(savedCopyUrl(record, recovery, 'https://data.test/manifest.json'),
+    `https://data.test/saved/${'a'.repeat(64)}/statement.pdf`);
+  assert.deepEqual(record, before);
 });
