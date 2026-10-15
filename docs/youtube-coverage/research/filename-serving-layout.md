@@ -57,8 +57,18 @@ Native Parquet was 19.5% slower, exceeding the 5% regression limit. It is not pa
 
 - All 15 complete metadata cases exactly match the previous reader: five ordinary cases, five deterministic random cases, and all five largest provenance collections. All ten large/random detail cases finish within the heap limit.
 - Publication verifies every emitted detail value and schema by readback. Full source/document exports and observation reconstruction retain their existing complete fidelity checks.
-- 39 JavaScript tests and 32 Python tests pass. They cover lazy reads and DOM creation, paging, full JSON copying, retry, conflicting facts, null/empty observations, group filtering, recovery mappings, and publication validation. The Astro production build passes.
+- 39 JavaScript tests and 33 Python tests pass. They cover lazy reads and DOM creation, paging, full JSON copying, retry, conflicting facts, null/empty observations, group filtering, recovery mappings, and publication validation. The Astro production build passes.
 - At a 390 × 844 browser viewport, the hearing → UN article → file trail and recovered saved-copy action remain visible. A 12,147-observation record creates no technical field DOM before expansion; expansion renders 20 observation headers with no observation bodies until opened. Paging shows observations 21–40. No horizontal overflow was observed. This is browser viewport verification, not a physical-device memory measurement.
 - Viewer manifest and publisher version 5 force regeneration even when the source catalog is unchanged. Scheduled and source-completion publication use the same builder. R2 uploads remain immutable, include current accepted recoveries, verify public range reads, and update the selector conditionally after validation.
+
+An interrupted archival readback during deployment left the previous snapshot selected, as intended. The publisher now uses boto3's managed download with partial-transfer retries, followed by the same complete file-size and SHA-256 checks. This replaces the single long streaming response without adding a separate retry implementation. Interrupted-download and corrupted-content tests both confirm that a partial publication cannot become current.
+
+## Released result
+
+Implementation commit: `c138a4c`. Publication readback fix: `7b762b9`. The live release is `76599d6453264ba8bd593777c58a3bd7`, with viewer schema and publisher version 5. All 266 objects (1,041,476,760 bytes) passed readback and public-access checks before selection.
+
+Live verification confirmed the four intended Parquet files, the expected detail-table hash, exact preservation of all 5,542 recovery mappings, the House hearing → UN article → file trail, and HTTP 200 for both ordinary and recovered saved-copy links. The 12,147-observation record returned observations 21–40 correctly. The mobile source trail loaded without horizontal overflow or eager technical DOM.
+
+The [Pages deployment](https://github.com/civictechdc/congressional-tech/actions/runs/38657269352) succeeded. The [automatic publisher](https://github.com/civictechdc/congressional-tech/actions/runs/38657269461) passed its 33 checks and correctly reported the selected catalog unchanged after this publication. Future source changes use the same version-5 builder.
 
 Benchmark scripts, frozen readers, logs, summaries, and mobile screenshots are retained with this chat under `serving-layout/`. Generated candidate data remains in the worktree cache. The final detail table SHA-256 is `61f522951d9ddacea51d43339b95c10afe463b6c1947bac3d5fc9cec7cc1b4b5`.
