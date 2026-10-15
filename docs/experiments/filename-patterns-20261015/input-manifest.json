@@ -1,0 +1,44 @@
+{
+  "checked_at": "2026-10-15T19:00:55.188543+00:00",
+  "catalog_id": "0caede06d52f4c9caa8d5cbd24f83543",
+  "source_root": "/Users/mikewolfd/Work/congressional-tech/output/viewer-sync-20261015/source",
+  "source_manifest": {
+    "catalog_id": "0caede06d52f4c9caa8d5cbd24f83543",
+    "files": {
+      "documents": {
+        "bytes": 542736339,
+        "key": "catalog-generations/e5d144ab9557454793fd49845ed61d7f/documents.parquet",
+        "rows": 1239974,
+        "sha256": "ea2055bb32567d57a317d2107f078182256e41e8fbd4d2e4180dc33017f521fb"
+      },
+      "filenames": {
+        "bytes": 553494398,
+        "key": "catalog-generations/e5d144ab9557454793fd49845ed61d7f/document-filenames.parquet",
+        "rows": 1713847,
+        "sha256": "82bbd58d417f0a2cb750a55d8871454f55afd9bcc37a621604085fda1e2cbc38"
+      }
+    },
+    "generation": "e5d144ab9557454793fd49845ed61d7f",
+    "version": 1
+  },
+  "counts": {
+    "all_catalog_documents": 1239974,
+    "null_kind_all_roles": 788309,
+    "unclassified_documents": 756969,
+    "missing_filename": 99866,
+    "excluded_non_document_role": 31309,
+    "excluded_youtube_reference": 31,
+    "named_unclassified_documents": 657103,
+    "named_with_usable_saved_alias": 656938
+  },
+  "null_kind_roles": {
+    "document": 757000,
+    "error-response": 16452,
+    "source-record": 12387,
+    "capture-state": 2470
+  },
+  "selection": "Viewer document roles, excluding API-only and YouTube-only groups; no kind; nonempty preferred filename. All formats and saved states included.",
+  "input_sha256": "b5086e8283d107f0af9533d5fbdb4c361719558ddfd97fea43a27dac0f728e4b",
+  "population_file": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/documents.parquet",
+  "prior_network_error": "Generic urllib User-Agent returned HTTP 403; retry using the maintained publisher User-Agent succeeded."
+}

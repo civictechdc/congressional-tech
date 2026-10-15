@@ -59,7 +59,7 @@ from congress_api.retention.document_evidence import (
 from congress_api.parsers.source_family import family as source_family
 from congress_api.parsers.document_links import http_url
 from congress_api.parsers.document_cover import COVER_FIELDS
-from congress_api.parsers.document_types import DOCUMENT_TYPE_MEANINGS, document_type
+from congress_api.parsers.document_types import DOCUMENT_TYPE_MEANINGS, document_type, document_label_kind
 
 
 FAMILIES = (
@@ -230,6 +230,56 @@ def _select_document_kind(row):
     if not kinds and label_kinds:
         row["document_kind"] = sorted(set(label_kinds))
         row["document_kind_source"] = ["source_link_label"]
+    if not row['document_kind'] and (kind := publisher_anchor_kind(row)):
+        row['document_kind'] = [kind]
+        row['document_kind_source'] = ['source_context']
+
+
+def publisher_anchor_kind(row):
+    """Fill a missing kind only when attributable publisher anchors agree.
+
+    Flat unions cannot pair a label with its page or document. Unknown and
+    conflicting anchor claims abstain; existing filename/content/types win.
+    """
+    from congress_api.parsers.senate_page import section_document_kind
+
+    if response_failed(row) or (row.get('record_role') and row['record_role'] != ['document']):
+        return None
+    claims = []
+    source_urls = {http_url(u) for u in (row.get('source_urls') or [row.get('source_url')]) if u}
+    source_urls.discard(None)
+    for occurrence in trusted_source_occurrences(row):
+        if occurrence.get('source_occurrence_scope') != ['anchor']:
+            continue
+        links = occurrence.get('source_link_url') or []
+        if not links:
+            continue
+        # Older retained anchors predate association-basis metadata. An exact
+        # known URL establishes their link; a guessed URL variant never does.
+        if not occurrence.get('source_association_basis') and not all(http_url(u) in source_urls for u in links):
+            continue
+        pages = occurrence.get('source_original_page_url') or []
+        if not pages:
+            continue
+        try:
+            urls = [urlsplit(p) for p in pages]
+            if not all(u.scheme in {'http','https'} and not u.username and not u.password
+                       and (u.hostname or '').endswith(('.house.gov','.senate.gov')) for u in urls):
+                continue
+        except ValueError:
+            continue
+        own = {k for label in occurrence.get('source_link_label') or []
+               if (k := document_label_kind(label))}
+        if len(own) > 1:
+            return None
+        kind = next(iter(own), None)
+        if kind is None:
+            headings = occurrence.get('source_link_heading') or []
+            kind = document_type(section_document_kind({'headings':headings}))
+            if kind is None and len(headings)==1:
+                kind = document_label_kind(headings[0])
+        claims.append(kind)
+    return claims[0] if claims and claims[0] and all(k==claims[0] for k in claims) else None
 
 MEDIA_FORMATS = {
     "application/pdf": "pdf",

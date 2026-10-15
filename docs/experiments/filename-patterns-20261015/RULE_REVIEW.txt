@@ -1,0 +1,88 @@
+Document-kind rule review
+=========================
+
+This offline workflow turns the reviewed filename groups into explicit candidate
+rules. It reads the frozen experiment inputs and writes a separate review
+directory. It does not change catalog classifications or fetch document bodies.
+
+Run from the repository root:
+
+  .venv/bin/python -m unittest discover -s docs/experiments/filename-patterns-20261015 -p test_rule_review.py
+  .venv/bin/python docs/experiments/filename-patterns-20261015/rule_review.py --output output/filename-patterns-20261015/rule-review-new
+  .venv/bin/python docs/experiments/filename-patterns-20261015/verify_rule_review.py --output output/filename-patterns-20261015/rule-review-new
+
+Choose a new output directory for each run; existing directories are refused.
+The reviewed final run is rule-review-v2. The earlier rule-review directory is
+retained as diagnostic evidence and is superseded by v2.
+
+What goes in
+------------
+documents.parquet contains 657,103 named unclassified document groups from the
+frozen catalog. filename-records.jsonl holds 53,222 distinct filenames. The three
+group files contain the 6,753 descriptive group rows represented in the original
+ranked-groups.csv. These are different counting units; groups overlap.
+
+What happens
+------------
+1. Flag media, archives, meeting/package XML and page-like records for role review.
+2. Replay the maintained filename Engine for each remaining record and URL alias.
+3. Evaluate 12 explicit candidate rules with publisher scopes and exclusions.
+4. Read retained, trusted anchor labels/types/headings as separate source evidence.
+5. Preserve disagreements, reader errors and unresolved records for review.
+
+The complete source URL is part of the reader cache key. A shared filename never
+causes one record's decision to propagate to another. A shared cluster never
+causes a kind to propagate. Exact kind disagreement produces a conflict, even
+when the kinds belong to the same broad family. No speaker role is inferred.
+
+What comes out
+--------------
+report.html: searchable rule review and links to exports.
+rules.json: patterns, publishers, exclusions and candidate taxonomy status.
+document-review.jsonl.gz: one result per frozen document ID, including rejected
+rules, matched markers, provenance, errors and source occurrences where relevant.
+candidate-documents.csv: all results except role-review and unresolved records.
+rule-review.csv / .json: rule counts, up to three actual examples and rejected
+examples. Conflicts and corroboration are prioritized in the rule examples.
+conflicts.csv: exact kind disagreements requiring investigation.
+group-review-samples.csv / .json: every original group with up to three distinct
+filenames. Larger groups use a central lexical profile, its most distant member,
+then a member adding publisher/extension diversity. Groups of two or three retain
+all their filenames; selection labels do not establish a ranking in those groups.
+unresolved-sample.csv: first 100 unresolved records in input order, for browsing.
+verification.json: counts, input/code hashes, reader fingerprint and limitations.
+
+Status meanings
+---------------
+role_review: a filename, format or URL flags a possible non-document record role.
+reader_error: at least one URL alias failed the maintained reader's validation.
+conflict: filename rules, existing reader or retained source evidence disagree.
+existing_reader_candidate: the maintained reader emitted a kind without conflict.
+proposed_corroborated: a candidate kind agrees exactly with available trusted
+source claims. This is agreement, not measured classification accuracy.
+proposed_filename_only: a scoped rule matched without corroborating source claims.
+source_context_candidate: retained source evidence yielded a kind without a rule.
+unresolved: no accepted evidence yielded a kind.
+
+How to check it
+--------------
+Behavioral tests cover known mixed-group failures, publisher scope, per-record
+identity, source precedence, abstention, conflicts, role flags and sample choice.
+The independent verifier reads every output record and checks unique IDs, count
+conservation, status semantics, publisher scopes, CSV membership, group membership,
+sample uniqueness, complete group coverage and unchanged input/code hashes.
+
+Limits and next decision
+------------------------
+This is proposal generation, not a validated classifier. Publisher context can
+also be wrong. Body content and OCR have not been inspected. The source helpers
+and Engine are current local code; recorded hashes identify what was executed.
+Rule totals overlap. Central and boundary examples expose variation but do not
+estimate precision. Neither the first-100 unresolved sample nor the prioritized
+rule examples is an unbiased evaluation set.
+
+Validate rules separately by publisher and filename layout using document content
+and a held-out sample before changing the maintained classifier. Review conflicts
+first; investigate malformed source URLs without silently rewriting them. Decide
+whether hearing-charter should become a taxonomy kind. Audit role flags before
+excluding those records from the document population. Preserve uncertain records.

@@ -811,6 +811,10 @@ class Extractor:
             for rule, regex in self.rules:
                 if rule['scope'] != 'source-stem':
                     continue
+                if rule.get('source_extensions') and next((
+                        f['raw'].casefold() for m in observations if m['scope'] == 'extension'
+                        for f in m['fields']), None) not in rule['source_extensions']:
+                    continue
                 if source_host not in rule.get('source_hosts', ()) and source_url not in rule.get('source_urls', ()):
                     continue
                 if hit := regex.fullmatch(stem):

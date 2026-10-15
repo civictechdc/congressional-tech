@@ -1,0 +1,31 @@
+{
+  "catalog_id": "0caede06d52f4c9caa8d5cbd24f83543",
+  "manifest": "releases/f732aeea63ea48768a09c074c09af20a/manifest.json",
+  "published_at": "2026-10-15T18:28:14.739331+00:00",
+  "publisher_version": 6,
+  "recovery": {
+    "bytes": 5376135,
+    "path": "releases/b286f40f561601d07bf7f29e32c9e95d/659fa2fe1ddb2f0041e7088779dde09b/viewer-v2/recovery-status.json",
+    "sha256": "b286f40f561601d07bf7f29e32c9e95d659fa2fe1ddb2f0041e7088779dde09b"
+  },
+  "source_manifest": {
+    "catalog_id": "0caede06d52f4c9caa8d5cbd24f83543",
+    "files": {
+      "documents": {
+        "bytes": 542736339,
+        "key": "catalog-generations/e5d144ab9557454793fd49845ed61d7f/documents.parquet",
+        "rows": 1239974,
+        "sha256": "ea2055bb32567d57a317d2107f078182256e41e8fbd4d2e4180dc33017f521fb"
+      },
+      "filenames": {
+        "bytes": 553494398,
+        "key": "catalog-generations/e5d144ab9557454793fd49845ed61d7f/document-filenames.parquet",
+        "rows": 1713847,
+        "sha256": "82bbd58d417f0a2cb750a55d8871454f55afd9bcc37a621604085fda1e2cbc38"
+      }
+    },
+    "generation": "e5d144ab9557454793fd49845ed61d7f",
+    "version": 1
+  },
+  "version": 1
+}
