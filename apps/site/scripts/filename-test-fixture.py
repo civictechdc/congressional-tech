@@ -31,6 +31,7 @@ for i, (filename, url, body, group, role, kind) in enumerate([
     ('1', 'https://api.congress.gov/v3/hearing/116/senate/1?format=json', None, 'C', 'document', None),
     ('Recovered', None, None, 'D', 'source-record', None),
     ('failed.pdf', 'https://committee.test/failure', 'body-failed', 'E', 'error-response', None),
+    ('-oNSVIeynzI', 'https://youtu.be/-oNSVIeynzI', 'video-webpage', 'F', 'document', ['opening-statement']),
 ]):
     row = dict.fromkeys(columns)
     row.update(filename=filename, source_url=url, body_key=body, source_id=hashlib.sha256(str(i).encode()).hexdigest(),
@@ -46,7 +47,7 @@ for i, (filename, url, body, group, role, kind) in enumerate([
         row['recovered_filename'] = ['Recovered witness.pdf']
     rows.append(row)
 files = {}
-for name, subset in [('filenames', rows), ('documents', [rows[i] for i in [1,2,3,4,5]])]:
+for name, subset in [('filenames', rows), ('documents', [rows[i] for i in [1,2,3,4,5,6]])]:
     path = folder / ('document-filenames.parquet' if name == 'filenames' else 'documents.parquet')
     pq.write_table(pa.Table.from_pylist(subset, schema=schema), path, row_group_size=2, compression='zstd')
     files[name] = dict(key=str(path.relative_to(root)), bytes=path.stat().st_size, rows=len(subset), sha256=publisher.digest(path))

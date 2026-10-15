@@ -22,7 +22,7 @@ from filename_recoveries import ACCEPTED_KEY, accepted_rows, index_recoveries
 BUCKET = 'congressional-tech-raw'
 PREFIX = 'viewer-publications/'
 PUBLIC_URL = 'https://congressional-viewer-data.mdeeb.workers.dev/'
-PUBLISHER_VERSION = 5
+PUBLISHER_VERSION = 6
 PAGES_MANIFEST = 'https://civictechdc.github.io/congressional-tech/data/filenames/manifest.json'
 USER_AGENT = 'congressional-tech-viewer-publisher/1.0 (+https://github.com/civictechdc/congressional-tech)'
 

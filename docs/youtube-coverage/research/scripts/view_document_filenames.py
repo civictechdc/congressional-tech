@@ -110,6 +110,12 @@ def source_context(record):
                 redirects=[dict(original=a, final=b) for a, b in redirects])
 
 
+def video_reference(value):
+    from congress_api.parsers.media import youtube_video_id
+    identity = youtube_video_id(value) if web_url(value) else None
+    return dict(provider='YouTube', id=identity) if identity else None
+
+
 @lru_cache(maxsize=128)
 def filename_reading(filename, source_url):
     from house_naming import Engine, __version__
@@ -304,6 +310,15 @@ class Catalog:
         self.api_entries = {entry for entry in self.api_entries
                             if all(row_id in self.api_sources for row_id in self.members[entry])}
         self.document_entries.difference_update(self.api_entries)
+        video_mask = pc.match_substring_regex(urls, r'(?i)^https?://(www\.)?(youtu\.be|youtube\.com|youtube-nocookie\.com)/')
+        self.video_sources = {
+            row_id: reference for row_id in pc.indices_nonzero(pc.fill_null(video_mask, False)).to_pylist()
+            if (reference := video_reference(urls[row_id].as_py()))
+        }
+        self.video_entries = {self.entry_ids[row_id] for row_id in self.video_sources}
+        self.video_entries = {entry for entry in self.video_entries
+                              if all(row_id in self.video_sources for row_id in self.members[entry])}
+        self.document_entries.difference_update(self.video_entries)
         self.group_starts = [0]
         for group in range(self.file.num_row_groups):
             self.group_starts.append(self.group_starts[-1] + self.file.metadata.row_group(group).num_rows)
@@ -328,6 +343,7 @@ class Catalog:
             'documents': len(self.document_entries),
             'capture_records': len(self.members) - len(self.document_entries),
             'api_reference_groups': len(self.api_entries),
+            'video_reference_groups': len(self.video_entries),
             'bytes': path.stat().st_size, 'fields': self.fields, 'facets': facets,
             'catalog_id': catalog_id.decode(),
             'house_naming_version': (self.file.schema_arrow.metadata or {}).get(b'house_naming_version', b'unknown').decode(),
@@ -417,6 +433,7 @@ class Catalog:
             row.pop('body_key')
             row['retained'] = bool(self.saved_responses[entry])
             row['api_reference'] = self.api_sources.get(self.preferred_sources[entry]) if entry in self.api_entries else None
+            row['video_reference'] = self.video_sources.get(self.preferred_sources[entry]) if entry in self.video_entries else None
         return {'rows': rows, 'total': total, 'page': page, 'pages': pages, 'limit': limit}
 
     @lru_cache(maxsize=16)
@@ -442,6 +459,7 @@ class Catalog:
         reading = filename_reading(record['filename'], record.get('source_url')) if record.get('filename') else None
         return {'record': record, 'document': document, 'filename': filename, 'sources': sources,
                 'api_reference': self.api_sources.get(row_id),
+                'video_reference': self.video_sources.get(row_id),
                 'catalog_id': self.info['catalog_id'], 'reading': reading,
                 'origin': source_context(record),
                 'document_origin': source_context(self.record(self.preferred_sources[position])),

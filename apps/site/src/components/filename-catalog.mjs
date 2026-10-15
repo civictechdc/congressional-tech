@@ -30,6 +30,19 @@ export function apiReference(value) {
   return { title: title.replace(/^./, value => value.toUpperCase()), evidence: 'Congress.gov API endpoint URL' };
 }
 
+export function videoReference(value) {
+  const url = validUrl(value);
+  if (!url) return null;
+  const host = url.hostname.replace(/^www\./, '');
+  const parts = url.pathname.replace(/^\/+|\/+$/g, '').split('/');
+  const id = host === 'youtu.be' ? parts[0]
+    : ['youtube.com', 'youtube-nocookie.com'].includes(host)
+      ? url.pathname === '/watch' ? url.searchParams.get('v')
+        : parts.length === 2 && ['live', 'embed', 'shorts', 'v'].includes(parts[0]) ? parts[1] : null
+      : null;
+  return /^[A-Za-z0-9_-]{11}$/.test(id || '') ? {provider: 'YouTube', id} : null;
+}
+
 export function sourceContext(record) {
   const file_url = validUrl(record.source_url) ? record.source_url : null;
   const recovered_urls = values(record.recovered_source_url).filter(validUrl);
@@ -251,7 +264,7 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
     }
     const limit = Math.max(1, Math.min(100, Number(query.limit) || 50)), pages = Math.max(1, Math.ceil(found.length / limit)), page = Math.max(1, Math.min(pages, Number(query.page) || 1));
     const chosen = found.slice((page - 1) * limit, page * limit), rows = await selected('browse', chosen, undefined, signal);
-    rows.forEach((row, i) => { row._row = preferred[chosen[i]]; row.api_reference = flags[chosen[i]] & 16 ? apiReference(row.source_url) : null; });
+    rows.forEach((row, i) => { row._row = preferred[chosen[i]]; row.api_reference = flags[chosen[i]] & 16 ? apiReference(row.source_url) : null; row.video_reference = flags[chosen[i]] & 32 ? videoReference(row.source_url) : null; });
     rows.forEach((row, i) => {
       if (recovery.groups.has(chosen[i])) Object.assign(row, {retained: true, recovery: recovery.groups.get(chosen[i])[0], recoveries: recovery.groups.get(chosen[i])});
     });
@@ -336,7 +349,7 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
     const canonicalSource = sources[members.indexOf(preferred[group])];
     const documentOrigin = row === preferred[group] ? origin : sourceContext({...canonicalSource, source_occurrences: canonicalEvidence.items.filter(Boolean)});
     return {record, document, facts, filename_field_count, filename: document.filename, sources, catalog_id: info.catalog_id,
-      api_reference: apiReference(record.source_url), ...(recovered ? {recovery: recovered[0], recoveries: recovered} : {}),
+      api_reference: apiReference(record.source_url), video_reference: videoReference(record.source_url), ...(recovered ? {recovery: recovered[0], recoveries: recovered} : {}),
       origin, document_origin: {redirects: documentOrigin.redirects}, observation_count: evidence.total, origin_next: evidence.next, record_complete: false,
       reading: null, saved_file_available: false, saved_file_url: savedCopyUrl(record, recovered?.[0], manifestUrl), published_only: true,
       sources_share_saved_file: !!bodies[0] && bodies.every(value => value === bodies[0])};

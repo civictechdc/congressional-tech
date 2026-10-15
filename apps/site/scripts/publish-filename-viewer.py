@@ -140,7 +140,8 @@ def publish(root, target, modified=None):
                   (2 if value in catalog.document_entries else 0) |
                   (4 if not catalog.documents['document_kind'][value].as_py() else 0) |
                   (8 if not catalog.documents['document_family'][value].as_py() else 0) |
-                  (16 if value in catalog.api_entries else 0) for value in order)
+                  (16 if value in catalog.api_entries else 0) |
+                  (32 if value in catalog.video_entries else 0) for value in order)
     for name, values in [('groups', group), ('preferred', preferred)]:
         path = output / f'{name}.bin'
         write_u32(path, values)

@@ -58,6 +58,7 @@ from congress_api.retention.document_evidence import (
 )
 from congress_api.parsers.source_family import family as source_family
 from congress_api.parsers.document_links import feed_link, http_url
+from congress_api.parsers.media import youtube_video_id
 from congress_api.parsers.document_cover import COVER_FIELDS
 from congress_api.parsers.document_types import DOCUMENT_TYPE_MEANINGS, document_type
 from congress_api.retention.catalog_availability import FIELDS as AVAILABILITY_FIELDS, RESOURCE_FIELDS
@@ -116,6 +117,9 @@ SOURCE_DOCUMENT_KINDS = dict(DOCUMENT_TYPE_MEANINGS)
 
 def fill_document_kind(row):
     """Keep specific forms; expose a supported purpose through the family filter."""
+    if row.get('source_record_type') == ['youtube-video'] and row.get('record_role') != ['document']:
+        row['document_kind'] = row['document_kind_source'] = row['document_family'] = None
+        return
     context_kind = nomination_support_context(row)
     _select_document_kind(row)
     if context_kind and not row.get('document_kind'):
@@ -506,7 +510,7 @@ def prepare_document_indexes(rows, schema):
         # Aggregate filename kinds before filling individual source-row gaps.
         # A broad native type on an alias must not dilute a more specific name.
         fill_document_kind(document)
-        if any(row.get("document_kind") and not row.get("recovered_filename") for row in sources):
+        if document.get("document_kind") and any(row.get("document_kind") and not row.get("recovered_filename") for row in sources):
             document["document_kind_source"] = ["filename"]
         for row in sources:
             fill_document_kind(row)
@@ -1765,6 +1769,11 @@ def apply_capture_record_role(row):
     """Keep receipt/pointer pairs together when recognizing embedded source HTML."""
     if row.get('source_record_type') == ['download-state']:
         row['record_role'] = ['capture-state']
+        return
+    if youtube_video_id(row.get('source_url')):
+        row['source_record_type'] = ['youtube-video']
+        if row.get('record_role') != ['error-response']:
+            row['record_role'] = ['source-record']
         return
     if row.get("source_record_type"):
         return

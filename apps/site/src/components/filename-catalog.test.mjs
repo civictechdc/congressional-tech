@@ -5,7 +5,7 @@ import { mkdtemp, readFile, open, stat, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
-import { createFilenameCatalog, rangeFile, sourceContext, savedCopyUrl } from './filename-catalog.mjs';
+import { createFilenameCatalog, rangeFile, sourceContext, savedCopyUrl, videoReference } from './filename-catalog.mjs';
 import { observationReader } from './filename-observations.mjs';
 import { brotliCompressSync } from 'node:zlib';
 import { createHash } from 'node:crypto';
@@ -63,6 +63,11 @@ test('static Parquet queries match the Python catalog and preserve complete sour
       assert.deepEqual(await reader.search(query), result, JSON.stringify(query));
     }
     const sources = JSON.parse(await readFile(join(folder,'source-records.json')));
+    assert.equal((await reader.search({q:'-oNSVIeynzI'})).total, 0);
+    const videos = await reader.search({q:'-oNSVIeynzI', scope:'capture-records'});
+    assert.equal(videos.total, 1);
+    assert.deepEqual(videos.rows[0].video_reference, {provider:'YouTube',id:'-oNSVIeynzI'});
+    assert.deepEqual((await reader.entry(String(videos.rows[0]._row))).video_reference, videos.rows[0].video_reference);
     for (const source of sources) {
       const detail = await reader.entry(source.source_id, 'b'.repeat(32));
       assert.equal(detail.record_complete, false);
@@ -122,6 +127,15 @@ test('static Parquet queries match the Python catalog and preserve complete sour
     assert.equal((await retrying.search({q:'alias'})).total, 1, 'failed lazy loads can retry');
     assert.equal(attempts, 2);
   } finally { await rm(folder, { recursive: true, force: true }); }
+});
+
+test('video references recognize exact YouTube providers, not incidental URL text', () => {
+  for (const url of ['https://youtu.be/-oNSVIeynzI', 'https://www.youtube.com/watch?v=-oNSVIeynzI&feature=shared',
+    'https://www.youtube.com/live/-oNSVIeynzI', 'https://www.youtube-nocookie.com/embed/-oNSVIeynzI']) {
+    assert.deepEqual(videoReference(url), {provider:'YouTube',id:'-oNSVIeynzI'});
+  }
+  for (const url of ['https://youtube.com.evil.test/watch?v=-oNSVIeynzI', 'https://committee.test/a.pdf?video=-oNSVIeynzI',
+    'https://youtube.com/watch?v=invalid', 'https://user:password@youtube.com/watch?v=-oNSVIeynzI']) assert.equal(videoReference(url), null);
 });
 
 test('bounded observation parts preserve large values, UTF-8, nulls, duplicates and ordering', async () => {

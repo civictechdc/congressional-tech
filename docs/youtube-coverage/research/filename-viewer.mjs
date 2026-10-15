@@ -69,7 +69,7 @@ function measureLabel(value) {
  const names={hr:['H.R.','House bill'],s:['S.','Senate bill'],hres:['H.Res.','House resolution'],sres:['S.Res.','Senate resolution'],hjres:['H.J.Res.','House joint resolution'],sjres:['S.J.Res.','Senate joint resolution'],hconres:['H.Con.Res.','House concurrent resolution'],sconres:['S.Con.Res.','Senate concurrent resolution']};
  const [prefix,name]=names[match[1].toLowerCase()]; return `${prefix} ${match[2]} — ${name}`;
 }
-function identity(row) { return row.api_reference?.title || row.filename || '(No filename recorded)'; }
+function identity(row) { return row.video_reference ? `${row.video_reference.provider} video · ${row.video_reference.id}` : row.api_reference?.title || row.filename || '(No filename recorded)'; }
 function renderRows(data) {
  const fragment=document.createDocumentFragment();
  for(const row of data.rows) {
@@ -91,7 +91,7 @@ function renderRows(data) {
   const saved=node('td',savedLabel(row));
   if(row.http_status?.some(value=>Number(value)>=400)) saved.append(node('div',(row.recovery?'Original HTTP ':'HTTP ')+row.http_status.join(' / '),'warning'));
   if(row.response_format?.some(value=>value.includes('missing')||value.includes('invalid'))) saved.append(node('div',row.response_format.join(' · '),'muted'));
-  const kindText=row.api_reference?'Source/API reference':row.document_kind?.map(pretty).join(' · ')||'Unclassified';
+  const kindText=row.video_reference?'Video reference':row.api_reference?'Source/API reference':row.document_kind?.map(pretty).join(' · ')||'Unclassified';
   const kind=node('td',kindText);
   if($('document_family').value&&row.document_family?.length) kind.append(node('div','Family: '+row.document_family.map(pretty).join(' · '),'muted'));
   const clues=node('td',undefined,'filename-clues'), warning=congressIssue(row.congress,row.source_congress);
@@ -128,7 +128,7 @@ async function openDetail(id, update=true, catalog=info.catalog_id) {
  $('technical').open=false; $('technical').hidden=true; $('detail').setAttribute('aria-busy','true'); $('source-history').hidden=true; $('source-history').querySelector('details').open=false; $('detail').scrollTop=0;
  $('source-variants').replaceChildren(); $('source-variants').hidden=true;
  if(!$('detail').open) $('detail').showModal(); if(update) saveUrl('pushState');
- try { const entry=await api('/api/entry/'+encodeURIComponent(id)+'?catalog='+encodeURIComponent(catalog || info.catalog_id),controller.signal); if(controller!==detailController) return; const data=entry.record; rowData=data; detailEntry=entry; $('detail').dataset.row=data.source_id; $('detail').dataset.catalog=entry.catalog_id; saveUrl(); setDetailTitle(identity({...data,filename:entry.filename,api_reference:entry.api_reference}),entry.api_reference?'title':'filename'); $('copy').disabled=false; $('share').disabled=false;
+ try { const entry=await api('/api/entry/'+encodeURIComponent(id)+'?catalog='+encodeURIComponent(catalog || info.catalog_id),controller.signal); if(controller!==detailController) return; const data=entry.record; rowData=data; detailEntry=entry; $('detail').dataset.row=data.source_id; $('detail').dataset.catalog=entry.catalog_id; saveUrl(); setDetailTitle(identity({...data,filename:entry.filename,api_reference:entry.api_reference,video_reference:entry.video_reference}),entry.api_reference||entry.video_reference?'title':'filename'); $('copy').disabled=false; $('share').disabled=false;
  if(data.filename!==entry.filename) { $('detail-selected').hidden=false; $('detail-selected').textContent='Selected source filename: '+(data.filename || 'Not recorded'); }
  renderSummary(entry); renderCurrentOrigin(); renderFilename(entry);
  if(entry.sources.length>1) {
@@ -145,12 +145,14 @@ async function openDetail(id, update=true, catalog=info.catalog_id) {
   }
  }
  const url=sourceUrl(data.source_url); if(url) {
-  $('source-link').href=url.href; $('source-link').replaceChildren(node('span',entry.api_reference?'Open API record ↗':'Open original URL ↗'),node('span',url.hostname.replace(/^www\./,''),'link-caption')); $('source-link').hidden=false;
+  $('source-link').href=url.href; $('source-link').replaceChildren(node('span',entry.video_reference?'Watch video ↗':entry.api_reference?'Open API record ↗':'Open original URL ↗'),node('span',url.hostname.replace(/^www\./,''),'link-caption')); $('source-link').hidden=false;
  }
  if(entry.saved_file_available||sourceUrl(entry.saved_file_url)) {
   const recovered=(data.recovery||entry.recovery)?.recovery_status==='recovered',failed=!recovered&&data.record_role?.includes('error-response');
-  const caption=[recovered?(data.recovery?'Recovered copy':'Recovered via related URL'):failed?'Failed response':null,entry.published_only?'R2 archive':'Saved in archive'].filter(Boolean).join(' · ');
-  $('saved-link').hidden=false; $('saved-link').replaceChildren(node('span',failed?'Open saved response ↗':'Open saved copy ↗'),node('span',caption,'link-caption')); $('saved-link').href=entry.saved_file_url||'/saved/'+encodeURIComponent(data.source_id)+'?catalog='+encodeURIComponent(entry.catalog_id);
+  const savedFormats=recovered?[(data.recovery||entry.recovery).kind]:(data.body_format?.length?data.body_format:data.format)||[];
+  const webpage=!failed&&savedFormats.some(value=>['html','text/html','application/xhtml+xml'].includes(value?.toLowerCase()));
+  const caption=[webpage&&entry.video_reference?'Webpage only':null,recovered?(data.recovery?'Recovered copy':'Recovered via related URL'):failed?'Failed response':null,entry.published_only?'R2 archive':'Saved in archive'].filter(Boolean).join(' · ');
+  $('saved-link').hidden=false; $('saved-link').replaceChildren(node('span',failed?'Open saved response ↗':webpage?'Open saved webpage ↗':entry.video_reference?'Open saved response ↗':'Open saved copy ↗'),node('span',caption,'link-caption')); $('saved-link').href=entry.saved_file_url||'/saved/'+encodeURIComponent(data.source_id)+'?catalog='+encodeURIComponent(entry.catalog_id);
  }
  $('technical').hidden=false; document.querySelector('.detail-secondary').hidden=false; loadEvidence(entry,controller); }
  catch(error) { if(error.name!=='AbortError'&&controller===detailController) { setDetailTitle('Record unavailable'); $('document-summary').hidden=false; $('document-summary').append(node('p',error.message)); const retry=node('button','Retry this record','outline');retry.addEventListener('click',()=>openDetail(id,false,catalog));$('document-summary').append(retry); } }
@@ -169,21 +171,21 @@ function renderSummary(entry) {
  if(entry.api_reference) fact(dl,'Entry type','Source/API reference','Identified from the Congress.gov API URL. Published role: '+(source.record_role?.map(friendly).join(' · ')||'Not recorded')+'.');
  const filenameKind=row.document_kind_source?.length===1&&row.document_kind_source[0]==='filename', groupKind=source.source_id!==row.source_id;
  const multipleKinds=row.document_kind?.length>1;
- if(multipleKinds) {
+ if(!entry.video_reference && multipleKinds) {
   const kinds=node('div','Multiple recorded kinds');
   const readings=recordedList(row.document_kind.map(friendly),'Review classifications');
   readings.append(node('p',(groupKind?'From the grouped records.':'From this source record.')+(row.document_kind_source?.length?' Based on '+row.document_kind_source.map(value=>friendly(value).toLowerCase()).join(' · ')+'.':''),'section-note'));
   if(source.source_document_type?.length)readings.append(node('p',(source.source_document_type_basis?.some(value=>/inference|parser/.test(value))?'Inferred source-page readings: ':'Source-page readings: ')+source.source_document_type.map(friendly).join(' · '),'section-note'));
   kinds.append(readings);fact(dl,'Document kind',kinds);
- } else fact(dl,groupKind?'Group kind':filenameKind?'Filename kind':'Document kind',row.document_kind?.map(friendly).join(' · ')||'Unclassified',filenameKind&&groupKind?'From the group’s filename.':row.document_kind?.length&&!filenameKind?(row.document_kind_source?.length?'Based on '+row.document_kind_source.map(value=>friendly(value).toLowerCase()).join(' · ')+'.':'Classification evidence not recorded.'):null);
- if(!multipleKinds && source.source_document_type?.length && source.source_document_type.some(value=>!row.document_kind?.includes(value))) {
+ } else if(!entry.video_reference) fact(dl,groupKind?'Group kind':filenameKind?'Filename kind':'Document kind',row.document_kind?.map(friendly).join(' · ')||'Unclassified',filenameKind&&groupKind?'From the group’s filename.':row.document_kind?.length&&!filenameKind?(row.document_kind_source?.length?'Based on '+row.document_kind_source.map(value=>friendly(value).toLowerCase()).join(' · ')+'.':'Classification evidence not recorded.'):null);
+ if(!entry.video_reference && !multipleKinds && source.source_document_type?.length && source.source_document_type.some(value=>!row.document_kind?.includes(value))) {
   const inferred=source.source_document_type_basis?.some(value=>/inference|parser/.test(value));
   fact(dl,'Source-page kind',source.source_document_type.map(friendly).join(' · '),inferred?'Inferred from page metadata.':null);
  }
  const formats=source.format?.map(formatLabel).join(' · ');
  const formatValue=node('span',formats||'Unknown');
  if(formats)formatValue.append(node('span',' · '+(source.body_format?.length?'saved bytes':source.media_type?.length?'server-reported':'filename only'),'inline-note'));
- fact(dl,'Format',formatValue);
+ if(!entry.video_reference||source.body_key) fact(dl,entry.video_reference?'Saved format':'Format',formatValue);
  const recovery=source.recovery||entry.recovery, recovered=recovery?.recovery_status==='recovered';
  const savedNotes=[(source.body_key||recovered)&&entry.published_only&&!entry.saved_file_url?'Stored in R2; file access unavailable here.':null,!recovered&&!source.record_role?.includes('error-response')&&source.response_usable?.includes('false')?'The saved response was marked unusable.':!recovered&&entry.facts?.completeness_conflict?'Recorded completeness assessments disagree.':!recovered&&source.response_body_complete?.includes('false')?'The saved response is incomplete.':null].filter(Boolean);
  if(!(entry.saved_file_available||sourceUrl(entry.saved_file_url))||savedNotes.length)fact(dl,'Saved response',recovered?(source.recovery?'Recovered':'Recovered on another URL in this group'):source.body_key?(source.record_role?.includes('error-response')?'Marked failed':entry.published_only?'Saved':'Available'):entry.sources.some(item=>item.retained)?'Saved on another URL in this group':'None recorded',savedNotes.join(' '));
@@ -337,6 +339,7 @@ function showFields(query) {
  $('technical').scrollIntoView({block:'start'}); $('field-search').focus({preventScroll:true});
 }
 function renderFilename(entry) {
+ if(entry.video_reference) { $('filename-findings').hidden=true; return; }
  const el=section('filename-findings','Filename clues'), row=entry.record, reading=entry.reading, dl=node('dl',undefined,'facts'), consumed=new Set(['extension']);
  el.classList.remove('compact');
  consumed.add('congress');

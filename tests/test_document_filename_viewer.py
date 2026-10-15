@@ -512,6 +512,22 @@ def test_api_reference_requires_an_exact_host_and_endpoint():
     assert viewer.api_reference('https://api.congress.gov/v3/committee-meeting/117/house/114489')['title'] == 'House committee meeting 114489 · Congress 117'
 
 
+def test_video_groups_leave_documents_without_hiding_real_document_aliases(tmp_path):
+    catalog = catalog_from_sources(tmp_path, [
+        ('-oNSVIeynzI', 'https://youtu.be/-oNSVIeynzI', 'html', 'text/html', '200'),
+        ('abcdefghijk', 'https://youtu.be/abcdefghijk', 'shared', 'application/pdf', '200'),
+        ('statement.pdf', 'https://committee.test/statement.pdf', 'shared', 'application/pdf', '200'),
+    ])
+    assert catalog.info['video_reference_groups'] == 1
+    assert catalog.search({})['total'] == 1
+    references = catalog.search({'scope': 'capture-records'})
+    assert references['total'] == 1
+    row, = references['rows']
+    assert row['video_reference'] == {'provider': 'YouTube', 'id': '-oNSVIeynzI'}
+    assert catalog.entry(row['_row'])['video_reference'] == row['video_reference']
+    assert catalog.search({'scope': 'all'})['total'] == 2
+
+
 def test_congress_conflict_reports_both_reader_boundaries_without_correction():
     reading = viewer.filename_reading('BILLS-1117s2126-SUS.pdf', None)
     assert reading['metadata']['congress'] == ['111', '1117']

@@ -659,3 +659,34 @@ test('source-page dates stay with their observed page and ambiguous dates are no
     assert.doesNotMatch(get('origin').textContent,/January 1, 2023/);
   } finally {dom.window.close();}
 });
+
+test('video details distinguish the recording from its saved webpage and retain provenance', async()=>{
+  const video=structuredClone(entry),url='https://youtu.be/-oNSVIeynzI';
+  Object.assign(video,{published_only:true,reading:null,saved_file_available:false,saved_file_url:'https://data.test/saved/hash/page',
+    video_reference:{provider:'YouTube',id:'-oNSVIeynzI'}});
+  Object.assign(video.record,{source_url:url,filename:'-oNSVIeynzI',format:['html'],body_format:['html'],document_kind:['opening-statement']});
+  video.document=video.record;video.filename=video.record.filename;
+  video.origin={file_url:url,redirects:[],recovered_urls:[],pages:[{urls:['https://smallbusiness.house.gov/calendar/eventsingle.aspx?EventID=398957'],
+    titles:[],link_labels:['Opening Statement (As Prepared for Delivery)'],link_urls:[url],relationship:'Linked from'}]};
+  const {dom,get}=await app(async()=>({ok:true,json:async()=>video}));
+  try {
+    assert.equal(get('source-link').firstElementChild.textContent,'Watch video ↗');
+    assert.equal(get('source-link').href,url);
+    assert.match(get('saved-link').textContent,/Open saved webpage.*Webpage only.*R2 archive/);
+    assert.match(get('detail-title').textContent,/YouTube video/);
+    assert.match(get('document-summary').textContent,/Saved format/);
+    assert.doesNotMatch(get('document-summary').textContent,/Document kind|Opening statement/);
+    assert.equal(get('filename-findings').hidden,true);
+    assert.match(get('origin').textContent,/smallbusiness.house.gov/);
+    assert.equal(video.record.document_kind[0],'opening-statement','published evidence remains unchanged');
+  } finally {dom.window.close();}
+});
+
+test('a recovered HTML response is labeled as a webpage despite the original PDF filename', async()=>{
+  const recovered=structuredClone(entry);
+  Object.assign(recovered,{published_only:true,reading:null,saved_file_available:false,saved_file_url:'https://data.test/saved/hash/page'});
+  recovered.record.recovery={recovery_status:'recovered',original_url:original,recovered_url:final,kind:'html'};
+  const {dom,get}=await app(async()=>({ok:true,json:async()=>recovered}));
+  try {assert.match(get('saved-link').textContent,/Open saved webpage.*Recovered copy.*R2 archive/);}
+  finally {dom.window.close();}
+});
