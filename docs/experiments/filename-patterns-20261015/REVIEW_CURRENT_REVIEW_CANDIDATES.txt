@@ -1,0 +1,93 @@
+Review: complete current rows and explicit local candidate bindings
+==================================================================
+
+Decision
+--------
+APPROVE for the selected-cohort local experiment. No blocking finding remains
+within that scope. This self-review does not approve production selection,
+independent references or full-catalog refresh qualification.
+
+Hypotheses checked
+------------------
+H1: Complete current rows can be extracted without expanding the whole catalog
+into Python dictionaries. Confirmed by the two-pass extraction and completed run.
+H2: Existing candidate selection can bind those rows without weakening old review
+identities. Confirmed: bind_review still validates each original row and body,
+then group_digest records every non-null current document/member value.
+H3: Smaller extraction establishes full replay scalability. Not established;
+only the current selected cohort was measured and no refresh ran in this step.
+
+Function and data-flow trace
+----------------------------
+current_review_candidates.py:24 extract_groups reads document IDs by row group,
+then reads full matching row groups in batches of 64. Only selected rows become
+Python values. Parquet receives the original Arrow batches, including nulls and
+nested occurrence values. Readback checks the entire schema including metadata
+and complete per-row digests including nulls. Duplicate identities fail. Partial
+outputs from a failed run are not success and cannot be silently overwritten.
+
+compact_rows at :61 normalizes only null dictionary padding after that exact
+readback. It retains all non-null values, list order and duplicate observations.
+The complete original values remain in the extracted Parquet files. This avoids
+retaining unnecessary null-filled dictionaries during candidate calculation.
+
+select_candidates at :72 requires identical group coverage in proposals,
+original rows, current documents and validated reviews. It verifies current
+document role, the sole eligible body and the group's complete body-key union.
+bind_review delegates original-row/proposal checks to compare_case; apply_review
+changes only selected kinds, kind provenance and derived families on a copy.
+Unsupported forms retain the whole packet as an annotation. Withdrawal must
+reproduce the current baseline. No source row or native/filename claim changes.
+
+run at :99 verifies the reconciliation, receipt chain and selected raw pair.
+All 85 matching historical reviews and the one separately reviewed Palmer group
+must account for the review chain exactly. Historical primary/component proposals
+are preserved. A new single-form review can supply its own explicit primary form;
+new composites require a separate proposal. The runner reuses full-pair reference
+validation on the subset, checks baseline preservation, then rechecks every input
+hash and implementation identity before writing candidate results and summary.
+
+No production caller exists. The CLI at :175 invokes run; it writes only a new
+experiment directory. Existing catalog files, review receipts, historical rows,
+the frozen evaluation files and selected public data are never write targets.
+
+Executed evidence and tests
+---------------------------
+current-review-candidates-v1 completed in 33.616 seconds with process peak RSS
+1,332,903,936 bytes (about 1.24 GiB). Full reads were limited to 59 of 1,641 source
+row groups and 51 of 1,212 document row groups after the ID scans. Exact readback
+passed for 286 source rows and 86 document groups, including full nested values.
+
+81 candidate selections apply: 62 change kind sets and 19 retain the same kinds
+with review provenance. Five complete packets remain annotations because their
+forms are outside the supported existing taxonomy. All 86 baselines survive
+withdrawal unchanged. Full raw-input hashes bind excluded controls; no behavior
+change for those controls is inferred from this selected-cohort run.
+
+83 tests pass in 1.88 seconds across current candidates, fresh reconciliation,
+historical comparison, receipt validation and candidate selection. Eleven new
+cases cover exact nested extraction, nulls, ordering, duplicate values and IDs,
+schema metadata, existing-output refusal, membership/body/role/union changes,
+missing review coverage and real Parquet/PDF receipt integration for historical
+and newly reviewed cases. Changed catalog bytes fail before output creation.
+The first schema test compared the in-memory Arrow list child name with its
+serialized Parquet name; it now compares the actual source and extracted schemas.
+No extraction behavior was weakened to make that assertion pass.
+
+Limits and next work
+--------------------
+This measured run differs from the earlier seven-scenario historical replay in
+scope and input. It is not evidence of a numerical speedup or memory improvement
+for that workload. A very large individual nested value can still dominate a
+batch; the batch size is not a hard memory ceiling.
+
+Next exercise current selected groups through the existing grouping/cache/refresh
+paths and diagnose every changed current binding before selection. Preserve all
+86 current cases, five descriptive-form annotations and the six historical
+unavailable outcomes. Do not reuse a candidate as a cache baseline. Context-family
+provenance ambiguity, full-catalog behavior, independent references and matching
+publication evidence remain separate production-adoption requirements.
+
+VERDICT: APPROVE for complete-row extraction and local candidate selection.
+Coverage: sufficient for the stated integrity and refusal paths, with an actual
+current-cohort run. Confidence: high for that scope; full refresh remains open.

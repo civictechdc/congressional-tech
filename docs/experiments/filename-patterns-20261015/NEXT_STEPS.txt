@@ -737,3 +737,13 @@ the current selected kind. The validated additive chain covers 86 groups and
 unchanged. Next extract complete current groups for the 85 matched reviews plus
 the new Palmer group, retaining all non-null occurrence evidence with bounded
 reads. Prepare explicit current-row bindings before current-catalog selection.
+
+Complete current-row extraction and binding now pass for all 86 reviewed groups
+and 286 sources. Local selections apply to 81 groups; five packets remain whole
+annotations. There are 62 kind-set changes and 19 provenance-only selections.
+All baselines restore on withdrawal. Full schema/value preservation and the 83
+relevant tests pass. The actual extraction/selection run peaks at 1.24 GiB RSS;
+it does not establish full-refresh memory requirements. See
+current_review_candidates_checkpoint_v1.json and REVIEW_CURRENT_REVIEW_CANDIDATES.txt.
+Next verify the existing grouping/cache/refresh paths on these current groups,
+diagnosing any changed full-row binding before reapplying a local candidate.

@@ -188,3 +188,23 @@ Neither historical Palmer ID was rewritten; the separate unencoded-URL source
 still has only an error response. Next prepare complete current rows for the
 85 matching reviews plus this new current group, with explicit fresh bindings
 and bounded memory, before applying local candidates to current-catalog copies.
+
+Complete current rows bound and local candidates evaluated
+---------------------------------------------------------
+current-review-candidates-v1 extracts all 286 source rows for the 86 reviewed
+current groups. Full schema and value readback passes, including nulls and nested
+source occurrences. Existing bind_review/apply_review produce 81 selected local
+candidates and five whole-packet annotations: 62 kind-set changes and 19 unchanged
+kind sets with review provenance. Withdrawal restores all current baselines.
+No old review identity, catalog file, production caller or public selection changed.
+
+The actual selected-cohort run took 33.616 seconds and peaked at about 1.24 GiB
+process RSS. It reads complete data from only the matching row groups and retains
+compact non-null Python values after exact Parquet readback. This is not a measured
+improvement over the different, larger seven-scenario historical replay.
+See current_review_candidates_checkpoint_v1.json and REVIEW_CURRENT_REVIEW_CANDIDATES.txt.
+
+Next run the current extracted groups through existing grouping, cache and refresh
+paths. Compare all fields, diagnose changes from local filename version 3.2.7,
+and explicitly reconsider changed bindings before selecting candidates again.
+Then assess the remaining full-catalog and production-adoption requirements.
