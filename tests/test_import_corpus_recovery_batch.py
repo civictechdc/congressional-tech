@@ -118,3 +118,68 @@ class ImportTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+def test_existing_body_skips_compression():
+    from unittest.mock import patch
+    import gzip
+    import import_corpus_recovery_batch as module
+    fixture = ImportTests()
+    fixture.setUp()
+    try:
+        store = Store()
+        for key, path in fixture.paths.items():
+            store.data[key] = gzip.compress(path.read_bytes(), mtime=12)
+        with patch.object(module, 'body_payload', wraps=module.body_payload) as compress:
+            fixture.run_import(store)
+        assert compress.call_count == 0
+        assert all(store.reads.count(key) == 1 for key in fixture.paths)
+        assert all(key not in dict(store.writes) for key in fixture.paths)
+    finally:
+        fixture.doCleanups()
+
+
+def test_prior_body_identity_reuses_head_without_get_or_gzip():
+    from unittest.mock import patch
+    import import_corpus_recovery_batch as module
+    from test_reconcile_corpus_recovery_bodies import Client
+    from reconcile_corpus_recovery_bodies import reconcile
+    from types import SimpleNamespace
+    fixture = ImportTests()
+    fixture.setUp()
+    try:
+        key, path = next(iter(fixture.paths.items()))
+        fixture.paths = {key: path}
+        fixture.prepared[0]['captures'] = fixture.prepared[0]['captures'][:1]
+        client = Client(path.read_bytes())
+        report = reconcile(SimpleNamespace(client=client, bucket='test'),
+                           {key: dict(sha256=hashlib.sha256(path.read_bytes()).hexdigest(), bytes=path.stat().st_size)})
+        store = Store()
+        store.client, store.bucket = client, 'test'
+        with patch.object(module, 'body_payload', wraps=module.body_payload) as compress:
+            import_batch(store, prepared=fixture.prepared, body_paths=fixture.paths,
+                captures=pa.Table.from_pylist([], schema=CAPTURE_SCHEMA),
+                state=pa.Table.from_pylist([], schema=STATE_SCHEMA), source_file='test',
+                receipt_prefix='receipts/test', guard=lambda:None,
+                journal=lambda *args:None, save_payload=lambda *args:None, body_readback=report)
+        assert compress.call_count == 0
+        assert key not in store.reads
+        assert client.gets == 1  # The prior full-byte check only.
+    finally:
+        fixture.doCleanups()
+
+
+def test_missing_bodies_compress_once_each_even_after_lost_ack():
+    from unittest.mock import patch
+    import import_corpus_recovery_batch as module
+    fixture = ImportTests()
+    fixture.setUp()
+    try:
+        store = Store(lost_ack=True)
+        with patch.object(module, 'body_payload', wraps=module.body_payload) as compress:
+            fixture.run_import(store)
+        assert compress.call_count == len(fixture.paths)
+        assert all(store.reads.count(key) == 2 for key in fixture.paths)
+        assert all(store.writes.count((key, True)) == 1 for key in fixture.paths)
+    finally:
+        fixture.doCleanups()

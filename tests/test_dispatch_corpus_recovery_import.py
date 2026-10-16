@@ -74,7 +74,7 @@ class DispatchTests(unittest.TestCase):
             p.name: module.digest(p) for p in batch.iterdir()})))
         config = root / 'credentials.ini'
         config.write_text('[congressionalraw]\nendpoint=https://invalid.example\naccess_key_id=fixture\nsecret_access_key=fixture\n')
-        args = SimpleNamespace(batch=batch, execute=True, destination=root / 'dispatch', config=config)
+        args = SimpleNamespace(batch=batch, execute=True, destination=root / 'dispatch', config=config, connect_timeout=15)
         self.destination = args.destination
         with patch.object(module, 'ROOT', root), patch.object(module, 'cloud_clear'), patch('boto3.client', return_value=client):
             return module.run(args)

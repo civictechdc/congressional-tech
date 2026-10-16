@@ -16,6 +16,7 @@ from congress_api.retention.catalog_cache import capture_digest
 from congress_api.retention.raw_archive import (
     CAPTURE_SCHEMA, CAPTURES_KEY, STATE_KEY, body_payload, encode_table,
 )
+from reconcile_corpus_recovery_bodies import reusable_result, head_body
 
 
 def checked_put(store, key, payload, *, immutable, guard, journal):
@@ -38,13 +39,16 @@ def checked_put(store, key, payload, *, immutable, guard, journal):
 
 
 def import_batch(store, *, prepared, body_paths, captures, state, source_file,
-                 receipt_prefix, guard, journal, save_payload):
+                 receipt_prefix, guard, journal, save_payload, body_readback=None,
+                 commit_guard=None):
     """Retain bodies and receipts, then conditionally replace the raw index pair.
 
 Use R2Store after reading both indexes to establish conditional versions.
 save_payload must durably save each proposed index or receipt before its PUT.
 Any failure requires evidence reconciliation, not automatic restart.
+body_readback, when supplied, must have its file digest pinned by the caller.
 """
+    commit_guard = commit_guard or guard
     # Reject changed local bytes before the first remote write.
     for key, path in body_paths.items():
         with Path(path).open('rb') as stream:
@@ -55,11 +59,21 @@ Any failure requires evidence reconciliation, not automatic restart.
     uploaded = 0
     for key, path in body_paths.items():
         raw = Path(path).read_bytes()
-        payload, info = body_payload(raw)
-        if info['body_key'] != key:
+        digest = hashlib.sha256(raw).hexdigest()
+        info = dict(body_key=key, sha256=digest, bytes=len(raw))
+        if key != f'bodies/sha256/{digest[:2]}/{digest}.gz':
             raise ValueError('Local body changed during import')
+        prior = (body_readback or {}).get('results', {}).get(key, {})
+        if reusable_result(key, info, prior):
+            current = head_body(store, key)
+            if current and (current['ETag'], current['ContentLength']) == (prior['etag'], prior['stored_bytes']):
+                info.update(stored_sha256=prior['stored_sha256'], stored_bytes=prior['stored_bytes'])
+                body_info[key] = info
+                journal('body_verification_reused', dict(key=key, etag=prior['etag'], **info))
+                continue
         remote = store.read(key)
         if remote is None:
+            payload, info = body_payload(raw)
             remote = checked_put(store, key, payload, immutable=True, guard=guard, journal=journal)
             uploaded += 1
         if gzip.decompress(remote) != raw:
@@ -90,9 +104,9 @@ Any failure requires evidence reconciliation, not automatic restart.
     for key, payload in payloads.items():
         save_payload(key, payload)
     for key, payload in payloads.items():
-        checked_put(store, key, payload, immutable=False, guard=guard, journal=journal)
+        checked_put(store, key, payload, immutable=False, guard=commit_guard, journal=journal)
     # Recheck the pair after both updates; never report completion for a partial pair.
-    guard()
+    commit_guard()
     if any(store.read(key) != payload for key, payload in payloads.items()):
         raise ValueError('Final raw index pair mismatch')
     result = dict(complete=True, receipt_records=len(receipts), added_capture_rows=len(additions),
