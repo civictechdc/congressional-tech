@@ -1,0 +1,33 @@
+{
+  "at": "2026-10-16T05:03:41.083138+00:00",
+  "new_retained_pdf_links": 34,
+  "checks": [
+    "Exact stored body SHA256",
+    "PDF decoding and every page rendered",
+    "Deferred URLs and body digests excluded",
+    "Prior accepted mapping and all prior recovery rows preserved"
+  ],
+  "remaining_unresolved": 19241,
+  "prepared_links": 4333,
+  "published": false,
+  "html_triage": {
+    "needs_retained_content_lookup": 58,
+    "no_body_field": 154,
+    "short_text_needs_review": 11,
+    "historical_no_prepared_statement": 613,
+    "previously_reviewed_empty_body": 173,
+    "attachment_links": 9
+  },
+  "files": {
+    "retained-pdf-url-format-check/verified.json": "81765a94aa5be9375bbc253c8df410d67a54b7ea412ea4f2aa42b8214ae200c7",
+    "retained-pdf-url-format-check/completion-monitor.json": "05feeda46728021c9e18f5c422245f8ec02debc5e78082ba3a6a6b2a55ad1ba9",
+    "remaining-retained-html-triage-reuse.json": "b03699d468d7fee4c8e26f5051c1049230e87d39218a1cda63c383c366f1c5dc",
+    "remaining-recovery-summary.json": "f526de83c5f8ed593dc4a8907f8b089854deab193770f684a719d5ee2714e778"
+  },
+  "next_steps": [
+    "Review 58 remaining retained HTML lookups and 11 short-text cases using existing bytes",
+    "Follow the nine explicit attachment candidates still unresolved",
+    "Continue three live recovery passes",
+    "Publish sealed batch 10 after cloud capture clears; preserve these later additions for the next batch"
+  ]
+}
