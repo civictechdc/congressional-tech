@@ -1,0 +1,41 @@
+{
+  "at": "2026-10-16T05:36:49.351412+00:00",
+  "qualified_urls": 50,
+  "new_mappings": 50,
+  "total_retained_mappings": 3099,
+  "source_requests": 0,
+  "published": false,
+  "sha256": {
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/qualify_retained_printed_hearings.py": "2504de0ac24e828f76643513450056ecd69d36ff52969ccab884f50a4439242b",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/remaining-retained-html-check/results.json": "87916ac4cd9fcc219cddce96171b31955f93233a39d780bfe9bed1bc6c6dc75d",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/retained-printed-hearings-qualified.json": "39bef32f267297d92ed22892d3dc2b8e78dfdc1a99812941cb06280063fff837",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/retained-url-variant-mappings-before-printed-hearings.json": "1ffb99b41d5a2aac8e94e0b23a195c59e18c757fe1251aed16c10fdfce3c92ba"
+  },
+  "all_full_body_hashes_checked": true,
+  "all_prior_mapping_identities_checked": true,
+  "deferred_url_and_body_exclusions_checked": true,
+  "remaining": {
+    "lookup_unresolved": 16060,
+    "validated_local_recovery": 1695,
+    "unprocessed_archive_candidate": 2679,
+    "attempted_not_recovered": 41,
+    "retained_copy_link_prepared": 3099
+  },
+  "next_steps": [
+    "Include the 50 verified retained hearing mappings in the successor publication batch; current batch12 stays immutable.",
+    "Await actual import exit and readback, then rebuild and publish catalog/viewer.",
+    "Continue active NARA and publisher routes; retain refusals for separately budgeted routing."
+  ],
+  "additional_retained_rescan": {
+    "checked": 960,
+    "categories": {
+      "empty_document_body": 327,
+      "short_text_needs_review": 11,
+      "historical_no_prepared_statement": 613,
+      "attachment_page": 9
+    },
+    "additional_printed_transcripts": 0,
+    "evidence": "output/corpus-retry-20261015/prior-html-printed-transcript-rescan.json",
+    "sha256": "3e084efb1a68f18e77f8dad93c150de21280c8a8eee6e7bc352e18034e6c6c7e"
+  }
+}
