@@ -109,3 +109,33 @@ filename claims, existing cover readings and packet components separately. First
 exercise all 85 reviewed cases and the six unavailable controls without changing
 production defaults. Test withdrawal, correction and both grouping paths before
 considering promotion. Keep the five cases with descriptive labels explicit.
+
+Local selection replay completed
+--------------------------------
+packet-review-replay-v2 now exercises all seven grouping/cache/refresh scenarios
+over the saved 7,526-source / 1,949-group cohort. Eighty cases receive separate
+review candidates, five retain complete packet annotations and six remain
+unavailable. Sixty-two candidates change kind sets; 18 retain the same kinds
+with review provenance. All 1,858 other groups remain unchanged, and withdrawal
+restores the baseline in every scenario. See packet_review_checkpoint_v1.json
+and REVIEW_PACKET_REVIEW_CANDIDATE.txt. This is a local post-grouping experiment;
+production selection and house_naming remain unchanged.
+
+Next, reduce the harness's full-row memory expansion before full-catalog use.
+Preserve every non-null occurrence value and prove semantic equivalence on this
+same cohort. Then qualify a fresh raw catalog pair, replay the reviewed identities
+against it and report changed memberships as new review work. Production adoption
+still needs independent references, an explicit review-input boundary, context
+family provenance checks and a representation decision for descriptive forms.
+
+Public archive access rechecked
+------------------------------
+The user confirmed that the bucket is public. A new unauthenticated read of all
+four previously denied keys through the saved-copy Worker succeeded; each decoded
+SHA-256 matches its retained key. Three are PDFs. The Issa key is the 196-byte HTML
+404 response already recorded in capture metadata, not recovered document content.
+No credentials or bucket configuration changed. Public reads of these bodies are
+not blocked by management credentials. The direct public bucket URL is needed to
+check raw indexes through that route; the saved-copy Worker excludes raw indexes.
+See public_archive_retry_checkpoint_v1.json. This does not change prior content
+reviews or the six unavailable cases.

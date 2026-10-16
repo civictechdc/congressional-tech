@@ -694,3 +694,19 @@ cache reuse and withdrawal before any production adoption. A broad precedence
 change cannot fill the missing content readings. Keep the frozen reader and
 pilot unchanged; independent references and fresh-catalog qualification remain
 unfinished. No new publication has occurred.
+
+Complete-body candidate replay checkpoint
+-----------------------------------------
+packet-review-replay-v2 completed all seven local grouping/cache/refresh paths
+over 7,526 sources and 1,949 groups. Eighty candidates apply, five packets remain
+annotations and six cases remain unavailable; 1,858 controls remain unchanged.
+Withdrawal restores the baseline throughout. The focused and existing boundary
+tests pass (131 tests). See packet_review_checkpoint_v1.json and the self-review
+in REVIEW_PACKET_REVIEW_CANDIDATE.txt. No production caller was added.
+
+Next reduce the harness's full nested-row memory expansion, prove equivalent
+results on this cohort and measure memory before full-catalog use. The four old
+denied body reads now succeed publicly with matching hashes; Issa still returns
+the retained HTML error. The public bucket base URL is pending for raw-index
+checks. Full catalog qualification, independent reference review and production
+integration remain separate outstanding work.
