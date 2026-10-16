@@ -1,0 +1,40 @@
+{
+  "at": "2026-10-16T05:46:45.227406+00:00",
+  "snapshot_qualification_complete": true,
+  "qualified_urls": 24,
+  "distinct_bodies": 20,
+  "snapshots": [
+    {
+      "worker": "nara-html-continuation-02",
+      "completed_receipts": 4,
+      "sha256": "21e324712bc0b20e45ed530ef41d14df9254c3ee9052b7c6733ef8aa5b95f18a",
+      "worker_complete_claimed": false
+    },
+    {
+      "worker": "nara-html-continuation-03",
+      "completed_receipts": 28,
+      "sha256": "b4fbe8d4366747c9836bfa0f409ce8823bb61d8964234362b1102d76978f66d6",
+      "worker_complete_claimed": false
+    }
+  ],
+  "published": false,
+  "all_source_pins_verified": true,
+  "all_completed_receipts_matched": true,
+  "remaining_counts": {
+    "lookup_unresolved": 15955,
+    "validated_local_recovery": 1834,
+    "unprocessed_archive_candidate": 2655,
+    "attempted_not_recovered": 31,
+    "retained_copy_link_prepared": 3099
+  },
+  "next_steps": [
+    "Include these 24 HTML documents in the successor batch with explicit text/html media type.",
+    "Continue active NARA acquisition without modifying its pinned worker.",
+    "Finish import-checkpoint12, verify preservation and readback, then publish catalog and viewer."
+  ],
+  "evidence_sha256": {
+    "output/corpus-retry-20261015/nara-continuation-snapshot-01/qualified.json": "6a2aa9cf2021b3ad1465cdf1ecf2817022ab35c73a1645180ace6709ffb8f4be",
+    "output/corpus-retry-20261015/nara-continuation-snapshot-01/complete.json": "d3615178f0bbe34bd6c9326ca4ea3133beee218841e08863f020e392759d04ea",
+    "output/corpus-retry-20261015/qualify_nara_continuation_snapshot.py": "1a4cd8a0b95f30165ee32cf627bcd1adeca83570994f88431582536a5576aa50"
+  }
+}
