@@ -1,0 +1,11 @@
+{
+  "scope": "Logical JSON serialization comparison on unchanged retained results. This is not a wall-clock or disk-allocation measurement.",
+  "source": "output/corpus-retry-20261015/firecrawl-nara-scaled-02/results.json",
+  "source_sha256": "6f40fd2969b8a52792ae184ee477b5782b2c9b341539a04913f53f6c32abd82c",
+  "groups": 961,
+  "prior_full_prefix_rewrite_bytes": 4650859909,
+  "one_final_aggregate_bytes": 9074518,
+  "aggregate_write_reduction_factor": 512.5186714049165,
+  "additional_new_writes": "One immutable receipt per request, body/cache artifacts, compact fixed-size counters. These are not included in aggregate-only comparison.",
+  "probe": "tests/test_webharvest_recovery.py::test_receipts_are_immutable_and_aggregate_written_once verifies one aggregate write for 20 queue groups"
+}

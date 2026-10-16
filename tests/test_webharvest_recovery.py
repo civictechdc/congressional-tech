@@ -30,7 +30,7 @@ def retained(tmp_path, rendered=False):
     item = row(raw)
     item['retained'] = {'body_path': str(body), 'bytes': len(raw), 'sha256': recovery.sha(raw),
                         'status': 200, 'complete': True, 'final_url': item['candidates'][0]['replay_url'],
-                        'evidence': 'source-receipt.json', 'rendered_copy': rendered}
+                        'evidence': 'source-receipt.json', 'rendered_copy': rendered, 'origin_status': 200}
     config = {'provider': 'retained', 'deferred': str(dump(tmp_path / 'deferred.json', [])), 'delay_seconds': 0}
     directory = tmp_path / 'attempt'
     directory.mkdir()
@@ -44,7 +44,9 @@ def test_retained_source_and_rendered_provenance(tmp_path):
     assert result['reused_evidence'] == 'source-receipt.json'
     item['retained']['rendered_copy'] = True
     item['candidates'][0]['digest'] = 'DIFFERENT'
-    result = recovery.fetch(item, config, directory, None)
+    rendered_dir = tmp_path / 'rendered'
+    rendered_dir.mkdir()
+    result = recovery.fetch(item, config, rendered_dir, None)
     assert result['valid'] and result['rendered_copy']
     assert not result['index_digest_matches'] and not result['source_bytes_identity_claimed']
 
@@ -109,3 +111,246 @@ def test_successful_download_not_repeated(tmp_path, monkeypatch):
     recovery.acquire(queue, config, run)
     monkeypatch.setattr(recovery, 'fetch', lambda *args: pytest.fail('Repeated successful download'))
     assert recovery.acquire(queue, config, run)['completed'] == 1
+
+
+def test_interrupted_after_download_resumes_without_fetch(tmp_path, monkeypatch):
+    item, config, directory = retained(tmp_path)
+    queue = dump(tmp_path / 'queue.json', [item])
+    run = tmp_path / 'run'
+    real_classify = recovery.classify_cached
+    monkeypatch.setattr(recovery, 'classify_cached', lambda *args: (_ for _ in ()).throw(KeyboardInterrupt()))
+    with pytest.raises(KeyboardInterrupt):
+        recovery.acquire(queue, config, run)
+    assert len(list((run / 'downloads').glob('*/download.json'))) == 1
+    assert not list((run / 'requests').glob('*/receipt.json'))
+    monkeypatch.setattr(recovery, 'classify_cached', real_classify)
+    monkeypatch.setattr(recovery.requests.Session, 'get', lambda *args, **kw: pytest.fail('Repeated request'))
+    result = recovery.acquire(queue, config, run)
+    assert result['complete'] and result['completed'] == 1
+    assert recovery.receipt_rows(run)[0]['valid']
+    (run / 'results.json').unlink()
+    (run / 'progress.json').unlink()
+    assert recovery.aggregate(run)['complete']
+    assert len(recovery.read(run / 'results.json')) == 1
+
+
+def test_in_flight_interruption_never_automatically_retries(tmp_path, monkeypatch):
+    item, config, directory = retained(tmp_path)
+    queue = dump(tmp_path / 'queue.json', [item])
+    monkeypatch.setattr(recovery, 'fetch', lambda *args: (_ for _ in ()).throw(KeyboardInterrupt()))
+    with pytest.raises(KeyboardInterrupt):
+        recovery.acquire(queue, config, tmp_path / 'run')
+    monkeypatch.setattr(recovery, 'fetch', lambda *args: pytest.fail('In-flight request retried'))
+    result = recovery.acquire(queue, config, tmp_path / 'run')
+    assert result['dispositions'] == {'review-required': 1}
+
+
+def test_same_source_download_and_extraction_reused_for_multiple_originals(tmp_path, monkeypatch):
+    item, config, directory = retained(tmp_path)
+    second = dict(item, original_urls=['https://veterans.house.gov/alternate'])
+    queue = dump(tmp_path / 'queue.json', [item, second])
+    run = tmp_path / 'run'
+    assert recovery.acquire(queue, config, run)['completed'] == 2
+    assert len(list((run / 'downloads').glob('*/download.json'))) == 1
+    assert len(list((run / 'classification-cache').glob('*.json'))) == 1
+    receipts = recovery.receipt_rows(run)
+    assert {tuple(r['original_urls']) for r in receipts} == {tuple(item['original_urls']), tuple(second['original_urls'])}
+    assert all('text' not in r['content'] for r in receipts)
+
+
+def test_receipts_are_immutable_and_aggregate_written_once(tmp_path, monkeypatch):
+    item, config, directory = retained(tmp_path)
+    rows = [dict(item, original_urls=[f'https://example.gov/{i}']) for i in range(20)]
+    queue = dump(tmp_path / 'queue.json', rows)
+    run = tmp_path / 'run'
+    aggregate_writes = []
+    real_save = recovery.save
+    def track(path, value):
+        if Path(path).name == 'results.json':
+            aggregate_writes.append(len(json.dumps(value)))
+        return real_save(path, value)
+    monkeypatch.setattr(recovery, 'save', track)
+    recovery.acquire(queue, config, run)
+    assert len(aggregate_writes) == 1
+    receipt = next((run / 'requests').glob('*/receipt.json'))
+    raw = receipt.read_bytes()
+    with pytest.raises(FileExistsError):
+        recovery.immutable(receipt, {'changed': True})
+    assert receipt.read_bytes() == raw
+
+
+def test_classifier_cache_invalidation_and_frozen_source(tmp_path):
+    from webharvest_validation import freeze, classify_cached
+    item, config, directory = retained(tmp_path)
+    raw = Path(item['retained']['body_path']).read_bytes()
+    snapshot = tmp_path / 'snapshot'
+    validator = freeze(snapshot, {'rule': 1})
+    first, proof = classify_cached(raw, tmp_path / 'cache', snapshot, validator)
+    assert first['category'] == 'substantial_document_body'
+    assert freeze(snapshot, {'rule': 1}) == validator
+    with pytest.raises(ValueError, match='configuration'):
+        freeze(snapshot, {'rule': 2})
+    other = tmp_path / 'snapshot2'
+    changed = freeze(other, {'rule': 2})
+    _, next_proof = classify_cached(raw, tmp_path / 'cache', other, changed)
+    assert proof['path'] != next_proof['path']
+    _, body_proof = classify_cached(raw.replace(b'evidence', b'testimony'), tmp_path / 'cache', snapshot, validator)
+    assert body_proof['path'] != proof['path']
+    # Published cache result remains reusable even if current classifier code moves.
+    (snapshot / 'classifier.py').write_text('raise AssertionError("not executed for cache hit")')
+    assert classify_cached(raw, tmp_path / 'cache', snapshot, validator)[0] == first
+    with pytest.raises(ValueError, match='classifier changed'):
+        freeze(snapshot, {'rule': 1})
+
+
+def test_completed_receipt_qualification_preserves_source_and_provenance(tmp_path):
+    item, config, directory = retained(tmp_path, rendered=True)
+    run = tmp_path / 'run'
+    recovery.acquire(dump(tmp_path / 'queue.json', [item]), config, run)
+    source = next((run / 'requests').glob('*/receipt.json'))
+    output = tmp_path / 'qualified'
+    result = recovery.qualify([source], output, Path(config['deferred']))
+    assert result['qualified'] == 1
+    receipt = recovery.receipt_rows(output)[0]
+    assert receipt['rendered_copy'] and not receipt['source_bytes_identity_claimed']
+    assert receipt['source_receipt_sha256'] == recovery.sha(source.read_bytes())
+    assert not receipt['worker_completion_claimed']
+
+
+def test_pdf_checks_keep_decoders_and_preview_is_optional(tmp_path, monkeypatch):
+    import gzip
+    from webharvest_validation import validate_pdf
+    fixtures = Path(__file__).parent / 'fixtures/capture-failures'
+    # Real historical parser failures remain readable by Poppler; neither check is dropped.
+    for name in ['numeric-operand.pdf.gz', 'malformed-text-array.pdf.gz']:
+        body = tmp_path / name[:-3]
+        raw = gzip.decompress((fixtures / name).read_bytes())
+        body.write_bytes(raw)
+        result = validate_pdf(body, tmp_path / name)
+        assert result['valid_pdf'] and result['all_pages_rendered'] == result['pages_decoded']
+        assert not result['preview_requested'] and 'preview_exit' not in result
+        body.write_bytes(raw[:100])
+        assert not validate_pdf(body, tmp_path / ('truncated-' + name))['valid_pdf']
+    # Preview failure cannot veto acceptance; acceptance renderer still runs.
+    body = tmp_path / 'valid.pdf'
+    body.write_bytes(gzip.decompress((fixtures / 'numeric-operand.pdf.gz').read_bytes()))
+    real_run = recovery.subprocess.run
+    def fail_preview(command, **kwargs):
+        if '-png' in command:
+            raise recovery.subprocess.TimeoutExpired(command, 45)
+        return real_run(command, **kwargs)
+    monkeypatch.setattr(recovery.subprocess, 'run', fail_preview)
+    assert validate_pdf(body, tmp_path / 'optional-preview', preview=True)['valid_pdf']
+
+
+def test_blocked_run_does_not_resume_acquisition_automatically(tmp_path, monkeypatch):
+    item, config, directory = retained(tmp_path)
+    other = dict(item, original_urls=['https://example.gov/other'],
+                 candidates=[dict(item['candidates'][0], replay_url=item['candidates'][0]['replay_url'] + '/other')])
+    queue = dump(tmp_path / 'queue.json', [item, other])
+    def blocked(row, *args):
+        return {'original_urls': row['original_urls'], 'status': 429, 'valid': False,
+                'disposition': 'retryable-failure'}
+    monkeypatch.setattr(recovery, 'fetch', blocked)
+    assert recovery.acquire(queue, config, tmp_path / 'run')['completed'] == 1
+    monkeypatch.setattr(recovery, 'fetch', lambda *args: pytest.fail('Blocked campaign resumed'))
+    assert recovery.acquire(queue, config, tmp_path / 'run')['completed'] == 1
+
+
+def test_direct_media_rejected_before_body_download(tmp_path):
+    item, config, directory = retained(tmp_path)
+    config['provider'] = 'direct'
+    class Media:
+        status_code = 200
+        url = item['candidates'][0]['replay_url']
+        headers = {'content-type': 'video/mp4'}
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return False
+        def iter_content(self, *args):
+            pytest.fail('Media body read')
+    class Session:
+        def get(self, *args, **kwargs):
+            return Media()
+    result = recovery.fetch(item, config, directory, Session())
+    assert not result['valid'] and 'body_path' not in result
+
+
+def test_firecrawl_exact_url_origin_and_secret_headers(tmp_path, monkeypatch):
+    item, config, directory = retained(tmp_path)
+    config.update(provider='firecrawl', credential_env='OFFLINE_TEST_KEY')
+    monkeypatch.setenv('OFFLINE_TEST_KEY', 'offline-secret-must-not-appear')
+    raw = Path(item['retained']['body_path']).read_text()
+    class Response:
+        status_code = 200
+        def json(self):
+            return {'data': {'rawHtml': raw, 'metadata': {'statusCode': 200,
+                    'url': item['candidates'][0]['replay_url'], 'contentType': 'text/html'}}}
+    class Session:
+        def post(self, url, **kwargs):
+            assert kwargs['headers']['Authorization'] == 'Bearer offline-secret-must-not-appear'
+            return Response()
+    result = recovery.fetch(item, config, directory, Session())
+    assert result['valid'] and result['rendered_copy']
+    assert 'offline-secret-must-not-appear' not in json.dumps(result)
+    assert not result['source_bytes_identity_claimed']
+
+
+def test_stale_reservations_and_deferred_body_do_not_become_eligible(tmp_path):
+    item = row()
+    queue = dump(tmp_path / 'queue.json', [item])
+    forbidden = dump(tmp_path / 'deferred.json', [{'url': 'https://elsewhere.gov/other', 'sha256': 'blocked-body'}])
+    prior = dump(tmp_path / 'prior.json', {'original_urls': item['original_urls'], 'valid': True, 'sha256': 'blocked-body'})
+    result = recovery.plan(queue, [prior], [], forbidden)
+    assert result['rows'][0]['disposition'] == 'review-required'
+    stale = dump(tmp_path / 'reservation.json', {'process': dict(recovery.process_identity(), start_and_command='stale'), 'original_urls': item['original_urls']})
+    result = recovery.plan(queue, [], [stale], forbidden)
+    assert result['rows'][0]['disposition'] == 'review-required'
+    assert not result['rows'][0]['eligible']
+
+
+def test_duplicate_pagination_cursor_cannot_hide_an_incomplete_chain():
+    assert not recovery.pagination_state([{'cursor': None, 'continuation': 'next'},
+                                          {'cursor': None, 'continuation': None, 'complete': True}])['complete']
+
+
+def test_new_classifier_source_invalidates_cache(tmp_path, monkeypatch):
+    import webharvest_validation as validation
+    item, config, directory = retained(tmp_path)
+    raw = Path(item['retained']['body_path']).read_bytes()
+    first = validation.freeze(tmp_path / 'first', {})
+    scripts = tmp_path / 'alternate-scripts'
+    scripts.mkdir()
+    real_scripts = Path(validation.__file__).parent
+    (scripts / 'webharvest_validation.py').write_bytes(Path(validation.__file__).read_bytes())
+    for name in ['classify_recovery_html.py', 'classify_recovery_html_transcripts.py']:
+        (scripts / name).write_bytes((real_scripts / name).read_bytes() + b'\n# newer classifier source\n')
+    monkeypatch.setattr(validation, '__file__', str(scripts / 'webharvest_validation.py'))
+    second = validation.freeze(tmp_path / 'second', {})
+    assert first['classifier_sha256'] != second['classifier_sha256']
+    _, a = validation.classify_cached(raw, tmp_path / 'cache', tmp_path / 'first', first)
+    _, b = validation.classify_cached(raw, tmp_path / 'cache', tmp_path / 'second', second)
+    assert a['path'] != b['path']
+
+
+def test_pdf_qualification_reuses_frozen_acceptance_and_checks_retained_bytes(tmp_path):
+    import gzip
+    raw = gzip.decompress((Path(__file__).parent / 'fixtures/capture-failures/numeric-operand.pdf.gz').read_bytes())
+    body = tmp_path / 'retained.pdf'
+    body.write_bytes(raw)
+    source = dump(tmp_path / 'receipt.json', {'original_url': 'https://example.gov/file.pdf',
+                  'requested_url': 'https://example.gov/file.pdf', 'final_url': 'https://example.gov/file.pdf',
+                  'body_path': str(body), 'sha256': recovery.sha(raw), 'bytes': len(raw),
+                  'complete': True, 'status': 200, 'kind': 'pdf'})
+    deferred = dump(tmp_path / 'deferred.json', [])
+    output = tmp_path / 'qualified'
+    assert recovery.qualify([source], output, deferred, kind='pdf')['qualified'] == 1
+    assert recovery.qualify([source], output, deferred, kind='pdf')['qualified'] == 1
+    assert len(list((output / 'pdf-cache').glob('*/acceptance.json'))) == 1
+    result = recovery.receipt_rows(output)[0]
+    assert result['source_receipt_sha256'] == recovery.sha(source.read_bytes())
+    assert not result['source_bytes_identity_claimed']
+    body.write_bytes(b'changed')
+    with pytest.raises(ValueError, match='hash or length'):
+        recovery.qualify([source], output, deferred, kind='pdf')
