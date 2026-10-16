@@ -46,3 +46,9 @@ The separate `../recovery/corpus-recovery-readiness-20261016.json` records the n
 Acquisition now includes 132 official GovInfo bill packages for 144 explicit bill-version URLs outside the active NARA queue. Package-generation responses use their requested delay and at most three total attempts per package. Successful packages are reused across continuations. Wayback's eight incomplete partition lookups remain unresolved: its retry worker was stopped after three consecutive transport failures, preserving partial evidence.
 
 At publication time, regenerate the final batch from the completed acquisition evidence, extend the body/source-record checks to all additions, and use fresh shared-state versions. Keep the ZIP member import, raw-state preservation, selected catalog rebuild, accepted mapping update, and public viewer readback in the completion checklist. Local source-record preparation has not assigned fresh download state or written receipts remotely.
+
+## GovInfo acquisition completion
+
+The 132-package queue is fully accounted for: 127 packages yielded validated PDFs covering 139 URL links; five package routes returned HTML rather than ZIPs. No package remains unprocessed. The exact unresolved identifiers and evidence hash are recorded in `../recovery/govinfo-package-completion-20261016.json`. Those five links need their original committee attachment or an archive capture of the requested version; do not silently substitute another bill version.
+
+The combined local preview at this checkpoint contains 508 recovered links referencing 441 distinct bodies, plus 149 ZIP-member PDFs. NARA acquisition remains active, so these counts are a snapshot. Finish that queue, classify its unsuccessful results, and prepare the final publication batch. The existing cloud capture run remains active; import and publication are still pending.

@@ -1,0 +1,48 @@
+{
+  "checked_at": "2026-10-16T02:17:50.387610+00:00",
+  "planned_packages": 132,
+  "validated_packages": 127,
+  "validated_links": 139,
+  "unprocessed_packages": 0,
+  "unqualified_packages": 5,
+  "evidence_path": "output/corpus-retry-20261015/official-bill-package-accounting.json",
+  "evidence_sha256": "c93b9df6c4131347a8541c2a7a3f350bca0d3df3ced97f8e5eba56c26587fd02",
+  "unqualified": [
+    {
+      "package_id": "BILLS-116s1340ih",
+      "original_urls": [
+        "http://docs.house.gov/meetings/FA/FA00/20191218/110338/BILLS-116S1340ih.pdf"
+      ],
+      "reason": "Official package route returned HTML rather than a document ZIP; exact requested version remains unresolved."
+    },
+    {
+      "package_id": "BILLS-118hr7151ansih",
+      "original_urls": [
+        "http://docs.house.gov/meetings/FA/FA00/20240206/116792/BILLS-118HR7151ANSih.pdf"
+      ],
+      "reason": "Official package route returned HTML rather than a document ZIP; exact requested version remains unresolved."
+    },
+    {
+      "package_id": "BILLS-118hr2813or",
+      "original_urls": [
+        "https://rules.house.gov/sites/republicans.rules118.house.gov/files/documents/118/Text/BILLS-118hr2813or.pdf"
+      ],
+      "reason": "Official package route returned HTML rather than a document ZIP; exact requested version remains unresolved."
+    },
+    {
+      "package_id": "BILLS-117sconres14ih",
+      "original_urls": [
+        "https://www.congress.gov/117/meeting/house/114026/documents/BILLS-117SConRes14ih.pdf"
+      ],
+      "reason": "Official package route returned HTML rather than a document ZIP; exact requested version remains unresolved."
+    },
+    {
+      "package_id": "BILLS-118hr8631uih",
+      "original_urls": [
+        "https://www.congress.gov/118/meeting/house/117437/documents/BILLS-118HR8631uih.pdf"
+      ],
+      "reason": "Official package route returned HTML rather than a document ZIP; exact requested version remains unresolved."
+    }
+  ],
+  "publication_status": "local_only_not_published"
+}
