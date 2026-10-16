@@ -628,3 +628,19 @@ unresolved. After complete retained-page review, propose case-specific decisions
 for all 91 metadata cases before implementing justified house_naming changes.
 Local version 3.2.7 remains unpublished; independent-reference and fresh raw
 qualification requirements remain unchanged.
+
+Remaining retained-content review, part 2 completed
+--------------------------------------------------
+The Award List (9 pages), Galarza funding attachment (8) and EBJ substitute rules
+amendment (17) are fully reviewed. The v8 linkage has 84 documents / 457 pages,
+zero mismatches, unchanged metadata decisions and verified source bindings.
+See remaining_content_review_v2.json and REVIEW_REMAINING_CONTENT.txt.
+
+Next read all 70 saved Wallace pages. It is the only available PDF still lacking
+a complete review; the other six pending cases have no eligible body. Then build
+case-specific proposed classifications for all 91 cases, separating document
+form, filename claim, disclosure/attachment role and source completeness.
+Observed grant-award-list and contract-award-list labels describe the reviewed
+bodies; they do not add production kinds. Runtime changes still require focused
+tests and cohort replay in house_naming. Independent references and qualification
+of the fresh raw catalog remain unfinished; local 3.2.7 remains unpublished.

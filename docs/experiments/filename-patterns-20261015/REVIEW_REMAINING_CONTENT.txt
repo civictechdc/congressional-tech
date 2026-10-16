@@ -44,3 +44,32 @@ for all 91 cases, preserving observed form, filename claim, subject, event
 context and attachment role separately. Any runtime correction belongs in
 house_naming and requires focused tests and cohort replay. Independent labels,
 fresh raw-catalog qualification and release approval remain separate gates.
+
+Part 2: funding lists and proposed committee rules completed
+----------------------------------------------------------
+All 34 retained pages in the Award List, Galarza attachment and EBJ substitute
+amendment are now reviewed. The additive v2 receipt preserves exact bodies,
+page coverage and the previous review chain. The unchanged linker reports
+84 reviewed documents / 457 pages and zero mismatches. All bound hashes and
+nine frozen source hashes passed verification; metadata decisions stay unchanged.
+
+The Award List contains school grant tables for fiscal 2011-2013 and a separate
+subcontractor table. Galarza contains a continuous list of contract/subcontract
+awards. Neither retained body includes a signed disclosure questionnaire or
+narrative testimony. Their filename disclosure/attachment roles remain separate
+from observed form. The receipt uses descriptive observed-form labels for these
+lists; it does not introduce new production kinds. Source clipping, page-break
+continuations, amount punctuation and a heading/date inconsistency are retained.
+
+The EBJ packet contains operative substitute-amendment instructions followed by
+proposed committee rules. It does not establish adoption. Its stated count of
+six subcommittees conflicts with five listed jurisdictions; its 113th-Congress
+oversight provision differs from the 114th-Congress cover. The receipt preserves
+these source inconsistencies. References to disclosures, testimony, reports and
+subpoenas are procedural provisions, not attached examples of those documents.
+
+Only the 70-page Wallace packet remains among the available saved PDFs. Review
+all pages before completing its receipt. Six unavailable groups remain unresolved.
+After that review, propose decisions for all 91 metadata cases, including explicit
+unavailable outcomes. Preserve the distinction between form and disclosure role;
+a financial schedule can support a disclosure without being a signed form.

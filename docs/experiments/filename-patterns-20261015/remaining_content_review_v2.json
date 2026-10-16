@@ -1,0 +1,270 @@
+{
+  "scope": "Complete review of two funding lists and the substitute committee-rules amendment",
+  "previous_review": "docs/experiments/filename-patterns-20261015/remaining_content_review_v1.json",
+  "previous_review_sha256": "65b5141fdafaa7474f172048cc57044684535323618d0b679e0865b963069440",
+  "input_ledger": "output/filename-patterns-20261015/review-evidence-v4/ledger.jsonl",
+  "input_ledger_sha256": "218c5ecc8a8eeb05b047414f4ffb7d5a9938d4a1f8d0d1e419b9c998932971e5",
+  "fetch_results_path": "output/filename-patterns-20261015/public-retained-review-v6/results.json",
+  "fetch_results_sha256": "98549d9b78fc109afa2996bfa89230afdf73b1deb5614599ad5658794a40a975",
+  "selection_bindings": {
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/docs/experiments/filename-patterns-20261015/content_readiness_checkpoint.json": "b40dbe84dcb68e5aaf014084e8c55e7260c257074cd2d3b8314360ae0a504857",
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/output/filename-patterns-20261015/public-retained-review-v6/fetch.py": "357c5e4e63134fca55c2568a4d3255118769409c959e7f5ec836a3419474fa13",
+    "output/filename-patterns-20261015/review-evidence-v3/ledger.jsonl": "d92184926b42812dff3c36f9442c032a0841ff8ecd3e679b40f6c477595d1438",
+    "output/filename-patterns-20261015/remaining-content-readiness-v1/readiness.json": "113859c8c35a6fc502603261c39622ac7f1f77377529755d2950b1a38e8dc4f0",
+    "docs/experiments/filename-patterns-20261015/catalog_alias_review.py": "dd46f8122ee43b0eaf8a88af7b0f16e94f147dd1e0d862dcaec836554b27e69d",
+    "packages/congress_api/src/congress_api/retention/document_index.py": "ec575da15c10615bd983baf3566e7bf5c1e63c5311715b0ab9e5b22917cc2667",
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/output/filename-patterns-20261015/continuation-v1/pilot.json": "55b3256dc0bfee57d90235b7d8d9b216060bc145d82926709a5b01beed619237",
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/docs/experiments/filename-patterns-20261015/review_evidence_checkpoint_v4.json": "869462f1085c1217c3ff4146fda6626ee504fda8d9deb84aa548cf6cc0c8144b",
+    "output/filename-patterns-20261015/review-evidence-v4/summary.json": "fad13d1d0101aebde561911cb9c6ecfff4c68b2dc8b0be65bd315d2a24fb8517",
+    "output/filename-patterns-20261015/review-evidence-v4/ledger.jsonl": "218c5ecc8a8eeb05b047414f4ffb7d5a9938d4a1f8d0d1e419b9c998932971e5",
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/docs/experiments/filename-patterns-20261015/content_review_linkage_checkpoint_v6.json": "c9f96d4d768cc50463e13ffcae047090f5f75a1dfab4a982d845308727f8d25e",
+    "output/filename-patterns-20261015/content-review-linkage-v6/summary.json": "adf9480fb6bd752ed07bf5b76a47cb01dc6703d9d3583c4f3dd6a4f9192a8d2c",
+    "output/filename-patterns-20261015/content-review-linkage-v6/ledger.jsonl": "2cb985b8789e7ebb87b6d6fc81e62c59fb9f01c046fd37a8e315b66f290d835d",
+    "output/filename-patterns-20261015/public-retained-review-v6/selection.json": "eeb63bec6b56688aa4f2024bcdecb2662c15c2c1b851e07c7bf622769388f089",
+    "output/filename-patterns-20261015/public-retained-review-v6/input-check.json": "438b53f4062d48689bc4686a9a0fd31a38eddef5f7a8e6c56ece8a65581173d3",
+    "docs/experiments/filename-patterns-20261015/remaining_retained_review_readiness_v2.json": "bccf30a4d2e7fac92fb6201450bcada690f38c79bcce903360c743baa1218726"
+  },
+  "records": [
+    {
+      "document_id": "01940862e3bc3b78b7561661018939cccc324214930e1592401d9514a6a56da5",
+      "filename": "given_truth_in_testimony_award_list.pdf",
+      "body_key": "bodies/sha256/bc/bcd55091348b796053d5e9aae621c2f6c310777d6b4b806f18aab7ef2ca1f62b.gz",
+      "sha256": "bcd55091348b796053d5e9aae621c2f6c310777d6b4b806f18aab7ef2ca1f62b",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v6/bcd55091348b796053d5e9aae621c2f6c310777d6b4b806f18aab7ef2ca1f62b.pdf",
+      "pages": 9,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v6/bcd55091348b796053d5e9aae621c2f6c310777d6b4b806f18aab7ef2ca1f62b.txt",
+      "text_sha256": "c899acadc24d4a9e4b349833afd6414263a54e4afec3dd210589e5e6d8b2c912",
+      "selection_index": 1,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "independent_reference": false,
+      "release_approved": false,
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v6/page-01-1.png": "6ad257877aae8a85bd869485772ecf2031aa8ba127411fd8b42d669949570e4f",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-01-2.png": "db2c8d2094cfab14b5bd9cffa57f18fc858b4c0beef698969d3b40d33cb7ab0b",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-01-3.png": "be4052d5afd0315304aa7ccae0a5574c62b4478227804d847157df4dfe921468",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-01-4.png": "b1083c887062529b8af2a09163f6405e357f40c8664e5b4e7b7aa9351a807f43",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-01-5.png": "d272cb37465d0abf0e527336eda93fcb58673e55426c966bd64e389f45c61292",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-01-6.png": "ecaf25abaa15d3cfab59c7a48bb5bee9c59eec3a29efe75683bb433d86995f4d",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-01-7.png": "6fbb7ee29355a3b815fc1cc30751bb3bf274f081a37ce309d732ec8a4b4be84e",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-01-8.png": "24e79787939cb338e999429b008a160e5eb6bc177c0a5e284f34683cf06c87f6",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-01-9.png": "5ccecc4e827f5d3146fe1ff575e6fa298caba5db86d584ef9aebe25f1ce09690"
+      },
+      "native_text_extraction": "pypdf; all rendered pages visually reviewed; no OCR",
+      "observed_document_forms": [
+        "grant-award-list"
+      ],
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 4,
+          "observed_form": "grant-award-list",
+          "description": "Fiscal 2011 school grant awards by site, program, amount and source, ending in a yearly total."
+        },
+        {
+          "first_page": 5,
+          "last_page": 7,
+          "observed_form": "grant-award-list",
+          "description": "Fiscal 2012 school grant awards; their total appears at the start of page 8."
+        },
+        {
+          "first_page": 8,
+          "last_page": 9,
+          "observed_form": "grant-award-list",
+          "description": "Fiscal 2012 total, fiscal 2013 awards and total, combined subgrant total, and a separate subcontractor-relationship table and total."
+        }
+      ],
+      "observations": [
+        "All nine pages contain tabular grant-award information, with continuous printed page numbers. No signed disclosure questionnaire or narrative testimony is present.",
+        "The Truth in Testimony filename indicates a disclosure role, but the observed body form is a grant-award list; that role is separate from form.",
+        "Some long school names and descriptions are visibly clipped at column boundaries; native text retains fuller strings in several cases. Preserve both representations.",
+        "On page 9, native extraction moves the Total of Sub Grants label after the subcontractor table; the rendered layout places it with 77,628,267.69 above that table. The separate subcontractor total is 4,221,048.00. These are reported source totals, not an independent financial audit."
+      ]
+    },
+    {
+      "document_id": "ab34f34051abcbb5e88e37def69288b92f677fa068cdc760968bf13ed43fad2f",
+      "filename": "galarza_disclosure_attachment.pdf",
+      "body_key": "bodies/sha256/e9/e9d5bec5afc8aee7e9f5e2160cf8cc866444ac3f9760ed8465b066e7d1d67a73.gz",
+      "sha256": "e9d5bec5afc8aee7e9f5e2160cf8cc866444ac3f9760ed8465b066e7d1d67a73",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v6/e9d5bec5afc8aee7e9f5e2160cf8cc866444ac3f9760ed8465b066e7d1d67a73.pdf",
+      "pages": 8,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v6/e9d5bec5afc8aee7e9f5e2160cf8cc866444ac3f9760ed8465b066e7d1d67a73.txt",
+      "text_sha256": "266308b1b65abeb6c9de0bcef5c50bb83ec1f1ea978bbd9bf0fd2c0089b8e0af",
+      "selection_index": 11,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "independent_reference": false,
+      "release_approved": false,
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v6/page-11-1.png": "37c1824f990bfb1705844c6b7af985bd665e183470b965eedd9fde21f462116c",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-11-2.png": "c4cbc16e4d44d9235699d75ab4d50e1d9fce09c33e4b288e90defc242dcd95c9",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-11-3.png": "47eb57dad5acde476b69e78bd4bf38d20021317aee87ca2924a9c8a835df2758",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-11-4.png": "605756481a05928e2fb5df49a19b2202bd639d3ba709a7ff66b4a6798331ebdc",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-11-5.png": "050138b0662701fff2e3ddd51c3658f411ca654c200db160a73e2ce29788b78e",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-11-6.png": "d56a648dc00c47814bb948537cae4b03f9a43ee37151370bc0a5bad51842c28e",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-11-7.png": "2bae0ba00c182c3a3b5033d0180df004f5e5633e5cf63d5f36221e814b79568c",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-11-8.png": "c39ee75cc4820291b4dd6a5be85306fd00d713030ea71895f4f129d7c0106f11"
+      },
+      "native_text_extraction": "pypdf; all rendered pages visually reviewed; no OCR",
+      "observed_document_forms": [
+        "contract-award-list"
+      ],
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 8,
+          "observed_form": "contract-award-list",
+          "description": "Continuous table headed Federal Contracts or Subcontracts Awarded Since October 2006, listing agencies or contractors, project descriptions, identifiers and amounts."
+        }
+      ],
+      "observations": [
+        "All eight retained pages were visually read. Rows continue across page breaks, including the first row on pages 2, 3, 5, 6, 7 and 8; these continuations are not separate documents.",
+        "The filename calls this a disclosure attachment. The body is a list of contract and subcontract awards, not executed contracts, a signed disclosure questionnaire or testimony.",
+        "The first entry includes September 19, 2006 despite the heading saying since October 2006. Source amount punctuation includes $1,541,,228.46 on page 2, $178.153.80 on page 4 and $78,374.82. on page 8; retain those literal discrepancies without silent correction.",
+        "No signed disclosure cover or named witness is visible in the retained packet."
+      ]
+    },
+    {
+      "document_id": "bbe11ad1aec2d38c62c6cab8e6075227594a80e366ef31cc96a310aa049f56e1",
+      "filename": "Democratic Alternative to Committee Rules 114th Amendment - EBJ.pdf",
+      "body_key": "bodies/sha256/8b/8b2c27d2d248e4bc5b266577da3babdf76553e981d7114fac26c0bad0a106e50.gz",
+      "sha256": "8b2c27d2d248e4bc5b266577da3babdf76553e981d7114fac26c0bad0a106e50",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v6/8b2c27d2d248e4bc5b266577da3babdf76553e981d7114fac26c0bad0a106e50.pdf",
+      "pages": 17,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v6/8b2c27d2d248e4bc5b266577da3babdf76553e981d7114fac26c0bad0a106e50.txt",
+      "text_sha256": "6a7a78f115041b462f9301b2b26724fc704ecee9cdcbe81dfd43b45649f9b4d2",
+      "selection_index": 12,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "independent_reference": false,
+      "release_approved": false,
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v6/page-12-01.png": "d11786cf26b90155feee4ae3eb0e3f30b47df5136c2ad6b53912ce88220ab784",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-12-02.png": "ac8bcd1da2cfc2182714990717af5ee18111de4f2beb1a43a7d340436ad624a7",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-12-03.png": "8dabb25abb48ce6c7e9fef1a8494c4c06ea671b4d8a3630bb2b8f7caeab35ffa",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-12-04.png": "9810b03c82ec05d149031ea57dd4aae278f3e480c1f68a2da31afd9fba367914",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-12-05.png": "b815619d10f8cda4547c05636519f3facecc027615c60c22bcdbe1776c937fb9",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-12-06.png": "2ca1a0552db324891cb475940771c390c80b4a14b220b20a65cb52bb09922b77",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-12-07.png": "58ba9697b4bbce5a46254bd31f9c405c89e0fcfb9eb8082c482aa86b977c3d90",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-12-08.png": "ea9df1b52cabaaff5ea8e6b0a48ba8b5775d7b2f5200159379b4c05430bfe100",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-12-09.png": "ea80ba51b705f8b40580cd4ff85d3a299fd0e5f1a5d1ecb3f3c0cad976c35042",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-12-10.png": "450d08f964d3ec5ea6cf5a5a55bc5ae4f04e31b6128093d9dfa1f0e00b414c84",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-12-11.png": "3288c3f75a44c0d8d586cb18a0902264a7a8819e771ba1707b02cb530f1e64f5",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-12-12.png": "978cee760e87d5446e03bf251a255184688bef0d7b0a1d58b61c7b23b94e3e6a",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-12-13.png": "76d45dfcb64fa15817a6bdeda75ba619b45554d23d154c5d8e09d391794347b0",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-12-14.png": "cfaf7e2648d760a87681ad5a5ebf841581a9ca94c4e66842ab6390dbc6ce9c99",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-12-15.png": "0ae0bcc13f4c1ce6639e3f5f1e32411f2f747f5a33f1fe4322243c4c6f58fde2",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-12-16.png": "b35e2641d055cbbd51acb92af391297120ce3261da5777b907c94a35d7e7c544",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-12-17.png": "65e570b0d513a07523b12affc1f17e0a89a6ac29843654c8db1aea003efac021"
+      },
+      "native_text_extraction": "pypdf; all rendered pages visually reviewed; no OCR",
+      "observed_document_forms": [
+        "amendment",
+        "proposed-committee-rules"
+      ],
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 1,
+          "observed_form": "amendment",
+          "description": "Substitute amendment offered by Eddie Bernice Johnson to Science, Space and Technology Committee procedure rules for the 114th Congress; instructs striking all after the title page and inserting the following text."
+        },
+        {
+          "first_page": 2,
+          "last_page": 2,
+          "observed_form": "proposed-committee-rules",
+          "description": "Table of contents for the proposed replacement rules."
+        },
+        {
+          "first_page": 3,
+          "last_page": 10,
+          "observed_form": "proposed-committee-rules",
+          "description": "General procedures, meetings, hearings, reports and publications, and beginning of broadcasting rules."
+        },
+        {
+          "first_page": 11,
+          "last_page": 13,
+          "observed_form": "proposed-committee-rules",
+          "description": "Broadcasting continuation and subcommittee jurisdictions."
+        },
+        {
+          "first_page": 14,
+          "last_page": 17,
+          "observed_form": "proposed-committee-rules",
+          "description": "Subcommittee composition and procedures, subpoenas, vice chairs, oversight, depositions, records, website and amendments to rules."
+        }
+      ],
+      "observations": [
+        "All seventeen retained pages were read. The cover contains operative amendment instructions; the following pages are proposed replacement committee rules, not proof of adoption.",
+        "Rule VI on page 11 says six standing subcommittees, but the jurisdiction text on pages 11-13 names five: Energy, Environment, Research and Technology, Space, and Oversight. Preserve the discrepancy.",
+        "Rule IX on page 16 refers to the first session of the 113th Congress while the cover and deposition provision identify the 114th. Preserve both source claims.",
+        "The table of contents uses page references through 16; the retained text has limited printed pagination and changed layout. Do not infer a missing page solely from those references.",
+        "Sections discussing witness disclosures, reports, opening statements and subpoenas describe procedures; those document types are not separate attachments."
+      ]
+    }
+  ],
+  "remaining": [
+    {
+      "document_id": "16e435116a0b2859332cd6e56826e1fd0306c833c59eec5f089371750e6a07b6",
+      "filename": "disclosure_wallace_attachment.pdf",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v6/d84a233364ea118eacc05f5483338d50a69de0e6abc21ef2216e03a3b7adf2d4.pdf",
+      "sha256": "d84a233364ea118eacc05f5483338d50a69de0e6abc21ef2216e03a3b7adf2d4",
+      "pages": 70
+    }
+  ],
+  "unavailable": [
+    {
+      "document_id": "0455360798ba44b54527b521541495d050e6f60f0cf2155c029b0806fb067ccc",
+      "filename": "Error.aspx",
+      "reason": "No eligible retained document body; full evidence preserved in bound selection"
+    },
+    {
+      "document_id": "76727488c1e72856ef7e3a8f08092dc893262e2906dc46d642b08bc147740885",
+      "filename": "Issa Amendment to PRA Statement_0.doc",
+      "reason": "No eligible retained document body; full evidence preserved in bound selection"
+    },
+    {
+      "document_id": "ad3f448e3b875ee18a1ac791ba7d2dd1b01529c56d865b960856728bf231f5fc",
+      "filename": "Issa Amendment to PRA Statement_1.doc",
+      "reason": "No eligible retained document body; full evidence preserved in bound selection"
+    },
+    {
+      "document_id": "d635bd70987af968f54775678331381f6d50f7f7a3abe5882391528e0e519355",
+      "filename": "170215EECOpeningStatement-PRESSVERSION.pdf",
+      "reason": "No eligible retained document body; full evidence preserved in bound selection"
+    },
+    {
+      "document_id": "db3059629d6f1b4f605711b9aecdafb5398affbf494003bff14a5c6ad3c15ecc",
+      "filename": "Chairman-Gary-Palmer\u2014Opening-Statement.pdf",
+      "reason": "No eligible retained document body; full evidence preserved in bound selection"
+    },
+    {
+      "document_id": "edd081b3f61bc42e49f35ff51d76f11bf142c8773881fd5711a572589aa5b331",
+      "filename": "Chairman-Gary-Palmer\u2014Opening-Statement.pdf",
+      "reason": "No eligible retained document body; full evidence preserved in bound selection"
+    }
+  ],
+  "summary": {
+    "selected_groups": 20,
+    "verified_retained_pdfs": 14,
+    "verified_retained_pages": 116,
+    "new_completed_documents": 3,
+    "new_completed_pages": 34,
+    "remaining_available_documents": 1,
+    "remaining_available_pages": 70,
+    "unavailable_documents": 6,
+    "cumulative_completed_documents": 84,
+    "cumulative_completed_pages": 457
+  },
+  "pilot_overlap": false,
+  "publisher_acquisition": false,
+  "production_ocr": false,
+  "production_changes": false,
+  "independent_reference": false,
+  "release_approved": false,
+  "limitations": [
+    "Complete retained-page review does not prove source completeness.",
+    "Observed forms do not resolve metadata classification decisions or establish independent reference labels.",
+    "One available packet remains unreviewed; six selected cases have no eligible retained body."
+  ]
+}
