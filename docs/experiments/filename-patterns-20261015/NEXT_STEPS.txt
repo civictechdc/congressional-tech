@@ -563,3 +563,19 @@ in this selection are complete. Two include news-release introductions; TSCA
 contains two dated memos and an embedded witness list. These findings belong
 in proposed content dispositions, without discarding literal filename claims.
 See REVIEW_OPENING_MEMO_CONTENT.txt for verification and interpretation limits.
+
+Opening/memo review, part 2 completed
+-----------------------------------
+The additive v2 receipt records six more complete packets / 30 pages. The v5
+linkage now has 66 reviewed documents / 359 pages and zero mismatches. Original
+metadata decisions remain unchanged; 25 of the 91 cases lack linked content
+review. All bound evidence and nine frozen source hashes were reverified.
+
+Continue with the five saved memos / 52 pages in the v2 remaining list:
+Oklahoma City, Colorado, Guam, Long Island and the September 2015 field hearing.
+Read every retained page, preserve witness lists, figures and actual attachments,
+and record source inconsistencies without silently correcting them. Then review
+the remaining smaller groups and build a proposed disposition for each case.
+Runtime changes belong in house_naming and require focused tests and cohort
+replay. Complete assistant review remains distinct from independent labels,
+classification approval and release. Local version 3.2.7 remains unpublished.

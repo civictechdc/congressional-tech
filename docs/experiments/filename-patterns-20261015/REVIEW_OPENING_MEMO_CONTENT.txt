@@ -55,3 +55,33 @@ disposition for every reviewed case. Keep observed form, filename evidence,
 meeting context and attachment role separate. Use house_naming for any runtime
 rule changes, test against negative examples and replay affected groups before
 considering release. Assistant observations do not satisfy independent labels.
+
+Part 2: six additional memoranda completed
+-----------------------------------------
+The v2 receipt completes six packets / 30 pages: New York manufacturing,
+Southern California oil leak, Scottsdale access to capital, Odessa/Midland
+energy production, small-business exports and the Cars briefing memorandum.
+Three contain embedded witness lists; three contain memorandum text only.
+All retained pages were visually inspected, including six scanned Scottsdale
+pages with no native text beyond page markers. No OCR was used.
+
+The export memo has a February 16, 2016 header but schedules its hearing for
+February 22, 2015 in the first paragraph. Preserve that inconsistency and the
+filename's 2-22-16 token. The energy memo's filename names Odessa while its
+venue text names Midland. Its charts and narrative also use different figures
+and revenue descriptions; the receipt preserves these without assuming equal
+denominators or silently correcting either source. Figures are memo components,
+and cited publications, emails and testimony are not separate attachments.
+
+The unchanged linker now has 66 completed documents / 359 pages with zero
+mismatches. All original metadata fields remain unchanged. Of the 91 metadata
+cases, 66 have linked assistant reviews and 25 do not. Input/output hashes,
+complete page coverage, pilot exclusions and all nine frozen source hashes
+were checked. This is evidence-only work; no new runtime test result is claimed.
+
+Five saved memos / 52 pages remain: Oklahoma City (11), Colorado (11), Guam
+(13), Long Island (7) and the September 2015 field hearing (10). Continue from
+the v2 receipt's remaining list and existing renders. The three unavailable
+opening-statement groups still have only saved error responses. Finish the
+memo queue, inspect the smaller remaining groups, then prepare case-specific
+classification proposals before changing house_naming rules.
