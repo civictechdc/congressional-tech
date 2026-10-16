@@ -1,0 +1,50 @@
+{
+  "at": "2026-10-16T03:57:56.354185+00:00",
+  "local_only": true,
+  "source_records": 1203,
+  "zip_parent_records": 15,
+  "capture_rows": 1367,
+  "distinct_capture_bodykeys": 1000,
+  "remote_existing": 641,
+  "remote_absent": 359,
+  "prior_full_readback_reused_with_fresh_head": 559,
+  "new_full_body_readbacks": 82,
+  "files": {
+    "manifest.json": "f70fa7109c934cd2af724003953d6f2eb6b675a536586feb48507a080d496501",
+    "prepared-source-records.json": "467b277f0044b5834946fa6baead4a93ce88a1b21c85413255ec73def7004066",
+    "source-record-preparation.json": "01117f69b712ac1dd5067c58a4b7eb2221fddece124e71941275273ea52f36c4",
+    "remote-body-readback.json": "9849bacbe13f08905fa21f39f03b096ee24f5988c810321ddf32a2a80b162171"
+  },
+  "batch": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/publication-batches/checkpoint-06",
+  "manifest": {
+    "created_at": "2026-10-16T03:56:56.850841+00:00",
+    "status": "validated_local_batch_not_imported_or_published",
+    "recovered_urls": 1203,
+    "zip_parents": 15,
+    "zip_distinct_members": 149,
+    "distinct_bodies": 1000,
+    "deferred_urls_excluded": 164,
+    "input_hashes": {
+      "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/recovered-files.json": "47e6be507f283e385fba8338985ce46985a1375e00cf376d42c91f37eb77cd2d",
+      "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/prepared-zip-receipts.json": "484f4284caae5f3356260b582db603663a3068c649251c187723a41f17575b28",
+      "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/zip-member-reconciliation.json": "c967c72f3054eaaca9ffd065700dd28a5f6725f122c93dc43e08a2d93cdae793",
+      "/Users/mikewolfd/Work/congressional-tech/output/viewer-streaming-rerun-20261015/accepted-files.json": "cc813c27f77a5a4c402d6ac3181baed113e16e6943fc18b05255319fdaf502c8",
+      "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/prepared-accepted.json": "fdb33698aa32899d57471e837fab4e70608fe5aab74d01dd8c45dcb91540c8ec"
+    },
+    "files": {
+      "accepted.json": "85bd0c5f4dbcb874c0ed205fc4552462be27792a6440c6f23560a9268b57484a",
+      "bodies.json": "d3c9ba848bae19b6151551e4d33c65b858c1de8fa02af6ef569d39fbf86d098e",
+      "recoveries.json": "6fc3af98f9b26abcb9983334c8ae208e8f59772420c05407a85844486fabc9cd",
+      "zip-receipts.json": "9eb1b249c95726db7d2df2b7202d1f8cab306c217f1206a96dfb67b3f3a573da"
+    },
+    "publication_requires": [
+      "fresh_cloud_clear",
+      "local_recovery_lock",
+      "fresh_input_versions_and_rebase",
+      "conditional_publication",
+      "remote_readback"
+    ]
+  },
+  "publication_status": "not_imported_or_published",
+  "preflight_blocker": "Cloud writer 38823678887 still active; no import destination created"
+}
