@@ -1,0 +1,42 @@
+{
+  "at": "2026-10-16T06:06:13.809672+00:00",
+  "pid": 88391,
+  "exec_session": 18526,
+  "process": "  PID  PPID STAT ELAPSED COMMAND\n88391 94792 Ss     02:10 .venv/bin/python -u scripts/dispatch_corpus_recovery_publication.py --batch output/corpus-retry-20261015/publication-batches/checkpoint-12 --imported output/corpus-retry-20261015/import-checkpoint12 --runtime /Users/mikewolfd/.codex/worktrees/viewer-retained-sync/congressional-tech --baseline output/corpus-reconcile-20261015/accepted-before.json --destination output/corpus-retry-20261015/publication-checkpoint12 --execute\n",
+  "fresh_publication_baseline_matches_completed_import": {
+    "indexes/captures.parquet": "7668e6f80b12fa46d8a8fbd8d4a7c334cb8a3e60558e5dada49c8f6527918d32",
+    "indexes/download-state.parquet": "4048ddc2c6958b0565c8d1d9dad103ada91114fb8175712ebd018e8ea9bff4bb"
+  },
+  "pins_verified": 246,
+  "publication_complete": false,
+  "third_publisher_host": {
+    "host": "democrats-transportation.house.gov",
+    "direct_probe_actual_wait_exit": 0,
+    "proxy_probe_actual_wait_exit": 0,
+    "direct_status": 403,
+    "proxy_status": 520,
+    "recovered": 0,
+    "scope": "Two distinct files refused direct access; one proxy probe returned a temporary download error. Not proof all host files are unavailable."
+  },
+  "paid_budget": {
+    "updated_at": "2026-10-16T06:05:53.033570+00:00",
+    "authorized_cap_usd": 25,
+    "paid_requests_this_pass": 7,
+    "provider": "Zyte HTTP proxy",
+    "actual_billed_usd": null,
+    "published_max_rate_estimate_usd": 0.00889,
+    "conservative_reservation_usd": 0.14,
+    "pricing_source": "https://www.zyte.com/pricing/",
+    "current_transport": "Publisher refusal probe via Zyte HTTP proxy",
+    "paid_routes_running": false
+  },
+  "evidence_sha256": {
+    "output/corpus-retry-20261015/publisher-transportation-probe/results.json": "b9fa1945020d0f60d43fca340bbc0ea32894d6e9e23ea02f258f33858124ddf6",
+    "output/corpus-retry-20261015/publisher-transportation-zyte-probe/results.json": "991e482f32397b3ac3239bf499821e8300a9d859c71eb3f3598bc3d3a7e18a06"
+  },
+  "next_steps": [
+    "Monitor catalog rebuild, paired-table coverage and conditional publication readback.",
+    "Keep successful NARA and publisher routes running.",
+    "Revisit the third host through retained/archive routes or a bounded later transport retry; preserve all successful files."
+  ]
+}
