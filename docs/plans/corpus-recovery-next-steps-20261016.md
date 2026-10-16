@@ -156,3 +156,9 @@ Evidence: `../recovery/remaining-report-packages-20261016.json`. These remain lo
 The latest retained-response review finds 55 currently unresolved URL entries: 53 received NARA temporary-error HTML, while two point to digest-matching truncated PDFs. A previous rate-limited entry subsequently recovered and is excluded from this follow-up set. The cached candidate lists provide no untried alternate replay URL for the 53 temporary-error cases, so their next direct attempt requires a cooldown and a bounded sequential retry after the active worker physically exits. The two truncated-PDF cases require another digest or official source, not the same malformed capture again.
 
 The planning snapshot is recorded in `../recovery/nara-followup-checkpoint-20261016.json`. Refresh all successful URL/digest and deferred-file exclusions before any follow-up dispatch. These failures are neither proof of archive absence nor reasons to stop the still-healthy current queue. The cloud capture/rebuild remains active; shared publication is still waiting.
+
+### Mixed-format checkpoint 05
+
+The latest immutable local snapshot contains 1,081 recovered URL links: 1,018 PDF and 63 XML. It also preserves 15 ZIP parents and 149 ZIP-member PDFs, with 917 distinct body objects in total. All 1,081 source records have established original source timestamps and matching body identities. A complete source-record check verified the correct PDF/XML media type for every recovered link; all deferred URL/body checks passed at sealing.
+
+Evidence: `../recovery/corpus-recovery-batch05-20261016.json`. Remote body readiness has not yet been extended to this snapshot. NARA acquisition remains active, so include later successes before choosing the final cohort. The cloud writer still blocks shared import/publication; the next publication steps remain fresh input/ownership checks, guarded raw import, catalog and accepted-mapping update, and user-visible readback.

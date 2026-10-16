@@ -1,0 +1,17 @@
+{
+  "at": "2026-10-16T03:27:09.530323+00:00",
+  "local_only": true,
+  "source_records": 1081,
+  "kinds": {
+    "pdf": 1018,
+    "xml": 63
+  },
+  "zip_members": 149,
+  "media_type_and_identity_checks": 1081,
+  "batch_path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/publication-batches/checkpoint-05",
+  "files": {
+    "manifest.json": "89784266a92b06dee429a23e77c4db5987414af95f727df73eb682abf9bb458e",
+    "prepared-source-records.json": "9587122cee99806d0be2344eeae77681632ecdba51f85ed1a5af89043331fe79",
+    "source-record-preparation.json": "f63b3bc61b61bdd889264397f17dc4dae5bd8dd6865f66480e8c884bdcd34766"
+  }
+}
