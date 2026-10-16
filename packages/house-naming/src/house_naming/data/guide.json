@@ -1,6 +1,6 @@
 {
   "id": "house-document-naming",
-  "catalog_version": "3.2.5",
+  "catalog_version": "3.2.6",
   "document": {
     "title": "Document Naming Conventions",
     "version": "1.2.1",
@@ -27445,6 +27445,7 @@
         "naturalresources.house.gov",
         "oversight.house.gov",
         "oversightdemocrats.house.gov",
+        "republicans-naturalresources.house.gov",
         "republicans-science.house.gov",
         "science.house.gov",
         "smallbusiness.house.gov",

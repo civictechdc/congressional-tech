@@ -314,3 +314,13 @@ Keep their current classifications pending exact-body review. Next review the
 opening-statement and field-hearing-memo transitions, then explicit TEXT votes.
 The 109 pending cases include 23 multiple-body groups. Preserve all archive,
 publication and frozen-pilot gates; no new release was dispatched.
+
+Historical vote-host repair
+--------------------------
+house_naming 3.2.6 adds the exact retained republicans-naturalresources.house.gov
+host to the existing vote rule. Seventeen source rows now agree with current-host
+aliases; each of the 17 groups shares an eligible retained body key across those
+hosts. The complete-cohort replay preserves all comparison invariants. All 5,849
+offline checks and 62 experiment checks pass. See REVIEW_HISTORICAL_VOTE_HOST.txt
+and historical_vote_host_checkpoint.json. Refresh the current ledger against this
+replay before reporting new review counts. No content was read or approved.

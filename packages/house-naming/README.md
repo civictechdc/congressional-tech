@@ -54,6 +54,12 @@ kinds. Explicit combined components and attachment labels remain available.
 Letters and statements about amendments retain the amendment wording without
 claiming to be amendment documents.
 
+Version 3.2.6 applies the existing vote-filename rule to the exact historical
+`republicans-naturalresources.house.gov` host. Retained source URLs and a shared
+body-key alias on the current Natural Resources host support this publisher
+scope. The vote pattern, target handling and explicit `TEXT` ambiguity remain
+unchanged. This update performs no content verification.
+
 ## Choose an API
 
 | Task | API | Result |

@@ -30,7 +30,7 @@
       "const": "house-document-naming"
     },
     "catalog_version": {
-      "const": "3.2.5"
+      "const": "3.2.6"
     },
     "document": {
       "type": "object",

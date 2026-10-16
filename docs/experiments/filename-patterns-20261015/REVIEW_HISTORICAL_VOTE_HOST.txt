@@ -1,0 +1,63 @@
+Historical Natural Resources vote publisher
+===========================================
+
+Result
+------
+house_naming 3.2.6 adds the exact retained publisher host
+republicans-naturalresources.house.gov to the existing publisher-house-vote rule.
+RC2_Huffman1_to_Stauber_ANS_to_HR_2925.pdf previously supplied amendment on that
+host while its current-host alias supplied committee-vote. Both now supply
+committee-vote. The change preserves the amendment reference without promoting
+the vote's legislative target into another document kind.
+
+Review of all 198 distinct filenames in the 109 pending groups exposed this
+publisher mismatch. The complete cohort contains 21 source rows on that host:
+17 roll-call names, three Rules Amendment names and one testimony name. All 21
+filenames were read. The amendment and testimony rows remain unchanged.
+
+Implementation and boundaries
+------------------------------
+The only runtime rule change adds one source_hosts entry in the bundled guide.
+The vote pattern, publisher matching implementation and category selection are
+unchanged. Engine.extract passes the caller-supplied source URL to the existing
+Extractor. The publisher rule emits the vote wording; document_category_fields
+then applies the already tested vote-target distinction. The new scope does not
+admit every House subdomain or alter other publisher rules.
+
+All 17 repaired groups share eligible retained body keys between aliases on the
+historical and current Natural Resources hosts. The bound alias-evidence artifact
+records both sets of source IDs. These relationships establish the publisher scope.
+They do not verify body bytes or the meaning of every document on the host.
+No network fetch, native-content inspection or source-identity rewrite occurs.
+The literal amendment markers and measure references remain available. Explicit
+TEXT and coordinated vote/amendment wording retain both interpretations.
+
+Validation and review
+----------------------
+Five of nine new controls failed before the host was added. The final publisher
+suite passes all 137 tests. New cases cover three observed filenames, exact-host
+versus unrelated/spoofed hosts, TEXT and explicitly combined forms, and an
+amendment about recorded votes that must remain an amendment. Filename
+reconstruction and literal field offsets also remain correct.
+
+All 5,849 maintained offline checks pass in 110.93 seconds. All 62 replay, alias
+and linkage checks pass. The catalog builder verifies all three JSON artifacts.
+The frozen native-PDF experiment's nine source hashes remain unchanged.
+
+The completed replay covers 7,526 sources and 1,949 groups in 213.78 seconds.
+Exactly 17 sources change amendment to committee-vote. Exactly 17 group unions
+lose amendment and retain committee-vote. All changed rows were read. IDs,
+membership, representatives, roles, protected evidence and kind provenance are
+preserved; input and implementation bytes pass the replay checks.
+
+VERDICT: APPROVE the bounded exact-host expansion. This is a self-reviewed
+filename repair, not a content verification, population accuracy measurement or
+release qualification. historical_vote_host_checkpoint.json binds the evidence.
+
+Next steps
+----------
+Refresh the original-baseline review and carry this replay into the current
+ledger. Keep explicit TEXT cases pending content review. Use eligible capture
+metadata, rather than the raw number of retained keys, to select body-review
+inputs. A separate readiness audit should distinguish failed responses from
+eligible document captures before planning exact-body reads.

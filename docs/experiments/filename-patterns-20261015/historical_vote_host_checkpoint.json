@@ -1,0 +1,82 @@
+{
+  "scope": "Exact historical Natural Resources publisher host added to existing vote pattern; metadata interpretation only",
+  "version": "3.2.6",
+  "replay_summary_path": "output/filename-patterns-20261015/historical-vote-host-replay-v1/summary.json",
+  "replay_summary_sha256": "1a1ee75e66fd3ef903a81fd22cca968b0a1e15ae06ba6fd424b837f0364edb41",
+  "comparisons": {
+    "filenames": {
+      "before_rows": 7526,
+      "after_rows": 7526,
+      "missing_ids": 0,
+      "added_ids": 0,
+      "changes": {
+        "changed_prior_kind": 17,
+        "role_changed": 0,
+        "protected_evidence_changed": 0,
+        "document_id_changed": 0,
+        "representative_changed": 0,
+        "kind_source_changed": 0
+      },
+      "changes_sha256": "e1f699cd134c235cd6e8df3ae450dc415cfa602060bb1b7cbff518040aac3536",
+      "identities_roles_evidence_preserved": true,
+      "prior_kind_changes": 17
+    },
+    "documents": {
+      "before_rows": 1949,
+      "after_rows": 1949,
+      "missing_ids": 0,
+      "added_ids": 0,
+      "changes": {
+        "changed_prior_kind": 17,
+        "role_changed": 0,
+        "protected_evidence_changed": 0,
+        "document_id_changed": 0,
+        "representative_changed": 0,
+        "kind_source_changed": 0
+      },
+      "changes_sha256": "550c8d395445011cfdb67fb9d753a64beb7c78b8da1c272c9c78ad67127fa7cf",
+      "identities_roles_evidence_preserved": true,
+      "prior_kind_changes": 17
+    }
+  },
+  "output_files": {
+    "filenames": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/historical-vote-host-replay-v1/catalog/indexes/document-filenames.parquet",
+      "sha256": "56fa23fe558f834f8ae78c557b3f3b25da793c25d06f7eb70447cd739fd7e90a",
+      "rows": 7526
+    },
+    "documents": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/historical-vote-host-replay-v1/catalog/indexes/documents.parquet",
+      "sha256": "686397ce9c01725076b478180a7bd0d711a618e85710d0cc90e6db591ed55f2c",
+      "rows": 1949
+    }
+  },
+  "elapsed_seconds": 213.78,
+  "input_bytes_unchanged": true,
+  "invariants_preserved": true,
+  "legacy_host_sources": 21,
+  "changed_sources": 17,
+  "changed_groups": 17,
+  "groups_with_shared_eligible_body_aliases": 17,
+  "body_reads": false,
+  "publication_performed": false,
+  "release_qualified": false,
+  "tests": {
+    "red_failures": 5,
+    "focused_passed": 137,
+    "offline_passed": 5849,
+    "experiment_passed": 62,
+    "catalog_json_artifacts": 3,
+    "frozen_hashes_unchanged": 9
+  },
+  "artifacts": {
+    "output/filename-patterns-20261015/historical-vote-host-replay-v1/summary.json": "1a1ee75e66fd3ef903a81fd22cca968b0a1e15ae06ba6fd424b837f0364edb41",
+    "output/filename-patterns-20261015/historical-vote-host-replay-v1/filenames-changes.csv": "e1f699cd134c235cd6e8df3ae450dc415cfa602060bb1b7cbff518040aac3536",
+    "output/filename-patterns-20261015/historical-vote-host-replay-v1/documents-changes.csv": "550c8d395445011cfdb67fb9d753a64beb7c78b8da1c272c9c78ad67127fa7cf",
+    "output/filename-patterns-20261015/historical-vote-host-replay-v1/publisher-alias-evidence.json": "2b5865a86326670a213a7165d3996479a2ca526049ffe1518038b62707e5854b",
+    "output/filename-patterns-20261015/historical-vote-host-red.log": "6b6be1635f0c033f5e3ab19c8f7b8ac047d4298d72bc28be229d1adce7be8ecf",
+    "output/filename-patterns-20261015/historical-vote-host-focused.log": "9f4e30f064925d1097049de25e49accd9315e342763ac7090e5edb935d9d76e2",
+    "output/filename-patterns-20261015/historical-vote-host-offline.log": "23eb410101a2f0fc4cfdff077d814669217474a182a8ff5a90a98e45c592f455",
+    "output/filename-patterns-20261015/historical-vote-host-experiment-tests.log": "7ff77622350e68821e2589120e6012eaad08fa7a5944a24decee1d98a2b2caa6"
+  }
+}

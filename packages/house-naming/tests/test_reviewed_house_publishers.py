@@ -9,6 +9,38 @@ from house_naming import Engine
 def engine():return Engine()
 
 
+@pytest.mark.parametrize('name', [
+    'RC2_Huffman1_to_Stauber_ANS_to_HR_2925.pdf',
+    'RC_7_Rosendale_ANS_to_H.R._200.pdf',
+    'RC_4_Grijalva_3_Substitute_amendment_to_Stauber_016_ANS_to_HR_3195.pdf',
+])
+def test_historical_natural_resources_vote_publisher(engine, name):
+    result = engine.extract(name, source_url='https://republicans-naturalresources.house.gov/' + quote(name))
+    assert result['metadata']['document_kind'] == ['committee-vote']
+    assert result['metadata']['amendment_marker']
+    assert ''.join(piece['raw'] for piece in result['pieces']) == name
+    assert all(name[f['start']:f['end']] == f['raw']
+               for observation in result['observations'] for f in observation['fields'])
+
+
+@pytest.mark.parametrize('host', ['example.org', 'republicans-naturalresources.house.gov.example.org',
+                                 'unreviewed.house.gov'])
+def test_historical_vote_publisher_requires_exact_host(engine, host):
+    name = 'RC2_Huffman1_to_Stauber_ANS_to_HR_2925.pdf'
+    result = engine.extract(name, source_url=f'https://{host}/' + quote(name))
+    assert result['metadata']['document_kind'] == ['amendment']
+
+
+@pytest.mark.parametrize('name,expected', [
+    ('RC2_Huffman1_to_Stauber_ANS_to_HR_2925_TEXT.pdf', ['amendment', 'committee-vote']),
+    ('Roll Call and Amendment 1.pdf', ['amendment', 'committee-vote']),
+    ('Amendment 1 on Recorded Votes.pdf', ['amendment']),
+])
+def test_historical_vote_publisher_keeps_combined_and_topic_controls(engine, name, expected):
+    result = engine.extract(name, source_url='https://republicans-naturalresources.house.gov/' + quote(name))
+    assert sorted(result['metadata']['document_kind']) == expected
+
+
 @pytest.mark.parametrize('name,expected', [
     ('Goetze_-_Witness_Disclosure_Statement.pdf', ['testimony-disclosure']),
     ('craig_fabian_witnessdisclosurestatement.pdf', ['testimony-disclosure']),
