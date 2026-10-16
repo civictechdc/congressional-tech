@@ -1,6 +1,6 @@
 # Integrate local main with the pushed branches
 
-Status: proposed, 16 October 2026; revised at 18:30 EDT. Phase 1 can start now. Phase 0 (finishing checkpoint 19) gates Phases 2–4, and it needs an explicit resume.
+Status: in progress, 16 October 2026, 19:45 EDT. Phase 1 is done: `integrate/main-dkp` is merged and verified. Phase 0 (checkpoint 19, attempt 3) is running and gates Phases 2–4.
 
 ## Blocker: checkpoint 19 was killed, nothing published
 
@@ -15,7 +15,11 @@ State after the kill, all checked directly:
 
 ## Phase 0 — finish checkpoint 19 (owner approved; running)
 
-**Underway since 18:32 EDT.** The runner was reconciled (`runner-checkpoint19-publication/reconcile-20261016T2240Z.json`). The unaccepted build was moved to `publication-checkpoint19/build-incomplete-attempt-0001` (the dispatcher refuses to continue while `build/` exists, and it never deletes it). Attempt 2 runs as launchd job `org.codex.corpus-publication-resume.checkpoint19`: supervisor parent is PID 1, child runs the saved `--resume` command, and it passed the continuation and baseline checks into `load_indexes`. Remove the launchd job after it exits.
+**Attempt 3 underway since 19:39 EDT.** The runner was reconciled (`runner-checkpoint19-publication/reconcile-20261016T2240Z.json`). Each unaccepted build is moved aside as `publication-checkpoint19/build-incomplete-attempt-000N`, with a `.reconciliation.json` note; the dispatcher refuses to continue while `build/` exists, and it never deletes it. The resume runs as launchd job `org.codex.corpus-publication-resume.checkpoint19` (supervisor parent PID 1, saved `--resume` command). Remove the launchd job after it exits.
+
+- Attempt 2 (18:32–18:57) stopped cleanly on the runner's 16 GiB disk reserve (exit -2) during `restore_previous_source_metadata`. Other sessions on this machine transiently filled `/private/tmp`: `claude-hardening-20261015` grew to 102 GB and later shrank to 23 GB. Free disk fell from 48 GB to 14 GB in about 20 minutes. A full catalog build needs about 35 GB (checkpoint 16's `build/`). Keep large parallel jobs off this disk until checkpoint 19 exits.
+- The GitHub "Publish filename viewer data to R2" workflow (`publish-filename-viewer.yml`, twice-hourly schedule plus triggers) writes `viewer-publications/`, two keys of which checkpoint 19 guards. The recovery guard checks only `capture-raw-sources.yml`. With owner approval it is disabled (`gh workflow disable`) until checkpoint 19's readbacks pass, then re-enabled. Before the restart, its runs reported `"status": "unchanged"`.
+- Before-state: the public manifest (`https://congressional-viewer-data.mdeeb.workers.dev/manifest.json`) is still checkpoint 16's (sha256 `9ff4da5c…`, catalog `407b6cce…`). A successful attempt must change it to the checkpoint-19 catalog recorded in the dispatcher's `complete.json`.
 
 Resume checkpoint 19 on its pinned runtime before integrating. Do not republish it from the integrated branch: that would combine new recovery data with the house-naming 3.0.0 → 3.2.7 classification change in one publication, and it would need fresh pins and readiness.
 
@@ -66,6 +70,20 @@ Merging `document-kind-publish` into `main` yields 13 conflicted paths; everythi
 Merge `document-kind-publish` into `main`. Do not rebase `main`. Rebasing would replay the same conflicts across about 7 commits and rewrite SHAs that evidence pins: checkpoint 19's binding names `a8e9411` and `fcc65a6`, and `ee728cf` and `c361df3` are cited in `docs/recovery/`. The three duplicate pairs (`feb004c`≡`588ec1f`, `ec0e400`≈`1a57561`, the `27f9ddd` seed of `c887b83`/`c361df3`) are absorbed by the merge, so leave them.
 
 Rebase only the two `wip/*` branches, each one commit, onto the merged result when they land.
+
+## Phase 1 results (done, 16 October)
+
+`integrate/main-dkp` = merge `3c1c45e` + fixture fix `07b63a9`, 0 behind `origin/main`.
+
+- **Conflicts:** exactly the 13 predicted paths, resolved per the table. Both publisher scripts are byte-identical to the pinned runtime. A two-way check shows the merged tree keeps every change from both sides, apart from the planned resolutions and 5 auto-merged files (`capture-raw-sources.yml` still parses).
+- **Site** (CI's `validate-explorer` and `deploy-pages` steps): install, `test:explorer` 109/109, `check:explorer-types`, `astro check`, review-controls tests, `viewer-data` Worker tests and `npm run build` all pass. The Node tests shell out to `python3`, so the integration venv must be first on `PATH`; with a bare `python3` they fail on imports.
+- **Native tests** (CI's separate job, without the offline wrapper): 29 passed, 16 skipped (no local Rust fetcher build).
+- **Offline suite**, excluding `*_native.py`: 8,646 passed, 8 failed, 2 skipped. Every failure was re-run on clean checkouts of both parents:
+  - `test_unchanged_catalog_does_not_download_repack_or_write` failed on the merge and on `c361df3`: a3c4528 reads the pointer's `catalog_id`, which this fixture omitted. Fixed in `07b63a9`.
+  - `test_refinement_limit_reaches_all_consumers` passes in isolation on all three trees (13/13 in its file). Load-related flake.
+  - Pre-existing on both parents, not merge-caused: the 3 `test_congress_api_boundaries` guards (parser-version registry stale for `house_sites` 14≠5 and `senate` 20≠11, `models/content.py` uses `read_bytes`, script-name check) and 3 loopback HTTP tests that the offline wrapper blocks.
+- CI has no green baseline for the full offline suite. `update-data` failed on `main` on 4 and 11 October for the same native and loopback reasons, and `validate-explorer` last ran on 28 September.
+- **`wip/document-recovery-gaps`** is rebased onto `integrate/main-dkp` as the identical patch (`2444988`). **`wip/webharvest-discovery`** (`b1d9384`) is rebased too; it now declares `surt>=0.3.1,<0.4` in `congress_api[archive]` and takes `--bulk-recovery`/`--archive-ladder` instead of dated `.cache` paths. Both still wait for Phase 3.
 
 ## Phase 1 — build the integration branch (safe now, in parallel with Phase 0)
 
