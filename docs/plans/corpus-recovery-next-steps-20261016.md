@@ -66,3 +66,9 @@ A direct follow-up on unresolved bill attachments returned identical HTML for tw
 `scripts/assemble_corpus_recovery_import.py` now assembles every capture in each prepared receipt and creates index rows without network access. Five focused tests cover ZIP member retention, unchanged existing retry state, pending new URLs, mismatched body metadata, missing source associations, and wrong ZIP parents. The frozen batch check produced all 682 capture rows, preserved 262 existing historical state rows, and left 204 additional source URLs pending. Evidence: `output/corpus-retry-20261015/publication-batches/checkpoint-03/assembly-verification.json`.
 
 The guarded importer still needs to call this assembly with fresh state and remotely verified body metadata, write immutable receipts, and conditionally update both indexes. This module does not itself acquire a lock, check cloud ownership, upload, or publish.
+
+## Guarded import core
+
+`scripts/import_corpus_recovery_batch.py` now integrates the tested assembly, immutable body and receipt retention, conditional raw-index updates through `R2Store`, and exact readback. Each write invokes an injected ownership/input guard. An uncertain acknowledgment is reconciled read-only without repeating the PUT. A partial index pair cannot produce an import-complete result; proposed receipts and both indexes must be saved locally before their writes.
+
+Five network-disabled tests passed for complete ZIP import, lost acknowledgment without duplicate writes, cloud-guard refusal before writes, a partial-pair failure, and changed local bytes. The dispatch wrapper still must provide the real lock, fresh baseline, cloud and input checks, durable evidence callbacks, and one-shot execution. Catalog rebuild and viewer publication remain separate required steps. No shared writes have been dispatched by these tests.
