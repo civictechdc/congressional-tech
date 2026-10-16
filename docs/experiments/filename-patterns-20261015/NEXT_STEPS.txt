@@ -721,3 +721,11 @@ remain outstanding, and held-out body review stays locked. See
 public_raw_catalog_checkpoint_v1.json and REVIEW_PUBLIC_RAW_CATALOG.txt.
 Next reconcile the 91 reviewed cases against this current pair with bounded
 projected reads, before attempting review transfer or full-catalog replay.
+
+The fresh-pair reconciliation now covers all 91 cases and finds all 744 original
+sources. All 85 reviewed bodies retain source identity and eligibility; 18 label
+sets match and 67 differ. One original Palmer group is absent because its source
+now joins a successful PDF capture under a new group ID. Keep both old Palmer
+IDs and all six historical unavailable outcomes; review the new PDF separately.
+See review_catalog_reconciliation_checkpoint_v1.json. The 72 relevant tests pass.
+No complete-row review binding or production classification was transferred.

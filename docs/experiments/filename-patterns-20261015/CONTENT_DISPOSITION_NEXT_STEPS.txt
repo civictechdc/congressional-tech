@@ -154,3 +154,20 @@ with 391 eligible and nine explicit exceptions; held-out review remains locked.
 See public_raw_catalog_checkpoint_v1.json and REVIEW_PUBLIC_RAW_CATALOG.txt.
 Next compare the 91 reviewed cases against this newer pair before transferring
 any review. Preserve the historical prototype and its results as separate evidence.
+
+Fresh-catalog case reconciliation completed
+------------------------------------------
+review-catalog-reconciliation-v1 retains all 91 cases. All 85 reviewed bodies and
+their source identities still match. The current labels agree with 18 reviews
+and differ from 67; these differences retain the prior context/specificity limits.
+Ninety original group IDs remain; one Palmer source moved into a new group with
+a successful PDF capture alongside its old error. The other Palmer group remains
+distinct. The six historical unavailable outcomes are unchanged in that ledger.
+See REVIEW_CATALOG_RECONCILIATION.txt and review_catalog_reconciliation_checkpoint_v1.json.
+
+Review Palmer's newly available three-page body under its current group and body
+identity. Then extract complete current rows for the 85 matching reviews and the
+new Palmer group using bounded reads. Rebind only through a separately recorded
+current evidence step, never by weakening the historical row binding. Preserve
+the Error.aspx role/kind correction as a separate refresh check. The original
+400-record pilot and its held-out body-review restriction remain unchanged.
