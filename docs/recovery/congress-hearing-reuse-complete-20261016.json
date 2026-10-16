@@ -1,0 +1,75 @@
+{
+  "qualification": {
+    "at": "2026-10-16T06:23:10.416573+00:00",
+    "actual_wait_exit": 0,
+    "physical_absence_verified": true,
+    "pid": 97454,
+    "exec_session": 45363,
+    "qualified_urls": 313,
+    "distinct_bodies": 310,
+    "new_mappings": 313,
+    "prior_mappings_preserved": 3099,
+    "published": false,
+    "full_body_hashes_verified": true,
+    "full_filename_and_meeting_id_verified": true,
+    "all_pages_rendered": true,
+    "sha256": {
+      "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/congress-retained-hearing-file-check/qualified.json": "620ac9aa399a53d5f27cd3fb1a1b976a60f9b2b9b779a45fcaa293efbaa6a45a",
+      "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/congress-retained-hearing-file-check/complete.json": "29389958f11763c1052d3e7caf180947150931839ad2dedfa00d1a8a732f547e",
+      "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/retained-url-variant-mappings-before-congress-hearing-files.json": "baccc845ac784058fb5b6de0a98e7f159af224cb251992a754b7d42bd318a544",
+      "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/adopt_congress_retained_hearing_files.py": "e99443d982f2fd07b3b9a3a5feb14617968e825cbb94618b8768bcef0a6f23f0"
+    }
+  },
+  "ledger": {
+    "at": "2026-10-16T06:23:20.869541+00:00",
+    "eligible_urls": 23574,
+    "counts": {
+      "lookup_unresolved": 15394,
+      "validated_local_recovery": 2092,
+      "unprocessed_archive_candidate": 2648,
+      "attempted_not_recovered": 28,
+      "retained_copy_link_prepared": 3412
+    },
+    "accounted": 23574,
+    "published": false,
+    "scope": "Eligible queue only; unresolved lookup is not proof of archive absence",
+    "nara": {
+      "processed": 742,
+      "total": 742,
+      "valid": 677,
+      "requests_made": 471,
+      "blocked": null,
+      "pid": 55119,
+      "parent_pid": 94792
+    },
+    "wayback_retry": {
+      "at": "2026-10-16T01:33:44.797255+00:00",
+      "reason": "three_consecutive_transport_failures",
+      "pid": 64224,
+      "command": ".venv/bin/python output/corpus-retry-20261015/wayback_priority_index_retry.py",
+      "completed_receipts": 3,
+      "unfinished_request_may_have_partial_body": true,
+      "prior_evidence_preserved": true
+    },
+    "ledger_sha256": "5cb131afadd781481e897ffad39720bf766ea59cc8e3051b7f29ffbc8b781ae9"
+  },
+  "remaining_urls": 18070,
+  "govinfo_dispatch": {
+    "at": "2026-10-16T06:22:34.468569+00:00",
+    "pid": 1172,
+    "parent_pid": 94792,
+    "plan_sha256": "462214664eae0be12d3c4c5412210694c765fc079539723fbd7b8635d6b58c07",
+    "script_sha256": "a3805e5ac2561e126f8eb700e8de488c65f0963272b4c9f5f2793991ee47797d",
+    "packages": 69,
+    "paid_requests": 0,
+    "remote_writes": 0,
+    "minimum_delay_seconds": 3
+  },
+  "govinfo_process_verified": "1172 94792 Fri Oct 16 02:22:34 2026     .venv/bin/python -u output/corpus-retry-20261015/download_govinfo_bulk_packages.py",
+  "govinfo_exec_session": 76236,
+  "next_steps": [
+    "Finish bounded GovInfo downloads and validate each retained document member.",
+    "Finish active publisher and NARA recovery routes, qualifying new completed receipts without repeating successful downloads.",
+    "Verify checkpoint 12 publication and viewer readback before checkpoint 13; place newer mappings and ZIP members into a subsequent delta."
+  ]
+}
