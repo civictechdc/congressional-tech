@@ -1,0 +1,460 @@
+{
+  "schema_version": 1,
+  "scope": "Read-only inventory. No automatic retries or acquisition authorized by this ledger.",
+  "groups": 45,
+  "deferred_exclusions": 164,
+  "deferred_source": "output/viewer-streaming-rerun-20261015/accepted-files.json",
+  "deferred_source_sha256": "cc813c27f77a5a4c402d6ac3181baed113e16e6943fc18b05255319fdaf502c8",
+  "rows": [
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/ira-katz-md/"
+      ],
+      "category": "historical_no_prepared_statement",
+      "disposition": "terminal-content",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/1-result.json",
+      "source_receipt_sha256": "b263a04c0e11c00accd2c9052f00362d51e837c6be9ff26a35b958ab1f6e73b6"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/jan-r-frye-8/"
+      ],
+      "category": "historical_no_prepared_statement",
+      "disposition": "terminal-content",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/11-result.json",
+      "source_receipt_sha256": "7a35516b91a7ad852d35883428908ca6e666841ae0e5d74f4a5fbb7a572a876e"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/javier-soto-esq/"
+      ],
+      "category": "empty_document_body",
+      "disposition": "review-required",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/12-result.json",
+      "source_receipt_sha256": "fd1278ff56c0034c0ad3870563ece67c813940c5be030cf884e647cac13329ec"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/jeannie-faure/"
+      ],
+      "category": "error_or_challenge",
+      "disposition": "retryable-failure",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/13-result.json",
+      "source_receipt_sha256": "8af310dcb62d434973d5df8f98e3953e80411d6552c8f3060469fccdaffc1f57"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/jeffrey-l-newman-pt/"
+      ],
+      "category": "error_or_challenge",
+      "disposition": "retryable-failure",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/14-result.json",
+      "source_receipt_sha256": "fb0d31819f3b6a337f8d8a7558e18048f4a04af5d5819109ac58fce115670d48"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/jennifer-gray-esq-0/"
+      ],
+      "category": "empty_document_body",
+      "disposition": "review-required",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/15-result.json",
+      "source_receipt_sha256": "08a4cfa2ed6299708f0a3c3b5ae6f8c3c63384d9ff8961603bcdb47ef0ce8c1c"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/jennifer-ho/"
+      ],
+      "category": "error_or_challenge",
+      "disposition": "retryable-failure",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/16-result.json",
+      "source_receipt_sha256": "770f207e3900793ffb9765ab5d08487e5a03d6e3db869a5f004ef0a8c81730fa"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/jerome-herbers-md/"
+      ],
+      "category": "historical_no_prepared_statement",
+      "disposition": "terminal-content",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/17-result.json",
+      "source_receipt_sha256": "948b79241920ef267d188b7e1d54b2908a23a8d7a99910faf1d7bcd169e3787a"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/jimmy-norris/"
+      ],
+      "category": "historical_no_prepared_statement",
+      "disposition": "terminal-content",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/19-result.json",
+      "source_receipt_sha256": "9ff03fba31d50b606e2cdcc04e7c00bc62b34fcf36c17ec510210224999005b9"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/john-d-daigh-jr-md-2/"
+      ],
+      "category": "empty_document_body",
+      "disposition": "review-required",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/21-result.json",
+      "source_receipt_sha256": "5004a5d5769ec8b4fb657620743704e743d2a854a75b2adab8f44c9d05ad4a1a"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/john-d-daigh-md-cpa/"
+      ],
+      "category": "historical_no_prepared_statement",
+      "disposition": "terminal-content",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/23-result.json",
+      "source_receipt_sha256": "17795c95788b5293889db95158e705cd986d04e84748e218384991257a628ca2"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/john-f-downing-0/"
+      ],
+      "category": "empty_document_body",
+      "disposition": "review-required",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/24-result.json",
+      "source_receipt_sha256": "2d51a17a8c32adb6d7750858a2604e73b0501ba0456fdd9f3fb1235b992ea5ec"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/john-pierce-md/"
+      ],
+      "category": "historical_no_prepared_statement",
+      "disposition": "terminal-content",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/30-result.json",
+      "source_receipt_sha256": "7169a34b656fe724f4d3e3a76aa0ebbbbe49731f00a5e43196cec3b0d9a74461"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/john-rowan-9/"
+      ],
+      "category": "error_or_challenge",
+      "disposition": "retryable-failure",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/34-result.json",
+      "source_receipt_sha256": "65606875a1dd0cf48081f4f1ce27f96ec8cad9f5198d107c09fe53737dc8becb"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/joleen-clark-0/"
+      ],
+      "category": "error_or_challenge",
+      "disposition": "retryable-failure",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/36-result.json",
+      "source_receipt_sha256": "95e2980842ea1a047eba12f9e80bac05a8110f7ae9ab877bf9cc0d1b48fcc8b5"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/jon-sherin/"
+      ],
+      "category": "empty_document_body",
+      "disposition": "review-required",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/39-result.json",
+      "source_receipt_sha256": "93ad2abb8d8d0304a1ec37a8435a12189c180ec39f15d00babe24f5c0d7176b6"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/james-bombard/"
+      ],
+      "category": "error_or_challenge",
+      "disposition": "retryable-failure",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/4-result.json",
+      "source_receipt_sha256": "aa624f4600abf5118112aef64ed7d8a67a55bc9c2e800e113f6cdc57e214046b"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/jose-mathews-md/"
+      ],
+      "category": "error_or_challenge",
+      "disposition": "retryable-failure",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/41-result.json",
+      "source_receipt_sha256": "4eb4831b9f14cada81c6eeffbd2a6c326d172f34868f50ff4fcb328f52fd67a7"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/joseph-a-violante-1/"
+      ],
+      "category": "error_or_challenge",
+      "disposition": "retryable-failure",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/42-result.json",
+      "source_receipt_sha256": "0e695ebe67f304eff9fe9b5df4d5ec6d4abc3fcb1e1a7a860dac940065cf0180"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/joseph-m-vallowe/"
+      ],
+      "category": "historical_no_prepared_statement",
+      "disposition": "terminal-content",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/46-result.json",
+      "source_receipt_sha256": "fd4eb1faada3da4f04ef9ae3c2961782a369de8ce30a98354458c8ef855a0204"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/joseph-williams-jr-rn-bsn-mpm/"
+      ],
+      "category": "historical_no_prepared_statement",
+      "disposition": "terminal-content",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/47-result.json",
+      "source_receipt_sha256": "0a2205a3bd40b9e67fa12ab88a5cb5816ee94f387b5320460ced665ff5bcc9b6"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/james-e-koutz/"
+      ],
+      "category": "empty_document_body",
+      "disposition": "review-required",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/5-result.json",
+      "source_receipt_sha256": "500d97afcaf9d6e1a9274c7357d6f62bf0f8a4b46811ceb1436481593bdd7a28"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/joy-j-ilem-5/"
+      ],
+      "category": "error_or_challenge",
+      "disposition": "retryable-failure",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/51-result.json",
+      "source_receipt_sha256": "1dd3f142283f4d5a8d0bbc04ab9cc0f172729bf3dfbeec81c4d28cf62fc0ce81"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/julie-catellier/"
+      ],
+      "category": "historical_no_prepared_statement",
+      "disposition": "terminal-content",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/58-result.json",
+      "source_receipt_sha256": "5c6fdc12b38e41da9ad5bae820e6cfaea1917c067965edfb725433d7260aac98"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/james-m-sullivan/"
+      ],
+      "category": "error_or_challenge",
+      "disposition": "retryable-failure",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/6-result.json",
+      "source_receipt_sha256": "a71eba9ef9645e9770a73277835830b0398bebf8da1fcc32837824aad9a55c9e"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/karen-s-guice-md-mpp/"
+      ],
+      "category": "error_or_challenge",
+      "disposition": "retryable-failure",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/61-result.json",
+      "source_receipt_sha256": "94b32614f2e10ebd451e58ea53f3cd762fbe1dcfee2a0208f5200abd7213bea1"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/kathrine-mitchell-md/"
+      ],
+      "category": "error_or_challenge",
+      "disposition": "retryable-failure",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/63-result.json",
+      "source_receipt_sha256": "601faed34d454c39abc1ee25fa763f4ff0f48d8e1fce31435606e9a6c67c030d"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/kathryn-enchelmayer-md/"
+      ],
+      "category": "historical_no_prepared_statement",
+      "disposition": "terminal-content",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/65-result.json",
+      "source_receipt_sha256": "670d3c63188925ec1d670466ba555432bf88d5fd5205429e2c201edd14482b5a"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/kathy-frisbee/"
+      ],
+      "category": "historical_no_prepared_statement",
+      "disposition": "terminal-content",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/66-result.json",
+      "source_receipt_sha256": "bb193a907334b617dc7f78d014647291f78e3b86389e72d2125d1eba679a4af6"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/james-rice/"
+      ],
+      "category": "empty_document_body",
+      "disposition": "review-required",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/7-result.json",
+      "source_receipt_sha256": "f3a086b916cac7d2f75022db43417f9812a1d5524b7ee2e875dc7ea5a50099b2"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/keith-pedigo-3/"
+      ],
+      "category": "error_or_challenge",
+      "disposition": "retryable-failure",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/73-result.json",
+      "source_receipt_sha256": "ca93f50322e98a8784a7a1068e1b4a1b3db3202a3f2e5308c58120af2bf9aab5"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/kenneth-governor/"
+      ],
+      "category": "empty_document_body",
+      "disposition": "review-required",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/74-result.json",
+      "source_receipt_sha256": "a222a22bbcce3c1f059a2c432c09c4dcbab742954882362031a4de5e70273897"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/kevin-p-mccarthy/"
+      ],
+      "category": "error_or_challenge",
+      "disposition": "retryable-failure",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/77-result.json",
+      "source_receipt_sha256": "b9664e63a28d5c91ac0dfa64922ed52bcb8cbc467646a5af0bd85c96a2916dbc"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/james-robbins-md/"
+      ],
+      "category": "empty_document_body",
+      "disposition": "review-required",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/8-result.json",
+      "source_receipt_sha256": "fd6b23ef7c2c5aa314b595c4383b7131b9d6c9089aec609e0c5893ddd00ae922"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/kristen-ruell-jd/"
+      ],
+      "category": "empty_document_body",
+      "disposition": "review-required",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/81-result.json",
+      "source_receipt_sha256": "689abaaaf0e905d3543302844e34bd6300b9101efa3b66bfe87a37b5cd6949e8"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/larry-biro/"
+      ],
+      "category": "historical_no_prepared_statement",
+      "disposition": "terminal-content",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/84-result.json",
+      "source_receipt_sha256": "bc07412a74a01d657ce05164f0bc66cdfaf5549aff7cb499c9e7944f74f580e6"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/larry-reinkemeyer-3/"
+      ],
+      "category": "empty_document_body",
+      "disposition": "review-required",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/86-result.json",
+      "source_receipt_sha256": "389f675bf93b278209bef7a27c0e4ba61f05021f5f802cc6aae93b0ed370c517"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/larry-reinkemeyer/"
+      ],
+      "category": "historical_no_prepared_statement",
+      "disposition": "terminal-content",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/87-result.json",
+      "source_receipt_sha256": "2dcd75378db1bf3706a26bbfb6d557755a86c89ba77ed024f139d5980854b3ea"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/lawrence-adler-md/"
+      ],
+      "category": "historical_no_prepared_statement",
+      "disposition": "terminal-content",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/88-result.json",
+      "source_receipt_sha256": "69310ffd06fbfed89eb200e0be0a6a234ce9f8ec4de06bafa3a3a75ab091dd68"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/lawrence-l-leung-md/"
+      ],
+      "category": "historical_no_prepared_statement",
+      "disposition": "terminal-content",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/89-result.json",
+      "source_receipt_sha256": "2cdfec9acc1e4d3867a15216205f4473b70aad2dcafd070b2c9fb363b6ae8448"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/james-tuchschmidt-md-mm-acting-principal-deputy-under-secretary-for-health-0/"
+      ],
+      "category": "empty_document_body",
+      "disposition": "review-required",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/9-result.json",
+      "source_receipt_sha256": "0f56a2de62cff6ae28b3d4961ffbb9c73d32d206bcd1fd28ac0d78bcc311f7bb"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/leslye-a-arsht/"
+      ],
+      "category": "error_or_challenge",
+      "disposition": "retryable-failure",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/91-result.json",
+      "source_receipt_sha256": "f9a8335c50d1db816491c56605b8c8cb595a4b23686b9f517876721a10590c49"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/lieutenant-colonel-james-a-blanco/"
+      ],
+      "category": "error_or_challenge",
+      "disposition": "retryable-failure",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/92-result.json",
+      "source_receipt_sha256": "82369dd4262e76d607eedc207848def10bd15a473fbbb0bff298331f58ddb157"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/lieutenant-colonel-keith-salzman/"
+      ],
+      "category": "short_text_needs_review",
+      "disposition": "review-required",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/93-result.json",
+      "source_receipt_sha256": "ff8fb1c9a6adadb6021554f1205825e1740c2adbe1494d2d9a2fac710217ee52"
+    },
+    {
+      "original_urls": [
+        "https://veterans.house.gov/witness-testimony/lieutenant-colonel-michael-fravell/"
+      ],
+      "category": "error_or_challenge",
+      "disposition": "retryable-failure",
+      "eligible": false,
+      "source_receipt": "output/corpus-retry-20261015/firecrawl-nara-scaled-01/94-result.json",
+      "source_receipt_sha256": "4b09b70363fd57c46f4dfc5eb071fd5687a9ce78d587efde5a14c6033852e8bd"
+    }
+  ]
+}
