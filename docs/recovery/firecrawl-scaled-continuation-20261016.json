@@ -1,0 +1,27 @@
+{
+  "at": "2026-10-16T14:35:52.304814+00:00",
+  "scaled_firecrawl": {
+    "at": "2026-10-16T14:32:50.791503+00:00",
+    "pid": 10937,
+    "parent_pid": 94792,
+    "groups": 1057,
+    "workers": 4,
+    "minimum_start_interval_seconds": 8,
+    "maximum_requests": 1057,
+    "prepaid_credits_only": true,
+    "format": "rendered_rawHtml",
+    "source_bytes_identity_claimed": false
+  },
+  "initial_pass": {
+    "attempts": 50,
+    "substantial_documents": 4,
+    "rate_limited": 40,
+    "remaining_rate_limited_urls_requeued": true
+  },
+  "import_reconciliation": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/import16-failure-reconciliation.json",
+  "previously_failed_body_now_verified": true,
+  "retry_supervisor": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/import16-retry01-supervisor",
+  "completed_batch_publication_monitor_active": true,
+  "first_qualified_rendered_snapshot": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/firecrawl-qualified-snapshot-01",
+  "no_new_publication_claimed": true
+}
