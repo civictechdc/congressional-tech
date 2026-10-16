@@ -1,0 +1,16 @@
+{
+  "at": "2026-10-16T14:00:00.198472+00:00",
+  "actual_wait_exit": 0,
+  "physical_absence_verified": true,
+  "exec_session": 97403,
+  "pid": 20198,
+  "counts": {
+    "absent": 98,
+    "verified_exact_body": 208
+  },
+  "body_readback_sha256": "2af66bbd60134fd7970295475e6ee3c7511edc06eddc9725284b06a940b96913",
+  "batch_manifest_sha256": "d375cde0cff6d554859f249a4e674c63ba100d99a16e3999ac26a73e8131c93c",
+  "published": false,
+  "import_dispatched": false,
+  "next_step": "Reconcile newer remote catalog and viewer publication; resolve storage before any write."
+}
