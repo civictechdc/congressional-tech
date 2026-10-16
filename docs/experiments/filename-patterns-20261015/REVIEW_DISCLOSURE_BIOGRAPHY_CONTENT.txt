@@ -72,3 +72,32 @@ The existing extracted text for short packets is available; the three packets
 above 20 pages require bounded local extraction/rendering from saved bytes.
 Do not fetch them again. After completing all 38, join the exact assistant
 findings to the current review evidence without treating them as release approval.
+
+Continuation: six complete packets
+---------------------------------
+The additive v2 receipt preserves the v1 review and binds it by SHA-256.
+Completed visual inspection of every page in Johnson (11), Kent (3),
+Kirpalani (4), Stefanko (3), White (5) and Milito (9): six documents, 35 pages.
+The cumulative review now covers 35 documents and 69 pages. Observed forms:
+23 disclosure-only, ten disclosure plus biography, and two biography-only.
+These remain assistant observations for the exact saved files.
+
+The Stefanko packet contains only a resume despite disclosure in its filename.
+The other five contain both forms. Milito also contains a litigation list
+supporting disclosure answers. Its reference to attached IRS Form 990s does not
+establish their presence: none appear in the nine-page saved PDF. White's
+resume likewise references a publication list absent from its five-page PDF.
+Johnson's publication citations are CV entries, not attached research papers.
+The v2 receipt records page ranges for each component rather than inferring
+packet contents from its first page or attachment instructions.
+
+Rechecked all 35 reviewed PDF, native-text and rendered-page hashes, the bound
+selection inputs, all 400 pilot ID/body-key exclusions, and all nine frozen
+candidate source hashes. Read the entire current 58-row groupings CSV again.
+No runtime code changed, so this evidence-only continuation did not repeat the
+already completed 5,862 offline and 62 experiment checks for version 3.2.7.
+
+Three packets remain: Oreskes (40 pages), Public Witness (51), and Simmons
+(119), totaling 210 pages. Their saved PDF paths and hashes are in the v2
+receipt. Review those locally in bounded batches and record exact page coverage.
+Only mark a packet complete after every page has been inspected.

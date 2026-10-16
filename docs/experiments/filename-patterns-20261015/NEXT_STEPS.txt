@@ -392,3 +392,32 @@ network fetch is needed. This mixed evidence rejects a blanket filename
 precedence rule. Preserve filename claims and bind any future content resolution
 to the complete exact body. No production classification change occurred, and
 the metadata review queue remains 91 until evidence is explicitly joined.
+
+Disclosure/biography retained review, part 2
+------------------------------------------
+Six more packets are fully reviewed: 35 new pages, 35 documents / 69 pages
+cumulatively. The additive disclosure_biography_content_review_v2.json binds
+part 1 and records complete page ranges, exact body/text/render hashes and the
+remaining three packets (210 pages). No runtime or catalog classification changed.
+
+Continue in this order:
+1. Inspect all pages of Oreskes (40), Public Witness (51) and Simmons (119)
+   from the already verified saved PDFs. Read the entire current grouping CSV
+   again after compaction. Preserve partial page coverage until each packet is
+   complete; references to attachments never substitute for those attachments.
+2. Add a separate assistant-content-review linkage to the current ledger.
+   Match the exact document ID, eligible body key and decoded SHA-256, and bind
+   current source membership/evidence. Preserve filename claims, disagreements,
+   page coverage and the independent_reference/release_approved false flags.
+   Keep review completion distinct from kind resolution or release approval.
+   Test changed-body rejection, incomplete-review rejection, composite forms,
+   and conflicting receipts before applying any review disposition.
+3. Inspect the 11 remaining amendment/vote groups, then opening/memo cases.
+   For unavailable bodies, retain an unresolved disposition rather than treating
+   an HTML error response as a document. Continue fresh raw-catalog qualification
+   and the existing publication readback separately from these local reviews.
+
+The existing viewer publication run 38855840917 remained active when checked
+in this continuation; no replacement publication was dispatched. Version 3.2.7
+and these review receipts remain local. Workflow completion alone cannot confirm
+public selector/readback or qualify the fresh raw catalog for held-out evaluation.
