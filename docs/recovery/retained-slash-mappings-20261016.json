@@ -1,0 +1,63 @@
+{
+  "at": "2026-10-16T04:26:55.441820+00:00",
+  "status": "local_mapping_preparation_not_published",
+  "new_url_mappings": 2395,
+  "new_document_downloads": 0,
+  "checks": [
+    "Exact scheme, host, query, fragment and path except trailing slash match prior accepted mapping",
+    "Every retained file SHA256 and size matches prior archive evidence",
+    "Prior record valid, archive digest verified and WARC verified",
+    "At least 100 words in document body field; short pages and wrappers left pending",
+    "164 deferred URLs and body identities excluded",
+    "All prior indexed mappings preserved"
+  ],
+  "scope_note": "Reuse of previously accepted documents. This is not a new manual semantic review of 2395 documents.",
+  "remaining_summary": {
+    "at": "2026-10-16T04:26:38.558414+00:00",
+    "eligible_urls": 23574,
+    "counts": {
+      "lookup_unresolved": 16573,
+      "validated_local_recovery": 1222,
+      "unprocessed_archive_candidate": 3375,
+      "attempted_not_recovered": 9,
+      "retained_copy_link_prepared": 2395
+    },
+    "accounted": 23574,
+    "published": false,
+    "scope": "Eligible queue only; unresolved lookup is not proof of archive absence",
+    "nara": {
+      "processed": 742,
+      "total": 742,
+      "valid": 677,
+      "requests_made": 471,
+      "blocked": null,
+      "pid": 55119,
+      "parent_pid": 94792
+    },
+    "wayback_retry": {
+      "at": "2026-10-16T01:33:44.797255+00:00",
+      "reason": "three_consecutive_transport_failures",
+      "pid": 64224,
+      "command": ".venv/bin/python output/corpus-retry-20261015/wayback_priority_index_retry.py",
+      "completed_receipts": 3,
+      "unfinished_request_may_have_partial_body": true,
+      "prior_evidence_preserved": true
+    },
+    "ledger_sha256": "e59f145189cbbf311b81f46c0bd173854946df77f79c558189c7374438186f80"
+  },
+  "evidence_hashes": {
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/retained-url-variant-mappings.json": "98fb21f8026d5740d0e3f37098ecd20147973db62390420fb3b40e31a45e12cd",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/html-slash-retained-verified.json": "30a9113709e189961ffe8960b9c656b92c54e4a8bb28f48b520e197204b164c3",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/html-slash-content-review.json": "a6da495cac899b7c29f7b61b347334b203e39dacc86780544ce0d6bc5aa42524",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/prepare_recovered.py": "bb364febfebeadd9cbe4ce8d6a586cab1ec66dd16943a9ef8299653f68ca6e02",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/update_remaining.py": "c1749c71430b458d01b8307cfa21c83f7668d45d6164398ac25e4e34cd4a202b",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/prepared-accepted.json": "70e4f70c179f2e2b371fc684d50cd863bc22bf609d6080f743e55ffb1cad6962",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/remaining-recovery-summary.json": "da1060bfe8af3f322b56a49e205c62f22b5902011a33cf2eb04f53b8f2f6dd6a"
+  },
+  "next_steps": [
+    "Find retained bodies for 792 other variants",
+    "Review 807 short bodies or attachment pages",
+    "Seal successor publication batch including these mappings",
+    "Complete active HTML probe and use identity replay for digest fidelity"
+  ]
+}
