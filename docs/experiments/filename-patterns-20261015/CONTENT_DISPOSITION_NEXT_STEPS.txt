@@ -252,3 +252,24 @@ context. Use actual rows and targeted counterexamples before changing that logic
 Then specify the explicit production review input and withdrawal behavior, resolve
 representation of the five unsupported packet forms, and qualify the wider catalog.
 Independent references and held-out/publication requirements remain separate gates.
+
+Context-family audit and correction completed
+---------------------------------------------
+The local candidate now preserves nomination-support when its paired publisher
+context independently supports the family, even if a review replaces the same
+broad selected kind. It calls the existing maintained predicate. A regression
+failed before the fix and passes afterward, with split/untrusted/absent controls.
+The relevant 84 tests pass; all seven scenarios still preserve the same 86 reviewed
+groups, 81 candidates and five annotations exactly.
+
+The saved public catalog has 1,016 groups carrying support labels, all backed by
+the current context predicate. Of these, 545 would lose independent support-family
+meaning under the former subtraction if a review replaced their broad kind. No
+new review or classification was applied to them. The 86 reviewed groups contain
+no such context. See family_context_checkpoint_v1.json and REVIEW_FAMILY_CONTEXT.txt.
+
+Next define the package-owned optional review input after grouping, including exact
+body/member bindings, separate attribution, refusal, withdrawal and unchanged
+default behavior. Keep lexical filename meaning in house_naming and retained
+evidence selection in congress_api. Resolve the five unsupported packet forms
+before activation, then qualify broader execution and independent references.

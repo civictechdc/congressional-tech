@@ -1,0 +1,85 @@
+Publisher-context family preservation: self-review
+==================================================
+Findings
+--------
+Resolved correctness issue: subtracting all families associated with a baseline's
+selected kinds could erase nomination-support even when paired publisher evidence
+independently supports that family. The regression reproduced this before the fix.
+No blocking findings remain within the local candidate scope. No production caller
+or default changed, and none of the 545 potentially affected public groups received
+a new review or classification in this work.
+
+Patch summary and trace
+-----------------------
+Function | Location | Inputs -> outputs | Verified behavior
+apply_review | packet_review_candidate.py:47,73-79 | bound group and review -> copied candidate | Retains non-kind baseline families; now restores nomination-support when the maintained context predicate supports it; adds families of reviewed forms.
+nomination_support_context | congress_api/retention/document_index.py:171 | complete group metadata -> supported context or None | Requires usable document context, an actual Judiciary nomination page/link pair, anchor scope and supported wording from a trusted occurrence.
+trusted_source_occurrences | document_index.py:144 | row -> trusted observations | Excludes collector candidates with unconfirmed association bases.
+nomination_support_label_kind | document_index.py:152 | label -> context kind | Reuses house_naming extraction; excludes legislative references and opposition wording.
+document_families | house_naming/categories.py:62 | selected kinds -> sorted families | Explicit mapping; unknown kinds retain their own names.
+select_candidates | current_review_candidates.py:72 | validated evidence -> candidates | Existing caller; role/body/member checks still precede binding/application.
+audit_scenario | current_review_path_replay.py:32 | complete rows and saved candidates -> comparison | Existing replay caller; verifies identical candidates and withdrawal.
+
+Hypotheses, data flow and invariants
+-----------------------------------
+H1: All contextual families can be recovered by subtracting selected-kind families.
+Refuted: fill_document_kind at document_index.py:135-141 can add nomination-support
+through context and also select that same broad kind. Subtraction loses both bases.
+H2: An existing predicate already establishes the independent context.
+Confirmed: nomination_support_context inspects paired evidence and response status.
+The patch calls it directly rather than duplicating URL/wording/trust rules.
+
+Only the local context_families set changes. The candidate is already a deep copy;
+the bound baseline and review stay intact. The check runs only after exact digest
+acceptance and supported-form validation. Missing reviews, changed scope and
+unsupported whole packets still return their baseline unchanged. The full group
+digest still includes source context, so changed publisher evidence rejects the
+old review. No schema, source receipt, filename interpretation or taxonomy changes.
+
+Tests and edge cases
+-------------------
+test_packet_review_candidate.py:101 constructs a context-selected broad kind using
+the production fill_document_kind path. Replacing it with a reviewed form must keep
+the independently supported family. Split page/link occurrences, untrusted collector
+associations and absent context must not restore an overlapping filename-only family.
+All four branches also preserve the input and verify withdrawal. Before the fix,
+the paired case failed and the three negative controls passed; afterward all pass.
+Existing tests/test_nomination_support.py covers failed captures, non-document roles,
+unsupported hosts/page scopes, opposition/measure wording, redirects and aliases.
+The relevant suite passes 84 tests in 1.55 seconds.
+
+Actual catalog evidence
+-----------------------
+family-context-audit-v1 scans the saved public catalog's 1,240,374 document rows
+using scalar kind/family fields. It finds 1,016 groups already carrying a support
+label. A second pass reads every field used by the context predicate for those
+groups, including complete paired occurrences and response facts, across 113 row
+groups. All 1,016 have supported context: 467 explicit letter-support contexts and
+549 generic support contexts. For 545 groups, subtracting selected-kind families
+would remove independently supported nomination-support. These are potential losses
+under a future review replacement, not existing catalog errors or completed reviews.
+The audit binds the complete saved document file hash and per-row projected hashes.
+
+None of the 286 sources or 86 documents in the reviewed cohort has this context.
+family-context-review-replay-v1 nevertheless reruns all seven scenarios using the
+new candidate implementation. Every full baseline and candidate is unchanged:
+81 selected candidates, five whole-packet annotations, working withdrawal throughout.
+No body reads, held-out labels, source evidence or public data were changed.
+
+Limits and next steps
+---------------------
+This census targets existing support labels, not every unclassified relationship.
+The maintained selector currently adds only nomination-support as an independent
+context family. Future context families need explicit provenance and corresponding
+selection behavior; preserving arbitrary unknown leftover families is not proof of
+their meaning. The 86-group replay remains narrower than full-catalog qualification.
+
+Next define a package-owned optional review input applied after grouping: exact
+body/member evidence, separately attributed reviewed forms, explicit refusal and
+withdrawal, baseline preservation, and default behavior with no supplied review.
+Keep filename interpretation in house_naming and catalog evidence selection in
+congress_api. Decide the representation of the five unsupported packets before
+activating them. Independent reference and publication gates remain outstanding.
+
+VERDICT: APPROVE for local candidate context-family preservation.
+Coverage: ADEQUATE. Confidence: HIGH for the current maintained context policy.

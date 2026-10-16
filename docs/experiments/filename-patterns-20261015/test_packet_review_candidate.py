@@ -95,3 +95,34 @@ def test_invalid_candidate_is_rejected(change):
     elif change == 'reference': review['independent_reference'] = True
     elif change == 'forms': review['observed_forms'].append('letter')
     with pytest.raises(ValueError): apply_review(document, sources, review)
+
+
+@pytest.mark.parametrize('context',['paired','split','untrusted','absent'])
+def test_review_form_preserves_only_supported_overlapping_context_family(context):
+    from congress_api.retention.document_index import fill_document_kind
+    from catalog_review_evidence import row_digest
+    proposal,original,document,sources,receipt=case()
+    occurrence=dict(source_original_page_url=['https://www.judiciary.senate.gov/committee-activity/hearings/nominations'],
+        source_page_title=['Nominations'],source_occurrence_scope=['anchor'],
+        source_link_url=['https://www.judiciary.senate.gov/download/support'],source_link_label=['Group Support for Smith'])
+    occurrences=[occurrence]
+    if context=='split':
+        occurrences=[dict(occurrence,source_link_label=['Attachment']),
+            dict(occurrence,source_original_page_url=['https://example.gov/nominations'])]
+    elif context=='untrusted':occurrence['source_association_basis']=['candidate_without_legacy_directory']
+    elif context=='absent':occurrences=[]
+    document.update(document_kind=['nomination-support'],filename_document_kind=['nomination-support'],
+                    record_role=['document'],source_occurrences=occurrences)
+    if context=='paired':
+        document['document_kind']=document['filename_document_kind']=None
+    fill_document_kind(document)
+    assert document['document_family']==['nomination-support']
+    original['after_kind']=['nomination-support']
+    proposal['source_row_sha256']=receipt['source_row_sha256']=row_digest(original)
+    review=bind_review(proposal,original,document,sources,receipt)
+    before=deepcopy(document)
+    result=apply_review(document,sources,review)
+    assert result['document']['document_kind']==['committee-vote']
+    assert result['document']['document_family']==(
+        ['nomination-support','vote-record'] if context=='paired' else ['vote-record'])
+    assert document==before and apply_review(document,sources)['document']==before

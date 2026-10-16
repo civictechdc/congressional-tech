@@ -2,6 +2,7 @@
 from copy import deepcopy
 
 from house_naming.categories import document_families
+from congress_api.retention.document_index import nomination_support_context
 
 from catalog_disposition_compare import compare_case
 from catalog_filename_replay import normalized
@@ -71,6 +72,10 @@ def apply_review(document, sources, review=None):
             # baseline; replace only those derived from its selected kinds.
             context_families = set(document.get('document_family') or []) - set(
                 document_families(document.get('document_kind')))
+            # A family can have both kind and publisher-context support. Restore
+            # that independent basis using the maintained paired-link policy.
+            if nomination_support_context(document):
+                context_families.add('nomination-support')
             result['document_family'] = sorted(context_families | set(document_families(forms)))
             status = 'candidate_applied'
     return dict(status=status, baseline_group_sha256=digest, document=result,

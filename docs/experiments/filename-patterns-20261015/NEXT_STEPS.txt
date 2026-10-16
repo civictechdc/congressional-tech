@@ -766,3 +766,13 @@ REVIEW_NORMALIZED_REVIEW_CANDIDATES.txt. The 70 relevant tests pass.
 Next audit family provenance using actual rows and counterexamples, then define
 the production review input/withdrawal boundary and resolve descriptive packet
 forms before broader qualification. Held-out body review remains locked.
+
+The context-family audit is complete. The local candidate now reuses the maintained
+paired-source predicate to retain independent nomination support when a reviewed
+form replaces a broad kind. The saved catalog contains 545 potentially affected
+groups among 1,016 supported groups; none is in the 86 reviewed groups, and no new
+reviews were assigned. All 84 relevant tests and the seven-scenario reviewed replay
+pass. See family_context_checkpoint_v1.json and REVIEW_FAMILY_CONTEXT.txt.
+Next define the optional package review input, attribution and withdrawal after
+grouping, with ordinary no-review behavior unchanged. Taxonomy, independent
+references, broader qualification and publication remain separate requirements.
