@@ -1,0 +1,50 @@
+{
+  "at": "2026-10-16T03:52:20.879133+00:00",
+  "status": "validated_local_not_published",
+  "recovery": {
+    "original_url": "https://www.indian.senate.gov/sites/default/files/Carmen%20O%27Leary%20testimony.docx",
+    "recovered_url": "https://web.archive.org/web/20230729215045id_/https://www.indian.senate.gov/sites/default/files/Carmen%20O%27Leary%20testimony.docx",
+    "body_path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/priority-retained-validation/6e308ccff60c9ec6e9f543dc25ea6a229a080104d53d5aaddfe2a6bae7ccb9fc",
+    "body_key": "bodies/sha256/6e/6e308ccff60c9ec6e9f543dc25ea6a229a080104d53d5aaddfe2a6bae7ccb9fc.gz",
+    "sha256": "6e308ccff60c9ec6e9f543dc25ea6a229a080104d53d5aaddfe2a6bae7ccb9fc",
+    "bytes": 20114,
+    "kind": "doc",
+    "media_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "recovery_status": "recovered",
+    "recovery_basis": "verified_archive_capture",
+    "validated": true,
+    "reused_retained_body": true,
+    "association_evidence": {
+      "basis": "Exact original URL embedded in retained Wayback replay",
+      "archive_replay_time": "20230729215045",
+      "title": "Carmen O\u2019Leary testimony",
+      "hearing_date": "2011-07-14",
+      "validation": "Full SHA256, ZIP CRC integrity, Word document XML parsed and testimony text inspected"
+    }
+  },
+  "original_capture": {
+    "context_url": "https://web.archive.org/web/20230729215045id_/https://www.indian.senate.gov/sites/default/files/Carmen%20O%27Leary%20testimony.docx",
+    "body_key": "bodies/sha256/6e/6e308ccff60c9ec6e9f543dc25ea6a229a080104d53d5aaddfe2a6bae7ccb9fc.gz",
+    "retrieved_at": "2026-10-07T04:28:22.518576+00:00",
+    "receipt_key": "receipts/external/wayback/2026-10-07/download-20261007T043425Z-c66e9a53cfa4-000001.jsonl.gz",
+    "receipt_line": 191
+  },
+  "maintained_capture_validated": true,
+  "validation_path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/priority-retained-validation.json",
+  "validation_sha256": "fb9514c79ee53770a0f1b2d3f62c227ac990d21a5783e62a35bd45f0ad655ca1",
+  "recovery_summary": {
+    "status": "local_preparation_not_published",
+    "recovered_url_links": 1162,
+    "distinct_recovered_bodies": 826,
+    "zip_members": 149,
+    "distinct_zip_bodies": 149,
+    "prepared_url_maps": 21411,
+    "new_maps": 6906,
+    "document_groups_without_saved_before": 311,
+    "document_groups_without_saved_after_preview": 274,
+    "zip_members_not_yet_in_catalog_preview": true,
+    "deferred_files_preserved": 164,
+    "prior_maps_preserved": 14505
+  },
+  "remaining_html_candidates": 3
+}
