@@ -406,3 +406,31 @@ retain baseline classifications separately, surface stale/failed verification an
 support explicit withdrawal. Check supported, unsupported, unaffected and stale
 cases in the real UI before proposing public integration. Independent reference
 review, held-out work, classification refresh and publication remain separate.
+
+Local viewer preview is implemented
+-----------------------------------
+The optional local viewer now loads the pinned portable bundle once, verifies the
+current complete baseline pair and rechecks each reviewed group before selection.
+It displays original and preview categories separately, retains every packet note,
+primary/component form and page section, and offers verified PDF downloads, page
+images and saved text. Explicit withdrawal restores the original category within
+the panel. Unsupported packets stay whole annotations. Configured failures are
+visible rather than silently becoming unreviewed cases. Search and downloads still
+use the original catalog. See REVIEW_VIEWER_INTEGRATION.txt and the associated
+viewer_review_checkpoint_v1.json for checks and retained runtime evidence.
+
+Next steps, in order:
+1. Define and implement an explicit reviewed-category mode for local search and
+   filtering. Compare its complete result sets with the original mode, including
+   aliases, null-kind filters and all five unsupported packets. Keep original
+   downloads and classification provenance clearly identified; do not silently
+   change the default public catalog.
+2. Prepare a compact publication format for reviewed findings and evidence links,
+   bound to the exact published catalog. Reuse the maintained verifier on the
+   publishing side; browsers should not download the 1.27 GB portable store.
+   Prove stale-publication refusal, withdrawal and preserved packet details with
+   a local publication rehearsal before proposing any public deployment.
+3. Continue the separate qualification work: independent reference review and
+   frozen held-out evaluation, then a bounded classification refresh for qualified
+   rules. No new taxonomy kind or release approval follows from these 86 assistant
+   reviews alone. Keep the remaining unclassified-group census in that plan.

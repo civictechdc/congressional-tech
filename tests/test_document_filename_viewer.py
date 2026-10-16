@@ -533,3 +533,35 @@ def test_congress_conflict_reports_both_reader_boundaries_without_correction():
     assert reading['metadata']['congress'] == ['111', '1117']
     assert 'legislative-file reads 111' in reading['diagnostics'][0]
     assert 'bill-suspension-numbered convention reads 1117' in reading['diagnostics'][0]
+
+
+def test_shared_parquet_reads_are_serialized_between_detail_and_search(tmp_path):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Lock
+    from time import sleep
+    (tmp_path/'indexes').mkdir()
+    index.write_filename_metadata(tmp_path, [dict(filename=f'file-{i}.pdf', source_url=f'https://x.test/{i}',
+        body_key=None, source_occurrences=[dict(source_page_url=['https://x.test/hearing'])]) for i in range(2)], workers=1)
+    catalog=viewer.Catalog(tmp_path/'indexes/document-filenames.parquet')
+    guard=Lock(); active=0; count=0
+    class Guarded:
+        def __init__(self, wrapped): self.wrapped=wrapped
+        def call(self, method, *args, **kwargs):
+            nonlocal active, count
+            with guard:
+                active+=1; count+=1
+                assert active==1, 'Shared Parquet reads overlapped'
+            try:
+                sleep(0.003)  # Force competing requests into the reader boundary.
+                return getattr(self.wrapped,method)(*args,**kwargs)
+            finally:
+                with guard: active-=1
+        def read_row_group(self,*args,**kwargs): return self.call('read_row_group',*args,**kwargs)
+        def read(self,*args,**kwargs): return self.call('read',*args,**kwargs)
+    catalog.file=Guarded(catalog.file);catalog.document_file=Guarded(catalog.document_file)
+    def read(i):
+        if i%3==0: return catalog.document(i%2)['filename']
+        if i%3==1: return catalog.record(i%2)['filename']
+        return catalog.searchable('source_occurrences').to_pylist()
+    with ThreadPoolExecutor(max_workers=8) as pool:results=list(pool.map(read,range(60)))
+    assert len(results)==60 and count>=20 and active==0

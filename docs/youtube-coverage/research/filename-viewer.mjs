@@ -123,7 +123,7 @@ function closeDetail(update=true) {
 async function openDetail(id, update=true, catalog=info.catalog_id) {
  if(!$('detail').open) detailOpener=document.activeElement;
  detailController?.abort(); const controller=detailController=new AbortController(); rowData=null; detailEntry=null; technicalPromise=null; technicalReady=false; observationData=null; $('detail').dataset.row=String(id); $('detail').dataset.catalog=catalog || info.catalog_id; setDetailTitle('Loading…'); $('detail-data').replaceChildren(); $('field-count').textContent=''; $('field-search').value=''; $('show-empty').checked=false; $('copy').disabled=true; $('share').disabled=true; $('source-link').hidden=true; $('saved-link').hidden=true; $('detail-selected').hidden=true; $('copy-status').textContent=''; $('share-status').textContent='';
- for(const section of ['document-summary','origin','filename-findings','saved-evidence']) { $(section).replaceChildren(); $(section).hidden=true; }
+ for(const section of ['document-summary','complete-body-review','origin','filename-findings','saved-evidence']) { $(section).replaceChildren(); $(section).hidden=true; }
  document.querySelector('.detail-secondary').hidden=true;
  $('technical').open=false; $('technical').hidden=true; $('detail').setAttribute('aria-busy','true'); $('source-history').hidden=true; $('source-history').querySelector('details').open=false; $('detail').scrollTop=0;
  $('source-variants').replaceChildren(); $('source-variants').hidden=true;
@@ -131,6 +131,7 @@ async function openDetail(id, update=true, catalog=info.catalog_id) {
  try { const entry=await api('/api/entry/'+encodeURIComponent(id)+'?catalog='+encodeURIComponent(catalog || info.catalog_id),controller.signal); if(controller!==detailController) return; const data=entry.record; rowData=data; detailEntry=entry; $('detail').dataset.row=data.source_id; $('detail').dataset.catalog=entry.catalog_id; saveUrl(); setDetailTitle(identity({...data,filename:entry.filename,api_reference:entry.api_reference,video_reference:entry.video_reference}),entry.api_reference||entry.video_reference?'title':'filename'); $('copy').disabled=false; $('share').disabled=false;
  if(data.filename!==entry.filename) { $('detail-selected').hidden=false; $('detail-selected').textContent='Selected source filename: '+(data.filename || 'Not recorded'); }
  renderSummary(entry); renderCurrentOrigin(); renderFilename(entry);
+ if(info.complete_body_reviews)loadCompleteReview(entry,controller);
  renderSources(entry);
  const url=sourceUrl(data.source_url); if(url) {
   $('source-link').href=url.href; $('source-link').replaceChildren(node('span',entry.video_reference?'Watch video ↗':entry.api_reference?'Open API record ↗':'Open original URL ↗'),node('span',url.hostname.replace(/^www\./,''),'link-caption')); $('source-link').hidden=false;
@@ -181,6 +182,50 @@ function section(id, title) { const el=$(id); el.hidden=false; el.replaceChildre
 function recordedList(values, caption) {
  const details=node('details'),list=node('ul');details.append(node('summary',caption),list);
  values.forEach(value=>list.append(node('li',value)));return details;
+}
+async function loadCompleteReview(entry, controller, withdrawn=false) {
+ const el=section('complete-body-review','Complete document review');
+ el.append(node('p','Checking review…','section-note'));
+ try {
+  const result=await api(detailUrl('review',withdrawn?'&selection=baseline':''),controller.signal);
+  if(controller!==detailController||controller.signal.aborted)return;
+  el.replaceChildren(node('h3','Complete document review'));
+  if(result.status==='no_review') {el.append(node('p','No complete-body review in this bundle. The catalog classification is unchanged.'));return;}
+  const labels={candidate_applied:'Reviewed classification preview',annotation_only_unsupported_forms:'Findings retained; classification unchanged',withdrawn:'Review withdrawn from this preview'};
+  el.append(node('p',labels[result.status]||result.status,'review-note'));
+  el.append(node('p','Assistant review, not independently confirmed or approved for publication. This preview affects this panel only; search and downloads use the original catalog.','section-note'));
+  const dl=node('dl',undefined,'facts'),review=result.review,observed=review.body_observation;
+  const kinds=values=>values?.map(friendly).join(' · ')||'Unclassified';
+  fact(dl,'Original category',kinds(result.baseline.document_kind));
+  fact(dl,'Preview category',kinds(result.selected.document_kind));
+  fact(dl,'Primary forms',kinds(review.primary_forms));
+  if(review.component_forms.length)fact(dl,'Additional forms',kinds(review.component_forms));
+  fact(dl,'Pages reviewed',observed.pages);el.append(dl);
+  if(result.status==='annotation_only_unsupported_forms')el.append(node('p','This packet includes forms outside the supported categories. All findings are retained together; none changes the catalog classification.','warning'));
+  const toggle=node('button',withdrawn?'Restore reviewed preview':'Withdraw review from preview','outline');
+  toggle.addEventListener('click',()=>{toggle.disabled=true;loadCompleteReview(entry,controller,!withdrawn);});el.append(toggle);
+  const evidenceUrl=(kind,page)=>'/review-evidence/'+encodeURIComponent(entry.record.source_id)+'?catalog='+encodeURIComponent(entry.catalog_id)+'&kind='+kind+(page?'&page='+page:'');
+  const pdf=node('p'),pdfLink=link(new URL(evidenceUrl('body'),location.href).href,'Download the exact reviewed PDF');
+  pdfLink.removeAttribute('target');pdf.append(pdfLink);el.append(pdf);
+  for(const [kind,field,caption] of [['text','text_path','Saved extracted text'],['native-text','native_text_path','Saved native text']])if(observed[field]) {
+   const text=node('p');text.append(link(new URL(evidenceUrl(kind),location.href).href,caption+' ↗'));el.append(text);
+  }
+  if(observed.notes)el.append(node('p',observed.notes));
+  for(const observation of observed.observations||[])el.append(node('p',typeof observation==='string'?observation:JSON.stringify(observation)));
+  for(const observation of observed.source_completeness_observations||[])el.append(node('p',typeof observation==='string'?observation:
+   (observation.pdf_pages?.length?'PDF pages '+observation.pdf_pages.join(', ')+': ':'')+(observation.observation||JSON.stringify(observation)),'warning'));
+  if(observed.page_sections?.length) {
+   const list=node('ul');
+   for(const part of observed.page_sections)list.append(node('li',`Pages ${part.first_page}–${part.last_page}: ${part.observed_form.split('|').map(friendly).join(' · ')}${part.description?' — '+part.description:''}`));
+   el.append(list);
+  }
+  const pages=node('details'),links=node('p');pages.append(node('summary','Reviewed page images'),links);
+  for(let page=1;page<=observed.pages;page++) {links.append(link(new URL(evidenceUrl('page',page),location.href).href,'Page '+page),document.createTextNode(' · '));}
+  el.append(pages);
+ } catch(error) {
+  if(controller!==detailController||controller.signal.aborted||error.name==='AbortError')return;
+  el.replaceChildren(node('h3','Complete document review'),node('p','Review unavailable. The catalog classification remains unchanged. '+error.message,'warning'));
+ }
 }
 function renderSummary(entry) {
  const el=$('document-summary'), row=entry.document, source=entry.record, dl=node('dl',undefined,'facts');
@@ -461,7 +506,7 @@ async function loadEvidence(entry,controller) {
    if(long) {pre.classList.add('preview'); const button=node('button','Show full page text','quiet');button.type='button';button.setAttribute('aria-expanded','false');button.addEventListener('click',()=>{const expanded=pre.classList.toggle('preview')===false;button.textContent=expanded?'Collapse page text':'Show full page text';button.setAttribute('aria-expanded',String(expanded));});details.append(button);}
    el.append(details);
   }
- } catch(error) { if(error.name==='AbortError'||controller!==detailController)return; summary.replaceChildren(node('p','Saved contents could not be checked. See the access error below.','section-note')); el.replaceChildren(node('h3','Saved response evidence'),node('p',error.message,'empty-state'));const retry=node('button','Retry saved-file access','outline');retry.addEventListener('click',()=>loadEvidence(entry,controller));el.append(retry); }
+ } catch(error) { if(error.name==='AbortError'||controller!==detailController)return; summary.replaceChildren(node('p',info.complete_body_reviews?'Original archive access failed. Review evidence is checked separately in Complete document review.':'Saved contents could not be checked. See the access error below.','section-note')); el.replaceChildren(node('h3','Saved response evidence'),node('p',error.message,'empty-state'));const retry=node('button','Retry saved-file access','outline');retry.addEventListener('click',()=>loadEvidence(entry,controller));el.append(retry); }
 }
 function fieldCategory(key) {
  if(['filename','source_url','source_id','document_id','record_role','filename_origins','recovered_filename','recovered_source_url','document_kind','document_kind_source','document_family','format'].includes(key))return 'Identity and classification';

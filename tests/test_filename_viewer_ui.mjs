@@ -50,7 +50,7 @@ test('new data is reachable inside an open detail panel and follows the selected
   } finally { dom.window.close(); }
 });
 
-async function app(respond) {
+async function app(respond, info={}) {
   const dom = new JSDOM(html, {url: 'https://viewer.test/?row=12', runScripts: 'outside-only'});
   const w = dom.window;
   w.HTMLDialogElement.prototype.showModal = function() {this.open = true;};
@@ -60,7 +60,7 @@ async function app(respond) {
   w.fetch = async url => {
     requests.push(url);
     if (url === '/api/info') return {ok:true, json:async()=>({catalog_id:'snapshot', house_naming_version:'published',
-      documents:1, capture_records:0, rows:2, fields:Object.keys(record), facets:{congress:[],document_kind:[],document_family:[],format:['pdf']}})};
+      documents:1, capture_records:0, rows:2, fields:Object.keys(record), facets:{congress:[],document_kind:[],document_family:[],format:['pdf']},...info})};
     if (url.startsWith('/api/rows')) return {ok:true, json:async()=>({rows:[{...record,_row:12,retained:true,source_count:2}],total:1,page:1,pages:1,limit:100})};
     return respond ? respond(url) : {ok:true, json:async()=>url.startsWith('/api/entry/') ? entry : evidence};
   };
@@ -750,4 +750,72 @@ test('late provenance cannot overwrite another selected source', async () => {
     assert.doesNotMatch(get('origin').textContent,/Stale page|wrong.test/);
     assert.equal(get('detail').dataset.row,'stable-original');
   } finally {dom.window.close();}
+});
+
+for(const status of ['candidate_applied','annotation_only_unsupported_forms']) {
+ test('complete review shows whole packet and withdraws explicitly: '+status,async()=>{
+  const review={status,baseline:{document_kind:['amendment']},selected:{document_kind:status==='candidate_applied'?['letter']:['amendment']},
+   review:{primary_forms:['letter'],component_forms:status==='candidate_applied'?[]:['tax-return'],body_observation:{pages:2,
+    notes:'Literal <script>unsafe()</script>',observations:['Filename differs from body'],
+    source_completeness_observations:[{pdf_pages:[2],observation:'Original filing incomplete'}],
+    page_sections:[{first_page:1,last_page:2,observed_form:'letter',description:'Retained pages'}]}}};
+  const {dom,w,get,requests}=await app(async url=>({ok:true,json:async()=>url.startsWith('/api/review/')?
+   (url.includes('selection=baseline')?{...review,status:'withdrawn',selected:review.baseline}:review):url.startsWith('/api/entry/')?entry:evidence}),{complete_body_reviews:true});
+  try {
+   const panel=get('complete-body-review');
+   assert.match(panel.textContent,/Original categoryAmendment/);
+   assert.match(panel.textContent,/Original filing incomplete/);
+   assert.match(panel.textContent,/Pages 1–2: Letter/);
+   assert.equal(panel.querySelector('script'),null);
+   assert.equal([...panel.querySelectorAll('a')].find(a=>a.textContent==='Download the exact reviewed PDF').getAttribute('target'),null);
+   assert.ok([...panel.querySelectorAll('a')].some(a=>a.href.endsWith('kind=page&page=2')));
+   if(status==='annotation_only_unsupported_forms')assert.match(panel.textContent,/outside the supported categories/);
+   panel.querySelector('button').click();await flush();await flush();
+   assert.match(panel.textContent,/Review withdrawn/);
+   assert.match(panel.textContent,/Preview categoryAmendment/);
+   assert.ok(requests.some(url=>url.includes('selection=baseline')));
+   panel.querySelector('button').click();await flush();await flush();
+   assert.doesNotMatch(panel.textContent,/Review withdrawn/);
+   assert.match(panel.textContent,/search and downloads use the original catalog/);
+  } finally {dom.window.close();}
+ });
+}
+
+test('failed verification is visible and is distinct from no review',async()=>{
+ for(const failed of [true,false]) {
+  const {dom,get}=await app(async url=>url.startsWith('/api/review/')?
+   {ok:!failed,json:async()=>failed?{error:'Catalog or review snapshot changed.'}:{status:'no_review'}}:
+   {ok:true,json:async()=>url.startsWith('/api/entry/')?entry:evidence},{complete_body_reviews:true});
+  try {
+   assert.match(get('complete-body-review').textContent,failed?/Review unavailable.*snapshot changed/:/No complete-body review/);
+   assert.equal(get('complete-body-review').querySelector('a'),null);
+   assert.equal(get('complete-body-review').querySelector('button'),null);
+  } finally {dom.window.close();}
+ }
+});
+
+test('ordinary published viewer does not request optional reviews',async()=>{
+ const {dom,get,requests}=await app();
+ try {
+  assert.equal(get('complete-body-review').hidden,true);
+  assert.equal(requests.some(url=>url.startsWith('/api/review/')),false);
+ } finally {dom.window.close();}
+});
+
+test('late complete-review response cannot replace another selected source',async()=>{
+ let resolveReview;
+ const delayed=new Promise(resolve=>{resolveReview=resolve;});
+ const other=structuredClone(entry);other.record.source_id='stable-original';
+ const {dom,get}=await app(async url=>({ok:true,json:async()=>
+  url.startsWith('/api/review/stable-final')?delayed:
+  url.startsWith('/api/review/')?{status:'no_review'}:
+  url.startsWith('/api/entry/stable-original')?other:
+  url.startsWith('/api/entry/')?entry:evidence}),{complete_body_reviews:true});
+ try {
+  get('source-variants').querySelector('[data-source="stable-original"]').click();await flush();await flush();
+  assert.match(get('complete-body-review').textContent,/No complete-body review/);
+  resolveReview({status:'candidate_applied'});await flush();await flush();
+  assert.match(get('complete-body-review').textContent,/No complete-body review/);
+  assert.doesNotMatch(get('complete-body-review').textContent,/Review unavailable/);
+ } finally {dom.window.close();}
 });

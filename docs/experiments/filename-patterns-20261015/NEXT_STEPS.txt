@@ -829,3 +829,13 @@ portable_review_checkpoint_v1.json and REVIEW_PORTABLE_EVIDENCE.txt.
 Next integrate verified packet descriptions into the local viewer with one load per
 snapshot, clear assistant attribution, baseline preservation, explicit withdrawal
 and visible refusal. Verify real UI cases before public integration.
+
+The optional local viewer now consumes the verified portable review bundle. It
+shows original/preview classifications, complete packet observations and exact
+PDF/page/text evidence, with explicit withdrawal and visible verification failure.
+The ordinary public provider does not request this local API. See
+REVIEW_VIEWER_INTEGRATION.txt and viewer_review_checkpoint_v1.json.
+Next add explicit reviewed-category search/filter behavior with result-set checks,
+then rehearse a compact, snapshot-bound public evidence representation. Independent
+reference review, frozen held-out qualification and the remaining unclassified
+census stay separate work; this preview does not authorize public selection.

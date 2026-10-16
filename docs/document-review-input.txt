@@ -188,9 +188,9 @@ rows, preserving both complete files. It is not a full classification refresh.
 Raw and filename-normalized rows require distinct bindings even when group IDs
 match; the check preserves both and verifies refusal across that boundary.
 
-Portable evidence export and loading are available as described below. Next wire
-verified packet descriptions into a local viewer with loading once per snapshot,
-explicit refusal and withdrawal. Historical local paths are original evidence
+Portable evidence export, loading and the optional local viewer preview are
+available as described below, with loading once per snapshot, explicit refusal
+and withdrawal. Historical local paths are original evidence
 locators; portable consumers must resolve them through the pinned object map.
 Independent references, held-out
 evaluation, full classification refresh and publication remain separate decisions.
@@ -246,3 +246,42 @@ silently treating it as withdrawal; explicit omission is the withdrawal operatio
 This initial portable format includes the complete bound catalog and historical
 evidence, so its size is not just the size of the reviewed PDFs. A browser should
 not hash this entire store in a per-document render loop.
+
+Local viewer preview
+--------------------
+The local filename viewer accepts --review-manifest and --review-sha256 together:
+
+python docs/youtube-coverage/research/scripts/view_document_filenames.py \
+  PATH/TO/document-filenames.parquet --port 8798 \
+  --review-manifest PORTABLE_DIRECTORY/manifest.json \
+  --review-sha256 EXPECTED_PORTABLE_MANIFEST_HASH
+
+ReviewSnapshot in congress_api.retention.document_review_viewer verifies the
+manifest, both current catalog files and the entire portable bundle once during
+startup. Each reviewed detail request passes the complete current document and
+all source rows to the existing selector. It keeps the original classification
+separate from the review preview. Search, filtering, downloads and saved catalog
+bytes continue to use the original catalog. A group without a review requires no
+additional full nested-row read.
+
+The Complete document review panel shows primary and component forms, page ranges,
+review notes and source-completeness observations. It links to the exact decoded
+PDF, every reviewed page image and retained text when available. Evidence routes
+accept a source ID, evidence type and optional page number; callers cannot supply
+filesystem paths. The resolver verifies mapped evidence and the handler serves
+only the bytes whose digest and expected format passed verification.
+
+Withdraw review from preview calls the selector with no candidate, retaining the
+original classification and the findings for comparison. Restore reviewed preview
+rechecks the selection. This choice applies only to the open panel; opening another
+record starts its own preview. Unsupported packets retain all observations and
+leave the original classification intact. Reviews remain assistant judgments,
+not independent references or release approval.
+
+Configured verification failure appears in the review panel, distinct from an
+unreviewed group; it never silently becomes a successful withdrawal. Catalog files
+and the manifest must stay immutable for the process lifetime. File identity,
+size or modification/change-time differences require restarting and re-verifying
+the viewer. Evidence objects are rehashed when opened. The ordinary published
+viewer does not request this optional API when complete_body_reviews is absent.
+The optional local preview does not add a public review publication path.
