@@ -64,7 +64,9 @@ def run(args):
     cloud_clear()
     if not args.execute:
         return dict(preflight=True, inputs_verified=True, cloud_clear=True, writes=False)
-    lock = (ROOT / '.cache/local-recovery.lock').open('a')
+    control_root = (getattr(args, 'control_root', None) or ROOT).resolve()
+    lock_path = control_root / '.cache/local-recovery.lock'
+    lock = lock_path.open('a')
     fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     cloud_clear()
     destination = args.destination.resolve()
@@ -128,7 +130,7 @@ def run(args):
             if os.getppid() != parent or shutil.disk_usage(destination).free < 12 * 1024**3:
                 raise RuntimeError('Parent or disk reserve changed')
             held = os.fstat(lock.fileno())
-            named = (ROOT / '.cache/local-recovery.lock').stat()
+            named = lock_path.stat()
             if (held.st_dev, held.st_ino) != (named.st_dev, named.st_ino):
                 raise RuntimeError('Recovery lock file was replaced')
 
@@ -169,6 +171,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch', type=Path, required=True)
     parser.add_argument('--destination', type=Path, required=True)
     parser.add_argument('--readiness', type=Path, help='Sealed readiness from the maintained reconciliation command.')
+    parser.add_argument('--control-root', type=Path, default=ROOT, help='Shared checkout owning the recovery lock across runtimes.')
     parser.add_argument('--config', type=Path, default=ROOT / '.cache/r2-admin/rclone.conf')
     parser.add_argument('--connect-timeout', type=int, choices=range(15, 181), default=15,
                         help='Socket connection/write timeout for retained body uploads (seconds).')

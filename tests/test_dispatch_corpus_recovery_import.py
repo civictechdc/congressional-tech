@@ -51,11 +51,11 @@ class ConditionalClient:
 
 
 class DispatchTests(unittest.TestCase):
-    def exercise_dispatch(self, client):
+    def exercise_dispatch(self, client, external=False, control_root=None):
         fixture = fixtures.ImportTests()
         fixture.setUp()
         self.addCleanup(fixture.doCleanups)
-        root = Path(fixture.temp.name)
+        root = Path(fixture.temp.name).resolve()
         (root / '.cache').mkdir()
         (root / 'scripts').mkdir()
         for name in ['dispatch_corpus_recovery_import.py', 'import_corpus_recovery_batch.py',
@@ -66,7 +66,7 @@ class DispatchTests(unittest.TestCase):
         batch.mkdir()
         (batch / 'prepared-source-records.json').write_text('[]')
         (batch / 'zip-receipts.json').write_text(json.dumps(fixture.prepared))
-        (batch / 'bodies.json').write_text(json.dumps({k: {'path': str(v)} for k, v in fixture.paths.items()}))
+        (batch / 'bodies.json').write_text(json.dumps({k: {'path': str(v), 'sha256': hashlib.sha256(v.read_bytes()).hexdigest(), 'bytes': v.stat().st_size} for k, v in fixture.paths.items()}))
         files = {p.name: module.digest(p) for p in batch.iterdir()}
         (batch / 'manifest.json').write_text(json.dumps(dict(files=files)))
         (batch / 'source-record-preparation.json').write_text(json.dumps(
@@ -75,8 +75,18 @@ class DispatchTests(unittest.TestCase):
             p.name: module.digest(p) for p in batch.iterdir()})))
         config = root / 'credentials.ini'
         config.write_text('[congressionalraw]\nendpoint=https://invalid.example\naccess_key_id=fixture\nsecret_access_key=fixture\n')
-        args = SimpleNamespace(batch=batch, execute=True, destination=root / 'dispatch', config=config, connect_timeout=15)
+        args = SimpleNamespace(batch=batch, execute=True, destination=root / 'dispatch', config=config, connect_timeout=15, control_root=control_root)
         self.destination = args.destination
+        self.batch = batch
+        if external:
+            import reconcile_corpus_recovery_bodies as reconciliation
+            reconcile_args = SimpleNamespace(batch=batch, destination=root/'reconciliation',
+                prior=None, prior_sha256=None, config=config)
+            with patch('boto3.client', return_value=client):
+                ready = reconciliation.run(reconcile_args)
+            self.assertTrue(ready['ready'])
+            args.readiness = root/'reconciliation/import-readiness.json'
+            self.readiness_path = args.readiness
         with patch.object(module, 'ROOT', root), patch.object(module, 'cloud_clear'), patch('boto3.client', return_value=client):
             return module.run(args)
 
@@ -88,6 +98,30 @@ class DispatchTests(unittest.TestCase):
         for key, options in client.writes:
             self.assertIn('IfMatch' if key.startswith('indexes/') else 'IfNoneMatch', options)
         self.assertTrue((self.destination / 'payloads/import-complete.json').exists())
+
+    def test_maintained_reconciliation_to_import_to_publication_evidence(self):
+        client = ConditionalClient()
+        result = self.exercise_dispatch(client, external=True)
+        self.assertTrue(result['complete'])
+        import dispatch_corpus_recovery_publication as publication
+        verified = publication.verify_import(self.batch, self.destination, readiness=self.readiness_path)
+        self.assertEqual(verified, result)
+        events = [json.loads(row) for row in (self.destination/'events.jsonl').read_text().splitlines()]
+        pins = next(row['value'] for row in events if row['event']=='pins')
+        self.assertIn(str(self.readiness_path), pins)
+        self.assertIn(str(self.readiness_path.with_name('remote-body-readback.json')), pins)
+        self.readiness_path.with_name('remote-body-readback.json').write_text('{}')
+        with self.assertRaises(ValueError):publication.verify_import(self.batch,self.destination,readiness=self.readiness_path)
+
+    def test_isolated_runtime_uses_shared_control_lock(self):
+        import fcntl
+        with tempfile.TemporaryDirectory() as folder:
+            control = Path(folder).resolve(); (control/'.cache').mkdir()
+            with (control/'.cache/local-recovery.lock').open('a') as lock:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                client=ConditionalClient()
+                with self.assertRaises(BlockingIOError):self.exercise_dispatch(client,control_root=control)
+                self.assertEqual(client.writes,[])
 
     def test_competing_update_stops_dispatch_before_capture_write(self):
         client = ConditionalClient(change_capture_after_state=True)

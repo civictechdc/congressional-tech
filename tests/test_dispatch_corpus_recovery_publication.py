@@ -39,6 +39,20 @@ class CoverageTests(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             module.verify_import(self.root,self.root/'absent-import')
 
+class SharedControlTests(unittest.TestCase):
+    def test_isolated_publication_obeys_existing_shared_lock(self):
+        import fcntl
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder).resolve(); (root/'.cache').mkdir()
+            args=SimpleNamespace(batch=root, imported=root, runtime=root, execute=True, control_root=root)
+            with (root/'.cache/local-recovery.lock').open('a') as lock:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                with patch.object(module,'verify_import',return_value={}),patch.object(module,'cloud_clear'):
+                    with self.assertRaises(BlockingIOError):module.run(args)
+
+
 class BuilderBoundaryTests(unittest.TestCase):
     def test_durable_builder_receives_normalized_readings(self):
         from unittest.mock import patch

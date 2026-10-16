@@ -100,7 +100,9 @@ def run(args):
     if not args.execute:
         return dict(local_preflight=True, import_verified=True, writes=False)
     cloud_clear()
-    lock = (ROOT / '.cache/local-recovery.lock').open('a')
+    control_root = (getattr(args, 'control_root', None) or ROOT).resolve()
+    lock_path = control_root / '.cache/local-recovery.lock'
+    lock = lock_path.open('a')
     fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     destination = args.destination.resolve()
     parent = os.getppid()
@@ -128,7 +130,7 @@ def run(args):
         if body_readback.exists(): paths += [body_readback]
     pins = {str(p): digest(p) for p in paths}
     binding = dict(pins=pins, batch=str(batch), imported=str(imported), runtime=str(runtime),
-                   baseline=str(args.baseline.resolve()))
+                   baseline=str(args.baseline.resolve()), control_root=str(control_root))
     continuation = Continuation(destination, binding, resume=getattr(args, 'resume', False))
     save = continuation.save
     report('pins.json', pins)
@@ -170,7 +172,7 @@ def run(args):
     def local_check():
         if os.getppid() != parent or shutil.disk_usage(destination).free < 12*1024**3:
             raise RuntimeError('Publication parent or disk reserve changed')
-        held, named = os.fstat(lock.fileno()), (ROOT/'.cache/local-recovery.lock').stat()
+        held, named = os.fstat(lock.fileno()), lock_path.stat()
         if (held.st_dev, held.st_ino) != (named.st_dev, named.st_ino): raise RuntimeError('Lock replaced')
     def protected_check():
         for key, version in versions.items():
@@ -281,6 +283,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ['batch','imported','runtime','baseline','destination']:
         parser.add_argument('--'+name, type=Path, required=True)
+    parser.add_argument('--control-root', type=Path, default=ROOT, help='Shared checkout owning the recovery lock across runtimes.')
     parser.add_argument('--config', type=Path, default=ROOT/'.cache/r2-admin/rclone.conf')
     parser.add_argument('--readiness', type=Path, help='Reconciled readiness evidence pinned by the completed import.')
     parser.add_argument('--execute', action='store_true')
