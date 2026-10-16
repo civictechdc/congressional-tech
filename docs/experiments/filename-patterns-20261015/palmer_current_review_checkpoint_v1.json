@@ -1,0 +1,29 @@
+{
+  "receipt_path": "docs/experiments/filename-patterns-20261015/palmer_current_content_review_v1.json",
+  "receipt_sha256": "668c491cb3f7650e3433f7a9988b35e6b803338a8d76f5da8e6208ca4f72d2a1",
+  "current_document_id": "70e1b3f65c993898fa2a7145bd09ccb4a95a5d39e1e4ec632cf190e1f1917914",
+  "source_row_sha256": "fdaf78365b6108bea69f273368322713bec112c4d95df256537ec47ceee79964",
+  "reviewed_documents": 86,
+  "reviewed_pages": 530,
+  "new_reviewed_pages": 3,
+  "new_observed_form": "opening-statement",
+  "current_kind_agrees": true,
+  "validation_path": "output/filename-patterns-20261015/palmer-current-review-v1/validation.json",
+  "validation_sha256": "35a001256ce68ea54ecaf28d1caea058947fe33314785585a06fa19057e5850f",
+  "evidence": {
+    "output/filename-patterns-20261015/palmer-current-review-v1/native.txt": "c340d403c2b20d9bd5400f1dffd8513b6975d91014e06ee9d11d8c052f43b35d",
+    "output/filename-patterns-20261015/palmer-current-review-v1/page-1.png": "381587d3efa0d06f44e45a2271759c3a2d0e9f157b0fd2db3b648d623e829811",
+    "output/filename-patterns-20261015/palmer-current-review-v1/page-3.png": "64e83e79cb69c2ae123db3381a1a203ef37f76d0711d29c873a17f37d235d1f0",
+    "output/filename-patterns-20261015/palmer-current-review-v1/retained.pdf": "551bae6183b996177ce2be6c5b7be07b916c6dcb7851aa0af419d7b8f3cf8b5f",
+    "output/filename-patterns-20261015/palmer-current-review-v1/page-2.png": "0b038f361e6880c2bbf0ec67a117750649eb53d7150b7b4387836d34f68ddf81",
+    "output/filename-patterns-20261015/palmer-current-review-v1/ledger.jsonl": "1a421721cbe9cb94be3c8c1a28ae324285faa0eefd2b27e135f856827c1fb77b",
+    "output/filename-patterns-20261015/palmer-current-review-v1/fetch.json": "fe4bc708fa3961d23a475a78ff6bbe7a3496000534186172cd9836b4e1b0e555",
+    "output/filename-patterns-20261015/palmer-current-review-v1/validation.json": "35a001256ce68ea54ecaf28d1caea058947fe33314785585a06fa19057e5850f"
+  },
+  "historical_ledger_unchanged": true,
+  "frozen_source_hashes_verified": 9,
+  "frozen_labels_unchanged": true,
+  "classification_mutations": false,
+  "independent_reference": false,
+  "release_approved": false
+}

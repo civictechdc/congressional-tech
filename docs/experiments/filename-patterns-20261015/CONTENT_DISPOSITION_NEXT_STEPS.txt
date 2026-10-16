@@ -171,3 +171,20 @@ new Palmer group using bounded reads. Rebind only through a separately recorded
 current evidence step, never by weakening the historical row binding. Preserve
 the Error.aspx role/kind correction as a separate refresh check. The original
 400-record pilot and its held-out body-review restriction remain unchanged.
+
+New Palmer body reviewed
+------------------------
+palmer_current_content_review_v1.json now records all three pages of the current
+successful Palmer PDF. It is an opening statement dated November 14, 2017 for
+the joint-subcommittee Regulatory Reform Task Forces Check-in hearing. Page 3
+finishes the sentence begun on page 2; no separate packet form is visible. This
+agrees with the current selected kind. Complete receipt validation passes for
+86 distinct reviewed groups / 530 pages across the additive review chain.
+
+The new review binds current group 70e1b3f65c993898fa2a7145bd09ccb4a95a5d39e1e4ec632cf190e1f1917914
+and decoded PDF 551bae6183b996177ce2be6c5b7be07b916c6dcb7851aa0af419d7b8f3cf8b5f.
+Its diagnostic retains the old encoded-URL source and both capture outcomes.
+Neither historical Palmer ID was rewritten; the separate unencoded-URL source
+still has only an error response. Next prepare complete current rows for the
+85 matching reviews plus this new current group, with explicit fresh bindings
+and bounded memory, before applying local candidates to current-catalog copies.

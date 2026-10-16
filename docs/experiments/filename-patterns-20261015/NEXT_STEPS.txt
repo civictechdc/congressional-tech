@@ -729,3 +729,11 @@ now joins a successful PDF capture under a new group ID. Keep both old Palmer
 IDs and all six historical unavailable outcomes; review the new PDF separately.
 See review_catalog_reconciliation_checkpoint_v1.json. The 72 relevant tests pass.
 No complete-row review binding or production classification was transferred.
+
+Palmer's new three-page PDF is now fully reviewed and recorded separately in
+palmer_current_content_review_v1.json. Its opening-statement form agrees with
+the current selected kind. The validated additive chain covers 86 groups and
+530 pages; the historical 91-case ledger and its six unavailable rows remain
+unchanged. Next extract complete current groups for the 85 matched reviews plus
+the new Palmer group, retaining all non-null occurrence evidence with bounded
+reads. Prepare explicit current-row bindings before current-catalog selection.
