@@ -138,3 +138,9 @@ The 54 links were merged into local preparation. Four package identifiers coveri
 All four pending public GovInfo packages downloaded successfully, and the worker exited 0. Their exact XML members passed full body hash/size, parsed root, congress, legislative number, version-stage, and deferred-file checks. Five URL links were merged into local preparation. This completes the identified 59-link standard-package XML batch: 54 reused retained official bodies and five came from four new packages. It does not complete nonstandard Rules Committee prints, generic XML feeds, or the whole recovery queue. No further unresolved PDF URL in the eligible queue matched these four package identifiers.
 
 Evidence: `../recovery/additional-xml-packages-20261016.json`. Preserve the actual XML format and original package receipt time during import. NARA acquisition and the cloud capture/rebuild job remain active; final batch preparation, guarded import, catalog/mapping publication, and viewer readback remain outstanding.
+
+### Remaining report identifiers checked against retained files
+
+A scan found 49 unresolved PDF URLs naming 27 exact congressional report identifiers. Retained official GovInfo/GPO body records supplied 25 identifiers, covering 46 links. Each body passed its full content hash and qpdf checks; deferred URL/body exclusions also passed. These links were merged into local preparation without requests to the original publishers. Evidence: `../recovery/retained-reports-recovery-20261016.json`.
+
+Two identifiers covering three links remain for public package lookup: CRPT-116hrpt411 and CRPT-119hrpt694. Preserve exact report identifiers and use the existing bounded package route. Import must reuse the original official source URL, body identity, and capture timestamp. All added mappings remain local pending the cloud-writer, import, publication, and readback gates.
