@@ -23,9 +23,9 @@ class GuardTests(unittest.TestCase):
     def test_many_immutable_writes_share_only_expensive_clearance(self):
         self.guard.boundary()
         for _ in range(1000): self.guard.check()
-        self.assertEqual(self.guard.counts, dict(local=1001, hashed_files=1, cloud=1, protected=1))
+        self.assertEqual(self.guard.counts, dict(local=1002, hashed_files=1, cloud=1, protected=1))
         self.guard.shared_commit()
-        self.assertEqual(self.guard.counts, dict(local=1002, hashed_files=2, cloud=2, protected=2))
+        self.assertEqual(self.guard.counts, dict(local=1004, hashed_files=2, cloud=2, protected=2))
 
     def test_unknown_cloud_invalidates_allowance(self):
         self.guard.check(); self.now = 31
@@ -42,6 +42,13 @@ class GuardTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'freshness window'):self.guard.shared_commit()
         self.assertIsNone(self.guard._cloud_at)
         self.assertEqual(self.protected.call_count, 0)
+    def test_slow_protected_check_refuses_before_commit(self):
+        self.protected.side_effect = lambda: setattr(self, 'now', self.now + 31)
+        with self.assertRaisesRegex(RuntimeError, 'freshness window'):self.guard.shared_commit()
+        self.assertIsNone(self.guard._cloud_at)
+    def test_local_ownership_rechecked_after_remote_checks(self):
+        self.protected.side_effect = lambda: setattr(self.local, 'side_effect', RuntimeError('lock lost'))
+        with self.assertRaisesRegex(RuntimeError, 'lock lost'):self.guard.shared_commit()
     def test_changes_fail_before_next_write(self):
         self.guard.boundary(); self.path.write_bytes(b'change')
         with self.assertRaisesRegex(RuntimeError, 'Pinned input changed'): self.guard.check()

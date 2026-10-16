@@ -111,5 +111,10 @@ class RecoveryGuard:
             self._cloud(fresh=True)
             self.protected_check()
             self.counts['protected'] += 1
+            self._local()
+            self._pins(full=False)
+            if self.clock() - self._cloud_at > 30:
+                self._cloud_at = None
+                raise RuntimeError('Shared commit checks exceeded freshness window')
 
     shared_commit = boundary
