@@ -611,3 +611,20 @@ packets first, then Johnson's two pages, the nine-page Award List, eight-page
 Galarza attachment, seventeen-page EBJ alternative and seventy-page Wallace
 attachment. Use the saved bytes; no refetch is needed. Inspect every retained
 page before linking a completed review, and preserve any composite forms.
+
+Remaining retained-content review, part 1 completed
+--------------------------------------------------
+Ten short packets / 12 pages are now fully reviewed: seven disclosure forms,
+a vote sheet, a committee print with legislative text and a member statement.
+The v7 linkage has 81 reviewed documents / 423 pages with zero mismatches.
+Original metadata decisions and filename claims remain unchanged. All bound
+hashes and nine frozen source hashes passed verification. The receipt preserves
+Hueter's absent CV, Terenzio's single-page excerpt and scan-quality limitations.
+See REVIEW_REMAINING_CONTENT.txt and remaining_content_review_v1.json.
+
+Continue with the four saved packets / 104 pages: Award List (9), Galarza (8),
+EBJ alternative rules (17), then Wallace (70). Six unavailable cases remain
+unresolved. After complete retained-page review, propose case-specific decisions
+for all 91 metadata cases before implementing justified house_naming changes.
+Local version 3.2.7 remains unpublished; independent-reference and fresh raw
+qualification requirements remain unchanged.

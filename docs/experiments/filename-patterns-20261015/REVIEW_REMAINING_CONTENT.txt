@@ -1,0 +1,46 @@
+Remaining retained-content review, part 1
+========================================
+Completed all 12 retained pages in ten short packets from the final selection.
+The remaining_content_review_v1.json receipt binds the original ledger, exact
+saved PDFs, native extraction, every page render and the prior receipt chain.
+
+Observed forms
+--------------
+Seven packets contain testimony-disclosure forms despite witness-statement
+filename claims. Six are single pages; Hueter has two pages. No witness policy
+statement occurs in these retained bodies. Hueter says a CV is attached, but
+neither retained page contains it. The Terenzio filename identifies a person;
+the retained form excerpt is numbered 3 and has no visible name or signature.
+Its overlapping/clipped question text remains a source-quality limitation.
+Carberry is a sideways scan. Five disclosure PDFs have no native text beyond
+page markers; every retained page was visually inspected without OCR.
+
+The H.R. 1890 PDF is a Ways and Means vote sheet: its table supports the stated
+25-13 result. The bill-form filename remains preserved as a conflicting claim.
+This finding applies to the exact retained body, not every body sharing a URL.
+The budget-reconciliation PDF explicitly says COMMITTEE PRINT and contains
+proposed legislative text. Its unfilled subtitle number and September 26 footer
+remain distinct from extraction artifacts and the September 29 filename token.
+Johnson's two pages contain a member statement supporting an amendment; the
+amendment is the subject, and no amendment text is attached.
+
+Verification
+------------
+The unchanged linker reports 81 reviewed documents / 423 pages with zero
+mismatches. Every original field except content_review remains unchanged.
+All 91 metadata cases still await classification decisions; 81 now have linked
+assistant content reviews and ten do not. All bound input/output hashes and
+nine frozen source hashes passed verification. Selected IDs and body keys are
+outside the frozen 400-record pilot. No runtime code changed and no new
+runtime test-suite result is claimed. Local house_naming remains 3.2.7.
+
+Next work
+---------
+Four saved packets / 104 pages remain: Award List (9), Galarza (8), EBJ
+alternative rules (17) and Wallace (70). Use the saved PDFs and renders; read
+all retained pages before recording complete review. Six other cases have no
+eligible retained body and remain unavailable. Then prepare proposed decisions
+for all 91 cases, preserving observed form, filename claim, subject, event
+context and attachment role separately. Any runtime correction belongs in
+house_naming and requires focused tests and cohort replay. Independent labels,
+fresh raw-catalog qualification and release approval remain separate gates.
