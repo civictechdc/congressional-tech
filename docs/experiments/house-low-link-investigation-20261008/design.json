@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "status": "planned_not_started",
+  "created_at": "2026-10-08T19:53:56.968545+00:00",
+  "decision": "Separate locally recoverable reference omissions from external dependencies, sparse content, page-recognition problems, and correct circular/navigation exclusions.",
+  "parser_head": "9aaf6971e96d9fe25bf39769da5ab01511c6f977",
+  "checkpoint_sha256": "1fd2bee3372c1176ea990780df884c29a325e0752c83e4e1356f1d8a65c91d91",
+  "population_index": "/Users/mikewolfd/Work/congressional-tech/.cache/house-low-link-investigation-plan-20261008/candidate-index.jsonl",
+  "population_summary": "/Users/mikewolfd/Work/congressional-tech/.cache/house-low-link-investigation-plan-20261008/population-summary.json",
+  "seed": "house-low-links-shapes-20261008-v1",
+  "sample": {
+    "discovery_low_link": 240,
+    "sealed_uniform_reference": 80,
+    "sealed_generalization": 80,
+    "higher_link_controls": 60,
+    "total_new_low_link": 400,
+    "total_new_pages": 460,
+    "prior_regression_cases_separate": 403
+  },
+  "discovery_targets": {
+    "zero": 120,
+    "one": 60,
+    "two": 60,
+    "minimum_per_committee_host": 6,
+    "minimum_per_actual_source_host": 1,
+    "minimum_unrecognized_pages": 40,
+    "fine_shape_soft_maximum": 8
+  },
+  "parallelism": {
+    "investigators": 3,
+    "coordinator": 1,
+    "total_concurrent_agents": 4,
+    "html_index_processes": 1,
+    "investigation_packet_size": 20
+  },
+  "review": {
+    "all_proposed_omissions_and_source_failures": true,
+    "seeded_fraction_of_other_cases": 0.2,
+    "maximum_page_read_assignments": 920,
+    "blind_second_verdict": true
+  },
+  "limits": {
+    "network_requests": 0,
+    "linked_file_downloads": 0,
+    "index_memory_target_bytes": 2147483648,
+    "index_attempt_wall_seconds": 1800,
+    "maximum_new_case_urls": 460,
+    "production_source_mutation": false,
+    "commit_push_apply": false
+  },
+  "stages": [
+    {
+      "id": "index",
+      "depends_on": []
+    },
+    {
+      "id": "freeze_roster",
+      "depends_on": [
+        "index"
+      ]
+    },
+    {
+      "id": "parallel_discovery",
+      "depends_on": [
+        "freeze_roster"
+      ]
+    },
+    {
+      "id": "cross_review_and_freeze_candidate",
+      "depends_on": [
+        "parallel_discovery"
+      ]
+    },
+    {
+      "id": "sealed_evaluation",
+      "depends_on": [
+        "cross_review_and_freeze_candidate"
+      ]
+    },
+    {
+      "id": "findings_and_followup_plan",
+      "depends_on": [
+        "sealed_evaluation"
+      ]
+    }
+  ],
+  "execution_started": false,
+  "html_shape_clustering_performed": false,
+  "known_limits": [
+    "Rules and Ethics have no higher-link controls.",
+    "Historical subcommittee identity coverage is incomplete and must use local evidence.",
+    "Metadata URL groups are not established HTML shapes.",
+    "Random-reference inference applies only to the 15646 eligible page occurrences; diagnostic and holdout findings are not prevalence estimates."
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "checked_at": "2026-10-08T19:53:56.998860+00:00",
+  "plan_sha256": "721ebd52787f7395ca0554e3307314c2f8f961ece3b0e9b38e8b71316051f409",
+  "design_sha256": "a39171cd6c478d4258c7efe1a4911b51f125afd9602253feb303d6ec1d24fc75",
+  "candidate_index_sha256": "d3c4dd9053cb128b9e6e6ab6a16676e54be24ccd7893aa8598828b872ddcf06b",
+  "local_links_resolve": true,
+  "sample_arithmetic_consistent": true,
+  "minimum_committee_coverage_feasible_before_shape_constraints": true,
+  "higher_link_control_hosts": 21,
+  "source_csv_hashes_match_final_audit": true,
+  "no_html_shapes_or_audit_outcomes_claimed": true
+}
