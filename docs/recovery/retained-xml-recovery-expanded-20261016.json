@@ -1,0 +1,26 @@
+{
+  "at": "2026-10-16T03:18:44.605825+00:00",
+  "recovered_links": 54,
+  "distinct_bodies": 52,
+  "source_pairs_with_timestamps": 52,
+  "publisher_requests": 0,
+  "published": false,
+  "files": {
+    "retained-xml-recovered.json": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/retained-xml-recovered.json",
+      "sha256": "ec62f145f0ff1d8f37553884a524e6ea176a087449afe77e6c71c7aa68036756"
+    },
+    "retained-xml/verification.json": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/retained-xml/verification.json",
+      "sha256": "a95d17d4ee0e1c91b744613f495e45b77a136c3054565ae793fed23dcdfb20c7"
+    },
+    "retained-xml-source-times.json": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/retained-xml-source-times.json",
+      "sha256": "758bfff0ec0006ba91fcfcb4ecbaf43b0e5c637f9a149f3e896821a0bcd9e305"
+    },
+    "xml-packages-unretained-queue.json": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/xml-packages-unretained-queue.json",
+      "sha256": "8cfed02e4f2ccf3b15747dd0495b8ca7c33e0368174e7513b34826ae99dea3b8"
+    }
+  }
+}
