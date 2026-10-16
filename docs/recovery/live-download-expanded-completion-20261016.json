@@ -1,0 +1,26 @@
+{
+  "at": "2026-10-16T04:53:49.000254+00:00",
+  "result": "30 publisher download links qualified and merged locally",
+  "qualified_urls": 30,
+  "all_pages_rendered": true,
+  "original_bytes_preserved": true,
+  "recovered_urls": 1277,
+  "retained_link_mappings": 2994,
+  "remaining_unresolved": 19303,
+  "published": false,
+  "paid_requests": 0,
+  "evidence": {
+    "output/corpus-retry-20261015/live-download-expanded/plan.json": "44eb54018a28dcaa2cd9bdddc01ce62b2c2fcf0ac3fce62b574418a677537970",
+    "output/corpus-retry-20261015/live-download-expanded/results.json": "2105d8803105ee5d2ef92dd935668667fd416f6041d827b55d2e0bef30da38b5",
+    "output/corpus-retry-20261015/live-download-expanded/completion-monitor.json": "6fc8384a6529276463180829d9f924d0496f7edc27e32a8b608f86dfc692bd61",
+    "output/corpus-retry-20261015/live-download-expanded-recovered.json": "7427ffab8fdcac3f2c2e120942c9cad6af8494c3d21492adbe3f36d4fdb421a5",
+    "output/corpus-retry-20261015/remaining-recovery-summary.json": "57a97eb8ee2e3ef89601cb887f50c52121b9ad618a05cfb763688d793ce1d0ed",
+    "output/corpus-retry-20261015/prepare_recovered.py": "125151c6b43a776996149f456ded2d1cc513ae7970b3ea4dad1a7b45131441f9",
+    "output/corpus-retry-20261015/update_remaining.py": "4c0c9217f7a9d75888696da06e3aeed5ea6fd800ce3924f262c1847735f3edda"
+  },
+  "next_steps": [
+    "Continue the running NARA HTML pass without duplicate downloads.",
+    "Expand the successful publisher download route using unrecovered URLs and retained receipts.",
+    "After the cloud capture writer finishes, seal a fresh batch, import, publish, and verify readback."
+  ]
+}
