@@ -1,0 +1,109 @@
+{
+  "publication_retry": {
+    "dispatch": {
+      "at": "2026-10-16T06:53:46.607644+00:00",
+      "pid": 21797,
+      "exec_session": 79117,
+      "process_verified": "21797 94792 Fri Oct 16 02:52:55 2026     .venv/bin/python -u scripts/dispatch_corpus_recovery_publication.py --batch output/corpus-retry-20261015/publication-batches/checkpoint-12 --imported output/corpus-retry-20261015/import-checkpoint12 --runtime /Users/mikewolfd/.codex/worktrees/viewer-retained-sync/congressional-tech --baseline output/corpus-reconcile-20261015/accepted-before.json --destination output/corpus-retry-20261015/publication-checkpoint12-retry01 --execute",
+      "pins_verified": 246,
+      "recovery_lock_held": true,
+      "complete": false,
+      "baseline_downloads_still_pending": false,
+      "previous_attempt": "publication-checkpoint12",
+      "repair_commit": "20b083e"
+    },
+    "fresh_raw_baseline_matches_completed_import": {
+      "indexes/captures.parquet": "7668e6f80b12fa46d8a8fbd8d4a7c334cb8a3e60558e5dada49c8f6527918d32",
+      "indexes/download-state.parquet": "4048ddc2c6958b0565c8d1d9dad103ada91114fb8175712ebd018e8ea9bff4bb"
+    },
+    "progress": {
+      "completed": null,
+      "counters": {},
+      "elapsed_seconds": 0.0,
+      "heartbeat_expires_at": "2026-10-16T06:55:06.592935+00:00",
+      "memory": {
+        "process_peak_bytes": 1134166016
+      },
+      "seconds_since_progress": 0.0,
+      "stage": "load_indexes",
+      "stage_elapsed_seconds": 0.0,
+      "status": "running",
+      "total": null,
+      "unit": null,
+      "updated_at": "2026-10-16T06:53:36.592935+00:00"
+    }
+  },
+  "third_bulk_adoption": {
+    "at": "2026-10-16T06:53:10.706100+00:00",
+    "qualified_package_urls": [
+      "https://www.govinfo.gov/content/pkg/CHRG-116hhrg36360.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-115shrg33409.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-117shrg48265.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-117shrg51542.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-116hhrg39901.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-117hhrg46029.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-118hhrg56008.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-117hhrg46434.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-117shrg47458.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-109hhrg31362.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-117hhrg43871.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-113shrg24285.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-117shrg47858.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-117hhrg46064.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-116shrg39846.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-116hhrg41470.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-117hhrg48844.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-117shrg52125.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-117shrg48562.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-116hhrg39402.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-113shrg46915.zip"
+    ],
+    "qualified_packages": 21,
+    "members": 105,
+    "individual_links": 0,
+    "unresolved_individual_links": 0,
+    "distinct_verified_bodies": 126,
+    "published": false,
+    "source_requests": 0,
+    "all_body_hashes_verified": true
+  },
+  "remaining_urls": 16954,
+  "combined_successor": {
+    "created_at": "2026-10-16T06:54:00.654023+00:00",
+    "status": "validated_local_batch_not_imported_or_published",
+    "recovered_urls": 1378,
+    "zip_parents": 120,
+    "zip_distinct_members": 592,
+    "distinct_bodies": 2078,
+    "deferred_urls_excluded": 164,
+    "input_hashes": {
+      "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/checkpoint14-combined-source/recovered-files.json": "c9f7c9a03cb3616349110556df0ba1e82af2bab1f2188ea766bdd192a813d7b2",
+      "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/checkpoint14-combined-source/prepared-zip-receipts.json": "7b32b65e9be0d4cbe6e04c09e1d8a7ee5f93e8b403f5312b9d8c0ecff1a01c25",
+      "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/checkpoint14-combined-source/zip-member-reconciliation.json": "66f3f0decb74f7ee5254328ed43c19fe2882452acd85a8628a8ff02300d14df9",
+      "/Users/mikewolfd/Work/congressional-tech/output/viewer-streaming-rerun-20261015/accepted-files.json": "cc813c27f77a5a4c402d6ac3181baed113e16e6943fc18b05255319fdaf502c8",
+      "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/checkpoint14-combined-source/prepared-accepted.json": "c9d7fb27f7c21dc0deed1112709707365571307851f33841298018332d912a9a"
+    },
+    "files": {
+      "accepted.json": "c9d7fb27f7c21dc0deed1112709707365571307851f33841298018332d912a9a",
+      "bodies.json": "233da7bb55154f41d04c7e13dec303e2d5777188f814cfab5e41340976e736cf",
+      "recoveries.json": "c9f7c9a03cb3616349110556df0ba1e82af2bab1f2188ea766bdd192a813d7b2",
+      "zip-receipts.json": "7b32b65e9be0d4cbe6e04c09e1d8a7ee5f93e8b403f5312b9d8c0ecff1a01c25",
+      "parent-dependency.json": "94c84deda35227ce714a5668c841950b6c0f986e30cfcb995f4485ea5dde192a"
+    },
+    "publication_requires": [
+      "checkpoint12_import_and_publication_verified",
+      "fresh_cloud_clear",
+      "local_recovery_lock",
+      "fresh_input_versions_and_rebase",
+      "conditional_publication",
+      "remote_readback"
+    ]
+  },
+  "combined_manifest_sha256": "3e02a63c2231eabdfdabd754921f85bbd2684fafbc4c6c17a0a5c371850ab74a",
+  "checkpoint13_preserved_and_incorporated": true,
+  "next_steps": [
+    "Monitor the repaired catalog-only attempt through readback and public viewer verification.",
+    "Keep checkpoint 14 sealed and unimported until its parent publication succeeds; do not dispatch checkpoint 13 separately.",
+    "Recover the remaining seven ordinary-size GovInfo packages and assess the 24 oversized packages under measured storage limits."
+  ]
+}
