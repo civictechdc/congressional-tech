@@ -1,0 +1,29 @@
+{
+  "batch": "output/corpus-retry-20261015/publication-batches/checkpoint-10",
+  "readiness": {
+    "at": "2026-10-16T04:55:44.441582+00:00",
+    "local_only": true,
+    "source_records": 1277,
+    "zip_parent_records": 15,
+    "capture_rows": 1441,
+    "distinct_capture_bodykeys": 1071,
+    "remote_existing": 679,
+    "remote_absent": 392,
+    "retained_url_mappings_included": 2994,
+    "prior_full_readback_reused_with_fresh_head": 658,
+    "files": {
+      "manifest.json": "5bdd76cb1361f7d89bee5fac2534317e76b32a5db24ab7411e48f8cab5369b43",
+      "prepared-source-records.json": "98ad7f42642924e5cd9e779b03525635b8741fcf85f343d38844b04f122f0db0",
+      "source-record-preparation.json": "03e7c9fd7cb062aaa66a72bbf4ab82664f18e0101e374e9c0ee6d55b3e7e197a",
+      "remote-body-readback.json": "8c80ca0662eac82c9e7f5e6b50be352fa9014cfc79abca2d0bc5786c4b882942"
+    }
+  },
+  "status": "Prepared and remotely checked; not imported or published",
+  "remaining_unresolved": 19303,
+  "next_steps": [
+    "Wait for active cloud capture completion; require fresh paginated cloud-clear check",
+    "Import this completed snapshot under the recovery lock with fresh input versions",
+    "Verify actual import exit and remote readback before catalog and viewer publication",
+    "Keep later recovery successes for a successor batch"
+  ]
+}
