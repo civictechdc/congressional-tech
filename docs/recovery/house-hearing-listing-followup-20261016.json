@@ -1,0 +1,32 @@
+{
+  "at": "2026-10-16T05:12:23.186421+00:00",
+  "listing_requests": 10,
+  "distinct_hearings": 9,
+  "latest_per_hearing_hashes_verified": true,
+  "note": "Two failed links shared event 114945; listing was fetched twice and latest body retained. Only latest per-event bytes are verified.",
+  "exact_original_http_links_still_listed": 8,
+  "missing_from_current_listing": 2,
+  "listed_http_probe": {
+    "plan": {
+      "queue_sha256": "73fa0ee48d0b8bbbfd843ee88975e51ea913a33ce6f8087d78bc23e9918a7b84",
+      "script_sha256": "b4816f66d5255dc2cfd3968b40e6621489798b1d9a93d206514f786cd8c15f26",
+      "urls": 8,
+      "workers": 1,
+      "minimum_delay_seconds": 3,
+      "paid_requests": 0,
+      "pid": 52751,
+      "parent_pid": 94792
+    },
+    "exec_session": 40164,
+    "process_evidence": "52751 94792 00:21 Ss   .venv/bin/python -u output/corpus-retry-20261015/house_listed_http_sample.py",
+    "status": "running_not_qualified"
+  },
+  "remaining_unresolved": 19228,
+  "published": false,
+  "next_steps": [
+    "Finish HTTP sample and validate bodies before counting recoveries",
+    "If both schemes fail, retain authoritative broken-link evidence and use archival alternatives",
+    "Avoid repeated listing requests by deduplicating event IDs",
+    "Continue existing workers; publish only after fresh cloud-clear check"
+  ]
+}
