@@ -1,0 +1,79 @@
+{
+  "qualification": {
+    "at": "2026-10-16T06:34:25.011257+00:00",
+    "snapshot_qualification_complete": true,
+    "qualified_urls": 68,
+    "distinct_bodies": 68,
+    "snapshots": [
+      {
+        "worker": "nara-html-continuation-02",
+        "completed_receipts": 4,
+        "sha256": "21e324712bc0b20e45ed530ef41d14df9254c3ee9052b7c6733ef8aa5b95f18a",
+        "worker_complete_claimed": false
+      },
+      {
+        "worker": "nara-html-continuation-03",
+        "completed_receipts": 122,
+        "sha256": "27c580226a497377e2000dea820cef0b14fe77e91280b48d6cb473bec355a11d",
+        "worker_complete_claimed": false
+      }
+    ],
+    "published": false
+  },
+  "verification": {
+    "at": "2026-10-16T06:34:41.776725+00:00",
+    "actual_wait_exit": 0,
+    "all_source_pins_verified": true,
+    "all_completed_receipts_matched": true,
+    "qualified_urls": 68,
+    "qualified_sha256": "62c2f3e6747452afc7a4fe43f87d37e869741ee5d37388eb88a64b115a3d981b",
+    "published": false,
+    "prior_attempt": "Snapshot 02 failed a local verification assumption: reused body paths point at the earlier download receipt. Snapshot 03 matches complete records against each source worker receipt directory; failed snapshot preserved."
+  },
+  "ledger": {
+    "at": "2026-10-16T06:34:53.009406+00:00",
+    "eligible_urls": 23574,
+    "counts": {
+      "lookup_unresolved": 14745,
+      "validated_local_recovery": 2809,
+      "unprocessed_archive_candidate": 2580,
+      "attempted_not_recovered": 28,
+      "retained_copy_link_prepared": 3412
+    },
+    "accounted": 23574,
+    "published": false,
+    "scope": "Eligible queue only; unresolved lookup is not proof of archive absence",
+    "nara": {
+      "processed": 742,
+      "total": 742,
+      "valid": 677,
+      "requests_made": 471,
+      "blocked": null,
+      "pid": 55119,
+      "parent_pid": 94792
+    },
+    "wayback_retry": {
+      "at": "2026-10-16T01:33:44.797255+00:00",
+      "reason": "three_consecutive_transport_failures",
+      "pid": 64224,
+      "command": ".venv/bin/python output/corpus-retry-20261015/wayback_priority_index_retry.py",
+      "completed_receipts": 3,
+      "unfinished_request_may_have_partial_body": true,
+      "prior_evidence_preserved": true
+    },
+    "ledger_sha256": "1cd14fbacfa047ea75b25807842b9781d32d9ba212027d99e8492742b5496c3a"
+  },
+  "remaining_urls": 17353,
+  "oversized_govinfo_packages": {
+    "count": 24,
+    "declared_bytes": 5459466272,
+    "smallest_bytes": 135412658,
+    "largest_bytes": 453795662
+  },
+  "next_steps": [
+    "Continue existing NARA worker; snapshot newly completed receipts without new requests.",
+    "Finish second GovInfo batch; assess remaining packages using current disk and bounded ZIP/member sizes.",
+    "Verify active catalog publication before importing another delta."
+  ],
+  "qualified_sha256": "62c2f3e6747452afc7a4fe43f87d37e869741ee5d37388eb88a64b115a3d981b"
+}
