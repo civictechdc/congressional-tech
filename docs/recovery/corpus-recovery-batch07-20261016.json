@@ -1,0 +1,21 @@
+{
+  "at": "2026-10-16T04:00:51.213755+00:00",
+  "local_only": true,
+  "source_records": 1205,
+  "zip_parent_records": 15,
+  "capture_rows": 1369,
+  "distinct_capture_bodykeys": 1001,
+  "remote_existing": 642,
+  "remote_absent": 359,
+  "prior_full_readback_reused_with_fresh_head": 641,
+  "new_full_body_readbacks": 1,
+  "files": {
+    "manifest.json": "2ce6b2968fc8c69daafa7508f52ce08b71c5d76a41d79f6ffc829030f0576caa",
+    "prepared-source-records.json": "0e7d8f9fd12213b1c27ebe1407033ad9b0ced375975867dfb1d8c68388f75403",
+    "source-record-preparation.json": "b5a1148b99f4c2dcd5c0af3841ab09fd360d22f07399b7125935853d93607cb3",
+    "remote-body-readback.json": "8bff17ced5b4e54f723915a24e5dd085f3736f8a2d7748401310c75ba8a02cfe"
+  },
+  "batch": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/publication-batches/checkpoint-07",
+  "publication_status": "not_imported_or_published",
+  "preflight_blocker": "Cloud writer 38823678887 active"
+}
