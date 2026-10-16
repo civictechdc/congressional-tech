@@ -447,3 +447,17 @@ local. Fresh raw-catalog qualification is still incomplete: obtain the exact
 filenames/documents pair from the verified source manifest, check all native
 XML facts affected by the known 3.1.0 refresh behavior, and reconcile the frozen
 pilot. Browse success cannot substitute for raw-pair checks or independent labels.
+
+Disclosure/biography retained review, part 4
+------------------------------------------
+All 51 retained Public Witness pages are reviewed and bound in the additive
+v4 receipt: cumulative 37 packets / 160 pages. Its 22 component ranges preserve
+five observed forms and apparent source omissions separately from review coverage.
+
+Next inspect all 119 pages of Simmons from the saved exact PDF; this completes
+the 38-packet selection. Then implement the separate assistant-content-review
+linkage described in part 2. A complete review must mean every retained page was
+inspected, not that the source packet is complete. Preserve source-completeness
+observations, all composite forms, filename claims and reviewer/release flags.
+Keep the 91 metadata dispositions unchanged until the new linkage is explicit
+and tested. The frozen candidate and independent-reference gates remain intact.
