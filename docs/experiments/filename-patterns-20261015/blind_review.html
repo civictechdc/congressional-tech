@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Document reference review</title>
+<style>
+body{font:16px/1.5 system-ui;color:#26323c;margin:28px auto;padding:0 20px;max-width:1200px}
+button,input,select,textarea{font:inherit}button{padding:6px 12px;cursor:pointer}label{display:block;margin-top:12px}
+input,textarea{box-sizing:border-box;width:100%;padding:7px;border:1px solid #9ca8b1;border-radius:3px}textarea{min-height:70px}
+.layout{display:grid;grid-template-columns:3fr 2fr;gap:26px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f4f6f7;padding:16px;max-height:65vh;overflow:auto;font:15px/1.5 ui-monospace,monospace}
+nav{display:flex;gap:10px;align-items:center;flex-wrap:wrap}#status{min-height:24px;color:#184c36}a{color:#075b9c}
+@media(max-width:760px){.layout{display:block}pre{max-height:45vh}}
+</style>
+<h1>Document reference review</h1>
+<p id="scope"></p><p>Identify the document's form from its opening pages. Use an exact quote. Choose “Uncertain” when the evidence is insufficient. Predictions and filename labels are hidden.</p>
+<nav aria-label="Review navigation"><button id="previous">Previous</button><select id="record" aria-label="Document"></select><button id="next">Next</button><span id="progress"></span><button id="export">Export decisions</button></nav>
+<div class="layout"><section aria-label="Document evidence"><h2 id="identity"></h2><p id="availability"></p><a id="pdf" target="_blank" rel="noopener">Open PDF</a><label for="page">Evidence page</label><select id="page"></select><pre id="text"></pre></section>
+<section aria-label="Reference decision"><label for="reviewer">Reviewer</label><input id="reviewer" autocomplete="name">
+<label for="verdict">Decision</label><select id="verdict"><option value="">Select a decision</option><option value="classified">Classified</option><option value="uncertain">Uncertain</option><option value="unavailable">Unavailable</option></select>
+<label for="kind">Document kind</label><input id="kind" placeholder="e.g. amendment, report, letter">
+<label for="quote">Exact evidence quote</label><textarea id="quote"></textarea><button id="selection">Use selected text</button>
+<label for="note">Review note</label><textarea id="note"></textarea><p><button id="save">Save decision</button></p><p id="status" role="status"></p>
+<p>Saved decisions stay in this browser. Export them to retain a review file. A reviewer name does not establish independent validation.</p></section></div>
+<script>
+const packet=/*PACKET_DATA*/null;
+const $=id=>document.getElementById(id),key='reference-review:'+packet.packet_id;
+let saved={},index=0;
+try{saved=JSON.parse(localStorage.getItem(key)||'{}')}catch(e){$('status').textContent='Saved browser data could not be read. Export new decisions before leaving.'}
+$('scope').textContent=packet.purpose==='practice'?'Development practice — these decisions do not replace frozen labels.':'Held-out reference review — label before viewing predictions.';
+packet.records.forEach((r,i)=>{let o=document.createElement('option');o.value=i;o.textContent=r.review_id;$('record').append(o)});
+function progress(){$('progress').textContent=Object.keys(saved).length+' / '+packet.records.length+' saved'}
+function show(){let r=packet.records[index],d=saved[r.review_id]||{};$('record').value=index;$('identity').textContent=r.review_id;$('availability').textContent=r.state.replaceAll('_',' ');$('pdf').hidden=!r.pdf;if(r.pdf)$('pdf').href=r.pdf;$('page').replaceChildren();r.pages.forEach(p=>{let o=document.createElement('option');o.value=p.page;o.textContent='Page '+p.page;$('page').append(o)});if(d.evidence_page)$('page').value=d.evidence_page;['verdict','quote','note','kind'].forEach(id=>$(id).value=d[{kind:'reference_kind',quote:'evidence_quote'}[id]||id]||'');if(d.reviewer)$('reviewer').value=d.reviewer;showPage();progress();$('previous').disabled=index===0;$('next').disabled=index===packet.records.length-1}
+function showPage(){let p=packet.records[index].pages.find(p=>p.page===Number($('page').value));$('text').textContent=p?p.text:'No opening-page text is available.'}
+$('previous').onclick=()=>{index--;show()};$('next').onclick=()=>{index++;show()};$('record').onchange=()=>{index=Number($('record').value);show()};$('page').onchange=showPage;
+$('selection').onclick=()=>{$('quote').value=window.getSelection().toString()};
+$('save').onclick=()=>{let r=packet.records[index],d={review_id:r.review_id,reviewer:$('reviewer').value.trim(),verdict:$('verdict').value,reference_kind:$('kind').value.trim(),evidence_page:Number($('page').value)||null,evidence_quote:$('quote').value.trim(),note:$('note').value.trim()};let p=r.pages.find(p=>p.page===d.evidence_page),norm=s=>s.replace(/\s+/g,' ').trim().toLowerCase();if(!d.reviewer||!d.verdict){$('status').textContent='Enter a reviewer and decision.';return}if(d.verdict==='classified'&&(r.state!=='review'||!d.reference_kind||!d.evidence_quote||!p)){$('status').textContent='Classification requires an available page, kind and quote.';return}if(d.verdict!=='classified'&&d.reference_kind){$('status').textContent='Leave the kind blank for uncertain or unavailable decisions.';return}if(d.evidence_quote&&(!p||!norm(p.text).includes(norm(d.evidence_quote)))){$('status').textContent='The quote must occur on the selected page.';return}saved[r.review_id]=d;try{localStorage.setItem(key,JSON.stringify(saved));$('status').textContent='Saved '+r.review_id+'. Export decisions when finished.'}catch(e){$('status').textContent='Browser storage unavailable. Export decisions now to keep them.'}progress()};
+$('export').onclick=()=>{let blob=new Blob([JSON.stringify({packet_id:packet.packet_id,decisions:Object.values(saved)},null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='reference-decisions-'+packet.split+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+show();
+</script></html>

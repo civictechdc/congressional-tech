@@ -4,8 +4,8 @@ Document-kind classification: next steps
 Current checkpoint
 ------------------
 Filename version 3.2.0 is committed in 20114c8. The frozen PDF pilot and its
-140 development labels are committed in 38f7557. This change adds the explicit
-PDF content candidate to congress_api, with its fixtures and evaluation tools.
+140 development labels are committed in 38f7557. The explicit PDF content
+candidate, its fixtures and evaluation tools are committed in a22eecc.
 
 The actual PDF-reader comparison increases development assignments from 10 to
 24 of 140, preserves every earlier assignment and finds no disagreements with
@@ -101,7 +101,12 @@ it is not required to release the three explicit-form rules.
 
 Work that can proceed while publication runs
 -------------------------------------------
-Prepare the reconciliation/evaluation tools, a blind reference-review interface
-and a proposed taxonomy mapping using development records only. Preserve the
-candidate and held-out boundary. Avoid further rule tuning or retries against
-the 100 unavailable exact bodies without a new evidence source.
+The reconciliation ledger/census tool and blind reference-review interface are
+now implemented and tested. REVIEW_WORKFLOW.txt gives commands, checks and
+limitations. The historical rehearsal retains all 400 IDs and keeps held-out
+review locked. The development practice packet is blind-review-development-v4.
+
+Remaining preparation includes the frozen-label evaluation runner and a proposed
+taxonomy mapping using development records only. Preserve the candidate and
+held-out boundary. Avoid further rule tuning or retries against the 100
+unavailable exact bodies without a new evidence source.
