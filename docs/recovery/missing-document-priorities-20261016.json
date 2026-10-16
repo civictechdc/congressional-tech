@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-16T03:40:47.658074+00:00",
+  "scope": "Current local viewer preview; ZIP members not yet integrated",
+  "missing_document_groups": 277,
+  "eligible_unresolved_links": 92,
+  "groups_with_eligible_links": 79,
+  "statuses": {
+    "lookup_unresolved": 92
+  },
+  "route_classes": {
+    "document_recovery": 64,
+    "legal_citation_route": 13,
+    "audio_link": 1,
+    "package_metadata": 14
+  },
+  "evidence_path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/missing-document-priorities.json",
+  "evidence_sha256": "7f96aa8bdbec57e59e69aae989fb1bb5798d879b28a1c1d4f4cd38351b372bba"
+}
