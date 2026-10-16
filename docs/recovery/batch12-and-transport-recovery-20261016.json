@@ -1,0 +1,42 @@
+{
+  "at": "2026-10-16T05:26:19.566160+00:00",
+  "batch12": {
+    "at": "2026-10-16T05:26:06.066780+00:00",
+    "local_only": true,
+    "source_records": 1689,
+    "zip_parent_records": 15,
+    "capture_rows": 1853,
+    "distinct_capture_bodykeys": 1482,
+    "remote_existing": 937,
+    "remote_absent": 545,
+    "retained_url_mappings_included": 3049,
+    "files": {
+      "manifest.json": "e4b1c8f614af1a195159bfe24b5f3718a260582e2dda3afaedb631e2ec5e4a5f",
+      "prepared-source-records.json": "1fb4110c3727bffa8359b787cb379a8663396b68702708495f083e252240007e",
+      "source-record-preparation.json": "7505ee1ef6b0c0e33a549a14c9f3d316e944091bf35365ae116c24fc42d86913",
+      "remote-body-readback.json": "6b3cc3d68dd40fc9e50f0dbd8f8ec174fd667aee802bf05d81b0cc01d8910f7b"
+    }
+  },
+  "mapping_coverage_verified": true,
+  "retry_probes": {
+    "publisher_pdfs": 5,
+    "nara_html": 1,
+    "all_succeeded": true,
+    "successful_old_downloads_not_repeated": true
+  },
+  "remaining_unresolved": 18830,
+  "prepared_links": 4744,
+  "published": false,
+  "continuation_dispatched": false,
+  "latest_six_recoveries_after_batch12": true,
+  "evidence": {
+    "publisher-transport-probe-recovered.json": "c73b6cb160e8211cf29b7f1de0339cff4f1304f85478730f81befe266bdc7925",
+    "nara-transport-probe/receipt.json": "a89f973c2662ec1e35343965d76df0d06ee86037b508f10b070f330f1a07bafd",
+    "remaining-recovery-summary.json": "6580f5332dda85f219b36ab6f4b6aa15547884638c1a2a8695e93b37b1dcf4bd"
+  },
+  "next_steps": [
+    "Continue only unfinished requests in new runs after excluding all six probe successes",
+    "Keep stopped run evidence and frozen batches unchanged",
+    "Publish batch 12 after cloud capture clears; include latest six links in a successor batch"
+  ]
+}
