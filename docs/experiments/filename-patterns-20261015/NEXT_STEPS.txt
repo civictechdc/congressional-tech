@@ -747,3 +747,13 @@ it does not establish full-refresh memory requirements. See
 current_review_candidates_checkpoint_v1.json and REVIEW_CURRENT_REVIEW_CANDIDATES.txt.
 Next verify the existing grouping/cache/refresh paths on these current groups,
 diagnosing any changed full-row binding before reapplying a local candidate.
+
+Current grouping/cache/refresh replay is complete as a diagnostic. It exposed a
+legacy cache omission of filename_document_kind, now corrected without reselecting
+kinds. All six transformation paths agree on every semantic field across 286
+sources / 86 groups. Only restored filename claims differ from the raw baseline;
+all old review bindings correctly reject them. The 111 relevant tests pass.
+See current_review_paths_checkpoint_v1.json and REVIEW_CURRENT_REVIEW_PATHS.txt.
+Next explicitly record normalization, revalidate receipts and create fresh group
+bindings before repeating all seven scenarios. Do not weaken the digest to ignore
+the restored evidence field. Full-catalog and production adoption remain open.

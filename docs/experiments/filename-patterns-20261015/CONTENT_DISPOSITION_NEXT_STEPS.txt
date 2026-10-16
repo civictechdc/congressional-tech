@@ -208,3 +208,26 @@ Next run the current extracted groups through existing grouping, cache and refre
 paths. Compare all fields, diagnose changes from local filename version 3.2.7,
 and explicitly reconsider changed bindings before selecting candidates again.
 Then assess the remaining full-catalog and production-adoption requirements.
+
+Current path comparison and cache correction completed
+------------------------------------------------------
+The first current replay found that recomputation restored filename_document_kind
+while metadata cache reuse retained null. The production cache writer now retains
+the same restored source claims and their group union without reselecting kinds.
+The regression failed before the fix; 111 relevant tests now pass. The v2 actual
+replay has identical source/document semantics across all six transformation paths.
+Only filename_document_kind changes from the saved baseline: 246 sources and all
+86 groups. No bodies, memberships, source text or selected kinds change.
+
+All 86 pre-normalization bindings correctly reject these changed rows. The replay
+summary therefore retains false unchanged-baseline/candidate gates; execution
+success is not binding qualification. See current_review_paths_checkpoint_v1.json,
+REVIEW_CACHED_FILENAME_CLAIMS.txt and REVIEW_CURRENT_REVIEW_PATHS.txt. Both diagnostic
+runs remain saved. The original complete CSV was reread in full after compaction.
+
+Next record the verified normalization as a separate evidence transition. Revalidate
+the complete receipt chain, bind reviews explicitly to the normalized baseline,
+and repeat all seven scenarios. Preserve the raw baseline, old bindings, five
+whole-packet annotations and six historical unavailable cases. Then address
+context-family provenance, independent references and full-catalog qualification
+before production adoption. The frozen pilot and held-out restriction remain intact.

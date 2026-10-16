@@ -47,6 +47,36 @@ def read_pair(directory):
             pq.read_table(directory / 'documents.parquet').to_pylist())
 
 
+def exercise_paths(source_file, document_file, baseline_sources, output, verify, *, reader=read_pair):
+    """Run the same six maintained grouping/refresh paths for any bound cohort."""
+    ref_sources, _, ref_docs, _ = index.prepare_document_indexes(deepcopy(baseline_sources), source_file.schema_arrow)
+    verify('reference_grouper', ref_sources, ref_docs)
+    reverse_sources, _, reverse_docs, _ = index.prepare_document_indexes(
+        deepcopy(list(reversed(baseline_sources))), source_file.schema_arrow)
+    verify('reference_reversed_alias_order', reverse_sources, reverse_docs)
+    disk = output / 'disk'; disk.mkdir()
+    stats = index.write_document_indexes(disk / 'document-filenames.parquet', deepcopy(baseline_sources), source_file.schema_arrow)
+    verify('disk_grouper', *reader(disk), stats)
+    reused = output / 'reused'; reused.mkdir()
+    stats = index.write_document_indexes(reused / 'document-filenames.parquet', deepcopy(baseline_sources), source_file.schema_arrow,
+        previous=pq.ParquetFile(disk / 'document-filenames.parquet'), previous_documents=pq.ParquetFile(disk / 'documents.parquet'))
+    if stats['reused_document_groups'] != document_file.metadata.num_rows:
+        raise ValueError('Cache scenario did not reuse every unchanged group')
+    verify('cached_disk_groups', *reader(reused), stats)
+    for reuse in [True, False]:
+        refreshed = output / ('refresh_reuse' if reuse else 'refresh_reparse')
+        (refreshed / 'indexes').mkdir(parents=True)
+        inputs, metadata = index.filename_refresh_inputs(source_file)
+        working = WorkingCatalog(refreshed / 'working.sqlite')
+        try:
+            stats = index.write_filename_metadata(refreshed, inputs, workers=1, previous=source_file,
+                previous_documents=document_file, metadata=metadata, read_body=refused_body,
+                reuse_results=reuse, inspect_bodies=False, working=working, output_root=refreshed)
+        finally:
+            working.close()
+        verify('metadata_refresh_' + ('reuse' if reuse else 'reparse'), *reader(refreshed / 'indexes'), stats)
+
+
 def run(proposals, original_ledger, receipt, comparison_checkpoint, sources, documents, output):
     output = Path(output)
     if output.exists():
@@ -106,32 +136,7 @@ def run(proposals, original_ledger, receipt, comparison_checkpoint, sources, doc
                                withdrawal_restores_baseline=True, stats=stats)
 
     verify('saved_baseline', baseline_sources, baseline_documents)
-    ref_sources, _, ref_docs, _ = index.prepare_document_indexes(deepcopy(baseline_sources), source_file.schema_arrow)
-    verify('reference_grouper', ref_sources, ref_docs)
-    reverse_sources, _, reverse_docs, _ = index.prepare_document_indexes(
-        deepcopy(list(reversed(baseline_sources))), source_file.schema_arrow)
-    verify('reference_reversed_alias_order', reverse_sources, reverse_docs)
-    disk = output / 'disk'; disk.mkdir()
-    stats = index.write_document_indexes(disk / 'document-filenames.parquet', deepcopy(baseline_sources), source_file.schema_arrow)
-    verify('disk_grouper', *read_pair(disk), stats)
-    reused = output / 'reused'; reused.mkdir()
-    stats = index.write_document_indexes(reused / 'document-filenames.parquet', deepcopy(baseline_sources), source_file.schema_arrow,
-        previous=pq.ParquetFile(disk / 'document-filenames.parquet'), previous_documents=pq.ParquetFile(disk / 'documents.parquet'))
-    if stats['reused_document_groups'] != len(baseline_documents):
-        raise ValueError('Cache scenario did not reuse every unchanged group')
-    verify('cached_disk_groups', *read_pair(reused), stats)
-    for reuse in [True, False]:
-        refreshed = output / ('refresh_reuse' if reuse else 'refresh_reparse')
-        (refreshed / 'indexes').mkdir(parents=True)
-        inputs, metadata = index.filename_refresh_inputs(source_file)
-        working = WorkingCatalog(refreshed / 'working.sqlite')
-        try:
-            stats = index.write_filename_metadata(refreshed, inputs, workers=1, previous=source_file,
-                previous_documents=document_file, metadata=metadata, read_body=refused_body,
-                reuse_results=reuse, inspect_bodies=False, working=working, output_root=refreshed)
-        finally:
-            working.close()
-        verify('metadata_refresh_' + ('reuse' if reuse else 'reparse'), *read_pair(refreshed / 'indexes'), stats)
+    exercise_paths(source_file, document_file, baseline_sources, output, verify)
     if implementation_identity(implementation_manifest()) != implementation_identity(implementation):
         raise ValueError('Implementation changed during replay')
     for path, digest in bindings.items():
