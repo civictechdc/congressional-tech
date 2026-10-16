@@ -1,0 +1,42 @@
+{
+  "at": "2026-10-16T05:28:12.553014+00:00",
+  "cloud_job": {
+    "id": 38823678887,
+    "status": "completed",
+    "conclusion": "success"
+  },
+  "import_preflight": {
+    "preflight": true,
+    "inputs_verified": true,
+    "cloud_clear": true,
+    "writes": false
+  },
+  "import_dispatch": {
+    "pid": 64011,
+    "exec_session": 75621,
+    "batch": "checkpoint-12",
+    "destination": "output/corpus-retry-20261015/import-checkpoint12",
+    "recovery_lock_held": true,
+    "completion_not_yet_verified": true
+  },
+  "acquisition_continuations": {
+    "publisher_pid": 63910,
+    "publisher_exec_session": 57405,
+    "publisher_urls": 8619,
+    "nara_pid": 63942,
+    "nara_exec_session": 24387,
+    "nara_groups": 1339,
+    "nara_urls": 1340,
+    "old_runs_preserved": true,
+    "previous_successes_excluded": true
+  },
+  "process_evidence": "63910 94792 01:14 Ss   .venv/bin/python -u output/corpus-retry-20261015/publisher_continuation_02.py\n63942 94792 01:07 Ss   .venv/bin/python -u output/corpus-retry-20261015/recover_nara_html_continuation_02.py\n64011 94792 00:30 Ss   .venv/bin/python -u scripts/dispatch_corpus_recovery_import.py --batch output/corpus-retry-20261015/publication-batches/checkpoint-12 --destination output/corpus-retry-20261015/import-checkpoint12 --execute",
+  "published": false,
+  "batch_manifest_sha256": "e4b1c8f614af1a195159bfe24b5f3718a260582e2dda3afaedb631e2ec5e4a5f",
+  "next_steps": [
+    "Monitor sole import process and guarded writes; no duplicate import",
+    "Require actual import exit zero and full index readback before catalog rebuild",
+    "Run guarded catalog and viewer publication with completed import evidence",
+    "Continue acquisition independently and preserve later successes for a successor batch"
+  ]
+}
