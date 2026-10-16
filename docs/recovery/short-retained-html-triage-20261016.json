@@ -1,0 +1,13 @@
+{
+  "at": "2026-10-16T04:28:10.154709+00:00",
+  "counts": {
+    "no_body_field": 154,
+    "historical_no_prepared_statement": 613,
+    "attachment_links": 29,
+    "short_text_needs_review": 11
+  },
+  "attachment_targets": 29,
+  "evidence": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/short-retained-html-triage.json",
+  "sha256": "120667857f0693c53b4d083fa1327c475fb53cbdcc94f27a890644cc4882130c",
+  "limitation": "No prepared statement describes the retained historical page only; it does not prove no later submission exists. These URLs remain accounted for and no existing mappings were removed."
+}

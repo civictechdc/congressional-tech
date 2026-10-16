@@ -1,0 +1,71 @@
+{
+  "at": "2026-10-16T04:28:10.154709+00:00",
+  "actual_wait_exit": 0,
+  "physical_process_absent": true,
+  "requests": 10,
+  "blocked": null,
+  "checks": [
+    {
+      "route_class": "hearing_transcript",
+      "mode": "identity",
+      "index_digest_matches": true,
+      "sha256": "9fafc008ea14306054c4bb6963883f41245cf601c68eb9a34de48d440e408932"
+    },
+    {
+      "route_class": "hearing_transcript",
+      "mode": "replay",
+      "index_digest_matches": false,
+      "sha256": "c5fbe9488edb1750bae233711f3e6843d8b37e906314467b8ac164c624b06da7"
+    },
+    {
+      "route_class": "witness_testimony",
+      "mode": "identity",
+      "index_digest_matches": true,
+      "sha256": "264998cadd552cb1d77145c934acf892f9c8ecb0c863de769052f32770fcee44"
+    },
+    {
+      "route_class": "witness_testimony",
+      "mode": "replay",
+      "index_digest_matches": false,
+      "sha256": "e31bc7239e1b349a4487f9eb7715cdaa578c086abc3667f73bccf435fac47241"
+    },
+    {
+      "route_class": "opening_statement",
+      "mode": "identity",
+      "index_digest_matches": true,
+      "sha256": "a20bff49afd161ef154cfec0b6732e3afad79168665518c575302d025fefd84b"
+    },
+    {
+      "route_class": "opening_statement",
+      "mode": "replay",
+      "index_digest_matches": false,
+      "sha256": "7c7cdc3311f80a3b14a17f5d68d54d3e562dd57a16dae3d5978f6000889c3cf8"
+    },
+    {
+      "route_class": "record_submission",
+      "mode": "identity",
+      "index_digest_matches": true,
+      "sha256": "42f7b48b46f600f002087e93bc58c6a594ba5ab37573153b63001768bdb9bed1"
+    },
+    {
+      "route_class": "record_submission",
+      "mode": "replay",
+      "index_digest_matches": false,
+      "sha256": "ce73c6199f5a697bd8247566f9bdee2267c615e9b32ff3f013942f7c0a5858af"
+    },
+    {
+      "route_class": "other_html",
+      "mode": "identity",
+      "index_digest_matches": true,
+      "sha256": "60fe5e0d5a61d056deac2f99cb5e8f3648033e9427be3560c8b3323c12200688"
+    },
+    {
+      "route_class": "other_html",
+      "mode": "replay",
+      "index_digest_matches": false,
+      "sha256": "1ce439a61b7d56df05e66e191986fd3bcef1d7f82a6d21e9bf2236669b3eef33"
+    }
+  ],
+  "conclusion": "Identity replay matched all five archive digests; rewritten replay matched none. Use identity replay for subsequent HTML requests. Page content still requires qualification.",
+  "qualified_urls": 0
+}
