@@ -118,9 +118,13 @@ location; REVIEW_CATALOG_REPLAY.txt records tests and review. First inspect that
 run's terminal result and every identity/role/evidence or prior-kind change.
 Do not substitute historical results for qualification of the new publication.
 
-While these runs progress, prepare a proposed taxonomy mapping using development
-records only. Once the live rebuild completes, prioritize verification, the
-fresh 400-ID ledger and the 3.1.0-to-3.2.0 full-pair comparison. Then collect and
+The development-only taxonomy proposal is now recorded in taxonomy_mapping.json
+and TAXONOMY_NEXT_STEPS.txt: 107 records reuse existing kinds, three have proposed
+record-specific mappings, and 30 need a taxonomy decision. All 140 labels and
+the frozen candidate remain unchanged; taxonomy_validation.json records checks.
+The proposed next experiment targets explicit notices and committee memos after
+the current frozen evaluation, with a separate candidate and evaluation set.
+Once the live rebuild completes, prioritize verification, the fresh 400-ID ledger and the 3.1.0-to-3.2.0 full-pair comparison. Then collect and
 seal held-out references before invoking the frozen evaluator. Independent
 review and a bounded retained-body refresh remain required for release. Avoid
 rule tuning or retries against the 100 unavailable exact bodies without a new
