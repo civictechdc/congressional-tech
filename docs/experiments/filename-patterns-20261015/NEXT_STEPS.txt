@@ -378,3 +378,17 @@ The replacement-letter body review remains separately bound; the linker does
 not yet represent assistant content reviews. Keep that distinction explicit.
 Next: inspect the 38 disclosure/biography groups using current eligible body
 keys and frozen-pilot exclusions, then address the 11 amendment/vote alias groups.
+
+Disclosure/biography retained review, part 1
+------------------------------------------
+All 38 selected saved PDFs now have verified local bytes under
+output/filename-patterns-20261015/public-retained-review-v3. Completed 29 full
+visual reviews (34 pages): 23 disclosure-only, five disclosure plus biography,
+and one biography-only. See REVIEW_DISCLOSURE_BIOGRAPHY_CONTENT.txt and
+disclosure_biography_content_review_v1.json for body-specific findings.
+
+Nine packets remain, totaling 245 pages. Continue from the saved files; no new
+network fetch is needed. This mixed evidence rejects a blanket filename
+precedence rule. Preserve filename claims and bind any future content resolution
+to the complete exact body. No production classification change occurred, and
+the metadata review queue remains 91 until evidence is explicitly joined.

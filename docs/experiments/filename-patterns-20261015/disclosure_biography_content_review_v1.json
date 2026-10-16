@@ -1,0 +1,751 @@
+{
+  "scope": "Complete visual reviews of 29 one- and two-page PDFs in the 38-group disclosure/biography queue; nine longer packets remain pending",
+  "input_ledger": "output/filename-patterns-20261015/review-evidence-v4/ledger.jsonl",
+  "input_ledger_sha256": "218c5ecc8a8eeb05b047414f4ffb7d5a9938d4a1f8d0d1e419b9c998932971e5",
+  "selection_bindings": {
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/docs/experiments/filename-patterns-20261015/content_readiness_checkpoint.json": "b40dbe84dcb68e5aaf014084e8c55e7260c257074cd2d3b8314360ae0a504857",
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/fetch.py": "30806a8053607e9871ad59dc59bc1c77a077181aeaa23f897eb119b90348418f",
+    "output/filename-patterns-20261015/review-evidence-v3/ledger.jsonl": "d92184926b42812dff3c36f9442c032a0841ff8ecd3e679b40f6c477595d1438",
+    "output/filename-patterns-20261015/remaining-content-readiness-v1/readiness.json": "113859c8c35a6fc502603261c39622ac7f1f77377529755d2950b1a38e8dc4f0",
+    "docs/experiments/filename-patterns-20261015/catalog_alias_review.py": "dd46f8122ee43b0eaf8a88af7b0f16e94f147dd1e0d862dcaec836554b27e69d",
+    "packages/congress_api/src/congress_api/retention/document_index.py": "ec575da15c10615bd983baf3566e7bf5c1e63c5311715b0ab9e5b22917cc2667",
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/output/filename-patterns-20261015/continuation-v1/pilot.json": "55b3256dc0bfee57d90235b7d8d9b216060bc145d82926709a5b01beed619237",
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/docs/experiments/filename-patterns-20261015/review_evidence_checkpoint_v4.json": "869462f1085c1217c3ff4146fda6626ee504fda8d9deb84aa548cf6cc0c8144b",
+    "output/filename-patterns-20261015/review-evidence-v4/summary.json": "fad13d1d0101aebde561911cb9c6ecfff4c68b2dc8b0be65bd315d2a24fb8517",
+    "output/filename-patterns-20261015/review-evidence-v4/ledger.jsonl": "218c5ecc8a8eeb05b047414f4ffb7d5a9938d4a1f8d0d1e419b9c998932971e5"
+  },
+  "fetch_results_path": "output/filename-patterns-20261015/public-retained-review-v3/results.json",
+  "fetch_results_sha256": "f2f822adac4c388a8bdb413cf94653df89b7f8292c5ea797a65b3771fa402304",
+  "input_check_sha256": "b5b76595624ad55e0390ec3957772c78843b81a920b0a3562cdec8546e378cd1",
+  "records": [
+    {
+      "document_id": "01d4eb831138f29162bfba3e176376256ae21158b6bf3b4af592077e4a16846f",
+      "filename": "beandisclosure.pdf",
+      "body_key": "bodies/sha256/4b/4b01bb86e311cc619b636a4b5d7e12354527ef5263712d742e51885bce87bd16.gz",
+      "sha256": "4b01bb86e311cc619b636a4b5d7e12354527ef5263712d742e51885bce87bd16",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/4b01bb86e311cc619b636a4b5d7e12354527ef5263712d742e51885bce87bd16.pdf",
+      "pages": 1,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/4b01bb86e311cc619b636a4b5d7e12354527ef5263712d742e51885bce87bd16.txt",
+      "text_sha256": "8693c39c6193d74558735d077ee26e9b7ff06dc2e59aa28621a3c7cb48381a09",
+      "selection_index": 2,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "testimony-disclosure"
+      ],
+      "notes": "One disclosure form; no biography or curriculum vitae is present in this exact retained PDF. Short identification and representational-capacity answers do not constitute a separate biography.",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v3/page-02-1.png": "186ab6162375374955136b18d520b47c3f4974712aee6f47d19ae00e7f48f568"
+      },
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "0ac2f8d6923ab5e2e95e15d6e42dfea4cdc90bf1ced683b1a72d32f44f75daaf",
+      "filename": "HMTG-114-SM00-Bio-SilvermanS-20160427.pdf",
+      "body_key": "bodies/sha256/f5/f584903c5e9fb8d3b12be09a26468bf6ee83261a313efc5f6c73687f66d778c8.gz",
+      "sha256": "f584903c5e9fb8d3b12be09a26468bf6ee83261a313efc5f6c73687f66d778c8",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/f584903c5e9fb8d3b12be09a26468bf6ee83261a313efc5f6c73687f66d778c8.pdf",
+      "pages": 1,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/f584903c5e9fb8d3b12be09a26468bf6ee83261a313efc5f6c73687f66d778c8.txt",
+      "text_sha256": "ad3708d5a9abe531bba720ce4c75de6cf73d36650a179934ae87eaa74ecc6057",
+      "selection_index": 3,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "testimony-disclosure"
+      ],
+      "notes": "One disclosure form; no biography or curriculum vitae is present in this exact retained PDF. Short identification and representational-capacity answers do not constitute a separate biography.",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v3/page-03-1.png": "fbe48a2c93ae209beacfaf5b1d2e1a98d4a1ee8caed7e87eb88830c0ecf511b0"
+      },
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "2abf44f67fdba6638419bf5ac0ccdee0b3d0c9e6dde5d04315eb000290ca3354",
+      "filename": "HHRG-114-WM03-Bio-BrownB-20150715.pdf",
+      "body_key": "bodies/sha256/ca/cad97af9e5750da80d2a67c0ce28ee17cc256df27896c1821699a74a4f5b836d.gz",
+      "sha256": "cad97af9e5750da80d2a67c0ce28ee17cc256df27896c1821699a74a4f5b836d",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/cad97af9e5750da80d2a67c0ce28ee17cc256df27896c1821699a74a4f5b836d.pdf",
+      "pages": 1,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/cad97af9e5750da80d2a67c0ce28ee17cc256df27896c1821699a74a4f5b836d.txt",
+      "text_sha256": "ad3708d5a9abe531bba720ce4c75de6cf73d36650a179934ae87eaa74ecc6057",
+      "selection_index": 5,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "testimony-disclosure"
+      ],
+      "notes": "One disclosure form; no biography or curriculum vitae is present in this exact retained PDF. Short identification and representational-capacity answers do not constitute a separate biography.",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v3/page-05-1.png": "a749ad076d9fcb0dcddfeb9a771e7f2e1110a413f800ea55d57efbfdf6dca4f2"
+      },
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "3987d079ab4024c09865e985488cfe10188a000dd49fec85a36772753a2a0e28",
+      "filename": "disclosure--__kitcheyan_resume_2.pdf",
+      "body_key": "bodies/sha256/bc/bc2e94ea7bcbdea66f94189d4097bc3bb6dd98450f42708baff4c9cc0e4ed7c4.gz",
+      "sha256": "bc2e94ea7bcbdea66f94189d4097bc3bb6dd98450f42708baff4c9cc0e4ed7c4",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/bc2e94ea7bcbdea66f94189d4097bc3bb6dd98450f42708baff4c9cc0e4ed7c4.pdf",
+      "pages": 2,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/bc2e94ea7bcbdea66f94189d4097bc3bb6dd98450f42708baff4c9cc0e4ed7c4.txt",
+      "text_sha256": "ba59a53440d7ca76832ea037f2e7f5583889a5e0cef5359c0bf33071341a3937",
+      "selection_index": 7,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "biography"
+      ],
+      "notes": "Two-page resume with education, employment, board positions and training; no disclosure form is present. Disclosure in the filename does not describe a form contained in this exact PDF.",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v3/page-07-1.png": "ea1657593c37acb903f281f302de2b9eff1d22bff4d9e79f8a13d6024bdd4b75",
+        "output/filename-patterns-20261015/public-retained-review-v3/page-07-2.png": "ef5a6ee73717ec33d968d5eaf387ab83b69eba673f3ac68e0ec53822707a832c"
+      },
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "3e1d4c0cdb9d02a6bc56456a7974fea6fbb1a6bd60c5bb686635569269eaefeb",
+      "filename": "Pages_from_Humann_Disclosure030513OS.pdf",
+      "body_key": "bodies/sha256/c5/c5f14b0fb530828045179bf129fa7453b732eaac5bb0b0a7de1db8bf659aaa42.gz",
+      "sha256": "c5f14b0fb530828045179bf129fa7453b732eaac5bb0b0a7de1db8bf659aaa42",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/c5f14b0fb530828045179bf129fa7453b732eaac5bb0b0a7de1db8bf659aaa42.pdf",
+      "pages": 1,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/c5f14b0fb530828045179bf129fa7453b732eaac5bb0b0a7de1db8bf659aaa42.txt",
+      "text_sha256": "ad3708d5a9abe531bba720ce4c75de6cf73d36650a179934ae87eaa74ecc6057",
+      "selection_index": 9,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "testimony-disclosure"
+      ],
+      "notes": "One disclosure form; no biography or curriculum vitae is present in this exact retained PDF. Short identification and representational-capacity answers do not constitute a separate biography.",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v3/page-09-1.png": "8c94ce13526d0a0401ff37e654c94fd712f050fb0811e0e1201b6f4d38fd7b97"
+      },
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "4f59facce2567a8571fb84c6ee5f383e29d80d22b9105309bfe126b4f995d027",
+      "filename": "HHRG-114-WM01-Bio-PhillipsW-20150225.pdf",
+      "body_key": "bodies/sha256/e9/e9884b03975312877a4039f836bec7c5db47be7579ec3467b8a74816d6518ee9.gz",
+      "sha256": "e9884b03975312877a4039f836bec7c5db47be7579ec3467b8a74816d6518ee9",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/e9884b03975312877a4039f836bec7c5db47be7579ec3467b8a74816d6518ee9.pdf",
+      "pages": 1,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/e9884b03975312877a4039f836bec7c5db47be7579ec3467b8a74816d6518ee9.txt",
+      "text_sha256": "ad3708d5a9abe531bba720ce4c75de6cf73d36650a179934ae87eaa74ecc6057",
+      "selection_index": 11,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "testimony-disclosure"
+      ],
+      "notes": "One disclosure form; no biography or curriculum vitae is present in this exact retained PDF. Short identification and representational-capacity answers do not constitute a separate biography.",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v3/page-11-1.png": "bea2c6dd4770410161910cbe829d63955d406d9c58f0e25ede4818f7975667bd"
+      },
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "6cdad3e8a334de9e699a8794b21408a828c22909797674a6b95f6181292706da",
+      "filename": "Pages_from_041415_HL_Corlette_Disclosure.pdf",
+      "body_key": "bodies/sha256/b0/b0459660f254219631df8af66911cd4e364754d63b531a7de89cc049a6968b10.gz",
+      "sha256": "b0459660f254219631df8af66911cd4e364754d63b531a7de89cc049a6968b10",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/b0459660f254219631df8af66911cd4e364754d63b531a7de89cc049a6968b10.pdf",
+      "pages": 1,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/b0459660f254219631df8af66911cd4e364754d63b531a7de89cc049a6968b10.txt",
+      "text_sha256": "ad3708d5a9abe531bba720ce4c75de6cf73d36650a179934ae87eaa74ecc6057",
+      "selection_index": 14,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "testimony-disclosure"
+      ],
+      "notes": "One disclosure form; no biography or curriculum vitae is present in this exact retained PDF. Short identification and representational-capacity answers do not constitute a separate biography.",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v3/page-14-1.png": "f10d031324ec3380981d3cc9dc2d0e98f376bf106ca399b677263068f0f2b1c3"
+      },
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "7710785f53b20e09abad5a6b42d39533c447badc73bf81fb4be351eeae4cd180",
+      "filename": "disclosure_and_resume_eberhart.pdf",
+      "body_key": "bodies/sha256/88/880c2ee393531541e46d9e45087f698dceef65cb95a32dd1285073f577cc0da3.gz",
+      "sha256": "880c2ee393531541e46d9e45087f698dceef65cb95a32dd1285073f577cc0da3",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/880c2ee393531541e46d9e45087f698dceef65cb95a32dd1285073f577cc0da3.pdf",
+      "pages": 2,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/880c2ee393531541e46d9e45087f698dceef65cb95a32dd1285073f577cc0da3.txt",
+      "text_sha256": "142dc8e98ced937d30ef6d9800a26a7d681d6306330ac1d766eb9fcff9ec4adb",
+      "selection_index": 15,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "testimony-disclosure",
+        "biography"
+      ],
+      "notes": "Disclosure form with a substantive biographical narrative embedded in the CV/resume response, continuing into disclosure answers on page 2.",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v3/page-15-1.png": "11e71af3a626ba47adc219fa1481b32ce11d6ce470083ffe5754e804240f8821",
+        "output/filename-patterns-20261015/public-retained-review-v3/page-15-2.png": "1a1ceb3adb5364e9c6cc8fdf32ce1e785265c2cd5954725a1648ecd221e0b3ee"
+      },
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "7b002a2a734901d18fd8308f293919c410c786b95327b40b3796d34ec7d898f3",
+      "filename": "HHRG-113-WM02-Bio-JostT-20130710.pdf",
+      "body_key": "bodies/sha256/c1/c12a87793263b066ec7abd6b2a46bb21466312525aa8416be73cf50afa58161d.gz",
+      "sha256": "c12a87793263b066ec7abd6b2a46bb21466312525aa8416be73cf50afa58161d",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/c12a87793263b066ec7abd6b2a46bb21466312525aa8416be73cf50afa58161d.pdf",
+      "pages": 1,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/c12a87793263b066ec7abd6b2a46bb21466312525aa8416be73cf50afa58161d.txt",
+      "text_sha256": "ad3708d5a9abe531bba720ce4c75de6cf73d36650a179934ae87eaa74ecc6057",
+      "selection_index": 16,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "testimony-disclosure"
+      ],
+      "notes": "One disclosure form; no biography or curriculum vitae is present in this exact retained PDF. Short identification and representational-capacity answers do not constitute a separate biography.",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v3/page-16-1.png": "6f78f7598d07b21bd7ce7110d0847b19115b9616c0e94fa6dec49e29aafa154a"
+      },
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "7baddc1e74d9a398dec59424481c70c3d8c5f376517fb5a37d2ac539603f52b7",
+      "filename": "Matthew-Schreiner-Truth-in-Testimony-041416TR.pdf",
+      "body_key": "bodies/sha256/3c/3cba6ae77d31db7f4321cd0d7e847a683a32980e83c551663e488e5d5b13e911.gz",
+      "sha256": "3cba6ae77d31db7f4321cd0d7e847a683a32980e83c551663e488e5d5b13e911",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/3cba6ae77d31db7f4321cd0d7e847a683a32980e83c551663e488e5d5b13e911.pdf",
+      "pages": 1,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/3cba6ae77d31db7f4321cd0d7e847a683a32980e83c551663e488e5d5b13e911.txt",
+      "text_sha256": "ad3708d5a9abe531bba720ce4c75de6cf73d36650a179934ae87eaa74ecc6057",
+      "selection_index": 17,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "testimony-disclosure"
+      ],
+      "notes": "One disclosure form; no biography or curriculum vitae is present in this exact retained PDF. Short identification and representational-capacity answers do not constitute a separate biography.",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v3/page-17-1.png": "c19cfec186e84e35d7a7d623cf58c3293e1b18ce25c349fb27c193e4d28a488c"
+      },
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "7d333ad05147cbee93a22ffad43aa2ae28e2ecb85d390e9d06bc45eb92704967",
+      "filename": "lunnydisclosurefinal.pdf",
+      "body_key": "bodies/sha256/c6/c631c84728acb5b381e9b9558ecd092fac51d69ddb73371b5468fccda43e950a.gz",
+      "sha256": "c631c84728acb5b381e9b9558ecd092fac51d69ddb73371b5468fccda43e950a",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/c631c84728acb5b381e9b9558ecd092fac51d69ddb73371b5468fccda43e950a.pdf",
+      "pages": 2,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/c631c84728acb5b381e9b9558ecd092fac51d69ddb73371b5468fccda43e950a.txt",
+      "text_sha256": "692fdde79556051f4e6362db15ec711a76a750a2177179c8e4d357bc00cd155b",
+      "selection_index": 18,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "testimony-disclosure",
+        "biography"
+      ],
+      "notes": "Disclosure form on page 1 followed by a complete biographical narrative on page 2.",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v3/page-18-1.png": "3e537711e6d48a6e0ad619dd0a55cd5ed0a9f83b788644c4d10b83a61f3faa7c",
+        "output/filename-patterns-20261015/public-retained-review-v3/page-18-2.png": "0de86a39855f731587687f70bd28cd70aa4b95dfb061ae03484db82ed53d6bf3"
+      },
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "8616e9f9f2296680b923f520a7af3fb3e6b081485029bc26b6235ceb48c2b7fe",
+      "filename": "HHRG-114-SM27-Bio-RussellR-20160413.pdf",
+      "body_key": "bodies/sha256/bd/bdb0a6f8e7e1151a5da3ca20fcba3e36a265a5a19ee762aa664fb59dca69a63b.gz",
+      "sha256": "bdb0a6f8e7e1151a5da3ca20fcba3e36a265a5a19ee762aa664fb59dca69a63b",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/bdb0a6f8e7e1151a5da3ca20fcba3e36a265a5a19ee762aa664fb59dca69a63b.pdf",
+      "pages": 1,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/bdb0a6f8e7e1151a5da3ca20fcba3e36a265a5a19ee762aa664fb59dca69a63b.txt",
+      "text_sha256": "ad3708d5a9abe531bba720ce4c75de6cf73d36650a179934ae87eaa74ecc6057",
+      "selection_index": 19,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "testimony-disclosure"
+      ],
+      "notes": "One disclosure form; no biography or curriculum vitae is present in this exact retained PDF. Short identification and representational-capacity answers do not constitute a separate biography.",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v3/page-19-1.png": "69361ac78f9dc26d44349ce43e576f0adeca0e89f2d3629ed3c1368cca1d5f1e"
+      },
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "88f7d5016f18d5f2a6392f5f6d9540698f0773897cf3658add306f8206c1bbc0",
+      "filename": "HHRG-115-II06-Bio-ColemanA-20180315.pdf",
+      "body_key": "bodies/sha256/f6/f69a9873eba77f2f9355c7d9b3375146adffcb4c23f102c6e2a389b6e94d841e.gz",
+      "sha256": "f69a9873eba77f2f9355c7d9b3375146adffcb4c23f102c6e2a389b6e94d841e",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/f69a9873eba77f2f9355c7d9b3375146adffcb4c23f102c6e2a389b6e94d841e.pdf",
+      "pages": 1,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/f69a9873eba77f2f9355c7d9b3375146adffcb4c23f102c6e2a389b6e94d841e.txt",
+      "text_sha256": "3444993825d35094f0b5e00150994f338060c470b5a3531bcfc5376884a7bdc2",
+      "selection_index": 20,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "testimony-disclosure"
+      ],
+      "notes": "One disclosure form; no biography or curriculum vitae is present in this exact retained PDF. Short identification and representational-capacity answers do not constitute a separate biography.",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v3/page-20-1.png": "ae59d94e1354f71e7207f2c0398d05f7c645b72e424d251f4b2c1ddc2c3cf82b"
+      },
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "95b10ccc7fef430454d168067b7344f4c5c652a29757db2b434928811c865b1a",
+      "filename": "disclosure_and_bio_sweeney.pdf",
+      "body_key": "bodies/sha256/28/28c7363912420c697f8a4bf0435c0655a33ef6d44b62e69e4ff9932244f469f9.gz",
+      "sha256": "28c7363912420c697f8a4bf0435c0655a33ef6d44b62e69e4ff9932244f469f9",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/28c7363912420c697f8a4bf0435c0655a33ef6d44b62e69e4ff9932244f469f9.pdf",
+      "pages": 1,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/28c7363912420c697f8a4bf0435c0655a33ef6d44b62e69e4ff9932244f469f9.txt",
+      "text_sha256": "e53630a4ea001868b005775c25080a99da977147cb5b1293e5a82d14ab9ba214",
+      "selection_index": 21,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "testimony-disclosure",
+        "biography"
+      ],
+      "notes": "Disclosure form includes a substantive biographical paragraph and education history in its CV/resume response.",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v3/page-21-1.png": "9d8c434aa4688ab2b6f4cd06087715326dfaee9e7e7312264f770aec25a32293"
+      },
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "9b8dd63213da02696d61cfeae395db2c88e5de89dba79fc811d0782c60b08b1b",
+      "filename": "HHRG-113-WM02-Bio-GottliebS-20131204.pdf",
+      "body_key": "bodies/sha256/32/326581d9f35e369c0f67edd036add02a9dfe734f1984d5c69c5dff4cde398024.gz",
+      "sha256": "326581d9f35e369c0f67edd036add02a9dfe734f1984d5c69c5dff4cde398024",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/326581d9f35e369c0f67edd036add02a9dfe734f1984d5c69c5dff4cde398024.pdf",
+      "pages": 1,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/326581d9f35e369c0f67edd036add02a9dfe734f1984d5c69c5dff4cde398024.txt",
+      "text_sha256": "ad3708d5a9abe531bba720ce4c75de6cf73d36650a179934ae87eaa74ecc6057",
+      "selection_index": 23,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "testimony-disclosure"
+      ],
+      "notes": "One disclosure form; no biography or curriculum vitae is present in this exact retained PDF. Short identification and representational-capacity answers do not constitute a separate biography.",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v3/page-23-1.png": "1f2f1dddefc5e307df93c4116282635ddb0dc31f59bdc27b19103b44629170fe"
+      },
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "9de34df9d62f85af6d8e83d20f173326535670405703b876fcd3f9a7e13c5359",
+      "filename": "HHRG-114-WM06-Bio-MetzgerJ-20150723.pdf",
+      "body_key": "bodies/sha256/b0/b0d9e75c6db6cb84b8107e9a06b9d45a364c9efee30000e07ee6e977012b4902.gz",
+      "sha256": "b0d9e75c6db6cb84b8107e9a06b9d45a364c9efee30000e07ee6e977012b4902",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/b0d9e75c6db6cb84b8107e9a06b9d45a364c9efee30000e07ee6e977012b4902.pdf",
+      "pages": 1,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/b0d9e75c6db6cb84b8107e9a06b9d45a364c9efee30000e07ee6e977012b4902.txt",
+      "text_sha256": "5ea656736b878d517f1871a7b5d79db95f4f7ae0e12ee1112a4f28e2cd469f62",
+      "selection_index": 24,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "testimony-disclosure"
+      ],
+      "notes": "One disclosure form; no biography or curriculum vitae is present in this exact retained PDF. Short identification and representational-capacity answers do not constitute a separate biography.",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v3/page-24-1.png": "4f1d2a3e19b7a8acd7c35d58f55efd75ce5351089b02f6edeeb948a2896b08f5"
+      },
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "a10cfb42f1f680788f282a0cc2e81ae8a4dd0aee2da30fb15ed9a5918a4725d2",
+      "filename": "HHRG-114-WM05-Bio-SchultzC-20151201.pdf",
+      "body_key": "bodies/sha256/ff/ff5431e77accc6fdba6b86c1abf73b5487df81d5b1bd1463d0c8d9054c14f2a4.gz",
+      "sha256": "ff5431e77accc6fdba6b86c1abf73b5487df81d5b1bd1463d0c8d9054c14f2a4",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/ff5431e77accc6fdba6b86c1abf73b5487df81d5b1bd1463d0c8d9054c14f2a4.pdf",
+      "pages": 1,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/ff5431e77accc6fdba6b86c1abf73b5487df81d5b1bd1463d0c8d9054c14f2a4.txt",
+      "text_sha256": "ad3708d5a9abe531bba720ce4c75de6cf73d36650a179934ae87eaa74ecc6057",
+      "selection_index": 25,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "testimony-disclosure"
+      ],
+      "notes": "One disclosure form; no biography or curriculum vitae is present in this exact retained PDF. Short identification and representational-capacity answers do not constitute a separate biography.",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v3/page-25-1.png": "ca0dc9ddd962e0513bb160c16764aa7ce6b692e3a73d25021e1a4a52a8000931"
+      },
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "a148e1651d947672950484afb263b44cc83eea653ad0cbd9bc723beadacf8a59",
+      "filename": "HHRG-115-II06-Bio-MartinezS-20180606.pdf",
+      "body_key": "bodies/sha256/9e/9e416f4dbda98d48c9115be1b933c5dbc4551f2a2af0b805b140112e1af4c16d.gz",
+      "sha256": "9e416f4dbda98d48c9115be1b933c5dbc4551f2a2af0b805b140112e1af4c16d",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/9e416f4dbda98d48c9115be1b933c5dbc4551f2a2af0b805b140112e1af4c16d.pdf",
+      "pages": 1,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/9e416f4dbda98d48c9115be1b933c5dbc4551f2a2af0b805b140112e1af4c16d.txt",
+      "text_sha256": "598c89a963ac63c41befe8f1622d468aeead8e5aada9e032dcc2b7a780eb56ca",
+      "selection_index": 26,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "testimony-disclosure"
+      ],
+      "notes": "One disclosure form; no biography or curriculum vitae is present in this exact retained PDF. Short identification and representational-capacity answers do not constitute a separate biography.",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v3/page-26-1.png": "c2d20c9306cecf8a5fb7383b6fa3d4626ce5c73216b0654f5fb83d5b457fa378"
+      },
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "a3344317e40634df6b174dac6f1154b5316e0e44819ad2b6c9a33d8091a9c3e4",
+      "filename": "HHRG-114-WM03-Bio-WillauerT-20160518.pdf",
+      "body_key": "bodies/sha256/58/5832224f0b9667e0f12037589938cc6ff6b73d9fd63567db62ffda6a297f984f.gz",
+      "sha256": "5832224f0b9667e0f12037589938cc6ff6b73d9fd63567db62ffda6a297f984f",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/5832224f0b9667e0f12037589938cc6ff6b73d9fd63567db62ffda6a297f984f.pdf",
+      "pages": 1,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/5832224f0b9667e0f12037589938cc6ff6b73d9fd63567db62ffda6a297f984f.txt",
+      "text_sha256": "ad3708d5a9abe531bba720ce4c75de6cf73d36650a179934ae87eaa74ecc6057",
+      "selection_index": 27,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "testimony-disclosure"
+      ],
+      "notes": "One disclosure form; no biography or curriculum vitae is present in this exact retained PDF. Short identification and representational-capacity answers do not constitute a separate biography.",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v3/page-27-1.png": "1d10cc7697b0c3e9ef80cef21a460e5319a6d36938816ab2993ba0a84c3a42dc"
+      },
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "a6341e3156fe50bba9cb8a86f24c433f648c90eec680faa20fa491305765e411",
+      "filename": "HHRG-114-WM03-Bio-CarpenterW-20160907.pdf",
+      "body_key": "bodies/sha256/a3/a3535f7d10a7c17d2343e70ec06422573432e251a6a599864e00893e7b4075d7.gz",
+      "sha256": "a3535f7d10a7c17d2343e70ec06422573432e251a6a599864e00893e7b4075d7",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/a3535f7d10a7c17d2343e70ec06422573432e251a6a599864e00893e7b4075d7.pdf",
+      "pages": 1,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/a3535f7d10a7c17d2343e70ec06422573432e251a6a599864e00893e7b4075d7.txt",
+      "text_sha256": "ad3708d5a9abe531bba720ce4c75de6cf73d36650a179934ae87eaa74ecc6057",
+      "selection_index": 28,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "testimony-disclosure"
+      ],
+      "notes": "One disclosure form; no biography or curriculum vitae is present in this exact retained PDF. Short identification and representational-capacity answers do not constitute a separate biography.",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v3/page-28-1.png": "c79f74c7773df894687abae5bc9e62663f448fade40c2ac5a2b8e755b4265631"
+      },
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "abb2c11317927e190d30e1a508fdbb45928b0e82337769e1474e48a043c326a6",
+      "filename": "HHRG-115-II06-Bio-LyleI-20180418.pdf",
+      "body_key": "bodies/sha256/3d/3dabfd16faf3a62cb030fd5ace69a2dda0d92b1d3716f231a59c8db5c6a1c275.gz",
+      "sha256": "3dabfd16faf3a62cb030fd5ace69a2dda0d92b1d3716f231a59c8db5c6a1c275",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/3dabfd16faf3a62cb030fd5ace69a2dda0d92b1d3716f231a59c8db5c6a1c275.pdf",
+      "pages": 1,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/3dabfd16faf3a62cb030fd5ace69a2dda0d92b1d3716f231a59c8db5c6a1c275.txt",
+      "text_sha256": "22a972d3f92089d28e565261e40d70dd1a0b0799bc81040e97f2de43c339792c",
+      "selection_index": 29,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "testimony-disclosure"
+      ],
+      "notes": "One disclosure form; no biography or curriculum vitae is present in this exact retained PDF. Short identification and representational-capacity answers do not constitute a separate biography. The form says Attached, but this one-page PDF contains no attachment.",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v3/page-29-1.png": "598dcbea53fbe0087b1711b3b0b34a197f729e66846768a4be60fdb362adb936"
+      },
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "ac542c123b84854e497fd22350c198f2292999d898a07f8f30e17272e2bf53e4",
+      "filename": "HHRG-114-WM02-Bio-MoffitR-20160316.pdf",
+      "body_key": "bodies/sha256/83/83fc92924b845caf5ae0e131673a3f3c73960973ef4fb94352db52ba2f552d9a.gz",
+      "sha256": "83fc92924b845caf5ae0e131673a3f3c73960973ef4fb94352db52ba2f552d9a",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/83fc92924b845caf5ae0e131673a3f3c73960973ef4fb94352db52ba2f552d9a.pdf",
+      "pages": 1,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/83fc92924b845caf5ae0e131673a3f3c73960973ef4fb94352db52ba2f552d9a.txt",
+      "text_sha256": "ad3708d5a9abe531bba720ce4c75de6cf73d36650a179934ae87eaa74ecc6057",
+      "selection_index": 30,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "testimony-disclosure"
+      ],
+      "notes": "One disclosure form; no biography or curriculum vitae is present in this exact retained PDF. Short identification and representational-capacity answers do not constitute a separate biography.",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v3/page-30-1.png": "2bb4e225ed81ab975ff6aac2a4d6c56d035f3f2924b8fa5981c2a6cbd2898562"
+      },
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "b6a74e618c0531aeb502abc91978f107257a8ce25cc42c761f976811e6f3245d",
+      "filename": "koenig_bio_witness_disclosure_form.pdf",
+      "body_key": "bodies/sha256/3a/3a3c319fb570cbcac8840670f65e0aa0853c6f0522d82d810ba86ccb754c0a72.gz",
+      "sha256": "3a3c319fb570cbcac8840670f65e0aa0853c6f0522d82d810ba86ccb754c0a72",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/3a3c319fb570cbcac8840670f65e0aa0853c6f0522d82d810ba86ccb754c0a72.pdf",
+      "pages": 1,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/3a3c319fb570cbcac8840670f65e0aa0853c6f0522d82d810ba86ccb754c0a72.txt",
+      "text_sha256": "ad3708d5a9abe531bba720ce4c75de6cf73d36650a179934ae87eaa74ecc6057",
+      "selection_index": 31,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "testimony-disclosure"
+      ],
+      "notes": "One disclosure form; no biography or curriculum vitae is present in this exact retained PDF. Short identification and representational-capacity answers do not constitute a separate biography. BIO is printed as the abbreviation for Biotechnology Industry Organization, the represented entity.",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v3/page-31-1.png": "ef66b7907e4a7cccc49f6c7e4340e96f44b8abd973481f46d32fe4e274665c5c"
+      },
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "c0a6ccb99823c92d97a98d4e7e7342cbc9b8fb78cafc36ff5d728b257c4c6d38",
+      "filename": "Pages_from_Van_de_Water_Disclosure_030513OS.pdf",
+      "body_key": "bodies/sha256/42/4253d845815376aacf68b12730d215d25014dc605b6a1242fab6fb0786b19027.gz",
+      "sha256": "4253d845815376aacf68b12730d215d25014dc605b6a1242fab6fb0786b19027",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/4253d845815376aacf68b12730d215d25014dc605b6a1242fab6fb0786b19027.pdf",
+      "pages": 1,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/4253d845815376aacf68b12730d215d25014dc605b6a1242fab6fb0786b19027.txt",
+      "text_sha256": "ad3708d5a9abe531bba720ce4c75de6cf73d36650a179934ae87eaa74ecc6057",
+      "selection_index": 32,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "testimony-disclosure"
+      ],
+      "notes": "One disclosure form; no biography or curriculum vitae is present in this exact retained PDF. Short identification and representational-capacity answers do not constitute a separate biography.",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v3/page-32-1.png": "a350fc4472a072a13963985ac7d78d129968e1cfcab370098f1050a21030cf0d"
+      },
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "c538e3129b40f6f792690e4961f6692f41e250dd708a0965a0e08f81d9842fcf",
+      "filename": "HHRG-114-SM23-Bio-JanewayM-20151118.pdf",
+      "body_key": "bodies/sha256/c6/c634b9265828146ce2832e7573481cd371d8d1b20e86f11864b8660cd851c928.gz",
+      "sha256": "c634b9265828146ce2832e7573481cd371d8d1b20e86f11864b8660cd851c928",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/c634b9265828146ce2832e7573481cd371d8d1b20e86f11864b8660cd851c928.pdf",
+      "pages": 1,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/c634b9265828146ce2832e7573481cd371d8d1b20e86f11864b8660cd851c928.txt",
+      "text_sha256": "ad3708d5a9abe531bba720ce4c75de6cf73d36650a179934ae87eaa74ecc6057",
+      "selection_index": 34,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "testimony-disclosure"
+      ],
+      "notes": "One disclosure form; no biography or curriculum vitae is present in this exact retained PDF. Short identification and representational-capacity answers do not constitute a separate biography.",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v3/page-34-1.png": "df9ee2e398c2032d711b3ae384e8f2992b9d8e37a360d5312174f563ac2cedd1"
+      },
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "c5d4151ca026d9a98180b375d8ab83ea7b485399d715fd910c77e96d73876084",
+      "filename": "disclosure_sgamma.pdf",
+      "body_key": "bodies/sha256/5d/5d6e69b1521f589ffc1cf0a137a9fa8a0984e5238be2fa7e3e16780cbdef3530.gz",
+      "sha256": "5d6e69b1521f589ffc1cf0a137a9fa8a0984e5238be2fa7e3e16780cbdef3530",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/5d6e69b1521f589ffc1cf0a137a9fa8a0984e5238be2fa7e3e16780cbdef3530.pdf",
+      "pages": 1,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/5d6e69b1521f589ffc1cf0a137a9fa8a0984e5238be2fa7e3e16780cbdef3530.txt",
+      "text_sha256": "2fc32de478f55b4ad8d66875d1af61723819d19594b9d4be8b287e27862af78f",
+      "selection_index": 35,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "testimony-disclosure"
+      ],
+      "notes": "One disclosure form; no biography or curriculum vitae is present in this exact retained PDF. Short identification and representational-capacity answers do not constitute a separate biography.",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v3/page-35-1.png": "5e5035fa4ad9701b6817fab833276809cd2062befa6e84ad72d9be2405490442"
+      },
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "da02cbb4716280b5340ef404438ac1301100fc53687254769b8f42401f61585b",
+      "filename": "redacted_disclosure_williams_with_cv.pdf",
+      "body_key": "bodies/sha256/01/01f0d55577db1042b7ab7a058ce7d2ecfd1acf3a4e331c167121c1d5d16ad5c5.gz",
+      "sha256": "01f0d55577db1042b7ab7a058ce7d2ecfd1acf3a4e331c167121c1d5d16ad5c5",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/01f0d55577db1042b7ab7a058ce7d2ecfd1acf3a4e331c167121c1d5d16ad5c5.pdf",
+      "pages": 2,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/01f0d55577db1042b7ab7a058ce7d2ecfd1acf3a4e331c167121c1d5d16ad5c5.txt",
+      "text_sha256": "fca72097a2aaaf837cbf5b22c791c0c1350f4fe80da0f9c9b38fb7231494b824",
+      "selection_index": 36,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "testimony-disclosure",
+        "biography"
+      ],
+      "notes": "Disclosure form on page 1 followed by a complete biographical narrative on page 2.",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v3/page-36-1.png": "f3e454675f819b1d137bdee5a0738da58a13b5d36f6577a057b73ef74a49ef84",
+        "output/filename-patterns-20261015/public-retained-review-v3/page-36-2.png": "beb9dd9fe5bb074bbbbac2a32e9bcce15884f5b7a43ca7a54335a83610c8b5de"
+      },
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "e76aeb83d79657aff7e48272f9966bb5f162a95f06f0b715d3b306a0b9346679",
+      "filename": "HHRG-113-WM02-Bio-EvansE-20140520.pdf",
+      "body_key": "bodies/sha256/3d/3db77333c6874dbe586d0e15ba4c4897f3630367dfee67c6bcca04702f6f2134.gz",
+      "sha256": "3db77333c6874dbe586d0e15ba4c4897f3630367dfee67c6bcca04702f6f2134",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/3db77333c6874dbe586d0e15ba4c4897f3630367dfee67c6bcca04702f6f2134.pdf",
+      "pages": 1,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/3db77333c6874dbe586d0e15ba4c4897f3630367dfee67c6bcca04702f6f2134.txt",
+      "text_sha256": "ad3708d5a9abe531bba720ce4c75de6cf73d36650a179934ae87eaa74ecc6057",
+      "selection_index": 37,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "testimony-disclosure"
+      ],
+      "notes": "One disclosure form; no biography or curriculum vitae is present in this exact retained PDF. Short identification and representational-capacity answers do not constitute a separate biography.",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v3/page-37-1.png": "cc6c1a682888ec969fc6e8755e409634d52b9d68c331bd2383d36b2766fc162d"
+      },
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "f98a4e31a7271a4585cf33627c5ce7aac7385a956e780e23722b72afea71a6e0",
+      "filename": "disclosure_and_resume_otoole.pdf",
+      "body_key": "bodies/sha256/ad/ad15c771bd3649098ded92bf8837faf875352d6c7ffaad2b4ad0de58bbf3dd1a.gz",
+      "sha256": "ad15c771bd3649098ded92bf8837faf875352d6c7ffaad2b4ad0de58bbf3dd1a",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/ad15c771bd3649098ded92bf8837faf875352d6c7ffaad2b4ad0de58bbf3dd1a.pdf",
+      "pages": 2,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/ad15c771bd3649098ded92bf8837faf875352d6c7ffaad2b4ad0de58bbf3dd1a.txt",
+      "text_sha256": "26b2703d9ff288f5a25f34ff0d235fb886df87490d7bb16c95d43709106dfb95",
+      "selection_index": 38,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "testimony-disclosure",
+        "biography"
+      ],
+      "notes": "Disclosure form with a substantive biographical narrative spanning pages 1 and 2, followed by the remaining disclosure answers.",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v3/page-38-1.png": "4622b51476affdcd99962174292f45c2728ce178330a061d902a2842842b0d22",
+        "output/filename-patterns-20261015/public-retained-review-v3/page-38-2.png": "946ea7756937e3082eb744bec316d263a58a8c2e774658dc029ca2201d7aa228"
+      },
+      "independent_reference": false,
+      "release_approved": false
+    }
+  ],
+  "summary": {
+    "fetched_documents": 38,
+    "fetched_pages": 279,
+    "completed_document_reviews": 29,
+    "completed_page_reviews": 34,
+    "disclosure_only": 23,
+    "disclosure_with_biography": 5,
+    "remaining_documents": 9,
+    "remaining_pages": 245,
+    "biography_only": 1
+  },
+  "remaining": [
+    {
+      "document_id": "0184ba0a8f79d9fff7b0a6c85c796083959b154579635f6581d63060932e4cfc",
+      "filename": "redacted_disclosure_johnson_with_cv.pdf",
+      "sha256": "2925d2dbd245c045e873e9105936731eeeab1dded5ad8e8e6d46c1c164f44007",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/2925d2dbd245c045e873e9105936731eeeab1dded5ad8e8e6d46c1c164f44007.pdf",
+      "pages": 11
+    },
+    {
+      "document_id": "234ea2b8c2eee77a0de8e0e6176780525ee4e8848efd3088098bbc2733d05dcb",
+      "filename": "oreskesdisclosurefinal1.pdf",
+      "sha256": "edbadf88ac187e1ca5d387aaaa0a5e447cba82c64401adfe7eb066e88af63850",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/edbadf88ac187e1ca5d387aaaa0a5e447cba82c64401adfe7eb066e88af63850.pdf",
+      "pages": 40
+    },
+    {
+      "document_id": "3058ffb92c52c9b49369c99daa11be64ae971289da921790d7fd056fb7505422",
+      "filename": "redacted_disclosure_kent_with_cv.pdf",
+      "sha256": "795d88ce89145f9675d66b3fb9a1694b497b8e9a56bac12b998b71a45d53ff9f",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/795d88ce89145f9675d66b3fb9a1694b497b8e9a56bac12b998b71a45d53ff9f.pdf",
+      "pages": 3
+    },
+    {
+      "document_id": "3bcec962ef835b996f30d0ae474d6a6ffcc1c658172882a0bec656ebbc6a0a58",
+      "filename": "redacted_disclosure_kirpalani_with_cv.pdf",
+      "sha256": "8cd9c6eb50c00ac3870d880d76d31e49bbc71cd6c4c8d5cf90fe4d67c2c310fc",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/8cd9c6eb50c00ac3870d880d76d31e49bbc71cd6c4c8d5cf90fe4d67c2c310fc.pdf",
+      "pages": 4
+    },
+    {
+      "document_id": "461c81b71e35865ad062b6d0e2f9bfa04c5a118eaa3442bbbdbac0d71b41b3c1",
+      "filename": "disclosure_as_resume_stefanko.pdf",
+      "sha256": "56bf4f1318ec76090ad0969f0e5bebd35b2bb53544b296cb48e2c48ca3273deb",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/56bf4f1318ec76090ad0969f0e5bebd35b2bb53544b296cb48e2c48ca3273deb.pdf",
+      "pages": 3
+    },
+    {
+      "document_id": "5efc4cf00f1c2d7d7669edaaadde5fcf2504627c5655ed8cebc0f8490d091163",
+      "filename": "whitedisclosurefinal1_4_29_15.pdf",
+      "sha256": "f696dfd2f62b470fa30f96f06fe8c7a86f688851cda63201b6951a8b5157da86",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/f696dfd2f62b470fa30f96f06fe8c7a86f688851cda63201b6951a8b5157da86.pdf",
+      "pages": 5
+    },
+    {
+      "document_id": "6ccb7c12d1875fd774c31bb62be3aa85040cc2def92134fe2a4be6dd5ca87607",
+      "filename": "militodisclosure04-25-13.pdf",
+      "sha256": "addf39b9e3c69fdf3c9e134365f2d6d720bf47c28be259c7f99ec084bf91fb89",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/addf39b9e3c69fdf3c9e134365f2d6d720bf47c28be259c7f99ec084bf91fb89.pdf",
+      "pages": 9
+    },
+    {
+      "document_id": "95b67bdacaf7b69198ecbf2346c7d97ee35402e2351a607f518023025c79e2db",
+      "filename": "05.11.11_Public_Witness_Testimony_CV_and_Disclosure.pdf",
+      "sha256": "9e0295bd07363eb814b6e0641b7dfbe14ee9f1531aca85e04285809d4922b02b",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/9e0295bd07363eb814b6e0641b7dfbe14ee9f1531aca85e04285809d4922b02b.pdf",
+      "pages": 51
+    },
+    {
+      "document_id": "c4d0b2cda36f5997694c53c058bb5fba822e95d776fba4157a42387ef5261602",
+      "filename": "simmonsdisclosure04-25-13.pdf",
+      "sha256": "38644a2d6c2e01fa3f6089087ca20d1bb3e00ee90dcad1191d80a51ced71a9d7",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/38644a2d6c2e01fa3f6089087ca20d1bb3e00ee90dcad1191d80a51ced71a9d7.pdf",
+      "pages": 119
+    }
+  ],
+  "pilot_overlap": false,
+  "publisher_acquisition": false,
+  "production_ocr": false,
+  "production_changes": false,
+  "release_approved": false
+}

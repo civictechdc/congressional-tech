@@ -1,0 +1,74 @@
+Disclosure and biography alias conflicts: retained-body review, part 1
+====================================================================
+
+Decision
+--------
+Keep the filename claims separate from observations about actual contents.
+Do not collapse all disclosure/biography groups into either kind. The reviewed
+population includes disclosure-only forms, biography-only files and genuine
+combined documents. A shared eligible body proves that aliases identify the
+same saved bytes; it does not prove that every alias correctly names the contents.
+
+Evidence reviewed
+-----------------
+Selected the 38 pending disclosure/biography groups from review-evidence-v4,
+using its committed checkpoint and exact ledger hash. Reused the maintained
+eligible-body policy and excluded IDs and all retained keys from all 400 frozen
+pilot records before access. Each group had exactly one eligible body. All 38
+public saved-copy responses matched their expected SHA-256 and PDF signature.
+No publisher acquisition, pilot inspection, OCR or production mutation occurred.
+
+The fetched set contains 279 pages. Completed all-page visual review of the
+24 single-page PDFs and five two-page PDFs: 29 documents and 34 pages total.
+The JSON checkpoint records exact body, text and render hashes for each review.
+Native text supplemented visual inspection; the review does not transcribe or
+re-publish contact details, signatures or text hidden by visible redactions.
+
+Observed forms in the 29 completed reviews:
+- 23 disclosure forms without a biography or CV in the exact retained PDF.
+- Five disclosure forms with substantive biography material, either embedded
+  in the form's CV/resume answer or attached as a separate page.
+- One two-page resume without a disclosure form.
+
+These counts describe this reviewed subset, not an estimated rate for all
+unclassified filenames or an independently labeled evaluation population.
+
+Important boundaries
+--------------------
+A disclosure form's request to attach a CV is not evidence that the saved PDF
+contains one. The Lyle form even says Attached, but its exact retained PDF has
+only the form page. Short job titles and representational-capacity answers do
+not by themselves constitute a separate biographical document.
+
+The Koenig form uses BIO for Biotechnology Industry Organization. The filename's
+bio token can therefore be an organization abbreviation rather than a biography.
+The Kitcheyan file has disclosure in its filename but contains only a resume.
+These examples rule out a universal precedence rule based on either word.
+
+The Sweeney, Eberhart and O'Toole forms include substantive career narratives
+inside the form. Lunny and Williams have separate biography pages. Preserve
+multiple document forms when the complete contents support them.
+
+Implementation implications
+---------------------------
+No house_naming runtime change is justified by this batch. Its original filename
+claims remain useful source evidence even where the contents disagree. Any later
+content-based resolution must bind the exact eligible body and distinguish
+complete-packet review from a heading or first-page hint. Preserve the original
+filename claims and the reason for overriding or retaining them.
+
+The frozen PDF candidate remains unchanged. These assistant findings are not
+independent references and cannot unlock held-out evaluation. The current
+metadata ledger still has 91 pending groups; this separate body-review receipt
+does not silently mark them approved or change the catalog.
+
+Remaining work
+--------------
+Nine saved packets remain unreviewed in this batch, totaling 245 pages:
+Johnson 11; Oreskes 40; Kent 3; Kirpalani 4; Stefanko 3; White 5; Milito 9;
+Public Witness Testimony/CV/Disclosure 51; Simmons 119.
+Read every page of each packet before recording complete observed forms.
+The existing extracted text for short packets is available; the three packets
+above 20 pages require bounded local extraction/rendering from saved bytes.
+Do not fetch them again. After completing all 38, join the exact assistant
+findings to the current review evidence without treating them as release approval.
