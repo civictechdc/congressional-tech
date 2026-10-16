@@ -1,0 +1,31 @@
+{
+  "at": "2026-10-16T14:25:31.718504+00:00",
+  "viewer_proof": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/viewer-mapping-refresh/completion.json",
+  "active_import": {
+    "batch": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/publication-batches/checkpoint-16",
+    "supervisor": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/import16-supervisor",
+    "evidence": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/import-checkpoint16",
+    "exec_session": 99274,
+    "supervisor_pid": 3472,
+    "child_pid": 3478,
+    "frozen_bodies": 2384,
+    "existing": 1613,
+    "missing_to_upload": 771,
+    "do_not_import_batches_14_or_15": true
+  },
+  "active_nara": {
+    "directory": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/nara-html-continuation-04",
+    "exec_session": 12140,
+    "pid": 96029,
+    "groups": 100,
+    "paid_requests": 0
+  },
+  "active_firecrawl": {
+    "directory": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/firecrawl-nara-parallel-01",
+    "exec_session": 47025,
+    "maximum_requests": 50,
+    "workers": 4,
+    "accepted_mode": "enhanced proxy + browser rendered rawHtml + existing scoped NARA session cookies",
+    "result_scope": "Rendered copies, not byte-identical archive captures. Two probes returned substantial witness testimony; validate originals, final URLs, body classification and preserved provenance before import. Do not count challenge pages. No keys or cookies logged. Existing prepaid credits only; no plan changes."
+  }
+}
