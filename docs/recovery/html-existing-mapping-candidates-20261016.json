@@ -1,0 +1,15 @@
+{
+  "at": "2026-10-16T04:23:58.272772+00:00",
+  "status": "candidate_mapping_reuse_not_yet_applied",
+  "urls": 3994,
+  "conflicting_body_mappings": [],
+  "evidence": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/html-existing-slash-variant-candidates.json",
+  "sha256": "6699aec69cb6c6b6f80948038b3a4fa62d9240e92b725ab652083c7b1b2912f1",
+  "sample": "First digest-verified NARA HTML page links to 113-32.pdf, already mapped from the same URL without trailing slash.",
+  "next_steps": [
+    "Verify retained payload hashes and prior provenance for candidates",
+    "Reuse existing files for qualified URL variants without new downloads",
+    "Recalculate unresolved totals and preserve all prior mappings"
+  ],
+  "limitation": "These 3994 candidates are not yet counted as recovered."
+}

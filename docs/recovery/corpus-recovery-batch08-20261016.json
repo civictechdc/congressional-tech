@@ -1,0 +1,17 @@
+{
+  "at": "2026-10-16T04:23:58.272772+00:00",
+  "local_only": true,
+  "source_records": 1222,
+  "zip_parent_records": 15,
+  "capture_rows": 1386,
+  "distinct_capture_bodykeys": 1018,
+  "remote_existing": 658,
+  "remote_absent": 360,
+  "prior_full_readback_reused_with_fresh_head": 642,
+  "files": {
+    "manifest.json": "95b075302b1fa4937751d3c893c7c4bf84cab607929555ddaf0d65925ea81166",
+    "prepared-source-records.json": "d86192b6083ba4906701ccf9c89721a3126f690c254903aa1ff74ae7b1d62cb0",
+    "source-record-preparation.json": "77e457a9c36e6a0eec42e9c5401a0873be7452c2af007d3fc5afb6626451cae0",
+    "remote-body-readback.json": "85876eb60e6347c7bf8e2fdad78e57fcdd5c9eb08d12f77ec8b5725e95836766"
+  }
+}
