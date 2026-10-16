@@ -1,0 +1,19 @@
+{
+  "pid": 97454,
+  "parent_pid": 94792,
+  "source_sha256": "b18af71cb747e68cb914f2c0c4585a362526caf2a2c17ee2b80e81dda663d32a",
+  "script_sha256": "ee0fbbbf252f171523f54949bba8adbfbc4da90b3b1501dfeec8418a597ac94c",
+  "candidate_urls": 313,
+  "remote_operations": "retained body GET only",
+  "publication": false,
+  "process_verified": "97454 94792 Fri Oct 16 02:18:47 2026     .venv/bin/python -u output/corpus-retry-20261015/qualify_congress_retained_hearing_files.py",
+  "exec_session": 45363,
+  "next_steps": [
+    "Wait for full validation and actual process exit; preserve failed receipts.",
+    "Merge qualified unique URL mappings into local preparation while preserving deferred exclusions and prior mappings.",
+    "After checkpoint 12 publication succeeds, publish sealed checkpoint 13 before preparing the subsequent delta with these mappings and the new GovInfo ZIP.",
+    "Finish GovInfo header inventory before bounding the next bulk package download."
+  ],
+  "recovery_count_unchanged": true,
+  "publication_in_progress": true
+}
