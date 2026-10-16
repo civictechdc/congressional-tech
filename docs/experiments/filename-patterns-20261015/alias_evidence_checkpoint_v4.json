@@ -1,0 +1,23 @@
+{
+  "scope": "Complete alias audit against house_naming 3.2.7; metadata only",
+  "summary_path": "output/filename-patterns-20261015/alias-review-v4/summary.json",
+  "summary_sha256": "c5f457e4ba37a8e1425bf784cba55fa1e3ebe034dd4e8dbf7ec98fa2effcc645",
+  "source_rows": 7526,
+  "document_groups": 1949,
+  "changed_kind_groups": 1902,
+  "unchanged_kind_groups": 47,
+  "metadata_review": {
+    "same_family_aliases": 389,
+    "broad_specific_aliases": 815,
+    "needs_review": 698
+  },
+  "flags": {
+    "multiple_retained_bodies": 286
+  },
+  "outputs": {
+    "ledger.jsonl": "df40c052dd76f3a29231c00f24cde25396c12aa45bad45daf4f492f6edcf5268",
+    "groupings.csv": "43ca06982a5850f2393120b120d5b421a37ddaed39bfc0b5abf659b4e0e96bc5"
+  },
+  "body_reads": false,
+  "release_approved": false
+}

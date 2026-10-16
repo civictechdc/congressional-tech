@@ -348,3 +348,33 @@ head. Its summary confirms completed catalog 335a30af8ecb472094f073ff09c4352b an
 no acquisition. The downstream viewer publisher run 38855840917 is active;
 the readback verifier waits for that exact catalog. Do not treat workflow success
 alone as a verified public selector, and do not dispatch another publication.
+
+Retained amendment forms continuation (3.2.7)
+-------------------------------------------
+All 17 selected non-pilot PDFs (21 pages) are now visually reviewed; see
+REVIEW_AMENDMENT_FORMS.txt and amendment_content_review.json. Apply the bounded
+Judiciary TEXT layout and disclosure-topic refinements in house_naming, preserving
+the complete Views and Estimates letter as a composite amendment/letter.
+After the verified cohort replay, regenerate the full alias review ledger against
+the original baseline and the new output. Link current evidence without loosening
+existing digest checks. Then inspect the disclosure/biography queue. Continue the
+existing 3.1.0 publication verification independently; 3.2.7 remains local until
+separately published and qualified against the exact fresh raw catalog pair.
+
+Completed review refresh after 3.2.7
+----------------------------------
+The complete alias audit and review linkage now use amendment-form-replay-v1.
+Read every row of review-evidence-v4/groupings.csv (58 rows). The current queue
+has 91 pending groups, down from 109 in v3. Seventeen amendment-form groups now
+match the original baseline and leave the changed-kind ledger; the historical
+host correction also resolves one prior pending group. Sixteen other historical
+host groups enter the changed ledger with their exact review attached. All 17
+historical-host receipts match; no existing review digest mismatches occurred.
+
+The current ledger has 1,902 changed groups: 815 broad/specific aliases, 389
+same-family aliases, 398 prior interpretation reviews, 209 filename reviews,
+and 91 pending. These are metadata review dispositions, not content approval.
+The replacement-letter body review remains separately bound; the linker does
+not yet represent assistant content reviews. Keep that distinction explicit.
+Next: inspect the 38 disclosure/biography groups using current eligible body
+keys and frozen-pilot exclusions, then address the 11 amendment/vote alias groups.

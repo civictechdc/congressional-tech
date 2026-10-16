@@ -1,0 +1,89 @@
+{
+  "scope": "Historical local interpretation reviews only; no independent content verification or release approval",
+  "alias_checkpoint": "docs/experiments/filename-patterns-20261015/alias_evidence_checkpoint_v4.json",
+  "alias_checkpoint_sha256": "b32fca906a37a535cd618763e8b72b34c5bfefdbf25347491326e533f9995139",
+  "alias_summary": "output/filename-patterns-20261015/alias-review-v4/summary.json",
+  "receipts": [
+    {
+      "name": "vote-targets",
+      "checkpoint": "docs/experiments/filename-patterns-20261015/vote_target_checkpoint.json",
+      "checkpoint_sha256": "854bd442cf50a5ffd36627708de07ba158f913ac24dfcb16557a8282f82d6c55",
+      "review": "docs/experiments/filename-patterns-20261015/REVIEW_VOTE_TARGETS.txt",
+      "review_sha256": "9103856abe0af301935a66ac09999b297fff98c477825698cb08a0a6ceb881cb",
+      "summary": "output/filename-patterns-20261015/vote-target-replay-v1/summary.json",
+      "summary_sha256": "8acdd6ec7fae8e786ca3cbe6b139052abd28c809140946c551061a1243bad091"
+    },
+    {
+      "name": "constitutional-topics",
+      "checkpoint": "docs/experiments/filename-patterns-20261015/constitutional_topic_checkpoint.json",
+      "checkpoint_sha256": "4abbde558c76dd702c87f1db438b61cf3773e6af40506a35ac69362065287584",
+      "review": "docs/experiments/filename-patterns-20261015/REVIEW_CONSTITUTIONAL_TOPICS.txt",
+      "review_sha256": "4616d2502afa0e092d511a73028bc765d7d7da716f9ddee9926a0d430ff0cd31",
+      "summary": "output/filename-patterns-20261015/constitutional-topic-replay-v1/summary.json",
+      "summary_sha256": "b7463ba2e260bea9a77693c2ba850114d58428848a61d776db701c9ac699c118"
+    },
+    {
+      "name": "witness-specificity",
+      "checkpoint": "docs/experiments/filename-patterns-20261015/witness_specificity_checkpoint.json",
+      "checkpoint_sha256": "4ba4f984ff842132b6ec0ed497c09ee1ca80e8747b01398dffe46d3137092749",
+      "review": "docs/experiments/filename-patterns-20261015/REVIEW_WITNESS_SPECIFICITY.txt",
+      "review_sha256": "dafc112313ba2294bc37edcad3b9bed19fe0a16c1e6738c1459a43c2d1376ed2",
+      "summary": "output/filename-patterns-20261015/witness-specificity-replay-v1/summary.json",
+      "summary_sha256": "0fb23d60491a0c17fbc149a6401f3497f7b99f3f1eac28b3bf148bfa6cc340bd"
+    },
+    {
+      "name": "vote-actions",
+      "checkpoint": "docs/experiments/filename-patterns-20261015/vote_action_checkpoint.json",
+      "checkpoint_sha256": "6d2141e6b11974946f1f4429c6a55e4d3c6065a8c2ff50d4403216a9df6e1f25",
+      "review": "docs/experiments/filename-patterns-20261015/REVIEW_VOTE_ACTIONS.txt",
+      "review_sha256": "95323f244ad9aca39e78a4454bab44592a71978fbaaa180cae1dce2ffe701f66",
+      "summary": "output/filename-patterns-20261015/vote-action-replay-v1/summary.json",
+      "summary_sha256": "62c2c545dee4229c3244c0d94bc1fd0adb95014dba83a52c7a8ce4a13d1f692b"
+    },
+    {
+      "name": "genre-subjects",
+      "checkpoint": "docs/experiments/filename-patterns-20261015/genre_subject_checkpoint.json",
+      "checkpoint_sha256": "6b47b78f36681bb91cb6e198b29c196397494f9eaed6465b073ffb7e96724fdd",
+      "review": "docs/experiments/filename-patterns-20261015/REVIEW_GENRE_SUBJECTS.txt",
+      "review_sha256": "72572f6e2e28903634c22059a218c62497168ed36573d2966620a4500ebae467",
+      "summary": "output/filename-patterns-20261015/genre-subject-replay-v1/summary.json",
+      "summary_sha256": "19e2acc4a76d0974868ec14752a3aca19d3af465c4f88ab34c6da3e15e5e6c58"
+    },
+    {
+      "name": "disclosure-statements",
+      "checkpoint": "docs/experiments/filename-patterns-20261015/disclosure_statement_checkpoint.json",
+      "checkpoint_sha256": "8444b8cbf41428418d52be64d22434901bf34efb37c18e9c92c944b04c412e70",
+      "review": "docs/experiments/filename-patterns-20261015/REVIEW_DISCLOSURE_STATEMENTS.txt",
+      "review_sha256": "f2e08f170a897a66b62c77a845b60039369809c4a6832f3392d1fc1334e3f2a8",
+      "summary": "output/filename-patterns-20261015/disclosure-statement-replay-v1/summary.json",
+      "summary_sha256": "7877918bfbbb2000256aaf2a7f762e5e245bb518caf5e5ca55c095c94e87de7a"
+    },
+    {
+      "name": "historical-vote-host",
+      "checkpoint": "docs/experiments/filename-patterns-20261015/historical_vote_host_checkpoint.json",
+      "checkpoint_sha256": "0253196bbd3a94edca46bde8a99ed340480fc8de8b6754b133410f0ab3b43c21",
+      "review": "docs/experiments/filename-patterns-20261015/REVIEW_HISTORICAL_VOTE_HOST.txt",
+      "review_sha256": "2b40fd0e8f0be3c9359d4492fb53127bba18de010b584ca52553f9356b659890",
+      "summary": "output/filename-patterns-20261015/historical-vote-host-replay-v1/summary.json",
+      "summary_sha256": "1a1ee75e66fd3ef903a81fd22cca968b0a1e15ae06ba6fd424b837f0364edb41"
+    },
+    {
+      "name": "amendment-forms",
+      "checkpoint": "docs/experiments/filename-patterns-20261015/amendment_form_checkpoint.json",
+      "checkpoint_sha256": "92f90819af8ef780e79f8a65d750bb64a67e41ca90a6f35452a171596989af5b",
+      "review": "docs/experiments/filename-patterns-20261015/REVIEW_AMENDMENT_FORMS.txt",
+      "review_sha256": "043ccf5749a7592495c18e60dd8d00a88b1df7074f76d2bee0c85db315ce5e8c",
+      "summary": "output/filename-patterns-20261015/amendment-form-replay-v1/summary.json",
+      "summary_sha256": "3118d62141e5de48326dcf98758e871454cf9327abca88f091ce06cc1849600d"
+    }
+  ],
+  "filename_reviews": [
+    {
+      "name": "truth-in-testimony",
+      "checkpoint": "docs/experiments/filename-patterns-20261015/truth_in_testimony_checkpoint.json",
+      "checkpoint_sha256": "b6fb13e489cae54f7a0962ae9365e17328f516666d613f641f8c63125a1f7d21",
+      "review": "docs/experiments/filename-patterns-20261015/REVIEW_TRUTH_IN_TESTIMONY.txt",
+      "review_sha256": "b568c034c4ec495eea66221c41a48ae749904c41fe3bc099f21c01340d7fdf84"
+    }
+  ]
+}
