@@ -135,7 +135,22 @@ four previously denied keys through the saved-copy Worker succeeded; each decode
 SHA-256 matches its retained key. Three are PDFs. The Issa key is the 196-byte HTML
 404 response already recorded in capture metadata, not recovered document content.
 No credentials or bucket configuration changed. Public reads of these bodies are
-not blocked by management credentials. The direct public bucket URL is needed to
-check raw indexes through that route; the saved-copy Worker excludes raw indexes.
+not blocked by management credentials. The repository's FILENAME-VIEWER.md also
+documents the direct public bucket URL:
+https://pub-1b36ca710ab14e7f8e65813c41761724.r2.dev/
+Its indexes/catalog.json read succeeds. congressional-data.spicygov.ai is the
+viewer Worker domain and selects the same catalog as that raw manifest. The
+saved-copy Worker itself excludes raw indexes.
 See public_archive_retry_checkpoint_v1.json. This does not change prior content
 reviews or the six unavailable cases.
+
+Fresh public raw pair obtained
+-----------------------------
+public-raw-catalog-v1 now retains the exact current raw pair, downloaded and
+hash-verified through the documented public endpoint. Reference-integrity checks
+passed for 1,680,227 sources and 1,240,374 groups. All known XML controls preserve
+their native facts. Metadata reconciliation retains all 400 frozen pilot records,
+with 391 eligible and nine explicit exceptions; held-out review remains locked.
+See public_raw_catalog_checkpoint_v1.json and REVIEW_PUBLIC_RAW_CATALOG.txt.
+Next compare the 91 reviewed cases against this newer pair before transferring
+any review. Preserve the historical prototype and its results as separate evidence.

@@ -1,0 +1,54 @@
+Public raw-catalog access and initial qualification
+===================================================
+
+Verified result
+---------------
+The repository already documents direct public bucket access in
+apps/site/FILENAME-VIEWER.md. No credential repair or bucket change was needed.
+https://pub-1b36ca710ab14e7f8e65813c41761724.r2.dev/indexes/catalog.json
+and https://congressional-data.spicygov.ai/manifest.json both selected catalog
+d42b9f6697914e68a688600705e1d65f during this check. The raw generation is
+840b6faf202e41a592e08385eb3e981c. It is newer than the catalog bound by the prior
+3.1.0 publication receipt; that older receipt must not be relabeled as this one.
+
+The exact immutable raw pair was downloaded into public-raw-catalog-v1/catalog:
+1,680,227 source rows / 541,322,250 bytes and 1,240,374 document groups /
+537,318,138 bytes. Both complete byte hashes, sizes, row counts and catalog IDs
+match the raw manifest. The maintained local_catalog_paths validator passed.
+The raw selector was unchanged after download. A recheck with Python's default
+user agent returned 403; the existing repository publisher user agent returned
+200. This was an unauthenticated public read, not an expired-credential result.
+
+pilot_reconcile ran the maintained validate_document_indexes checker over the
+whole pair. Unique source/group identities, source-to-group references and each
+group's selected source passed. The frozen sample hash remains unchanged.
+All 400 pilot records were reconciled using catalog metadata only: 391 meet the
+existing metadata eligibility conditions. Nine are ineligible: eight have no
+frozen body digest (including one missing current ID), and one is newly classified.
+No sample was replaced, and no held-out body or extracted content was opened.
+The 299 available prior extraction receipts are not independent reference labels.
+
+The known XML regression controls all passed: 34 source rows and 17 groups retain
+the seven native XML fields and body identities from the hash-bound historical
+subset. The comparison script, all per-case results and its input hashes are
+retained with the output. This check covers the known affected cases, not every
+XML fact in the million-document catalog.
+
+Limits and next work
+--------------------
+This completes public access, exact-pair acquisition, reference-integrity checks,
+known XML controls and frozen-pilot metadata reconciliation. It does not complete
+fresh release qualification. The existing publication gate remains false because
+no matching publication receipt/readback was supplied for this newer catalog.
+No workflow, publication, classifier or public object was changed.
+
+Next compare all 91 reviewed cases against this pair using bounded projected
+reads. Report changed membership/body identity before transferring any review;
+retain missing/unavailable outcomes. Diagnose the nine pilot exceptions without
+replacing the frozen sample. Establish matching publication evidence separately
+from independent reference review. Reduce the local replay harness's nested-row
+memory use before attempting a full-catalog replay. Keep held-out review locked.
+
+The full census includes source/API references as well as documents. Its total
+unclassified count is not comparable to the original roughly 7,500 filename
+cohort without applying the same role, filename and availability filters.

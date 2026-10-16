@@ -707,6 +707,17 @@ in REVIEW_PACKET_REVIEW_CANDIDATE.txt. No production caller was added.
 Next reduce the harness's full nested-row memory expansion, prove equivalent
 results on this cohort and measure memory before full-catalog use. The four old
 denied body reads now succeed publicly with matching hashes; Issa still returns
-the retained HTML error. The public bucket base URL is pending for raw-index
-checks. Full catalog qualification, independent reference review and production
-integration remain separate outstanding work.
+the retained HTML error. The public bucket URL was found in FILENAME-VIEWER.md;
+its raw selector and the congressional-data.spicygov.ai viewer selector both
+identify catalog d42b9f6697914e68a688600705e1d65f. Full catalog qualification,
+independent reference review and production integration remain outstanding.
+
+The exact public pair is now downloaded and verified in public-raw-catalog-v1.
+Whole-pair reference-integrity checks, the known 34-source/17-group native XML
+controls and metadata-only reconciliation of all 400 frozen pilot records passed.
+391 pilot records meet existing metadata eligibility conditions; nine retain
+explicit exceptions. Matching publication evidence and independent references
+remain outstanding, and held-out body review stays locked. See
+public_raw_catalog_checkpoint_v1.json and REVIEW_PUBLIC_RAW_CATALOG.txt.
+Next reconcile the 91 reviewed cases against this current pair with bounded
+projected reads, before attempting review transfer or full-catalog replay.
