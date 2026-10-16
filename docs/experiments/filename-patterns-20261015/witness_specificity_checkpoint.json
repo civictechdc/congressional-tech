@@ -1,0 +1,106 @@
+{
+  "baseline_commit": "9edb1b587f350a628ac4cdcdf16519a25d065d93",
+  "scope": "Retained witness-statement refinement in congress_api; house_naming remains 3.2.2",
+  "source_hashes": {
+    "packages/congress_api/src/congress_api/retention/document_index.py": "ec575da15c10615bd983baf3566e7bf5c1e63c5311715b0ab9e5b22917cc2667",
+    "packages/congress_api/src/congress_api/retention/catalog_staging.py": "291627db64db26b9b9b482db93e2b49ff853f09ed836aea8c106df176c99c11c",
+    "tests/test_document_metadata_preservation.py": "ace03e527625ea4d6fcf57d81a5339ba2da23e4b1c861677d6ac7e1a03a28123"
+  },
+  "replay": {
+    "inputs": {
+      "filenames": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/witness-specificity-input-v1/indexes/document-filenames.parquet",
+        "sha256": "9a2baa1b833aad9f8a04ad2417598aa59c21a74de4c5320a175a759b6a011ec8",
+        "rows": 102
+      },
+      "documents": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/witness-specificity-input-v1/indexes/documents.parquet",
+        "sha256": "61ae6f340aa5dbf52adbc27b3289c2006c725b341c9e7c795af8ba0729d4de69",
+        "rows": 38
+      }
+    },
+    "output_files": {
+      "filenames": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/witness-specificity-replay-v1/catalog/indexes/document-filenames.parquet",
+        "sha256": "ec663b06451bc7b20addcd54ec8ec3442ab6cc8818f270cf5c4a7a640b4445c5",
+        "rows": 102
+      },
+      "documents": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/witness-specificity-replay-v1/catalog/indexes/documents.parquet",
+        "sha256": "5e3dcbe376ab3951b6a3a34a520cfa26394d8e173a236829f11ed96659cad229",
+        "rows": 38
+      }
+    },
+    "comparisons": {
+      "filenames": {
+        "before_rows": 102,
+        "after_rows": 102,
+        "missing_ids": 0,
+        "added_ids": 0,
+        "changes": {
+          "changed_prior_kind": 60,
+          "role_changed": 0,
+          "protected_evidence_changed": 0,
+          "document_id_changed": 0,
+          "representative_changed": 0,
+          "kind_source_changed": 60
+        },
+        "changes_sha256": "259bed7ffadcd5fe821745a8012b08ffb93168d19df8ca05d81c8dcb8a48b2fe",
+        "identities_roles_evidence_preserved": true,
+        "prior_kind_changes": 60
+      },
+      "documents": {
+        "before_rows": 38,
+        "after_rows": 38,
+        "missing_ids": 0,
+        "added_ids": 0,
+        "changes": {
+          "changed_prior_kind": 38,
+          "role_changed": 0,
+          "protected_evidence_changed": 0,
+          "document_id_changed": 0,
+          "representative_changed": 0,
+          "kind_source_changed": 27
+        },
+        "changes_sha256": "e8f63bdf9733485adba15dd02d008cfe975c1adefe74f6e293cf7e6146ad3f5f",
+        "identities_roles_evidence_preserved": true,
+        "prior_kind_changes": 38
+      }
+    },
+    "completed": true,
+    "invariants_preserved": true,
+    "input_bytes_unchanged": true,
+    "acquisition": false,
+    "body_reinspection": false,
+    "publication_performed": false,
+    "release_qualified": false
+  },
+  "implementation_identity": {
+    "source_digest": "cb30619ef9edee5562f2e3fd25a291e70173d9e82f0c3ded4b969464a9fd2d65",
+    "project_files": 210,
+    "experiment_files": 27
+  },
+  "filename_claim_audit": {
+    "source_filename_claims_verified": 102,
+    "group_filename_unions_verified": 38,
+    "body_reader_fingerprints_preserved": true,
+    "body_reads": false
+  },
+  "artifacts": {
+    "output/filename-patterns-20261015/witness-specificity-input-v1/selection.json": "5e89c41b2805cb89451d9a2b78264587bfab894e2c3c7bfe5ba0bf487cca76fe",
+    "output/filename-patterns-20261015/witness-specificity-replay-v1/manifest.json": "170662cf47bc4213165d93379583b9b534df9c8b3ef559a6b2f34bb81a204935",
+    "output/filename-patterns-20261015/witness-specificity-replay-v1/summary.json": "0fb23d60491a0c17fbc149a6401f3497f7b99f3f1eac28b3bf148bfa6cc340bd",
+    "output/filename-patterns-20261015/witness-specificity-replay-v1/filename-claim-audit.json": "3d8dcf1a376d38572519013da271aad9bd4253e701f44402631481c27f42cd79",
+    "output/filename-patterns-20261015/witness-specificity-red.log": "6b0bf712c976568d24cf31bfdc6842d0150c9716501d5a26ae39bea95c0f99a7",
+    "output/filename-patterns-20261015/witness-specificity-green.log": "61a619fd85a0f3165dd12b10588eae058290533e1a817f12504f21e2bc269970",
+    "output/filename-patterns-20261015/witness-specificity-consumers.log": "02c2d737bc10ee649d2d92e6b8b5412b74386d3061661a0be7bf6b63baadd036",
+    "output/filename-patterns-20261015/witness-specificity-offline.log": "124dfd92236b961810839f90d34675138f5de157a1ff94829f8f7b332cde15d5",
+    "output/filename-patterns-20261015/witness-specificity-replay-tests.log": "2392107631bb744bf6906d5c3fae6f6fb393c4c3283d6e74183eb08b0e1ac931"
+  },
+  "tests": {
+    "focused_consumers": 241,
+    "workflow_offline": 5782,
+    "replay_and_metadata": 37
+  },
+  "frozen_candidate_sources_unchanged": true
+}

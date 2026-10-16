@@ -125,12 +125,13 @@ groups. See grouped_evidence_checkpoint.json. Review the 1,864 changed prior
 document kinds and source-role transitions next. The 3.2.1 vote-target repair now passes a complete-group subset replay;
 REVIEW_VOTE_TARGETS.txt records all 329 reviewed names, 288 changed group kinds,
 and the explicit TEXT exceptions. The 3.2.2 constitutional-topic repair passes all 4,690 checks and its
-complete three-group replay; see REVIEW_CONSTITUTIONAL_TOPICS.txt. Next implement
-the retained witness-statement refinement described in WITNESS_SPECIFICITY_PLAN.txt.
-The full source scan found 60 affected source rows in 38 groups, including 27
-grouped documents selecting only generic testimony. Preserve the raw filename
-claim and both grouping/cache paths before changing precedence. Bind all relevant
-retention code in the next replay manifest. Do not substitute historical results
+complete three-group replay; see REVIEW_CONSTITUTIONAL_TOPICS.txt. The retained
+witness-statement refinement is now implemented with the original filename claim
+preserved. All 5,782 workflow offline checks pass; the actual 102-source, 38-group
+replay preserves identities/evidence and validates every saved filename claim.
+See REVIEW_WITNESS_SPECIFICITY.txt and witness_specificity_checkpoint.json.
+New replays bind and recheck project and experiment implementations; historical
+manifests retain their original limitations. Do not substitute historical results
 or the repaired subset for qualification of the new publication.
 
 The complete historical baseline census and 400-ID reconciliation are recorded
@@ -156,3 +157,15 @@ seal held-out references before invoking the frozen evaluator. Independent
 review and a bounded retained-body refresh remain required for release. Avoid
 rule tuning or retries against the 100 unavailable exact bodies without a new
 evidence source.
+
+Immediate continuation
+----------------------
+Review the remaining historical changed-kind and source-role transitions in full,
+using complete group membership and retained evidence. Preserve the explicit TEXT
+exceptions identified during vote-target review. Once the live publication ends,
+verify artifacts/readback and acquire its exact selected raw pair. Audit the 34
+known XML source rows against their historical body facts before accepting the
+fresh baseline; a new generation must not legitimize an earlier evidence loss.
+Then reconcile all 400 frozen IDs and run the complete 3.1.0-to-current comparison.
+Independent held-out references, the frozen evaluator and a bounded retained-body
+refresh remain release requirements. These repairs do not replace those gates.

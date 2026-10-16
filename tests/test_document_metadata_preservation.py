@@ -1,10 +1,12 @@
 """Saved response validity and paired link origins must survive catalog paths."""
 from catalog_test_helpers import selected_path
+from copy import deepcopy
 import gzip
 import json
 
 import pyarrow as pa
 import pyarrow.parquet as pq
+import pytest
 
 from congress_api.retention import document_index as index
 
@@ -156,3 +158,146 @@ def test_recurring_senate_tuple_is_not_a_publisher_document_type():
     row = context.for_url('https://www.epw.senate.gov/download/spw')
     assert row['source_document_type'] == ['other']
     assert row['source_document_type_basis'] == ['senate_parser_fallback']
+
+
+NAME = 'andersontestimony9-10-14.pdf'
+URL = 'https://naturalresources.house.gov/uploadedfiles/' + NAME
+BODY = 'bodies/sha256/aa/' + 'a' * 64 + '.gz'
+
+
+def specificity_source(name=NAME, url=URL):
+    return dict(body_key=BODY, filename=name, source_url=url,
+                media_type=['application/pdf'], http_status=['200'], body_format=['pdf'],
+                content_document_kind=['witness-statement'], content_title=['Retained witness statement'],
+                **index.extract((name, url)))
+
+
+def specificity_schema(rows):
+    names = set().union(*(r.keys() for r in rows)) - set(index.SOURCE_SCHEMA.names)
+    return pa.schema([*index.SOURCE_SCHEMA, *[(k, index.metadata_type(k)) for k in sorted(names)]])
+
+
+def test_filename_only_api_stays_generic_while_index_retains_both_claims():
+    assert index.extract((NAME, URL))['document_kind'] == ['testimony']
+    row = specificity_source()
+    index.fill_document_kind(row)
+    assert row['document_kind'] == ['witness-statement']
+    assert row['document_kind_source'] == ['content']
+    assert row['filename_document_kind'] == ['testimony']
+    assert row['content_document_kind'] == ['witness-statement']
+    index.fill_document_kind(row)
+    assert row['document_kind_source'] == ['content']
+    row['content_document_kind'] = None
+    index.fill_document_kind(row)
+    assert row['document_kind'] == ['testimony']
+    assert row['document_kind_source'] == ['filename']
+
+
+@pytest.mark.parametrize('kinds,content,expected,basis', [
+    (['report', 'testimony'], ['witness-statement'], ['report', 'witness-statement'], ['content', 'filename']),
+    (['testimony', 'witness-statement'], ['witness-statement'], ['witness-statement'], ['filename']),
+    (['testimony'], ['report'], ['testimony'], ['filename']),
+    (['testimony'], ['report', 'witness-statement'], ['testimony'], ['filename']),
+    (['transcript'], ['witness-statement'], ['transcript'], ['filename']),
+    (['testimony'], None, ['testimony'], ['filename']),
+])
+def test_refinement_preserves_independent_and_conflicting_evidence(kinds, content, expected, basis):
+    row = dict(document_kind=kinds, content_document_kind=content)
+    index.fill_document_kind(row)
+    assert row['document_kind'] == expected
+    assert row['document_kind_source'] == basis
+    assert row['filename_document_kind'] == kinds
+    assert row['content_document_kind'] == content
+
+
+@pytest.mark.parametrize('reverse', [False, True])
+def test_both_groupers_restore_filename_after_content_correction(tmp_path, reverse):
+    rows = [specificity_source(), specificity_source('opaque.pdf', 'https://example.gov/copy.pdf')]
+    if reverse:
+        rows.reverse()
+    original_schema = specificity_schema(rows)
+    expected_sources, _, expected_documents, _ = index.prepare_document_indexes(deepcopy(rows), original_schema)
+    path = tmp_path / 'document-filenames.parquet'
+    index.write_document_indexes(path, deepcopy(rows), original_schema)
+    sources = pq.read_table(path)
+    document, = pq.read_table(path.with_name('documents.parquet')).to_pylist()
+    assert document['document_kind'] == ['witness-statement']
+    assert document['document_kind_source'] == ['content']
+    assert document['filename_document_kind'] == ['testimony']
+    for field in ('document_kind', 'document_kind_source', 'filename_document_kind', 'source_ids'):
+        assert document.get(field) == expected_documents[0].get(field)
+    for actual, expected in zip(sources.to_pylist(), expected_sources):
+        for field in ('source_id', 'document_kind', 'document_kind_source', 'filename_document_kind'):
+            assert actual.get(field) == expected.get(field)
+    # A corrected body classification must expose the saved filename claim,
+    # including during regrouping without filename parsing or a body reader.
+    corrected = sources.to_pylist()
+    for row in corrected:
+        row['content_document_kind'] = ['report']
+    target = tmp_path / 'corrected'; target.mkdir()
+    index.write_document_indexes(target / path.name, corrected, sources.schema)
+    after, = pq.read_table(target / 'documents.parquet').to_pylist()
+    assert after['document_kind'] == ['testimony']
+    assert after['document_kind_source'] == ['filename']
+    assert after['content_document_kind'] == ['report']
+    assert after['document_id'] == document['document_id']
+    _, _, reference, _ = index.prepare_document_indexes(deepcopy(corrected), sources.schema)
+    assert reference[0]['document_kind'] == after['document_kind']
+    assert reference[0]['document_kind_source'] == after['document_kind_source']
+
+
+def test_cached_refresh_clear_and_source_regroup_preserve_raw_filename(tmp_path, monkeypatch):
+    (tmp_path / 'indexes').mkdir()
+    index.write_filename_metadata(tmp_path, [specificity_source()], workers=1)
+    path = tmp_path / 'indexes/document-filenames.parquet'
+    def rows():
+        return [pq.read_table(selected_path(p)).to_pylist()[0]
+                for p in (path, path.with_name('documents.parquet'))]
+    initial = rows()
+    assert all(r['document_kind'] == ['witness-statement'] for r in initial)
+    fingerprint = index.parser_fingerprint()
+    monkeypatch.setattr(index, 'parser_fingerprint', lambda: fingerprint)
+    monkeypatch.setattr(index, 'extract', lambda _: pytest.fail('Cached filename must not be reparsed'))
+    monkeypatch.setattr(index, 'read_retained_body', lambda *a: pytest.fail('Retained body must not be read'))
+    refreshed = index.refresh_filename_metadata(tmp_path, workers=1)
+    assert refreshed['parsed_inputs'] == 0
+    index.refresh_source_metadata(tmp_path, index.DocumentSources())
+    index.reindex_documents(tmp_path)
+    assert all(r['document_kind'] == ['witness-statement'] and r['document_kind_source'] == ['content'] for r in rows())
+    # Clear the accepted cover through the real explicit-reading API. A later
+    # refresh must not resurrect the prior witness reading or lose testimony.
+    previous = pq.read_table(selected_path(path))
+    raw = dict(body_key=BODY, filename=NAME, source_url=URL,
+               media_type=['application/pdf'], http_status=['200'])
+    reading = dict(body_key=BODY, status='completed', parser_fingerprint='b' * 64, body_format=['pdf'])
+    index.write_filename_metadata(tmp_path, [raw], workers=1, previous=previous, body_readings=[reading])
+    index.refresh_filename_metadata(tmp_path, workers=1)
+    index.reindex_documents(tmp_path)
+    for before, after in zip(initial, rows()):
+        assert after['document_kind'] == ['testimony']
+        assert after['document_kind_source'] == ['filename']
+        assert after['filename_document_kind'] == ['testimony']
+        assert not after.get('content_document_kind')
+        assert after['source_id'] == before['source_id']
+        assert after['document_id'] == before['document_id']
+
+
+@pytest.mark.parametrize('original_alias', [False, True])
+def test_grouped_refinement_preserves_mixed_recovered_provenance(tmp_path, original_alias):
+    row = specificity_source()
+    row.update(filename='cache-key.pdf', recovered_filename=[NAME],
+               document_kind=['report', 'testimony'])
+    rows = [row]
+    if original_alias:
+        alias = specificity_source('Report.pdf', 'https://example.gov/Report.pdf')
+        alias['document_kind'] = ['report']
+        rows.append(alias)
+    current_schema = specificity_schema(rows)
+    _, _, reference, _ = index.prepare_document_indexes(deepcopy(rows), current_schema)
+    path = tmp_path / 'document-filenames.parquet'
+    index.write_document_indexes(path, rows, current_schema)
+    doc, = pq.read_table(path.with_name('documents.parquet')).to_pylist()
+    assert doc['document_kind'] == ['report', 'witness-statement']
+    assert doc['filename_document_kind'] == ['report', 'testimony']
+    assert doc['document_kind_source'] == ['content', 'filename' if original_alias else 'recovered_filename']
+    assert doc['document_kind_source'] == reference[0]['document_kind_source']

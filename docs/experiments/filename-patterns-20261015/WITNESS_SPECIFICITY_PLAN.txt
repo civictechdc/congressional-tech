@@ -39,3 +39,12 @@ content controls, and replay every complete group in the observed cohort.
 Retain input/output hashes, source fields, reader fingerprints and all source IDs.
 Bind all imported retention implementation files before the next full replay.
 No historical or subset run qualifies the publication or opens held-out evaluation.
+
+Implementation checkpoint
+-------------------------
+The shared restoration, separate filename claim, refinement and provenance work
+is implemented. REVIEW_WITNESS_SPECIFICITY.txt records the code trace and tests;
+witness_specificity_checkpoint.json binds the actual complete-group replay.
+The expanded scan finds 38 grouped cases when mixed filename kinds are included:
+27 content-derived refinements and 11 redundant generic kinds removed alongside
+an existing specific filename alias. The original plan above remains as rationale.

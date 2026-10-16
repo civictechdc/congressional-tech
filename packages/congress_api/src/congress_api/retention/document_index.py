@@ -11,9 +11,10 @@ source_publisher_committee_code identifies the Senate site's owner from the
 collector's existing site map. Missing context stays null. A shared document
 retains all observed parents; flat lists do not imply pairwise relationships.
 The archive updater reuses unchanged interpretations automatically.
-document_kind uses filename evidence first, then typed contents or a recognized
-source document type. document_kind_source identifies that choice; native types
-stay intact.
+document_kind uses filename evidence first, with retained witness-statement
+content refining generic testimony. Typed contents or recognized source types
+otherwise fill gaps. filename_document_kind preserves the original filename
+claim; document_kind_source identifies the selected evidence. Native types stay intact.
 
 Relative hrefs keep their literal spelling. source_resolved_url records only
 destinations proved by retained parent anchors; multiple destinations stay
@@ -115,8 +116,19 @@ DERIVED_KIND_SOURCES = frozenset({"source_document_type", "source_link_label", "
 SOURCE_DOCUMENT_KINDS = dict(DOCUMENT_TYPE_MEANINGS)
 
 
+def restore_filename_kind(row):
+    """Restore the filename claim before recomputing content/source choices."""
+    if row.get('filename_document_kind'):
+        row['document_kind'] = list(row['filename_document_kind'])
+    elif any(value in DERIVED_KIND_SOURCES for value in row.get('document_kind_source') or []):
+        row['document_kind'] = None
+    row['filename_document_kind'] = list(row['document_kind']) if row.get('document_kind') else None
+    row.pop('document_kind_source', None)
+
+
 def fill_document_kind(row):
     """Keep specific forms; expose a supported purpose through the family filter."""
+    restore_filename_kind(row)
     if row.get('source_record_type') == ['youtube-video'] and row.get('record_role') != ['document']:
         row['document_kind'] = row['document_kind_source'] = row['document_family'] = None
         return
@@ -193,7 +205,16 @@ def nomination_support_context(row):
 def _select_document_kind(row):
     """Choose a kind without changing native fields or broadening filename rules."""
     if row.get("document_kind"):
-        row["document_kind_source"] = ["recovered_filename" if row.get("recovered_filename") else "filename"]
+        filename_basis = "recovered_filename" if row.get("recovered_filename") else "filename"
+        kinds = set(row['document_kind'])
+        if 'testimony' in kinds and row.get('content_document_kind') == ['witness-statement']:
+            remaining = kinds - {'testimony'}
+            row['document_kind'] = sorted(remaining | {'witness-statement'})
+            row['document_kind_source'] = sorted(
+                ({filename_basis} if remaining else set())
+                | ({'content'} if 'witness-statement' not in remaining else set()))
+        else:
+            row["document_kind_source"] = [filename_basis]
         return
     if row.get("content_document_kind"):
         row["document_kind"] = row["content_document_kind"]
@@ -458,7 +479,7 @@ def document_body(body, media, statuses, outcomes=None, body_format=None, respon
 def prepare_document_indexes(rows, schema):
     """Keep exact source rows and create one canonical row per document group."""
     progress.report('group_documents', total=len(rows), unit='source_rows')
-    for name in ("document_kind", "document_kind_source", "document_family", "record_role", "source_record_type"):
+    for name in ("document_kind", "filename_document_kind", "document_kind_source", "document_family", "record_role", "source_record_type"):
         if name not in schema.names:
             schema = schema.append(pa.field(name, STRINGS))
     # The parser's public metadata keeps both names for compatibility. These
@@ -475,12 +496,8 @@ def prepare_document_indexes(rows, schema):
             row.pop(redundant, None)
     for row in rows:
         apply_capture_record_role(row)
-        # Source metadata can change without reparsing filenames. Remove only
-        # previous fallbacks before regrouping so they never outrank an alias's
-        # filename kind or survive removal/correction of the source assertion.
-        if any(value in DERIVED_KIND_SOURCES for value in row.get("document_kind_source") or []):
-            row["document_kind"] = None
-        row.pop("document_kind_source", None)
+        # Source/content readings can change without reparsing filenames.
+        restore_filename_kind(row)
         row["source_id"] = sha256(
             compact(
                 [row.get(k) for k in ("body_key", "filename", "source_url")]
@@ -560,8 +577,10 @@ def prepare_document_indexes(rows, schema):
         # Aggregate filename kinds before filling individual source-row gaps.
         # A broad native type on an alias must not dilute a more specific name.
         fill_document_kind(document)
-        if document.get("document_kind") and any(row.get("document_kind") and not row.get("recovered_filename") for row in sources):
-            document["document_kind_source"] = ["filename"]
+        if ('recovered_filename' in (document.get('document_kind_source') or [])
+                and any(row.get("document_kind") and not row.get("recovered_filename") for row in sources)):
+            document['document_kind_source'] = sorted({
+                'filename' if basis == 'recovered_filename' else basis for basis in document['document_kind_source']})
         for row in sources:
             fill_document_kind(row)
         for singular, plural in [
@@ -2320,10 +2339,9 @@ def write_filename_metadata(
                     body_cache.setdefault(key, cached_body_fields(row, key))
                 if not reuse_names or row.get('filename') is None or row.get('recovered_filename'):
                     continue  # Recovered names depend on the current URL evidence.
+                restore_filename_kind(row)
                 cached.setdefault((row['filename'], row['source_url']), {
                     key: row[key] for key in filename_fields if row[key] is not None
-                    and not (key == 'document_kind'
-                             and any(value in DERIVED_KIND_SOURCES for value in row.get('document_kind_source') or []))
                 })
     if reuse_results:
         # Capture already inspected these bytes before releasing them. Preserve

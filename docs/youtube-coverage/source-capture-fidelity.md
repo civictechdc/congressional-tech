@@ -182,8 +182,11 @@ preserve those values. These fields identify the source association, not verifie
 authorship or the attachment's genre. Shared files retain all observed values;
 independent lists must not be zipped together.
 
-`document_kind_source` distinguishes filename, recovered filename, XML content,
-and recognized source document types. Supported amendment XML preserves its root,
+`document_kind_source` distinguishes filename, recovered filename, retained content,
+and recognized source document types. `filename_document_kind` preserves the
+original filename claim when specific witness-statement content refines generic
+testimony. Mixed evidence retains both contributing sources; later corrections
+can restore the generic filename claim. Supported amendment XML preserves its root,
 type, stage, degree, and printed legislative identifier in `content_*` columns.
 Unknown publisher types, including `other`, remain null unless other evidence
 establishes a kind. The filename's literal values remain separate and unchanged.

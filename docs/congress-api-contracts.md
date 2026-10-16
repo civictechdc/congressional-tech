@@ -296,6 +296,15 @@ proceedings. `content_document_kind`, `content_citation`, `content_congress`, an
 fields. This check does not use OCR or classify attachments from a generic
 “Related Files” heading. Missing or unrecognized evidence leaves the kind empty.
 
+`filename_document_kind` retains the filename's original kind claims separately
+from the selected `document_kind`. An unambiguous retained `witness-statement`
+content reading refines generic `testimony`, while other independent filename
+kinds remain. `document_kind_source` records content and filename evidence when
+both contribute. Ambiguous or incompatible content does not replace filename
+kinds. Cache reuse, source refresh and regrouping restore the original filename
+claims before selecting again; clearing a retained witness reading therefore
+restores generic testimony without reparsing names or reading bodies.
+
 Witness-card ownership no longer requires its label to parse as one individual.
 The typed occurrence retains the raw `witness_card`; `source_participant_label`
 exposes its name in the catalog. A paired label does not establish coauthorship

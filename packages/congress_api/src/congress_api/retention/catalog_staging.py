@@ -302,9 +302,7 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
 
     def normalize(row):
         index.apply_capture_record_role(row)
-        if any(value in index.DERIVED_KIND_SOURCES for value in row.get('document_kind_source') or []):
-            row['document_kind'] = None
-        row.pop('document_kind_source', None)
+        index.restore_filename_kind(row)
         row['source_id'] = sha256(index.compact([row.get(k) for k in ('body_key','filename','source_url')]).encode()).hexdigest()
         row['record_role'] = row.get('record_role') or ['document']
         row['format'] = (None if row['record_role'] == ['capture-state'] else
@@ -395,7 +393,7 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
                     row.pop('publication_code_code', None)
                     if reusable and previous_documents is not None:
                         db.execute('UPDATE current_sources SET signature=? WHERE id=?',(signature(row),key))
-    for field in ('document_kind','document_kind_source','document_family','record_role','source_record_type'):
+    for field in ('document_kind','filename_document_kind','document_kind_source','document_family','record_role','source_record_type'):
         if field not in schema.names:
             schema = schema.append(pa.field(field,index.STRINGS))
     fields = [*[field for field in schema if field.name not in {'document_id','source_id','format'}],
@@ -474,8 +472,9 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
             document['hearing_resources'] = hearing_resources
         document['record_role'] = [next(role for role in ('document','source-record','error-response','capture-state') if role in values['record_role'])]
         index.fill_document_kind(document)
-        if filename_kind:
-            document['document_kind_source'] = ['filename']
+        if filename_kind and 'recovered_filename' in (document.get('document_kind_source') or []):
+            document['document_kind_source'] = sorted({
+                'filename' if basis == 'recovered_filename' else basis for basis in document['document_kind_source']})
         document.update(filenames=sorted(filenames) or None,source_urls=sorted(urls) or None,body_keys=sorted(retained_bodies) or None)
         return document
 
