@@ -134,3 +134,34 @@ def test_vote_on_committee_print_keeps_literal_print_reference(engine):
     result = engine.extract(name, source_url='https://edworkforce.house.gov/imo/media/doc/' + name)
     assert result['metadata']['document_kind'] == ['committee-vote']
     assert result['metadata']['print_token'] == ['cmteprint']
+
+
+@pytest.mark.parametrize('name,host', [
+    ('h.r._7683_-_respecting_the_first_amendment_on_campus_act_bill_text.pdf', 'edworkforce.house.gov'),
+    ('2015-07-29-JEC-EEC-to-Lynch-DOJ-Fourth-Amendment-due-8-7.pdf', 'oversight.house.gov'),
+    ('Second Amendment Rights Act Bill Text.pdf', 'edworkforce.house.gov'),
+    ('14th_Amendment.pdf', 'judiciary.house.gov'),
+    ('Twenty-First Amendment.pdf', 'judiciary.house.gov'),
+])
+def test_constitutional_topic_does_not_supply_publisher_amendment_kind(engine, name, host):
+    result = engine.extract(name, source_url=f'https://{host}/' + quote(name))
+    assert 'amendment' not in result['metadata'].get('document_kind', [])
+    assert any(f['raw'].lower() == 'amendment' for m in result['observations'] for f in m['fields'])
+    assert ''.join(piece['raw'] for piece in result['pieces']) == name
+    if 'bill_text' in name.lower() or 'bill text' in name.lower():
+        assert result['metadata']['document_kind'] == ['legislative-text']
+
+
+@pytest.mark.parametrize('name', [
+    'First Amendment to H.R. 7683.pdf',
+    'First_Amendment_to_S._123.pdf',
+    'First Amendment to Committee Rules.pdf',
+    'Proposed First Amendment.pdf',
+    'Offered Second Amendment.pdf',
+    'Amendment to First Amendment Protections Act.pdf',
+    'First Amendment 1.pdf',
+    'Democratic Alternative to Committee Rules 114th Amendment - EBJ.pdf',
+])
+def test_operative_amendment_wording_survives_constitutional_topic_filter(engine, name):
+    result = engine.extract(name, source_url='https://judiciary.house.gov/' + quote(name))
+    assert result['metadata']['document_kind'] == ['amendment']

@@ -16,6 +16,11 @@ TOPIC_KINDS = frozenset({'report', 'summary', 'response', 'rules-memorandum', 'c
                          'mark-modification', 'business-meeting', 'nomination',
                          'tally-sheet', 'letter', 'exhibit', 'appendix', 'attachment',
                          'panelist-list', 'participant-list'}) | EVENT_KINDS
+CONSTITUTIONAL_ORDINAL = re.compile(
+    r'(?<![a-z0-9])(?:first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|'
+    r'eleventh|twelfth|thirteenth|fourteenth|fifteenth|sixteenth|seventeenth|eighteenth|'
+    r'nineteenth|twentieth|twenty[\s_.-]+(?:first|second|third|fourth|fifth|sixth|seventh)|'
+    r'(?:[1-9]|1[0-9]|2[0-7])(?:st|nd|rd|th))[\s_.-]+$', re.I)
 
 # Broad navigation groups, not new readings of a filename or its contents.
 # Spell out membership: e.g. bill-comparison is not legislative text, and a
@@ -100,6 +105,19 @@ def document_category_fields(filename: str | None, observations: list[dict]) -> 
             candidates.append(field)
             continue  # A supplied observation can be flattened without its source text.
         before, after = filename[:a], filename[b:]
+        if kind == 'amendment' and field['name'] == 'document_wording':
+            # A publisher's broad amendment word can name a constitutional
+            # topic. Require separate operative wording for ordinal forms;
+            # numbered amendment markers remain independent evidence.
+            ordinal = CONSTITUTIONAL_ORDINAL.search(before)
+            target = re.match(r'[\s_.-]+to[\s_.-]+', after, re.I)
+            operative_target = target and (
+                re.match(r'(?:Committee|House|Senate)[\s_.-]+Rules\b', after[target.end():], re.I)
+                or any(part['name'] == 'measure_token' and part['start'] == b + target.end()
+                       for observation in observations for part in observation['fields']))
+            if (ordinal and not operative_target and not re.search(
+                    r'(?:^|[\s_.-])(?:proposed|offered)[\s_.-]+$', before[:ordinal.start()], re.I)):
+                continue
         if kind == 'summary' and re.match(r'[ _-]+Judgments?(?![A-Za-z])', after, re.I):
             continue
         if kind == 'report' and re.match(r'(?:(?i:[ _-]+Cards?(?![A-Za-z]))|Cards?(?=[A-Z]|\b))', after):

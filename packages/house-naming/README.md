@@ -33,6 +33,11 @@ Roll Call.pdf` retain both kinds. Names with explicit `TEXT` wording also retain
 their existing ambiguity pending content review. This refinement lives in `house_naming` and
 performs no body inspection.
 
+Version 3.2.2 avoids treating constitutional topics such as “First Amendment”
+as amendment documents solely because they appear in a House publisher filename.
+It retains the wording and accepts separate operative evidence, such as an
+amendment number, a named bill/rules target, or proposed/offered wording.
+
 ## Choose an API
 
 | Task | API | Result |

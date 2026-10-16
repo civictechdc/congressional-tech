@@ -124,8 +124,12 @@ change only derived source type/identifier; the other 17 are the repaired XML
 groups. See grouped_evidence_checkpoint.json. Review the 1,864 changed prior
 document kinds and source-role transitions next. The 3.2.1 vote-target repair now passes a complete-group subset replay;
 REVIEW_VOTE_TARGETS.txt records all 329 reviewed names, 288 changed group kinds,
-and the explicit TEXT exceptions. Next address First Amendment bill titles and
-generic filename testimony overriding retained witness-statement evidence. Bind all relevant
+and the explicit TEXT exceptions. The 3.2.2 constitutional-topic repair passes all 4,690 checks and its
+complete three-group replay; see REVIEW_CONSTITUTIONAL_TOPICS.txt. Next implement
+the retained witness-statement refinement described in WITNESS_SPECIFICITY_PLAN.txt.
+The full source scan found 60 affected source rows in 38 groups, including 27
+grouped documents selecting only generic testimony. Preserve the raw filename
+claim and both grouping/cache paths before changing precedence. Bind all relevant
 retention code in the next replay manifest. Do not substitute historical results
 or the repaired subset for qualification of the new publication.
 
@@ -147,7 +151,7 @@ record-specific mappings, and 30 need a taxonomy decision. All 140 labels and
 the frozen candidate remain unchanged; taxonomy_validation.json records checks.
 The proposed next experiment targets explicit notices and committee memos after
 the current frozen evaluation, with a separate candidate and evaluation set.
-Once the live rebuild completes, prioritize verification, the fresh 400-ID ledger and the 3.1.0-to-3.2.1 full-pair comparison. Then collect and
+Once the live rebuild completes, prioritize verification, the fresh 400-ID ledger and the 3.1.0-to-3.2.2 full-pair comparison. Then collect and
 seal held-out references before invoking the frozen evaluator. Independent
 review and a bounded retained-body refresh remain required for release. Avoid
 rule tuning or retries against the 100 unavailable exact bodies without a new
