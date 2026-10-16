@@ -477,3 +477,35 @@ changed bodies, incomplete coverage and contradictory receipts in focused tests.
 Then inspect the 11 remaining amendment/vote groups, followed by opening/memo
 cases. Fresh raw-catalog qualification remains a separate unfinished step;
 local version 3.2.7 has not been published.
+
+Assistant content-review linkage completed
+------------------------------------------
+The separate catalog_content_review.py command now links the five-receipt
+chain to review-evidence-v4 without rebuilding or reinterpreting filename
+reviews. It requires the complete original row digest, the only eligible
+body key, matching fetched evidence, decoded PDF hash and page count, complete
+render coverage, and complete component coverage where supplied. It preserves
+observations and source-completeness notes. Duplicate/conflicting receipts fail;
+changed current rows retain a nonmatching annotation and no completed status.
+
+Applied locally in content-review-linkage-v1: 1,902 rows, 38 linked documents,
+279 pages, zero mismatches. All original fields except content_review remain
+identical. The 91 metadata cases still need classification decisions; 38 now
+have complete assistant review and 53 have no linked content review. The older
+completed amendment/Swalwell receipts need their own adapter before they can
+count as linked reviews. All 84 experiment checks passed, and the nine frozen
+source hashes remain unchanged. See content_review_linkage_checkpoint_v1.json.
+
+Next bounded steps:
+1. Inspect the 11 remaining amendment/vote groups using only qualified retained
+   bodies outside the frozen pilot; preserve unavailable-body cases explicitly.
+2. Extend the linker to the existing amendment/Swalwell receipt format with
+   equally strict identity/coverage checks; never silently accept a weaker
+   schema or convert review completion into a kind override.
+3. Review opening/memo groups, then decide which observed discrepancies justify
+   narrow house_naming changes. Reuse the existing package for runtime rules;
+   keep review bookkeeping in experiment tooling. Test and replay each rule
+   change before considering a new release.
+4. Qualify the fresh raw catalog pair and obtain independent reference labels
+   before unlocking held-out evaluation. The latest local runtime is still
+   3.2.7; the verified published catalog remains 3.1.0.
