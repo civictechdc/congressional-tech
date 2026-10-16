@@ -1,0 +1,78 @@
+{
+  "snapshot_at": "2026-10-16T01:29:13.726636+00:00",
+  "status": "local_preparation_not_published",
+  "counts": {
+    "status": "local_preparation_not_published",
+    "recovered_url_links": 184,
+    "distinct_recovered_bodies": 137,
+    "zip_members": 149,
+    "distinct_zip_bodies": 149,
+    "prepared_url_maps": 20429,
+    "new_maps": 5924,
+    "document_groups_without_saved_before": 311,
+    "document_groups_without_saved_after_preview": 277,
+    "zip_members_not_yet_in_catalog_preview": true,
+    "deferred_files_preserved": 164,
+    "prior_maps_preserved": 14505
+  },
+  "evidence": [
+    {
+      "path": "output/corpus-retry-20261015/recovery-summary.json",
+      "sha256": "eb98d739a360e7d3bb478c98129fdb9e6ae880566f76a1bf654a79db62217029"
+    },
+    {
+      "path": "output/corpus-retry-20261015/zip-summary.json",
+      "sha256": "d7c44fb6f5fb4dd2227b460558e5cd5d1cb15c4cc5101d32c40df4455197a446"
+    },
+    {
+      "path": "output/corpus-retry-20261015/prepared-zip-receipts.json",
+      "sha256": "484f4284caae5f3356260b582db603663a3068c649251c187723a41f17575b28"
+    },
+    {
+      "path": "output/corpus-retry-20261015/recovered-files.json",
+      "sha256": "f401eccf2893e5e35cb318f0fbbb1ed5889bfcd1510bb9536cb39a3b7e053bdc"
+    },
+    {
+      "path": "output/corpus-retry-20261015/prepared-accepted.json",
+      "sha256": "53a03035a3d0dd9dbf2f982677668237045ffb330e6838ce14048b75674065be"
+    },
+    {
+      "path": "output/corpus-retry-20261015/prepared-recovery-status.json",
+      "sha256": "1916d3cf6099e4e46223ff7e2f7b082ec32d929118b60a7e8e3ba5be4c64501d"
+    },
+    {
+      "path": "output/corpus-retry-20261015/nara-direct-session/complete.json",
+      "sha256": "cd902fc6467c5c0bd34056d931dbbbd2f411b410e45b78caf47d24ddc4c5bb52"
+    },
+    {
+      "path": "output/corpus-retry-20261015/nara-direct-resume/plan.json",
+      "sha256": "f4db84d4cc68d51c3b47e479459f191d8249c99511b3912d6deebc51cab30a5c"
+    },
+    {
+      "path": "output/corpus-retry-20261015/paid-budget.json",
+      "sha256": "35b5e145ec84c139c01dd5b7530bba0c605b1f5639524cc87ee117f34c034dab"
+    },
+    {
+      "path": "output/corpus-retry-20261015/wayback-priority-index/summary.json",
+      "sha256": "5d355322a50f5f19027ba64bce98d2f4e2e5224b29bc7060c91e4b88aac0b516"
+    },
+    {
+      "path": "output/corpus-retry-20261015/wayback-priority-downloads/complete.json",
+      "sha256": "55f95c3836fc9f922d3652c78ceab96f6e296d7020e72253a83820b563f4ce0b"
+    }
+  ],
+  "publication_blocker": {
+    "workflow_run": 38823678887,
+    "status": "in_progress",
+    "url": "https://github.com/civictechdc/congressional-tech/actions/runs/38823678887"
+  },
+  "recovery_resume": {
+    "queue_entries": 742,
+    "delay_seconds": 15,
+    "transport": "direct Web Harvest saved session",
+    "successful_downloads_reused": true
+  },
+  "paid_requests": 1,
+  "actual_billed_usd": null,
+  "spend_cap_usd": 25
+}
