@@ -1,0 +1,123 @@
+{
+  "selection_path": "output/filename-patterns-20261015/public-retained-review-v6/selection.json",
+  "selection_sha256": "eeb63bec6b56688aa4f2024bcdecb2662c15c2c1b851e07c7bf622769388f089",
+  "fetch_results_path": "output/filename-patterns-20261015/public-retained-review-v6/results.json",
+  "fetch_results_sha256": "98549d9b78fc109afa2996bfa89230afdf73b1deb5614599ad5658794a40a975",
+  "input_check_path": "output/filename-patterns-20261015/public-retained-review-v6/input-check.json",
+  "input_check_sha256": "438b53f4062d48689bc4686a9a0fd31a38eddef5f7a8e6c56ece8a65581173d3",
+  "selected_groups": 20,
+  "verified_retained_pdfs": 14,
+  "verified_retained_pages": 116,
+  "unavailable_groups": 6,
+  "all_inputs_and_pdf_hashes_reverified": true,
+  "pilot_overlap": false,
+  "publisher_acquisition": false,
+  "complete_content_reviews": 0,
+  "independent_reference": false,
+  "release_approved": false,
+  "remaining": [
+    {
+      "document_id": "01940862e3bc3b78b7561661018939cccc324214930e1592401d9514a6a56da5",
+      "filename": "given_truth_in_testimony_award_list.pdf",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v6/bcd55091348b796053d5e9aae621c2f6c310777d6b4b806f18aab7ef2ca1f62b.pdf",
+      "sha256": "bcd55091348b796053d5e9aae621c2f6c310777d6b4b806f18aab7ef2ca1f62b",
+      "pages": 9
+    },
+    {
+      "document_id": "16e435116a0b2859332cd6e56826e1fd0306c833c59eec5f089371750e6a07b6",
+      "filename": "disclosure_wallace_attachment.pdf",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v6/d84a233364ea118eacc05f5483338d50a69de0e6abc21ef2216e03a3b7adf2d4.pdf",
+      "sha256": "d84a233364ea118eacc05f5483338d50a69de0e6abc21ef2216e03a3b7adf2d4",
+      "pages": 70
+    },
+    {
+      "document_id": "1c194d4be0b58d4e5f026fc9fd6165520a734cd0b93c3c38c40cecad21cfffea",
+      "filename": "HHRG-115-SM00-Wstate-SchmitzB-20180425.pdf",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v6/07cd0a884b998411a4d2ac9efd4acf663978dbeb1fa22a323f434bd610abb824.pdf",
+      "sha256": "07cd0a884b998411a4d2ac9efd4acf663978dbeb1fa22a323f434bd610abb824",
+      "pages": 1
+    },
+    {
+      "document_id": "2ae4a3f69b4a9093158de40ca289215caa83fa72e94ed3c795dc01293111d656",
+      "filename": "BILLS-114HR1890ih.pdf",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v6/f15c5a6f41b3b874d017e8caf322c24dd46086218dba8f1ab361e32d1c7d94dd.pdf",
+      "sha256": "f15c5a6f41b3b874d017e8caf322c24dd46086218dba8f1ab361e32d1c7d94dd",
+      "pages": 1
+    },
+    {
+      "document_id": "3dad5ad97e06a7bf95e049b3b4fc2e90534069142493e521ca966d746b6403c4",
+      "filename": "Budget-Reconciliation-Legislative-Recommendations-Relating-to-Repeal-of-Independent-Payment-Advisory-Board-092915.pdf",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v6/541b965df45aca4a432a5d346ed39cb4b53af02a08564b00d00093cf2398146b.pdf",
+      "sha256": "541b965df45aca4a432a5d346ed39cb4b53af02a08564b00d00093cf2398146b",
+      "pages": 1
+    },
+    {
+      "document_id": "557a6f50e9a5f0f45313194714f2b56887f8a5a90023fcae7f6d2ed0551a7202",
+      "filename": "HHRG-114-SM25-Wstate-CarberryC-20160712.pdf",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v6/bbd654736c42d9e68b98ba5c542dfa91ec50f37cd4b2c14695b3a2ba728c289c.pdf",
+      "sha256": "bbd654736c42d9e68b98ba5c542dfa91ec50f37cd4b2c14695b3a2ba728c289c",
+      "pages": 1
+    },
+    {
+      "document_id": "671085aa12fa7fdefbfc2443e9b4dbcdafec3623a471582f07b3969b2bfbf0d5",
+      "filename": "HHRG-115-II13-Wstate-HueterR-20180417.pdf",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v6/61800cc798a83144b12d4d0cea0fc56ec53fccb0cb134d754f22b6842c0e4cc4.pdf",
+      "sha256": "61800cc798a83144b12d4d0cea0fc56ec53fccb0cb134d754f22b6842c0e4cc4",
+      "pages": 2
+    },
+    {
+      "document_id": "8018cc6ec27b3df7995aeddeecd79ec454da163f66aafdbfd119ecadcc4bed32",
+      "filename": "HMTG-114-SM00-Wstate-HardyJ-20160427.pdf",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v6/df3811c17879921bea6e12d1f4369cfedf2ccfc3c7d10ad89252889741b1ecc0.pdf",
+      "sha256": "df3811c17879921bea6e12d1f4369cfedf2ccfc3c7d10ad89252889741b1ecc0",
+      "pages": 1
+    },
+    {
+      "document_id": "82c72c2960dba31d596349026f7a605847a4a7e01b5278e37ff48bbb57c7613f",
+      "filename": "HHRG-114-SM00-Wstate-DunnK-20160420.pdf",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v6/9ee961eabed32b88b97b05b4843c555a27f7b054cf7351c28d881700e1434540.pdf",
+      "sha256": "9ee961eabed32b88b97b05b4843c555a27f7b054cf7351c28d881700e1434540",
+      "pages": 1
+    },
+    {
+      "document_id": "962e30e94b007d85007307268791a977f5daee4351a0bac31546038ac51e940a",
+      "filename": "07.24.18 RM Johnson Space Weather Amendment Statement.pdf",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v6/2d46282160abf6450bb2c9d949d3f712fb2cd84d22012818d69b1d25c5f864fa.pdf",
+      "sha256": "2d46282160abf6450bb2c9d949d3f712fb2cd84d22012818d69b1d25c5f864fa",
+      "pages": 2
+    },
+    {
+      "document_id": "ab34f34051abcbb5e88e37def69288b92f677fa068cdc760968bf13ed43fad2f",
+      "filename": "galarza_disclosure_attachment.pdf",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v6/e9d5bec5afc8aee7e9f5e2160cf8cc866444ac3f9760ed8465b066e7d1d67a73.pdf",
+      "sha256": "e9d5bec5afc8aee7e9f5e2160cf8cc866444ac3f9760ed8465b066e7d1d67a73",
+      "pages": 8
+    },
+    {
+      "document_id": "bbe11ad1aec2d38c62c6cab8e6075227594a80e366ef31cc96a310aa049f56e1",
+      "filename": "Democratic Alternative to Committee Rules 114th Amendment - EBJ.pdf",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v6/8b2c27d2d248e4bc5b266577da3babdf76553e981d7114fac26c0bad0a106e50.pdf",
+      "sha256": "8b2c27d2d248e4bc5b266577da3babdf76553e981d7114fac26c0bad0a106e50",
+      "pages": 17
+    },
+    {
+      "document_id": "be97aead1f5db8d707016da9a6071ac470c06fc5d727f8f97838471acccf5be0",
+      "filename": "HMTG-114-SM00-Wstate-BrillA-20160427.pdf",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v6/84bdf06dccdf507a63e1582aa106d4a51bd58ebc9525499647bbc6a2ed004b24.pdf",
+      "sha256": "84bdf06dccdf507a63e1582aa106d4a51bd58ebc9525499647bbc6a2ed004b24",
+      "pages": 1
+    },
+    {
+      "document_id": "fd9e22a90e06fa4ad9ebdc54384b6965b81bd8e429d8debb80dc2a783db3be96",
+      "filename": "Pages-from-Heather-Terenzio-Disclosure-Form.pdf",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v6/41f8412deaf6de8836ad84081fc23bf11bef0208d13249a0d601e60908cbc46b.pdf",
+      "sha256": "41f8412deaf6de8836ad84081fc23bf11bef0208d13249a0d601e60908cbc46b",
+      "pages": 1
+    }
+  ],
+  "limitations": [
+    "Retrieval and byte verification do not constitute content review.",
+    "The 70-page Wallace packet requires full review, including any attachments; short filenames do not imply short bodies.",
+    "Six cases have no eligible retained document body and remain unresolved."
+  ]
+}

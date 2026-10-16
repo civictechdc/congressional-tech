@@ -596,3 +596,18 @@ Keep unavailable cases unresolved and preserve each literal filename claim.
 Apply justified runtime changes through house_naming with focused tests and
 cohort replay. Fresh raw-catalog qualification and independent reference labels
 remain separate unfinished requirements; version 3.2.7 remains local.
+
+Remaining retained bodies saved
+--------------------------------
+All 14 eligible PDFs / 116 pages in the final 20-case selection were retrieved
+from the existing public saved-copy route with exact decoded hashes. Six cases
+have no eligible body and remain unavailable. Every selected ID and retained
+body key was checked against the frozen 400-record pilot before retrieval.
+See remaining_retained_review_readiness_v2.json and public-retained-review-v6.
+Retrieval does not count as content review; none of these 14 is yet complete.
+
+Review the seven statement/disclosure packets and the one-page vote and budget
+packets first, then Johnson's two pages, the nine-page Award List, eight-page
+Galarza attachment, seventeen-page EBJ alternative and seventy-page Wallace
+attachment. Use the saved bytes; no refetch is needed. Inspect every retained
+page before linking a completed review, and preserve any composite forms.
