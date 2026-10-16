@@ -69,3 +69,24 @@ class PairValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'bytes differ'): self.validate()
 
 if __name__ == '__main__': unittest.main()
+
+
+def test_actual_viewer_materialization_accepts_the_shared_pair_proof(tmp_path):
+    from congress_api.retention import document_index as index
+    from congress_api.retention.catalog_cache import LocalStore
+    from congress_api.retention.catalog_publication import publish_catalog, read_catalog
+    import json
+    root = tmp_path/'source'; (root/'indexes').mkdir(parents=True)
+    source = root/'indexes/document-filenames.parquet'
+    schema = index.SOURCE_SCHEMA.append(pa.field('source_occurrences', index.metadata_type('source_occurrences')))
+    index.write_document_indexes(source, [dict(body_key=None, filename='probe.pdf',
+        source_url='https://example.test/probe.pdf', source_occurrences=[])], schema)
+    store = LocalStore(root)
+    publish_catalog(store, source, source.with_name('documents.parquet'), previous=read_catalog(store))
+    manifest = json.loads((root/'indexes/catalog.json').read_text())
+    proof = validate_catalog_pair(root, manifest, validator=index.validate_document_indexes)
+    result = builder.publish(root, tmp_path/'prepared', validation=proof)
+    assert result['info']['catalog_id'] == manifest['catalog_id']
+    assert result['info']['rows'] == 1
+    assert result['info']['video_reference_groups'] == 0
+    assert all((tmp_path/'prepared'/item['path']).is_file() for item in result['files'].values())

@@ -10,11 +10,21 @@
     "packages/congress_api/src/congress_api/retention/saved_response_reviews.json": {
       "sha256": "202f3108e389c4811b94e9015eb0d0d035e84e22ad6c410b3a63f83765799ce0",
       "bytes": 13973
+    },
+    "docs/youtube-coverage/research/scripts/view_document_filenames.py": {
+      "sha256": "f785314fd37a5410d9e0064b8e69b62bfb273ecfe895765382595a92c1cb3e77",
+      "bytes": 34250
     }
   },
   "verified_imports": [
     "publish-viewer-r2.py",
     "publish-filename-viewer.py"
   ],
-  "remote_writes": false
+  "remote_writes": false,
+  "verified_actual_preparation": {
+    "fixture": "one source/document with typed source_occurrences",
+    "files": 12,
+    "total_bytes": 73479,
+    "all_values_verified": true
+  }
 }

@@ -22,6 +22,8 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, quote, urlsplit
 from urllib.request import Request, urlopen
 
+from congress_api.retention.saved_responses import FIELDS as SAVED_FIELDS, saved_response
+
 import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
@@ -34,7 +36,8 @@ LIST_COLUMNS = ('filename', 'source_url', 'body_key', 'congress', 'document_kind
                 'extension', 'committee_code', 'measure_references', 'media_type', 'http_status',
                 'source_id', 'document_id', 'format', 'record_role', 'body_format',
                 'response_usable', 'response_body_complete', 'response_format', 'response_result',
-                'recovered_filename', 'recovered_source_url', 'source_congress')
+                'recovered_filename', 'recovered_source_url', 'source_congress',
+                'source_record_type', 'capture_outcome', 'state_outcome')
 FILTERS = ('congress', 'document_family', 'document_kind', 'format')
 
 
@@ -80,11 +83,11 @@ def source_context(record):
     occurrences = record.get('source_occurrences') or []
     for observation in occurrences or [record]:
         basis = observation.get('source_association_basis') or []
-        if 'publisher_redirect' in basis and file_url:
+        if 'publisher_redirect' in basis and 'linked_page' not in basis and file_url:
             for original in observation.get('source_associated_url') or []:
                 if web_url(original) and original != file_url and (original, file_url) not in redirects:
                     redirects.append((original, file_url))
-        candidates = any(value not in ('publisher_redirect', 'retained_html_link') for value in basis)
+        candidates = any(value not in ('publisher_redirect', 'retained_html_link', 'linked_page') for value in basis)
         urls = list(dict.fromkeys(value for key in ('source_original_page_url', 'source_page_url')
                                  for value in observation.get(key) or [] if web_url(value)))
         urls = [value for value in urls if value != file_url and value not in recovered]
@@ -96,13 +99,24 @@ def source_context(record):
                     link_labels=observation.get('source_link_label') or [],
                     link_urls=[value for value in observation.get('source_link_url') or [] if web_url(value)],
                     relationship='Possible source page' if candidates else
+                    'Linked through' if 'linked_page' in basis else
                     'Linked from' if observation.get('source_occurrence_scope') == ['anchor'] else 'Recorded source page')
+        if observation.get('source_page_type'):
+            page['types'] = observation['source_page_type']
+        if observation.get('source_page_date'):
+            page['dates'] = observation['source_page_date']
         identity = json.dumps(page, sort_keys=True)
         if identity not in seen:
             pages.append(page)
             seen.add(identity)
     return dict(file_url=file_url, recovered_urls=recovered, pages=pages,
                 redirects=[dict(original=a, final=b) for a, b in redirects])
+
+
+def video_reference(value):
+    from congress_api.parsers.media import youtube_video_id
+    identity = youtube_video_id(value) if web_url(value) else None
+    return dict(provider='YouTube', id=identity) if identity else None
 
 
 @lru_cache(maxsize=128)
@@ -278,8 +292,12 @@ class Catalog:
         for row_id, entry in enumerate(self.entry_ids):
             self.members[entry].append(row_id)
         self.saved_responses = bytearray(len(self.documents))
-        for row_id in pc.indices_nonzero(pc.is_valid(self.table['body_key'])).to_pylist():
-            self.saved_responses[self.entry_ids[row_id]] = 1
+        row_id = 0
+        for batch in self.table.select([name for name in SAVED_FIELDS if name in self.fields]).to_batches(max_chunksize=8192):
+            for row in batch.to_pylist():
+                if saved_response(row):
+                    self.saved_responses[self.entry_ids[row_id]] = 1
+                row_id += 1
         self.preferred_sources = [sources[key] for key in self.documents['source_id'].to_pylist()]
         self.order = pc.sort_indices(self.documents, sort_keys=[('filename', 'ascending')])
         self.document_entries = set(
@@ -299,6 +317,15 @@ class Catalog:
         self.api_entries = {entry for entry in self.api_entries
                             if all(row_id in self.api_sources for row_id in self.members[entry])}
         self.document_entries.difference_update(self.api_entries)
+        video_mask = pc.match_substring_regex(urls, r'(?i)^https?://(www\.)?(youtu\.be|youtube\.com|youtube-nocookie\.com)/')
+        self.video_sources = {
+            row_id: reference for row_id in pc.indices_nonzero(pc.fill_null(video_mask, False)).to_pylist()
+            if (reference := video_reference(urls[row_id].as_py()))
+        }
+        self.video_entries = {self.entry_ids[row_id] for row_id in self.video_sources}
+        self.video_entries = {entry for entry in self.video_entries
+                              if all(row_id in self.video_sources for row_id in self.members[entry])}
+        self.document_entries.difference_update(self.video_entries)
         self.group_starts = [0]
         for group in range(self.file.num_row_groups):
             self.group_starts.append(self.group_starts[-1] + self.file.metadata.row_group(group).num_rows)
@@ -323,6 +350,7 @@ class Catalog:
             'documents': len(self.document_entries),
             'capture_records': len(self.members) - len(self.document_entries),
             'api_reference_groups': len(self.api_entries),
+            'video_reference_groups': len(self.video_entries),
             'bytes': path.stat().st_size, 'fields': self.fields, 'facets': facets,
             'catalog_id': catalog_id.decode(),
             'house_naming_version': (self.file.schema_arrow.metadata or {}).get(b'house_naming_version', b'unknown').decode(),
@@ -412,6 +440,7 @@ class Catalog:
             row.pop('body_key')
             row['retained'] = bool(self.saved_responses[entry])
             row['api_reference'] = self.api_sources.get(self.preferred_sources[entry]) if entry in self.api_entries else None
+            row['video_reference'] = self.video_sources.get(self.preferred_sources[entry]) if entry in self.video_entries else None
         return {'rows': rows, 'total': total, 'page': page, 'pages': pages, 'limit': limit}
 
     @lru_cache(maxsize=16)
@@ -426,10 +455,11 @@ class Catalog:
         record = self.record(row_id)
         ids = self.members[self.entry_ids[row_id]]
         sources = self.table.take(pa.array(ids, type=pa.int64())).to_pylist()
-        bodies = [source.get('body_key') for source in sources]
+        bodies = [source.get('body_key') if saved_response(source) else None for source in sources]
         for source, source_id in zip(sources, ids):
             source['_row'] = source_id
-            source['retained'] = source.pop('body_key') is not None
+            source['retained'] = saved_response(source)
+            source.pop('body_key')
         filename = self.documents['filename'][self.entry_ids[row_id]].as_py()
         position = self.entry_ids[row_id]
         group = bisect_right(self.document_starts, position) - 1
@@ -437,11 +467,12 @@ class Catalog:
         reading = filename_reading(record['filename'], record.get('source_url')) if record.get('filename') else None
         return {'record': record, 'document': document, 'filename': filename, 'sources': sources,
                 'api_reference': self.api_sources.get(row_id),
+                'video_reference': self.video_sources.get(row_id),
                 'catalog_id': self.info['catalog_id'], 'reading': reading,
                 'origin': source_context(record),
                 'document_origin': source_context(self.record(self.preferred_sources[position])),
                 'sources_share_saved_file': bool(bodies and bodies[0] and len(set(bodies)) == 1),
-                'saved_file_available': bool(self.retained and record.get('body_key'))}
+                'saved_file_available': bool(self.retained and saved_response(record))}
 
     @lru_cache(maxsize=16)
     def evidence(self, row_id):
