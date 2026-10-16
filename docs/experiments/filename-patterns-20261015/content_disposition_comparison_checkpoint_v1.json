@@ -1,0 +1,35 @@
+{
+  "summary_path": "output/filename-patterns-20261015/content-disposition-comparison-v1/summary.json",
+  "summary_sha256": "6f631368142102ad60b589b653c20daf3359d9bd9c65b3b540934325b49c9cd3",
+  "outputs": {
+    "comparisons.jsonl": "139682756c293976e8f3b162e1581a6aa5638fabddb67be3e1461c86631db981",
+    "comparisons.csv": "0d814f2cdc4ea46c8402162334e0c64663bcc66e1556fdf82fbd31665481c180"
+  },
+  "records": 91,
+  "source_rows": 744,
+  "label_comparison": {
+    "same_labels": 18,
+    "different_labels": 67,
+    "not_comparable_no_body": 6
+  },
+  "content_comparison": {
+    "absent": 84,
+    "not_comparable_no_body": 6,
+    "same_labels": 1
+  },
+  "verification": {
+    "all_bindings_and_outputs_reverified": true,
+    "frozen_source_hashes_unchanged": 9,
+    "focused_tests_passed": 41,
+    "focused_test_seconds": 0.62
+  },
+  "implementation": {
+    "docs/experiments/filename-patterns-20261015/catalog_disposition_compare.py": "830e9e7cc3b2ced37f890e5587452582c1b15331acc90cc455379261d85fb01e",
+    "docs/experiments/filename-patterns-20261015/test_catalog_disposition_compare.py": "a581eb583b53df05ae98ec335a41ddcf933dda6475a377eeb75c785036ef8e08",
+    "docs/experiments/filename-patterns-20261015/catalog_content_review.py": "1fb1296d047cc7da5a8a5d055a869ac1bc0a4489493a901ad479baee2f68aa83",
+    "docs/experiments/filename-patterns-20261015/catalog_review_evidence.py": "0cbc50d559c73414cedbb4cf9dce1948fe9019aa1c39d04fff7ee9bc1e0e540a"
+  },
+  "classification_mutations": false,
+  "independent_reference": false,
+  "release_approved": false
+}

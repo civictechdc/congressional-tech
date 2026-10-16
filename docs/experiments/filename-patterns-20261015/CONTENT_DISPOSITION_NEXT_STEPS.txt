@@ -86,3 +86,26 @@ existing validator. All 91 proposal IDs match the needs_review set exactly;
 without additions or omissions. JSON and CSV were read back; nine frozen source
 hashes and original ledger fields remain unchanged. No runtime code changed, so
 no new runtime test-suite result is claimed. See content_disposition_checkpoint_v1.json.
+
+Saved-catalog comparison completed
+---------------------------------
+content-disposition-comparison-v1 covers all 91 groups and 744 source rows.
+Eighteen reviewed groups have identical selected/reviewed label sets; 67 differ;
+six are not comparable because no body is available. The complete comparison
+CSV was read. Differences include specificity, role labels and omitted packet
+components and must not be counted indiscriminately as errors.
+
+Only one reviewed group has an existing retained content kind (opening-statement).
+The other 84 reviewed groups have none. A global change to filename/content
+precedence therefore cannot solve this queue. The existing native reading also
+already appears in its selected kinds, alongside a meeting-support alias.
+
+Steps 1 and 2 above now have a static implementation trace and a bound historical
+comparison. Full refresh/grouping execution for a changed selection policy is
+still outstanding. Next prototype an explicit, separately attributed complete-
+body review input for a local experiment, using the existing restoration and
+selection paths. Bind the review to exact bytes and original membership; preserve
+filename claims, existing cover readings and packet components separately. First
+exercise all 85 reviewed cases and the six unavailable controls without changing
+production defaults. Test withdrawal, correction and both grouping paths before
+considering promotion. Keep the five cases with descriptive labels explicit.

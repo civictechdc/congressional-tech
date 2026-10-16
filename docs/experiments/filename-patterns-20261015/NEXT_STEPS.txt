@@ -679,3 +679,18 @@ Filename rules remain in house_naming; exact-body evidence selection belongs in
 congress_api retention. Do not force body-specific findings into filename rules
 or broadly invert filename/content precedence. Preserve composite forms and
 unsupported descriptive labels while testing a narrow evidence-selection change.
+
+Content selection comparison completed
+-------------------------------------
+The read-only comparison tool covers all 91 cases / 744 source rows: 18 literal
+label-set matches, 67 differences and six unavailable cases. Only one group has
+an existing native content classification; 84 reviewed groups have none.
+See REVIEW_CONTENT_DISPOSITION_COMPARE.txt and the comparison checkpoint.
+The comparison and unchanged receipt-validator tests pass (41 tests).
+
+Next prototype a separately attributed complete-body review input in a local
+experiment. Reuse existing restoration/selection paths and test both groupers,
+cache reuse and withdrawal before any production adoption. A broad precedence
+change cannot fill the missing content readings. Keep the frozen reader and
+pilot unchanged; independent references and fresh-catalog qualification remain
+unfinished. No new publication has occurred.
