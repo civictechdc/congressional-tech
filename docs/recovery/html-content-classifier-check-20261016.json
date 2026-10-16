@@ -1,0 +1,37 @@
+{
+  "at": "2026-10-16T04:36:04.426605+00:00",
+  "offline_tests_passed": 6,
+  "real_archive_samples": 5,
+  "classifications": [
+    {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/nara-html-probe/hearing_transcript-identity/body",
+      "category": "attachment_page",
+      "words": 3
+    },
+    {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/nara-html-probe/opening_statement-identity/body",
+      "category": "substantial_document_body",
+      "words": 414
+    },
+    {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/nara-html-probe/other_html-identity/body",
+      "category": "empty_document_body",
+      "words": 0
+    },
+    {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/nara-html-probe/record_submission-identity/body",
+      "category": "substantial_document_body",
+      "words": 5041
+    },
+    {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/nara-html-probe/witness_testimony-identity/body",
+      "category": "substantial_document_body",
+      "words": 4263
+    }
+  ],
+  "evidence_sha256": "f9adf0ef9797de5a5d5a95aa5e5462071816505a844b1d4570585f541fda5061",
+  "remaining_queue_urls": 1410,
+  "remaining_queue_groups": 1409,
+  "retained_digest_candidates": 2,
+  "scope": "Content classification only; archive digest, completeness, URL identity and deferred exclusions remain separate required gates."
+}
