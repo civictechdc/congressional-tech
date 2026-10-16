@@ -1,0 +1,32 @@
+{
+  "at": "2026-10-16T05:23:56.919150+00:00",
+  "new_qualified_links": 78,
+  "nara_html_links": 60,
+  "additional_pdfs": 18,
+  "remaining_unresolved": 18836,
+  "prepared_links": 4738,
+  "published": false,
+  "continuation": {
+    "publisher_urls": 8624,
+    "publisher_unrequested": 8609,
+    "publisher_connection_errors": 15,
+    "nara_groups": 1340,
+    "dispatched": false,
+    "successful_downloads_excluded": true,
+    "nara_connection_errors": 3
+  },
+  "evidence": {
+    "nara-html-recovery/qualification-complete.json": "194c0bea108e0f9ac9b7acf848ad8f40292e25c22963a42902731dcaf6153b5c",
+    "nara-html-qualified-recovered.json": "a3f492383ce6890b10e11b38c2e61011f1d4519e257c757485b026fd61e58889",
+    "publisher-snapshot-02/qualified.json": "7198b221529be56d38762597795deae4e2be4fb5db6c977c6341dfc674e25539",
+    "publisher-continuation-candidates.json": "4327a9bef81f8d6682b56e9fd3c1749ee27c2fb08f638c4a425a0209a2ec5eed",
+    "nara-html-continuation-candidates.json": "46ba98bb8ffff638ba75058338210ba6453f92e8ddad190e7cdeec1cc9e18ece",
+    "remaining-recovery-summary.json": "5df262f077893b4931308a007cc2b3fb3d896c69c9666760c30241fa900491db"
+  },
+  "next_steps": [
+    "Verify retry transport using failed or unrequested URLs only before continuation",
+    "Preserve completed runs; use fresh output directories and durable per-request receipts",
+    "Include qualified HTML with explicit text/html media type in successor publication batch",
+    "Publish completed recoveries after fresh cloud-clear check"
+  ]
+}
