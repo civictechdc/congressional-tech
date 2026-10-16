@@ -1,0 +1,19 @@
+{
+  "batch_path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/publication-batches/checkpoint-04",
+  "at": "2026-10-16T03:14:17.479115+00:00",
+  "local_only": true,
+  "source_records": 686,
+  "zip_parent_records": 15,
+  "capture_rows": 850,
+  "distinct_capture_bodykeys": 775,
+  "remote_existing": 437,
+  "remote_absent": 338,
+  "prior_full_readback_reused_with_fresh_head": 302,
+  "new_full_body_readbacks": 135,
+  "files": {
+    "manifest.json": "940b441049b7db96abc6a07e553a2ed5b9371da74f9c4c472fa4c58745487c5a",
+    "prepared-source-records.json": "cd4b676d9878030d2a4d21016d7b0da113f673fc547b7712f1b9c3a61b0f9a78",
+    "source-record-preparation.json": "5be1be583fb09f7316a574c76b0bcef7b4b5887edbd31a1fc009420421315ba8",
+    "remote-body-readback.json": "58b2d0c0202a5ed307cdb270ff3c1d2f9649acef8ab6b8703c7731f7a575469e"
+  }
+}
