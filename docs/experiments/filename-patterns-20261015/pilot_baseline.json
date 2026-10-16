@@ -1,0 +1,1242 @@
+{
+  "summary": {
+    "checked_at": "2026-10-16T00:57:08.906336+00:00",
+    "sample_sha256": "55b3256dc0bfee57d90235b7d8d9b216060bc145d82926709a5b01beed619237",
+    "records": 400,
+    "splits": {
+      "development": {
+        "unavailable_exact_body": 59,
+        "matched_bodies": 141,
+        "reference_labels": 140,
+        "ready_for_reference_review": 140,
+        "needs_visual_review": 1
+      },
+      "held-out": {
+        "matched_bodies": 159,
+        "ready_for_reference_review": 157,
+        "unavailable_exact_body": 41,
+        "needs_visual_review": 2
+      }
+    },
+    "distinct_matched_bodies": 300,
+    "original_extraction_errors": 15,
+    "repair_receipts": 15,
+    "remaining_extraction_errors": 0,
+    "selected_page_methods": {
+      "native_text": 499,
+      "ocr": 59
+    },
+    "retrieval_attempts": {
+      "local_retained:not_local": 392,
+      "publisher:read_error": 44,
+      "publisher:matches_retained_digest": 299,
+      "publisher:http_error": 51,
+      "publisher:no_retained_digest": 5,
+      "local_retained:found": 1,
+      "publisher:different_pdf": 1,
+      "publisher:not_pdf": 5
+    },
+    "original_document_processing_seconds_sum": 516.73,
+    "timing_limit": "Sum of per-document original attempts, not wall time. OCR repairs and review time were not timed.",
+    "cost": "Local tools and publisher HTTP requests; no paid model API used. CPU and network cost not metered.",
+    "reference_reviewer": "assistant",
+    "human_validated": false,
+    "reference_scope": "Opening-page excerpts plus recorded second-page checks; not full-document legal or factual review.",
+    "catalog_eligibility": "Pending fresh 3.1.0 catalog. No sample substitutions or held-out evaluation.",
+    "source_hashes": {
+      "docs/experiments/filename-patterns-20261015/pilot_extract.py": "0b9273877af1378fae44b602b7b644e3e55371f046b1ec86abb70668c841dbd7",
+      "docs/experiments/filename-patterns-20261015/pilot_review.py": "686b1f96ca96f34b29b00aac646d5766f069459e3198ddcab693bd7884e6f694",
+      "docs/experiments/filename-patterns-20261015/pilot_audit.py": "e70cf9d2805ce6141902539762b6fa2f0d6ac92a6855ad5d0ac0385f2191b4ff",
+      "docs/experiments/filename-patterns-20261015/pilot_adjudications.json": "f943463bd36ea11ddf43f9550da3d8a6dbe8e25b0241fe65b9bf04528ee253c3",
+      "packages/congress_api/src/congress_api/parsers/document_cover.py": "279a405517c914763f45e36a9fa20f124a8e2fe715def7bb2ceb2170ddc36a3d"
+    },
+    "receipt_hashes": {
+      "receipts.jsonl": "65246a4586b5ea782035c7b632d4f5da59a1aa778277b32bc9d1a033a6fea708",
+      "extraction-repairs.jsonl": "a0404d2b5e1736e60dc707139e45464ab26c32057816827f1e91040e53203865"
+    },
+    "baseline_limit": "Existing document_page_fields rules on saved Poppler/native and OCR-assisted text, following caller page policy. Not end-to-end pypdf runtime performance or held-out accuracy.",
+    "development_diagnostics": {
+      "native": {
+        "labeled_development": 140,
+        "assigned": 9,
+        "exact_agreements": 9,
+        "abstentions": 131,
+        "disagreements": []
+      },
+      "assisted": {
+        "labeled_development": 140,
+        "assigned": 9,
+        "exact_agreements": 9,
+        "abstentions": 131,
+        "disagreements": []
+      }
+    },
+    "per_kind": {
+      "affidavit": {
+        "reference_count": 1,
+        "native_exact_agreements": 0,
+        "assisted_exact_agreements": 0
+      },
+      "amendment": {
+        "reference_count": 11,
+        "native_exact_agreements": 0,
+        "assisted_exact_agreements": 0
+      },
+      "biography": {
+        "reference_count": 1,
+        "native_exact_agreements": 0,
+        "assisted_exact_agreements": 0
+      },
+      "committee-memorandum": {
+        "reference_count": 3,
+        "native_exact_agreements": 0,
+        "assisted_exact_agreements": 0
+      },
+      "committee-resolution": {
+        "reference_count": 2,
+        "native_exact_agreements": 1,
+        "assisted_exact_agreements": 1
+      },
+      "committee-rules": {
+        "reference_count": 1,
+        "native_exact_agreements": 0,
+        "assisted_exact_agreements": 0
+      },
+      "committee-vote": {
+        "reference_count": 6,
+        "native_exact_agreements": 0,
+        "assisted_exact_agreements": 0
+      },
+      "comparison-table": {
+        "reference_count": 1,
+        "native_exact_agreements": 0,
+        "assisted_exact_agreements": 0
+      },
+      "constitutional-text": {
+        "reference_count": 1,
+        "native_exact_agreements": 0,
+        "assisted_exact_agreements": 0
+      },
+      "court-filing": {
+        "reference_count": 1,
+        "native_exact_agreements": 0,
+        "assisted_exact_agreements": 0
+      },
+      "curriculum-vitae": {
+        "reference_count": 1,
+        "native_exact_agreements": 0,
+        "assisted_exact_agreements": 0
+      },
+      "data-table": {
+        "reference_count": 5,
+        "native_exact_agreements": 0,
+        "assisted_exact_agreements": 0
+      },
+      "declaration": {
+        "reference_count": 1,
+        "native_exact_agreements": 0,
+        "assisted_exact_agreements": 0
+      },
+      "fact-sheet": {
+        "reference_count": 6,
+        "native_exact_agreements": 0,
+        "assisted_exact_agreements": 0
+      },
+      "guide": {
+        "reference_count": 1,
+        "native_exact_agreements": 0,
+        "assisted_exact_agreements": 0
+      },
+      "legislative-packet": {
+        "reference_count": 3,
+        "native_exact_agreements": 0,
+        "assisted_exact_agreements": 0
+      },
+      "legislative-text": {
+        "reference_count": 11,
+        "native_exact_agreements": 6,
+        "assisted_exact_agreements": 6
+      },
+      "letter": {
+        "reference_count": 5,
+        "native_exact_agreements": 0,
+        "assisted_exact_agreements": 0
+      },
+      "meeting-minutes": {
+        "reference_count": 1,
+        "native_exact_agreements": 0,
+        "assisted_exact_agreements": 0
+      },
+      "meeting-notice": {
+        "reference_count": 4,
+        "native_exact_agreements": 0,
+        "assisted_exact_agreements": 0
+      },
+      "member-statement": {
+        "reference_count": 2,
+        "native_exact_agreements": 0,
+        "assisted_exact_agreements": 0
+      },
+      "memorandum": {
+        "reference_count": 3,
+        "native_exact_agreements": 0,
+        "assisted_exact_agreements": 0
+      },
+      "motion": {
+        "reference_count": 1,
+        "native_exact_agreements": 0,
+        "assisted_exact_agreements": 0
+      },
+      "policy-plan": {
+        "reference_count": 2,
+        "native_exact_agreements": 0,
+        "assisted_exact_agreements": 0
+      },
+      "policy-recommendations": {
+        "reference_count": 1,
+        "native_exact_agreements": 0,
+        "assisted_exact_agreements": 0
+      },
+      "policy-statement": {
+        "reference_count": 1,
+        "native_exact_agreements": 0,
+        "assisted_exact_agreements": 0
+      },
+      "presentation": {
+        "reference_count": 1,
+        "native_exact_agreements": 0,
+        "assisted_exact_agreements": 0
+      },
+      "public-law": {
+        "reference_count": 1,
+        "native_exact_agreements": 0,
+        "assisted_exact_agreements": 0
+      },
+      "published-hearing": {
+        "reference_count": 4,
+        "native_exact_agreements": 1,
+        "assisted_exact_agreements": 1
+      },
+      "report": {
+        "reference_count": 22,
+        "native_exact_agreements": 0,
+        "assisted_exact_agreements": 0
+      },
+      "research-paper": {
+        "reference_count": 4,
+        "native_exact_agreements": 0,
+        "assisted_exact_agreements": 0
+      },
+      "resolution": {
+        "reference_count": 4,
+        "native_exact_agreements": 0,
+        "assisted_exact_agreements": 0
+      },
+      "statement": {
+        "reference_count": 2,
+        "native_exact_agreements": 0,
+        "assisted_exact_agreements": 0
+      },
+      "statutory-text": {
+        "reference_count": 1,
+        "native_exact_agreements": 0,
+        "assisted_exact_agreements": 0
+      },
+      "summary": {
+        "reference_count": 5,
+        "native_exact_agreements": 0,
+        "assisted_exact_agreements": 0
+      },
+      "transcript": {
+        "reference_count": 6,
+        "native_exact_agreements": 1,
+        "assisted_exact_agreements": 1
+      },
+      "witness-statement": {
+        "reference_count": 14,
+        "native_exact_agreements": 0,
+        "assisted_exact_agreements": 0
+      }
+    }
+  },
+  "predictions": {
+    "D004": {
+      "document_id": "d4045589d2642e0db58c7bf0d56f90fbc29be6cf3683cee36df8f78a02d6a970",
+      "reference_kind": "witness-statement",
+      "native": {},
+      "assisted": {}
+    },
+    "D006": {
+      "document_id": "0f4ea4e2cffbe953dcc3f8fcb06a2914bf3616edd86a0bfed7d69452376bab4a",
+      "reference_kind": "report",
+      "native": {},
+      "assisted": {}
+    },
+    "D007": {
+      "document_id": "e1331ba1a793614853106c9b9299b76d7e4d59a2a54aead315f54a3a906401c4",
+      "reference_kind": "report",
+      "native": {},
+      "assisted": {}
+    },
+    "D008": {
+      "document_id": "1bfc98e9f328e07fb007acce1b7e8f4819c140bc91885cc1b8c5bfdf75eee0f5",
+      "reference_kind": "published-hearing",
+      "native": {},
+      "assisted": {}
+    },
+    "D009": {
+      "document_id": "02f94d385b2bd7ef074dd0c07b6dbee30c22c9a3e460d9a5cfd1cc30aa9f212e",
+      "reference_kind": "committee-vote",
+      "native": {},
+      "assisted": {}
+    },
+    "D010": {
+      "document_id": "b108511b4a118e43f5b982cbb8e7519de50a8559c1f79cab5d4decff1e01c0e7",
+      "reference_kind": "legislative-text",
+      "native": {
+        "content_document_kind": [
+          "legislative-text"
+        ],
+        "content_citation": [
+          "H.R. 1029"
+        ],
+        "content_congress": [
+          "115"
+        ]
+      },
+      "assisted": {
+        "content_document_kind": [
+          "legislative-text"
+        ],
+        "content_citation": [
+          "H.R. 1029"
+        ],
+        "content_congress": [
+          "115"
+        ]
+      }
+    },
+    "D011": {
+      "document_id": "2fa7e19cefddf9e82666c12d672fa75adea073dfd35418fd2d0a09251ce454f8",
+      "reference_kind": "published-hearing",
+      "native": {
+        "content_document_kind": [
+          "published-hearing"
+        ],
+        "content_citation": [
+          "S. Hrg. 116-426"
+        ]
+      },
+      "assisted": {
+        "content_document_kind": [
+          "published-hearing"
+        ],
+        "content_citation": [
+          "S. Hrg. 116-426"
+        ]
+      }
+    },
+    "D012": {
+      "document_id": "786314610dbc00121079e33efe7e84f52c77c912a00eab9e8fd9c2386dc2e066",
+      "reference_kind": "memorandum",
+      "native": {},
+      "assisted": {}
+    },
+    "D014": {
+      "document_id": "4a022955e52642ecb0c9f58cb1b7c6f74da91a920923b522c100735f6c74a822",
+      "reference_kind": "meeting-notice",
+      "native": {},
+      "assisted": {}
+    },
+    "D017": {
+      "document_id": "2ab5e4206a90d225d8ccc3dd5e37f285447648a75398a90a1b43fa8c5f63bcb2",
+      "reference_kind": "transcript",
+      "native": {},
+      "assisted": {}
+    },
+    "D018": {
+      "document_id": "6606224b622a285364d3dd37ca2ca9671a0875919b6919cd1c1c5736292ab299",
+      "reference_kind": "legislative-packet",
+      "native": {},
+      "assisted": {}
+    },
+    "D019": {
+      "document_id": "cfdc40bdf6d2b5ac04654d40751294212a91c501087ef112935df0ceeb32e742",
+      "reference_kind": "policy-plan",
+      "native": {},
+      "assisted": {}
+    },
+    "D021": {
+      "document_id": "9b7a55a10b4e64ac6e839cd13dcb59072dc487780ccf6ab95624eb88b0fc3d4b",
+      "reference_kind": "fact-sheet",
+      "native": {},
+      "assisted": {}
+    },
+    "D022": {
+      "document_id": "4bd951ccf0fa2dc4a8e1bd2d720434a0c44dc1ef2f965b3b9d2298137f005c3a",
+      "reference_kind": "research-paper",
+      "native": {},
+      "assisted": {}
+    },
+    "D023": {
+      "document_id": "ee448e0f99668d4de42b251de24442560fdaa1a5609ad8c689a8f35686c948c9",
+      "reference_kind": "report",
+      "native": {},
+      "assisted": {}
+    },
+    "D025": {
+      "document_id": "dee777c07327645ef42303106479ccdb9d87ba46ae757fdcae3418e9dc2550a8",
+      "reference_kind": "legislative-text",
+      "native": {
+        "content_document_kind": [
+          "legislative-text"
+        ],
+        "content_congress": [
+          "118"
+        ]
+      },
+      "assisted": {
+        "content_document_kind": [
+          "legislative-text"
+        ],
+        "content_congress": [
+          "118"
+        ]
+      }
+    },
+    "D026": {
+      "document_id": "26e628c69a7e03aa5fc815f6129cee05a9fefa4f20013a6d66e0e16e5fa8b280",
+      "reference_kind": "report",
+      "native": {},
+      "assisted": {}
+    },
+    "D029": {
+      "document_id": "cf02136a1c285a1d9fb38d2e4a9b0a93a15bfe099831d0359d9b0e6aaa2d8792",
+      "reference_kind": "report",
+      "native": {},
+      "assisted": {}
+    },
+    "D030": {
+      "document_id": "0c34ea6ee69e71d1ce97c89bc4c78c2abfb1e8abb94ec91114ba87aaa78f1b4c",
+      "reference_kind": "meeting-notice",
+      "native": {},
+      "assisted": {}
+    },
+    "D031": {
+      "document_id": "0c8e75c4e967bfca92b0323f5d25ad281e8b38c8c36fcfb556325080b8c07f9b",
+      "reference_kind": "committee-resolution",
+      "native": {},
+      "assisted": {}
+    },
+    "D032": {
+      "document_id": "94aa1b5d7c5c0e44f0259795023944060cafbad2dac97517a81e5f10153cc55b",
+      "reference_kind": "legislative-text",
+      "native": {},
+      "assisted": {}
+    },
+    "D033": {
+      "document_id": "e5f4b117acd60c00347d18e2952b2cef69d6a39089288373a29a3ffcd17a9243",
+      "reference_kind": "report",
+      "native": {},
+      "assisted": {}
+    },
+    "D034": {
+      "document_id": "f03f27714427aa6c2d1382f43b201a12daeb20996a0d735bbd7747c7c013776e",
+      "reference_kind": "report",
+      "native": {},
+      "assisted": {}
+    },
+    "D035": {
+      "document_id": "691fa4f0abc30de9b5c46e41b79d5a9d3b0e37569a1fc5965501b56895471230",
+      "reference_kind": "constitutional-text",
+      "native": {},
+      "assisted": {}
+    },
+    "D036": {
+      "document_id": "0af778ebcdff480ef6bbfe06bbcc971433b5a6953da1c4165cd6d045164974c6",
+      "reference_kind": "court-filing",
+      "native": {},
+      "assisted": {}
+    },
+    "D038": {
+      "document_id": "0ecf58ded23917dc7c54f111f0157b5bf85960c67e9a4990d6422c40c60d5615",
+      "reference_kind": "data-table",
+      "native": {},
+      "assisted": {}
+    },
+    "D039": {
+      "document_id": "1b79e98d4ed5c631be74827774f9861ff379d15f07f8ab35db408142387d91d6",
+      "reference_kind": "summary",
+      "native": {},
+      "assisted": {}
+    },
+    "D040": {
+      "document_id": "7a00707f529516d8820b3748799a09ca97f0f19243f1a208f6314b41a8bd8ea0",
+      "reference_kind": "committee-memorandum",
+      "native": {},
+      "assisted": {}
+    },
+    "D041": {
+      "document_id": "75576a5540bd5d2f06b2af9c69bd129e27271b1e89683b8c306e4e956648b7f8",
+      "reference_kind": "letter",
+      "native": {},
+      "assisted": {}
+    },
+    "D042": {
+      "document_id": "186940dc2c813cd6bd50f4f86937c65dbd9a115ac9ce419ff15f755fba99f35f",
+      "reference_kind": "witness-statement",
+      "native": {},
+      "assisted": {}
+    },
+    "D043": {
+      "document_id": "ba343e897d6299977f7b75bf2df8e680eb2d117084a1899fa3ddbe2771e812be",
+      "reference_kind": "report",
+      "native": {},
+      "assisted": {}
+    },
+    "D044": {
+      "document_id": "6c86d640ff753689d10ba3b2699dc3753adecb81895d1d08b833ca229feb8507",
+      "reference_kind": "legislative-text",
+      "native": {},
+      "assisted": {}
+    },
+    "D045": {
+      "document_id": "b78c22e1f482286cba8e7dd742eb48a2308abdb7310e7910fae243dc1557e2b1",
+      "reference_kind": "amendment",
+      "native": {},
+      "assisted": {}
+    },
+    "D047": {
+      "document_id": "438d2fe6e74dab2707ceca908fbfc96b4675205a1577b27dfc7c1c9dcabd6d19",
+      "reference_kind": "witness-statement",
+      "native": {},
+      "assisted": {}
+    },
+    "D048": {
+      "document_id": "3d317c07957aac957cad65b3c8e24f0b9f77eea730134a7876103008416c42ef",
+      "reference_kind": "meeting-minutes",
+      "native": {},
+      "assisted": {}
+    },
+    "D049": {
+      "document_id": "e36e8ff64d235edf0593e0969d60cf7dc166bac4e503d9bf21f9651a3456651e",
+      "reference_kind": "committee-resolution",
+      "native": {
+        "content_document_kind": [
+          "committee-resolution"
+        ],
+        "content_congress": [
+          "116"
+        ]
+      },
+      "assisted": {
+        "content_document_kind": [
+          "committee-resolution"
+        ],
+        "content_congress": [
+          "116"
+        ]
+      }
+    },
+    "D050": {
+      "document_id": "787bf4ffd806573b2c59e425a65b8cdb6c243fdc049b344e794b828fcdd5bf6f",
+      "reference_kind": "witness-statement",
+      "native": {},
+      "assisted": {}
+    },
+    "D051": {
+      "document_id": "d2b55482cf778bfc29e78f4684120a33c3a8f0b37a30fd4a13f6c496093eb178",
+      "reference_kind": "member-statement",
+      "native": {},
+      "assisted": {}
+    },
+    "D052": {
+      "document_id": "727b9acc49e7540423ccf10e1f33854a7044eb25c1afb01dff116ea056f30856",
+      "reference_kind": "witness-statement",
+      "native": {},
+      "assisted": {}
+    },
+    "D053": {
+      "document_id": "110227b73c1ac94c3f04e1dcdac99dcb8f4ae5d8d7a85a66f9dc112a42b6bc71",
+      "reference_kind": "summary",
+      "native": {},
+      "assisted": {}
+    },
+    "D059": {
+      "document_id": "ede0f8789ff7a220ccc8adacb701fa177d58ced333b95ce8faa114bc22ded3b4",
+      "reference_kind": "research-paper",
+      "native": {},
+      "assisted": {}
+    },
+    "D060": {
+      "document_id": "b83549560c669dfcbabfb7acddc0886e8e51173361f471db06f83cff9130cfc2",
+      "reference_kind": "transcript",
+      "native": {},
+      "assisted": {}
+    },
+    "D062": {
+      "document_id": "f807c14e849a4ea6389c7ac914f7a4058c02f414e2c7f8ee47a55e11bf394ba0",
+      "reference_kind": "amendment",
+      "native": {},
+      "assisted": {}
+    },
+    "D064": {
+      "document_id": "6a4602713de8e4fad8e3f98144f85569364b9cc014ff9c69472962a9f9bfebb0",
+      "reference_kind": "report",
+      "native": {},
+      "assisted": {}
+    },
+    "D066": {
+      "document_id": "f6425e25d690417c6de2fcc7fdbeee6900b7b79984fb05a2acd09ad120e89d9c",
+      "reference_kind": "fact-sheet",
+      "native": {},
+      "assisted": {}
+    },
+    "D067": {
+      "document_id": "39b8d037a04368ec08dd62b32663f04b75b8bd047521fb9fb64cd5db07495d5f",
+      "reference_kind": "transcript",
+      "native": {},
+      "assisted": {}
+    },
+    "D068": {
+      "document_id": "b46dc9f9e6548613b28189c85d52896b0b0137cc49353fff1c465fac637085a0",
+      "reference_kind": "report",
+      "native": {},
+      "assisted": {}
+    },
+    "D070": {
+      "document_id": "f4a7d2c5617fc072f7ad14908cf999c2c10c228513ecf3b63f4587840b06a74a",
+      "reference_kind": "amendment",
+      "native": {},
+      "assisted": {}
+    },
+    "D071": {
+      "document_id": "9f397269d30e068dd729bfe87bdf01e1ed773304195352878410cf742ccf3c8d",
+      "reference_kind": "witness-statement",
+      "native": {},
+      "assisted": {}
+    },
+    "D072": {
+      "document_id": "e83fc21e557de2ede54b6a180e58b1070012ca74e2f58ddeec24d90fa34b9a6a",
+      "reference_kind": "legislative-text",
+      "native": {},
+      "assisted": {}
+    },
+    "D074": {
+      "document_id": "72c59eabed394898b6595938958ce80cd06b9a8a9c041a5a45103cfe25cdd31d",
+      "reference_kind": "legislative-text",
+      "native": {},
+      "assisted": {}
+    },
+    "D075": {
+      "document_id": "d0c55a9217eaaa2dd0e9028a40595b2aa475db82b96e353e90eab7d0dec10911",
+      "reference_kind": "report",
+      "native": {},
+      "assisted": {}
+    },
+    "D078": {
+      "document_id": "c370ea8a5abca6be85162385926b52108aa35fab9e6be895eb1daa9d0639c987",
+      "reference_kind": "statutory-text",
+      "native": {},
+      "assisted": {}
+    },
+    "D079": {
+      "document_id": "25780386887e6ba537eaab359f08f579a8c6790a3709d27c900e27d2a877c0f3",
+      "reference_kind": "legislative-text",
+      "native": {
+        "content_document_kind": [
+          "legislative-text"
+        ],
+        "content_congress": [
+          "117"
+        ]
+      },
+      "assisted": {
+        "content_document_kind": [
+          "legislative-text"
+        ],
+        "content_congress": [
+          "117"
+        ]
+      }
+    },
+    "D080": {
+      "document_id": "9b8b7c64a00e7a8ea2260c542fe1d20cf940b54ed7cdbc9bafd3bef313d03dbc",
+      "reference_kind": "report",
+      "native": {},
+      "assisted": {}
+    },
+    "D081": {
+      "document_id": "320c4ff72f71e4909ec5eab4329946d45ff4dd1b08117a9ebbabf2bff648a628",
+      "reference_kind": "guide",
+      "native": {},
+      "assisted": {}
+    },
+    "D082": {
+      "document_id": "ae9bb1f9178de1c89b8109c07f336f4327a1e1480c944c689a9a462a56d9baf9",
+      "reference_kind": "comparison-table",
+      "native": {},
+      "assisted": {}
+    },
+    "D083": {
+      "document_id": "3079f4336918f312e73fc7f228359945687c7f4e05440ab514a481175c2e10b0",
+      "reference_kind": "report",
+      "native": {},
+      "assisted": {}
+    },
+    "D084": {
+      "document_id": "25db7a1e326ec63f5209c0ad40a6a7ea70d43dc42b352fed2706cd4d18b47711",
+      "reference_kind": "witness-statement",
+      "native": {},
+      "assisted": {}
+    },
+    "D087": {
+      "document_id": "c9d95859c8ff3b0b3da9ca1abbd06a40fa10b044b012abd2808c7e03f570cf80",
+      "reference_kind": "witness-statement",
+      "native": {},
+      "assisted": {}
+    },
+    "D088": {
+      "document_id": "2e36a94d9d1866a5a71ef8d036acccc71d707731a9bbdc2853bcbb9f8cde38c8",
+      "reference_kind": "amendment",
+      "native": {},
+      "assisted": {}
+    },
+    "D089": {
+      "document_id": "4fc245f085115e955b5075e5061adc973af2385b1ed5f61ba8a0ec5bd59c9a31",
+      "reference_kind": "policy-recommendations",
+      "native": {},
+      "assisted": {}
+    },
+    "D090": {
+      "document_id": "6b19b2e9ecb35740bb65a7cb3fb0a3ff8f4c29bd5b6dbbc946727eb7c0c0234d",
+      "reference_kind": "letter",
+      "native": {},
+      "assisted": {}
+    },
+    "D093": {
+      "document_id": "b50cb6927e33e00e5e7655281a09200fa68839bdd6f8e2848752252de54a8c5b",
+      "reference_kind": "research-paper",
+      "native": {},
+      "assisted": {}
+    },
+    "D095": {
+      "document_id": "f8ef2d5101a06ddc69cd359b320bf1e6d1de8b032636b0b7ba9e69a6e29b85e6",
+      "reference_kind": "fact-sheet",
+      "native": {},
+      "assisted": {}
+    },
+    "D097": {
+      "document_id": "ca68c20b93019e93bb244a0955fc1aa1647b1762c0bf4fcfbbb28ab2e5547c62",
+      "reference_kind": "curriculum-vitae",
+      "native": {},
+      "assisted": {}
+    },
+    "D098": {
+      "document_id": "f54bc9ef235adbc0262c8ff89126fcbe1e267469b34e2369481f1fd996f42a89",
+      "reference_kind": "fact-sheet",
+      "native": {},
+      "assisted": {}
+    },
+    "D099": {
+      "document_id": "d91afc47af1e9d3489d0db06a0a1a27114b27721a4e33620bfea82f0749554b8",
+      "reference_kind": "amendment",
+      "native": {},
+      "assisted": {}
+    },
+    "D100": {
+      "document_id": "0598dc1b8e79c72f3bfee4585ad057924d4ba8b840586c3b31ba2e51c55ace45",
+      "reference_kind": "amendment",
+      "native": {},
+      "assisted": {}
+    },
+    "D101": {
+      "document_id": "b445570e62aa3610b1e631532ccc4c38dcd394d0962dd5366597b0e0c31956bb",
+      "reference_kind": "data-table",
+      "native": {},
+      "assisted": {}
+    },
+    "D102": {
+      "document_id": "12a1d2342945235ded6dc90d1b7dbe526f9475e89d88b187b440eac80ea0e33d",
+      "reference_kind": "summary",
+      "native": {},
+      "assisted": {}
+    },
+    "D103": {
+      "document_id": "842ea082b8017e1796e70616299bb87ce3ebd1d1e13e17a958d4a6f5bf2a5b74",
+      "reference_kind": "presentation",
+      "native": {},
+      "assisted": {}
+    },
+    "D104": {
+      "document_id": "612feaf6d2650ff5c9b8f0675840030d7cc2091040fd2f7c76c005b470f257b4",
+      "reference_kind": "fact-sheet",
+      "native": {},
+      "assisted": {}
+    },
+    "D105": {
+      "document_id": "8f620cd654b92c3b989d22947e5b970208eae090e9d27e6ef29054e0bd9691b7",
+      "reference_kind": "memorandum",
+      "native": {},
+      "assisted": {}
+    },
+    "D106": {
+      "document_id": "05d06266cc488e4f3a94b5242181e47aa1a9edf853ae76b1ad3abb5feee5e91a",
+      "reference_kind": "statement",
+      "native": {},
+      "assisted": {}
+    },
+    "D107": {
+      "document_id": "d9b965d7ac2c635a9c6b9d155ba6086ce03f9834b591c4f1efc49f87ae7289a0",
+      "reference_kind": "report",
+      "native": {},
+      "assisted": {}
+    },
+    "D108": {
+      "document_id": "8606261da9fae482809082877134e289069806783b54bf3733f846e6afaa10e6",
+      "reference_kind": "report",
+      "native": {},
+      "assisted": {}
+    },
+    "D110": {
+      "document_id": "df1c3273f899ef7154efdd6d30fe95dafc3c9e044b2250e2db64abb18f869002",
+      "reference_kind": "fact-sheet",
+      "native": {},
+      "assisted": {}
+    },
+    "D111": {
+      "document_id": "bccc7d132cc3c426877f134e7da05c75597f9a62c6a9b8ed8463c4ff1a981df3",
+      "reference_kind": "committee-vote",
+      "native": {},
+      "assisted": {}
+    },
+    "D113": {
+      "document_id": "ff319bd3fdb4701652990a7823d1d53e5305e107abd0bc0fdd6e6fd8e54812e5",
+      "reference_kind": "witness-statement",
+      "native": {},
+      "assisted": {}
+    },
+    "D116": {
+      "document_id": "8ac28b77d39ae02d4c66081e9eea654fcbdc75cf6faffd5d1b00c017ebbe0fe7",
+      "reference_kind": "research-paper",
+      "native": {},
+      "assisted": {}
+    },
+    "D117": {
+      "document_id": "60971b54b73fe137e9c5ed84f48e677ac4d04ea7c493f61467681c5432d6345e",
+      "reference_kind": "report",
+      "native": {},
+      "assisted": {}
+    },
+    "D118": {
+      "document_id": "6dbc56326de060dfc84ed3a7a378304f82d0354437bd06de413eb0343ee30478",
+      "reference_kind": "committee-vote",
+      "native": {},
+      "assisted": {}
+    },
+    "D121": {
+      "document_id": "8818e79fe40e3c448be5e16b396d60cc3f16df0932d8829129406c8fd26a453d",
+      "reference_kind": "report",
+      "native": {},
+      "assisted": {}
+    },
+    "D124": {
+      "document_id": "07e978c1ecf71299855ae06ee2aae59025ce418d818df5f647bd4a36f6cea423",
+      "reference_kind": "resolution",
+      "native": {},
+      "assisted": {}
+    },
+    "D126": {
+      "document_id": "3f90a16864c9b6e5cd254ea5cd5b476ca0662f5cbbffcb40b4ffbdb13602498e",
+      "reference_kind": "committee-vote",
+      "native": {},
+      "assisted": {}
+    },
+    "D127": {
+      "document_id": "94fe0bc61736af65400acc7da25ea72b25994d50c134b374a849ffe1224aa9b8",
+      "reference_kind": "report",
+      "native": {},
+      "assisted": {}
+    },
+    "D129": {
+      "document_id": "76b775165993563ef7d7ffefbf5798b1515fa86ea34fe91d96c5432837f5915c",
+      "reference_kind": "committee-vote",
+      "native": {},
+      "assisted": {}
+    },
+    "D130": {
+      "document_id": "bd863ecb204378a61db8db205373b4431a9b7ca76584c7ffa0f148f6c6d46cbf",
+      "reference_kind": "letter",
+      "native": {},
+      "assisted": {}
+    },
+    "D131": {
+      "document_id": "6924e91b43f84259ec6ddd2c1cda3c319c9ff42a7e766c47cec1c62b0f8b01d6",
+      "reference_kind": "member-statement",
+      "native": {},
+      "assisted": {}
+    },
+    "D132": {
+      "document_id": "d218cac2d2dae6ff4d0c4fd6d8892ecefe7331762160cb94f1157546956ab1ab",
+      "reference_kind": "report",
+      "native": {},
+      "assisted": {}
+    },
+    "D133": {
+      "document_id": "7cccb01ba4cf3116683fc7f54aa45d380a2857d8d0f73391354641ee79bb754c",
+      "reference_kind": "declaration",
+      "native": {},
+      "assisted": {}
+    },
+    "D135": {
+      "document_id": "65bde16c15fbc660b4926acf4dcfb7bb5f3c209eac2454537ac2aca09d14988c",
+      "reference_kind": "policy-statement",
+      "native": {},
+      "assisted": {}
+    },
+    "D136": {
+      "document_id": "ef15dc43b082fa2d02ee2f757aaff853ce0024124bd84b8b79c89f4c8b8a1ced",
+      "reference_kind": "data-table",
+      "native": {},
+      "assisted": {}
+    },
+    "D139": {
+      "document_id": "d25549bd34b7545ccc978054edd309c5b3d65d1c385f706d96a5767f4ba8cbb3",
+      "reference_kind": "affidavit",
+      "native": {},
+      "assisted": {}
+    },
+    "D141": {
+      "document_id": "db5fcdd9852b3bd78267e410180a24fe816a26df6d541a06e41e210bce816403",
+      "reference_kind": "published-hearing",
+      "native": {},
+      "assisted": {}
+    },
+    "D144": {
+      "document_id": "5e2af3bdc1971bb2677d6e58fdd16d1b684a22d49e761c5a33d5f1ac538c55ea",
+      "reference_kind": "policy-plan",
+      "native": {},
+      "assisted": {}
+    },
+    "D145": {
+      "document_id": "96f8d782c99785bcaad2c2efaa96d9b94e08095c280b9ace0fedde100e7beff1",
+      "reference_kind": "resolution",
+      "native": {},
+      "assisted": {}
+    },
+    "D147": {
+      "document_id": "3e6c49cde31f7239c2c70bf1980dbcd33fab17459ca3efbce577fb2fbd320aca",
+      "reference_kind": "letter",
+      "native": {},
+      "assisted": {}
+    },
+    "D148": {
+      "document_id": "cc463f87ce76af2d6271772e80228e844f5502921224e922f865d6a03465d336",
+      "reference_kind": "published-hearing",
+      "native": {},
+      "assisted": {}
+    },
+    "D149": {
+      "document_id": "8463f939962ca3057dcf640733d8fde2d26365aba132e2699f7a60686a00b908",
+      "reference_kind": "transcript",
+      "native": {
+        "content_document_kind": [
+          "transcript"
+        ]
+      },
+      "assisted": {
+        "content_document_kind": [
+          "transcript"
+        ]
+      }
+    },
+    "D150": {
+      "document_id": "cac96e8fcadfab277ce8728f10a6fcfd6309a15927179c40d4a42c20ca8397fd",
+      "reference_kind": "resolution",
+      "native": {},
+      "assisted": {}
+    },
+    "D152": {
+      "document_id": "535a9c84c947707b151bdf056b7b4787e2a821857f03f4ea58bcce648df69210",
+      "reference_kind": "legislative-packet",
+      "native": {},
+      "assisted": {}
+    },
+    "D153": {
+      "document_id": "17bfa5412c871cbe2662d758610b37e11f335c0301dfa5cfabc9ec99967c20fe",
+      "reference_kind": "meeting-notice",
+      "native": {},
+      "assisted": {}
+    },
+    "D154": {
+      "document_id": "610cf30ef74b056c3a27ac0683cbb8e3033687c50a8f5e924f7cfed54985e36c",
+      "reference_kind": "amendment",
+      "native": {},
+      "assisted": {}
+    },
+    "D155": {
+      "document_id": "5797b37f99e438c3a391eca394d7e05c6ed7763d98f6443394602a55c29f09f3",
+      "reference_kind": "legislative-text",
+      "native": {},
+      "assisted": {}
+    },
+    "D156": {
+      "document_id": "5701fe9835ab2cde1d02c0a00dafa90fdaa758c631540da6cdf7cfd6eb2254f8",
+      "reference_kind": "memorandum",
+      "native": {},
+      "assisted": {}
+    },
+    "D157": {
+      "document_id": "01ab76364dbfa597b497baf24e53fd0ba23feb5c141dd7edc6edab4aa611a86d",
+      "reference_kind": "public-law",
+      "native": {},
+      "assisted": {}
+    },
+    "D159": {
+      "document_id": "b844b49482dff4623db320087748644ac96041a80136ccba7fc2e9f2a33f5ae2",
+      "reference_kind": "legislative-packet",
+      "native": {},
+      "assisted": {}
+    },
+    "D160": {
+      "document_id": "5355310d52b9d7868989e40c393d4a02f9a20a84fc281983f71e6a21767953fc",
+      "reference_kind": "summary",
+      "native": {},
+      "assisted": {}
+    },
+    "D161": {
+      "document_id": "feb811c97929f8dcb180b0b2bc787f6b731ea90696c2a9667144d21c29c63bb2",
+      "reference_kind": "motion",
+      "native": {},
+      "assisted": {}
+    },
+    "D163": {
+      "document_id": "ab3bf74bfdcc0fcb476fd0cc80570c2a6031974016cb3bfc293e6c50f13c7ef5",
+      "reference_kind": "transcript",
+      "native": {},
+      "assisted": {}
+    },
+    "D164": {
+      "document_id": "417188f273af47777a30d2cb73f8517ac9afd32f8e19a0b23c3d24b83275e544",
+      "reference_kind": "summary",
+      "native": {},
+      "assisted": {}
+    },
+    "D165": {
+      "document_id": "e50a611de5c8d39da051e38b14df9ff9b1230966251ebda33729b0eae9ba5b80",
+      "reference_kind": "witness-statement",
+      "native": {},
+      "assisted": {}
+    },
+    "D166": {
+      "document_id": "40d8a8a21db8608841b4059012faf1b0e60fbf06d0aa26205f20f8add3bf502b",
+      "reference_kind": "biography",
+      "native": {},
+      "assisted": {}
+    },
+    "D167": {
+      "document_id": "6ba2c3465c9ee3e043759198e523599708a26164fdde1dde60091ddeb879ac69",
+      "reference_kind": "report",
+      "native": {},
+      "assisted": {}
+    },
+    "D168": {
+      "document_id": "251ed19a9078ab841b0f7ba51bcbf23fafe637bff62759bdb01b3b8bd9ab044e",
+      "reference_kind": "report",
+      "native": {},
+      "assisted": {}
+    },
+    "D169": {
+      "document_id": "57aa6971d59549601b72159edaaa2dd2b363f83c161563550b560f0ceb466eab",
+      "reference_kind": "committee-vote",
+      "native": {},
+      "assisted": {}
+    },
+    "D171": {
+      "document_id": "d8302c2997c0cb04ddbc7d22406cabbc0182f4c0a29830a479341a72594311d7",
+      "reference_kind": "resolution",
+      "native": {},
+      "assisted": {}
+    },
+    "D172": {
+      "document_id": "e77ca33d03699cb29951979404310b1ca3db8f84d6b76c911463cc424b01a56b",
+      "reference_kind": "transcript",
+      "native": {},
+      "assisted": {}
+    },
+    "D173": {
+      "document_id": "e59438781c569dc36f9961eea85b651c6e77045a91f25cd483a771f8902ab125",
+      "reference_kind": "witness-statement",
+      "native": {},
+      "assisted": {}
+    },
+    "D174": {
+      "document_id": "fa0744391904136a9b0c9adc906dc87aef05ebe6412ad5f6e8647f1b430aca01",
+      "reference_kind": "amendment",
+      "native": {},
+      "assisted": {}
+    },
+    "D175": {
+      "document_id": "1d25c701c2354930cda0d043a0317fad57ffefc90bdcd0bc1ec6b1e2be13795b",
+      "reference_kind": "witness-statement",
+      "native": {},
+      "assisted": {}
+    },
+    "D176": {
+      "document_id": "cb988611194d6a67ff31c1cbd273cfb6491197f13e556d9743e957b960e8e13d",
+      "reference_kind": "legislative-text",
+      "native": {
+        "content_document_kind": [
+          "legislative-text"
+        ],
+        "content_congress": [
+          "117"
+        ]
+      },
+      "assisted": {
+        "content_document_kind": [
+          "legislative-text"
+        ],
+        "content_congress": [
+          "117"
+        ]
+      }
+    },
+    "D178": {
+      "document_id": "a368733999dfa10e1ab9a98349a0944637a9d394e49ed879d6aa12a64794aa10",
+      "reference_kind": "report",
+      "native": {},
+      "assisted": {}
+    },
+    "D179": {
+      "document_id": "8a80da4baf84c66a5160b2627685fd336511579524dd0ce15705e1667f744fc7",
+      "reference_kind": "data-table",
+      "native": {},
+      "assisted": {}
+    },
+    "D180": {
+      "document_id": "ba75c0d1b9186a1e443a5ba82308076c70b97eee09217f087b6b6471ef4ea123",
+      "reference_kind": "committee-memorandum",
+      "native": {},
+      "assisted": {}
+    },
+    "D181": {
+      "document_id": "20e17fbc05953758c8b959b0d9eeed4c6fcb6c9289d8e10106474a06194b2f82",
+      "reference_kind": "legislative-text",
+      "native": {
+        "content_document_kind": [
+          "legislative-text"
+        ],
+        "content_citation": [
+          "S. 1309"
+        ],
+        "content_congress": [
+          "116"
+        ]
+      },
+      "assisted": {
+        "content_document_kind": [
+          "legislative-text"
+        ],
+        "content_citation": [
+          "S. 1309"
+        ],
+        "content_congress": [
+          "116"
+        ]
+      }
+    },
+    "D183": {
+      "document_id": "a79089bb47aafd45378a23cc83d71527f45bbf15fb63969daf85ab4d6315c98b",
+      "reference_kind": "meeting-notice",
+      "native": {},
+      "assisted": {}
+    },
+    "D187": {
+      "document_id": "cc382872bf0e083cf6e152fc77222edbb63d5315bfedd40527956da0d9ddf178",
+      "reference_kind": "data-table",
+      "native": {},
+      "assisted": {}
+    },
+    "D188": {
+      "document_id": "a7358d26bcd47c5ef96979ebab9c8aca18624b6202b014731b97c40d03dbe069",
+      "reference_kind": "letter",
+      "native": {},
+      "assisted": {}
+    },
+    "D189": {
+      "document_id": "7e2b9f547c496ee8cea4f732b9134367c605990779c4fae20f7180f2aa07e4ff",
+      "reference_kind": "statement",
+      "native": {},
+      "assisted": {}
+    },
+    "D190": {
+      "document_id": "80fc36a47f69a3edcdca6b1702f407c96255b01e01066782129331f02f2300e2",
+      "reference_kind": "legislative-text",
+      "native": {
+        "content_document_kind": [
+          "legislative-text"
+        ],
+        "content_citation": [
+          "S. 1579"
+        ],
+        "content_congress": [
+          "114"
+        ]
+      },
+      "assisted": {
+        "content_document_kind": [
+          "legislative-text"
+        ],
+        "content_citation": [
+          "S. 1579"
+        ],
+        "content_congress": [
+          "114"
+        ]
+      }
+    },
+    "D192": {
+      "document_id": "317107fe4ecb9b1bd1b50f81226bcacceb5a161707227715c04b071bea7f6676",
+      "reference_kind": "witness-statement",
+      "native": {},
+      "assisted": {}
+    },
+    "D194": {
+      "document_id": "6d06bc7a4ccc67c5c38a89b66e5d83962b7e1fbf428d934a465c18363417e3ff",
+      "reference_kind": "amendment",
+      "native": {},
+      "assisted": {}
+    },
+    "D195": {
+      "document_id": "f20582415bf953c3752700f58b4130e6c21f2a6e7abda9476287eb9102f879d0",
+      "reference_kind": "amendment",
+      "native": {},
+      "assisted": {}
+    },
+    "D196": {
+      "document_id": "62b816b73ccb5f0020c42ab3c4509d3e537a64a3d618efc4b30c322de1f47b14",
+      "reference_kind": "amendment",
+      "native": {},
+      "assisted": {}
+    },
+    "D197": {
+      "document_id": "314ed2cb5bc2d58469060f8b889c65a49a6e020be0c5c25e5c6252ae7b9f483c",
+      "reference_kind": "witness-statement",
+      "native": {},
+      "assisted": {}
+    },
+    "D198": {
+      "document_id": "c4cc0aa8c247581ced834e2d53fb94184cbfb36a8abb29bb4e5855025fd0d0f2",
+      "reference_kind": "committee-memorandum",
+      "native": {},
+      "assisted": {}
+    },
+    "D199": {
+      "document_id": "69693a9c2e273c6c0de313a1c906ba82256b96d4229e65797d33c22a1ebfcdcd",
+      "reference_kind": "committee-rules",
+      "native": {},
+      "assisted": {}
+    }
+  }
+}
