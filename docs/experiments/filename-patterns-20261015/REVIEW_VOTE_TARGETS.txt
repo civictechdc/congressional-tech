@@ -1,0 +1,71 @@
+Vote-record target review
+=========================
+
+Result
+------
+house_naming 3.2.1 distinguishes a vote record from the amendment or committee
+print named as its target. The existing category selector now handles vote
+wording on either side of the target. It preserves literal fields and avoids
+adding another parser or publisher rule. Explicit coordination and TEXT variants
+retain their existing kinds. No body content was read for this change.
+
+Evidence and review findings
+----------------------------
+The historical comparison contains 556 changed source rows with both vote and
+amendment/print kinds. All 329 distinct filenames in that set were read in full.
+Most use RC/roll-call wording plus an amendment number or committee-print target.
+The initial candidate also collapsed 30 source rows explicitly ending in TEXT.
+Paired names such as 'Roll Call Vote 7Nadler Amdt 6.pdf' and the TEXT variant
+make that ambiguous. The final candidate preserves those 30 rows; their actual
+contents still need adjudication. This is not a claim that both kinds are right.
+
+The final category comparison changes 526 source rows in 305 document IDs:
+498 remove an amendment kind and 28 remove a committee-print kind. A maintained
+catalog replay then used all 694 source members of the 320 selected groups,
+including the TEXT exceptions. It changes 288 grouped classifications; aliases
+can preserve a kind in the other groups. All changes remove only amendment or
+committee-print while retaining committee-vote. No IDs, memberships, source/body
+evidence, roles or representative aliases change. Input bytes remain unchanged.
+
+Implementation trace
+--------------------
+document_category_fields (categories.py:63) gathers existing category fields and
+filters topic/target claims without mutating observations. The refinement at
+:135-147 recognizes explicit TEXT wording, compares non-overlapping target/vote
+spans in either order, and preserves an intervening and/& connector. The same
+selector feeds public kinds and subject trimming. Existing publisher rules still
+control whether committee-vote is recognized at all; unrelated/spoofed hosts
+do not acquire that kind. Native BILLS/HHRG parsing is unchanged.
+
+Tests at test_reviewed_house_publishers.py:93 cover three observed names and
+reversed ordering, raw span/reconstruction preservation, and host negatives.
+:115 checks coordination in both orders. :125 preserves three TEXT variants;
+:132 checks the actual committee-print target. test_top500_explicit.py:121 checks
+tally-sheet ordering and TEXT ambiguity alongside existing tally regressions.
+
+Package, guide and schema versions move together to 3.2.1. The experiment runner
+remains pinned to a single candidate version and now requires 3.2.1. The prior
+3.2.0 artifacts remain historical records; they were not rewritten or republished.
+
+Validation
+----------
+Four new target cases failed before the repair, while four combined-document
+controls passed. The full package/consumer run passed 4,670 checks, including
+wheel/source distribution tests; five replay checks initially refused because
+the experiment still required 3.2.0. After updating that explicit version pin,
+all 13 replay tests pass. The final expanded category/boundary suite passes all
+165 checks. The catalog builder verifies all three generated JSON artifacts.
+Every frozen PDF candidate source hash still matches. The actual complete-group
+subset replay passes every preservation invariant with no body reads.
+
+Scope and remaining work
+------------------------
+This is a filename interpretation repair, not content proof or full-catalog
+qualification. The subset was selected from the failed historical 3.2.0 output.
+The original full failed replay remains untouched. Review the First Amendment
+bill-title false positive, retained witness-statement precedence, grouped
+protected-field changes and TEXT variants next. Strengthen implementation hashes
+before the next full replay. Verify the separate 3.1.0 publication when it ends,
+then reconcile its complete selected catalog and frozen 400-ID pilot.
+
+VERDICT: APPROVE the bounded local 3.2.1 refinement. Release remains unqualified.

@@ -69,7 +69,7 @@ def test_complete_pair_replay_preserves_aliases_body_readings_roles_and_unnamed(
     for path in [files, documents]:
         meta = pq.read_schema(path).metadata
         assert meta[b'body_evidence_fingerprint'] == b'old-body-reader'
-        assert meta[b'house_naming_version'] == b'3.2.0'
+        assert meta[b'house_naming_version'] == b'3.2.1'
         assert meta[b'capture_digest'] == b'retained-captures'
     assert result['comparisons']['documents']['changes']['new_assignment'] == 1
 

@@ -20,7 +20,7 @@ After the active 3.1.0 publication is verified:
 
 The publication checks are the same checks used by the pilot reconciliation.
 Without verified matching publication evidence, the command refuses unless
---rehearsal is supplied explicitly. The current target is house_naming 3.2.0.
+--rehearsal is supplied explicitly. The current target is house_naming 3.2.1.
 Output directories must be new. No selected input file is overwritten.
 
 The normal metadata refresh and this tool now share filename_refresh_inputs in

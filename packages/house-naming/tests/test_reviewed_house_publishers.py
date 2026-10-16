@@ -82,3 +82,55 @@ def test_www_publisher_and_literal_date_values_survive(engine):
 def test_new_document_layouts_do_not_promote_media_or_xml(engine,name):
     result=engine.extract(name,source_url='https://naturalresources.house.gov/'+name)
     assert 'committee-memorandum' not in result['metadata'].get('document_kind',[])
+
+
+@pytest.mark.parametrize('name', [
+    '050812RC2 - Lofgren-Berman Amdt016.pdf',
+    'Roll Call Vote 7Nadler Amdt 6.pdf',
+    '071012RC1 - Scott Amdt3.pdf',
+    'Amendment 1 Roll Call.pdf',
+])
+def test_vote_record_keeps_amendment_reference_without_amendment_kind(engine, name):
+    result = engine.extract(name, source_url='https://judiciary.house.gov/files/' + quote(name))
+    assert result['metadata']['document_kind'] == ['committee-vote']
+    assert result['metadata']['amendment_marker']
+    assert ''.join(piece['raw'] for piece in result['pieces']) == name
+    markers = [f for m in result['observations'] for f in m['fields']
+               if f['name'] == 'amendment_marker']
+    assert markers
+    assert all(name[f['start']:f['end']] == f['raw'] for f in markers)
+    # Without publisher-qualified vote wording, the literal amendment reading
+    # remains available; this is not a global ban on amendment references.
+    for host in ('example.org', 'judiciary.house.gov.example.org'):
+        metadata = engine.extract(name, source_url=f'https://{host}/' + quote(name))['metadata']
+        assert metadata['document_kind'] == ['amendment']
+
+
+@pytest.mark.parametrize('name', [
+    'Amendment 1 and Roll Call.pdf',
+    'Roll Call and Amendment 1.pdf',
+    'Amendment 1 & Roll Call.pdf',
+    'Roll Call & Amendment 1.pdf',
+])
+def test_explicit_combined_amendment_and_vote_keep_both_genres(engine, name):
+    result = engine.extract(name, source_url='https://judiciary.house.gov/' + quote(name))
+    assert result['metadata']['document_kind'] == ['amendment', 'committee-vote']
+
+
+@pytest.mark.parametrize('name', [
+    '07272011 Roll Call 3- Sensenbrenner Amendment 3 TEXT.pdf',
+    'Roll Call Vote 7Nadler Amdt 6 TEXT.pdf',
+    'Roll_Call_Vote_7Nadler_Amdt_6_text.pdf',
+])
+def test_explicit_amendment_text_is_not_collapsed_into_vote_only(engine, name):
+    # These publishers also name amendment-text variants after a roll call.
+    # Keep the ambiguity until retained content can establish the document form.
+    result = engine.extract(name, source_url='https://judiciary.house.gov/' + quote(name))
+    assert result['metadata']['document_kind'] == ['amendment', 'committee-vote']
+
+
+def test_vote_on_committee_print_keeps_literal_print_reference(engine):
+    name = 'rc8_cmteprint(reconciliation)cawthorna11.pdf'
+    result = engine.extract(name, source_url='https://edworkforce.house.gov/imo/media/doc/' + name)
+    assert result['metadata']['document_kind'] == ['committee-vote']
+    assert result['metadata']['print_token'] == ['cmteprint']

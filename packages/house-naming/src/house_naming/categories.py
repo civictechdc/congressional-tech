@@ -130,14 +130,19 @@ def document_category_fields(filename: str | None, observations: list[dict]) -> 
 
     # These adjacent phrases express "a summary of the package" and "a slide
     # containing a summary", not two independent document genres.
+    # Some publishers pair a roll-call filename with an amendment TEXT variant.
+    # The filename alone cannot resolve that explicit text/vote ambiguity.
+    explicit_text = filename is not None and re.search(r'(?:^|[\s_.-])text(?:$|[\s_.-])', filename, re.I)
     refined = []
     for f in candidates:
-        # A tally sheet records the vote on the preceding amendment or print.
-        # Keep those literal fields, but do not call the tally sheet its target.
-        if filename is not None and f['category'] in {'amendment', 'committee-print'} and any(
-                other['category'] == 'tally-sheet' and f['end'] <= other['start']
+        # A vote record names the amendment or print it concerns. Keep that
+        # literal reference without treating the target as another genre.
+        # Explicitly coordinated documents still retain both kinds.
+        if filename is not None and not explicit_text and f['category'] in {'amendment', 'committee-print'} and any(
+                other['category'] in {'tally-sheet', 'committee-vote'}
+                and (f['end'] <= other['start'] or other['end'] <= f['start'])
                 and not re.search(r'(?:^|[ _-])(?:and|&)(?:$|[ _-])',
-                                  filename[f['end']:other['start']], re.I)
+                                  filename[min(f['end'], other['end']):max(f['start'], other['start'])], re.I)
                 for other in candidates):
             continue
         if filename is not None and any(f['end'] <= other['start'] and re.fullmatch(r'[ _-]+', filename[f['end']:other['start']])

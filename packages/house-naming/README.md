@@ -26,6 +26,13 @@ amendment suffixes, unrelated publishers and non-PDF files remain outside these
 rules. The content checks and frozen-population replay are recorded in
 [`CONTINUATION.txt`](../../docs/experiments/filename-patterns-20261015/CONTINUATION.txt).
 
+Version 3.2.1 keeps amendment and print references in vote-record filenames
+without assigning their targets as extra document kinds. Literal observations
+and spans remain available; explicit combined names such as `Amendment 1 and
+Roll Call.pdf` retain both kinds. Names with explicit `TEXT` wording also retain
+their existing ambiguity pending content review. This refinement lives in `house_naming` and
+performs no body inspection.
+
 ## Choose an API
 
 | Task | API | Result |
