@@ -1,0 +1,16 @@
+{
+  "at": "2026-10-16T04:02:22.245460+00:00",
+  "read_only": true,
+  "remote_etag": "\"37db5dc29219999e79429625f3509fff\"",
+  "baseline_rows": 11337,
+  "prepared_rows": 17651,
+  "fresh_rows": 11337,
+  "merged_rows": 17651,
+  "maintained_validator_passed": true,
+  "files": {
+    "merged.json": "9d15cccd39b93cb5b6b442aa46832c867b957c34dc160755b6b5c76dc8fdad0b",
+    "fresh.json": "67d650d2566e5ffb898a045fcd54de2b56bb6ed3475bc1d170c5d5142d9f630b"
+  },
+  "scope": "Read-only preview. Must re-read and re-merge under publication lock, then conditionally write and read back.",
+  "evidence_directory": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/mapping-merge-preflight"
+}
