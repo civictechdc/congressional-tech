@@ -13,7 +13,7 @@ module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
 class CoverageTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
-        self.root=Path(self.temp.name);self.manifest=dict(generation='a'*32,catalog_id='paired',files={})
+        self.root=Path(self.temp.name);self.manifest=dict(version=1,generation='a'*32,catalog_id='paired',files={})
         for label,name in [('filenames','document-filenames.parquet'),('documents','documents.parquet')]:
             key=f"catalog-generations/{self.manifest['generation']}/{name}";p=self.root/key;p.parent.mkdir(parents=True,exist_ok=True)
             table=pa.table({'body_key':['pdf','zip-member']}).replace_schema_metadata({b'catalog_id':b'paired'})
@@ -102,7 +102,8 @@ class DispatcherContinuationTests(unittest.TestCase):
                     for item in self.manifest['files'].values(): store.read(item['key'])
                     return {'unchanged': True}
                 def mapping(*args, **kwargs): calls['mappings'] += 1; return {'complete': True}
-                def prepare(source, target):
+                def prepare(source, target, *, validation=None):
+                    self.assertIsNotNone(validation)
                     calls['prepared'] += 1
                     self.assertEqual(json.loads((source/'indexes/catalog.json').read_text()), self.manifest)
                     for item in self.manifest['files'].values(): self.assertTrue((source/item['key']).is_file())

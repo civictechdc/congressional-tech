@@ -43,7 +43,13 @@ def digest(path):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
-def verify(root, manifest):
+def verify(root, manifest, *, validation=None):
+    if validation is not None:
+        from congress_api.retention.catalog_validation import CatalogPairValidation
+        if not isinstance(validation, CatalogPairValidation):
+            raise ValueError('Invalid catalog pair validation')
+        validation.require(root, manifest)
+        return
     if manifest.get('version') != 1 or not re.fullmatch(r'[a-f0-9]{32}', manifest.get('generation', '')):
         raise ValueError('Unsupported catalog manifest.')
     for name in ('documents', 'filenames'):
@@ -89,9 +95,9 @@ def write_u32(path, values):
     path.write_bytes(data.tobytes())
 
 
-def publish(root, target, modified=None):
+def publish(root, target, modified=None, *, validation=None):
     manifest = json.loads((root / 'indexes/catalog.json').read_text())
-    verify(root, manifest)
+    verify(root, manifest, validation=validation)
     catalog = viewer.Catalog(root / manifest['files']['filenames']['key'])
     target.mkdir(parents=True, exist_ok=True)
     # Generation-specific paths prevent a stale tab from mixing data from

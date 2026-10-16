@@ -64,26 +64,9 @@ def verify_import(batch, imported, *, readiness=None):
 
 
 def verify_coverage(root, manifest, expected):
-    import pyarrow.parquet as pq
-    found = set()
-    for label, filename in [('filenames', 'document-filenames.parquet'), ('documents', 'documents.parquet')]:
-        item = manifest['files'][label]
-        if item['key'] != f"catalog-generations/{manifest['generation']}/{filename}":
-            raise ValueError('Unexpected catalog pair path')
-        path = root / item['key']
-        if path.stat().st_size != item['bytes'] or digest(path) != item['sha256']:
-            raise ValueError('Catalog pair bytes differ')
-        table = pq.ParquetFile(path)
-        if ((table.schema_arrow.metadata or {}).get(b'catalog_id', b'').decode() != manifest['catalog_id']
-                or table.metadata.num_rows != item['rows']):
-            raise ValueError('Catalog pair identity differs')
-        if label == 'filenames':
-            for part in table.iter_batches(columns=['body_key']):
-                found.update(x for x in part.column(0).to_pylist() if x)
-    missing = set(expected) - found
-    if missing:
-        raise ValueError(f'Imported recovery bodies absent from catalog: {len(missing)}')
-    return dict(expected_bodies=len(expected), missing_bodies=0, catalog_id=manifest['catalog_id'])
+    from congress_api.retention.catalog_validation import validate_catalog_pair
+    return validate_catalog_pair(root, manifest, validator=lambda *_: None,
+                                 expected_bodies=expected).coverage
 
 
 def load(path, name):
@@ -152,6 +135,7 @@ def run(args):
     from congress_api.retention.catalog_staging import WorkingCatalog
     from congress_api.cli.raw_progress import ProgressLog
     from congress_api.retention.document_index import validate_document_indexes
+    from congress_api.retention.catalog_validation import validate_catalog_pair
     from filename_recoveries import accepted_rows
     from guarded_recovery_publication_client import GuardedPublicationClient
     from publish_corpus_recovery_mappings import publish_mappings
@@ -205,6 +189,14 @@ def run(args):
                 return super().put_object(**kwargs)
     proxy = ContinuedClient(client, guard=guard, journal=journal, after_write=after_write)
     source = destination/'source'; expected = set(json.loads((batch/'bodies.json').read_text()))
+    pair_validation = None
+    def validate_pair(manifest):
+        nonlocal pair_validation
+        if pair_validation is not None:
+            return pair_validation.require(source, manifest, validator=validate_document_indexes, expected_bodies=expected)
+        pair_validation = validate_catalog_pair(source, manifest, validator=validate_document_indexes,
+                                               expected_bodies=expected)
+        return pair_validation.coverage
     class Store(R2Store):
         def read(self, key):
             body = super().read(key)
@@ -217,9 +209,7 @@ def run(args):
             return super().put(key, body, immutable=immutable)
         def put_catalog_manifest(self, data, *, expected_version):
             manifest = json.loads(data)
-            coverage = verify_coverage(source, manifest, expected)
-            validate_document_indexes(source/manifest['files']['filenames']['key'],
-                                      source/manifest['files']['documents']['key'])
+            coverage = validate_pair(manifest)
             report('coverage.json', coverage)
             return super().put_catalog_manifest(data, expected_version=expected_version)
     try:
@@ -236,9 +226,7 @@ def run(args):
                     catalog = rebuild_retained_catalog(Store(proxy,bucket), working=working, root=build)
             finally: working.close()
             manifest = json.loads((source/'indexes/catalog.json').read_text())
-            coverage = verify_coverage(source, manifest, expected)
-            validate_document_indexes(source/manifest['files']['filenames']['key'],
-                                      source/manifest['files']['documents']['key'])
+            coverage = validate_pair(manifest)
             report('coverage.json', coverage)
             return catalog
         catalog = continuation.phase('catalog', catalog_phase,
@@ -255,7 +243,8 @@ def run(args):
         guard.boundary()
         def prepared_phase():
             builder = load(runtime/'apps/site/scripts/publish-filename-viewer.py', 'recovery_viewer_builder')
-            return builder.publish(source, destination/'prepared')
+            validate_pair(json.loads((source/'indexes/catalog.json').read_text()))
+            return builder.publish(source, destination/'prepared', validation=pair_validation)
         continuation.phase('prepared', prepared_phase,
             files=lambda: [p for p in (destination/'prepared').rglob('*') if p.is_file()])
         guard.boundary()
