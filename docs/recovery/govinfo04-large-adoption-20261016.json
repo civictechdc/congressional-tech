@@ -1,0 +1,26 @@
+{
+  "at": "2026-10-16T14:20:15.455484+00:00",
+  "qualified_packages": 2,
+  "qualified_package_urls": [
+    "https://www.govinfo.gov/content/pkg/CHRG-106hhrg55894.zip",
+    "https://www.govinfo.gov/content/pkg/CHRG-116shrg37306.zip"
+  ],
+  "members": 10,
+  "distinct_verified_bodies": 12,
+  "all_body_hashes_verified": true,
+  "qualification_evidence": [
+    {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/govinfo-bulk-qualified-04-large/000/complete.json",
+      "sha256": "ee0da41cbd21e161ba88bade7b590269f9b3237750dcee56026ad4604dd796ff"
+    },
+    {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/govinfo-bulk-qualified-04-large/004/complete.json",
+      "sha256": "4adf8b0343cc378c170518f01d82659128cc5e1d589e30b87879adf28330a1c2"
+    }
+  ],
+  "partial_batch": true,
+  "worker_exit_success_not_required_for_completed_items": true,
+  "source_requests": 0,
+  "published": false,
+  "sealed_batch14_unchanged": true
+}
