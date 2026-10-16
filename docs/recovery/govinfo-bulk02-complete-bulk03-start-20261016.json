@@ -1,0 +1,144 @@
+{
+  "at": "2026-10-16T06:43:01.545107+00:00",
+  "second_batch_adoption": {
+    "at": "2026-10-16T06:42:05.927872+00:00",
+    "qualified_package_urls": [
+      "https://www.govinfo.gov/content/pkg/CHRG-116hhrg39840.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-117shrg51543.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-117hhrg45651.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-113shrg24284.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-116hhrg38457.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-109hhrg25958.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-107hhrg77843.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-109shrg23942.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-116shrg37805.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-117shrg50790.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-117hhrg49964.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-117hhrg49702.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-116hhrg35635.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-118hhrg52299.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-117shrg51390.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-117shrg48492.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-116hhrg39487.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-116hhrg44546.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-116hhrg39408.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-117hhrg48400.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-111hhrg62291.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-116hhrg39410.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-116hhrg53686.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-116hhrg44449.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-116shrg41995.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-117hhrg47095.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-116hhrg39839.zip",
+      "https://www.govinfo.gov/content/pkg/CHRG-116shrg37806.zip"
+    ],
+    "qualified_packages": 28,
+    "members": 140,
+    "individual_links": 0,
+    "unresolved_individual_links": 0,
+    "distinct_verified_bodies": 168,
+    "published": false,
+    "source_requests": 0,
+    "all_body_hashes_verified": true
+  },
+  "second_batch_exit": {
+    "at": "2026-10-16T06:42:03.334342+00:00",
+    "actual_wait_exit": 0,
+    "physical_absence_verified": true,
+    "pid": 8896,
+    "exec_session": 94907,
+    "all_targets_processed": true,
+    "qualified_packages": 28,
+    "unqualified_original_transfer": [
+      {
+        "url": "https://www.govinfo.gov/content/pkg/CHRG-116hhrg40609.zip",
+        "qualified": false,
+        "receipt_sha256": "fa613460efd926e4214d4209cd6b7567a9c9098eae5d19b763261107e78827c1",
+        "error_type": "AssertionError",
+        "error": ""
+      }
+    ],
+    "retry_already_qualified": true,
+    "complete_sha256": "576ca09453af313a5893fd2fc6ad76cbcbf5268deec6f933e7e7807712bb2496",
+    "published": false
+  },
+  "ledger": {
+    "at": "2026-10-16T06:42:29.000138+00:00",
+    "eligible_urls": 23574,
+    "counts": {
+      "lookup_unresolved": 14696,
+      "validated_local_recovery": 2838,
+      "unprocessed_archive_candidate": 2579,
+      "attempted_not_recovered": 27,
+      "retained_copy_link_prepared": 3434
+    },
+    "accounted": 23574,
+    "published": false,
+    "scope": "Eligible queue only; unresolved lookup is not proof of archive absence",
+    "nara": {
+      "processed": 742,
+      "total": 742,
+      "valid": 677,
+      "requests_made": 471,
+      "blocked": null,
+      "pid": 55119,
+      "parent_pid": 94792
+    },
+    "wayback_retry": {
+      "at": "2026-10-16T01:33:44.797255+00:00",
+      "reason": "three_consecutive_transport_failures",
+      "pid": 64224,
+      "command": ".venv/bin/python output/corpus-retry-20261015/wayback_priority_index_retry.py",
+      "completed_receipts": 3,
+      "unfinished_request_may_have_partial_body": true,
+      "prior_evidence_preserved": true
+    },
+    "ledger_sha256": "e6636d885c5f5ebd0ed584a46e3a6716875ba9f58392fe51d63dad9d1f86ea49"
+  },
+  "remaining_urls": 17302,
+  "third_batch": {
+    "packages": 21,
+    "declared_bytes": 2055282009,
+    "jobs": [
+      {
+        "dispatch": {
+          "at": "2026-10-16T06:42:39.852313+00:00",
+          "pid": 15974,
+          "parent_pid": 94792,
+          "plan_sha256": "a5187fe1367280e6327c0a40e58167846abf65dbee618057b9c50aa5a8efb501",
+          "script_sha256": "3ebe18b8147cd2ec256b04d0cc6c1aaed9f29021f6c91a9bcf6109dc69cd8477",
+          "packages": 21,
+          "paid_requests": 0,
+          "remote_writes": 0,
+          "minimum_delay_seconds": 3
+        },
+        "process_verified": "15974 94792 Fri Oct 16 02:42:39 2026     .venv/bin/python -u output/corpus-retry-20261015/download_govinfo_bulk_packages_03.py",
+        "exec_session": 93292
+      },
+      {
+        "dispatch": {
+          "pid": 15986,
+          "parent_pid": 94792,
+          "source_pid": 15974,
+          "pins": {
+            "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/qualify_govinfo_bulk_packages_03.py": "17799a8853da820680073fcc297d944c937571162cfe40c0ab252596a04bb901",
+            "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/govinfo-bulk-package-plan-03.json": "a5187fe1367280e6327c0a40e58167846abf65dbee618057b9c50aa5a8efb501",
+            "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/govinfo-bulk-packages-03/dispatch.json": "0461f73fa522274b6a402b56c7e436039932aabdc10e54a411a4ca958234d1f0",
+            "/Users/mikewolfd/Work/congressional-tech/packages/congress_api/src/congress_api/retention/archive_members.py": "b3d2415fd3fadf800094703e243a292e42f98fbfa9e56f5cfe1d9cb924b42a83",
+            "/Users/mikewolfd/Work/congressional-tech/packages/congress_api/src/congress_api/retention/raw_archive.py": "545d0803787e5c77486d8cd6e6cb617d6e0cecbe006b39574db3681079761689"
+          },
+          "source_requests": 0,
+          "remote_writes": 0
+        },
+        "process_verified": "15986 94792 Fri Oct 16 02:42:45 2026     .venv/bin/python -u output/corpus-retry-20261015/qualify_govinfo_bulk_packages_03.py",
+        "exec_session": 17720
+      }
+    ]
+  },
+  "publication_complete": false,
+  "next_steps": [
+    "Verify and adopt successful third-batch packages after actual worker exits.",
+    "There are 31 inventoried packages outside completed and current batches: seven within the existing size limit and 24 above it.",
+    "Finish active catalog publication before further raw imports; preserve all recovery receipts and failed attempts."
+  ]
+}
