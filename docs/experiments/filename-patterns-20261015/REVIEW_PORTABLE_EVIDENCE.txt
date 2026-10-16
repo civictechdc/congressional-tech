@@ -1,0 +1,113 @@
+Portable review evidence: self-review
+=====================================
+Findings
+--------
+No blocking finding in local export and relocated consumption. The store preserves
+all original file bytes and locator text. It maps locators to SHA-256 objects and
+uses a closed resolver with no original-path fallback. Normal local bundle loading
+retains its stricter path identity. Portability does not change review selection,
+independent-reference status or publication approval.
+
+The remaining practical limit is size: this first store includes the full bound
+catalog and historical evidence. It is suitable for process-level verification,
+not repeated full-store hashing during browser rendering. The consumer must retain
+its verified snapshot and expose evidence deliberately.
+
+Patch summary and function trace
+--------------------------------
+Package paths below are relative to congress_api/retention/.
+
+Function | Location | Input -> output | Verified behavior
+load_bundle | document_review_bundle.py:24 | pinned local summary and exact pair -> candidates | Delegates to the shared verifier using Path and strict local policy identity.
+_policy_identity | document_review_bundle.py:29 | implementation description -> path-independent module identity | Retains module names, hashes and dependency/fingerprint fields; refuses duplicate basenames. Used only for portable loading.
+_load_bundle | document_review_bundle.py:38 | pinned summary locator, pair and resolver -> candidates | Reuses all existing evidence, receipt, baseline, scope and status checks; resolves receipt/candidate/binding reads through the supplied resolver and rechecks inputs before return.
+export_bundle | document_review_portable.py:67 | verified local bundle and new output directory -> object store and manifest | Runs local verification, copies every binding plus summary/candidates once per hash, verifies copies and writes the completion marker last. Existing directories are refused.
+_EvidenceFiles.__init__ | document_review_portable.py:24 | pinned manifest -> exact locator map | Checks format and reader identity, verifies the stored summary and requires exactly the admission bindings plus summary/candidate objects.
+_EvidenceFiles.path | document_review_portable.py:48 | original locator -> stored file | Derives a path solely from a validated digest; refuses unbound locators, absent/non-file objects and paths resolving outside objects/.
+_EvidenceFiles.verified_path/recheck | document_review_portable.py:58,61 | mapped path or snapshot -> verified identity | Verifies object bytes; rechecks manifest and reader implementation after use.
+load_portable | document_review_portable.py:96 | portable manifest and pin -> detached candidates | Supplies only mapped catalog paths and resolver to the shared verifier; allows relocated installation with identical policy bytes.
+resolve_evidence | document_review_portable.py:106 | portable manifest, pin and original locator -> verified file | Resolves one object's bytes without claiming whole-bundle verification; callers load_portable before selecting candidates.
+
+Data flow and invariants
+------------------------
+H1: Portability requires rewriting absolute paths in receipts. Refuted: the manifest
+provides an external locator-to-digest map, while receipts and candidate observations
+remain byte-identical. The map must equal the completed admission's full dependency
+set, with the original summary and candidates added. Different strings may share
+an object only when their byte digests agree; conflicting bindings are refused.
+
+H2: Reusing local path identity blocks a new installation. Confirmed for ordinary
+load_bundle, intentionally. Portable loading compares the same module basenames
+and bytes, dependency versions and house_naming fingerprint while resolving every
+file through the closed store. A changed module remains refused. The exporter and
+bundle-reader modules are additionally pinned in the portable manifest and checked
+again after loading. Original implementation paths are retained in the summary.
+
+H3: A missing portable object can fall back to an available original. Refuted by
+code and tests: _EvidenceFiles.path has no fallback. Stored digests are restricted
+to 64 lowercase hexadecimal characters; resolved object paths must remain under
+the store's objects directory. The local reader still compares original baseline
+paths. This split reuses one verifier rather than duplicating candidate selection.
+
+H4: A failed copy can leave a usable-looking export. Refined: incomplete object
+files may remain for diagnosis, but no manifest is written until every copy passes
+its hash check and the reader policy is stable. Existing directories, including
+partial exports, cannot be retried in place. The manifest is the completion marker.
+
+Tests and edge cases
+--------------------
+tests/test_document_review_portable.py:27 exercises supported and unsupported packets,
+moves the store, deletes all original fixture files, changes the working directory,
+then checks full candidate equality, baseline withdrawal and decoded-body access.
+It verifies unique object count and refuses an unbound external locator.
+At :51 nine cases cover manifest changes, missing/altered objects, digest traversal,
+missing/extra locators, external symlinks, changed reader policy and invalid version.
+Original files remain available in those refusal cases, proving no fallback.
+At :69 a different installation path with the same bytes works only in portable
+mode, while a changed module digest fails. At :82 mid-load manifest mutation fails
+the final check. At :90 a deliberately corrupted copy leaves no completion marker
+and refuses reuse of its directory. The existing bundle, receipt-admission,
+selection and import-fence tests also pass: 108 tests in 2.00 seconds.
+
+Actual cohort verification
+--------------------------
+portable-review-v1 exports the admitted full-catalog packet bundle, moves the
+completed store so its original export path is absent, and consumes it in a child
+process from an empty working directory using a copied package installation.
+The child guards Python file reads and ParquetFile opens against every original
+bound evidence path and the original admitted module paths. It records zero
+attempted original-path reads. The actual originals remain untouched; unit tests
+separately remove their fixture originals before loading.
+
+All 86 candidate objects match the original candidate semantics exactly, including
+the five unsupported annotations and their packet evidence. Every decoded body is
+also resolved and hash-checked through the public resolver. The store has 760
+locator entries and 728 unique objects totaling 1,270,452,098 bytes. Storing each
+locator separately would total 1,272,072,965 bytes; content-addressed reuse avoids
+1,620,867 duplicate bytes in this export. Full baseline hashes remain
+unchanged. The final checkpoint also verifies frozen sources and pilot/labels.
+
+Export including local bundle verification took 80.342s; relocated consumption and
+86 body lookups took 69.371s with child peak process RSS
+1,763,246,080 bytes. These are single-run diagnostics, not a speed claim.
+portable_review_checkpoint_v1.json pins the manifest, scripts, copied-code reader
+identity, execution results and verification inputs.
+
+Limits and next steps
+---------------------
+The object store is a local export, not a publication. Its source hashes identify
+review evidence; they do not establish independent accuracy or approve the review.
+resolve_evidence verifies a requested object at access time; a consumer must still
+keep its pinned snapshot and handle subsequent file changes as a new verification.
+The existing review statuses and complete packet annotations remain authoritative.
+
+Next integrate verified descriptions into the local viewer. Load the portable
+bundle once per catalog/review pin, compare exact source/group identities, show
+reviewed forms and page evidence with their assistant attribution, surface refusal,
+and support explicit withdrawal. Verify supported, unsupported, unchanged and stale
+cases in the real UI before proposing public integration. Keep held-out review,
+independent references, classification refresh and public release separate.
+
+VERDICT: APPROVE for local portable evidence and shared verification.
+Coverage: ADEQUATE for relocation, refusal, copy failure and selected-cohort use.
+Confidence: HIGH within this scope; browser/publication adoption remains unproven.

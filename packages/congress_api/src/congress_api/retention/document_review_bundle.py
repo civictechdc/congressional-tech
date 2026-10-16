@@ -23,9 +23,23 @@ def select_document(document, sources, candidates=None):
 
 def load_bundle(summary_path, summary_sha256, sources, documents):
     """Verify the complete local evidence and return candidates for an exact pair."""
+    return _load_bundle(summary_path,summary_sha256,sources,documents,resolve=Path)
+
+
+def _policy_identity(policy):
+    """Compare the same module bytes after installation at a different path."""
+    hashes = policy['source_sha256']
+    modules = {Path(path).name:digest for path,digest in hashes.items()}
+    if len(modules) != len(hashes):
+        raise ValueError('Ambiguous review implementation module names')
+    return dict(policy,source_sha256=modules)
+
+
+def _load_bundle(summary_path, summary_sha256, sources, documents, *, resolve, portable=False):
+    """Shared verification; portable callers must supply a pinned, closed resolver."""
     bindings = {}
-    summary_path = verified(summary_path,summary_sha256,bindings)
-    summary = json.loads(summary_path.read_text())
+    candidate_locator = Path(summary_path).parent/'candidates.jsonl'
+    summary = json.loads(verified(resolve(summary_path),summary_sha256,bindings).read_text())
     if type(summary.get('bundle_version')) is not int or summary['bundle_version'] != 2:
         raise ValueError('Unsupported review bundle version')
     if (any(summary.get(f) is not False for f in ['production_selected','independent_reference','release_approved'])
@@ -36,15 +50,17 @@ def load_bundle(summary_path, summary_sha256, sources, documents):
         raise ValueError('Review bundle must identify both baseline files')
     for name,path in [('sources',sources),('documents',documents)]:
         bound = summary['baseline'][name]
-        if Path(bound['path']).resolve() != Path(path).resolve() or summary['bindings'].get(bound['path']) != bound['sha256']:
+        baseline_path = resolve(bound['path']) if portable else Path(bound['path'])
+        if baseline_path.resolve() != Path(path).resolve() or summary['bindings'].get(bound['path']) != bound['sha256']:
             raise ValueError('Review bundle belongs to a different baseline pair')
         verified(path,bound['sha256'],bindings)
-    if summary['implementation'] != implementation():
+    policy = _policy_identity if portable else lambda value:value
+    if policy(summary['implementation']) != policy(implementation()):
         raise ValueError('Review implementation differs from the admitted bundle')
-    for path,digest in summary['bindings'].items(): verified(path,digest,bindings)
+    for path,digest in summary['bindings'].items(): verified(resolve(path),digest,bindings)
     if set(summary['outputs']) != {'candidates.jsonl'}:
         raise ValueError('Unexpected candidate bundle outputs')
-    candidate_path = verified(summary_path.parent/'candidates.jsonl',summary['outputs']['candidates.jsonl'],bindings)
+    candidate_path = verified(resolve(candidate_locator),summary['outputs']['candidates.jsonl'],bindings)
     rows = [json.loads(line) for line in candidate_path.read_text().splitlines()]
     candidates = {row['document']['document_id']:row for row in rows}
     if (not candidates or len(candidates) != len(rows) or type(summary['reviewed_groups']) is not int
@@ -57,7 +73,7 @@ def load_bundle(summary_path, summary_sha256, sources, documents):
         if summary['bindings'].get(path) != review['receipt_sha256']:
             raise ValueError('Packet observation receipt is not bound by admission')
         if path not in receipts:
-            records = json.loads(Path(path).read_text())['records']
+            records = json.loads(resolve(path).read_text())['records']
             receipts[path] = {r['document_id']:r for r in records}
             if len(receipts[path]) != len(records):
                 raise ValueError('Duplicate packet observation in receipt')
@@ -78,6 +94,6 @@ def load_bundle(summary_path, summary_sha256, sources, documents):
     if dict(Counter(row['status'] for row in validated.values())) != summary['case_status']:
         raise ValueError('Candidate status counts differ from the summary')
     for path,digest in bindings.items(): verified(path,digest,{})
-    if summary['implementation'] != implementation():
+    if policy(summary['implementation']) != policy(implementation()):
         raise ValueError('Review implementation changed during bundle verification')
     return validated

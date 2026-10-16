@@ -188,9 +188,61 @@ rows, preserving both complete files. It is not a full classification refresh.
 Raw and filename-normalized rows require distinct bindings even when group IDs
 match; the check preserves both and verifies refusal across that boundary.
 
-Next define portable evidence references and the consumer loading lifecycle before
-viewer integration. Historical local paths must not be presented as a portable
-publication format. Independent references, held-out
+Portable evidence export and loading are available as described below. Next wire
+verified packet descriptions into a local viewer with loading once per snapshot,
+explicit refusal and withdrawal. Historical local paths are original evidence
+locators; portable consumers must resolve them through the pinned object map.
+Independent references, held-out
 evaluation, full classification refresh and publication remain separate decisions.
 No source-body acquisition, automatic selection or release permission is introduced
 by these APIs.
+
+Portable evidence store
+-----------------------
+congress_api.retention.document_review_portable exports an admitted version 2
+bundle and every bound file into a new directory. It first runs the existing local
+bundle verifier. Each distinct byte sequence is copied once under objects/SHA256;
+manifest.json maps every original locator string to its object's digest. The
+original summary, candidates, receipts, notes and filenames remain byte-identical.
+The manifest includes the exporter/reader implementation hashes and is written
+only after every copied object passes its hash check. Existing or partial output
+directories are refused. The exporter neither uploads data nor edits baseline files.
+
+python -m congress_api.retention.document_review_portable \
+  --summary PATH/TO/summary.json --summary-sha256 EXPECTED_ADMISSION_HASH \
+  --sources PATH/TO/document-filenames.parquet \
+  --documents PATH/TO/documents.parquet --output NEW_PORTABLE_DIRECTORY
+
+The command prints the new manifest path and hash. Keep that hash from the verified
+export step. The directory can then be moved or copied without rewriting any file.
+load_portable(manifest_path, manifest_sha256) returns the same candidate mapping
+as load_bundle. It reads exclusively through the manifest's object map: original
+absolute or relative paths are never fallback file locations. It requires exactly
+the complete admission bindings plus the summary and candidate file, verifies
+every object, validates the copied catalog pair and checks all candidate semantics.
+Missing objects, altered bytes, extra/missing mappings and symlinks outside the
+object directory are refused. The manifest and reader policy are rechecked before
+returning. A hash still establishes identity rather than trust in an arbitrary
+producer; use the pin from the verified export workflow.
+
+Portable loading allows the same package modules to be installed at a different
+path. Module names and bytes, dependency versions and the house_naming fingerprint
+must match the admitted policy; duplicate module names are refused. This exception
+applies only to the closed portable resolver. load_bundle keeps its exact local
+baseline and implementation path checks.
+
+resolve_evidence(manifest_path, manifest_sha256, original_locator) returns one
+verified object path. For a decoded body, use review.body_observation.path; for a
+render, use its original rendered_pages key. Retained body_key names compressed
+archive storage and is not itself a local evidence locator. Evidence paths have no
+file extension; consumers must use the known evidence type rather than infer it
+from the object's filename. resolve_evidence checks the requested bytes, not the
+complete bundle; use load_portable first when selecting review candidates.
+
+Load once per pinned catalog/review snapshot, retain its baseline separately, and
+call select_document on the complete current group for each selection. Changing
+the snapshot requires a fresh load. Surface verification failure instead of
+silently treating it as withdrawal; explicit omission is the withdrawal operation.
+This initial portable format includes the complete bound catalog and historical
+evidence, so its size is not just the size of the reviewed PDFs. A browser should
+not hash this entire store in a per-document render loop.

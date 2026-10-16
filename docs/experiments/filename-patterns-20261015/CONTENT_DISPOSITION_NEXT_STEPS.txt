@@ -382,3 +382,27 @@ relocation plus missing/altered evidence, and load once per catalog/review snaps
 Then integrate the verified packet description into the viewer. Independent
 reference review, held-out evaluation, classification refresh and public release
 remain separate requirements.
+
+Portable evidence export and relocated consumption are verified
+---------------------------------------------------------------
+document_review_portable copies every bound file into a content-addressed object
+store and maps original locator strings without rewriting receipt or candidate
+bytes. It verifies local admission before export, writes a completion manifest last
+and refuses existing/partial output directories. Portable loading uses the existing
+bundle verifier through a closed resolver; local loading retains strict path checks.
+Equivalent package installation paths are accepted only with identical module
+bytes, dependency versions and parser fingerprint. Missing, altered or escaping
+objects are refused; there is no original-path fallback.
+
+All 108 tests pass. The actual store has 760 locator entries / 728 objects. A copied
+installation in a different working directory reproduces all 86 candidates exactly,
+with zero attempted original evidence reads and all 86 decoded bodies verified.
+Full baselines and frozen evaluation files remain unchanged. See
+portable_review_checkpoint_v1.json and REVIEW_PORTABLE_EVIDENCE.txt.
+
+Next integrate this verified snapshot into the local viewer. Load once per pinned
+catalog/review pair, show assistant-reviewed forms and complete packet evidence,
+retain baseline classifications separately, surface stale/failed verification and
+support explicit withdrawal. Check supported, unsupported, unaffected and stale
+cases in the real UI before proposing public integration. Independent reference
+review, held-out work, classification refresh and publication remain separate.

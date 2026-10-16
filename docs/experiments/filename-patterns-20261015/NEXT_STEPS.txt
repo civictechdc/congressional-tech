@@ -821,3 +821,11 @@ new taxonomy kinds. See packet_observation_checkpoint_v1.json and
 REVIEW_PACKET_OBSERVATION.txt. Next define portable evidence export/resolution and
 snapshot-level loading before viewer integration; preserve literal locators and
 exact-byte bindings. Independent references and publication remain separate gates.
+
+Portable export and relocated consumption now pass: 760 locator entries map to 728
+verified objects, and all 86 candidates reproduce exactly under a copied package
+installation with no original evidence reads. All 108 tests pass. See
+portable_review_checkpoint_v1.json and REVIEW_PORTABLE_EVIDENCE.txt.
+Next integrate verified packet descriptions into the local viewer with one load per
+snapshot, clear assistant attribution, baseline preservation, explicit withdrawal
+and visible refusal. Verify real UI cases before public integration.
