@@ -1,0 +1,22 @@
+{
+  "at": "2026-10-16T03:11:46.876693+00:00",
+  "recovered_links": 1,
+  "html_responses": 1,
+  "deferred_body_exclusions": 1,
+  "worker_actual_exit": 0,
+  "published": false,
+  "files": {
+    "additional-hearing-files/summary.json": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/additional-hearing-files/summary.json",
+      "sha256": "0369e7cd160214254c73cf36c7dd5b88fe1485ded2ef15da4a6f068daba2c989"
+    },
+    "additional-hearing-files/review.json": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/additional-hearing-files/review.json",
+      "sha256": "0783cfa2c9ad7b4f53eac1f12e9ef56df747b3418a026002d0475ca78c448e13"
+    },
+    "additional-hearings-recovered.json": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/additional-hearings-recovered.json",
+      "sha256": "a5176d9d4e062d2f2661c8c7515ed81cb679a318821bd48cadebada1fe956117"
+    }
+  }
+}

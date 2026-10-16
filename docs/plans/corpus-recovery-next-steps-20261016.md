@@ -106,3 +106,9 @@ The exact-URL archive candidate for the Iran Sanctions Enabling Act has the SHA-
 Nineteen additional URL leads carry structured document identifiers. Sixteen resolve to nine distinct congressional report packages. Public GovInfo package downloads completed with actual worker exit 0; all nine exact PDF members passed full hash, size, signature, EOF, and qpdf checks. Their 16 URL associations were merged into local preparation. No paid request or parallel NARA request was needed. Evidence: `../recovery/additional-report-packages-20261016.json`.
 
 Three remaining structured hearing-document leads and 387 filename leads still need retained-source or source-context investigation. The current NARA queue remains active, and public publication still awaits cloud-writer clearance and the guarded import/readback steps above.
+
+### Official hearing-file follow-up
+
+The three structured hearing-document leads received direct official requests, with responses preserved and actual worker exit 0. `HHRG-113-IF17-20140522-SD002.pdf` passed PDF validation and was added to local preparation. `HHRG-114-IF14-20150611-SD004.pdf` returned HTML and remains an archive follow-up candidate. `HHRG-118-AG00-20230606-SD001.pdf` returned a PDF with a hash in the deferred-file set; it remains excluded, including through this alternative URL. This preserves the deferred-body boundary rather than bypassing it through an alias.
+
+Evidence: `../recovery/additional-hearing-files-20261016.json`. The remaining archive follow-up must wait for the existing NARA worker and exclude successes and deferred bodies again before dispatch. The live cloud run remains in its capture/rebuild step, so no shared import or publication has started.
