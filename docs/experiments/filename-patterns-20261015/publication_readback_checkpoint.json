@@ -1,0 +1,68 @@
+{
+  "scope": "Authorized house_naming 3.1.0 publication and public browse readback; newer local rules are not published",
+  "verified_at": "2026-10-16T06:10:05.521414+00:00",
+  "published_commit": "1a57561434676afb46b178df8dbf827b3de69e47",
+  "catalog_id": "335a30af8ecb472094f073ff09c4352b",
+  "house_naming_version": "3.1.0",
+  "runs": [
+    {
+      "conclusion": "success",
+      "headSha": "1a57561434676afb46b178df8dbf827b3de69e47",
+      "status": "completed",
+      "url": "https://github.com/civictechdc/congressional-tech/actions/runs/38823678887"
+    },
+    {
+      "conclusion": "success",
+      "headSha": "1a57561434676afb46b178df8dbf827b3de69e47",
+      "status": "completed",
+      "url": "https://github.com/civictechdc/congressional-tech/actions/runs/38855840917"
+    }
+  ],
+  "public_manifest_url": "https://congressional-viewer-data.mdeeb.workers.dev/manifest.json",
+  "public_selector_recheck_matches_saved_readback": true,
+  "source_manifest": {
+    "catalog_id": "335a30af8ecb472094f073ff09c4352b",
+    "files": {
+      "documents": {
+        "bytes": 537451946,
+        "key": "catalog-generations/43dcbfc7d88c4f10892ba79b44f0b506/documents.parquet",
+        "rows": 1239974,
+        "sha256": "0e44fe3634abd5ac5025fe5da3a341984fd66ea074c1e6586dcaeb5eeb3556a5"
+      },
+      "filenames": {
+        "bytes": 541420264,
+        "key": "catalog-generations/43dcbfc7d88c4f10892ba79b44f0b506/document-filenames.parquet",
+        "rows": 1679226,
+        "sha256": "90cea5259c911d3a981b5057b95d2676cdd027ec82d0209400f53d94bcba6723"
+      }
+    },
+    "generation": "43dcbfc7d88c4f10892ba79b44f0b506",
+    "version": 1
+  },
+  "browse": {
+    "path": "output/filename-patterns-20261015/publication/after-browse.parquet",
+    "bytes": 19787428,
+    "sha256": "427d430c564a17ea52953ddef12c20a7e00036ca1c0d638992882f5d80d57adb",
+    "rows": 1239974
+  },
+  "filename_rows": 1679226,
+  "hearing_charter_groups": 434,
+  "acquisition_status": "not_run",
+  "evidence_sha256": {
+    "output/filename-patterns-20261015/publication/publication-receipt.json": "67a3cd19397a41ceccd9d7dbe3a575c141e451f8b210cd6e0181384af1c50f86",
+    "output/filename-patterns-20261015/publication/public-readback.json": "aa6f6599f462d43605a77ecb6c95806a09e4552dbf82cb3e810b6c261a0fa372",
+    "output/filename-patterns-20261015/publication/after-public-manifest.json": "e12f7dc4617881f8e67ef347e501d4b5b927492fa53de0464eb6f320b7f70976",
+    "output/filename-patterns-20261015/publication/after-viewer-manifest.json": "c38da43f52e7ee4fd0d81e1ee9bf3424e576761a706924350c896eda02298cf7",
+    "output/filename-patterns-20261015/publication/verify_completion.py": "9b2328df55dd97df6b1e7af38b5a84a50756872b1924df9eda2de1685c8fa018",
+    "output/filename-patterns-20261015/publication/rebuild-summary/raw-capture-summary.json": "2a4701085e808a56ef70f4f9f95f5af68acacf140b3edbe3581ad35af00fc079",
+    "output/filename-patterns-20261015/publication/rebuild-source/raw-capture-source-manifest.json": "ee985c3da0097193711e9c0fb9a8118627fa83c03916b970d20965349a2153bb"
+  },
+  "fresh_raw_catalog_pair_qualified": false,
+  "held_out_evaluation_unlocked": false,
+  "local_3_2_7_published": false,
+  "remaining_gates": [
+    "Obtain and verify the exact raw filenames/documents pair named by this source manifest; public browse data is not a replacement.",
+    "Check known XML native-fact preservation before accepting the 3.1.0 pair as an evaluation baseline.",
+    "Reconcile frozen pilot against qualified fresh raw catalog and seal independent references before held-out evaluation."
+  ]
+}

@@ -430,3 +430,20 @@ Next inspect all 51 pages of Public Witness, then all 119 pages of Simmons,
 using the saved exact PDFs. Their paths and hashes remain in the v3 receipt.
 Then implement the separate content-review linkage described above, preserving
 filename claims and distinguishing review completion from classification approval.
+
+Authorized 3.1.0 publication verified
+------------------------------------
+Both rebuild 38823678887 and viewer publication 38855840917 completed successfully
+on exact commit 1a57561434676afb46b178df8dbf827b3de69e47. The public selector now
+serves catalog 335a30af8ecb472094f073ff09c4352b, generation
+43dcbfc7d88c4f10892ba79b44f0b506. The verifier retained the published manifest
+and browse bytes; this continuation rechecked their hashes, all kind counts and
+1,239,974 browse rows, and confirmed the live selector still matches. The source
+catalog has 1,679,226 filename rows and the browse table has 434 hearing-charter
+groups. Acquisition was not run. See publication_readback_checkpoint.json.
+
+This completes the prior 3.1.0 publication/readback step. Version 3.2.7 remains
+local. Fresh raw-catalog qualification is still incomplete: obtain the exact
+filenames/documents pair from the verified source manifest, check all native
+XML facts affected by the known 3.1.0 refresh behavior, and reconcile the frozen
+pilot. Browse success cannot substitute for raw-pair checks or independent labels.
