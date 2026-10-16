@@ -1,0 +1,31 @@
+{
+  "at": "2026-10-16T05:42:11.456814+00:00",
+  "requests": 2,
+  "valid": 0,
+  "budget": {
+    "updated_at": "2026-10-16T05:42:09.530724+00:00",
+    "authorized_cap_usd": 25,
+    "paid_requests_this_pass": 6,
+    "provider": "Zyte HTTP proxy",
+    "actual_billed_usd": null,
+    "published_max_rate_estimate_usd": 0.00762,
+    "conservative_reservation_usd": 0.12,
+    "pricing_source": "https://www.zyte.com/pricing/",
+    "current_transport": "Publisher refusal probe via Zyte HTTP proxy",
+    "paid_routes_running": false
+  },
+  "actual_wait_exit": 0,
+  "exec_session": 4551,
+  "classification": "Two file-specific Zyte temporary download errors; host-wide unavailability is not established",
+  "pricing_verified_at": "2026-10-16T05:42:36.065159+00:00",
+  "pricing_source": "https://www.zyte.com/pricing/",
+  "next_steps": [
+    "Probe a different unrequested URL on each directly blocked publisher to distinguish target failures from host-wide refusal.",
+    "Continue the current importer and unblocked public acquisition routes.",
+    "Only expand paid recovery after a working route is demonstrated and keep aggregate reservations below $25."
+  ],
+  "evidence_sha256": {
+    "output/corpus-retry-20261015/publisher-refusal-zyte-probe/results.json": "bb4e751c9b5eb178f11ba62baef0e22f9e79bf9e1886c34d9d696ed7ce075665",
+    "output/corpus-retry-20261015/probe_publisher_refusals_zyte.py": "38721a46894c6c780fbd825b02983d4fa10d3f9494ca5cb4f94dae9d58260343"
+  }
+}
