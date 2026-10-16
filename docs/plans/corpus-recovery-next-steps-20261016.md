@@ -25,3 +25,16 @@ One Zyte HTTP proxy request returned a rate-limit page. Actual billed cost is no
 5. Verify the user-visible outcome. Read back the selected generation and paired catalog hashes, verify all new URL mappings reference retained bodies, and check representative PDFs through the public viewer, including ZIP members, official bill aliases, and archive recoveries. Publish final counts and remaining dispositions with the exact snapshot time.
 
 Completion requires successful publication and readback, not just this plan, a running downloader, or a local preview. Blocked routes do not establish archive exhaustion or corpus completeness. No video bytes are in scope. Commit only this recovery checkpoint and plan; existing unrelated workspace changes remain separate.
+
+## Local batch preparation
+
+`scripts/prepare_corpus_recovery_batch.py` creates an immutable local snapshot of the recovered mappings, ZIP receipts, and body inventory. It verifies complete body hashes and sizes, ZIP coverage and parent context, mapping membership, and deferred URL exclusions. It does not upload, import, or change a selector. Use a new destination for each checkpoint; never overwrite a prior snapshot.
+
+```sh
+.venv/bin/python scripts/prepare_corpus_recovery_batch.py \
+  --source output/corpus-retry-20261015 \
+  --deferred output/viewer-streaming-rerun-20261015/accepted-files.json \
+  --destination output/corpus-retry-20261015/publication-batches/checkpoint-01
+```
+
+The first snapshot was successfully prepared. Five offline tests verify the valid case and rejection of corrupt bodies, deferred URLs, missing mappings, and ZIP members lacking receipt coverage. This local batch is an input to the guarded importer; it does not replace the fresh cloud/input checks or final publication readback above.
