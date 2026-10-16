@@ -1,0 +1,67 @@
+{
+  "at": "2026-10-16T03:59:48.487764+00:00",
+  "status": "local_not_published",
+  "recoveries": [
+    {
+      "original_url": "https://edlabor.house.gov/imo/media/doc/STEEL_A5.pdf",
+      "recovered_url": "https://democrats-edworkforce.house.gov/imo/media/doc/STEEL_A5.pdf",
+      "body_path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/last-direct-priority/0/342a91bebd889aaf0b36270a9f7cd787aa0ed2d280b9a900109d4f27d0654ea7.body",
+      "sha256": "342a91bebd889aaf0b36270a9f7cd787aa0ed2d280b9a900109d4f27d0654ea7",
+      "bytes": 25227,
+      "kind": "pdf",
+      "validated": true,
+      "recovery_status": "recovered",
+      "recovery_basis": "user_accepted_url_variant",
+      "request_evidence": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/last-direct-priority/0/receipt.json",
+      "association_evidence": {
+        "archive_sha1": "PVGCG5H6WKDFX4J3OP7JKANTHXAR7PR6",
+        "index_digest_matches": true,
+        "basis": "Same attachment path across committee domains, live bytes match archive digest"
+      },
+      "validation_evidence": {
+        "qpdf": "success_with_linearization_hint_warnings",
+        "pdfinfo_exit": 0,
+        "pdftotext_exit": 0,
+        "pdftoppm_exit": 0,
+        "rendered_pages": 1,
+        "original_bytes_preserved": true
+      }
+    },
+    {
+      "original_url": "https://edworkforce.house.gov/imo/media/doc/steel_a5.pdf",
+      "recovered_url": "https://democrats-edworkforce.house.gov/imo/media/doc/STEEL_A5.pdf",
+      "body_path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/last-direct-priority/0/342a91bebd889aaf0b36270a9f7cd787aa0ed2d280b9a900109d4f27d0654ea7.body",
+      "sha256": "342a91bebd889aaf0b36270a9f7cd787aa0ed2d280b9a900109d4f27d0654ea7",
+      "bytes": 25227,
+      "kind": "pdf",
+      "validated": true,
+      "recovery_status": "recovered",
+      "recovery_basis": "user_accepted_url_variant",
+      "request_evidence": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/last-direct-priority/0/receipt.json",
+      "association_evidence": {
+        "archive_sha1": "PVGCG5H6WKDFX4J3OP7JKANTHXAR7PR6",
+        "index_digest_matches": true,
+        "basis": "Same attachment path across committee domains, live bytes match archive digest"
+      },
+      "validation_evidence": {
+        "qpdf": "success_with_linearization_hint_warnings",
+        "pdfinfo_exit": 0,
+        "pdftotext_exit": 0,
+        "pdftoppm_exit": 0,
+        "rendered_pages": 1,
+        "original_bytes_preserved": true
+      }
+    }
+  ],
+  "recovery_evidence_sha256": "1efb7fe6c03cb94d5f7f545d6c9cde9aa7a10f39d4dc2e0b2eb8a09bab73c072",
+  "worker_exit": 0,
+  "weatherington": {
+    "status": "live_body_also_truncated",
+    "bytes": 94208,
+    "declared_pdf_bytes": 98713,
+    "qpdf": "failed_pages_tree_missing",
+    "receipt": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/last-direct-priority/1/receipt.json",
+    "receipt_sha256": "a78438a443d3f9c54676902a6745d8f8d58d7da80d17673dc2a62716c638761d"
+  },
+  "next_batch": "Checkpoint 06 remains immutable; create a successor including these two links before import"
+}
