@@ -1,0 +1,31 @@
+{
+  "at": "2026-10-16T14:08:11.184684+00:00",
+  "counts": {
+    "recovered_urls": 1666,
+    "zip_parents": 123,
+    "zip_distinct_members": 607,
+    "distinct_bodies": 2384
+  },
+  "dependency": {
+    "requires_checkpoint12_import_cloud_catalog_and_viewer_readback": true,
+    "incorporated_unimported_batches": [
+      {
+        "batch": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/publication-batches/checkpoint-14",
+        "manifest_sha256": "3e02a63c2231eabdfdabd754921f85bbd2684fafbc4c6c17a0a5c371850ab74a",
+        "remote_readback_sha256": "805963ffa7c587636866f54ecc774685217ac24d54f25edb0474e7f4f275d691"
+      },
+      {
+        "batch": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/publication-batches/checkpoint-15",
+        "manifest_sha256": "d375cde0cff6d554859f249a4e674c63ba100d99a16e3999ac26a73e8131c93c",
+        "remote_readback_sha256": "2af66bbd60134fd7970295475e6ee3c7511edc06eddc9725284b06a940b96913"
+      }
+    ],
+    "do_not_dispatch_incorporated_batches_separately": true
+  },
+  "manifest_sha256": "2434230ddbb4a2a0472302cb7255cdc2e57df2d7036b23d86f119b1638aea661",
+  "source_records": 1666,
+  "new_downloads": 0,
+  "remote_writes": 0,
+  "import_dispatched": false,
+  "fresh_remote_checks_required": true
+}

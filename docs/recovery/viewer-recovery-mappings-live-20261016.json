@@ -1,0 +1,15 @@
+{
+  "at": "2026-10-16T14:17:40.009136+00:00",
+  "verified": true,
+  "expected_mappings": 21184,
+  "exact_matches": 21184,
+  "missing": 0,
+  "live_mappings": 24987,
+  "catalog_id": "d42b9f6697914e68a688600705e1d65f",
+  "recovery": {
+    "bytes": 11244391,
+    "path": "releases/8c571e08599384c644b3f6ac8454a7d9/8fde4545abaf34ab64c64b1b7758d426/viewer-v2/recovery-status.json",
+    "sha256": "8c571e08599384c644b3f6ac8454a7d98fde4545abaf34ab64c64b1b7758d426"
+  },
+  "actual_publisher_exit": 0
+}
