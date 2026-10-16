@@ -354,3 +354,155 @@ def test_pdf_qualification_reuses_frozen_acceptance_and_checks_retained_bytes(tm
     body.write_bytes(b'changed')
     with pytest.raises(ValueError, match='hash or length'):
         recovery.qualify([source], output, deferred, kind='pdf')
+
+
+def test_cookie_routes_to_target_for_both_provider_modes(tmp_path, monkeypatch):
+    item, config, directory = retained(tmp_path)
+    config.update(provider='firecrawl', credential_env='OFFLINE_TEST_KEY', cookie_env='OFFLINE_TARGET_COOKIE')
+    monkeypatch.setenv('OFFLINE_TEST_KEY', 'offline-api-secret')
+    monkeypatch.setenv('OFFLINE_TARGET_COOKIE', 'session=offline-target-cookie')
+    raw = Path(item['retained']['body_path']).read_text()
+    class Response:
+        status_code = 200
+        url = item['candidates'][0]['replay_url']
+        headers = {'content-type': 'text/html'}
+        def json(self):
+            return {'data': {'rawHtml': raw, 'metadata': {'statusCode': 200, 'url': self.url}}}
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def iter_content(self, *args): return iter([raw.encode()])
+    class Session:
+        def post(self, url, **kwargs):
+            assert 'Cookie' not in kwargs['headers']
+            assert kwargs['json']['headers']['Cookie'] == 'session=offline-target-cookie'
+            return Response()
+        def get(self, url, **kwargs):
+            assert kwargs['headers']['Cookie'] == 'session=offline-target-cookie'
+            return Response()
+    result = recovery.fetch(item, config, directory, Session())
+    assert result['valid'] and 'offline-target-cookie' not in json.dumps(result)
+    other = tmp_path / 'direct-cookie'
+    other.mkdir()
+    assert recovery.fetch(item, dict(config, provider='direct'), other, Session())['valid']
+
+
+def test_firecrawl_origin_refusal_stops_even_when_transport_is_200(tmp_path, monkeypatch):
+    item, config, directory = retained(tmp_path)
+    other = dict(item, original_urls=['https://example.gov/other'],
+                 candidates=[dict(item['candidates'][0], replay_url=item['candidates'][0]['replay_url'] + '/other')])
+    config.update(provider='firecrawl', workers=1, credential_env='OFFLINE_TEST_KEY')
+    monkeypatch.setenv('OFFLINE_TEST_KEY', 'offline-only')
+    calls = []
+    class Session:
+        def post(self, url, **kwargs):
+            calls.append(kwargs['json']['url'])
+            class Response:
+                status_code = 200
+                def json(self):
+                    return {'data': {'rawHtml': '<html><title>Unavailable</title></html>',
+                            'metadata': {'statusCode': 429, 'url': kwargs['json']['url']}}}
+            return Response()
+        def close(self): pass
+    monkeypatch.setattr(recovery.requests, 'Session', Session)
+    result = recovery.acquire(dump(tmp_path / 'queue.json', [item, other]), config, tmp_path / 'run')
+    assert len(calls) == 1 and result['completed'] == 1
+    assert recovery.receipt_rows(tmp_path / 'run')[0]['origin_status'] == 429
+    assert recovery.receipt_rows(tmp_path / 'run')[0]['disposition'] == 'retryable-failure'
+    assert recovery.acquire(tmp_path / 'queue.json', config, tmp_path / 'run')['completed'] == 1
+    assert len(calls) == 1
+
+
+def test_bounded_workers_overlap_and_share_one_start_clock(tmp_path, monkeypatch):
+    import threading
+    import time
+    item, config, directory = retained(tmp_path)
+    config.update(workers=5, delay_seconds=0.025)
+    rows = [dict(item, original_urls=[f'https://example.gov/{i}'],
+                 candidates=[dict(item['candidates'][0], replay_url=item['candidates'][0]['replay_url'] + f'/{i}')]) for i in range(7)]
+    times = []
+    active = [0, 0]
+    lock = threading.Lock()
+    def fetch(row, *args):
+        with lock:
+            times.append(time.monotonic())
+            active[0] += 1
+            active[1] = max(active[1], active[0])
+        time.sleep(0.11)
+        with lock: active[0] -= 1
+        return {'original_urls': row['original_urls'], 'valid': True, 'status': 200, 'disposition': 'qualified'}
+    monkeypatch.setattr(recovery, 'fetch', fetch)
+    result = recovery.acquire(dump(tmp_path / 'queue.json', rows), config, tmp_path / 'run')
+    assert result['completed'] == 7 and 2 <= active[1] <= 5
+    assert min(b-a for a, b in zip(times, times[1:])) >= 0.020
+    with pytest.raises(ValueError, match='Workers'):
+        recovery.acquire(tmp_path / 'queue.json', dict(config, workers=6), tmp_path / 'invalid')
+
+
+def test_parallel_refusal_prevents_additional_admissions(tmp_path, monkeypatch):
+    import threading
+    import time
+    item, config, directory = retained(tmp_path)
+    config.update(workers=5, delay_seconds=0)
+    rows = [dict(item, original_urls=[f'https://example.gov/{i}'],
+                 candidates=[dict(item['candidates'][0], replay_url=item['candidates'][0]['replay_url'] + f'/{i}')]) for i in range(12)]
+    calls = []
+    def fetch(row, *args):
+        calls.append(row['original_urls'][0])
+        if row['original_urls'][0].endswith('/0'):
+            return {'original_urls': row['original_urls'], 'valid': False, 'status': 200, 'origin_status': 403,
+                    'disposition': 'retryable-failure'}
+        time.sleep(0.02)
+        return {'original_urls': row['original_urls'], 'valid': True, 'status': 200, 'disposition': 'qualified'}
+    monkeypatch.setattr(recovery, 'fetch', fetch)
+    recovery.acquire(dump(tmp_path / 'queue.json', rows), config, tmp_path / 'run')
+    assert 1 <= len(calls) <= 5
+    assert not any(url.endswith(('/5', '/6', '/7', '/8', '/9', '/10', '/11')) for url in calls)
+
+
+def test_prior_aggregate_is_read_and_hashed_once(tmp_path, monkeypatch):
+    items = [dict(row(), original_urls=[f'https://example.gov/{i}']) for i in range(100)]
+    prior = dump(tmp_path / 'prior.json', [{'original_urls': r['original_urls'], 'valid': False} for r in items])
+    original = Path.read_bytes
+    reads = []
+    def track(path):
+        if path == prior: reads.append(path)
+        return original(path)
+    monkeypatch.setattr(Path, 'read_bytes', track)
+    planned = recovery.plan(dump(tmp_path / 'queue.json', items), [prior], [], dump(tmp_path / 'deferred.json', []))
+    assert len(planned['rows']) == 100 and len(reads) == 1
+
+
+def test_parallel_same_body_extracts_once(tmp_path, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+    import time
+    import webharvest_validation as validation
+    item, config, directory = retained(tmp_path)
+    raw = Path(item['retained']['body_path']).read_bytes()
+    snapshot = tmp_path / 'snapshot'
+    validator = validation.freeze(snapshot, {})
+    misses = []
+    original = validation._classify_cached
+    def track(raw, directory, snapshot, validator):
+        path = directory / (validation.digest(raw) + '-' + validator['validator_sha256'] + '.json')
+        if not path.exists():
+            misses.append(path)
+            time.sleep(0.02)
+        return original(raw, directory, snapshot, validator)
+    monkeypatch.setattr(validation, '_classify_cached', track)
+    with ThreadPoolExecutor(max_workers=5) as pool:
+        results = list(pool.map(lambda _: validation.classify_cached(raw, tmp_path / 'cache', snapshot, validator), range(10)))
+    assert len(misses) == 1 and len({r[1]['path'] for r in results}) == 1
+
+
+def test_parallel_admission_respects_finite_request_grant(tmp_path, monkeypatch):
+    item, config, directory = retained(tmp_path)
+    config.update(workers=5, delay_seconds=0, max_requests=2)
+    rows = [dict(item, original_urls=[f'https://example.gov/{i}'],
+                 candidates=[dict(item['candidates'][0], replay_url=item['candidates'][0]['replay_url'] + f'/{i}')]) for i in range(8)]
+    calls = []
+    def fetch(row, *args):
+        calls.append(row)
+        return {'original_urls': row['original_urls'], 'valid': True, 'status': 200, 'disposition': 'qualified'}
+    monkeypatch.setattr(recovery, 'fetch', fetch)
+    result = recovery.acquire(dump(tmp_path / 'queue.json', rows), config, tmp_path / 'run')
+    assert len(calls) == result['completed'] == result['downloads_started'] == 2

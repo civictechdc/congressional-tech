@@ -1,6 +1,6 @@
 # Maintained recovery commands
 
-`scripts/webharvest_recovery.py` promotes the sequential requests and content
+`scripts/webharvest_recovery.py` promotes the retained-first requests and content
 checks from `recover_nara_html_continuation_04.py` and
 `recover_firecrawl_nara_scaled_02.py`. It acquires only exact indexed HTML replay
 URLs. It never imports, publishes, or selects new targets. Run it against an
@@ -40,7 +40,8 @@ Configuration example (values are review inputs, not permission to spend):
   "max_requests": 1,
   "request_ceiling_usd": 1,
   "max_body_bytes": 8388608,
-  "delay_seconds": 30
+  "workers": 5,
+  "delay_seconds": 1
 }
 ```
 
@@ -131,3 +132,24 @@ only; immutable receipts, cache files, and compact counter writes are additional
 linear writes. See `acquisition-serialization-evidence.json` for the source hash
 and scope. The offline write-count probe verifies one aggregate write across
 20 queue groups. No wall-clock speed or physical allocation claim is made.
+
+## Bounded parallel admission
+
+`workers` accepts one through five. Firecrawl defaults to five workers and a
+one-second minimum global request-start interval; direct and retained modes
+default to one worker and a thirty-second interval. Set `delay_seconds` explicitly
+for a reviewed campaign. Each worker uses its own requests session. The global
+start clock applies across workers; the finite request grant counts distinct
+replay URLs. Alias groups share their download and classification cache.
+
+Both provider HTTP status and target `origin_status` can stop admission. A
+refusal stops new requests, drains already admitted workers, and remains stopped
+on resume. Workers waiting for their start slot record a review disposition
+without sending a request. A cookie from `cookie_env` goes to the direct target
+request, or into Firecrawl's target-request `headers` field. It is never attached
+to the API-origin request headers or written into a receipt.
+
+Prior aggregate files are read and hashed once per source file during planning.
+Each row reuses that source digest; the offline probe checks one read for a
+hundred prior receipts. Parallel classifier calls serialize per body/validator
+cache key, preserving one extraction when different URLs return identical bytes.

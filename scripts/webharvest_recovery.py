@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Explicit, sequential Web Harvest HTML acquisition; no import or publication.
+"""Explicit, bounded Web Harvest HTML acquisition; no import or publication.
 
 Promotes the retained-first and Firecrawl request behavior from dated
 recover_nara_html_continuation_04.py and recover_firecrawl_nara_scaled_02.py.
@@ -10,6 +10,7 @@ import argparse
 import base64
 from collections import Counter
 from contextlib import contextmanager
+from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 from datetime import datetime, timezone
 import fcntl
 import hashlib
@@ -17,6 +18,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import threading
 import time
 from urllib.parse import urlsplit
 
@@ -89,7 +91,7 @@ def disposition(record):
         return 'qualified'
     if category == 'historical_no_prepared_statement':
         return 'terminal-content'
-    if category == 'error_or_challenge' or record.get('status', record.get('http_status')) in {401, 403, 429}:
+    if category == 'error_or_challenge' or any(record.get(name) in {401, 402, 403, 429} for name in ('status', 'http_status', 'origin_status')):
         return 'retryable-failure'
     if record.get('error_type') or record.get('status', record.get('http_status', 0)) >= 500:
         return 'retryable-failure'
@@ -100,10 +102,12 @@ def plan(queue, prior, reservations, deferred):
     forbidden_urls, forbidden_hashes = exclusions(deferred)
     previous = {}
     for path in prior:
-        value = read(path)
+        raw = Path(path).read_bytes()
+        value = json.loads(raw)
+        source_sha256 = sha(raw)
         for record in value if isinstance(value, list) else [value]:
             for url in record.get('original_urls', [record.get('original_url')]):
-                previous[url] = (record, str(path), sha(Path(path).read_bytes()))
+                previous[url] = (record, str(path), source_sha256)
     active = {}
     for path in reservations:
         reservation = read(path)
@@ -171,6 +175,8 @@ def load_config(path):
             raise ValueError('Request ceiling exceeds budget')
     if not 0 < config.get('max_body_bytes', 8 * 1024**2) <= 8 * 1024**2:
         raise ValueError('HTML body limit cannot exceed 8 MiB')
+    if type(config.get('workers', 1)) is not int or not 1 <= config.get('workers', 1) <= 5:
+        raise ValueError('Workers must be between one and five')
     if config.get('delay_seconds', 30) < 0:
         raise ValueError('Delay must be non-negative')
     return config
@@ -213,8 +219,11 @@ def fetch(row, config, directory, session, validation=None):
                           origin_status=retained.get('origin_status'),
                           provider_metadata=retained.get('provider_metadata'))
         elif config['provider'] == 'direct':
+            target_headers = {'Accept-Encoding': 'identity'}
+            if config.get('cookie_env'):
+                target_headers['Cookie'] = os.environ[config['cookie_env']]
             with session.get(url, stream=True, allow_redirects=False,
-                             timeout=(15, 45), headers={'Accept-Encoding': 'identity'}) as response:
+                             timeout=(15, 45), headers=target_headers) as response:
                 result.update(status=response.status_code, final_url=str(response.url),
                               headers={k.lower(): v for k, v in response.headers.items() if k.lower() not in DENIED_HEADERS})
                 if response.headers.get('content-type', '').lower().startswith(('video/', 'audio/')):
@@ -231,6 +240,8 @@ def fetch(row, config, directory, session, validation=None):
             key = os.environ[config['credential_env']]
             payload = {'url': url, 'formats': ['rawHtml'], 'onlyMainContent': False,
                        'parsers': [], 'timeout': 60000, 'proxy': 'enhanced', 'maxAge': 0, 'waitFor': 5000}
+            if config.get('cookie_env'):
+                payload['headers'] = {'Cookie': os.environ[config['cookie_env']]}
             response = session.post('https://api.firecrawl.dev/v2/scrape', json=payload,
                                     headers={'Authorization': 'Bearer ' + key}, timeout=90)
             data = response.json().get('data') or {}
@@ -300,6 +311,12 @@ def aggregate(directory):
     return value
 
 
+def refused(record):
+    return (any(record.get(name) in {401, 402, 403, 429} for name in ('status', 'origin_status'))
+            or bool(record.get('headers', {}).get('retry-after'))
+            or record.get('content', {}).get('category') == 'error_or_challenge')
+
+
 def acquire(queue, config, directory):
     rows = read(queue)
     forbidden, _ = exclusions(config['deferred'])
@@ -307,70 +324,122 @@ def acquire(queue, config, directory):
         raise ValueError('Queue contains deferred originals')
     if len({request_id(r, config['provider']) for r in rows}) != len(rows):
         raise ValueError('Duplicate queue groups')
-    session = requests.Session()
-    session.trust_env = False
-    if config.get('cookie_env'):
-        session.headers['Cookie'] = os.environ[config['cookie_env']]
-    try:
-        with exclusive_run(directory):
-            pins = {'queue_sha256': sha(Path(queue).read_bytes()), 'config': config,
-                    'deferred_sha256': sha(Path(config['deferred']).read_bytes()), 'groups': len(rows)}
-            manifest = directory / 'plan.json'
-            if manifest.exists() and read(manifest) != pins:
-                raise ValueError('Run inputs changed; use a new receipt directory')
-            if not manifest.exists():
-                immutable(manifest, pins)
-            snapshot = directory / 'validator'
-            validator = freeze(snapshot, {'deferred_sha256': pins['deferred_sha256'],
-                                          'provider': config['provider'], 'kind': 'html'})
-            validation = (directory / 'classification-cache', snapshot, validator)
-            # Reconstruct once after interruption; each subsequent update is constant size.
-            counters = progress(directory, len(rows))
-            counts = Counter(counters['dispositions'])
-            completed = counters['completed']
-            started = counters['downloads_started']
-            for row in rows:
-                target = directory / 'requests' / request_id(row, config['provider'])
-                target.mkdir(parents=True, exist_ok=True)
-                receipt = target / 'receipt.json'
-                if receipt.exists():
-                    prior = read(receipt)
-                    if prior.get('body_path'):
-                        checked_body(prior)
-                    if prior.get('status') in {401, 402, 403, 429} or prior.get('content', {}).get('category') == 'error_or_challenge':
-                        break
-                    continue
-                download_id = sha((config['provider'] + row['candidates'][0]['replay_url']).encode())
-                download = directory / 'downloads' / download_id
-                download.mkdir(parents=True, exist_ok=True)
-                begun = download / 'started.json'
-                if begun.exists() and not (download / 'download.json').exists():
-                    # An interrupted in-flight request consumes its grant. Never replay it.
-                    result = {'original_urls': row['original_urls'], 'candidate': row['candidates'][0],
-                              'valid': False, 'disposition': 'review-required',
-                              'reason': 'interrupted_request_without_complete_receipt',
-                              'request_evidence': str(begun.resolve())}
-                else:
-                    if not begun.exists():
-                        if started >= config.get('max_requests', len(rows)):
-                            break
-                        immutable(begun, {'process': process_identity(), 'at': now(),
-                                          'requested_url': row['candidates'][0]['replay_url'],
-                                          'provider': config['provider']})
-                        started += 1
-                        time.sleep(config.get('delay_seconds', 30))
-                    result = fetch(row, config, download, session, validation)
-                immutable(receipt, result)
-                completed += 1
-                counts[result['disposition']] += 1
-                save(directory / 'progress.json', {'completed': completed, 'total': len(rows),
-                     'dispositions': dict(counts), 'downloads_started': started,
-                     'complete': completed == len(rows)})
-                if result.get('status') in {401, 402, 403, 429} or result.get('content', {}).get('category') == 'error_or_challenge':
-                    break
+    workers = config.get('workers', 5 if config['provider'] == 'firecrawl' else 1)
+    if type(workers) is not int or not 1 <= workers <= 5:
+        raise ValueError('Workers must be between one and five')
+    with exclusive_run(directory):
+        pins = {'queue_sha256': sha(Path(queue).read_bytes()), 'config': config,
+                'deferred_sha256': sha(Path(config['deferred']).read_bytes()), 'groups': len(rows)}
+        manifest = directory / 'plan.json'
+        if manifest.exists() and read(manifest) != pins:
+            raise ValueError('Run inputs changed; use a new receipt directory')
+        if not manifest.exists():
+            immutable(manifest, pins)
+        snapshot = directory / 'validator'
+        validator = freeze(snapshot, {'deferred_sha256': pins['deferred_sha256'],
+                                      'provider': config['provider'], 'kind': 'html'})
+        validation = (directory / 'classification-cache', snapshot, validator)
+        existing = receipt_rows(directory)
+        counts = Counter(r['disposition'] for r in existing)
+        completed = len(existing)
+        started = len(list((directory / 'downloads').glob('*/started.json')))
+        for prior in existing:
+            if prior.get('body_path'):
+                checked_body(prior)
+        if any(refused(prior) for prior in existing):
             return aggregate(directory)
-    finally:
-        session.close()
+        # Group aliases before parallel admission so one replay URL gets one request.
+        jobs = {}
+        for row in rows:
+            target = directory / 'requests' / request_id(row, config['provider']) / 'receipt.json'
+            if target.exists():
+                continue
+            download_id = sha((config['provider'] + row['candidates'][0]['replay_url']).encode())
+            jobs.setdefault(download_id, []).append((row, target))
+        ownership = process_identity()
+        stop = threading.Event()
+        start_lock = threading.Lock()
+        admission_lock = threading.Lock()
+        last_start = [None]
+        interval = config.get('delay_seconds', 1 if config['provider'] == 'firecrawl' else 30)
+
+        def interrupted(row, reason, evidence):
+            return {'original_urls': row['original_urls'], 'candidate': row['candidates'][0],
+                    'valid': False, 'disposition': 'review-required', 'reason': reason,
+                    'request_evidence': str(evidence.resolve())}
+
+        def work(group, download, fresh):
+            begun = download / 'started.json'
+            if fresh:
+                # One global start clock, including all parallel worker sessions.
+                with start_lock:
+                    remaining = 0 if last_start[0] is None else max(0, interval - (time.monotonic() - last_start[0]))
+                    if stop.wait(remaining) or stop.is_set():
+                        return [(target, interrupted(row, 'stopped_before_request', begun)) for row, target in group]
+                    last_start[0] = time.monotonic()
+            session = requests.Session()
+            session.trust_env = False
+            results = []
+            first = None
+            try:
+                for row, target in group:
+                    if not fresh and not (download / 'download.json').exists():
+                        result = interrupted(row, 'interrupted_request_without_complete_receipt', begun)
+                    elif first is not None and not (download / 'download.json').exists():
+                        result = dict(first, original_urls=row['original_urls'], candidate=row['candidates'][0])
+                    else:
+                        result = fetch(row, config, download, session, validation)
+                    if refused(result):
+                        with admission_lock:
+                            stop.set()  # Stop admission before returning to the supervisor.
+                    first = result
+                    results.append((target, result))
+            finally:
+                session.close()
+            return results
+
+        pending = set()
+        cursor = iter(jobs.items())
+        exhausted = False
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            while pending or not exhausted:
+                while not exhausted and not stop.is_set() and len(pending) < workers:
+                    try:
+                        download_id, group = next(cursor)
+                    except StopIteration:
+                        exhausted = True
+                        break
+                    download = directory / 'downloads' / download_id
+                    download.mkdir(parents=True, exist_ok=True)
+                    begun = download / 'started.json'
+                    fresh = not begun.exists()
+                    with admission_lock:
+                        if stop.is_set():
+                            exhausted = True
+                            break
+                        if fresh:
+                            if started >= config.get('max_requests', len(rows)):
+                                exhausted = True
+                                break
+                            immutable(begun, {'process': ownership, 'at': now(),
+                                              'requested_url': group[0][0]['candidates'][0]['replay_url'],
+                                              'provider': config['provider']})
+                            started += 1
+                        pending.add(pool.submit(work, group, download, fresh))
+                if stop.is_set():
+                    exhausted = True
+                if not pending:
+                    break
+                ready, pending = wait(pending, return_when=FIRST_COMPLETED)
+                for future in ready:
+                    for target, result in future.result():
+                        immutable(target, result)
+                        completed += 1
+                        counts[result['disposition']] += 1
+                        save(directory / 'progress.json', {'completed': completed, 'total': len(rows),
+                             'dispositions': dict(counts), 'downloads_started': started,
+                             'complete': completed == len(rows)})
+        return aggregate(directory)
 
 
 def qualify(sources, directory, deferred, *, kind='html', preview=False):

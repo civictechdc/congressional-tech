@@ -9,6 +9,10 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
+import threading
+
+_CACHE_LOCKS = {}
+_CACHE_GUARD = threading.Lock()
 
 VERSION = 'webharvest-validation-v1'
 
@@ -73,6 +77,14 @@ def freeze(directory, config):
 
 
 def classify_cached(raw, directory, snapshot, validator):
+    identity = (str(directory.resolve()), digest(raw), validator['validator_sha256'])
+    with _CACHE_GUARD:
+        lock = _CACHE_LOCKS.setdefault(identity, threading.Lock())
+    with lock:
+        return _classify_cached(raw, directory, snapshot, validator)
+
+
+def _classify_cached(raw, directory, snapshot, validator):
     key = digest(raw) + '-' + validator['validator_sha256']
     path = directory / (key + '.json')
     if path.exists():
@@ -87,7 +99,14 @@ def classify_cached(raw, directory, snapshot, validator):
         exec(compile(source, str(snapshot / 'classifier.py'), 'exec'), namespace)
         value = {'body_sha256': digest(raw), 'validator_sha256': validator['validator_sha256'],
                  'content': namespace['classify'](raw)}
-        immutable(path, value)
+        try:
+            immutable(path, value)
+        except FileExistsError:
+            # Parallel URLs can return identical bytes; the first complete cache wins.
+            saved = json.loads(path.read_text())
+            if saved != value:
+                raise ValueError('Concurrent classifier cache differs')
+            value = saved
     # Full extracted text and links live once in the cache, with hash provenance.
     summary = {k: v for k, v in value['content'].items() if k not in {'text', 'links'}}
     return summary, {'path': str(path.resolve()), 'sha256': digest(path.read_bytes()),
