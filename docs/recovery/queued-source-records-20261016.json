@@ -1,0 +1,100 @@
+{
+  "at": "2026-10-16T07:13:34.254331+00:00",
+  "batches": [
+    {
+      "batch": 14,
+      "records": 1378,
+      "unresolved": 0,
+      "source_record_sha256": "8cbe5ad80b5234acfa611cea0c23d8d9493fcce2fbf6d75cf96ae9c607be4b7b",
+      "preparation_report": {
+        "status": "local_records_only_state_assignment_waits_for_fresh_baseline",
+        "records": 1378,
+        "input_urls": 1378,
+        "unresolved": [],
+        "source_sha256": "27bdf3a7954cff7faf40e9b36a6d2d56b09fcf1d1166735637b48acae277d133",
+        "batch_manifest_sha256": "3e02a63c2231eabdfdabd754921f85bbd2684fafbc4c6c17a0a5c371850ab74a",
+        "timestamp_alias_evidence_sha256": "c5c5f1bebbfc728098fadbd74ce93104075b58ad1b978418224b6383750d0639",
+        "raw_archive_sha256": "545d0803787e5c77486d8cd6e6cb617d6e0cecbe006b39574db3681079761689",
+        "member_timestamp_evidence": [
+          {
+            "url": "https://www.govinfo.gov/content/pkg/CHRG-119hhrg64154/pdf/CHRG-119hhrg64154.pdf",
+            "parent_archive_url": "https://www.govinfo.gov/content/pkg/CHRG-119hhrg64154.zip",
+            "member": "CHRG-119hhrg64154/pdf/CHRG-119hhrg64154.pdf",
+            "sha256": "071cddc754f3184b7d90cbea74531af77de186f46f2033ebeb80465ab21d8825",
+            "retrieved_at": "2026-10-16T06:27:02.122640+00:00"
+          },
+          {
+            "url": "https://www.govinfo.gov/content/pkg/CHRG-119hhrg64242/pdf/CHRG-119hhrg64242.pdf",
+            "parent_archive_url": "https://www.govinfo.gov/content/pkg/CHRG-119hhrg64242.zip",
+            "member": "CHRG-119hhrg64242/pdf/CHRG-119hhrg64242.pdf",
+            "sha256": "a5d35c3e508fb61c3dcf460c70a67920d1b4ee7911f4cc769f8fcf621fda604a",
+            "retrieved_at": "2026-10-16T06:27:20.706511+00:00"
+          },
+          {
+            "url": "https://www.govinfo.gov/content/pkg/CHRG-119hhrg64246/pdf/CHRG-119hhrg64246.pdf",
+            "parent_archive_url": "https://www.govinfo.gov/content/pkg/CHRG-119hhrg64246.zip",
+            "member": "CHRG-119hhrg64246/pdf/CHRG-119hhrg64246.pdf",
+            "sha256": "2252ee2a875fcaef816e6faa4908eaa42eae0b66522b32b3f3eb419d6af3c4d8",
+            "retrieved_at": "2026-10-16T06:28:50.881703+00:00"
+          },
+          {
+            "url": "https://www.govinfo.gov/content/pkg/CHRG-119hhrg64458/pdf/CHRG-119hhrg64458.pdf",
+            "parent_archive_url": "https://www.govinfo.gov/content/pkg/CHRG-119hhrg64458.zip",
+            "member": "CHRG-119hhrg64458/pdf/CHRG-119hhrg64458.pdf",
+            "sha256": "992c400482002d77a01c172b990a8013deeaa89f9bb795c9511fd3063c6b173a",
+            "retrieved_at": "2026-10-16T06:29:34.262154+00:00"
+          },
+          {
+            "url": "https://www.govinfo.gov/content/pkg/CHRG-119hhrg64512/pdf/CHRG-119hhrg64512.pdf",
+            "parent_archive_url": "https://www.govinfo.gov/content/pkg/CHRG-119hhrg64512.zip",
+            "member": "CHRG-119hhrg64512/pdf/CHRG-119hhrg64512.pdf",
+            "sha256": "1759fdeb01bff34386c562f531d63837f9410bfb04d6ecb56d446d04e4d5f5a1",
+            "retrieved_at": "2026-10-16T06:24:52.325847+00:00"
+          },
+          {
+            "url": "https://www.govinfo.gov/content/pkg/CHRG-119jhrg62143/pdf/CHRG-119jhrg62143.pdf",
+            "parent_archive_url": "https://www.govinfo.gov/content/pkg/CHRG-119jhrg62143.zip",
+            "member": "CHRG-119jhrg62143/pdf/CHRG-119jhrg62143.pdf",
+            "sha256": "226ac2a64fd68a58845e6705e2a85e54735d982e2b598c1a7f0c6bb5890c034d",
+            "retrieved_at": "2026-10-16T06:24:58.783134+00:00"
+          },
+          {
+            "url": "https://www.govinfo.gov/content/pkg/CHRG-119shrg58614/pdf/CHRG-119shrg58614.pdf",
+            "parent_archive_url": "https://www.govinfo.gov/content/pkg/CHRG-119shrg58614.zip",
+            "member": "CHRG-119shrg58614/pdf/CHRG-119shrg58614.pdf",
+            "sha256": "86e6bb094822e962258588e3939856610fe1524a7336f830b8555858c7d0281b",
+            "retrieved_at": "2026-10-16T06:25:18.511955+00:00"
+          },
+          {
+            "url": "https://www.govinfo.gov/content/pkg/CHRG-119shrg58615/pdf/CHRG-119shrg58615.pdf",
+            "parent_archive_url": "https://www.govinfo.gov/content/pkg/CHRG-119shrg58615.zip",
+            "member": "CHRG-119shrg58615/pdf/CHRG-119shrg58615.pdf",
+            "sha256": "ab5ec005671c7b122b4ff954c8c6bd9dd2a998b3a2a21e967beb74263c40d1d4",
+            "retrieved_at": "2026-10-16T06:27:11.356020+00:00"
+          }
+        ],
+        "member_supplement_script_sha256": "2a8b28eadbe238f282462de7123dc4669417c73894d7ee1a70a6e2dcba6e18fa"
+      }
+    },
+    {
+      "batch": 15,
+      "records": 288,
+      "unresolved": 0,
+      "source_record_sha256": "5cc3eecc4d51772f39ed1d65f70997e37a7854afa9506e4f71932c14675d1ecc",
+      "preparation_report": {
+        "status": "local_records_only_state_assignment_waits_for_fresh_baseline",
+        "records": 288,
+        "input_urls": 288,
+        "unresolved": [],
+        "source_sha256": "27bdf3a7954cff7faf40e9b36a6d2d56b09fcf1d1166735637b48acae277d133",
+        "batch_manifest_sha256": "d375cde0cff6d554859f249a4e674c63ba100d99a16e3999ac26a73e8131c93c",
+        "timestamp_alias_evidence_sha256": "c5c5f1bebbfc728098fadbd74ce93104075b58ad1b978418224b6383750d0639",
+        "raw_archive_sha256": "545d0803787e5c77486d8cd6e6cb617d6e0cecbe006b39574db3681079761689"
+      }
+    }
+  ],
+  "imported": false,
+  "published": false,
+  "source_requests": 0,
+  "next_step": "Verify import readiness and fresh state after parent publication completes."
+}
