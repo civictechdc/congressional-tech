@@ -17,6 +17,7 @@
 | --- | --- |
 | [SOURCE_MODELS.md](SOURCE_MODELS.md) | Source models, parsing, verification limits and witness-PDF evaluation |
 | [Filename tooling](../house-naming/FILENAME_PATTERNS.md) | Regex filename parsing, corpus audits, residuals |
+| [Compiled document reviews](../../docs/document-review-input.txt) | Optional review selection, evidence admission duties and withdrawal |
 | [committee-meeting](../committee_meeting/README.md) | Canonical normalized meeting model |
 | [Meeting state & refresh](../../docs/youtube-coverage/meeting-state.md) | Pipeline state directories and refresh rules |
 | [Compatibility and maintenance](../../docs/congress-api-contracts.md) | Stable commands/artifacts, CI, versions, offline behavior, identity and replay safeguards |

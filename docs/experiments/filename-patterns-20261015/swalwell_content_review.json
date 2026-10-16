@@ -1,0 +1,25 @@
+{
+  "scope": "One exact non-pilot retained body, assistant visual review; not an independent evaluation reference",
+  "document_id": "822544469d14c05f89472609d6a14ad65f1d62dc49bcbf4a9eae1cd4e01d75b7",
+  "body_key": "bodies/sha256/07/07ae5fe1ac1effa11687e5cc415fd099058a1034637103737e36d96b5b856ec7.gz",
+  "source_pdf": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v1/07ae5fe1ac1effa11687e5cc415fd099058a1034637103737e36d96b5b856ec7.pdf",
+  "sha256": "07ae5fe1ac1effa11687e5cc415fd099058a1034637103737e36d96b5b856ec7",
+  "pages": 1,
+  "all_pages_reviewed": true,
+  "review_method": "Rendered page visual inspection; no OCR",
+  "native_text": "No extracted page text",
+  "observed_document_form": "amendment",
+  "heading": "Amendment to H.R. 1422 offered by Mr. Swalwell",
+  "subject": "Disclosure of professional activities, including representational work, expert testimony and contract work",
+  "interpretation": "Disclosure wording names the amendment subject, not a witness disclosure form",
+  "production_changes": false,
+  "release_qualified": false,
+  "prior_management_api_denial_preserved": true,
+  "public_gateway_receipt": "output/filename-patterns-20261015/public-retained-review-v1/first-public-read.json",
+  "artifacts": {
+    "output/filename-patterns-20261015/public-retained-review-v1/first-public-read.json": "9906d8ce43c06760eada21921dfe7db51ec8d92d8d849d0f3802ba09e8dbc713",
+    "output/filename-patterns-20261015/public-retained-review-v1/swalwell-page1.png": "0b5d81f23fb47cd6ae22661cf32552e79a8b99f24c55b4798b1ea9bf6f724079",
+    "output/filename-patterns-20261015/public-retained-review-v1/swalwell-text.txt": "ad3708d5a9abe531bba720ce4c75de6cf73d36650a179934ae87eaa74ecc6057"
+  },
+  "next_step": "Inspect Graves CBRA and the VE-letter substitute through the verified public retained-object route before proposing a bounded filename correction."
+}

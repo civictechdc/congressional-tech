@@ -1,0 +1,128 @@
+Frozen PDF pilot: development review
+===================================
+
+This continuation completed acquisition attempts for all 400 frozen records and
+reviewed the opening text of all 140 readable development documents. It adds
+experiment tooling and explicit reference labels. It changes no runtime rules,
+catalog kinds, retained capture records or published data.
+
+The 3.1.0 retained-source rebuild remains in progress in GitHub run 38823678887.
+Fresh-catalog eligibility and the full-catalog 3.2.0 replay are still pending.
+The frozen sample was not silently refreshed or substituted during retrieval.
+
+Evidence and availability
+-------------------------
+Selection SHA-256:
+55b3256dc0bfee57d90235b7d8d9b216060bc145d82926709a5b01beed619237
+
+                         Development    Held-out    Total
+Selected                         200         200      400
+Exact matched PDF bodies         141         159      300
+Usable opening-page text         140         157      297
+Needs visual review                1           2        3
+No available exact body           59          41      100
+Reference labels                 140           0      140
+
+The reader examined at most the first two pages of each matched PDF. Review
+used displayed opening-page excerpts and recorded second-page checks, not the
+entire contents of every PDF. All 140 labels include a short supporting quote,
+page number, body hash, extracted-text hash and review note. The assistant
+assigned these labels; independent human validation has not occurred.
+
+The reference set contains 37 provisional document types. These are research
+labels, not additions to the production taxonomy. The largest groups are
+reports (22), witness statements (14), amendments (11) and legislative text
+(11). Mixed legislative packets, outside legal texts and policy documents
+must remain distinct from the narrower committee document forms.
+
+The 200 held-out records have separate extraction files. Their text has not
+been reviewed for labels or passed to a candidate classifier. Hash validation
+and availability counts do not expose their content to rule development.
+
+Extraction retained 400 original receipts and 15 repair receipts. An initial
+OCR image-path bug caused those extraction failures. The fix retried exact
+saved PDF bytes; original failure receipts remain unchanged. No extraction
+errors remain. Of 558 saved page texts, 499 use native text and 59 use OCR.
+An OCR attempt does not necessarily mean OCR text won: D080's method metadata
+was corrected to native_text with an explicit correction history. Its label,
+quote and body/text hashes did not change.
+
+Publisher retrieval attempts included timeouts, HTTP errors, non-PDF bodies,
+one changed PDF and five PDFs without a retained digest. Unmatched PDFs are
+saved separately and excluded from reference labeling. No records were
+replaced. The one selected document with two recorded body keys had neither
+body available, so no reference decision hides version ambiguity.
+
+Existing-reader diagnostic
+--------------------------
+The maintained document_page_fields function assigns a kind to 9 of the 140
+reviewed development documents. All nine agree with the reference label;
+131 abstain. Native and OCR-assisted inputs give the same nine assignments.
+This is 6.4% coverage of labeled development records, or 4.5% of the 200
+selected development records. It is not held-out or population-wide accuracy.
+
+This diagnostic uses saved Poppler text and the maintained caller's opening-
+page policy. Second-page fallback is allowed only after a blank first page
+and only for transcripts. It is not an end-to-end benchmark of production
+pypdf extraction. Source fingerprints and per-record predictions are saved.
+
+Validation
+----------
+pilot_audit.py verifies all 400 IDs, split membership, all 300 available PDF
+hashes, extracted-text hashes, reference quotes and no shared expected or
+retrieved body hashes across the development/held-out boundary.
+
+Seven focused tests passed. They cover OCR page-image paths, actual selected
+text metadata, changed body/text rejection, unsupported quote rejection,
+idempotent labels, refusal of silent relabeling and the restricted second-page
+policy. The local HTTP server returned the exact audit-summary bytes.
+
+Original per-document processing time totals 516.73 seconds. This sums work
+across concurrent workers, not wall-clock time. Repairs and review time were
+not timed. Local command-line tools and publisher HTTP requests were used;
+there were no paid model API calls. CPU and network costs were not metered.
+
+Recommended next steps
+----------------------
+1. Verify publication run 38823678887, read back the paired catalog and public
+   manifest, reconcile every pilot ID, and replay filename version 3.2.0 on
+   the complete catalog. Preserve changed eligibility without substitutions.
+2. Qualify bounded content rules on the development examples: explicit
+   operative amendments, House published-hearing covers and committee vote
+   sheets. Require form and structure; topic words alone are insufficient.
+   Add contrast examples such as amendment summaries and policy suggestions.
+3. Review proposed external-document and mixed-packet taxonomy separately.
+   Keep filename grammar in house_naming and PDF recognition in congress_api.
+4. Freeze candidate code and thresholds before held-out review. Then report
+   per-kind coverage, exact agreements, disagreements, abstentions and failed
+   acquisitions. Obtain human review before using these assistant labels as
+   release qualification. The balanced sample cannot establish prevalence or
+   population-wide precision, and many kinds have only one reference example.
+
+Reproduction and outputs
+------------------------
+From the active worktree with the workspace Python environment:
+
+  python docs/experiments/filename-patterns-20261015/pilot_audit.py
+  PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q \
+    docs/experiments/filename-patterns-20261015/test_pilot_evidence.py
+
+pilot_extract.py performs bounded acquisition/extraction and can resume from
+the original receipt journal. --repair-extraction reprocesses saved failed
+bodies without downloading again. Do not start a fresh selection to replace
+missing samples. pilot_review.py produces split-specific blind text packets
+and accepts explicit decisions, refusing changed evidence or silent relabels.
+
+Output directory: output/filename-patterns-20261015/pilot-v1/
+  report.html                  readable development report
+  review-ledger.csv            all 400 review states, held-out labels blank
+  audit-summary.json           verified totals, limits and source hashes
+  development-baseline.json    maintained-reader diagnostic per labeled record
+  receipts.jsonl               original retrieval/extraction evidence
+  extraction-repairs.jsonl     later repair results, original errors retained
+
+extraction-summary.json describes the original pre-repair attempt only. Use
+audit-summary.json for final counts. Reference decisions live in the source
+file pilot_adjudications.json. The original blank pilot-review.csv is intact.
+
+Local report: http://127.0.0.1:8797/pilot-v1/report.html

@@ -1,0 +1,69 @@
+Current review path replay: scoped self-review
+=============================================
+Findings
+--------
+OBSERVATION (binding validity): all 86 pre-normalization bindings reject the
+transformed rows as scope_changed. This is correct. A successful execution is not
+a successful unchanged-binding qualification. Both summary gates remain false.
+No blocker found in this diagnostic harness; fresh bindings remain future work.
+
+Patch summary and function trace
+--------------------------------
+All locations below are in this experiment directory unless stated otherwise.
+
+Function | Location | Input -> output | Verified behavior
+exercise_paths | packet_review_replay.py:50 | pair, rows, callback -> six scenarios | Reference, reversed, disk, cache, refresh reuse and refresh reparse; refuses body reads and requires all groups reused in cache scenario.
+run (historical) | packet_review_replay.py:80,139 | original evidence -> historical results | Calls shared helper; preserves original verification callback and default reader.
+changes | current_review_path_replay.py:20 | before/after rows -> exact differences | Rejects duplicate IDs, preserves changed values, records added/missing IDs, ignores only null dictionary padding.
+audit_scenario | current_review_path_replay.py:32 | current rows, baseline, bound candidates -> diagnostics | Applies saved bindings without replacing them; compares full candidate values and verifies withdrawal.
+compact_pair | current_review_path_replay.py:57 | directory -> full non-null rows | Uses existing batch reader; no field projection or nested-value truncation.
+run | current_review_path_replay.py:62 | checkpoint, new output -> summary | Verifies all bound inputs/outputs and exact saved candidate coverage before running; rechecks inputs and implementation afterward.
+apply_review | packet_review_candidate.py:50 | group, members, review -> fresh candidate | Rejects changed full-group digest, preserves baseline on refusal or withdrawal.
+CLI | current_review_path_replay.py:105 | checkpoint/output arguments -> run | Only new experiment directories; no production caller.
+
+Data flow and invariants
+------------------------
+Hypothesis: current catalog reuse and recomputation differ in a restored field.
+Confirmed by exact row comparisons in v1. The helper refactor removes duplicate
+six-path logic while retaining the historical callback and behavior. The current
+runner uses saved candidates as comparison values only, never as catalog inputs.
+Each new diagnostic stores before/after values; the summary records their hashes.
+No missing/added IDs can disappear into a kind-only comparison. A scope_changed
+result remains a rejection; the runner does not alter group_digest or bind_review.
+Input/implementation failures abort; field changes complete a diagnostic run with
+false qualification gates. Partial runs have no valid completed summary.
+
+Executed behavior
+------------------
+v1: all recomputation paths add filename_document_kind on 246 source rows and all
+86 groups. Metadata refresh reuse leaves it null. All other fields and IDs agree.
+v2, after the cache fix: all six transformations produce identical complete source
+and document semantic hashes. The same 246 source / 86 group additions are the
+only differences from the saved baseline. All 86 old bindings reject each of the
+six transformed scenarios; withdrawal preserves each transformed baseline.
+The saved baseline itself still yields 81 selections and five packet annotations.
+v2 took 12.953 seconds and peaked at 254,541,824 bytes process RSS. This small
+selected-cohort run is not a full-catalog memory or speed measurement.
+
+Tests and edge cases
+-------------------
+test_current_review_path_replay.py:23 verifies null padding and unchanged candidates;
+:32 verifies changed body, filename and occurrence values reject old bindings;
+:41 retains missing/added IDs; :52 rejects duplicates; :57 executes all six real
+paths with body reads forbidden; :73 verifies a real bound saved candidate and
+tamper refusal before output. That fixture exposes unsupported content_title and
+new name_token during reparse; the test requires explicit diagnostics and rejection.
+The shared helper runs in real tests. The larger historical cohort was not rerun
+for this extraction of unchanged scenario logic. Relevant suite: 111 passed.
+
+Limits and next steps
+---------------------
+The cohort contains only 86 reviewed groups / 286 sources. Full-catalog behavior,
+independent references, context-family provenance and descriptive-form taxonomy
+remain open. No held-out body review, production review-input integration or
+publication occurred. Next record normalization as an explicit evidence transition,
+validate the complete review receipts again, bind to the normalized baseline, and
+repeat all seven scenarios. Preserve both prior runs and their rejected bindings.
+
+VERDICT: APPROVE as a diagnostic replay, not unchanged-binding qualification.
+Coverage of changed paths: ADEQUATE. Confidence: HIGH for this scope.

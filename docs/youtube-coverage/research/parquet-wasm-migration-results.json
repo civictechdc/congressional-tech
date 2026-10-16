@@ -1,0 +1,567 @@
+{
+  "catalog_id": "5272bb4b85ed4549b1fcc3008077bf6d",
+  "arms": {
+    "baseline": {
+      "runs": [
+        [
+          {
+            "name": "becerra",
+            "ms": 749.751125,
+            "requests": 12,
+            "bytes": 30271453,
+            "fields": 347,
+            "memory": {
+              "rss": 541196288,
+              "heapTotal": 236273664,
+              "heapUsed": 158378160,
+              "external": 66189640,
+              "arrayBuffers": 60622586,
+              "maxRSS": 563347456
+            }
+          },
+          {
+            "name": "schondelmeyer",
+            "ms": 127.22175000000004,
+            "requests": 5,
+            "bytes": 1802808,
+            "fields": 347,
+            "memory": {
+              "rss": 545800192,
+              "heapTotal": 238370816,
+              "heapUsed": 159669880,
+              "external": 76208302,
+              "arrayBuffers": 69593317,
+              "maxRSS": 563347456
+            }
+          },
+          {
+            "name": "recovered_pdf",
+            "ms": 210.28333399999997,
+            "requests": 6,
+            "bytes": 1531622,
+            "fields": 348,
+            "memory": {
+              "rss": 548405248,
+              "heapTotal": 238632960,
+              "heapUsed": 139254888,
+              "external": 75260576,
+              "arrayBuffers": 66548593,
+              "maxRSS": 563347456
+            }
+          },
+          {
+            "name": "recovered_html",
+            "ms": 229.1896670000001,
+            "requests": 5,
+            "bytes": 2447447,
+            "fields": 348,
+            "memory": {
+              "rss": 599949312,
+              "heapTotal": 219758592,
+              "heapUsed": 154392880,
+              "external": 67715798,
+              "arrayBuffers": 62457884,
+              "maxRSS": 601522176
+            }
+          },
+          {
+            "name": "unfetched",
+            "ms": 127.65970799999991,
+            "requests": 5,
+            "bytes": 1873973,
+            "fields": 347,
+            "memory": {
+              "rss": 602226688,
+              "heapTotal": 227098624,
+              "heapUsed": 165191696,
+              "external": 81808141,
+              "arrayBuffers": 75501852,
+              "maxRSS": 602226688
+            }
+          }
+        ],
+        [
+          {
+            "name": "becerra",
+            "ms": 685.775209,
+            "requests": 12,
+            "bytes": 30271453,
+            "fields": 347,
+            "memory": {
+              "rss": 560283648,
+              "heapTotal": 244400128,
+              "heapUsed": 157745832,
+              "external": 66189640,
+              "arrayBuffers": 60622586,
+              "maxRSS": 576995328
+            }
+          },
+          {
+            "name": "schondelmeyer",
+            "ms": 176.142875,
+            "requests": 5,
+            "bytes": 1802808,
+            "fields": 347,
+            "memory": {
+              "rss": 568606720,
+              "heapTotal": 283197440,
+              "heapUsed": 204780808,
+              "external": 64614707,
+              "arrayBuffers": 59357051,
+              "maxRSS": 576995328
+            }
+          },
+          {
+            "name": "recovered_pdf",
+            "ms": 331.03075,
+            "requests": 6,
+            "bytes": 1531622,
+            "fields": 348,
+            "memory": {
+              "rss": 569786368,
+              "heapTotal": 279003136,
+              "heapUsed": 204235696,
+              "external": 62378736,
+              "arrayBuffers": 57120472,
+              "maxRSS": 576995328
+            }
+          },
+          {
+            "name": "recovered_html",
+            "ms": 268.60795899999994,
+            "requests": 5,
+            "bytes": 2447447,
+            "fields": 348,
+            "memory": {
+              "rss": 608059392,
+              "heapTotal": 263274496,
+              "heapUsed": 174661952,
+              "external": 55141163,
+              "arrayBuffers": 49883249,
+              "maxRSS": 608534528
+            }
+          },
+          {
+            "name": "unfetched",
+            "ms": 230.57224999999994,
+            "requests": 5,
+            "bytes": 1873973,
+            "fields": 347,
+            "memory": {
+              "rss": 608714752,
+              "heapTotal": 248594432,
+              "heapUsed": 153289760,
+              "external": 69345506,
+              "arrayBuffers": 64087366,
+              "maxRSS": 608714752
+            }
+          }
+        ],
+        [
+          {
+            "name": "becerra",
+            "ms": 824.450834,
+            "requests": 12,
+            "bytes": 30271453,
+            "fields": 347,
+            "memory": {
+              "rss": 507609088,
+              "heapTotal": 256458752,
+              "heapUsed": 196299584,
+              "external": 54285379,
+              "arrayBuffers": 49029348,
+              "maxRSS": 594755584
+            }
+          },
+          {
+            "name": "schondelmeyer",
+            "ms": 224.42279199999996,
+            "requests": 5,
+            "bytes": 1802808,
+            "fields": 347,
+            "memory": {
+              "rss": 541048832,
+              "heapTotal": 248070144,
+              "heapUsed": 207908024,
+              "external": 65239196,
+              "arrayBuffers": 59981540,
+              "maxRSS": 594755584
+            }
+          },
+          {
+            "name": "recovered_pdf",
+            "ms": 345.70550000000003,
+            "requests": 6,
+            "bytes": 1531622,
+            "fields": 348,
+            "memory": {
+              "rss": 545259520,
+              "heapTotal": 272711680,
+              "heapUsed": 199009904,
+              "external": 63206590,
+              "arrayBuffers": 57948326,
+              "maxRSS": 594755584
+            }
+          },
+          {
+            "name": "recovered_html",
+            "ms": 265.19820900000013,
+            "requests": 5,
+            "bytes": 2447447,
+            "fields": 348,
+            "memory": {
+              "rss": 585793536,
+              "heapTotal": 232079360,
+              "heapUsed": 168602280,
+              "external": 55695482,
+              "arrayBuffers": 50437568,
+              "maxRSS": 594755584
+            }
+          },
+          {
+            "name": "unfetched",
+            "ms": 207.40987500000006,
+            "requests": 5,
+            "bytes": 1873973,
+            "fields": 347,
+            "memory": {
+              "rss": 586219520,
+              "heapTotal": 232341504,
+              "heapUsed": 154441416,
+              "external": 69345506,
+              "arrayBuffers": 64087366,
+              "maxRSS": 594755584
+            }
+          }
+        ]
+      ]
+    },
+    "wasm": {
+      "runs": [
+        [
+          {
+            "name": "becerra",
+            "ms": 799.124542,
+            "requests": 10,
+            "bytes": 31674894,
+            "fields": 347,
+            "memory": {
+              "rss": 677527552,
+              "heapTotal": 240418816,
+              "heapUsed": 157046536,
+              "external": 89944277,
+              "arrayBuffers": 85734551,
+              "maxRSS": 677543936
+            }
+          },
+          {
+            "name": "schondelmeyer",
+            "ms": 247.20283299999994,
+            "requests": 4,
+            "bytes": 2149725,
+            "fields": 347,
+            "memory": {
+              "rss": 681508864,
+              "heapTotal": 239370240,
+              "heapUsed": 153909656,
+              "external": 82712075,
+              "arrayBuffers": 78502309,
+              "maxRSS": 681508864
+            }
+          },
+          {
+            "name": "recovered_pdf",
+            "ms": 445.08341599999994,
+            "requests": 5,
+            "bytes": 2111644,
+            "fields": 348,
+            "memory": {
+              "rss": 684261376,
+              "heapTotal": 247758848,
+              "heapUsed": 169707560,
+              "external": 79490315,
+              "arrayBuffers": 75280549,
+              "maxRSS": 684261376
+            }
+          },
+          {
+            "name": "recovered_html",
+            "ms": 320.3966660000001,
+            "requests": 4,
+            "bytes": 3618050,
+            "fields": 348,
+            "memory": {
+              "rss": 723288064,
+              "heapTotal": 248545280,
+              "heapUsed": 170995008,
+              "external": 74230894,
+              "arrayBuffers": 70021128,
+              "maxRSS": 723288064
+            }
+          },
+          {
+            "name": "unfetched",
+            "ms": 249.57858299999975,
+            "requests": 4,
+            "bytes": 2276593,
+            "fields": 347,
+            "memory": {
+              "rss": 725155840,
+              "heapTotal": 273448960,
+              "heapUsed": 186020280,
+              "external": 91038736,
+              "arrayBuffers": 86828970,
+              "maxRSS": 725155840
+            }
+          }
+        ],
+        [
+          {
+            "name": "becerra",
+            "ms": 818.728792,
+            "requests": 10,
+            "bytes": 31674894,
+            "fields": 347,
+            "memory": {
+              "rss": 615841792,
+              "heapTotal": 223379456,
+              "heapUsed": 159890600,
+              "external": 82954681,
+              "arrayBuffers": 78744955,
+              "maxRSS": 615841792
+            }
+          },
+          {
+            "name": "schondelmeyer",
+            "ms": 233.56670800000006,
+            "requests": 4,
+            "bytes": 2149725,
+            "fields": 347,
+            "memory": {
+              "rss": 651542528,
+              "heapTotal": 236224512,
+              "heapUsed": 153464768,
+              "external": 82712075,
+              "arrayBuffers": 78502309,
+              "maxRSS": 651542528
+            }
+          },
+          {
+            "name": "recovered_pdf",
+            "ms": 410.94049999999993,
+            "requests": 5,
+            "bytes": 2111644,
+            "fields": 348,
+            "memory": {
+              "rss": 660914176,
+              "heapTotal": 276594688,
+              "heapUsed": 184828864,
+              "external": 81885974,
+              "arrayBuffers": 64764022,
+              "maxRSS": 661078016
+            }
+          },
+          {
+            "name": "recovered_html",
+            "ms": 312.80991700000004,
+            "requests": 4,
+            "bytes": 3618050,
+            "fields": 348,
+            "memory": {
+              "rss": 709050368,
+              "heapTotal": 263749632,
+              "heapUsed": 195029664,
+              "external": 93190710,
+              "arrayBuffers": 88980944,
+              "maxRSS": 709050368
+            }
+          },
+          {
+            "name": "unfetched",
+            "ms": 229.55462500000021,
+            "requests": 4,
+            "bytes": 2276593,
+            "fields": 347,
+            "memory": {
+              "rss": 712146944,
+              "heapTotal": 228098048,
+              "heapUsed": 153084096,
+              "external": 90458244,
+              "arrayBuffers": 86248478,
+              "maxRSS": 712146944
+            }
+          }
+        ],
+        [
+          {
+            "name": "becerra",
+            "ms": 840.260292,
+            "requests": 10,
+            "bytes": 31674894,
+            "fields": 347,
+            "memory": {
+              "rss": 653950976,
+              "heapTotal": 229146624,
+              "heapUsed": 159898576,
+              "external": 59850870,
+              "arrayBuffers": 55641144,
+              "maxRSS": 653950976
+            }
+          },
+          {
+            "name": "schondelmeyer",
+            "ms": 242.63462499999991,
+            "requests": 4,
+            "bytes": 2149725,
+            "fields": 347,
+            "memory": {
+              "rss": 660471808,
+              "heapTotal": 229933056,
+              "heapUsed": 154069536,
+              "external": 82712075,
+              "arrayBuffers": 78502309,
+              "maxRSS": 660471808
+            }
+          },
+          {
+            "name": "recovered_pdf",
+            "ms": 454.61858299999994,
+            "requests": 5,
+            "bytes": 2111644,
+            "fields": 348,
+            "memory": {
+              "rss": 669384704,
+              "heapTotal": 265846784,
+              "heapUsed": 173514576,
+              "external": 79981063,
+              "arrayBuffers": 75771297,
+              "maxRSS": 669384704
+            }
+          },
+          {
+            "name": "recovered_html",
+            "ms": 328.77695800000015,
+            "requests": 4,
+            "bytes": 3618050,
+            "fields": 348,
+            "memory": {
+              "rss": 710033408,
+              "heapTotal": 270565376,
+              "heapUsed": 198394744,
+              "external": 93190982,
+              "arrayBuffers": 88981216,
+              "maxRSS": 710033408
+            }
+          },
+          {
+            "name": "unfetched",
+            "ms": 257.6421250000001,
+            "requests": 4,
+            "bytes": 2276593,
+            "fields": 347,
+            "memory": {
+              "rss": 710213632,
+              "heapTotal": 233078784,
+              "heapUsed": 153594776,
+              "external": 90458244,
+              "arrayBuffers": 86248478,
+              "maxRSS": 710213632
+            }
+          }
+        ]
+      ]
+    }
+  },
+  "equality": [
+    {
+      "run": 1,
+      "case": "becerra",
+      "equal": true,
+      "sha256": "5164f794b4e3741e2046892d62bec7f9fd560a6981c6501d3c436797c5b72526"
+    },
+    {
+      "run": 1,
+      "case": "schondelmeyer",
+      "equal": true,
+      "sha256": "7c75fba2cab34891053fa90d84c95e21b392acd978a027d9af50162f5542b7c1"
+    },
+    {
+      "run": 1,
+      "case": "recovered_pdf",
+      "equal": true,
+      "sha256": "b2fe7d781b724bd8f66ba3aae975b966775b27a43105b64f67b098f418846349"
+    },
+    {
+      "run": 1,
+      "case": "recovered_html",
+      "equal": true,
+      "sha256": "5681d3aa701afd475b77df5458f29ae1a6791a7af58b800f7a4c08718c25e47e"
+    },
+    {
+      "run": 1,
+      "case": "unfetched",
+      "equal": true,
+      "sha256": "a8eec80b62a0554ff837f7148dd7a64d95d4c768b38da5a3c8bb28c3e3526545"
+    },
+    {
+      "run": 2,
+      "case": "becerra",
+      "equal": true,
+      "sha256": "5164f794b4e3741e2046892d62bec7f9fd560a6981c6501d3c436797c5b72526"
+    },
+    {
+      "run": 2,
+      "case": "schondelmeyer",
+      "equal": true,
+      "sha256": "7c75fba2cab34891053fa90d84c95e21b392acd978a027d9af50162f5542b7c1"
+    },
+    {
+      "run": 2,
+      "case": "recovered_pdf",
+      "equal": true,
+      "sha256": "b2fe7d781b724bd8f66ba3aae975b966775b27a43105b64f67b098f418846349"
+    },
+    {
+      "run": 2,
+      "case": "recovered_html",
+      "equal": true,
+      "sha256": "5681d3aa701afd475b77df5458f29ae1a6791a7af58b800f7a4c08718c25e47e"
+    },
+    {
+      "run": 2,
+      "case": "unfetched",
+      "equal": true,
+      "sha256": "a8eec80b62a0554ff837f7148dd7a64d95d4c768b38da5a3c8bb28c3e3526545"
+    },
+    {
+      "run": 3,
+      "case": "becerra",
+      "equal": true,
+      "sha256": "5164f794b4e3741e2046892d62bec7f9fd560a6981c6501d3c436797c5b72526"
+    },
+    {
+      "run": 3,
+      "case": "schondelmeyer",
+      "equal": true,
+      "sha256": "7c75fba2cab34891053fa90d84c95e21b392acd978a027d9af50162f5542b7c1"
+    },
+    {
+      "run": 3,
+      "case": "recovered_pdf",
+      "equal": true,
+      "sha256": "b2fe7d781b724bd8f66ba3aae975b966775b27a43105b64f67b098f418846349"
+    },
+    {
+      "run": 3,
+      "case": "recovered_html",
+      "equal": true,
+      "sha256": "5681d3aa701afd475b77df5458f29ae1a6791a7af58b800f7a4c08718c25e47e"
+    },
+    {
+      "run": 3,
+      "case": "unfetched",
+      "equal": true,
+      "sha256": "a8eec80b62a0554ff837f7148dd7a64d95d4c768b38da5a3c8bb28c3e3526545"
+    }
+  ]
+}

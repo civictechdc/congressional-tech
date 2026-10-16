@@ -1,0 +1,132 @@
+{
+  "scope": "Complete 40-page Oreskes packet review; cumulative 36 of 38 disclosure/biography packets reviewed",
+  "previous_review": "docs/experiments/filename-patterns-20261015/disclosure_biography_content_review_v2.json",
+  "previous_review_sha256": "582ceecf5fb5296fea725602a26ff76cc7d588bd275be37e0788542c60d0a644",
+  "input_ledger": "output/filename-patterns-20261015/review-evidence-v4/ledger.jsonl",
+  "input_ledger_sha256": "218c5ecc8a8eeb05b047414f4ffb7d5a9938d4a1f8d0d1e419b9c998932971e5",
+  "fetch_results_path": "output/filename-patterns-20261015/public-retained-review-v3/results.json",
+  "fetch_results_sha256": "f2f822adac4c388a8bdb413cf94653df89b7f8292c5ea797a65b3771fa402304",
+  "records": [
+    {
+      "document_id": "234ea2b8c2eee77a0de8e0e6176780525ee4e8848efd3088098bbc2733d05dcb",
+      "filename": "oreskesdisclosurefinal1.pdf",
+      "body_key": "bodies/sha256/ed/edbadf88ac187e1ca5d387aaaa0a5e447cba82c64401adfe7eb066e88af63850.gz",
+      "sha256": "edbadf88ac187e1ca5d387aaaa0a5e447cba82c64401adfe7eb066e88af63850",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/edbadf88ac187e1ca5d387aaaa0a5e447cba82c64401adfe7eb066e88af63850.pdf",
+      "pages": 40,
+      "selection_index": 4,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "testimony-disclosure",
+        "biography"
+      ],
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 1,
+          "observed_form": "testimony-disclosure",
+          "description": "Disclosure form with research grant and foreign-payment answers"
+        },
+        {
+          "first_page": 2,
+          "last_page": 40,
+          "observed_form": "biography",
+          "description": "Thirty-nine-page curriculum vitae: education, employment, publications, honors, professional service, research funding, teaching, outreach and invited lectures"
+        }
+      ],
+      "notes": "All 40 pages inspected visually. The Expert Testimony heading on PDF page 14 lists past appearances; it is part of the CV, not attached testimony. Publication entries and lecture titles likewise do not constitute attached articles, reports or statements. PDF pages 16-17 list sponsored research within the CV. Preserve both disclosure and biography forms for the exact retained packet.",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-01.png": "ca0e0dc1c54862e42b3ce7d5df80099410ca4dd848ba572e9fead4764c9fba6f",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-02.png": "f1645f3ae5adb2f659bd36707d13130cca7cc73c3113a6e328a3204c929ed9ce",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-03.png": "d836979549bf44ef362439b012a3ac51bf84223cf39a7f986f360c475319e735",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-04.png": "bfb96e9ddab98931becfa389f6d6454be2586672a1817537a8f568af3544ec20",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-05.png": "b1db424e8e6116f3eebb5aa277719caa82f68e4d4fe12268d9dd227f3c927f59",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-06.png": "061d42aa0da1a84ab5229051e75d8930474c784c0b21613b8214cfa08f31b31a",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-07.png": "87d466291592bf178f6fe61e050c7aaa6fd8b6d22f2a31a5acef8593db195e1d",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-08.png": "cba0f94c076946a4ed1d8d350721019215ce2bcfe8240f70d351b362c22262b9",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-09.png": "65812a8318e43d86290101b9688b107e53deb150088d06cddf6f9e2b1d0db6a8",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-10.png": "243b27e2c6c6a938f08f8533db121609f91e783d252d26219bd58f9207e7c0ab",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-11.png": "f22fbcf914cd28cad85b5564f23c52fc7845d66078f33da480ca2a84bc51aba7",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-12.png": "43630ba607573da44798f6f6fbc0b4bc56098d963046b953a3cb48f5bd4317ef",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-13.png": "bfb794dcc181eb1ca2a6f3cd025c68da46b9cfa2d90f3c95c21b2e3f22f20aa2",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-14.png": "b6d8999a2494775fe1f008275efa84b895dc1f1cae761c0493573f759d11a05d",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-15.png": "7a3f881857e5c19cd263f81dbc40cf1927861e956521d4728784bcd0f9860033",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-16.png": "7ea9611dc1f06c7fa073fcc5bb7ab6f0aa9fcb9fa539061172823c3ffd7db83f",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-17.png": "8c74db46beee7ea1eb97cad4fa0e0f582a78fac8af1ae2a3c1e324aa5c1ae9eb",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-18.png": "85ee30464517416fe3c8aa7e8c2bb2d38f041274e69695a185dc05b7f88e87c0",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-19.png": "2e82048348f3b552c904c02490661230234af3c34c5a638ede4aafef71bbe273",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-20.png": "6e76f990db93d619eca1207efe069dc62b15ebc6fd2608b2b3ed4a296acce533",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-21.png": "55f506228b97f418d7580990d1cb70a164cad6ce09e210b2ada274e9aceb6ba4",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-22.png": "17083f5e0e7fbbca0ef4bc34aa864ec1d1a985fbe3312c1898da9080276c4c29",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-23.png": "cf1e246432b4491a51df9e690f54939ca0f4e3ea9ff2bf603d55c16a02aff73c",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-24.png": "53d2550830aa01c999b64b96cf61fa3d1f4093cde54651180c22dbdb210cd121",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-25.png": "46971610e2693365ccdfb6fb1434533d64c1960a519b370962b09b775df4cdd2",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-26.png": "565aad468e9d2113663247fa06c3277d39d08b164dfeff98122ab2eff26d88b6",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-27.png": "103fcfcc5c7763549cbcc253bcd77898bb53b58b5eb74d92d9e6a2e08347b171",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-28.png": "03051fd783394874de91989e8b65e89e3ea4b1e654808e3dd99f4eb90682f199",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-29.png": "c361332d1ea3e8f354d35ba98ad7cb44333562d20e0831292566a58ffe28280e",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-30.png": "f97ee279553427f0b905426e141b5755c18d560cc9bf58d52289857a2265b4b5",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-31.png": "edc3bffd9f8e64d2bc3137fe6e0c7e475bb21d5db653e71b85ae8ec9bc348b45",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-32.png": "bf1fe2d66ef70d18a1c3cfab0286df9aaf4ea1d4004703883f1b053968f045b1",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-33.png": "4e6af33028752dc0788822e0a5c1b5ba3eb33764f1e55f43d84113092cfecfe4",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-34.png": "2850a49788f8c73d45d5c78f8a54d1c13df89b9f7be928d6da685f1bf64b3494",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-35.png": "3e2ca0aecd4c42ed8816ed408c3ddfee15b935b28f620faf1166b3fd5bcdfb77",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-36.png": "3a03323e37a58ae72d424ee2cb45525cbf0d046adb94e7cc9a8031ea2484d782",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-37.png": "6861110ddb6582fc3318ce792688a5ebb47bf2bc53ac9183415edfb5404c6134",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-38.png": "00cbf99d59db2b1ece65645a2d12faf30f05e5783aa422e9e4b3cb4df5084d85",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-39.png": "7f90932bbca630b197a49384cd8ba594bdd8f4b3f2f9ed6c85fd453ecfba1539",
+        "output/filename-patterns-20261015/public-retained-review-v3/oreskes-40.png": "1e2a3bee3e142a6b675092a762daf1e3287ecd2110e7d3d658890104ccf5c4b9"
+      },
+      "native_text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/edbadf88ac187e1ca5d387aaaa0a5e447cba82c64401adfe7eb066e88af63850.layout.txt",
+      "native_text_sha256": "5d6e6923bff3641418659feb6109c16322174a48843ad9b7ca187037aa1799f5",
+      "native_text_extraction": "pdftotext -layout; rendered pages are the review basis",
+      "independent_reference": false,
+      "release_approved": false
+    }
+  ],
+  "summary": {
+    "new_completed_documents": 1,
+    "new_completed_pages": 40,
+    "cumulative_completed_documents": 36,
+    "cumulative_completed_pages": 109,
+    "disclosure_only": 23,
+    "disclosure_with_biography": 11,
+    "biography_only": 2,
+    "remaining_documents": 2,
+    "remaining_pages": 170
+  },
+  "remaining": [
+    {
+      "document_id": "95b67bdacaf7b69198ecbf2346c7d97ee35402e2351a607f518023025c79e2db",
+      "filename": "05.11.11_Public_Witness_Testimony_CV_and_Disclosure.pdf",
+      "sha256": "9e0295bd07363eb814b6e0641b7dfbe14ee9f1531aca85e04285809d4922b02b",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/9e0295bd07363eb814b6e0641b7dfbe14ee9f1531aca85e04285809d4922b02b.pdf",
+      "pages": 51
+    },
+    {
+      "document_id": "c4d0b2cda36f5997694c53c058bb5fba822e95d776fba4157a42387ef5261602",
+      "filename": "simmonsdisclosure04-25-13.pdf",
+      "sha256": "38644a2d6c2e01fa3f6089087ca20d1bb3e00ee90dcad1191d80a51ced71a9d7",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/38644a2d6c2e01fa3f6089087ca20d1bb3e00ee90dcad1191d80a51ced71a9d7.pdf",
+      "pages": 119
+    }
+  ],
+  "verification": {
+    "selection_bindings_unchanged": true,
+    "exact_pdf_sha256_and_page_count_verified": true,
+    "rendered_pages_bound": 40,
+    "frozen_source_hashes_unchanged": 9,
+    "all_400_pilot_ids_and_body_keys_excluded": true
+  },
+  "pilot_overlap": false,
+  "publisher_acquisition": false,
+  "production_ocr": false,
+  "production_changes": false,
+  "independent_reference": false,
+  "release_approved": false,
+  "limitations": [
+    "No production kind override or metadata review disposition was applied.",
+    "Complete assistant inspection is not independent reference labeling or release approval."
+  ]
+}

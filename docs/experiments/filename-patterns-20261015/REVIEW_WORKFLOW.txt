@@ -1,0 +1,163 @@
+Catalog reconciliation and blind reference review
+================================================
+
+These research tools prepare evaluation of the frozen explicit-content-forms-v3
+candidate. They do not change runtime classification, publish a catalog, acquire
+PDFs, run held-out predictions or replace the frozen development labels.
+
+Reconcile the verified catalog
+-----------------------------
+Use a local copy of the complete selected source/document pair. Preserve the
+indexes/catalog.json manifest and its catalog-generations/... file paths.
+The publication directory must contain publication-receipt.json,
+public-readback.json, after-public-manifest.json and after-viewer-manifest.json
+from the completed 3.1.0 publication verification.
+
+From the repository root:
+
+  python docs/experiments/filename-patterns-20261015/pilot_reconcile.py \
+    --catalog-root /path/to/selected-catalog \
+    --publication-dir output/filename-patterns-20261015/publication \
+    --output output/filename-patterns-20261015/reconciliation-published-v1
+
+The maintained catalog readers validate hashes, byte sizes, row counts, catalog
+identities and source/document references. The publication check binds that pair
+to the verified public manifests, rebuild run, commit and naming version.
+
+The output preserves every selected ID and split, including unavailable or
+changed records. eligibility.json and eligibility.csv record missing IDs, newly
+classified records, changed roles and changed body hashes. No replacement sample
+is selected. unclassified-census.csv groups all unresolved records by publisher,
+format, role and retained-body evidence; summary.json also counts unnamed rows.
+reference_available means an exact pilot body is present, not that its text is
+usable. Retained catalog hashes do not establish object availability.
+
+For a historical rehearsal, use --documents /path/to/documents.parquet instead
+of --catalog-root. This mode never unlocks held-out review, even when the table
+has the same catalog_id as a published catalog. The original research table is
+an unclassified subset, not the complete catalog.
+
+Build a review packet
+--------------------
+For development practice:
+
+  python docs/experiments/filename-patterns-20261015/pilot_blind_review.py build \
+    --output output/filename-patterns-20261015/blind-review-development-next
+
+For held-out reference review, after publication and reconciliation:
+
+  python docs/experiments/filename-patterns-20261015/pilot_blind_review.py build \
+    --split held-out \
+    --reconciliation output/filename-patterns-20261015/reconciliation-published-v1 \
+    --output output/filename-patterns-20261015/blind-review-heldout-v1
+
+Each output directory must be new. Before reading held-out text, the builder
+checks the candidate's frozen source hashes, sample and label hashes, selected
+catalog bytes, publication evidence and full eligibility ledger. It checks PDF
+and extracted-text hashes before embedding evidence. Changed or unavailable
+records stay visible with their status. PDF links use resolved paths so the
+report works through the shared worktree output symlink.
+
+Serve the output under the existing local report server and open report.html.
+The interface includes stable review IDs, opening-page text and exact PDF links.
+It omits filename labels, source URLs, existing reference kinds and predictions.
+The underlying PDF may naturally identify its publisher and document form.
+Selected OCR text may appear as reference evidence; that does not add OCR to the
+production candidate or establish that the native reader can classify the PDF.
+
+Enter a reviewer name, decision, kind, page, exact quote and optional note.
+Use uncertain or unavailable without assigning a kind when needed. Save each
+decision before navigating to another record. Decisions persist in browser
+storage; export them to retain a JSON file. A name is a reviewer claim, not proof
+of independent human validation. Development decisions remain practice.
+
+Import the export
+-----------------
+For a development packet:
+
+  python docs/experiments/filename-patterns-20261015/pilot_blind_review.py import \
+    --output output/filename-patterns-20261015/blind-review-development-next \
+    --decisions /path/to/reference-decisions-development.json
+
+For a held-out packet, add the same --reconciliation directory used at build.
+Import rechecks the frozen candidate, packet/interface bytes, exact PDF bytes,
+publication eligibility, review IDs and quoted evidence. It validates the whole
+export before appending reference-decisions.jsonl. Identical reimports are safe;
+conflicting decisions require a separate adjudication rather than overwriting
+earlier evidence. Frozen pilot_adjudications.json is never changed.
+
+Current limitations
+-------------------
+This interface validates quotations from the retained opening-page text. PDFs
+marked needs_visual_review cannot receive a classified decision through this
+path. Additional-page or image-only adjudication needs separately retained,
+hashed evidence before it can enter evaluation. Preserve those outcomes in the
+denominator. Reference collection does not itself freeze a completed label set
+or run an evaluation; use the following explicit steps.
+
+Seal references and run the frozen comparison
+--------------------------------------------
+Import all decisions for records whose state is review, including uncertain
+outcomes. The sealer refuses missing decisions for those records. It preserves
+all other selected records as not_reviewable with their original evidence state;
+it does not invent a reference kind for missing or unusable evidence.
+
+  python docs/experiments/filename-patterns-20261015/pilot_evaluate.py seal \
+    --packet output/filename-patterns-20261015/blind-review-heldout-v1 \
+    --reconciliation output/filename-patterns-20261015/reconciliation-published-v1
+
+This creates label-freeze.json exclusively. It records the exact journal hash,
+validated decisions, packet hash, candidate freeze hash, Python version, native
+reader versions, maintained reader fingerprint and evaluation/validation source
+hashes. Reader versions must match content_rule_freeze.json. Subsequent imports
+cannot add or replace decisions; identical reimports remain safe.
+
+  python docs/experiments/filename-patterns-20261015/pilot_evaluate.py evaluate \
+    --packet output/filename-patterns-20261015/blind-review-heldout-v1 \
+    --reconciliation output/filename-patterns-20261015/reconciliation-published-v1 \
+    --output output/filename-patterns-20261015/evaluation-heldout-v1
+
+The evaluator rechecks publication, candidate, journal, runtime and PDF bytes.
+It checks the baseline parser extracted from the frozen Git revision, then calls
+capture_metadata.read_document_file in isolated workers for baseline and
+candidate. The maintained small-body/large-file dispatch stays in place, with
+three concurrent comparisons and a 30-second limit per reader call. No OCR runs.
+
+All selected records appear in readings.jsonl and comparison.csv. summary.json
+separates assignments, exact agreements, disagreements, abstentions, reader
+errors, unscored assignments and records not run. It reports counts per kind,
+changed prior kinds, new assignments and 95% Wilson agreement intervals among
+scored assignments. These intervals describe the balanced sample, not population
+precision. A rule with an observed disagreement or changed prior kind is flagged;
+all other rules still require independent review. None is approved automatically.
+
+A held-out packet gets evaluation-started.json before workers launch. A second
+run is refused. If interrupted, preserve that marker and the partial readings,
+inspect the exact failure, and design an explicit recovery step before resuming.
+The current implementation does not automatically resume or replace a partial
+run. Completed summaries are written only after the final evidence checks pass.
+
+Use a development packet, without --reconciliation, to rehearse the workflow.
+The output remains purpose=practice and human_validated=false. Frozen development
+labels may be imported into that practice packet without modifying their source.
+
+Verification at this checkpoint
+------------------------------
+The historical rehearsal scanned 657,103 rows, preserved all 400 selected IDs
+(200 development, 200 held-out), found 392 catalog-eligible IDs and 300 matched
+pilot bodies, and recorded eight IDs without a frozen body digest. It correctly
+left held-out review locked. This is not a refreshed full-catalog census.
+
+blind-review-development-v4 is the current practice packet: 200 records,
+140 ready for text review, one requiring visual review and 59 unavailable.
+Earlier v1-v3 packets remain diagnostic artifacts; v1 had an incorrect relative
+PDF link, and v2-v3 did not retain the visual-review status of a sparse OCR cover.
+The current packet fixes both. Browser QA exercised quote rejection, save,
+reload, export and import, with QA decisions explicitly marked as practice.
+The served D004 PDF matched the frozen body SHA256 exactly.
+
+The local workflow suite passed 50 tests, including pair validation, full sample
+preservation, publication mismatch, premature held-out access, changed candidate
+or evidence, symlink links, visual-review preservation, atomic export validation
+and idempotent imports. Runtime candidate files and their freeze remain unchanged.
+GitHub rebuild 38823678887 was still in progress at this checkpoint.

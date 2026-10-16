@@ -135,6 +135,24 @@ An unchanged update reads neither receipts nor bodies and publishes nothing.
 On new captures, it replays new source records. Scoped meeting facts may be read
 from older Congress.gov receipts, and exact URL/body recovery may read older
 receipts; ordinary updates do not download all existing document bodies.
+Discovery observations retained with each download automatically carry the
+referring page and any proven hearing/committee ancestry to later files. Exact
+recorded links and redirects establish these paths; shared filenames or domains
+do not. Missing parent evidence stays unknown.
+
+Catalogs without the current `source_lineage_version` replay all recurring
+download receipts once, using the prior pair's legacy publisher observations.
+When the other inputs are unchanged, this refresh rewrites only provenance
+columns and checks every other value for equality. It preserves file/group IDs,
+classifications, saved bodies, recovery decisions and availability. Missing
+receipts fail the refresh before publication. The resulting metadata records
+completion, so ordinary updates do not repeat the backfill.
+
+The viewer publisher follows successful capture/catalog updates and also checks
+the selected R2 catalog every 30 minutes. It publishes verified immutable files,
+then selects their manifest. Open viewers check for new data each minute and
+on focus; both the list and detail panel offer **Load latest data**. Review links
+keep their original snapshot until the user chooses that action.
 Code changes alone do not invalidate source, filename, body, or document-group
 metadata. `--rebuild-only` (or the legacy explicit `--repair`) replays source
 interpretation from receipts and retained parent pages. With `--inspect-bodies`,

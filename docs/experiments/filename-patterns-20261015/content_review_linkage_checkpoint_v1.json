@@ -1,0 +1,32 @@
+{
+  "summary_path": "output/filename-patterns-20261015/content-review-linkage-v1/summary.json",
+  "summary_sha256": "a698fce04485b6236f22cfeff3e62b69fe32a3c4b66a764c5e3ff041e641248d",
+  "outputs": {
+    "ledger.jsonl": "ae44aed671290fb1ef603efc370458cedf1e37d28f98688b3c4a5372af3b499d",
+    "implementation.json": "0edb49d1361d482f06ce1f7f123122c7565d2cffe6ebc88c2118513e68220eef"
+  },
+  "input_ledger_sha256": "218c5ecc8a8eeb05b047414f4ffb7d5a9938d4a1f8d0d1e419b9c998932971e5",
+  "receipt_path": "docs/experiments/filename-patterns-20261015/disclosure_biography_content_review_v5.json",
+  "receipt_sha256": "fa1657a0f16d9cd31d2365d50b7a00d9d79cd219ecfa517311087c88735be99e",
+  "records": 1902,
+  "linked_documents": 38,
+  "reviewed_pages": 279,
+  "nonmatching_reviews": 0,
+  "metadata_needs_review": 91,
+  "metadata_needs_review_with_complete_assistant_review": 38,
+  "metadata_needs_review_without_linked_content_review": 53,
+  "verification": {
+    "all_original_fields_except_content_review_unchanged": true,
+    "all_bound_inputs_and_outputs_reverified": true,
+    "frozen_source_hashes_unchanged": 9,
+    "experiment_tests_passed": 84
+  },
+  "classification_mutations": false,
+  "independent_reference": false,
+  "release_approved": false,
+  "limitations": [
+    "Linkage validates saved evidence and review coverage, not the correctness of assistant observations.",
+    "Existing metadata dispositions remain unchanged; completed review is separate from classification resolution.",
+    "Local experiment tooling only; house_naming 3.2.7 and the published 3.1.0 catalog are unchanged."
+  ]
+}

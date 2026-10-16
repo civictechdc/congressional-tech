@@ -1,0 +1,116 @@
+Opening-statement and memorandum content review, part 1
+======================================================
+Reviewed all 34 retained pages in nine opening-statement packets and the
+12-page TSCA memorandum packet. The additive opening_memo_content_review_v1.json
+receipt binds the original ledger, selection, retained PDFs, extracted text
+and every inspected page render. It follows the normalized VE-letter receipt.
+
+Results
+-------
+All nine statement packets contain opening remarks. Seven stand alone as
+prepared remarks or released statements; two have a news-release introduction
+and reproduce the remarks (Pallone CHIP/CHC and Miller WIA). The latter retain
+both opening-statement and press-release observations. Press-office contact
+information or a PRESS filename token alone was not treated as proof of a
+separate press-release form. These are content observations, not new runtime
+classifications or claims that the remarks were actually delivered.
+
+Speier's two pages and Cummings's three-page McPherson Square packet have no
+native extracted text. All were visually read without OCR. The third Cummings
+page contains only a communications contact line. The Miller WIA native text
+has fragmented reading order on page 1; the rendered page resolves that order.
+References to reports, amendments, witness testimony or letters do not mean
+those documents are attached.
+
+The TSCA packet includes a May 13, 2015 markup memorandum on pages 1-4 and its
+attached April 13 hearing memorandum on pages 5-12. Pagination restarts at the
+attachment. The final page includes two panels of expected witnesses. Preserve
+the committee-memorandum and witness-list forms, both memo dates, and the
+attachment relationship. The cited discussion draft and testimony are not
+included as separate documents in this packet.
+
+Verification and limits
+-----------------------
+All 24 selected groups and body keys were checked against all 400 frozen pilot
+records before retrieval. Twenty-one exact retained PDFs / 116 pages were
+verified and rendered. The three other groups have only saved HTTP 404 error
+responses; no attempt was made to treat those bodies as documents. They remain
+explicitly unavailable in the receipt. All requests read retained objects;
+no publisher acquisition was performed.
+
+The unchanged linker now reports 60 reviewed documents / 329 pages and zero
+mismatches. All original ledger fields except content_review remain unchanged,
+including all 91 metadata decisions. Sixty have linked assistant reviews and
+31 do not. All bound inputs and outputs were rechecked, as were the nine frozen
+source hashes. No runtime code changed; no new test-suite result is claimed.
+
+Next work
+---------
+Inspect the eleven saved memorandum packets / 82 pages listed in the receipt's
+remaining array. These include the hearing memos and the Cars briefing memo.
+Use the saved PDFs and renders; no refetch is needed. Preserve embedded witness
+lists, actual attachments, source pagination and missing-page evidence.
+Then assess the smaller remaining groups and build a proposed classification
+disposition for every reviewed case. Keep observed form, filename evidence,
+meeting context and attachment role separate. Use house_naming for any runtime
+rule changes, test against negative examples and replay affected groups before
+considering release. Assistant observations do not satisfy independent labels.
+
+Part 2: six additional memoranda completed
+-----------------------------------------
+The v2 receipt completes six packets / 30 pages: New York manufacturing,
+Southern California oil leak, Scottsdale access to capital, Odessa/Midland
+energy production, small-business exports and the Cars briefing memorandum.
+Three contain embedded witness lists; three contain memorandum text only.
+All retained pages were visually inspected, including six scanned Scottsdale
+pages with no native text beyond page markers. No OCR was used.
+
+The export memo has a February 16, 2016 header but schedules its hearing for
+February 22, 2015 in the first paragraph. Preserve that inconsistency and the
+filename's 2-22-16 token. The energy memo's filename names Odessa while its
+venue text names Midland. Its charts and narrative also use different figures
+and revenue descriptions; the receipt preserves these without assuming equal
+denominators or silently correcting either source. Figures are memo components,
+and cited publications, emails and testimony are not separate attachments.
+
+The unchanged linker now has 66 completed documents / 359 pages with zero
+mismatches. All original metadata fields remain unchanged. Of the 91 metadata
+cases, 66 have linked assistant reviews and 25 do not. Input/output hashes,
+complete page coverage, pilot exclusions and all nine frozen source hashes
+were checked. This is evidence-only work; no new runtime test result is claimed.
+
+Five saved memos / 52 pages remain: Oklahoma City (11), Colorado (11), Guam
+(13), Long Island (7) and the September 2015 field hearing (10). Continue from
+the v2 receipt's remaining list and existing renders. The three unavailable
+opening-statement groups still have only saved error responses. Finish the
+memo queue, inspect the smaller remaining groups, then prepare case-specific
+classification proposals before changing house_naming rules.
+
+Part 3: saved memorandum batch completed
+----------------------------------------
+The v3 receipt completes Oklahoma City, Colorado, Guam, Long Island and the
+September 2015 Gulf field hearing: five packets / 52 pages. All contain staff
+memoranda with embedded witness lists. Maps, photographs, charts and tables
+remain components of those memos. Cited publications and earlier hearing
+materials are references, not separate attached documents.
+
+Visual review recovered structure absent from native text: the Gulf production
+table, development timeline and Western Gulf bid chart, and the map legends
+and source captions in the other illustrated packets. The Gulf extraction also
+joins a footnote marker to a quantity; the receipt distinguishes the marker.
+Guam includes a final map-only page, a footnote continuing between pages, and
+source citation discrepancies preserved without correction.
+
+All 21 eligible opening/memo PDFs / 116 pages in this selection are complete.
+The three unavailable opening-statement groups remain unavailable. The v6
+linkage contains 71 reviewed documents / 411 pages and zero mismatches. All
+91 metadata decisions and every other original field remain unchanged; 20
+cases still lack linked assistant review. Complete retained-page review does
+not prove source completeness or supply independent reference labels.
+
+Next: inspect the remaining eligible cases, including the Award List, seven
+statement/disclosure combinations, two disclosure attachments, H.R. 1890,
+the budget-reconciliation packet, Johnson's amendment statement and the EBJ
+alternative rules amendment. Six other cases have no eligible saved body.
+Use exact row/body bindings and pilot exclusions for the new selection, then
+prepare proposed classifications separately from review-completion status.

@@ -1,0 +1,83 @@
+Review: compare complete content reviews with saved catalog selections
+=====================================================================
+
+Findings
+--------
+No blocking finding remains in the comparison tool. It measures literal label
+sets and explicitly separates missing body evidence; it does not change catalog
+selection or establish classifier accuracy. This is a self-review, not an
+independent reference assessment.
+
+Patch summary and traces
+------------------------
+Paths below are relative to docs/experiments/filename-patterns-20261015 unless
+prefixed with packages/. The CLI at catalog_disposition_compare.py:150 calls run.
+
+Function | Evidence | Inputs and output | Verified behavior
+selected_rows | catalog_disposition_compare.py:22 | Parquet, requested IDs -> keyed projected rows | Reads ten small columns in batches; rejects missing columns and duplicate selected identities.
+compare_case | catalog_disposition_compare.py:40 | Proposal, original row, catalog group/members, review -> comparison | Checks full original-row digest, membership, source identities, selected kinds, forms and review identity before comparison.
+run | catalog_disposition_compare.py:89 | Bound paths and new output directory -> summary | Validates proposal coverage and receipts, checks both catalog hashes, compares all cases and rechecks bindings before creating output.
+load_reviews | catalog_content_review.py:77 | Receipt chain -> observations with original-row digest | Rejects cycles and duplicate reviews; calls validate_record at line 24 for exact eligible body, complete page/render coverage and saved hashes.
+verified / row_digest | catalog_review_evidence.py:14 / :25 | Path/hash or original row -> verified path or digest | Rejects byte mismatch and canonically hashes complete original rows.
+
+Data flow and invariants
+------------------------
+run reads proposals without editing them, then constructs selected source and
+document maps. compare_case only reads these maps and returns new dictionaries;
+the input-preservation assertion is at test_catalog_disposition_compare.py:35.
+The requested ID set must equal the full needs_review set, not a selected subset
+(catalog_disposition_compare.py:105). Each source belongs to the exact original
+membership, and both the proposal and receipt bind the complete original row
+(lines 45-69). A body replacement at the same URL cannot inherit the proposal.
+
+Unavailable cases carry null differences rather than empty-set agreement
+(lines 71-85). Missing native content is recorded as absent even when filename
+labels match the review. Primary and component forms are compared together;
+no production taxonomy mapping or silent synonym normalization occurs.
+Bindings are rechecked before writes (line 123). Output paths must not exist
+(line 91); the original ledger and catalog files are never write targets.
+
+Test behavior and limits
+------------------------
+- test_conflict_without_native_content_is_not_a_precedence_fix (:35) retains
+  conflicting filename labels, reports absent content and proves no mutation.
+- test_matching_filename_does_not_supply_native_content_evidence (:46) separates
+  literal label agreement from the lack of retained content classifications.
+- test_existing_native_reading_remains_separate (:55) preserves the independent
+  filename-versus-review and content-versus-review comparisons.
+- test_unavailable_empty_labels_are_not_agreement (:63) keeps an unavailable
+  empty-kind case undecided.
+- test_changed_or_unsupported_evidence_is_rejected (:75) covers nine row/body,
+  membership, form, selected-kind and approval changes.
+- test_projection_selects_only_requested_groups_and_rejects_duplicates (:90)
+  executes Arrow selection and duplicate detection against saved test Parquet.
+- test_bound_comparison_integration (:104) exercises real saved PDF receipts,
+  renders, ledgers and Parquet through run. Duplicate/missing cases and changed
+  catalog/render bytes fail before output creation; an existing output refuses
+  replacement. The unchanged receipt-validator tests exercise coverage failures.
+
+Executed validation: 41 tests passed in 0.62 seconds across the comparison and
+content-review test modules. The actual comparison completed against all 91
+cases / 744 source rows, with unchanged bound files. It is a historical catalog
+comparison; it does not execute full source refresh or either grouping engine.
+
+Production selection trace (unchanged code)
+------------------------------------------
+packages/congress_api/src/congress_api/retention/document_index.py:119 restores
+filename_document_kind before selection; fill_document_kind at :129 delegates
+to _select_document_kind at :205. Filename kinds win except the existing generic
+testimony to witness-statement refinement. Content otherwise fills a missing kind.
+
+The reference grouper restores filenames at :500 and selects grouped/individual
+kinds at :579/:585. catalog_staging.py:303 restores before signature/grouping and
+selects at :474/:538. Cached filename reuse restores at document_index.py:2342;
+explicit body_readings replace selected cached results in the following block.
+The extraction loop selects kinds at :2424 before enrich_document_covers.
+That reader skips already typed rows (document_evidence.py:389), helping explain
+why changing kind precedence alone would not supply missing content readings.
+These are static traces, not new end-to-end runtime qualification.
+
+VERDICT: APPROVE for the read-only comparison scope.
+Coverage: adequate for comparison and refusal paths, supported by the full saved
+cohort run. Confidence: high for its stated scope. No production integration,
+independent labeling or fresh raw-catalog qualification is implied.

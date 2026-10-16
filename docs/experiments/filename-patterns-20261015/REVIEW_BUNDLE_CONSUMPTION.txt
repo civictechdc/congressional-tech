@@ -1,0 +1,80 @@
+Pinned local bundle consumption: self-review
+============================================
+Findings
+--------
+No blocking finding within the exact-baseline local reader. A bundle from another
+path/snapshot or admission implementation is deliberately refused, even if its IDs
+look familiar. The expected summary hash must come from verified admission; hashing
+an arbitrary producer's file is not an authenticity check. Viewer/publication
+adoption remains outside this patch.
+
+Patch summary and function trace
+--------------------------------
+Package paths below are relative to congress_api/retention/.
+
+Function | Location | Input -> output | Verified behavior
+write_candidates | document_review_catalog.py:39,78 | admitted review inputs -> local bundle | Adds bundle_version=1 and explicit source/document path and hash roles; candidate generation is unchanged.
+select_document | document_review_bundle.py:12 | current group and optional candidate map -> detached result | Omission/missing ID returns baseline; supplied candidate is recomputed and compared in full before return.
+load_bundle | document_review_bundle.py:24 | pinned summary and current pair -> validated candidate map | Checks version/flags, exact baseline roles/paths/bytes, implementation and all evidence/output hashes, pair references, coverage, statuses and every saved candidate.
+selected_groups | document_review_catalog.py:24 | full pair and selected IDs -> complete selected rows | Reuses maintained bounded reads; no projected evidence loss.
+apply_review_candidate | document_reviews.py:45 | current full group and compiled review -> candidate | Existing selection, scope refusal, packet annotation and withdrawal behavior.
+
+Data flow and invariants
+------------------------
+H1: A generic bindings map alone identifies which two files were the admission
+baseline. Refined: it also contains historical input pairs. The writer now records
+explicit baseline roles and format version; the reader requires both roles and
+their matching entries in bindings. Old unversioned outputs remain preserved and
+must be regenerated through admission, not edited to bypass version checks.
+
+H2: Output hash verification alone guarantees a saved candidate still fits current
+rows. Refuted for changed baselines; the reader re-applies the compiled review to
+complete current members and compares all semantic candidate fields. It rejects
+scope changes and unsupported result statuses rather than silently dropping review.
+Only null dictionary padding is ignored; list order and all non-null fields remain
+significant. Every select_document call repeats that check for current in-memory
+rows. Results are detached from both baseline and saved candidate map.
+
+H3: Inputs may change during loading. Guarded: every bound file and implementation
+identity is checked again before returning candidates. Loading is read-only. The
+consumer must reload when its baseline snapshot changes; it must surface refused
+bundles rather than quietly interpreting a failure as withdrawal. Explicit omission
+is the withdrawal operation and preserves the caller's current baseline exactly.
+
+Tests and actual verification
+-----------------------------
+tests/test_document_review_bundle.py:19 tests complete/unsupported packets, detached
+results, omission/empty-map withdrawal and unaffected IDs. At :36, fourteen cases
+cover changed summary/candidate/baseline/evidence bytes, versions/approval flags,
+duplicate IDs, coverage/counts, altered kinds/context/review digest, implementation
+and unexpected output paths. At :62, changed source metadata after load is refused;
+:71 refuses an implicit transfer to a different path with identical bytes. Snapshot
+tests at :78 change an input or implementation during loading and require refusal.
+The bundle, admission, selector and import-fence suite passes 85 tests.
+
+package-review-bundle-v1 regenerates a versioned bundle from the same verified
+receipt and normalized pair. Its candidate file is byte-for-byte identical to the
+previous admission output. bundle-consumption-v1 loads all 86 groups / 286 sources,
+reproduces 81 candidates and five annotations, verifies withdrawal for every group
+and refuses a deliberately altered in-memory source. That diagnostic took 2.029
+seconds with peak process RSS 157,974,528 bytes. This is not a full-catalog capacity
+claim. Existing package/source/evidence hashes and frozen evaluation inputs remain
+intact; the writer's new summary schema has an explicit new implementation identity.
+
+Limits and next steps
+---------------------
+This is a local format with historical filesystem references. Every load hashes
+all bound evidence files, so loading belongs outside the per-document render path.
+No independent rereading of PDF contents occurs; receipt admission remains the
+source of verified coverage and assistant provenance. A portable publication format
+and an independent reference remain separate requirements.
+
+Next run admission and consumption against the complete saved catalog pair while
+selecting the same reviewed groups. Measure the actual selected-row read/memory
+behavior, verify all excluded baseline bytes stay unchanged, and report any new
+binding transition explicitly. Do not treat selected-group qualification as a full
+classification refresh. Then resolve unsupported packet representation and portable
+evidence references before viewer or publication integration.
+
+VERDICT: APPROVE for versioned, pinned local consumption and explicit withdrawal.
+Coverage: ADEQUATE. Confidence: HIGH for the checked baseline and refusal paths.

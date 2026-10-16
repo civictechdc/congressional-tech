@@ -1,0 +1,90 @@
+{
+  "bundle_summary_path": "output/filename-patterns-20261015/full-catalog-review-v3/bundle/summary.json",
+  "bundle_summary_sha256": "efc73c467299798b1fbb96c08ab375bb9d1c70536b42eee920daa4f01bf3ec67",
+  "admission_path": "output/filename-patterns-20261015/full-catalog-review-v3/admit.json",
+  "consumption_path": "output/filename-patterns-20261015/full-catalog-review-v3/consume.json",
+  "audit_path": "output/filename-patterns-20261015/full-catalog-review-v3/audit.json",
+  "catalog_id": "d42b9f6697914e68a688600705e1d65f",
+  "generation": "840b6faf202e41a592e08385eb3e981c",
+  "baseline": {
+    "sources": {
+      "path": "output/filename-patterns-20261015/public-raw-catalog-v1/catalog/catalog-generations/840b6faf202e41a592e08385eb3e981c/document-filenames.parquet",
+      "sha256": "b922b29903be2f083ae1ecc1a9cf9ae9a232d429fde9a2dbfbd92fa1abe79280"
+    },
+    "documents": {
+      "path": "output/filename-patterns-20261015/public-raw-catalog-v1/catalog/catalog-generations/840b6faf202e41a592e08385eb3e981c/documents.parquet",
+      "sha256": "c61bfbae47eb21da55c0447dbee67f41b872928bffa6e57d1cbe539b79fa3f67"
+    }
+  },
+  "reviewed_groups": 86,
+  "source_rows": 286,
+  "reviewed_pages": 530,
+  "case_status": {
+    "candidate_applied": 81,
+    "annotation_only_unsupported_forms": 5
+  },
+  "catalog_source_rows": 1680227,
+  "catalog_document_rows": 1240374,
+  "candidate_semantics_equal_prior_raw_bindings": true,
+  "withdrawal_restores_all_baselines": true,
+  "complete_baseline_bytes_unchanged": true,
+  "raw_bindings_refused_on_normalized_rows": 86,
+  "read_scope": {
+    "sources": {
+      "catalog_rows": 1680227,
+      "total_row_groups": 1641,
+      "selected_row_groups": 59,
+      "rows_in_selected_row_groups": 60416,
+      "selected_group_batch_size": 32
+    },
+    "documents": {
+      "catalog_rows": 1240374,
+      "total_row_groups": 1212,
+      "selected_row_groups": 51,
+      "rows_in_selected_row_groups": 52224,
+      "selected_group_batch_size": 32
+    }
+  },
+  "measurements": {
+    "admit": {
+      "elapsed_seconds": 71.155,
+      "peak_process_rss_bytes": 2164948992
+    },
+    "consume": {
+      "elapsed_seconds": 80.203,
+      "peak_process_rss_bytes": 1444708352
+    }
+  },
+  "bound_files_verified": 783,
+  "frozen_sources_verified": 9,
+  "frozen_pilot_and_labels_unchanged": true,
+  "package_implementation_unchanged": true,
+  "unit_tests_rerun": false,
+  "prior_test_checkpoint": "docs/experiments/filename-patterns-20261015/bundle_consumption_checkpoint_v1.json",
+  "reader_source_sha256": "e722bedb856bcfff825b3418f0538213d875058c5fd3c80960e0d8bd4104aa12",
+  "classification_refresh": false,
+  "production_selected": false,
+  "independent_reference": false,
+  "release_approved": false,
+  "publication": false,
+  "review_path": "docs/experiments/filename-patterns-20261015/REVIEW_FULL_CATALOG_BUNDLE.txt",
+  "review_sha256": "ad480e3b49bc8d17a6f455e720859d01d98cfb79647c82e73730ab3a3e628894",
+  "evidence": {
+    "output/filename-patterns-20261015/full-catalog-review-v3/admit.json": "7d988e3bb286e40a765e7de31487f9ec562a7f8a253fb94cdb73063531a42338",
+    "output/filename-patterns-20261015/full-catalog-review-v3/admit.log": "9756b0519ea5175e7471cf128f379147103f8ed5217a38bbf6efce48730adc31",
+    "output/filename-patterns-20261015/full-catalog-review-v3/audit.json": "fbe8d7f25649d47a9b85999a33853cfe9d17e9fcaabdc41793aea6421e3433d6",
+    "output/filename-patterns-20261015/full-catalog-review-v3/audit.log": "638c70646571f9256db089a116914f4057931545d0d64f998e2a066573bd5528",
+    "output/filename-patterns-20261015/full-catalog-review-v3/audit.py": "cb32a9ba930442e4aeaf6bbe8f636e15b050f6f538667b25b6cd450f30702f26",
+    "output/filename-patterns-20261015/full-catalog-review-v3/binding-comparison.json": "1ad7362023c28e94edabe1ae5b2d9b899f3c76b10287e9ca41cfd8a47bc1eb37",
+    "output/filename-patterns-20261015/full-catalog-review-v3/bundle/candidates.jsonl": "1a4df9acf932e75a3e702413de5d0cd82acc3a68bc15b14bb56297ac2bdc2e11",
+    "output/filename-patterns-20261015/full-catalog-review-v3/bundle/summary.json": "efc73c467299798b1fbb96c08ab375bb9d1c70536b42eee920daa4f01bf3ec67",
+    "output/filename-patterns-20261015/full-catalog-review-v3/consume.json": "ff5a82f779e7c87f9dccd3fed20c0f8b173bbec308289231e936c45487df5961",
+    "output/filename-patterns-20261015/full-catalog-review-v3/consume.log": "a7f2987ea6d11fc0a963893d7b446f75e4397d37de98a604db01ab71150ea1e8",
+    "output/filename-patterns-20261015/full-catalog-review-v3/public-access.json": "d7effec103176bd4d6c1a9a787ff35ef59d04330a9b7d668c5c321612e6fd01a",
+    "output/filename-patterns-20261015/full-catalog-review-v3/qualify.py": "44af473d5ff5318b6a1663d640b932874ac070896deeea63098216d673af9f4c",
+    "output/filename-patterns-20261015/full-catalog-review-v1/admit.log": "9556ca8a905ac6b295ce92c8035163bbe92f47e9c7e3a53a41b7b08d863fee3f",
+    "output/filename-patterns-20261015/full-catalog-review-v1/qualify.py": "db89c6339b71e48a3a9faadb948c8b003c6ca565b80607bac46a29d82dea19d7",
+    "output/filename-patterns-20261015/full-catalog-review-v2/admit.log": "10c9796d774961122b77ab76d23da38f98b4228d2e2e23c49b99566fe2e60164",
+    "output/filename-patterns-20261015/full-catalog-review-v2/qualify.py": "306d63d5f66f589b4a71fb691b65bceb314166acbf99d2d15d3ecad02d87c1b1"
+  }
+}

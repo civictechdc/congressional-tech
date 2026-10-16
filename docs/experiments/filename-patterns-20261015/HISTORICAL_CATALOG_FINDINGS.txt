@@ -1,0 +1,133 @@
+Complete historical catalog baseline
+===================================
+
+Finding
+-------
+The complete selected historical catalog is materially different from the
+catalog used to freeze the PDF pilot. Before any filename replay, 145 of the
+400 pilot document IDs are absent. The missing records have no matching
+nonempty retained body hash under another ID in this historical table. Do not
+replace those samples or attribute their absence to the running 3.2.0 replay.
+
+This is a baseline investigation, not verification of the pending 3.1.0
+publication. Held-out reference review remains locked. Only catalog metadata
+was read; no held-out PDF content or reference labels were reviewed, and the
+frozen candidate was not run.
+
+Scope and outputs
+-----------------
+Selected catalog: 7f0b0aa7b53e4205b050ac260d0bc6a7
+Selected generation: ee9bbad71e4648ffbcacb63ccb8bebe2
+Recorded filename package version: 3.0.0
+Source rows: 1,672,092. Document groups: 1,235,122.
+
+The maintained pilot_reconcile.py validated the selected pair, scanned every
+document group, and wrote all 400 frozen pilot IDs to its ledger. Command:
+
+  python docs/experiments/filename-patterns-20261015/pilot_reconcile.py \
+    --catalog-root /Users/mikewolfd/Work/congressional-tech/.cache/filename-viewer-r2 \
+    --output output/filename-patterns-20261015/reconciliation-full-historical-v1
+
+historical_catalog_checkpoint.json retains input hashes, counts and checks.
+historical_unclassified_census.csv retains all 711 census groups, with LF line
+endings for the repository. Parsed cells match the original CRLF output; both
+byte hashes are recorded and the original output remains unchanged.
+historical_missing_pilot_ids.json retains every missing ID, exact original body
+hashes/URLs and any matching current metadata. These files contain no reference
+labels. The complete 400-row ledger and initial diagnostics remain in the output
+directory, with their hashes recorded in the checkpoint.
+
+Population before filename replay
+---------------------------------
+Of 1,235,122 document groups, 107,896 have no display filename and 785,924 have
+no kind. Unnamed and unclassified are overlapping counts, not additive counts.
+The unclassified population consists of:
+
+  document         754,339
+  error-response    16,722
+  source-record     12,390
+  capture-state      2,473
+  total            785,924
+
+The format distribution includes 453,751 text/vtt caption groups and 153,625
+XML groups. There are 23,715 document-role groups whose format includes PDF,
+including mixed-format groups. The 31,585 non-document groups and the caption
+population show why the entire unclassified count is not a PDF classification
+backlog. These historical roles are not a claim about the pending publication.
+
+739,003 unclassified groups have a retained digest; 46,921 do not. A digest in
+catalog metadata does not prove that its object is available, nonempty, readable,
+or a valid document. This investigation did not fetch retained objects.
+
+Pilot reconciliation
+--------------------
+All 400 selected IDs remain in the ledger. The 255 present IDs keep the frozen
+body sets, document role and unclassified state in this historical table.
+Among those, 216 have exact body-hash matches in the existing pilot extraction
+receipts. That receipt count is not a fresh object-access or readability check.
+
+                    selected  present/eligible  receipt match  missing
+  development          200           132              107          68
+  held-out             200           123              109          77
+  total                400           255              216         145
+
+All eight samples with no frozen body digest are among the 145 missing IDs.
+The absence flags overlap; do not add 145 and eight as disjoint outcomes.
+
+Missing-ID investigation
+------------------------
+Scanned document_id, body_keys, source_url and source_urls across the complete
+historical document table. Matched each missing record by exact retained-body
+digest and exact URL, without normalizing URLs or using filename similarity.
+Rehashed the document table after the scan and verified it still matched the
+selected input checksum.
+
+- 66 missing IDs share an exact URL with a historical document group, but none
+  shares the frozen nonempty body. Of those 66 matching groups, 65 have no body
+  keys and one has only the empty-byte digest.
+- 79 missing IDs have neither an exact nonempty body match nor an exact URL
+  match. This proves absence from this selected table, not absence from remote
+  storage or the forthcoming catalog.
+- No nonempty frozen body was found under a different document ID. There is no
+  evidence here for automatically remapping the frozen IDs.
+
+The first diagnostic treated any body-key digest as a match. D015's retained
+empty-response digest then matched thousands of unrelated rows. The refined
+analysis excludes SHA-256 of empty bytes from document-identity evidence and
+records 5,034 discarded empty-only matches. D015's one exact-URL match is kept,
+with the empty digest visible. Both diagnostic versions remain in local output;
+the committed result is the refined version. No reference, source table,
+production identity rule or eligibility decision was changed.
+
+Interpretation and next action
+------------------------------
+This historical baseline can test the full-pair comparison machinery. It cannot
+stand in for the frozen pilot catalog or the new verified publication. The
+observed differences concern input coverage and retained-body evidence, not
+classifier accuracy. The active replay compares this exact historical pair with
+its own derived result, so these already-absent pilot IDs are not replay losses.
+
+Finish the active replay and inspect every identity, role, evidence and prior-kind
+change. Once publication completes, verify its exact selected pair, rerun the
+400-ID reconciliation, and investigate any remaining missing IDs against that
+pair. Preserve ineligible records and split membership. Do not substitute URL
+matches for exact body identity or unlock held-out review from historical results.
+
+Verification
+------------
+Reconciliation exited successfully. Pair validation, unique coverage of all 400
+IDs, census conservation, all 145 missing-ID diagnostics and present-ID body/
+role/kind checks passed. The full replay and publication were still running when
+this checkpoint was prepared. No completed replay or release is claimed.
+
+Completed replay: grouped evidence diagnosis
+--------------------------------------------
+Every one of the 80,527 grouped documents flagged for protected-evidence changes
+has now been compared, rather than sampled. In 80,510 groups, only derived
+source_record_type and source_record_identifier differ. The other 17 groups lose
+exactly the seven XML amendment fields already repaired by commit 4785e15.
+Their document IDs exactly match the complete-group XML repair selection.
+grouped_evidence_checkpoint.json records this result and its artifact hashes.
+The strict comparator still flags all of these changes; the original complete
+replay remains unqualified. Source-role transitions, classification changes and
+qualification against the fresh published catalog remain separate work.

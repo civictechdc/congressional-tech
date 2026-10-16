@@ -11,9 +11,10 @@ source_publisher_committee_code identifies the Senate site's owner from the
 collector's existing site map. Missing context stays null. A shared document
 retains all observed parents; flat lists do not imply pairwise relationships.
 The archive updater reuses unchanged interpretations automatically.
-document_kind uses filename evidence first, then typed contents or a recognized
-source document type. document_kind_source identifies that choice; native types
-stay intact.
+document_kind uses filename evidence first, with retained witness-statement
+content refining generic testimony. Typed contents or recognized source types
+otherwise fill gaps. filename_document_kind preserves the original filename
+claim; document_kind_source identifies the selected evidence. Native types stay intact.
 
 Relative hrefs keep their literal spelling. source_resolved_url records only
 destinations proved by retained parent anchors; multiple destinations stay
@@ -57,9 +58,11 @@ from congress_api.retention.document_evidence import (
     enrich_sources, enrich_document_covers, read_retained_body, response_failed, apply_response_role,
 )
 from congress_api.parsers.source_family import family as source_family
-from congress_api.parsers.document_links import http_url
+from congress_api.parsers.document_links import feed_link, http_url
+from congress_api.parsers.media import youtube_video_id
 from congress_api.parsers.document_cover import COVER_FIELDS
 from congress_api.parsers.document_types import DOCUMENT_TYPE_MEANINGS, document_type, document_label_kind
+from congress_api.retention.catalog_availability import FIELDS as AVAILABILITY_FIELDS, RESOURCE_FIELDS
 
 
 FAMILIES = (
@@ -113,8 +116,22 @@ DERIVED_KIND_SOURCES = frozenset({"source_document_type", "source_link_label", "
 SOURCE_DOCUMENT_KINDS = dict(DOCUMENT_TYPE_MEANINGS)
 
 
+def restore_filename_kind(row):
+    """Restore the filename claim before recomputing content/source choices."""
+    if row.get('filename_document_kind'):
+        row['document_kind'] = list(row['filename_document_kind'])
+    elif any(value in DERIVED_KIND_SOURCES for value in row.get('document_kind_source') or []):
+        row['document_kind'] = None
+    row['filename_document_kind'] = list(row['document_kind']) if row.get('document_kind') else None
+    row.pop('document_kind_source', None)
+
+
 def fill_document_kind(row):
     """Keep specific forms; expose a supported purpose through the family filter."""
+    restore_filename_kind(row)
+    if row.get('source_record_type') == ['youtube-video'] and row.get('record_role') != ['document']:
+        row['document_kind'] = row['document_kind_source'] = row['document_family'] = None
+        return
     context_kind = nomination_support_context(row)
     _select_document_kind(row)
     if context_kind and not row.get('document_kind'):
@@ -188,7 +205,16 @@ def nomination_support_context(row):
 def _select_document_kind(row):
     """Choose a kind without changing native fields or broadening filename rules."""
     if row.get("document_kind"):
-        row["document_kind_source"] = ["recovered_filename" if row.get("recovered_filename") else "filename"]
+        filename_basis = "recovered_filename" if row.get("recovered_filename") else "filename"
+        kinds = set(row['document_kind'])
+        if 'testimony' in kinds and row.get('content_document_kind') == ['witness-statement']:
+            remaining = kinds - {'testimony'}
+            row['document_kind'] = sorted(remaining | {'witness-statement'})
+            row['document_kind_source'] = sorted(
+                ({filename_basis} if remaining else set())
+                | ({'content'} if 'witness-statement' not in remaining else set()))
+        else:
+            row["document_kind_source"] = [filename_basis]
         return
     if row.get("content_document_kind"):
         row["document_kind"] = row["content_document_kind"]
@@ -453,7 +479,7 @@ def document_body(body, media, statuses, outcomes=None, body_format=None, respon
 def prepare_document_indexes(rows, schema):
     """Keep exact source rows and create one canonical row per document group."""
     progress.report('group_documents', total=len(rows), unit='source_rows')
-    for name in ("document_kind", "document_kind_source", "document_family", "record_role", "source_record_type"):
+    for name in ("document_kind", "filename_document_kind", "document_kind_source", "document_family", "record_role", "source_record_type"):
         if name not in schema.names:
             schema = schema.append(pa.field(name, STRINGS))
     # The parser's public metadata keeps both names for compatibility. These
@@ -470,12 +496,8 @@ def prepare_document_indexes(rows, schema):
             row.pop(redundant, None)
     for row in rows:
         apply_capture_record_role(row)
-        # Source metadata can change without reparsing filenames. Remove only
-        # previous fallbacks before regrouping so they never outrank an alias's
-        # filename kind or survive removal/correction of the source assertion.
-        if any(value in DERIVED_KIND_SOURCES for value in row.get("document_kind_source") or []):
-            row["document_kind"] = None
-        row.pop("document_kind_source", None)
+        # Source/content readings can change without reparsing filenames.
+        restore_filename_kind(row)
         row["source_id"] = sha256(
             compact(
                 [row.get(k) for k in ("body_key", "filename", "source_url")]
@@ -537,12 +559,15 @@ def prepare_document_indexes(rows, schema):
             row["document_id"] = document_id
             for key, value in row.items():
                 if isinstance(value, list):
-                    if key != "source_occurrences":
+                    if key not in {"source_occurrences", "hearing_resources"}:
                         values[key].update(value)
         document.update({key: sorted(value) for key, value in values.items() if value})
         occurrences = merge_values("source_occurrences", *[row.get("source_occurrences") for row in sources])
         if occurrences:
             document["source_occurrences"] = occurrences
+        resources = merge_values("hearing_resources", *[row.get("hearing_resources") for row in sources])
+        if resources:
+            document["hearing_resources"] = resources
         # A successful document and its error/marker history can share an endpoint.
         # The group's role describes its usable document; each source keeps its role.
         roles = values["record_role"]
@@ -552,8 +577,10 @@ def prepare_document_indexes(rows, schema):
         # Aggregate filename kinds before filling individual source-row gaps.
         # A broad native type on an alias must not dilute a more specific name.
         fill_document_kind(document)
-        if any(row.get("document_kind") and not row.get("recovered_filename") for row in sources):
-            document["document_kind_source"] = ["filename"]
+        if ('recovered_filename' in (document.get('document_kind_source') or [])
+                and any(row.get("document_kind") and not row.get("recovered_filename") for row in sources)):
+            document['document_kind_source'] = sorted({
+                'filename' if basis == 'recovered_filename' else basis for basis in document['document_kind_source']})
         for row in sources:
             fill_document_kind(row)
         for singular, plural in [
@@ -693,10 +720,16 @@ def metadata_type(name):
     """Keep source occurrences paired in Arrow, without serializing them as JSON."""
     if name == "source_occurrences":
         return pa.list_(pa.struct([(field, STRINGS) for field in SOURCE_OCCURRENCE_FIELDS]))
+    if name == "hearing_resources":
+        return pa.list_(pa.struct([(field, pa.string()) for field in RESOURCE_FIELDS]))
     return STRINGS
 
 
 def merge_values(field, *groups):
+    if field == "hearing_resources":
+        values = {json.dumps({k: v for k, v in item.items() if v is not None}, sort_keys=True): item
+                  for group in groups for item in group or []}
+        return [values[key] for key in sorted(values)]
     if field != "source_occurrences":
         return sorted({value for group in groups if group for value in group})
     # Arrow fills absent struct fields with null on readback. Normalize those
@@ -1067,13 +1100,52 @@ class DocumentSources:
                 self.occurrences[destination][identity] = occurrence
             elif not self.occurrences.insert(destination,identity,occurrence):
                 continue
+            self.restore_link(occurrence)
             for target, association in self.transfers.get(destination, []):
                 # Each transferred occurrence retains its original parent/link.
                 # Association fields describe this edge, never document identity.
                 pending.append((target, self.transfer_occurrence(occurrence, association)))
 
     @staticmethod
+    def collection_url(url):
+        # A feed/sitemap lists unrelated events. Traversing it would turn
+        # site navigation into a claimed relationship between those events.
+        try:
+            return feed_link({}, url) or bool(re.search(
+                r'[-_](?:rss|atom|sitemap)\.xml$', urlsplit(url).path, re.I))
+        except ValueError:
+            return False
+
+    @staticmethod
     def transfer_occurrence(occurrence, association):
+        observed = {'publisher_redirect', 'retained_html_link', 'linked_page'}
+        if 'linked_page' in association.get('source_association_basis', []):
+            pages = occurrence.get('source_original_page_url') or occurrence.get('source_page_url') or []
+            if any(DocumentSources.collection_url(url) for url in [*pages, *(occurrence.get('source_link_url') or [])]):
+                return {}
+        if occurrence.get('source_occurrence_scope') == ['linked_ancestor']:
+            # A candidate match cannot establish another step in this path.
+            # Redirects retain the same ancestor edge instead of making a new
+            # observation for every route through a redirect cycle.
+            return (dict(occurrence) if all(basis in observed
+                    for basis in association.get('source_association_basis') or []) else {})
+        if 'linked_page' in association.get('source_association_basis', []):
+            # A link carries its ancestors' page/meeting relationships, never
+            # another document's type, author, capture, or body identity.
+            if (any(basis not in observed for basis in occurrence.get('source_association_basis') or [])
+                    or not occurrence.get('source_link_url') or not any(occurrence.get(key) for key in (
+                    'source_original_page_url', 'source_page_url', 'source_meeting_id',
+                    'source_meeting_title', 'source_committee_code', 'source_committee_name'))):
+                return {}
+            result = {key: values for key, values in occurrence.items()
+                      if not key.startswith(('source_document_', 'source_witness_',
+                          'source_participant_', 'source_label_', 'source_capture_', 'source_probe_'))}
+            result['source_occurrence_scope'] = ['linked_ancestor']
+            result['source_association_basis'] = sorted(set(result.get('source_association_basis', [])) | {'linked_page'})
+            # Keep the original edge and its receipt unchanged. Path-specific
+            # values would multiply on every cycle; exact edge identities reach
+            # a fixed point even when links arrive in reverse order.
+            return result
         result = dict(occurrence)
         for field, values in association.items():
             if field.startswith("source_receipt_") and result.get(field):
@@ -1085,6 +1157,9 @@ class DocumentSources:
         requested = (http_url(requested) or requested) if isinstance(requested, str) else requested
         final = (http_url(final) or final) if isinstance(final, str) else final
         if not all(isinstance(url, str) and url for url in (requested, final)) or requested == final:
+            return
+        if ('linked_page' in values.get('source_association_basis', [])
+                and any(self.collection_url(url) for url in (requested, final))):
             return
         association = {key: sorted(items) for key, items in values.items() if items}
         edge = (final, association)
@@ -1112,6 +1187,20 @@ class DocumentSources:
         for original in occurrence.get("source_associated_url") or []:
             self.add_transfer(original, url, values)
 
+    def restore_link(self, occurrence):
+        """Recover one observed edge; flat lists never establish URL pairings."""
+        if occurrence.get('source_occurrence_scope') in (['capture'], ['association'], ['linked_ancestor']):
+            return
+        if any(basis not in {'publisher_redirect', 'retained_html_link'}
+               for basis in occurrence.get('source_association_basis') or []):
+            return
+        pages = occurrence.get('source_original_page_url') or occurrence.get('source_page_url') or []
+        links = occurrence.get('source_link_url') or []
+        if len(pages) == len(links) == 1:
+            self.add_transfer(pages[0], links[0], {
+                **{key: values for key, values in occurrence.items() if key.startswith('source_receipt_')},
+                **context_values(source_association_basis='linked_page', source_associated_url=pages[0])})
+
     def for_url(self, url):
         url = (http_url(url) or url) if isinstance(url, str) else url
         result = {key: sorted(values) for key, values in self.by_url.get(url, {}).items() if values}
@@ -1123,6 +1212,20 @@ class DocumentSources:
 
     def add_link(self, link, receipt=None):
         """Read a native seed or discovered link retained by recurring capture."""
+        for occurrence in link.get('publisher_occurrences') or []:
+            if not isinstance(occurrence, dict):
+                continue
+            page, target = http_url(occurrence.get('page') or ''), http_url(occurrence.get('url') or link.get('url') or '')
+            if not page or not target:
+                continue
+            values = context_values(source_page_url=page, source_original_page_url=page,
+                source_page_title=occurrence.get('title'), source_page_date=occurrence.get('date'),
+                source_page_type=occurrence.get('kind'), source_link_url=target,
+                source_link_label=occurrence.get('name'), source_occurrence_scope='anchor')
+            merge_context(values, receipt or {})
+            self.add_url(target, values)
+            self.add_transfer(page, target, {**(receipt or {}), **context_values(
+                source_association_basis='linked_page', source_associated_url=page)})
         original = link.get('original_url') if link.get('url_repair') else None
         parent = link.get("context") or {}
         self.add_meeting(parent)
@@ -1163,16 +1266,6 @@ class DocumentSources:
                 parent.get("eventId"), parent.get("chamber"), parent.get("congress")
             ),
         )
-        # A linked file inherits the known meeting/page context, but not a
-        # different document's label or type simply because that page linked it.
-        merge_context(
-            values,
-            {
-                k: v
-                for k, v in self.by_url.get(http_url(link.get("parent_url") or '') or link.get("parent_url"), {}).items()
-                if not k.startswith(("source_document_", "source_link_", "source_witness_", "source_participant_", "source_receipt_", "source_associat", "source_label_"))
-            },
-        )
         for committee in parent.get("committees") or []:
             merge_context(
                 values,
@@ -1190,6 +1283,10 @@ class DocumentSources:
                      "senate_parser_fallback" if native["documentType"] == "other" else "senate_parser_inference") if parsed_tuple else "publisher"
             merge_context(values, context_values(source_document_type_basis=basis))
         self.add_url(original or link.get("url"), values)
+        if link.get('parent_url'):
+            self.add_transfer(link['parent_url'], original or link.get('url'),
+                {**(receipt or {}), **context_values(source_association_basis='linked_page',
+                                                  source_associated_url=link['parent_url'])})
         if original:
             self.add_transfer(original, link.get('url'), {**(receipt or {}), **context_values(
                 source_association_basis=link['url_repair'], source_associated_url=original)})
@@ -1739,6 +1836,14 @@ def capture_record_type(family, pointer_json):
 
 def apply_capture_record_role(row):
     """Keep receipt/pointer pairs together when recognizing embedded source HTML."""
+    if row.get('source_record_type') == ['download-state']:
+        row['record_role'] = ['capture-state']
+        return
+    if youtube_video_id(row.get('source_url')):
+        row['source_record_type'] = ['youtube-video']
+        if row.get('record_role') != ['error-response']:
+            row['record_role'] = ['source-record']
+        return
     if row.get("source_record_type"):
         return
     for occurrence in row.get("source_occurrences") or []:
@@ -2217,7 +2322,7 @@ def write_filename_metadata(
                 key = (row.pop("reader"), row.pop("body_key"))
                 body_cache[key] = {field: value for field, value in row.items() if value is not None}
     del payload
-    source_fields = set(SOURCE_SCHEMA.names) | SOURCE_CONTEXT_FIELDS | {'capture_outcome'}
+    source_fields = set(SOURCE_SCHEMA.names) | SOURCE_CONTEXT_FIELDS | AVAILABILITY_FIELDS | {'capture_outcome'}
     reuse_names = previous is not None and reuse_results and 'document_kind_source' in previous_schema.names
     filename_fields = (set(previous_schema.names) - source_fields
                        - {'source_id', 'document_id', 'format', 'document_kind_source'}
@@ -2234,10 +2339,9 @@ def write_filename_metadata(
                     body_cache.setdefault(key, cached_body_fields(row, key))
                 if not reuse_names or row.get('filename') is None or row.get('recovered_filename'):
                     continue  # Recovered names depend on the current URL evidence.
+                restore_filename_kind(row)
                 cached.setdefault((row['filename'], row['source_url']), {
                     key: row[key] for key in filename_fields if row[key] is not None
-                    and not (key == 'document_kind'
-                             and any(value in DERIVED_KIND_SOURCES for value in row.get('document_kind_source') or []))
                 })
     if reuse_results:
         # Capture already inspected these bytes before releasing them. Preserve
@@ -2307,7 +2411,8 @@ def write_filename_metadata(
                     columns.update(fields)
                     row.update(fields)
                     columns.update(key for key, value in row.items()
-                                   if key in SOURCE_CONTEXT_FIELDS | {'capture_outcome'} and value)
+                                   if key in SOURCE_CONTEXT_FIELDS | AVAILABILITY_FIELDS
+                                   | {'capture_outcome', 'record_role', 'source_record_type', 'source_record_identifier'} and value)
                     if row['body_key']:
                         bodies[row['body_key']] = True
                     if row['filename']:
@@ -2453,18 +2558,17 @@ def _build(root, inventory_dir, *, workers, families, inspect_bodies, working, o
     )
 
 
-def refresh_filename_metadata(root, *, workers=4, inspect_bodies=False, repair=False):
-    """Reuse saved interpretations unless explicitly rebuilding; never acquire sources."""
-    from congress_api.retention.catalog_cache import LocalStore
-    from congress_api.retention.catalog_publication import read_catalog
-    snapshot = read_catalog(LocalStore(root))
-    if snapshot.filenames is None:
-        raise ValueError("Missing filename index")
-    source = pq.ParquetFile(pa.BufferReader(snapshot.filenames))
+def filename_refresh_inputs(source):
+    """Stream retained source evidence separately from filename interpretations.
+
+    Callers pass the original table as previous= when writing so retained body
+    readings survive. This helper does not read bodies or change the catalog.
+    """
     fields = [
         *[name for name in SOURCE_SCHEMA.names if name in source.schema_arrow.names],
         *sorted(
-            (SOURCE_CONTEXT_FIELDS | {"capture_outcome"})
+            (SOURCE_CONTEXT_FIELDS | AVAILABILITY_FIELDS
+             | {"capture_outcome", "record_role", "source_record_type", "source_record_identifier"})
             & set(source.schema_arrow.names)
         ),
     ]
@@ -2473,10 +2577,25 @@ def refresh_filename_metadata(root, *, workers=4, inspect_bodies=False, repair=F
         for batch in source.iter_batches(columns=fields)
         for row in batch.to_pylist()
     )
-    return write_filename_metadata(root, rows, workers=workers, previous=source, reuse_results=not repair, inspect_bodies=inspect_bodies, publication_snapshot=snapshot, previous_documents=snapshot.documents, metadata={
+    metadata = {
         key.decode(): value.decode() for key, value in (source.schema_arrow.metadata or {}).items()
-        if key in {b'raw_capture_rows', b'capture_digest', b'seed_digest', b'deferred_source_bodies',
-                   b'source_fingerprint', b'retained_recovery_fingerprint'}})
+        if key in {b'raw_capture_rows', b'capture_digest', b'seed_digest', b'deferred_source_bodies', b'source_lineage_version',
+                   b'source_lineage_overlay', b'download_state_digest', b'download_state_rows', b'availability_policy',
+                   b'source_fingerprint', b'retained_recovery_fingerprint'}}
+    return rows, metadata
+
+
+def refresh_filename_metadata(root, *, workers=4, inspect_bodies=False, repair=False):
+    """Reuse saved interpretations unless explicitly rebuilding; never acquire sources."""
+    from congress_api.retention.catalog_cache import LocalStore
+    from congress_api.retention.catalog_publication import read_catalog
+    snapshot = read_catalog(LocalStore(root))
+    if snapshot.filenames is None:
+        raise ValueError("Missing filename index")
+    source = pq.ParquetFile(pa.BufferReader(snapshot.filenames))
+    rows, metadata = filename_refresh_inputs(source)
+    return write_filename_metadata(root, rows, workers=workers, previous=source, reuse_results=not repair,
+        inspect_bodies=inspect_bodies, publication_snapshot=snapshot, previous_documents=snapshot.documents, metadata=metadata)
 
 
 def reindex_documents(root):

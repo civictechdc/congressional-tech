@@ -1,0 +1,71 @@
+Review: reconcile reviewed cases against the current public catalog
+==================================================================
+
+Decision and observed result
+----------------------------
+APPROVE for read-only metadata reconciliation. This is a self-review, not an
+independent assessment of document labels or approval to transfer classifications.
+All 91 original cases are retained. Ninety original document IDs are present;
+all 744 original source rows are found, including one in a different group.
+All 85 reviewed cases retain their eligible body, source membership, filenames
+and URLs. Eighteen selected label sets match the reviewed forms and 67 differ.
+The complete 91-row CSV was read. The six unavailable historical cases retain
+their separate outcomes instead of receiving empty-set agreement.
+
+Four unavailable cases are error-response groups. Error.aspx still has document
+role and 12 inherited kinds in the fresh 3.1.0 pair; the local historical replay
+removed those kinds. One encoded-URL Palmer source now belongs to group
+70e1b3f65c993898fa2a7145bd09ccb4a95a5d39e1e4ec632cf190e1f1917914.
+The separate moved-palmer-diagnostic.json shows its old 404 capture alongside a
+new PDF/200 capture at the same encoded URL. That new body is outside the locked
+pilot and requires its own complete review. The other Palmer ID remains distinct.
+
+Function and data-flow trace
+----------------------------
+review_catalog_reconcile.py:22 selected_rows scans projected metadata in batches
+of 2,048. It selects current group members OR original source IDs, so a moved
+member cannot disappear from the audit. It rejects duplicate selected IDs and
+missing required eligibility fields, including all maintained response fields.
+It never reads nested source_occurrences or document body bytes.
+
+reconcile_case at :46 validates each proposal against its hash-bound original
+row and receipt through compare_case. The small original document dictionary is
+used only for original selected-kind validation; it is not a fresh catalog row.
+It then compares real current members, filename/URL/body identities, eligible
+body sets, group body unions and document role. Removed members record their
+current group or absence. Label comparison requires the reviewed body to remain
+the only eligible body. Every output explicitly refuses transfer/release approval.
+
+run at :102 verifies the prior comparison and fresh-pair checkpoints, resolves
+the exact immutable raw pair with local_catalog_paths, and verifies its manifest
+identity. It reuses load_reviews for complete PDF/page/render evidence checks.
+All proposals must cover the original needs_review set exactly once. It checks
+all bound files and implementation identity again before writing to a new output
+directory. Original ledgers, receipts, Parquet files and production selections
+are never write targets. Results keep projected current claims for inspection.
+
+Tests and evidence
+------------------
+17 new tests cover unchanged evidence without transfer approval, input
+preservation, changed body/filename/URL, added source, failed response, changed
+role, mismatched group body union, moved group, unavailable/newly eligible body,
+projected selection and duplicates. Integration cases use real Parquet, PDF and
+receipt fixtures; changed catalog/receipt bytes, wrong checkpoint identity and
+missing proposals fail before output creation. Existing output refuses overwrite.
+The combined reconciliation/comparison/receipt/candidate suite passes 72 tests
+in 1.38 seconds. The actual current-pair run completed successfully with all
+bindings unchanged. No production test-suite or accuracy claim is made.
+
+Limits and next work
+--------------------
+Matching body and source identity is narrower than full-row equality. Publisher
+context, occurrence data and other unprojected fields can change; no review input
+is rebound here. The fresh catalog also uses an older filename version than the
+local historical candidate. Before production adoption, extract exact current
+groups, preserve complete non-null evidence and exercise selection using current
+bindings. Keep error-response corrections and Palmer's changed group explicit.
+Full-catalog replay still needs bounded memory work and separate release evidence.
+
+VERDICT: APPROVE for read-only reconciliation.
+Coverage: sufficient for identity/eligibility and refusal paths, with full-case
+execution. Confidence: high within that scope; no production transfer approved.

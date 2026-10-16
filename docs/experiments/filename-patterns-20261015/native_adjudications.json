@@ -1,0 +1,411 @@
+{
+  "native-content": [
+    {
+      "document_id": "e0a0ddc628954652d649eab94a0db1dc8b838c61280d1b1eabc6d9c421c3f2ff",
+      "filename": "112-12.pdf",
+      "kind": "published-hearing",
+      "verdict": "supported",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "page_image_and_text",
+      "note": "Cover identifies a published House committee hearing and serial number."
+    },
+    {
+      "document_id": "eb40352181ad65c05c5d91cfe50577ab8af83a99cc9aaab5f4875a3c667762f4",
+      "filename": "115-27.pdf",
+      "kind": "published-hearing",
+      "verdict": "supported",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "extracted_page_text",
+      "note": "Cover identifies a published House committee hearing and serial number."
+    },
+    {
+      "document_id": "4862f6bcae7947b3dd84fb5d6a9ea02565085aa6b9cea3187fb37edaf255d64a",
+      "filename": "115-112.pdf",
+      "kind": "published-hearing",
+      "verdict": "supported",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "extracted_page_text",
+      "note": "Cover identifies a published House committee hearing and serial number."
+    },
+    {
+      "document_id": "be40245f4f4dc2c301f7dd361c252fde6eedaf977d782919baf9a1fa6382dfbe",
+      "filename": "113-32.pdf",
+      "kind": "published-hearing",
+      "verdict": "supported_body_only",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "extracted_page_text",
+      "note": "Cover identifies a published House committee hearing and serial number. Veterans Affairs archive examples remain outside the Financial Services source rule."
+    },
+    {
+      "document_id": "3372c2171fcc7cf246768a3d94d0909d506fe5d6d89d8b2cea0c9500a4e116cc",
+      "filename": "113-17.pdf",
+      "kind": "published-hearing",
+      "verdict": "supported_body_only",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "extracted_page_text",
+      "note": "Cover identifies a published House committee hearing and serial number. Veterans Affairs archive examples remain outside the Financial Services source rule."
+    },
+    {
+      "document_id": "a92afec61bd756673738158ad02736b675591cfb12bf5af9bb96d99c8abd28f2",
+      "filename": "113-18.pdf",
+      "kind": "published-hearing",
+      "verdict": "supported_body_only",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "extracted_page_text",
+      "note": "Cover identifies a published House committee hearing and serial number. Veterans Affairs archive examples remain outside the Financial Services source rule."
+    },
+    {
+      "document_id": "9600c84db337f1971996c0fdf35dbf38cf3f6f482c8ad47941139f02782c7db1",
+      "filename": "H2881_CPT_xml.pdf",
+      "kind": "committee-print",
+      "verdict": "supported_body_only",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "extracted_page_text",
+      "note": "Cover explicitly says Committee Print, showing H.R. 2881 as forwarded by the subcommittee. CPT is not promoted as a bill-version rule."
+    },
+    {
+      "document_id": "4e031c0b3306d0adddf39b4da2ceb678ce0fea284615375ca60500ffdb9ab926",
+      "filename": "h2978fs_rh_xml.pdf",
+      "kind": "legislative-text",
+      "verdict": "supported",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "extracted_page_text",
+      "note": "House bill cover identifies legislative text. RH covers include reported amendments; SUS covers identify suspension text. No procedural status is asserted from filenames."
+    },
+    {
+      "document_id": "6065e37c1a5b1f5cd48aa2f5404964f21c9e228ae01b4b1ff18ac4c2b8e3d5a2",
+      "filename": "H2317NR_RH_xml.pdf",
+      "kind": "legislative-text",
+      "verdict": "supported",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "page_image_and_text",
+      "note": "House bill cover identifies legislative text. RH covers include reported amendments; SUS covers identify suspension text. No procedural status is asserted from filenames."
+    },
+    {
+      "document_id": "039681198ee676ac7b46a3ead060a9b7309c731445e3787e4354fa85b4d98a22",
+      "filename": "h3190fs_rh_xml.pdf",
+      "kind": "legislative-text",
+      "verdict": "supported",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "extracted_page_text",
+      "note": "House bill cover identifies legislative text. RH covers include reported amendments; SUS covers identify suspension text. No procedural status is asserted from filenames."
+    },
+    {
+      "document_id": "0f307c457bf2154050a8ac6b83dee80e8cba1ab795bbf5b285397c5928757518",
+      "filename": "H1664_RH_xml.pdf",
+      "kind": "legislative-text",
+      "verdict": "supported",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "extracted_page_text",
+      "note": "House bill cover identifies legislative text. RH covers include reported amendments; SUS covers identify suspension text. No procedural status is asserted from filenames."
+    },
+    {
+      "document_id": "fc6798a2429df22ff6ec73983421c46db790d520f84e7bdf369a7960c0bd4466",
+      "filename": "h2001_rh_xml.pdf",
+      "kind": "legislative-text",
+      "verdict": "supported",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "extracted_page_text",
+      "note": "House bill cover identifies legislative text. RH covers include reported amendments; SUS covers identify suspension text. No procedural status is asserted from filenames."
+    },
+    {
+      "document_id": "d26282b17fd6c8298f7ce86cb3f4e9acf6c039322ca86946b61932cb58a247e4",
+      "filename": "h5200_rh_xml.pdf",
+      "kind": "legislative-text",
+      "verdict": "supported",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "extracted_page_text",
+      "note": "House bill cover identifies legislative text. RH covers include reported amendments; SUS covers identify suspension text. No procedural status is asserted from filenames."
+    },
+    {
+      "document_id": "83613856f24571d60d722dd7d5d24e53a29655fafded11f23f76f97ee089aa49",
+      "filename": "H2768_SUB_xml.pdf",
+      "kind": null,
+      "verdict": "unavailable",
+      "reviewed_pages": [],
+      "method": "retrieval_only",
+      "note": "Recorded publisher URL returns HTTP 404. No replacement selected; SUB convention deferred."
+    },
+    {
+      "document_id": "dba12fa655e97fe427d2ff558414aa71e9d3ee105134fe246bf5786b38e8e787",
+      "filename": "PLAW-115publ91.pdf",
+      "kind": "public-law",
+      "verdict": "supported",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "extracted_page_text",
+      "note": "First page explicitly identifies a public law and its number; complete official publisher filename supported."
+    },
+    {
+      "document_id": "6b13fe4fe448c4f03adca182780f07a556b76a3c287f9b6cafdd3d4f8e3e7ec7",
+      "filename": "PLAW-115publ401.pdf",
+      "kind": "public-law",
+      "verdict": "supported",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "page_image_and_text",
+      "note": "First page explicitly identifies a public law and its number; complete official publisher filename supported."
+    },
+    {
+      "document_id": "d3b320c55cb9e5a2c1738206f8b4622776094157a1a2ea3d2b5c041c6261f373",
+      "filename": "PLAW-106publ386.pdf",
+      "kind": "public-law",
+      "verdict": "supported",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "extracted_page_text",
+      "note": "First page explicitly identifies a public law and its number; complete official publisher filename supported."
+    },
+    {
+      "document_id": "4e679f75ec264a8e58076f62a05145aff4724b20fe1412e25a482fb2cf4f4bbb",
+      "filename": "PLAW-113publ28.pdf",
+      "kind": "public-law",
+      "verdict": "supported",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "extracted_page_text",
+      "note": "First page explicitly identifies a public law and its number; complete official publisher filename supported."
+    },
+    {
+      "document_id": "efb5a4d0bdf80c77bfc98bb77de2f669779a2bc59644a249548b5b68e77d2dc6",
+      "filename": "PLAW-110publ157.pdf",
+      "kind": "public-law",
+      "verdict": "supported",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "extracted_page_text",
+      "note": "First page explicitly identifies a public law and its number; complete official publisher filename supported."
+    },
+    {
+      "document_id": "44d33a2906ba9f3158c7e3e837d5b8279be8e670e2ee4cad80afa5997ccd618a",
+      "filename": "PLAW-113publ128.pdf",
+      "kind": "public-law",
+      "verdict": "supported",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "extracted_page_text",
+      "note": "First page explicitly identifies a public law and its number; complete official publisher filename supported."
+    },
+    {
+      "document_id": "a6d06e6100958d0a84404b0b0caf1038ad564cb8a78d85ec8193aaa50589646a",
+      "filename": "PLAW-112publ25.pdf",
+      "kind": "public-law",
+      "verdict": "supported",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "extracted_page_text",
+      "note": "First page explicitly identifies a public law and its number; complete official publisher filename supported."
+    },
+    {
+      "document_id": "a81fe25faabba4af537b42c9867d4e49b5a65a9a13dbce2d2b82711c7ac4a3d2",
+      "filename": "PLAW-111publ8.pdf",
+      "kind": "public-law",
+      "verdict": "supported",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "extracted_page_text",
+      "note": "First page explicitly identifies a public law and its number; complete official publisher filename supported."
+    },
+    {
+      "document_id": "a1897ae67d8fd7d4ddbbac4a4b50ffc6b93b4e12cda9a3eb0d5b33aae6549edf",
+      "filename": "PLAW-110publ161.pdf",
+      "kind": "public-law",
+      "verdict": "supported",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "extracted_page_text",
+      "note": "First page explicitly identifies a public law and its number; complete official publisher filename supported."
+    }
+  ],
+  "native-boundary-content": [
+    {
+      "document_id": "b99bc18b041d3ec60433196c69921d2fe1c7592dc63fe63592a0c51866f929b3",
+      "filename": "103-3.pdf",
+      "kind": "published-hearing",
+      "verdict": "supported",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "extracted_page_text",
+      "note": "Cover identifies a published House committee hearing and serial number. Filename says 103-3 but cover prints 113-3 and the 113th Congress. Preserve literal serial only; do not infer Congress."
+    },
+    {
+      "document_id": "83dba932549041655a66b488d26789b282353c0c6ae04611035cdace8b5813be",
+      "filename": "111-167.pdf",
+      "kind": "published-hearing",
+      "verdict": "supported",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "extracted_page_text",
+      "note": "Cover identifies a published House committee hearing and serial number."
+    },
+    {
+      "document_id": "d052dba9724a38f78df08d8f9b191a0005f0e74fe1a3994c254bc1d05ca6288e",
+      "filename": "111-28.pdf",
+      "kind": "published-hearing",
+      "verdict": "supported",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "extracted_page_text",
+      "note": "Cover identifies a published House committee hearing and serial number."
+    },
+    {
+      "document_id": "42d9194aab75d79ec16285076ca7d5e0710af0ca9ac4e192426e6fc75c0c589d",
+      "filename": "111-143.pdf",
+      "kind": "published-hearing",
+      "verdict": "supported",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "extracted_page_text",
+      "note": "Cover identifies a published House committee hearing and serial number."
+    },
+    {
+      "document_id": "4db9e93e4f3ed4fd199fd94faed3aaf0ab0d3ac11cbd31c331db6ea806e0d297",
+      "filename": "112-20.pdf",
+      "kind": "published-hearing",
+      "verdict": "supported",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "extracted_page_text",
+      "note": "Cover identifies a published House committee hearing and serial number."
+    },
+    {
+      "document_id": "3df52b5cd4ca15069f10dd856ef53ccea828b2c0da72063f8ea74b6b949c1336",
+      "filename": "112-135.pdf",
+      "kind": "published-hearing",
+      "verdict": "supported",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "extracted_page_text",
+      "note": "Cover identifies a published House committee hearing and serial number."
+    },
+    {
+      "document_id": "6300910f5c3ab6a1d0067a419e930d206fcb8e652797be70f9ba686d146cb276",
+      "filename": "113-91.pdf",
+      "kind": "published-hearing",
+      "verdict": "supported",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "extracted_page_text",
+      "note": "Cover identifies a published House committee hearing and serial number."
+    },
+    {
+      "document_id": "1298db3169204b72763f09c066af68f729f138a20fbec335c99712afe9aa8faa",
+      "filename": "113-13.pdf",
+      "kind": "published-hearing",
+      "verdict": "supported",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "extracted_page_text",
+      "note": "Cover identifies a published House committee hearing and serial number."
+    },
+    {
+      "document_id": "62b9c068b185a5181709b35cc38f24d0e179e8a4361c94a14b5ccbeba761c781",
+      "filename": "114-93.pdf",
+      "kind": "published-hearing",
+      "verdict": "supported",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "extracted_page_text",
+      "note": "Cover identifies a published House committee hearing and serial number."
+    },
+    {
+      "document_id": "1b0fe9479ab5741bac88c634e5ba11d65236de335f3612be10bdbf0c5a212106",
+      "filename": "114-81.pdf",
+      "kind": "published-hearing",
+      "verdict": "supported",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "extracted_page_text",
+      "note": "Cover identifies a published House committee hearing and serial number."
+    },
+    {
+      "document_id": "689176ad8afd03257dbe445232d3bfd7aebecef0063bddfafce2bf0de144faa8",
+      "filename": "115-80.pdf",
+      "kind": "published-hearing",
+      "verdict": "supported",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "extracted_page_text",
+      "note": "Cover identifies a published House committee hearing and serial number."
+    },
+    {
+      "document_id": "149947a8e0f15968b82888bdc48172695ebea642ce2bfe1842fc3388b4f60121",
+      "filename": "115-66.pdf",
+      "kind": "published-hearing",
+      "verdict": "supported",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "extracted_page_text",
+      "note": "Cover identifies a published House committee hearing and serial number."
+    },
+    {
+      "document_id": "6450af886e19a605a2f6c48506cc1d44967ce80a7a74c6fc6a5310efa19e03d4",
+      "filename": "H5109_SUS_xml.pdf",
+      "kind": "legislative-text",
+      "verdict": "supported",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "extracted_page_text",
+      "note": "House bill cover identifies legislative text. RH covers include reported amendments; SUS covers identify suspension text. No procedural status is asserted from filenames."
+    },
+    {
+      "document_id": "0f363c5317e0a55a593e0287fcfb46d3aef784f342b1bd135689bb968c402b40",
+      "filename": "H807_SUS_xml.pdf",
+      "kind": "legislative-text",
+      "verdict": "supported",
+      "reviewed_pages": [
+        1
+      ],
+      "method": "extracted_page_text",
+      "note": "House bill cover identifies legislative text. RH covers include reported amendments; SUS covers identify suspension text. No procedural status is asserted from filenames."
+    }
+  ]
+}

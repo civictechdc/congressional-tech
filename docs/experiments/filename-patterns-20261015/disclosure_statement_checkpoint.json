@@ -1,0 +1,82 @@
+{
+  "scope": "Local complete historical-cohort Disclosure Statement phrase repair; not release qualification",
+  "version": "3.2.5",
+  "replay_summary_path": "output/filename-patterns-20261015/disclosure-statement-replay-v1/summary.json",
+  "replay_summary_sha256": "7877918bfbbb2000256aaf2a7f762e5e245bb518caf5e5ca55c095c94e87de7a",
+  "comparisons": {
+    "filenames": {
+      "before_rows": 7526,
+      "after_rows": 7526,
+      "missing_ids": 0,
+      "added_ids": 0,
+      "changes": {
+        "changed_prior_kind": 48,
+        "role_changed": 0,
+        "protected_evidence_changed": 0,
+        "document_id_changed": 0,
+        "representative_changed": 0,
+        "kind_source_changed": 0
+      },
+      "changes_sha256": "5c16c12a6e888965b5c1831f75d6af9781f4a24f2f2d60eef9f075f2d36c6b24",
+      "identities_roles_evidence_preserved": true,
+      "prior_kind_changes": 48
+    },
+    "documents": {
+      "before_rows": 1949,
+      "after_rows": 1949,
+      "missing_ids": 0,
+      "added_ids": 0,
+      "changes": {
+        "changed_prior_kind": 25,
+        "role_changed": 0,
+        "protected_evidence_changed": 0,
+        "document_id_changed": 0,
+        "representative_changed": 0,
+        "kind_source_changed": 0
+      },
+      "changes_sha256": "744c1ebf48ecaa7f967931b3623196f003e7e1927aa6f5f5e706d58e8967e38f",
+      "identities_roles_evidence_preserved": true,
+      "prior_kind_changes": 25
+    }
+  },
+  "output_files": {
+    "filenames": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/disclosure-statement-replay-v1/catalog/indexes/document-filenames.parquet",
+      "sha256": "41beb82f4f4aa98b1645bfff6a4395be0370f6f0dc996a98c28c2c4d7454772e",
+      "rows": 7526
+    },
+    "documents": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/disclosure-statement-replay-v1/catalog/indexes/documents.parquet",
+      "sha256": "ab62464851458d05a37697753490ff34d4a4d5fec86e3fb1c6292987c8f79159",
+      "rows": 1949
+    }
+  },
+  "input_bytes_unchanged": true,
+  "invariants_preserved": true,
+  "elapsed_seconds": 199.59,
+  "initial_pending_groups_reviewed": 19,
+  "changed_source_filenames_reviewed": 48,
+  "changed_group_alias_sets_reviewed": 25,
+  "removed_kind_only": "statement",
+  "body_reinspection": false,
+  "publication_performed": false,
+  "release_qualified": false,
+  "tests": {
+    "initial_red_failures": 5,
+    "focused_publisher_passed": 128,
+    "offline_workflow_passed": 5840,
+    "experiment_passed": 50,
+    "catalog_json_artifacts_verified": 3,
+    "frozen_source_hashes_unchanged": 9
+  },
+  "artifacts": {
+    "output/filename-patterns-20261015/disclosure-statement-replay-v1/manifest.json": "7df3234b47746a5f0e4c8e783b13015b76856bd8c81cebcc0e37cdc38a823f76",
+    "output/filename-patterns-20261015/disclosure-statement-replay-v1/summary.json": "7877918bfbbb2000256aaf2a7f762e5e245bb518caf5e5ca55c095c94e87de7a",
+    "output/filename-patterns-20261015/disclosure-statement-replay-v1/filenames-changes.csv": "5c16c12a6e888965b5c1831f75d6af9781f4a24f2f2d60eef9f075f2d36c6b24",
+    "output/filename-patterns-20261015/disclosure-statement-replay-v1/documents-changes.csv": "744c1ebf48ecaa7f967931b3623196f003e7e1927aa6f5f5e706d58e8967e38f",
+    "output/filename-patterns-20261015/disclosure-statement-red.log": "48e9751b3f30423e7632955643d39351bfc18576aa5ca5cc210549d3a74cff5e",
+    "output/filename-patterns-20261015/disclosure-statement-focused.log": "890f8817d6ac33d1a35c38767ca5de3246aa6fe0a83c056812a47328faa38f81",
+    "output/filename-patterns-20261015/disclosure-statement-offline.log": "25641d393e5363f584c1c5b3756a51272ec56ab8a9ce9feb06264c885999ad04",
+    "output/filename-patterns-20261015/disclosure-statement-experiment-tests.log": "8149489a57c8708ce5661ae1ae9d1e573b023b47261b50287824f5ed69d44d69"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "summary_path": "output/filename-patterns-20261015/current-review-candidates-v1/summary.json",
+  "summary_sha256": "9ef2ce1637c7c26f6f3ac1878e304f3b20e920fad497981876bab05c95e144ab",
+  "current_groups": 86,
+  "source_rows": 286,
+  "case_status": {
+    "candidate_applied": 81,
+    "annotation_only_unsupported_forms": 5
+  },
+  "changed_kind_sets": 62,
+  "same_kinds_with_review_provenance": 19,
+  "elapsed_seconds": 33.616,
+  "peak_process_rss_bytes": 1332903936,
+  "tests_passed": 83,
+  "bound_inputs_verified": 787,
+  "frozen_source_hashes_verified": 9,
+  "frozen_labels_unchanged": true,
+  "evidence": {
+    "output/filename-patterns-20261015/current-review-candidates-v1/summary.json": "9ef2ce1637c7c26f6f3ac1878e304f3b20e920fad497981876bab05c95e144ab",
+    "output/filename-patterns-20261015/current-review-candidates-v1/implementation.json": "fc2bbcf68338cde98a5a89015504c2d2102cc07316e2d9c007ea4e1705f2408f",
+    "output/filename-patterns-20261015/current-review-candidates-v1/run.log": "a709003765b179161246e41ba30cf44a5c511a8068256ede1896db7bdcdaddbc",
+    "output/filename-patterns-20261015/current-review-candidates-v1/documents.parquet": "887184f531b5a8f4fcdcb42e53d333b783e69083165f742a61055903de53a447",
+    "output/filename-patterns-20261015/current-review-candidates-v1/proposals.json": "43452292639926ab612d75d01f05eac7704177f411c67436da7b5d5ba2b5e51a",
+    "output/filename-patterns-20261015/current-review-candidates-v1/candidates.jsonl": "7f4c041cde201a7644c069b4097e8c021abf7c395de5bcc143bc4e8a28087fa7",
+    "output/filename-patterns-20261015/current-review-candidates-v1/tests.log": "e65ec71c565844bd5e69610c422176e300a20e1dfe1fd6eb9bd9c50f77c89555",
+    "output/filename-patterns-20261015/current-review-candidates-v1/document-filenames.parquet": "37d2819b7a8c8a410557327166164738f246befd71246baf20193f1af227b9b3"
+  },
+  "review_path": "docs/experiments/filename-patterns-20261015/REVIEW_CURRENT_REVIEW_CANDIDATES.txt",
+  "review_sha256": "043612d15c68fbc219cdb0247e3b93fe5feb7c27a3aaa711b2df22bf4eee75c7",
+  "production_selected": false,
+  "independent_reference": false,
+  "release_approved": false
+}

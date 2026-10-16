@@ -1,0 +1,12 @@
+{
+  "sha256": "0c10756589f6cf2d22434bd571ebeec7d477e591f58225afa062d553f0725cfe",
+  "bytes": 292002,
+  "groups": 86,
+  "evidence_files": 671,
+  "evidence_bytes": 156283397,
+  "catalog_id": "d42b9f6697914e68a688600705e1d65f",
+  "review_sha256": "c5e4c563c4b64c77d4798ad3e005830a107197b88551844b96c1df5e3c1d94c1",
+  "release": "document-reviews-c5e4c563-v1",
+  "asset": "document-reviews.tar.gz",
+  "archive_sha256": "48e6f1dede59ba9ac0e932da564c99eccde6f6eb96bab3ce203bb1370c9b7d10"
+}

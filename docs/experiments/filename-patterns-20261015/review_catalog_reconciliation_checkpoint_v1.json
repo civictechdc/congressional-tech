@@ -1,0 +1,39 @@
+{
+  "summary_path": "output/filename-patterns-20261015/review-catalog-reconciliation-v1/summary.json",
+  "summary_sha256": "3486c45fafa0895ee5ae86ed0357587add2187f421fe04085a2662f44268b8b1",
+  "catalog_id": "d42b9f6697914e68a688600705e1d65f",
+  "records": 91,
+  "current_documents": 90,
+  "selected_current_sources": 744,
+  "matching_body_and_source_identity": 85,
+  "body_status": {
+    "reviewed_body_still_only_eligible": 85,
+    "no_eligible_body_or_review": 6
+  },
+  "reasons": {
+    "role_not_document": 4,
+    "missing_document": 1,
+    "source_membership_changed": 1
+  },
+  "label_comparison": {
+    "same_labels": 18,
+    "different_labels": 67,
+    "not_comparable": 6
+  },
+  "tests_passed": 72,
+  "evidence": {
+    "output/filename-patterns-20261015/review-catalog-reconciliation-v1/summary.json": "3486c45fafa0895ee5ae86ed0357587add2187f421fe04085a2662f44268b8b1",
+    "output/filename-patterns-20261015/review-catalog-reconciliation-v1/implementation.json": "79059c850ee7ddcbf2dc1580a5a2ff44f719d5a3a0d26c58d295579d4b148656",
+    "output/filename-patterns-20261015/review-catalog-reconciliation-v1/run.log": "c76f53e7e743d236b214099fea9ab281b6a6b1c9971446d4e62349ef511609ca",
+    "output/filename-patterns-20261015/review-catalog-reconciliation-v1/reconciliation.jsonl": "98b762ccd5e49949bdff00e1e5e8c7bcd882589a1a71374efe5d641db246617b",
+    "output/filename-patterns-20261015/review-catalog-reconciliation-v1/moved-palmer-diagnostic.json": "679428d447ae1e56ad35dced9270cf25b1205891beebe89ad46da035d55aecf1",
+    "output/filename-patterns-20261015/review-catalog-reconciliation-v1/reconciliation.csv": "c8b18633e472ce583cd18186d77274cf40dd82ae9548d067b7ebd2eb63ea37f4",
+    "output/filename-patterns-20261015/review-catalog-reconciliation-v1/tests.log": "288b51b87fd2109183a975cf72fb1f6f29e44941f9c23c3b4a7ba3b833ef543a"
+  },
+  "review_path": "docs/experiments/filename-patterns-20261015/REVIEW_CATALOG_RECONCILIATION.txt",
+  "review_sha256": "b1047b8c8504d8be69d1414089b3053679b65c163914511c889515acafd4de32",
+  "transfer_approved": false,
+  "classification_mutations": false,
+  "frozen_source_hashes_verified": 9,
+  "frozen_labels_unchanged": true
+}

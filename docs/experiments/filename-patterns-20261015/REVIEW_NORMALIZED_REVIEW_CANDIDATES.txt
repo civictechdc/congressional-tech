@@ -1,0 +1,80 @@
+Explicit normalization and fresh review bindings: self-review
+=============================================================
+Findings
+--------
+No blocking findings within this local experiment. The new bindings survive all
+seven replay scenarios with identical complete baseline semantics and candidate
+values. This closes the selected-cohort cache/refresh binding check. It does not
+qualify full-catalog refresh, independent reference accuracy or production adoption.
+
+Patch summary and trace
+-----------------------
+Paths below are relative to this experiment directory unless stated otherwise.
+
+Function | Location | Input -> output | Verified behavior
+validate_transition | normalized_review_candidates.py:19 | raw and normalized full rows -> differences | Deep-copies raw rows, restores only filename claims with existing logic, unions member claims, rejects all other differences and identity changes.
+bound_summary | normalized_review_candidates.py:39 | checkpoint -> directory/summary | Verifies summary bytes, every input binding and every named output; records hashes for later rechecks.
+run | normalized_review_candidates.py:49 | current/path/receipt checkpoints -> new local candidates | Requires cross-bound checkpoints and all consumed files; validates transition, pair references, old candidates and full review chain before new binding.
+read_ledger_candidates | normalized_review_candidates.py:119 | JSONL -> candidate map | Rejects duplicate document identities.
+CLI | normalized_review_candidates.py:126 | four path arguments -> run | Writes a new experiment directory only; no production caller.
+restore_filename_kind | congress_api/retention/document_index.py:119 | row -> filename claim | Existing restoration policy, applied to a copy so selected values stay unchanged.
+select_candidates | current_review_candidates.py:72 | proposals, originals, current pair, reviews -> candidates | Exact group coverage, eligible body, role, member union, original row and receipt/form checks; verifies withdrawal.
+load_reviews | catalog_content_review.py:77 | receipt chain -> validated observations | Revalidates saved PDF signatures/page counts, hashes, page coverage, renders, source rows and explicit non-reference status.
+audit_scenario | current_review_path_replay.py:32 | full rows and saved candidates -> diagnostics | Reapplies exact bound digest and checks withdrawal without rebinding.
+
+Data flow and invariants
+------------------------
+H1: Normalization can be recorded without weakening the original full-row binding.
+Confirmed: validate_transition permits only the existing filename restoration and
+document member union. It compares every other non-null value and exact identities.
+Raw rows, historical receipts, proposals and earlier candidates are never modified.
+
+H2: Rebinding could accidentally change the reviewed forms or their attribution.
+Guarded: run reloads complete receipts, recovers each original from its own bound
+ledger, and calls the existing selection path. Its comparison permits only the
+new baseline/review group digests and the document filename claim to differ from
+the previous candidate. A changed form, selected interpretation, source receipt,
+review flag or other candidate field raises before output creation.
+
+H3: The normalized pair may be reconstructed and lose nested values or metadata.
+Avoided: both complete Parquet files are copied byte-for-byte from the bound disk
+replay outputs and hash-checked. Full pair reference validation precedes copying.
+Inputs are rechecked before and after writing; implementation identity is checked
+before output creation. Failures after writing leave an incomplete directory
+without a completed summary/checkpoint. Existing output directories are refused.
+
+Tests and actual evidence
+-------------------------
+test_normalized_review_candidates.py:24 checks preserved inputs and exactly the
+expected source/document additions. At :33 eight cases reject changed bodies,
+membership, source text, selected kind/provenance, unsupported restored claims,
+content-only claims and wrong group unions. At :60 real PDF receipts and Parquet
+files exercise successful rebinding, changed PDF, changed normalized metadata,
+an unrelated receipt checkpoint and an omitted input hash. Failure occurs before
+output creation; success preserves prior files and review content, changes the
+group digest, copies Parquet bytes exactly and refuses overwrite.
+
+All 70 relevant tests pass in 3.24 seconds, including existing receipt validation,
+candidate selection and six-path integration tests. No production source changed
+in this commit; the preceding cache fix retains its separate 111-test evidence.
+
+normalized-review-candidates-v1 records 86 explicit digest transitions across 286
+source rows. It preserves 81 local selections and five whole-packet annotations.
+normalized-review-path-replay-v1 then verifies the saved baseline plus reference,
+reversed-alias, disk, cached disk, refresh reuse and refresh reparse scenarios.
+Every complete row and candidate matches in all seven scenarios; withdrawal works.
+The actual replay took 4.788 seconds and peaked at 199,606,272 bytes process RSS.
+This is a selected-cohort measurement, not a full-catalog capacity estimate.
+
+Next steps and conclusion
+-------------------------
+Audit the candidate's family handling before introducing a production review
+input: subtracting families inferred from old kinds can erase a family that also
+has publisher-context support. Identify actual affected rows and preserve that
+provenance through the maintained selector. Then define the explicit review input
+and withdrawal behavior for production, resolve the five unsupported packet forms,
+and qualify the broader catalog. Independent references and matching publication
+evidence remain separate requirements; held-out body review remains locked.
+
+VERDICT: APPROVE for explicit normalization binding and selected-cohort replay.
+Coverage of changed paths: ADEQUATE. Confidence: HIGH for this scope.

@@ -1,0 +1,122 @@
+Local complete-document review preview: self-review
+===================================================
+
+Findings
+--------
+No unresolved correctness finding in the inspected patch. This is a self-review,
+not an independent reference or release review. Live verification results are
+recorded separately in viewer_review_checkpoint_v1.json.
+
+Resolved during implementation: the baseline result initially shared its kind
+list with the caller. ReviewSnapshot.selection now copies that value; the
+mutation assertion in tests/test_document_review_viewer.py preserves the original
+rows. Rendered-page ordering uses the admitted numeric page suffix, not dictionary
+order, so page 10 cannot be substituted for page 2. No-review lookups avoid reading
+full nested groups; configured failures remain visible before that fast path.
+The real in-app browser left an inline PDF preview blank. The reviewed PDF is now
+an explicit attachment download; PNG page images remain viewable directly. The
+HTTP test checks that disposition, and the live checks verify the same PDF bytes.
+Original archive-access failures are labeled separately from review evidence.
+Concurrent browser/API requests exposed PyArrow ReadRangeCache errors on shared
+ParquetFile objects. Catalog now serializes its file reads with one lock, including
+advanced-field searches. The controlled overlapping-read test and concurrent HTTP
+test cover the same boundary; resident Arrow list/filter operations stay unchanged.
+
+Patch summary and function trace
+--------------------------------
+R = packages/congress_api/src/congress_api/retention/document_review_viewer.py
+V = docs/youtube-coverage/research/scripts/view_document_filenames.py
+J = docs/youtube-coverage/research/filename-viewer.mjs
+
+| Function | Location | Inputs | Output / verified behavior |
+| --- | --- | --- | --- |
+| _stamp | R:16 | File path | Device, inode, size, modification/change times |
+| ReviewSnapshot.__init__ | R:27 | Manifest, pin, source/document paths | Verifies pair and portable bundle once; retains detached candidates |
+| check | R:38 | Current file identities | Refuses changed immutable files |
+| selection | R:42 | Complete document and sources; withdrawal flag | Original/preview fields and full observation; calls select_document with/without candidates |
+| evidence | R:52 | Complete group; evidence type/page | Bound bytes with hash and PDF/PNG format checks; text/plain for text |
+| Catalog.__init__ | V:269 | Catalog paths, optional manifest/pin | Baseline tables plus verified reader or explicit failure |
+| Catalog.searchable | V:390 | Field name | Resident column or serialized full-column read |
+| Catalog.record | V:464 | Source row ID | Serialized complete source row read, cached |
+| Catalog.document | V:494 | Source row ID | Serialized complete document row read |
+| Catalog.entry | V:472 | Source row ID | Existing original detail; delegates document read |
+| Catalog.review_rows | V:500 | Source row ID | Checks snapshot; reads all columns of document and every member |
+| Catalog.review | V:508 | Source row position, withdrawal | Checked no-review fast path or full-group selection |
+| Catalog.review_evidence | V:519 | Source row position, type/page | Complete group passed to verified evidence reader |
+| Handler.send | V:532 | Bytes, MIME, optional fixed attachment name | Existing headers; attachment only for reviewed PDF |
+| Handler.do_GET | V:547 | Local HTTP URL | Review/evidence routing through catalog identity validation |
+| main | V:631 | CLI arguments | Passes optional manifest/pin into Catalog, then serves localhost |
+| openDetail | J:123 | Selected source and catalog | Clears panel, invokes optional review load |
+| loadCompleteReview | J:186 | Entry, controller, withdrawal | Shows original/preview, complete notes and evidence; refuses late results |
+| loadEvidence | J:476 | Original archive access | Failure message distinguishes original archive from separately verified review |
+
+Important callees: document_review_bundle.select_document (:12) rechecks the full
+candidate semantics; document_review_portable.load_portable (:96) verifies the
+whole closed evidence store; resolve_evidence (:106) checks requested evidence.
+Catalog.resolve (V:378) rejects mismatched catalog URLs. The existing localhost
+Host guard covers new routes. node/fact/link helpers render text safely, without
+executing markup from document observations. filename-viewer.html:242 adds the
+initially hidden section; filenames.astro imports that shared HTML, while published
+providers omit the new capability and never call the optional endpoints.
+
+Data flow and invariants
+------------------------
+Catalog bytes -> pinned ReviewSnapshot -> full current group -> maintained selector
+-> separate original/preview fields plus complete body_observation -> detail panel.
+Evidence type/page -> a locator from the verified observation -> closed portable
+resolver -> exact returned bytes and known MIME type. No client filesystem locator. Catalog.read_lock surrounds full source/document
+row-group reads and advanced search column reads; ParquetFile caches are never
+used by simultaneous HTTP requests.
+
+Original rows, search filters, download routes and saved indexes remain baseline.
+The browser never mutates catalog state. Withdrawal applies to the open preview;
+reopening starts a fresh preview. File changes refuse selection until restart.
+Evidence is loaded from the portable store, with no original-path fallback.
+Historical receipt/source locators remain literal in API data. The preview labels
+assistant review and its lack of independent/reference/release approval.
+
+Verification and edge cases
+----------------------------
+- tests/test_document_review_viewer.py:14 covers supported and unsupported forms,
+  withdrawal/restoration, one bundle load, detached values, exact PDF bytes,
+  non-PNG refusal, nonexistent pages, arbitrary types and changed source rows.
+- :56 covers changed catalog, manifest and evidence objects after loading.
+- :70 covers a different baseline before admission; :77 uses the actual HTTP
+  handler for selection, withdrawal, evidence, stale catalog URLs, invalid types,
+  post-load manifest change and startup verification failure with usable baseline.
+- :134 covers literal native text bytes served with text/plain, including markup
+  that must not execute as HTML.
+- tests/test_filename_viewer_ui.mjs:756 covers both selected and annotation-only
+  packets, preserved completeness notes, escaped text, page links and toggle calls.
+- :784 distinguishes failed verification from no review. :797 confirms the shared
+  published UI does not request optional review endpoints. The late-response
+  test at :805 confirms a prior document cannot overwrite a new review panel.
+- tests/test_document_filename_viewer.py:538 uses guarded real Parquet readers
+  with competing detail/source/search requests to reject overlapping file reads.
+  The HTTP review test also issues 30 concurrent entry/review requests.
+- Existing viewer tests cover ordinary source/detail behavior and Host refusal;
+  bundle/portable tests cover exact complete receipt, policy and catalog bindings.
+
+Limits and next action
+-----------------------
+The local preview is the only newly connected consumer. Public data publication,
+search using reviewed categories, independent reference review and held-out
+qualification are not implemented by this patch. The full portable store is
+verified server-side once; it is not downloaded by the browser. File stat checks
+assume normal local immutable files, not an adversarial filesystem capable of
+forging metadata. Full nested reads for reviewed groups retain the existing local
+viewer row-group memory behavior; no new speed or memory improvement is claimed.
+
+Live results: all 86 groups / 530 pages match the admitted bundle; 81 selections
+and five annotations persist, with 86 successful withdrawals. Twenty-four HTTP
+evidence downloads match their original hashes. Seventy-two concurrent detail and
+review requests pass while the full-cohort checker also runs. The real browser
+shows supported, unsupported, unaffected and verification-failure cases, restores
+withdrawn kinds, displays page images and downloads the exact reviewed PDF. The
+119-page unsupported packet exposes 119 page links and its complete retained notes.
+133 Python tests and 41 browser interaction tests pass. Both complete baseline
+files and all 11 protected evaluation inputs remain unchanged.
+
+VERDICT: APPROVE for optional local preview.
+Coverage of changed paths: ADEQUATE for this scope.
+Confidence: HIGH for tested selection/refusal paths; no public adoption claim.

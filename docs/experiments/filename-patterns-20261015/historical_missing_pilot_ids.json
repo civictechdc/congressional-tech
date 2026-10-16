@@ -1,0 +1,2638 @@
+{
+  "catalog_id": "7f0b0aa7b53e4205b050ac260d0bc6a7",
+  "documents_sha256": "78b1db723cfc2ef3bd909be1de598a5ab397a9846399e57f355551dacf1105a4",
+  "sample_sha256": "55b3256dc0bfee57d90235b7d8d9b216060bc145d82926709a5b01beed619237",
+  "scope": "historical-metadata-only",
+  "records": 145,
+  "counts": {
+    "no_nonempty_body_or_url_match": 79,
+    "url_match_without_frozen_nonempty_body": 66
+  },
+  "input_bytes_unchanged": true,
+  "body_content_read": false,
+  "labels_or_predictions_read": false,
+  "identity_remapping_applied": false,
+  "rows": [
+    {
+      "review_id": "D003",
+      "document_id": "57fd381e194525d7da322111047c5ddf9ca572fb4307d6fcca81fbee1611edb6",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [],
+      "frozen_source_urls": [
+        "https://www.1010ez.med.va.gov/sec/vha/1010ez/Form/1010EZR-fillable.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D004",
+      "document_id": "d4045589d2642e0db58c7bf0d56f90fbc29be6cf3683cee36df8f78a02d6a970",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "498cb600888cbcf12ad661d7e519b179c529b61917fca79a322ce17ece643d20"
+      ],
+      "frozen_source_urls": [
+        "https://19january2021snapshot.epa.gov/sites/static/files/2013-12/documents/2010_0310_pa_0.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H001",
+      "document_id": "908fb3b8bb132fb0804e5c5473d05ce0f7d15eedadf506011929c0fbf05e11c0",
+      "split": "held-out",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "2badfb3d4c561ed24b6cb95201f7bb3eb9d435ce54cce882c5b62479f207e1f8"
+      ],
+      "frozen_source_urls": [
+        "https://www.aaas.org/sites/default/files/2019-01/AAAS%20RD%20Primer%202019_2.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "a7748e925e6251619df9dd7624d7ea5bd15dcc8ab46d243547a4a7f3ef1934ac",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://www.aaas.org/sites/default/files/2019-01/AAAS%20RD%20Primer%202019_2.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "D006",
+      "document_id": "0f4ea4e2cffbe953dcc3f8fcb06a2914bf3616edd86a0bfed7d69452376bab4a",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "cee539bbc0fd46c96f490064a50a5769165fbd9b8a6d9b97c8ae39b97cf46527"
+      ],
+      "frozen_source_urls": [
+        "https://aei.org/wp-content/uploads/2020/03/National-Coronavirus-Response-a-Road-Map-to-Recovering-2.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D012",
+      "document_id": "786314610dbc00121079e33efe7e84f52c77c912a00eab9e8fd9c2386dc2e066",
+      "split": "development",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "9c6633dc0506e7e44e748d6eaf7a80d46031dcb0659d4990c767535ef5409078"
+      ],
+      "frozen_source_urls": [
+        "https://americansfortaxfairness.org/wp-content/uploads/2018-5-24-Harley-Davidson-plant-closing-in-MO-1.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "baa3d1f21fb591c90e5a199ff8ff772e2dc727b02e357ba27e9fc511cb8d764b",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://americansfortaxfairness.org/wp-content/uploads/2018-5-24-Harley-Davidson-plant-closing-in-MO-1.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "H007",
+      "document_id": "09a9f80fb8d9b9c9e1c0ff79a93833fa87116a4fc4a69a63bce0a441074e6785",
+      "split": "held-out",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "651c9c2c132f175eca236373229cbd4957dbce8b9fff1985c79b34ee2d0aba2e"
+      ],
+      "frozen_source_urls": [
+        "http://ap.ohchr.org/documents/E/HRC/resolutions/A_HRC_RES_7_23.pdf",
+        "https://ap.ohchr.org/documents/E/HRC/resolutions/A_HRC_RES_7_23.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "cb3823b8ca384378e7ee449414bb9142408310ab53868d13a596e1e6a2f09fde",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "http://ap.ohchr.org/documents/E/HRC/resolutions/A_HRC_RES_7_23.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "H009",
+      "document_id": "e9fabfc8f73417b6983ba2ed16e85a24734242f3defcb62c24e91172060eafa0",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "87faf9e0492f20cbf206517fe052e19b189b6f1525b0b244a3f7774ae58ac648"
+      ],
+      "frozen_source_urls": [
+        "https://archives-energycommerce.house.gov/sites/republicans.energycommerce.house.gov/files/114/Hearings/CMT/20150127/HHRG-114-IF17-IF03-MState-B001248-20150127.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D015",
+      "document_id": "041937c33a828e8501929fd4be046bd2dd1c2cee1c48f520605e7446f134c489",
+      "split": "development",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "c069fce7f898e149c7de1d4c8b7eeddabe1cdf5f885ef6da01e54802ad5168e7",
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "frozen_source_urls": [
+        "http://archives-financialservices.house.gov/media/pdf/111-C.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "ddf4ba30450152c7b4f4b5f50da9365b80d87deba6918cbfd7e09c47a6d27c49",
+          "matching_body_hashes": [
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "matching_source_urls": [
+            "http://archives-financialservices.house.gov/media/pdf/111-C.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          ],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "H010",
+      "document_id": "d45e269d33cf04fedf6feca5beba0a4fb17078e0dfbb9975cfeb3ad5ae44f6ea",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "84a33e07db8b9489960becb3017c9a2a5477c4d8ebf13485ca11528ad90f758e"
+      ],
+      "frozen_source_urls": [
+        "http://archives-republicans-foreignaffairs.house.gov/110/41020.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D016",
+      "document_id": "db7a3d4750363e10c10c6066062dd374638b30782729372e93303d3d372c9763",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "b00c87504b0142f64ee84df73811be6f2acd6678858c6bb1e1a38de0d4a2ab55"
+      ],
+      "frozen_source_urls": [
+        "http://archives.democrats.science.house.gov/Media/file/Commdocs/hearings/2009/Space/19nov/Schrogl_Testiomny.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H013",
+      "document_id": "4911d452d352097216e8ffa464147ec1a2a4d35c16dcee865ab701199aa210e1",
+      "split": "held-out",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "f6f58117ea4385fb94c9a11d433c5bb685c6b6f691944d5cdce55d22b463f651"
+      ],
+      "frozen_source_urls": [
+        "https://www.asanet.org/sites/default/files/savvy/images/journals/docs/pdf/asr/WesternandRosenfeld.pdf",
+        "https://www.asanet.org/wp-content/uploads/savvy/images/journals/docs/pdf/asr/WesternandRosenfeld.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "81d8bf98d69785aa9cbfd0bdff7a1b6141de4952c2f6bea55bb706f9730036dd",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://www.asanet.org/sites/default/files/savvy/images/journals/docs/pdf/asr/WesternandRosenfeld.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "H015",
+      "document_id": "ed05aa0778463a5aff7cf7b0307ee9e7c9ac9a03d2628e4914353b4df967c180",
+      "split": "held-out",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "062affc6fccdb195fc98939708265b9d1f79fa7cdaed5a6f6c05e1307aa39a87"
+      ],
+      "frozen_source_urls": [
+        "https://www.bea.gov/sites/default/files/2020-05/gdp1q20_2nd.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "a4f6bd0dd8965bc6ea10a38344d54f4351671fc98f6def7ea0a8e19d432e3794",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://www.bea.gov/sites/default/files/2020-05/gdp1q20_2nd.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "D022",
+      "document_id": "4bd951ccf0fa2dc4a8e1bd2d720434a0c44dc1ef2f965b3b9d2298137f005c3a",
+      "split": "development",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "12e8171bc3655ae8777edf9939586c9fe24f7d73d1f1e073f23594ba5b579e6f"
+      ],
+      "frozen_source_urls": [
+        "https://bfi.uchicago.edu/wp-content/uploads/BFI_WP_202080v2.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "0bdb93c8137925a8e5d0705b34dc4b6d175df799a6f0462a580cd2ba1e1e0361",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://bfi.uchicago.edu/wp-content/uploads/BFI_WP_202080v2.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "D023",
+      "document_id": "ee448e0f99668d4de42b251de24442560fdaa1a5609ad8c689a8f35686c948c9",
+      "split": "development",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "9e7f0e81f7da9ecc030bfa55ca7ab9d9c1025e5f2c897a6ee92c18046d5e8c86"
+      ],
+      "frozen_source_urls": [
+        "https://bipartisanpolicy.org/wp-content/uploads/2020/08/BPC_RD-AI-Paper_RV5.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "924a87c1455a0d7472afc565f3b9aeaae4882f2045581c84b1d9c6e551959e94",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://bipartisanpolicy.org/wp-content/uploads/2020/08/BPC_RD-AI-Paper_RV5.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "H017",
+      "document_id": "eeec90da35f9913f4fa4d70657defef8b67d36020329ec59f83e09a3f359f813",
+      "split": "held-out",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "bb9ec370ebeb2d20d71d519203b7893a87241cc2b1c7a73b125613b2ffcc83cb"
+      ],
+      "frozen_source_urls": [
+        "https://www.brookings.edu/wp-content/uploads/2020/08/AutorReynolds_LO_FINAL.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "411fbb10f90de997d975b949415658d8e749c14d7a46e01e423c0cd0ccd48db9",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://www.brookings.edu/wp-content/uploads/2020/08/AutorReynolds_LO_FINAL.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "D026",
+      "document_id": "26e628c69a7e03aa5fc815f6129cee05a9fefa4f20013a6d66e0e16e5fa8b280",
+      "split": "development",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "0f985b4ae277c81ba4d5721d56b91f5a481b6a067bed4f6f21ceb8506e9bb23b"
+      ],
+      "frozen_source_urls": [
+        "https://www.cbpp.org/sites/default/files/atoms/files/10-15-15pf.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "0d4cf93a990ea32a691221b0af9225fe82d7a50ec7a77075b6061fca6d8085fa",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://www.cbpp.org/sites/default/files/atoms/files/10-15-15pf.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "H018",
+      "document_id": "9d598f1a998803514a22a054f2164ed31102331d0dff7305931dcf19d97fc639",
+      "split": "held-out",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "515cec1f10c91b1cbdba00a034f80f4bfed3a43aa50f673c9105baa1e7c796eb"
+      ],
+      "frozen_source_urls": [
+        "https://www.census.gov/content/dam/Census/library/working-papers/2017/demo/SEHSD-WP2017-39.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "ceaec8904af0960d05b6a5f17a01f8893f8a470510680986c787180c61c5e3ca",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://www.census.gov/content/dam/Census/library/working-papers/2017/demo/SEHSD-WP2017-39.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "D028",
+      "document_id": "e4222fbcbbb7b14c78fd1f067986cc38f6865f59f8cea49eb489915ae2606b1a",
+      "split": "development",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "1dfc75fbdda229ff0e1df5a0c9c983a87f79f9c0836fb780245349c83a2cb795"
+      ],
+      "frozen_source_urls": [
+        "http://cep.lse.ac.uk/pubs/download/dp1634.pdf",
+        "https://cep.lse.ac.uk/pubs/download/dp1634.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "3fa0f18f404bbe3bc968dd7e653d97ce1572870b8385fc14391a41edcecae3f8",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "http://cep.lse.ac.uk/pubs/download/dp1634.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "H019",
+      "document_id": "7687e73f873c27645038d5efca89535c841b8d80c494ce16e0dba97250c3350b",
+      "split": "held-out",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "a122d20f8dd02718a228dee38937c55f6c70b1efd257504b8cd0cf2bb8813d95"
+      ],
+      "frozen_source_urls": [
+        "http://www.childhealthdata.org/docs/drc/aces-data-brief_version-1-0.pdf",
+        "https://www.childhealthdata.org/docs/drc/aces-data-brief_version-1-0.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "d4bf43890f0ac5335a89a721ee49b3ec26ccf1dbdfed7acddfbc232fcc85f43b",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "http://www.childhealthdata.org/docs/drc/aces-data-brief_version-1-0.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "H020",
+      "document_id": "57ef7146b4300139d27bb86f016bfad8629ce87b3b5c0de2ab82d7c631716118",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "223ce1eb817081cbde8ce033cc2796318fd10098fce6952d5740bbd865a029e4"
+      ],
+      "frozen_source_urls": [
+        "https://chinaselectcommittee.house.gov/sites/evo-subsites/selectcommitteeontheccp.house.gov/files/evo-media-document/9.10.24%20Wittman%20CM%20PWG%20%234.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D034",
+      "document_id": "f03f27714427aa6c2d1382f43b201a12daeb20996a0d735bbd7747c7c013776e",
+      "split": "development",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "4634f822dca710ecdac3894d62bb9323aaa52b0913fffd3aa8c5b5525f998e8f"
+      ],
+      "frozen_source_urls": [
+        "https://www.cms.gov/ReportsTrustFunds/downloads/tr2013.pdf",
+        "https://www.cms.gov/Research-Statistics-Data-and-Systems/Statistics-Trends-and-Reports/ReportsTrustFunds/downloads/tr2013.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "e3f97cbded1d63a292758365b20beb09606997e304381f3464fb250c32034e39",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://www.cms.gov/ReportsTrustFunds/downloads/tr2013.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "H025",
+      "document_id": "73f11046b7d90f629b4e6c2aa44e604c9c32ba000e78387577692f2fcffcbbf5",
+      "split": "held-out",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "376d278e481ebeca6997624033c361626b736bff989745b6ce1964923096a202"
+      ],
+      "frozen_source_urls": [
+        "https://www.congress.gov/115/statute/STATUTE-132/STATUTE-132-Pg1487.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "c2d75c7a10e0890a75db81c2470ce6820231b1d974b3e6d370149553fd164ecb",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://www.congress.gov/115/statute/STATUTE-132/STATUTE-132-Pg1487.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "D037",
+      "document_id": "0fc6135ea6cf4cb94f556bb6ebc90ea1a7525ab5d70bb6dcee34caae910be99f",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "4b1927e7fef64a653626385d75f8bfd6620ff5cae072a5fa72145cdc86546029"
+      ],
+      "frozen_source_urls": [
+        "https://coronavirus.house.gov/sites/democrats.coronavirus.house.gov/files/JEC%20Opening.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D038",
+      "document_id": "0ecf58ded23917dc7c54f111f0157b5bf85960c67e9a4990d6422c40c60d5615",
+      "split": "development",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "d1cf56007d9ff6e2a41b99ae448b687052911ab44b7d6d416f962eb4fca2cc67"
+      ],
+      "frozen_source_urls": [
+        "http://crr.bc.edu/wp-content/uploads/2015/10/figure-10.pdf",
+        "https://crr.bc.edu/wp-content/uploads/2015/10/figure-10.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "b1dbbb08cc2bf9070c80dca110b468776bcf2df311bf073a04e707599a720bfb",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "http://crr.bc.edu/wp-content/uploads/2015/10/figure-10.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "H026",
+      "document_id": "32e5c4b15246ce3168839277b7cf699fde90760195a45f2cf4d0a236b2f49391",
+      "split": "held-out",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "d9299f25c0f2ea2aad3973d65de102adf3460b52662bf4dfa06ea1d91a17566b"
+      ],
+      "frozen_source_urls": [
+        "http://www.cs.cmu.edu/~tom/pubs/Science_WorkforceDec2017.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "ddd8399c70eddbef3a65a6c6cfe418682b2945a6dff551e58e9aad2eb1bcf493",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "http://www.cs.cmu.edu/~tom/pubs/Science_WorkforceDec2017.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "D043",
+      "document_id": "ba343e897d6299977f7b75bf2df8e680eb2d117084a1899fa3ddbe2771e812be",
+      "split": "development",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "9348703c67b6f256b3d48e0d1374b67fe2bf3ebb4a233bdfc3f882df6bbd8b64"
+      ],
+      "frozen_source_urls": [
+        "https://democrats-budget.house.gov/sites/evo-subsites/democrats-budget.house.gov/files/documents/Why%20Federal%20Investments%20Matter_Pre-Hearing%20Report.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "344029cc48694e6002dcefa9424a7d799799ded41705470e48dff01191fc710e",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://democrats-budget.house.gov/sites/evo-subsites/democrats-budget.house.gov/files/documents/Why%20Federal%20Investments%20Matter_Pre-Hearing%20Report.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "H030",
+      "document_id": "55314640a1683f0f130f5ea3f70035fa3c8e2ac5f1ae27d6f1af85157eef0d9f",
+      "split": "held-out",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "38e152bb7f4a2af25cf932e81a1ecd129d09637aa97962d0d49509548e3c06c3"
+      ],
+      "frozen_source_urls": [
+        "https://democrats-budget.house.gov/sites/evo-subsites/democrats-budget.house.gov/files/01.16.15%20sequestions%20FAQs_0.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "2f174af4b71e56d42fc44f4ae3f46762dddabaae6546d26c634b0d243fe96d72",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://democrats-budget.house.gov/sites/evo-subsites/democrats-budget.house.gov/files/01.16.15%20sequestions%20FAQs_0.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "D046",
+      "document_id": "33a093a0bd3f9e5eb7a1000af04785c871359dd60657c141ae29a0f72f3594e9",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [],
+      "frozen_source_urls": [
+        "https://democrats-edworkforce.house.gov/imo/media/doc/documents/111/pdf/letters/20090721-SAFRA-SHEEO.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H037",
+      "document_id": "4fd06b88263940cd221e942ca7f4b327d2a08ce07428dcfa559f69ed1ee924bd",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "17f2b09149e6df993617730c64b190e8262790a684296d48df9fee3d52c61f0d"
+      ],
+      "frozen_source_urls": [
+        "https://democrats-oversight.house.gov/sites/democrats.oversight.house.gov/files/documents/Opening%20Press%20Version.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H041",
+      "document_id": "044eb8e816d41015329f43c62e9df2fb43844af07988d26697bad9a9e76cff68",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "c2f4458bf646af6bb628eb85a62933e9e86d173ecb3355c4407bc1724a2ec156"
+      ],
+      "frozen_source_urls": [
+        "https://democrats-transportation.house.gov/imo/media/doc/Plaskett.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D054",
+      "document_id": "6c8972c8fe7539cf2ae8ae01fba8e4542b7f749d5af7ba350dc23db96512a247",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "60b1039e8619299feb78a4344b1cbd7727979336c26d71a44c97dcb114313329"
+      ],
+      "frozen_source_urls": [
+        "http://democrats.foreignaffairs.house.gov/110/36062.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H045",
+      "document_id": "fc79441dfbfb1a1de44e97ed4f80cb1609471a4c5dd9834c1b8d1e4870c41a49",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "3f5ba0620fb51048e717640068d1a242f2cf59cfd4cbceeec510963d88906bc2"
+      ],
+      "frozen_source_urls": [
+        "http://democrats.foreignaffairs.house.gov/110/32547b.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D055",
+      "document_id": "9b9a5de1a048b7d6ebcaff650634a282502a815d8f1d7f57a8c7648ae66fdd68",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "fb96612aebcd1732cd573e40ece9abccc7f315802d22d880d4f21bb61f3fcaf1"
+      ],
+      "frozen_source_urls": [
+        "http://democrats.naturalresources.house.gov/sites/democrats.naturalresources.house.gov/files/404/weldontestimonyhr4272_6_9_14.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D056",
+      "document_id": "ce28e3e258637eba102a10023a1544c9ca88cb22e4b0aad510f891f6738d35ef",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "8eac38fc2b0778dacaf9527de9548ab9f5a17de0757b18efa9c1fce30fe0efd4"
+      ],
+      "frozen_source_urls": [
+        "http://democrats.naturalresources.house.gov/sites/democrats.naturalresources.house.gov/files/Clear%20Creek%20HR%201776%20%20Hearing%20Farr%20Testimiony%20May%202014.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H046",
+      "document_id": "dd3595c385053437f784f374dd8cd6b20c95ee52c644ce5d72e6049312597ab7",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "e235ee67ada99e10abba4108eb674ffc1bcb6b785c0edbd30d74ae096ac79ae0"
+      ],
+      "frozen_source_urls": [
+        "http://democrats.oversight.house.gov/sites/democrats.oversight.house.gov/files/documents/ConnollyOpeningonLetterhead.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H047",
+      "document_id": "3ec495f8c544c9a6677d5faa5ae3fe82a191de8925325c1d97f393e8cf85931c",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "97190b435f4ecdc072b1667b2a14915529578ca505826aadfa315fa18e9bd25d"
+      ],
+      "frozen_source_urls": [
+        "http://democrats.science.house.gov/Media/File/Commdocs/hearings/2007/full/08feb/pelosi_asdelivered.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D057",
+      "document_id": "5026bdf853869e4df64b93cb76ff47f066f37c2a1e8974e4bd736332ee05b366",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [],
+      "frozen_source_urls": [
+        "http://www.directstudentloancoalition.org/media/news_autogen/031910_White-House-docs.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D059",
+      "document_id": "ede0f8789ff7a220ccc8adacb701fa177d58ced333b95ce8faa114bc22ded3b4",
+      "split": "development",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "03f9b7197c7f2fc2f32fc9c7f6eb0d34106bcc3c813a51476383c9fb4f563147"
+      ],
+      "frozen_source_urls": [
+        "http://ftp.iza.org/dp11612.pdf",
+        "https://docs.iza.org/dp11612.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "cea48ff66a38caa2788eccc24c89325c77964bcf88bf019e51b079507fb18eff",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "http://ftp.iza.org/dp11612.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "H052",
+      "document_id": "5274602a7fefd15090cd5b32140f35cb4d0b9bfa901717b8f97d22aa9a7ac074",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "71192f28d6287da99114d36c1032fba8c55d7343093c9135bcf33da3dcc49a2f"
+      ],
+      "frozen_source_urls": [
+        "https://www.doioig.gov/sites/default/files/2021-migration/FinalEval_BIESchoolFacilitiesB_093016.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H055",
+      "document_id": "4683faa84aee15cdedfbc697aa923ac3fed34c9f8e5a5b63238a95ceb2522379",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "f151fa5679464f57a6f4cd1e64b65b755f110c345f8639f056c52be85671c503"
+      ],
+      "frozen_source_urls": [
+        "http://edlabor.house.gov/markups/pdfs/HR1338/Final%20passage%20vote%204.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D061",
+      "document_id": "9dd6561d71a20eff9abb3fc31277ec58e756f713ede808f775ea2db6d75843ca",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "b6f9a0088bbdb0561a0d98e49aae33bb53c8b12c0110dfe9f297dc53582f841c"
+      ],
+      "frozen_source_urls": [
+        "http://edlabor.house.gov/markups/pdfs/HR3289/HARE_045_xml.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H056",
+      "document_id": "763020b26227bca13c6b6d098f85e8f4429659d1be5f219a15d665e2a57808f8",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "c64a54c20acf2633a6c3e9d3db7efd2ca1ed4888903fc162adf2a4043983c5d1"
+      ],
+      "frozen_source_urls": [
+        "http://edworkforce.house.gov/markups/pdfs/HR3796/hr3796finalvote.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D063",
+      "document_id": "546539a80993203bd7718c2059b0a75f1b3ad8d2e6e370205bf649f8bfd4ce4c",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "683b4bf0ac463fee0aebafdfa6925b7f44869d260eb2da084af5dd8ee75fdac9"
+      ],
+      "frozen_source_urls": [
+        "http://edworkforce.house.gov/markups/pdfs/HR3796/WARN_SUB_xml.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D065",
+      "document_id": "2a70ec2a7fce89ba8315747d348c89a041b62739c997eb078812ec695a273abc",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "18579f68c17cc669b6f067835718961fc5c495fde4132f487e48d06114b9915c"
+      ],
+      "frozen_source_urls": [
+        "https://energycommerce.house.gov/sites/democrats.energycommerce.house.gov/files/documents/%232%20-%202017.07.04%20White%20memo%20to%20OS.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H060",
+      "document_id": "658c8411f1d34366cef814a41bca6d723a1800a0a4ac298e38bc6d473d8820a7",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "563bd3d0d088c469d5606155373b9de2b2fa314f8087fae5a5cd128fc18a9d14"
+      ],
+      "frozen_source_urls": [
+        "http://energycommerce.house.gov/sites/republicans.energycommerce.house.gov/files/Hearings/Joint/20120724_EE_EP/HMTG-112-HHRG-IF18-IF03-20120724-SD001.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H061",
+      "document_id": "0022445be144812bd2782d2162f485ee83dc7e5f4446be417432a1869060643a",
+      "split": "held-out",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "ec4e6e24a457d3301ea1985c1908b6b503988187a3de6c8acfc476709f6f6ca9"
+      ],
+      "frozen_source_urls": [
+        "https://equitablegrowth.org/wp-content/uploads/2019/05/AutomaticStabilizers_FullBook_web_20190513.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "ba52aea1e3414639a9f1b18b7d7c1b7cab7315d0d2704cafd6542d4327d094b5",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://equitablegrowth.org/wp-content/uploads/2019/05/AutomaticStabilizers_FullBook_web_20190513.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "H062",
+      "document_id": "88432b2bdeaeccb8de3881b2d1f410bec2f14b93cd4f8615a91b7d0b99bf4433",
+      "split": "held-out",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "72bd47f8b593e9ef1339c028f6d07f7123cae51189e0f355a420de11f966ce6b"
+      ],
+      "frozen_source_urls": [
+        "https://erc-assoc.org/sites/default/files/studies_reports/Impact%20on%20Industry%20of%20ERC%20Interactions_SRI_12-04.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "c26ceeb19e46b9e0173b08f52a5dd9123bafdd38fb9c93e5950549eaa5667800",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://erc-assoc.org/sites/default/files/studies_reports/Impact%20on%20Industry%20of%20ERC%20Interactions_SRI_12-04.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "H063",
+      "document_id": "44cc29addeff9c9ae649398766525aeb5c3827114717818d22c38dca352a567d",
+      "split": "held-out",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "e586226de61b165e82e64383e98d68a12665716fe707bd3feeed2908bd54ad2f"
+      ],
+      "frozen_source_urls": [
+        "http://erichorvitz.com/AI_supporting_people_and_society_Eric_Horvitz.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "c4a5c15e0cd971d52e02a8dbb71a7d4eee82b8285209dfd0e175d922e01316e4",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "http://erichorvitz.com/AI_supporting_people_and_society_Eric_Horvitz.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "H064",
+      "document_id": "1a247c6c10a546f8c5d2eba0d2db4f7ac03e8e89f430a045f23fcedcf537485d",
+      "split": "held-out",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "301c85305ffe61bd272eaf142fc85ece2b3a1e47eb4dcdb4c15a70692ea30e73"
+      ],
+      "frozen_source_urls": [
+        "https://fairmodel.econ.yale.edu/rayfair/pdf/2019D.PDF"
+      ],
+      "matches": [
+        {
+          "current_document_id": "d43b86948e31a67ea4fad15b6130c79d0e7d9a8880a51e8a5014768d4fa63213",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://fairmodel.econ.yale.edu/rayfair/pdf/2019D.PDF"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "H065",
+      "document_id": "423c0a25fedf1bc298ff593ba2bceba4686dd34c704f83077830f4c42e9f21e2",
+      "split": "held-out",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "a2b04a17730a4866a910d5e4525f81407d5f0a1ce9a77a6522a246943d088b91"
+      ],
+      "frozen_source_urls": [
+        "https://www.fao.org/4/i0876e/i0876e01.pdf",
+        "https://www.fao.org/docrep/pdf/012/i0876e/i0876e01.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "0c47af53f69f073488737ff9b1ad25f4ecbbb892b26e35448574bca97d32768b",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://www.fao.org/docrep/pdf/012/i0876e/i0876e01.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "H066",
+      "document_id": "b0a6ff3f6f1e3d0716e4ed99afa1cee9366a01f23b76e1bc68f5604d7aba1cc8",
+      "split": "held-out",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "b5c7c56e76bc98755d4d06260659900c7f64e3e021d26548bfdad5e467d33250"
+      ],
+      "frozen_source_urls": [
+        "https://www.federalreserve.gov/monetarypolicy/files/fomcprojtabl20200610.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "b3a8dedd482a033b54326e6ec5aebac3db96269289775192ccfde5036600814b",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://www.federalreserve.gov/monetarypolicy/files/fomcprojtabl20200610.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "H070",
+      "document_id": "eecd8d71256c358fb64e6a8d1e81514cf419f9f8bdc573c90f907fd8c5fd01c7",
+      "split": "held-out",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "755f5f9d3cc9fb6677817abc171e114816e931c42eeebcd384c8ca8eed2ca8d7"
+      ],
+      "frozen_source_urls": [
+        "https://fns-prod.azureedge.us/sites/default/files/ops/SNAPFoodsTypicallyPurchased.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "69e51e0f9b8986766b5acd731e7ba12bd8df2a2c1c68144950d9128632fbfe94",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://fns-prod.azureedge.us/sites/default/files/ops/SNAPFoodsTypicallyPurchased.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "D073",
+      "document_id": "a0cd3556881ed47683a6593bb6c92d343222bb4bfe22636e378356aedae1c0bd",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "73cfaed980a55db5297861709243ffc7b3904ebeee934d89258e106be1bfeab8"
+      ],
+      "frozen_source_urls": [
+        "http://www.foreignaffairs.house.gov/110/38820.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H072",
+      "document_id": "6834d1b5a4cd0bff12395899d91f19a8562ba9a234553523ac6d31be71392d64",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "2da501e5e89074d19771adf2d6671467754ffec44b6888c607f3b0b221ca6208"
+      ],
+      "frozen_source_urls": [
+        "https://fpf.org/wp-content/uploads/2024/07/Final-Privacy-Principles-Edits-2.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D077",
+      "document_id": "cea1c583379e96c404e93d590b66e235c4b9fd94a2e40d92f085d0c10a6e2bf7",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "b2a9911d81b608d1e1eee34dbb5087a4f864e25ff3e42a7e2f79afe74a21783d"
+      ],
+      "frozen_source_urls": [
+        "http://gop.science.house.gov/hearings/ets04/jul15/west.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H075",
+      "document_id": "6647856f9a60693adae25ef81ae2dd86737745af798b6cf6bda1ffdb745cac95",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "db05f50dda396fba648d8cce303bda935fe9e57472dddd897bf952537f90f796"
+      ],
+      "frozen_source_urls": [
+        "https://www.govinfo.gov/content/pkg/GAOREPORTS-GAO-08-556T/pdf/GAOREPORTS-GAO-08-556T.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D078",
+      "document_id": "c370ea8a5abca6be85162385926b52108aa35fab9e6be895eb1daa9d0639c987",
+      "split": "development",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "0a8f147678240865e323ecc4c0a193d16c47441529a5bfa4d293e1ebffa53e56"
+      ],
+      "frozen_source_urls": [
+        "https://www.govinfo.gov/content/pkg/USCODE-2011-title31/pdf/USCODE-2011-title31-subtitleII-chap13-subchapIII-sec1341.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "8f388e26f96e179f9edd4edbc20e6c611aec7aec22f722d3dd109835e24d3092",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://www.govinfo.gov/content/pkg/USCODE-2011-title31/pdf/USCODE-2011-title31-subtitleII-chap13-subchapIII-sec1341.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "H076",
+      "document_id": "3b23d6143287709d6cf1adad4e4ea9af37ed1a26eef983599eaf2eef6c826608",
+      "split": "held-out",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "526ee720691a9b7a607e21c014ba1e9797e821ef27b6d6575cbd06ebea6cc305"
+      ],
+      "frozen_source_urls": [
+        "https://www.hamiltonproject.org/assets/files/if_you_build_it_guide_economics_infrastructure_investment.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "b7e8d3e1eda762ae05be00d540c1fe2edafa0c52d7f5b89732d237b938fc49a5",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://www.hamiltonproject.org/assets/files/if_you_build_it_guide_economics_infrastructure_investment.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "H078",
+      "document_id": "35ad9ee8fa645e7febd4793a633b58d2b8a65fea81fa5ce734f3bfb648be95bf",
+      "split": "held-out",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "77d8b847fd83c68d7e8ba563e88feff46cb53f0165b0753aef53ad19bb97a548"
+      ],
+      "frozen_source_urls": [
+        "https://healthpolicy.duke.edu/sites/default/files/2020-06/a_national_covid_surveillance_system.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "a27fb3e5a7ebddc973b7450f4b6f51a6d7af6600e0ab783c5aa0e58f1fff6a9f",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://healthpolicy.duke.edu/sites/default/files/2020-06/a_national_covid_surveillance_system.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "D080",
+      "document_id": "9b8b7c64a00e7a8ea2260c542fe1d20cf940b54ed7cdbc9bafd3bef313d03dbc",
+      "split": "development",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "7783ab6df7b8b5c5cc21e90b79716fae88d3181feb9a350c9f69d48f952c67d7"
+      ],
+      "frozen_source_urls": [
+        "https://home.treasury.gov/system/files/136/Treasury-2021-sanctions-review.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "30ed3824eb273689f4b2f986c14bbfd3ecbdf86a2de34fdf9a802ded235b11cb",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://home.treasury.gov/system/files/136/Treasury-2021-sanctions-review.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "D081",
+      "document_id": "320c4ff72f71e4909ec5eab4329946d45ff4dd1b08117a9ebbabf2bff648a628",
+      "split": "development",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "e87901fbd4d4ee6b5f4948fdbe5dd5f44ed5a9684715902cb40a3ccfb57878c5"
+      ],
+      "frozen_source_urls": [
+        "https://www.hud.gov/sites/default/files/Main/documents/Best-Practices-Toolkit.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "ba6c45ab00dbd94415870a2cc6a8daeee5b6ef4456b8818854ea35524b5280a3",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://www.hud.gov/sites/default/files/Main/documents/Best-Practices-Toolkit.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "H084",
+      "document_id": "bbac10a322ea2126e4ab8649fad1194ca830948b088fb2374535cd5f9ec6f090",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "81349d4f566ea6820d9d10cfff86cde361f0d27c96832ac1cbe4f1ff02704862"
+      ],
+      "frozen_source_urls": [
+        "https://icj-web.leman.un-icc.cloud/sites/default/files/case-related/182/182-20240806-pre-01-00-en.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D084",
+      "document_id": "25db7a1e326ec63f5209c0ad40a6a7ea70d43dc42b352fed2706cd4d18b47711",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "24e196fc2143216be18f53b549ebeca4692562f383fe8db03f4e85101cb3fc06"
+      ],
+      "frozen_source_urls": [
+        "https://info.publicintelligence.net/gao-09-835t.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H089",
+      "document_id": "d65d97e72137e5d4aaa667149e073ad6403db84ae1a1bdef5c1c978d53f90f72",
+      "split": "held-out",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "dee583ac82181658fc6147064d4bcfe6c59bf623daa94c1c894d05cd1fd8612f"
+      ],
+      "frozen_source_urls": [
+        "https://www.ipr.northwestern.edu/documents/reports/ipr-rapid-research-reports-pulse-hh-data-10-june-2020.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "f6e7360829146e22f70ddbb3e3e5a3911f8ccdfaad0b4139fe2eb45a54796383",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://www.ipr.northwestern.edu/documents/reports/ipr-rapid-research-reports-pulse-hh-data-10-june-2020.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "H091",
+      "document_id": "18b922c9d35f05ddabcd4019466cbabf63558bb17b0d7f3a583e1ad68b538d07",
+      "split": "held-out",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "dbf2982059627f44c56e96221009fbf09d34c3db2670a6e96b77a157f29addfc"
+      ],
+      "frozen_source_urls": [
+        "https://itep.org/wp-content/uploads/immigration2017.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "2380f14ea4ad2841a214995db0715143b2a053739c31646d958cc0b18ff5e63e",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://itep.org/wp-content/uploads/immigration2017.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "D093",
+      "document_id": "b50cb6927e33e00e5e7655281a09200fa68839bdd6f8e2848752252de54a8c5b",
+      "split": "development",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "08fe974b03945148ee172f7ffdeae7eb4cc6d96c5eb1d325f534decd96f456a7"
+      ],
+      "frozen_source_urls": [
+        "https://lisadcook.net/wp-content/uploads/2014/02/pats_paper17_1013_final_web.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "09292186c846e1e9b048dfc5fc2409794cc286be7a8b05055cf1003d70c76077",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://lisadcook.net/wp-content/uploads/2014/02/pats_paper17_1013_final_web.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "D095",
+      "document_id": "f8ef2d5101a06ddc69cd359b320bf1e6d1de8b032636b0b7ba9e69a6e29b85e6",
+      "split": "development",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "9dca9839a43e79e5a93449237fb98e47dcc5359272c86d197a988859139cb770"
+      ],
+      "frozen_source_urls": [
+        "http://www.mentalhealth.va.gov/docs/top_10_public.pdf",
+        "https://www.mentalhealth.va.gov/docs/top_10_public.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "945b73e404f4dd3e24fc3b3f19bf77899bf6bdcb6f581eccd75e5301e3bc3553",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "http://www.mentalhealth.va.gov/docs/top_10_public.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "D096",
+      "document_id": "06184ce90e13ebbe2aa5dd613abbb7744c7465413fd159fee76195bd700f1495",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [],
+      "frozen_source_urls": [
+        "https://www.moodys.com/web/en/us/site-assets/risk-assessments-within-private-credit.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H095",
+      "document_id": "6597982814a3ada669df6a77006efa8a670217ce7456888b9ed9fa005aaf8253",
+      "split": "held-out",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "ed216cf09e334e799aeedb20c1f39f587ceaa6dd9b210b282510122da31bd283"
+      ],
+      "frozen_source_urls": [
+        "https://www.nber.org/papers/w18334.pdf",
+        "https://www.nber.org/system/files/working_papers/w18334/w18334.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "d3ecd00de33752144daf09a1da843fd8f82034561cc6aafb4f42122a6c6a94db",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://www.nber.org/papers/w18334.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "D101",
+      "document_id": "b445570e62aa3610b1e631532ccc4c38dcd394d0962dd5366597b0e0c31956bb",
+      "split": "development",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "aa4e0b4f12afa315642831946c386ca8a84af1ec4ef4bc0ae8b4c8a955001e81"
+      ],
+      "frozen_source_urls": [
+        "https://ncses.nsf.gov/pubs/nsf20307/assets/data-tables/tables/nsf20307-tab010.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "539f692b10141c1d822aebdb8ea88a25fb918aa558df59ae9b6ffc044f2309c4",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://ncses.nsf.gov/pubs/nsf20307/assets/data-tables/tables/nsf20307-tab010.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "H097",
+      "document_id": "bbdcf4a16b7b2b08349f0dba801f9219ed0d80431f7e62c13f030ebb9e020060",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "f5461b7166b0f32600adc7d9390d064fafb0a852810e4bba49ab6691ca4ec747"
+      ],
+      "frozen_source_urls": [
+        "https://nsf-gov-resources.nsf.gov/pubs/2007/nsb07114/nsb07114.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D103",
+      "document_id": "842ea082b8017e1796e70616299bb87ce3ebd1d1e13e17a958d4a6f5bf2a5b74",
+      "split": "development",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "a51b719ad59bb161ba51278080a0cfc3b769d859ceca8beb53b2b0589115daf1"
+      ],
+      "frozen_source_urls": [
+        "https://ntanet.org/wp-content/uploads/2020/05/Lisa-Dettling-covid_finsecurity_nta_v6.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "cdbcb53bbd2d2f835f698b3d942c1a6835a5f4966de78654b16bc1e79181b5b5",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://ntanet.org/wp-content/uploads/2020/05/Lisa-Dettling-covid_finsecurity_nta_v6.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "H098",
+      "document_id": "fd69c64c9d9aa40af2c0b2bcc851321fc976204a3c2916fb828658618f47f480",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "fd9fd5bea388175b53427060c68b0f47e35ba7ddc663a8211969857858cf72eb"
+      ],
+      "frozen_source_urls": [
+        "https://nwlc.org/wp-content/uploads/2015/08/final_nwlc_lowwagereport2014.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D104",
+      "document_id": "612feaf6d2650ff5c9b8f0675840030d7cc2091040fd2f7c76c005b470f257b4",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "ea5ca9a8e66332347a7898d88597d5c0826bae5631469e44d7d97b2d2a399760"
+      ],
+      "frozen_source_urls": [
+        "https://nwlc.org/wp-content/uploads/2021/01/December-Jobs-Day.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H099",
+      "document_id": "add4aace1832a98d1d67ab6bb238c186a92f4cc7ee689b3c8c2afed2d59f53d2",
+      "split": "held-out",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "5ce74e9f8a9d735e31625aeb0e035d5bfc324a3b5d3b1a4b839a04f93963305e"
+      ],
+      "frozen_source_urls": [
+        "https://www.oas.org/en/iachr/decisions/mc/2025/res_67-25_mc_929-25_sv_en.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "fe7fb6ac4cafab65b0be435192fb58a03edbe293430dfb929cbfc389d8468a3f",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://www.oas.org/en/iachr/decisions/mc/2025/res_67-25_mc_929-25_sv_en.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "H100",
+      "document_id": "5e35b02345ee5d7e1800a6fbd21f0fc82ee55a6534ebd36c02697aec657cb9d0",
+      "split": "held-out",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "f9469f92c61892179ea813e923c5f77a1cdcf065bcb3235c288b45b7f39a11c9"
+      ],
+      "frozen_source_urls": [
+        "https://obamawhitehouse.archives.gov/sites/default/files/page/files/20160707_cea_ai_furman.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "5d4c5cbfc418e851aa24d99255f836d6ce4dce7bf3e993b630ac11a1c8fc9943",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://obamawhitehouse.archives.gov/sites/default/files/page/files/20160707_cea_ai_furman.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "D106",
+      "document_id": "05d06266cc488e4f3a94b5242181e47aa1a9edf853ae76b1ad3abb5feee5e91a",
+      "split": "development",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "f1ccd5c871a127ab9a18b974d344b20dc0c29163d202054882f546df4fbbf309"
+      ],
+      "frozen_source_urls": [
+        "https://www.ohchr.org/sites/default/files/2025-10/20251027-stm-chair-independent-international-commission-inquiry-ukraine-ga80-third-committee-ua.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "6cff850062e8fb81405d9dc66d15c7378d672568f81d88f325e9d67616b8d91c",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://www.ohchr.org/sites/default/files/2025-10/20251027-stm-chair-independent-international-commission-inquiry-ukraine-ga80-third-committee-ua.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "D109",
+      "document_id": "bdfb8df958b71cec2361a56125d48f68b98337553bb86e2d63925a20ba3a7219",
+      "split": "development",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "9766768df919332850f735759efc6307c9fa87985e1da9a4a505fb98e3ab5ebf"
+      ],
+      "frozen_source_urls": [
+        "http://oro.open.ac.uk/50547/1/care_economy_en.pdf",
+        "https://oro.open.ac.uk/50547/1/care_economy_en.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "c2c2d6865060b96dfe84d197eddb96a5604f0ab3911980b596b51d1d58f2e7be",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "http://oro.open.ac.uk/50547/1/care_economy_en.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "D110",
+      "document_id": "df1c3273f899ef7154efdd6d30fe95dafc3c9e044b2250e2db64abb18f869002",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "36a7c5cb4b7b8a45dccc0f3389d62400c827c7485175eaeae773d29cb729fbda"
+      ],
+      "frozen_source_urls": [
+        "https://ourpublicservice.org/wp-content/uploads/2022/03/FedFigures_FY18-Workforce.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H104",
+      "document_id": "ddc05affb2b5bb5035876e3e814a63db0d3461bffb692fa956844b3919f37f5b",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "93f1d80064b72bdf37da9f856726a94120c6eb7666ae444f9789fc718ef8ab20"
+      ],
+      "frozen_source_urls": [
+        "https://www.oversight.gov/sites/default/files/documents/reports/2017-12/CREVBIA00112014Public.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D112",
+      "document_id": "b5e828636b1efdd95cf72d3337bc68b2ff4a42a27e2c2107d01e672b8851664c",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "2444128a584f82827825f2272886c6d51e86bbc99c6f8d8e270b61c9d3778933"
+      ],
+      "frozen_source_urls": [
+        "http://oversight.house.gov/documents/20070613134227.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H107",
+      "document_id": "1d81e4a3e57b75907b41939abe54b6ad270c9357b67c3a4b728e36775b0309f1",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "11c78c29527dfd953bee466d2172ab96853343ff6460e334407055c21589ce3a"
+      ],
+      "frozen_source_urls": [
+        "https://oversightdemocrats.house.gov/imo/media/doc/Opening_0.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H109",
+      "document_id": "827b1bab51df2565ba839498e0bbb5c1953ccfdd29c3729ae4a47baa4c0df2a9",
+      "split": "held-out",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "9db9b9da860ce386a1685ff08689f66b11d6d08ba2ac9c44a57548a8f615bbc4"
+      ],
+      "frozen_source_urls": [
+        "https://www.pewresearch.org/wp-content/uploads/sites/20/2021/09/PF_09.30.21_religious_restrictions-Full_PDF.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "6e7ea3b4fddbef55040975c8ad2f35d1a4554b6f33a7779b190bc08b22f277c9",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://www.pewresearch.org/wp-content/uploads/sites/20/2021/09/PF_09.30.21_religious_restrictions-Full_PDF.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "D115",
+      "document_id": "0e4ccbaa17e19af15604d89c4753425361d449c4f21b0a3909739bbebe58af3e",
+      "split": "development",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "da94723afc6b0ad4dce80cb08b944c785d975ba1dd9cb8840e53d9837a4a4e27"
+      ],
+      "frozen_source_urls": [
+        "https://publications.aston.ac.uk/id/eprint/25727/1/Public_R_and_D_policies_and_private_R_and_D_investment.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "e7214a2d4675a93f7a7655a33f0b9526f487d531b8241234dc6798904240dd1d",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://publications.aston.ac.uk/id/eprint/25727/1/Public_R_and_D_policies_and_private_R_and_D_investment.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "H113",
+      "document_id": "b0fdecc4bdff63911743e11e57162c7232716718702940e5d9807caa81f500ab",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "359950e568aa9293669d6866d3e6de2e6beac31b8f63a5f3105959af813cae87"
+      ],
+      "frozen_source_urls": [
+        "https://republicans-energycommerce.house.gov/sites/republicans.energycommerce.house.gov/files/Hearings/Health/20120201/HTMG-112-HHRG-IF14-20120201-SD001.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H115",
+      "document_id": "6389555ebb92697bc60e802bf2dd9294b13c4f97f50829a6a7df3b7a302659b1",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "8f6aef5976335f9a4cf9def9f702c331e1af041769de4f44672b55e374505ddf"
+      ],
+      "frozen_source_urls": [
+        "http://republicans.energycommerce.house.gov/Media/file/Markups/FullCmte/112911/HR3309_As_Amended.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H116",
+      "document_id": "5f932df862a355211d481e893b77b5c3c9a3a85bc60f378fb36c23951b366c90",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "29506ab96afd37247cb524eddf8ace4d2ccb95cd26cc08a1e1afea5eb50d3577"
+      ],
+      "frozen_source_urls": [
+        "http://republicans.energycommerce.house.gov/108/hearings/07252006Hearing1993/Guterman.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H120",
+      "document_id": "a9545ada61bf5d75bc8a9ad2b4edf20a829cdad68ab0c75a621ebc47f296ed0f",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "8143716ffb994687bb1ade2892ca9f9a264c20efc9a870ac87013c3456a88322"
+      ],
+      "frozen_source_urls": [
+        "http://science.edgeboss.net/sst2014/documents/5.9.14_charter.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H122",
+      "document_id": "fdb19ab1738cce781a803e6c58b349bb5fc3de6e2096af9fbdef415df335dca0",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "b0abc4bb3f64344cd1e1f0677d660f8a1460d6432b225796b43093ff881a42b4"
+      ],
+      "frozen_source_urls": [
+        "http://science.house.gov/commdocs/hearings/space05/Apr20/Musk.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D122",
+      "document_id": "74c8dd8357b3c3c6c1650b3b20fff486922e40a566aaaa03539decea523a9da4",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "073ec0875de5be2115b7a76b54dd609179b93f2cf1942b0d4be11367175431c8"
+      ],
+      "frozen_source_urls": [
+        "http://sciencedems.house.gov/Media/File/ForHearings/06jul19Vote/gordon_votetech_hearing_19jul06.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D123",
+      "document_id": "64f72c9f2e0c659d15ada35f6d4a1be50eb2eb78c6f4430647ddd028a2a2a19b",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "867b3996e4c9de214a313a14b15d08416e7a93e6d1896a730cc47da25b439d0e"
+      ],
+      "frozen_source_urls": [
+        "http://sciencedems.house.gov/Media/File/ForHearings/06sep20CCTP/honda_cctp_hearing_20sep06.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D124",
+      "document_id": "07e978c1ecf71299855ae06ee2aae59025ce418d818df5f647bd4a36f6cea423",
+      "split": "development",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "6f03ce306aff2ddedebd149a561f9d8ae78562aee6e2f7e5827c67eb02e086bb"
+      ],
+      "frozen_source_urls": [
+        "https://www.securitycouncilreport.org/atf/cf/%7B65BFCF9B-6D27-4E9C-8CD3-CF6E4FF96FF9%7D/s_res_2417.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "bba14a2e5fb26b56b5bf46c1bbc9b89c64acc07314b69fcaa7d87256bbecb986",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://www.securitycouncilreport.org/atf/cf/%7B65BFCF9B-6D27-4E9C-8CD3-CF6E4FF96FF9%7D/s_res_2417.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "H124",
+      "document_id": "0f30a781eb5e547c1f8baaca1dc3f38d5a962bfb3630a3859aa0f963894d7a3d",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [],
+      "frozen_source_urls": [
+        "https://sokolusa.org/wp-content/uploads/2021/01/AAU-YouthProtection-Handbook.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D127",
+      "document_id": "94fe0bc61736af65400acc7da25ea72b25994d50c134b374a849ffe1224aa9b8",
+      "split": "development",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "6a0acb18a564f902e68c2049aef02f309deb97f5ffe8bb071ae0f6e09f26c5e5"
+      ],
+      "frozen_source_urls": [
+        "https://www.start.umd.edu/pubs/START_GTD_GlobalTerrorismOverview2019_July2020.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "3d4fb4ae50dee5a95f4afa73bfb9759feabe6cc7ff8034b911f6ca10267f6ad7",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://www.start.umd.edu/pubs/START_GTD_GlobalTerrorismOverview2019_July2020.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "H126",
+      "document_id": "b653ab08c33660e652c1913df4a1b749542635ef277dced376284043d519b18d",
+      "split": "held-out",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "5c9d4f611c3e6fb2a968e8a855d1ec0a3244ba218bb2f449498a4ad324695e7f"
+      ],
+      "frozen_source_urls": [
+        "https://static1.squarespace.com/static/53068354e4b083d9ce6ab0da/t/58befc6e9f745699f226cb85/1488911470750/JPMorgan-Immigration_1Q17.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "e1d6ee88dbc237cca00d50f6dcaf8b63981d92158d1cef4bb13a0eac9f199782",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://static1.squarespace.com/static/53068354e4b083d9ce6ab0da/t/58befc6e9f745699f226cb85/1488911470750/JPMorgan-Immigration_1Q17.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "D128",
+      "document_id": "01d04097acd5e2c189f0acddf9e6433ffb23bcf119c4eed4388653e1c36ae5d5",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "cc0f7d40bea22eeb1d6dd37186a1696e7583799ce2f3bb822a5c39f8fdecc5b5"
+      ],
+      "frozen_source_urls": [
+        "https://stewart.house.gov/sites/stewart.house.gov/files/grand%20staircase%20escalante%20enhancement%20act.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H127",
+      "document_id": "ae9b3db8dd5b7d0ba94630727a3901e214fa865627e9eaaff39b519aff38c706",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "2c6d56d232ee93be8f893693ffc23b8125faeebd331d7567fe4bf5439ec70446"
+      ],
+      "frozen_source_urls": [
+        "https://trumpwhitehouse.archives.gov/wp-content/uploads/2019/06/WPS-Strategy-FINAL-PDF-6.11.19.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D135",
+      "document_id": "65bde16c15fbc660b4926acf4dcfb7bb5f3c209eac2454537ac2aca09d14988c",
+      "split": "development",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "7269ab12d5d8ac3fba18a15cb7bc7cdd2d6ef4d38b14ad923c1547599f932f39"
+      ],
+      "frozen_source_urls": [
+        "https://uploads.guim.co.uk/2026/07/22/STL_Global_Tax_Strategy_for_the_year_to_31_March_2027.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "101a9ea747f7bd9085f8f8ae600eed370a85e61851dbd073f6d8728def2d13f9",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://uploads.guim.co.uk/2026/07/22/STL_Global_Tax_Strategy_for_the_year_to_31_March_2027.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "H128",
+      "document_id": "13fb4c123e0b840e0cf2314cd536f5c6ac185ac100daf3b411a5bec20c732edf",
+      "split": "held-out",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "25d0b5cabf0a6cca059a780c4d84901bb34015276e106dddcd26f1c961f7263b"
+      ],
+      "frozen_source_urls": [
+        "https://www.urban.org/sites/default/files/publication/31076/1001127-If-When-How-A-Primer-on-Fiscal-Stimulus.PDF"
+      ],
+      "matches": [
+        {
+          "current_document_id": "800de1e4263956a9d5ed04aba7008db937293042da70bcb4fd9d890436746d69",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://www.urban.org/sites/default/files/publication/31076/1001127-If-When-How-A-Primer-on-Fiscal-Stimulus.PDF"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "H130",
+      "document_id": "0b91fff83298010999e930db14b8649113ad247d34d0a84297872dcef08c73f1",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "86d4f5aac2654eba01c5f8ff90af4e5f1690da5f38db13f2ccf50c0cd2903e12"
+      ],
+      "frozen_source_urls": [
+        "https://www.uspsoig.gov/sites/default/files/reports/2023-01/RISC-WP-22-003.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D136",
+      "document_id": "ef15dc43b082fa2d02ee2f757aaff853ce0024124bd84b8b79c89f4c8b8a1ced",
+      "split": "development",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "7d9bfeefc1f1e5d1984146ad911b4fe0f5d56479251defc197a61aa6d7bdbde0"
+      ],
+      "frozen_source_urls": [
+        "http://www.va.gov/HEALTH/docs/VAMC_Patient_Access_Data_20140619.pdf",
+        "https://www.va.gov/HEALTH/docs/VAMC_Patient_Access_Data_20140619.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "cd84697e9e2b9e85cafbc37d783bbe4ba8299d359c107edf182a210aa63e0120",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "http://www.va.gov/HEALTH/docs/VAMC_Patient_Access_Data_20140619.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "H131",
+      "document_id": "85cf1221c88348ae85404ce4ce32e4422012ac6b0559fcbda853821755071f1f",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [],
+      "frozen_source_urls": [
+        "https://www.vba.va.gov/pubs/forms/VBA-21-4138-ARE.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D140",
+      "document_id": "58cc0ee8dc6a5fa2efb12133825f8394e11f06ac05deb7eba489af09ebd75263",
+      "split": "development",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "c1ca64225de8454208637adf5a63d854a0a5bface0ec91aafad210e3c5c8d4e3"
+      ],
+      "frozen_source_urls": [
+        "https://web.archive.org/web/20110203180045/http://democrats.waysandmeans.house.gov/media/pdf/111/2010May06_GAO_Hearing_Report_Submission.pdf",
+        "https://web.archive.org/web/20110204003616/http://democrats.waysandmeans.house.gov/media/pdf/111/2010May06_GAO_Hearing_Report_Submission.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "ff1f5cd0caa17552b983d9d19828c0f790fb2cbbb74ab66b59fc5674a4f645ef",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://web.archive.org/web/20110203180045/http://democrats.waysandmeans.house.gov/media/pdf/111/2010May06_GAO_Hearing_Report_Submission.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "D141",
+      "document_id": "db5fcdd9852b3bd78267e410180a24fe816a26df6d541a06e41e210bce816403",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "b59a0be04753f46ff0713cd8d712a75c4a9a894314dfc9a733f26a20b5502b5a"
+      ],
+      "frozen_source_urls": [
+        "https://web.archive.org/web/20140124173326id_/http://veterans.house.gov:80/sites/republicans.veterans.house.gov/files/documents/113-11_0.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H136",
+      "document_id": "a39443f6d3e33e5ad844c889fc59c125cf22149f920e9f34a23b715457f28eaa",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "8164b1fc6104673b609656d548e1e66c5533e02ed394304273dd0ab8f5a561c7"
+      ],
+      "frozen_source_urls": [
+        "https://web.archive.org/web/20241213035110id_/https://www.comiteseguimientoymonitoreo.co/_files/ugd/0d373e_eb2c5bb1047a4ca3bbdfeed367fc3ecc.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D142",
+      "document_id": "0b1ac725d614178476ff0b67e14e913deb5e31e3907b0b1ae8827afc361f12f2",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [],
+      "frozen_source_urls": [
+        "https://web.archive.org/web/20240412132205/https://image.aausports.org/pdf/AthleteProtectionandAbusePreventionPolicy.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D143",
+      "document_id": "7a4f59232787610d3188df1b2145e45e707e25dd84d10aaf8929d339859aab27",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "e699d68120af1de7e367651cd5b8d70b780f006f74c36d6ce63f7a1b598aa60d"
+      ],
+      "frozen_source_urls": [
+        "https://webharvest.gov/congress116th/20201125073417/https://energycommerce.house.gov/sites/democrats.energycommerce.house.gov/files/documents/%2311%20-%202017.12.04%20Homan%20email%20to%20White.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H138",
+      "document_id": "3c3f28e600d51eaeb5cb9090abb2f9b87e8c2c917f74f9593fe0f124e3dd9690",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "42ec08521d42f8aadadc7d954716db5a4413098a2e21efa885166f67ffd39cd6"
+      ],
+      "frozen_source_urls": [
+        "https://www.whitehouse.gov/wp-content/uploads/2021/06/National-Strategy-for-Countering-Domestic-Terrorism.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H139",
+      "document_id": "88f9bddd525e5827e5bc76f9049acebce09bf29ce0a320bb4815982b1c5ed15f",
+      "split": "held-out",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "b76c5ed4c6aa412a4a02e7bb58940d9a784df1076d96b1c8f8a5416c9fbece09"
+      ],
+      "frozen_source_urls": [
+        "https://www.aaas.org/sites/default/files/2020-05/AAAS%20Public%20Research%20and%20Patenting%20FINAL.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "17db16b78dc2650b3ef9ddce220c0d2566e7a41957cba0867de0b7ee5eb47d9c",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://www.aaas.org/sites/default/files/2020-05/AAAS%20Public%20Research%20and%20Patenting%20FINAL.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "D150",
+      "document_id": "cac96e8fcadfab277ce8728f10a6fcfd6309a15927179c40d4a42c20ca8397fd",
+      "split": "development",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "db3c3701c45830a0e18f82fc1aabf811cd949313c2fbe4051a0eb9cafa439d4b"
+      ],
+      "frozen_source_urls": [
+        "https://ap.ohchr.org/documents/E/HRC/resolutions/A_HRC_RES_10_4.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "f57389d8b6415ff53dc349746c201cb9242a1bd03359c07542fb2a72aa5ca32c",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://ap.ohchr.org/documents/E/HRC/resolutions/A_HRC_RES_10_4.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "D151",
+      "document_id": "f81ce110e50efb2226681d83c42ae20a1aa417b5ada08f364877e7cf9d682a30",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "48bf171857c61edce784c9832be4e0dfb079680a14a13973f38837d3507f6529"
+      ],
+      "frozen_source_urls": [
+        "https://archives-energycommerce.house.gov/sites/republicans.energycommerce.house.gov/files/Hearings/Health/20121213/HTMG-112-HHRG-IF14-20121213-SD001.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H145",
+      "document_id": "baa703d24179f341d9e6026587e58a6139a759e28ff71be76d158c4724ae4381",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "8e39fef2e41dcd7c9afd2b4a76454e7a29cefc97ed055941a51f6f735d6cd24a"
+      ],
+      "frozen_source_urls": [
+        "http://archives-republicans-foreignaffairs.house.gov/110/34483.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H149",
+      "document_id": "bc7b7f030ff0f29e397eccc82863f71dd1e60fa814846d94694d42d885691e64",
+      "split": "held-out",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "f1a094049fd9e87e0442605480630bd65b0cdd0fa5e0bf7acba5aa21b920e8ac"
+      ],
+      "frozen_source_urls": [
+        "https://www.brookings.edu/wp-content/uploads/2020/06/Bartik-et-al-conference-draft.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "71ef8ce328530b1bbd0f7f5c096c91019436d9c741293a42e7b2a9192c646f2f",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://www.brookings.edu/wp-content/uploads/2020/06/Bartik-et-al-conference-draft.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "D155",
+      "document_id": "5797b37f99e438c3a391eca394d7e05c6ed7763d98f6443394602a55c29f09f3",
+      "split": "development",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "151413bdbc93a588d764b26ed5df009646aec9b431d899490aec2663be331f77"
+      ],
+      "frozen_source_urls": [
+        "https://chrissmith.house.gov/uploadedfiles/hconres20.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "25ee0b533a5a76c790c737d922e6c754a84c8c9c93dad938126267b90d2558d1",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://chrissmith.house.gov/uploadedfiles/hconres20.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "D156",
+      "document_id": "5701fe9835ab2cde1d02c0a00dafa90fdaa758c631540da6cdf7cfd6eb2254f8",
+      "split": "development",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "7dda26cf5afd0b330d3e302505f503e4d6ed9c3d6882f54985610a20abff072d"
+      ],
+      "frozen_source_urls": [
+        "http://www.cms.gov/ReportsTrustFunds/Downloads/2011TRAlternativeScenario.pdf",
+        "https://www.cms.gov/Research-Statistics-Data-and-Systems/Statistics-Trends-and-Reports/ReportsTrustFunds/downloads/2011TRAlternativeScenario.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "cc26917629b3c81da1fe3e76258209134a64ee67de66ec696ef35bafcec73a66",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "http://www.cms.gov/ReportsTrustFunds/Downloads/2011TRAlternativeScenario.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "D157",
+      "document_id": "01ab76364dbfa597b497baf24e53fd0ba23feb5c141dd7edc6edab4aa611a86d",
+      "split": "development",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "ca71e85a5594d962b8751c8668d3dfedfc0e1939b1402e206ea1e58c0e8d50a3"
+      ],
+      "frozen_source_urls": [
+        "https://www.congress.gov/117/statute/STATUTE-136/STATUTE-136-Pg1171.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "549f43028292db8d140a246d68a8a9ae58f477732f07dd6cb81b5c41af17cd65",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://www.congress.gov/117/statute/STATUTE-136/STATUTE-136-Pg1171.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "D158",
+      "document_id": "b30b871233c8cba8ed6ad6fee50595e053e4d233ec05f78b59e6af8fd83ded9e",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "ceb02fd5a221619974bf644228d2d518ea586b43487475f1122e4e74a4918dc7"
+      ],
+      "frozen_source_urls": [
+        "https://coronavirus.house.gov/sites/democrats.coronavirus.house.gov/files/Clyburn%20Opening.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D160",
+      "document_id": "5355310d52b9d7868989e40c393d4a02f9a20a84fc281983f71e6a21767953fc",
+      "split": "development",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "6aefc50cce34f0cdc6881b906297ceee07939c47f7fe8b864033ffdded3fc8c8"
+      ],
+      "frozen_source_urls": [
+        "https://democrats-budget.house.gov/sites/evo-subsites/democrats-budget.house.gov/files/documents/CBO%20post-hearing%20report-final.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "9ac298dbe071c83feb60bb71cc9df0c6e3f989b00c0d47362fb4b49c2f4eda39",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://democrats-budget.house.gov/sites/evo-subsites/democrats-budget.house.gov/files/documents/CBO%20post-hearing%20report-final.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "D162",
+      "document_id": "d166aae06630feb8bbedd99aff4cbbf430e88b9a651cfacf477a3a2609f52d00",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [],
+      "frozen_source_urls": [
+        "https://democrats-edworkforce.house.gov/imo/media/doc/documents/111/pdf/letters/20090715-SAFRA-RebuildAmericasSchools.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H162",
+      "document_id": "49ea43d2cfce9afb113db433fef8f313f8642d4c45236185f1d114d0b28a19f5",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "7f923bd0240ee439fa605fd681c1fe2b4479e475004a0b825fa15255481c1fed"
+      ],
+      "frozen_source_urls": [
+        "https://democrats-oversight.house.gov/sites/democrats.oversight.house.gov/files/documents/Opening%20Statemnet%20-%20FINAL.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H165",
+      "document_id": "9d77dc0b4ac691283ce1d10af640a11d62880c7f409a7ef27a72b9ab4c4651dd",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "6a6ce6f97f01a03c587044bf0caff1dbc73d5b44817c798f81ca46d530e0bb7e"
+      ],
+      "frozen_source_urls": [
+        "https://democrats-transportation.house.gov/imo/media/doc/bishop.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H166",
+      "document_id": "36a6dc29cb0d69b4601e4e0c74cc3d9740f43b5689b47b443f76e79a0a264e72",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "cd297683838bd098762c6e84411e4280dba8133c74674d5f6df39efe0c32bdcc"
+      ],
+      "frozen_source_urls": [
+        "http://democrats.foreignaffairs.house.gov/111/56682.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H167",
+      "document_id": "ecbaa78bdc6dc5b484746ce76a6b6ab27879cfa09d5b3ca1076056a9d2a7a7d4",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "d3d20dbcd07702da5eaf197c1e51622f6b37c4ce759f1f1f173805e36954124c"
+      ],
+      "frozen_source_urls": [
+        "http://democrats.foreignaffairs.house.gov/110/32547a.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H168",
+      "document_id": "0d9d0e425ed7d4f8992de75fa22b4574caccc1b0489064922981561fcdd59f3e",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "0432597fc96f188eb047c81855102a20f6b98ddc17fe8a5b95b691e1f72f0134"
+      ],
+      "frozen_source_urls": [
+        "http://democrats.naturalresources.house.gov/sites/democrats.naturalresources.house.gov/files/neddtestimony9-17-14.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H169",
+      "document_id": "31a2463f3fea2642b0914cb97817fca38ddbb622857d70187f9b4f42def258b4",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "599dabc4da920d0002f94f5eeeb5d9bc1e437c466a1f07d858ae37159dadcf29"
+      ],
+      "frozen_source_urls": [
+        "http://democrats.oversight.house.gov/sites/democrats.oversight.house.gov/files/documents/H.R.-to-amend-title-5-United-States-Code-to-specify-further-conditions-under-which-payment-for-the-services-of-a-recess-appointee-may-not-be-made-from-the-Treasury.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D170",
+      "document_id": "2a9224d680252956782f3f49cb17870d2949a920fb380e6dc29c452dbef94d27",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "d1ccf323b832e6ed95d1e67c1b0a16da1167c346c15900a8c1f3e5c2ef70fc7b"
+      ],
+      "frozen_source_urls": [
+        "http://democrats.oversight.house.gov/sites/democrats.oversight.house.gov/files/documents/Light%20Full.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H173",
+      "document_id": "78064c65f07903b96fc4573ef2cb4c7fd28897692ecc6dc68b1948a02ab57a1d",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "29d405678ba24433f54c5ca93508cd8e162c5db0a8d6bc7a0d113b703caa85a9"
+      ],
+      "frozen_source_urls": [
+        "http://edlabor.house.gov/markups/pdfs/20070214HR800vote.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H174",
+      "document_id": "9339282d3a3041ef66a39ca779250747d7593c98935bca88dbbda144356ef00c",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "d1b9439a9f8fa77a6c4dad3f60a22ace4172f6931746e0de77407bd0ce7e1e9e"
+      ],
+      "frozen_source_urls": [
+        "http://edlabor.house.gov/markups/pdfs/HR3289/Kucinich%20en%20block.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H175",
+      "document_id": "f4508afaee08b08c815bd82eeb4dda01bfec278c7949ac0e1bb96c2fd7b596fb",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "39a7906e0b19a2d5538cc56c73c272d4315df5887e80c6b72863a6df1d8d2176"
+      ],
+      "frozen_source_urls": [
+        "https://energycommerce.house.gov/sites/democrats.energycommerce.house.gov/files/documents/%238%20-%202017.10.11%20Lloyd%20memo%20to%20Wagner.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D177",
+      "document_id": "79f48d4b8613949cf5bba56277dd9f5ee3737a76bccc3aab53c5b7c661728b42",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "b12e327167ad2ed07e14902eb3eddf0310a28ff99554d1227605fdbe2cb46093"
+      ],
+      "frozen_source_urls": [
+        "http://energycommerce.house.gov/sites/republicans.energycommerce.house.gov/files/Markups/FullCmte/20120305/BILLS-112hr3310IF.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D178",
+      "document_id": "a368733999dfa10e1ab9a98349a0944637a9d394e49ed879d6aa12a64794aa10",
+      "split": "development",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "62402f3d9371fa4e61fe9762df748fb019bcb0614d3557666dd4c40145e4e671"
+      ],
+      "frozen_source_urls": [
+        "http://erichorvitz.com/Evidence_based_healthcare_essay.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "f55f2535db539877e2df25764f30ced7465da95d20a1c6c679dfd27c02e919b1",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "http://erichorvitz.com/Evidence_based_healthcare_essay.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "D179",
+      "document_id": "8a80da4baf84c66a5160b2627685fd336511579524dd0ce15705e1667f744fc7",
+      "split": "development",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "325a07aa5215380e9475a36313c7642a71b01c3103d46640ffeef5eea09eea17"
+      ],
+      "frozen_source_urls": [
+        "https://www.fao.org/4/i0876e/i0876e05.pdf",
+        "https://www.fao.org/docrep/pdf/012/i0876e/i0876e05.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "b560a07a6133d3fc02490b80b9d5fe48270623e82f1454dc4002ae2837e526f6",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://www.fao.org/docrep/pdf/012/i0876e/i0876e05.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "D182",
+      "document_id": "f0572f7bd42c1ad376eff3042917045157a09f765b84e3fec83ff6f836475a9e",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "919f6844067f860e5fa02e4f8db262870e258d96f202fa7fe1a0861bda12a3c0"
+      ],
+      "frozen_source_urls": [
+        "http://foreignaffairs.house.gov/110/43120.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H180",
+      "document_id": "9e0d3ab3efbb8d322797edbcf6ae0fc72ea646bfde50130d8378bc1e74f16fa6",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "1ff244fad97d7c8fa615781e1e40f4484477f48307be52b402b53df3c8f4f03f"
+      ],
+      "frozen_source_urls": [
+        "https://freedomhouse.org/sites/default/files/2023-04/FH_TransnationalRepression2023_0.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D185",
+      "document_id": "42af668bcc02ad6ea049a114afe6a48581a85b49ce7943d1a4c4e222528ff8d2",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "d009be76bdc10dc4c39282e4c37f7a3cf8f530652cba954c30c7408fd295ef90"
+      ],
+      "frozen_source_urls": [
+        "http://gop.science.house.gov/hearings/space02/may20/williamson.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H182",
+      "document_id": "084cfc61808cc9c26fac7587491495a42d27b311d633a7430f6aa0fbe126057f",
+      "split": "held-out",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "b7f5dd2a8fc3d45b9faa38030197ae8c1477af1e4a29d652e68d9fbeb5696d39"
+      ],
+      "frozen_source_urls": [
+        "https://www.govinfo.gov/content/pkg/CDOC-116sdoc3/pdf/CDOC-116sdoc3.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "502abe27f69b5cd142ef6cc781e9709a99379334d48f7122764b94215dd44670",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://www.govinfo.gov/content/pkg/CDOC-116sdoc3/pdf/CDOC-116sdoc3.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "D193",
+      "document_id": "ae9a5f325047a01999ce50d33830bb593c791e1ea28f91f57fa12a4bdd1edceb",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "b9983657b07f5e19a830c8ead6d2d47fed844db1fbcd64cbe4eef6f233863eb5"
+      ],
+      "frozen_source_urls": [
+        "http://judiciary.house.gov/_cache/files/29aa26f0-c772-43ef-bfd1-7f61efb1d7ce/113-101-88643.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H187",
+      "document_id": "5827d7ffaf3c44a29817e188e0580dfbfeaaa88cf179298c2a7882357492e3d6",
+      "split": "held-out",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "4a9ceb60fb6b831402df17c92b08e6316325f11823f394a52a3c8b8b5eda2f05"
+      ],
+      "frozen_source_urls": [
+        "https://www.nber.org/papers/w20353.pdf",
+        "https://www.nber.org/system/files/working_papers/w20353/w20353.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "afe99485e19dff3329004131289f1ad19940d18705f16974a2d3e42866c76d16",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://www.nber.org/papers/w20353.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "H188",
+      "document_id": "70a71c0194aa95dbf55aed13b642be484ea534ba4caf7c71d1b3a6415c5f9159",
+      "split": "held-out",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "7d2f4bd0025f9ff27185626d457e74ce509c20b123e44c63b15ce136eacbe790"
+      ],
+      "frozen_source_urls": [
+        "https://www.oas.org/en/iachr/decisions/mc/2025/res_66-25_mc_667-25 _sv_en.pdf",
+        "https://www.oas.org/en/iachr/decisions/mc/2025/res_66-25_mc_667-25%20_sv_en.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "f55b5f37a27d76d9ec1163ebbe157ae059d3830f6925601a9e5bdf14fc74fd2b",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://www.oas.org/en/iachr/decisions/mc/2025/res_66-25_mc_667-25 _sv_en.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "H189",
+      "document_id": "beec7243b061c0195067974057a7452c32b5ee9985dfcafe0b67c4b9396f0323",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "e194045bd6c0bc17abe16c7f5663b0f72a373d8d433d39fe6092b87fc88ed153"
+      ],
+      "frozen_source_urls": [
+        "https://obamawhitehouse.archives.gov/sites/default/files/omb/memoranda/2016/m-16-15.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H190",
+      "document_id": "caec06be80ae77a9f2226f36f9326976abe761e6f0eca8c53d2530f01fe61240",
+      "split": "held-out",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "3beef684301a32b75d9b1a071aaea27c9c22890a1dbeb853a1232850c2ad8c00"
+      ],
+      "frozen_source_urls": [
+        "https://www.ohchr.org/sites/default/files/lib-docs/HRBodies/UPR/Documents/Session4/CN/A_HRC_WG6_4_CHN_1_F.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "cf402a650b36a8b47a04f979fa572d1b7f5fd30fd829abeecba33b4c058a2d7b",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://www.ohchr.org/sites/default/files/lib-docs/HRBodies/UPR/Documents/Session4/CN/A_HRC_WG6_4_CHN_1_F.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "H194",
+      "document_id": "7a232fe6577a0cb29fa89f0eb7fc43c5620e83c4930784406626314a41dac691",
+      "split": "held-out",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "2b67594e6a0ef94b6f1caeff24392f0d1cda21cac08c9cc15dcc7d29186bb15b"
+      ],
+      "frozen_source_urls": [
+        "http://oversight.house.gov/documents/20071002145249.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "D198",
+      "document_id": "c4cc0aa8c247581ced834e2d53fb94184cbfb36a8abb29bb4e5855025fd0d0f2",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "83e007ba2a1735da48fcb50a6d520c18a7db6294026eae33f2b1a268a9336932"
+      ],
+      "frozen_source_urls": [
+        "https://oversightdemocrats.house.gov/imo/media/doc/2020-09-01%20AbbVie%20Subpoena%20Memo.pdf"
+      ],
+      "matches": []
+    },
+    {
+      "review_id": "H197",
+      "document_id": "ac50e885212d0dfed5800f6519b8462f1475c6de13144e28149097d6f288ec02",
+      "split": "held-out",
+      "category": "url_match_without_frozen_nonempty_body",
+      "frozen_body_hashes": [
+        "c28ce66b31232da7b414480f87bac6da0cd3faabe7561ca4de94b5d7a5bf47ee"
+      ],
+      "frozen_source_urls": [
+        "https://www.pewresearch.org/wp-content/uploads/sites/20/2025/12/PR_2021.09.30_restrictions-on-religion-2019_errata.pdf"
+      ],
+      "matches": [
+        {
+          "current_document_id": "921e55d7f02def9a336f6ad9b8105e62c65a8a40fc88371bd5e102f6348398a0",
+          "matching_body_hashes": [],
+          "matching_source_urls": [
+            "https://www.pewresearch.org/wp-content/uploads/sites/20/2025/12/PR_2021.09.30_restrictions-on-religion-2019_errata.pdf"
+          ],
+          "body_sets_equal": false,
+          "current_body_hashes": [],
+          "matching_nonempty_body_hashes": []
+        }
+      ]
+    },
+    {
+      "review_id": "D200",
+      "document_id": "625156ebc32773ae2b1d76900ba2e5af69b5b16ae3a38ddbf688ef3c40da3c9f",
+      "split": "development",
+      "category": "no_nonempty_body_or_url_match",
+      "frozen_body_hashes": [
+        "a4cb88d5d35093cef118f9dc4aa5a88f5987e23e59764e812d9e8a7ab753220a"
+      ],
+      "frozen_source_urls": [
+        "http://republicans.energycommerce.house.gov/Media/file/Hearings/CTCP/2010-06-16_HR5156/Morgan.pdf"
+      ],
+      "matches": []
+    }
+  ],
+  "empty_body_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "ignored_empty_only_matches": 5034,
+  "raw_diagnosis_sha256": "6b442b832e18824b8266b78ad4fd4afcd959c2fff3e9fe6d54241cc243b5bf3f",
+  "limitation": "Exact empty-byte digests are not evidence of document identity. URL matches alone do not establish unchanged body content. No IDs or eligibility decisions are remapped."
+}

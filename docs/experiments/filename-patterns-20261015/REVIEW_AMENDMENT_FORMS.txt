@@ -1,0 +1,63 @@
+Retained amendment forms: complete visual review
+================================================
+
+Decision
+--------
+Use the complete Judiciary roll-call amendment TEXT filename layout as an
+amendment hint. Exclude Representational Disclosures and CBRA Disclosure
+Notification from the publisher witness-disclosure hint. Keep amendment and
+letter kinds together for the Views and Estimates substitute.
+
+Evidence
+--------
+Read all 61 rows of review-evidence-v3/groupings.csv again after compaction.
+Fetched exactly 17 eligible retained PDFs from the public saved-copy route.
+Every decoded PDF matched its catalog SHA-256. The selection checked document
+IDs and every retained body key against all 400 frozen pilot records before
+network access; no pilot overlap occurred. No publisher acquisition or OCR ran.
+
+All 21 rendered pages were visually reviewed. The 15 Judiciary TEXT documents
+are single-page amendment texts. Fourteen include handwritten vote outcomes;
+the Sensenbrenner amendment has no visible outcome note. None is a member vote
+sheet. Those outcome annotations remain evidence about the amendment, rather
+than a second document form. Their filenames retain literal roll-call wording.
+
+The two-page Graves document is an amendment containing notification provisions
+for landowners. Disclosure notification is its subject, not a witness form.
+The filename says H.R. 3476 while the heading says H.R. 3764. Preserve both;
+this review does not resolve or rewrite the bill identity.
+
+The four-page Views and Estimates substitute begins with an amendment heading
+and a strike-all instruction, followed by a complete replacement letter with
+an addressee, salutation, policy sections and closing. Both kinds remain useful.
+
+The earlier single-page Swalwell review likewise found amendment language about
+professional and representational disclosure. Its native BILLS alias supplies
+the committee-amendment kind; the descriptive alias alone should abstain from
+inferring a witness disclosure or inventing an amendment marker.
+
+Implementation
+--------------
+Catalog 3.2.7 adds one supplemental, PDF-only rule for judiciary.house.gov. It
+matches the complete reviewed layout, including its amendment number and final
+TEXT label. The existing longest-phrase selector handles nested vote wording;
+no Python selector or ingestion changes were needed. Explicit coordination,
+other hosts, non-PDF extensions and unreviewed TEXT layouts retain prior behavior.
+Two bounded subject phrases extend the existing publisher disclosure exclusions.
+Original filename pieces, offsets and native naming records remain available.
+
+Limits and follow-up
+--------------------
+These are assistant development reviews, not independent evaluation references
+or release approval. The frozen PDF candidate and held-out gate are unchanged.
+The review ledger still predates these refinements; regenerate its complete
+alias evidence and link exact current evidence before reporting queue reductions.
+Review the 38 disclosure/biography groups next using their single eligible body
+per group. Preserve both kinds until their contents establish the actual forms.
+Six pending groups have no eligible retained body and require separate recovery.
+
+Machine evidence
+----------------
+amendment_content_review.json binds every reviewed PDF, native text, rendered
+page, selection input and finding. swalwell_content_review.json binds the earlier
+review. amendment_form_checkpoint.json records tests and the bounded replay.

@@ -1,0 +1,110 @@
+Catalog filename replay review
+==============================
+
+Findings
+--------
+No blocking code defect was found in the tested comparison path. This review
+approves the local tooling, not the historical replay's eventual result or a
+production release. The full historical run is still in progress at this
+checkpoint; its actual differences must be inspected before drawing conclusions.
+
+The first integration test correctly detected an inconsistent fixture: two
+records without retained bodies claimed body_format=pdf. Replay dropped those
+unsupported body readings, and the protected-evidence comparison refused to call
+the result preserved. The fixture now records body_format only for retained
+bodies. The comparator remains strict; the failed assertion was not weakened.
+
+Operational limit: disk space is checked before writes and during source-row
+consumption, but that is not an enforced ceiling during cache restoration,
+grouping or comparison. See CATALOG_REPLAY.txt. Large runs require live progress
+and free-space checks. This local workflow does not automatically resume failures.
+
+Patch summary
+-------------
+document_index.filename_refresh_inputs extracts the existing refresh preparation
+into one helper shared by normal metadata refresh and the experiment runner.
+The original field selection, lazy iteration, provenance keys and writer flags
+remain unchanged in the normal refresh caller. The new runner supplies an empty
+isolated root and inspect_bodies=false, reuse_results=false, plus the complete
+previous table to preserve retained readings while reparsing filename meanings.
+
+Function trace
+--------------
+Paths beginning with catalog_ or test_ are relative to this experiment directory.
+
+Function / caller               Location                         Input -> output and checked behavior
+filename_refresh_inputs         document_index.py:2543           Parquet source -> lazy raw rows/provenance
+refresh_filename_metadata       document_index.py:2570           Selected local catalog -> same maintained refresh
+normalized                      catalog_filename_replay.py:31     Evidence value -> removes only null dictionary padding
+encode                          catalog_filename_replay.py:41     JSON -> stable encoding for comparisons
+protected_hash                  catalog_filename_replay.py:45     Source/group evidence -> SHA256, preserves values/order
+compare_table                   catalog_filename_replay.py:52     Two full tables -> SQLite ID join and complete change CSV
+refused_body                    catalog_filename_replay.py:116    Unexpected body request -> explicit failure
+run                             catalog_filename_replay.py:120    Read-only pair -> isolated replay, checks and summary
+run.guarded_rows                catalog_filename_replay.py:154    Source stream -> periodic disk-reserve check
+CLI                             catalog_filename_replay.py:194    Explicit options -> bounded workers and progress logging
+
+Both run and the normal refresh call write_filename_metadata
+(packages/congress_api/src/congress_api/retention/document_index.py:2239).
+That writer restores body fields from previous tables while inspect_bodies=false;
+reuse_results=false prevents reuse of old filename meanings. It calls the
+maintained write_document_indexes (:607), using WorkingCatalog and
+catalog_staging.write_grouped_indexes (:264) to build complete paired outputs.
+The explicit working argument avoids the writer's local-publication wrapper.
+The isolated root contains no captures, receipts or selected cache, so the run
+does not refresh source associations or discover unrelated retained readings.
+No body override is supplied. Tests exercise this actual call chain.
+
+Data flow and invariants
+------------------------
+H1: filename replay cannot mutate the input catalog. CONFIRMED in code/fixtures:
+source paths are read-only; all writer paths use a new isolated root. Input path
+selection and hashes are rechecked after the output comparison. No publication
+function is called and neither root receives a new selector.
+
+H2: a subset or historical pair cannot qualify the current publication. CONFIRMED:
+local_catalog_paths and validate_document_indexes check the complete pair.
+publication_gate binds a matching 3.1.0 pair to saved verified public manifests.
+Without that evidence run refuses unless --rehearsal is explicit, and all output
+retains the rehearsal and publication flags. No outcome automatically approves
+release. This does not establish completeness of an arbitrary legacy pair;
+only the verified selected publication establishes that external boundary.
+
+H3: grouping and evidence losses cannot hide behind increased coverage.
+CONFIRMED: both complete tables join on stable IDs; the comparator explicitly
+counts additions, removals, membership/role changes and protected-evidence
+differences alongside classification changes. Unknown and unnamed records stay
+in the comparison. Source alias selection is reported separately from membership.
+
+H4: body readers and source recovery stay separate. CONFIRMED for this path:
+the raw source helper excludes stale filename fields; previous restores retained
+body readings and fingerprints; the isolated root has no acquisition/recovery
+inputs; inspect_bodies=false prevents a body read. Existing native/source facts
+remain available to the maintained precedence rules.
+
+Tests and outcomes
+------------------
+test_catalog_filename_replay.py:49 exercises complete paired writes with a new
+public-law filename, aliases sharing one body, retained report classification,
+an unnamed document, source-derived witness kind and source-record role. Input
+bytes, roles, identities, body fingerprint and capture provenance survive;
+the law assignment reaches its grouped document. No selector or body read occurs.
+:78 separately changes role, source evidence, prior kind, membership, missing ID
+and duplicate ID. Every change appears in the CSV or produces an explicit error.
+:104 proves absent publication evidence prevents writer invocation.
+:112 proves refresh inputs retain source context and omit old filename meanings.
+:122 proves insufficient disk refuses before an output directory is written.
+:132 swaps input evidence after replay: the moving baseline refuses a final
+summary while retaining the diagnostic manifest and partial output.
+
+Executed evidence: 11 new replay tests pass; 154 existing catalog tests pass
+across filename indexing, evidence, kind fallback, metadata preservation, disk
+staging and catalog consumers. The 68 existing experiment/evaluation tests also
+pass. These focused checks do not claim that the full historical run has passed.
+
+VERDICT: APPROVE for isolated local comparison
+The refactor reuses one preparation path and preserves tested normal refresh
+behavior. The runner reuses maintained readers, conserves comparison scope and
+records semantic changes without publication. Coverage: ADEQUATE for tested
+local behavior. Confidence: HIGH for fixture and existing-consumer behavior;
+full-catalog correctness remains pending the live run and difference review.

@@ -15,6 +15,61 @@ operations work offline and do not read or download documents.
 A filename can supply useful evidence without proving a document's contents,
 identity or legislative status. The APIs keep those distinctions visible.
 
+Catalog 3.2.0 adds four complete, publisher-qualified PDF layouts: public-law
+package names on GovInfo, GPO and Congress.gov; House short bill names ending in
+`RH_xml` or `SUS_xml` on `docs.house.gov`; and Financial Services hearing serial
+names such as `112-12.pdf`. Public laws retain their own `public-law` kind within
+the legislation family. Numeric hearing names supply `published-hearing` and a
+literal `serial_token`, not a verified Congress or GPO publication number:
+the reviewed `103-3.pdf` cover actually prints serial `113-3`. Summaries,
+amendment suffixes, unrelated publishers and non-PDF files remain outside these
+rules. The content checks and frozen-population replay are recorded in
+[`CONTINUATION.txt`](../../docs/experiments/filename-patterns-20261015/CONTINUATION.txt).
+
+Version 3.2.1 keeps amendment and print references in vote-record filenames
+without assigning their targets as extra document kinds. Literal observations
+and spans remain available; explicit combined names such as `Amendment 1 and
+Roll Call.pdf` retain both kinds. Names with explicit `TEXT` wording also retain
+their existing ambiguity pending content review. This refinement lives in `house_naming` and
+performs no body inspection.
+
+Version 3.2.2 avoids treating constitutional topics such as “First Amendment”
+as amendment documents solely because they appear in a House publisher filename.
+It retains the wording and accepts separate operative evidence, such as an
+amendment number, a named bill/rules target, or proposed/offered wording.
+
+Version 3.2.3 also keeps report actions and oversight-plan targets out of vote
+record kinds. A report or plan explicitly about votes keeps its own genre.
+Literal references, combined documents and `TEXT` ambiguity remain available.
+
+Version 3.2.5 recognizes publisher-qualified `Disclosure Statement` and
+`Disclosure STMT` as complete disclosure phrases. The existing longest-phrase
+selection removes the nested generic statement kind while preserving original
+wording, attachment labels and explicit combinations such as `Disclosure and
+Statement`. It performs no body inspection.
+
+Version 3.2.4 uses recognized statement/testimony subject spans and leading
+publisher-qualified memo/opening labels to keep topic words out of document
+kinds. Explicit combined components and attachment labels remain available.
+Letters and statements about amendments retain the amendment wording without
+claiming to be amendment documents.
+
+Version 3.2.6 applies the existing vote-filename rule to the exact historical
+`republicans-naturalresources.house.gov` host. Retained source URLs and a shared
+body-key alias on the current Natural Resources host support this publisher
+scope. The vote pattern, target handling and explicit `TEXT` ambiguity remain
+unchanged. This update performs no content verification.
+
+Version 3.2.7 recognizes the complete Judiciary `Roll Call ... Amdt ... TEXT`
+PDF layout as amendment text. All 15 retained examples were visually reviewed;
+14 also contain handwritten vote outcomes. The existing longest-phrase selector
+keeps the literal vote observations without assigning a vote-sheet genre.
+Other publishers, non-PDF files and explicitly combined documents retain their
+existing readings. The publisher disclosure rule also excludes the reviewed
+legislative topics `Representational Disclosures` and `CBRA Disclosure
+Notification`. The Views and Estimates substitute retains both amendment and
+letter kinds. Runtime extraction remains offline and filename-based.
+
 ## Choose an API
 
 | Task | API | Result |

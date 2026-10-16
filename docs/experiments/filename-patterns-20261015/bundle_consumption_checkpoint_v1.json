@@ -1,0 +1,29 @@
+{
+  "bundle_summary_path": "output/filename-patterns-20261015/package-review-bundle-v1/summary.json",
+  "bundle_summary_sha256": "34d48feff2b0d8fb80d7bc686eb2aca88e517c50f8b402b9fabcc81c638b9cb3",
+  "summary_path": "output/filename-patterns-20261015/bundle-consumption-v1/summary.json",
+  "summary_sha256": "adae7ffb1a0095b37c44a3bdb813fc80c8c2caf62f5c89a66f8345327d5fde56",
+  "bundle_version": 1,
+  "reviewed_groups": 86,
+  "source_rows": 286,
+  "case_status": {
+    "candidate_applied": 81,
+    "annotation_only_unsupported_forms": 5
+  },
+  "candidate_bytes_identical_to_prior_admission": true,
+  "withdrawal_restores_all_baselines": true,
+  "stale_in_memory_source_refused": true,
+  "tests_passed": 85,
+  "bound_files_verified": 761,
+  "frozen_sources_verified": 9,
+  "frozen_pilot_and_labels_unchanged": true,
+  "production_selected": false,
+  "publication": false,
+  "evidence": {
+    "output/filename-patterns-20261015/package-review-bundle-v1/summary.json": "34d48feff2b0d8fb80d7bc686eb2aca88e517c50f8b402b9fabcc81c638b9cb3",
+    "output/filename-patterns-20261015/package-review-bundle-v1/run.log": "397dea1273631514259acca277e57b52cb98a7ac4c27deb7453466b1e8cfe466",
+    "output/filename-patterns-20261015/package-review-bundle-v1/candidates.jsonl": "d94923284cda2bbd5ac462654d85f641b27eeb9ad2ab38bb0c1afac81013472b",
+    "output/filename-patterns-20261015/bundle-consumption-v1/summary.json": "adae7ffb1a0095b37c44a3bdb813fc80c8c2caf62f5c89a66f8345327d5fde56",
+    "output/filename-patterns-20261015/bundle-consumption-v1/tests.log": "4306d478256c3b9396f6e22ca9d659e88fcceb3bc502e0e9e616b855f0fe976f"
+  }
+}

@@ -1,0 +1,95 @@
+Remaining retained-content review, part 1
+========================================
+Completed all 12 retained pages in ten short packets from the final selection.
+The remaining_content_review_v1.json receipt binds the original ledger, exact
+saved PDFs, native extraction, every page render and the prior receipt chain.
+
+Observed forms
+--------------
+Seven packets contain testimony-disclosure forms despite witness-statement
+filename claims. Six are single pages; Hueter has two pages. No witness policy
+statement occurs in these retained bodies. Hueter says a CV is attached, but
+neither retained page contains it. The Terenzio filename identifies a person;
+the retained form excerpt is numbered 3 and has no visible name or signature.
+Its overlapping/clipped question text remains a source-quality limitation.
+Carberry is a sideways scan. Five disclosure PDFs have no native text beyond
+page markers; every retained page was visually inspected without OCR.
+
+The H.R. 1890 PDF is a Ways and Means vote sheet: its table supports the stated
+25-13 result. The bill-form filename remains preserved as a conflicting claim.
+This finding applies to the exact retained body, not every body sharing a URL.
+The budget-reconciliation PDF explicitly says COMMITTEE PRINT and contains
+proposed legislative text. Its unfilled subtitle number and September 26 footer
+remain distinct from extraction artifacts and the September 29 filename token.
+Johnson's two pages contain a member statement supporting an amendment; the
+amendment is the subject, and no amendment text is attached.
+
+Verification
+------------
+The unchanged linker reports 81 reviewed documents / 423 pages with zero
+mismatches. Every original field except content_review remains unchanged.
+All 91 metadata cases still await classification decisions; 81 now have linked
+assistant content reviews and ten do not. All bound input/output hashes and
+nine frozen source hashes passed verification. Selected IDs and body keys are
+outside the frozen 400-record pilot. No runtime code changed and no new
+runtime test-suite result is claimed. Local house_naming remains 3.2.7.
+
+Next work
+---------
+Four saved packets / 104 pages remain: Award List (9), Galarza (8), EBJ
+alternative rules (17) and Wallace (70). Use the saved PDFs and renders; read
+all retained pages before recording complete review. Six other cases have no
+eligible retained body and remain unavailable. Then prepare proposed decisions
+for all 91 cases, preserving observed form, filename claim, subject, event
+context and attachment role separately. Any runtime correction belongs in
+house_naming and requires focused tests and cohort replay. Independent labels,
+fresh raw-catalog qualification and release approval remain separate gates.
+
+Part 2: funding lists and proposed committee rules completed
+----------------------------------------------------------
+All 34 retained pages in the Award List, Galarza attachment and EBJ substitute
+amendment are now reviewed. The additive v2 receipt preserves exact bodies,
+page coverage and the previous review chain. The unchanged linker reports
+84 reviewed documents / 457 pages and zero mismatches. All bound hashes and
+nine frozen source hashes passed verification; metadata decisions stay unchanged.
+
+The Award List contains school grant tables for fiscal 2011-2013 and a separate
+subcontractor table. Galarza contains a continuous list of contract/subcontract
+awards. Neither retained body includes a signed disclosure questionnaire or
+narrative testimony. Their filename disclosure/attachment roles remain separate
+from observed form. The receipt uses descriptive observed-form labels for these
+lists; it does not introduce new production kinds. Source clipping, page-break
+continuations, amount punctuation and a heading/date inconsistency are retained.
+
+The EBJ packet contains operative substitute-amendment instructions followed by
+proposed committee rules. It does not establish adoption. Its stated count of
+six subcommittees conflicts with five listed jurisdictions; its 113th-Congress
+oversight provision differs from the 114th-Congress cover. The receipt preserves
+these source inconsistencies. References to disclosures, testimony, reports and
+subpoenas are procedural provisions, not attached examples of those documents.
+
+Only the 70-page Wallace packet remains among the available saved PDFs. Review
+all pages before completing its receipt. Six unavailable groups remain unresolved.
+After that review, propose decisions for all 91 metadata cases, including explicit
+unavailable outcomes. Preserve the distinction between form and disclosure role;
+a financial schedule can support a disclosure without being a signed form.
+
+Remaining retained-content review completed
+------------------------------------------
+The Wallace expenditure schedule is fully reviewed: all 70 retained pages and
+native text, arranged as five fourteen-page column blocks. Its funding-schedule
+form remains distinct from its filename disclosure-attachment role. The receipt
+preserves clipped values, unusual program identifiers and negative amounts.
+See remaining_content_review_v3.json and content_review_linkage_checkpoint_v9.json.
+
+The v9 linkage has 85 reviewed documents / 527 pages and zero mismatches. All
+bound inputs, outputs and nine frozen source hashes passed verification. All
+91 metadata cases still need classification decisions; six lack eligible bodies.
+No runtime code changed. Local house_naming 3.2.7 remains unpublished.
+
+Next prepare case-specific proposed dispositions for all 91 rows, preserving
+filename claims, observed forms, source context and attachment roles. Keep the
+six unavailable cases unresolved. Use the proposals to select small, supported
+house_naming changes with positive and negative tests plus cohort replay.
+Independent reference labels and fresh raw-catalog qualification remain separate
+unfinished requirements.

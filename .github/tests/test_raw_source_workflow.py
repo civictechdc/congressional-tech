@@ -237,7 +237,7 @@ def test_summary_reports_success_failure_and_setup_failure(
     assert ("catalog_id" in text) is receipt
     assert ("operation is unverified" in text) is not receipt
     if mode == "capture":
-        assert "tables are updated by a separate rebuild" in text
+        assert "after verification, the dependent job updates the catalog" in text
 
 
 def test_interrupted_run_keeps_last_progress_in_summary_and_artifact(tmp_path):
@@ -256,7 +256,7 @@ def test_interrupted_run_keeps_last_progress_in_summary_and_artifact(tmp_path):
 
 
 def test_shared_writer_lock_revision_credentials_and_single_rebuild():
-    assert set(WORKFLOW["jobs"]) == {'capture', 'finalize'}
+    assert set(WORKFLOW["jobs"]) == {'capture', 'finalize', 'update_catalog_after_capture'}
     finalizer = WORKFLOW['jobs']['finalize']
     assert finalizer['needs'] == 'capture' and 'always()' in finalizer['if']
     assert finalizer['timeout-minutes'] == '5'
@@ -302,10 +302,29 @@ def test_shared_writer_lock_revision_credentials_and_single_rebuild():
     for path in WORKFLOW_PATH.parent.glob("*.yml"):
         if "R2_ACCESS_KEY_ID" in path.read_text():
             writer = yaml.load(path.read_text(), Loader=yaml.BaseLoader)
-            if path != WORKFLOW_PATH:
+            # Pages reads a hash-verified immutable generation. It does not
+            # write R2 objects or participate in the archive writer lock.
+            # Its read-only client calls are checked in test_filename_publication.
+            if path.name == 'publish-filename-viewer.yml':
+                assert writer['concurrency']['group'] == 'filename-viewer-publication'
+                assert 'raw-source-sync' not in path.read_text()
+            elif path != WORKFLOW_PATH and path.name != 'deploy-pages.yml':
                 assert writer["concurrency"] == {
                     "group": "raw-source-mirror", "cancel-in-progress": "false", "queue": "max",
                 }, path
+
+
+def test_verified_capture_updates_catalog_before_viewer_publication():
+    update = WORKFLOW['jobs']['update_catalog_after_capture']
+    assert update['needs'] == ['capture', 'finalize']
+    assert "needs.capture.result == 'success'" in update['if']
+    assert "needs.finalize.result == 'success'" in update['if']
+    assert "needs.capture.outputs.mode == 'capture'" in update['if']
+    verification = next(step for step in STEPS if step.get('name') == 'Verify completed capture checkpoint')
+    assert verification.get('continue-on-error', 'false') == 'false'
+    step = next(step for step in update['steps'] if step.get('name') == 'Update catalog from the verified capture')
+    assert '--update-only' in step['run']
+    assert '--capture-only' not in step['run']
 
 
 def test_triggers_cover_parser_changes_and_exclude_generated_outputs():

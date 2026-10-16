@@ -1,0 +1,76 @@
+Review: complete-body candidates after catalog grouping
+======================================================
+
+Decision
+--------
+APPROVE for the local historical-cohort experiment. This self-review does not
+approve production adoption or provide independent classification references.
+No blocking finding remains within that scope. Production integration, public
+representation of five descriptive-form cases and fresh-catalog qualification
+remain outstanding.
+
+Implementation and evidence flow
+--------------------------------
+packet_review_replay.run validates the prior comparison's bound files, then
+catalog_content_review.load_reviews validates the complete receipt chain, exact
+body bytes and every rendered page. packet_review_candidate.bind_review calls
+catalog_disposition_compare.compare_case to check original-row identity, exact
+source membership, body identity and agreement between proposed and observed
+forms. group_digest binds every non-null value of the baseline group and members.
+Changing a body, filename, member, publisher context or native kind invalidates
+that binding. Source order and Arrow null-field padding do not change it.
+
+apply_review accepts only unapproved assistant observations. It copies the
+baseline document and replaces document_kind, document_kind_source and derived
+document_family only. All filename, native-content and occurrence evidence stays
+intact. Existing family mappings come from house_naming.categories. Families
+outside those derived from the prior selected kinds remain as context. This
+set subtraction cannot distinguish overlapping context/kind family provenance;
+production adoption requires tracing that ambiguity against the full catalog.
+
+Unsupported descriptive forms retain the whole packet as an annotation. The
+candidate does not select only the supported subset. Removing a review returns
+the baseline, and an earlier candidate is rejected as a baseline/cache input.
+Candidates remain separate JSON records; no production caller consumes them.
+The helper assumes its caller has validated receipts. It is not a public loader
+for arbitrary JSON. The runner establishes that precondition before binding.
+
+The runner's verify closure compares complete source/document semantic hashes,
+candidate results and withdrawal behavior after each existing path: saved pair,
+reference grouper, reversed source order, disk grouper, cached disk groups,
+metadata refresh with reuse and metadata refresh with reparsing. Body inspection
+is disabled and its read callback refuses reads. All files go to a new local
+experiment directory. Implementation identity and all inputs are checked again
+before final results are written. Interrupted output directories are not success.
+
+Verification
+------------
+packet-review-replay-v2 completed all seven scenarios over 7,526 source rows and
+1,949 groups. All 91 cases are represented: 80 applied candidates, five complete
+packet annotations and six unavailable cases. Of the 80 applied candidates,
+62 change selected kind sets and 18 retain the same kinds with review provenance.
+All 1,858 other groups remain unchanged. Cached grouping reused all 1,949 groups.
+Both refresh paths reproduce the complete baseline and candidate results.
+
+131 tests passed in 4.19 seconds across the candidate, comparison, receipt,
+catalog staging and document-kind fallback modules. The candidate tests cover
+input preservation, changed body/context/member/filename/native kind, correction,
+withdrawal, member reordering, null padding, unsupported components, unavailable
+content and invalid approval/reference/form assertions. Existing receipt tests
+cover actual saved PDF/render validation. The full seven-scenario execution
+provides runner integration evidence; it is not a classifier accuracy estimate.
+
+Resource limit and next work
+----------------------------
+The harness materializes full Arrow rows and reference-grouper copies. A process
+sample during the completed run showed about 11.7 GiB RSS; this is not a measured
+peak. The earlier v1 attempt was intentionally interrupted without a result.
+Per-row semantic hashing avoids a redundant whole-catalog normalized copy, but
+no controlled performance improvement is claimed. Use bounded reads that remove
+only null struct padding and preserve all non-null evidence before scaling this
+harness to the full catalog. Prove equivalence and measure memory on the same
+historical input pair before adopting that change.
+
+VERDICT: APPROVE, local experiment only.
+Coverage: sufficient for the stated selection and replay scope.
+Confidence: high for replay equivalence; no production or accuracy qualification.

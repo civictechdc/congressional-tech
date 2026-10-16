@@ -1,13 +1,15 @@
 name: Deploy website to Pages
 
-# Site-only changes reuse the published catalog; data publication also dispatches
-# a deployment with exact code and data revisions.
+# Filename data publishes independently to R2. Pages deploys interface changes
+# and the existing Explorer publication.
 on:
   push:
     branches: [main]
     paths:
       - "apps/site/**"
       - ".github/workflows/deploy-pages.yml"
+      - "docs/youtube-coverage/research/filename-viewer.*"
+      - "docs/youtube-coverage/research/scripts/view_document_filenames.py"
   workflow_dispatch:
     inputs:
       code_revision:
@@ -46,7 +48,7 @@ jobs:
       - name: Install publication verifier
         run: >-
           pip install -e packages/house-naming -e packages/committee_meeting -e packages/congress_shared
-          -e packages/youtube_api -e packages/congress_api -e apps/committee_youtube
+          -e packages/youtube_api -e "packages/congress_api[archive]" -e apps/committee_youtube
       - name: Verify and stage only published browser files
         run: |
           python - <<'PYTHON'
@@ -69,6 +71,9 @@ jobs:
       - name: Install dependencies
         working-directory: apps/site
         run: npm install --no-audit --no-fund
+      - name: Verify review controls and static reader
+        working-directory: apps/site
+        run: node --test src/components/filename-reviews.test.mjs ../../tests/test_filename_viewer_ui.mjs
       - name: Build Astro site
         working-directory: apps/site
         run: npm run build

@@ -1,0 +1,110 @@
+{
+  "scope": "Local historical cohort repair; not full-catalog or release qualification",
+  "version": "3.2.3",
+  "reviewed_groupings": {
+    "scope": "Current replay of historical changed-kind and repair cohorts; every changed document has a pending ledger row",
+    "groups": 64,
+    "records": 1913,
+    "input_summary_sha256": "e2931a593dfecc195dd43bfc28fefb4bf337ab7d5e3d1769e8ebcc79685dfee1",
+    "groupings_sha256": "21f8da744362a84ee0769cb843f52204c53143a0a80a8b2d1a484a9e03f0c477",
+    "ledger_sha256": "6d579f9fdd1739d8365b876e22fc135b31df7cef51f6a20804323b9755d1e815",
+    "samples_per_group": 3,
+    "sample_order": "document_id ascending; up to three; not a precision sample"
+  },
+  "historical_source_evidence_diagnosis": {
+    "scope": "Exact 3.0.0-to-3.2.2 historical cohort source evidence diagnosis, not release qualification",
+    "summary_sha256": "e2931a593dfecc195dd43bfc28fefb4bf337ab7d5e3d1769e8ebcc79685dfee1",
+    "changed_sources": 343,
+    "changed_fields": {
+      "source_record_type": 343
+    },
+    "role_and_type_transitions": [
+      {
+        "before_role": "['document']",
+        "after_role": "['error-response']",
+        "after_type": "['error-page']",
+        "count": 257
+      },
+      {
+        "before_role": "['error-response']",
+        "after_role": "['error-response']",
+        "after_type": "['error-page']",
+        "count": 86
+      }
+    ],
+    "other_protected_field_changes": []
+  },
+  "replay_summary_path": "output/filename-patterns-20261015/vote-action-replay-v1/summary.json",
+  "replay_summary_sha256": "62c2c545dee4229c3244c0d94bc1fd0adb95014dba83a52c7a8ce4a13d1f692b",
+  "replay_comparisons": {
+    "filenames": {
+      "before_rows": 7526,
+      "after_rows": 7526,
+      "missing_ids": 0,
+      "added_ids": 0,
+      "changes": {
+        "changed_prior_kind": 46,
+        "role_changed": 0,
+        "protected_evidence_changed": 0,
+        "document_id_changed": 0,
+        "representative_changed": 0,
+        "kind_source_changed": 0
+      },
+      "changes_sha256": "9cc7c818b2ab39bb7ed60c5bc7199b2d69fb02684b4ecd01f34ac0b5e7e901ff",
+      "identities_roles_evidence_preserved": true,
+      "prior_kind_changes": 46
+    },
+    "documents": {
+      "before_rows": 1949,
+      "after_rows": 1949,
+      "missing_ids": 0,
+      "added_ids": 0,
+      "changes": {
+        "changed_prior_kind": 24,
+        "role_changed": 0,
+        "protected_evidence_changed": 0,
+        "document_id_changed": 0,
+        "representative_changed": 0,
+        "kind_source_changed": 0
+      },
+      "changes_sha256": "db64cd9950e47f84957265b4164b0305551eeca5e22ac0726fb65d55cecfe4c0",
+      "identities_roles_evidence_preserved": true,
+      "prior_kind_changes": 24
+    }
+  },
+  "reviewed_changes": {
+    "filenames": {
+      "report": 34,
+      "oversight-plan": 12
+    },
+    "documents": {
+      "report": 18,
+      "oversight-plan": 6
+    }
+  },
+  "input_bytes_unchanged": true,
+  "invariants_preserved": true,
+  "elapsed_seconds": 251.2,
+  "acquisition": false,
+  "body_reinspection": false,
+  "publication_performed": false,
+  "release_qualified": false,
+  "validation": {
+    "initial_red": {
+      "failed": 8,
+      "passed": 8
+    },
+    "package_metadata_replay_passed": 4674,
+    "initial_stale_loaded_version_assertion_failures": 1,
+    "final_replay_tests_passed": 17,
+    "consumer_tests_passed": 106,
+    "catalog_artifacts_verified": 3,
+    "frozen_source_hashes_verified": 9
+  },
+  "evidence_logs": {
+    "vote-action-red.log": "54486899359225f7cc3d1a9f75b18254680caf7da6808719ee53a3a9640f2a06",
+    "vote-action-full.log": "7f530c33509c9ceafc539e95e50b3a6d14a4fb0b63442dbacb46a8a2d7580887",
+    "vote-action-replay-tests.log": "f2a70bb84e167c7fc2e882e6a11d0cf0d6f9cdb18b8915f11bbe101ed42355a4",
+    "vote-action-consumers.log": "be7c681aed0db8eebb81396aa03f47a74182c676657b2547bf3faad3970e753f"
+  }
+}

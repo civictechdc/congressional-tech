@@ -14,8 +14,16 @@ EVENT_KINDS = frozenset({'business-meeting', 'nomination', 'field-hearing', 'pan
 LEGISLATIVE_KINDS = frozenset({'amendment', 'committee-print', 'legislative-text', 'oversight-plan'})
 TOPIC_KINDS = frozenset({'report', 'summary', 'response', 'rules-memorandum', 'chair-mark',
                          'mark-modification', 'business-meeting', 'nomination',
-                         'tally-sheet', 'letter', 'exhibit', 'appendix', 'attachment',
-                         'panelist-list', 'participant-list'}) | EVENT_KINDS
+                         'tally-sheet', 'committee-vote', 'letter', 'exhibit', 'appendix', 'attachment',
+                         'panelist-list', 'participant-list'}) | EVENT_KINDS | LEGISLATIVE_KINDS
+PUBLISHER_TOPIC_KINDS = TOPIC_KINDS | {'committee-memorandum', 'testimony', 'amendment-collection'}
+COMPONENT_KINDS = frozenset({'attachment', 'appendix', 'exhibit', 'exhibit-collection'})
+SUBJECT_GENRES = frozenset({'testimony', 'witness-statement', 'statement', 'opening-statement'})
+CONSTITUTIONAL_ORDINAL = re.compile(
+    r'(?<![a-z0-9])(?:first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|'
+    r'eleventh|twelfth|thirteenth|fourteenth|fifteenth|sixteenth|seventeenth|eighteenth|'
+    r'nineteenth|twentieth|twenty[\s_.-]+(?:first|second|third|fourth|fifth|sixth|seventh)|'
+    r'(?:[1-9]|1[0-9]|2[0-7])(?:st|nd|rd|th))[\s_.-]+$', re.I)
 
 # Broad navigation groups, not new readings of a filename or its contents.
 # Spell out membership: e.g. bill-comparison is not legislative text, and a
@@ -29,7 +37,7 @@ _FAMILY_MEMBERS = {
     'transcript': ('committee-transcript',),
     'report': ('committee-report', 'committee-report-part', 'committee-report-unnumbered',
                'conference-report', 'conference-unnumbered', 'published-report'),
-    'legislation': ('legislative-text', 'bill-named-draft', 'bill-numbered', 'bill-numbered-described',
+    'legislation': ('public-law', 'legislative-text', 'bill-named-draft', 'bill-numbered', 'bill-numbered-described',
                     'bill-preintroduced', 'bill-suspension-numbered', 'bill-titled-draft',
                     'bill-unnumbered', 'bill-untyped-draft', 'bill-untyped-numbered',
                     'appropriation-described', 'appropriation-routed', 'conference-legislation-part'),
@@ -79,10 +87,31 @@ def document_category_fields(filename: str | None, observations: list[dict]) -> 
                            if m.get('scope') == 'source-stem'
                            and any(part.get('category') == 'transcript' for part in m['fields'])
                            for f in m['fields'] if f['name'] in {'suffix', 'subject_token'}]
+    # A complete label/subject/date layout declares which span is a subject.
+    # Publisher-qualified memo/opening prefixes likewise introduce a title;
+    # require them at the start, rather than treating every occurrence as a prefix.
+    genre_subjects = [(f['start'], f['end']) for m in observations if m.get('scope') == 'stem'
+                      for f in m['fields'] if f['name'] == 'subject_token'
+                      and any(part.get('category') in SUBJECT_GENRES and part['end'] <= f['start']
+                              for part in m['fields'])]
+    publisher_titles = []
+    if filename is not None:
+        publisher_titles.extend((f['end'], len(filename)) for m in observations
+                              if m.get('scope') == 'source-stem' for f in m['fields']
+                              if f['start'] == 0 and f.get('category') in {'committee-memorandum', 'opening-statement'})
     candidates = []
     for field in sorted(fields, key=lambda f: (f['start'], -f['end'])):
         a, b, kind = field['start'], field['end'], field['category']
         if any(x <= a < b <= y for x, y in transcript_subjects):
+            continue
+        # Preserve explicit combined components and attachment labels. Declared
+        # subjects govern nested genres; a publisher prefix alone governs only
+        # topic-prone kinds, not independent labels such as Opening Remarks.
+        if (filename is not None and kind not in COMPONENT_KINDS
+                and (any(x <= a < b <= y for x, y in genre_subjects)
+                     or (kind in PUBLISHER_TOPIC_KINDS
+                         and any(x <= a < b <= y for x, y in publisher_titles)))
+                and not re.search(r'(?:^|[\s_.-])(?:and|&|with)[\s_.-]+$', filename[:a], re.I)):
             continue
         if field['name'] != 'amendment_marker' and any(x <= a < b <= y for x, y in targets):
             continue
@@ -91,8 +120,11 @@ def document_category_fields(filename: str | None, observations: list[dict]) -> 
             continue
         # Long phrases own their nested generic wording, including QFR responses,
         # mark descriptions, opening statements and amendment/exhibit lists.
+        # Use the complete phrase even when its nested wording has the same
+        # kind: the "and" inside Authorization and Oversight Plan is not a
+        # connector to a separate document.
         if any(f['start'] <= a and b <= f['end'] and (a, b) != (f['start'], f['end'])
-               and f['category'] != kind for f in fields):
+               for f in fields):
             continue
         if any(f['category'].endswith('-' + kind) for f in fields):
             continue
@@ -100,6 +132,19 @@ def document_category_fields(filename: str | None, observations: list[dict]) -> 
             candidates.append(field)
             continue  # A supplied observation can be flattened without its source text.
         before, after = filename[:a], filename[b:]
+        if kind == 'amendment' and field['name'] == 'document_wording':
+            # A publisher's broad amendment word can name a constitutional
+            # topic. Require separate operative wording for ordinal forms;
+            # numbered amendment markers remain independent evidence.
+            ordinal = CONSTITUTIONAL_ORDINAL.search(before)
+            target = re.match(r'[\s_.-]+to[\s_.-]+', after, re.I)
+            operative_target = target and (
+                re.match(r'(?:Committee|House|Senate)[\s_.-]+Rules\b', after[target.end():], re.I)
+                or any(part['name'] == 'measure_token' and part['start'] == b + target.end()
+                       for observation in observations for part in observation['fields']))
+            if (ordinal and not operative_target and not re.search(
+                    r'(?:^|[\s_.-])(?:proposed|offered)[\s_.-]+$', before[:ordinal.start()], re.I)):
+                continue
         if kind == 'summary' and re.match(r'[ _-]+Judgments?(?![A-Za-z])', after, re.I):
             continue
         if kind == 'report' and re.match(r'(?:(?i:[ _-]+Cards?(?![A-Za-z]))|Cards?(?=[A-Z]|\b))', after):
@@ -130,14 +175,19 @@ def document_category_fields(filename: str | None, observations: list[dict]) -> 
 
     # These adjacent phrases express "a summary of the package" and "a slide
     # containing a summary", not two independent document genres.
+    # Some publishers pair a roll-call filename with an amendment TEXT variant.
+    # The filename alone cannot resolve that explicit text/vote ambiguity.
+    explicit_text = filename is not None and re.search(r'(?:^|[\s_.-])text(?:$|[\s_.-])', filename, re.I)
     refined = []
     for f in candidates:
-        # A tally sheet records the vote on the preceding amendment or print.
-        # Keep those literal fields, but do not call the tally sheet its target.
-        if filename is not None and f['category'] in {'amendment', 'committee-print'} and any(
-                other['category'] == 'tally-sheet' and f['end'] <= other['start']
+        # A vote record names its legislative target or the action to report it.
+        # Keep those literal references without adding document genres.
+        # Explicitly coordinated documents still retain both kinds.
+        if filename is not None and not explicit_text and f['category'] in {'amendment', 'committee-print', 'oversight-plan', 'report'} and any(
+                other['category'] in {'tally-sheet', 'committee-vote'}
+                and (f['end'] <= other['start'] or other['end'] <= f['start'])
                 and not re.search(r'(?:^|[ _-])(?:and|&)(?:$|[ _-])',
-                                  filename[f['end']:other['start']], re.I)
+                                  filename[min(f['end'], other['end']):max(f['start'], other['start'])], re.I)
                 for other in candidates):
             continue
         if filename is not None and any(f['end'] <= other['start'] and re.fullmatch(r'[ _-]+', filename[f['end']:other['start']])

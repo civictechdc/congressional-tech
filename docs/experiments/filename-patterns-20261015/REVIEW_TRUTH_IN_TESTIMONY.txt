@@ -1,0 +1,75 @@
+Truth-in-Testimony filename review
+=================================
+
+Result
+------
+Reviewed every distinct filename in the 210 selected transitions from testimony
+or testimony plus testimony-disclosure to testimony-disclosure. The explicit
+disclosure wording supports the current filename interpretation for 209 groups.
+One Award List group remains unresolved. No classification rule changed.
+
+The entire current 60-row grouping CSV was reread after context compaction,
+followed by all 355 distinct filenames from the complete selected membership.
+The selection contains 647 source records: 292 use Truth-in-Testimony wording,
+290 use native TTF codes, two use disclosure aliases and 63 have no filename.
+The 292 includes the two case-variant Award List filenames withheld below.
+The maintained document_index.extract adapter reproduces the saved filename
+kind for all 647 records, including the 63 untyped records. Each unnamed record
+shares an eligible retained body key with a named alias in its group.
+
+This is a filename interpretation review, not an independent reference set or
+content review. No body bytes were read. All 33 multiple-body groups retain their
+content-review requirement. Matching body keys establish recorded alias links;
+they do not verify the stored bytes or prove the contents of every capture.
+
+Rationale and exception
+-----------------------
+The catalog's native TTF convention names Truth in Testimony Disclosure Forms.
+The publisher-house-disclosure rule recognizes the complete Truth-in-Testimony
+phrase under its allowed House publisher hosts. document_category_fields lets
+the complete phrase own its nested generic testimony label. That explains why
+the current filename result is disclosure rather than a witness statement.
+The Montgomery Disclosure aliases match the same publisher-qualified category.
+All original wording, source membership and retained body histories stay intact.
+
+Group 01940862e3bc3b78b7561661018939cccc324214930e1592401d9514a6a56da5
+has only Given_Truth_in_Testimony_Award_List.pdf and its lowercase variant.
+It has one retained body key and no saved native content kind. The wording could
+name supporting award information rather than the form itself. Neither automatic
+acceptance nor a new exclusion is justified by these filenames alone. Keep its
+current classification and unresolved review status until exact-body review is
+available. Its key is:
+bodies/sha256/bc/bcd55091348b796053d5e9aae621c2f6c310777d6b4b806f18aab7ef2ca1f62b.gz
+
+Evidence and limits
+-------------------
+truth_in_testimony_checkpoint.json binds the existing reviewed ledger, the full
+selection, all filenames, per-source extraction audit and implementation files.
+Each of the 210 decisions includes its document ID and a SHA-256 of the complete
+original ledger row, serialized as UTF-8 JSON with sorted keys, compact comma/
+colon separators and ensure_ascii=False. A future join must match that exact row;
+the document ID alone is insufficient. Every decision retains content_review as
+not_performed and release_approved as false.
+
+Checks confirmed the selection equals all 210 qualifying rows in the bound
+current ledger, all IDs are unique, all names are present, and no selected row
+has an alias integrity issue. All nine frozen PDF experiment source hashes are
+unchanged. Runtime code and the original ledger are unchanged; this commit adds
+review evidence only, so it does not require repeating the runtime test suite.
+
+The existing ledger still reports 337 needs_review rows. This separate checkpoint
+provides filename interpretation decisions for 209 of them, leaving 128 without
+that basis. Do not report a regenerated ledger count until these exact-row
+annotations have been joined and validated. No release approval follows from
+either count.
+
+Next steps
+----------
+Review the 18 statement-to-statement-plus-disclosure groups and the one related
+attachment group. Check complete Witness Disclosure Statement phrases against
+the existing longest-phrase selection, preserving explicitly combined forms.
+Then inspect disclosure/biography combinations and the explicit TEXT vote cases.
+Join these bounded reviews into the current ledger using complete-row bindings.
+Keep denied archive reads pending changed access evidence. Before inspecting the
+Award List body, check its document ID and body key against the frozen pilot.
+Fresh publication verification and independent held-out evaluation remain open.

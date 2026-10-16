@@ -1,0 +1,79 @@
+Current filename review linkage
+===============================
+
+Result
+------
+The complete 3.2.5 cohort review has 1,903 changed groups: 815 broad/specific
+alias additions, 389 same-family additions, 381 matching historical repair
+reviews, 209 exact-row filename interpretations and 109 groups still without
+a review basis. All 61 grouping CSV rows were read in full. Every row retains
+content_review=not_performed and release_approved=false.
+
+The historical reviews now include all 25 Disclosure Statement repairs. Six of
+those groups previously counted as broad/specific additions; removing generic
+statement makes their earlier interpretation obsolete. The new repair receipt
+provides their current basis. The remaining 19 repairs and 209 Truth-in-Testimony
+interpretations reduce the previous 337 unreviewed rows to 109. The Award List
+exception matches its original row but remains unresolved. No historical or
+filename receipt failed the current evidence comparisons.
+
+The refreshed alias audit covers all 7,526 source rows and 1,949 complete groups,
+including 46 unchanged-kind controls. Historical inputs, old registries and old
+checkpoints remain intact. review_receipts_v3.json points to the new audit and
+adds the disclosure repair and Truth-in-Testimony decision checkpoint. The new
+review_evidence_checkpoint_v3.json binds the output and triage evidence.
+
+Execution and safeguards
+-------------------------
+catalog_review_evidence.row_digest (:25) reuses the replay tool's canonical JSON
+encoder and hashes the complete row. load_filename_reviews (:29) verifies the
+checkpoint, review note and original ledger digests. It refuses duplicate input
+or decision IDs, unknown decisions, mismatched original-row hashes and attempted
+content or release approval. Only the two explicitly defined filename outcomes
+are accepted: supported disclosure wording and unresolved Award List.
+
+apply_filename_reviews (:63) runs after historical-repair linkage and before
+adding filename-review annotations. It compares that complete current row with
+the checkpoint's original-row digest. An ID match is insufficient. Changes to
+aliases, body keys, classifications, flags or even prior review metadata prevent
+inheritance and produce complete_row_changed. This conservative check can require
+a new review after metadata changes; it never silently relaxes the match.
+All receipts compare against the same pre-annotation row. A supported outcome
+changes only a needs_review basis to filename_interpretation_review. Unresolved
+outcomes remain visible without clearing pending status. No source table changes.
+
+The existing run function rechecks all bound files and implementation bytes
+before writing to a new output directory. It records unmatched and out-of-scope
+decisions separately. Output summaries distinguish historical repair reviews,
+filename interpretations, pending content review and release approval.
+
+Validation and self-review
+---------------------------
+Twelve new tests cover exact matches, unresolved decisions, changed filename/body/
+source identity, duplicate receipts and decisions, bad row hashes, unknown IDs or
+outcomes, and attempted content/release approval. All 32 linkage, 13 alias-audit
+and 17 replay tests pass (62 total). The actual refresh joins all 210 decisions:
+209 supported, one unresolved, zero missing or mismatched. All bound artifacts
+and nine frozen native-PDF source hashes remain unchanged after the run.
+
+VERDICT: APPROVE this bounded evidence linkage. It strengthens review provenance
+without changing production classification. It does not establish independent
+content truth, population accuracy or publication readiness.
+
+Disclosure/biography triage and next decisions
+----------------------------------------------
+All 84 distinct filenames across 38 pending groups and 147 source records were
+read. Eleven groups name combined forms within a filename (for example Disclosure
+and Resume or Disclosure with CV); 27 have separate disclosure and native Bio
+aliases. Every group has an eligible retained body key associated with both
+claims. Six groups have multiple retained bodies. Shared keys establish recorded
+alias relationships, not verified body contents, and cannot decide which label
+best describes the body. Keep all 38 classifications and pending review status.
+
+Next, review the opening-statement and field-hearing-memo transitions using all
+aliases, then the explicit TEXT vote cases. Preserve the 23 multiple-body groups
+among the 109 unresolved cases, as well as multiple-body histories among already
+reviewed interpretations. Exact-body review still requires restored archive
+access and exclusion from the frozen pilot before inspection. The Award List
+and four previously denied reads remain pending. Verify the separate publication
+and fresh full-catalog pair before any held-out evaluation or release decision.

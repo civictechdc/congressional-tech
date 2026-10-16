@@ -26,10 +26,13 @@ from congress_api.retention.document_recovery import recover_sources, recovery_f
 from congress_api.retention.catalog_cache import (
     capture_digest, capture_digest_matches, source_fingerprint,
 )
-from congress_api.retention.raw_archive import CAPTURES_KEY, CAPTURE_SCHEMA, decode_table
+from congress_api.retention.raw_archive import CAPTURES_KEY, CAPTURE_SCHEMA, STATE_KEY, STATE_SCHEMA, decode_table
+from congress_api.retention.catalog_availability import annotate_availability
+from congress_api.retention.catalog_lineage import refresh_lineage_pair, replay_discovery
 
 FILENAMES = "indexes/document-filenames.parquet"
 DOCUMENTS = "indexes/documents.parquet"
+SOURCE_LINEAGE_VERSION = '1'
 
 
 def rebuild_catalog(store, captures=None, *, seeds=(), workers=4, repair=False, inspect_bodies=False,
@@ -78,6 +81,12 @@ def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies,
         raise ValueError("Capture index was truncated since the last catalog rebuild")
     all_captures = captures
     capture_rows = len(captures)
+    state_bytes = read(STATE_KEY)
+    state_digest = sha256(state_bytes or b'').hexdigest()
+    state = decode_table(state_bytes) if state_bytes is not None else pa.Table.from_pylist([], schema=STATE_SCHEMA)
+    if state.schema.remove_metadata() != STATE_SCHEMA:
+        raise ValueError('Unexpected download state schema')
+    del state_bytes
     if body_readings:
         present = set(captures.filter(pc.is_in(captures['body_key'], value_set=pa.array(
             sorted(body_readings), type=pa.string())))['body_key'].to_pylist())
@@ -96,12 +105,19 @@ def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies,
         raise ValueError('Catalog capture checkpoint digest mismatch or invalid cursor; verify legacy checkpoints '
                          'with their original PyArrow writer, or explicitly rebuild after investigation')
     deferred_sources = set(json.loads(meta.get(b'deferred_source_bodies', b'[]'))) if reusable else set()
+    lineage_refresh = reusable and meta.get(b'source_lineage_version') != SOURCE_LINEAGE_VERSION.encode()
     if (reusable and not deferred_sources and not body_readings
             and (not inspect_bodies or meta.get(b'body_inspection') == b'true'
                  and meta.get(b'deferred_body_reads') == b'0')
             and cursor == capture_rows and meta.get(b'seed_digest') == seed_digest.encode()
+            and meta.get(b'download_state_digest') == state_digest.encode()
+            and meta.get(b'availability_policy') == b'2'
             and previous_documents is not None
             and (pq.read_schema(pa.BufferReader(previous_documents)).metadata or {}).get(b'catalog_id') == meta.get(b'catalog_id')):
+        if lineage_refresh:
+            result = refresh_lineage_pair(previous, pq.ParquetFile(pa.BufferReader(previous_documents)),
+                captures, read, root=root, working=working, version=SOURCE_LINEAGE_VERSION)
+            return _publish_result(store, root, snapshot, result)
         if snapshot.manifest is None:
             (root / FILENAMES).write_bytes(previous_bytes)
             (root / DOCUMENTS).write_bytes(previous_documents)
@@ -149,6 +165,11 @@ def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies,
             restored += len(batch)
             progress.report('restore_previous_source_metadata', completed=restored,
                             total=previous_rows, unit='source_rows')
+
+    if lineage_refresh:
+        # Backfill discovery relationships once from receipt metadata. Existing
+        # filename interpretations, saved bodies and download state stay valid.
+        replay_discovery(context, all_captures.slice(0, cursor), read)
 
     def read_body(key):
         # The archive already records original byte lengths. Do not transfer a
@@ -244,6 +265,8 @@ def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies,
     # Keep it even when its parent metadata arrives in a later capture batch.
     for edges in context.transfers.values():
         for url, values in edges:
+            if values.get('source_association_basis') == ['linked_page']:
+                continue  # The paired page/link observation restores this edge.
             occurrence = {**values, "source_occurrence_scope": ["association"]}
             for name, basis in index.url_document_names(url) or [(index.url_filename(url), "url_path")]:
                 add(None, name, url, filename_origins=[basis] if name else [],
@@ -279,6 +302,9 @@ def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies,
     # A newly discovered URL can name an older body. Resolve once against the
     # complete capture inventory instead of doing overlapping recovery passes.
     source_rows = iter(recover_sources(sources.values(), all_captures, read_receipt=read, working=working))
+    hearing_captures = all_captures.filter(pc.equal(all_captures['family'], 'congress/hearings'))
+    hearing_records = ((record, rows) for record, rows, _ in index.retained_records(hearing_captures, read))
+    source_rows = annotate_availability(source_rows, state, hearing_records=hearing_records, working=working)
     # Recovery has finished before this iterator is consumed. Reuse staging
     # pages for interpretation instead of retaining each intermediate corpus.
     for name in ("sources","occurrences","occurrence_urls","extra_filters","transfers","meetings","events","captured",
@@ -302,18 +328,25 @@ def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies,
         inspect_bodies=inspect_bodies, working=working, previous_documents=previous_documents,
         body_readings=body_readings.values(),
         metadata={"raw_capture_rows": str(capture_rows), "source_fingerprint": fingerprint,
+                  "source_lineage_version": SOURCE_LINEAGE_VERSION,
                   "capture_digest": input_digest, "seed_digest": seed_digest,
+                  "download_state_digest": state_digest, "download_state_rows": str(len(state)),
+                  "availability_policy": "2",
                   "deferred_source_bodies": json.dumps(sorted(deferred_sources)),
                   "retained_recovery_fingerprint": recovery_fingerprint()},
     )
+    return _publish_result(store, root, snapshot, result)
+
+
+def _publish_result(store, root, snapshot, result):
     progress.report('validate_document_tables')
     index.validate_document_indexes(root / FILENAMES, root / DOCUMENTS,
                                     source_rows=result["rows"], document_rows=result["document_rows"])
     # Retain evidence that exists only in an older generated table, including
     # columns whose original publisher/parser basis can no longer be proved.
     progress.report('archive_previous_tables')
-    for label, key, data in (("filenames", FILENAMES, previous_bytes),
-                             ("documents", DOCUMENTS, previous_documents)):
+    for label, key, data in (("filenames", FILENAMES, snapshot.filenames),
+                             ("documents", DOCUMENTS, snapshot.documents)):
         if data is not None:
             saved = f"catalog-history/sha256/{sha256(data).hexdigest()}/{Path(key).name}"
             store.put(saved, data, immutable=True)

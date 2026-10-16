@@ -1,0 +1,125 @@
+Reviewed search and public evidence — implementation review
+=========================================================
+Scope: changes after 0ff835f. This is a self-review, with executed tests and a
+local browser rehearsal. It is not independent document adjudication.
+
+Findings first
+--------------
+No unresolved implementation blocker found. Browser rehearsal found that Astro's
+BASE_URL can omit its trailing slash. The initial review URL concatenation then
+requested /congressional-techdata/... and visibly disabled reviewed search.
+Resolved by reviewPublicationUrl(), tested for both project Pages forms and a
+custom-domain root (filename-publication.test.mjs:62).
+
+The five unsupported packets remain annotations. Independent reference review
+and the frozen held-out classifier evaluation remain unfinished; this publication
+makes assistant findings inspectable and optional, without qualifying new rules.
+
+Patch summary
+-------------
+Search now offers Original catalog (default) and Use reviewed categories. In the
+second mode, every alias of an admitted group uses its reviewed kind, family and
+classification provenance. Other source fields, retention and scope keep their
+existing meanings. Downloaded Parquet files retain original classifications.
+
+The public reader consumes a 292,002-byte review file instead of the 1.27 GB
+portable verification store. The exporter uses the maintained complete-bundle
+verifier and exact original catalog pair. It emits complete narrative findings,
+primary/component forms, page sections and evidence links; local receipt paths
+are omitted. PDFs, rendered pages and text are hashed before publication.
+
+Function trace (paths relative to repository)
+--------------------------------------------
+Function                         Location                                      Input -> output / verified behavior
+ReviewSnapshot.classifications   packages/congress_api/src/congress_api/retention/document_review_viewer.py:42
+  Verified snapshot -> detached classification fields; check immutable inputs.
+Catalog.__init__/source_mask/    docs/youtube-coverage/research/scripts/view_document_filenames.py:374
+reviewed_matches/search
+  Pinned bundle + source rows -> source masks and grouped results. Search checks
+  mode/pin, replaces category matches across aliases, then applies ordinary
+  scope/retention, grouped null filters, sorting and pagination (search:427).
+export_reviews/save              apps/site/scripts/filename_reviews.py:12
+  Verified Catalog -> separate public JSON/evidence. Calls review_rows(),
+  selection() and evidence(); positions match publisher filename order.
+verify_directory/extract_archive apps/site/scripts/filename_reviews.py:63,81
+  Pinned JSON/archive -> staged assets. Require exact digests, lengths and file
+  set; reject links, duplicate archive files and escaping paths.
+staging main                     apps/site/scripts/stage-document-reviews.py:8
+  Committed descriptor -> existing verified assets or verified release download.
+  Called by package.json build before Astro; supports the existing Pages workflow.
+loadReviews/reviewedMode          apps/site/src/components/filename-reviews.mjs:2,48
+  Descriptor + source manifest -> bounded group/source maps and optional facets.
+  Check bytes/hash, full original pair hashes, positions, categories and all page
+  links. Failure leaves original search available and reports a review error.
+createFilenameCatalog/search/     apps/site/src/components/filename-catalog.mjs:95,255,417
+review
+  Worker request -> ordinary or reviewed result. Shares original Parquet column
+  cache/navigation. Replaces only selected category fields, adjusts null flags,
+  copies returned values and preserves unsupported packets. review() resolves
+  source identity and returns baseline on explicit withdrawal.
+worker.onmessage/bootstrap       apps/site/src/components/filename-worker.mjs:4
+                                 apps/site/src/components/filename-bootstrap.mjs:23
+  Same-origin pinned review URL -> static reader; route /api/review separately.
+reviewPublicationUrl              apps/site/src/components/filename-publication.mjs:80
+  Site base and origin -> correct review URL, with or without trailing slash.
+currentQuery/filterNotes/         docs/youtube-coverage/research/filename-viewer.mjs:24,33,47,59,67
+reviewModeProblem/restore/reset
+  Selection -> pinned URL and visible mode; preserve filters across mode changes.
+  Stale or unavailable reviewed links fail before search/detail reads.
+renderRows/load/openDetail/       docs/youtube-coverage/research/filename-viewer.mjs:87,128,140,203
+loadCompleteReview
+  API result -> escaped labels, original/preview values, all pages and evidence.
+  Withdrawal is explicitly panel-only; original search is a separate selection.
+  Existing controller identity checks reject late responses. Published PDF links
+  use the same-origin download action. Existing original catalog links remain.
+
+Data flow and invariants
+------------------------
+- ReviewSnapshot verifies the complete baseline pair and the portable receipt
+  chain before exposing fields. New viewer/export modules do not alter the pinned
+  core verifier modules or admission policy.
+- Public positions derive from that pair and the same filename sort used by
+  publish-filename-viewer.py:138. The browser compares both original file hashes
+  against source_manifest before admitting the review file.
+- Original catalog fields remain in Arrow/Parquet. Reviewed fields are copies
+  selected by an explicit query. No source-level filename or URL is rewritten.
+- Only candidate_applied changes matching. annotation_only_unsupported_forms
+  requires selected == baseline in the public reader. No new taxonomy forms.
+- An archive or JSON hash mismatch refuses reviews. Original mode remains usable.
+- Build staging verifies all 671 evidence objects. The browser checks the review
+  JSON and its locators; ordinary PDF/image navigation relies on the staged site
+  bytes rather than doing a second client-side content digest.
+- Default downloads and the R2 selector stay unchanged. Public evidence is stored
+  with the Pages deployment, with the small descriptor committed in source.
+
+Tests and evidence
+------------------
+- tests/test_document_review_search.py:75 compares independent source/group result
+  sets for alias, kind/family/congress/retention combinations, null classifications,
+  text search, supported/unsupported packets, and defensive returned copies.
+  Its failure tests cover wrong pins, changed files and no configured bundle.
+- tests/test_filename_review_publication.py uses actual admission/export, compares
+  every emitted narrative field and evidence byte, and checks archive corruption,
+  invalid paths and links.
+- filename-reviews.test.mjs covers pair/hash mismatch, duplicate positions,
+  incomplete pages, unsupported-category refusal and optional original mode.
+- filename-catalog.test.mjs:290 runs the real static reader over published Parquet
+  fixtures, including aliases, null filters, original mode, annotations and
+  withdrawal. Existing original catalog equivalence/range/provenance tests pass.
+- test_filename_viewer_ui.mjs tests mode/pin URLs, preserved filters, stale and
+  unavailable review links, public evidence downloads and late-response handling.
+- Full-catalog search-check.json: 1,039 alias/filter checks across all 86 reviewed
+  groups; original and reviewed all-record counts both 1,240,374.
+- static-live-check.json: the real static reader uses the current R2 publication;
+  all 286 source aliases reproduce selected and withdrawn review values. Neal's
+  alias changes matching from Amendment to Committee vote in reviewed mode.
+- protected-inputs.json: all 11 frozen classifier, pilot and label inputs unchanged.
+- 142 Python tests and 63 JavaScript tests pass. Local Astro build succeeds. Browser rehearsal verifies the visible mode,
+  reviewed result label and review panel. Deployment readback is recorded
+  separately, after publishing; a build alone is not deployment proof.
+
+VERDICT: APPROVE implementation for explicit optional review publication.
+Coverage: ADEQUATE. Confidence: HIGH for the tested behavior and exact cohort.
+Limitations: no independent adjudication, held-out qualification or claim that all
+remaining unclassified filenames have been resolved. No speed improvement claimed;
+the compact JSON avoids distributing the full verification store to each browser.

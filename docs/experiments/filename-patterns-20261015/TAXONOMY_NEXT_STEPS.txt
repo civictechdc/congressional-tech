@@ -1,0 +1,121 @@
+Development taxonomy proposal
+=============================
+
+Decision
+--------
+Improve recognition of existing kinds before adding a broad new taxonomy.
+Of the 140 reviewed development records, 107 use 19 labels already present in
+the filename taxonomy. Three records have a plausible alternate operational
+label. The remaining 30 records span 15 labels that need a deliberate decision.
+These counts describe a balanced development sample, not catalog prevalence,
+expected classifier yield, or production accuracy.
+
+taxonomy_mapping.json covers every development reference label and record. Each
+entry gives the exact IDs, proposed action, semantic boundary and existing guide
+location where applicable. It is a proposal, not executable classifier input.
+No runtime caller loads it. The original labels and frozen candidate remain
+unchanged; neither held-out evidence nor predictions were read for this work.
+All references were reviewed by the assistant, not independently validated.
+
+Three proposed mappings
+-----------------------
+- D097 curriculum-vitae -> biography. The filename guide already maps both cv
+  and curriculumvitae to biography. Retain the more specific research label.
+- D103 presentation -> slides. Numbered slides support this mapping for this
+  record; a presentation is not necessarily a slide deck.
+- D048 meeting-minutes -> meeting-results. This record is a markup action sheet
+  listing decisions. Do not generalize the mapping to all meeting minutes.
+
+These proposals require an explicit choice before use in a future experiment.
+Do not apply them to the frozen evaluator or rescore its exact agreements.
+
+What remains unresolved
+-----------------------
+The largest existing kind is report (22 records), followed by witness-statement
+(14), amendment (11) and legislative-text (11). Existing vocabulary is not proof
+that filenames or the PDF reader currently recognize these documents. Generic
+reports are particularly difficult: topic titles and publisher names alone do
+not establish the form. Committee provenance does not establish a numbered
+committee-report or published-report.
+
+The 15 deferred labels are affidavit, comparison-table, constitutional-text,
+court-filing, data-table, declaration, guide, legislative-packet, memorandum,
+policy-plan, policy-recommendations, policy-statement, research-paper, resolution
+and statutory-text. Deferral means no automatic mapping, not a conclusion that
+all 15 deserve new production kinds. Some may be narrower forms, purposes or
+components of another document.
+
+Keep these distinctions in the next design decision:
+- The three generic memos are not committee memos. The memorandum navigation
+  family does not itself prove that a generic memorandum kind is emitted.
+- Four UN resolutions are not US legislative-text or committee-resolution.
+  Constitutional drafts, declarations, codified statutes and court filings also
+  require explicit legal-form and jurisdiction distinctions.
+- Statistical tables and legal comparison tables do not all fit graphic or
+  bill-comparison. Preserve their form and any parent-document relationship.
+- Three mixed legislative packets contain more than one form. Do not select
+  the whole document's kind from its first summary or bill heading.
+- Working papers and policy plans need a decision about granularity. Do not
+  erase their distinction merely to improve agreement with an existing kind.
+
+Next bounded development experiment
+-----------------------------------
+After the current frozen candidate has completed its independent evaluation,
+start a separately versioned native-text experiment for explicit meeting notices
+and committee memoranda. Use maintained congress_api content readers. Keep
+filename wording in house_naming; content recognition does not belong there.
+Do not extend or tune the currently frozen candidate.
+
+Inputs: the seven development references D014, D030, D040, D153, D180, D183 and
+D198, with exact retained body/text hashes. D014 needs OCR for its existing
+reference; record native-reader abstention or failure rather than silently
+introducing OCR. Add retained development confusers D012, D041, D043, D105,
+D131, D156 and D160: outside/agency memos, an invitation letter, background
+analysis, member testimony and a hearing summary. These 14 IDs are a bounded
+starting set, not an independent validation set.
+
+Behavior: require explicit document purpose and supported committee authorship.
+A full hearing/markup notice outranks generic To/From memorandum formatting.
+An intention to issue a subpoena remains a memo. A hearing-related title,
+salutation or agency author alone cannot establish either target kind. Preserve
+existing reader precedence and attributable evidence when headings conflict.
+
+Outputs: exact kind, evidence page/quote, abstention or reader failure for every
+input. Retain the raw source and reader version; do not overwrite old readings.
+
+Checks: compare with the unchanged starting implementation; inspect all new
+positives and every change to a prior kind. Obtain separate examples and an
+independent review before release. Evaluate only a newly frozen candidate on
+its separately designated evaluation set. Do not reuse outcomes from the
+current held-out run for tuning or an independent-validation claim.
+
+After that experiment, consider explicit witness-role evidence and explicit
+factsheet headings. Generic report recognition and new taxonomy categories
+need stronger evidence and a fresh-catalog census before prioritization.
+
+Current release sequence remains first
+--------------------------------------
+1. Verify the running 3.1.0 publication, including the complete selected catalog
+   pair and public readback; preserve the previous catalog.
+2. Reconcile all 400 pilot IDs and run the full 3.1.0-to-3.2.0 filename comparison.
+   Review every changed prior kind and any identity, role or evidence change.
+3. Seal blind held-out references, run the exact frozen PDF candidate, and obtain
+   independent review. Historical rehearsal results do not replace these gates.
+4. Prepare a bounded retained-body refresh for qualified rules and obtain the
+   release decision before publishing additional code or refreshing bodies.
+
+Review and validation
+---------------------
+Read all 140 existing adjudications, including every quote, page and note.
+Compared all 37 distinct labels with guide categories, publisher label meanings
+(document_types.py) and navigation families (categories.py). Checked each alias
+against its specific record. Corrected a potential overbroad interpretation:
+minutes/results and presentation/slides are record-specific mappings; a generic
+memo cannot inherit committee authorship from the memorandum family.
+
+No blocking inconsistency was found in the proposal. taxonomy_validation.json
+records exact coverage, guide-pointer resolution, input hashes and unchanged
+frozen source/label checks. Those checks verify the proposal's integrity, not
+its empirical accuracy. No runtime code changed, so no classifier test rerun was
+needed for this documentation-only commit. Independent semantic review remains
+outstanding before any mapping or new rule enters production.

@@ -1,0 +1,86 @@
+Primary genre and trailing subject review
+========================================
+
+Patch summary
+-------------
+house_naming 3.2.4 separates a document's leading genre from kinds mentioned in
+its subject. Testimony-Sheehan-Dem-Memo-... remains testimony; FP-Opening-Memo-...
+Progress-Report remains an opening statement. A statement, letter or revenue
+estimate explicitly about an amendment keeps the amendment wording without
+claiming amendment as its own genre. This refines the shared category selector;
+there is no new parser, publisher matcher or content classifier.
+
+Function trace
+--------------
+Engine.extract (engine.py:60) supplies filename, publisher-qualified observations
+and literal spans. filename_metadata (values.py:47) calls the selector and emits
+selected kinds while retaining literal field values. _subject_remainders
+(extraction.py:554) uses the same selector for recognized subject labels.
+document_category_fields (categories.py:71) returns existing field references;
+its callers can select kinds without mutating observations or reading bodies.
+
+Data flow and invariants
+------------------------
+At categories.py:93-96, complete stem observations with a statement/testimony
+label identify an existing subject span. The label must precede that span.
+At :97-101, only a publisher-qualified memo or opening field at position zero
+introduces a publisher title; an interior memo occurrence cannot govern a file.
+At :110-115, nested genres are excluded from declared subjects. Publisher titles
+use a narrower set of topic kinds. Direct and/&/with coordination and explicit
+attachment/appendix/exhibit labels survive this filter. Opening Remarks and
+Witness List are not discarded merely because they follow a publisher prefix.
+The existing topic-connector rule also covers legislative kinds, so 'Statement
+on Amendment' keeps statement while preserving the literal amendment field.
+The rule still acts on one filename at a time, not across different aliases.
+
+Test behavior and edge cases
+----------------------------
+test_reviewed_house_publishers.py:224 covers twelve observed layouts, selected
+kinds, retained topic observations, exact filename reconstruction and source
+spans. :247 covers explicit components, bare witness-list/remarks labels,
+attachments, and operative amendments. :253 covers unrelated/spoofed publishers.
+Eleven new cases failed before implementation. A scan of all 7,526 source rows
+initially found 23 changed source rows. Review caught an overbroad prefix reading
+that removed explicit Opening Remarks. Two additional controls failed against
+that candidate; the final rule preserves both opening-remarks and witness-list
+labels and confines publisher-title filtering to established topic kinds.
+The broad initial candidate passed 5,823 workflow checks, illustrating why its
+actual cohort changes still needed review. The final candidate passes all 5,826
+offline workflow checks in 111.72 seconds. The separate replay tests pass all 17
+checks; the catalog builder verifies all three JSON artifacts. All nine frozen
+PDF candidate source hashes remain unchanged.
+
+Findings and remaining limits
+-----------------------------
+Resolved: a publisher prefix alone is weaker than a declared subject span and
+must not remove every trailing category. The narrowed filter and new controls
+preserve independent labels. Literal evidence remains available for later review.
+Unresolved: four amendment/disclosure/statement cases need exact retained body
+review. Their document IDs and body keys do not overlap any of the frozen 400
+pilot records. All four exact archive-object reads were denied by the configured
+credentials; no body bytes were read, and no publisher was visited. Missing
+access is not evidence that the retained objects are absent or that a filename
+reading is correct. Retain the failure records and do not retry without changed
+access evidence. See genre_subject_checkpoint.json for the selected IDs/keys.
+This bounded historical cohort does not establish population precision or qualify
+the pending publication. Independent held-out references and the frozen native
+PDF evaluation remain separate requirements.
+
+Complete-group replay and verdict
+---------------------------------
+The final 3.2.3-to-3.2.4 replay covers all 7,526 sources and 1,949 complete groups
+in 222.02 seconds. It changes 22 source kinds and 17 group kinds. Every change
+removes only extra topic kinds; all changed rows were read in full. All IDs,
+group membership, roles, protected evidence, kind provenance and representative
+filenames remain unchanged. Input bytes and bound implementation hashes match.
+The replay reads no bodies.
+
+The review was regenerated against the original 3.0.0 cohort. All 60 transition
+rows, with up to three samples each, were read in full. Its 1,903 changed-document
+ledger remains pending individual adjudication. This is not a claim to have
+reviewed the contents of every document or measured classification precision.
+
+VERDICT: APPROVE the bounded local filename repair.
+Coverage: ADEQUATE for the changed selection paths. Confidence: HIGH in the
+observed preservation results and bounded filename behavior. The broad catalog,
+independent reference and publication gates remain open.

@@ -1,0 +1,110 @@
+Explicit PDF content rules: development candidate
+=================================================
+
+The candidate adds three opening-page recognizers to congress_api:
+
+* House published hearings require a short uppercase cover title, HEARING /
+  BEFORE THE, chamber and committee headings, a serial, a printing statement
+  and a Government Publishing/Printing Office imprint. Known imprint lines
+  may precede the title because PDF readers can reorder extracted text.
+  A House serial does not become an invented GPO citation.
+* Amendments require a drafting heading identifying the target, an offered-by
+  statement (or explicit proposed amendment to a Senate committee motion),
+  and operative editing instructions. Only known drafting metadata may precede
+  the heading. Summaries and suggestions to change policy do not qualify.
+* Committee vote sheets require a committee heading, roll-call identification,
+  vote columns, named members and recorded marks. Blank templates and a roll
+  call without committee identification remain unclassified by this rule.
+
+The recognizers preserve existing readings and the restricted second-page
+transcript fallback. OCR remains an experiment input; production uses native
+PDF text only. No document kinds were added to the taxonomy. Filename rules
+remain in house_naming; these content rules belong in congress_api.
+
+Development evidence
+--------------------
+Pilot checkpoint: 38f7557, with 140 assistant-reviewed development labels.
+The reference labels and the 200 held-out selections were not changed.
+
+Input/reader                           Assigned   Agreement   Abstained
+Checkpoint production PDF reader            10          10         130
+Candidate production PDF reader             24          24         116
+Candidate on saved Poppler text              24          24         116
+Candidate on OCR-assisted text               27          27         113
+
+The actual PDF comparison invokes read_document_file, including its maintained
+small-body/large-file dispatch. Each record is read in a bounded subprocess.
+Both baseline and candidate completed without reader errors on these 140 PDFs.
+All 10 earlier assignments survive unchanged. The 14 additions are seven
+amendments, three House published hearings and four committee vote sheets.
+
+The original saved-text baseline assigned nine records, whereas the actual
+PDF reader assigns ten. Native text extraction methods differ: the candidate
+finds one more transcript and one fewer amendment through the actual PDF path
+than through saved Poppler text. Equal totals do not imply identical records.
+The per-record comparison preserves these differences.
+
+This is development evidence, not held-out accuracy or full-catalog coverage.
+Reference labels have not received independent human validation. Small counts
+per kind cannot establish population-wide precision. Many of the 116 remaining
+abstentions are outside the three forms addressed by this candidate.
+
+Validation and retained evidence
+--------------------------------
+Tests include 26 saved development-page fixtures, missing-marker and quoted-
+form contrasts, blank vote templates, second-page exclusions and three actual
+PDF cover fixtures. Both the byte and file readers recognize those three PDFs;
+their content kinds and document IDs survive paired catalog writes.
+
+The capture workflow now runs these regression tests and triggers when their
+fixtures change. The final focused reader suite passes 175 tests. Full offline
+suite results are recorded in the candidate output and candidate freeze record.
+
+The v1, v2 and v3 output directories preserve successive development runs.
+The final candidate is v3. A v2 guard rejected printing footers emitted before
+a hearing title; the real-file regression caught this. The final rule accepts
+those specific imprint lines while rejecting prose introducing a quoted cover.
+Candidate and evaluator source hashes identify each run; v1/v2 source copies
+are retained beside their readings. No held-out text informed these changes.
+
+Evaluation and release gates
+----------------------------
+The candidate freeze records its code, inputs, tests and development results.
+Before held-out evaluation, reconcile every selected ID against the completed
+3.1.0 catalog, preserving all changed eligibility and acquisition failures.
+Assign held-out reference labels without seeing candidate predictions, then
+compare the frozen code. Do not tune on those outcomes.
+
+Report per-kind assignments, agreements, disagreements, abstentions and sample
+sizes, with uncertainty intervals. Independently review candidate positives
+and ambiguous references before release. Any false positive or unexplained
+prior-kind regression blocks the affected rule. Zero or very small per-kind
+counts remain insufficient evidence for broad automatic promotion; collect a
+separate review set rather than repurposing the held-out set for development.
+
+Publication and retained-body integration are pending. The active 3.1.0 rebuild
+has not completed, so the full-catalog 3.2.0 filename replay remains pending too.
+The PDF reader has a source fingerprint rather than a separate parser version;
+its changed code produces a new body-evidence fingerprint automatically.
+
+Existing saved body readings survive code changes. A later approved rollout
+must explicitly reinspect selected retained URLs using the maintained
+--reinspect-retained --urls path, or supply validated body readings to catalog
+rebuild. Preserve old readings and verify both catalog tables after refresh.
+Do not assume that an ordinary rebuild applies new PDF rules to stored bodies.
+
+Reproduce the final comparison
+-----------------------------
+From the active worktree with the workspace Python environment:
+
+  python docs/experiments/filename-patterns-20261015/content_rule_review.py \
+    --output output/filename-patterns-20261015/content-rules-v3
+
+Completed records resume only when the input and code fingerprints match.
+Use a new output directory after changing candidate code or evidence.
+
+Outputs: content-rules-v3/manifest.json, readings.jsonl, summary.json,
+comparison.csv, report.html, offline-tests.log and core-benchmark-smoke.json.
+The original pilot baseline report remains at pilot-v1/baseline/report.html.
+
+Local report: http://127.0.0.1:8797/content-rules-v3/report.html

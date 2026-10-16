@@ -1,0 +1,139 @@
+{
+  "baseline_commit": "9ad1e9e5fd4aaf81676931880e51c8941eff95fc",
+  "candidate_version": "3.2.2",
+  "source_hashes": {
+    "packages/house-naming/src/house_naming/categories.py": "d6b146b0a25e948b1e09b42ad1bdd398381befce206cd1d22088c6fb32d9f30b",
+    "packages/house-naming/src/house_naming/data/guide.json": "350a3a1364cb438facee4e077cb53aef1c5b1b094f745672f42b7348932b6398",
+    "packages/congress_api/src/congress_api/retention/document_evidence.py": "76f503874dfde72c5f813fc90cf4e756a8394a7b736c65f68579c260e5551a90",
+    "docs/experiments/filename-patterns-20261015/catalog_filename_replay.py": "3c867fbe75ff73bb62b5373ec76674843cb3111159e98a2055b5fe5b7d780fce"
+  },
+  "full_source_table_topic_scan": {
+    "scope": "All matching ordinal-amendment filenames in the complete historical replay source table",
+    "matching_source_rows": 4,
+    "changed_source_rows": 2,
+    "changed_document_ids": 2,
+    "reviewed_unique_names": 4,
+    "input_sha256": "f789ba21583534b8046cb06f01a1f2a13ff6aa386cdf7d3205460c99971af6be",
+    "artifact_hashes": {
+      "unchanged.json": "9125b3f10c058d152cbc3128fb405d0d9ffc563accd9128df67b450b68b83030",
+      "changes.json": "53b8e81fc5f1602edf08c8c268d8669644348586114e1d4e0223a4d48c7665b2"
+    },
+    "body_reads": false,
+    "release_qualified": false
+  },
+  "complete_group_subset_replay": {
+    "input_catalog_id": "f49584b0b3f1451f82b13b4e3e901c65",
+    "input_naming_version": "3.2.0",
+    "target_naming_version": "3.2.2",
+    "inputs": {
+      "filenames": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/constitutional-topic-input-v1/indexes/document-filenames.parquet",
+        "sha256": "2788a21e1e79b97f3e61ced78872e98f2d6de57b712eb316944a923e3921fdf1",
+        "rows": 4
+      },
+      "documents": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/constitutional-topic-input-v1/indexes/documents.parquet",
+        "sha256": "fc5ee855b46be223c2c27e5d7f9d6c00541550530248a5469c92a34ea5e9dfd4",
+        "rows": 3
+      }
+    },
+    "publication": {
+      "verified": false,
+      "reason": "publication_receipt_and_selected_pair_required"
+    },
+    "rehearsal": true,
+    "filename_fingerprint": "9f2b2bad7a5f6fc47bdf0cc30e75a4b5cf8d7fb5d5e2fecc8fc92b0e10761a0c",
+    "index_source_sha256": "3364e21534c796f2f05f89eea2f4a4aa6ebe4599978e7a740b558966a3abea78",
+    "evaluator_sha256": "3c867fbe75ff73bb62b5373ec76674843cb3111159e98a2055b5fe5b7d780fce",
+    "acquisition": false,
+    "body_reinspection": false,
+    "publication_performed": false,
+    "comparisons": {
+      "filenames": {
+        "before_rows": 4,
+        "after_rows": 4,
+        "missing_ids": 0,
+        "added_ids": 0,
+        "changes": {
+          "removed_assignment": 1,
+          "role_changed": 0,
+          "protected_evidence_changed": 0,
+          "document_id_changed": 0,
+          "representative_changed": 0,
+          "kind_source_changed": 1,
+          "changed_prior_kind": 1
+        },
+        "changes_sha256": "5510a4e5d9ae6b2cd4a30c6f65e99e0088993909c15295a6cfaf37c16afd70c0",
+        "identities_roles_evidence_preserved": true,
+        "prior_kind_changes": 2
+      },
+      "documents": {
+        "before_rows": 3,
+        "after_rows": 3,
+        "missing_ids": 0,
+        "added_ids": 0,
+        "changes": {
+          "removed_assignment": 1,
+          "role_changed": 0,
+          "protected_evidence_changed": 0,
+          "document_id_changed": 0,
+          "representative_changed": 0,
+          "kind_source_changed": 1,
+          "changed_prior_kind": 1
+        },
+        "changes_sha256": "091735b76afdb0af35f12206a19da60f21c9b124111fe534f0dba63c7a3af170",
+        "identities_roles_evidence_preserved": true,
+        "prior_kind_changes": 2
+      }
+    },
+    "build": {
+      "rows": 4,
+      "document_rows": 3,
+      "columns": 52,
+      "documents_output": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/constitutional-topic-replay-v1/catalog/indexes/documents.parquet",
+      "documents_bytes": 55180,
+      "reused_document_groups": 0,
+      "recomputed_document_groups": 3,
+      "distinct_bodies": 3,
+      "distinct_filenames": 4,
+      "rows_without_retained_body": 0,
+      "parser_inputs": 4,
+      "parsed_inputs": 4,
+      "output": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/constitutional-topic-replay-v1/catalog/indexes/document-filenames.parquet",
+      "output_bytes": 52443,
+      "elapsed_seconds": 1
+    },
+    "output_files": {
+      "filenames": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/constitutional-topic-replay-v1/catalog/indexes/document-filenames.parquet",
+        "sha256": "75ae8d3503bd2669f728006d2b29d8a306b6f0dda600d29102507952b1ded20d",
+        "rows": 4
+      },
+      "documents": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/constitutional-topic-replay-v1/catalog/indexes/documents.parquet",
+        "sha256": "8e8121fae141be536af62052ad3bb6b8332883afe0bd1d2534506507c6ec53dd",
+        "rows": 3
+      }
+    },
+    "input_bytes_unchanged": true,
+    "completed": true,
+    "elapsed_seconds": 0.83,
+    "invariants_preserved": true,
+    "changed_prior_kinds_need_review": 4,
+    "release_qualified": false,
+    "limitation": "Complete retained-pair filename replay only. Any identity/role/evidence change or prior-kind change needs review. Historical rehearsals do not qualify the new publication; no automatic release."
+  },
+  "artifacts": {
+    "output/filename-patterns-20261015/constitutional-topic-review-v1/summary.json": "6f7ac80b93ae2ef29198505286d46a99d210137061944e1ebb3ee3155bbc198c",
+    "output/filename-patterns-20261015/constitutional-topic-review-v1/changes.json": "53b8e81fc5f1602edf08c8c268d8669644348586114e1d4e0223a4d48c7665b2",
+    "output/filename-patterns-20261015/constitutional-topic-review-v1/unchanged.json": "9125b3f10c058d152cbc3128fb405d0d9ffc563accd9128df67b450b68b83030",
+    "output/filename-patterns-20261015/constitutional-topic-input-v1/selection.json": "4be3169e81ad5cb99194008793d977a1f03d2f92f1e2dcb8ef8c6c4052d6d5cf",
+    "output/filename-patterns-20261015/constitutional-topic-replay-v1/summary.json": "b7463ba2e260bea9a77693c2ba850114d58428848a61d776db701c9ac699c118",
+    "output/filename-patterns-20261015/constitutional-topic-red.log": "f9ce19b661f581255a1ba0e99c8406c6a44b9cf1e7b07f83e32af70fb42aa476",
+    "output/filename-patterns-20261015/constitutional-topic-final.log": "89849299a3a6d784231379713df4372ccf070ffb56612cbecc6d77218ebe11bc",
+    "output/filename-patterns-20261015/witness-specificity-cohort.json": "35e50acc863913b9367b2ca24823fac3d56f1ec38125a1d922dd2799cbd9dc9e"
+  },
+  "tests": "4690 passed; generated catalog check passed",
+  "frozen_candidate_sources_unchanged": true,
+  "release_qualified": false
+}

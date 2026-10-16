@@ -1,0 +1,15 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "congressional-viewer-data",
+  "account_id": "174055408ff1560e60601c4d12c561c4",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-10-13",
+  "workers_dev": true,
+  "routes": [{ "pattern": "congressional-data.spicygov.ai", "custom_domain": true }],
+  "r2_buckets": [{ "binding": "PUBLICATIONS", "bucket_name": "congressional-tech-raw" }],
+  "observability": {
+    "enabled": true,
+    "logs": { "enabled": true, "head_sampling_rate": 0.1 },
+    "traces": { "enabled": true, "head_sampling_rate": 0.01 }
+  }
+}

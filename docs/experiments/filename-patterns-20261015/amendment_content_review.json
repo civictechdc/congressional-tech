@@ -1,0 +1,473 @@
+{
+  "scope": "Assistant review of 17 exact retained non-pilot PDFs, not independent evaluation references",
+  "selection_bindings": {
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/docs/experiments/filename-patterns-20261015/content_readiness_checkpoint.json": "b40dbe84dcb68e5aaf014084e8c55e7260c257074cd2d3b8314360ae0a504857",
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/fetch.py": "6ee15bf03bf6b1a9e57c5aa1f81dc794bc8488099db1e0a5df4d4b650eb31483",
+    "output/filename-patterns-20261015/review-evidence-v3/ledger.jsonl": "d92184926b42812dff3c36f9442c032a0841ff8ecd3e679b40f6c477595d1438",
+    "output/filename-patterns-20261015/remaining-content-readiness-v1/readiness.json": "113859c8c35a6fc502603261c39622ac7f1f77377529755d2950b1a38e8dc4f0",
+    "docs/experiments/filename-patterns-20261015/catalog_alias_review.py": "dd46f8122ee43b0eaf8a88af7b0f16e94f147dd1e0d862dcaec836554b27e69d",
+    "packages/congress_api/src/congress_api/retention/document_index.py": "ec575da15c10615bd983baf3566e7bf5c1e63c5311715b0ab9e5b22917cc2667",
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/output/filename-patterns-20261015/continuation-v1/pilot.json": "55b3256dc0bfee57d90235b7d8d9b216060bc145d82926709a5b01beed619237"
+  },
+  "results_sha256": "21f779716de03d86b9b613b2e5f9981033cf896f9c1bbcb58bfce1e17df579cb",
+  "input_check_sha256": "dec4f680220c175d649dca5f5e468a5354eaf1fdcbc776ffeffcaaaece536e2e",
+  "records": [
+    {
+      "document_id": "194a0032323d0c38cba3c1e5ec05ee031ad29609ff1c4caf7cd417ed76f96171",
+      "filename": "Roll Call Vote 1Conyers Amdt 1 TEXT.pdf",
+      "body_key": "bodies/sha256/88/887ae050e769d2f1d6aa14ff2cbdcd3d75080c003cf620a735cbd821a1846aa0.gz",
+      "url": "https://congressional-viewer-data.mdeeb.workers.dev/saved/887ae050e769d2f1d6aa14ff2cbdcd3d75080c003cf620a735cbd821a1846aa0/retained.pdf",
+      "http_status": 200,
+      "content_type": "application/pdf",
+      "bytes": 22153,
+      "sha256": "887ae050e769d2f1d6aa14ff2cbdcd3d75080c003cf620a735cbd821a1846aa0",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/887ae050e769d2f1d6aa14ff2cbdcd3d75080c003cf620a735cbd821a1846aa0.pdf",
+      "pages": 1,
+      "status": "verified_exact_retained_pdf",
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/887ae050e769d2f1d6aa14ff2cbdcd3d75080c003cf620a735cbd821a1846aa0.txt",
+      "text_sha256": "ad3708d5a9abe531bba720ce4c75de6cf73d36650a179934ae87eaa74ecc6057",
+      "extracted_characters": 7,
+      "all_pages_visually_reviewed": true,
+      "review_method": "All rendered pages; native extracted text where present; no OCR",
+      "observed_document_forms": [
+        "amendment"
+      ],
+      "vote_annotation": "Failed 13-18",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v2/page-01-1.png": "6c90a5329e274b37da5f7d1af26fbd803ec543923dc6eec4b57e69b516de8dff"
+      },
+      "interpretation": "Amendment text, with vote outcome annotation where present; no roll-call member vote sheet."
+    },
+    {
+      "document_id": "2d0882601dbbc298fc1a56df38044ee12497a78ac982262d51453db1df4183af",
+      "filename": "Roll Call Vote 5-Nadler Amdt 4 TEXT.pdf",
+      "body_key": "bodies/sha256/ef/ef9d926fa39b4a4f11decefdb1f7657945e448c2b619d41b4637fdd67dd34c74.gz",
+      "url": "https://congressional-viewer-data.mdeeb.workers.dev/saved/ef9d926fa39b4a4f11decefdb1f7657945e448c2b619d41b4637fdd67dd34c74/retained.pdf",
+      "http_status": 200,
+      "content_type": "application/pdf",
+      "bytes": 24160,
+      "sha256": "ef9d926fa39b4a4f11decefdb1f7657945e448c2b619d41b4637fdd67dd34c74",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/ef9d926fa39b4a4f11decefdb1f7657945e448c2b619d41b4637fdd67dd34c74.pdf",
+      "pages": 1,
+      "status": "verified_exact_retained_pdf",
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/ef9d926fa39b4a4f11decefdb1f7657945e448c2b619d41b4637fdd67dd34c74.txt",
+      "text_sha256": "ad3708d5a9abe531bba720ce4c75de6cf73d36650a179934ae87eaa74ecc6057",
+      "extracted_characters": 7,
+      "all_pages_visually_reviewed": true,
+      "review_method": "All rendered pages; native extracted text where present; no OCR",
+      "observed_document_forms": [
+        "amendment"
+      ],
+      "vote_annotation": "Failed 13-22",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v2/page-02-1.png": "242a643b4947bf39e4df83febdb9bb716ad4adde1d994d3838c07fcb99f79f67"
+      },
+      "interpretation": "Amendment text, with vote outcome annotation where present; no roll-call member vote sheet."
+    },
+    {
+      "document_id": "36c32a5e55d05f0f090e286b5d827f015455f857625d47edbbe2a19c7dd0645c",
+      "filename": "07272011 Roll Call 3- Sensenbrenner Amendment 3 TEXT.pdf",
+      "body_key": "bodies/sha256/cd/cd632eb607cf7eacee7789dea01326502a2bfeadc1751ab8fc9a38632e6d9597.gz",
+      "url": "https://congressional-viewer-data.mdeeb.workers.dev/saved/cd632eb607cf7eacee7789dea01326502a2bfeadc1751ab8fc9a38632e6d9597/retained.pdf",
+      "http_status": 200,
+      "content_type": "application/pdf",
+      "bytes": 13580,
+      "sha256": "cd632eb607cf7eacee7789dea01326502a2bfeadc1751ab8fc9a38632e6d9597",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/cd632eb607cf7eacee7789dea01326502a2bfeadc1751ab8fc9a38632e6d9597.pdf",
+      "pages": 1,
+      "status": "verified_exact_retained_pdf",
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/cd632eb607cf7eacee7789dea01326502a2bfeadc1751ab8fc9a38632e6d9597.txt",
+      "text_sha256": "ad3708d5a9abe531bba720ce4c75de6cf73d36650a179934ae87eaa74ecc6057",
+      "extracted_characters": 7,
+      "all_pages_visually_reviewed": true,
+      "review_method": "All rendered pages; native extracted text where present; no OCR",
+      "observed_document_forms": [
+        "amendment"
+      ],
+      "vote_annotation": null,
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v2/page-03-1.png": "389985d15a77b32f40a35ebd1397fd5dd08f3fff3bd627a5b500ecaee184f85c"
+      },
+      "interpretation": "Amendment text, with vote outcome annotation where present; no roll-call member vote sheet."
+    },
+    {
+      "document_id": "64cf1722999205c0db8ae224a172c9544e24160e96fd9bbe210e639185546174",
+      "filename": "Roll Call Vote 3-Jackson Lee Amdt 8 TEXT.pdf",
+      "body_key": "bodies/sha256/04/04b1b4408c7226f4b80782954101c0772e00dd341ddf7daf395cf31bd47d1a63.gz",
+      "url": "https://congressional-viewer-data.mdeeb.workers.dev/saved/04b1b4408c7226f4b80782954101c0772e00dd341ddf7daf395cf31bd47d1a63/retained.pdf",
+      "http_status": 200,
+      "content_type": "application/pdf",
+      "bytes": 22377,
+      "sha256": "04b1b4408c7226f4b80782954101c0772e00dd341ddf7daf395cf31bd47d1a63",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/04b1b4408c7226f4b80782954101c0772e00dd341ddf7daf395cf31bd47d1a63.pdf",
+      "pages": 1,
+      "status": "verified_exact_retained_pdf",
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/04b1b4408c7226f4b80782954101c0772e00dd341ddf7daf395cf31bd47d1a63.txt",
+      "text_sha256": "ad3708d5a9abe531bba720ce4c75de6cf73d36650a179934ae87eaa74ecc6057",
+      "extracted_characters": 7,
+      "all_pages_visually_reviewed": true,
+      "review_method": "All rendered pages; native extracted text where present; no OCR",
+      "observed_document_forms": [
+        "amendment"
+      ],
+      "vote_annotation": "Failed 15-19 (en bloc amendment 7)",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v2/page-04-1.png": "8275c65d6652f7dfe24ce690231b78d7a9cc958a9d032deda3d70ec1ccbdf97d"
+      },
+      "interpretation": "Amendment text, with vote outcome annotation where present; no roll-call member vote sheet."
+    },
+    {
+      "document_id": "66d8331432d1810c93132b863095c447045be5a2d826de2d99e5760fb4a824a1",
+      "filename": "Roll Call Vote 13WS Amdt 15 TEXT.pdf",
+      "body_key": "bodies/sha256/f2/f2e450f6fea5865567caa3aec8b36e5adac6937fb0bdc01f9ecd47dff28a01c6.gz",
+      "url": "https://congressional-viewer-data.mdeeb.workers.dev/saved/f2e450f6fea5865567caa3aec8b36e5adac6937fb0bdc01f9ecd47dff28a01c6/retained.pdf",
+      "http_status": 200,
+      "content_type": "application/pdf",
+      "bytes": 21396,
+      "sha256": "f2e450f6fea5865567caa3aec8b36e5adac6937fb0bdc01f9ecd47dff28a01c6",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/f2e450f6fea5865567caa3aec8b36e5adac6937fb0bdc01f9ecd47dff28a01c6.pdf",
+      "pages": 1,
+      "status": "verified_exact_retained_pdf",
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/f2e450f6fea5865567caa3aec8b36e5adac6937fb0bdc01f9ecd47dff28a01c6.txt",
+      "text_sha256": "ad3708d5a9abe531bba720ce4c75de6cf73d36650a179934ae87eaa74ecc6057",
+      "extracted_characters": 7,
+      "all_pages_visually_reviewed": true,
+      "review_method": "All rendered pages; native extracted text where present; no OCR",
+      "observed_document_forms": [
+        "amendment"
+      ],
+      "vote_annotation": "Failed 15-21",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v2/page-05-1.png": "ee97217f5dae7eaed57623264c03e27579f906a93c5e7b517610f20484a46189"
+      },
+      "interpretation": "Amendment text, with vote outcome annotation where present; no roll-call member vote sheet."
+    },
+    {
+      "document_id": "8048e1393c9a859879e96e4d9508461ba5fcd5ccb3b1fc8e733c11acc42a425c",
+      "filename": "Roll Call Vote 11Chu Amdt 12 TEXT.pdf",
+      "body_key": "bodies/sha256/16/161fa9c0083c18b51e9a072e1ec3ffe2230d4bf1054010fd87c693542b9149c4.gz",
+      "url": "https://congressional-viewer-data.mdeeb.workers.dev/saved/161fa9c0083c18b51e9a072e1ec3ffe2230d4bf1054010fd87c693542b9149c4/retained.pdf",
+      "http_status": 200,
+      "content_type": "application/pdf",
+      "bytes": 28935,
+      "sha256": "161fa9c0083c18b51e9a072e1ec3ffe2230d4bf1054010fd87c693542b9149c4",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/161fa9c0083c18b51e9a072e1ec3ffe2230d4bf1054010fd87c693542b9149c4.pdf",
+      "pages": 1,
+      "status": "verified_exact_retained_pdf",
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/161fa9c0083c18b51e9a072e1ec3ffe2230d4bf1054010fd87c693542b9149c4.txt",
+      "text_sha256": "ad3708d5a9abe531bba720ce4c75de6cf73d36650a179934ae87eaa74ecc6057",
+      "extracted_characters": 7,
+      "all_pages_visually_reviewed": true,
+      "review_method": "All rendered pages; native extracted text where present; no OCR",
+      "observed_document_forms": [
+        "amendment"
+      ],
+      "vote_annotation": "Fails 14-21",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v2/page-06-1.png": "85acf16c772b217112e65040281889f05ee966e9c93644592d5d0e71f5108bed"
+      },
+      "interpretation": "Amendment text, with vote outcome annotation where present; no roll-call member vote sheet."
+    },
+    {
+      "document_id": "89b57d0d414bb8ccc6d4347d38e87c835dbd556c2cc0d677cd59d792135195d1",
+      "filename": "hr_3476_graves_amendment_21_tp_ans_cbra_disclosure_notification.pdf",
+      "body_key": "bodies/sha256/7a/7a5ec4d70f8d55643e2979936a747d5684c4315c0d8bb610adcbcd78cb689013.gz",
+      "url": "https://congressional-viewer-data.mdeeb.workers.dev/saved/7a5ec4d70f8d55643e2979936a747d5684c4315c0d8bb610adcbcd78cb689013/retained.pdf",
+      "http_status": 200,
+      "content_type": "application/pdf",
+      "bytes": 28780,
+      "sha256": "7a5ec4d70f8d55643e2979936a747d5684c4315c0d8bb610adcbcd78cb689013",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/7a5ec4d70f8d55643e2979936a747d5684c4315c0d8bb610adcbcd78cb689013.pdf",
+      "pages": 2,
+      "status": "verified_exact_retained_pdf",
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/7a5ec4d70f8d55643e2979936a747d5684c4315c0d8bb610adcbcd78cb689013.txt",
+      "text_sha256": "fb8605c094e82b70c14dccb3770a3516342fcd3326af6ce3ae3b1b8140ef14b4",
+      "extracted_characters": 1564,
+      "all_pages_visually_reviewed": true,
+      "review_method": "All rendered pages; native extracted text where present; no OCR",
+      "observed_document_forms": [
+        "amendment"
+      ],
+      "vote_annotation": null,
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v2/page-07-1.png": "ec8472a491b9feba2e8a7b39505595b7c53094d6b12d0d85d9fd0ccc3729fdfb",
+        "output/filename-patterns-20261015/public-retained-review-v2/page-07-2.png": "0b8b229df3765d499ea310b52fb5470d61435b80a2498c63aa0f4a444591f129"
+      },
+      "interpretation": "Disclosure notification is the amendment subject, not a witness disclosure form.",
+      "filename_bill_number": "3476",
+      "body_heading_bill_number": "3764",
+      "bill_identity_resolved": false
+    },
+    {
+      "document_id": "89eea49d43410df365706d2a8f9cf7ed37c0bc57ee8d43e377f7831cd9535c50",
+      "filename": "Roll Call Vote 2Nadler Amdt 2 TEXT.pdf",
+      "body_key": "bodies/sha256/14/14ce9e7ba19e1d231ffba5e717ce4a326209107cc00699cb97d1ed27e2b61098.gz",
+      "url": "https://congressional-viewer-data.mdeeb.workers.dev/saved/14ce9e7ba19e1d231ffba5e717ce4a326209107cc00699cb97d1ed27e2b61098/retained.pdf",
+      "http_status": 200,
+      "content_type": "application/pdf",
+      "bytes": 24487,
+      "sha256": "14ce9e7ba19e1d231ffba5e717ce4a326209107cc00699cb97d1ed27e2b61098",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/14ce9e7ba19e1d231ffba5e717ce4a326209107cc00699cb97d1ed27e2b61098.pdf",
+      "pages": 1,
+      "status": "verified_exact_retained_pdf",
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/14ce9e7ba19e1d231ffba5e717ce4a326209107cc00699cb97d1ed27e2b61098.txt",
+      "text_sha256": "ad3708d5a9abe531bba720ce4c75de6cf73d36650a179934ae87eaa74ecc6057",
+      "extracted_characters": 7,
+      "all_pages_visually_reviewed": true,
+      "review_method": "All rendered pages; native extracted text where present; no OCR",
+      "observed_document_forms": [
+        "amendment"
+      ],
+      "vote_annotation": "Failed 14-20",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v2/page-08-1.png": "c31fddcdf878d51bfaa997b90e418efe170928ba9169bbb15dc53b1ef1e4765e"
+      },
+      "interpretation": "Amendment text, with vote outcome annotation where present; no roll-call member vote sheet."
+    },
+    {
+      "document_id": "930b1fc7cdd154111607a28eda04a4f7b86beb4f1110d4f002c0f79d08f9125a",
+      "filename": "Roll Call Vote 3-Jackson Lee Amdt 7 TEXT.pdf",
+      "body_key": "bodies/sha256/67/67af7b33f064ee8efcbf3dbe52a9b9752eaa12ff2bad7a1b936853b5cc3ffc07.gz",
+      "url": "https://congressional-viewer-data.mdeeb.workers.dev/saved/67af7b33f064ee8efcbf3dbe52a9b9752eaa12ff2bad7a1b936853b5cc3ffc07/retained.pdf",
+      "http_status": 200,
+      "content_type": "application/pdf",
+      "bytes": 23740,
+      "sha256": "67af7b33f064ee8efcbf3dbe52a9b9752eaa12ff2bad7a1b936853b5cc3ffc07",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/67af7b33f064ee8efcbf3dbe52a9b9752eaa12ff2bad7a1b936853b5cc3ffc07.pdf",
+      "pages": 1,
+      "status": "verified_exact_retained_pdf",
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/67af7b33f064ee8efcbf3dbe52a9b9752eaa12ff2bad7a1b936853b5cc3ffc07.txt",
+      "text_sha256": "ad3708d5a9abe531bba720ce4c75de6cf73d36650a179934ae87eaa74ecc6057",
+      "extracted_characters": 7,
+      "all_pages_visually_reviewed": true,
+      "review_method": "All rendered pages; native extracted text where present; no OCR",
+      "observed_document_forms": [
+        "amendment"
+      ],
+      "vote_annotation": "Failed 15-19 (en bloc amendment 8)",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v2/page-09-1.png": "2eebce67c6a1bfeaede974db98e31401a8e1303539b6aa923f1fb90b63460e63"
+      },
+      "interpretation": "Amendment text, with vote outcome annotation where present; no roll-call member vote sheet."
+    },
+    {
+      "document_id": "9a89a9081ef818a60986f283ea89f966b078f51476d7eae25b450ae79b9fe930",
+      "filename": "Roll Call Vote 9Johnson Amdt 10 TEXT.pdf",
+      "body_key": "bodies/sha256/63/63c813cfbfc66fcad0296092bc92cafd52c40fb4c9aa1d80f6a54b81347b946d.gz",
+      "url": "https://congressional-viewer-data.mdeeb.workers.dev/saved/63c813cfbfc66fcad0296092bc92cafd52c40fb4c9aa1d80f6a54b81347b946d/retained.pdf",
+      "http_status": 200,
+      "content_type": "application/pdf",
+      "bytes": 25884,
+      "sha256": "63c813cfbfc66fcad0296092bc92cafd52c40fb4c9aa1d80f6a54b81347b946d",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/63c813cfbfc66fcad0296092bc92cafd52c40fb4c9aa1d80f6a54b81347b946d.pdf",
+      "pages": 1,
+      "status": "verified_exact_retained_pdf",
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/63c813cfbfc66fcad0296092bc92cafd52c40fb4c9aa1d80f6a54b81347b946d.txt",
+      "text_sha256": "ad3708d5a9abe531bba720ce4c75de6cf73d36650a179934ae87eaa74ecc6057",
+      "extracted_characters": 7,
+      "all_pages_visually_reviewed": true,
+      "review_method": "All rendered pages; native extracted text where present; no OCR",
+      "observed_document_forms": [
+        "amendment"
+      ],
+      "vote_annotation": "Failed 14-19",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v2/page-10-1.png": "b1bd64d660b7b7775f199739e7ddcd660c6bf7bc9fd08fc61cb86d93f64d8bb3"
+      },
+      "interpretation": "Amendment text, with vote outcome annotation where present; no roll-call member vote sheet."
+    },
+    {
+      "document_id": "a9a0c212a8fc6a6105253d6c78e29bcda21f12bd488b5617ecc3d13dfccbd844",
+      "filename": "Roll Call Vote 8-Johnson Amdt 9 TEXT.pdf",
+      "body_key": "bodies/sha256/da/da51a03c27a0cdbffe4140cdadb91693c2e0e00b918ef2fabe6a5fcde26a145b.gz",
+      "url": "https://congressional-viewer-data.mdeeb.workers.dev/saved/da51a03c27a0cdbffe4140cdadb91693c2e0e00b918ef2fabe6a5fcde26a145b/retained.pdf",
+      "http_status": 200,
+      "content_type": "application/pdf",
+      "bytes": 25876,
+      "sha256": "da51a03c27a0cdbffe4140cdadb91693c2e0e00b918ef2fabe6a5fcde26a145b",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/da51a03c27a0cdbffe4140cdadb91693c2e0e00b918ef2fabe6a5fcde26a145b.pdf",
+      "pages": 1,
+      "status": "verified_exact_retained_pdf",
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/da51a03c27a0cdbffe4140cdadb91693c2e0e00b918ef2fabe6a5fcde26a145b.txt",
+      "text_sha256": "ad3708d5a9abe531bba720ce4c75de6cf73d36650a179934ae87eaa74ecc6057",
+      "extracted_characters": 7,
+      "all_pages_visually_reviewed": true,
+      "review_method": "All rendered pages; native extracted text where present; no OCR",
+      "observed_document_forms": [
+        "amendment"
+      ],
+      "vote_annotation": "Failed 11-18",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v2/page-11-1.png": "6a8a9a7b3e565fb5b7b4e8e1961a0debae7cd16ca09c19064e45668f6728b979"
+      },
+      "interpretation": "Amendment text, with vote outcome annotation where present; no roll-call member vote sheet."
+    },
+    {
+      "document_id": "b0079a064001403d81234bdd03272896c1258b2dc23042d812febdf8fb53ceef",
+      "filename": "Amendment-in-the-Nature-of-a-Substitute-to-VE-LEtter-FY2024.pdf",
+      "body_key": "bodies/sha256/a0/a0b6901c7b4f1465fed26073e2a285c1d94a253fa9dd08561873ad281b2ef024.gz",
+      "url": "https://congressional-viewer-data.mdeeb.workers.dev/saved/a0b6901c7b4f1465fed26073e2a285c1d94a253fa9dd08561873ad281b2ef024/retained.pdf",
+      "http_status": 200,
+      "content_type": "application/pdf",
+      "bytes": 153452,
+      "sha256": "a0b6901c7b4f1465fed26073e2a285c1d94a253fa9dd08561873ad281b2ef024",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/a0b6901c7b4f1465fed26073e2a285c1d94a253fa9dd08561873ad281b2ef024.pdf",
+      "pages": 4,
+      "status": "verified_exact_retained_pdf",
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/a0b6901c7b4f1465fed26073e2a285c1d94a253fa9dd08561873ad281b2ef024.txt",
+      "text_sha256": "baf3084ec5ecf6e358987cb77737630ad5ab5cdd175f7027d63d23e963d07376",
+      "extracted_characters": 10319,
+      "all_pages_visually_reviewed": true,
+      "review_method": "All rendered pages; native extracted text where present; no OCR",
+      "observed_document_forms": [
+        "amendment",
+        "letter"
+      ],
+      "vote_annotation": null,
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v2/page-12-1.png": "5ab0b5d0e1ede57c808d6f32931e1f84b23c6df7c089561b8a3d50ffbdd3f7c4",
+        "output/filename-patterns-20261015/public-retained-review-v2/page-12-2.png": "291e43167a25638dc9d69f8e7037971ef4ce9dd788909fb842632100c1aa9572",
+        "output/filename-patterns-20261015/public-retained-review-v2/page-12-3.png": "ad7c3b339f791f4f0be716fdbf0fdb19cc60a3d180944cc7c43182fa7deff62d",
+        "output/filename-patterns-20261015/public-retained-review-v2/page-12-4.png": "f90982b8592a10ecfc2761d10bea84ef4ab9ea7bd191aa00f9f0e119eca0a87c"
+      },
+      "interpretation": "Substitute amendment contains the complete replacement Views and Estimates letter, including addressee, salutation, policy sections and closing."
+    },
+    {
+      "document_id": "c9f98085ff11e8b6de9a5e74a79b8b3e8e62711c98c289f6827a044a820cac56",
+      "filename": "Roll Call Vote 6Nadler Amdt 5 TEXT.pdf",
+      "body_key": "bodies/sha256/23/232f98de4e5d4ede478ef9124706127454bbb155f9dd9baca3aa59c3addee88e.gz",
+      "url": "https://congressional-viewer-data.mdeeb.workers.dev/saved/232f98de4e5d4ede478ef9124706127454bbb155f9dd9baca3aa59c3addee88e/retained.pdf",
+      "http_status": 200,
+      "content_type": "application/pdf",
+      "bytes": 31824,
+      "sha256": "232f98de4e5d4ede478ef9124706127454bbb155f9dd9baca3aa59c3addee88e",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/232f98de4e5d4ede478ef9124706127454bbb155f9dd9baca3aa59c3addee88e.pdf",
+      "pages": 1,
+      "status": "verified_exact_retained_pdf",
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/232f98de4e5d4ede478ef9124706127454bbb155f9dd9baca3aa59c3addee88e.txt",
+      "text_sha256": "ad3708d5a9abe531bba720ce4c75de6cf73d36650a179934ae87eaa74ecc6057",
+      "extracted_characters": 7,
+      "all_pages_visually_reviewed": true,
+      "review_method": "All rendered pages; native extracted text where present; no OCR",
+      "observed_document_forms": [
+        "amendment"
+      ],
+      "vote_annotation": "Failed 13-22",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v2/page-13-1.png": "56382c6204c6c35f2742658e3c1e978aa2a5be37b545d79442e08211be8c88fe"
+      },
+      "interpretation": "Amendment text, with vote outcome annotation where present; no roll-call member vote sheet."
+    },
+    {
+      "document_id": "d7c6dc44484fd01363653f8fea0000d7088e1b8b9acd4bd721331458f57417ea",
+      "filename": "Roll Call Vote 7Nadler Amdt 6 TEXT.pdf",
+      "body_key": "bodies/sha256/a5/a521e1e41037c1548bcd925e33aea13bf8c177c7f56b5d268c03492a3eecc529.gz",
+      "url": "https://congressional-viewer-data.mdeeb.workers.dev/saved/a521e1e41037c1548bcd925e33aea13bf8c177c7f56b5d268c03492a3eecc529/retained.pdf",
+      "http_status": 200,
+      "content_type": "application/pdf",
+      "bytes": 19876,
+      "sha256": "a521e1e41037c1548bcd925e33aea13bf8c177c7f56b5d268c03492a3eecc529",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/a521e1e41037c1548bcd925e33aea13bf8c177c7f56b5d268c03492a3eecc529.pdf",
+      "pages": 1,
+      "status": "verified_exact_retained_pdf",
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/a521e1e41037c1548bcd925e33aea13bf8c177c7f56b5d268c03492a3eecc529.txt",
+      "text_sha256": "ad3708d5a9abe531bba720ce4c75de6cf73d36650a179934ae87eaa74ecc6057",
+      "extracted_characters": 7,
+      "all_pages_visually_reviewed": true,
+      "review_method": "All rendered pages; native extracted text where present; no OCR",
+      "observed_document_forms": [
+        "amendment"
+      ],
+      "vote_annotation": "Failed 13-19",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v2/page-14-1.png": "7cb60a09e39d5decf150b8f77829511d00928b5fbafb62f3b4ee356b48fdb711"
+      },
+      "interpretation": "Amendment text, with vote outcome annotation where present; no roll-call member vote sheet."
+    },
+    {
+      "document_id": "ee5426adac180ae043303008a1b50a0e2e2c7fde3b720dabefc77536d2419430",
+      "filename": "Roll Call Vote 12WS Amdt 14 TEXT.pdf",
+      "body_key": "bodies/sha256/8e/8e156ee04e8fbf87eb043e901e3779a46bacce1f8d715dadcf962fc93cdc741d.gz",
+      "url": "https://congressional-viewer-data.mdeeb.workers.dev/saved/8e156ee04e8fbf87eb043e901e3779a46bacce1f8d715dadcf962fc93cdc741d/retained.pdf",
+      "http_status": 200,
+      "content_type": "application/pdf",
+      "bytes": 23344,
+      "sha256": "8e156ee04e8fbf87eb043e901e3779a46bacce1f8d715dadcf962fc93cdc741d",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/8e156ee04e8fbf87eb043e901e3779a46bacce1f8d715dadcf962fc93cdc741d.pdf",
+      "pages": 1,
+      "status": "verified_exact_retained_pdf",
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/8e156ee04e8fbf87eb043e901e3779a46bacce1f8d715dadcf962fc93cdc741d.txt",
+      "text_sha256": "ad3708d5a9abe531bba720ce4c75de6cf73d36650a179934ae87eaa74ecc6057",
+      "extracted_characters": 7,
+      "all_pages_visually_reviewed": true,
+      "review_method": "All rendered pages; native extracted text where present; no OCR",
+      "observed_document_forms": [
+        "amendment"
+      ],
+      "vote_annotation": "Failed 14-22",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v2/page-15-1.png": "17ac28a24aa47f76fe321ce937e9a015b41fb411f9762259154cb82dc7ac0851"
+      },
+      "interpretation": "Amendment text, with vote outcome annotation where present; no roll-call member vote sheet."
+    },
+    {
+      "document_id": "f4fa89b77862dc6b759697cfe1b7957d2cfd39f43e7d901b406c0cd6644d9aba",
+      "filename": "Roll Call Vote 10Quigley Amdt 11 TEXT.pdf",
+      "body_key": "bodies/sha256/c0/c0066c46e47dca3a8d63b51cf8fc5701e08b2bd2606d026d65bee25cdc944428.gz",
+      "url": "https://congressional-viewer-data.mdeeb.workers.dev/saved/c0066c46e47dca3a8d63b51cf8fc5701e08b2bd2606d026d65bee25cdc944428/retained.pdf",
+      "http_status": 200,
+      "content_type": "application/pdf",
+      "bytes": 30428,
+      "sha256": "c0066c46e47dca3a8d63b51cf8fc5701e08b2bd2606d026d65bee25cdc944428",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/c0066c46e47dca3a8d63b51cf8fc5701e08b2bd2606d026d65bee25cdc944428.pdf",
+      "pages": 1,
+      "status": "verified_exact_retained_pdf",
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/c0066c46e47dca3a8d63b51cf8fc5701e08b2bd2606d026d65bee25cdc944428.txt",
+      "text_sha256": "ad3708d5a9abe531bba720ce4c75de6cf73d36650a179934ae87eaa74ecc6057",
+      "extracted_characters": 7,
+      "all_pages_visually_reviewed": true,
+      "review_method": "All rendered pages; native extracted text where present; no OCR",
+      "observed_document_forms": [
+        "amendment"
+      ],
+      "vote_annotation": "Failed 12-21",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v2/page-16-1.png": "e33c5f13d49c6f12f9e093cbc294fd355b372815067d3143b24e0cfd2b657731"
+      },
+      "interpretation": "Amendment text, with vote outcome annotation where present; no roll-call member vote sheet."
+    },
+    {
+      "document_id": "fef67d826731961b8b2c522886948aa8e8284c760d64d742f3af1a0a8f64de01",
+      "filename": "Roll Call Vote 4Nadler Amdt 3 TEXT.pdf",
+      "body_key": "bodies/sha256/02/0247969558c44ee0630d8fbb8fc525d32eee68b2b432d4daabdd82395a506efe.gz",
+      "url": "https://congressional-viewer-data.mdeeb.workers.dev/saved/0247969558c44ee0630d8fbb8fc525d32eee68b2b432d4daabdd82395a506efe/retained.pdf",
+      "http_status": 200,
+      "content_type": "application/pdf",
+      "bytes": 32699,
+      "sha256": "0247969558c44ee0630d8fbb8fc525d32eee68b2b432d4daabdd82395a506efe",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/0247969558c44ee0630d8fbb8fc525d32eee68b2b432d4daabdd82395a506efe.pdf",
+      "pages": 1,
+      "status": "verified_exact_retained_pdf",
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/0247969558c44ee0630d8fbb8fc525d32eee68b2b432d4daabdd82395a506efe.txt",
+      "text_sha256": "ad3708d5a9abe531bba720ce4c75de6cf73d36650a179934ae87eaa74ecc6057",
+      "extracted_characters": 7,
+      "all_pages_visually_reviewed": true,
+      "review_method": "All rendered pages; native extracted text where present; no OCR",
+      "observed_document_forms": [
+        "amendment"
+      ],
+      "vote_annotation": "Failed 14-19",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v2/page-17-1.png": "ba957f44ec409c5554ab2a6ace62eded2010f281306f878f4bc7426457d4ef17"
+      },
+      "interpretation": "Amendment text, with vote outcome annotation where present; no roll-call member vote sheet."
+    }
+  ],
+  "all_pages_visually_reviewed": true,
+  "documents": 17,
+  "pages": 21,
+  "pilot_overlap": false,
+  "publisher_acquisition": false,
+  "production_ocr": false,
+  "release_approved": false
+}

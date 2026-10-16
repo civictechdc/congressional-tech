@@ -1,0 +1,307 @@
+Compiled document review input
+==============================
+
+The maintained selection API is congress_api.retention.document_reviews.
+It applies a previously verified body review to a fresh grouped baseline and
+returns a separate candidate. Ordinary catalog grouping and refresh do not call
+it automatically. The existing experiment now calls this implementation; there
+is one selection and digest implementation for both package and experiment use.
+
+Ownership
+---------
+house_naming owns lexical filename interpretation and kind-to-family mappings.
+congress_api.retention owns retained body/source evidence, grouping and selection.
+A body review is evidence about captured bytes, not a new filename rule.
+document_review_receipts verifies local receipt chains and compiles this input.
+document_review_catalog admits a pinned proposal/receipt pair against complete
+current groups and writes a separate candidate bundle. The historical experiment
+reader remains unchanged because earlier receipts bind its source hash; it is not
+a package dependency. Current candidate experiments use the maintained reader.
+
+What goes in
+------------
+review_group_digest(document, sources) receives the complete baseline document and
+every source member after grouping/refresh. It binds all semantic values, sorting
+members by source_id and dictionary keys. It ignores null dictionary padding only;
+list order, null list entries, duplicate values, source text and nested evidence
+remain significant. Duplicate members, foreign document IDs and a prior review
+candidate used as a baseline raise ValueError.
+
+apply_review_candidate(document, sources, review=None) receives that same baseline.
+The optional compiled review is the existing dictionary shape:
+
+Field | Meaning
+document_id | Exact grouped document identity.
+group_sha256 | Digest of the complete normalized baseline and all source members.
+original_row_sha256 | Exact original review-selection row, checked during compilation.
+receipt, receipt_sha256 | Locator and verified hash of the complete review receipt.
+body_key, body_sha256 | Retained body locator and verified decoded-byte digest.
+observed_forms | Distinct document forms observed across the complete body.
+primary_forms, component_forms | Reviewed packet roles; their union equals observed_forms.
+body_observation | Complete validated receipt record, copied without removing page sections, notes, limitations or evidence locators. Required in version 2 bundles; the low-level selector still accepts previously compiled inputs.
+reviewer | assistant for the current admitted review input.
+independent_reference, release_approved | Explicit false; selection does not establish either.
+
+Compiler obligations
+--------------------
+Before calling the selector with a review, the caller must verify the complete
+receipt chain and its source-row bindings, decoded body bytes, PDF signature/page
+count, all-page coverage and retained evidence hashes. It must compare the proposed
+forms with that review and verify exact original/current membership and body
+identity. The current group must have document role and exactly the reviewed
+eligible body, while its retained body union may also include old failed captures.
+The package implements these checks in document_review_receipts.load_reviews and
+compile_review, called by document_review_catalog.write_candidates. The selection
+API itself reads no receipt or body files; digest equality alone does not establish
+review correctness or page coverage. Receipt validation checks recorded all-page
+coverage and evidence hashes; it does not independently repeat a visual review.
+
+What happens and what comes out
+-------------------------------
+The selector copies the baseline before choosing a result. No supplied review
+returns no_review and the unchanged baseline. A different document ID or group
+digest returns scope_changed and the unchanged baseline. Unsupported forms keep
+the whole packet as annotation_only_unsupported_forms; the selector does not apply
+the supported subset. Invalid assistant flags or inconsistent form sets raise
+ValueError. These checks do not replace the compiler obligations above.
+
+A supported exact binding returns candidate_applied. It changes only selected
+document_kind, document_kind_source and document_family. Filename claims, native
+content readings and source context remain intact. Provenance is explicitly
+assistant_complete_body_review. Context-supported nomination families survive a
+change in reviewed form through the maintained paired-source predicate.
+
+The returned dictionary contains status, baseline_group_sha256, document and a
+detached copy of review. production_selected, independent_reference and
+release_approved remain false. Callers keep the original baseline separately and
+must not write the candidate back as baseline cache input. To withdraw, call with
+the original current baseline and no review. To correct, verify and compile the
+replacement receipt against that baseline; do not mutate the previous candidate.
+
+How we check it
+---------------
+Package tests exercise digest semantics, optional/default behavior, complete packet
+refusal, malformed compiled inputs, detached outputs and invalid cache reuse.
+Experiment tests exercise original receipt compilation and publisher context.
+The complete 86-group / 286-source cohort is replayed through seven grouping and
+refresh scenarios against its saved candidates to prove extraction compatibility.
+Import-fence tests keep retained-data code inside its package responsibility.
+
+Optional local command
+----------------------
+Run from the directory relative to which the historical receipt paths were saved:
+
+python -m congress_api.retention.document_review_catalog \
+  --sources PATH/TO/document-filenames.parquet \
+  --documents PATH/TO/documents.parquet \
+  --proposals PATH/TO/proposals.json --proposals-sha256 EXPECTED_PROPOSAL_HASH \
+  --receipt PATH/TO/latest-receipt.json --receipt-sha256 EXPECTED_RECEIPT_HASH \
+  --output NEW_OUTPUT_DIRECTORY
+
+Use hashes from the pinned evidence, not a hash recomputed after an unexpected
+change. Install the package's archive extras for Parquet/catalog support. Proposal
+records and the receipt chain must cover exactly the same reviewed group IDs.
+The command validates the whole pair's references, then reads complete selected
+groups with ID scans and batches of 32. This bounds batch expansion, not the total
+size of the selected cohort or any single nested row.
+
+The new directory contains candidates.jsonl and summary.json with bundle_version=2.
+The baseline section identifies the exact source and document paths and hashes.
+Candidate records
+include their compiled reviews; the summary binds source files, receipts, evidence,
+implementation and output bytes. The summary is the completion marker. Interrupted
+or failed outputs without a completed summary are not reusable, and existing output
+directories are refused. Inputs are hash-checked again before and after writing.
+Catalog indexes and publication selectors are never write targets.
+
+Reading a local bundle
+-----------------------
+document_review_bundle.load_bundle(summary_path, summary_sha256, sources, documents)
+requires an expected summary digest from the completed admission step. It verifies
+that summary, its candidate output, all evidence bindings, the exact baseline paths
+and bytes, and the admission implementation identity. It checks pair integrity,
+group coverage and status counts, then re-evaluates every saved candidate on the
+complete current rows. Inputs and implementation are checked again before return.
+The reader also requires each embedded body_observation to match its exact record
+in a receipt bound by the admission summary. Body identity and observed forms must
+agree with the compiled review. A receipt is read once per load and all file hashes
+are rechecked before return. Missing, edited or substituted observations are refused.
+Unknown versions, version 1 and old unversioned outputs are refused; regenerate them
+through admission rather than editing their headers. A hash establishes identity, not trust
+in an arbitrary producer: use a pin from the verified admission workflow.
+
+The returned mapping is keyed by document_id. Call
+document_review_bundle.select_document(document, sources, candidates) for a fresh
+result. It rechecks the group digest and full saved candidate semantics on every
+use. It returns a detached copy; missing IDs preserve their baseline. Omit candidates
+to withdraw the bundle. Omission is explicit; callers must surface verification
+failures rather than silently treating a refused bundle as an absent one.
+
+Reload the bundle when changing baseline snapshots. A new file path, changed bytes
+or changed admission policy requires fresh admission; equal document IDs alone do
+not transfer review. This is intentionally a local exact-baseline interface, not
+a portable published index. Loading currently hashes every bound local evidence
+file, including retained PDFs, without reinterpreting their contents. This belongs
+at bundle admission to a consuming process, not in a per-document rendering loop.
+
+Packet representation
+---------------------
+Every admitted review retains the complete body_observation, including all original
+receipt fields and their ordering within lists. Consumers can read pages,
+page_sections, observations, notes and source_completeness_observations when present.
+The record also retains rendered-page hashes and native-text evidence references.
+Absent page sections remain absent; complete body review does not invent page-level
+assignments or establish completeness of the original filing.
+
+Primary/component roles remain in review.primary_forms and review.component_forms.
+Observed forms describe the captured body; they are separate from the baseline's
+literal filename claims, publisher context and selected kinds. Supporting context
+and source limitations remain in the receipt's own words. A consumer must not
+interpret descriptive forms as new taxonomy entries or copied review prose as a
+new filename rule. Fields outside the observation keep their existing meanings.
+
+For the five unsupported packets, the representation preserves:
+
+- Grant-award list: nine pages, with disclosure-role context in the observations.
+- Federal-award expenditure schedule: seventy pages, including the five column
+  blocks and the limits of the retained source.
+- Contract-award list: eight pages, with continuous rows and literal discrepancies.
+- Committee-rules amendment: seventeen pages, separating the amendment instructions
+  from proposed replacement rules without implying their adoption.
+- Simmons disclosure: 119 pages, including embedded biography, tax returns,
+  extension requests and observations about missing original filing material.
+
+These packets remain annotation_only_unsupported_forms with their entire baseline
+document unchanged. The supported portion is not selected in isolation. Version 2
+preserves the evidence needed to explain or later reconsider this decision; it
+does not expand the supported-kind set. Ordinary supported packets carry the same
+complete observation structure, so consumers use one representation for both.
+
+Remaining integration work
+--------------------------
+Explicit writing and verified local reading are now available; recurring capture
+and the viewer do not invoke them automatically. The selected-group check against
+the complete saved catalog is recorded in
+experiments/filename-patterns-20261015/full_catalog_review_checkpoint_v1.json.
+It covers 86 reviewed groups within 1,240,374 document groups and 1,680,227 source
+rows, preserving both complete files. It is not a full classification refresh.
+Raw and filename-normalized rows require distinct bindings even when group IDs
+match; the check preserves both and verifies refusal across that boundary.
+
+Portable evidence export, loading and the optional local viewer preview are
+available as described below, with loading once per snapshot, explicit refusal
+and withdrawal. Historical local paths are original evidence
+locators; portable consumers must resolve them through the pinned object map.
+Independent references, held-out
+evaluation, full classification refresh and publication remain separate decisions.
+No source-body acquisition, automatic selection or release permission is introduced
+by these APIs.
+
+Portable evidence store
+-----------------------
+congress_api.retention.document_review_portable exports an admitted version 2
+bundle and every bound file into a new directory. It first runs the existing local
+bundle verifier. Each distinct byte sequence is copied once under objects/SHA256;
+manifest.json maps every original locator string to its object's digest. The
+original summary, candidates, receipts, notes and filenames remain byte-identical.
+The manifest includes the exporter/reader implementation hashes and is written
+only after every copied object passes its hash check. Existing or partial output
+directories are refused. The exporter neither uploads data nor edits baseline files.
+
+python -m congress_api.retention.document_review_portable \
+  --summary PATH/TO/summary.json --summary-sha256 EXPECTED_ADMISSION_HASH \
+  --sources PATH/TO/document-filenames.parquet \
+  --documents PATH/TO/documents.parquet --output NEW_PORTABLE_DIRECTORY
+
+The command prints the new manifest path and hash. Keep that hash from the verified
+export step. The directory can then be moved or copied without rewriting any file.
+load_portable(manifest_path, manifest_sha256) returns the same candidate mapping
+as load_bundle. It reads exclusively through the manifest's object map: original
+absolute or relative paths are never fallback file locations. It requires exactly
+the complete admission bindings plus the summary and candidate file, verifies
+every object, validates the copied catalog pair and checks all candidate semantics.
+Missing objects, altered bytes, extra/missing mappings and symlinks outside the
+object directory are refused. The manifest and reader policy are rechecked before
+returning. A hash still establishes identity rather than trust in an arbitrary
+producer; use the pin from the verified export workflow.
+
+Portable loading allows the same package modules to be installed at a different
+path. Module names and bytes, dependency versions and the house_naming fingerprint
+must match the admitted policy; duplicate module names are refused. This exception
+applies only to the closed portable resolver. load_bundle keeps its exact local
+baseline and implementation path checks.
+
+resolve_evidence(manifest_path, manifest_sha256, original_locator) returns one
+verified object path. For a decoded body, use review.body_observation.path; for a
+render, use its original rendered_pages key. Retained body_key names compressed
+archive storage and is not itself a local evidence locator. Evidence paths have no
+file extension; consumers must use the known evidence type rather than infer it
+from the object's filename. resolve_evidence checks the requested bytes, not the
+complete bundle; use load_portable first when selecting review candidates.
+
+Load once per pinned catalog/review snapshot, retain its baseline separately, and
+call select_document on the complete current group for each selection. Changing
+the snapshot requires a fresh load. Surface verification failure instead of
+silently treating it as withdrawal; explicit omission is the withdrawal operation.
+This initial portable format includes the complete bound catalog and historical
+evidence, so its size is not just the size of the reviewed PDFs. A browser should
+not hash this entire store in a per-document render loop.
+
+Local viewer preview
+--------------------
+The local filename viewer accepts --review-manifest and --review-sha256 together:
+
+python docs/youtube-coverage/research/scripts/view_document_filenames.py \
+  PATH/TO/document-filenames.parquet --port 8798 \
+  --review-manifest PORTABLE_DIRECTORY/manifest.json \
+  --review-sha256 EXPECTED_PORTABLE_MANIFEST_HASH
+
+ReviewSnapshot in congress_api.retention.document_review_viewer verifies the
+manifest, both current catalog files and the entire portable bundle once during
+startup. Each reviewed detail request passes the complete current document and
+all source rows to the existing selector. It keeps the original classification
+separate from the review preview. Search, filtering, downloads and saved catalog
+bytes continue to use the original catalog. A group without a review requires no
+additional full nested-row read.
+
+The Complete document review panel shows primary and component forms, page ranges,
+review notes and source-completeness observations. It links to the exact decoded
+PDF, every reviewed page image and retained text when available. Evidence routes
+accept a source ID, evidence type and optional page number; callers cannot supply
+filesystem paths. The resolver verifies mapped evidence and the handler serves
+only the bytes whose digest and expected format passed verification.
+
+Withdraw review from preview calls the selector with no candidate, retaining the
+original classification and the findings for comparison. Restore reviewed preview
+rechecks the selection. This choice applies only to the open panel; opening another
+record starts its own preview. Unsupported packets retain all observations and
+leave the original classification intact. Reviews remain assistant judgments,
+not independent references or release approval.
+
+Configured verification failure appears in the review panel, distinct from an
+unreviewed group; it never silently becomes a successful withdrawal. Catalog files
+and the manifest must stay immutable for the process lifetime. File identity,
+size or modification/change-time differences require restarting and re-verifying
+the viewer. Evidence objects are rehashed when opened. The ordinary published
+viewer does not request this optional API when complete_body_reviews is absent.
+The optional local preview does not add a public review publication path.
+
+Reviewed-category search and public publication
+----------------------------------------------
+Local /api/rows accepts classification=reviewed and an optional review=SHA256 pin.
+Original catalog matching remains the default. Reviewed mode replaces kind,
+family and classification provenance on every alias of an applied group. Other
+fields keep source-level matching; null-kind/family filters use the selected
+group classification. Unsupported packets retain original matching and notes.
+
+The optional public review file is exported by apps/site/scripts/filename_reviews.py
+from a verified Catalog. It binds both original file hashes and the review manifest,
+and includes positional mappings, original/selected fields and public evidence
+links. The browser verifies the small file and exact source pair before use.
+The site build stages a pinned release archive, checking all evidence digests.
+The archive contains public document evidence, not the full local receipt store.
+
+The category selector is independent of panel withdrawal. Withdrawing a preview
+changes that panel only; selecting Original catalog restores original search.
+Catalog downloads always remain original. Assistant findings are labeled and do
+not constitute independent reference data or automatic-classifier qualification.

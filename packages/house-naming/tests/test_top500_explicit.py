@@ -116,3 +116,8 @@ def test_existing_joined_recommendation_phrase_is_a_letter(engine):
     assert row['document_token'] == ['letterofrecommendationfor']
     assert row['subject_token'] == ['honjosephschmitz']
     assert row['recipient_token'] == ['johneisenberg']
+
+
+def test_tally_sheet_before_target_and_explicit_text_ambiguity(engine):
+    assert checked(engine, 'Tally Sheet for Amendment 1.pdf')['document_kind'] == ['tally-sheet']
+    assert checked(engine, 'Amendment 1 TEXT Tally Sheet.pdf')['document_kind'] == ['amendment', 'tally-sheet']

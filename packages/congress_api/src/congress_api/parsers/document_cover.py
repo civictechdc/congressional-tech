@@ -36,6 +36,8 @@ def document_page_fields(first: str, second: str = '') -> dict[str, list[str]]:
     """Recognize a document's opening form, not a citation or topic in its prose."""
     if citation := senate_hearing_citation(first):
         return {'content_document_kind': ['published-hearing'], 'content_citation': [citation]}
+    if house_hearing_cover(first):
+        return {'content_document_kind': ['published-hearing']}
     # A blank/scanned cover can precede the first page of proceedings. Do not
     # search a later appendix when the opening page has a different form.
     opening = first.strip() or second.strip()
@@ -60,7 +62,101 @@ def document_page_fields(first: str, second: str = '') -> dict[str, list[str]]:
            or re.search(r'^TESTIMONY\s*\nBEFORE (?:THE )?(?:SPECIAL )?COMMITTEE\b', clean[:900], re.M))
           and senate and committee and 'BEFORE' in compact):
         kind = 'witness-statement'
-    return committee_resolution_fields(clean) or legislative_cover_fields(clean) or ({'content_document_kind': [kind]} if kind else {})
+    existing = committee_resolution_fields(clean) or legislative_cover_fields(clean) or ({'content_document_kind': [kind]} if kind else {})
+    # Preserve established readings. New forms require the first page, never
+    # an attachment or a cover on the optional second page.
+    return existing or (explicit_form_fields(clean) if first.strip() else {})
+
+
+def house_hearing_cover(text: str) -> bool:
+    """Require a House publication cover; its serial is not a GPO citation."""
+    original = [' '.join(line.split()) for line in text.splitlines() if line.strip()]
+    lines = [line.upper() for line in original]
+    if not lines or re.match(r'(?:REPORT|SUMMARY|MEMORANDUM|LETTER|DEAR|TESTIMONY|STATEMENT|PREPARED STATEMENT)\b', lines[0]):
+        return False
+    title_end = next((n for n in range(len(lines) - 1)
+                      if lines[n:n + 2] == ['HEARING', 'BEFORE THE']), None)
+    # Some readers emit the printing footer before the title. Permit those
+    # publication details, but not prose introducing a reproduced cover.
+    if title_end is None or title_end > 18:
+        return False
+    imprint = re.compile(r'(?:U\.S\. GOVERNMENT (?:PUBLISHING|PRINTING) OFFICE|'
+                         r'WASHINGTON\s*:.*|FOR SALE BY THE SUPERINTENDENT OF DOCUMENTS.*|'
+                         r'INTERNET:.*|FAX:.*|[\d\s–—-]+(?: PDF)?)')
+    title = [line for line in original[:title_end] if not imprint.fullmatch(line.upper())]
+    if len(title) > 8 or any(re.search(r'[a-z]', line) for line in title):
+        return False
+    return (
+        any(re.fullmatch(r'SERIAL NO\.\s*\d{1,3}\s*[-–—]\s*\d+', line) for line in lines)
+        and any(line in {'HOUSE OF REPRESENTATIVES', 'U.S. HOUSE OF REPRESENTATIVES'} for line in lines)
+        and any(line.startswith('COMMITTEE ON ') for line in lines)
+        and 'PRINTED FOR THE USE OF THE COMMITTEE' in ' '.join(lines)
+        and any(re.fullmatch(r'U\.S\. GOVERNMENT (?:PUBLISHING|PRINTING) OFFICE', line) for line in lines)
+    )
+
+
+def explicit_form_fields(clean: str) -> dict[str, list[str]]:
+    """Recognize operative amendments and completed committee vote sheets."""
+    if operative_amendment(clean):
+        return {'content_document_kind': ['amendment']}
+    if committee_vote_sheet(clean):
+        return {'content_document_kind': ['committee-vote']}
+    return {}
+
+
+def operative_amendment(clean: str) -> bool:
+    """Accept drafting headers, then require a target, sponsor and instruction.
+
+    Prefixes are deliberately limited: prose introducing a quoted amendment
+    is not an amendment. A change to a substitute does not establish subtype.
+    """
+    lines = clean.splitlines()
+    metadata = re.compile(
+        r'(?:[A-Z]:[^\n]*\.XML|[A-Z]{2,}\d{3,}(?: [A-Z0-9]+)?|S\.L\.C\.|'
+        r'\d+(?:ST|ND|RD|TH) CONGRESS[^\n]*|\[DISCUSSION DRAFT\]|'
+        r'UPDATED DRAFT OF [A-Z]+ \d{1,2}, \d{4}|AMENDMENT #\d+)')
+    while lines and metadata.fullmatch(lines[0]):
+        lines.pop(0)
+    opening = '\n'.join(lines)
+    flat = ' '.join(opening.split())
+    measure = r'(?:H\.\s*R\.|S\.)\s*(?:\d+|L{2,})\b'
+    heading = (
+        r'(?:A\s?MENDMENT(?: IN THE NATURE OF A SUBSTITUTE)? TO '
+        r'(?:THE AMENDMENT IN THE NATURE OF A SUBSTITUTE TO )?'
+        r'|SUBSTITUTE FOR THE AMENDMENT IN THE NATURE OF A SUBSTITUTE TO )'
+        + measure)
+    offered = re.search(r'\bO\s?FFERED BY\b', flat[:700])
+    ordinary = re.match(heading, flat) and offered
+    motion = (flat.startswith('AMENDMENT INTENDED TO BE PROPOSED BY ')
+              and re.search(r'\bTO THE MOTION OF SENATOR\b.{1,200}\bCOMMITTEE ON\b', flat[:700]))
+    if not (ordinary or motion):
+        return False
+    return bool(re.search(
+        r'^(?:STRIKE\b|PAGE\s+\d+\b[^\n]{0,100}\b(?:STRIKE|INSERT|ADD)\b'
+        r'|AMEND SECTION\b[^\n]{0,100}\bTO READ AS FOLLOWS\b)', opening[:1800], re.M))
+
+
+def committee_vote_sheet(clean: str) -> bool:
+    """Require a committee heading, roll call, vote columns and recorded marks."""
+    lines = clean.splitlines()
+    if lines and lines[0].startswith('DATE:'):
+        lines = lines[1:]
+    if not lines:
+        return False
+    opening = '\n'.join(lines)
+    if lines[0] == 'VOTES OF THE COMMITTEE':
+        heading = ('COMMITTEE ON ' in opening[:800]
+                   and 'HOUSE OF REPRESENTATIVES' in opening[:800]
+                   and 'ROLL CALL VOTE' in opening[:800])
+    else:
+        heading = (lines[0].startswith('COMMITTEE ON ')
+                   and re.search(r'^(?:FULL COMMITTEE\s*[-–—]\s*)?ROLL CALL(?:\s*[#:]\s*\d+)?\s*$', opening[:800], re.M))
+    if not heading:
+        return False
+    members = len(re.findall(r'\b(?:MR|MRS|MS|DR)\.\s+[A-Z]', opening))
+    columns = re.search(r'\b(?:AYES?|YEAS?)\b', opening) and re.search(r'\b(?:NO|NAYS?)\b', opening)
+    marks = len(re.findall(r'(?<!\w)X{1,2}(?!\w)|[✓✔]', opening))
+    return bool(members >= 3 and columns and marks >= 3)
 
 
 def committee_resolution_fields(clean: str) -> dict[str, list[str]]:

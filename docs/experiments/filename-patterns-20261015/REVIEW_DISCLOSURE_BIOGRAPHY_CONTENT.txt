@@ -1,0 +1,169 @@
+Disclosure and biography alias conflicts: retained-body review, part 1
+====================================================================
+
+Decision
+--------
+Keep the filename claims separate from observations about actual contents.
+Do not collapse all disclosure/biography groups into either kind. The reviewed
+population includes disclosure-only forms, biography-only files and genuine
+combined documents. A shared eligible body proves that aliases identify the
+same saved bytes; it does not prove that every alias correctly names the contents.
+
+Evidence reviewed
+-----------------
+Selected the 38 pending disclosure/biography groups from review-evidence-v4,
+using its committed checkpoint and exact ledger hash. Reused the maintained
+eligible-body policy and excluded IDs and all retained keys from all 400 frozen
+pilot records before access. Each group had exactly one eligible body. All 38
+public saved-copy responses matched their expected SHA-256 and PDF signature.
+No publisher acquisition, pilot inspection, OCR or production mutation occurred.
+
+The fetched set contains 279 pages. Completed all-page visual review of the
+24 single-page PDFs and five two-page PDFs: 29 documents and 34 pages total.
+The JSON checkpoint records exact body, text and render hashes for each review.
+Native text supplemented visual inspection; the review does not transcribe or
+re-publish contact details, signatures or text hidden by visible redactions.
+
+Observed forms in the 29 completed reviews:
+- 23 disclosure forms without a biography or CV in the exact retained PDF.
+- Five disclosure forms with substantive biography material, either embedded
+  in the form's CV/resume answer or attached as a separate page.
+- One two-page resume without a disclosure form.
+
+These counts describe this reviewed subset, not an estimated rate for all
+unclassified filenames or an independently labeled evaluation population.
+
+Important boundaries
+--------------------
+A disclosure form's request to attach a CV is not evidence that the saved PDF
+contains one. The Lyle form even says Attached, but its exact retained PDF has
+only the form page. Short job titles and representational-capacity answers do
+not by themselves constitute a separate biographical document.
+
+The Koenig form uses BIO for Biotechnology Industry Organization. The filename's
+bio token can therefore be an organization abbreviation rather than a biography.
+The Kitcheyan file has disclosure in its filename but contains only a resume.
+These examples rule out a universal precedence rule based on either word.
+
+The Sweeney, Eberhart and O'Toole forms include substantive career narratives
+inside the form. Lunny and Williams have separate biography pages. Preserve
+multiple document forms when the complete contents support them.
+
+Implementation implications
+---------------------------
+No house_naming runtime change is justified by this batch. Its original filename
+claims remain useful source evidence even where the contents disagree. Any later
+content-based resolution must bind the exact eligible body and distinguish
+complete-packet review from a heading or first-page hint. Preserve the original
+filename claims and the reason for overriding or retaining them.
+
+The frozen PDF candidate remains unchanged. These assistant findings are not
+independent references and cannot unlock held-out evaluation. The current
+metadata ledger still has 91 pending groups; this separate body-review receipt
+does not silently mark them approved or change the catalog.
+
+Remaining work
+--------------
+Nine saved packets remain unreviewed in this batch, totaling 245 pages:
+Johnson 11; Oreskes 40; Kent 3; Kirpalani 4; Stefanko 3; White 5; Milito 9;
+Public Witness Testimony/CV/Disclosure 51; Simmons 119.
+Read every page of each packet before recording complete observed forms.
+The existing extracted text for short packets is available; the three packets
+above 20 pages require bounded local extraction/rendering from saved bytes.
+Do not fetch them again. After completing all 38, join the exact assistant
+findings to the current review evidence without treating them as release approval.
+
+Continuation: six complete packets
+---------------------------------
+The additive v2 receipt preserves the v1 review and binds it by SHA-256.
+Completed visual inspection of every page in Johnson (11), Kent (3),
+Kirpalani (4), Stefanko (3), White (5) and Milito (9): six documents, 35 pages.
+The cumulative review now covers 35 documents and 69 pages. Observed forms:
+23 disclosure-only, ten disclosure plus biography, and two biography-only.
+These remain assistant observations for the exact saved files.
+
+The Stefanko packet contains only a resume despite disclosure in its filename.
+The other five contain both forms. Milito also contains a litigation list
+supporting disclosure answers. Its reference to attached IRS Form 990s does not
+establish their presence: none appear in the nine-page saved PDF. White's
+resume likewise references a publication list absent from its five-page PDF.
+Johnson's publication citations are CV entries, not attached research papers.
+The v2 receipt records page ranges for each component rather than inferring
+packet contents from its first page or attachment instructions.
+
+Rechecked all 35 reviewed PDF, native-text and rendered-page hashes, the bound
+selection inputs, all 400 pilot ID/body-key exclusions, and all nine frozen
+candidate source hashes. Read the entire current 58-row groupings CSV again.
+No runtime code changed, so this evidence-only continuation did not repeat the
+already completed 5,862 offline and 62 experiment checks for version 3.2.7.
+
+Three packets remain: Oreskes (40 pages), Public Witness (51), and Simmons
+(119), totaling 210 pages. Their saved PDF paths and hashes are in the v2
+receipt. Review those locally in bounded batches and record exact page coverage.
+Only mark a packet complete after every page has been inspected.
+
+Continuation: complete Oreskes packet
+------------------------------------
+The v3 receipt records visual inspection of all 40 pages: a disclosure form
+on page 1 and a 39-page CV on pages 2-40. The CV includes headings for expert
+testimony, publications, research funding and lectures. Those sections describe
+past work and appearances; they do not turn the packet into the cited testimony,
+articles or reports. Preserve both disclosure and biography as observed forms.
+
+Cumulative coverage is now 36 documents / 109 pages: 23 disclosure-only,
+11 disclosure plus biography, and two biography-only. Public Witness (51 pages)
+and Simmons (119 pages) remain unreviewed. Exact PDF identity, page count,
+all 40 rendered-page hashes, selection bindings, frozen-pilot exclusions and
+the nine frozen source hashes were verified. No runtime classification changed.
+
+Continuation: all retained Public Witness pages
+----------------------------------------------
+The v4 receipt records visual inspection of all 51 retained pages and 22
+contiguous component ranges. This multi-witness packet contains statements,
+biographies, disclosure forms, a witness list and an ABA letter for the record.
+The letter retains its own observed form even though the packet filename says
+Testimony/CV/Disclosure. CV publication citations and testimony endnotes remain
+parts of their respective documents rather than additional attached reports.
+
+Review coverage is distinct from source completeness. The Schniderman statement
+has printed page numbers 1, 3 and 4 on PDF pages 22-24; printed page 2 was not
+observed elsewhere. The witness list names Kenneth Goldsmith for the ABA, while
+the retained ABA materials identify Thomas M. Susman. The list also names Julie
+Strandlie, but no separately identifiable submission from her was observed.
+Preserve these discrepancies; do not reconstruct missing material or infer that
+the retained packet includes every submission named on the witness list.
+
+Cumulative coverage is 37 packets / 160 pages. The disclosure/biography presence
+counts are 23 disclosure-only, 12 with both, and two biography-only; one of the
+12 contains the additional forms above. Only Simmons (119 pages) remains.
+Verified the prior receipt chain, current ledger and selection bindings, exact
+PDF digest and page count, all 51 render hashes, full non-overlapping page-range
+coverage, all 400 pilot ID/body-key exclusions and nine frozen source hashes.
+Read the full 58-row grouping CSV again after compaction. No runtime or catalog
+classification changed, and the current metadata review queue remains 91.
+
+Continuation: complete Simmons packet and selection
+--------------------------------------------------
+The v5 receipt records all 119 retained Simmons pages and 30 contiguous component
+ranges. The first three pages contain a witness disclosure; page 2 includes
+substantive education and career history. The attached 2011, 2010 and 2009 tax
+returns and extension requests are present in the saved PDF. Their schedules,
+officer lists and statement headings do not establish witness testimony or
+additional biographies. The tax-form labels describe observations only; they
+do not extend the production document-kind taxonomy.
+
+Preserved printed numbering gaps separately from review coverage. The 2011
+extension refers to Statement 1, but the retained explanation at the end of
+the packet has a 2009 footer and accompanies the 2009 request. All three
+extension requests display Part II / Page 2; no corresponding Part I was
+separately observed. These are source-completeness observations, not reasons
+to omit retained pages from the review count. No tax accuracy assessment was
+performed and no omitted or redacted information was reconstructed.
+
+The selection is complete: 38 packets / 279 pages, with 23 disclosure-only,
+13 disclosure plus biography, and two biography-only. Two composite packets
+also contain additional forms. Rechecked receipt-chain hashes, selection and
+ledger bindings, exact Simmons bytes and page count, all 119 render hashes,
+complete component coverage, exclusion from all 400 pilot documents/body keys,
+and all nine frozen source hashes. Reread the full 58-row grouping CSV after
+compaction. Classification and the 91 metadata dispositions remain unchanged.

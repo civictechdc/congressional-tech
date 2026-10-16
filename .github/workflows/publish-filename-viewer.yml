@@ -1,0 +1,75 @@
+name: Publish filename viewer data to R2
+
+on:
+  workflow_run:
+    workflows: ["Capture raw sources and rebuild document tables"]
+    types: [completed]
+    branches: [main]
+  schedule:
+    # Also discovers catalogs selected by verified local recovery runs.
+    - cron: '11,41 * * * *'
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - 'apps/site/scripts/publish-viewer-r2.py'
+      - 'apps/site/scripts/publish-filename-viewer.py'
+      - 'apps/site/scripts/filename-test-fixture.py'
+      - 'apps/site/scripts/filename_observations.py'
+      - 'apps/site/scripts/filename_details.py'
+      - 'apps/site/scripts/filename_navigation.py'
+      - 'apps/site/scripts/filename_recoveries.py'
+      - 'tests/test_filename_recoveries.py'
+      - 'tests/test_filename_observations.py'
+      - 'tests/test_filename_details.py'
+      - '.github/tests/test_filename_publication.py'
+      - '.github/tests/test_viewer_r2.py'
+      - '.github/workflows/publish-filename-viewer.yml'
+
+permissions:
+  contents: read
+
+# This publisher writes only viewer-publications/, never the archive selector.
+concurrency:
+  group: filename-viewer-publication
+  cancel-in-progress: false
+  queue: max
+
+jobs:
+  publish:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event != 'push' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install catalog publication tools
+        run: >-
+          pip install pytest -e packages/house-naming -e packages/committee_meeting
+          -e packages/congress_shared -e 'packages/congress_api[archive]'
+      - name: Verify publication fidelity and recovery mapping
+        run: PYTHONPATH=apps/site/scripts python -m pytest -q .github/tests/test_filename_publication.py .github/tests/test_viewer_r2.py tests/test_filename_recoveries.py tests/test_filename_observations.py tests/test_filename_details.py
+      - name: Publish only a changed, verified catalog
+        env:
+          CLOUDFLARE_ACCOUNT_ID: '174055408ff1560e60601c4d12c561c4'
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: python apps/site/scripts/publish-viewer-r2.py --report viewer-publication.json
+      - name: Record publication outcome
+        if: always()
+        run: |
+          if [ -f viewer-publication.json ]; then
+            cat viewer-publication.json >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: viewer-publication-${{ github.run_id }}
+          path: viewer-publication.json
+          if-no-files-found: ignore

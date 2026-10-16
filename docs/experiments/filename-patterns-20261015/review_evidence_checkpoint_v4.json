@@ -1,0 +1,41 @@
+{
+  "scope": "Complete review refresh against house_naming 3.2.7; review linkage does not promote assistant content findings to independent truth",
+  "summary_path": "output/filename-patterns-20261015/review-evidence-v4/summary.json",
+  "summary_sha256": "fad13d1d0101aebde561911cb9c6ecfff4c68b2dc8b0be65bd315d2a24fb8517",
+  "registry_path": "docs/experiments/filename-patterns-20261015/review_receipts_v4.json",
+  "registry_sha256": "d0547ce75984cf450925768aa8132ee94ecb2cea3844e99379808eed8427b2ed",
+  "records": 1902,
+  "review_basis": {
+    "same_family_aliases": 389,
+    "broad_specific_aliases": 815,
+    "prior_interpretation_review": 398,
+    "needs_review": 91,
+    "filename_interpretation_review": 209
+  },
+  "matched_prior_reviews": {
+    "vote-targets": 288,
+    "disclosure-statements": 25,
+    "witness-specificity": 37,
+    "vote-actions": 24,
+    "genre-subjects": 7,
+    "historical-vote-host": 17
+  },
+  "nonmatching_prior_reviews": 0,
+  "filename_review_decisions": {
+    "unresolved_award_list": 1,
+    "reviewed_explicit_disclosure_wording": 209
+  },
+  "nonmatching_filename_reviews": 0,
+  "outputs": {
+    "ledger.jsonl": "218c5ecc8a8eeb05b047414f4ffb7d5a9938d4a1f8d0d1e419b9c998932971e5",
+    "groupings.csv": "fe34d76840078b3328ea566149fc66fd10155f2bdbd47bc009aa5bb1bfdb7e27"
+  },
+  "grouping_rows_read_in_full": 58,
+  "previous_pending_groups": 109,
+  "current_pending_groups": 91,
+  "amendment_form_groups_now_equal_original_baseline": 17,
+  "historical_vote_host_reviews_matched": 17,
+  "replacement_letter_review": "Complete 4-page assistant review is stored in amendment_content_review.json; current metadata ledger deliberately still marks content review not_performed until a dedicated evidence link is implemented.",
+  "body_reads_by_linker": false,
+  "release_qualified": false
+}

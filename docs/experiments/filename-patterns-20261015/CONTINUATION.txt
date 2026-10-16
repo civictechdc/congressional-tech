@@ -1,0 +1,128 @@
+Document-kind continuation — October 15, 2026
+===========================================
+
+Result and release boundary
+---------------------------
+Catalog 3.2.0 adds four publisher-qualified PDF layouts. On the unchanged frozen
+experiment population they supply 831 new classifications: 612 published
+hearings, 179 legislative texts and 40 public laws. The replay now classifies
+10,258 document groups and leaves 23,290 eligible groups unresolved.
+
+All 657,103 IDs are conserved. All 9,427 earlier classifications keep their kinds;
+no role-review decision changes. The 623,555 role-review records remain separate.
+These are frozen-experiment results, not a current full-catalog coverage estimate.
+
+The changes were prepared in the attached document-kind-publish worktree.
+Publication remains pending. The earlier 3.1.0 commit, 1a57561, is already on main;
+its retained-source rebuild was still running when this continuation finished:
+https://github.com/civictechdc/congressional-tech/actions/runs/38823678887
+The publication directory's completion-status.json and public-readback.json,
+when present, provide the later authoritative result. No second rebuild started.
+
+Native conventions and boundaries
+---------------------------------
+1. Complete PLAW-<Congress>publ<number>.pdf names on GovInfo, GPO and Congress.gov
+   supply public-law, grouped under legislation. Private laws and suffixed
+   summaries are outside this rule. Law and Congress tokens remain literal.
+2. Complete House H<number>[office]_RH_xml.pdf names on docs.house.gov supply
+   legislative-text. Existing measure/version readers retain their meanings.
+3. Complete House H<number>_SUS_xml.pdf names on docs.house.gov supply
+   legislative-text. SUS remains local wording, not an official version or a
+   verified passage/suspension event.
+4. Complete three-digit/dash/number PDF names on Financial Services supply
+   published-hearing. serial_token preserves the filename's literal spelling;
+   it does not establish Congress or a GPO publication number.
+
+The 103-3.pdf cover prints serial 113-3 and the 113th Congress. This discrepancy
+is retained explicitly and tests prevent Congress inference from these names.
+Unknown publishers, XML/media outer extensions, summaries and amendment suffixes
+do not receive these new kinds. The general filename algorithms are unchanged.
+
+Evidence and verification
+-------------------------
+The initial native review selected 23 records before retrieval, three per
+family/publisher/modifier stratum where available. A second, separately frozen
+14-record review covered Financial Services serial-Congress/path strata and SUS
+controls. All 36 retrieved PDFs match the previously retained body hashes. One
+SUB URL returned 404; it was not replaced. All retrieved first pages were read;
+three first pages were additionally rendered and visually inspected.
+
+32 checks support the promoted source conventions. Four other bodies confirm
+three Veterans Affairs hearings reached through archive URLs and one CPT
+committee print; those source/filename conventions remain unpromoted. These
+small targeted checks do not establish population precision or full-document
+factual verification. Native adjudications and retrieval failures are retained.
+
+The focused tests had 12 failures before implementation and 32 passes afterward.
+The complete house-naming suite passes 4,593 tests. Selected catalog/source tests
+pass 200 tests; three additional tests verify actual writes of the paired tables
+for the new kinds, provenance and legislation family. Total: 4,796 tests passed.
+
+Source-association recovery
+---------------------------
+All 802 document groups with recognized labels carried through unproven URL
+variants were inventoried: 1,026 relevant anchor occurrences. None of their
+original URLs appears in the frozen document source URLs. The local capture
+snapshot also provides no exact URL/body matches, but ends on October 2 and
+predates these associations; this is not evidence about the current R2 catalog.
+
+A separately frozen sample of 48 unique original URLs spans publisher/kind
+strata. Outcomes: 14 HTTP 403, 14 HTTP 404, 10 HTTP 410, and 10 read failures.
+No PDF was returned and no source association was promoted. This sample does
+not prove that all 802 are unrecoverable. Current retained capture receipts or
+archive evidence are the next recovery inputs; guessed replacements remain
+untrusted. Existing source-association trust policy was not weakened.
+
+Prepared content pilot
+----------------------
+The pilot freezes 400 still-unclassified PDFs, split into 200 development and
+200 held-out records. Selection balances publisher, filename-family and retained
+body presence, with deterministic hash ranking. Native candidate families and
+previously reviewed bodies are excluded. No retained body repeats within or
+across the splits. It covers 284 strata and is not population-weighted.
+
+pilot-review.csv contains blank reference-label and evidence fields. pilot.json
+retains document IDs, source URLs, body keys, split and selection strata. Text
+availability is explicitly not_checked; this is a prepared review set, not a
+completed labeling exercise or performance benchmark. Failed retrievals must
+stay in the sample. Use development examples to tune extraction/classification;
+keep held-out reference labels separate until evaluation.
+
+Reproduce
+---------
+Use the Python environment with PyArrow and the package sources from this tree:
+
+  export PYTHONPATH=packages/house-naming/src:packages/congress_api/src:packages/congress_shared/src:packages/committee_meeting/src
+
+continuation.py OUTPUT creates a new immutable selection directory from the
+frozen documents.parquet and integration-v3 baseline. --boundaries prepares its
+additional native sample. --capture-index PATH audits an existing capture index.
+content_validation.py publishers --output OUTPUT/native-content and the same
+command for native-boundary-content retain publisher retrieval receipts and PDFs.
+association_probe.py OUTPUT freezes and checks up to 48 original source URLs.
+These experiment scripts do not write capture state or catalog classifications.
+
+integration_audit.py OUTPUT/replay runs the maintained readers over the frozen
+population. continuation_report.py checks the recorded continuation-v1 artifacts,
+all retrieved PDF hashes, complete ID conservation, earlier classifications,
+pilot separation, current code fingerprints and test logs, then builds the report.
+Use a new output directory for a new selection; do not overwrite the frozen set.
+
+Outputs under output/filename-patterns-20261015/continuation-v1:
+  report.html                  — results, evidence and download links
+  verification.json            — counts, checks and artifact hashes
+  new-classifications.csv      — 831 new assignments with provenance
+  native-evidence.json         — all 37 content checks and retrieval receipts
+  association-candidates.json  — all 1,026 relevant anchor occurrences
+  association-probe/           — 48 frozen original URLs and failure receipts
+  local-capture-audit.json      — local snapshot identity, age and exact matches
+  pilot.json                   — frozen 400-document review set
+  pilot-review.csv             — blank review sheet
+
+Next decision
+-------------
+Verify the ongoing 3.1.0 publication and refresh the full-catalog baseline before
+applying another production batch. This continuation's next substantive work is
+the PDF pilot's extraction and reference labeling, with a separate native XML
+role investigation. Recovery of the 802 associations needs additional retained
+or archive evidence; the failed direct probes justify no relaxed trust rule.

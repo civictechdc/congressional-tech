@@ -1,0 +1,50 @@
+{
+  "summary_path": "output/filename-patterns-20261015/packet-observation-v1/summary.json",
+  "summary_sha256": "de1a0e6b56849a3347eb43f6fab680fe5d56d8998dd32a330a359998a50447d0",
+  "bundle_summary_path": "output/filename-patterns-20261015/packet-observation-v1/bundle/summary.json",
+  "bundle_summary_sha256": "df53680e8cd8eb4d01836088a4736f5b6f8a54d1ff30d28b414ee8d8794f4fc4",
+  "bundle_version": 2,
+  "reviewed_groups": 86,
+  "source_rows": 286,
+  "reviewed_pages": 530,
+  "case_status": {
+    "candidate_applied": 81,
+    "annotation_only_unsupported_forms": 5
+  },
+  "exact_body_observations_preserved": 86,
+  "unsupported_packets": 5,
+  "unsupported_packet_pages": 223,
+  "unsupported_page_sections": 44,
+  "all_prior_candidate_fields_unchanged": true,
+  "withdrawal_restores_all_baselines": true,
+  "complete_baseline_bytes_unchanged": true,
+  "candidate_bytes_before": 3027282,
+  "candidate_bytes_after": 3251447,
+  "tests_passed": 94,
+  "bound_files_verified": 777,
+  "frozen_sources_verified": 9,
+  "frozen_pilot_and_labels_unchanged": true,
+  "source_sha256": {
+    "packages/congress_api/src/congress_api/retention/document_review_bundle.py": "f1baf0fe7497214209388e5128ebfeb2941bff50795346983d6e8871f6987ac9",
+    "packages/congress_api/src/congress_api/retention/document_review_catalog.py": "bdc600b0f5f62f9db7ace2081c715e9760d9ee4e2ea09392012f604eacaa1619",
+    "packages/congress_api/src/congress_api/retention/document_review_receipts.py": "e1d30076f78b4b26f807f98ab03ec1208e261a825ce546b3aa8e3ad81f2cae21",
+    "packages/congress_api/src/congress_api/retention/document_reviews.py": "f809235f1774ed5f7ad88326ac8757b6c7b5c40560ecc6a24d511f18c6e73145",
+    "tests/test_document_review_bundle.py": "1ce68abb095aec7de642000ede2406561e52f88757e4387288aaf5aaa473a61d",
+    "tests/test_document_review_catalog.py": "ac5318a817662594c2d39222d9a3ae4ecc3d4cdaec6feeddc29a7c89bb92aceb"
+  },
+  "review_path": "docs/experiments/filename-patterns-20261015/REVIEW_PACKET_OBSERVATION.txt",
+  "review_sha256": "375939c8d3974960b7da823d781291591b0517b5cb0932cd43e27f7505087ec5",
+  "evidence": {
+    "output/filename-patterns-20261015/packet-observation-v1/bundle/candidates.jsonl": "124a3ff7f634151ba1617275c1de2b59e0c146c88a8c062dcd8305dee53002b8",
+    "output/filename-patterns-20261015/packet-observation-v1/bundle/summary.json": "df53680e8cd8eb4d01836088a4736f5b6f8a54d1ff30d28b414ee8d8794f4fc4",
+    "output/filename-patterns-20261015/packet-observation-v1/packets.json": "bef1f3f4fdff72b1355ca020ed5889d1f9bda7109f37500138c40482e25baef5",
+    "output/filename-patterns-20261015/packet-observation-v1/run.log": "dd792178c47367df481fc9ac570ae15774ca355b9903566e2457201958738601",
+    "output/filename-patterns-20261015/packet-observation-v1/run.py": "28a48fb30036c05a1daa71a45efa4f3e7902088806dedf4d11ded2a294b6eef4",
+    "output/filename-patterns-20261015/packet-observation-v1/summary.json": "de1a0e6b56849a3347eb43f6fab680fe5d56d8998dd32a330a359998a50447d0",
+    "output/filename-patterns-20261015/packet-observation-v1/tests.log": "9d4151632f28c56fcf55c95f368fb94498e055c2dd2d9eac5e2c5eb88c371a52"
+  },
+  "production_selected": false,
+  "independent_reference": false,
+  "release_approved": false,
+  "publication": false
+}

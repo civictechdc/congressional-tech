@@ -6,6 +6,7 @@ Run from the repository root:
 from __future__ import annotations
 
 import argparse
+from copy import deepcopy
 from bisect import bisect_right
 from functools import lru_cache
 import gzip
@@ -17,6 +18,7 @@ from pathlib import Path
 import re
 import shutil
 from tempfile import TemporaryDirectory
+from threading import Lock
 import tomllib
 from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, quote, urlsplit
@@ -265,14 +267,18 @@ class RetainedFiles:
 
 
 class Catalog:
-    def __init__(self, path: Path, retained=None):
+    def __init__(self, path: Path, retained=None, *, review_manifest=None, review_sha256=None):
         from congress_api.retention.catalog_publication import local_catalog_paths
         if path.name == 'document-filenames.parquet' and path.parent.name == 'indexes':
             path, documents = local_catalog_paths(path.parent.parent)
         else:
             documents = path.with_name('documents.parquet')
         self.path = path
+        self.read_lock = Lock()
         self.retained = retained
+        self.review_snapshot = None
+        self.review_error = None
+        self.review_classifications = {}
         self.file = pq.ParquetFile(path)
         self.document_path = documents
         if not self.document_path.is_file():
@@ -361,6 +367,37 @@ class Catalog:
             sync = json.loads(receipt.read_text())
             if sync.get('catalog_id') == self.info['catalog_id']:
                 self.info.update({key: sync.get(key) for key in ('generation', 'synced_at', 'remote_last_modified')})
+        self.info['complete_body_reviews'] = bool(review_manifest or review_sha256)
+        if self.info['complete_body_reviews']:
+            from congress_api.retention.document_review_viewer import ReviewSnapshot
+            try:
+                if not review_manifest or not review_sha256:
+                    raise ValueError('Both a portable review manifest and its SHA-256 are required.')
+                self.review_snapshot = ReviewSnapshot(review_manifest, review_sha256, self.path, self.document_path)
+                self.review_classifications = {entries[key]: row for key, row in self.review_snapshot.classifications().items()}
+            except (ValueError, OSError, KeyError, TypeError) as exc:
+                self.review_error = str(exc)
+        self.reviewed_entries = {key for key, row in self.review_classifications.items() if row['status'] == 'candidate_applied'}
+        self.info['reviewed_search'] = self.review_snapshot is not None and not self.review_error
+        if self.info['reviewed_search']:
+            self.info['review_sha256'] = review_sha256
+            self.info['reviewed_groups'] = len(self.reviewed_entries)
+            self.info['review_facets'] = {field: sorted(set(self.info['facets'][field]) | {
+                value for entry in self.reviewed_entries for value in self.review_classifications[entry][field] or []})
+                for field in ('document_kind', 'document_family')}
+            self.source_positions = pa.array(range(len(self.table)), type=pa.int64())
+            self.review_source_mask = self.source_mask(self.reviewed_entries)
+        elif self.review_error:
+            self.info['review_error'] = self.review_error
+
+    def source_mask(self, entries):
+        positions = [row for entry in entries for row in self.members[entry]]
+        return pc.is_in(self.source_positions, value_set=pa.array(positions, type=pa.int64()))
+
+    def reviewed_matches(self, baseline, field, predicate):
+        """Replace category readings on every alias of an applied reviewed group."""
+        accepted = {entry for entry in self.reviewed_entries if predicate(self.review_classifications[entry][field] or [])}
+        return pc.or_(pc.and_(baseline, pc.invert(self.review_source_mask)), self.source_mask(accepted))
 
     def resolve(self, identity, catalog_id=None):
         if catalog_id and catalog_id != self.info['catalog_id']:
@@ -377,13 +414,27 @@ class Catalog:
     def searchable(self, field):
         if field not in self.fields:
             raise ValueError('Unknown search column.')
-        column = self.table[field] if field in LIST_COLUMNS else self.file.read(columns=[field])[field]
+        if field in LIST_COLUMNS:
+            column = self.table[field]
+        else:
+            with self.read_lock:
+                column = self.file.read(columns=[field])[field]
         if pa.types.is_list(column.type) and pa.types.is_struct(column.type.value_type):
             return pa.array([json.dumps(value, ensure_ascii=False) if value else None
                              for value in column.to_pylist()], type=pa.string())
         return pc.binary_join(column, ' | ') if pa.types.is_list(column.type) else column
 
     def search(self, query):
+        mode = query.get('classification', '')
+        if mode not in ('', 'reviewed'):
+            raise ValueError('Unknown classification mode.')
+        reviewed = mode == 'reviewed'
+        if reviewed:
+            if self.review_error or self.review_snapshot is None:
+                raise ValueError(self.review_error or 'Reviewed-category search is not configured.')
+            if query.get('review', self.info['review_sha256']) != self.info['review_sha256']:
+                raise SnapshotChanged('This search belongs to a different review snapshot. Choose the classification mode again.')
+            self.review_snapshot.check()
         text = query.get('q', '')[:2000]
         field = query.get('field', 'filename')
         if field == 'publication_code_code' and field not in self.fields:
@@ -393,6 +444,8 @@ class Catalog:
         mask = pa.array([True] * len(self.table))
         if text:
             found = pc.fill_null(pc.match_substring(self.searchable(field), text, ignore_case=True), False)
+            if reviewed and field in ('document_kind', 'document_family', 'document_kind_source'):
+                found = self.reviewed_matches(found, field, lambda values: text.lower() in ' | '.join(values).lower())
             if field == 'filename' and 'recovered_filename' in self.fields:
                 found = pc.or_(found, pc.fill_null(pc.match_substring(
                     self.searchable('recovered_filename'), text, ignore_case=True), False))
@@ -402,9 +455,13 @@ class Catalog:
             if name in ('document_kind', 'document_family') and value == '__null__':
                 continue  # Check the grouped document, not an unclassified alias.
             if value:
-                if value not in self.info['facets'][name]:
+                allowed = self.info.get('review_facets', {}).get(name, self.info['facets'][name])
+                if value not in allowed:
                     raise ValueError(f'Unknown {name} filter.')
-                mask = pc.and_(mask, pc.fill_null(pc.match_substring(self.filter_text[name], '\0' + value + '\0'), False))
+                found = pc.fill_null(pc.match_substring(self.filter_text[name], '\0' + value + '\0'), False)
+                if reviewed and name in ('document_kind', 'document_family'):
+                    found = self.reviewed_matches(found, name, lambda values: value in values)
+                mask = pc.and_(mask, found)
         retained = query.get('retained', '')
         if retained not in ('', 'yes', 'no'):
             raise ValueError('Unknown retained-file filter.')
@@ -426,7 +483,11 @@ class Catalog:
                 column = (self.documents[name] if name in self.documents.column_names else
                           pa.nulls(len(self.documents), type=pa.list_(pa.string())))
                 missing = pc.equal(pc.fill_null(pc.list_value_length(column), 0), 0)
-                matching_entries.intersection_update(pc.indices_nonzero(missing).to_pylist())
+                missing_entries = set(pc.indices_nonzero(missing).to_pylist())
+                if reviewed:
+                    missing_entries.difference_update(self.reviewed_entries)
+                    missing_entries.update(entry for entry in self.reviewed_entries if not self.review_classifications[entry][name])
+                matching_entries.intersection_update(missing_entries)
         matches = [entry for entry in self.order.to_pylist() if entry in matching_entries]
         total = len(matches)
         limit = max(1, min(100, int(query.get('limit', 50))))
@@ -435,12 +496,20 @@ class Catalog:
         selected = matches[(page - 1) * limit:page * limit]
         rows = self.documents.take(pa.array(selected, type=pa.int64())).to_pylist()
         for row, entry in zip(rows, selected):
+            if reviewed and entry in self.review_classifications:
+                classification = self.review_classifications[entry]
+                row['_review_status'] = classification['status']
+                if entry in self.reviewed_entries:
+                    row['catalog_document_kind'] = row.get('document_kind')
+                    row.update({key: deepcopy(classification[key]) for key in ('document_kind', 'document_family', 'document_kind_source')})
             row['_row'] = self.preferred_sources[entry]
             row['source_count'] = len(self.members[entry])
             row.pop('body_key')
             row['retained'] = bool(self.saved_responses[entry])
             row['api_reference'] = self.api_sources.get(self.preferred_sources[entry]) if entry in self.api_entries else None
             row['video_reference'] = self.video_sources.get(self.preferred_sources[entry]) if entry in self.video_entries else None
+        if reviewed:
+            self.review_snapshot.check()
         return {'rows': rows, 'total': total, 'page': page, 'pages': pages, 'limit': limit}
 
     @lru_cache(maxsize=16)
@@ -449,7 +518,8 @@ class Catalog:
             raise ValueError('Row does not exist.')
         group = bisect_right(self.group_starts, row_id) - 1
         # Read all columns only for the selected row's group, never for the whole catalog.
-        return self.file.read_row_group(group).slice(row_id - self.group_starts[group], 1).to_pylist()[0]
+        with self.read_lock:
+            return self.file.read_row_group(group).slice(row_id - self.group_starts[group], 1).to_pylist()[0]
 
     def entry(self, row_id):
         record = self.record(row_id)
@@ -462,8 +532,7 @@ class Catalog:
             source.pop('body_key')
         filename = self.documents['filename'][self.entry_ids[row_id]].as_py()
         position = self.entry_ids[row_id]
-        group = bisect_right(self.document_starts, position) - 1
-        document = self.document_file.read_row_group(group).slice(position - self.document_starts[group], 1).to_pylist()[0]
+        document = self.document(row_id)
         reading = filename_reading(record['filename'], record.get('source_url')) if record.get('filename') else None
         return {'record': record, 'document': document, 'filename': filename, 'sources': sources,
                 'api_reference': self.api_sources.get(row_id),
@@ -474,6 +543,35 @@ class Catalog:
                 'sources_share_saved_file': bool(bodies and bodies[0] and len(set(bodies)) == 1),
                 'saved_file_available': bool(self.retained and saved_response(record))}
 
+    def document(self, row_id):
+        position = self.entry_ids[row_id]
+        group = bisect_right(self.document_starts, position) - 1
+        with self.read_lock:
+            return self.document_file.read_row_group(group).slice(position - self.document_starts[group], 1).to_pylist()[0]
+
+    def review_rows(self, row_id):
+        if self.review_error:
+            raise ValueError(self.review_error)
+        if self.review_snapshot is None:
+            raise ValueError('Complete-body review access is not configured.')
+        self.review_snapshot.check()
+        return self.document(row_id), [self.record(i) for i in self.members[self.entry_ids[row_id]]]
+
+    def review(self, row_id, withdrawn=False):
+        # An unaffected group needs no full nested-row read. A configured but
+        # failed snapshot must still fail visibly, even for an unaffected row.
+        if self.review_snapshot is not None:
+            self.review_snapshot.check()
+            identity = self.documents['document_id'][self.entry_ids[row_id]].as_py()
+            if identity not in self.review_snapshot.candidates:
+                return {'status': 'no_review'}
+        document, sources = self.review_rows(row_id)
+        return self.review_snapshot.selection(document, sources, withdrawn=withdrawn)
+
+    def review_evidence(self, row_id, kind, page=None):
+        document, sources = self.review_rows(row_id)
+        return self.review_snapshot.evidence(document, sources, kind, page)
+
     @lru_cache(maxsize=16)
     def evidence(self, row_id):
         if self.retained is None:
@@ -483,10 +581,12 @@ class Catalog:
 
 def handler_for(catalog):
     class Handler(BaseHTTPRequestHandler):
-        def send(self, content, content_type, status=200):
+        def send(self, content, content_type, status=200, *, attachment=None):
             self.send_response(status)
             self.send_header('Content-Type', content_type)
             self.send_header('Content-Length', str(len(content)))
+            if attachment:
+                self.send_header('Content-Disposition', f'attachment; filename="{attachment}"')
             self.send_header('Cache-Control', 'no-store')
             self.send_header('X-Content-Type-Options', 'nosniff')
             self.send_header('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'")
@@ -522,6 +622,16 @@ def handler_for(catalog):
                 elif url.path.startswith('/api/evidence/'):
                     row = catalog.resolve(url.path.removeprefix('/api/evidence/'), query.get('catalog'))
                     self.json(catalog.evidence(row))
+                elif url.path.startswith('/api/review/'):
+                    row = catalog.resolve(url.path.removeprefix('/api/review/'), query.get('catalog'))
+                    if query.get('selection', 'review') not in {'review', 'baseline'}:
+                        raise ValueError('Unknown review selection.')
+                    self.json(catalog.review(row, withdrawn=query.get('selection') == 'baseline'))
+                elif url.path.startswith('/review-evidence/'):
+                    row = catalog.resolve(url.path.removeprefix('/review-evidence/'), query.get('catalog'))
+                    page = int(query['page']) if 'page' in query else None
+                    data, content_type = catalog.review_evidence(row, query.get('kind'), page)
+                    self.send(data, content_type, attachment='reviewed-document.pdf' if content_type == 'application/pdf' else None)
                 elif url.path.startswith('/saved/'):
                     row = catalog.resolve(url.path.removeprefix('/saved/'), query.get('catalog'))
                     if catalog.retained is None:
@@ -579,9 +689,12 @@ def main():
     parser.add_argument('--body-root', action='append', type=Path, default=[ROOT / '.cache/congressional-tech-raw'])
     parser.add_argument('--r2-account-id', default=os.environ.get('CLOUDFLARE_ACCOUNT_ID'))
     parser.add_argument('--cloudflare-profile', type=Path)
+    parser.add_argument('--review-manifest', type=Path, help='Optional portable complete-body review manifest')
+    parser.add_argument('--review-sha256', help='Expected SHA-256 of that manifest')
     args = parser.parse_args()
     retained = RetainedFiles(args.body_root, ROOT / '.cache/filename-viewer-r2', args.r2_account_id, args.cloudflare_profile)
-    catalog = Catalog(args.file.resolve(), retained=retained)
+    catalog = Catalog(args.file.resolve(), retained=retained,
+                      review_manifest=args.review_manifest, review_sha256=args.review_sha256)
     server = ThreadingHTTPServer(('127.0.0.1', args.port), handler_for(catalog))
     print(f'Filename viewer: http://127.0.0.1:{server.server_port}', flush=True)
     print(f'{catalog.info["rows"]:,} rows from {catalog.path}', flush=True)

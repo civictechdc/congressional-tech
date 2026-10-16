@@ -1,0 +1,76 @@
+Retained witness-statement specificity review
+=============================================
+
+Result
+------
+The index now preserves filename_document_kind separately from the selected
+kind. Exact retained witness-statement content refines generic testimony without
+erasing the original filename claim. Independent filename kinds remain; mixed
+selections record both evidence sources. Ambiguous/incompatible content does not
+replace filename kinds. The filename-only house_naming API remains unchanged.
+
+Data and observed behavior
+--------------------------
+The complete historical output contains 60 matching source rows across 38 groups.
+The selection includes every source member: 102 rows and 38 complete groups.
+All 38 grouped classification changes were read. Twenty-seven groups select the
+specific kind from content. Eleven already have an explicit witness-statement
+filename alias; they lose redundant generic testimony and retain filename
+provenance. Every source/document ID, membership, role, protected evidence field
+and representative alias is unchanged. Original input bytes and body-reader
+fingerprints remain unchanged. No body was opened or acquired.
+
+A separate audit checks all 102 stored filename claims against current extraction
+and all 38 grouped claims against their member unions. This validates the saved
+claim independently of the selected kind. The prior full historical result is
+unchanged and unqualified; this subset does not establish full-catalog accuracy.
+
+Implementation and data flow
+----------------------------
+document_index.restore_filename_kind (:119) restores an earlier saved claim or
+clears a previous content/source fallback, then saves the original filename kind.
+fill_document_kind (:129) uses it before selecting again. _select_document_kind
+(:205) replaces testimony only for exact witness-statement content; it preserves
+other filename kinds and attributes each contributing evidence source. If an
+explicit filename alias already supplies witness-statement, content is not credited
+for that existing claim. Generic family membership does not imply this refinement.
+
+Both reference grouping (:500) and catalog_staging.normalize (:305) use the shared
+restoration helper. Cache restoration (:2342) also uses it before restoring saved
+filename results. This removes duplicated fallback-clearing logic and prevents a
+refined content kind from being cached as a filename claim. Both output schemas
+include the new list column. The groupers' filename/recovered-name precedence now
+relabels only recovered-filename provenance; it cannot erase content attribution.
+
+After an accepted content reading is removed or corrected, the same paths restore
+the generic filename claim. A later source refresh or regroup does not need to
+parse the filename again or reopen the body. The change adds a derived metadata
+column and reuses the maintained cache and grouping paths; no speed claim is made.
+
+Validation
+----------
+The initial ten regression checks failed before the change and pass after it.
+The final twelve controls live in test_document_metadata_preservation.py, already
+selected by the frozen CI workflow: direct filename-only behavior, repeated
+selection, content removal, incompatible/ambiguous content, mixed kinds, both
+alias orders, both groupers, no-parse cache reuse, source refresh, explicit body
+reading clearance and mixed recovered-filename provenance. The real explicit
+reading API confirms that cleared witness content does not reappear on refresh.
+
+The focused consumer run passed 241 checks. The unchanged workflow's complete
+offline validation command passed 5,782 checks, including the twelve controls.
+The separate replay/metadata suite passed 37 checks. The real 102-source replay
+passes every preservation invariant and binds 210 project source files and 27
+experiment helpers. All frozen PDF candidate source hashes remain unchanged.
+
+Remaining work
+--------------
+The classification uses previously accepted content readings; it does not provide
+new independent body adjudication. Review the other historical changed-kind and
+source-role transitions, then qualify the exact fresh published pair. Specifically
+check the 34 known XML source rows against their historical native facts so a
+fresh baseline cannot silently legitimize a pre-existing loss. Reconcile every
+frozen pilot ID and retain the held-out reference/evaluation gates.
+
+VERDICT: APPROVE the local index refinement and shared restoration path.
+No catalog or package was published by this work; release remains unqualified.

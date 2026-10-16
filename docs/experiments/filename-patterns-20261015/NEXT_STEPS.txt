@@ -1,0 +1,841 @@
+Document-kind classification: next steps
+=======================================
+
+Current checkpoint
+------------------
+Filename version 3.2.0 is committed in 20114c8. The frozen PDF pilot and its
+140 development labels are committed in 38f7557. The explicit PDF content
+candidate, its fixtures and evaluation tools are committed in a22eecc.
+
+The actual PDF-reader comparison increases development assignments from 10 to
+24 of 140, preserves every earlier assignment and finds no disagreements with
+the assistant-reviewed labels. The exact candidate passed 5,742 offline tests.
+These are development results, not independent validation or release evidence.
+The 200 held-out records remain unevaluated. Production does not use OCR.
+
+content_rule_freeze.json records the code and evidence at freeze time. Its
+candidate_committed=false field describes that historical moment; committing
+these unchanged bytes does not change the candidate's source fingerprints.
+
+The 3.1.0 publication run 38823678887 is still rebuilding the catalog at this
+checkpoint. No new publication or retained-body refresh is started by this
+commit. Work proceeds in the following order.
+
+1. Verify the active publication and reconcile the full catalog
+-------------------------------------------------------------
+Inspect the current run's progress and final diagnostics. If it fails, retain
+the failure evidence and identify the cause before another rebuild. On success,
+verify the paired catalog identities, object hashes, row counts, naming version
+and public viewer manifest. Preserve the previous verified catalog.
+
+Build a census of unresolved records by publisher, format, role and evidence
+availability, including unnamed records. Reconcile all 400 pilot IDs, recording
+newly classified, changed-body, missing and still-eligible samples. Do not
+replace unavailable samples or alter the frozen split.
+
+Deliverable: verified publication receipt, full-catalog census and a 400-row
+eligibility ledger. This is the prerequisite for held-out evaluation.
+
+2. Qualify filename version 3.2.0 against that catalog
+---------------------------------------------------
+Replay the already committed filename rules on the complete verified baseline.
+Separate classification changes from refreshed source evidence. Review every
+changed prior kind, preserve document IDs and roles, and verify the paired
+source/document tables.
+
+Deliverable: full-catalog before/after comparison. Explain every changed prior
+kind; no unexplained losses, ID changes or role changes are acceptable.
+This work can proceed alongside held-out reference review after step 1.
+
+3. Evaluate the frozen PDF candidate on held-out records
+------------------------------------------------------
+Verify every source hash in content_rule_freeze.json before running the code.
+Prepare blind reference packets without candidate predictions. Review the
+available held-out PDFs, including additional pages or images when needed,
+and retain unavailable/ambiguous outcomes. Labels must include exact body and
+text hashes, a page number, a short quote and a review note.
+
+After labels are fixed, run the exact candidate through the maintained PDF
+reader path. Report assignments, exact agreements, disagreements, abstentions,
+reader failures and sample sizes by kind. Include uncertainty intervals and
+keep native production results separate from optional OCR experiments.
+
+Independently review new positives and ambiguous references before release.
+Any false positive or unexplained prior-kind regression blocks its affected
+rule. Do not tune on held-out outcomes. Sparse kinds need a separate additional
+review set; zero observed errors in a tiny set does not establish precision.
+
+Deliverable: frozen held-out evaluation and a per-rule release decision.
+
+4. Prepare a bounded retained-body refresh for qualified rules
+------------------------------------------------------------
+A code update or ordinary catalog rebuild preserves earlier body readings.
+Select exact retained URLs/body hashes that need reinspection and report the
+scope and expected processing cost. Use the maintained --reinspect-retained
+--urls path, or validated explicit body readings, rather than broad acquisition
+or a second uncontrolled PDF scan. Retain old readings and failure receipts.
+
+After release authorization, publish the qualified code, reinspect the selected
+retained bodies and rebuild the paired tables. Verify the resulting kind/source
+fields, identities, counts and public viewer readback. Batch this with qualified
+filename changes when practical; do not overlap the current rebuild.
+
+Deliverable: bounded refresh manifest, processing receipts, catalog comparison
+and verified publication receipt. Deployment is separate from local commits.
+
+5. Choose the next coverage work from the refreshed census
+--------------------------------------------------------
+Use the actual remaining distribution to choose the next investment. Review
+external reports, legal texts and mixed legislative packets before extending
+the taxonomy; the 37 research labels are not automatically production kinds.
+Keep filename grammar in house_naming and content readers in congress_api.
+
+Investigate unresolved XML using native roots/schemas and maintained readers.
+Revisit uncertain source associations only where current retained captures or
+archive evidence provide a concrete route beyond prior failed direct probes.
+Filename similarity alone cannot prove a page-to-document association.
+
+Deliverable: ranked remaining groups, a proposed taxonomy mapping and a bounded
+next experiment. Broader model-assisted classification follows these findings;
+it is not required to release the three explicit-form rules.
+
+Work that can proceed while publication runs
+-------------------------------------------
+The reconciliation ledger/census tool and blind reference-review interface are
+now implemented and tested. REVIEW_WORKFLOW.txt gives commands, checks and
+limitations. The historical rehearsal retains all 400 IDs and keeps held-out
+review locked. The development practice packet is blind-review-development-v4.
+
+The reference sealer and native PDF comparison runner are now implemented. They
+preserve every selected record, separate errors from abstentions, report
+unscored predictions and flag prior-kind regressions. REVIEW_WORKFLOW.txt gives
+the commands and the explicit interruption/recovery limit. The current workflow
+tests pass; REVIEW_EVALUATION.txt records the code review and development replay.
+
+The historical 3.0.0 full-pair replay completed with all identities and document
+memberships preserved, but failed role/evidence preservation checks. It exposed
+34 source rows across 17 groups losing cached XML amendment facts. The repair
+passes all 167 focused/consumer tests and an exact replay of those complete
+groups. REVIEW_XML_PRESERVATION.txt and xml_preservation_checkpoint.json record
+the evidence. The original failed full replay remains unchanged and unqualified.
+
+All grouped protected-field differences are now diagnosed: 80,510 groups
+change only derived source type/identifier; the other 17 are the repaired XML
+groups. See grouped_evidence_checkpoint.json. Review the 1,864 changed prior
+document kinds and source-role transitions next. The 3.2.1 vote-target repair now passes a complete-group subset replay;
+REVIEW_VOTE_TARGETS.txt records all 329 reviewed names, 288 changed group kinds,
+and the explicit TEXT exceptions. The 3.2.2 constitutional-topic repair passes all 4,690 checks and its
+complete three-group replay; see REVIEW_CONSTITUTIONAL_TOPICS.txt. The retained
+witness-statement refinement is now implemented with the original filename claim
+preserved. All 5,782 workflow offline checks pass; the actual 102-source, 38-group
+replay preserves identities/evidence and validates every saved filename claim.
+See REVIEW_WITNESS_SPECIFICITY.txt and witness_specificity_checkpoint.json.
+New replays bind and recheck project and experiment implementations; historical
+manifests retain their original limitations. Do not substitute historical results
+or the repaired subset for qualification of the new publication.
+
+The complete historical baseline census and 400-ID reconciliation are recorded
+in HISTORICAL_CATALOG_FINDINGS.txt and historical_catalog_checkpoint.json. This
+input pair already lacks 145 pilot IDs: 66 have URL matches without the frozen
+nonempty body, and 79 have neither body nor URL matches. Preserve every selected
+ID and repeat reconciliation on the verified publication; do not remap IDs from
+URL similarity or interpret historical absence as a filename-replay regression.
+
+The 3.2.0 wheel payload and core runtime are now checked by the package
+distribution tests. A local pip installation and generated CLI also passed;
+REVIEW_WHEEL.txt and wheel_verification_checkpoint.json record the boundary and
+limitations. This packaging evidence does not qualify or publish the catalog.
+
+The development-only taxonomy proposal is now recorded in taxonomy_mapping.json
+and TAXONOMY_NEXT_STEPS.txt: 107 records reuse existing kinds, three have proposed
+record-specific mappings, and 30 need a taxonomy decision. All 140 labels and
+the frozen candidate remain unchanged; taxonomy_validation.json records checks.
+The proposed next experiment targets explicit notices and committee memos after
+the current frozen evaluation, with a separate candidate and evaluation set.
+Once the live rebuild completes, prioritize verification, the fresh 400-ID ledger and the 3.1.0-to-current full-pair comparison. Then collect and
+seal held-out references before invoking the frozen evaluator. Independent
+review and a bounded retained-body refresh remain required for release. Avoid
+rule tuning or retries against the 100 unavailable exact bodies without a new
+evidence source.
+
+Immediate continuation
+----------------------
+Review the remaining historical changed-kind and source-role transitions in full,
+using complete group membership and retained evidence. Preserve the explicit TEXT
+exceptions identified during vote-target review. Once the live publication ends,
+verify artifacts/readback and acquire its exact selected raw pair. Audit the 34
+known XML source rows against their historical body facts before accepting the
+fresh baseline; a new generation must not legitimize an earlier evidence loss.
+Then reconcile all 400 frozen IDs and run the complete 3.1.0-to-current comparison.
+Independent held-out references, the frozen evaluator and a bounded retained-body
+refresh remain release requirements. These repairs do not replace those gates.
+
+Current grouped review continuation
+----------------------------------
+The combined historical repair cohort contains 7,526 source members of 1,949
+complete document groups. Its 3.2.2 replay produces 1,913 changed documents in
+64 transition groups. The full grouping CSV (up to three samples per transition)
+was read again after compaction. The per-document ledger remains pending; a
+review of samples is not complete adjudication or a precision estimate.
+
+All 343 source protected-field changes in that replay are source_record_type
+becoming error-page: 257 document-to-error-response transitions and 86 already
+error-response sources. No other protected source facts change; document-level
+protected fields are preserved. The strict historical comparison remains failed
+on these role/source-type differences, rather than weakening its checks.
+
+The 3.2.3 vote action/oversight-plan refinement is implemented and verified; see
+REVIEW_VOTE_ACTIONS.txt and vote_action_checkpoint.json for validation. Continue
+with primary document genres versus trailing subjects: testimony filenames with
+embedded memo templates, opening-statement and memo filenames naming report or
+amendment topics, and statements/letters explicitly on amendments. Use declared
+subject spans and existing selection rules, preserving literal observations and
+explicit combined components such as a memo with a witness list.
+
+Then adjudicate disclosure aliases against amendment topics, TEXT vote variants
+and mixed-body groups using exact retained evidence within the allowed scope.
+Do not collapse differing kinds across aliases: the HR1890 group links a bill
+body and a vote-sheet body through a reused URL. Preserve both identities and
+classifications pending body-level review. No new external source acquisition
+or held-out inspection is implied by this review.
+
+Primary genre review checkpoint
+-------------------------------
+The 3.2.4 genre/topic repair is implemented and verified. All 5,826 offline
+workflow checks pass; its complete-cohort replay changes 22 source rows and 17
+groups while preserving every comparison invariant. REVIEW_GENRE_SUBJECTS.txt
+and genre_subject_checkpoint.json record the trace and evidence. The new
+prior-kind-current-review-v2 grouping CSV was read in full: 60 transitions cover
+1,903 changed documents against the original 3.0.0 cohort. The individual ledger
+remains pending; sample review is not individual content adjudication.
+
+Next, review complete alias evidence for the high-volume compatible broad/specific
+kinds (meeting-support with memo/charter and committee-amendment with amendment).
+Record metadata compatibility separately from content proof. Then inspect the
+remaining disclosure-statement, disclosure/biography and vote/TEXT ambiguities.
+Do not infer that all aliases or captures of a reused URL contain the same form.
+
+The four exact archive reads for Swalwell disclosures, Graves CBRA disclosure
+notification, Issa PRA statement and the VE-letter substitute were denied by the
+configured credentials. None overlaps the frozen pilot; no body bytes were read
+and no publisher sites were visited. Preserve those failures and obtain changed
+archive-access evidence before retrying. Their current kinds remain unresolved.
+The live publication was still in progress at the latest readback. Keep its exact
+head and verification requirements; no new publication was dispatched.
+
+Complete alias audit checkpoint
+-------------------------------
+The complete alias audit is implemented and run on the 1,949-group cohort. It
+verifies all source memberships and filename/URL/body-key/filename-claim unions.
+Of 1,903 changed-kind groups, 821 broad/specific and 389 same-family additions
+have matching eligible body-key evidence. This establishes metadata compatibility
+only; every content review remains pending. The 693 other rows need another
+review basis, including prior filename-rule receipts where already available.
+All 60 grouped CSV rows were read in full. Thirty new/existing audit/replay tests
+pass. See REVIEW_ALIAS_EVIDENCE.txt and alias_evidence_checkpoint.json.
+
+Next, join the prior filename repair evidence into the current review ledger
+without treating it as content truth. Prioritize the 301 multi-body histories
+(32 are metadata-compatible) and 15 explicit TEXT groups for body-level review.
+Keep the four denied archive reads pending changed access evidence; the user has
+been asked to restore local archive read access asynchronously. Continue metadata
+review and exact publication verification independently. No production kinds or
+publication state were changed by this audit.
+
+Linked interpretation review checkpoint
+---------------------------------------
+The exact historical-review linkage is implemented and tested. The current
+1,903-row changed-kind ledger contains 821 broad/specific alias additions, 389
+same-family additions, 356 matching prior interpretation reviews and 337 rows
+without a linked basis. All 60 updated grouping rows were read in full. The
+356 matches preserve IDs, kinds, provenance, roles, body keys and complete alias
+readings against their bound historical outputs. These are not content approvals.
+See REVIEW_LINKED_EVIDENCE.txt and review_evidence_checkpoint.json. All 50 linkage,
+alias and replay tests pass; production classifiers and source tables are unchanged.
+
+Next, review the 210 Truth-in-Testimony transitions, then the remaining disclosure,
+biography, statement and TEXT combinations. There are 56 multi-body groups and
+15 explicit TEXT groups among the 337 rows still without a review basis. The
+213 multi-body groups with prior interpretation reviews also retain their body
+review requirement. Thirteen prior repaired IDs are now unchanged against the
+original baseline; none is missing from the current cohort. Keep the four denied
+archive reads pending restored access and preserve the publication/frozen-pilot
+gates. The goal remains active; no new publication was dispatched.
+
+Truth-in-Testimony review checkpoint
+-----------------------------------
+All 355 distinct filenames across the selected 210 groups were read, following
+a complete reread of the 60-row grouping CSV. All 647 source records reproduce
+their saved filename kind. The checkpoint records 209 supported filename
+interpretations and leaves the Given Truth in Testimony Award List unresolved.
+All 63 unnamed sources share a retained body key with a named alias. The 33
+multiple-body groups still need content review. No content was read or approved.
+See REVIEW_TRUTH_IN_TESTIMONY.txt and truth_in_testimony_checkpoint.json.
+
+Next, examine complete disclosure-statement wording in the 18 statement groups
+and one attachment group. Preserve independent statement/disclosure combinations.
+The current ledger remains unchanged; join the exact-row-bound decisions before
+presenting an updated ledger count. Across that ledger plus this checkpoint,
+128 groups still lack a filename review basis. Keep all publication, archive
+access and frozen-pilot requirements in place.
+
+Disclosure Statement repair checkpoint
+--------------------------------------
+house_naming 3.2.5 extends the existing publisher disclosure match through an
+adjacent Statement or STMT suffix. The existing longest-phrase selection removes
+the nested generic statement kind. Explicit combinations and attachment labels
+remain. All 5,840 offline workflow checks and 50 experiment checks pass; the
+complete-cohort replay preserves every comparison invariant. It removes only
+generic statement from 48 source records and 25 groups. All changed filenames
+and group alias sets were read. See REVIEW_DISCLOSURE_STATEMENTS.txt and
+disclosure_statement_checkpoint.json. No content reader or frozen source changed.
+
+Next, regenerate the original-baseline grouping and alias audit against 3.2.5,
+then join this replay and the exact-row-bound Truth-in-Testimony decisions.
+Review disclosure/biography combinations and explicit TEXT cases against the
+updated evidence, preserving multiple-body histories. Exact-body adjudication
+remains pending for the Award List and denied archive reads. The separate live
+publication was still running at the latest readback; no release was dispatched.
+
+Current 3.2.5 review ledger
+--------------------------
+The refreshed full-cohort alias audit and review linkage are complete. All 61
+grouped CSV rows were read. Of 1,903 changed groups, 815 have broad/specific alias
+evidence, 389 same-family evidence, 381 historical repair reviews, 209 exact-row
+filename interpretations and 109 no review basis. Content review remains pending
+for all. All 62 linkage/alias/replay tests pass. See
+REVIEW_FILENAME_DECISION_LINKAGE.txt, review_receipts_v3.json and
+review_evidence_checkpoint_v3.json; older evidence remains intact.
+
+The 38 disclosure/biography groups were inventoried in full: 84 filenames and
+147 source records, 11 combined-filename cases, 27 separate-alias cases and six
+multiple-body histories. Metadata alone does not support dropping either kind.
+Keep their current classifications pending exact-body review. Next review the
+opening-statement and field-hearing-memo transitions, then explicit TEXT votes.
+The 109 pending cases include 23 multiple-body groups. Preserve all archive,
+publication and frozen-pilot gates; no new release was dispatched.
+
+Historical vote-host repair
+--------------------------
+house_naming 3.2.6 adds the exact retained republicans-naturalresources.house.gov
+host to the existing vote rule. Seventeen source rows now agree with current-host
+aliases; each of the 17 groups shares an eligible retained body key across those
+hosts. The complete-cohort replay preserves all comparison invariants. All 5,849
+offline checks and 62 experiment checks pass. See REVIEW_HISTORICAL_VOTE_HOST.txt
+and historical_vote_host_checkpoint.json. Refresh the current ledger against this
+replay before reporting new review counts. No content was read or approved.
+
+Content readiness and verified public access
+--------------------------------------------
+All 198 pending filenames were read. The retained metadata changes the planned
+body review: 103 of the 109 pending groups have one eligible key and six have
+none. All 15 TEXT groups pair a PDF/200 capture with HTML/404; there are no pending
+groups with multiple eligible bodies. The Issa PRA key is only a shared 404 HTML
+response, so do not retry it as document content. Retain all failed captures and
+the earlier access-denial evidence. See REVIEW_CONTENT_READINESS.txt and
+content_readiness_checkpoint.json for the bound snapshot and limitations.
+
+The viewer gateway's documented public saved-copy route returned the exact
+Swalwell PDF with a matching digest. The complete page was visually inspected;
+swalwell_content_review.json records that disclosure is an amendment subject.
+This opens a usable retained-body read path without retrying denied credentials.
+Next inspect Graves CBRA, the VE-letter substitute and the 15 eligible TEXT PDFs.
+Recheck frozen-pilot exclusions and exact hashes for every selected body. No new
+publisher acquisition or held-out content inspection is authorized by this step.
+
+Rebuild run 38823678887 completed successfully on the exact 3.1.0 publication
+head. Its summary confirms completed catalog 335a30af8ecb472094f073ff09c4352b and
+no acquisition. The downstream viewer publisher run 38855840917 is active;
+the readback verifier waits for that exact catalog. Do not treat workflow success
+alone as a verified public selector, and do not dispatch another publication.
+
+Retained amendment forms continuation (3.2.7)
+-------------------------------------------
+All 17 selected non-pilot PDFs (21 pages) are now visually reviewed; see
+REVIEW_AMENDMENT_FORMS.txt and amendment_content_review.json. Apply the bounded
+Judiciary TEXT layout and disclosure-topic refinements in house_naming, preserving
+the complete Views and Estimates letter as a composite amendment/letter.
+After the verified cohort replay, regenerate the full alias review ledger against
+the original baseline and the new output. Link current evidence without loosening
+existing digest checks. Then inspect the disclosure/biography queue. Continue the
+existing 3.1.0 publication verification independently; 3.2.7 remains local until
+separately published and qualified against the exact fresh raw catalog pair.
+
+Completed review refresh after 3.2.7
+----------------------------------
+The complete alias audit and review linkage now use amendment-form-replay-v1.
+Read every row of review-evidence-v4/groupings.csv (58 rows). The current queue
+has 91 pending groups, down from 109 in v3. Seventeen amendment-form groups now
+match the original baseline and leave the changed-kind ledger; the historical
+host correction also resolves one prior pending group. Sixteen other historical
+host groups enter the changed ledger with their exact review attached. All 17
+historical-host receipts match; no existing review digest mismatches occurred.
+
+The current ledger has 1,902 changed groups: 815 broad/specific aliases, 389
+same-family aliases, 398 prior interpretation reviews, 209 filename reviews,
+and 91 pending. These are metadata review dispositions, not content approval.
+The replacement-letter body review remains separately bound; the linker does
+not yet represent assistant content reviews. Keep that distinction explicit.
+Next: inspect the 38 disclosure/biography groups using current eligible body
+keys and frozen-pilot exclusions, then address the 11 amendment/vote alias groups.
+
+Disclosure/biography retained review, part 1
+------------------------------------------
+All 38 selected saved PDFs now have verified local bytes under
+output/filename-patterns-20261015/public-retained-review-v3. Completed 29 full
+visual reviews (34 pages): 23 disclosure-only, five disclosure plus biography,
+and one biography-only. See REVIEW_DISCLOSURE_BIOGRAPHY_CONTENT.txt and
+disclosure_biography_content_review_v1.json for body-specific findings.
+
+Nine packets remain, totaling 245 pages. Continue from the saved files; no new
+network fetch is needed. This mixed evidence rejects a blanket filename
+precedence rule. Preserve filename claims and bind any future content resolution
+to the complete exact body. No production classification change occurred, and
+the metadata review queue remains 91 until evidence is explicitly joined.
+
+Disclosure/biography retained review, part 2
+------------------------------------------
+Six more packets are fully reviewed: 35 new pages, 35 documents / 69 pages
+cumulatively. The additive disclosure_biography_content_review_v2.json binds
+part 1 and records complete page ranges, exact body/text/render hashes and the
+remaining three packets (210 pages). No runtime or catalog classification changed.
+
+Continue in this order:
+1. Inspect all pages of Oreskes (40), Public Witness (51) and Simmons (119)
+   from the already verified saved PDFs. Read the entire current grouping CSV
+   again after compaction. Preserve partial page coverage until each packet is
+   complete; references to attachments never substitute for those attachments.
+2. Add a separate assistant-content-review linkage to the current ledger.
+   Match the exact document ID, eligible body key and decoded SHA-256, and bind
+   current source membership/evidence. Preserve filename claims, disagreements,
+   page coverage and the independent_reference/release_approved false flags.
+   Keep review completion distinct from kind resolution or release approval.
+   Test changed-body rejection, incomplete-review rejection, composite forms,
+   and conflicting receipts before applying any review disposition.
+3. Inspect the 11 remaining amendment/vote groups, then opening/memo cases.
+   For unavailable bodies, retain an unresolved disposition rather than treating
+   an HTML error response as a document. Continue fresh raw-catalog qualification
+   and the existing publication readback separately from these local reviews.
+
+The existing viewer publication run 38855840917 remained active when checked
+in this continuation; no replacement publication was dispatched. Version 3.2.7
+and these review receipts remain local. Workflow completion alone cannot confirm
+public selector/readback or qualify the fresh raw catalog for held-out evaluation.
+
+Disclosure/biography retained review, part 3
+------------------------------------------
+Completed the 40-page Oreskes packet; the v3 receipt binds all pages and the
+prior v2 checkpoint. Review now covers 36 of 38 packets / 109 of 279 pages.
+Next inspect all 51 pages of Public Witness, then all 119 pages of Simmons,
+using the saved exact PDFs. Their paths and hashes remain in the v3 receipt.
+Then implement the separate content-review linkage described above, preserving
+filename claims and distinguishing review completion from classification approval.
+
+Authorized 3.1.0 publication verified
+------------------------------------
+Both rebuild 38823678887 and viewer publication 38855840917 completed successfully
+on exact commit 1a57561434676afb46b178df8dbf827b3de69e47. The public selector now
+serves catalog 335a30af8ecb472094f073ff09c4352b, generation
+43dcbfc7d88c4f10892ba79b44f0b506. The verifier retained the published manifest
+and browse bytes; this continuation rechecked their hashes, all kind counts and
+1,239,974 browse rows, and confirmed the live selector still matches. The source
+catalog has 1,679,226 filename rows and the browse table has 434 hearing-charter
+groups. Acquisition was not run. See publication_readback_checkpoint.json.
+
+This completes the prior 3.1.0 publication/readback step. Version 3.2.7 remains
+local. Fresh raw-catalog qualification is still incomplete: obtain the exact
+filenames/documents pair from the verified source manifest, check all native
+XML facts affected by the known 3.1.0 refresh behavior, and reconcile the frozen
+pilot. Browse success cannot substitute for raw-pair checks or independent labels.
+
+Disclosure/biography retained review, part 4
+------------------------------------------
+All 51 retained Public Witness pages are reviewed and bound in the additive
+v4 receipt: cumulative 37 packets / 160 pages. Its 22 component ranges preserve
+five observed forms and apparent source omissions separately from review coverage.
+
+Next inspect all 119 pages of Simmons from the saved exact PDF; this completes
+the 38-packet selection. Then implement the separate assistant-content-review
+linkage described in part 2. A complete review must mean every retained page was
+inspected, not that the source packet is complete. Preserve source-completeness
+observations, all composite forms, filename claims and reviewer/release flags.
+Keep the 91 metadata dispositions unchanged until the new linkage is explicit
+and tested. The frozen candidate and independent-reference gates remain intact.
+
+Disclosure/biography retained review, part 5
+------------------------------------------
+All 38 selected packets / 279 retained pages now have complete assistant review
+receipts. The v5 receipt completes Simmons and binds the prior receipt chain.
+
+Next implement a separate content-review linker against the existing ledger.
+Require exact document ID, body key, decoded PDF digest and unchanged source
+membership/evidence. Preserve component ranges, source-completeness notes,
+literal filename claims and assistant/non-independent/non-approved status.
+Report review completion separately from the existing metadata disposition;
+composite packets and conflicting observations must remain visible. Reject
+changed bodies, incomplete coverage and contradictory receipts in focused tests.
+Then inspect the 11 remaining amendment/vote groups, followed by opening/memo
+cases. Fresh raw-catalog qualification remains a separate unfinished step;
+local version 3.2.7 has not been published.
+
+Assistant content-review linkage completed
+------------------------------------------
+The separate catalog_content_review.py command now links the five-receipt
+chain to review-evidence-v4 without rebuilding or reinterpreting filename
+reviews. It requires the complete original row digest, the only eligible
+body key, matching fetched evidence, decoded PDF hash and page count, complete
+render coverage, and complete component coverage where supplied. It preserves
+observations and source-completeness notes. Duplicate/conflicting receipts fail;
+changed current rows retain a nonmatching annotation and no completed status.
+
+Applied locally in content-review-linkage-v1: 1,902 rows, 38 linked documents,
+279 pages, zero mismatches. All original fields except content_review remain
+identical. The 91 metadata cases still need classification decisions; 38 now
+have complete assistant review and 53 have no linked content review. The older
+completed amendment/Swalwell receipts need their own adapter before they can
+count as linked reviews. All 84 experiment checks passed, and the nine frozen
+source hashes remain unchanged. See content_review_linkage_checkpoint_v1.json.
+
+Next bounded steps:
+1. Inspect the 11 remaining amendment/vote groups using only qualified retained
+   bodies outside the frozen pilot; preserve unavailable-body cases explicitly.
+2. Extend the linker to the existing amendment/Swalwell receipt format with
+   equally strict identity/coverage checks; never silently accept a weaker
+   schema or convert review completion into a kind override.
+3. Review opening/memo groups, then decide which observed discrepancies justify
+   narrow house_naming changes. Reuse the existing package for runtime rules;
+   keep review bookkeeping in experiment tooling. Test and replay each rule
+   change before considering a new release.
+4. Qualify the fresh raw catalog pair and obtain independent reference labels
+   before unlocking held-out evaluation. The latest local runtime is still
+   3.2.7; the verified published catalog remains 3.1.0.
+
+Ways and Means vote review completed
+-----------------------------------
+All 11 remaining amendment/vote packets / 12 pages now have complete assistant
+reviews. The v2 linkage contains 49 reviewed documents / 291 pages with zero
+mismatches. Original filename and metadata fields remain unchanged. Of the
+91 open metadata decisions, 49 now have linked content review and 42 do not.
+See REVIEW_WAYS_MEANS_VOTE_CONTENT.txt and content_review_linkage_checkpoint_v2.json.
+
+Continue with the existing amendment/Swalwell receipt adapter. First inventory
+its saved PDF identity, page coverage and original source membership. Reuse the
+current strict validator through an explicit normalized receipt; do not weaken
+checks merely to accept old records. Missing coverage or membership evidence
+requires a new bounded review. Then inspect opening/memo packets and propose
+narrow runtime changes only where document and alias evidence justify them.
+Keep the frozen candidate and independent-reference gates unchanged. Local
+house_naming remains 3.2.7; this evidence commit does not publish a release.
+
+Legacy receipt inventory narrows the adapter scope
+-------------------------------------------------
+Compared all 18 legacy review document IDs against v3 and v4. Only the four-page
+VE-letter substitute remains in v4, and its complete row is identical to v3.
+The other 17 IDs are outside the current changed-group ledger. Therefore the
+next adapter should link the VE-letter review to that unchanged row and report
+the other reviews as outside the current ledger, not as pending current cases.
+Preserve all legacy receipts. Swalwell uses a different artifact naming/schema;
+it has no current row to resolve. This inventory supersedes an assumption that
+all 18 older reviews would reduce the 42 remaining unlinked current cases.
+
+Legacy review normalization completed
+------------------------------------
+Normalized the VE-letter receipt explicitly and reused the unchanged strict
+linker. The full v3 row equals v4, all original observations and page-render
+bindings are preserved, and all four pages were re-inspected. The v3 linkage
+now contains 50 documents / 295 pages with no mismatches. The 17 other legacy
+IDs remain documented outside the current ledger. No validator relaxation or
+runtime change was needed. The current queue has 41 cases without linked review.
+
+Opening/memo review, part 1 completed
+-----------------------------------
+The opening_memo_content_review_v1.json receipt completes nine opening-statement
+packets and the composite TSCA memorandum: 10 documents / 34 pages. The v4
+linkage now has 60 completed documents / 329 pages, no mismatches, and unchanged
+metadata decisions. Thirty-one current cases have no linked content review.
+
+Twenty-one selected PDFs / 116 pages were saved and rendered in
+public-retained-review-v5; three additional groups contain only HTTP 404 bodies
+and remain unavailable. Eleven saved memo packets / 82 pages remain unreviewed.
+Next read those complete packets from the receipt's remaining list, preserving
+witness-list components and attachments. All opening-statement PDFs available
+in this selection are complete. Two include news-release introductions; TSCA
+contains two dated memos and an embedded witness list. These findings belong
+in proposed content dispositions, without discarding literal filename claims.
+See REVIEW_OPENING_MEMO_CONTENT.txt for verification and interpretation limits.
+
+Opening/memo review, part 2 completed
+-----------------------------------
+The additive v2 receipt records six more complete packets / 30 pages. The v5
+linkage now has 66 reviewed documents / 359 pages and zero mismatches. Original
+metadata decisions remain unchanged; 25 of the 91 cases lack linked content
+review. All bound evidence and nine frozen source hashes were reverified.
+
+Continue with the five saved memos / 52 pages in the v2 remaining list:
+Oklahoma City, Colorado, Guam, Long Island and the September 2015 field hearing.
+Read every retained page, preserve witness lists, figures and actual attachments,
+and record source inconsistencies without silently correcting them. Then review
+the remaining smaller groups and build a proposed disposition for each case.
+Runtime changes belong in house_naming and require focused tests and cohort
+replay. Complete assistant review remains distinct from independent labels,
+classification approval and release. Local version 3.2.7 remains unpublished.
+
+Opening/memo review completed
+-----------------------------
+The v3 receipt completes the five remaining memoranda / 52 pages. All 21
+eligible PDFs / 116 pages in the opening/memo selection are now fully reviewed;
+three selected groups remain unavailable. The v6 linkage has 71 documents /
+411 pages, zero mismatches and unchanged original metadata decisions. All
+bound hashes and nine frozen source hashes were reverified.
+
+The remaining queue contains 20 cases: 14 have one eligible retained PDF each,
+and six have none. Complete their bounded content reviews, then assemble a
+case-by-case proposed classification disposition for all 91 metadata cases.
+Distinguish observed form, document subject, event context and attachment role.
+Keep unavailable cases unresolved and preserve each literal filename claim.
+Apply justified runtime changes through house_naming with focused tests and
+cohort replay. Fresh raw-catalog qualification and independent reference labels
+remain separate unfinished requirements; version 3.2.7 remains local.
+
+Remaining retained bodies saved
+--------------------------------
+All 14 eligible PDFs / 116 pages in the final 20-case selection were retrieved
+from the existing public saved-copy route with exact decoded hashes. Six cases
+have no eligible body and remain unavailable. Every selected ID and retained
+body key was checked against the frozen 400-record pilot before retrieval.
+See remaining_retained_review_readiness_v2.json and public-retained-review-v6.
+Retrieval does not count as content review; none of these 14 is yet complete.
+
+Review the seven statement/disclosure packets and the one-page vote and budget
+packets first, then Johnson's two pages, the nine-page Award List, eight-page
+Galarza attachment, seventeen-page EBJ alternative and seventy-page Wallace
+attachment. Use the saved bytes; no refetch is needed. Inspect every retained
+page before linking a completed review, and preserve any composite forms.
+
+Remaining retained-content review, part 1 completed
+--------------------------------------------------
+Ten short packets / 12 pages are now fully reviewed: seven disclosure forms,
+a vote sheet, a committee print with legislative text and a member statement.
+The v7 linkage has 81 reviewed documents / 423 pages with zero mismatches.
+Original metadata decisions and filename claims remain unchanged. All bound
+hashes and nine frozen source hashes passed verification. The receipt preserves
+Hueter's absent CV, Terenzio's single-page excerpt and scan-quality limitations.
+See REVIEW_REMAINING_CONTENT.txt and remaining_content_review_v1.json.
+
+Continue with the four saved packets / 104 pages: Award List (9), Galarza (8),
+EBJ alternative rules (17), then Wallace (70). Six unavailable cases remain
+unresolved. After complete retained-page review, propose case-specific decisions
+for all 91 metadata cases before implementing justified house_naming changes.
+Local version 3.2.7 remains unpublished; independent-reference and fresh raw
+qualification requirements remain unchanged.
+
+Remaining retained-content review, part 2 completed
+--------------------------------------------------
+The Award List (9 pages), Galarza funding attachment (8) and EBJ substitute rules
+amendment (17) are fully reviewed. The v8 linkage has 84 documents / 457 pages,
+zero mismatches, unchanged metadata decisions and verified source bindings.
+See remaining_content_review_v2.json and REVIEW_REMAINING_CONTENT.txt.
+
+Next read all 70 saved Wallace pages. It is the only available PDF still lacking
+a complete review; the other six pending cases have no eligible body. Then build
+case-specific proposed classifications for all 91 cases, separating document
+form, filename claim, disclosure/attachment role and source completeness.
+Observed grant-award-list and contract-award-list labels describe the reviewed
+bodies; they do not add production kinds. Runtime changes still require focused
+tests and cohort replay in house_naming. Independent references and qualification
+of the fresh raw catalog remain unfinished; local 3.2.7 remains unpublished.
+
+Remaining retained-content review completed
+------------------------------------------
+The Wallace expenditure schedule is fully reviewed: all 70 retained pages and
+native text, arranged as five fourteen-page column blocks. Its funding-schedule
+form remains distinct from its filename disclosure-attachment role. The receipt
+preserves clipped values, unusual program identifiers and negative amounts.
+See remaining_content_review_v3.json and content_review_linkage_checkpoint_v9.json.
+
+The v9 linkage has 85 reviewed documents / 527 pages and zero mismatches. All
+bound inputs, outputs and nine frozen source hashes passed verification. All
+91 metadata cases still need classification decisions; six lack eligible bodies.
+No runtime code changed. Local house_naming 3.2.7 remains unpublished.
+
+Next prepare case-specific proposed dispositions for all 91 rows, preserving
+filename claims, observed forms, source context and attachment roles. Keep the
+six unavailable cases unresolved. Use the proposals to select small, supported
+house_naming changes with positive and negative tests plus cohort replay.
+Independent reference labels and fresh raw-catalog qualification remain separate
+unfinished requirements.
+
+Case-specific content dispositions prepared
+------------------------------------------
+The complete 91-row proposal CSV and detailed JSON are ready. They cover 85
+reviewed bodies / 527 pages and six unresolved unavailable cases, with exact
+body/row bindings and source limitations. All forms are supported by the linked
+reviews; original metadata decisions remain unchanged. No runtime code changed.
+
+CONTENT_DISPOSITION_NEXT_STEPS.txt supersedes the prior instruction to prepare
+these proposals. Next compare current catalog selection with the proposals,
+starting with the existing retained-content refinement and restoration paths.
+Filename rules remain in house_naming; exact-body evidence selection belongs in
+congress_api retention. Do not force body-specific findings into filename rules
+or broadly invert filename/content precedence. Preserve composite forms and
+unsupported descriptive labels while testing a narrow evidence-selection change.
+
+Content selection comparison completed
+-------------------------------------
+The read-only comparison tool covers all 91 cases / 744 source rows: 18 literal
+label-set matches, 67 differences and six unavailable cases. Only one group has
+an existing native content classification; 84 reviewed groups have none.
+See REVIEW_CONTENT_DISPOSITION_COMPARE.txt and the comparison checkpoint.
+The comparison and unchanged receipt-validator tests pass (41 tests).
+
+Next prototype a separately attributed complete-body review input in a local
+experiment. Reuse existing restoration/selection paths and test both groupers,
+cache reuse and withdrawal before any production adoption. A broad precedence
+change cannot fill the missing content readings. Keep the frozen reader and
+pilot unchanged; independent references and fresh-catalog qualification remain
+unfinished. No new publication has occurred.
+
+Complete-body candidate replay checkpoint
+-----------------------------------------
+packet-review-replay-v2 completed all seven local grouping/cache/refresh paths
+over 7,526 sources and 1,949 groups. Eighty candidates apply, five packets remain
+annotations and six cases remain unavailable; 1,858 controls remain unchanged.
+Withdrawal restores the baseline throughout. The focused and existing boundary
+tests pass (131 tests). See packet_review_checkpoint_v1.json and the self-review
+in REVIEW_PACKET_REVIEW_CANDIDATE.txt. No production caller was added.
+
+Next reduce the harness's full nested-row memory expansion, prove equivalent
+results on this cohort and measure memory before full-catalog use. The four old
+denied body reads now succeed publicly with matching hashes; Issa still returns
+the retained HTML error. The public bucket URL was found in FILENAME-VIEWER.md;
+its raw selector and the congressional-data.spicygov.ai viewer selector both
+identify catalog d42b9f6697914e68a688600705e1d65f. Full catalog qualification,
+independent reference review and production integration remain outstanding.
+
+The exact public pair is now downloaded and verified in public-raw-catalog-v1.
+Whole-pair reference-integrity checks, the known 34-source/17-group native XML
+controls and metadata-only reconciliation of all 400 frozen pilot records passed.
+391 pilot records meet existing metadata eligibility conditions; nine retain
+explicit exceptions. Matching publication evidence and independent references
+remain outstanding, and held-out body review stays locked. See
+public_raw_catalog_checkpoint_v1.json and REVIEW_PUBLIC_RAW_CATALOG.txt.
+Next reconcile the 91 reviewed cases against this current pair with bounded
+projected reads, before attempting review transfer or full-catalog replay.
+
+The fresh-pair reconciliation now covers all 91 cases and finds all 744 original
+sources. All 85 reviewed bodies retain source identity and eligibility; 18 label
+sets match and 67 differ. One original Palmer group is absent because its source
+now joins a successful PDF capture under a new group ID. Keep both old Palmer
+IDs and all six historical unavailable outcomes; review the new PDF separately.
+See review_catalog_reconciliation_checkpoint_v1.json. The 72 relevant tests pass.
+No complete-row review binding or production classification was transferred.
+
+Palmer's new three-page PDF is now fully reviewed and recorded separately in
+palmer_current_content_review_v1.json. Its opening-statement form agrees with
+the current selected kind. The validated additive chain covers 86 groups and
+530 pages; the historical 91-case ledger and its six unavailable rows remain
+unchanged. Next extract complete current groups for the 85 matched reviews plus
+the new Palmer group, retaining all non-null occurrence evidence with bounded
+reads. Prepare explicit current-row bindings before current-catalog selection.
+
+Complete current-row extraction and binding now pass for all 86 reviewed groups
+and 286 sources. Local selections apply to 81 groups; five packets remain whole
+annotations. There are 62 kind-set changes and 19 provenance-only selections.
+All baselines restore on withdrawal. Full schema/value preservation and the 83
+relevant tests pass. The actual extraction/selection run peaks at 1.24 GiB RSS;
+it does not establish full-refresh memory requirements. See
+current_review_candidates_checkpoint_v1.json and REVIEW_CURRENT_REVIEW_CANDIDATES.txt.
+Next verify the existing grouping/cache/refresh paths on these current groups,
+diagnosing any changed full-row binding before reapplying a local candidate.
+
+Current grouping/cache/refresh replay is complete as a diagnostic. It exposed a
+legacy cache omission of filename_document_kind, now corrected without reselecting
+kinds. All six transformation paths agree on every semantic field across 286
+sources / 86 groups. Only restored filename claims differ from the raw baseline;
+all old review bindings correctly reject them. The 111 relevant tests pass.
+See current_review_paths_checkpoint_v1.json and REVIEW_CURRENT_REVIEW_PATHS.txt.
+Next explicitly record normalization, revalidate receipts and create fresh group
+bindings before repeating all seven scenarios. Do not weaken the digest to ignore
+the restored evidence field. Full-catalog and production adoption remain open.
+
+Explicit normalization binding and seven-path replay now pass for all 86 groups.
+The 81 selections and five annotations are identical in every scenario, and all
+baselines restore on withdrawal. Raw rows, original receipts and old bindings
+remain preserved. See normalized_review_checkpoint_v1.json and
+REVIEW_NORMALIZED_REVIEW_CANDIDATES.txt. The 70 relevant tests pass.
+Next audit family provenance using actual rows and counterexamples, then define
+the production review input/withdrawal boundary and resolve descriptive packet
+forms before broader qualification. Held-out body review remains locked.
+
+The context-family audit is complete. The local candidate now reuses the maintained
+paired-source predicate to retain independent nomination support when a reviewed
+form replaces a broad kind. The saved catalog contains 545 potentially affected
+groups among 1,016 supported groups; none is in the 86 reviewed groups, and no new
+reviews were assigned. All 84 relevant tests and the seven-scenario reviewed replay
+pass. See family_context_checkpoint_v1.json and REVIEW_FAMILY_CONTEXT.txt.
+Next define the optional package review input, attribution and withdrawal after
+grouping, with ordinary no-review behavior unchanged. Taxonomy, independent
+references, broader qualification and publication remain separate requirements.
+
+The tested selection kernel now lives in congress_api.retention.document_reviews;
+the experiment calls it directly. docs/document-review-input.txt specifies the
+optional compiled input and withdrawal behavior. All 131 relevant tests pass and
+the seven-path replay preserves all 86 saved candidates without rebinding.
+See package_review_checkpoint_v1.json and REVIEW_PACKAGE_SELECTION.txt.
+Next implement package receipt admission plus an explicit candidate-output path
+separate from baseline caches, then qualify the broader catalog. Automatic catalog
+selection and publication remain unchanged.
+
+Package receipt admission and an explicit separate candidate-output command now
+pass on all 86 reviewed groups / 530 pages. The maintained and historical readers
+agree on all 757 bindings, and the historical verifier remains unchanged. All 112
+relevant tests and the seven-path replay pass; candidate semantics and baseline
+files are unchanged. See package_admission_checkpoint_v1.json and
+REVIEW_PACKAGE_ADMISSION.txt. Next implement pinned bundle consumption with exact
+baseline checks and withdrawal, then qualify broader use and portable references.
+Automatic capture, viewer selection and publication remain unchanged.
+
+Pinned local consumption now passes: versioned baseline identities, output/evidence
+hashes and full current-group semantics are checked before exposing candidates.
+Omitting the bundle restores the baseline; stale data is refused. All 85 relevant
+tests pass. Actual consumption reproduces all 86 groups with byte-identical prior
+candidates, working withdrawal and a rejected stale-source control. See
+bundle_consumption_checkpoint_v1.json and REVIEW_BUNDLE_CONSUMPTION.txt.
+Next exercise the same selected groups directly against the complete saved pair,
+measure memory/read behavior and record fresh bindings before broader adoption.
+
+Selected-group admission and consumption now pass against the complete saved pair:
+86 groups / 286 sources, 81 candidates, five annotations, exact withdrawal and both
+baseline files unchanged. All raw bindings correctly refuse normalized rows.
+See full_catalog_review_checkpoint_v1.json and REVIEW_FULL_CATALOG_BUNDLE.txt.
+Next specify the representation of the five unsupported packets using their existing
+page evidence, then portable evidence references and snapshot-level loading before
+viewer integration. This check does not qualify a full classification refresh or
+independent accuracy. Held-out body review and publication remain separate gates.
+
+Version 2 bundles now preserve complete validated body observations and compare them
+with their bound receipt on load. All 94 tests and the complete-catalog cohort run
+pass: 86 observations / 530 pages, unchanged prior candidate fields and working
+withdrawal. The five unsupported packets retain 223 pages and 44 sections without
+new taxonomy kinds. See packet_observation_checkpoint_v1.json and
+REVIEW_PACKET_OBSERVATION.txt. Next define portable evidence export/resolution and
+snapshot-level loading before viewer integration; preserve literal locators and
+exact-byte bindings. Independent references and publication remain separate gates.
+
+Portable export and relocated consumption now pass: 760 locator entries map to 728
+verified objects, and all 86 candidates reproduce exactly under a copied package
+installation with no original evidence reads. All 108 tests pass. See
+portable_review_checkpoint_v1.json and REVIEW_PORTABLE_EVIDENCE.txt.
+Next integrate verified packet descriptions into the local viewer with one load per
+snapshot, clear assistant attribution, baseline preservation, explicit withdrawal
+and visible refusal. Verify real UI cases before public integration.
+
+The optional local viewer now consumes the verified portable review bundle. It
+shows original/preview classifications, complete packet observations and exact
+PDF/page/text evidence, with explicit withdrawal and visible verification failure.
+The ordinary public provider does not request this local API. See
+REVIEW_VIEWER_INTEGRATION.txt and viewer_review_checkpoint_v1.json.
+Next add explicit reviewed-category search/filter behavior with result-set checks,
+then rehearse a compact, snapshot-bound public evidence representation. Independent
+reference review, frozen held-out qualification and the remaining unclassified
+census stay separate work; this preview does not authorize public selection.

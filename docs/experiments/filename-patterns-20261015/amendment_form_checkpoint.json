@@ -1,0 +1,86 @@
+{
+  "scope": "Retained amendment-form review and bounded filename refinement; historical rehearsal only",
+  "version": "3.2.7",
+  "replay_summary_path": "output/filename-patterns-20261015/amendment-form-replay-v1/summary.json",
+  "replay_summary_sha256": "3118d62141e5de48326dcf98758e871454cf9327abca88f091ce06cc1849600d",
+  "comparisons": {
+    "filenames": {
+      "before_rows": 7526,
+      "after_rows": 7526,
+      "missing_ids": 0,
+      "added_ids": 0,
+      "changes": {
+        "removed_assignment": 1,
+        "role_changed": 0,
+        "protected_evidence_changed": 0,
+        "document_id_changed": 0,
+        "representative_changed": 0,
+        "kind_source_changed": 1,
+        "changed_prior_kind": 32
+      },
+      "changes_sha256": "dec90574a5c5304ddddc317a2adb4ce3c0b6c4b9e5749ad161a647b48680c561",
+      "identities_roles_evidence_preserved": true,
+      "prior_kind_changes": 33
+    },
+    "documents": {
+      "before_rows": 1949,
+      "after_rows": 1949,
+      "missing_ids": 0,
+      "added_ids": 0,
+      "changes": {
+        "changed_prior_kind": 17,
+        "role_changed": 0,
+        "protected_evidence_changed": 0,
+        "document_id_changed": 0,
+        "representative_changed": 0,
+        "kind_source_changed": 0
+      },
+      "changes_sha256": "7a86df065443eec591885eb93d5f69978a44efbce4f86b360019fe5d833dbe1c",
+      "identities_roles_evidence_preserved": true,
+      "prior_kind_changes": 17
+    }
+  },
+  "output_files": {
+    "filenames": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/amendment-form-replay-v1/catalog/indexes/document-filenames.parquet",
+      "sha256": "2bd6d378b58854346216eba7790e6d0ddf2ebc493d6d6e5b8f05573d653e2fe5",
+      "rows": 7526
+    },
+    "documents": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/amendment-form-replay-v1/catalog/indexes/documents.parquet",
+      "sha256": "f900ec83657984b7b081f85bd5845acd77b3f6bb4defa906c9fb67dfded69b46",
+      "rows": 1949
+    }
+  },
+  "elapsed_seconds": 248.78,
+  "input_bytes_unchanged": true,
+  "invariants_preserved": true,
+  "changed_sources": 33,
+  "changed_groups": 17,
+  "all_changes_match_reviewed_documents": true,
+  "body_review_documents_this_batch": 17,
+  "body_review_pages_this_batch": 21,
+  "earlier_swalwell_review_documents": 1,
+  "kind_source_change": "One descriptive Swalwell source loses its only filename kind; its native BILLS alias preserves the grouped committee-amendment kind.",
+  "tests": {
+    "red_failures": 5,
+    "focused_passed": 150,
+    "offline_passed": 5862,
+    "experiment_passed": 62,
+    "catalog_json_artifacts": 3,
+    "frozen_hashes_unchanged": 9
+  },
+  "publication_performed": false,
+  "release_qualified": false,
+  "artifacts": {
+    "output/filename-patterns-20261015/amendment-form-replay-v1/summary.json": "3118d62141e5de48326dcf98758e871454cf9327abca88f091ce06cc1849600d",
+    "output/filename-patterns-20261015/amendment-form-replay-v1/filenames-changes.csv": "dec90574a5c5304ddddc317a2adb4ce3c0b6c4b9e5749ad161a647b48680c561",
+    "output/filename-patterns-20261015/amendment-form-replay-v1/documents-changes.csv": "7a86df065443eec591885eb93d5f69978a44efbce4f86b360019fe5d833dbe1c",
+    "docs/experiments/filename-patterns-20261015/amendment_content_review.json": "e2e8f62b1dd6652d56995d8f980b076b0da3d5aa94b3343e8091c8ef558d5f7d",
+    "docs/experiments/filename-patterns-20261015/swalwell_content_review.json": "8cb68fd6469e5320aad2dc9774d70b937652323aac2d32e032301c5c7873e778",
+    "output/filename-patterns-20261015/public-retained-review-v2/red-tests.log": "4169ed66f51bb933fd0b7e072f611f9c7e41413478862c10ef7f9d164be390c9",
+    "output/filename-patterns-20261015/public-retained-review-v2/offline-tests.log": "2190394b3ce0eabd67476754c992fde2bf1347a23865adc6ad7eb7d7184459b9",
+    "output/filename-patterns-20261015/public-retained-review-v2/experiment-tests.log": "ec67e7e3b079fe4339a57cdc4d6cdde5f2878b880e045bf9531c32e52170034e",
+    "output/filename-patterns-20261015/public-retained-review-v2/all-selected-alias-checks.json": "f870cb06bae415625978dde2e413254117e48ced8817045c46224092805a651c"
+  }
+}

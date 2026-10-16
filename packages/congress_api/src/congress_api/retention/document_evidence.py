@@ -317,7 +317,10 @@ def enrich_sources(rows, *, read_body, extract, cached=None, urls=None, initiali
                 if data is not None:
                     cached[key] = marker_fields(data)
             row.update(cached.get(key, marker_fields(None)))
-        elif (re.fullmatch(r'\d+\.xml', row.get('filename') or '')
+        # Restore admitted XML facts even when the filename now supplies a kind.
+        # Only uncached bodies remain subject to the existing inspection gate.
+        elif (('xml', row.get('body_key')) in cached
+              or re.fullmatch(r'\d+\.xml', row.get('filename') or '')
               or ((row.get('filename') or '').lower().endswith('.xml') and not row.get('document_kind'))):
             key = ('xml', row.get('body_key'))
             if key not in cached:
@@ -329,9 +332,9 @@ def enrich_sources(rows, *, read_body, extract, cached=None, urls=None, initiali
             for url in fields.get('source_record_document_url', ()):
                 remember(url)
 
-    # Share only evidence admitted by the original per-call body pass. A typed
-    # XML alias alone does not opt into native evidence; an anonymous alias can
-    # establish it for identical bytes in a later batch.
+    # Share only previously admitted evidence or results of this body pass.
+    # An uncached typed XML alias does not trigger native inspection; an
+    # anonymous alias can establish evidence for identical bytes in a later batch.
     body_fields = shared_body_fields if shared_body_fields is not None else {}
     for row in rows:
         if ('document', row.get('body_key')) in cached:

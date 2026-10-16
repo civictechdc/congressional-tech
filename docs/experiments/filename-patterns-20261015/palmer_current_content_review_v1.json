@@ -1,0 +1,75 @@
+{
+  "scope": "New complete review of the successful Palmer capture under its current group; historical unavailable rows remain unchanged.",
+  "previous_review": "docs/experiments/filename-patterns-20261015/remaining_content_review_v3.json",
+  "previous_review_sha256": "74fbfadfd42817785edfc1b78ad196b95ceba16522723784af2f74385190c16d",
+  "input_ledger": "output/filename-patterns-20261015/palmer-current-review-v1/ledger.jsonl",
+  "input_ledger_sha256": "1a421721cbe9cb94be3c8c1a28ae324285faa0eefd2b27e135f856827c1fb77b",
+  "fetch_results_path": "output/filename-patterns-20261015/palmer-current-review-v1/fetch.json",
+  "fetch_results_sha256": "fe4bc708fa3961d23a475a78ff6bbe7a3496000534186172cd9836b4e1b0e555",
+  "selection_bindings": {
+    "docs/experiments/filename-patterns-20261015/public_raw_catalog_checkpoint_v1.json": "30b09728ebb2d71b796249169d7e08fb8d587f2e4457800de88b96aa579e0d01",
+    "docs/experiments/filename-patterns-20261015/review_catalog_reconciliation_checkpoint_v1.json": "d2ab89aaa300cc617526c92ce13aaf6859e80f65b99d0b5fedb2d94547df7305",
+    "output/filename-patterns-20261015/review-catalog-reconciliation-v1/moved-palmer-diagnostic.json": "679428d447ae1e56ad35dced9270cf25b1205891beebe89ad46da035d55aecf1",
+    "output/filename-patterns-20261015/continuation-v1/pilot.json": "55b3256dc0bfee57d90235b7d8d9b216060bc145d82926709a5b01beed619237",
+    "output/filename-patterns-20261015/public-raw-catalog-v1/catalog/indexes/catalog.json": "e20a15dc3ca42689d4796d489405988cd86817d6072c79a9c8b71f5ab3ef0a4d",
+    "output/filename-patterns-20261015/public-raw-catalog-v1/catalog/catalog-generations/840b6faf202e41a592e08385eb3e981c/documents.parquet": "c61bfbae47eb21da55c0447dbee67f41b872928bffa6e57d1cbe539b79fa3f67",
+    "output/filename-patterns-20261015/public-raw-catalog-v1/catalog/catalog-generations/840b6faf202e41a592e08385eb3e981c/document-filenames.parquet": "b922b29903be2f083ae1ecc1a9cf9ae9a232d429fde9a2dbfbd92fa1abe79280"
+  },
+  "records": [
+    {
+      "document_id": "70e1b3f65c993898fa2a7145bd09ccb4a95a5d39e1e4ec632cf190e1f1917914",
+      "filename": "Chairman-Gary-Palmer—Opening-Statement.pdf",
+      "body_key": "bodies/sha256/55/551bae6183b996177ce2be6c5b7be07b916c6dcb7851aa0af419d7b8f3cf8b5f.gz",
+      "sha256": "551bae6183b996177ce2be6c5b7be07b916c6dcb7851aa0af419d7b8f3cf8b5f",
+      "path": "output/filename-patterns-20261015/palmer-current-review-v1/retained.pdf",
+      "pages": 3,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "independent_reference": false,
+      "release_approved": false,
+      "text_path": "output/filename-patterns-20261015/palmer-current-review-v1/native.txt",
+      "text_sha256": "c340d403c2b20d9bd5400f1dffd8513b6975d91014e06ee9d11d8c052f43b35d",
+      "rendered_pages": {
+        "output/filename-patterns-20261015/palmer-current-review-v1/page-1.png": "381587d3efa0d06f44e45a2271759c3a2d0e9f157b0fd2db3b648d623e829811",
+        "output/filename-patterns-20261015/palmer-current-review-v1/page-2.png": "0b038f361e6880c2bbf0ec67a117750649eb53d7150b7b4387836d34f68ddf81",
+        "output/filename-patterns-20261015/palmer-current-review-v1/page-3.png": "64e83e79cb69c2ae123db3381a1a203ef37f76d0711d29c873a17f37d235d1f0"
+      },
+      "observed_document_forms": [
+        "opening-statement"
+      ],
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 3,
+          "observed_form": "opening-statement",
+          "observation": "Chairman Gary Palmer opening statement for the November 14, 2017 joint subcommittee hearing Regulatory Reform Task Forces Check-in. Page 1 gives the speaker, hearing and date; pages 2 and 3 continue the same remarks through a complete closing sentence."
+        }
+      ],
+      "source_completeness_observations": [
+        {
+          "observation": "All three retained pages were read visually and in native text. Page 3 contains only the conclusion of the sentence begun on page 2. No separate attachment or additional document form is visible. This review does not establish delivery at the hearing."
+        }
+      ]
+    }
+  ],
+  "historical_relation": {
+    "original_document_id": "db3059629d6f1b4f605711b9aecdafb5398affbf494003bff14a5c6ad3c15ecc",
+    "current_document_id": "70e1b3f65c993898fa2a7145bd09ccb4a95a5d39e1e4ec632cf190e1f1917914",
+    "shared_source_id": "4133fa89c82e4d410ce2e7b15f9af33556b8c978b42bcb1d3b5315262de6240f",
+    "reason": "The current catalog groups the same encoded URL with its newly retained successful PDF capture and its old error response.",
+    "historical_review_transferred": false
+  },
+  "independent_reference": false,
+  "release_approved": false,
+  "summary": {
+    "new_completed_documents": 1,
+    "new_completed_pages": 3,
+    "cumulative_completed_documents": 86,
+    "cumulative_completed_pages": 530
+  },
+  "limits": [
+    "New current-row review, not a rewrite of the historical 91-case ledger.",
+    "The separate unencoded Palmer URL remains an unavailable error-response case.",
+    "No production classification, pilot sample or reference label changed."
+  ]
+}

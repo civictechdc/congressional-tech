@@ -1,0 +1,115 @@
+{
+  "scope": "Exact historical interpretation-review linkage; no new content verification",
+  "summary_path": "output/filename-patterns-20261015/review-evidence-v2/summary.json",
+  "summary_sha256": "48af10d3f1e0efc25020057f5358f57c09bac0e9e4a4249d1bdf1ad1ededcb7f",
+  "registry_sha256": "46d3acf41ba6da18cbaae5f2fe4c42e681f5ed13a2ef305ed31ad1864868cb26",
+  "records": 1903,
+  "review_basis": {
+    "same_family_aliases": 389,
+    "broad_specific_aliases": 821,
+    "prior_interpretation_review": 356,
+    "needs_review": 337
+  },
+  "matched_prior_reviews": {
+    "vote-targets": 288,
+    "witness-specificity": 37,
+    "vote-actions": 24,
+    "genre-subjects": 7
+  },
+  "nonmatching_prior_reviews": 0,
+  "receipts": [
+    {
+      "name": "vote-targets",
+      "changed_groups": 288,
+      "outside_current_changed_ledger": 0,
+      "outside_current_cohort": 0,
+      "current_unchanged_groups": 0
+    },
+    {
+      "name": "constitutional-topics",
+      "changed_groups": 2,
+      "outside_current_changed_ledger": 2,
+      "outside_current_cohort": 0,
+      "current_unchanged_groups": 2
+    },
+    {
+      "name": "witness-specificity",
+      "changed_groups": 38,
+      "outside_current_changed_ledger": 1,
+      "outside_current_cohort": 0,
+      "current_unchanged_groups": 1
+    },
+    {
+      "name": "vote-actions",
+      "changed_groups": 24,
+      "outside_current_changed_ledger": 0,
+      "outside_current_cohort": 0,
+      "current_unchanged_groups": 0
+    },
+    {
+      "name": "genre-subjects",
+      "changed_groups": 17,
+      "outside_current_changed_ledger": 10,
+      "outside_current_cohort": 0,
+      "current_unchanged_groups": 10
+    }
+  ],
+  "grouping_rows_read_in_full": 60,
+  "status_by_body_history": [
+    {
+      "review_basis": "broad_specific_aliases",
+      "multiple_retained_bodies": false,
+      "count": 820
+    },
+    {
+      "review_basis": "broad_specific_aliases",
+      "multiple_retained_bodies": true,
+      "count": 1
+    },
+    {
+      "review_basis": "needs_review",
+      "multiple_retained_bodies": false,
+      "count": 281
+    },
+    {
+      "review_basis": "needs_review",
+      "multiple_retained_bodies": true,
+      "count": 56
+    },
+    {
+      "review_basis": "prior_interpretation_review",
+      "multiple_retained_bodies": false,
+      "count": 143
+    },
+    {
+      "review_basis": "prior_interpretation_review",
+      "multiple_retained_bodies": true,
+      "count": 213
+    },
+    {
+      "review_basis": "same_family_aliases",
+      "multiple_retained_bodies": false,
+      "count": 358
+    },
+    {
+      "review_basis": "same_family_aliases",
+      "multiple_retained_bodies": true,
+      "count": 31
+    }
+  ],
+  "outputs": {
+    "ledger.jsonl": "b08702c53d84bd75f27faa8d518dd35f764c43e6aa4f0813a1bdd1c42f704a14",
+    "groupings.csv": "e8ed8bc27fe77bf549dffbcc9fdbeaf27e50e44d56ad9e3dfe14d80ccd92eae2"
+  },
+  "tests": {
+    "passed": 50,
+    "linkage_tests": 20,
+    "alias_tests": 13,
+    "replay_tests": 17,
+    "log_sha256": "511de86e523e64a4bc6ff7ccaf22dfb30f5794b312b08f843ac2b04cca82e8d9"
+  },
+  "body_reads": false,
+  "classification_changes": false,
+  "publication_performed": false,
+  "release_qualified": false
+}

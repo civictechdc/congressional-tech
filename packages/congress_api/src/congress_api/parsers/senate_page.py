@@ -16,6 +16,7 @@ from congress_api.parsers.text import text
 from congress_api.parsers.witness_names import is_name, witness
 from congress_api.parsers.document_links import feed_link, http_url, is_document_url
 from congress_api.parsers.document_types import document_type
+from congress_api.parsers.media import youtube_video_id
 
 ## where each committee keeps its hearing pages
 SITE = {"ssaf00": "agriculture.senate.gov", "ssap00": "appropriations.senate.gov", "ssas00": "armed-services.senate.gov", "ssbk00": "banking.senate.gov",
@@ -666,6 +667,10 @@ def related_page(anchor, page_url):
         return result
     def document(kind, basis):
         return purpose('document', basis, kind)
+    # A publisher can label a recording "Opening Statement". Its recognized
+    # destination takes precedence while the literal label stays in evidence.
+    if target and youtube_video_id(target):
+        return purpose('media', 'youtube_video_url')
     if not direct:
         blocks = anchor.xpath('ancestor::*[self::p or self::li or self::td][1]')
         unavailable_text = (blocks[0].text_content() if blocks and len(blocks[0].xpath('.//a[@href]')) == 1

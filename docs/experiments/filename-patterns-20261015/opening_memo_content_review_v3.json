@@ -1,0 +1,501 @@
+{
+  "scope": "Complete review of the five remaining memorandum packets",
+  "previous_review": "docs/experiments/filename-patterns-20261015/opening_memo_content_review_v2.json",
+  "previous_review_sha256": "5abd43e57269103bafc9715dc883a42d351fdb05f4b06182fbd9e3f92386e19d",
+  "input_ledger": "output/filename-patterns-20261015/review-evidence-v4/ledger.jsonl",
+  "input_ledger_sha256": "218c5ecc8a8eeb05b047414f4ffb7d5a9938d4a1f8d0d1e419b9c998932971e5",
+  "fetch_results_path": "output/filename-patterns-20261015/public-retained-review-v5/results.json",
+  "fetch_results_sha256": "1ae02bf3ed58b6a7cbcfb7fbaa7f506707706609faa3cda0d0fbc6e5c15091b0",
+  "selection_bindings": {
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/docs/experiments/filename-patterns-20261015/content_readiness_checkpoint.json": "b40dbe84dcb68e5aaf014084e8c55e7260c257074cd2d3b8314360ae0a504857",
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/fetch.py": "a38608488660ee5816c2aa46cef4bd3b36b1ec967aad6c961f1a46749a1d1759",
+    "output/filename-patterns-20261015/review-evidence-v3/ledger.jsonl": "d92184926b42812dff3c36f9442c032a0841ff8ecd3e679b40f6c477595d1438",
+    "output/filename-patterns-20261015/remaining-content-readiness-v1/readiness.json": "113859c8c35a6fc502603261c39622ac7f1f77377529755d2950b1a38e8dc4f0",
+    "docs/experiments/filename-patterns-20261015/catalog_alias_review.py": "dd46f8122ee43b0eaf8a88af7b0f16e94f147dd1e0d862dcaec836554b27e69d",
+    "packages/congress_api/src/congress_api/retention/document_index.py": "ec575da15c10615bd983baf3566e7bf5c1e63c5311715b0ab9e5b22917cc2667",
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/output/filename-patterns-20261015/continuation-v1/pilot.json": "55b3256dc0bfee57d90235b7d8d9b216060bc145d82926709a5b01beed619237",
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/docs/experiments/filename-patterns-20261015/review_evidence_checkpoint_v4.json": "869462f1085c1217c3ff4146fda6626ee504fda8d9deb84aa548cf6cc0c8144b",
+    "output/filename-patterns-20261015/review-evidence-v4/summary.json": "fad13d1d0101aebde561911cb9c6ecfff4c68b2dc8b0be65bd315d2a24fb8517",
+    "output/filename-patterns-20261015/review-evidence-v4/ledger.jsonl": "218c5ecc8a8eeb05b047414f4ffb7d5a9938d4a1f8d0d1e419b9c998932971e5",
+    "output/filename-patterns-20261015/public-retained-review-v5/selection.json": "f4099a3bbd89396966a24efb995159b4eb61920dfb33e3e220e8ddedbb25c3ae",
+    "output/filename-patterns-20261015/public-retained-review-v5/input-check.json": "80592d9f20223a122de6c6ea7a5919ad650fdce0916838452887b701a5b9c4f5"
+  },
+  "records": [
+    {
+      "document_id": "0f4f0e6adcb4edb74ca0b8b6586a1883350552d38ba976353db0687e8a1f9a0a",
+      "filename": "hearing_memo_--_field_hearing_in_oklahoma_city_ok_04.04.25.pdf",
+      "body_key": "bodies/sha256/8c/8c2a99195bdb97fdc16e0dcbe2347ea0eea6c11e0db61f16f55a2462c613d2ea.gz",
+      "sha256": "8c2a99195bdb97fdc16e0dcbe2347ea0eea6c11e0db61f16f55a2462c613d2ea",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/8c2a99195bdb97fdc16e0dcbe2347ea0eea6c11e0db61f16f55a2462c613d2ea.pdf",
+      "pages": 11,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/8c2a99195bdb97fdc16e0dcbe2347ea0eea6c11e0db61f16f55a2462c613d2ea.txt",
+      "text_sha256": "a8723fc894b776cdddcc61012ee389db20e6d49b854e1f390833b3ce93f30b93",
+      "selection_index": 2,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "independent_reference": false,
+      "release_approved": false,
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v5/page-02-01.png": "ff47756fefc4603036d3dff8721db22fdc7a9b3d5e3a583d73c69737934a9ddb",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-02-02.png": "32cfdd2b8990d559347a8b7242a7bfd4bedd593cacaec1d59ce584e039509fcc",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-02-03.png": "aebf2984e9588f8ea82d90ee68e4771927e4be0fd3b7d9a5ba47a186f3c63229",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-02-04.png": "a38da75415a9eb2a07378d538146fa8d87243afa0e959a08463d579115bacf69",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-02-05.png": "35e70e940d05df136b8223d681605f8c22601c6e1da46b399f1509faf308c115",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-02-06.png": "7d005d48e3c0682fae0cba8f78320e30777e99178c37a2abe3fd48358c46d67c",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-02-07.png": "f00ce210a9123677a7e177b80370d31370714b63654bb8fbe880748136cf06cc",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-02-08.png": "4b0e482bd0b1d949f4385ba44f2de5915d4e0209defc3a91fbbb2c1603da057b",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-02-09.png": "ffd11ba4d6e350b64d756691e8af2737894324789e92cde839707e23a2516028",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-02-10.png": "9ad9a0fde568d18b6a50e888b738f4a5072d4bbe337e1a1ea01558723662b5aa",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-02-11.png": "b3c864ee6f24179bc4d9792e91f068113ba7d8f966dbe0378025e40aa458f46b"
+      },
+      "native_text_extraction": "pypdf; all rendered pages visually reviewed; no OCR",
+      "observed_document_forms": [
+        "committee-memorandum",
+        "witness-list"
+      ],
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 1,
+          "observed_form": "committee-memorandum",
+          "description": "April 1, 2025 Natural Resources staff memorandum for the April 4 Oklahoma City field hearing on fifty years of tribal self-determination; logistics and key messages."
+        },
+        {
+          "first_page": 2,
+          "last_page": 2,
+          "observed_form": "committee-memorandum|witness-list",
+          "description": "Remaining key message, eight-person witness list and beginning of background."
+        },
+        {
+          "first_page": 3,
+          "last_page": 11,
+          "observed_form": "committee-memorandum",
+          "description": "Self-determination contracting and compacting, healthcare, economic development, challenges and proposed improvements, with citations."
+        }
+      ],
+      "observations": [
+        "All eleven retained pages are present with continuous printed pagination.",
+        "The eight names are an embedded witness list; references to testimony, reports, correspondence and legal authorities are not attached documents.",
+        "The memo discusses contracts, compacts and audits as subjects; it does not itself contain executed agreements or audit reports."
+      ]
+    },
+    {
+      "document_id": "4aa2c510685eaee2d871c644548fc2739b5af59ee05dbc25cdcb19aac8b97e5c",
+      "filename": "co_field_hearing_memo_--_ov_hrg_06.01.18.pdf",
+      "body_key": "bodies/sha256/eb/eb0386fbd5f13ce84bbe4e53154de7072ac01e2182685080b4bca2da03c26270.gz",
+      "sha256": "eb0386fbd5f13ce84bbe4e53154de7072ac01e2182685080b4bca2da03c26270",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/eb0386fbd5f13ce84bbe4e53154de7072ac01e2182685080b4bca2da03c26270.pdf",
+      "pages": 11,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/eb0386fbd5f13ce84bbe4e53154de7072ac01e2182685080b4bca2da03c26270.txt",
+      "text_sha256": "72f2ddcce914799e5972a273b5ac213e147db7149a34cb3d1795370f66f187b5",
+      "selection_index": 7,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "independent_reference": false,
+      "release_approved": false,
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v5/page-07-01.png": "6757d269c2b43fd1b3f4848aad1d198a970787cafa21674aeb96e33e717cbf01",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-07-02.png": "7e47d73a2d5db40458c6372495fed2c5fc32c18941309769267849872127f3b0",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-07-03.png": "4080fa848a226f9a62df4ad6488638dca967f92c464619cb3189165b64cf8326",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-07-04.png": "fda39768adeee0d35e96e25cc75926c1e0c283cc29815d7fd5a8b5f05ad388eb",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-07-05.png": "c5fab287ebdd288c146649a81578146f4571035facba9e4ea869c036ae85ea18",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-07-06.png": "aafe838ba935ac7d820c94f8954368e2a254a74a7be088b5d9835ad6ba66a137",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-07-07.png": "5d445a5b0c2e1e74a2cc08b63eeeea037fb07da2ca80abb2495b5d20ccf9dfe9",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-07-08.png": "766e7d47ebba5ae86a6334c803eb405803ebd6bc5b857ffad1a35c81444a1eb0",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-07-09.png": "94142972ad458bdb7b1156a657c0078d86f882b0235dd0aaa85d1fd7b7dc1322",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-07-10.png": "71b9cd41b56f6317346f7689fbc1feb2cf665f8e8f33d716657acfed1c02709e",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-07-11.png": "2f92a834f898125867c8fe3cc40712eb3b155aa1c3ac41480adfb95f383c59d6"
+      },
+      "native_text_extraction": "pypdf; all rendered pages visually reviewed; no OCR",
+      "observed_document_forms": [
+        "committee-memorandum",
+        "witness-list"
+      ],
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 2,
+          "observed_form": "committee-memorandum",
+          "description": "May 25, 2018 Natural Resources staff memorandum for the June 1 Colorado hearing; logistics and policy overview."
+        },
+        {
+          "first_page": 3,
+          "last_page": 3,
+          "observed_form": "committee-memorandum|witness-list",
+          "description": "Seven invited witnesses, with titles, affiliations and locations."
+        },
+        {
+          "first_page": 4,
+          "last_page": 6,
+          "observed_form": "committee-memorandum",
+          "description": "Jordan Cove terminal and Colorado natural gas background, including the 2016 Mancos Assessment Map."
+        },
+        {
+          "first_page": 7,
+          "last_page": 11,
+          "observed_form": "committee-memorandum",
+          "description": "Oil shale resources, legislation, task force, leasing program and industry background through the concluding paragraph."
+        }
+      ],
+      "observations": [
+        "All eleven pages were visually reviewed, including the map legend, inset and source label on page 6.",
+        "The page 4 subheading spells Jordon Cove while surrounding prose uses Jordan Cove; retain the literal source spelling.",
+        "The map is an embedded illustration. Cited orders, reports and legislation are not attached documents."
+      ]
+    },
+    {
+      "document_id": "ad0447d4c4001c0ce776bd97321f6e6e527691c66dcc9235563a02a21316f33f",
+      "filename": "hearing_memo_--_fc_ov_field_hearing_in_guam_08.24.23.pdf",
+      "body_key": "bodies/sha256/ec/ec26de0f7b547532eca9d24887eec8fb2f6dc8491cf04c8ae43025dd20b41d3b.gz",
+      "sha256": "ec26de0f7b547532eca9d24887eec8fb2f6dc8491cf04c8ae43025dd20b41d3b",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/ec26de0f7b547532eca9d24887eec8fb2f6dc8491cf04c8ae43025dd20b41d3b.pdf",
+      "pages": 13,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/ec26de0f7b547532eca9d24887eec8fb2f6dc8491cf04c8ae43025dd20b41d3b.txt",
+      "text_sha256": "1d8142b32938380e502fb6b8963e8480785f0af81978ea48071c08a5bffb930e",
+      "selection_index": 14,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "independent_reference": false,
+      "release_approved": false,
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v5/page-14-01.png": "b3f571d01a73d28fa99d2c02aea23a5df4e1324ad64a6d1c1c3d1601e79944fe",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-14-02.png": "4538acae24590afa40b605b40c8f5312325949b62356f83b1b71dc82a3632ca1",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-14-03.png": "085e488a28205b6af4d06eec4d26e586c4a2d8259a5d21c21f12e4d4a83b68dc",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-14-04.png": "aff91a95e62245b1aaf40558881219460f77035bc775d9534ef64f004135eae7",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-14-05.png": "a97dd88b79898feb1cd8b9b59f21c5b50c464191ccfab2e1589a23bd2b6ecf19",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-14-06.png": "2b35ddef121b622120d396882a769ef83940612dd31c4933640a7f79a71c822b",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-14-07.png": "85c4116ec583a6b65aebcd1406468ac52e63b203ff6dcd4567446351c6228cf9",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-14-08.png": "3037845a4c7837aa5ebdba1ddb88e722207917fb5761d1a85a22a6cdad10bfae",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-14-09.png": "0c5801c5acf2038a6a01c28e1ab54dfdcb89c732300000e60e1b9d7c4b09c68c",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-14-10.png": "95f8e1a511c91e99adaaa69e9328df9ae58c52e2b6d1a736689c8a539b574ab0",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-14-11.png": "c34057e212737fa127cb62a343451070615139dfd7af4c05361b3877e599c586",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-14-12.png": "7166e18b1c9f5ea08b97a3da2817b1f8676f5df1046d2cf68f2efb23673b2b94",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-14-13.png": "e43c027be6b28334a5b689928eb77a405b945b9034a7aacabcdde260712ce733"
+      },
+      "native_text_extraction": "pypdf; all rendered pages visually reviewed; no OCR",
+      "observed_document_forms": [
+        "committee-memorandum",
+        "witness-list"
+      ],
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 1,
+          "observed_form": "committee-memorandum",
+          "description": "August 24, 2023 Natural Resources Indo-Pacific Task Force staff memorandum for the Guam field hearing; logistics and key messages."
+        },
+        {
+          "first_page": 2,
+          "last_page": 2,
+          "observed_form": "committee-memorandum|witness-list",
+          "description": "Remaining key message, nine witnesses in two panels and start of background."
+        },
+        {
+          "first_page": 3,
+          "last_page": 5,
+          "observed_form": "committee-memorandum",
+          "description": "Territories and freely associated states background with maps A through F and their source labels."
+        },
+        {
+          "first_page": 6,
+          "last_page": 12,
+          "observed_form": "committee-memorandum",
+          "description": "Security, influence, engagement and Compact renewal background, ending with proposed assistance totals and concluding discussion."
+        },
+        {
+          "first_page": 13,
+          "last_page": 13,
+          "observed_form": "committee-memorandum",
+          "description": "Figure G: Map of the Pacific, attributed to CRS, with embedded map date June 12, 2023."
+        }
+      ],
+      "observations": [
+        "All thirteen retained pages were read, including the final map-only page and its caption.",
+        "Footnote 29 continues from page 6 to page 7; this continuation is present, not a missing page.",
+        "Page 8 prose names DF-21 while its cited article title in footnote 44 names DF-26. Footnote 38 refers to supra note 55 although the NSA advisory is cited in note 36. Preserve these source discrepancies without silently repairing them.",
+        "The memorandum links earlier hearing material and discusses a legislative proposal; those documents are not attached. The seven maps are illustrations within this memorandum."
+      ]
+    },
+    {
+      "document_id": "c1610662324b16aa180cd285df49db7ebd6b985814344649892377fba97a0d93",
+      "filename": "long_island_field_hearing_hearing_memo.pdf",
+      "body_key": "bodies/sha256/29/29fa73b67d5989685c770388d9205b3e31883947f66f48663174b562b9bf23d5.gz",
+      "sha256": "29fa73b67d5989685c770388d9205b3e31883947f66f48663174b562b9bf23d5",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/29fa73b67d5989685c770388d9205b3e31883947f66f48663174b562b9bf23d5.pdf",
+      "pages": 7,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/29fa73b67d5989685c770388d9205b3e31883947f66f48663174b562b9bf23d5.txt",
+      "text_sha256": "60e03774ce914b2ace2ab76a26d5b0324403c7c85b6ca8fb473c83448e4c9595",
+      "selection_index": 16,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "independent_reference": false,
+      "release_approved": false,
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v5/page-16-1.png": "7c966644763009d999eb59353c68dc445ff75577b71f27adafca3f659a1c8ec4",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-16-2.png": "5466efe5f3880b86e06fc4d5b6578c060a2489df2d34b5bfd38f8c8904a07634",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-16-3.png": "7b700bc0aa7c7687f69c062e58313f8f220b0c8f2f5b8144ddeb6497d51ece8b",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-16-4.png": "95b121cb250694b3b970d42cf4faf7f00cddac04cb3246d7b09ba7c132a993be",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-16-5.png": "030739b06ae286fda15eb8ba22d0b34e7a8bad396c7753ea6ef4145abb94ecfb",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-16-6.png": "d76a0fb52adbe5afec5ef94513d82556252bac4572036f98c5f48a0bc801c17b",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-16-7.png": "37b6a416fb1d8f8bc74eb25b1c1eb7f41f97772c29b211c7971d38464d658fc6"
+      },
+      "native_text_extraction": "pypdf; all rendered pages visually reviewed; no OCR",
+      "observed_document_forms": [
+        "committee-memorandum",
+        "witness-list"
+      ],
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 1,
+          "observed_form": "committee-memorandum",
+          "description": "December 3, 2015 Natural Resources staff hearing memorandum for the December 7 Riverhead hearing on Atlantic fisheries; hearing and policy overview."
+        },
+        {
+          "first_page": 2,
+          "last_page": 2,
+          "observed_form": "committee-memorandum|witness-list",
+          "description": "Seven witnesses listed alphabetically and beginning of fisheries-management background."
+        },
+        {
+          "first_page": 3,
+          "last_page": 7,
+          "observed_form": "committee-memorandum",
+          "description": "Fisheries and management background with two photographs, deep-sea coral-zone map, references and concluding legislative discussion."
+        }
+      ],
+      "observations": [
+        "All seven printed pages are present. Photographs on pages 3 and 4 and the map on page 6 are memo illustrations.",
+        "References to testimony, a letter, petitions and amendments do not establish separate attached documents.",
+        "Field hearing describes the event; the retained body is a staff memorandum with an embedded witness list."
+      ]
+    },
+    {
+      "document_id": "ca4a15baea9abe4c3f886af8aab55ac1ae5a794d4250b5cc3f310986390ece9f",
+      "filename": "hearing_memo_field_hearing_09_15_15.pdf",
+      "body_key": "bodies/sha256/7e/7e25edacd7bd4325b8bdc804ce2fdd063f3634037112d7e1d182d4b3e8ca2ef9.gz",
+      "sha256": "7e25edacd7bd4325b8bdc804ce2fdd063f3634037112d7e1d182d4b3e8ca2ef9",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/7e25edacd7bd4325b8bdc804ce2fdd063f3634037112d7e1d182d4b3e8ca2ef9.pdf",
+      "pages": 10,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/7e25edacd7bd4325b8bdc804ce2fdd063f3634037112d7e1d182d4b3e8ca2ef9.txt",
+      "text_sha256": "92ba48eb6ef74bc01685ba6bfb100751284173a668f079e1fba202097d724a44",
+      "selection_index": 17,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "independent_reference": false,
+      "release_approved": false,
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v5/page-17-01.png": "a063fb968ce0700760a35e3557707cef59ddf2d1ae02a35961d38d6d3a88e213",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-17-02.png": "1524b6d00105444dd614eb538926f591783c92bd27efd15478f73b01b36e7a49",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-17-03.png": "85a71ef272d524d2de81f7ed55ffa137eff3324c74f9f435da891cdcfffc6417",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-17-04.png": "49f7af20c457e4379b3677533eeecfa4af81062299f56145ae93907158267e2f",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-17-05.png": "d4fd1c7897d1f6629c3d7fa40b9281b5b685ab581177345449fb2bd474229558",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-17-06.png": "f5b0b2d08f6898cd2c24491a1d3d0354412ba25a560d772afaa7db42943983dd",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-17-07.png": "9870a3d5f00980f39710e7592a881e401aa2769c82058fc39cab2226624b6ae8",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-17-08.png": "8011cf902625edc908e9073ca0c679f7100b26a6b02825180f8237388c575c1b",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-17-09.png": "cd8e7d6ab4d8209fadbd52d2c2b91ac47a52b8265e15d065f4ee448074cda1ba",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-17-10.png": "c0297939d4d7962ce0f659da2405b7ffa5702bd79680a4d74d6efaefc65f8265"
+      },
+      "native_text_extraction": "pypdf; all rendered pages visually reviewed; no OCR",
+      "observed_document_forms": [
+        "committee-memorandum",
+        "witness-list"
+      ],
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 1,
+          "observed_form": "committee-memorandum",
+          "description": "September 8, 2015 Natural Resources staff memorandum for the September 15 New Orleans hearing; logistics and policy overview."
+        },
+        {
+          "first_page": 2,
+          "last_page": 2,
+          "observed_form": "committee-memorandum|witness-list",
+          "description": "Continuation of policy overview, seven witnesses in two panels, and start of hearing focus."
+        },
+        {
+          "first_page": 3,
+          "last_page": 7,
+          "observed_form": "committee-memorandum",
+          "description": "Hearing focus and offshore-energy background, including production chart and table, development timeline and two bid-history charts."
+        },
+        {
+          "first_page": 8,
+          "last_page": 10,
+          "observed_form": "committee-memorandum",
+          "description": "Proposed well-control-rule discussion, attributed excerpts from public comments, costs and conclusion."
+        }
+      ],
+      "observations": [
+        "All ten retained pages were read. Native extraction omits much of the page 4 table and page 5 timeline and the Western Gulf chart on page 6; rendered pages preserve those components.",
+        "On page 4, the final 1 in extracted 570,301,1251 is the superscript footnote marker after 570,301,125, not part of the quantity.",
+        "Quoted public comments remain excerpts within the staff memorandum, not complete attached comments or witness statements.",
+        "Memo date September 8 and hearing date September 15 have distinct roles. No hearing transcript is present."
+      ]
+    }
+  ],
+  "remaining": [],
+  "unavailable": [
+    {
+      "document_id": "d635bd70987af968f54775678331381f6d50f7f7a3abe5882391528e0e519355",
+      "filename": "170215EECOpeningStatement-PRESSVERSION.pdf",
+      "reason": "no_eligible_retained_body",
+      "members": [
+        {
+          "body_format": [
+            "html"
+          ],
+          "body_key": "bodies/sha256/80/80c3fe2ae1062abf56456f52518bd670f9ec3917b7f85e152b347ac6b6faf880.gz",
+          "capture_outcome": [
+            "http_error"
+          ],
+          "content_document_kind": null,
+          "document_id": "d635bd70987af968f54775678331381f6d50f7f7a3abe5882391528e0e519355",
+          "document_kind": [
+            "opening-statement"
+          ],
+          "document_kind_source": [
+            "filename"
+          ],
+          "filename": "170215EECOpeningStatement-PRESSVERSION.pdf",
+          "filename_document_kind": [
+            "opening-statement"
+          ],
+          "http_status": [
+            "404"
+          ],
+          "media_type": [
+            "text/html; charset=iso-8859-1"
+          ],
+          "record_role": [
+            "error-response"
+          ],
+          "response_body_complete": [
+            "true"
+          ],
+          "response_format": null,
+          "response_result": null,
+          "response_usable": null,
+          "source_document_type": null,
+          "source_document_type_basis": null,
+          "source_id": "a2dfd062224f9aba4b1634b987bfc115e2bf05dd424be86107e5395bc9e6ff77",
+          "source_url": "https://oversightdemocrats.house.gov/imo/media/doc/documents/170215EECOpeningStatement-PRESSVERSION.pdf"
+        }
+      ]
+    },
+    {
+      "document_id": "db3059629d6f1b4f605711b9aecdafb5398affbf494003bff14a5c6ad3c15ecc",
+      "filename": "Chairman-Gary-Palmer\u2014Opening-Statement.pdf",
+      "reason": "no_eligible_retained_body",
+      "members": [
+        {
+          "body_format": null,
+          "body_key": "bodies/sha256/ba/ba6cc3838d1c240ad0196304d7f84a2d6af63dca6c6316280ba934cf88440305.gz",
+          "capture_outcome": [
+            "http_error"
+          ],
+          "content_document_kind": null,
+          "document_id": "db3059629d6f1b4f605711b9aecdafb5398affbf494003bff14a5c6ad3c15ecc",
+          "document_kind": [
+            "opening-statement"
+          ],
+          "document_kind_source": [
+            "filename"
+          ],
+          "filename": "Chairman-Gary-Palmer\u2014Opening-Statement.pdf",
+          "filename_document_kind": [
+            "opening-statement"
+          ],
+          "http_status": [
+            "404"
+          ],
+          "media_type": [
+            "text/html; charset=UTF-8"
+          ],
+          "record_role": [
+            "error-response"
+          ],
+          "response_body_complete": [
+            "true"
+          ],
+          "response_format": null,
+          "response_result": null,
+          "response_usable": null,
+          "source_document_type": null,
+          "source_document_type_basis": null,
+          "source_id": "4133fa89c82e4d410ce2e7b15f9af33556b8c978b42bcb1d3b5315262de6240f",
+          "source_url": "https://oversight.house.gov/wp-content/uploads/2017/11/Chairman-Gary-Palmer%E2%80%94Opening-Statement.pdf"
+        }
+      ]
+    },
+    {
+      "document_id": "edd081b3f61bc42e49f35ff51d76f11bf142c8773881fd5711a572589aa5b331",
+      "filename": "Chairman-Gary-Palmer\u2014Opening-Statement.pdf",
+      "reason": "no_eligible_retained_body",
+      "members": [
+        {
+          "body_format": null,
+          "body_key": "bodies/sha256/ba/ba6cc3838d1c240ad0196304d7f84a2d6af63dca6c6316280ba934cf88440305.gz",
+          "capture_outcome": [
+            "http_error"
+          ],
+          "content_document_kind": null,
+          "document_id": "edd081b3f61bc42e49f35ff51d76f11bf142c8773881fd5711a572589aa5b331",
+          "document_kind": [
+            "opening-statement"
+          ],
+          "document_kind_source": [
+            "filename"
+          ],
+          "filename": "Chairman-Gary-Palmer\u2014Opening-Statement.pdf",
+          "filename_document_kind": [
+            "opening-statement"
+          ],
+          "http_status": [
+            "404"
+          ],
+          "media_type": [
+            "text/html; charset=UTF-8"
+          ],
+          "record_role": [
+            "error-response"
+          ],
+          "response_body_complete": [
+            "true"
+          ],
+          "response_format": null,
+          "response_result": null,
+          "response_usable": null,
+          "source_document_type": null,
+          "source_document_type_basis": null,
+          "source_id": "a024c60da5b570e504177f1e4bea145fbc4f06b30f32d0b65a9d6dc6ad1c8c4e",
+          "source_url": "https://oversight.house.gov/wp-content/uploads/2017/11/Chairman-Gary-Palmer\u2014Opening-Statement.pdf"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "selected_groups": 24,
+    "verified_retained_pdfs": 21,
+    "verified_retained_pages": 116,
+    "new_completed_documents": 5,
+    "new_completed_pages": 52,
+    "remaining_available_documents": 0,
+    "remaining_available_pages": 0,
+    "unavailable_documents": 3,
+    "cumulative_completed_documents": 71,
+    "cumulative_completed_pages": 411
+  },
+  "pilot_overlap": false,
+  "publisher_acquisition": false,
+  "production_ocr": false,
+  "production_changes": false,
+  "independent_reference": false,
+  "release_approved": false,
+  "limitations": [
+    "All 21 eligible PDFs in this selection are fully reviewed; three groups remain unavailable.",
+    "Observed forms do not resolve metadata classification decisions or establish independent reference labels.",
+    "Complete review covers all retained pages, not independently established source completeness."
+  ]
+}

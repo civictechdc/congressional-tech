@@ -1,0 +1,290 @@
+{
+  "scope": "All 51 retained pages of Public Witness packet reviewed; cumulative 37 of 38 disclosure/biography packets reviewed",
+  "previous_review": "docs/experiments/filename-patterns-20261015/disclosure_biography_content_review_v3.json",
+  "previous_review_sha256": "6b5f6c97965a104cf3470a24920000e17b6762ff71712ed6ab748a08a32c077b",
+  "input_ledger": "output/filename-patterns-20261015/review-evidence-v4/ledger.jsonl",
+  "input_ledger_sha256": "218c5ecc8a8eeb05b047414f4ffb7d5a9938d4a1f8d0d1e419b9c998932971e5",
+  "fetch_results_path": "output/filename-patterns-20261015/public-retained-review-v3/results.json",
+  "fetch_results_sha256": "f2f822adac4c388a8bdb413cf94653df89b7f8292c5ea797a65b3771fa402304",
+  "records": [
+    {
+      "document_id": "95b67bdacaf7b69198ecbf2346c7d97ee35402e2351a607f518023025c79e2db",
+      "filename": "05.11.11_Public_Witness_Testimony_CV_and_Disclosure.pdf",
+      "body_key": "bodies/sha256/9e/9e0295bd07363eb814b6e0641b7dfbe14ee9f1531aca85e04285809d4922b02b.gz",
+      "sha256": "9e0295bd07363eb814b6e0641b7dfbe14ee9f1531aca85e04285809d4922b02b",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/9e0295bd07363eb814b6e0641b7dfbe14ee9f1531aca85e04285809d4922b02b.pdf",
+      "pages": 51,
+      "selection_index": 22,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "witness-list",
+        "witness-statement",
+        "biography",
+        "testimony-disclosure",
+        "letter"
+      ],
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 1,
+          "observed_form": "witness-list",
+          "description": "Members of Congress and public witnesses list, including for-record-only entries"
+        },
+        {
+          "first_page": 2,
+          "last_page": 4,
+          "observed_form": "witness-statement",
+          "description": "John G. Pare Jr. statement for National Federation of the Blind"
+        },
+        {
+          "first_page": 5,
+          "last_page": 7,
+          "observed_form": "biography",
+          "description": "John G. Pare Jr. curriculum vitae"
+        },
+        {
+          "first_page": 8,
+          "last_page": 9,
+          "observed_form": "testimony-disclosure",
+          "description": "John G. Pare Jr. disclosure form and grant answers"
+        },
+        {
+          "first_page": 10,
+          "last_page": 12,
+          "observed_form": "witness-statement",
+          "description": "Ronald La Due Lake testimony, including title page"
+        },
+        {
+          "first_page": 13,
+          "last_page": 13,
+          "observed_form": "testimony-disclosure",
+          "description": "Ronald La Due Lake disclosure form"
+        },
+        {
+          "first_page": 14,
+          "last_page": 19,
+          "observed_form": "biography",
+          "description": "Ronald La Due Lake curriculum vitae, including citations to reports and testimonies"
+        },
+        {
+          "first_page": 20,
+          "last_page": 20,
+          "observed_form": "testimony-disclosure",
+          "description": "Saul Schniderman disclosure form"
+        },
+        {
+          "first_page": 21,
+          "last_page": 21,
+          "observed_form": "biography",
+          "description": "Saul Schniderman biographical information"
+        },
+        {
+          "first_page": 22,
+          "last_page": 24,
+          "observed_form": "witness-statement",
+          "description": "Saul Schniderman statement; printed page numbers 1, 3 and 4"
+        },
+        {
+          "first_page": 25,
+          "last_page": 25,
+          "observed_form": "testimony-disclosure",
+          "description": "Darryl W. Clark disclosure form"
+        },
+        {
+          "first_page": 26,
+          "last_page": 26,
+          "observed_form": "biography",
+          "description": "Darryl W. Clark biographical information"
+        },
+        {
+          "first_page": 27,
+          "last_page": 28,
+          "observed_form": "witness-statement",
+          "description": "Darryl W. Clark statement"
+        },
+        {
+          "first_page": 29,
+          "last_page": 35,
+          "observed_form": "witness-statement",
+          "description": "Daniel Schuman testimony, including title page and two pages of endnotes"
+        },
+        {
+          "first_page": 36,
+          "last_page": 36,
+          "observed_form": "biography",
+          "description": "Daniel Schuman biography"
+        },
+        {
+          "first_page": 37,
+          "last_page": 37,
+          "observed_form": "testimony-disclosure",
+          "description": "Daniel Schuman disclosure form"
+        },
+        {
+          "first_page": 38,
+          "last_page": 38,
+          "observed_form": "testimony-disclosure",
+          "description": "Dennis Roth disclosure form"
+        },
+        {
+          "first_page": 39,
+          "last_page": 39,
+          "observed_form": "biography",
+          "description": "Dennis M. Roth biography"
+        },
+        {
+          "first_page": 40,
+          "last_page": 43,
+          "observed_form": "witness-statement",
+          "description": "Dennis M. Roth statement"
+        },
+        {
+          "first_page": 44,
+          "last_page": 46,
+          "observed_form": "letter",
+          "description": "Thomas M. Susman letter for the American Bar Association, explicitly requesting inclusion in the hearing record"
+        },
+        {
+          "first_page": 47,
+          "last_page": 47,
+          "observed_form": "biography",
+          "description": "Thomas M. Susman biography"
+        },
+        {
+          "first_page": 48,
+          "last_page": 51,
+          "observed_form": "testimony-disclosure",
+          "description": "Thomas M. Susman disclosure form with three landscape grant-table pages"
+        }
+      ],
+      "notes": "All 51 retained PDF pages inspected visually. This is a multi-witness packet with actual statements, biographies, disclosure forms, a witness list and an ABA letter. CV citations and statement endnotes are not separate attached reports or testimony. Preserve the literal filename claims separately from these observed forms. Review coverage does not establish that the publisher assembled a complete hearing record.",
+      "source_completeness_observations": [
+        {
+          "pdf_pages": [
+            22,
+            23,
+            24
+          ],
+          "observation": "Schniderman statement printed numbering is 1, 3, 4; no printed page 2 was observed elsewhere in the retained packet. Treat this as an apparent internal omission, not an unreviewed PDF page."
+        },
+        {
+          "pdf_pages": [
+            1,
+            44,
+            45,
+            46,
+            47,
+            48
+          ],
+          "observation": "Witness list names Kenneth Goldsmith for the ABA; the retained ABA letter, biography and disclosure identify Thomas M. Susman. Preserve the identity difference."
+        },
+        {
+          "pdf_pages": [
+            1
+          ],
+          "observation": "Witness list includes Julie Strandlie for the American Association of Law Libraries, but no separately identifiable submission from her was observed in the retained 51 pages."
+        }
+      ],
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-01.png": "da3b520843bec395726d591cce181bfb8fae9e69b2a9174306155380a7f80073",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-02.png": "43a668f22daf3d946d55f81753103c19f48d32074875a4806caf049cc825e11d",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-03.png": "3891716b3dbce716d649429fa95d4b65458627d70e8f6bc62799a875a37ca7fd",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-04.png": "70080463394f12c9ba4621b75250ecea7d782ac5712be27527522d217e4cadc8",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-05.png": "e3f084bd1b6716d895ceb66845e806a72d65d16e7c11772a93cdc7dd274065a9",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-06.png": "784b36229ca9a21632f8a6ba06bd1c010c86d308274abd49ef127adbb05c5c5b",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-07.png": "f8e7243872fa713e9da40aa06734a968b14d9c08fb3128b701649c7a20ad06ab",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-08.png": "6d15146d2f9c991311af0a6f619b154d08e457043c0937116e7d313d06a8147c",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-09.png": "a46a751a662e4a8c4037603887d513d37d6f465169955703a9c3af0491003ed2",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-10.png": "83079d7f8a06c2cee666d9847e86fb027da1dc5d1078fdf0455a7c51017277b0",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-11.png": "93fe20b8643ea69b8597d4e0059ab740c6c492cd69e845ff06be9aad22690dcc",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-12.png": "1f5aa2b3982b362ed20c57fae45e1d6eb1a4eb0dc7dd8bfe7f38ebd18ad04477",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-13.png": "a7f4322f26317f3ed442522ff4de414e40a047c12ae1992185e471ffa41bf2f8",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-14.png": "f59737ead55588ccd80999040d1c454eed9fb9024dca955f4864e374e5901846",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-15.png": "42edac883382c97eae1f025d7d8e5500b70f2ea854e96f913ed710f5655280f0",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-16.png": "ea484087f32da1074041bd56263475335e011f1c8737eb0eb7b19d4b30fb7cf4",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-17.png": "b8c4222a7a4974ca0e4e9bc307b1114dd258722bc5412d8a8b7fbf4e98a01d76",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-18.png": "3e067b27d2ed3d6ce101db916d4a20cba6abaeecf22f18a1f0d4b547459502c8",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-19.png": "5cd9ea4516ac4c447bc632e32b3e6d3ca2c3281f6d17e3c80e60f5c47d000dff",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-20.png": "91ba05e9274f910cc51e3124e8828e8dad174f3aac37daae87425965d50d0cd0",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-21.png": "e36de3ace09bf11e1ff6b5a813b95f0b8a0d5bab254163d40d90d64d53c316ea",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-22.png": "536ec49f1f10e0ac33e0125ba36a0324e4363aa4a2d202b5faa5fda800e30503",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-23.png": "312e9eec175535b8a4c4a2817613607d2c70e157481f78b9aa1220e326f3d7dd",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-24.png": "396ceb67c19644f0706510e2086e273a7f89027e1ea18f456e1583ada82f6eda",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-25.png": "cbdb8ab97f56813878abc653d13a8210f175c6b95ea4669a75bfb83ac529d68d",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-26.png": "8a836f70c68b00ddc501609301450e0d2b4709bddf45e9609d26c069ddae961c",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-27.png": "f2f91fe0cfde42882998ef00b0faea60549975afcc18dcffe9fe2b5621eb8e57",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-28.png": "6853178c5e150a46606f3d71ce287c60f06c6856de49371c3b1596a3c7a00d53",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-29.png": "48b8bd19a569636b2e8c4a6e567fcda77271b6b07336d3cc77ef935f8d499a94",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-30.png": "df7c9da38fca755bf72d47559034ace3509389f27c15bef2b374a68363033270",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-31.png": "0a8a215ec7aae842bafd95405787a1e99fe9f0c0779655ee16d494768508cbcc",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-32.png": "9f08c05c789830a0ae104489fec2c470ceaca266696af46d83e4417168031a33",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-33.png": "a7e299295dc64ef8a900b1de1c184ad132a9020c6bbdd1994961f41017bb69a1",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-34.png": "ab67642ce5d6d6c0afec74e162e5ed459260aa35ceeba8099abafc5e12b2f6f7",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-35.png": "31bda9eba858a8f4f4f1c9ecfa759be1f4f89b8bca5d94d4f66087dac7eb2939",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-36.png": "32669c63969ef6d9fc52f21af20b382c5b327c3aaeb888193e7d82c886a18014",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-37.png": "0711fb9aea5f8d632644dc315607a90569a76815d81306dc0ac925be930584f3",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-38.png": "83fd358d050bf0b05dd3dae99df4b644eaa4dffd1b80071c777619c966a32c6b",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-39.png": "53f466cbd583ce29ae944b6e1817f6a8eb706223a21be65c01a7d5baa37cd4b3",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-40.png": "60919af50edb27409a615b444a5eb6875aa3426157e77bc46aa0b988577ff94e",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-41.png": "c7c8053271a47359366cb3b33712580ebb88a8691f3472c8bc35c95ac1fc3b3f",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-42.png": "1608672b75b0c65a700900b34f085405f8703f0c3027234d27f25fef1066ad4e",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-43.png": "38dea00a9dd97d08b7e2500ea6d0308a442e0e460b0912314f3c240f9b8bf08f",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-44.png": "060fa82ff779f3e06db151b5860d0e1f79286ea0ec34dc19d2c9c562dec1d453",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-45.png": "098edd9d9aa41d830ccfd58afaa36170bd0f6647432e63ce13faedcc43c2a383",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-46.png": "83d5ff58aace34932e64322e47cc815903900e6a253064906bc8eb0f55c8b1fb",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-47.png": "367ddca93910d6b8ed2eab85a6f0b1b2ce5b8475f1f4c94bfc67d291eedd2a47",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-48.png": "93635cf21d4ff615bf7a81acb70609d08c503ec278ec66271cbfbb9debd5a158",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-49.png": "6122f85ee66a5f9985637ccad42901ff9cbb792f40ead93564208c6bc487367b",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-50.png": "b990398a43188d93a6558b1e4a631ca4147cbcf9a4e0209b2bd72c9daea4b6a2",
+        "output/filename-patterns-20261015/public-retained-review-v3/public-witness-51.png": "75bd2e802bbbb05607e6e85a33f3e832113818d3ed7245812c24043dc10b178c"
+      },
+      "native_text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/9e0295bd07363eb814b6e0641b7dfbe14ee9f1531aca85e04285809d4922b02b.layout.txt",
+      "native_text_sha256": "0dccd81295619085aa708c27b537049ab6d8afc226185c4709ca00049f3447cd",
+      "native_text_extraction": "pdftotext -layout; rendered pages are the review basis",
+      "independent_reference": false,
+      "release_approved": false
+    }
+  ],
+  "summary": {
+    "new_completed_documents": 1,
+    "new_completed_pages": 51,
+    "cumulative_completed_documents": 37,
+    "cumulative_completed_pages": 160,
+    "disclosure_only": 23,
+    "disclosure_with_biography": 12,
+    "biography_only": 2,
+    "disclosure_with_biography_including_additional_forms": 1,
+    "counting_note": "Disclosure/biography bins describe presence of those two forms; one of the 12 also contains statements, a witness list and a letter. Bins do not discard additional observed forms.",
+    "remaining_documents": 1,
+    "remaining_pages": 119
+  },
+  "remaining": [
+    {
+      "document_id": "c4d0b2cda36f5997694c53c058bb5fba822e95d776fba4157a42387ef5261602",
+      "filename": "simmonsdisclosure04-25-13.pdf",
+      "sha256": "38644a2d6c2e01fa3f6089087ca20d1bb3e00ee90dcad1191d80a51ced71a9d7",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/38644a2d6c2e01fa3f6089087ca20d1bb3e00ee90dcad1191d80a51ced71a9d7.pdf",
+      "pages": 119
+    }
+  ],
+  "verification": {
+    "selection_bindings_unchanged": true,
+    "exact_pdf_sha256_and_page_count_verified": true,
+    "page_sections_cover_all_retained_pages_once": true,
+    "rendered_pages_bound": 51,
+    "frozen_source_hashes_unchanged": 9,
+    "all_400_pilot_ids_and_body_keys_excluded": true
+  },
+  "pilot_overlap": false,
+  "publisher_acquisition": false,
+  "production_ocr": false,
+  "production_changes": false,
+  "independent_reference": false,
+  "release_approved": false,
+  "limitations": [
+    "No production kind override or metadata review disposition was applied.",
+    "Complete assistant inspection is not independent reference labeling or release approval.",
+    "All retained pages reviewed does not assert completeness of the original hearing record or every individual submission."
+  ]
+}

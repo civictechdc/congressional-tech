@@ -1,0 +1,945 @@
+{
+  "status": "proposal-only",
+  "scope": "development-only",
+  "runtime_changes": false,
+  "frozen_label_changes": false,
+  "held_out_read_or_evaluated": false,
+  "reference_reviewer": "assistant",
+  "human_validated": false,
+  "source_commit": "7b543d7",
+  "inputs": {
+    "docs/experiments/filename-patterns-20261015/pilot_adjudications.json": "f943463bd36ea11ddf43f9550da3d8a6dbe8e25b0241fe65b9bf04528ee253c3",
+    "packages/house-naming/src/house_naming/data/guide.json": "2a95cb47a54714bc8c6d64d8b6a60563b2bf7fe44a5447dd24b7680b26b5e806",
+    "docs/experiments/filename-patterns-20261015/content_rule_freeze.json": "f17f4d3975015c7aab322f69b6dbc084e19f335e61a7ff95a5f7cba79a5a9bbe",
+    "packages/congress_api/src/congress_api/parsers/document_types.py": "a19596ae5481c90831a3a45394dd5223e74d59928f3e949726c4b3bd460c63c2",
+    "packages/house-naming/src/house_naming/categories.py": "6e8ed8c1d5cbb58be7e178ec66251678112a8eae85e9be7a78d2fe157a00b229"
+  },
+  "inventory_scope": "Category values in house_naming guide extraction rules and vocabularies, cross-checked against source-label meanings and category families. Not a universal runtime enum; absence here does not prove absence from every producer.",
+  "actions": {
+    "reuse": "Existing category with the same intended meaning; no claim that the reader or filename rule recognizes these records.",
+    "propose_alias": "Record-specific proposed broader or alternate operational label; never used to rewrite frozen references or rescore the frozen candidate.",
+    "defer": "No automatic mapping; taxonomy decision and independent examples/confusers required before implementation."
+  },
+  "totals": {
+    "reference_kinds": 37,
+    "records": 140,
+    "by_action": {
+      "reuse": {
+        "reference_kinds": 19,
+        "records": 107
+      },
+      "propose_alias": {
+        "reference_kinds": 3,
+        "records": 3
+      },
+      "defer": {
+        "reference_kinds": 15,
+        "records": 30
+      }
+    }
+  },
+  "mappings": [
+    {
+      "reference_kind": "affidavit",
+      "count": 1,
+      "review_ids": [
+        "D139"
+      ],
+      "document_ids": [
+        "d25549bd34b7545ccc978054edd309c5b3d65d1c385f706d96a5767f4ba8cbb3"
+      ],
+      "action": "defer",
+      "proposed_runtime_kind": null,
+      "rationale": "Sworn affidavit is a distinct legal form. Do not map it to testimony-disclosure or witness-statement.",
+      "runtime_evidence": []
+    },
+    {
+      "reference_kind": "amendment",
+      "count": 11,
+      "review_ids": [
+        "D045",
+        "D062",
+        "D070",
+        "D088",
+        "D099",
+        "D100",
+        "D154",
+        "D174",
+        "D194",
+        "D195",
+        "D196"
+      ],
+      "document_ids": [
+        "b78c22e1f482286cba8e7dd742eb48a2308abdb7310e7910fae243dc1557e2b1",
+        "f807c14e849a4ea6389c7ac914f7a4058c02f414e2c7f8ee47a55e11bf394ba0",
+        "f4a7d2c5617fc072f7ad14908cf999c2c10c228513ecf3b63f4587840b06a74a",
+        "2e36a94d9d1866a5a71ef8d036acccc71d707731a9bbdc2853bcbb9f8cde38c8",
+        "d91afc47af1e9d3489d0db06a0a1a27114b27721a4e33620bfea82f0749554b8",
+        "0598dc1b8e79c72f3bfee4585ad057924d4ba8b840586c3b31ba2e51c55ace45",
+        "610cf30ef74b056c3a27ac0683cbb8e3033687c50a8f5e924f7cfed54985e36c",
+        "fa0744391904136a9b0c9adc906dc87aef05ebe6412ad5f6e8647f1b430aca01",
+        "6d06bc7a4ccc67c5c38a89b66e5d83962b7e1fbf428d934a465c18363417e3ff",
+        "f20582415bf953c3752700f58b4130e6c21f2a6e7abda9476287eb9102f879d0",
+        "62b816b73ccb5f0020c42ab3c4509d3e537a64a3d618efc4b30c322de1f47b14"
+      ],
+      "action": "reuse",
+      "proposed_runtime_kind": "amendment",
+      "rationale": "Require operative edits or substitute text. D195 amends a committee motion; do not require every amendment to target a bill. Exclude explanations, suggestions and vote results.",
+      "runtime_evidence": [
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_rules/13/field_readings/package_family/category"
+        },
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_rules/49/field_readings/amendment_marker/category"
+        }
+      ]
+    },
+    {
+      "reference_kind": "biography",
+      "count": 1,
+      "review_ids": [
+        "D166"
+      ],
+      "document_ids": [
+        "40d8a8a21db8608841b4059012faf1b0e60fbf06d0aa26205f20f8add3bf502b"
+      ],
+      "action": "reuse",
+      "proposed_runtime_kind": "biography",
+      "rationale": "Generic biography already exists. D166 contains panelist and moderator biographies; witness status is not established by the form alone.",
+      "runtime_evidence": [
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_vocabularies/document-categories/bio/category"
+        },
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_vocabularies/document-categories/bios/category"
+        }
+      ]
+    },
+    {
+      "reference_kind": "committee-memorandum",
+      "count": 3,
+      "review_ids": [
+        "D040",
+        "D180",
+        "D198"
+      ],
+      "document_ids": [
+        "7a00707f529516d8820b3748799a09ca97f0f19243f1a208f6314b41a8bd8ea0",
+        "ba75c0d1b9186a1e443a5ba82308076c70b97eee09217f087b6b6471ef4ea123",
+        "c4cc0aa8c247581ced834e2d53fb94184cbfb36a8abb29bb4e5855025fd0d0f2"
+      ],
+      "action": "reuse",
+      "proposed_runtime_kind": "committee-memorandum",
+      "rationale": "Require committee authorship and memorandum purpose. D198 announces intent to issue a subpoena; it is not itself a subpoena. Explicit notice purpose outranks memo formatting in D030.",
+      "runtime_evidence": [
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_rules/294/field_readings/document_wording/category"
+        },
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_rules/295/field_readings/document_wording/category"
+        }
+      ]
+    },
+    {
+      "reference_kind": "committee-resolution",
+      "count": 2,
+      "review_ids": [
+        "D031",
+        "D049"
+      ],
+      "document_ids": [
+        "0c8e75c4e967bfca92b0323f5d25ad281e8b38c8c36fcfb556325080b8c07f9b",
+        "e36e8ff64d235edf0593e0969d60cf7dc166bac4e503d9bf21f9651a3456651e"
+      ],
+      "action": "reuse",
+      "proposed_runtime_kind": "committee-resolution",
+      "rationale": "Internal committee decisions such as D031 posting standards and D049 member elections. Exclude chamber legislative resolutions and foreign institutional resolutions.",
+      "runtime_evidence": [
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_vocabularies/document-categories/gsacommitteeresolution/category"
+        },
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_vocabularies/document-categories/gsacommitteeresolutions/category"
+        }
+      ]
+    },
+    {
+      "reference_kind": "committee-rules",
+      "count": 1,
+      "review_ids": [
+        "D199"
+      ],
+      "document_ids": [
+        "69693a9c2e273c6c0de313a1c906ba82256b96d4229e65797d33c22a1ebfcdcd"
+      ],
+      "action": "reuse",
+      "proposed_runtime_kind": "committee-rules",
+      "rationale": "D199 explicitly identifies committee rules. Do not infer this kind from any use of rules or regulations.",
+      "runtime_evidence": [
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_vocabularies/document-context/committeerules/category"
+        }
+      ]
+    },
+    {
+      "reference_kind": "committee-vote",
+      "count": 6,
+      "review_ids": [
+        "D009",
+        "D111",
+        "D118",
+        "D126",
+        "D129",
+        "D169"
+      ],
+      "document_ids": [
+        "02f94d385b2bd7ef074dd0c07b6dbee30c22c9a3e460d9a5cfd1cc30aa9f212e",
+        "bccc7d132cc3c426877f134e7da05c75597f9a62c6a9b8ed8463c4ff1a981df3",
+        "6dbc56326de060dfc84ed3a7a378304f82d0354437bd06de413eb0343ee30478",
+        "3f90a16864c9b6e5cd254ea5cd5b476ca0662f5cbbffcb40b4ffbdb13602498e",
+        "76b775165993563ef7d7ffefbf5798b1515fa86ea34fe91d96c5432837f5915c",
+        "57aa6971d59549601b72159edaaa2dd2b363f83c161563550b560f0ceb466eab"
+      ],
+      "action": "reuse",
+      "proposed_runtime_kind": "committee-vote",
+      "rationale": "Require recorded votes or a roll-call result. D009 reports adoption of an amendment; it is not amendment text.",
+      "runtime_evidence": [
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_rules/304/field_readings/document_wording/category"
+        },
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_vocabularies/document-context/vote/category"
+        }
+      ]
+    },
+    {
+      "reference_kind": "comparison-table",
+      "count": 1,
+      "review_ids": [
+        "D082"
+      ],
+      "document_ids": [
+        "ae9bb1f9178de1c89b8109c07f336f4327a1e1480c944c689a9a462a56d9baf9"
+      ],
+      "action": "defer",
+      "proposed_runtime_kind": null,
+      "rationale": "D082 compares legal sources. Existing bill-comparison is too narrow; generic comparison versus data-table remains a taxonomy decision.",
+      "runtime_evidence": []
+    },
+    {
+      "reference_kind": "constitutional-text",
+      "count": 1,
+      "review_ids": [
+        "D035"
+      ],
+      "document_ids": [
+        "691fa4f0abc30de9b5c46e41b79d5a9d3b0e37569a1fc5965501b56895471230"
+      ],
+      "action": "defer",
+      "proposed_runtime_kind": null,
+      "rationale": "D035 is a foreign draft constitutional charter. Do not map to hearing-charter or assume US legislative text.",
+      "runtime_evidence": []
+    },
+    {
+      "reference_kind": "court-filing",
+      "count": 1,
+      "review_ids": [
+        "D036"
+      ],
+      "document_ids": [
+        "0af778ebcdff480ef6bbfe06bbcc971433b5a6953da1c4165cd6d045164974c6"
+      ],
+      "action": "defer",
+      "proposed_runtime_kind": null,
+      "rationale": "D036 is a district-court complaint. Preserve legal document form and jurisdiction before considering a new kind.",
+      "runtime_evidence": []
+    },
+    {
+      "reference_kind": "curriculum-vitae",
+      "count": 1,
+      "review_ids": [
+        "D097"
+      ],
+      "document_ids": [
+        "ca68c20b93019e93bb244a0955fc1aa1647b1762c0bf4fcfbbb28ab2e5547c62"
+      ],
+      "action": "propose_alias",
+      "proposed_runtime_kind": "biography",
+      "rationale": "The filename vocabulary explicitly maps cv and curriculumvitae to biography. Preserve the narrower research label; propose this broader operational mapping only for a future evaluation.",
+      "runtime_evidence": [
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_vocabularies/document-categories/bio/category"
+        },
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_vocabularies/document-categories/bios/category"
+        }
+      ]
+    },
+    {
+      "reference_kind": "data-table",
+      "count": 5,
+      "review_ids": [
+        "D038",
+        "D101",
+        "D136",
+        "D179",
+        "D187"
+      ],
+      "document_ids": [
+        "0ecf58ded23917dc7c54f111f0157b5bf85960c67e9a4990d6422c40c60d5615",
+        "b445570e62aa3610b1e631532ccc4c38dcd394d0962dd5366597b0e0c31956bb",
+        "ef15dc43b082fa2d02ee2f757aaff853ce0024124bd84b8b79c89f4c8b8a1ced",
+        "8a80da4baf84c66a5160b2627685fd336511579524dd0ce15705e1667f744fc7",
+        "cc382872bf0e083cf6e152fc77222edbb63d5315bfedd40527956da0d9ddf178"
+      ],
+      "action": "defer",
+      "proposed_runtime_kind": null,
+      "rationale": "Five statistical tables/charts span retirement, expenditures, wait lists, an annex and payments. Decide whether form and parent-document relationships need separate fields; graphic does not cover every case.",
+      "runtime_evidence": []
+    },
+    {
+      "reference_kind": "declaration",
+      "count": 1,
+      "review_ids": [
+        "D133"
+      ],
+      "document_ids": [
+        "7cccb01ba4cf3116683fc7f54aa45d380a2857d8d0f73391354641ee79bb754c"
+      ],
+      "action": "defer",
+      "proposed_runtime_kind": null,
+      "rationale": "D133 is a UN normative declaration. Generic statement would erase a legal-form distinction; no automatic mapping proposed.",
+      "runtime_evidence": []
+    },
+    {
+      "reference_kind": "fact-sheet",
+      "count": 6,
+      "review_ids": [
+        "D021",
+        "D066",
+        "D095",
+        "D098",
+        "D104",
+        "D110"
+      ],
+      "document_ids": [
+        "9b7a55a10b4e64ac6e839cd13dcb59072dc487780ccf6ab95624eb88b0fc3d4b",
+        "f6425e25d690417c6de2fcc7fdbeee6900b7b79984fb05a2acd09ad120e89d9c",
+        "f8ef2d5101a06ddc69cd359b320bf1e6d1de8b032636b0b7ba9e69a6e29b85e6",
+        "f54bc9ef235adbc0262c8ff89126fcbe1e267469b34e2369481f1fd996f42a89",
+        "612feaf6d2650ff5c9b8f0675840030d7cc2091040fd2f7c76c005b470f257b4",
+        "df1c3273f899ef7154efdd6d30fe95dafc3c9e044b2250e2db64abb18f869002"
+      ],
+      "action": "reuse",
+      "proposed_runtime_kind": "fact-sheet",
+      "rationale": "Existing kind covers explicit factsheets. D021 FAQ, D095 top-ten list and D110 infographic need separately justified boundaries; headings alone do not establish all six cases.",
+      "runtime_evidence": [
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_vocabularies/document-categories/factsheet/category"
+        },
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_vocabularies/document-categories/factsheets/category"
+        }
+      ]
+    },
+    {
+      "reference_kind": "guide",
+      "count": 1,
+      "review_ids": [
+        "D081"
+      ],
+      "document_ids": [
+        "320c4ff72f71e4909ec5eab4329946d45ff4dd1b08117a9ebbabf2bff648a628"
+      ],
+      "action": "defer",
+      "proposed_runtime_kind": null,
+      "rationale": "D081 is a best-practices toolkit. Do not collapse it into pamphlet or report solely because those kinds exist.",
+      "runtime_evidence": []
+    },
+    {
+      "reference_kind": "legislative-packet",
+      "count": 3,
+      "review_ids": [
+        "D018",
+        "D152",
+        "D159"
+      ],
+      "document_ids": [
+        "6606224b622a285364d3dd37ca2ca9671a0875919b6919cd1c1c5736292ab299",
+        "535a9c84c947707b151bdf056b7b4787e2a821857f03f4ea58bcce648df69210",
+        "b844b49482dff4623db320087748644ac96041a80136ccba7fc2e9f2a33f5ae2"
+      ],
+      "action": "defer",
+      "proposed_runtime_kind": null,
+      "rationale": "D018, D152 and D159 mix summary, operative text and report directives. A first-page heading cannot establish one kind for the entire packet; retain component evidence before proposing multi-kind handling.",
+      "runtime_evidence": []
+    },
+    {
+      "reference_kind": "legislative-text",
+      "count": 11,
+      "review_ids": [
+        "D010",
+        "D025",
+        "D032",
+        "D044",
+        "D072",
+        "D074",
+        "D079",
+        "D155",
+        "D176",
+        "D181",
+        "D190"
+      ],
+      "document_ids": [
+        "b108511b4a118e43f5b982cbb8e7519de50a8559c1f79cab5d4decff1e01c0e7",
+        "dee777c07327645ef42303106479ccdb9d87ba46ae757fdcae3418e9dc2550a8",
+        "94aa1b5d7c5c0e44f0259795023944060cafbad2dac97517a81e5f10153cc55b",
+        "6c86d640ff753689d10ba3b2699dc3753adecb81895d1d08b833ca229feb8507",
+        "e83fc21e557de2ede54b6a180e58b1070012ca74e2f58ddeec24d90fa34b9a6a",
+        "72c59eabed394898b6595938958ce80cd06b9a8a9c041a5a45103cfe25cdd31d",
+        "25780386887e6ba537eaab359f08f579a8c6790a3709d27c900e27d2a877c0f3",
+        "5797b37f99e438c3a391eca394d7e05c6ed7763d98f6443394602a55c29f09f3",
+        "cb988611194d6a67ff31c1cbd273cfb6491197f13e556d9743e957b960e8e13d",
+        "20e17fbc05953758c8b959b0d9eeed4c6fcb6c9289d8e10106474a06194b2f82",
+        "80fc36a47f69a3edcdca6b1702f407c96255b01e01066782129331f02f2300e2"
+      ],
+      "action": "reuse",
+      "proposed_runtime_kind": "legislative-text",
+      "rationale": "US bill and chamber resolution text. D072 is a Senate ratification resolution, not the treaty itself. Do not extend this mapping to UN resolutions, constitutional drafts or codified statutory excerpts.",
+      "runtime_evidence": [
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_rules/271/field_readings/label/category"
+        },
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_rules/281/field_readings/measure_token/category"
+        }
+      ]
+    },
+    {
+      "reference_kind": "letter",
+      "count": 5,
+      "review_ids": [
+        "D041",
+        "D090",
+        "D130",
+        "D147",
+        "D188"
+      ],
+      "document_ids": [
+        "75576a5540bd5d2f06b2af9c69bd129e27271b1e89683b8c306e4e956648b7f8",
+        "6b19b2e9ecb35740bb65a7cb3fb0a3ff8f4c29bd5b6dbbc946727eb7c0c0234d",
+        "bd863ecb204378a61db8db205373b4431a9b7ca76584c7ffa0f148f6c6d46cbf",
+        "3e6c49cde31f7239c2c70bf1980dbcd33fab17459ca3efbce577fb2fbd320aca",
+        "a7358d26bcd47c5ef96979ebab9c8aca18624b6202b014731b97c40d03dbe069"
+      ],
+      "action": "reuse",
+      "proposed_runtime_kind": "letter",
+      "rationale": "Require correspondence as the primary form. D041 invitation remains a letter; D131 member testimony does not become a letter because it has a salutation. D090 and D130 support legislation, not nominations.",
+      "runtime_evidence": [
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_rules/261/field_readings/label/category"
+        },
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_vocabularies/document-categories/letter/category"
+        }
+      ]
+    },
+    {
+      "reference_kind": "meeting-minutes",
+      "count": 1,
+      "review_ids": [
+        "D048"
+      ],
+      "document_ids": [
+        "3d317c07957aac957cad65b3c8e24f0b9f77eea730134a7876103008416c42ef"
+      ],
+      "action": "propose_alias",
+      "proposed_runtime_kind": "meeting-results",
+      "rationale": "D048 is a markup action sheet recording decisions. Existing meeting-results is the closest operational kind for this record. This is record-specific, not a general equivalence between all minutes and results.",
+      "runtime_evidence": [
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_rules/149/field_readings/result_wording/category"
+        },
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_rules/150/field_readings/result_wording/category"
+        }
+      ]
+    },
+    {
+      "reference_kind": "meeting-notice",
+      "count": 4,
+      "review_ids": [
+        "D014",
+        "D030",
+        "D153",
+        "D183"
+      ],
+      "document_ids": [
+        "4a022955e52642ecb0c9f58cb1b7c6f74da91a920923b522c100735f6c74a822",
+        "0c34ea6ee69e71d1ce97c89bc4c78c2abfb1e8abb94ec91114ba87aaa78f1b4c",
+        "17bfa5412c871cbe2662d758610b37e11f335c0301dfa5cfabc9ec99967c20fe",
+        "a79089bb47aafd45378a23cc83d71527f45bbf15fb63969daf85ab4d6315c98b"
+      ],
+      "action": "reuse",
+      "proposed_runtime_kind": "meeting-notice",
+      "rationale": "Explicit notice announcing a hearing or markup. D030 uses To/From formatting but identifies its purpose as a hearing notice. Preserve the different letter form in D041.",
+      "runtime_evidence": [
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_rules/7/field_readings/meeting_token/category"
+        },
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_rules/138/field_readings/label/category"
+        }
+      ]
+    },
+    {
+      "reference_kind": "member-statement",
+      "count": 2,
+      "review_ids": [
+        "D051",
+        "D131"
+      ],
+      "document_ids": [
+        "d2b55482cf778bfc29e78f4684120a33c3a8f0b37a30fd4a13f6c496093eb178",
+        "6924e91b43f84259ec6ddd2c1cda3c319c9ff42a7e766c47cec1c62b0f8b01d6"
+      ],
+      "action": "reuse",
+      "proposed_runtime_kind": "member-statement",
+      "rationale": "Require identified member role and statement/testimony purpose. D051 press-release formatting does not establish opening-statement; D131 is Member Day testimony.",
+      "runtime_evidence": [
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_vocabularies/document-context/mstate/category"
+        }
+      ]
+    },
+    {
+      "reference_kind": "memorandum",
+      "count": 3,
+      "review_ids": [
+        "D012",
+        "D105",
+        "D156"
+      ],
+      "document_ids": [
+        "786314610dbc00121079e33efe7e84f52c77c912a00eab9e8fd9c2386dc2e066",
+        "8f620cd654b92c3b989d22947e5b970208eae090e9d27e6ef29054e0bd9691b7",
+        "5701fe9835ab2cde1d02c0a00dafa90fdaa758c631540da6cdf7cfd6eb2254f8"
+      ],
+      "action": "defer",
+      "proposed_runtime_kind": null,
+      "rationale": "D012 outside-organization memo, D105 OMB memo and D156 CMS memo are not committee memoranda. memorandum exists as a family heading, not a category found in the inspected guide. Consider a generic kind separately.",
+      "runtime_evidence": []
+    },
+    {
+      "reference_kind": "motion",
+      "count": 1,
+      "review_ids": [
+        "D161"
+      ],
+      "document_ids": [
+        "feb811c97929f8dcb180b0b2bc787f6b731ea90696c2a9667144d21c29c63bb2"
+      ],
+      "action": "reuse",
+      "proposed_runtime_kind": "motion",
+      "rationale": "D161 is a motion to instruct. Existing filename rule recognizes other procedural verbs; reuse of the kind does not imply this filename or body already matches.",
+      "runtime_evidence": [
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_rules/289/field_readings/label/category"
+        }
+      ]
+    },
+    {
+      "reference_kind": "policy-plan",
+      "count": 2,
+      "review_ids": [
+        "D019",
+        "D144"
+      ],
+      "document_ids": [
+        "cfdc40bdf6d2b5ac04654d40751294212a91c501087ef112935df0ceeb32e742",
+        "5e2af3bdc1971bb2677d6e58fdd16d1b684a22d49e761c5a33d5f1ac538c55ea"
+      ],
+      "action": "defer",
+      "proposed_runtime_kind": null,
+      "rationale": "D019 management agenda and D144 operational plan are distinct from committee oversight-plan. An introductory letter does not change the whole document form.",
+      "runtime_evidence": []
+    },
+    {
+      "reference_kind": "policy-recommendations",
+      "count": 1,
+      "review_ids": [
+        "D089"
+      ],
+      "document_ids": [
+        "4fc245f085115e955b5075e5061adc973af2385b1ed5f61ba8a0ec5bd59c9a31"
+      ],
+      "action": "defer",
+      "proposed_runtime_kind": null,
+      "rationale": "D089 recommends regulatory amendments without operative legislative instructions. Decide whether this is a form or purpose before adding a kind; do not label amendment.",
+      "runtime_evidence": []
+    },
+    {
+      "reference_kind": "policy-statement",
+      "count": 1,
+      "review_ids": [
+        "D135"
+      ],
+      "document_ids": [
+        "65bde16c15fbc660b4926acf4dcfb7bb5f3c209eac2454537ac2aca09d14988c"
+      ],
+      "action": "defer",
+      "proposed_runtime_kind": null,
+      "rationale": "D135 corporate tax strategy disclosure needs a decision about statement subtype versus policy-plan. Avoid an automatic generic-statement collapse.",
+      "runtime_evidence": []
+    },
+    {
+      "reference_kind": "presentation",
+      "count": 1,
+      "review_ids": [
+        "D103"
+      ],
+      "document_ids": [
+        "842ea082b8017e1796e70616299bb87ce3ebd1d1e13e17a958d4a6f5bf2a5b74"
+      ],
+      "action": "propose_alias",
+      "proposed_runtime_kind": "slides",
+      "rationale": "D103 has a title slide followed by a numbered slide. Existing slides is suitable for this record; do not infer slides from every use of presentation.",
+      "runtime_evidence": [
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_vocabularies/document-categories/slide/category"
+        },
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_vocabularies/document-categories/slides/category"
+        }
+      ]
+    },
+    {
+      "reference_kind": "public-law",
+      "count": 1,
+      "review_ids": [
+        "D157"
+      ],
+      "document_ids": [
+        "01ab76364dbfa597b497baf24e53fd0ba23feb5c141dd7edc6edab4aa611a86d"
+      ],
+      "action": "reuse",
+      "proposed_runtime_kind": "public-law",
+      "rationale": "D157 contains an enacted Public Law number and Statutes at Large heading. Separate enactment from proposed legislation and codified statutory excerpts.",
+      "runtime_evidence": [
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_rules/309/field_readings/law_type_token/category"
+        }
+      ]
+    },
+    {
+      "reference_kind": "published-hearing",
+      "count": 4,
+      "review_ids": [
+        "D008",
+        "D011",
+        "D141",
+        "D148"
+      ],
+      "document_ids": [
+        "1bfc98e9f328e07fb007acce1b7e8f4819c140bc91885cc1b8c5bfdf75eee0f5",
+        "2fa7e19cefddf9e82666c12d672fa75adea073dfd35418fd2d0a09251ce454f8",
+        "db5fcdd9852b3bd78267e410180a24fe816a26df6d541a06e41e210bce816403",
+        "cc463f87ce76af2d6271772e80228e844f5502921224e922f865d6a03465d336"
+      ],
+      "action": "reuse",
+      "proposed_runtime_kind": "published-hearing",
+      "rationale": "Require published hearing evidence. House serial and Senate S. HRG forms both occur; hearing notice, testimony and raw proceedings remain separate.",
+      "runtime_evidence": [
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_rules/1/field_readings/package_family/category"
+        },
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_rules/312/field_readings/serial_token/category"
+        }
+      ]
+    },
+    {
+      "reference_kind": "report",
+      "count": 22,
+      "review_ids": [
+        "D006",
+        "D007",
+        "D023",
+        "D026",
+        "D029",
+        "D033",
+        "D034",
+        "D043",
+        "D064",
+        "D068",
+        "D075",
+        "D080",
+        "D083",
+        "D107",
+        "D108",
+        "D117",
+        "D121",
+        "D127",
+        "D132",
+        "D167",
+        "D168",
+        "D178"
+      ],
+      "document_ids": [
+        "0f4ea4e2cffbe953dcc3f8fcb06a2914bf3616edd86a0bfed7d69452376bab4a",
+        "e1331ba1a793614853106c9b9299b76d7e4d59a2a54aead315f54a3a906401c4",
+        "ee448e0f99668d4de42b251de24442560fdaa1a5609ad8c689a8f35686c948c9",
+        "26e628c69a7e03aa5fc815f6129cee05a9fefa4f20013a6d66e0e16e5fa8b280",
+        "cf02136a1c285a1d9fb38d2e4a9b0a93a15bfe099831d0359d9b0e6aaa2d8792",
+        "e5f4b117acd60c00347d18e2952b2cef69d6a39089288373a29a3ffcd17a9243",
+        "f03f27714427aa6c2d1382f43b201a12daeb20996a0d735bbd7747c7c013776e",
+        "ba343e897d6299977f7b75bf2df8e680eb2d117084a1899fa3ddbe2771e812be",
+        "6a4602713de8e4fad8e3f98144f85569364b9cc014ff9c69472962a9f9bfebb0",
+        "b46dc9f9e6548613b28189c85d52896b0b0137cc49353fff1c465fac637085a0",
+        "d0c55a9217eaaa2dd0e9028a40595b2aa475db82b96e353e90eab7d0dec10911",
+        "9b8b7c64a00e7a8ea2260c542fe1d20cf940b54ed7cdbc9bafd3bef313d03dbc",
+        "3079f4336918f312e73fc7f228359945687c7f4e05440ab514a481175c2e10b0",
+        "d9b965d7ac2c635a9c6b9d155ba6086ce03f9834b591c4f1efc49f87ae7289a0",
+        "8606261da9fae482809082877134e289069806783b54bf3733f846e6afaa10e6",
+        "60971b54b73fe137e9c5ed84f48e677ac4d04ea7c493f61467681c5432d6345e",
+        "8818e79fe40e3c448be5e16b396d60cc3f16df0932d8829129406c8fd26a453d",
+        "94fe0bc61736af65400acc7da25ea72b25994d50c134b374a849ffe1224aa9b8",
+        "d218cac2d2dae6ff4d0c4fd6d8892ecefe7331762160cb94f1157546956ab1ab",
+        "6ba2c3465c9ee3e043759198e523599708a26164fdde1dde60091ddeb879ac69",
+        "251ed19a9078ab841b0f7ba51bcbf23fafe637bff62759bdb01b3b8bd9ab044e",
+        "a368733999dfa10e1ab9a98349a0944637a9d394e49ed879d6aa12a64794aa10"
+      ],
+      "action": "reuse",
+      "proposed_runtime_kind": "report",
+      "rationale": "All 22 use the generic report kind. Their agency, NGO, academic and committee provenance does not establish a numbered published-report or committee-report. Broad content recognition needs stronger evidence than a topic title.",
+      "runtime_evidence": [
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_vocabularies/document-categories/report/category"
+        }
+      ]
+    },
+    {
+      "reference_kind": "research-paper",
+      "count": 4,
+      "review_ids": [
+        "D022",
+        "D059",
+        "D093",
+        "D116"
+      ],
+      "document_ids": [
+        "4bd951ccf0fa2dc4a8e1bd2d720434a0c44dc1ef2f965b3b9d2298137f005c3a",
+        "ede0f8789ff7a220ccc8adacb701fa177d58ced333b95ce8faa114bc22ded3b4",
+        "b50cb6927e33e00e5e7655281a09200fa68839bdd6f8e2848752252de54a8c5b",
+        "8ac28b77d39ae02d4c66081e9eea654fcbdc75cf6faffd5d1b00c017ebbe0fe7"
+      ],
+      "action": "defer",
+      "proposed_runtime_kind": null,
+      "rationale": "Four working/discussion/academic papers need an explicit decision on report as a broader kind versus a new research-paper kind. Do not change exact reference agreement by silently collapsing labels.",
+      "runtime_evidence": []
+    },
+    {
+      "reference_kind": "resolution",
+      "count": 4,
+      "review_ids": [
+        "D124",
+        "D145",
+        "D150",
+        "D171"
+      ],
+      "document_ids": [
+        "07e978c1ecf71299855ae06ee2aae59025ce418d818df5f647bd4a36f6cea423",
+        "96f8d782c99785bcaad2c2efaa96d9b94e08095c280b9ace0fedde100e7beff1",
+        "cac96e8fcadfab277ce8728f10a6fcfd6309a15927179c40d4a42c20ca8397fd",
+        "d8302c2997c0cb04ddbc7d22406cabbc0182f4c0a29830a479341a72594311d7"
+      ],
+      "action": "defer",
+      "proposed_runtime_kind": null,
+      "rationale": "D124, D145, D150 and D171 are UN resolutions. Do not map to US legislative-text or internal committee-resolution. Retain issuing institution and legal form.",
+      "runtime_evidence": []
+    },
+    {
+      "reference_kind": "statement",
+      "count": 2,
+      "review_ids": [
+        "D106",
+        "D189"
+      ],
+      "document_ids": [
+        "05d06266cc488e4f3a94b5242181e47aa1a9edf853ae76b1ad3abb5feee5e91a",
+        "7e2b9f547c496ee8cea4f732b9134367c605990779c4fae20f7180f2aa07e4ff"
+      ],
+      "action": "reuse",
+      "proposed_runtime_kind": "statement",
+      "rationale": "Generic statements D106 and D189 are not congressional testimony. D106 is Ukrainian UN remarks; language and institution must not imply witness role.",
+      "runtime_evidence": [
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_vocabularies/document-categories/statement/category"
+        },
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_vocabularies/document-categories/preparedstatement/category"
+        }
+      ]
+    },
+    {
+      "reference_kind": "statutory-text",
+      "count": 1,
+      "review_ids": [
+        "D078"
+      ],
+      "document_ids": [
+        "c370ea8a5abca6be85162385926b52108aa35fab9e6be895eb1daa9d0639c987"
+      ],
+      "action": "defer",
+      "proposed_runtime_kind": null,
+      "rationale": "D078 is a US Code excerpt. Preserve the distinction from enacted public-law documents, bills and amendment proposals.",
+      "runtime_evidence": []
+    },
+    {
+      "reference_kind": "summary",
+      "count": 5,
+      "review_ids": [
+        "D039",
+        "D053",
+        "D102",
+        "D160",
+        "D164"
+      ],
+      "document_ids": [
+        "1b79e98d4ed5c631be74827774f9861ff379d15f07f8ab35db408142387d91d6",
+        "110227b73c1ac94c3f04e1dcdac99dcb8f4ae5d8d7a85a66f9dc112a42b6bc71",
+        "12a1d2342945235ded6dc90d1b7dbe526f9475e89d88b187b440eac80ea0e33d",
+        "5355310d52b9d7868989e40c393d4a02f9a20a84fc281983f71e6a21767953fc",
+        "417188f273af47777a30d2cb73f8517ac9afd32f8e19a0b23c3d24b83275e544"
+      ],
+      "action": "reuse",
+      "proposed_runtime_kind": "summary",
+      "rationale": "Summaries may describe bills, amendments, reports, hearings or budget proposals. D053 explanation is not amendment text; D160 hearing commentary is not a transcript.",
+      "runtime_evidence": [
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_vocabularies/document-categories/billsummary/category"
+        },
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_vocabularies/document-categories/billsummaries/category"
+        }
+      ]
+    },
+    {
+      "reference_kind": "transcript",
+      "count": 6,
+      "review_ids": [
+        "D017",
+        "D060",
+        "D067",
+        "D149",
+        "D163",
+        "D172"
+      ],
+      "document_ids": [
+        "2ab5e4206a90d225d8ccc3dd5e37f285447648a75398a90a1b43fa8c5f63bcb2",
+        "b83549560c669dfcbabfb7acddc0886e8e51173361f471db06f83cff9130cfc2",
+        "39b8d037a04368ec08dd62b32663f04b75b8bd047521fb9fb64cd5db07495d5f",
+        "8463f939962ca3057dcf640733d8fde2d26365aba132e2699f7a60686a00b908",
+        "ab3bf74bfdcc0fcb476fd0cc80570c2a6031974016cb3bfc293e6c50f13c7ef5",
+        "e77ca33d03699cb29951979404310b1ca3db8f84d6b76c911463cc424b01a56b"
+      ],
+      "action": "reuse",
+      "proposed_runtime_kind": "transcript",
+      "rationale": "Require recorded proceedings. Cover/contents pages may precede the text; D172 Senate caucus proceedings show why committee-only wording is incomplete. Keep raw transcript separate from published hearing.",
+      "runtime_evidence": [
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_rules/293/field_readings/document_abbreviation/category"
+        },
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_vocabularies/document-categories/transcript/category"
+        }
+      ]
+    },
+    {
+      "reference_kind": "witness-statement",
+      "count": 14,
+      "review_ids": [
+        "D004",
+        "D042",
+        "D047",
+        "D050",
+        "D052",
+        "D071",
+        "D084",
+        "D087",
+        "D113",
+        "D165",
+        "D173",
+        "D175",
+        "D192",
+        "D197"
+      ],
+      "document_ids": [
+        "d4045589d2642e0db58c7bf0d56f90fbc29be6cf3683cee36df8f78a02d6a970",
+        "186940dc2c813cd6bd50f4f86937c65dbd9a115ac9ce419ff15f755fba99f35f",
+        "438d2fe6e74dab2707ceca908fbfc96b4675205a1577b27dfc7c1c9dcabd6d19",
+        "787bf4ffd806573b2c59e425a65b8cdb6c243fdc049b344e794b828fcdd5bf6f",
+        "727b9acc49e7540423ccf10e1f33854a7044eb25c1afb01dff116ea056f30856",
+        "9f397269d30e068dd729bfe87bdf01e1ed773304195352878410cf742ccf3c8d",
+        "25db7a1e326ec63f5209c0ad40a6a7ea70d43dc42b352fed2706cd4d18b47711",
+        "c9d95859c8ff3b0b3da9ca1abbd06a40fa10b044b012abd2808c7e03f570cf80",
+        "ff319bd3fdb4701652990a7823d1d53e5305e107abd0bc0fdd6e6fd8e54812e5",
+        "e50a611de5c8d39da051e38b14df9ff9b1230966251ebda33729b0eae9ba5b80",
+        "e59438781c569dc36f9961eea85b651c6e77045a91f25cd483a771f8902ab125",
+        "1d25c701c2354930cda0d043a0317fad57ffefc90bdcd0bc1ec6b1e2be13795b",
+        "317107fe4ecb9b1bd1b50f81226bcacceb5a161707227715c04b071bea7f6676",
+        "314ed2cb5bc2d58469060f8b889c65a49a6e020be0c5c25e5c6252ae7b9f483c"
+      ],
+      "action": "reuse",
+      "proposed_runtime_kind": "witness-statement",
+      "rationale": "Require statement purpose and supported witness role in congressional proceedings. GAO testimony D084/D113 is not an analytical report; D173 is caucus testimony. Generic statement wording alone is insufficient.",
+      "runtime_evidence": [
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_vocabularies/document-context/wstate/category"
+        },
+        {
+          "path": "packages/house-naming/src/house_naming/data/guide.json",
+          "json_pointer": "/extraction_vocabularies/document-categories/witnessstatement/category"
+        }
+      ]
+    }
+  ]
+}

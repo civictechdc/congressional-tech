@@ -1,0 +1,108 @@
+Selected-group review admission on the complete catalog: self-review
+==================================================================
+Findings
+--------
+No blocking finding in admission, consumption or the binding comparison. This check
+qualifies the 86 reviewed groups against the complete saved pair; it does not
+classify the remaining catalog or establish review accuracy independently.
+The original raw baseline and the filename-normalized baseline are distinct.
+All 86 raw bindings correctly refuse application to normalized rows.
+
+Patch summary
+-------------
+This change records actual package execution and updates the integration plan.
+No package implementation or classification rule changes. The local diagnostic
+scripts are retained under output/filename-patterns-20261015/full-catalog-review-v3
+and hash-pinned by full_catalog_review_checkpoint_v1.json. Historical attempts v1
+and v2 remain intact: both stopped on relative/absolute path handling in the
+measurement wrapper before calling admission or creating a bundle. v3 uses the
+same repository-relative paths as the historical bindings without changing them.
+
+Function trace
+--------------
+Paths for package functions are congress_api/retention/; diagnostic functions are
+in the output directory above.
+
+Function | Location | Input -> output | Verified behavior
+admit phase | qualify.py:22-38 | pinned prior checkpoint, full pair, proposals and receipt -> bundle and measurement | Verifies both complete files, invokes maintained admission and compares every candidate value with the prior raw candidate, ignoring only null dictionary padding.
+write_candidates | document_review_catalog.py:39 | verified receipt/proposals and full pair -> separate versioned bundle | Rechecks receipt/member/body eligibility and all input hashes; never writes the baseline.
+validate_document_indexes | document_index.py:680 | complete source/document pair -> validation or error | Scans both ID columns through SQLite, checking unique identities, group references and preferred-source membership.
+selected_groups | document_review_catalog.py:24 | complete Parquet and selected group IDs -> all fields of selected rows | Scans all document IDs, expands matching row groups in batches of 32 and filters before Python conversion.
+consume phase | qualify.py:39-52 | admitted summary pin and same pair -> selection/withdrawal measurement | Loads the bundle, then reads selected groups again and checks selection plus exact baseline restoration for every group.
+load_bundle | document_review_bundle.py:24 | pinned bundle and full pair -> verified candidates | Checks complete baseline/evidence/output identity, pair references, coverage and candidate semantics; rechecks before return.
+select_document | document_review_bundle.py:12 | current complete group and optional map -> detached selection | Refuses changed scope or candidate semantics; omission returns the baseline.
+normalization audit | audit.py:23-53 | pinned normalized candidate/pair plus fresh raw bundle -> explicit comparison | Only filename claims and the two group-digest fields differ; rejects all raw candidates on normalized rows.
+read/frozen audit | audit.py:54-79 | full-pair ID columns and pinned frozen files -> diagnostic receipt | Counts matching row groups and verifies nine frozen sources, pilot, labels and original group CSV.
+
+Data flow and invariants
+------------------------
+H1: The larger input pair changes the reviewed candidates. Refuted: admission
+produces the same 86 candidate values as the earlier extracted raw subset. Whole
+file hashes remain equal to their historical pins before and after execution.
+The output is separate from both raw Parquet files. This proves preservation of
+excluded baseline bytes, not a semantic review of every excluded document.
+
+H2: Equal document IDs allow normalized candidates to transfer to raw rows.
+Refuted: every group digest changes with restored filename claims. The comparison
+pins both sets, records each digest pair and verifies all other candidate values
+match. Raw bindings fail against normalized rows; normalized selections succeed.
+The earlier normalized bundle and its evidence remain preserved.
+
+H3: Selecting only 286 sources guarantees negligible memory. Refined: all ID
+columns are validated, matching row groups are decoded, and the complete selected
+cohort remains resident. Sources require 59 of 1,641 row groups (60,416 physical
+rows); documents require 51 of 1,212 (52,224 physical rows). Full nested values
+are decoded for those groups before filtering. A batch size of 32 is not a hard
+memory limit and these measurements are not a capacity guarantee for a larger
+review cohort or for worst-case nested rows.
+
+Tests and verification
+----------------------
+This patch changes documentation and diagnostic evidence only. No unit suite was
+rerun. The previous 85-test result remains in bundle_consumption_checkpoint_v1.json;
+it is not presented as a new result. Existing tests were inspected:
+- test_document_review_catalog.py:47 checks complete/unsupported packets and
+  untouched inputs; :64 refuses twelve evidence failures before output;
+  :94 checks complete selected values and duplicate identity rejection.
+- test_document_review_bundle.py:19 checks selection, omission and detached values;
+  :36 covers fourteen tampering cases; :62 rejects changed current metadata;
+  :71 refuses an implicit transfer to another path; :78 checks mid-load changes.
+
+Actual admission, consumption and normalization-refusal checks provide the new
+execution evidence. This does not repeat the 530-page visual review. PDF parser
+warnings about pre-existing object offsets were retained in the admission log;
+receipt, body hash and page-count validation completed successfully.
+
+Measurements and limits
+-----------------------
+Admission took 71.155 seconds with peak process RSS 2,164,948,992 bytes
+(about 2.02 GiB). Consumption plus an additional selected-row read and
+per-group selection/withdrawal check took 80.203 seconds with peak process RSS
+1,444,708,352 bytes (about 1.35 GiB). These are single-run diagnostics,
+not a performance comparison. resource.getrusage reports bytes on this macOS host.
+Both phases return 81 candidates and five annotations across 86 groups / 286
+sources. All 86 withdrawal checks pass. The audit verifies 778 bound files,
+nine frozen source hashes, frozen pilot/labels and the original 58-row CSV.
+
+Public access was separately rechecked without credentials. The spicygov.ai Worker
+manifest and direct public R2 catalog manifest both returned HTTP 200 and selected
+the same catalog. public-access.json retains the exact responses and their hashes.
+No bucket setting, public selector or deployed viewer was changed.
+
+Next steps
+----------
+1. Specify a local representation for the five unsupported packets. Preserve
+   observed forms, primary/component roles, page sections and disclosure-support
+   context separately from approved selected kinds. Use the existing five reviews
+   and supported-packet controls; keep whole-packet annotation behavior until the
+   representation is implemented and checked. Avoid universal filename rules.
+2. Define portable references for review evidence and a consuming-process loading
+   lifecycle. Bind the source snapshot and review version explicitly, load once
+   per snapshot, surface refusal, and retain explicit withdrawal.
+3. Exercise the chosen representation through package admission and consumption,
+   then assess viewer integration. Independent reference review, held-out work,
+   full classification refresh and public release remain separate requirements.
+
+VERDICT: APPROVE for the recorded selected-group check against the complete saved
+pair. Coverage: ADEQUATE for this cohort and the stated preservation/refusal checks.
+Confidence: HIGH within that scope; no claim of general classification accuracy.

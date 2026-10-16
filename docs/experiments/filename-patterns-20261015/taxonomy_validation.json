@@ -1,0 +1,38 @@
+{
+  "status": "passed",
+  "checked_at": "2026-10-16T02:24:34.508899+00:00",
+  "proposal_sha256": "cde7255a004ab067a0e4c7b16da57c0585b558c4db705ab57d594d084207850b",
+  "plan_sha256": "9ea4fc9ea2bfa31240c2de0e8554a8c8c77f44c97d2c3d8650ff32ce41366f29",
+  "totals": {
+    "reference_kinds": 37,
+    "records": 140,
+    "by_action": {
+      "reuse": {
+        "reference_kinds": 19,
+        "records": 107
+      },
+      "propose_alias": {
+        "reference_kinds": 3,
+        "records": 3
+      },
+      "defer": {
+        "reference_kinds": 15,
+        "records": 30
+      }
+    }
+  },
+  "checks": [
+    "All 140 reference document IDs and review IDs match exactly once",
+    "All 37 reference kinds represented exactly once",
+    "Every mapped reference belongs to development",
+    "All counts and action totals agree",
+    "Every existing-kind evidence pointer resolves to its target category",
+    "All five proposal input hashes match",
+    "All nine frozen candidate source hashes match",
+    "Frozen reference-label hash unchanged",
+    "All 14 proposed experiment IDs belong to development"
+  ],
+  "runtime_modified": false,
+  "held_out_evaluated": false,
+  "independent_semantic_validation": false
+}

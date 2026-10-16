@@ -1,0 +1,154 @@
+{
+  "status": "historical-baseline-only",
+  "source_commit": "0e3241c",
+  "reconciliation": {
+    "sample_sha256": "55b3256dc0bfee57d90235b7d8d9b216060bc145d82926709a5b01beed619237",
+    "catalog_id": "7f0b0aa7b53e4205b050ac260d0bc6a7",
+    "catalog_root": "/Users/mikewolfd/Work/congressional-tech/.cache/filename-viewer-r2",
+    "publication_directory": null,
+    "documents_path": "/Users/mikewolfd/Work/congressional-tech/.cache/filename-viewer-r2/catalog-generations/ee9bbad71e4648ffbcacb63ccb8bebe2/documents.parquet",
+    "house_naming_version": "3.0.0",
+    "documents_sha256": "78b1db723cfc2ef3bd909be1de598a5ab397a9846399e57f355551dacf1105a4",
+    "paired_catalog_validated": true,
+    "publication": {
+      "verified": false,
+      "reason": "publication_receipt_and_selected_pair_required"
+    },
+    "held_out_review_unlocked": false,
+    "records": 400,
+    "splits": {
+      "development": 200,
+      "held-out": 200
+    },
+    "census_totals": {
+      "records": 1235122,
+      "unnamed_records": 107896,
+      "unclassified_records": 785924
+    },
+    "changes": {
+      "missing_document_id": 145,
+      "no_frozen_body_digest": 8
+    },
+    "catalog_eligible": 255,
+    "reference_available": 216,
+    "limit": "Retained digests describe catalog evidence, not object availability. Rehearsals never unlock held-out review.",
+    "eligibility_sha256": "b5b518cb237848b695ed1c3c896b6c9f3c7e3ad20d56d56ea9d0b78f9a54d009"
+  },
+  "full_pair_inputs": {
+    "filenames": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/filename-viewer-r2/catalog-generations/ee9bbad71e4648ffbcacb63ccb8bebe2/document-filenames.parquet",
+      "sha256": "4679d321f408f0d86049ff608d9f5e6522df1eafcead5a9abea584ce0a3eaafb",
+      "rows": 1672092
+    },
+    "documents": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/filename-viewer-r2/catalog-generations/ee9bbad71e4648ffbcacb63ccb8bebe2/documents.parquet",
+      "sha256": "78b1db723cfc2ef3bd909be1de598a5ab397a9846399e57f355551dacf1105a4",
+      "rows": 1235122
+    }
+  },
+  "unclassified_census": {
+    "groups": 711,
+    "by_field": {
+      "role": {
+        "document": 754339,
+        "error-response": 16722,
+        "source-record": 12390,
+        "capture-state": 2473
+      },
+      "format": {
+        "text/vtt": 453751,
+        "xml": 153625,
+        "": 85186,
+        "html": 57405,
+        "pdf": 22481,
+        "m3u8": 8192,
+        "application/x-mpegurl": 2591,
+        "html|pdf": 1517,
+        "json": 541,
+        "application/x-octet-stream": 396,
+        "aspx": 94,
+        "docx": 24,
+        "cfm": 23,
+        "doc": 18,
+        "zip": 17,
+        "video/x-ms-wvx": 16,
+        "jpeg": 7,
+        "xls": 7,
+        "pptx": 5,
+        "txt": 4,
+        "ppt": 4,
+        "mp4": 3,
+        "png": 3,
+        "video/x-ms-asf": 3,
+        "xlsx": 3,
+        "csv": 2,
+        "doc|html": 2,
+        "application/rss+xml": 1,
+        "doc|pdf": 1,
+        "html|zip": 1,
+        "html|xml": 1
+      },
+      "body_evidence": {
+        "retained_digest": 739003,
+        "no_retained_digest": 46921
+      }
+    },
+    "document_role_pdf_or_mixed_pdf": 23715
+  },
+  "pilot_by_split": {
+    "development": {
+      "records": 200,
+      "eligible": 132,
+      "reference_available": 107,
+      "missing_ids": 68
+    },
+    "held-out": {
+      "records": 200,
+      "eligible": 123,
+      "reference_available": 109,
+      "missing_ids": 77
+    }
+  },
+  "missing_id_diagnosis": {
+    "catalog_id": "7f0b0aa7b53e4205b050ac260d0bc6a7",
+    "documents_sha256": "78b1db723cfc2ef3bd909be1de598a5ab397a9846399e57f355551dacf1105a4",
+    "sample_sha256": "55b3256dc0bfee57d90235b7d8d9b216060bc145d82926709a5b01beed619237",
+    "scope": "historical-metadata-only",
+    "records": 145,
+    "counts": {
+      "no_nonempty_body_or_url_match": 79,
+      "url_match_without_frozen_nonempty_body": 66
+    },
+    "input_bytes_unchanged": true,
+    "body_content_read": false,
+    "labels_or_predictions_read": false,
+    "identity_remapping_applied": false,
+    "empty_body_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "ignored_empty_only_matches": 5034,
+    "raw_diagnosis_sha256": "6b442b832e18824b8266b78ad4fd4afcd959c2fff3e9fe6d54241cc243b5bf3f",
+    "limitation": "Exact empty-byte digests are not evidence of document identity. URL matches alone do not establish unchanged body content. No IDs or eligibility decisions are remapped."
+  },
+  "checks": {
+    "census_conserves_unclassified_total": true,
+    "all_400_frozen_ids_retained": true,
+    "diagnosis_covers_all_missing_ids": true,
+    "all_present_ids_have_unchanged_body_sets_roles_and_unclassified_state": true
+  },
+  "artifacts": {
+    "output/filename-patterns-20261015/reconciliation-full-historical-v1/summary.json": "efda6d89c45b97105af0e092862b1ee17787a38fb1a5e07398e04d0291b64419",
+    "output/filename-patterns-20261015/reconciliation-full-historical-v1/eligibility.json": "b5b518cb237848b695ed1c3c896b6c9f3c7e3ad20d56d56ea9d0b78f9a54d009",
+    "output/filename-patterns-20261015/reconciliation-full-historical-v1/eligibility.csv": "8c3f7b8e4def41fe9d5ff1584a853ab2b7397898338b27851ae4fb46d47c2186",
+    "output/filename-patterns-20261015/reconciliation-full-historical-v1/unclassified-census.csv": "3b665e0988efa76ec0d4a2916c8c884c4e1c5005ec6dbcb1fcc5f3be5bd44b56",
+    "output/filename-patterns-20261015/reconciliation-full-historical-v1/missing-id-diagnosis.json": "6b442b832e18824b8266b78ad4fd4afcd959c2fff3e9fe6d54241cc243b5bf3f",
+    "output/filename-patterns-20261015/reconciliation-full-historical-v1/missing-id-diagnosis-refined.json": "b9a865448d7f1782e56f4cec6fb6ad88dd0dfe86cc354587cb131313bb39c8c6",
+    "output/filename-patterns-20261015/catalog-replay-historical-v1/manifest.json": "95d0f904649fe11c3ef3e00e492709f81d161bc734e38f455e8a9cfeacba0d41"
+  },
+  "release_qualified": false,
+  "held_out_review_unlocked": false,
+  "committed_census": {
+    "path": "docs/experiments/filename-patterns-20261015/historical_unclassified_census.csv",
+    "sha256": "6bdedab6181629d86dca0046d82d93db8881e306d43d1210df4bc6b6a6914b4f",
+    "source_sha256": "3b665e0988efa76ec0d4a2916c8c884c4e1c5005ec6dbcb1fcc5f3be5bd44b56",
+    "transformation": "CRLF to LF only; parsed cells checked equal; original output bytes retained"
+  }
+}

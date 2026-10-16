@@ -282,11 +282,28 @@ retained page digest. `source_link_heading` preserves the publisher's words;
 from filename/link-word inference. `parsers.document_cover` recognizes numbered
 GPO hearings, stenographic transcripts, opening statements, explicit testimony,
 paper-hearing questions, and official bill/substitute covers from native text.
+It also recognizes House hearing publications with an explicit serial, chamber,
+committee, hearing heading and Government Publishing/Printing Office imprint;
+operative amendments with a drafting heading, target, sponsor and editing
+instruction; and committee roll-call sheets with vote columns and recorded
+marks. A House serial alone is not promoted to a GPO citation. Summaries,
+quoted forms, incomplete vote templates and ambiguous OCR remain unclassified
+by these rules. New body-reader code changes the evidence fingerprint; existing
+retained readings require explicit reprocessing, not merely a catalog rebuild.
 GPO covers must be on page one; a blank first page permits checking page two for
 proceedings. `content_document_kind`, `content_citation`, `content_congress`, and
 `content_amendment_type` retain supported meanings separately from filename
 fields. This check does not use OCR or classify attachments from a generic
 “Related Files” heading. Missing or unrecognized evidence leaves the kind empty.
+
+`filename_document_kind` retains the filename's original kind claims separately
+from the selected `document_kind`. An unambiguous retained `witness-statement`
+content reading refines generic `testimony`, while other independent filename
+kinds remain. `document_kind_source` records content and filename evidence when
+both contribute. Ambiguous or incompatible content does not replace filename
+kinds. Cache reuse, source refresh and regrouping restore the original filename
+claims before selecting again; clearing a retained witness reading therefore
+restores generic testimony without reparsing names or reading bodies.
 
 Witness-card ownership no longer requires its label to parse as one individual.
 The typed occurrence retains the raw `witness_card`; `source_participant_label`

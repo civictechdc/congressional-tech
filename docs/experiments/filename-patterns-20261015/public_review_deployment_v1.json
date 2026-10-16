@@ -1,0 +1,33 @@
+{
+  "status": "verified",
+  "code_commit": "0794510002fe59e4fa82dfa2b516670dad6a0ae3",
+  "workflow_run": 38959713308,
+  "url": "https://civictechdc.github.io/congressional-tech/filenames/",
+  "review_sha256": "c5e4c563c4b64c77d4798ad3e005830a107197b88551844b96c1df5e3c1d94c1",
+  "publication_sha256": "0c10756589f6cf2d22434bd571ebeec7d477e591f58225afa062d553f0725cfe",
+  "groups": 86,
+  "pages": 530,
+  "evidence_files": 671,
+  "evidence_bytes": 156283397,
+  "r2_pointer_unchanged": true,
+  "seconds": 20.26,
+  "workflow_url": "https://github.com/civictechdc/congressional-tech/actions/runs/38959713308",
+  "pipeline_revision": "082f289be698245dc1282d198b305eac9b332d60",
+  "deployed_from_branch": "codex/document-kind-publish",
+  "main_branch_unchanged": true,
+  "github_pages_total_bytes": 561104777,
+  "browser": {
+    "live_review_visible": true,
+    "withdrawal_restored_original": true,
+    "preview_restored": true,
+    "screenshot": "output/filename-patterns-20261015/review-publication-v1/deployed-review.png"
+  },
+  "evidence_sha256": {
+    "output/filename-patterns-20261015/review-publication-v1/deployment-readback.json": "387c73277678c4e8b2521a7051e78eb8fc493a641f659f32a096bd0955f189f7",
+    "output/filename-patterns-20261015/review-publication-v1/deployment-readback.log": "358949f4c434c6f7dbb9c07fa552006847518d9369157ad20cf85951c9d79505",
+    "output/filename-patterns-20261015/review-publication-v1/deployment-workflow.log": "f365d94ce897789c6b31e408ec8be8909a7effbe9e56d9dcbba21781cb15bea6",
+    "output/filename-patterns-20261015/review-publication-v1/release-readback.json": "8decf1b8095ae5758c566271eb6edc512c13d1af7c4dd8448cf519c95a465228",
+    "output/filename-patterns-20261015/review-publication-v1/deployed-review.png": "75ff44b450f3aab3a01c0dab4af1e503463b24bfb1880cf348bf5a3da0b2561d",
+    "output/filename-patterns-20261015/review-publication-v1/verify_deployment.py": "db25f8a414a9630b763240d2dc581ca0400b3ad534aee448d36eff54269bef5c"
+  }
+}

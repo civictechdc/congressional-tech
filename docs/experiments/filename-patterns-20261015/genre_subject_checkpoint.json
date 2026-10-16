@@ -1,0 +1,123 @@
+{
+  "scope": "Local historical cohort primary genre/topic repair; not full-catalog or release qualification",
+  "version": "3.2.4",
+  "replay_summary_path": "output/filename-patterns-20261015/genre-subject-replay-v1/summary.json",
+  "replay_summary_sha256": "19e2acc4a76d0974868ec14752a3aca19d3af465c4f88ab34c6da3e15e5e6c58",
+  "comparisons": {
+    "filenames": {
+      "before_rows": 7526,
+      "after_rows": 7526,
+      "missing_ids": 0,
+      "added_ids": 0,
+      "changes": {
+        "changed_prior_kind": 22,
+        "role_changed": 0,
+        "protected_evidence_changed": 0,
+        "document_id_changed": 0,
+        "representative_changed": 0,
+        "kind_source_changed": 0
+      },
+      "changes_sha256": "ddce8be66e9bc0db71a573f71513b127c3f26bc8f9dff1aba0d3f45be515605f",
+      "identities_roles_evidence_preserved": true,
+      "prior_kind_changes": 22
+    },
+    "documents": {
+      "before_rows": 1949,
+      "after_rows": 1949,
+      "missing_ids": 0,
+      "added_ids": 0,
+      "changes": {
+        "changed_prior_kind": 17,
+        "role_changed": 0,
+        "protected_evidence_changed": 0,
+        "document_id_changed": 0,
+        "representative_changed": 0,
+        "kind_source_changed": 0
+      },
+      "changes_sha256": "04ef50ca6d42736d2fc301783245b799896330f939974973787e180d2e37413e",
+      "identities_roles_evidence_preserved": true,
+      "prior_kind_changes": 17
+    }
+  },
+  "input_bytes_unchanged": true,
+  "invariants_preserved": true,
+  "elapsed_seconds": 222.02,
+  "replay_body_reinspection": false,
+  "publication_performed": false,
+  "release_qualified": false,
+  "reviewed_groupings": {
+    "scope": "Original 3.0.0 historical complete-group cohort compared with current 3.2.4 kinds; every changed document remains pending individual adjudication",
+    "groups": 60,
+    "records": 1903,
+    "cohort_groups": 1949,
+    "before_documents": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/prior-kind-current-input-v1/indexes/documents.parquet",
+      "sha256": "0461794398323eed38fb7ac29d82f15628ae7f15489efb6d05f25299e42012ca",
+      "rows": 1949
+    },
+    "after_documents": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/genre-subject-replay-v1/catalog/indexes/documents.parquet",
+      "sha256": "be1944fb360fafabd0c12107e54bce37d6bb4d7f8a29ed07045450f4b9867c1c",
+      "rows": 1949
+    },
+    "latest_replay_summary_sha256": "19e2acc4a76d0974868ec14752a3aca19d3af465c4f88ab34c6da3e15e5e6c58",
+    "groupings_sha256": "2b90ae8e0e31b06e8d738747d2a49d77033fb3aa561907d9309163c916643ee2",
+    "ledger_sha256": "8151b6ad313371218a7cc062cd10b45adfb4311b5a826983f9f43a8ef369e98c",
+    "samples_per_group": 3,
+    "sample_order": "document_id ascending, up to three; not a precision sample"
+  },
+  "validation": {
+    "initial_regressions_failed": 11,
+    "overbroad_prefix_controls_failed": 2,
+    "final_workflow_offline_passed": 5826,
+    "replay_tests_passed": 17,
+    "catalog_artifacts_verified": 3,
+    "frozen_source_hashes_verified": 9
+  },
+  "exact_archive_reads": {
+    "scope": "Four unresolved cases; no IDs or body keys overlap any frozen pilot record; existing archive objects only",
+    "results": [
+      {
+        "document_id": "b0079a064001403d81234bdd03272896c1258b2dc23042d812febdf8fb53ceef",
+        "filename": "Amendment-in-the-Nature-of-a-Substitute-to-VE-LEtter-FY2024.pdf",
+        "body_key": "bodies/sha256/a0/a0b6901c7b4f1465fed26073e2a285c1d94a253fa9dd08561873ad281b2ef024.gz",
+        "status": "error",
+        "error_type": "FileNotFoundError",
+        "error": "Cloudflare access expired or was denied. Refresh the Wrangler login, then retry."
+      },
+      {
+        "document_id": "89b57d0d414bb8ccc6d4347d38e87c835dbd556c2cc0d677cd59d792135195d1",
+        "filename": "hr_3476_graves_amendment_21_tp_ans_cbra_disclosure_notification.pdf",
+        "body_key": "bodies/sha256/7a/7a5ec4d70f8d55643e2979936a747d5684c4315c0d8bb610adcbcd78cb689013.gz",
+        "status": "error",
+        "error_type": "FileNotFoundError",
+        "error": "Cloudflare access expired or was denied. Refresh the Wrangler login, then retry."
+      },
+      {
+        "document_id": "76727488c1e72856ef7e3a8f08092dc893262e2906dc46d642b08bc147740885",
+        "filename": "Issa Amendment to PRA Statement_0.doc",
+        "body_key": "bodies/sha256/80/80c3fe2ae1062abf56456f52518bd670f9ec3917b7f85e152b347ac6b6faf880.gz",
+        "status": "error",
+        "error_type": "FileNotFoundError",
+        "error": "Cloudflare access expired or was denied. Refresh the Wrangler login, then retry."
+      },
+      {
+        "document_id": "822544469d14c05f89472609d6a14ad65f1d62dc49bcbf4a9eae1cd4e01d75b7",
+        "filename": "Swalwell- Representational Disclosures.pdf",
+        "body_key": "bodies/sha256/07/07ae5fe1ac1effa11687e5cc415fd099058a1034637103737e36d96b5b856ec7.gz",
+        "status": "error",
+        "error_type": "FileNotFoundError",
+        "error": "Cloudflare access expired or was denied. Refresh the Wrangler login, then retry."
+      }
+    ],
+    "body_bytes_read": false,
+    "publisher_visits": false,
+    "selection_sha256": "99336d48671e7b2e61b2a1f2dd8615bcea3c4e4f079a5cc8f535208273823373"
+  },
+  "evidence_logs": {
+    "genre-subject-red.log": "3a91e44929b5f7d472fb6ad1e457274501def6e05a90678605c8943ccca1c643",
+    "genre-subject-components-red.log": "0128203238b5215daadf5d049c67acf879823717257c2d01fe89bc1124c56211",
+    "genre-subject-offline-final.log": "25982ba417760182455e10aa05f2c93624820c5e4ba945eb97eba22c26d5f664",
+    "genre-subject-replay-tests.log": "9c7bc20676ead728d7a22c4759be42d08cc4d92233c1e7a5114b47a36e04d193"
+  }
+}

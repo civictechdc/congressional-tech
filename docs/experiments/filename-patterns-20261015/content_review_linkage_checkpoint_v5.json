@@ -1,0 +1,25 @@
+{
+  "summary_path": "output/filename-patterns-20261015/content-review-linkage-v5/summary.json",
+  "summary_sha256": "b469de9c1eadb89bc65e208efcd471ac71d7ef750e6cde60a53aa72f99f247ac",
+  "outputs": {
+    "ledger.jsonl": "9a32a8951dffc2ea6c327ca80241ff78765b827a5e67667eb3343d8abcf0363a",
+    "implementation.json": "9fff6fa66784eaaf2645827681c97c26c7dcf8786b237b24b6a17fff123f663f"
+  },
+  "receipt_path": "docs/experiments/filename-patterns-20261015/opening_memo_content_review_v2.json",
+  "receipt_sha256": "5abd43e57269103bafc9715dc883a42d351fdb05f4b06182fbd9e3f92386e19d",
+  "linked_documents": 66,
+  "reviewed_pages": 359,
+  "nonmatching_reviews": 0,
+  "metadata_needs_review": 91,
+  "metadata_needs_review_with_complete_assistant_review": 66,
+  "metadata_needs_review_without_linked_content_review": 25,
+  "verification": {
+    "all_original_fields_except_content_review_unchanged": true,
+    "all_bound_inputs_and_outputs_reverified": true,
+    "frozen_source_hashes_unchanged": 9,
+    "all_selected_groups_outside_400_pilot_ids_and_body_keys": true
+  },
+  "classification_mutations": false,
+  "independent_reference": false,
+  "release_approved": false
+}

@@ -1,0 +1,38 @@
+{
+  "scope": "Retained metadata eligibility and bounded local availability only; no body reads",
+  "readiness_path": "output/filename-patterns-20261015/remaining-content-readiness-v1/readiness.json",
+  "readiness_sha256": "113859c8c35a6fc502603261c39622ac7f1f77377529755d2950b1a38e8dc4f0",
+  "input_ledger": "output/filename-patterns-20261015/review-evidence-v3/ledger.jsonl",
+  "input_ledger_sha256": "d92184926b42812dff3c36f9442c032a0841ff8ecd3e679b40f6c477595d1438",
+  "pilot_sha256": "55b3256dc0bfee57d90235b7d8d9b216060bc145d82926709a5b01beed619237",
+  "checked_roots": [
+    "/Users/mikewolfd/Work/congressional-tech/.cache/congressional-tech-raw",
+    "/Users/mikewolfd/Work/congressional-tech/.cache/filename-viewer-r2"
+  ],
+  "groups": 109,
+  "eligible_body_counts": {
+    "1": 103,
+    "0": 6
+  },
+  "frozen_pilot_overlaps": 0,
+  "groups_with_local_candidate": 0,
+  "body_reads": false,
+  "network_reads": false,
+  "all_changed_groups_eligible_body_counts": {
+    "0": 82,
+    "1": 1821
+  },
+  "pending_filenames_read_in_full": 198,
+  "opening_memo_subset": {
+    "groups": 22,
+    "sources": 34,
+    "distinct_filenames": 31,
+    "extractions_reproduced": 34
+  },
+  "policy_files": {
+    "docs/experiments/filename-patterns-20261015/catalog_alias_review.py": "dd46f8122ee43b0eaf8a88af7b0f16e94f147dd1e0d862dcaec836554b27e69d",
+    "packages/congress_api/src/congress_api/retention/document_index.py": "ec575da15c10615bd983baf3566e7bf5c1e63c5311715b0ab9e5b22917cc2667"
+  },
+  "content_review": "not_performed",
+  "release_approved": false
+}

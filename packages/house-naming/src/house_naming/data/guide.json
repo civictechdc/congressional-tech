@@ -1,6 +1,6 @@
 {
   "id": "house-document-naming",
-  "catalog_version": "3.1.0",
+  "catalog_version": "3.2.7",
   "document": {
     "title": "Document Naming Conventions",
     "version": "1.2.1",
@@ -27272,7 +27272,7 @@
       "scope": "source-stem",
       "priority": 0,
       "scan_stage": "supplemental",
-      "pattern": "(?!(?:[a-f0-9]{64}\\.)?(?:HHRG|HMTG|HMKP|BILLS|CRPT)[ _-])(?!.*(?:whistle[\\s_.-]*blower|protected[\\s_.-]*disclosure|financial[\\s_.-]*disclosure|6103)).*?(?P<document_wording>disclosure|(?<![a-z])ttf(?![a-z])|truth[\\s_.-]+in[\\s_.-]+(?:testimony|testifying)).*",
+      "pattern": "(?!(?:[a-f0-9]{64}\\.)?(?:HHRG|HMTG|HMKP|BILLS|CRPT)[ _-])(?!.*(?:whistle[\\s_.-]*blower|protected[\\s_.-]*disclosure|financial[\\s_.-]*disclosure|representational[\\s_.-]+disclosures?(?![a-z])|cbra[\\s_.-]+disclosure[\\s_.-]+notification(?![a-z])|6103)).*?(?P<document_wording>disclosure(?:[\\s_.-]*(?:statement|stmt)(?![a-z]))?|(?<![a-z])ttf(?![a-z])|truth[\\s_.-]+in[\\s_.-]+(?:testimony|testifying)).*",
       "source_hosts": [
         "appropriations.house.gov",
         "democrats-edworkforce.house.gov",
@@ -27445,6 +27445,7 @@
         "naturalresources.house.gov",
         "oversight.house.gov",
         "oversightdemocrats.house.gov",
+        "republicans-naturalresources.house.gov",
         "republicans-science.house.gov",
         "science.house.gov",
         "smallbusiness.house.gov",
@@ -27483,6 +27484,26 @@
         "document_wording": {
           "category": "committee-vote",
           "note": "Publisher-qualified document-kind hint; original wording and span retained."
+        }
+      }
+    },
+    {
+      "id": "publisher-judiciary-amendment-text",
+      "scope": "source-stem",
+      "priority": 0,
+      "scan_stage": "supplemental",
+      "pattern": "(?P<document_wording>(?:\\d{8}[\\s_.-]+)?roll[\\s_.-]+call[\\s_.-]+(?:vote[\\s_.-]+)?\\d+[\\s_.-]*(?!(?:and|with)(?:[\\s_.-]|$))[a-z]+(?:[\\s_.-]+(?!(?:and|with)(?:[\\s_.-]|$))[a-z]+)*[\\s_.-]+(?:amdt|amendment)[\\s_.-]+\\d+[\\s_.-]+text)",
+      "source_hosts": [
+        "judiciary.house.gov"
+      ],
+      "source_extensions": [
+        "pdf"
+      ],
+      "description": "Complete Judiciary roll-call amendment TEXT layout. All 15 retained reviewed variants contain amendment text; handwritten vote outcomes do not make them member vote sheets. This filename rule performs no body verification.",
+      "field_readings": {
+        "document_wording": {
+          "category": "amendment",
+          "note": "Complete amendment-text variant label; nested vote wording remains literal evidence."
         }
       }
     },
@@ -27625,6 +27646,93 @@
         "document_wording": {
           "category": "testimony",
           "note": "Publisher-qualified document-kind hint; original wording and span retained."
+        }
+      }
+    },
+    {
+      "id": "publisher-public-law",
+      "scope": "source-stem",
+      "priority": 0,
+      "scan_stage": "supplemental",
+      "pattern": "(?P<collection_token>PLAW)-(?P<congress>[0-9]{3})(?P<law_type_token>publ)(?P<law_number>[1-9][0-9]*)",
+      "source_hosts": [
+        "govinfo.gov",
+        "www.govinfo.gov",
+        "gpo.gov",
+        "www.gpo.gov",
+        "congress.gov",
+        "www.congress.gov"
+      ],
+      "source_extensions": [
+        "pdf"
+      ],
+      "description": "Complete public-law package basename on the three reviewed federal publishers. Preserve literal Congress and law numbers. Excludes private laws, summaries, suffixes and non-PDF files.",
+      "field_readings": {
+        "law_type_token": {
+          "category": "public-law",
+          "note": "Public-law identifier in a complete publisher PDF basename; no current legal status or body verification is asserted."
+        }
+      }
+    },
+    {
+      "id": "publisher-house-reported-bill",
+      "scope": "source-stem",
+      "priority": 0,
+      "scan_stage": "supplemental",
+      "pattern": "(?P<measure_token>H)(?P<measure_number>[1-9][0-9]*)(?P<local_modifier>fs|nr|EW)?[_-](?P<version_token>RH)[_-](?P<filename_format_token>xml)",
+      "source_hosts": [
+        "docs.house.gov"
+      ],
+      "source_extensions": [
+        "pdf"
+      ],
+      "description": "Complete House short-measure/RH/xml PDF basename, including observed drafting-office modifiers. Shared readers preserve literal measure/version fields; no Congress or verified legislative status is inferred.",
+      "field_readings": {
+        "measure_token": {
+          "category": "legislative-text"
+        }
+      }
+    },
+    {
+      "id": "publisher-house-suspension-bill",
+      "scope": "source-stem",
+      "priority": 0,
+      "scan_stage": "supplemental",
+      "pattern": "(?P<measure_token>H)(?P<measure_number>[1-9][0-9]*)[_-](?P<suspension_wording>SUS)[_-](?P<filename_format_token>xml)",
+      "source_hosts": [
+        "docs.house.gov"
+      ],
+      "source_extensions": [
+        "pdf"
+      ],
+      "description": "Complete House short-measure/SUS/xml PDF basename, reviewed against suspension bill text. Does not assign enactment, passage, an official version or Congress.",
+      "field_readings": {
+        "measure_token": {
+          "category": "legislative-text"
+        },
+        "suspension_wording": {
+          "note": "Publisher suspension-text wording; not a verified procedural action or official version code."
+        }
+      }
+    },
+    {
+      "id": "publisher-financial-hearing-serial",
+      "scope": "source-stem",
+      "priority": 0,
+      "scan_stage": "supplemental",
+      "pattern": "(?P<serial_token>[0-9]{3}-[1-9][0-9]*)",
+      "source_hosts": [
+        "financialservices.house.gov",
+        "www.financialservices.house.gov"
+      ],
+      "source_extensions": [
+        "pdf"
+      ],
+      "description": "Complete numeric PDF basename on the Financial Services publisher, checked across retained hearing covers and Congress/path strata. Preserve its literal serial; do not repair digits or infer official publication identity.",
+      "field_readings": {
+        "serial_token": {
+          "category": "published-hearing",
+          "note": "Literal publisher serial-shaped filename, not a GPO publication number or verified Congress. The reviewed 103-3.pdf body prints serial 113-3."
         }
       }
     }

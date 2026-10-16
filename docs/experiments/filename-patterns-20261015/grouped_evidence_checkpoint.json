@@ -1,0 +1,51 @@
+{
+  "scope": "Every grouped document flagged for protected-evidence changes in the historical replay",
+  "changed_documents": 80527,
+  "only_derived_source_type_identifier": 80510,
+  "residual_documents": 17,
+  "residual_document_ids": [
+    "0179f6658634d0f8891a0dcd93143b38b573a252a7fe8d0d8813b9a602f4a6a7",
+    "2167a6dff75a324d90ca52d8f95b22ca874cb9dca878ef5419a1a9be31d8de06",
+    "55a421212e392c4ab64883423276be9a20d2baaf6ffbefa5a1c35d7dd587cffe",
+    "5f784c5b885e817564ba1263b4faa8a1523558a48a30d3015759c0464b0683c5",
+    "61a68c47d952aa988993d93cd65159b2392801c21509c68edfffcb62c6dd4b37",
+    "6e7294c03d1705119b168a792859b1794fc59626f2dfddd5b75d1f1d9a206662",
+    "91c4de4e8967294b82ad5327fb0959abbd3fa5ecdc299fd78af025cb0fcc1af2",
+    "978b12ac569287b498c9231c3408c4bb16ab4d46e79d8b362ea913177e522245",
+    "a95934b7b9c0952323b8195b1b94da71e19b9d670426eefcda8bc0b9178a9ee3",
+    "c10e58db690f32392ddbcd92a3bc77261faf00f6cbc752c6d807aef5e029f918",
+    "c44b45787bafed7418193d58941ab9ccb0dd39727725c9f4bcc6f8b55ed622ac",
+    "c6380d9fc50c8b008bb71aea3876ac04178d71a977c013cf5f673f718ff11c03",
+    "d622860dc6f62aee333fe2707cde0e69e338580b0f7487fa0e2a282a97ed10f2",
+    "f42d13cd7cd001ad0094f4fe69ba4d97ddbb55fd6f7a0f19842a734b9b2d161b",
+    "f4cd36234a96708200680bae98ae3538074740f7e6a44aa646c05816f567c174",
+    "f858a7f6c6106711b316e95df73742588376ba5532c9ef29120778d0722c6999",
+    "fb1acb116266690955c9a85d2952d9e520baa77295d3aa69fcad71dda5abc914"
+  ],
+  "residual_field_counts": {
+    "content_amendment_type": 17,
+    "content_xml_root": 17,
+    "content_legis_num": 17,
+    "content_amendment_degree": 17,
+    "body_format": 17,
+    "content_amendment_stage": 17,
+    "content_document_kind": 17
+  },
+  "input_csv_sha256": "5cd6055e0ec0db5a237de6953bf6f7759bda06a4de6fbe6c661a99b425c290f4",
+  "residuals_sha256": "befe0eb9b397117c69134c7644d39d300f8b3d2cd2cf81e98ef7932e1ee465d9",
+  "residual_ids_equal_repaired_xml_groups": true,
+  "diagnostic_script_sha256": "21de123cdfa898155e4a8b65344ccc921a7e42f58182337c1700daa2c53c47a8",
+  "input_catalogs": {
+    "filenames": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/filename-viewer-r2/catalog-generations/ee9bbad71e4648ffbcacb63ccb8bebe2/document-filenames.parquet",
+      "sha256": "4679d321f408f0d86049ff608d9f5e6522df1eafcead5a9abea584ce0a3eaafb",
+      "rows": 1672092
+    },
+    "documents": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/.cache/filename-viewer-r2/catalog-generations/ee9bbad71e4648ffbcacb63ccb8bebe2/documents.parquet",
+      "sha256": "78b1db723cfc2ef3bd909be1de598a5ab397a9846399e57f355551dacf1105a4",
+      "rows": 1235122
+    }
+  },
+  "note": "All fields other than derived source_record_type and source_record_identifier were compared exactly after existing null-padding normalization. The strict comparator and original failed replay are unchanged."
+}

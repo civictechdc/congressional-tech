@@ -1,0 +1,163 @@
+{
+  "records": 200,
+  "reference_verdicts": {
+    "not_reviewable": 60,
+    "classified": 140
+  },
+  "evidence_states": {
+    "unavailable": 59,
+    "review": 140,
+    "needs_visual_review": 1
+  },
+  "changed_prior_kinds": [],
+  "newly_assigned": [
+    "D008",
+    "D045",
+    "D062",
+    "D088",
+    "D099",
+    "D111",
+    "D126",
+    "D129",
+    "D141",
+    "D148",
+    "D154",
+    "D169",
+    "D194",
+    "D196"
+  ],
+  "human_validated": false,
+  "production_ocr": false,
+  "interval_note": "95% Wilson intervals describe scored assignments in this balanced sample, not population precision. Unscored assignments and missing bodies are reported separately. No interval alone approves a rule.",
+  "packet_id": "b5f0a5ab767e5d1faddeac683c945805e3d8d2f12c521dbef38a38d4018706f1",
+  "label_freeze_sha256": "bca58c8cd537e3fbe8e35efa5170af73b53fa2928badc729f407393a46a14b0e",
+  "candidate_freeze_sha256": "f17f4d3975015c7aab322f69b6dbc084e19f335e61a7ff95a5f7cba79a5a9bbe",
+  "environment": {
+    "python": "3.12.13",
+    "reader_versions": {
+      "pypdf": "6.19.0",
+      "pdfinfo": "pdfinfo version 26.06.0",
+      "pdftotext": "pdftotext version 26.06.0"
+    },
+    "reader_fingerprint": "24933e793d93a18332c80bce33a1538aed01228ea3a35d94cc27db34db458734",
+    "capture_metadata_sha256": "07d8a0af05cb90b46ca94c412e89cfc3fc4de5c05ffe8bc10051c4ff6e8ed6ca",
+    "evaluator_sha256": "b6c174bdf0985e5c3605e01df7a0f4e31bc244f428e7339ab59381d6755208b3",
+    "validation_sha256": "24b3593ebf34e960ab8a0d4a509537d40c02914e1692f5c99d2bb7b23a0c97c5"
+  },
+  "baseline_parser_sha256": "279a405517c914763f45e36a9fa20f124a8e2fe715def7bb2ceb2170ddc36a3d",
+  "readings_sha256": "992bdd085b6ea670d73b15be5ae4f3de80fc4618326c154c1191426525bfabf0",
+  "comparison_sha256": "6449cba46453565ac58873ee8931017bc49210325da7ff0bc8f17569b9463936",
+  "completed": true,
+  "scope": "development-only; not full-catalog or held-out qualification",
+  "metrics": {
+    "baseline": {
+      "attempted": 141,
+      "not_run": 59,
+      "assigned": 10,
+      "abstentions": 131,
+      "reader_errors": [],
+      "scored_assignments": 10,
+      "exact_agreements": 10,
+      "unscored_assignments": 0,
+      "disagreements": [],
+      "agreement_interval_95": [
+        0.7224672001371107,
+        0.9999999999999999
+      ]
+    },
+    "candidate": {
+      "attempted": 141,
+      "not_run": 59,
+      "assigned": 24,
+      "abstentions": 117,
+      "reader_errors": [],
+      "scored_assignments": 24,
+      "exact_agreements": 24,
+      "unscored_assignments": 0,
+      "disagreements": [],
+      "agreement_interval_95": [
+        0.8620237953250198,
+        1
+      ]
+    }
+  },
+  "assigned_kinds": {
+    "amendment": {
+      "reference_count": 11,
+      "assigned": 7,
+      "scored_assignments": 7,
+      "exact_agreements": 7,
+      "disagreements": 0,
+      "unscored_assignments": 0,
+      "agreement_interval_95": [
+        0.6456695649333126,
+        1
+      ]
+    },
+    "committee-resolution": {
+      "reference_count": 2,
+      "assigned": 1,
+      "scored_assignments": 1,
+      "exact_agreements": 1,
+      "disagreements": 0,
+      "unscored_assignments": 0,
+      "agreement_interval_95": [
+        0.20654931437723745,
+        1
+      ]
+    },
+    "committee-vote": {
+      "reference_count": 6,
+      "assigned": 4,
+      "scored_assignments": 4,
+      "exact_agreements": 4,
+      "disagreements": 0,
+      "unscored_assignments": 0,
+      "agreement_interval_95": [
+        0.5101091635454027,
+        1
+      ]
+    },
+    "legislative-text": {
+      "reference_count": 11,
+      "assigned": 6,
+      "scored_assignments": 6,
+      "exact_agreements": 6,
+      "disagreements": 0,
+      "unscored_assignments": 0,
+      "agreement_interval_95": [
+        0.6096657120978346,
+        1
+      ]
+    },
+    "published-hearing": {
+      "reference_count": 4,
+      "assigned": 4,
+      "scored_assignments": 4,
+      "exact_agreements": 4,
+      "disagreements": 0,
+      "unscored_assignments": 0,
+      "agreement_interval_95": [
+        0.5101091635454027,
+        1
+      ]
+    },
+    "transcript": {
+      "reference_count": 6,
+      "assigned": 2,
+      "scored_assignments": 2,
+      "exact_agreements": 2,
+      "disagreements": 0,
+      "unscored_assignments": 0,
+      "agreement_interval_95": [
+        0.34238022750665303,
+        1
+      ]
+    }
+  },
+  "validation": {
+    "focused_workflow_tests": 68,
+    "real_pdf_fixture_worker": true,
+    "held_out_evaluated": false
+  }
+}

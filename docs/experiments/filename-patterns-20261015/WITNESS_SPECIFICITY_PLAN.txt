@@ -1,0 +1,50 @@
+Preserve specific retained testimony classifications
+====================================================
+
+Current evidence
+----------------
+The full historical output contains 60 source rows across 38 groups with exact
+filename kind testimony and exact retained content kind witness-statement.
+Twenty-seven grouped documents select only testimony despite retaining the
+specific content kind. The remaining groups have other aliases/kinds and must
+be evaluated as complete groups. All 27 grouped filenames were read; no bodies
+or held-out references were opened. The source cohort remains at
+output/filename-patterns-20261015/witness-specificity-cohort.json.
+
+Policy and implementation work next
+----------------------------------
+Keep the original filename claim separately before selecting a more specific
+retained kind. A simple special case in _select_document_kind is insufficient:
+prepare_document_indexes and catalog_staging.normalize clear content-derived
+kinds before grouping, filename cache restoration omits derived kinds, and both
+groupers can overwrite the selected provenance with filename. Without retaining
+the original claim, a later corrected/cleared content reading could lose the
+valid generic filename fallback or misattribute the refined kind to a filename.
+
+Add the raw filename-kind reading to the indexed metadata, using the maintained
+extract/refresh/cache paths. Centralize restoration before grouping so disk and
+reference groupers use the same rule. Refine testimony to witness-statement only
+when the retained content reading establishes that specific kind. Keep other
+independent filename kinds and incompatible/ambiguous content evidence visible;
+do not broadly invert filename/content precedence or use broad family membership
+as proof of a specific subtype. The public filename-only package stays unchanged.
+
+Verification must include direct extraction, metadata-only replay, cache reuse,
+source refresh, regrouping, alias order, both grouping implementations and removal
+or correction of the retained content reading. In particular, removal must restore
+generic testimony without reacquiring bodies; provenance must name content only
+when it supplies the selected refinement. Include mixed-kind and incompatible
+content controls, and replay every complete group in the observed cohort.
+
+Retain input/output hashes, source fields, reader fingerprints and all source IDs.
+Bind all imported retention implementation files before the next full replay.
+No historical or subset run qualifies the publication or opens held-out evaluation.
+
+Implementation checkpoint
+-------------------------
+The shared restoration, separate filename claim, refinement and provenance work
+is implemented. REVIEW_WITNESS_SPECIFICITY.txt records the code trace and tests;
+witness_specificity_checkpoint.json binds the actual complete-group replay.
+The expanded scan finds 38 grouped cases when mixed filename kinds are included:
+27 content-derived refinements and 11 redundant generic kinds removed alongside
+an existing specific filename alias. The original plan above remains as rationale.

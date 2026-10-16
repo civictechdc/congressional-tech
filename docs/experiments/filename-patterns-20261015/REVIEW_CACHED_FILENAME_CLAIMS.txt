@@ -1,0 +1,62 @@
+Cached filename claims: scoped self-review
+=========================================
+Findings
+--------
+No blocking findings in the patch. The reproduced defect was a missing restored
+filename claim in reused payloads, despite restoration in their cache signatures.
+The new regression failed before the fix and passes after it. This is a self-review,
+not independent qualification or deployment evidence.
+
+Patch summary and trace
+-----------------------
+Paths below are relative to packages/congress_api/src/congress_api/retention/.
+
+Function | Location | Input -> output | Verified behavior
+write_document_indexes | document_index.py:626 | rows, prior pair -> pair/stats | Owns or accepts WorkingCatalog and delegates to disk grouping; closes owned state.
+write_grouped_indexes | catalog_staging.py:264 | complete rows, optional cache -> validated pair | Reuses only equal signatures and complete prior membership; otherwise combines.
+normalize | catalog_staging.py:301 | source row -> restored row | Calls existing role and filename restoration before deriving identity and signature.
+restore_filename_kind | document_index.py:119 | row -> row | Copies explicit filename claim, excludes source/content-derived fallback, clears selected provenance on the working copy.
+write_filename_metadata | document_index.py:2258,2494 | refresh inputs -> grouped pair | Passes prior pair and reuse_results through to write_document_indexes.
+
+Hypothesis: the prior payload and its comparison signature use different filename
+representations. Confirmed at catalog_staging.py:328-335: normalization previously
+changed only the row used for signature, leaving original unchanged. The patch
+copies only filename_document_kind back into original before serializing it.
+Selected document_kind, document_kind_source and document_family are preserved.
+
+At :535-550 the existing source-output pass accumulates the restored member claims
+for reused groups. The document is inserted after this pass (:551), so its claim
+is the sorted member union. The set is local to one group; no extra source scan or
+selection pass is added. Recomputed groups still call combine and fill_document_kind.
+Temporary outputs still undergo reference validation before replacing destinations.
+
+Data flow and invariants
+------------------------
+Signature and emitted source claim now come from the same restore operation.
+The cached selected kinds never become the basis for the document claim: only
+member filename claims contribute. Native content kinds therefore remain distinct.
+The change does not relax cache membership checks, source identity, or policy reuse.
+No schema change, new dependency or house_naming interpretation is introduced.
+
+Tests and edge cases
+-------------------
+tests/test_catalog_staging.py:119 combines a filename amendment with a content-only
+letter, removes legacy filename fields, then requires a reused group, restored
+amendment claim, no fabricated letter filename claim, unchanged selected kinds and
+provenance, and complete semantic equality with clean regrouping. It failed with
+None versus ['amendment'] before the fix and passes afterward.
+The policy test at :95 still preserves cached selections until an explicit rebuild.
+The merge/split test at :38 still agrees with clean replay and recomputes changed
+membership only. Reference parity at :68 includes failed shared-body evidence.
+The focused run also covers metadata fallback, candidate integrity and current
+replay: 111 tests passed in 11.16 seconds. Logs are retained in the v2 replay folder.
+
+Limits and conclusion
+---------------------
+Legacy rows can only restore claims supported by the existing restoration logic;
+the patch does not recover unknowable historical interpretations. Complete current
+cohort replay and binding consequences are recorded separately in
+REVIEW_CURRENT_REVIEW_PATHS.txt. No full-catalog execution or performance claim.
+
+VERDICT: APPROVE for cache representation consistency.
+Coverage of changed paths: ADEQUATE. Confidence: HIGH for this scope.

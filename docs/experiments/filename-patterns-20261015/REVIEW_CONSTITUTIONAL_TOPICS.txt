@@ -1,0 +1,63 @@
+Constitutional topic filename review
+====================================
+
+Result
+------
+house_naming 3.2.2 no longer treats an ordinal constitutional topic as an
+amendment document solely because a broad House-publisher rule matches the word
+amendment. Literal observations and offsets remain intact. Separately numbered
+amendments, explicit bill/rules targets and proposed/offered wording still count.
+The package, guide, schema and isolated replay version pin advance together.
+
+Evidence
+--------
+The original full replay added amendment to a bill titled Respecting the First
+Amendment on Campus Act. A scan of the complete 1,672,092-row source table for
+ordinal-amendment wording found four source rows in three complete groups. All
+four names were read in full. The final selector changes two names: the bill
+keeps legislative-text, and a Fourth Amendment correspondence-looking filename
+loses the unsupported amendment assignment. No alternative genre is guessed for
+that file. The uppercase bill alias and a Committee Rules 114th Amendment name
+keep their prior readings. This scan covers the documented separated ordinal
+spellings; it is not a content review or a claim about all possible title forms.
+
+The maintained writer replayed all four source rows in those three complete
+groups. It removes one amendment-only assignment and narrows one mixed assignment
+to legislative-text. All IDs, memberships, roles, representative aliases and
+protected source/body evidence remain unchanged. The input pair is unchanged.
+The original complete historical replay remains retained and unqualified.
+
+Implementation trace and review
+-------------------------------
+categories.py:19 defines bounded ordinal wording that can denote constitutional
+amendments. In document_category_fields (:108-120), only the broad publisher
+'document_wording' amendment claim is filtered. A numbered amendment_marker is
+independent evidence and survives. A following 'to' plus a parsed measure token,
+or Committee/House/Senate Rules, establishes an operative target. Immediate
+proposed/offered wording also survives. The selector leaves the original field,
+its raw spelling and offsets in observations. Other document categories and
+strict filename parsing are unchanged; no PDF reader is called.
+
+The precise field restriction prevents this topic filter from erasing explicit
+structured amendment identifiers. The ordinal range does not reinterpret the
+observed 114th Committee Rules heading as a constitutional reference. The shared
+selector continues to drive flat document kinds and subject trimming. Publisher
+host restrictions remain in the existing catalog rule, not duplicated here.
+
+Validation
+----------
+Five new topic cases failed before the repair; eight operative controls passed.
+After the repair, all 4,690 package and consumer checks pass, including built
+wheel/source-distribution checks and the 13 maintained replay tests. The catalog
+builder verifies all three generated JSON artifacts. The real three-group replay
+passes all preservation invariants. Every frozen PDF candidate source hash is
+unchanged. constitutional_topic_checkpoint.json binds source and artifact hashes.
+
+Limits
+------
+The retained body of the Fourth Amendment file has not been read here; its
+removal is an abstention from unsupported filename evidence, not a verified
+letter classification. Full qualification still requires the selected published
+catalog, changed-kind review, frozen reference evaluation and bounded body refresh.
+
+VERDICT: APPROVE the local topic/genre repair; no release qualification claimed.

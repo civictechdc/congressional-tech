@@ -1,0 +1,91 @@
+Retained content review readiness
+=================================
+
+Correction to the review plan
+-----------------------------
+Multiple retained body keys do not necessarily mean multiple usable documents.
+The current 3.2.5 ledger's 1,903 changed groups contain 1,821 groups with exactly
+one body key eligible under the maintained document-body policy and 82 with none.
+No group has more than one eligible key. Retain all capture histories, including
+the multiple_retained_bodies flags, but do not describe those flags as evidence
+of two distinct usable documents.
+
+Among the 109 pending groups, 103 have one eligible body key and six have none.
+All 15 explicit TEXT vote groups pair an eligible PDF/200 document capture with
+an HTML/404 error response. The 23 pending groups flagged with multiple retained
+bodies therefore need review of one eligible body each, not two document bodies.
+The six disclosure/biography groups with multiple retained keys likewise each
+have only one eligible key. This changes the content-review queue, not the
+filenames, classification claims or retained capture evidence.
+
+Two specific corrections
+-------------------------
+The HR1890 bill/vote group has one eligible PDF body shared by differently named
+bill and vote-sheet aliases. Its other key belongs to a 404 HTML response. The
+conflicting filename claims still need content review, but the metadata does not
+establish that the group contains two different usable bill/vote documents.
+
+Both Issa Amendment to PRA Statement DOC groups and
+170215EECOpeningStatement-PRESSVERSION.pdf share one HTML/404 response key:
+bodies/sha256/80/80c3fe2ae1062abf56456f52518bd670f9ec3917b7f85e152b347ac6b6faf880.gz
+It is not eligible document content. Restoring archive access to that object will
+not provide an eligible Issa document for adjudication. Keep the denied-read
+receipt, but remove that key from the document-content review queue. A different
+eligible retained capture or separately authorized recovery is required.
+
+The other no-eligible-body groups are the Error.aspx endpoint group and two
+Chairman-Gary-Palmer opening-statement groups. The latter share a 404 key across
+encoded and unencoded URL forms. These facts do not authorize regrouping IDs.
+Swalwell disclosures, Graves CBRA and the VE-letter substitute each still have
+an eligible PDF key. The public-route verification below now provides a path for
+their exact-body review without retrying the denied management API.
+
+Checks and limits
+------------------
+The readiness snapshot reuses catalog_alias_review.eligible_body, which delegates
+to the maintained document_index.document_body policy. It adds no new acceptance
+rules and reads no body bytes. It binds the current ledger and verifies the
+400-record pilot against the frozen sample hash before checking all pending
+document IDs and retained keys. There are zero pilot overlaps among these 109
+groups. No held-out content was inspected.
+
+Exact key-path checks found no eligible files in either checked local root:
+/Users/mikewolfd/Work/congressional-tech/.cache/congressional-tech-raw
+/Users/mikewolfd/Work/congressional-tech/.cache/filename-viewer-r2
+This is a bounded local availability check, not a claim that the remote objects
+are absent. No credentials were retried and no remote or publisher reads occurred.
+Eligibility is based on retained metadata and does not verify object bytes,
+digest agreement or actual PDF contents. Those checks are still required before
+content adjudication once access is available.
+
+All 198 distinct pending filenames were read. The opening-statement and field-
+hearing-memo subset contains 22 groups, 34 sources and 31 distinct names; every
+filename claim reproduces. The EBJOpeningStatementTable.pdf qualification and
+the failed opening-statement captures remain visible rather than being treated
+as proof of a complete statement. Further filename-only review can continue,
+but the current pending ledger has not been relabeled by this readiness audit.
+
+content_readiness_checkpoint.json binds the complete per-group readiness result.
+All 109 groups retain content_review=not_performed in that snapshot. Refresh it
+after the next ledger update before using it as an operational content-review queue.
+
+Subsequent public saved-copy verification
+---------------------------------------
+Inspection of apps/viewer-data/worker.mjs identified its documented /saved/
+digest/filename route for retained objects. A bounded GET through that public
+route returned the exact 31,487-byte Swalwell PDF. Its SHA-256 matches the stored
+body key. The full frozen pilot's IDs and keys were checked again before reading;
+there is no overlap. The denied management API was not retried and no publisher
+document was acquired. The public route serves the retained object itself.
+
+The one-page PDF has no extracted text. Rendering and visual inspection of its
+complete page show an amendment to H.R. 1422 offered by Mr. Swalwell. Disclosure
+is the subject of the proposed legislative language, not a witness disclosure
+form. swalwell_content_review.json records the exact PDF, rendered-page hash,
+observations and limits. No production kind or evaluation reference was changed.
+Inspect the Graves CBRA and VE-letter substitute cases next, then the 15 eligible
+TEXT vote PDFs, before implementing any further bounded filename correction.
+
+The public route permits retained-body review; it does not expose raw catalog
+indexes. Management API access remains a separate issue for obtaining the full
+fresh source/document pair. Independent references and release gates still apply.

@@ -1,0 +1,60 @@
+{
+  "summary_path": "output/filename-patterns-20261015/portable-review-v1/summary.json",
+  "summary_sha256": "03f99514766bd397a63cc913d409327ce1a6d01c30587fcec783659bea9b75e9",
+  "manifest_path": "output/filename-patterns-20261015/portable-review-v1/relocated/manifest.json",
+  "manifest_sha256": "c5e4c563c4b64c77d4798ad3e005830a107197b88551844b96c1df5e3c1d94c1",
+  "portable_version": 1,
+  "bundle_version": 2,
+  "reviewed_groups": 86,
+  "case_status": {
+    "candidate_applied": 81,
+    "annotation_only_unsupported_forms": 5
+  },
+  "relocated_candidates_identical": true,
+  "relocated_package_verified": true,
+  "original_path_attempts": 0,
+  "decoded_bodies_verified": 86,
+  "locators": 760,
+  "unique_objects": 728,
+  "object_bytes": 1270452098,
+  "tests_passed": 108,
+  "bound_files_verified": 761,
+  "portable_objects_verified": 728,
+  "complete_baseline_bytes_unchanged": true,
+  "frozen_sources_verified": 9,
+  "frozen_pilot_and_labels_unchanged": true,
+  "frozen_bindings": {
+    "packages/congress_api/src/congress_api/parsers/document_cover.py": "5bbeb02dce3e2957f1e6924e1772a34cc6afb7872de5bbc65cfc75cc8ed6eb06",
+    "docs/experiments/filename-patterns-20261015/content_rule_review.py": "e2992542a59ac07b370556b5a8509545162e9236dbf8fc535400a492ecf36dbc",
+    "tests/test_explicit_document_forms.py": "ce414dab035a4a345062f544560e9c01a9df87ed95f267c1de9b2c20ef40c7ba",
+    ".github/workflows/capture-raw-sources.yml": "cb4593613825dc629b64053651641f6dc050afdbc888fae1e434541722849e98",
+    "tests/fixtures/document-covers/development-forms.json": "ddf685a463df26462f564e15c628a985f83e5239b159d5f35a1821324b3a4b93",
+    "tests/fixtures/document-covers/explicit-forms-provenance.json": "777b276bf662ecc05df21e6c09bdc56125208cc47b45f1c47c0a62c4a7511835",
+    "tests/fixtures/document-covers/house-amendment.pdf": "83cc4bd6ef60b79fa7b976e136f804a7370d4b4e0eed7cf7e004d8c9f1d1f89f",
+    "tests/fixtures/document-covers/house-hearing.pdf": "057aff1efb9030af7a6c0207810e72f8a7810d776ddc1b12e0912d84fdb91178",
+    "tests/fixtures/document-covers/house-vote.pdf": "9141eb879cf13213a69e1aa47b021564f31fe8da83969bbf472be73ad61100c3",
+    "output/filename-patterns-20261015/continuation-v1/pilot.json": "55b3256dc0bfee57d90235b7d8d9b216060bc145d82926709a5b01beed619237",
+    "docs/experiments/filename-patterns-20261015/pilot_adjudications.json": "f943463bd36ea11ddf43f9550da3d8a6dbe8e25b0241fe65b9bf04528ee253c3"
+  },
+  "reader_policy": {
+    "document_review_portable.py": "0239c8c868c4543230fad5eb853667468fff477edc0183eb928267bb15bc6939",
+    "document_review_bundle.py": "93cf19486b8433398bcf2156d07a0b1473cdf4cf2d28add2eafb4f71d89f8e00"
+  },
+  "test_source_sha256": "4341b2502e67f9ea0782cc9606424729bbde80416f2f49a197030f6efed7bc22",
+  "review_path": "docs/experiments/filename-patterns-20261015/REVIEW_PORTABLE_EVIDENCE.txt",
+  "review_sha256": "20310128e5de0579d3af3aa47cb6b78465a0356c9d40533f5a820b9ff762c77c",
+  "evidence": {
+    "output/filename-patterns-20261015/portable-review-v1/summary.json": "03f99514766bd397a63cc913d409327ce1a6d01c30587fcec783659bea9b75e9",
+    "output/filename-patterns-20261015/portable-review-v1/run.py": "7453692ee616582097552be20c91f48466e6080d35e03f672735652560816cda",
+    "output/filename-patterns-20261015/portable-review-v1/run.log": "d44f23ccc531a91089b1a357118aa9fe51b34d27c4ff39f9453f32dff1909216",
+    "output/filename-patterns-20261015/portable-review-v1/consume.py": "331b8a041c853dcc6e820aec45c71a0f0fde4909734d2ddcdd10d5ca70d7faa3",
+    "output/filename-patterns-20261015/portable-review-v1/consume.log": "fb6f1495088da20837988738cec29e67119f2f64accf4c77729782f39e832e26",
+    "output/filename-patterns-20261015/portable-review-v1/tests.log": "0944cdde21a7842eb87a3e2130fdd5d2eb02ca96bdb8f448878c234f621d69ce",
+    "output/filename-patterns-20261015/portable-review-v1/blocked-paths.json": "7d66d9507b1ea17613bcbbe3674ec87becc44168f1066a035d2b5047e681afde",
+    "output/filename-patterns-20261015/portable-review-v1/relocated/manifest.json": "c5e4c563c4b64c77d4798ad3e005830a107197b88551844b96c1df5e3c1d94c1"
+  },
+  "production_selected": false,
+  "independent_reference": false,
+  "release_approved": false,
+  "publication": false
+}

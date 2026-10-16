@@ -1,0 +1,214 @@
+{
+  "scope": "Cached XML preservation repair; historical full replay remains unqualified",
+  "baseline_commit": "07d54030f8cbc5d68b76d329371f1b080afb91fe",
+  "evidence_module_sha256": "76f503874dfde72c5f813fc90cf4e756a8394a7b736c65f68579c260e5551a90",
+  "full_historical_replay": {
+    "input_catalog_id": "7f0b0aa7b53e4205b050ac260d0bc6a7",
+    "input_naming_version": "3.0.0",
+    "target_naming_version": "3.2.0",
+    "inputs": {
+      "filenames": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/filename-viewer-r2/catalog-generations/ee9bbad71e4648ffbcacb63ccb8bebe2/document-filenames.parquet",
+        "sha256": "4679d321f408f0d86049ff608d9f5e6522df1eafcead5a9abea584ce0a3eaafb",
+        "rows": 1672092
+      },
+      "documents": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/.cache/filename-viewer-r2/catalog-generations/ee9bbad71e4648ffbcacb63ccb8bebe2/documents.parquet",
+        "sha256": "78b1db723cfc2ef3bd909be1de598a5ab397a9846399e57f355551dacf1105a4",
+        "rows": 1235122
+      }
+    },
+    "publication": {
+      "verified": false,
+      "reason": "publication_receipt_and_selected_pair_required"
+    },
+    "rehearsal": true,
+    "filename_fingerprint": "61e3c9ee8e238acec91ab114d5f9f97b6297696c036e6ff919e69dc1e2e83344",
+    "index_source_sha256": "3364e21534c796f2f05f89eea2f4a4aa6ebe4599978e7a740b558966a3abea78",
+    "evaluator_sha256": "cf4a057e384583677e298242a2e8ed892db1a3e63620b8e121f8744a8b95524e",
+    "acquisition": false,
+    "body_reinspection": false,
+    "publication_performed": false,
+    "comparisons": {
+      "filenames": {
+        "before_rows": 1672092,
+        "after_rows": 1672092,
+        "missing_ids": 0,
+        "added_ids": 0,
+        "changes": {
+          "other_metadata": 81065,
+          "role_changed": 69830,
+          "protected_evidence_changed": 81008,
+          "document_id_changed": 0,
+          "representative_changed": 0,
+          "kind_source_changed": 17871,
+          "new_assignment": 17294,
+          "removed_assignment": 257,
+          "changed_prior_kind": 1090
+        },
+        "changes_sha256": "ad24dae0fd692bf57d1f7cc2b55ac8677f1d2d950ae15ac9bd251c5720c90712",
+        "identities_roles_evidence_preserved": false,
+        "prior_kind_changes": 1347
+      },
+      "documents": {
+        "before_rows": 1235122,
+        "after_rows": 1235122,
+        "missing_ids": 0,
+        "added_ids": 0,
+        "changes": {
+          "other_metadata": 80683,
+          "role_changed": 35373,
+          "protected_evidence_changed": 80527,
+          "document_id_changed": 0,
+          "representative_changed": 0,
+          "kind_source_changed": 7584,
+          "new_assignment": 7426,
+          "changed_prior_kind": 1863,
+          "removed_assignment": 1
+        },
+        "changes_sha256": "5cd6055e0ec0db5a237de6953bf6f7759bda06a4de6fbe6c661a99b425c290f4",
+        "identities_roles_evidence_preserved": false,
+        "prior_kind_changes": 1864
+      }
+    },
+    "build": {
+      "rows": 1672092,
+      "document_rows": 1235122,
+      "columns": 352,
+      "documents_output": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/catalog-replay-historical-v1/catalog/indexes/documents.parquet",
+      "documents_bytes": 504734658,
+      "reused_document_groups": 0,
+      "recomputed_document_groups": 1235122,
+      "distinct_bodies": 953958,
+      "distinct_filenames": 561603,
+      "rows_without_retained_body": 60551,
+      "parser_inputs": 1383756,
+      "parsed_inputs": 1383756,
+      "output": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/catalog-replay-historical-v1/catalog/indexes/document-filenames.parquet",
+      "output_bytes": 510023895,
+      "elapsed_seconds": 2467
+    },
+    "output_files": {
+      "filenames": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/catalog-replay-historical-v1/catalog/indexes/document-filenames.parquet",
+        "sha256": "f789ba21583534b8046cb06f01a1f2a13ff6aa386cdf7d3205460c99971af6be",
+        "rows": 1672092
+      },
+      "documents": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/catalog-replay-historical-v1/catalog/indexes/documents.parquet",
+        "sha256": "ec5c48c51086fa34dfff7e655bf28e92957cf9c79b3b3ae3d63f920bd15f3900",
+        "rows": 1235122
+      }
+    },
+    "input_bytes_unchanged": true,
+    "completed": true,
+    "elapsed_seconds": 3182.66,
+    "invariants_preserved": false,
+    "changed_prior_kinds_need_review": 3211,
+    "release_qualified": false,
+    "limitation": "Complete retained-pair filename replay only. Any identity/role/evidence change or prior-kind change needs review. Historical rehearsals do not qualify the new publication; no automatic release."
+  },
+  "affected_complete_group_replay": {
+    "input_catalog_id": "7f0b0aa7b53e4205b050ac260d0bc6a7",
+    "input_naming_version": "3.0.0",
+    "target_naming_version": "3.2.0",
+    "inputs": {
+      "filenames": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/xml-preservation-input-v1/indexes/document-filenames.parquet",
+        "sha256": "0979c99ca0599b99c090c4392a3675a89d9d91b6a606b3e3a7f8c8fe67a49ee2",
+        "rows": 34
+      },
+      "documents": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/xml-preservation-input-v1/indexes/documents.parquet",
+        "sha256": "7509ce551fbf6faf2272d73bd773302317ccf4775d0f7d878a2f83aa8c03365c",
+        "rows": 17
+      }
+    },
+    "publication": {
+      "verified": false,
+      "reason": "publication_receipt_and_selected_pair_required"
+    },
+    "rehearsal": true,
+    "filename_fingerprint": "61e3c9ee8e238acec91ab114d5f9f97b6297696c036e6ff919e69dc1e2e83344",
+    "index_source_sha256": "3364e21534c796f2f05f89eea2f4a4aa6ebe4599978e7a740b558966a3abea78",
+    "evaluator_sha256": "cf4a057e384583677e298242a2e8ed892db1a3e63620b8e121f8744a8b95524e",
+    "acquisition": false,
+    "body_reinspection": false,
+    "publication_performed": false,
+    "comparisons": {
+      "filenames": {
+        "before_rows": 34,
+        "after_rows": 34,
+        "missing_ids": 0,
+        "added_ids": 0,
+        "changes": {},
+        "changes_sha256": "fcc20403653bf39131f50310185fcd0f40151f291987474d147ea2a0ad5bf6cd",
+        "identities_roles_evidence_preserved": true,
+        "prior_kind_changes": 0
+      },
+      "documents": {
+        "before_rows": 17,
+        "after_rows": 17,
+        "missing_ids": 0,
+        "added_ids": 0,
+        "changes": {},
+        "changes_sha256": "fcc20403653bf39131f50310185fcd0f40151f291987474d147ea2a0ad5bf6cd",
+        "identities_roles_evidence_preserved": true,
+        "prior_kind_changes": 0
+      }
+    },
+    "build": {
+      "rows": 34,
+      "document_rows": 17,
+      "columns": 82,
+      "documents_output": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/xml-preservation-replay-v1/catalog/indexes/documents.parquet",
+      "documents_bytes": 81249,
+      "reused_document_groups": 0,
+      "recomputed_document_groups": 17,
+      "distinct_bodies": 17,
+      "distinct_filenames": 17,
+      "rows_without_retained_body": 0,
+      "parser_inputs": 34,
+      "parsed_inputs": 34,
+      "output": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/xml-preservation-replay-v1/catalog/indexes/document-filenames.parquet",
+      "output_bytes": 77446,
+      "elapsed_seconds": 1
+    },
+    "output_files": {
+      "filenames": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/xml-preservation-replay-v1/catalog/indexes/document-filenames.parquet",
+        "sha256": "b67c7a463484b19a63717a1401674111e82bdbac2f4b9a165ac54d39678e0720",
+        "rows": 34
+      },
+      "documents": {
+        "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/xml-preservation-replay-v1/catalog/indexes/documents.parquet",
+        "sha256": "5ed09b20fdefc455d88e7d68fcd53e41769cfcf62b80d98e1721ef5f3c12f7e9",
+        "rows": 17
+      }
+    },
+    "input_bytes_unchanged": true,
+    "completed": true,
+    "elapsed_seconds": 1.04,
+    "invariants_preserved": true,
+    "changed_prior_kinds_need_review": 0,
+    "release_qualified": false,
+    "limitation": "Complete retained-pair filename replay only. Any identity/role/evidence change or prior-kind change needs review. Historical rehearsals do not qualify the new publication; no automatic release."
+  },
+  "tests": "167 passed; two regression cases failed before the repair",
+  "frozen_candidate_sources_unchanged": true,
+  "artifacts": {
+    "output/filename-patterns-20261015/catalog-replay-historical-v1/summary.json": "bb3ad882151f8b542fc17e8e304cc5fdeedc95d1f5b8a5405b6fc6ec476d00ee",
+    "output/filename-patterns-20261015/catalog-replay-historical-v1/protected-source-change-diagnosis.json": "142f1ebc8ebf431be405137d1c6988a2d50e9c08b3c7f9efb0bf86e6f963833d",
+    "output/filename-patterns-20261015/catalog-replay-historical-v1/protected-source-residuals.json": "5cacd5e114839e8af29c3d0a062e5b5ea44bb50c6e8e5b82fe11955d02e54310",
+    "output/filename-patterns-20261015/catalog-replay-historical-v1/prior-kind-review.jsonl": "118a6260304aa49c880fa16f721345c58b722495a9029bf4a83a7ca759d4e9d6",
+    "output/filename-patterns-20261015/xml-preservation-input-v1/selection.json": "4999db3e589cbfb69f182eeadce69c73efaa63bfca237696cd19ffe639bc49a9",
+    "output/filename-patterns-20261015/xml-preservation-replay-v1/summary.json": "ce6535460a7c2ba65071bb7ba25a8310813e569e81fae52a4c8d9bb4795d8f41",
+    "output/filename-patterns-20261015/xml-preservation-red.log": "ccee040615194be5cbc91c65d591b195221651196246ac809d7712a895a0b50c",
+    "output/filename-patterns-20261015/xml-preservation-final.log": "9172d2ed3a7c26c41c59c12b25e9e102b7d789091f447f66980d7013899c7c7b"
+  },
+  "limitations": [
+    "Subset verification is not repaired full-catalog qualification.",
+    "The original replay manifest omits imported retention-module source hashes; this receipt binds the changed evidence module explicitly.",
+    "Grouped protected-field differences and changed prior classifications still require review."
+  ]
+}

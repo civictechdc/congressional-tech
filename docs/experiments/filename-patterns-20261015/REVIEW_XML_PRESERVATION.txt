@@ -1,0 +1,70 @@
+Cached XML preservation review
+==============================
+
+Result
+------
+The repair restores previously admitted XML body facts when a filename already
+supplies a document kind. It reuses the existing body cache and leaves the gate
+for inspecting uncached bytes unchanged. No blocking defect remains in this
+bounded repair. Full-catalog qualification and classification review remain open.
+
+Observed failure and cause
+--------------------------
+The completed historical replay preserved all 1,672,092 source IDs and 1,235,122
+document IDs and their memberships, but failed role/evidence checks. Among
+81,008 source rows with protected evidence changes, 80,974 differ only in derived
+source_record_type/identifier fields. The remaining 34 rows, representing 17
+complete document groups, lost seven cached XML fields, including amendment
+kind, root, stage, degree and legislative number. The failed outputs are retained.
+
+write_filename_metadata (document_index.py:2290-2338) restores prior admitted
+body readings into body_cache through body_evidence_key/cached_body_fields
+(document_evidence.py:54-79). Metadata refresh deliberately removes stale parsed
+fields from incoming rows, relying on this cache. enrich_sources previously
+looked up XML facts only for numeric or untyped XML names. BILLS/CPRT filenames
+already had kinds, so the cache was skipped and grouped output lost those facts.
+
+Changed behavior and checks
+---------------------------
+enrich_sources (document_evidence.py:322-333) now admits an existing XML cache
+entry before testing whether a fresh body inspection is appropriate. It restores
+only retained fields; the uncached path and read callback are unchanged. Earlier
+collector/marker handling and later capture-specific response checks still run.
+Empty cache entries do not trigger a read or resurrect cleared readings.
+
+The replay regression (test_catalog_filename_replay.py:78) exercises the real
+writer and comparison for both BILLS and CPRT filenames. It checks both output
+tables, all seven retained XML fields, unchanged kinds, no reads and the original
+reader fingerprint. Both cases failed before the repair and pass after it.
+The uncached typed-XML test (tests/test_document_evidence.py:104) rejects any body
+read. The existing cross-batch alias test (tests/test_catalog_staging.py:360)
+continues to pass. The old test at :383 explicitly expected cached facts to be
+absent; it now verifies restoration without the original qualifying alias and
+rejects rereading. This changes the erroneous cache-consumption expectation,
+not the cold-inspection policy.
+
+Evidence
+--------
+167 replay, body-evidence, metadata, capture, staging, kind-fallback and source-
+context tests pass. A local replay containing all 34 affected source rows and
+all 17 complete groups has zero differences, preserves input bytes and passes
+all invariants. It performs no acquisition, body reading or publication. Every
+source hash in the frozen PDF candidate still matches its freeze file.
+xml_preservation_checkpoint.json binds the full failed summary, subset summary,
+selection, diagnostic artifacts, logs and changed evidence-module source hash.
+
+Limits and remaining findings
+-----------------------------
+The repaired subset does not establish full-catalog correctness. The 80,527
+grouped protected-evidence changes still need a complete diagnosis; four inspected
+examples change only derived source type/identifier. The 1,864 changed prior
+kinds also need review. Examples show amendment targets becoming extra kinds in
+vote-record filenames, a First Amendment bill title acquiring amendment kind,
+and generic testimony replacing retained witness-statement. The error-page group
+losing its prior kinds is a justified role correction, not classification loss.
+
+The original replay manifest omitted imported retention-module source hashes.
+This checkpoint binds document_evidence.py explicitly; the next full replay must
+bind the broader implementation before it runs. Publication remains separate.
+
+VERDICT: APPROVE this local cached-XML repair; full replay remains unqualified.

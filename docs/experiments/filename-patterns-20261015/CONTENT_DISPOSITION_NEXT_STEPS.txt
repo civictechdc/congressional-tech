@@ -1,0 +1,455 @@
+Use retained content without erasing filename evidence
+=====================================================
+
+Result and recommendation
+-------------------------
+All 91 metadata needs_review cases now have a case-specific proposal in
+content_disposition_proposals_v1.csv and its detailed JSON counterpart. The
+85 reviewed bodies cover 527 retained pages: 55 single-form cases, 25 composite
+packets using existing labels, three funding tables with descriptive form labels,
+and two composites with descriptive component labels. Six cases have no eligible
+retained body and remain unresolved. These are assistant proposals, not independent
+reference labels or runtime classification changes. The complete CSV was reread.
+
+The JSON keeps original before/after kinds, literal source claims, exact original
+row and body identities, review receipts, page sections and source limitations.
+The CSV is a compact review view. Primary/component distinctions propose how to
+describe a packet; they are not an approved public schema. A primary list may
+contain several forms when no single form describes the packet.
+
+What belongs where
+------------------
+house_naming owns reusable filename interpretation. Its Engine reads filenames
+and publisher context offline; it does not inspect bodies. Keep improvements to
+literal phrase interpretation there when filename evidence supports them.
+
+congress_api.retention.document_index owns evidence selection. Its
+_select_document_kind currently prefers filename kinds except the narrow
+retained witness-statement refinement of generic testimony. Content otherwise
+fills a missing filename classification. A correct body observation therefore
+does not automatically correct a misleading filename classification.
+
+Do not teach house_naming that Bio, Wstate, Amendment or Disclosure filenames
+universally mean the forms found in this selected cohort. Nor should the current
+catalog start preferring every existing content_document_kind value: older cover
+readings do not establish complete packet contents. The frozen content reader
+and its evaluation population remain unchanged.
+
+Next implementation sequence
+----------------------------
+1. Trace the existing filename/content selection through source refresh, cached
+   extraction, both groupers and retained aliases. Use the prior witness-specificity
+   implementation and tests as the starting point, not a second selection system.
+   Record which reviewed cases already have usable native content readings and
+   which would require explicit full-packet evidence. Use saved data only.
+
+2. Build a local comparison for the 91 exact rows that reports current selected
+   kinds beside proposed forms, component forms and the reason for each conflict.
+   Do not equate missing content evidence with agreement, and do not apply a review
+   to another body at the same URL. Preserve six unavailable outcomes and both
+   distinct Palmer document IDs. Keep the original 1,902-row ledger immutable.
+
+3. From that comparison, implement the smallest supported selection change. Any
+   complete-body review input must be an explicit, separately attributed evidence
+   source with exact body and row identity; a filename rule or old cover reading
+   must not acquire that authority. Keep unsupported descriptive forms in review
+   annotations until their public representation is decided. Preserve all actual
+   packet components and the disclosure/attachment role independently.
+
+4. Verify mismatched body identity, changed rows, unavailable content, corrected or
+   withdrawn reviews, multiple body aliases, scan-only evidence and composite
+   packets. Test refresh, cache reuse and both groupers so derived classifications
+   never become filename claims. Replay the entire reviewed cohort plus unaffected
+   controls; stop promotion on unexplained changes. Do not use the locked pilot as
+   a tuning set or treat these assistant proposals as independent evaluation.
+
+5. Complete fresh raw-catalog qualification and independent reference review
+   separately. Local house_naming remains 3.2.7. These artifacts neither qualify
+   that release nor authorize publication.
+
+Useful controls already reviewed
+--------------------------------
+The 30 disclosure-only bodies contrast with 11 disclosure/biography packets and
+two biography-only bodies carrying disclosure filenames. The 12 vote bodies
+contrast with genuine substitute amendments containing a letter or proposed rules.
+The three funding tables are disclosure support without signed questionnaires.
+Nine memorandum packets contain witness lists; three do not. Two news releases
+reproduce opening statements, while seven opening statements do not establish a
+separate release form. The public-witness packet and Simmons packet require
+multiple forms and preserved page-level evidence.
+
+Verification completed for the proposals
+----------------------------------------
+Receipt chains, saved body/render hashes and original-row identities passed the
+existing validator. All 91 proposal IDs match the needs_review set exactly;
+85 have reviewed evidence and six have none. Proposed forms equal reviewed forms,
+without additions or omissions. JSON and CSV were read back; nine frozen source
+hashes and original ledger fields remain unchanged. No runtime code changed, so
+no new runtime test-suite result is claimed. See content_disposition_checkpoint_v1.json.
+
+Saved-catalog comparison completed
+---------------------------------
+content-disposition-comparison-v1 covers all 91 groups and 744 source rows.
+Eighteen reviewed groups have identical selected/reviewed label sets; 67 differ;
+six are not comparable because no body is available. The complete comparison
+CSV was read. Differences include specificity, role labels and omitted packet
+components and must not be counted indiscriminately as errors.
+
+Only one reviewed group has an existing retained content kind (opening-statement).
+The other 84 reviewed groups have none. A global change to filename/content
+precedence therefore cannot solve this queue. The existing native reading also
+already appears in its selected kinds, alongside a meeting-support alias.
+
+Steps 1 and 2 above now have a static implementation trace and a bound historical
+comparison. Full refresh/grouping execution for a changed selection policy is
+still outstanding. Next prototype an explicit, separately attributed complete-
+body review input for a local experiment, using the existing restoration and
+selection paths. Bind the review to exact bytes and original membership; preserve
+filename claims, existing cover readings and packet components separately. First
+exercise all 85 reviewed cases and the six unavailable controls without changing
+production defaults. Test withdrawal, correction and both grouping paths before
+considering promotion. Keep the five cases with descriptive labels explicit.
+
+Local selection replay completed
+--------------------------------
+packet-review-replay-v2 now exercises all seven grouping/cache/refresh scenarios
+over the saved 7,526-source / 1,949-group cohort. Eighty cases receive separate
+review candidates, five retain complete packet annotations and six remain
+unavailable. Sixty-two candidates change kind sets; 18 retain the same kinds
+with review provenance. All 1,858 other groups remain unchanged, and withdrawal
+restores the baseline in every scenario. See packet_review_checkpoint_v1.json
+and REVIEW_PACKET_REVIEW_CANDIDATE.txt. This is a local post-grouping experiment;
+production selection and house_naming remain unchanged.
+
+Next, reduce the harness's full-row memory expansion before full-catalog use.
+Preserve every non-null occurrence value and prove semantic equivalence on this
+same cohort. Then qualify a fresh raw catalog pair, replay the reviewed identities
+against it and report changed memberships as new review work. Production adoption
+still needs independent references, an explicit review-input boundary, context
+family provenance checks and a representation decision for descriptive forms.
+
+Public archive access rechecked
+------------------------------
+The user confirmed that the bucket is public. A new unauthenticated read of all
+four previously denied keys through the saved-copy Worker succeeded; each decoded
+SHA-256 matches its retained key. Three are PDFs. The Issa key is the 196-byte HTML
+404 response already recorded in capture metadata, not recovered document content.
+No credentials or bucket configuration changed. Public reads of these bodies are
+not blocked by management credentials. The repository's FILENAME-VIEWER.md also
+documents the direct public bucket URL:
+https://pub-1b36ca710ab14e7f8e65813c41761724.r2.dev/
+Its indexes/catalog.json read succeeds. congressional-data.spicygov.ai is the
+viewer Worker domain and selects the same catalog as that raw manifest. The
+saved-copy Worker itself excludes raw indexes.
+See public_archive_retry_checkpoint_v1.json. This does not change prior content
+reviews or the six unavailable cases.
+
+Fresh public raw pair obtained
+-----------------------------
+public-raw-catalog-v1 now retains the exact current raw pair, downloaded and
+hash-verified through the documented public endpoint. Reference-integrity checks
+passed for 1,680,227 sources and 1,240,374 groups. All known XML controls preserve
+their native facts. Metadata reconciliation retains all 400 frozen pilot records,
+with 391 eligible and nine explicit exceptions; held-out review remains locked.
+See public_raw_catalog_checkpoint_v1.json and REVIEW_PUBLIC_RAW_CATALOG.txt.
+Next compare the 91 reviewed cases against this newer pair before transferring
+any review. Preserve the historical prototype and its results as separate evidence.
+
+Fresh-catalog case reconciliation completed
+------------------------------------------
+review-catalog-reconciliation-v1 retains all 91 cases. All 85 reviewed bodies and
+their source identities still match. The current labels agree with 18 reviews
+and differ from 67; these differences retain the prior context/specificity limits.
+Ninety original group IDs remain; one Palmer source moved into a new group with
+a successful PDF capture alongside its old error. The other Palmer group remains
+distinct. The six historical unavailable outcomes are unchanged in that ledger.
+See REVIEW_CATALOG_RECONCILIATION.txt and review_catalog_reconciliation_checkpoint_v1.json.
+
+Review Palmer's newly available three-page body under its current group and body
+identity. Then extract complete current rows for the 85 matching reviews and the
+new Palmer group using bounded reads. Rebind only through a separately recorded
+current evidence step, never by weakening the historical row binding. Preserve
+the Error.aspx role/kind correction as a separate refresh check. The original
+400-record pilot and its held-out body-review restriction remain unchanged.
+
+New Palmer body reviewed
+------------------------
+palmer_current_content_review_v1.json now records all three pages of the current
+successful Palmer PDF. It is an opening statement dated November 14, 2017 for
+the joint-subcommittee Regulatory Reform Task Forces Check-in hearing. Page 3
+finishes the sentence begun on page 2; no separate packet form is visible. This
+agrees with the current selected kind. Complete receipt validation passes for
+86 distinct reviewed groups / 530 pages across the additive review chain.
+
+The new review binds current group 70e1b3f65c993898fa2a7145bd09ccb4a95a5d39e1e4ec632cf190e1f1917914
+and decoded PDF 551bae6183b996177ce2be6c5b7be07b916c6dcb7851aa0af419d7b8f3cf8b5f.
+Its diagnostic retains the old encoded-URL source and both capture outcomes.
+Neither historical Palmer ID was rewritten; the separate unencoded-URL source
+still has only an error response. Next prepare complete current rows for the
+85 matching reviews plus this new current group, with explicit fresh bindings
+and bounded memory, before applying local candidates to current-catalog copies.
+
+Complete current rows bound and local candidates evaluated
+---------------------------------------------------------
+current-review-candidates-v1 extracts all 286 source rows for the 86 reviewed
+current groups. Full schema and value readback passes, including nulls and nested
+source occurrences. Existing bind_review/apply_review produce 81 selected local
+candidates and five whole-packet annotations: 62 kind-set changes and 19 unchanged
+kind sets with review provenance. Withdrawal restores all current baselines.
+No old review identity, catalog file, production caller or public selection changed.
+
+The actual selected-cohort run took 33.616 seconds and peaked at about 1.24 GiB
+process RSS. It reads complete data from only the matching row groups and retains
+compact non-null Python values after exact Parquet readback. This is not a measured
+improvement over the different, larger seven-scenario historical replay.
+See current_review_candidates_checkpoint_v1.json and REVIEW_CURRENT_REVIEW_CANDIDATES.txt.
+
+Next run the current extracted groups through existing grouping, cache and refresh
+paths. Compare all fields, diagnose changes from local filename version 3.2.7,
+and explicitly reconsider changed bindings before selecting candidates again.
+Then assess the remaining full-catalog and production-adoption requirements.
+
+Current path comparison and cache correction completed
+------------------------------------------------------
+The first current replay found that recomputation restored filename_document_kind
+while metadata cache reuse retained null. The production cache writer now retains
+the same restored source claims and their group union without reselecting kinds.
+The regression failed before the fix; 111 relevant tests now pass. The v2 actual
+replay has identical source/document semantics across all six transformation paths.
+Only filename_document_kind changes from the saved baseline: 246 sources and all
+86 groups. No bodies, memberships, source text or selected kinds change.
+
+All 86 pre-normalization bindings correctly reject these changed rows. The replay
+summary therefore retains false unchanged-baseline/candidate gates; execution
+success is not binding qualification. See current_review_paths_checkpoint_v1.json,
+REVIEW_CACHED_FILENAME_CLAIMS.txt and REVIEW_CURRENT_REVIEW_PATHS.txt. Both diagnostic
+runs remain saved. The original complete CSV was reread in full after compaction.
+
+Next record the verified normalization as a separate evidence transition. Revalidate
+the complete receipt chain, bind reviews explicitly to the normalized baseline,
+and repeat all seven scenarios. Preserve the raw baseline, old bindings, five
+whole-packet annotations and six historical unavailable cases. Then address
+context-family provenance, independent references and full-catalog qualification
+before production adoption. The frozen pilot and held-out restriction remain intact.
+
+Normalized bindings now survive every selected-cohort path
+---------------------------------------------------------
+normalized-review-candidates-v1 records all 86 before/after group digests following
+strict filename-claim restoration checks. It revalidates the full receipt chain
+and keeps prior candidate content unchanged apart from the restored filename field
+and group digests. Both baseline Parquet files are exact copies of the bound
+normalized pair. The original raw baseline and prior bindings remain preserved.
+
+normalized-review-path-replay-v1 passes all seven scenarios with identical full
+row semantics, 81 selected candidates, five packet annotations and working
+withdrawal. The 70 relevant tests pass. See normalized_review_checkpoint_v1.json
+and REVIEW_NORMALIZED_REVIEW_CANDIDATES.txt. This closes the selected-cohort path
+check; it does not establish full-catalog or production adoption.
+
+Next audit family provenance in the local candidate. Determine whether subtracting
+families inferred from old kinds can erase independently supported publisher
+context. Use actual rows and targeted counterexamples before changing that logic.
+Then specify the explicit production review input and withdrawal behavior, resolve
+representation of the five unsupported packet forms, and qualify the wider catalog.
+Independent references and held-out/publication requirements remain separate gates.
+
+Context-family audit and correction completed
+---------------------------------------------
+The local candidate now preserves nomination-support when its paired publisher
+context independently supports the family, even if a review replaces the same
+broad selected kind. It calls the existing maintained predicate. A regression
+failed before the fix and passes afterward, with split/untrusted/absent controls.
+The relevant 84 tests pass; all seven scenarios still preserve the same 86 reviewed
+groups, 81 candidates and five annotations exactly.
+
+The saved public catalog has 1,016 groups carrying support labels, all backed by
+the current context predicate. Of these, 545 would lose independent support-family
+meaning under the former subtraction if a review replaced their broad kind. No
+new review or classification was applied to them. The 86 reviewed groups contain
+no such context. See family_context_checkpoint_v1.json and REVIEW_FAMILY_CONTEXT.txt.
+
+Next define the package-owned optional review input after grouping, including exact
+body/member bindings, separate attribution, refusal, withdrawal and unchanged
+default behavior. Keep lexical filename meaning in house_naming and retained
+evidence selection in congress_api. Resolve the five unsupported packet forms
+before activation, then qualify broader execution and independent references.
+
+Selection now belongs to the maintained package
+-----------------------------------------------
+congress_api.retention.document_reviews now owns review_group_digest and
+apply_review_candidate. The experiment imports those functions; its verified
+receipt compiler remains responsible for historical evidence admission. The
+selection and digest implementation is no longer duplicated in experiment code.
+docs/document-review-input.txt defines fields, caller verification duties, explicit
+statuses, baseline preservation and withdrawal. No catalog pipeline default changed.
+
+All 131 relevant tests pass. package-review-replay-v2 preserves the exact saved
+digests, all 86 candidate values and withdrawal across all seven scenarios without
+rebinding. See package_review_checkpoint_v1.json and REVIEW_PACKAGE_SELECTION.txt.
+
+Next implement package-owned receipt admission and an optional catalog invocation
+that writes candidates separately from baseline indexes. Validate the full evidence
+chain and exact eligible body/member identities before invoking the selector. Keep
+the ordinary no-review path unchanged. Then resolve unsupported packet representation
+and complete broader/independent qualification before production activation.
+
+Package admission and separate output now work end to end
+---------------------------------------------------------
+document_review_receipts validates and compiles the retained review chain;
+document_review_catalog exposes an explicit local command that writes only a new
+candidate bundle. Current candidate workflows use the maintained receipt reader.
+The historical reader remains byte-identical because earlier evidence binds it.
+Both readers produce exactly the same 86 reviews and 757 evidence bindings.
+
+The package command admits all 530 reviewed pages and produces the same 81
+candidates and five whole-packet annotations on the 286-source / 86-group input.
+All 112 relevant tests pass. Package-produced candidates survive all seven replay
+scenarios unchanged, with working withdrawal. Baseline files and public selectors
+remain unchanged. See package_admission_checkpoint_v1.json and
+REVIEW_PACKAGE_ADMISSION.txt. docs/document-review-input.txt documents the command.
+
+Next implement a pinned candidate-bundle reader: verify summary/output hashes,
+match the current baseline and validate each saved candidate against its compiled
+group binding. Refuse stale or altered data and withdraw by omitting the bundle.
+Then qualify broader catalog use and portable publication references. Descriptive
+packet forms, independent references and held-out/publication requirements remain
+open; local filesystem paths are not a publication-ready evidence representation.
+
+Pinned local bundle consumption is implemented
+----------------------------------------------
+document_review_bundle now verifies a pinned versioned summary, exact baseline
+paths/bytes, implementation, evidence and candidate output hashes. It re-evaluates
+each saved candidate against full current rows and checks again before return.
+select_document checks scope on each use; omission withdraws the candidate and
+restores the current baseline. Unversioned outputs are preserved and must be
+regenerated through admission. New summaries explicitly identify baseline roles.
+
+All 85 relevant tests pass. The regenerated versioned bundle's candidate bytes
+match the prior admission exactly. Actual consumption reproduces all 81 candidates
+and five annotations, verifies withdrawal across all 86 groups and rejects a stale
+source. See bundle_consumption_checkpoint_v1.json and REVIEW_BUNDLE_CONSUMPTION.txt.
+No viewer, automatic capture or publication selection changed.
+
+Next qualify selected-group admission and consumption against the complete saved
+catalog pair. Measure read behavior and process memory, verify excluded baseline
+bytes remain unchanged and record the exact binding transition from the normalized
+subset to the supplied pair. This is separate from full-catalog classification
+refresh, independent references, unsupported packet taxonomy and portable evidence.
+
+Selected-group admission and consumption pass on the complete saved pair
+-----------------------------------------------------------------------
+The maintained package now admits and consumes the same 86 reviewed groups directly
+from all 1,680,227 source rows and 1,240,374 document groups. It produces the same
+81 candidates and five annotations as the earlier raw subset, with working
+withdrawal and both complete baseline files unchanged. Admission took 71.155 seconds
+and peaked at about 2.02 GiB; consumption plus a repeated selected-row read and
+withdrawal checks took 80.203 seconds and peaked at about 1.35 GiB. These are single
+runs, not a benchmark or a full classification refresh.
+
+Complete selected-row reads use 59 source and 51 document row groups; full ID-column
+validation covers both files. All 86 raw bindings refuse normalized rows. The only
+candidate differences between those baselines are restored filename claims and
+group digests. The 778-file audit preserves frozen sources, pilot and labels.
+See full_catalog_review_checkpoint_v1.json and REVIEW_FULL_CATALOG_BUNDLE.txt.
+
+Next specify the five unsupported packets as retained observations with explicit
+primary/component forms and page evidence, separate from selected taxonomy kinds.
+Use the existing reviewed packets and supported controls; retain whole-packet
+annotation behavior until the representation is checked. Then define portable
+evidence references and loading once per snapshot before viewer integration.
+Independent references, held-out evaluation, full classification refresh and
+publication remain separate requirements. Public raw access is working; credentials
+are not required for known object paths on the recorded public R2 endpoint.
+
+Complete packet observations now survive package admission and consumption
+-------------------------------------------------------------------------
+Version 2 bundles carry the entire validated receipt record as body_observation.
+The reader requires exact equality with the bound receipt, including page sections,
+notes, source discrepancies and completeness observations. Primary/component roles
+remain distinct from baseline filename claims and selected kinds. Unsupported
+packets retain their complete annotation and unchanged baseline; no kind was added.
+Version 1 bundles remain preserved and require fresh admission to use the new reader.
+
+All 94 relevant tests pass. The complete-catalog run preserves all prior candidate
+fields for 86 groups / 530 pages, with 81 selections, five annotations and working
+withdrawal. The five unsupported packets retain all 223 pages and 44 sections.
+Both full baseline files and frozen evaluation inputs remain unchanged. See
+packet_observation_checkpoint_v1.json and REVIEW_PACKET_OBSERVATION.txt.
+
+Next make evidence references portable without rewriting source locator text or
+weakening exact-byte bindings. Define a local export/resolution format, validate
+relocation plus missing/altered evidence, and load once per catalog/review snapshot.
+Then integrate the verified packet description into the viewer. Independent
+reference review, held-out evaluation, classification refresh and public release
+remain separate requirements.
+
+Portable evidence export and relocated consumption are verified
+---------------------------------------------------------------
+document_review_portable copies every bound file into a content-addressed object
+store and maps original locator strings without rewriting receipt or candidate
+bytes. It verifies local admission before export, writes a completion manifest last
+and refuses existing/partial output directories. Portable loading uses the existing
+bundle verifier through a closed resolver; local loading retains strict path checks.
+Equivalent package installation paths are accepted only with identical module
+bytes, dependency versions and parser fingerprint. Missing, altered or escaping
+objects are refused; there is no original-path fallback.
+
+All 108 tests pass. The actual store has 760 locator entries / 728 objects. A copied
+installation in a different working directory reproduces all 86 candidates exactly,
+with zero attempted original evidence reads and all 86 decoded bodies verified.
+Full baselines and frozen evaluation files remain unchanged. See
+portable_review_checkpoint_v1.json and REVIEW_PORTABLE_EVIDENCE.txt.
+
+Next integrate this verified snapshot into the local viewer. Load once per pinned
+catalog/review pair, show assistant-reviewed forms and complete packet evidence,
+retain baseline classifications separately, surface stale/failed verification and
+support explicit withdrawal. Check supported, unsupported, unaffected and stale
+cases in the real UI before proposing public integration. Independent reference
+review, held-out work, classification refresh and publication remain separate.
+
+Local viewer preview is implemented
+-----------------------------------
+The optional local viewer now loads the pinned portable bundle once, verifies the
+current complete baseline pair and rechecks each reviewed group before selection.
+It displays original and preview categories separately, retains every packet note,
+primary/component form and page section, and offers verified PDF downloads, page
+images and saved text. Explicit withdrawal restores the original category within
+the panel. Unsupported packets stay whole annotations. Configured failures are
+visible rather than silently becoming unreviewed cases. Search and downloads still
+use the original catalog. See REVIEW_VIEWER_INTEGRATION.txt and the associated
+viewer_review_checkpoint_v1.json for checks and retained runtime evidence.
+
+Next steps, in order:
+1. Define and implement an explicit reviewed-category mode for local search and
+   filtering. Compare its complete result sets with the original mode, including
+   aliases, null-kind filters and all five unsupported packets. Keep original
+   downloads and classification provenance clearly identified; do not silently
+   change the default public catalog.
+2. Prepare a compact publication format for reviewed findings and evidence links,
+   bound to the exact published catalog. Reuse the maintained verifier on the
+   publishing side; browsers should not download the 1.27 GB portable store.
+   Prove stale-publication refusal, withdrawal and preserved packet details with
+   a local publication rehearsal before proposing any public deployment.
+3. Continue the separate qualification work: independent reference review and
+   frozen held-out evaluation, then a bounded classification refresh for qualified
+   rules. No new taxonomy kind or release approval follows from these 86 assistant
+   reviews alone. Keep the remaining unclassified-group census in that plan.
+
+2026-10-16 wrap-up: reviewed search and public publication
+-------------------------------------------------------
+Steps 1 and 2 above are implemented and tested. The user explicitly authorized
+public deployment. The new selector defaults to Original catalog, supports an
+explicit reviewed mode, and keeps all five unsupported packets as annotations.
+The compact public file binds the exact original pair and 86 reviewed groups;
+530 rendered pages and supporting PDFs/text remain inspectable.
+See REVIEW_PUBLIC_SEARCH.txt and public_review_checkpoint_v1.json.
+
+The next research step remains independent reference review and frozen held-out
+evaluation. Then assess remaining unclassified groups and qualify bounded rules.
+Do not treat the optional assistant-review publication as classifier approval.
+
+Deployment verified: commit 0794510, Pages run 38959713308. All 671 public
+evidence files passed full hash readback; the live browser showed reviewed
+categories and explicit withdrawal. The R2 pointer remained unchanged.
+This deploy used the pinned code revision from codex/document-kind-publish;
+main was not merged or changed. See public_review_deployment_v1.json.

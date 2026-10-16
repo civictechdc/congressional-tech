@@ -1,0 +1,129 @@
+{
+  "candidate": "explicit-content-forms-v3",
+  "frozen_at": "2026-10-16T01:23:41.539171+00:00",
+  "baseline_commit": "38f7557",
+  "candidate_committed": false,
+  "source_hashes": {
+    "packages/congress_api/src/congress_api/parsers/document_cover.py": "5bbeb02dce3e2957f1e6924e1772a34cc6afb7872de5bbc65cfc75cc8ed6eb06",
+    "docs/experiments/filename-patterns-20261015/content_rule_review.py": "e2992542a59ac07b370556b5a8509545162e9236dbf8fc535400a492ecf36dbc",
+    "tests/test_explicit_document_forms.py": "ce414dab035a4a345062f544560e9c01a9df87ed95f267c1de9b2c20ef40c7ba",
+    ".github/workflows/capture-raw-sources.yml": "cb4593613825dc629b64053651641f6dc050afdbc888fae1e434541722849e98",
+    "tests/fixtures/document-covers/development-forms.json": "ddf685a463df26462f564e15c628a985f83e5239b159d5f35a1821324b3a4b93",
+    "tests/fixtures/document-covers/explicit-forms-provenance.json": "777b276bf662ecc05df21e6c09bdc56125208cc47b45f1c47c0a62c4a7511835",
+    "tests/fixtures/document-covers/house-amendment.pdf": "83cc4bd6ef60b79fa7b976e136f804a7370d4b4e0eed7cf7e004d8c9f1d1f89f",
+    "tests/fixtures/document-covers/house-hearing.pdf": "057aff1efb9030af7a6c0207810e72f8a7810d776ddc1b12e0912d84fdb91178",
+    "tests/fixtures/document-covers/house-vote.pdf": "9141eb879cf13213a69e1aa47b021564f31fe8da83969bbf472be73ad61100c3"
+  },
+  "reader_versions": {
+    "pypdf": "6.19.0",
+    "pdfinfo": "pdfinfo version 26.06.0",
+    "pdftotext": "pdftotext version 26.06.0"
+  },
+  "sample_sha256": "55b3256dc0bfee57d90235b7d8d9b216060bc145d82926709a5b01beed619237",
+  "labels_sha256": "f943463bd36ea11ddf43f9550da3d8a6dbe8e25b0241fe65b9bf04528ee253c3",
+  "development_summary": {
+    "sample_sha256": "55b3256dc0bfee57d90235b7d8d9b216060bc145d82926709a5b01beed619237",
+    "labels_sha256": "f943463bd36ea11ddf43f9550da3d8a6dbe8e25b0241fe65b9bf04528ee253c3",
+    "baseline_parser_sha256": "279a405517c914763f45e36a9fa20f124a8e2fe715def7bb2ceb2170ddc36a3d",
+    "candidate_parser_sha256": "5bbeb02dce3e2957f1e6924e1772a34cc6afb7872de5bbc65cfc75cc8ed6eb06",
+    "evaluator_sha256": "e2992542a59ac07b370556b5a8509545162e9236dbf8fc535400a492ecf36dbc",
+    "scope": "development-only",
+    "production_ocr": false,
+    "fresh_catalog_reconciled": false,
+    "records": 140,
+    "metrics": {
+      "baseline": {
+        "assigned": 10,
+        "exact_agreements": 10,
+        "abstentions": 130,
+        "disagreements": [],
+        "errors": [],
+        "per_kind": {
+          "legislative-text": 6,
+          "published-hearing": 1,
+          "transcript": 2,
+          "committee-resolution": 1
+        }
+      },
+      "candidate": {
+        "assigned": 24,
+        "exact_agreements": 24,
+        "abstentions": 116,
+        "disagreements": [],
+        "errors": [],
+        "per_kind": {
+          "published-hearing": 4,
+          "legislative-text": 6,
+          "transcript": 2,
+          "amendment": 7,
+          "committee-resolution": 1,
+          "committee-vote": 4
+        }
+      },
+      "native_text": {
+        "assigned": 24,
+        "exact_agreements": 24,
+        "abstentions": 116,
+        "disagreements": [],
+        "errors": [],
+        "per_kind": {
+          "published-hearing": 4,
+          "legislative-text": 6,
+          "amendment": 8,
+          "committee-resolution": 1,
+          "committee-vote": 4,
+          "transcript": 1
+        }
+      },
+      "ocr_assisted": {
+        "assigned": 27,
+        "exact_agreements": 27,
+        "abstentions": 113,
+        "disagreements": [],
+        "errors": [],
+        "per_kind": {
+          "published-hearing": 4,
+          "legislative-text": 6,
+          "amendment": 10,
+          "committee-resolution": 1,
+          "committee-vote": 5,
+          "transcript": 1
+        }
+      }
+    },
+    "changed_prior_kinds": [],
+    "newly_assigned": [
+      "D008",
+      "D045",
+      "D062",
+      "D088",
+      "D099",
+      "D111",
+      "D126",
+      "D129",
+      "D141",
+      "D148",
+      "D154",
+      "D169",
+      "D194",
+      "D196"
+    ],
+    "reference_reviewer": "assistant",
+    "human_validated": false,
+    "readings_sha256": "75f7cda5b11dfd0e732ff3698f565ea850ed45aff1328a8baf570be97dc13e4a",
+    "limitations": "Development-only balanced sample. No held-out or full-catalog qualification. Existing retained body readings require explicit reprocessing; a rebuild alone does not refresh them."
+  },
+  "validation": {
+    "offline_tests_passed": 5742,
+    "focused_reader_tests_passed": 175,
+    "offline_log_sha256": "475d87dbeb4c2cee7ad6430f0a329a494f0faade87f4f24f378b44ba0e628ef9"
+  },
+  "held_out_evaluated": false,
+  "full_catalog_reconciled": false,
+  "publication_authorized_by_this_file": false,
+  "evaluation_policy": {
+    "reference_review": "Label held-out records without seeing predictions; preserve unavailable and changed-eligibility records.",
+    "comparison": "Run this exact candidate once after fresh-catalog reconciliation; do not tune on held-out outcomes.",
+    "release_gate": "Independent reference review; any false positive or unexplained prior-kind regression blocks the affected rule. Small per-kind counts require additional separate evidence before broad automatic promotion."
+  }
+}
