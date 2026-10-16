@@ -98,7 +98,9 @@ def test_missing_timestamp_is_unresolved_and_never_uses_now(fixture):
 
 def test_transport_time_is_explicit_and_evidence_is_pinned(fixture, tmp_path):
     batch,row,captures,seal,outputs = fixture
-    evidence = tmp_path/'receipt.json'; evidence.write_text(json.dumps({'record':{'retrieved_at':'2024-01-01T00:00:00Z'}}))
+    evidence = tmp_path/'receipt.json'; evidence.write_text(json.dumps({'record':{
+        'retrieved_at':'2024-01-01T00:00:00Z', 'final_url':row['recovered_url'],
+        'sha256':row['sha256'], 'bytes':row['bytes'], 'complete':True, 'status':200}}))
     row['request_evidence'] = str(evidence); seal()
     module.prepare(batch,captures); records,report = outputs()
     assert records[0]['record']['retrieved_at'] == '2024-01-01T00:00:00Z'
@@ -132,3 +134,75 @@ def test_changed_sealed_recovery_rows_are_refused(fixture):
     batch,row,captures,seal,outputs = fixture
     (batch/'recoveries.json').write_text('[]')
     with pytest.raises(ValueError,match='Sealed batch'): module.prepare(batch,captures)
+
+
+@pytest.mark.parametrize('change', [
+    {'final_url':'https://unrelated.test/body.pdf'}, {'sha256':'0'*64},
+    {'bytes':1}, {'bytes':True}, {'complete':False}, {'status':404},
+])
+def test_unrelated_or_incomplete_snapshot_cannot_supply_transport_time(fixture,tmp_path,change):
+    batch,row,captures,seal,outputs = fixture
+    record = dict(final_url=row['recovered_url'],sha256=row['sha256'],bytes=row['bytes'],
+                  retrieved_at='2024-01-01T00:00:00Z',complete=True,status=200)
+    record.update(change)
+    evidence = tmp_path/'receipt.json'; evidence.write_text(json.dumps({'record':record}))
+    row['request_evidence'] = str(evidence); seal()
+    with pytest.raises(ValueError,match='does not identify recovery URL and exact body'):
+        module.prepare(batch,captures)
+    assert not any((batch/name).exists() for name in module.OUTPUTS)
+
+
+def raw_receipt(row):
+    at = '2024-01-01T00:00:00Z'
+    return dict(record=dict(url=row['recovered_url'],retrieved_at=at,complete=True,http_status=200,
+                            content={'sha256':row['sha256']}),captures=[dict(
+        pointer=['content','body'],context_url=row['recovered_url'],body_key=row['body_key'],
+        sha256=row['sha256'],bytes=row['bytes'],retrieved_at=at)])
+
+
+def test_raw_archive_receipt_binds_content_sha_and_capture_size_time(fixture,tmp_path):
+    batch,row,captures,seal,outputs = fixture
+    evidence = tmp_path/'receipt.json'; evidence.write_text(json.dumps(raw_receipt(row)))
+    row['request_evidence'] = str(evidence); seal()
+    module.prepare(batch,captures); records,report = outputs()
+    assert records[0]['record']['retrieved_at'] == '2024-01-01T00:00:00Z'
+    assert report['input_hashes'][str(evidence.resolve())] == module.digest(evidence)
+
+
+@pytest.mark.parametrize('change', [
+    {'context_url':'https://unrelated.test/body.pdf'}, {'body_key':'wrong'},
+    {'sha256':'0'*64}, {'bytes':1}, {'retrieved_at':'2023-01-01T00:00:00Z'},
+])
+def test_raw_archive_capture_mismatch_cannot_supply_transport_time(fixture,tmp_path,change):
+    batch,row,captures,seal,outputs = fixture
+    receipt = raw_receipt(row); receipt['captures'][0].update(change)
+    evidence = tmp_path/'receipt.json'; evidence.write_text(json.dumps(receipt))
+    row['request_evidence'] = str(evidence); seal()
+    with pytest.raises(ValueError,match='Transport'):
+        module.prepare(batch,captures)
+    assert not any((batch/name).exists() for name in module.OUTPUTS)
+
+
+def test_rendered_transport_fallback_requires_rendered_receipt_provenance(fixture,tmp_path):
+    batch,row,captures,seal,outputs = fixture
+    row['rendered_copy'] = True
+    receipt = raw_receipt(row)
+    evidence = tmp_path/'receipt.json'; evidence.write_text(json.dumps(receipt))
+    row['request_evidence'] = str(evidence); seal()
+    with pytest.raises(ValueError,match='lacks rendered-copy provenance'):
+        module.prepare(batch,captures)
+    receipt['rendered_copy'] = True; evidence.write_text(json.dumps(receipt))
+    module.prepare(batch,captures); records,_ = outputs()
+    assert records[0]['record']['retrieved_at'] == '2024-01-01T00:00:00Z'
+    assert records[0]['record']['recovery_evidence']['timestamp_basis'] == 'rendered_transport_receipt_time'
+
+
+
+def test_missing_bound_receipt_timestamp_remains_unresolved(fixture,tmp_path):
+    batch,row,captures,seal,outputs = fixture
+    receipt = raw_receipt(row); receipt['record'].pop('retrieved_at')
+    evidence = tmp_path/'receipt.json'; evidence.write_text(json.dumps(receipt))
+    row['request_evidence'] = str(evidence); seal()
+    module.prepare(batch,captures); records,report = outputs()
+    assert records == []
+    assert report['unresolved'][0]['reason'] == 'source_timestamp_not_established'

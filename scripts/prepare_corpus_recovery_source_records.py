@@ -42,6 +42,38 @@ def instant(value):
     return parsed if parsed.tzinfo is not None else None
 
 
+def transport_time(row, receipt):
+    """Accept the time only from a receipt for this source URL and exact bytes."""
+    record = receipt.get('record', {})
+    expected = row['sha256'], row['bytes']
+    flat = (record.get('final_url') == row['recovered_url']
+            and type(record.get('bytes')) is int
+            and (record.get('sha256'), record['bytes']) == expected)
+    content = record.get('content', {})
+    captures = [cap for cap in receipt.get('captures', [])
+                if cap.get('pointer') == ['content', 'body']
+                and cap.get('context_url') == row['recovered_url']
+                and cap.get('body_key') == row['body_key']
+                and type(cap.get('bytes')) is int
+                and (cap.get('sha256'), cap['bytes']) == expected]
+    raw = (record.get('url') == row['recovered_url']
+           and content.get('sha256') == row['sha256'] and len(captures) == 1)
+    status = record.get('status') if flat else record.get('http_status')
+    if (not (flat or raw) or record.get('complete') is not True
+            or type(status) is not int or not 200 <= status < 300):
+        raise ValueError('Transport timestamp evidence does not identify recovery URL and exact body')
+    at = record.get('retrieved_at')
+    if instant(at) is None:
+        return None
+    if raw and (instant(captures[0].get('retrieved_at')) is None
+                or instant(captures[0]['retrieved_at']) != instant(at)):
+        raise ValueError('Transport capture and source receipt timestamps differ')
+    if row.get('rendered_copy') is True and not (record.get('rendered_copy') is True
+                                                or receipt.get('rendered_copy') is True):
+        raise ValueError('Rendered timestamp evidence lacks rendered-copy provenance')
+    return at
+
+
 def prepare(batch, captures, timestamp_aliases=None):
     batch, captures = Path(batch).resolve(), Path(captures).resolve()
     existing = [name for name in OUTPUTS if (batch/name).exists()]
@@ -97,7 +129,7 @@ def prepare(batch, captures, timestamp_aliases=None):
             # Rendering time and the original archive snapshot time describe
             # different bytes. Keep both without substituting the older time.
             at = (row['retrieved_at'] if instant(row.get('retrieved_at')) is not None
-                  else transport.get('record', {}).get('retrieved_at'))
+                  else transport_time(row, transport) if transport else None)
             basis = 'rendered_transport_receipt_time'
         elif stamp:
             try:
@@ -109,7 +141,7 @@ def prepare(batch, captures, timestamp_aliases=None):
             original = prior[(row['recovered_url'], row['body_key'])]
             at, basis = original['retrieved_at'], 'existing_official_package_and_exact_body_capture'
         elif transport:
-            at = transport.get('record', {}).get('retrieved_at')
+            at = transport_time(row, transport)
             basis = 'retained_transport_receipt_time'
         if instant(at) is None:
             unresolved.append(dict(original_url=row['original_url'], reason='source_timestamp_not_established'))
