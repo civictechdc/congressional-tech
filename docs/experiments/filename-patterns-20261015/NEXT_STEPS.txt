@@ -324,3 +324,27 @@ hosts. The complete-cohort replay preserves all comparison invariants. All 5,849
 offline checks and 62 experiment checks pass. See REVIEW_HISTORICAL_VOTE_HOST.txt
 and historical_vote_host_checkpoint.json. Refresh the current ledger against this
 replay before reporting new review counts. No content was read or approved.
+
+Content readiness and verified public access
+--------------------------------------------
+All 198 pending filenames were read. The retained metadata changes the planned
+body review: 103 of the 109 pending groups have one eligible key and six have
+none. All 15 TEXT groups pair a PDF/200 capture with HTML/404; there are no pending
+groups with multiple eligible bodies. The Issa PRA key is only a shared 404 HTML
+response, so do not retry it as document content. Retain all failed captures and
+the earlier access-denial evidence. See REVIEW_CONTENT_READINESS.txt and
+content_readiness_checkpoint.json for the bound snapshot and limitations.
+
+The viewer gateway's documented public saved-copy route returned the exact
+Swalwell PDF with a matching digest. The complete page was visually inspected;
+swalwell_content_review.json records that disclosure is an amendment subject.
+This opens a usable retained-body read path without retrying denied credentials.
+Next inspect Graves CBRA, the VE-letter substitute and the 15 eligible TEXT PDFs.
+Recheck frozen-pilot exclusions and exact hashes for every selected body. No new
+publisher acquisition or held-out content inspection is authorized by this step.
+
+Rebuild run 38823678887 completed successfully on the exact 3.1.0 publication
+head. Its summary confirms completed catalog 335a30af8ecb472094f073ff09c4352b and
+no acquisition. The downstream viewer publisher run 38855840917 is active;
+the readback verifier waits for that exact catalog. Do not treat workflow success
+alone as a verified public selector, and do not dispatch another publication.
