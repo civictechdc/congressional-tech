@@ -1,0 +1,26 @@
+{
+  "at": "2026-10-16T04:13:05.010181+00:00",
+  "status": "planned_not_dispatched",
+  "unique_urls": 5385,
+  "classes": {
+    "hearing_transcript": 291,
+    "witness_testimony": 3356,
+    "other_html": 200,
+    "opening_statement": 891,
+    "record_submission": 646
+  },
+  "url_variant_groups": 5383,
+  "explicit_error_routes_excluded": [
+    "https://democrats-naturalresources.house.gov/404"
+  ],
+  "archive_digest_groups": 5820,
+  "queue_path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/html-recovery-followup-queue.json",
+  "queue_sha256": "0056ed0c8ec5b7668d0fc80763342804f97c77aee07cd48eafd9a68b3910c3d4",
+  "next_steps": [
+    "Wait for active 17-link PDF worker to exit; do not overlap NARA workers",
+    "Probe original archived HTML and determine whether replay rewriting alters archive digest",
+    "Require substantial testimony/transcript content, reject challenge/error pages, retain transport and source identity",
+    "Reuse exact validated bytes across URL variants; publish qualified documents as HTML"
+  ],
+  "limitation": "URL shape is prioritization evidence, not proof of recovered content. No HTML URLs newly marked recovered."
+}
