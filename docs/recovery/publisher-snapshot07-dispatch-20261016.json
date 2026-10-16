@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-16T07:07:50.839482+00:00",
+  "pid": 25417,
+  "exec_session": 88737,
+  "process_evidence": "",
+  "script_sha256": "74d33710ca326964abed3ee8c837e7278bb5f4fef151b18eba4845e624123cac",
+  "output": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/publisher-snapshot-07",
+  "new_pdf_results_to_check": 253,
+  "free_disk_bytes": 66283814912,
+  "minimum_free_bytes_before_each_render": 21474836480,
+  "source_requests": 0,
+  "publication_started": false,
+  "next_steps": [
+    "Wait for actual validator exit and inspect completion.",
+    "Recheck all qualified file hashes and exclusions before updating the recovery tally.",
+    "Reassess publication storage and current remote baseline before a fresh dispatch."
+  ]
+}
