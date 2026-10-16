@@ -96,7 +96,7 @@ def run(args):
         account = config['congressionalraw']
         client = boto3.client('s3', endpoint_url=account['endpoint'], region_name='auto',
             aws_access_key_id=account['access_key_id'], aws_secret_access_key=account['secret_access_key'],
-            config=Config(connect_timeout=15, read_timeout=180, retries={'total_max_attempts': 1},
+            config=Config(connect_timeout=args.connect_timeout, read_timeout=180, retries={'total_max_attempts': 1},
                           request_checksum_calculation='when_required', response_checksum_validation='when_required'))
         store = R2Store(client, 'congressional-tech-raw')
         baseline = {}
@@ -155,5 +155,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch', type=Path, required=True)
     parser.add_argument('--destination', type=Path, required=True)
     parser.add_argument('--config', type=Path, default=ROOT / '.cache/r2-admin/rclone.conf')
+    parser.add_argument('--connect-timeout', type=int, choices=range(15, 181), default=15,
+                        help='Socket connection/write timeout for retained body uploads (seconds).')
     parser.add_argument('--execute', action='store_true')
     print(json.dumps(run(parser.parse_args()), indent=2))
