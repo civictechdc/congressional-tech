@@ -110,7 +110,8 @@ def test_other_viewer_publisher_wins_without_being_overwritten(prepared, monkeyp
 def test_unchanged_catalog_does_not_download_repack_or_write(prepared):
     store = Store(prepared[1])
     store.data['viewer-publications/manifest.json'] = publication.encoded({
-        'publisher_version': publication.PUBLISHER_VERSION, 'source_manifest': prepared[1]['source_manifest']})
+        'publisher_version': publication.PUBLISHER_VERSION, 'catalog_id': prepared[1]['source_manifest']['catalog_id'],
+        'source_manifest': prepared[1]['source_manifest']})
     assert publication.run(store)['status'] == 'unchanged'
     assert store.writes == []
 
