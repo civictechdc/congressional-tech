@@ -537,3 +537,12 @@ the other reviews as outside the current ledger, not as pending current cases.
 Preserve all legacy receipts. Swalwell uses a different artifact naming/schema;
 it has no current row to resolve. This inventory supersedes an assumption that
 all 18 older reviews would reduce the 42 remaining unlinked current cases.
+
+Legacy review normalization completed
+------------------------------------
+Normalized the VE-letter receipt explicitly and reused the unchanged strict
+linker. The full v3 row equals v4, all original observations and page-render
+bindings are preserved, and all four pages were re-inspected. The v3 linkage
+now contains 50 documents / 295 pages with no mismatches. The 17 other legacy
+IDs remain documented outside the current ledger. No validator relaxation or
+runtime change was needed. The current queue has 41 cases without linked review.

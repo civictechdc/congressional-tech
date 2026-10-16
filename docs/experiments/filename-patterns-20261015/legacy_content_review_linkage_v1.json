@@ -1,0 +1,166 @@
+{
+  "scope": "Normalize the one legacy reviewed document still present in the current ledger",
+  "previous_review": "docs/experiments/filename-patterns-20261015/ways_means_vote_content_review_v1.json",
+  "previous_review_sha256": "b3fd009ee5d2c37b7970fd95f658d3cf833f6cc1a5e038bd6750432e72ccaad3",
+  "input_ledger": "output/filename-patterns-20261015/review-evidence-v3/ledger.jsonl",
+  "input_ledger_sha256": "d92184926b42812dff3c36f9442c032a0841ff8ecd3e679b40f6c477595d1438",
+  "fetch_results_path": "output/filename-patterns-20261015/public-retained-review-v2/results.json",
+  "fetch_results_sha256": "21f779716de03d86b9b613b2e5f9981033cf896f9c1bbcb58bfce1e17df579cb",
+  "selection_bindings": {
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/docs/experiments/filename-patterns-20261015/content_readiness_checkpoint.json": "b40dbe84dcb68e5aaf014084e8c55e7260c257074cd2d3b8314360ae0a504857",
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/fetch.py": "6ee15bf03bf6b1a9e57c5aa1f81dc794bc8488099db1e0a5df4d4b650eb31483",
+    "output/filename-patterns-20261015/review-evidence-v3/ledger.jsonl": "d92184926b42812dff3c36f9442c032a0841ff8ecd3e679b40f6c477595d1438",
+    "output/filename-patterns-20261015/remaining-content-readiness-v1/readiness.json": "113859c8c35a6fc502603261c39622ac7f1f77377529755d2950b1a38e8dc4f0",
+    "docs/experiments/filename-patterns-20261015/catalog_alias_review.py": "dd46f8122ee43b0eaf8a88af7b0f16e94f147dd1e0d862dcaec836554b27e69d",
+    "packages/congress_api/src/congress_api/retention/document_index.py": "ec575da15c10615bd983baf3566e7bf5c1e63c5311715b0ab9e5b22917cc2667",
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/output/filename-patterns-20261015/continuation-v1/pilot.json": "55b3256dc0bfee57d90235b7d8d9b216060bc145d82926709a5b01beed619237",
+    "docs/experiments/filename-patterns-20261015/amendment_content_review.json": "e2e8f62b1dd6652d56995d8f980b076b0da3d5aa94b3343e8091c8ef558d5f7d",
+    "docs/experiments/filename-patterns-20261015/swalwell_content_review.json": "8cb68fd6469e5320aad2dc9774d70b937652323aac2d32e032301c5c7873e778",
+    "output/filename-patterns-20261015/public-retained-review-v2/input-check.json": "dec4f680220c175d649dca5f5e468a5354eaf1fdcbc776ffeffcaaaece536e2e"
+  },
+  "records": [
+    {
+      "document_id": "b0079a064001403d81234bdd03272896c1258b2dc23042d812febdf8fb53ceef",
+      "filename": "Amendment-in-the-Nature-of-a-Substitute-to-VE-LEtter-FY2024.pdf",
+      "body_key": "bodies/sha256/a0/a0b6901c7b4f1465fed26073e2a285c1d94a253fa9dd08561873ad281b2ef024.gz",
+      "url": "https://congressional-viewer-data.mdeeb.workers.dev/saved/a0b6901c7b4f1465fed26073e2a285c1d94a253fa9dd08561873ad281b2ef024/retained.pdf",
+      "http_status": 200,
+      "content_type": "application/pdf",
+      "bytes": 153452,
+      "sha256": "a0b6901c7b4f1465fed26073e2a285c1d94a253fa9dd08561873ad281b2ef024",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/a0b6901c7b4f1465fed26073e2a285c1d94a253fa9dd08561873ad281b2ef024.pdf",
+      "pages": 4,
+      "status": "verified_exact_retained_pdf",
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v2/a0b6901c7b4f1465fed26073e2a285c1d94a253fa9dd08561873ad281b2ef024.txt",
+      "text_sha256": "baf3084ec5ecf6e358987cb77737630ad5ab5cdd175f7027d63d23e963d07376",
+      "extracted_characters": 10319,
+      "all_pages_visually_reviewed": true,
+      "review_method": "All rendered pages; native extracted text where present; no OCR",
+      "observed_document_forms": [
+        "amendment",
+        "letter"
+      ],
+      "vote_annotation": null,
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v2/page-12-1.png": "5ab0b5d0e1ede57c808d6f32931e1f84b23c6df7c089561b8a3d50ffbdd3f7c4",
+        "output/filename-patterns-20261015/public-retained-review-v2/page-12-2.png": "291e43167a25638dc9d69f8e7037971ef4ce9dd788909fb842632100c1aa9572",
+        "output/filename-patterns-20261015/public-retained-review-v2/page-12-3.png": "ad7c3b339f791f4f0be716fdbf0fdb19cc60a3d180944cc7c43182fa7deff62d",
+        "output/filename-patterns-20261015/public-retained-review-v2/page-12-4.png": "f90982b8592a10ecfc2761d10bea84ef4ab9ea7bd191aa00f9f0e119eca0a87c"
+      },
+      "interpretation": "Substitute amendment contains the complete replacement Views and Estimates letter, including addressee, salutation, policy sections and closing.",
+      "reviewer": "assistant",
+      "independent_reference": false,
+      "release_approved": false,
+      "legacy_receipt": "docs/experiments/filename-patterns-20261015/amendment_content_review.json",
+      "legacy_receipt_sha256": "e2e8f62b1dd6652d56995d8f980b076b0da3d5aa94b3343e8091c8ef558d5f7d",
+      "normalization": "Preserves all original observations and rendered-page bindings; explicit assistant/reference/release flags reflect legacy scope. All four pages re-inspected during normalization.",
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 1,
+          "observed_form": "amendment|letter",
+          "description": "Substitute amendment heading and strike-all instruction followed by replacement letter addressee, salutation and opening."
+        },
+        {
+          "first_page": 2,
+          "last_page": 4,
+          "observed_form": "letter",
+          "description": "Replacement Views and Estimates letter continues through policy sections, budget and debt sections, and closing."
+        }
+      ]
+    }
+  ],
+  "legacy_reviews_outside_current_ledger": [
+    {
+      "document_id": "194a0032323d0c38cba3c1e5ec05ee031ad29609ff1c4caf7cd417ed76f96171",
+      "filename": "Roll Call Vote 1Conyers Amdt 1 TEXT.pdf",
+      "legacy_receipt": "docs/experiments/filename-patterns-20261015/amendment_content_review.json"
+    },
+    {
+      "document_id": "2d0882601dbbc298fc1a56df38044ee12497a78ac982262d51453db1df4183af",
+      "filename": "Roll Call Vote 5-Nadler Amdt 4 TEXT.pdf",
+      "legacy_receipt": "docs/experiments/filename-patterns-20261015/amendment_content_review.json"
+    },
+    {
+      "document_id": "36c32a5e55d05f0f090e286b5d827f015455f857625d47edbbe2a19c7dd0645c",
+      "filename": "07272011 Roll Call 3- Sensenbrenner Amendment 3 TEXT.pdf",
+      "legacy_receipt": "docs/experiments/filename-patterns-20261015/amendment_content_review.json"
+    },
+    {
+      "document_id": "64cf1722999205c0db8ae224a172c9544e24160e96fd9bbe210e639185546174",
+      "filename": "Roll Call Vote 3-Jackson Lee Amdt 8 TEXT.pdf",
+      "legacy_receipt": "docs/experiments/filename-patterns-20261015/amendment_content_review.json"
+    },
+    {
+      "document_id": "66d8331432d1810c93132b863095c447045be5a2d826de2d99e5760fb4a824a1",
+      "filename": "Roll Call Vote 13WS Amdt 15 TEXT.pdf",
+      "legacy_receipt": "docs/experiments/filename-patterns-20261015/amendment_content_review.json"
+    },
+    {
+      "document_id": "8048e1393c9a859879e96e4d9508461ba5fcd5ccb3b1fc8e733c11acc42a425c",
+      "filename": "Roll Call Vote 11Chu Amdt 12 TEXT.pdf",
+      "legacy_receipt": "docs/experiments/filename-patterns-20261015/amendment_content_review.json"
+    },
+    {
+      "document_id": "89b57d0d414bb8ccc6d4347d38e87c835dbd556c2cc0d677cd59d792135195d1",
+      "filename": "hr_3476_graves_amendment_21_tp_ans_cbra_disclosure_notification.pdf",
+      "legacy_receipt": "docs/experiments/filename-patterns-20261015/amendment_content_review.json"
+    },
+    {
+      "document_id": "89eea49d43410df365706d2a8f9cf7ed37c0bc57ee8d43e377f7831cd9535c50",
+      "filename": "Roll Call Vote 2Nadler Amdt 2 TEXT.pdf",
+      "legacy_receipt": "docs/experiments/filename-patterns-20261015/amendment_content_review.json"
+    },
+    {
+      "document_id": "930b1fc7cdd154111607a28eda04a4f7b86beb4f1110d4f002c0f79d08f9125a",
+      "filename": "Roll Call Vote 3-Jackson Lee Amdt 7 TEXT.pdf",
+      "legacy_receipt": "docs/experiments/filename-patterns-20261015/amendment_content_review.json"
+    },
+    {
+      "document_id": "9a89a9081ef818a60986f283ea89f966b078f51476d7eae25b450ae79b9fe930",
+      "filename": "Roll Call Vote 9Johnson Amdt 10 TEXT.pdf",
+      "legacy_receipt": "docs/experiments/filename-patterns-20261015/amendment_content_review.json"
+    },
+    {
+      "document_id": "a9a0c212a8fc6a6105253d6c78e29bcda21f12bd488b5617ecc3d13dfccbd844",
+      "filename": "Roll Call Vote 8-Johnson Amdt 9 TEXT.pdf",
+      "legacy_receipt": "docs/experiments/filename-patterns-20261015/amendment_content_review.json"
+    },
+    {
+      "document_id": "c9f98085ff11e8b6de9a5e74a79b8b3e8e62711c98c289f6827a044a820cac56",
+      "filename": "Roll Call Vote 6Nadler Amdt 5 TEXT.pdf",
+      "legacy_receipt": "docs/experiments/filename-patterns-20261015/amendment_content_review.json"
+    },
+    {
+      "document_id": "d7c6dc44484fd01363653f8fea0000d7088e1b8b9acd4bd721331458f57417ea",
+      "filename": "Roll Call Vote 7Nadler Amdt 6 TEXT.pdf",
+      "legacy_receipt": "docs/experiments/filename-patterns-20261015/amendment_content_review.json"
+    },
+    {
+      "document_id": "ee5426adac180ae043303008a1b50a0e2e2c7fde3b720dabefc77536d2419430",
+      "filename": "Roll Call Vote 12WS Amdt 14 TEXT.pdf",
+      "legacy_receipt": "docs/experiments/filename-patterns-20261015/amendment_content_review.json"
+    },
+    {
+      "document_id": "f4fa89b77862dc6b759697cfe1b7957d2cfd39f43e7d901b406c0cd6644d9aba",
+      "filename": "Roll Call Vote 10Quigley Amdt 11 TEXT.pdf",
+      "legacy_receipt": "docs/experiments/filename-patterns-20261015/amendment_content_review.json"
+    },
+    {
+      "document_id": "fef67d826731961b8b2c522886948aa8e8284c760d64d742f3af1a0a8f64de01",
+      "filename": "Roll Call Vote 4Nadler Amdt 3 TEXT.pdf",
+      "legacy_receipt": "docs/experiments/filename-patterns-20261015/amendment_content_review.json"
+    },
+    {
+      "document_id": "822544469d14c05f89472609d6a14ad65f1d62dc49bcbf4a9eae1cd4e01d75b7",
+      "legacy_receipt": "docs/experiments/filename-patterns-20261015/swalwell_content_review.json"
+    }
+  ],
+  "verification": {
+    "original_and_current_complete_row_identical": true,
+    "legacy_observations_preserved": true
+  },
+  "independent_reference": false,
+  "release_approved": false,
+  "production_changes": false
+}
