@@ -1,0 +1,35 @@
+{
+  "at": "2026-10-16T06:46:18.665206+00:00",
+  "snapshot06": {
+    "at": "2026-10-16T06:45:22.067253+00:00",
+    "actual_wait_exit": 0,
+    "physical_process_absence_verified": true,
+    "exec_session": 75964,
+    "qualified_urls": 327,
+    "full_body_hashes_verified": true,
+    "receipts_verified": true,
+    "all_pages_rendered": true,
+    "published": false,
+    "qualified_sha256": "a507285051735b140565997b9c7a42d5e9b82cddfcc9ddcbd8d2d721aee5706b"
+  },
+  "remaining_urls": 16975,
+  "next_publication_plan": {
+    "parent": "checkpoint-12",
+    "combined_recovery_urls": 1378,
+    "new_zip_packages": 99,
+    "checkpoint13_urls_included": 145,
+    "checkpoint13_body_identities_preserved": true,
+    "checkpoint13_accepted_mappings_preserved": true,
+    "checkpoint12_bodies_unchanged": true,
+    "checkpoint13_import_and_publication_directories_absent": true,
+    "decision": "Prepare one combined successor to checkpoint 12 after its publication succeeds, incorporating the unimported checkpoint 13 and newer qualified work. Preserve checkpoint 13 as evidence; do not dispatch it separately once the combined successor is sealed and verified.",
+    "status": "planning_only_no_writer_dispatched",
+    "reason": "Avoid redundant full catalog rebuilds for already waiting recoveries"
+  },
+  "source_hashes": {
+    "output/corpus-retry-20261015/recovered-files.json": "99e35702960e16f3c7550193793dd1c17f735735bb7bb04f3da5e1216e84b994",
+    "output/corpus-retry-20261015/prepared-accepted.json": "64ae01c907abc10f497d34acc5a7b8f38d7dedfa41bb9f9e0099d385483b0284",
+    "output/corpus-retry-20261015/prepared-zip-receipts.json": "8fce5bd9c0c1596375e9714031dfc4367ee6cf45c3fe3c26e7265540e642230a",
+    "output/corpus-retry-20261015/publication-batches/checkpoint-13/manifest.json": "7a787cdb80e7a9f30452edf2711ecf051aa4d5fba2cdaa7b603b3aa47b390173"
+  }
+}
