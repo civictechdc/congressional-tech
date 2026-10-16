@@ -42,6 +42,12 @@ Version 3.2.3 also keeps report actions and oversight-plan targets out of vote
 record kinds. A report or plan explicitly about votes keeps its own genre.
 Literal references, combined documents and `TEXT` ambiguity remain available.
 
+Version 3.2.4 uses recognized statement/testimony subject spans and leading
+publisher-qualified memo/opening labels to keep topic words out of document
+kinds. Explicit combined components and attachment labels remain available.
+Letters and statements about amendments retain the amendment wording without
+claiming to be amendment documents.
+
 ## Choose an API
 
 | Task | API | Result |

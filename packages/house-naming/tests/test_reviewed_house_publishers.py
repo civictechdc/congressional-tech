@@ -205,3 +205,51 @@ def test_vote_topics_and_explicit_combined_documents_keep_primary_genres(engine,
 def test_unqualified_vote_action_names_keep_report_reading(engine, host):
     name = 'rc_37_wilson_motion_to_report.pdf'
     assert engine.extract(name, source_url=f'https://{host}/' + name)['metadata']['document_kind'] == ['report']
+
+
+@pytest.mark.parametrize('name,host,kinds', [
+    ('Testimony-Sheehan-Dem-Memo-EP-Hrg-on-Improving-the-Hydropower-Licensing-Process-2018-06-07.pdf', 'democrats-energycommerce.house.gov', ['testimony']),
+    ('Testimony-HHS-Dem-Memo-FC-Hrg-on-Federal-Efforts-to-Combat-the-Opioid-Crisis-A-Status-Update-on-CARA-2017-10-25_2.pdf', 'democrats-energycommerce.house.gov', ['testimony']),
+    ('FP-Opening-Memo-EE-Hrg-on-CFATS-A-Progress-Report-2018-06-14.pdf', 'democrats-energycommerce.house.gov', ['opening-statement']),
+    ('Dem-Memo-EE-Hrg-on-CFATS-A-Progress-Report-2018-06-14.pdf', 'democrats-energycommerce.house.gov', ['committee-memorandum']),
+    ('Memo-CMT-Patent-Demand-Letters-2015-2-24.pdf', 'democrats-energycommerce.house.gov', ['committee-memorandum']),
+    ('memo_--_fc_markup_of_committee_print_05.06.25.pdf', 'naturalresources.house.gov', ['committee-memorandum']),
+    ('FP-Opening-HE-Hrg-on-Memeber-Day-Testimony-and-Proposal-on-the-Opiod-Crisis-2017-10-11_0.pdf', 'democrats-energycommerce.house.gov', ['opening-statement']),
+    ('FP-Opening-EE-HR-806-Nuclear-Waste-Policy-Amendments-Act-of-2017-2017-06-14.pdf', 'democrats-energycommerce.house.gov', ['opening-statement']),
+    ('EEC Statement on Amendment to HR 4011 - Press Version1.pdf', 'oversight.house.gov', ['statement']),
+    ('06.08.17 -RM EBJ STATEMENT ON AMENDMENT IN THE NATURE OF A SUBSTITUTE.pdf', 'science.house.gov', ['statement']),
+    ('jct-letter-on-amendment-to-h.r-9173-and-h.r-9175.pdf', 'waysandmeans.house.gov', ['letter']),
+    ('20171106-JCT-Estimated-Revenue-Effects-of-Amendment-in-the-Nature-of-a-Substitute-to-H.R.-1.pdf', 'waysandmeans.house.gov', ['revenue-estimate']),
+])
+def test_primary_genre_keeps_document_topics_as_literal_fields(engine, name, host, kinds):
+    result = engine.extract(name, source_url=f'https://{host}/' + quote(name))
+    assert sorted(result['metadata']['document_kind']) == kinds
+    # Topic labels remain inspectable, even though they no longer supply kinds.
+    assert {f['category'] for m in result['observations'] for f in m['fields'] if f.get('category')} - set(kinds)
+    assert ''.join(piece['raw'] for piece in result['pieces']) == name
+    assert all(name[f['start']:f['end']] == f['raw'] for m in result['observations'] for f in m['fields'])
+
+
+@pytest.mark.parametrize('name,kinds', [
+    ('Briefing Memo_ECCCPC Hearing_2019.06.20_Cars_Final with Witness List_1.pdf', ['committee-memorandum', 'witness-list']),
+    ('Testimony and Committee Memo-2018-06-07.pdf', ['committee-memorandum', 'testimony']),
+    ('Testimony with Committee Memo-2018-06-07.pdf', ['committee-memorandum', 'testimony']),
+    ('FP-Opening-and-Committee-Memo.pdf', ['committee-memorandum', 'opening-statement']),
+    ('Dem-Memo-and-Report.pdf', ['committee-memorandum', 'report']),
+    ('Dem-Memo-with-Letter.pdf', ['committee-memorandum', 'letter']),
+    ('FP-Opening-CHIP-CHC-Opening-Remarks-10-04-2017.pdf', ['opening-remarks', 'opening-statement']),
+    ('Briefing Memo Witness List.pdf', ['committee-memorandum', 'witness-list']),
+    ('Memo-EE-Markup-TSCA-Modernization-Act-Attachment-2015-5-14.pdf', ['attachment', 'committee-memorandum']),
+    ('Statement and Amendment 1.pdf', ['amendment', 'statement']),
+    ('Letter & Amendment 1.pdf', ['amendment', 'letter']),
+    ('Amendment 1 to H.R. 123.pdf', ['amendment']),
+])
+def test_explicit_components_survive_primary_genre_selection(engine, name, kinds):
+    result = engine.extract(name, source_url='https://democrats-energycommerce.house.gov/' + quote(name))
+    assert sorted(result['metadata']['document_kind']) == kinds
+
+
+@pytest.mark.parametrize('host', ['example.org', 'democrats-energycommerce.house.gov.example.org'])
+def test_unqualified_memo_prefix_does_not_remove_literal_letter_kind(engine, host):
+    name = 'Memo-CMT-Patent-Demand-Letters-2015-2-24.pdf'
+    assert engine.extract(name, source_url=f'https://{host}/' + quote(name))['metadata']['document_kind'] == ['letter']

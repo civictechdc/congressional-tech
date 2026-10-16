@@ -198,3 +198,27 @@ Do not collapse differing kinds across aliases: the HR1890 group links a bill
 body and a vote-sheet body through a reused URL. Preserve both identities and
 classifications pending body-level review. No new external source acquisition
 or held-out inspection is implied by this review.
+
+Primary genre review checkpoint
+-------------------------------
+The 3.2.4 genre/topic repair is implemented and verified. All 5,826 offline
+workflow checks pass; its complete-cohort replay changes 22 source rows and 17
+groups while preserving every comparison invariant. REVIEW_GENRE_SUBJECTS.txt
+and genre_subject_checkpoint.json record the trace and evidence. The new
+prior-kind-current-review-v2 grouping CSV was read in full: 60 transitions cover
+1,903 changed documents against the original 3.0.0 cohort. The individual ledger
+remains pending; sample review is not individual content adjudication.
+
+Next, review complete alias evidence for the high-volume compatible broad/specific
+kinds (meeting-support with memo/charter and committee-amendment with amendment).
+Record metadata compatibility separately from content proof. Then inspect the
+remaining disclosure-statement, disclosure/biography and vote/TEXT ambiguities.
+Do not infer that all aliases or captures of a reused URL contain the same form.
+
+The four exact archive reads for Swalwell disclosures, Graves CBRA disclosure
+notification, Issa PRA statement and the VE-letter substitute were denied by the
+configured credentials. None overlaps the frozen pilot; no body bytes were read
+and no publisher sites were visited. Preserve those failures and obtain changed
+archive-access evidence before retrying. Their current kinds remain unresolved.
+The live publication was still in progress at the latest readback. Keep its exact
+head and verification requirements; no new publication was dispatched.

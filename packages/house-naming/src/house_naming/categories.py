@@ -15,7 +15,10 @@ LEGISLATIVE_KINDS = frozenset({'amendment', 'committee-print', 'legislative-text
 TOPIC_KINDS = frozenset({'report', 'summary', 'response', 'rules-memorandum', 'chair-mark',
                          'mark-modification', 'business-meeting', 'nomination',
                          'tally-sheet', 'committee-vote', 'letter', 'exhibit', 'appendix', 'attachment',
-                         'panelist-list', 'participant-list'}) | EVENT_KINDS
+                         'panelist-list', 'participant-list'}) | EVENT_KINDS | LEGISLATIVE_KINDS
+PUBLISHER_TOPIC_KINDS = TOPIC_KINDS | {'committee-memorandum', 'testimony', 'amendment-collection'}
+COMPONENT_KINDS = frozenset({'attachment', 'appendix', 'exhibit', 'exhibit-collection'})
+SUBJECT_GENRES = frozenset({'testimony', 'witness-statement', 'statement', 'opening-statement'})
 CONSTITUTIONAL_ORDINAL = re.compile(
     r'(?<![a-z0-9])(?:first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|'
     r'eleventh|twelfth|thirteenth|fourteenth|fifteenth|sixteenth|seventeenth|eighteenth|'
@@ -84,10 +87,31 @@ def document_category_fields(filename: str | None, observations: list[dict]) -> 
                            if m.get('scope') == 'source-stem'
                            and any(part.get('category') == 'transcript' for part in m['fields'])
                            for f in m['fields'] if f['name'] in {'suffix', 'subject_token'}]
+    # A complete label/subject/date layout declares which span is a subject.
+    # Publisher-qualified memo/opening prefixes likewise introduce a title;
+    # require them at the start, rather than treating every occurrence as a prefix.
+    genre_subjects = [(f['start'], f['end']) for m in observations if m.get('scope') == 'stem'
+                      for f in m['fields'] if f['name'] == 'subject_token'
+                      and any(part.get('category') in SUBJECT_GENRES and part['end'] <= f['start']
+                              for part in m['fields'])]
+    publisher_titles = []
+    if filename is not None:
+        publisher_titles.extend((f['end'], len(filename)) for m in observations
+                              if m.get('scope') == 'source-stem' for f in m['fields']
+                              if f['start'] == 0 and f.get('category') in {'committee-memorandum', 'opening-statement'})
     candidates = []
     for field in sorted(fields, key=lambda f: (f['start'], -f['end'])):
         a, b, kind = field['start'], field['end'], field['category']
         if any(x <= a < b <= y for x, y in transcript_subjects):
+            continue
+        # Preserve explicit combined components and attachment labels. Declared
+        # subjects govern nested genres; a publisher prefix alone governs only
+        # topic-prone kinds, not independent labels such as Opening Remarks.
+        if (filename is not None and kind not in COMPONENT_KINDS
+                and (any(x <= a < b <= y for x, y in genre_subjects)
+                     or (kind in PUBLISHER_TOPIC_KINDS
+                         and any(x <= a < b <= y for x, y in publisher_titles)))
+                and not re.search(r'(?:^|[\s_.-])(?:and|&|with)[\s_.-]+$', filename[:a], re.I)):
             continue
         if field['name'] != 'amendment_marker' and any(x <= a < b <= y for x, y in targets):
             continue
