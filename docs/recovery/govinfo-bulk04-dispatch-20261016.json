@@ -1,0 +1,52 @@
+{
+  "at": "2026-10-16T06:55:19.363565+00:00",
+  "packages": 7,
+  "declared_bytes": 881191122,
+  "jobs": [
+    {
+      "dispatch": {
+        "at": "2026-10-16T06:54:49.693409+00:00",
+        "pid": 22629,
+        "parent_pid": 94792,
+        "plan_sha256": "1d89c2f083cd9e07e5d698a2c70faaffb33abe181cba6f5ffc7f0f2829c1f084",
+        "script_sha256": "e6d11ee3752aa0b9f68f560377c56f38a8e1df276db21ce503466e728bc3d3e9",
+        "packages": 7,
+        "paid_requests": 0,
+        "remote_writes": 0,
+        "minimum_delay_seconds": 3
+      },
+      "process_verified": "22629 94792 Fri Oct 16 02:54:49 2026     .venv/bin/python -u output/corpus-retry-20261015/download_govinfo_bulk_packages_04.py",
+      "exec_session": 39401
+    },
+    {
+      "dispatch": {
+        "pid": 22643,
+        "parent_pid": 94792,
+        "source_pid": 22629,
+        "pins": {
+          "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/qualify_govinfo_bulk_packages_04.py": "ac6235ce768dcce8f0159407cbf52025d18c0bd6951677138a4997b40e7b6dba",
+          "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/govinfo-bulk-package-plan-04.json": "1d89c2f083cd9e07e5d698a2c70faaffb33abe181cba6f5ffc7f0f2829c1f084",
+          "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/govinfo-bulk-packages-04/dispatch.json": "c5bde1c70f97b01e6fce595788cf27adebf705349acae1d00e2b56ffd5b65f2a",
+          "/Users/mikewolfd/Work/congressional-tech/packages/congress_api/src/congress_api/retention/archive_members.py": "b3d2415fd3fadf800094703e243a292e42f98fbfa9e56f5cfe1d9cb924b42a83",
+          "/Users/mikewolfd/Work/congressional-tech/packages/congress_api/src/congress_api/retention/raw_archive.py": "545d0803787e5c77486d8cd6e6cb617d6e0cecbe006b39574db3681079761689"
+        },
+        "source_requests": 0,
+        "remote_writes": 0
+      },
+      "process_verified": "22643 94792 Fri Oct 16 02:54:54 2026     .venv/bin/python -u output/corpus-retry-20261015/qualify_govinfo_bulk_packages_04.py",
+      "exec_session": 9458
+    }
+  ],
+  "free_disk_bytes": 38642049024,
+  "publication_evidence_bytes": {
+    "publication-checkpoint12": 30580845436,
+    "publication-checkpoint12-retry01": 384244369
+  },
+  "oversized_packages_not_dispatched": 24,
+  "published": false,
+  "next_steps": [
+    "Verify the final ordinary-size package batch and adopt successful contents.",
+    "Keep all frozen builds and receipts; reassess disk before larger packages.",
+    "Monitor the repaired catalog publication and verify its remote readback before the sealed combined successor can import."
+  ]
+}
