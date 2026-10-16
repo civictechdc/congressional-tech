@@ -1,0 +1,31 @@
+{
+  "at": "2026-10-16T07:14:16.043788+00:00",
+  "checks": [
+    {
+      "batch": 14,
+      "source_and_zip_records": 1498,
+      "capture_rows": 2090,
+      "distinct_bodies": 2078,
+      "all_capture_pointers_and_parent_links_verified": true,
+      "all_manifest_files_unchanged": true,
+      "remote_readiness_verified": false
+    },
+    {
+      "batch": 15,
+      "source_and_zip_records": 291,
+      "capture_rows": 306,
+      "distinct_bodies": 306,
+      "all_capture_pointers_and_parent_links_verified": true,
+      "all_manifest_files_unchanged": true,
+      "remote_readiness_verified": false
+    }
+  ],
+  "network_requests": 0,
+  "imports_started": false,
+  "remaining_gates": [
+    "Verify prior batch import and publication success.",
+    "Read fresh remote body metadata and verify reusable bytes.",
+    "Bind import readiness to exact local evidence.",
+    "Acquire sole recovery lock and recheck cloud writers and raw input versions before import."
+  ]
+}
