@@ -90,6 +90,15 @@ def load(path, name):
     return module
 
 
+def rebuild_retained_catalog(store, *, working, root):
+    """Apply the maintained public wrapper's input normalization to durable builds."""
+    from congress_api.retention.raw_catalog import _rebuild_catalog
+    from congress_api.retention.document_index import validated_body_readings
+    return _rebuild_catalog(store, None, seeds=(), workers=4, repair=False,
+                            inspect_bodies=False, working=working, root=root,
+                            body_readings=validated_body_readings(()))
+
+
 def run(args):
     batch, imported, runtime = args.batch.resolve(), args.imported.resolve(), args.runtime.resolve()
     result = verify_import(batch, imported)
@@ -125,7 +134,6 @@ def run(args):
     import boto3
     from botocore.config import Config
     from congress_api.retention.r2 import R2Store
-    from congress_api.retention.raw_catalog import _rebuild_catalog
     from congress_api.retention.catalog_staging import WorkingCatalog
     from congress_api.cli.raw_progress import ProgressLog
     from congress_api.retention.document_index import validate_document_indexes
@@ -180,8 +188,7 @@ def run(args):
         working = WorkingCatalog(build/'working.sqlite')
         try:
             with ProgressLog(destination/'catalog-progress.json'):
-                catalog = _rebuild_catalog(Store(proxy,bucket), None, seeds=(), workers=4,
-                    repair=False, inspect_bodies=False, working=working, root=build, body_readings=())
+                catalog = rebuild_retained_catalog(Store(proxy,bucket), working=working, root=build)
         finally: working.close()
         report('catalog-result.json', catalog)
         mapping = publish_mappings(proxy, bucket=bucket,

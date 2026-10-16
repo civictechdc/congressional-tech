@@ -1,0 +1,67 @@
+{
+  "at": "2026-10-16T06:52:48.829919+00:00",
+  "failure": {
+    "at": "2026-10-16T06:51:23.206112+00:00",
+    "actual_wait_exit": 1,
+    "physical_absence_verified": true,
+    "pid": 88391,
+    "exec_session": 18526,
+    "failure": "Internal catalog builder received tuple body_readings; maintained wrapper normalizes these to a mapping",
+    "publication_write_intents": 0,
+    "protected_remote_objects_unchanged": [
+      {
+        "key": "indexes/captures.parquet",
+        "etag": "\"52fac486d3fe9e3a6f16d7723cd163bd\"",
+        "bytes": 282497811,
+        "matches_saved_baseline_md5": true
+      },
+      {
+        "key": "indexes/catalog.json",
+        "etag": "\"c019ce85155e28c40c1c2b226be21fe2\"",
+        "bytes": 532,
+        "matches_saved_baseline_md5": true
+      },
+      {
+        "key": "indexes/download-state.parquet",
+        "etag": "\"75fb5f1b387b0242f8aa0f8c03d81479\"",
+        "bytes": 96998392,
+        "matches_saved_baseline_md5": true
+      },
+      {
+        "key": "viewer-publications/manifest.json",
+        "etag": "\"ff2ab81eac88e4fdecba747e86ccb63e\"",
+        "bytes": 973,
+        "matches_saved_baseline_md5": true
+      },
+      {
+        "key": "viewer-publications/recoveries/accepted.json",
+        "etag": "\"37db5dc29219999e79429625f3509fff\"",
+        "bytes": 4693694,
+        "matches_saved_baseline_md5": true
+      }
+    ],
+    "prepared_catalog_complete": false,
+    "restart_dispatched": false
+  },
+  "repair": "Normalize empty body readings through the maintained validated_body_readings function before calling the durable internal catalog builder.",
+  "validation": {
+    "tests_passed": 21,
+    "suites": [
+      "dispatch publication",
+      "conditional publication client",
+      "mapping merge",
+      "mapping publication"
+    ],
+    "runtime": "viewer-retained-sync"
+  },
+  "next_attempt": {
+    "destination": "output/corpus-retry-20261015/publication-checkpoint12-retry01",
+    "batch": "checkpoint-12",
+    "reuse_completed_import": true,
+    "new_body_uploads": false,
+    "raw_index_rewrite": false,
+    "partial_sqlite_resume": false,
+    "requires_fresh_cloud_lock_pins_inputs": true
+  },
+  "preserved_failure_source_sha256": "1f915fdc3c809862c1efc53f189a3c1593666587a97a7518b4f48f4e82a1a2f4"
+}

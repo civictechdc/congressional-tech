@@ -39,4 +39,20 @@ class CoverageTests(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             module.verify_import(self.root,self.root/'absent-import')
 
+class BuilderBoundaryTests(unittest.TestCase):
+    def test_durable_builder_receives_normalized_readings(self):
+        from unittest.mock import patch
+        store, working, root = object(), object(), Path('durable-build')
+        def internal(received_store, captures, **kwargs):
+            self.assertIs(received_store, store)
+            self.assertIsNone(captures)
+            self.assertIs(kwargs['working'], working)
+            self.assertEqual(kwargs['root'], root)
+            self.assertFalse(kwargs['repair'])
+            self.assertFalse(kwargs['inspect_bodies'])
+            # The real builder consumes values after expensive receipt recovery.
+            return list(kwargs['body_readings'].values())
+        with patch('congress_api.retention.raw_catalog._rebuild_catalog', side_effect=internal):
+            self.assertEqual(module.rebuild_retained_catalog(store, working=working, root=root), [])
+
 if __name__=='__main__':unittest.main()
