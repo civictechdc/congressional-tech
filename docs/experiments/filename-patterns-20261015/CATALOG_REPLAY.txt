@@ -1,0 +1,99 @@
+Complete catalog filename comparison
+===================================
+
+The comparison tool reuses the maintained filename metadata writer on the full
+source/document pair. It reparses filenames, preserves prior body readings and
+rebuilds grouped documents in a new local output directory. It does not acquire
+sources, open retained bodies, select a catalog generation or publish anything.
+
+Use the complete selected raw catalog pair, not the viewer's browse table or
+the original unclassified research subset. The input root must retain its
+indexes/catalog.json and catalog-generations paths, or a valid legacy pair.
+
+After the active 3.1.0 publication is verified:
+
+  python docs/experiments/filename-patterns-20261015/catalog_filename_replay.py \
+    --catalog-root /path/to/verified-selected-catalog \
+    --publication-dir output/filename-patterns-20261015/publication \
+    --output output/filename-patterns-20261015/catalog-replay-published-v1 \
+    --workers 3
+
+The publication checks are the same checks used by the pilot reconciliation.
+Without verified matching publication evidence, the command refuses unless
+--rehearsal is supplied explicitly. The current target is house_naming 3.2.0.
+Output directories must be new. No selected input file is overwritten.
+
+The normal metadata refresh and this tool now share filename_refresh_inputs in
+congress_api.retention.document_index. That helper streams raw source context
+and preserves refresh provenance while excluding stale filename interpretations.
+Both callers supply the original table as previous= so the maintained writer
+can restore exact retained body readings, including their earlier fingerprint.
+The refactor removes duplicate preparation logic; no speed improvement is claimed.
+
+What is checked
+---------------
+The maintained readers verify input checksums, sizes, row counts and paired
+identities. validate_document_indexes verifies source/document references.
+After replay, the same checks validate the complete new pair. A disk-backed
+comparison joins every source_id and document_id, rather than assuming row order.
+
+Both comparison tables report added/missing IDs, document membership changes,
+role changes, protected source/body evidence changes, representative-source
+changes, new kinds, removed kinds, changed prior kinds and kind-source changes.
+Group evidence includes all filenames, source URLs and body keys. Unnamed records
+remain in the comparison. Only null struct padding introduced by Arrow schema
+combination is normalized; source wording and list order remain intact.
+
+Representative-source changes are recorded separately because a group's chosen
+display alias can change without losing its member identities. Any missing ID,
+new ID, role change, membership change or protected evidence change makes
+invariants_preserved=false. Every changed prior kind requires review. The tool
+always writes release_qualified=false; completion of computation is not release
+approval or proof that every assignment is correct.
+
+Input file hashes, selected paths, parser/source hashes and publication evidence
+are rechecked before writing the final summary. A moving baseline cannot produce
+a completed summary. Interim manifests, output tables and logs remain available
+to diagnose a failed or interrupted run; automatic resume is not implemented.
+
+Outputs
+-------
+manifest.json records the selected input pair, code hashes and publication state.
+catalog/indexes/document-filenames.parquet and documents.parquet contain the
+isolated replay; no indexes/catalog.json selector is written there.
+filenames-changes.csv and documents-changes.csv enumerate comparison differences.
+summary.json records all counts, invariant results, hashes and elapsed time.
+
+The tool uses the maintained SQLite/Parquet staging path and up to four worker
+processes. Before writing, it requires free output-volume space of at least ten
+GiB plus eight times the input pair size. While consuming source rows it checks
+the ten-GiB reserve every 4,096 rows. These checks are precautionary estimates,
+not a proven maximum storage bound; caches/grouping/comparison also use disk.
+The caller must still watch available space during a large rehearsal.
+
+Current checkpoint
+------------------
+A historical rehearsal was launched on the local naming-3.0.0 pair with catalog
+ID 7f0b0aa7b53e4205b050ac260d0bc6a7: 1,672,092 source rows and 1,235,122 document
+groups. Its output is output/filename-patterns-20261015/catalog-replay-historical-v1;
+the sibling catalog-replay-historical-v1.log contains live progress events.
+At this checkpoint the input pair validation had completed and filename parsing
+was advancing. No completed full-catalog comparison is claimed yet.
+
+The process must be checked live before interpreting this saved checkpoint.
+Do not restart merely because a tool wait expires. Preserve the historical
+outputs; they test the workflow but cannot qualify the still-running 3.1.0
+publication. GitHub run 38823678887 also remained in progress at this checkpoint.
+
+Next actions
+------------
+1. Inspect the historical run's completed summary or terminal failure. Review
+   every identity/role/evidence change and every changed prior kind. Diagnose
+   failures before starting another run; preserve the original input pair.
+2. When publication completes, verify its artifacts and public readback, obtain
+   the exact selected raw pair, and run pilot reconciliation and this comparison.
+3. Review newly assigned filename families and every changed prior kind against
+   retained evidence. Keep refreshed source evidence separate from this replay.
+4. In parallel with that review, collect and seal held-out PDF references, then
+   invoke the frozen native evaluator. Independent review and a bounded explicit
+   retained-body refresh remain required before release.

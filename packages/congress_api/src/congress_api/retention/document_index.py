@@ -2540,14 +2540,12 @@ def _build(root, inventory_dir, *, workers, families, inspect_bodies, working, o
     )
 
 
-def refresh_filename_metadata(root, *, workers=4, inspect_bodies=False, repair=False):
-    """Reuse saved interpretations unless explicitly rebuilding; never acquire sources."""
-    from congress_api.retention.catalog_cache import LocalStore
-    from congress_api.retention.catalog_publication import read_catalog
-    snapshot = read_catalog(LocalStore(root))
-    if snapshot.filenames is None:
-        raise ValueError("Missing filename index")
-    source = pq.ParquetFile(pa.BufferReader(snapshot.filenames))
+def filename_refresh_inputs(source):
+    """Stream retained source evidence separately from filename interpretations.
+
+    Callers pass the original table as previous= when writing so retained body
+    readings survive. This helper does not read bodies or change the catalog.
+    """
     fields = [
         *[name for name in SOURCE_SCHEMA.names if name in source.schema_arrow.names],
         *sorted(
@@ -2561,11 +2559,25 @@ def refresh_filename_metadata(root, *, workers=4, inspect_bodies=False, repair=F
         for batch in source.iter_batches(columns=fields)
         for row in batch.to_pylist()
     )
-    return write_filename_metadata(root, rows, workers=workers, previous=source, reuse_results=not repair, inspect_bodies=inspect_bodies, publication_snapshot=snapshot, previous_documents=snapshot.documents, metadata={
+    metadata = {
         key.decode(): value.decode() for key, value in (source.schema_arrow.metadata or {}).items()
         if key in {b'raw_capture_rows', b'capture_digest', b'seed_digest', b'deferred_source_bodies', b'source_lineage_version',
                    b'source_lineage_overlay', b'download_state_digest', b'download_state_rows', b'availability_policy',
-                   b'source_fingerprint', b'retained_recovery_fingerprint'}})
+                   b'source_fingerprint', b'retained_recovery_fingerprint'}}
+    return rows, metadata
+
+
+def refresh_filename_metadata(root, *, workers=4, inspect_bodies=False, repair=False):
+    """Reuse saved interpretations unless explicitly rebuilding; never acquire sources."""
+    from congress_api.retention.catalog_cache import LocalStore
+    from congress_api.retention.catalog_publication import read_catalog
+    snapshot = read_catalog(LocalStore(root))
+    if snapshot.filenames is None:
+        raise ValueError("Missing filename index")
+    source = pq.ParquetFile(pa.BufferReader(snapshot.filenames))
+    rows, metadata = filename_refresh_inputs(source)
+    return write_filename_metadata(root, rows, workers=workers, previous=source, reuse_results=not repair,
+        inspect_bodies=inspect_bodies, publication_snapshot=snapshot, previous_documents=snapshot.documents, metadata=metadata)
 
 
 def reindex_documents(root):
