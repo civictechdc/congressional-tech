@@ -1,0 +1,41 @@
+{
+  "at": "2026-10-16T03:50:42.483904+00:00",
+  "status": "validated_local_not_published",
+  "links": 3,
+  "distinct_bodies": 1,
+  "package_id": "CHRG-116shrg45113",
+  "evidence": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/nomination-transcript-recovered.json",
+  "evidence_sha256": "106d88558e4d1b03376b0ca320ec8281a3d48ed9e8e075d0cf39175a7a647496",
+  "body_sha256": "9abe590ee25a2f5ad30134249c4b1c67e0a12371462dfbe24ccb393276f697b8",
+  "validation": [
+    "retained body SHA256",
+    "qpdf exit 0",
+    "extracted title nominees date and committee",
+    "deferred body and URLs excluded"
+  ],
+  "recovery_summary": {
+    "status": "local_preparation_not_published",
+    "recovered_url_links": 1158,
+    "distinct_recovered_bodies": 822,
+    "zip_members": 149,
+    "distinct_zip_bodies": 149,
+    "prepared_url_maps": 21406,
+    "new_maps": 6901,
+    "document_groups_without_saved_before": 311,
+    "document_groups_without_saved_after_preview": 275,
+    "zip_members_not_yet_in_catalog_preview": true,
+    "deferred_files_preserved": 164,
+    "prior_maps_preserved": 14505
+  },
+  "remaining": {
+    "lookup_unresolved": 16576,
+    "validated_local_recovery": 1158,
+    "unprocessed_archive_candidate": 5787,
+    "attempted_not_recovered": 53
+  },
+  "next_steps": [
+    "Finish running NARA temporary-error retry and verify terminal receipts",
+    "Seal final recovery batch including these three links and ZIP members",
+    "After cloud writer 38823678887 finishes, run fresh guarded import and publish verified catalog/viewer"
+  ]
+}
