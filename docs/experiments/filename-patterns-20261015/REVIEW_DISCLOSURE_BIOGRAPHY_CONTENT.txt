@@ -141,3 +141,29 @@ PDF digest and page count, all 51 render hashes, full non-overlapping page-range
 coverage, all 400 pilot ID/body-key exclusions and nine frozen source hashes.
 Read the full 58-row grouping CSV again after compaction. No runtime or catalog
 classification changed, and the current metadata review queue remains 91.
+
+Continuation: complete Simmons packet and selection
+--------------------------------------------------
+The v5 receipt records all 119 retained Simmons pages and 30 contiguous component
+ranges. The first three pages contain a witness disclosure; page 2 includes
+substantive education and career history. The attached 2011, 2010 and 2009 tax
+returns and extension requests are present in the saved PDF. Their schedules,
+officer lists and statement headings do not establish witness testimony or
+additional biographies. The tax-form labels describe observations only; they
+do not extend the production document-kind taxonomy.
+
+Preserved printed numbering gaps separately from review coverage. The 2011
+extension refers to Statement 1, but the retained explanation at the end of
+the packet has a 2009 footer and accompanies the 2009 request. All three
+extension requests display Part II / Page 2; no corresponding Part I was
+separately observed. These are source-completeness observations, not reasons
+to omit retained pages from the review count. No tax accuracy assessment was
+performed and no omitted or redacted information was reconstructed.
+
+The selection is complete: 38 packets / 279 pages, with 23 disclosure-only,
+13 disclosure plus biography, and two biography-only. Two composite packets
+also contain additional forms. Rechecked receipt-chain hashes, selection and
+ledger bindings, exact Simmons bytes and page count, all 119 render hashes,
+complete component coverage, exclusion from all 400 pilot documents/body keys,
+and all nine frozen source hashes. Reread the full 58-row grouping CSV after
+compaction. Classification and the 91 metadata dispositions remain unchanged.

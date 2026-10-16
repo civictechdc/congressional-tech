@@ -1,0 +1,400 @@
+{
+  "scope": "All 119 retained Simmons pages reviewed; cumulative 38 of 38 disclosure/biography packets reviewed",
+  "previous_review": "docs/experiments/filename-patterns-20261015/disclosure_biography_content_review_v4.json",
+  "previous_review_sha256": "ef116b6ee6d05a5c5e5ab1a71bb6af0f1a553aaa84b92c614f295a4f7e61907d",
+  "input_ledger": "output/filename-patterns-20261015/review-evidence-v4/ledger.jsonl",
+  "input_ledger_sha256": "218c5ecc8a8eeb05b047414f4ffb7d5a9938d4a1f8d0d1e419b9c998932971e5",
+  "fetch_results_path": "output/filename-patterns-20261015/public-retained-review-v3/results.json",
+  "fetch_results_sha256": "f2f822adac4c388a8bdb413cf94653df89b7f8292c5ea797a65b3771fa402304",
+  "records": [
+    {
+      "document_id": "c4d0b2cda36f5997694c53c058bb5fba822e95d776fba4157a42387ef5261602",
+      "filename": "simmonsdisclosure04-25-13.pdf",
+      "body_key": "bodies/sha256/38/38644a2d6c2e01fa3f6089087ca20d1bb3e00ee90dcad1191d80a51ced71a9d7.gz",
+      "sha256": "38644a2d6c2e01fa3f6089087ca20d1bb3e00ee90dcad1191d80a51ced71a9d7",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/38644a2d6c2e01fa3f6089087ca20d1bb3e00ee90dcad1191d80a51ced71a9d7.pdf",
+      "pages": 119,
+      "selection_index": 33,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "testimony-disclosure",
+        "biography",
+        "tax-return",
+        "tax-extension-request"
+      ],
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 1,
+          "observed_form": "testimony-disclosure",
+          "description": "Natural Resources disclosure form: witness and hearing identification"
+        },
+        {
+          "first_page": 2,
+          "last_page": 2,
+          "observed_form": "testimony-disclosure|biography",
+          "description": "Disclosure form with embedded education and four-position career history"
+        },
+        {
+          "first_page": 3,
+          "last_page": 3,
+          "observed_form": "testimony-disclosure",
+          "description": "Organizational disclosure answers referring to three public IRS Form 990 returns"
+        },
+        {
+          "first_page": 4,
+          "last_page": 15,
+          "observed_form": "tax-return",
+          "description": "2011 Form 990, main pages 1-12"
+        },
+        {
+          "first_page": 16,
+          "last_page": 18,
+          "observed_form": "tax-return",
+          "description": "2011 Schedule A"
+        },
+        {
+          "first_page": 19,
+          "last_page": 21,
+          "observed_form": "tax-return",
+          "description": "2011 Schedule C"
+        },
+        {
+          "first_page": 22,
+          "last_page": 26,
+          "observed_form": "tax-return",
+          "description": "2011 Schedule D"
+        },
+        {
+          "first_page": 27,
+          "last_page": 29,
+          "observed_form": "tax-return",
+          "description": "2011 Schedule J"
+        },
+        {
+          "first_page": 30,
+          "last_page": 32,
+          "observed_form": "tax-return",
+          "description": "2011 Schedule O"
+        },
+        {
+          "first_page": 33,
+          "last_page": 37,
+          "observed_form": "tax-return",
+          "description": "2011 Schedule R"
+        },
+        {
+          "first_page": 38,
+          "last_page": 38,
+          "observed_form": "tax-extension-request",
+          "description": "Form 8868 for 2011, Part II"
+        },
+        {
+          "first_page": 39,
+          "last_page": 50,
+          "observed_form": "tax-return",
+          "description": "2010 Form 990, main pages 1-12"
+        },
+        {
+          "first_page": 51,
+          "last_page": 53,
+          "observed_form": "tax-return",
+          "description": "2010 Schedule A"
+        },
+        {
+          "first_page": 54,
+          "last_page": 56,
+          "observed_form": "tax-return",
+          "description": "2010 Schedule C"
+        },
+        {
+          "first_page": 57,
+          "last_page": 61,
+          "observed_form": "tax-return",
+          "description": "2010 Schedule D"
+        },
+        {
+          "first_page": 62,
+          "last_page": 64,
+          "observed_form": "tax-return",
+          "description": "2010 Schedule G"
+        },
+        {
+          "first_page": 65,
+          "last_page": 67,
+          "observed_form": "tax-return",
+          "description": "2010 Schedule I"
+        },
+        {
+          "first_page": 68,
+          "last_page": 69,
+          "observed_form": "tax-return",
+          "description": "2010 Schedule J"
+        },
+        {
+          "first_page": 70,
+          "last_page": 73,
+          "observed_form": "tax-return",
+          "description": "2010 Schedule O"
+        },
+        {
+          "first_page": 74,
+          "last_page": 78,
+          "observed_form": "tax-return",
+          "description": "2010 Schedule R"
+        },
+        {
+          "first_page": 79,
+          "last_page": 79,
+          "observed_form": "tax-extension-request",
+          "description": "Form 8868 for 2010, Part II"
+        },
+        {
+          "first_page": 80,
+          "last_page": 91,
+          "observed_form": "tax-return",
+          "description": "2009 Form 990, main pages 1-12"
+        },
+        {
+          "first_page": 92,
+          "last_page": 95,
+          "observed_form": "tax-return",
+          "description": "2009 Schedule A"
+        },
+        {
+          "first_page": 96,
+          "last_page": 98,
+          "observed_form": "tax-return",
+          "description": "2009 Schedule C"
+        },
+        {
+          "first_page": 99,
+          "last_page": 104,
+          "observed_form": "tax-return",
+          "description": "2009 Schedule D"
+        },
+        {
+          "first_page": 105,
+          "last_page": 107,
+          "observed_form": "tax-return",
+          "description": "2009 Schedule G"
+        },
+        {
+          "first_page": 108,
+          "last_page": 109,
+          "observed_form": "tax-return",
+          "description": "2009 Schedule J"
+        },
+        {
+          "first_page": 110,
+          "last_page": 113,
+          "observed_form": "tax-return",
+          "description": "2009 Schedule O"
+        },
+        {
+          "first_page": 114,
+          "last_page": 117,
+          "observed_form": "tax-return",
+          "description": "2009 Schedule R"
+        },
+        {
+          "first_page": 118,
+          "last_page": 119,
+          "observed_form": "tax-extension-request",
+          "description": "2009 Form 8868 explanation for extension (Statement 1), followed by Part II request"
+        }
+      ],
+      "notes": "All 119 retained pages inspected visually. Pages 1-3 are a witness disclosure with substantive embedded education and career history on page 2. The following pages contain actual organizational tax-return material for 2011, 2010 and 2009, plus extension requests. Tax schedules, officer lists and headings containing statement do not establish witness testimony or separate biographies. Tax-return and tax-extension-request are descriptive review labels, not additions to the production taxonomy. No tax, legal or financial accuracy assessment was performed. Preserve literal filename claims separately.",
+      "source_completeness_observations": [
+        {
+          "pdf_pages": [
+            18,
+            19,
+            53,
+            54,
+            95,
+            96
+          ],
+          "observation": "Printed assembled numbering jumps 15 to 20 in the 2011 and 2010 returns and 16 to 20 in the 2009 return. All retained PDF pages were reviewed; original filing completeness is not established, and omitted content is not reconstructed."
+        },
+        {
+          "pdf_pages": [
+            38,
+            118,
+            119
+          ],
+          "observation": "The 2011 extension request refers to Statement 1. The retained Statement 1 on page 118 has a 2009 footer and precedes the 2009 request; it is not treated as the missing 2011 explanation."
+        },
+        {
+          "pdf_pages": [
+            38,
+            79,
+            119
+          ],
+          "observation": "Each retained extension request is Part II, labeled Page 2; a corresponding Part I was not separately observed."
+        }
+      ],
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-001.png": "055a3541503f1c8dbe1088f3ba27f92df518a800f807b23f4b172181ef7dec66",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-002.png": "e710fd3d7f426997c6d576fe5b739481e93bd5d324fb23de69dfb330eab1f78d",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-003.png": "90e0092aa1a706137aa1dcf87015809797316b9850dc906bc4fc86331a1b5a6e",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-004.png": "3e4e4f3ded85d8518dd6ea189a6fa71930e1de857aece296cdc13d7c838c1a86",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-005.png": "91cd48661751c4e35a1afbf2865be3318427b1557a28e5eb4a632ea50ab0a0a9",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-006.png": "4f0efe2021f9122054d0ef0668f6abb6caba3cf757493b840694baa102c46fbd",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-007.png": "aa180f11ef8ecc1e024a1f7c572ea93f0776a46eea653358de0e4a5ba85b2d88",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-008.png": "594d761d1a1ae184e98dbe6dad5dc33f8414b7580c4309b8f6ba941be728c834",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-009.png": "db1f77fd1ed39ddeef98280c53334ae6a2bfe961302332589506415df3732888",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-010.png": "1544149df331c0ef82c382ae4348572215d99890f0fa8660886741b9f0f00396",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-011.png": "b78391386ef15c1208077e1482ac47677c59a8d44702a66163b3924f08c7e3d3",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-012.png": "af247ae1dae953ecdced66739613f9f9043760f7de6e99cfe16c186b858ed983",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-013.png": "94bc08d7a1aec3c16ea223e43e419720dc049146ff5975d11557a5e2fdfe4fdf",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-014.png": "5131ac6509c3c279a811cec30124613b312143d4701394ea3bcc82d224d6ed60",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-015.png": "8b1fe0ed4ec3c7049510135447bd4030f08fc8b643ceb8aeaef0bcc2418ea07e",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-016.png": "aa05fe916183d59ddbbcf4005b156cda9891190b57a681a1d686b3931fea0565",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-017.png": "d7e430e5dde3481f42cf96589a48a29177b3a5fb63315a6e89c6217ae1726f64",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-018.png": "c9ea82d3d219a746f703a23eb7b2d59bb54f407c571ecccb896950a18bd82f68",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-019.png": "4f14a27b25fe7624b8fee0a03fc2fb30df1d0fc1e88174a1487fcf7e0198a6e8",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-020.png": "85ca8c303ed4247c3fbebf994558e566f3403ad1d2e645f8503b7d470dccacc8",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-021.png": "a5560a4c98fff34271658a6c8fb2a56bf97abd3687278c904847d90f495d9143",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-022.png": "03fef6c9ce5203c66812127c1cdedeb61f16723a6327f63838bd39d259014a90",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-023.png": "0486ac4033e1f7f75dc5dd981d6653981afa72a5533c0103df1f56992a903711",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-024.png": "7051f5d7730e10e33c5445a65d1a9b53d3fd1ded0e7c35c646c9d9bd5b68273b",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-025.png": "90369d5ce08c54264e2db6ed9a0d6d46679466305f6b1f1fce329513f9e77c41",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-026.png": "00e018025a5a86c80c58547e08f9adf4948782ec1904ea9f98355d9862116240",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-027.png": "a8ec5a0b24743c7130d3ec6933a0586c85126e20a8c2294c08bb97904f3fe070",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-028.png": "4272d1a7eb973f1fd463e374e72c400ef774f6431d57812b3158199ab68165cb",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-029.png": "efd668bd6a794e5dec43f7e6492b80503141e2bda8a58b2605da7b7804fd5e48",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-030.png": "53b6a9dbc43cf49ba2c48e623374fa3c2488d07c98faebca146ff2f96f9a8046",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-031.png": "05c4081bd284922d1df77bfb78cd5eb20028a01da14ab622fdf72c348c2f15c9",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-032.png": "3bf80502541d724c7c9b20e45fed18c6fc2db49bfa1c26972fc7ed68a018ba6d",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-033.png": "77aa25564c21d01f26e83300567e4436e91202859f80d9f561c929253c754e16",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-034.png": "db2f19bfc918958828cdc12a23ad098d97bb745fbd60af401993079cd7386e26",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-035.png": "dbe375901d4de231fcbaf72be403c2f9597a72f9d9958cb6beec5853be9fbeda",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-036.png": "e43eb30839596cb1cc8fe32f46c061a857ec77c36a7d5192486b77c6d4f2ae72",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-037.png": "082885a0d8c7dbdd565c6493f6e9415776cf49b57cd59254836470ca10f2744d",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-038.png": "2fbc777e5bb0bb75a8a6a5f6b1c04ae10fcee15b2a335aae71a3af34a175e4c1",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-039.png": "8b724d93d34b235f6b458569e4e42d5945f61eb6ea70168e734e780946e13406",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-040.png": "a31bd115169165de6f85d2c36d428b0e2f8431a1f0da2e423c9ed02867f3c1a5",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-041.png": "96b50bc7a28c08896aa00ecef4378e1a61429ad1d55e717f35dd4933eef8c910",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-042.png": "2344e5366c0582db5e5a058b2de254dd362a392694ba102fc6b9f89ec70221ce",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-043.png": "0fd59ee9eeb78cb8019f6982876ecfb109742cfb8b103f64a24c05508e8094c9",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-044.png": "ce6ece75560a869e4dfdfb2cea32bfd25820d3f44c44ee9b96e52ab57acc98f0",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-045.png": "72038eee866a4af159626382ab554d02d052d1a24d47f624ed0183480b1c9f74",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-046.png": "1cda2a9a2ab68b7a00621472e50080a421932f8f5e5800ac5353a569ab680b9d",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-047.png": "5f1ed120c73b463071078286ce9f46e2e6c72de14e5bab10d8d5f7e6df1d286a",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-048.png": "e28ffa67d9c86bb2f0bd030675184d12f5f45a951287dfe5457cb3fe1bb6b5ef",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-049.png": "08edca17984fdc2d7d0a6b84ced1ed67d48ed15ff693da4dc2ffee3f60ae477e",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-050.png": "cf850bcdcb827ad85100a682b3fb6a6befa175bee3967ea73b93347dd3126e2b",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-051.png": "f04943ea7bd5325f3d7656e25837f36b0af334bf5b094aa2ecccb225cd7431d0",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-052.png": "9b542b9a4bd08c3bac1b9ec1d2ec0d4e29933ef9e38e697d5a6539e7b2a08215",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-053.png": "e7288c269df594f9441303094f9813a9a94d23cb2a00e56f147ded2bcbd8c4fd",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-054.png": "fb9d65f19915710b5d956c8d551a5a9edcaaf2861bec7dfc5c81605348d27c62",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-055.png": "eaca261544fee510df3c4922748f65e2fe3d3b48a89e79a7f5f3d4310537f446",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-056.png": "301934910bf87f3786dfde42291785aad111825984b8374acda0074c92968a33",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-057.png": "410077f31fbec8135b6008a90c52175c89da960bf8628968821cd6cef7ca67f7",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-058.png": "cca0e1c8ed9ed3ea895dd9841eb18dfaefd836142130eb2378d66b40eed1b2c3",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-059.png": "22bcb379135a005e0e9881e476a78ed99e84912469d6d08444bd9006bd4d6ce7",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-060.png": "eae400d328973310b9a546e9a72f80fd2e16127ac5b877aed04f1639f4a474e3",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-061.png": "61a3e8dd40a689d4fec732e40642575fa91799849cb33bffce9d424ea5122da6",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-062.png": "ebb41239f605c5bd1d7ef1ee8cf65612b4e6b2a8185f501ffe501dd7700a2f27",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-063.png": "dd17c79b73821577ced05c8cf0a6c098a082418b9f6e7e949d1c0847ad2b8869",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-064.png": "c8af7ba7c789d628bd6369897011e083a56c040471670f17bad45bd0907cfc60",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-065.png": "0a57e85aaabba77cb4e5722f22cc53ab595dfd7601529cce71ecd921c27e6df7",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-066.png": "93ae89020603dcd6bed20136ec61869b05dfa901d5ccbdd672742bda4c8c8e99",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-067.png": "e54d34a6800f7c5e21c58b058be150ecbc1333ec7cbe6f8a2559d1dca7a6d838",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-068.png": "eec2f4d5d5f290a2923c775f1cfde6651a2749f9b3cbc33987e878f36307e68b",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-069.png": "59e4047fd184d82edd793e1025f708913f9276441dca6ad6dbce8af94a014fd2",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-070.png": "2c402a38224794d195cab2273cad6688593fc80a020ee7696df44a42cc0f524b",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-071.png": "bdd14bda14c4e8d62c28a841c9fedf97065485688fafbef4ec4836adadd2576f",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-072.png": "f11cce0847b630656a6915a0109581433ec08c1dbe39f1de238f2862ded5b0e0",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-073.png": "7d3787e9d2f2789dec967ec3e8a528f49b9ad38e68f66a18b35143eac159baba",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-074.png": "c84a4e21c0581097bc0be4a0dd380ae86ea34ecd69796533f817dd1bd817037c",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-075.png": "46dc66fa05a4f1080613f58900c3b840a28364acbc4260e9e10d99d06469f731",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-076.png": "0e03ad6a50b304b43875faa2a5f58955eaec8f484a82f4fff28c419b17cb8e83",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-077.png": "ddf70e76ca3a3f98a4ce610d0ae1cd1b7cfd4763ea881a78c497166b5d77ef24",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-078.png": "48c53cc509273144a09d5611f730ab62500b10dfeb0e89599a3560c14069de87",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-079.png": "70fca9c13a38430460998d2e2194d7390bb043c8a882521612c49c5b819b79ba",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-080.png": "f3039b6eb1eb5c70273349ad955e4afd601aa75d9d5a0b6f155463ef6adb9900",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-081.png": "acbff7e4a572b9da6f6f1a62ececd6d4105b078bb88cf5ce36f4c100888a79cd",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-082.png": "351c9eea4277c3f79633b2728ca9c6abc7fa93f3c793fb9727f800174720e3e0",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-083.png": "7b91058080282f21263f16452697088d257798691b0369dc43478339e67aa7a5",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-084.png": "63c619400a364de06ac1335500b4544e0d101dc772a59b60ca8aca0531eaa7ce",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-085.png": "41b21ae68c015626d7214d8275976f99392ba4cedb5806bd3d12b54f4fbdc183",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-086.png": "de282789aed3db8954bf04ba1a80df5c86162f5a3f41f84c5f6a479b6f0de0f5",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-087.png": "a3aa727aab77b0fc27588183f4c1e33025dd41e578c3918670c575c38ceda62a",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-088.png": "44de0b265c1f2bd909f12f102a72c4f78809a02e8bcf0fdfcf47905c906561d3",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-089.png": "9803bc7b443318c9bff048ef6421ba70c0691c5915af0896c39c575e32eb8c9e",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-090.png": "ab1915d84d2aaa60d8113d9302aa2114c55041d8a884cba7b991b10b74b890ea",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-091.png": "acb1fcf24f95ad5c52e58ff36fab5c7a318b181bda90aa0fdcebabebb8cd6bd2",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-092.png": "9af416c88d16c2adc3ca87f8edd5f5f1950bae3b9382ee3ce6f6d4c852dcf09e",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-093.png": "731874043e368fecd0c665cc683db64f0486fd9f7e360a5dead370c3518f8ec3",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-094.png": "2beab818c52953376d87cdb41c1e0d43df2628f5a49bd468f6e55737cdaf7fa1",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-095.png": "7da66bd0e4ff312ba89218c5b3a632051d70c96973b49b233b0ecca1ffdffa94",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-096.png": "797981363388a0d3474a53c6c49e9713f2caa255b36ff24dc29c91a213ca8e8c",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-097.png": "899e02c899e892fcbfbd91ac1c5f13e1bc0562ba97a321a54f70e421bac8b1c6",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-098.png": "5c9a55af32469f5b1617454a8dc4b92c65c7babc835cb5c1a3ea8dfa16b3fb24",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-099.png": "8057807c1c46c264dd42dee3ca4ec4645a500c25b31a21ccd30f8694aa9b9010",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-100.png": "c6643a09e2a96162f6ff069001c153ca8f04d70491168fff3b1092526d1374b4",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-101.png": "dbd93994906ed21f1a99179f101e4bb7b64fa796fe027523bec0624d7dc6611c",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-102.png": "b994e17c5436f507ece1afa97d69b09ec47a5684d585ac36a1cebe56861a9f45",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-103.png": "f1bd2e0e133c90f74adc4a37e14073a5786338b9f421c1999dc4255a9b9010e8",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-104.png": "40b94cbb8e529f136facb7d1f9e866ffaf29527f0bb05f009dab40ebea5573d7",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-105.png": "ee8047b415b572f3f9a9cc30b84f55db8b7f59ab05bcb61a0c288a38356df173",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-106.png": "8cb851618bee7d79baec2779ac94a9dfff94bf108f11c7d64068f5af7bdc2be6",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-107.png": "cd568bf6ec7587346e6285e8ea209203db637e946144e3fe7bb9e81d6248a0c0",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-108.png": "b41cade3f1067075078f57edd1980162ca201ff922b01f22c591bc98974f3b24",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-109.png": "64787677c8eab08b578a2d639baaad52acc58fb511884dc10c922713c9ab193d",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-110.png": "0029daf5c631d03a12af7b28536d8a0aa6bf5a3d9895d3037041c4d98b582ed4",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-111.png": "6dc8ab5df6f54f3887847c47b55b7aec3b884a66f85ef63fbaca0325d573c8fa",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-112.png": "3d8faf064d197ac3efadd93c68e920cf5884f0efd5487a3181c7fbe05fb27ac0",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-113.png": "de326489d4ca92ee85e5169e6cd94b52bdfd08ac2c5494ccc0744b88e935127f",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-114.png": "6ab0792dc223f2b8b6e341b8466ab7fe2ee65e285cd0879c27b4a8650cbb21d2",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-115.png": "7c391a4e52ae279c57bff39b45a48acbe9de2350f08d1f37e553274919a247c6",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-116.png": "3d928374d9eab58d3efd0867709a4b48498cf267472b81a773e459b81c3e3360",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-117.png": "29254d5319a822b72a993fda12bef1075269b3468bfa440e84bc067ab04e488d",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-118.png": "265b6b87a24ae946175166c689aad494eed9401c61ecce0d9786b6bc4d3eaa0d",
+        "output/filename-patterns-20261015/public-retained-review-v3/simmons-119.png": "33a95c5156d358a131a724a100ea88f52480b841680804f3f13bddfe52fb0fd6"
+      },
+      "native_text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v3/38644a2d6c2e01fa3f6089087ca20d1bb3e00ee90dcad1191d80a51ced71a9d7.layout.txt",
+      "native_text_sha256": "0f36177cc17c61e5e1ca1c2edc77203e76c4c79d05cd2bb96a30dcbd92cb0e8b",
+      "native_text_extraction": "pdftotext -layout; only pages 1-3 have native text; all rendered pages are the review basis",
+      "independent_reference": false,
+      "release_approved": false
+    }
+  ],
+  "summary": {
+    "new_completed_documents": 1,
+    "new_completed_pages": 119,
+    "cumulative_completed_documents": 38,
+    "cumulative_completed_pages": 279,
+    "disclosure_only": 23,
+    "disclosure_with_biography": 13,
+    "biography_only": 2,
+    "disclosure_with_biography_including_additional_forms": 2,
+    "counting_note": "Presence bins retain all additional observed forms; descriptive tax labels are review evidence only.",
+    "remaining_documents": 0,
+    "remaining_pages": 0
+  },
+  "remaining": [],
+  "verification": {
+    "selection_bindings_unchanged": true,
+    "exact_pdf_sha256_and_page_count_verified": true,
+    "page_sections_cover_all_retained_pages_once": true,
+    "rendered_pages_bound": 119,
+    "frozen_source_hashes_unchanged": 9,
+    "all_400_pilot_ids_and_body_keys_excluded": true,
+    "all_38_selected_documents_have_complete_receipts": true
+  },
+  "pilot_overlap": false,
+  "publisher_acquisition": false,
+  "production_ocr": false,
+  "production_changes": false,
+  "independent_reference": false,
+  "release_approved": false,
+  "limitations": [
+    "No production kind override or metadata review disposition was applied.",
+    "Complete assistant inspection is not independent reference labeling or release approval.",
+    "Complete retained-page review does not establish completeness of the original source packet or tax filings."
+  ]
+}

@@ -461,3 +461,19 @@ inspected, not that the source packet is complete. Preserve source-completeness
 observations, all composite forms, filename claims and reviewer/release flags.
 Keep the 91 metadata dispositions unchanged until the new linkage is explicit
 and tested. The frozen candidate and independent-reference gates remain intact.
+
+Disclosure/biography retained review, part 5
+------------------------------------------
+All 38 selected packets / 279 retained pages now have complete assistant review
+receipts. The v5 receipt completes Simmons and binds the prior receipt chain.
+
+Next implement a separate content-review linker against the existing ledger.
+Require exact document ID, body key, decoded PDF digest and unchanged source
+membership/evidence. Preserve component ranges, source-completeness notes,
+literal filename claims and assistant/non-independent/non-approved status.
+Report review completion separately from the existing metadata disposition;
+composite packets and conflicting observations must remain visible. Reject
+changed bodies, incomplete coverage and contradictory receipts in focused tests.
+Then inspect the 11 remaining amendment/vote groups, followed by opening/memo
+cases. Fresh raw-catalog qualification remains a separate unfinished step;
+local version 3.2.7 has not been published.
