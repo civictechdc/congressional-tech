@@ -1,0 +1,64 @@
+{
+  "receipt_path": "output/filename-patterns-20261015/public-archive-retry-v1/receipt.json",
+  "receipt_sha256": "cac6583f1c42e673e1b1b36cc2ffce33684cb465f644765379cd7f18546f056e",
+  "checked_at": "2026-10-16T17:34:51.464459+00:00",
+  "route": "public saved-copy Worker route",
+  "credentials_used": false,
+  "bucket_configuration_changed": false,
+  "pilot_overlap": 0,
+  "results": [
+    {
+      "document_id": "b0079a064001403d81234bdd03272896c1258b2dc23042d812febdf8fb53ceef",
+      "filename": "Amendment-in-the-Nature-of-a-Substitute-to-VE-LEtter-FY2024.pdf",
+      "body_key": "bodies/sha256/a0/a0b6901c7b4f1465fed26073e2a285c1d94a253fa9dd08561873ad281b2ef024.gz",
+      "url": "https://congressional-viewer-data.mdeeb.workers.dev/saved/a0b6901c7b4f1465fed26073e2a285c1d94a253fa9dd08561873ad281b2ef024/retained",
+      "http_status": 200,
+      "bytes": 153452,
+      "sha256": "a0b6901c7b4f1465fed26073e2a285c1d94a253fa9dd08561873ad281b2ef024",
+      "content_type": "application/pdf",
+      "is_pdf": true,
+      "status": "verified",
+      "path": "output/filename-patterns-20261015/public-archive-retry-v1/a0b6901c7b4f1465fed26073e2a285c1d94a253fa9dd08561873ad281b2ef024.pdf"
+    },
+    {
+      "document_id": "89b57d0d414bb8ccc6d4347d38e87c835dbd556c2cc0d677cd59d792135195d1",
+      "filename": "hr_3476_graves_amendment_21_tp_ans_cbra_disclosure_notification.pdf",
+      "body_key": "bodies/sha256/7a/7a5ec4d70f8d55643e2979936a747d5684c4315c0d8bb610adcbcd78cb689013.gz",
+      "url": "https://congressional-viewer-data.mdeeb.workers.dev/saved/7a5ec4d70f8d55643e2979936a747d5684c4315c0d8bb610adcbcd78cb689013/retained",
+      "http_status": 200,
+      "bytes": 28780,
+      "sha256": "7a5ec4d70f8d55643e2979936a747d5684c4315c0d8bb610adcbcd78cb689013",
+      "content_type": "application/pdf",
+      "is_pdf": true,
+      "status": "verified",
+      "path": "output/filename-patterns-20261015/public-archive-retry-v1/7a5ec4d70f8d55643e2979936a747d5684c4315c0d8bb610adcbcd78cb689013.pdf"
+    },
+    {
+      "document_id": "76727488c1e72856ef7e3a8f08092dc893262e2906dc46d642b08bc147740885",
+      "filename": "Issa Amendment to PRA Statement_0.doc",
+      "body_key": "bodies/sha256/80/80c3fe2ae1062abf56456f52518bd670f9ec3917b7f85e152b347ac6b6faf880.gz",
+      "url": "https://congressional-viewer-data.mdeeb.workers.dev/saved/80c3fe2ae1062abf56456f52518bd670f9ec3917b7f85e152b347ac6b6faf880/retained",
+      "http_status": 200,
+      "bytes": 196,
+      "sha256": "80c3fe2ae1062abf56456f52518bd670f9ec3917b7f85e152b347ac6b6faf880",
+      "content_type": "application/octet-stream",
+      "is_pdf": false,
+      "status": "verified",
+      "path": "output/filename-patterns-20261015/public-archive-retry-v1/80c3fe2ae1062abf56456f52518bd670f9ec3917b7f85e152b347ac6b6faf880.bin"
+    },
+    {
+      "document_id": "822544469d14c05f89472609d6a14ad65f1d62dc49bcbf4a9eae1cd4e01d75b7",
+      "filename": "Swalwell- Representational Disclosures.pdf",
+      "body_key": "bodies/sha256/07/07ae5fe1ac1effa11687e5cc415fd099058a1034637103737e36d96b5b856ec7.gz",
+      "url": "https://congressional-viewer-data.mdeeb.workers.dev/saved/07ae5fe1ac1effa11687e5cc415fd099058a1034637103737e36d96b5b856ec7/retained",
+      "http_status": 200,
+      "bytes": 31487,
+      "sha256": "07ae5fe1ac1effa11687e5cc415fd099058a1034637103737e36d96b5b856ec7",
+      "content_type": "application/pdf",
+      "is_pdf": true,
+      "status": "verified",
+      "path": "output/filename-patterns-20261015/public-archive-retry-v1/07ae5fe1ac1effa11687e5cc415fd099058a1034637103737e36d96b5b856ec7.pdf"
+    }
+  ],
+  "note": "Public body reads do not establish direct bucket endpoint availability or raw catalog access. The Issa key remains an ineligible retained HTML error response."
+}
