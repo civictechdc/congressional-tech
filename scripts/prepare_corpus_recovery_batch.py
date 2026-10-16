@@ -18,7 +18,10 @@ def prepare(source, deferred_path, destination):
     recovered = read(source / 'recovered-files.json')
     receipts = read(source / 'prepared-zip-receipts.json')
     members = read(source / 'zip-member-reconciliation.json')
-    deferred = {r['url'] for r in read(deferred_path)}
+    deferred_rows = read(deferred_path)
+    deferred = {r['url'] for r in deferred_rows}
+    deferred_hashes = {r['sha256'] for r in deferred_rows if r.get('sha256')}
+    deferred_keys = {r['body_key'] for r in deferred_rows if r.get('body_key')}
     accepted = read(source / 'prepared-accepted.json')
     bodies = {}
     def body(key, path, expected_size=None):
@@ -27,6 +30,8 @@ def prepare(source, deferred_path, destination):
             digest = hashlib.file_digest(stream, 'sha256').hexdigest()
         if key != f'bodies/sha256/{digest[:2]}/{digest}.gz':
             raise ValueError(f'Body identity mismatch: {path}')
+        if digest in deferred_hashes or key in deferred_keys:
+            raise ValueError(f'Deferred body cannot enter recovery batch: {path}')
         size = path.stat().st_size
         if expected_size is not None and size != expected_size:
             raise ValueError(f'Body size mismatch: {path}')

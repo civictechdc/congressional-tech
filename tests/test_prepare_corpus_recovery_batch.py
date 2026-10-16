@@ -53,6 +53,27 @@ class BatchTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.prepare()
 
+    def test_deferred_body_cannot_enter_through_another_url(self):
+        self.write('deferred.json', [dict(url='https://other.example/deferred.pdf',
+                                        sha256=hashlib.sha256(self.body.read_bytes()).hexdigest())])
+        with self.assertRaisesRegex(ValueError, 'Deferred body'):
+            self.prepare()
+        self.assertFalse((self.root / 'sealed').exists())
+
+    def test_deferred_body_cannot_enter_as_zip_member(self):
+        self.write('recovered-files.json', [])
+        self.write('deferred.json', [dict(url='https://other.example/deferred.pdf',
+                                        body_key=self.key)])
+        self.write('zip-member-reconciliation.json', [dict(body_key=self.key, validated=True)])
+        self.write('prepared-zip-receipts.json', [dict(
+            original_url='https://example.org/archive.zip', preserve_download_state=True,
+            captures=[dict(body_key=self.key, bytes=self.body.stat().st_size,
+                           pointer=['archive_members', 0], original_path='file.pdf')],
+            local_bodies={self.key: str(self.body)})])
+        with self.assertRaisesRegex(ValueError, 'Deferred body'):
+            self.prepare()
+        self.assertFalse((self.root / 'sealed').exists())
+
     def test_missing_mapping_refused(self):
         self.write('prepared-accepted.json', {'recoveries': []})
         with self.assertRaises(ValueError):

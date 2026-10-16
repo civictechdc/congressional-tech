@@ -112,3 +112,9 @@ Three remaining structured hearing-document leads and 387 filename leads still n
 The three structured hearing-document leads received direct official requests, with responses preserved and actual worker exit 0. `HHRG-113-IF17-20140522-SD002.pdf` passed PDF validation and was added to local preparation. `HHRG-114-IF14-20150611-SD004.pdf` returned HTML and remains an archive follow-up candidate. `HHRG-118-AG00-20230606-SD001.pdf` returned a PDF with a hash in the deferred-file set; it remains excluded, including through this alternative URL. This preserves the deferred-body boundary rather than bypassing it through an alias.
 
 Evidence: `../recovery/additional-hearing-files-20261016.json`. The remaining archive follow-up must wait for the existing NARA worker and exclude successes and deferred bodies again before dispatch. The live cloud run remains in its capture/rebuild step, so no shared import or publication has started.
+
+### Deferred-body exclusion fix and checkpoint 04
+
+Batch preparation now rejects a deferred content hash or body key even when it arrives under another URL or as a ZIP member. Two regression tests demonstrated the previous gap before the fix; all seven batch tests pass afterward. This applies the existing deferred-file instruction at the byte-identity boundary without changing running acquisition code.
+
+The new immutable `checkpoint-04` passed the stronger exclusion checks with 686 recovered URL links, 15 ZIP parents, 149 ZIP-member PDFs, and 775 distinct body objects. All 686 source records have established timestamps and provenance. Manifest SHA-256: `940b441049b7db96abc6a07e553a2ed5b9371da74f9c4c472fa4c58745487c5a`. This snapshot remains local and is not the final growing acquisition cohort. Extend remote body checks to this or a later final snapshot before dispatch; preserve the fresh cloud/lock/index/selector checks.
