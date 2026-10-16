@@ -1,0 +1,93 @@
+Compiled document review input
+==============================
+
+The maintained selection API is congress_api.retention.document_reviews.
+It applies a previously verified body review to a fresh grouped baseline and
+returns a separate candidate. Ordinary catalog grouping and refresh do not call
+it automatically. The existing experiment now calls this implementation; there
+is one selection and digest implementation for both package and experiment use.
+
+Ownership
+---------
+house_naming owns lexical filename interpretation and kind-to-family mappings.
+congress_api.retention owns retained body/source evidence, grouping and selection.
+A body review is evidence about captured bytes, not a new filename rule.
+The experiment receipt reader verifies its historical review format and compiles
+this input. It is not a package dependency. Future catalog integration must supply
+an equally verified input; loading arbitrary JSON is insufficient.
+
+What goes in
+------------
+review_group_digest(document, sources) receives the complete baseline document and
+every source member after grouping/refresh. It binds all semantic values, sorting
+members by source_id and dictionary keys. It ignores null dictionary padding only;
+list order, null list entries, duplicate values, source text and nested evidence
+remain significant. Duplicate members, foreign document IDs and a prior review
+candidate used as a baseline raise ValueError.
+
+apply_review_candidate(document, sources, review=None) receives that same baseline.
+The optional compiled review is the existing dictionary shape:
+
+Field | Meaning
+document_id | Exact grouped document identity.
+group_sha256 | Digest of the complete normalized baseline and all source members.
+original_row_sha256 | Exact original review-selection row, checked during compilation.
+receipt, receipt_sha256 | Locator and verified hash of the complete review receipt.
+body_key, body_sha256 | Retained body locator and verified decoded-byte digest.
+observed_forms | Distinct document forms observed across the complete body.
+primary_forms, component_forms | Reviewed packet roles; their union equals observed_forms.
+reviewer | assistant for the current admitted review input.
+independent_reference, release_approved | Explicit false; selection does not establish either.
+
+Compiler obligations
+--------------------
+Before calling the selector with a review, the caller must verify the complete
+receipt chain and its source-row bindings, decoded body bytes, PDF signature/page
+count, all-page coverage and retained evidence hashes. It must compare the proposed
+forms with that review and verify exact original/current membership and body
+identity. The current group must have document role and exactly the reviewed
+eligible body, while its retained body union may also include old failed captures.
+The current experiment implements these checks in load_reviews, compare_case and
+select_candidates. The package selection API performs no file or network reads;
+digest equality alone does not establish review correctness or page coverage.
+
+What happens and what comes out
+-------------------------------
+The selector copies the baseline before choosing a result. No supplied review
+returns no_review and the unchanged baseline. A different document ID or group
+digest returns scope_changed and the unchanged baseline. Unsupported forms keep
+the whole packet as annotation_only_unsupported_forms; the selector does not apply
+the supported subset. Invalid assistant flags or inconsistent form sets raise
+ValueError. These checks do not replace the compiler obligations above.
+
+A supported exact binding returns candidate_applied. It changes only selected
+document_kind, document_kind_source and document_family. Filename claims, native
+content readings and source context remain intact. Provenance is explicitly
+assistant_complete_body_review. Context-supported nomination families survive a
+change in reviewed form through the maintained paired-source predicate.
+
+The returned dictionary contains status, baseline_group_sha256, document and a
+detached copy of review. production_selected, independent_reference and
+release_approved remain false. Callers keep the original baseline separately and
+must not write the candidate back as baseline cache input. To withdraw, call with
+the original current baseline and no review. To correct, verify and compile the
+replacement receipt against that baseline; do not mutate the previous candidate.
+
+How we check it
+---------------
+Package tests exercise digest semantics, optional/default behavior, complete packet
+refusal, malformed compiled inputs, detached outputs and invalid cache reuse.
+Experiment tests exercise original receipt compilation and publisher context.
+The complete 86-group / 286-source cohort is replayed through seven grouping and
+refresh scenarios against its saved candidates to prove extraction compatibility.
+Import-fence tests keep retained-data code inside its package responsibility.
+
+Remaining integration work
+--------------------------
+The catalog pipeline still needs a package-owned receipt admission interface and
+explicit optional invocation/output storage for these candidates. It must preserve
+the baseline, serialize review evidence separately and support withdrawal without
+relying on cached candidate fields. Independent references, the five unsupported
+packet forms, full-catalog execution and publication remain separate decisions.
+No source-body acquisition, held-out evaluation, automatic selection or release
+permission is introduced by this API.

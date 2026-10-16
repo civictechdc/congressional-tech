@@ -776,3 +776,12 @@ pass. See family_context_checkpoint_v1.json and REVIEW_FAMILY_CONTEXT.txt.
 Next define the optional package review input, attribution and withdrawal after
 grouping, with ordinary no-review behavior unchanged. Taxonomy, independent
 references, broader qualification and publication remain separate requirements.
+
+The tested selection kernel now lives in congress_api.retention.document_reviews;
+the experiment calls it directly. docs/document-review-input.txt specifies the
+optional compiled input and withdrawal behavior. All 131 relevant tests pass and
+the seven-path replay preserves all 86 saved candidates without rebinding.
+See package_review_checkpoint_v1.json and REVIEW_PACKAGE_SELECTION.txt.
+Next implement package receipt admission plus an explicit candidate-output path
+separate from baseline caches, then qualify the broader catalog. Automatic catalog
+selection and publication remain unchanged.

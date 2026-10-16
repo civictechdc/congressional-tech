@@ -273,3 +273,22 @@ body/member bindings, separate attribution, refusal, withdrawal and unchanged
 default behavior. Keep lexical filename meaning in house_naming and retained
 evidence selection in congress_api. Resolve the five unsupported packet forms
 before activation, then qualify broader execution and independent references.
+
+Selection now belongs to the maintained package
+-----------------------------------------------
+congress_api.retention.document_reviews now owns review_group_digest and
+apply_review_candidate. The experiment imports those functions; its verified
+receipt compiler remains responsible for historical evidence admission. The
+selection and digest implementation is no longer duplicated in experiment code.
+docs/document-review-input.txt defines fields, caller verification duties, explicit
+statuses, baseline preservation and withdrawal. No catalog pipeline default changed.
+
+All 131 relevant tests pass. package-review-replay-v2 preserves the exact saved
+digests, all 86 candidate values and withdrawal across all seven scenarios without
+rebinding. See package_review_checkpoint_v1.json and REVIEW_PACKAGE_SELECTION.txt.
+
+Next implement package-owned receipt admission and an optional catalog invocation
+that writes candidates separately from baseline indexes. Validate the full evidence
+chain and exact eligible body/member identities before invoking the selector. Keep
+the ordinary no-review path unchanged. Then resolve unsupported packet representation
+and complete broader/independent qualification before production activation.

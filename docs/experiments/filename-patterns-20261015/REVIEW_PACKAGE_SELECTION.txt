@@ -1,0 +1,80 @@
+Maintained package review selection: self-review
+================================================
+Findings
+--------
+No blocking findings for moving the verified selection kernel into congress_api.
+Receipt admission and automatic catalog invocation are explicitly still absent;
+the new API accepts verified compiled input and does not claim to verify a review
+by itself. The package implementation replaces the experiment implementation.
+
+Patch summary and function trace
+--------------------------------
+Function | Location | Inputs -> outputs | Verified behavior
+_without_null_fields | congress_api/retention/document_reviews.py:25 | JSON-like values -> normalized copy | Removes null dictionary padding only; preserves list order, duplicates and null elements.
+review_group_digest | document_reviews.py:34 | complete group/members -> SHA-256 | Rejects duplicate/foreign members and prior review candidates; sorts member IDs; retains the existing UTF-8 JSON encoding and digest.
+apply_review_candidate | document_reviews.py:45 | baseline and optional compiled review -> candidate dictionary | Same checks, statuses, selected fields and context-family behavior as the experiment implementation.
+bind_review | experiment packet_review_candidate.py:11 | verified proposal, original and current rows -> compiled review | Retains compare_case validation; imports package digest and selection instead of owning duplicate logic.
+select_candidates | experiment current_review_candidates.py:72 | complete validated evidence -> candidates | Existing caller via imported package selector; keeps receipt/body/role/member checks before selection.
+audit_scenario | experiment current_review_path_replay.py:32 | saved baseline/candidates -> replay diagnostics | Exercises the actual package selector through the experiment import.
+
+Hypotheses and data flow
+------------------------
+H1: Selection depends on experiment-only receipt readers and therefore cannot be
+owned by the package. Refined: compilation depends on receipt validation and
+historical original-row comparison, but selection needs only compiled evidence,
+complete current rows and maintained context/family policies. The patch leaves
+compilation in the experiment and moves the latter functions into retention.
+
+H2: Moving digest computation can silently invalidate saved candidates.
+Tested: the package retains sorted-key, compact, ensure_ascii=False JSON, complete
+member sorting and the same null-padding normalization. Actual saved digests and
+complete candidates match across all seven replay scenarios without rebinding.
+
+The baseline and review are deep-copied before returning results. Default/no-review,
+scope-change and unsupported-packet paths preserve the baseline. Accepted selection
+changes only kind, provenance and family, with context-family support supplied by
+the existing predicate. Withdrawal uses the original baseline, never a prior
+candidate. No caller in the maintained capture/grouping pipeline invokes this API
+yet. There are no file writes, body reads or network calls inside the new module.
+
+Ownership and interface
+------------------------
+docs/document-review-input.txt defines the callable input fields, compiler duties,
+four result statuses, copy/withdrawal behavior and remaining integration work.
+Filename parsing and family mappings stay in house_naming; retained-source selection
+belongs to congress_api.retention. The new retention module imports only maintained
+package code and standard-library helpers, not experiment modules. The experiment
+retains its import names as aliases for existing runners and receipt compilation.
+The concrete simplification is one shared implementation of review selection and
+group digest; the experiment no longer owns either behavior. No speedup is claimed.
+
+Tests and actual verification
+-----------------------------
+tests/test_document_reviews.py verifies package-level digest encoding with Unicode,
+nested null padding, list order and duplicate values; all four result statuses;
+detached outputs; withdrawal; duplicate/foreign members and candidate-cache refusal;
+invalid reviewer/approval/reference flags and inconsistent forms. Existing experiment
+tests retain receipt and context-family coverage. Import-fence tests pass.
+
+The relevant run passes 131 tests. package-review-replay-v2 then
+uses the new package implementation on all 286 sources / 86 groups. The saved
+baseline, reference and reversed groupers, disk grouping, cache reuse and both
+metadata refresh modes retain identical complete baseline and candidate values.
+There are still 81 selections and five whole-packet annotations, with withdrawal
+restoring every baseline. No fresh binding or production selection was performed.
+The source manifest explicitly includes the new package module, including before
+it was tracked by Git. This run took 5.155 seconds and peaked at 201,490,432 bytes
+process RSS; it is not a full-catalog capacity measurement. The initial v1 run
+also passed; v2 records the final adapter after trailing whitespace cleanup.
+
+Limits and next work
+--------------------
+The package API is a compiled-input selector, not an arbitrary JSON admission API.
+The caller must establish receipt integrity, complete review coverage and eligible
+body/member identity before calling it. The experiment already does so; maintained
+catalog ingestion still needs that interface and an optional invocation/output path.
+Keep candidate storage separate from reusable baseline indexes. Unsupported packet
+forms, independent reference accuracy and broader qualification remain open.
+
+VERDICT: APPROVE for package-owned selection with the documented caller obligations.
+Coverage: ADEQUATE. Confidence: HIGH for behavior-preserving extraction and this cohort.
