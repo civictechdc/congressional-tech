@@ -1,0 +1,42 @@
+Replay implementation provenance review
+=======================================
+
+Result and cause
+----------------
+The original replay recorded the filename package, document_index.py and runner
+hashes but omitted imported retention modules. A change to XML restoration or
+disk grouping could therefore change behavior without changing every recorded
+identity. The runner now reuses the publication workflow's maintained source
+inventory and binds its own experiment helpers before writing the replay.
+
+Trace
+-----
+implementation_manifest (catalog_filename_replay.py:32) calls the existing
+.github/scripts/capture-source-manifest.py manifest function. Its source inventory
+covers the four Python package source trees, their project metadata and the
+native source-fetch source files. The runner adds the builder's own hash and all
+Python helpers in this experiment directory. No native binary or body is executed
+by the manifest function. The latest witness replay records 210 project files and
+27 experiment files. These are local source identities, not installed dependency
+or complete runtime reproducibility claims.
+
+implementation_identity (:41) compares project source_digest, builder hash and
+the exact experiment-file map. run records the initial manifest and repeats the
+comparison after writing and validating both output tables. Any changed code
+refuses a completed summary while preserving the initial manifest and partial
+outputs. Existing input, publication, filename and index checks remain. A changed
+Git revision alone does not refuse: the initial revision is descriptive, while
+the actual source bytes establish implementation identity.
+
+Validation
+----------
+test_catalog_filename_replay.py:177 checks actual hashes for the body-evidence,
+grouping and index modules plus runner/reconciliation/review helpers. :188 tests
+project, helper and builder changes separately after a real small replay. Each
+refuses the final summary and retains diagnostic artifacts. All 17 replay tests
+pass; the combined replay/metadata preservation run passes 37 tests. The real
+102-source, 38-group witness replay completed with matching initial/final code
+identities. No old replay manifest was rewritten.
+
+VERDICT: APPROVE for future isolated replays. Historical manifests retain their
+stated limitation; source identity alone does not qualify a catalog or release.

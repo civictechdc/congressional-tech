@@ -172,3 +172,35 @@ def test_moving_input_cannot_produce_a_completed_summary(tmp_path, monkeypatch):
         replay.run(root, tmp_path / 'result', rehearsal=True, workers=1)
     assert (tmp_path / 'result/manifest.json').exists()
     assert not (tmp_path / 'result/summary.json').exists()
+
+
+def test_replay_implementation_binds_imported_retention_and_experiment_helpers():
+    manifest = replay.implementation_manifest()
+    for name in ('document_evidence.py', 'catalog_staging.py', 'document_index.py'):
+        path = 'packages/congress_api/src/congress_api/retention/' + name
+        assert manifest['project']['source_sha256'][path] == replay.file_digest(replay.ROOT / path)
+    for name in ('catalog_filename_replay.py', 'pilot_reconcile.py', 'pilot_review.py', 'rule_review.py'):
+        path = 'docs/experiments/filename-patterns-20261015/' + name
+        assert manifest['experiment_sha256'][path] == replay.file_digest(replay.ROOT / path)
+
+
+@pytest.mark.parametrize('component', ['project', 'experiment_sha256', 'builder_sha256'])
+def test_changed_implementation_refuses_completed_summary(tmp_path, monkeypatch, component):
+    from copy import deepcopy
+    root = baseline(tmp_path)
+    original = replay.implementation_manifest()
+    changed = deepcopy(original)
+    if component == 'project':
+        changed['project']['source_digest'] = '0' * 64
+    elif component == 'experiment_sha256':
+        changed[component]['docs/experiments/filename-patterns-20261015/pilot_reconcile.py'] = '0' * 64
+    else:
+        changed[component] = '0' * 64
+    snapshots = iter([original, changed])
+    monkeypatch.setattr(replay, 'implementation_manifest', lambda: next(snapshots))
+    output = tmp_path / 'result'
+    with pytest.raises(ValueError, match='Project or experiment implementation changed'):
+        replay.run(root, output, rehearsal=True, workers=1)
+    assert (output / 'manifest.json').exists()
+    assert (output / 'catalog/indexes/documents.parquet').exists()
+    assert not (output / 'summary.json').exists()

@@ -10,6 +10,7 @@ from hashlib import sha256
 import json
 import logging
 from pathlib import Path
+import runpy
 import shutil
 import sqlite3
 from tempfile import TemporaryDirectory
@@ -26,6 +27,21 @@ from congress_api.retention.catalog_staging import WorkingCatalog
 RESERVE = 10 * 1024**3
 PROTECTED = (set(index.SOURCE_SCHEMA.names) | index.SOURCE_CONTEXT_FIELDS | index.AVAILABILITY_FIELDS
              | index.BODY_FIELDS | {'capture_outcome', 'source_record_type', 'source_record_identifier'}) - {'record_role'}
+
+
+def implementation_manifest():
+    """Reuse publication's project-source inventory and bind experiment helpers."""
+    builder = ROOT / '.github/scripts/capture-source-manifest.py'
+    project = runpy.run_path(str(builder))['manifest'](ROOT)
+    return dict(project=project, builder_sha256=file_digest(builder),
+                experiment_sha256={str(path.relative_to(ROOT)): file_digest(path)
+                                   for path in sorted(Path(__file__).parent.glob('*.py'))})
+
+
+def implementation_identity(manifest):
+    # A Git commit can change during a long local replay without changing code.
+    # Bind actual source bytes; retain the starting revision as descriptive context.
+    return (manifest['project']['source_digest'], manifest['builder_sha256'], manifest['experiment_sha256'])
 
 
 def normalized(value):
@@ -142,9 +158,11 @@ def run(catalog_root, output, *, publication_dir=None, rehearsal=False, workers=
               for label, path in [('filenames', source_path), ('documents', document_path)]}
     source_hash = file_digest(index.__file__)
     fingerprint = index.parser_fingerprint()
+    implementation = implementation_manifest()
     manifest = dict(input_catalog_id=meta['catalog_id'], input_naming_version=meta.get('house_naming_version'),
         target_naming_version=index.__version__, inputs=inputs, publication=gate, rehearsal=rehearsal,
         filename_fingerprint=fingerprint, index_source_sha256=source_hash, evaluator_sha256=file_digest(__file__),
+        implementation=implementation,
         acquisition=False, body_reinspection=False, publication_performed=False)
     (output / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     isolated = output / 'catalog'
@@ -176,6 +194,8 @@ def run(catalog_root, output, *, publication_dir=None, rehearsal=False, workers=
         raise ValueError('Input catalog changed during replay')
     if index.parser_fingerprint() != fingerprint or file_digest(index.__file__) != source_hash:
         raise ValueError('Filename implementation changed during replay')
+    if implementation_identity(implementation_manifest()) != implementation_identity(implementation):
+        raise ValueError('Project or experiment implementation changed during replay')
     if publication_gate(publication_dir, catalog_root, meta) != gate:
         raise ValueError('Publication evidence changed during replay')
     result = dict(manifest, comparisons=comparisons, build=built,

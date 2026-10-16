@@ -59,6 +59,10 @@ to diagnose a failed or interrupted run; automatic resume is not implemented.
 Outputs
 -------
 manifest.json records the selected input pair, code hashes and publication state.
+Its implementation section reuses the publication project-source inventory and
+binds all experiment Python helpers plus the inventory builder. The same source
+identities are checked again before a completed summary; Git revision alone is
+descriptive. See REVIEW_REPLAY_PROVENANCE.txt for coverage and failure tests.
 catalog/indexes/document-filenames.parquet and documents.parquet contain the
 isolated replay; no indexes/catalog.json selector is written there.
 filenames-changes.csv and documents-changes.csv enumerate comparison differences.
@@ -85,9 +89,10 @@ see REVIEW_XML_PRESERVATION.txt. The complete historical output remains unchange
 at output/filename-patterns-20261015/catalog-replay-historical-v1. Its summary
 and the repaired subset are bound in xml_preservation_checkpoint.json.
 
-The original manifest binds filename, index and runner code but omits imported
-retention modules. Record the complete relevant implementation in the next run;
-the repair checkpoint explicitly includes document_evidence.py's source hash.
+The original historical manifest binds filename, index and runner code but omits
+imported retention modules. New runs now include and recheck the broader project
+and experiment source inventory; the old manifest remains unchanged. The XML
+repair checkpoint separately binds document_evidence.py's source hash.
 The 3.1.0 publication was still running when this checkpoint was written.
 
 Next actions
