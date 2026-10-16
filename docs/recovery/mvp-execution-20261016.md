@@ -84,7 +84,39 @@ not silently replace catalog interpretation or naming data.
 ## Review and rollout state
 
 The independent import, publication, and guard/runner/coalescing reviews are
-retained under `docs/recovery/`. Acquisition review corrections are being
-completed separately. Offline review is not a live release claim. Current
+retained under `docs/recovery/`. Acquisition review corrections are complete. The added source-record preparation
+command uses explicit capture/alias inputs and binds transport timestamps to the
+exact recovered source URL, body hash and length. Existing partial preparations
+and incomplete catalog builds remain intact for diagnosis. Offline review is not
+a live release claim. Current
 production identities and any remaining rollout work belong in
 `output/corpus-retry-20261015/current-continuation.json` in the primary checkout.
+
+
+The next operational commands are saved in
+[`next-batch-command-handoff.json`](next-batch-command-handoff.json). They combine
+unpublished checkpoints 17 and 18 against the fresh mapping selected by
+checkpoint 16, then reconcile bodies, import once, verify preservation and publish
+once. The two dispatchers explicitly share the primary checkout's lock and
+credential configuration. Their evidence directories and readiness file are
+named in the handoff. The existing monitor will prepare each runner plan only
+after its predecessor succeeds and all input files can be pinned.
+
+The staged runtime is
+`/Users/mikewolfd/.codex/worktrees/recovery-mvp-runtime/congressional-tech`,
+commit `fcc65a635a0976399e901167aa31a1aecff8db6b`, based on the exact current
+runtime commit `c361df34aa60f83877cd0c2e287a8d1410952ff1`. Its two viewer scripts
+and new catalog-validation module are the only code overlays. The actual staged
+packages and publisher passed a one-row materialization probe (269 files,
+73,479 bytes). That probe establishes compatibility; it does not establish
+full-corpus throughput or live publication.
+
+Earlier Firecrawl probe/parallel results and two additional GovInfo packages
+remain named, unconsumed work after the first coalesced batch. This refactor does
+not mark those recovered files published or declare the remaining corpus complete.
+
+The final integrated suite passed **175 tests and 7 subtests**. Evidence and code
+hashes are recorded in [`execution-evidence.json`](execution-evidence.json).
+Independent source-preparation review closed its initial timestamp finding, and
+publication review confirmed that incomplete build evidence survives continuation
+refusal. The active production run and all its pinned files remain unchanged.

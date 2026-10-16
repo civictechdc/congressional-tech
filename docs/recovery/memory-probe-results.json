@@ -1,0 +1,85 @@
+{
+  "extracted_from_actual_prior_tool_output": true,
+  "rerun": false,
+  "synthetic_only": true,
+  "results": [
+    {
+      "source_session": "/Users/mikewolfd/.codex/sessions/2026/10/16/rollout-2026-10-16T13-54-47-01a145da-2892-76b1-b0ee-6ab405c4da13.jsonl",
+      "line": 125,
+      "at": "2026-10-16T17:59:27.736Z",
+      "event_sha256": "85f1c3b7368d4c8462973531502a7e775a5fc9518a14901bfbf946c4c465f2d1",
+      "actual_exit": 0,
+      "output": {
+        "synthetic_only": true,
+        "results": [
+          {
+            "ref": "37ee074",
+            "rows": 200000,
+            "additions": 1525,
+            "peak_rss_bytes": 396050432,
+            "import_seconds": 2.291,
+            "complete": true,
+            "states_preserved": 200000,
+            "new_pending_states": 1525
+          },
+          {
+            "ref": "worktree",
+            "rows": 200000,
+            "additions": 1525,
+            "peak_rss_bytes": 147881984,
+            "import_seconds": 0.175,
+            "complete": true,
+            "states_preserved": 200000,
+            "new_pending_states": 1525
+          }
+        ],
+        "peak_rss_reduction_bytes": 248168448
+      }
+    },
+    {
+      "source_session": "/Users/mikewolfd/.codex/sessions/2026/10/16/rollout-2026-10-16T13-54-47-01a145da-2892-76b1-b0ee-6ab405c4da13.jsonl",
+      "line": 140,
+      "at": "2026-10-16T18:00:03.496Z",
+      "event_sha256": "b5fab0219f096a7bf9b4ffaed51092ad0a70c6ef26c7fb2147b1e7c8cfc26228",
+      "actual_exit": 0,
+      "output": {
+        "synthetic_only": true,
+        "results": [
+          {
+            "ref": "37ee074",
+            "mode": "preservation",
+            "rows": 200000,
+            "additions": 1525,
+            "peak_rss_bytes": 618168320,
+            "verify_seconds": 0.543,
+            "local_preservation_verified": true,
+            "previous_capture_rows": 600000,
+            "added_capture_rows": 0,
+            "existing_states_preserved": 200000,
+            "new_pending_states": 1525,
+            "receipt_records": 0,
+            "physical_exit_verified": false,
+            "fresh_remote_readback_verified": false
+          },
+          {
+            "ref": "worktree",
+            "mode": "preservation",
+            "rows": 200000,
+            "additions": 1525,
+            "peak_rss_bytes": 233291776,
+            "verify_seconds": 1.783,
+            "local_preservation_verified": true,
+            "previous_capture_rows": 600000,
+            "added_capture_rows": 0,
+            "existing_states_preserved": 200000,
+            "new_pending_states": 1525,
+            "receipt_records": 0,
+            "physical_exit_verified": false,
+            "fresh_remote_readback_verified": false
+          }
+        ],
+        "peak_rss_reduction_bytes": 384876544
+      }
+    }
+  ]
+}

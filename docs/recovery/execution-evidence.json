@@ -1,0 +1,123 @@
+{
+  "at": "2026-10-16T18:22:30.345024+00:00",
+  "status": "implemented_and_verified_locally",
+  "integration": "/Users/mikewolfd/.codex/worktrees/recovery-mvp-integration/congressional-tech",
+  "implementation_head": "ee728cf3cb33c5bd574cd7b0504899e8e322c95c",
+  "tasks": {
+    "T1": "implemented; focused probes and independent reviews complete",
+    "T2": "implemented; focused probes and independent reviews complete",
+    "T3": "implemented; focused probes and independent reviews complete",
+    "T4": "implemented; focused probes and independent reviews complete",
+    "T5": "implemented; focused probes and independent reviews complete",
+    "T6": "implemented; focused probes and independent reviews complete",
+    "T7": "implemented; focused probes and independent reviews complete",
+    "T8": "implemented; focused probes and independent reviews complete",
+    "T9": "implemented; focused probes and independent reviews complete",
+    "T10": "implemented; focused probes and independent reviews complete"
+  },
+  "source_preparation": "maintained explicit CLI; timestamp and sealed-input findings resolved",
+  "tests": {
+    "passed": 175,
+    "subtests_passed": 7,
+    "seconds": 3.88,
+    "log": "/Users/mikewolfd/.codex/worktrees/recovery-mvp-integration/congressional-tech/output/recovery-mvp-final-pytest.log",
+    "sha256": "44dc31cc64679ecf1d64fae71b412a2d1e053f3bb03c0d2b4a9b4772ce91100a",
+    "scope": "offline focused integrated suite; no live release claim"
+  },
+  "runtime_probe": {
+    "path": "/Users/mikewolfd/.codex/worktrees/recovery-mvp-integration/congressional-tech/output/recovery-mvp-runtime-probe.json",
+    "sha256": "de878487e20ea7aa29c8e156f1df2560b4be0c217181076a35b7d18cbc35e536",
+    "result": {
+      "complete": true,
+      "runtime": "/Users/mikewolfd/.codex/worktrees/recovery-mvp-runtime/congressional-tech",
+      "runtime_head": "fcc65a635a0976399e901167aa31a1aecff8db6b",
+      "probe": "maintained viewer builder with actual staged runtime packages and in-process pair proof",
+      "rows": 1,
+      "files": 269,
+      "total_bytes": 73479,
+      "modules": {
+        "document_index": "/Users/mikewolfd/.codex/worktrees/recovery-mvp-runtime/congressional-tech/packages/congress_api/src/congress_api/retention/document_index.py",
+        "catalog_validation": "/Users/mikewolfd/.codex/worktrees/recovery-mvp-runtime/congressional-tech/packages/congress_api/src/congress_api/retention/catalog_validation.py",
+        "builder": "/Users/mikewolfd/.codex/worktrees/recovery-mvp-runtime/congressional-tech/apps/site/scripts/publish-filename-viewer.py"
+      },
+      "remote_writes": 0
+    }
+  },
+  "changed_code_and_tests": {
+    "apps/site/scripts/filename-test-fixture.py": "0555d0ece67241e66e70eed2d05c40e4e810a8cb1b92f35699bf4bc0250cfe21",
+    "apps/site/scripts/filename_aliases.py": "a0f68b19b7366c679a776ff549c1714784534271e0f8876f38733c3574d9c9eb",
+    "apps/site/scripts/filename_details.py": "0f18c42dadc37cd3c4c7d2d8dcc121c58c57267bb53154ea3409883570152b03",
+    "apps/site/scripts/filename_navigation.py": "f51f866a67dd4cd007d54af246daedc7e897dfb8710805e8db7f71937e36a4be",
+    "apps/site/scripts/filename_observations.py": "77a1f59476afc03ba31fac9a9700281e855a142114b1100d40969dd6c54968d9",
+    "apps/site/scripts/filename_recoveries.py": "5eb7c8232ae617c39b5439d2a7ceac9de95d29cd9876e567806a97dab535ff93",
+    "apps/site/scripts/publish-filename-viewer.py": "4e9fe7cea3b25109b4ebb26e1d0d4bc583631b8a6bd60e5cb178e4a3eff1fd5b",
+    "apps/site/scripts/publish-viewer-r2.py": "263e2f9120e89c176653a60069b426f783d430281dce3e836e2b8d75961c4396",
+    "packages/congress_api/src/congress_api/retention/catalog_validation.py": "e72929fef5da657a8c0b203e808efbe0f8c61fa3ca7ba3a32c3b29d62f112be6",
+    "packages/congress_api/src/congress_api/retention/saved_response_reviews.json": "202f3108e389c4811b94e9015eb0d0d035e84e22ad6c410b3a63f83765799ce0",
+    "packages/congress_api/src/congress_api/retention/saved_responses.py": "dac79862a5ecaf94609435b2cd869f74c3f1342af97ebb10b4350d9a9d8797cf",
+    "scripts/assemble_corpus_recovery_import.py": "374d9e30a29f1100675360cc07c7424e53775755d3a5abad113802afb24e9779",
+    "scripts/coalesce_corpus_recovery_batches.py": "b15f821f690ebbb132f9f5a971aa0eeb200139d9887a8868def7ba7907c46b87",
+    "scripts/dispatch_corpus_recovery_import.py": "e6365c42a73826cbad636ed8639fb7d2c6f3d879049e03b9d203817a82297dbb",
+    "scripts/dispatch_corpus_recovery_publication.py": "9bffe3bb83ebae1a1be1ff3ebfa3f50666120100701ee83290cd698852c02a43",
+    "scripts/guarded_recovery_publication_client.py": "6bf9e10ba3b70e3a91d471af787b812aa7164af9dbfa43cac1b068f65877f2a4",
+    "scripts/import_corpus_recovery_batch.py": "04e5c737132c15412d6df55e9a95888953330469cacd3b30cf24739e6b92378f",
+    "scripts/prepare_corpus_recovery_source_records.py": "616beb5d2b4d815d9c3e330db9910620793ac7725fd58a0aa94ae8ef31497960",
+    "scripts/probe_corpus_recovery_memory.py": "1deb2ed198358a2359e490b915d461cafc8bc844475dbe3841354a1d4cdb7bfd",
+    "scripts/reconcile_corpus_recovery_bodies.py": "fffb4cbdd62dbebd1a763d675041855a7ba33e660efb8b7db7b53a24e69650b8",
+    "scripts/recovery_guards.py": "07da1d2d70e3a88338ebe751ee8c53dd10146a14f0025c6bc9dd7d4beed85d0d",
+    "scripts/recovery_publication_continuation.py": "24e4d320563b5ce8f520156ed72d28e4aabaa30ab0e2ed84385e8c4d2f32836b",
+    "scripts/run_corpus_recovery.py": "ed33100f1a50a6f12fbee938174ff26d23e09826f730b0e573e1d31d225d4c20",
+    "scripts/verify_corpus_recovery_import_preservation.py": "b5cc5ecc6d4682c1c766de757378b3bfd7427ce88c4a951d6934e9720fcb91ac",
+    "scripts/webharvest_recovery.py": "9edc818d5342052c8f310d58cd075617a32b528d6b3c3a751c3b9869d7d9672d",
+    "scripts/webharvest_validation.py": "e61401a025c74725bb9ad3de18528411831136ce8134a24e4bec81c9eec1717b",
+    "tests/test_assemble_corpus_recovery_import.py": "33a3870b33d81dabf368741c3efeb57d03d49dc6375bcdcd1be4843d6e04dedf",
+    "tests/test_catalog_pair_validation.py": "8cfc4ae73168ebbc3afdf58a0eeeb88a1e5711497b5753820b3484184bd0a620",
+    "tests/test_coalesce_corpus_recovery_batches.py": "7ec64eabc1592c551281ba01d6264612e1c39b9ac36144f8a7b09eb6faa6405f",
+    "tests/test_dispatch_corpus_recovery_import.py": "cf17da37bc4b69e3e1a9e497ed294c0a42db32644d30a9c19999c610e8af1a14",
+    "tests/test_dispatch_corpus_recovery_publication.py": "6f46cd6e369e4d91c839a8b9296728d6a3a79d240586a771456dd91cf85d81f4",
+    "tests/test_import_corpus_recovery_batch.py": "889913e96cd80fb502596245539451e7ddbab3eed6d4e1a3dfcbd2257eb29455",
+    "tests/test_prepare_corpus_recovery_source_records.py": "440c942b295843db6d03a8b793ec2439cfa9e327660822d0bbb2ded1788ea7d6",
+    "tests/test_reconcile_corpus_recovery_bodies.py": "07270c2c901c1d3bd1d458d3e50650821af1d5bb5b28d5bacde3cdef1890b6b8",
+    "tests/test_recovery_guards.py": "1416503f57ca6e89e2f7788e444b28dfb5a18d6746b29f3eda4163488bed648a",
+    "tests/test_recovery_publication_continuation.py": "a58ec8c15affed763fd91ef64a67fc62bd986a2de387d626e73a98579a122b58",
+    "tests/test_recovery_viewer_transfers.py": "f7b74031dcf3bca1e16f6c3801500c81c369833bc9380846474cc66945169ff9",
+    "tests/test_run_corpus_recovery.py": "057711f1e6ae44b0e5beea708341863c047bda754baba90e0df59cf893eb9748",
+    "tests/test_verify_corpus_recovery_import_preservation.py": "e6390365b793f390ceddbaae38a66f9e413e8975494bed817163be971c76eb8e",
+    "tests/test_webharvest_recovery.py": "cd19c4ae134fd4d2e7d186b4a8b28d4e23a22c14e3a9f79b10ff3fc0bfb5e96e"
+  },
+  "command_handoff": "docs/recovery/next-batch-command-handoff.json",
+  "runtime_overlay": {
+    "base_head": "c361df34aa60f83877cd0c2e287a8d1410952ff1",
+    "source_head": "609dbe9",
+    "files": [
+      {
+        "path": "apps/site/scripts/publish-filename-viewer.py",
+        "sha256": "4e9fe7cea3b25109b4ebb26e1d0d4bc583631b8a6bd60e5cb178e4a3eff1fd5b"
+      },
+      {
+        "path": "apps/site/scripts/publish-viewer-r2.py",
+        "sha256": "263e2f9120e89c176653a60069b426f783d430281dce3e836e2b8d75961c4396"
+      },
+      {
+        "path": "packages/congress_api/src/congress_api/retention/catalog_validation.py",
+        "sha256": "e72929fef5da657a8c0b203e808efbe0f8c61fa3ca7ba3a32c3b29d62f112be6"
+      }
+    ],
+    "preserved": "All other catalog interpretation, grouping, schemas, naming data and source runtime files match the existing viewer runtime commit.",
+    "deployed": false
+  },
+  "operational_rollout": "pending checkpoint16 actual completion and fresh catalog/mapping/viewer readbacks",
+  "production_writers_started": 0,
+  "provider_requests": 0,
+  "pushes": 0,
+  "evidence_deleted": false,
+  "memory_probe": "docs/recovery/memory-probe-results.json",
+  "reviews": [
+    "docs/recovery/import-t4-t5-independent-review-20261016.md",
+    "docs/recovery/reviews/t3-t8-t9.md",
+    "docs/recovery/reviews/publication.md",
+    "docs/recovery/reviews/acquisition.md",
+    "docs/recovery/reviews/source-preparation.md",
+    "docs/recovery/reviews/architecture.md"
+  ]
+}

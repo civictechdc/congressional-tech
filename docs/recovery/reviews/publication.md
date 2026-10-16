@@ -62,3 +62,27 @@ Executed the five focused publication suites against publication commit `95e429d
 - Catalog pair: two hashes and one semantic validation reused across dispatcher/builder checks; altered bytes with restored mtime, changed root/manifest/expected bodies/validator, missing coverage, and failed semantic validation all reject reuse.
 
 Remaining practical boundary: the full retained-data pipeline and public browser path were not executed. The reviewed implementation and offline checks support local readiness, not a live publication claim.
+
+## Addendum: final publication tree `06154ef`
+
+Reviewed `3311493` and `06154ef`; **APPROVE remains the local implementation verdict**. These commits must also be present in integration for this final verdict to apply.
+
+`verify_import` now verifies the external `remote-body-readback.json` sibling against both the readiness digest and sealed batch manifest digest. Execution pins the same sibling path (`scripts/dispatch_corpus_recovery_publication.py:31-44,129-133`). The external-readiness test checks the actual verifier and rejects changed proof bytes (`tests/test_dispatch_corpus_recovery_publication.py:138-165`). This closes the previously mismatched `body-readback.json` filename.
+
+The research viewer dependency now exposes the maintained `video_reference`, `video_sources`, and `video_entries` fields used by the static viewer builder, and uses `saved_response` when exposing retained bodies (`docs/youtube-coverage/research/scripts/view_document_filenames.py:116-119,294-328,455-475`). The predicate traces to `packages/congress_api/src/congress_api/retention/saved_responses.py:31-57`, which rejects absent bodies, reviewed errors, explicit incompleteness, unsuccessful statuses, and unsuccessful capture outcomes. The source-context changes retain linked-page distinctions and page date/type observations (`view_document_filenames.py:83-113`).
+
+The new actual tiny-catalog probe runs `write_document_indexes` → `publish_catalog` → `validate_catalog_pair` → actual `builder.publish` and checks the prepared files (`tests/test_catalog_pair_validation.py:74-92`). It closes the earlier missing actual-builder execution at this interface. It still does not run the full retained-data build and public deployment together.
+
+Re-executed the five focused publication suites at `06154ef`: **30 passed, 6 subtests passed**. Also executed the changed research viewer's suite: **37 passed**. Combined review execution: **67 passed, 6 subtests passed**. All provider calls in publication probes used offline fake clients; the research viewer suite uses local test servers.
+
+## Addendum: preserve incomplete catalog evidence (`03d2ec3`)
+
+**APPROVE remains the local implementation verdict for this correction.** Reviewed integration `03d2ec3` (publication source `efef5af`), limited to the incomplete-build refusal and its interruption test.
+
+The original catalog action deleted an existing unaccepted `build` directory before rerunning the builder. It now refuses at `scripts/dispatch_corpus_recovery_publication.py:225-231`, before reopening `WorkingCatalog` or invoking the builder. Existing SQLite and other diagnostic files remain in place. Accepted catalog phases still return through `Continuation.phase` without invoking that action (`scripts/recovery_publication_continuation.py:56-67`; dispatcher`:242-243`).
+
+Function/data trace: `Continuation.phase('catalog', ...)` either checks and reuses accepted artifacts or enters `catalog_phase`. An existing unaccepted build raises a concrete reconciliation-required error; no deletion or builder callback follows. A fresh absent build follows the existing create/build/close/validate path (`dispatch_corpus_recovery_publication.py:232-240`).
+
+The added `incomplete_catalog` subtest creates a diagnostic sentinel and interrupts inside the first builder callback (`tests/test_dispatch_corpus_recovery_publication.py:112-116`). Resume refuses, the sentinel bytes remain unchanged, the callback count stays one, and no later mapping/preparation/publication callback runs (`:150-160`). The four accepted-phase interruption cases still resume with each phase called once. This directly checks the intended distinction between accepted work and an incomplete build that needs diagnosis.
+
+Executed the current dispatcher suite alongside final source-preparation tests: **33 tests passed, 5 interruption subtests passed**. This validates the narrow correction offline; prior publication limitations and public-path gates remain as described above.
