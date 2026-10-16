@@ -15,6 +15,7 @@ import uuid
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'packages/congress_api/src'))
 from import_corpus_recovery_batch import import_batch
+from recovery_guards import RecoveryGuard, active_cloud_writers
 from congress_api.retention.raw_archive import CAPTURES_KEY, STATE_KEY, decode_table
 from congress_api.retention.r2 import R2Store
 
@@ -25,19 +26,14 @@ def digest(path):
 
 
 def cloud_clear():
-    pages = json.loads(subprocess.check_output([
-        'gh', 'api', '--paginate', '--slurp',
-        'repos/civictechdc/congressional-tech/actions/workflows/capture-raw-sources.yml/runs?per_page=100',
-    ], text=True, timeout=60))
-    active = [r['id'] for page in pages for r in page['workflow_runs']
-              if r['event'] != 'push' and r['status'] != 'completed']
-    if active:
-        raise RuntimeError(f'Cloud capture writer active: {active}')
+    return active_cloud_writers(run=subprocess.check_output)
 
 
-def verify_batch(batch):
+def verify_batch(batch, readiness_path=None):
     manifest = json.loads((batch / 'manifest.json').read_text())
-    readiness = json.loads((batch / 'import-readiness.json').read_text())
+    readiness = json.loads((readiness_path or batch / 'import-readiness.json').read_text())
+    if not readiness.get('ready', True):
+        raise ValueError('Body reconciliation is not ready')
     expected = dict(manifest['files'])
     for name, value in readiness['files'].items():
         if name in expected and expected[name] != value:
@@ -54,7 +50,17 @@ def verify_batch(batch):
 
 def run(args):
     batch = args.batch.resolve()
-    expected = verify_batch(batch)
+    readiness_path = (getattr(args, 'readiness', None) or batch / 'import-readiness.json').resolve()
+    expected = verify_batch(batch, readiness_path)
+    readiness = json.loads(readiness_path.read_text())
+    readback_path = readiness_path.with_name('remote-body-readback.json')
+    body_readback = None
+    if readiness.get('remote_body_readback_sha256'):
+        if digest(readback_path) != readiness['remote_body_readback_sha256']:
+            raise ValueError('Body reconciliation evidence changed')
+        body_readback = json.loads(readback_path.read_text())
+        if body_readback['batch_manifest_sha256'] != digest(batch / 'manifest.json'):
+            raise ValueError('Body reconciliation belongs to another batch')
     cloud_clear()
     if not args.execute:
         return dict(preflight=True, inputs_verified=True, cloud_clear=True, writes=False)
@@ -82,11 +88,14 @@ def run(args):
 
     code = {p.resolve(): digest(p) for p in (ROOT / 'packages/congress_api/src').rglob('*.py')}
     for name in ['dispatch_corpus_recovery_import.py', 'import_corpus_recovery_batch.py',
-                 'assemble_corpus_recovery_import.py']:
+                 'assemble_corpus_recovery_import.py', 'reconcile_corpus_recovery_bodies.py',
+                 'recovery_guards.py']:
         path = ROOT / 'scripts' / name
         code[path] = digest(path)
     inputs = {batch / name: value for name, value in expected.items()}
-    inputs[batch / 'import-readiness.json'] = digest(batch / 'import-readiness.json')
+    inputs[readiness_path] = digest(readiness_path)
+    if body_readback is not None:
+        inputs[readback_path] = readiness['remote_body_readback_sha256']
     journal('pins', {str(k): v for k, v in (code | inputs).items()})
     try:
         import boto3
@@ -111,25 +120,27 @@ def run(args):
             baseline[key] = response['ETag']
             if key.startswith('indexes/'):
                 store.index_etags[key] = response['ETag']
+        if any(baseline.get(key) != value for key, value in readiness.get('expected_remote_versions', {}).items()):
+            raise RuntimeError('Reconciliation baseline changed; reconcile again')
         journal('baseline', baseline)
 
-        def guard():
+        def local_check():
             if os.getppid() != parent or shutil.disk_usage(destination).free < 12 * 1024**3:
                 raise RuntimeError('Parent or disk reserve changed')
             held = os.fstat(lock.fileno())
             named = (ROOT / '.cache/local-recovery.lock').stat()
             if (held.st_dev, held.st_ino) != (named.st_dev, named.st_ino):
                 raise RuntimeError('Recovery lock file was replaced')
-            for path, value in (code | inputs).items():
-                if digest(path) != value:
-                    raise ValueError(f'Pinned input changed: {path}')
-            cloud_clear()
+
+        def protected_check():
             for key, version in baseline.items():
                 expected_version = store.index_etags.get(key, version)
                 if client.head_object(Bucket=store.bucket, Key=key)['ETag'] != expected_version:
                     raise RuntimeError(f'Protected input changed: {key}')
 
-        guard()
+        guard = RecoveryGuard(pins=code | inputs, local_check=local_check,
+                              cloud_check=cloud_clear, protected_check=protected_check)
+        guard.boundary()
         inventory = json.loads((batch / 'bodies.json').read_text())
         prepared = json.loads((batch / 'prepared-source-records.json').read_text())
         prepared += json.loads((batch / 'zip-receipts.json').read_text())
@@ -140,7 +151,10 @@ def run(args):
             state=decode_table((destination / 'payloads/baseline' / STATE_KEY).read_bytes()),
             source_file='ci/' + run_id,
             receipt_prefix='receipts/documents/' + datetime.now(timezone.utc).date().isoformat() + '/' + run_id,
-            guard=guard, journal=journal, save_payload=save_payload)
+            guard=guard.check, commit_guard=guard.shared_commit, body_readback=body_readback,
+            journal=journal, save_payload=save_payload)
+        guard.boundary()
+        journal('guard_counts', guard.counts)
         save_payload('import-complete.json', json.dumps(result, indent=2).encode())
         return result
     except BaseException as error:
@@ -154,6 +168,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--batch', type=Path, required=True)
     parser.add_argument('--destination', type=Path, required=True)
+    parser.add_argument('--readiness', type=Path, help='Sealed readiness from the maintained reconciliation command.')
     parser.add_argument('--config', type=Path, default=ROOT / '.cache/r2-admin/rclone.conf')
     parser.add_argument('--connect-timeout', type=int, choices=range(15, 181), default=15,
                         help='Socket connection/write timeout for retained body uploads (seconds).')

@@ -59,7 +59,8 @@ class DispatchTests(unittest.TestCase):
         (root / '.cache').mkdir()
         (root / 'scripts').mkdir()
         for name in ['dispatch_corpus_recovery_import.py', 'import_corpus_recovery_batch.py',
-                     'assemble_corpus_recovery_import.py']:
+                     'assemble_corpus_recovery_import.py', 'reconcile_corpus_recovery_bodies.py',
+                     'recovery_guards.py']:
             shutil.copyfile(ROOT / 'scripts' / name, root / 'scripts' / name)
         batch = root / 'batch'
         batch.mkdir()
@@ -97,9 +98,9 @@ class DispatchTests(unittest.TestCase):
         self.assertIn('failed_requires_reconciliation', (self.destination / 'events.jsonl').read_text())
 
     def test_active_writer_on_later_page_blocks(self):
-        pages = [dict(workflow_runs=[]), dict(workflow_runs=[
-            dict(id=123, event='workflow_dispatch', status='in_progress')])]
-        with patch.object(module.subprocess, 'check_output', return_value=json.dumps(pages)):
+        response = dict(total_count=1, workflow_runs=[
+            dict(id=123, event='workflow_dispatch', status='in_progress')])
+        with patch.object(module.subprocess, 'check_output', return_value=json.dumps(response)):
             with self.assertRaisesRegex(RuntimeError, '123'):
                 module.cloud_clear()
 
@@ -112,6 +113,7 @@ class DispatchTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             args = SimpleNamespace(batch=Path(directory), execute=False,
                                    destination=Path(directory) / 'dispatch')
+            (Path(directory) / 'import-readiness.json').write_text('{}')
             with patch.object(module, 'verify_batch', return_value={}), patch.object(module, 'cloud_clear'):
                 result = module.run(args)
             self.assertFalse(result['writes'])
