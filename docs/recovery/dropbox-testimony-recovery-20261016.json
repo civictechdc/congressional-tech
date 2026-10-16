@@ -1,0 +1,68 @@
+{
+  "at": "2026-10-16T03:56:03.726488+00:00",
+  "status": "validated_local_not_published",
+  "recoveries": [
+    {
+      "original_url": "https://www.dropbox.com/scl/fi/x4r52jl9dkr67auakiu4s/Xiao-Qiang-s-Testimony-Before-the-House-Select-Committee-on-Strategic-Competition-Between-the-USCCP.pdf?dl=0&noscript=1&rlkey=ut2rwe8he29p976bnwkvlfges&st=wdrb2dsm",
+      "recovered_url": "https://dl.dropboxusercontent.com/scl/fi/x4r52jl9dkr67auakiu4s/Xiao-Qiang-s-Testimony-Before-the-House-Select-Committee-on-Strategic-Competition-Between-the-USCCP.pdf?rlkey=ut2rwe8he29p976bnwkvlfges&st=wdrb2dsm&dl=1",
+      "body_path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/dropbox-testimony-content/1/ae8d1e43a54bdbc0959650f269a5b42457228ad7663d6636cef789e1a3809256.body",
+      "sha256": "ae8d1e43a54bdbc0959650f269a5b42457228ad7663d6636cef789e1a3809256",
+      "bytes": 135508,
+      "kind": "pdf",
+      "recovery_status": "recovered",
+      "recovery_basis": "user_accepted_url_variant",
+      "validated": true,
+      "request_evidence": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/dropbox-testimony-content/1/receipt.json",
+      "association_evidence": {
+        "basis": "Direct Dropbox download has exact same SHA256 as retained official House witness statement",
+        "official_url": "https://docs.house.gov/meetings/ZS/ZS00/20240723/117542/HHRG-118-ZS00-Wstate-QiangX-20240723.pdf",
+        "official_body_key": "bodies/sha256/ae/ae8d1e43a54bdbc0959650f269a5b42457228ad7663d6636cef789e1a3809256.gz",
+        "hearing_date": "2024-07-23",
+        "event_id": "117542"
+      }
+    },
+    {
+      "original_url": "https://www.dropbox.com/scl/fi/0372ztmkfpk0ymlevvlet/Cooper-House-Select-Committee-Testimony-FINAL.pdf?dl=0&noscript=1&rlkey=8pi5ehswr8zjhabzrjpn95xgw&st=s1gl05it",
+      "recovered_url": "https://dl.dropboxusercontent.com/scl/fi/0372ztmkfpk0ymlevvlet/Cooper-House-Select-Committee-Testimony-FINAL.pdf?rlkey=8pi5ehswr8zjhabzrjpn95xgw&st=s1gl05it&dl=1",
+      "body_path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/dropbox-testimony-content/0/37a0aad4b7a35208fb65f0fcd45b63ef361aa1fcf2d5ad363235638bb6d02cfe.body",
+      "sha256": "37a0aad4b7a35208fb65f0fcd45b63ef361aa1fcf2d5ad363235638bb6d02cfe",
+      "bytes": 270304,
+      "kind": "pdf",
+      "recovery_status": "recovered",
+      "recovery_basis": "user_accepted_url_variant",
+      "validated": true,
+      "request_evidence": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/dropbox-testimony-content/0/receipt.json",
+      "validation_evidence": {
+        "qpdf": "success_with_cross_reference_warnings",
+        "pdfinfo_exit": 0,
+        "pdftotext_exit": 0,
+        "all_pages_rendered": 9,
+        "pdftoppm_exit": 0,
+        "original_bytes_preserved": true
+      },
+      "association_evidence": {
+        "basis": "Direct Dropbox download has exact same SHA256 as retained official House witness statement",
+        "official_url": "https://docs.house.gov/meetings/ZS/ZS00/20240723/117542/HHRG-118-ZS00-Wstate-CooperZ-20240723.pdf",
+        "official_body_key": "bodies/sha256/37/37a0aad4b7a35208fb65f0fcd45b63ef361aa1fcf2d5ad363235638bb6d02cfe.gz",
+        "hearing_date": "2024-07-23",
+        "event_id": "117542"
+      }
+    }
+  ],
+  "evidence_sha256": "6cc0f9036879914951c6fd0d97759fa088750678408712125b4da030772e231b",
+  "actual_fetch_worker_exit": 0,
+  "summary": {
+    "status": "local_preparation_not_published",
+    "recovered_url_links": 1203,
+    "distinct_recovered_bodies": 836,
+    "zip_members": 149,
+    "distinct_zip_bodies": 149,
+    "prepared_url_maps": 21452,
+    "new_maps": 6947,
+    "document_groups_without_saved_before": 311,
+    "document_groups_without_saved_after_preview": 272,
+    "zip_members_not_yet_in_catalog_preview": true,
+    "deferred_files_preserved": 164,
+    "prior_maps_preserved": 14505
+  }
+}
