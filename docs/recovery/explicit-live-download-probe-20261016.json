@@ -1,0 +1,64 @@
+{
+  "at": "2026-10-16T04:46:45.748466+00:00",
+  "actual_wait_exit": 0,
+  "requests": 5,
+  "paid_requests": 0,
+  "qualified_pdfs": 3,
+  "http_410": 2,
+  "qualification_note": "One PDF had object-offset warnings; full text decode and all three pages rendered successfully. Original bytes and warnings preserved.",
+  "summary": {
+    "at": "2026-10-16T04:46:35.243752+00:00",
+    "eligible_urls": 23574,
+    "counts": {
+      "lookup_unresolved": 16568,
+      "validated_local_recovery": 1245,
+      "unprocessed_archive_candidate": 2756,
+      "attempted_not_recovered": 11,
+      "retained_copy_link_prepared": 2994
+    },
+    "accounted": 23574,
+    "published": false,
+    "scope": "Eligible queue only; unresolved lookup is not proof of archive absence",
+    "nara": {
+      "processed": 742,
+      "total": 742,
+      "valid": 677,
+      "requests_made": 471,
+      "blocked": null,
+      "pid": 55119,
+      "parent_pid": 94792
+    },
+    "wayback_retry": {
+      "at": "2026-10-16T01:33:44.797255+00:00",
+      "reason": "three_consecutive_transport_failures",
+      "pid": 64224,
+      "command": ".venv/bin/python output/corpus-retry-20261015/wayback_priority_index_retry.py",
+      "completed_receipts": 3,
+      "unfinished_request_may_have_partial_body": true,
+      "prior_evidence_preserved": true
+    },
+    "ledger_sha256": "69a86df7397b1ef8d454fc4b19c84ab571f91ea398526b6f1375cb852f228d01"
+  },
+  "evidence_hashes": {
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/explicit-live-download-probe/results.json": "0e0fac5f439a89d77e6f20751f7df1c617ce69e9061a34b6f0d98e3059f9f858",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/explicit-live-download-probe/complete.json": "074e2ca039a11c8d5f8ea0cc3dc4f6ba6e7865684edbb4fe49fbf1685c09002c",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/explicit-live-download-probe/0/qualification.json": "2e837e8ea45a59787eac9a4e270d0a84e072bdf5e05227c9b49afc5324571b27",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/explicit-live-download-probe/0/receipt.json": "158471c0bd930655bbd0fefdba1aa985d490a9a862afea28c2e050d43464c005",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/explicit-live-download-probe/1/qualification.json": "582edadeec6c1595a93a9f9507ffee1d74cbae225660c5e1d6fcecb449bfb77c",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/explicit-live-download-probe/1/receipt.json": "27f9d85554e3594605716ec2c9737b1ffe8e8ae444d67982813a751aef3657eb",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/explicit-live-download-probe/4/qualification.json": "2123803b56941b2fd2b4979044f0a1125f5b62f09350609ce7adbbba3321b45d",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/explicit-live-download-probe/4/receipt.json": "9e1f622eda5ee57b22a6178950e2c80d83c58f55f66971f0f05bf972da922a62",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/explicit-live-download-probe/3/receipt.json": "f58090ed368cfef5652e0bb7a441b4976ba8dbf51457a8d751d680206be5c6c6",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/explicit-live-download-probe/2/receipt.json": "41d8614a155921a4ee7fe33449d151690e9ea27ec1d0cb2c14de892081db45dc",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/explicit-live-download-recovered.json": "e3b7c5f6f5f3807a4d64575864cf033943bd453fb31fb7b3cf3c9777a20d94c2",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/download-base-sample/results.json": "3224976d768a47036d739d6b92ca3061da0b05f091ccfaf3676489de135a1ec5",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/prepare_recovered.py": "3a152909482b7365f12f45268a5d8d0c4797a38d14b3a3fc0439d10958416d0a",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/update_remaining.py": "7f6adc3afa6aa45bd4b65f6d48e0c235bbca666da73b08ee1b0429372a58b177"
+  },
+  "next_steps": [
+    "Use explicit retained download links for a larger bounded direct sample on the three successful hosts",
+    "Preserve 410 responses and test corrected query variants separately",
+    "Continue independent NARA HTML recovery",
+    "Refresh frozen batch before eventual import and publication"
+  ]
+}
