@@ -186,11 +186,40 @@ def test_explicit_combined_amendment_and_vote_keep_both_genres(engine, name):
     'Roll Call Vote 7Nadler Amdt 6 TEXT.pdf',
     'Roll_Call_Vote_7Nadler_Amdt_6_text.pdf',
 ])
-def test_explicit_amendment_text_is_not_collapsed_into_vote_only(engine, name):
-    # These publishers also name amendment-text variants after a roll call.
-    # Keep the ambiguity until retained content can establish the document form.
+def test_reviewed_judiciary_text_variant_selects_amendment(engine, name):
+    # All 15 retained variants are amendment text, often with vote annotations.
     result = engine.extract(name, source_url='https://judiciary.house.gov/' + quote(name))
-    assert result['metadata']['document_kind'] == ['amendment', 'committee-vote']
+    assert result['metadata']['document_kind'] == ['amendment']
+    assert result['metadata']['amendment_marker']
+    assert any(f.get('category') == 'committee-vote'
+               for m in result['observations'] for f in m['fields'])
+    assert ''.join(piece['raw'] for piece in result['pieces']) == name
+    assert all(name[f['start']:f['end']] == f['raw']
+               for m in result['observations'] for f in m['fields'])
+    assert {k: result[k] for k in engine.parse(name)} == engine.parse(name)
+
+
+@pytest.mark.parametrize('name,host,expected', [
+    ('Roll Call Vote 7Nadler Amdt 6 TEXT.pdf', 'naturalresources.house.gov', ['amendment', 'committee-vote']),
+    ('Roll Call Vote 7Nadler Amdt 6 TEXT.pdf', 'judiciary.house.gov.example.org', ['amendment']),
+    ('Roll Call Vote 7Nadler Amdt 6 TEXT.doc', 'judiciary.house.gov', ['amendment', 'committee-vote']),
+    ('Roll Call Vote 7 and Amendment 6 TEXT.pdf', 'judiciary.house.gov', ['amendment', 'committee-vote']),
+    ('Roll Call Vote 7 & Amendment 6 TEXT.pdf', 'judiciary.house.gov', ['amendment', 'committee-vote']),
+    ('Roll Call Vote 7Nadler Amdt 6 TEXT and Vote Sheet.pdf', 'judiciary.house.gov', ['amendment', 'committee-vote']),
+    ('Roll Call Report TEXT.pdf', 'judiciary.house.gov', ['committee-vote', 'report']),
+    ('Roll Call Vote 7Nadler Amdt 6.pdf', 'judiciary.house.gov', ['committee-vote']),
+    ('Swalwell- Representational Disclosures.pdf', 'science.house.gov', []),
+    ('hr_3476_graves_amendment_21_tp_ans_cbra_disclosure_notification.pdf', 'naturalresources.house.gov', ['amendment']),
+    ('Witness Disclosure Statement.pdf', 'science.house.gov', ['testimony-disclosure']),
+    ('Amendment 21 and Witness Disclosure.pdf', 'naturalresources.house.gov', ['amendment', 'testimony-disclosure']),
+    ('Amendment-in-the-Nature-of-a-Substitute-to-VE-LEtter-FY2024.pdf', 'waysandmeans.house.gov', ['amendment', 'letter']),
+])
+def test_reviewed_amendment_form_boundaries(engine, name, host, expected):
+    result = engine.extract(name, source_url=f'https://{host}/' + quote(name))
+    assert sorted(result['metadata'].get('document_kind', [])) == expected
+    assert ''.join(piece['raw'] for piece in result['pieces']) == name
+    assert all(name[f['start']:f['end']] == f['raw']
+               for m in result['observations'] for f in m['fields'])
 
 
 def test_vote_on_committee_print_keeps_literal_print_reference(engine):

@@ -1,6 +1,6 @@
 {
   "id": "house-document-naming",
-  "catalog_version": "3.2.6",
+  "catalog_version": "3.2.7",
   "document": {
     "title": "Document Naming Conventions",
     "version": "1.2.1",
@@ -27272,7 +27272,7 @@
       "scope": "source-stem",
       "priority": 0,
       "scan_stage": "supplemental",
-      "pattern": "(?!(?:[a-f0-9]{64}\\.)?(?:HHRG|HMTG|HMKP|BILLS|CRPT)[ _-])(?!.*(?:whistle[\\s_.-]*blower|protected[\\s_.-]*disclosure|financial[\\s_.-]*disclosure|6103)).*?(?P<document_wording>disclosure(?:[\\s_.-]*(?:statement|stmt)(?![a-z]))?|(?<![a-z])ttf(?![a-z])|truth[\\s_.-]+in[\\s_.-]+(?:testimony|testifying)).*",
+      "pattern": "(?!(?:[a-f0-9]{64}\\.)?(?:HHRG|HMTG|HMKP|BILLS|CRPT)[ _-])(?!.*(?:whistle[\\s_.-]*blower|protected[\\s_.-]*disclosure|financial[\\s_.-]*disclosure|representational[\\s_.-]+disclosures?(?![a-z])|cbra[\\s_.-]+disclosure[\\s_.-]+notification(?![a-z])|6103)).*?(?P<document_wording>disclosure(?:[\\s_.-]*(?:statement|stmt)(?![a-z]))?|(?<![a-z])ttf(?![a-z])|truth[\\s_.-]+in[\\s_.-]+(?:testimony|testifying)).*",
       "source_hosts": [
         "appropriations.house.gov",
         "democrats-edworkforce.house.gov",
@@ -27484,6 +27484,26 @@
         "document_wording": {
           "category": "committee-vote",
           "note": "Publisher-qualified document-kind hint; original wording and span retained."
+        }
+      }
+    },
+    {
+      "id": "publisher-judiciary-amendment-text",
+      "scope": "source-stem",
+      "priority": 0,
+      "scan_stage": "supplemental",
+      "pattern": "(?P<document_wording>(?:\\d{8}[\\s_.-]+)?roll[\\s_.-]+call[\\s_.-]+(?:vote[\\s_.-]+)?\\d+[\\s_.-]*(?!(?:and|with)(?:[\\s_.-]|$))[a-z]+(?:[\\s_.-]+(?!(?:and|with)(?:[\\s_.-]|$))[a-z]+)*[\\s_.-]+(?:amdt|amendment)[\\s_.-]+\\d+[\\s_.-]+text)",
+      "source_hosts": [
+        "judiciary.house.gov"
+      ],
+      "source_extensions": [
+        "pdf"
+      ],
+      "description": "Complete Judiciary roll-call amendment TEXT layout. All 15 retained reviewed variants contain amendment text; handwritten vote outcomes do not make them member vote sheets. This filename rule performs no body verification.",
+      "field_readings": {
+        "document_wording": {
+          "category": "amendment",
+          "note": "Complete amendment-text variant label; nested vote wording remains literal evidence."
         }
       }
     },

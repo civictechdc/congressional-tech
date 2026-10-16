@@ -60,6 +60,16 @@ body-key alias on the current Natural Resources host support this publisher
 scope. The vote pattern, target handling and explicit `TEXT` ambiguity remain
 unchanged. This update performs no content verification.
 
+Version 3.2.7 recognizes the complete Judiciary `Roll Call ... Amdt ... TEXT`
+PDF layout as amendment text. All 15 retained examples were visually reviewed;
+14 also contain handwritten vote outcomes. The existing longest-phrase selector
+keeps the literal vote observations without assigning a vote-sheet genre.
+Other publishers, non-PDF files and explicitly combined documents retain their
+existing readings. The publisher disclosure rule also excludes the reviewed
+legislative topics `Representational Disclosures` and `CBRA Disclosure
+Notification`. The Views and Estimates substitute retains both amendment and
+letter kinds. Runtime extraction remains offline and filename-based.
+
 ## Choose an API
 
 | Task | API | Result |
