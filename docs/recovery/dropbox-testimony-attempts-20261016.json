@@ -1,0 +1,40 @@
+{
+  "at": "2026-10-16T03:53:38.371551+00:00",
+  "actual_worker_exit": 0,
+  "recoveries": 0,
+  "attempts": [
+    {
+      "original_url": "https://www.dropbox.com/scl/fi/0372ztmkfpk0ymlevvlet/Cooper-House-Select-Committee-Testimony-FINAL.pdf?dl=0&noscript=1&rlkey=8pi5ehswr8zjhabzrjpn95xgw&st=s1gl05it",
+      "status": 200,
+      "valid": false,
+      "content_type": "text/html; charset=utf-8",
+      "receipt": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/dropbox-testimony-direct/0/receipt.json",
+      "receipt_sha256": "890a9f7bb7c5bb264cb7c3f3c6b748c824452910802695fae53502dd19a075fb",
+      "body_sha256": "69aed92eba8ef5995d7c5cd7025b70216f4523ec2e35a4e3556de4e472ca96cc"
+    },
+    {
+      "original_url": "https://www.dropbox.com/scl/fi/x4r52jl9dkr67auakiu4s/Xiao-Qiang-s-Testimony-Before-the-House-Select-Committee-on-Strategic-Competition-Between-the-USCCP.pdf?dl=0&noscript=1&rlkey=ut2rwe8he29p976bnwkvlfges&st=wdrb2dsm",
+      "status": 200,
+      "valid": false,
+      "content_type": "text/html; charset=utf-8",
+      "receipt": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/dropbox-testimony-direct/1/receipt.json",
+      "receipt_sha256": "980352013a2a82e46af4d6793ac61525642460c9174e708f6083cef9c0258f88",
+      "body_sha256": "25a20153835d44c4c22d42604b928ca2f08ae9e064195897c558adb48a1dab88"
+    }
+  ],
+  "interpretation": "Both direct dl=1 requests returned HTML rather than PDF. This does not prove the shared files are absent.",
+  "next_step": "Find official committee copies or resolve the retained Dropbox preview download route; preserve unsuccessful receipts and avoid repeating identical requests.",
+  "nara_retry": {
+    "processed": 28,
+    "total": 64,
+    "valid": 27,
+    "requests_made": 28,
+    "blocked": null,
+    "pid": 87884,
+    "parent_pid": 94792
+  },
+  "cloud_publication_blocker": {
+    "run": 38823678887,
+    "status": "in_progress"
+  }
+}
