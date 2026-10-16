@@ -142,10 +142,17 @@ at bundle admission to a consuming process, not in a per-document rendering loop
 Remaining integration work
 --------------------------
 Explicit writing and verified local reading are now available; recurring capture
-and the viewer do not invoke them automatically. Next qualify selected-group
-admission/consumption against a complete catalog pair, and define portable evidence
-references before publication. Historical local paths must not be presented as a
-portable publication format. Independent references, the five unsupported packet
-forms, full-catalog execution and publication remain separate decisions. No
-source-body acquisition, held-out evaluation, automatic selection or release
-permission is introduced by these APIs.
+and the viewer do not invoke them automatically. The selected-group check against
+the complete saved catalog is recorded in
+experiments/filename-patterns-20261015/full_catalog_review_checkpoint_v1.json.
+It covers 86 reviewed groups within 1,240,374 document groups and 1,680,227 source
+rows, preserving both complete files. It is not a full classification refresh.
+Raw and filename-normalized rows require distinct bindings even when group IDs
+match; the check preserves both and verifies refusal across that boundary.
+
+Next define the representation of the five unsupported packets and portable
+evidence references before viewer integration. Historical local paths must not be
+presented as a portable publication format. Independent references, held-out
+evaluation, full classification refresh and publication remain separate decisions.
+No source-body acquisition, automatic selection or release permission is introduced
+by these APIs.

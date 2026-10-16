@@ -803,3 +803,12 @@ candidates, working withdrawal and a rejected stale-source control. See
 bundle_consumption_checkpoint_v1.json and REVIEW_BUNDLE_CONSUMPTION.txt.
 Next exercise the same selected groups directly against the complete saved pair,
 measure memory/read behavior and record fresh bindings before broader adoption.
+
+Selected-group admission and consumption now pass against the complete saved pair:
+86 groups / 286 sources, 81 candidates, five annotations, exact withdrawal and both
+baseline files unchanged. All raw bindings correctly refuse normalized rows.
+See full_catalog_review_checkpoint_v1.json and REVIEW_FULL_CATALOG_BUNDLE.txt.
+Next specify the representation of the five unsupported packets using their existing
+page evidence, then portable evidence references and snapshot-level loading before
+viewer integration. This check does not qualify a full classification refresh or
+independent accuracy. Held-out body review and publication remain separate gates.

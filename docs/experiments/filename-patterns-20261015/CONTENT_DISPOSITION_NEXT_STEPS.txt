@@ -335,3 +335,28 @@ catalog pair. Measure read behavior and process memory, verify excluded baseline
 bytes remain unchanged and record the exact binding transition from the normalized
 subset to the supplied pair. This is separate from full-catalog classification
 refresh, independent references, unsupported packet taxonomy and portable evidence.
+
+Selected-group admission and consumption pass on the complete saved pair
+-----------------------------------------------------------------------
+The maintained package now admits and consumes the same 86 reviewed groups directly
+from all 1,680,227 source rows and 1,240,374 document groups. It produces the same
+81 candidates and five annotations as the earlier raw subset, with working
+withdrawal and both complete baseline files unchanged. Admission took 71.155 seconds
+and peaked at about 2.02 GiB; consumption plus a repeated selected-row read and
+withdrawal checks took 80.203 seconds and peaked at about 1.35 GiB. These are single
+runs, not a benchmark or a full classification refresh.
+
+Complete selected-row reads use 59 source and 51 document row groups; full ID-column
+validation covers both files. All 86 raw bindings refuse normalized rows. The only
+candidate differences between those baselines are restored filename claims and
+group digests. The 778-file audit preserves frozen sources, pilot and labels.
+See full_catalog_review_checkpoint_v1.json and REVIEW_FULL_CATALOG_BUNDLE.txt.
+
+Next specify the five unsupported packets as retained observations with explicit
+primary/component forms and page evidence, separate from selected taxonomy kinds.
+Use the existing reviewed packets and supported controls; retain whole-packet
+annotation behavior until the representation is checked. Then define portable
+evidence references and loading once per snapshot before viewer integration.
+Independent references, held-out evaluation, full classification refresh and
+publication remain separate requirements. Public raw access is working; credentials
+are not required for known object paths on the recorded public R2 endpoint.
