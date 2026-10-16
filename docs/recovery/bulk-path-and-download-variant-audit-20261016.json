@@ -1,0 +1,26 @@
+{
+  "at": "2026-10-16T04:44:06.728584+00:00",
+  "local_only": true,
+  "requests": 0,
+  "bulk_index_payloads_checked": 79,
+  "cross_host_exact_path_candidates": 6,
+  "cross_host_candidates_are_hearing_pages": true,
+  "download_variant_base_catalog_rows": 9039,
+  "html_response_base_rows": 9038,
+  "empty_body_rows": 1,
+  "new_recovery_mappings": 0,
+  "next_steps": [
+    "Inspect representative retained HTML at base download URLs for explicit target links",
+    "Prefer exact attachment targets over guessed URL variants",
+    "Where no bulk or retained route supplies a file, test a bounded direct-download sample",
+    "Keep existing HTML pages distinct from requested file bytes"
+  ],
+  "evidence_hashes": {
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/retained-cross-host-path-summary.json": "0a8c305fbce2c07676a94156b15692c057b5ea258832602ef3442ad5433bdb4f",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/retained-cross-host-path-candidates.json": "dc6b2d8bfd052aeef097c79cc86fbdc102eae2121db18d96e5903e7f9b9daaf0",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/download-suffix-catalog-validation-candidates.json": "cf2c5ce4c5411360722f90939e19df5da0a2402b439dd09397f3fef3aed08cfd",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/download-suffix-catalog-candidates.json": "519007fc76d679de96736aeb29ec974711a683ca8b37eae847f20a54c7eb4887",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/join_retained_attachment_paths.py": "573c067039ac1d693d4262e13cd3598d9e768b098d07d0348ed60f294b39e069"
+  },
+  "limitation": "HTML media metadata does not prove a wrapper or usable document; inspect content before deciding."
+}
