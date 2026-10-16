@@ -1,0 +1,30 @@
+{
+  "at": "2026-10-16T13:58:23.805245+00:00",
+  "actual_wait_exit": 0,
+  "physical_absence_verified": true,
+  "pid": 27685,
+  "exec_session": 6393,
+  "verified_exact_existing_bodies": 1405,
+  "absent_bodies": 673,
+  "conflicts": 0,
+  "unresolved": 0,
+  "import_readiness": {
+    "at": "2026-10-16T13:58:23.805245+00:00",
+    "local_only": true,
+    "source_records": 1378,
+    "zip_parent_records": 120,
+    "capture_rows": 2090,
+    "distinct_capture_bodykeys": 2078,
+    "remote_existing": 1405,
+    "remote_absent": 673,
+    "files": {
+      "manifest.json": "3e02a63c2231eabdfdabd754921f85bbd2684fafbc4c6c17a0a5c371850ab74a",
+      "prepared-source-records.json": "8cbe5ad80b5234acfa611cea0c23d8d9493fcce2fbf6d75cf96ae9c607be4b7b",
+      "source-record-preparation.json": "bff4a4d935eefbfe6d1dad66cf7d72f445fcc9328a2d11fa0990c4b9837a6eea",
+      "remote-body-readback.json": "805963ffa7c587636866f54ecc774685217ac24d54f25edb0474e7f4f275d691"
+    },
+    "parent_publication_still_required": true
+  },
+  "import_dispatched": false,
+  "publication_dispatched": false
+}
