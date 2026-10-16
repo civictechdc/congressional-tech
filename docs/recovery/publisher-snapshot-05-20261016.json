@@ -1,0 +1,85 @@
+{
+  "qualification": {
+    "at": "2026-10-16T06:28:19.798326+00:00",
+    "snapshot_qualification_complete": true,
+    "workers_complete": false,
+    "qualified_urls": 572,
+    "distinct_bodies": 572,
+    "snapshots": [
+      {
+        "worker": "publisher-continuation-02",
+        "completed_receipts": 1096,
+        "total": 8619,
+        "snapshot_sha256": "5fdb6807d2905ef71e2db5cf8d0fe3f2b9c272df1483790998cd151567f88774",
+        "worker_completion_claimed": false
+      },
+      {
+        "worker": "publisher-file-refusal-continuation",
+        "completed_receipts": 399,
+        "total": 3506,
+        "snapshot_sha256": "ff68464f4bd0b125abbd49113f2e767ce464d0d8b11332c479d67987591646d4",
+        "worker_completion_claimed": false
+      }
+    ]
+  },
+  "verification": {
+    "at": "2026-10-16T06:28:50.381480+00:00",
+    "actual_wait_exit": 0,
+    "physical_absence_verified": true,
+    "pid": 3506,
+    "exec_session": 74837,
+    "qualified_urls": 572,
+    "full_body_hashes_verified": true,
+    "receipts_verified": true,
+    "all_pages_rendered": true,
+    "overlap_with_existing_recovered_urls": 0,
+    "published": false,
+    "qualified_sha256": "9e56d19b3a7d313d3797021193f224c5cff3177b1dd5e6a3e99f51790bc9bd62"
+  },
+  "ledger": {
+    "at": "2026-10-16T06:29:01.063857+00:00",
+    "eligible_urls": 23574,
+    "counts": {
+      "lookup_unresolved": 14822,
+      "validated_local_recovery": 2664,
+      "unprocessed_archive_candidate": 2648,
+      "attempted_not_recovered": 28,
+      "retained_copy_link_prepared": 3412
+    },
+    "accounted": 23574,
+    "published": false,
+    "scope": "Eligible queue only; unresolved lookup is not proof of archive absence",
+    "nara": {
+      "processed": 742,
+      "total": 742,
+      "valid": 677,
+      "requests_made": 471,
+      "blocked": null,
+      "pid": 55119,
+      "parent_pid": 94792
+    },
+    "wayback_retry": {
+      "at": "2026-10-16T01:33:44.797255+00:00",
+      "reason": "three_consecutive_transport_failures",
+      "pid": 64224,
+      "command": ".venv/bin/python output/corpus-retry-20261015/wayback_priority_index_retry.py",
+      "completed_receipts": 3,
+      "unfinished_request_may_have_partial_body": true,
+      "prior_evidence_preserved": true
+    },
+    "ledger_sha256": "4a608ec73c9eaf50b2f8c7315710fea87d891bac8f7e62c5e7f189fdc705c882"
+  },
+  "remaining_urls": 17498,
+  "prepared_recovered_urls": 6076,
+  "publication_complete": false,
+  "next_steps": [
+    "Finish active GovInfo batch, retain validated package members and resolve matching individual links.",
+    "Finish current publication and verify remote generation and viewer readback.",
+    "Publish the sealed checkpoint 13 next, then prepare the newer delta containing snapshot 05, the 313 retained mappings, and newly qualified ZIPs."
+  ],
+  "evidence_sha256": {
+    "output/corpus-retry-20261015/prepare_recovered.py": "7f12a3e4d236f1d031e7d1150b7db88d63f2304addfac5e03cf3f05fe290ac81",
+    "output/corpus-retry-20261015/remaining-recovery-ledger.csv": "4a608ec73c9eaf50b2f8c7315710fea87d891bac8f7e62c5e7f189fdc705c882",
+    "output/corpus-retry-20261015/publisher-snapshot-05/qualified.json": "9e56d19b3a7d313d3797021193f224c5cff3177b1dd5e6a3e99f51790bc9bd62"
+  }
+}
