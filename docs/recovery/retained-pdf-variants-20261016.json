@@ -1,0 +1,60 @@
+{
+  "at": "2026-10-16T04:34:26.458252+00:00",
+  "status": "local_mappings_not_published",
+  "pdf_url_mappings_added": 61,
+  "retained_url_mappings_total": 2994,
+  "new_downloads_for_these_mappings": 0,
+  "checks": [
+    "Full retained SHA256 and byte count",
+    "PDF inspection and full text extraction",
+    "Recognized linearization hint warnings preserved",
+    "Same URL except trailing slash as previously accepted mapping",
+    "Deferred URL and body exclusions",
+    "Previous indexed mappings unchanged"
+  ],
+  "summary": {
+    "at": "2026-10-16T04:34:17.071351+00:00",
+    "eligible_urls": 23574,
+    "counts": {
+      "lookup_unresolved": 16573,
+      "validated_local_recovery": 1222,
+      "unprocessed_archive_candidate": 2776,
+      "attempted_not_recovered": 9,
+      "retained_copy_link_prepared": 2994
+    },
+    "accounted": 23574,
+    "published": false,
+    "scope": "Eligible queue only; unresolved lookup is not proof of archive absence",
+    "nara": {
+      "processed": 742,
+      "total": 742,
+      "valid": 677,
+      "requests_made": 471,
+      "blocked": null,
+      "pid": 55119,
+      "parent_pid": 94792
+    },
+    "wayback_retry": {
+      "at": "2026-10-16T01:33:44.797255+00:00",
+      "reason": "three_consecutive_transport_failures",
+      "pid": 64224,
+      "command": ".venv/bin/python output/corpus-retry-20261015/wayback_priority_index_retry.py",
+      "completed_receipts": 3,
+      "unfinished_request_may_have_partial_body": true,
+      "prior_evidence_preserved": true
+    },
+    "ledger_sha256": "118aaec866e812082b7bddbf039ac345a0d7e63cd7a293aae3fb5772a9f184a3"
+  },
+  "evidence_hashes": {
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/html-slash-pdf-decode-check.json": "4e28e7b0d58e9d5630c289748530754fc8fa1f77bb28beb66171322911deae3f",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/html-slash-linked-pdf-validation.json": "1ed9daf3a3829c5cacd50304dde15f5de9e6393b20e88362caf569b84ff8558a",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/retained-url-variant-mappings.json": "96dc0e4bb61eab990c23a1c6d05e4f3074a2622c9dccd7850bb29120ae286908",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/remaining-recovery-summary.json": "d261a7720386f43f414ba2997572acc16f57ce5aee2a7a2de7e4f0380cb361e4"
+  },
+  "next_steps": [
+    "Complete active 20-link NARA attachment pass",
+    "Rebuild remaining HTML queue to exclude these 61 resolved PDF variants",
+    "Seal a new publication batch including all 2994 retained-file mappings",
+    "Import and publish only after fresh cloud-clear and input checks"
+  ]
+}
