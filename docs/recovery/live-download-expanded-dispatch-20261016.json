@@ -1,0 +1,31 @@
+{
+  "at": "2026-10-16T04:48:22.593231+00:00",
+  "status": "running_not_complete",
+  "process": "28496",
+  "exec_session": 74804,
+  "plan": {
+    "queue_sha256": "276176aa3d403645e8d6f9217c7ffd8684d63d7b89dc6acd6b9fa5f3da045063",
+    "script_sha256": "819f22d680e8ca14d032a12c83db68e715e70ef3fa37ff1f5b943955ff52a760",
+    "urls": 30,
+    "workers": 1,
+    "minimum_delay_seconds": 3,
+    "paid_requests": 0,
+    "pid": 28496,
+    "parent_pid": 94792
+  },
+  "scope": "Thirty original remaining testimony/statement URLs, ten each on three hosts that returned usable PDFs in the bounded probe.",
+  "guardrails": [
+    "Reuse an already validated final URL before downloading it",
+    "No paid requests",
+    "Skip deferred URLs and body digests",
+    "Do not retain video/audio response bytes",
+    "Stop a host after refusal or three consecutive transport failures",
+    "Preserve redirects and every response receipt"
+  ],
+  "completion_requirements": [
+    "Actual wait exit and process absence",
+    "Exact queue accounting",
+    "Full payload hashes and structural checks",
+    "Keep PDFs with warnings pending separate qualification"
+  ]
+}
