@@ -579,3 +579,20 @@ the remaining smaller groups and build a proposed disposition for each case.
 Runtime changes belong in house_naming and require focused tests and cohort
 replay. Complete assistant review remains distinct from independent labels,
 classification approval and release. Local version 3.2.7 remains unpublished.
+
+Opening/memo review completed
+-----------------------------
+The v3 receipt completes the five remaining memoranda / 52 pages. All 21
+eligible PDFs / 116 pages in the opening/memo selection are now fully reviewed;
+three selected groups remain unavailable. The v6 linkage has 71 documents /
+411 pages, zero mismatches and unchanged original metadata decisions. All
+bound hashes and nine frozen source hashes were reverified.
+
+The remaining queue contains 20 cases: 14 have one eligible retained PDF each,
+and six have none. Complete their bounded content reviews, then assemble a
+case-by-case proposed classification disposition for all 91 metadata cases.
+Distinguish observed form, document subject, event context and attachment role.
+Keep unavailable cases unresolved and preserve each literal filename claim.
+Apply justified runtime changes through house_naming with focused tests and
+cohort replay. Fresh raw-catalog qualification and independent reference labels
+remain separate unfinished requirements; version 3.2.7 remains local.

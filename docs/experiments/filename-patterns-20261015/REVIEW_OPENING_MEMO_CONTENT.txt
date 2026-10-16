@@ -85,3 +85,32 @@ the v2 receipt's remaining list and existing renders. The three unavailable
 opening-statement groups still have only saved error responses. Finish the
 memo queue, inspect the smaller remaining groups, then prepare case-specific
 classification proposals before changing house_naming rules.
+
+Part 3: saved memorandum batch completed
+----------------------------------------
+The v3 receipt completes Oklahoma City, Colorado, Guam, Long Island and the
+September 2015 Gulf field hearing: five packets / 52 pages. All contain staff
+memoranda with embedded witness lists. Maps, photographs, charts and tables
+remain components of those memos. Cited publications and earlier hearing
+materials are references, not separate attached documents.
+
+Visual review recovered structure absent from native text: the Gulf production
+table, development timeline and Western Gulf bid chart, and the map legends
+and source captions in the other illustrated packets. The Gulf extraction also
+joins a footnote marker to a quantity; the receipt distinguishes the marker.
+Guam includes a final map-only page, a footnote continuing between pages, and
+source citation discrepancies preserved without correction.
+
+All 21 eligible opening/memo PDFs / 116 pages in this selection are complete.
+The three unavailable opening-statement groups remain unavailable. The v6
+linkage contains 71 reviewed documents / 411 pages and zero mismatches. All
+91 metadata decisions and every other original field remain unchanged; 20
+cases still lack linked assistant review. Complete retained-page review does
+not prove source completeness or supply independent reference labels.
+
+Next: inspect the remaining eligible cases, including the Award List, seven
+statement/disclosure combinations, two disclosure attachments, H.R. 1890,
+the budget-reconciliation packet, Johnson's amendment statement and the EBJ
+alternative rules amendment. Six other cases have no eligible saved body.
+Use exact row/body bindings and pilot exclusions for the new selection, then
+prepare proposed classifications separately from review-completion status.
