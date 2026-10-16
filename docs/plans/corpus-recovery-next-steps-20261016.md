@@ -188,3 +188,9 @@ Intersecting the unresolved eligible queue with the current preview finds 92 lin
 The other 198 preview groups have no unresolved eligible link in this intersection; that fact does not establish recovery or archive absence. ZIP-member integration is still pending, and the preview uses the recorded baseline rather than a newly published catalog. Evidence: `../recovery/missing-document-priorities-20261016.json`.
 
 Next search retained source URLs, committee page context, and bulk indexes for the document priorities before making more publisher requests. Energy and Finance Senate routes account for 42 links including the audio link and multiple download-parameter variants; consolidate equivalent requests while preserving original URL associations. The existing NARA follow-up remains the sole active archive downloader.
+
+### Senate Finance transcript recovered through source context
+
+The retained Finance hearing page identifies the broken drug-pricing download as its hearing transcript. Official GovInfo package CHRG-116shrg43563 supplies the matching Senate Finance transcript for April 9, 2019, titled *Drug Pricing in America: A Prescription for Change, Part III*. That PDF was already retained. Its complete hash and PDF validation passed, and extracted text confirms the title/date/committee. Three download URL variants were added as user-accepted alternate recoveries, with no claim that their bytes match the broken committee response.
+
+The other retained nomination transcript is a different proceeding: a March 11 executive session referring back to the February 5 hearing. It was not substituted for the missing nomination-hearing transcript. Evidence: `../recovery/finance-transcript-recovery-20261016.json`. Continue context-based matching rather than treating shared nominee names as document identity.

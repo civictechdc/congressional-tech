@@ -1,0 +1,22 @@
+{
+  "at": "2026-10-16T03:46:00.984225+00:00",
+  "recovered_links": 3,
+  "distinct_bodies": 1,
+  "published": false,
+  "official_pdf": "https://www.govinfo.gov/content/pkg/CHRG-116shrg43563/pdf/CHRG-116shrg43563.pdf",
+  "association": "Official same-hearing transcript; byte identity to broken committee download is not established",
+  "files": {
+    "drug-pricing-recovered.json": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/drug-pricing-recovered.json",
+      "sha256": "fba4e07b82367cd5944c7aa8427cd7845feb7edb67fa95eb278b49b65d75a828"
+    },
+    "drug-pricing-retained-matches.json": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/drug-pricing-retained-matches.json",
+      "sha256": "cd450484bc054cd71eb12c108d44c9c64be63a4f0f3221a2961bca6956f51246"
+    },
+    "senate-priority-source-context/readback.json": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/senate-priority-source-context/readback.json",
+      "sha256": "86244512987d3bff3589a4a49d1ce4471571fb53e2b12dbfc4ac8ec90b56a354"
+    }
+  }
+}
