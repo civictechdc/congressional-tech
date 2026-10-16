@@ -1,0 +1,42 @@
+{
+  "at": "2026-10-16T06:39:53.351508+00:00",
+  "failed": [
+    {
+      "url": "https://www.govinfo.gov/content/pkg/CHRG-116hhrg40609.zip",
+      "at": "2026-10-16T06:38:12.991817+00:00",
+      "complete": false,
+      "valid_zip": false,
+      "qualified": false,
+      "status": 200,
+      "headers": {
+        "date": "Fri, 16 Oct 2026 06:38:13 GMT",
+        "content-type": "application/zip",
+        "content-length": "77310456",
+        "connection": "keep-alive",
+        "server": "cloudflare",
+        "last-modified": "Sun, 04 Oct 2026 18:42:00 GMT",
+        "accept-ranges": "bytes, bytes",
+        "content-disposition": "attachment; filename=\"CHRG-116hhrg40609.zip\"",
+        "x-frame-options": "SAMEORIGIN",
+        "x-content-type-options": "nosniff",
+        "x-xss-protection": "1; mode=block",
+        "referrer-policy": "no-referrer-when-downgrade",
+        "strict-transport-security": "max-age=31536000; includeSubDomains",
+        "content-security-policy": "default-src 'self'  https://analytics.govinfo.gov https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://maxcdn.bootstrapcdn.com; frame-ancestors 'self'; script-src 'unsafe-inline' 'unsafe-eval' 'self' *.videodelivery.net *.cloudflarestream.com  https://cdn.jsdelivr.net  https://stackpath.bootstrapcdn.com https://api.data.gov https://maxcdn.bootstrapcdn.com https://www.google.com/recaptcha https://recaptcha.google.com/recaptcha; object-src 'unsafe-inline' 'self' ; style-src 'unsafe-inline' 'self' https://cdn.jsdelivr.net https://maxcdn.bootstrapcdn.com https://api.data.gov  https://stackpath.bootstrapcdn.com https://fonts.googleapis.com https://www.google.com/recaptcha https://recaptcha.google.com/recaptcha; img-src 'unsafe-inline' 'self' https://maxcdn.bootstrapcdn.com https://stackpath.bootstrapcdn.com  https://analytics.govinfo.gov data:; font-src 'unsafe-inline' 'self' https://cdn.jsdelivr.net  https://stackpath.bootstrapcdn.com https://api.data.gov https://maxcdn.bootstrapcdn.com https://fonts.gstatic.com https://fonts.googleapis.com; connect-src 'self' *.videodelivery.net *.cloudflarestream.com https://cdn.jsdelivr.net  https://api.data.gov https://analytics.govinfo.gov; frame-src 'self'  https://stackpath.bootstrapcdn.com https://maxcdn.bootstrapcdn.com https://www.google.com/recaptcha https://recaptcha.google.com/recaptcha;",
+        "cf-cache-status": "DYNAMIC",
+        "cf-ray": "a4b50f336e71e621-IAD"
+      },
+      "error_type": "ChunkedEncodingError",
+      "error": "(\"Connection broken: BrokenPipeError(32, 'Broken pipe')\", BrokenPipeError(32, 'Broken pipe'))"
+    }
+  ],
+  "action": "One separate retry after the active download worker physically exits; keep partial bytes and receipt unchanged.",
+  "retry_already_started": false,
+  "successful_downloads_to_repeat": 0,
+  "source_result_sha256": "99283ba97dc7b6a32bd5ca66cc635da77d56fab1b967aba8f56fdda98af4353e",
+  "next_steps": [
+    "Verify the full download and qualification results before adopting the successful subset.",
+    "Retry only the interrupted package in a new evidence directory.",
+    "Keep publication serialized behind the active catalog builder."
+  ]
+}
