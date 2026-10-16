@@ -1,0 +1,65 @@
+{
+  "at": "2026-10-16T13:59:35.172977+00:00",
+  "supervisor_actual_wait_exit": 130,
+  "child_exit": {
+    "at": "2026-10-16T08:19:12.816176+00:00",
+    "actual_child_wait_exit": -2,
+    "stop_reason": "disk_reserve"
+  },
+  "physical_absence_verified": true,
+  "stop_request": {
+    "at": "2026-10-16T08:19:10.775504+00:00",
+    "reason": "disk_reserve",
+    "free_disk_bytes": 16954007552
+  },
+  "free_disk_bytes": 3225821184,
+  "publication_write_intents": 0,
+  "fresh_remote_checks": [
+    {
+      "key": "indexes/captures.parquet",
+      "before_etag": "\"52fac486d3fe9e3a6f16d7723cd163bd\"",
+      "current_etag": "\"52fac486d3fe9e3a6f16d7723cd163bd\"",
+      "current_bytes": 282497811,
+      "last_modified": "2026-10-16 06:01:34+00:00",
+      "unchanged": true
+    },
+    {
+      "key": "indexes/catalog.json",
+      "before_etag": "\"c019ce85155e28c40c1c2b226be21fe2\"",
+      "current_etag": "\"af84a88484c383af3a883ceb1292dda1\"",
+      "current_bytes": 532,
+      "last_modified": "2026-10-16 10:51:28+00:00",
+      "unchanged": false
+    },
+    {
+      "key": "indexes/download-state.parquet",
+      "before_etag": "\"75fb5f1b387b0242f8aa0f8c03d81479\"",
+      "current_etag": "\"75fb5f1b387b0242f8aa0f8c03d81479\"",
+      "current_bytes": 96998392,
+      "last_modified": "2026-10-16 06:00:20+00:00",
+      "unchanged": true
+    },
+    {
+      "key": "viewer-publications/manifest.json",
+      "before_etag": "\"ff2ab81eac88e4fdecba747e86ccb63e\"",
+      "current_etag": "\"9b4f1b4296018d05515e7ef8c09b5eb0\"",
+      "current_bytes": 973,
+      "last_modified": "2026-10-16 11:18:28+00:00",
+      "unchanged": false
+    },
+    {
+      "key": "viewer-publications/recoveries/accepted.json",
+      "before_etag": "\"37db5dc29219999e79429625f3509fff\"",
+      "current_etag": "\"37db5dc29219999e79429625f3509fff\"",
+      "current_bytes": 4693694,
+      "last_modified": "2026-10-15 19:56:39+00:00",
+      "unchanged": true
+    }
+  ],
+  "failed_sqlite_preserved_bytes": 30196588544,
+  "restart_dispatched": false,
+  "next_steps": [
+    "Reconcile changed remote objects before any writer dispatch.",
+    "Resolve storage before another catalog build."
+  ]
+}
