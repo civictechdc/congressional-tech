@@ -1,0 +1,653 @@
+{
+  "scope": "Complete review of nine opening-statement packets and one composite memo packet",
+  "previous_review": "docs/experiments/filename-patterns-20261015/legacy_content_review_linkage_v1.json",
+  "previous_review_sha256": "f21ead3b539f3e0c88e67b4fd273ab50ad468b330a2435ac3c824a7918ca2b16",
+  "input_ledger": "output/filename-patterns-20261015/review-evidence-v4/ledger.jsonl",
+  "input_ledger_sha256": "218c5ecc8a8eeb05b047414f4ffb7d5a9938d4a1f8d0d1e419b9c998932971e5",
+  "fetch_results_path": "output/filename-patterns-20261015/public-retained-review-v5/results.json",
+  "fetch_results_sha256": "1ae02bf3ed58b6a7cbcfb7fbaa7f506707706609faa3cda0d0fbc6e5c15091b0",
+  "selection_bindings": {
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/docs/experiments/filename-patterns-20261015/content_readiness_checkpoint.json": "b40dbe84dcb68e5aaf014084e8c55e7260c257074cd2d3b8314360ae0a504857",
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/fetch.py": "a38608488660ee5816c2aa46cef4bd3b36b1ec967aad6c961f1a46749a1d1759",
+    "output/filename-patterns-20261015/review-evidence-v3/ledger.jsonl": "d92184926b42812dff3c36f9442c032a0841ff8ecd3e679b40f6c477595d1438",
+    "output/filename-patterns-20261015/remaining-content-readiness-v1/readiness.json": "113859c8c35a6fc502603261c39622ac7f1f77377529755d2950b1a38e8dc4f0",
+    "docs/experiments/filename-patterns-20261015/catalog_alias_review.py": "dd46f8122ee43b0eaf8a88af7b0f16e94f147dd1e0d862dcaec836554b27e69d",
+    "packages/congress_api/src/congress_api/retention/document_index.py": "ec575da15c10615bd983baf3566e7bf5c1e63c5311715b0ab9e5b22917cc2667",
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/output/filename-patterns-20261015/continuation-v1/pilot.json": "55b3256dc0bfee57d90235b7d8d9b216060bc145d82926709a5b01beed619237",
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/docs/experiments/filename-patterns-20261015/review_evidence_checkpoint_v4.json": "869462f1085c1217c3ff4146fda6626ee504fda8d9deb84aa548cf6cc0c8144b",
+    "output/filename-patterns-20261015/review-evidence-v4/summary.json": "fad13d1d0101aebde561911cb9c6ecfff4c68b2dc8b0be65bd315d2a24fb8517",
+    "output/filename-patterns-20261015/review-evidence-v4/ledger.jsonl": "218c5ecc8a8eeb05b047414f4ffb7d5a9938d4a1f8d0d1e419b9c998932971e5",
+    "output/filename-patterns-20261015/public-retained-review-v5/selection.json": "f4099a3bbd89396966a24efb995159b4eb61920dfb33e3e220e8ddedbb25c3ae",
+    "output/filename-patterns-20261015/public-retained-review-v5/input-check.json": "80592d9f20223a122de6c6ea7a5919ad650fdce0916838452887b701a5b9c4f5"
+  },
+  "records": [
+    {
+      "document_id": "0db2a0fb07597bd2841fd101b5a3984f633b943236bf88f3cc873012a48cfc1b",
+      "filename": "JSOpeningStatement.020514.pdf",
+      "body_key": "bodies/sha256/1b/1b0b1134abcc830b876ef8b48213bcd6e3dc57113c822d04267101dff127df6e.gz",
+      "sha256": "1b0b1134abcc830b876ef8b48213bcd6e3dc57113c822d04267101dff127df6e",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/1b0b1134abcc830b876ef8b48213bcd6e3dc57113c822d04267101dff127df6e.pdf",
+      "pages": 2,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/1b0b1134abcc830b876ef8b48213bcd6e3dc57113c822d04267101dff127df6e.txt",
+      "text_sha256": "e479439f5daf99e46eb441128d0e1dd0e533372630c5a3271cf94ca917affe7e",
+      "selection_index": 1,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "independent_reference": false,
+      "release_approved": false,
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v5/page-01-1.png": "ac56d781aafccb8fc0a67e665f7e5f05c4fa6b18573781502ed9b7ff8fc6ab81",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-01-2.png": "7e216e126a1d176591c150b242477d58549e1a1516412af5342853dec21b8a13"
+      },
+      "native_text_extraction": "pypdf; all rendered pages visually reviewed; no OCR",
+      "observed_document_forms": [
+        "opening-statement"
+      ],
+      "observations": [
+        "Explicit Opening Statement heading. Scanned pages have no native extracted text; both were visually read without OCR.",
+        "The statement discusses a staff report but does not include that report."
+      ],
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 2,
+          "observed_form": "opening-statement",
+          "description": "Jackie Speier opening statement for the February 5, 2014 joint hearing on health insurance co-ops."
+        }
+      ]
+    },
+    {
+      "document_id": "2cf618d97e88a6ee50e0c621b68c4affb21d842349c4d6d5f6eaac974316135a",
+      "filename": "EBJOpeningStatement[PRESS].pdf",
+      "body_key": "bodies/sha256/d1/d1f77f034c7be2373a811004c423114ac5d75c35016fca434cc45d33dfcae320.gz",
+      "sha256": "d1f77f034c7be2373a811004c423114ac5d75c35016fca434cc45d33dfcae320",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/d1f77f034c7be2373a811004c423114ac5d75c35016fca434cc45d33dfcae320.pdf",
+      "pages": 2,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/d1f77f034c7be2373a811004c423114ac5d75c35016fca434cc45d33dfcae320.txt",
+      "text_sha256": "81356cf2fe3f775967c6d4e39dded25d116aefcd35192f38d89f4a55771cac9f",
+      "selection_index": 5,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "independent_reference": false,
+      "release_approved": false,
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v5/page-05-1.png": "570494da10e38157ced5cecc153ed74eaa7601f84a8cb0d72bbc24277750aae1",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-05-2.png": "941e617ee209f65f60b3e67579ee1634a964f0ad25cf9d9ab8cc0af19730dddd"
+      },
+      "native_text_extraction": "pypdf; all rendered pages visually reviewed; no OCR",
+      "observed_document_forms": [
+        "opening-statement"
+      ],
+      "observations": [
+        "Heading says Statement; welcome to witnesses and hearing context establish opening remarks.",
+        "The literal PRESS filename token alone is not evidence of a separate news-release component."
+      ],
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 2,
+          "observed_form": "opening-statement",
+          "description": "Eddie Bernice Johnson statement opening the December 12, 2012 NASA strategic vision hearing."
+        }
+      ]
+    },
+    {
+      "document_id": "3595976d758124be49c77ef3ac64907fbe5ebd903d668039a1e5bb2f86aabe59",
+      "filename": "2.11.15-RCSOpeningStatement-HR5Markup-formatted.pdf",
+      "body_key": "bodies/sha256/42/429dd81622cbbe7b20ea499b35fdef1731b19735526a61c56ae2b7dab7c89d78.gz",
+      "sha256": "429dd81622cbbe7b20ea499b35fdef1731b19735526a61c56ae2b7dab7c89d78",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/429dd81622cbbe7b20ea499b35fdef1731b19735526a61c56ae2b7dab7c89d78.pdf",
+      "pages": 2,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/429dd81622cbbe7b20ea499b35fdef1731b19735526a61c56ae2b7dab7c89d78.txt",
+      "text_sha256": "c9371ef3272501d469d75f9f80ff3d915d6b285bc602d00ececbb20e5e9fa0b2",
+      "selection_index": 6,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "independent_reference": false,
+      "release_approved": false,
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v5/page-06-1.png": "d175679a4462af4cd01e1a603923cbc96ba0789c796a27bf454df5dcb1b8dfce",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-06-2.png": "15e11973a9ded8ebdc2cf2fcc1df4de418a51dd77acd993d6d06e737fee54284"
+      },
+      "native_text_extraction": "pypdf; all rendered pages visually reviewed; no OCR",
+      "observed_document_forms": [
+        "opening-statement"
+      ],
+      "observations": [
+        "Press office header and opening remarks heading; complete remarks continue to the end marker.",
+        "Descriptions of proposed amendments do not constitute attached amendment text."
+      ],
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 2,
+          "observed_form": "opening-statement",
+          "description": "Robert C. Bobby Scott opening remarks for the February 11, 2015 H.R. 5 markup."
+        }
+      ]
+    },
+    {
+      "document_id": "5d8616c647e7d0245c1542e8a09187f6c6c80ede1d58e805a5be14ed793e2585",
+      "filename": "Memo-EE-Markup-TSCA-Modernization-Act-Attachment-2015-5-14.pdf",
+      "body_key": "bodies/sha256/9b/9bdebb9c473dd712a2ace7f42f8d1a399160eec6e109e3967f5948d720ea9688.gz",
+      "sha256": "9bdebb9c473dd712a2ace7f42f8d1a399160eec6e109e3967f5948d720ea9688",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/9bdebb9c473dd712a2ace7f42f8d1a399160eec6e109e3967f5948d720ea9688.pdf",
+      "pages": 12,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/9bdebb9c473dd712a2ace7f42f8d1a399160eec6e109e3967f5948d720ea9688.txt",
+      "text_sha256": "ea2c499aedb200d35ec9dd98b52357c82269b7dd387e20d196d770609e97182d",
+      "selection_index": 8,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "independent_reference": false,
+      "release_approved": false,
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v5/page-08-01.png": "77069c4628d14b20361ff7be9725be3a8c26735c104c29b74e75c2dcfae59f0e",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-08-02.png": "80ab999e06787ddfd95fc96cdf767b97cdc529322527657be532a071debc984b",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-08-03.png": "95909daeef70d95cfe99ac8f280008e263e0e536d8a3ddcef8d0a3e82834c540",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-08-04.png": "c2e2f7bdb8f35f2eeb002fcad0a96d31fff5c4b7592f2663f676ce531fd8301a",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-08-05.png": "9bb5c65fff09337c10832ca8caed7f0d863ef1be98ee031c5a7ff305aefdac3a",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-08-06.png": "85cc65f62db9a9a5bd616bd71d23017bf86d5b8df21d6c6ee95bf9f483fefdb0",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-08-07.png": "0103336b93120907dd760d295e09f64fb5db5272e140885fed279645d53bd163",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-08-08.png": "b4c481becb9d94776792fafb18bf8cf8df83d7b36d34d7062896029a98426227",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-08-09.png": "b8a5d839296608dc38148e6efea50c84a72552d382185a40b4ec3fa880c5aeeb",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-08-10.png": "e02e35bb5634c34c6ce2a8f3508cc01bb2247956b58b05865f032e7daefe755d",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-08-11.png": "173a746d37b0ec69b92b2b9e15fdca76215c78de8767c41b55be103afd8b98b1",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-08-12.png": "e77bd7a5ff4019efc5cd325e5ea902063212bc6604889a961c38e860c5992e83"
+      },
+      "native_text_extraction": "pypdf; all rendered pages visually reviewed; no OCR",
+      "observed_document_forms": [
+        "committee-memorandum",
+        "witness-list"
+      ],
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 4,
+          "observed_form": "committee-memorandum",
+          "description": "May 13, 2015 markup memorandum describing revisions to the TSCA discussion draft."
+        },
+        {
+          "first_page": 5,
+          "last_page": 11,
+          "observed_form": "committee-memorandum",
+          "description": "Attached April 13, 2015 legislative hearing memorandum; printed pagination restarts at 1."
+        },
+        {
+          "first_page": 12,
+          "last_page": 12,
+          "observed_form": "committee-memorandum|witness-list",
+          "description": "End of attached memorandum, including two panels of expected witnesses and final footnote."
+        }
+      ],
+      "observations": [
+        "Two distinct memoranda share one retained PDF. The first expressly identifies the earlier hearing memo as attached.",
+        "Attachment describes the relationship of the second memo to the first; it is preserved in filename evidence.",
+        "The discussion draft, testimony and other cited documents are references, not attached legislative or testimony documents."
+      ]
+    },
+    {
+      "document_id": "877c875952f8c37c04592b6b2cbac55ccf3e6173fc34989b105c426003f9fbcf",
+      "filename": "FP-Opening-CHIP-CHC-Opening-Remarks-10-04-2017.pdf",
+      "body_key": "bodies/sha256/71/71d2eac918ee9e77bd919d0f1559e0edeed575e45970633afa59652908c79d78.gz",
+      "sha256": "71d2eac918ee9e77bd919d0f1559e0edeed575e45970633afa59652908c79d78",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/71d2eac918ee9e77bd919d0f1559e0edeed575e45970633afa59652908c79d78.pdf",
+      "pages": 2,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/71d2eac918ee9e77bd919d0f1559e0edeed575e45970633afa59652908c79d78.txt",
+      "text_sha256": "29456032e0598997fa0e7b40def3123016c701a4da134a0eb8c766a40b6947d1",
+      "selection_index": 9,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "independent_reference": false,
+      "release_approved": false,
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v5/page-09-1.png": "a9512705188c844ada42b97d1e04e4079855dbbe3c80bdce3b19e5380bbe3cef",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-09-2.png": "c2eefda9a1ac242246d3d878ab8b516561e8d112aef5022f3072c3449f1afa66"
+      },
+      "native_text_extraction": "pypdf; all rendered pages visually reviewed; no OCR",
+      "observed_document_forms": [
+        "opening-statement",
+        "press-release"
+      ],
+      "observations": [
+        "News masthead, FOR IMMEDIATE RELEASE, date and dateline introduce reproduced opening remarks.",
+        "Preserve both the press-release form and embedded opening statement."
+      ],
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 2,
+          "observed_form": "opening-statement|press-release",
+          "description": "Frank Pallone opening remarks for the October 4, 2017 full committee health care markup."
+        }
+      ]
+    },
+    {
+      "document_id": "a25283342a9c909707062d16dcb7f011e465b6d14e76013879a0a4eef99e5487",
+      "filename": "HHRG-114-SY16-20151117-SD008.pdf",
+      "body_key": "bodies/sha256/a9/a98aab38a1dd6b11570cf35a679edd99de9453c155cecc1202370887e940f996.gz",
+      "sha256": "a98aab38a1dd6b11570cf35a679edd99de9453c155cecc1202370887e940f996",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/a98aab38a1dd6b11570cf35a679edd99de9453c155cecc1202370887e940f996.pdf",
+      "pages": 2,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/a98aab38a1dd6b11570cf35a679edd99de9453c155cecc1202370887e940f996.txt",
+      "text_sha256": "982e24a4ebd5ced1cf0fba54b29aa852fb3484321d99b2855c03ce6048d22b0d",
+      "selection_index": 13,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "independent_reference": false,
+      "release_approved": false,
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v5/page-13-1.png": "9c419512225785acbde76cd9939c5b0a2dd1ca9d0503d132f22602ce6357d04a",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-13-2.png": "a8e6d26e818fb06ece1382e07cd53b4f43408b554b3571a33b1dc2d487b8d098"
+      },
+      "native_text_extraction": "pypdf; all rendered pages visually reviewed; no OCR",
+      "observed_document_forms": [
+        "opening-statement"
+      ],
+      "observations": [
+        "Explicit Opening Statement heading; welcome, policy context and yield-back ending."
+      ],
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 2,
+          "observed_form": "opening-statement",
+          "description": "Eddie Bernice Johnson opening statement for the November 17, 2015 joint Space and Environment hearing."
+        }
+      ]
+    },
+    {
+      "document_id": "b18cbcbab02a1fe301beea32edb568df87fa8fd94730313402c7243ff6d1c43e",
+      "filename": "12711-EECOpeningStatementMedicaidpress.pdf",
+      "body_key": "bodies/sha256/5f/5f5f74e3b9ebb61b9c29aa3f9504df7866a63a5c2d2167f0607d67ca094d112e.gz",
+      "sha256": "5f5f74e3b9ebb61b9c29aa3f9504df7866a63a5c2d2167f0607d67ca094d112e",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/5f5f74e3b9ebb61b9c29aa3f9504df7866a63a5c2d2167f0607d67ca094d112e.pdf",
+      "pages": 2,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/5f5f74e3b9ebb61b9c29aa3f9504df7866a63a5c2d2167f0607d67ca094d112e.txt",
+      "text_sha256": "f69be546068eb616ae66edd32aac709831244793773eadca4e438961e7a2d4bc",
+      "selection_index": 15,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "independent_reference": false,
+      "release_approved": false,
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v5/page-15-1.png": "2d86febc84789236fb154bae2427d35715f4fc1b2abd40d00e58caa650da80ed",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-15-2.png": "cf847044f6ac98dc12e4f209eb2940fb42bb995bc8e358959eedf0c1628cb878"
+      },
+      "native_text_extraction": "pypdf; all rendered pages visually reviewed; no OCR",
+      "observed_document_forms": [
+        "opening-statement"
+      ],
+      "observations": [
+        "Explicit Opening Statement heading on committee letterhead; remarks continue onto page 2.",
+        "References to witness testimony do not make this packet witness testimony."
+      ],
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 2,
+          "observed_form": "opening-statement",
+          "description": "Elijah Cummings opening statement for the December 7, 2011 Medicaid fraud hearing."
+        }
+      ]
+    },
+    {
+      "document_id": "d6f8ab1d08d329767127190f64c766860eedc2ea0977ec30e7d05f9384348277",
+      "filename": "GMOpeningStatement-Service2009.pdf",
+      "body_key": "bodies/sha256/35/358a08fe63eb5b5b4aa9616770d1e5c954ca1e9ef3cc193b22b9f8237acda37f.gz",
+      "sha256": "358a08fe63eb5b5b4aa9616770d1e5c954ca1e9ef3cc193b22b9f8237acda37f",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/358a08fe63eb5b5b4aa9616770d1e5c954ca1e9ef3cc193b22b9f8237acda37f.pdf",
+      "pages": 4,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/358a08fe63eb5b5b4aa9616770d1e5c954ca1e9ef3cc193b22b9f8237acda37f.txt",
+      "text_sha256": "67471c3ae135cd250f98f0ddf1da3bc173124c1c23c3f41710395cc1ad5aaa70",
+      "selection_index": 18,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "independent_reference": false,
+      "release_approved": false,
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v5/page-18-1.png": "ffb763807607f960ef9e762ce41b73d742ac90cacfc9d85e04647b67b9628893",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-18-2.png": "f408173fb984e282f265fd4e406ccc6afc55223c74cd13f942736e8f7500e54e",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-18-3.png": "40bd80fa7f38d7435545ebe11c9df8fdd6b37d5dcccfadee0f5a8a02b0281116",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-18-4.png": "7a8726fc331db9bb9b2c31590f07f06ffdabdaebc27be6f0d28631772e1d21a9"
+      },
+      "native_text_extraction": "pypdf; all rendered pages visually reviewed; no OCR",
+      "observed_document_forms": [
+        "opening-statement"
+      ],
+      "observations": [
+        "Heading says remarks and statement at markup; greeting and prospective discussion of legislation establish the opening context.",
+        "Four sequential pages ending with thanks and a request for colleagues to support the bill."
+      ],
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 4,
+          "observed_form": "opening-statement",
+          "description": "George Miller introductory remarks for the March 11, 2009 H.R. 1388 GIVE Act markup."
+        }
+      ]
+    },
+    {
+      "document_id": "d8820fd61e2b94a39ed03d3b24c55d73ae411759271adfc3f38c9a03cf256d3a",
+      "filename": "EECOpeningStatement012412.pdf",
+      "body_key": "bodies/sha256/c3/c32981c490c824de07f0267228f6fc6791f675ca61afd2241824d93941e24a97.gz",
+      "sha256": "c32981c490c824de07f0267228f6fc6791f675ca61afd2241824d93941e24a97",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/c32981c490c824de07f0267228f6fc6791f675ca61afd2241824d93941e24a97.pdf",
+      "pages": 3,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/c32981c490c824de07f0267228f6fc6791f675ca61afd2241824d93941e24a97.txt",
+      "text_sha256": "fcf5c76fbdabaed6d1844cc2a8902e3e4d376d37e16a9b89834b78fa38d4bed5",
+      "selection_index": 19,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "independent_reference": false,
+      "release_approved": false,
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v5/page-19-1.png": "fc1547b62cb7d71c225955f47000429db493f130576b356ad03653cc40f1d142",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-19-2.png": "54d2eef653be9e36c8d92c09345665ca6a003daf7651cce7745e392839c70ddd",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-19-3.png": "54e3b91c294ebb6bd4cc9bbb7beac03eda71345c1fe6e33f23202030bbc050eb"
+      },
+      "native_text_extraction": "pypdf; all rendered pages visually reviewed; no OCR",
+      "observed_document_forms": [
+        "opening-statement"
+      ],
+      "observations": [
+        "Three scanned pages have no native extracted text; all were visually read without OCR.",
+        "The statement ends on page 2; page 3 contains only a communications contact line.",
+        "Letters and bank responses are discussed but are not attached."
+      ],
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 2,
+          "observed_form": "opening-statement",
+          "description": "Elijah Cummings opening statement for the January 24, 2012 McPherson Square hearing."
+        },
+        {
+          "first_page": 3,
+          "last_page": 3,
+          "observed_form": "opening-statement",
+          "description": "Communications contact line only; continuation of the released statement."
+        }
+      ]
+    },
+    {
+      "document_id": "fbb08e8e687631dcf7c8f17c19c7f6e669d42ff829129e0a2263b317bd447b11",
+      "filename": "GeorgeMillerWIAOpeningStatementFormatted 6-7-2012.pdf",
+      "body_key": "bodies/sha256/af/af22400e8abe38b347f480bdefebb2d2023fe3e82947eda976aa986871ecd8bc.gz",
+      "sha256": "af22400e8abe38b347f480bdefebb2d2023fe3e82947eda976aa986871ecd8bc",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/af22400e8abe38b347f480bdefebb2d2023fe3e82947eda976aa986871ecd8bc.pdf",
+      "pages": 3,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/af22400e8abe38b347f480bdefebb2d2023fe3e82947eda976aa986871ecd8bc.txt",
+      "text_sha256": "887e2f20750b213f668b8adede1ada4112aa47ae4def29a209b9b102bb6f6361",
+      "selection_index": 21,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "independent_reference": false,
+      "release_approved": false,
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v5/page-21-1.png": "71d9d1abc4555bbf4b493bc511c37258517942bce36f54f1a6f0bf15c0af9959",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-21-2.png": "c695c4feafe42926426a0d5b1ab25a7339730e3ff72e566e0400099f2c52815b",
+        "output/filename-patterns-20261015/public-retained-review-v5/page-21-3.png": "447d8bf2cb400514c0a28f454b95fb0412d75098828d762318556ecb3f5843ab"
+      },
+      "native_text_extraction": "pypdf; all rendered pages visually reviewed; no OCR",
+      "observed_document_forms": [
+        "opening-statement",
+        "press-release"
+      ],
+      "observations": [
+        "Press office header and Washington dateline introduce prepared remarks; preserve both press-release form and opening statement.",
+        "Page 1 native text has fragmented reading order; rendered page was read in full."
+      ],
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 3,
+          "observed_form": "opening-statement|press-release",
+          "description": "George Miller opening statement for the June 7, 2012 H.R. 4297 markup."
+        }
+      ]
+    }
+  ],
+  "remaining": [
+    {
+      "document_id": "0f4f0e6adcb4edb74ca0b8b6586a1883350552d38ba976353db0687e8a1f9a0a",
+      "filename": "hearing_memo_--_field_hearing_in_oklahoma_city_ok_04.04.25.pdf",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/8c2a99195bdb97fdc16e0dcbe2347ea0eea6c11e0db61f16f55a2462c613d2ea.pdf",
+      "sha256": "8c2a99195bdb97fdc16e0dcbe2347ea0eea6c11e0db61f16f55a2462c613d2ea",
+      "pages": 11
+    },
+    {
+      "document_id": "1de91d1132948efde5797c3d6f72e86bf3398971625e86d87120d1dfbf5e8dcf",
+      "filename": "2-22-16_full_field_hearing_memo.pdf",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/fb750a9ae5918e06d116eb1543fd9ca2f50ff8680fd1663885303b67d255114c.pdf",
+      "sha256": "fb750a9ae5918e06d116eb1543fd9ca2f50ff8680fd1663885303b67d255114c",
+      "pages": 3
+    },
+    {
+      "document_id": "1eb29427f93389a648572f4f3fccaf26cbab0c92ee28c228e94de845bf9739e0",
+      "filename": "2021-10-18_oi-emr_field_hearing_memo_re_oil_spill.pdf",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/d9ed016e8e2ce723139b2d1d8d8cef9e079c93a6aa6caed0a6217f850ef04e1e.pdf",
+      "sha256": "d9ed016e8e2ce723139b2d1d8d8cef9e079c93a6aa6caed0a6217f850ef04e1e",
+      "pages": 4
+    },
+    {
+      "document_id": "4aa2c510685eaee2d871c644548fc2739b5af59ee05dbc25cdcb19aac8b97e5c",
+      "filename": "co_field_hearing_memo_--_ov_hrg_06.01.18.pdf",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/eb0386fbd5f13ce84bbe4e53154de7072ac01e2182685080b4bca2da03c26270.pdf",
+      "sha256": "eb0386fbd5f13ce84bbe4e53154de7072ac01e2182685080b4bca2da03c26270",
+      "pages": 11
+    },
+    {
+      "document_id": "93b5982165309071320417d513b3887c6abb3fefb74fbb133fe5baa745a93ade",
+      "filename": "small_business_access_to_capital_in_scottsdale_arizona_field_hearing_memo.pdf",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/66d3487707b6156813ca941cd1bc35d20beb24de5b05c81856772f1e94641c4b.pdf",
+      "sha256": "66d3487707b6156813ca941cd1bc35d20beb24de5b05c81856772f1e94641c4b",
+      "pages": 6
+    },
+    {
+      "document_id": "98215feaf3c7fd3fc59dc3a4c640c8b6d2ea61cd0675522a868f38796c545243",
+      "filename": "field_hearing_memo_emr_odessa_texas_02.13.23.pdf",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/8003bc902d90c47ff624221d1b2ee2a1764d949b78006578c174c79fa4a4e863.pdf",
+      "sha256": "8003bc902d90c47ff624221d1b2ee2a1764d949b78006578c174c79fa4a4e863",
+      "pages": 6
+    },
+    {
+      "document_id": "98c127c94e3533a50ff13616e864938b5e39259d7411bfb64693c982b828adbe",
+      "filename": "2-22-16_aet_field_hearing_memo.pdf",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/3e00cf3c16faea48700d4992e61e9299dd406571e6059448ea0f15533c884eae.pdf",
+      "sha256": "3e00cf3c16faea48700d4992e61e9299dd406571e6059448ea0f15533c884eae",
+      "pages": 4
+    },
+    {
+      "document_id": "ad0447d4c4001c0ce776bd97321f6e6e527691c66dcc9235563a02a21316f33f",
+      "filename": "hearing_memo_--_fc_ov_field_hearing_in_guam_08.24.23.pdf",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/ec26de0f7b547532eca9d24887eec8fb2f6dc8491cf04c8ae43025dd20b41d3b.pdf",
+      "sha256": "ec26de0f7b547532eca9d24887eec8fb2f6dc8491cf04c8ae43025dd20b41d3b",
+      "pages": 13
+    },
+    {
+      "document_id": "c1610662324b16aa180cd285df49db7ebd6b985814344649892377fba97a0d93",
+      "filename": "long_island_field_hearing_hearing_memo.pdf",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/29fa73b67d5989685c770388d9205b3e31883947f66f48663174b562b9bf23d5.pdf",
+      "sha256": "29fa73b67d5989685c770388d9205b3e31883947f66f48663174b562b9bf23d5",
+      "pages": 7
+    },
+    {
+      "document_id": "ca4a15baea9abe4c3f886af8aab55ac1ae5a794d4250b5cc3f310986390ece9f",
+      "filename": "hearing_memo_field_hearing_09_15_15.pdf",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/7e25edacd7bd4325b8bdc804ce2fdd063f3634037112d7e1d182d4b3e8ca2ef9.pdf",
+      "sha256": "7e25edacd7bd4325b8bdc804ce2fdd063f3634037112d7e1d182d4b3e8ca2ef9",
+      "pages": 10
+    },
+    {
+      "document_id": "dcac86ba4ed33aed0d6d2072c0e51ae632344af9d185dd368d3811a94bc5a915",
+      "filename": "Briefing Memo_ECCCPC Hearing_2019.06.20_Cars_Final with Witness List_1.pdf",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v5/b10cb1884d782e30386e6298c94a5d1a27cf776defd1a5bdbdfc07ce53849945.pdf",
+      "sha256": "b10cb1884d782e30386e6298c94a5d1a27cf776defd1a5bdbdfc07ce53849945",
+      "pages": 7
+    }
+  ],
+  "unavailable": [
+    {
+      "document_id": "d635bd70987af968f54775678331381f6d50f7f7a3abe5882391528e0e519355",
+      "filename": "170215EECOpeningStatement-PRESSVERSION.pdf",
+      "reason": "no_eligible_retained_body",
+      "members": [
+        {
+          "body_format": [
+            "html"
+          ],
+          "body_key": "bodies/sha256/80/80c3fe2ae1062abf56456f52518bd670f9ec3917b7f85e152b347ac6b6faf880.gz",
+          "capture_outcome": [
+            "http_error"
+          ],
+          "content_document_kind": null,
+          "document_id": "d635bd70987af968f54775678331381f6d50f7f7a3abe5882391528e0e519355",
+          "document_kind": [
+            "opening-statement"
+          ],
+          "document_kind_source": [
+            "filename"
+          ],
+          "filename": "170215EECOpeningStatement-PRESSVERSION.pdf",
+          "filename_document_kind": [
+            "opening-statement"
+          ],
+          "http_status": [
+            "404"
+          ],
+          "media_type": [
+            "text/html; charset=iso-8859-1"
+          ],
+          "record_role": [
+            "error-response"
+          ],
+          "response_body_complete": [
+            "true"
+          ],
+          "response_format": null,
+          "response_result": null,
+          "response_usable": null,
+          "source_document_type": null,
+          "source_document_type_basis": null,
+          "source_id": "a2dfd062224f9aba4b1634b987bfc115e2bf05dd424be86107e5395bc9e6ff77",
+          "source_url": "https://oversightdemocrats.house.gov/imo/media/doc/documents/170215EECOpeningStatement-PRESSVERSION.pdf"
+        }
+      ]
+    },
+    {
+      "document_id": "db3059629d6f1b4f605711b9aecdafb5398affbf494003bff14a5c6ad3c15ecc",
+      "filename": "Chairman-Gary-Palmer\u2014Opening-Statement.pdf",
+      "reason": "no_eligible_retained_body",
+      "members": [
+        {
+          "body_format": null,
+          "body_key": "bodies/sha256/ba/ba6cc3838d1c240ad0196304d7f84a2d6af63dca6c6316280ba934cf88440305.gz",
+          "capture_outcome": [
+            "http_error"
+          ],
+          "content_document_kind": null,
+          "document_id": "db3059629d6f1b4f605711b9aecdafb5398affbf494003bff14a5c6ad3c15ecc",
+          "document_kind": [
+            "opening-statement"
+          ],
+          "document_kind_source": [
+            "filename"
+          ],
+          "filename": "Chairman-Gary-Palmer\u2014Opening-Statement.pdf",
+          "filename_document_kind": [
+            "opening-statement"
+          ],
+          "http_status": [
+            "404"
+          ],
+          "media_type": [
+            "text/html; charset=UTF-8"
+          ],
+          "record_role": [
+            "error-response"
+          ],
+          "response_body_complete": [
+            "true"
+          ],
+          "response_format": null,
+          "response_result": null,
+          "response_usable": null,
+          "source_document_type": null,
+          "source_document_type_basis": null,
+          "source_id": "4133fa89c82e4d410ce2e7b15f9af33556b8c978b42bcb1d3b5315262de6240f",
+          "source_url": "https://oversight.house.gov/wp-content/uploads/2017/11/Chairman-Gary-Palmer%E2%80%94Opening-Statement.pdf"
+        }
+      ]
+    },
+    {
+      "document_id": "edd081b3f61bc42e49f35ff51d76f11bf142c8773881fd5711a572589aa5b331",
+      "filename": "Chairman-Gary-Palmer\u2014Opening-Statement.pdf",
+      "reason": "no_eligible_retained_body",
+      "members": [
+        {
+          "body_format": null,
+          "body_key": "bodies/sha256/ba/ba6cc3838d1c240ad0196304d7f84a2d6af63dca6c6316280ba934cf88440305.gz",
+          "capture_outcome": [
+            "http_error"
+          ],
+          "content_document_kind": null,
+          "document_id": "edd081b3f61bc42e49f35ff51d76f11bf142c8773881fd5711a572589aa5b331",
+          "document_kind": [
+            "opening-statement"
+          ],
+          "document_kind_source": [
+            "filename"
+          ],
+          "filename": "Chairman-Gary-Palmer\u2014Opening-Statement.pdf",
+          "filename_document_kind": [
+            "opening-statement"
+          ],
+          "http_status": [
+            "404"
+          ],
+          "media_type": [
+            "text/html; charset=UTF-8"
+          ],
+          "record_role": [
+            "error-response"
+          ],
+          "response_body_complete": [
+            "true"
+          ],
+          "response_format": null,
+          "response_result": null,
+          "response_usable": null,
+          "source_document_type": null,
+          "source_document_type_basis": null,
+          "source_id": "a024c60da5b570e504177f1e4bea145fbc4f06b30f32d0b65a9d6dc6ad1c8c4e",
+          "source_url": "https://oversight.house.gov/wp-content/uploads/2017/11/Chairman-Gary-Palmer\u2014Opening-Statement.pdf"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "selected_groups": 24,
+    "verified_retained_pdfs": 21,
+    "verified_retained_pages": 116,
+    "new_completed_documents": 10,
+    "new_completed_pages": 34,
+    "remaining_available_documents": 11,
+    "remaining_available_pages": 82,
+    "unavailable_documents": 3,
+    "cumulative_completed_documents": 60,
+    "cumulative_completed_pages": 329
+  },
+  "pilot_overlap": false,
+  "publisher_acquisition": false,
+  "production_ocr": false,
+  "production_changes": false,
+  "independent_reference": false,
+  "release_approved": false,
+  "limitations": [
+    "Review covers all retained pages of the ten completed packets, not the eleven remaining packets.",
+    "Observed forms remain separate from filename claims and production kind decisions.",
+    "Press-release is a descriptive content observation here, not a runtime taxonomy change.",
+    "Unavailable cases contain saved HTTP 404 responses; these were not fetched as PDFs."
+  ]
+}

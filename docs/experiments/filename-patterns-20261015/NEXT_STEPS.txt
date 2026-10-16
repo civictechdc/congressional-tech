@@ -546,3 +546,20 @@ bindings are preserved, and all four pages were re-inspected. The v3 linkage
 now contains 50 documents / 295 pages with no mismatches. The 17 other legacy
 IDs remain documented outside the current ledger. No validator relaxation or
 runtime change was needed. The current queue has 41 cases without linked review.
+
+Opening/memo review, part 1 completed
+-----------------------------------
+The opening_memo_content_review_v1.json receipt completes nine opening-statement
+packets and the composite TSCA memorandum: 10 documents / 34 pages. The v4
+linkage now has 60 completed documents / 329 pages, no mismatches, and unchanged
+metadata decisions. Thirty-one current cases have no linked content review.
+
+Twenty-one selected PDFs / 116 pages were saved and rendered in
+public-retained-review-v5; three additional groups contain only HTTP 404 bodies
+and remain unavailable. Eleven saved memo packets / 82 pages remain unreviewed.
+Next read those complete packets from the receipt's remaining list, preserving
+witness-list components and attachments. All opening-statement PDFs available
+in this selection are complete. Two include news-release introductions; TSCA
+contains two dated memos and an embedded witness list. These findings belong
+in proposed content dispositions, without discarding literal filename claims.
+See REVIEW_OPENING_MEMO_CONTENT.txt for verification and interpretation limits.

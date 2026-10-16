@@ -1,0 +1,57 @@
+Opening-statement and memorandum content review, part 1
+======================================================
+Reviewed all 34 retained pages in nine opening-statement packets and the
+12-page TSCA memorandum packet. The additive opening_memo_content_review_v1.json
+receipt binds the original ledger, selection, retained PDFs, extracted text
+and every inspected page render. It follows the normalized VE-letter receipt.
+
+Results
+-------
+All nine statement packets contain opening remarks. Seven stand alone as
+prepared remarks or released statements; two have a news-release introduction
+and reproduce the remarks (Pallone CHIP/CHC and Miller WIA). The latter retain
+both opening-statement and press-release observations. Press-office contact
+information or a PRESS filename token alone was not treated as proof of a
+separate press-release form. These are content observations, not new runtime
+classifications or claims that the remarks were actually delivered.
+
+Speier's two pages and Cummings's three-page McPherson Square packet have no
+native extracted text. All were visually read without OCR. The third Cummings
+page contains only a communications contact line. The Miller WIA native text
+has fragmented reading order on page 1; the rendered page resolves that order.
+References to reports, amendments, witness testimony or letters do not mean
+those documents are attached.
+
+The TSCA packet includes a May 13, 2015 markup memorandum on pages 1-4 and its
+attached April 13 hearing memorandum on pages 5-12. Pagination restarts at the
+attachment. The final page includes two panels of expected witnesses. Preserve
+the committee-memorandum and witness-list forms, both memo dates, and the
+attachment relationship. The cited discussion draft and testimony are not
+included as separate documents in this packet.
+
+Verification and limits
+-----------------------
+All 24 selected groups and body keys were checked against all 400 frozen pilot
+records before retrieval. Twenty-one exact retained PDFs / 116 pages were
+verified and rendered. The three other groups have only saved HTTP 404 error
+responses; no attempt was made to treat those bodies as documents. They remain
+explicitly unavailable in the receipt. All requests read retained objects;
+no publisher acquisition was performed.
+
+The unchanged linker now reports 60 reviewed documents / 329 pages and zero
+mismatches. All original ledger fields except content_review remain unchanged,
+including all 91 metadata decisions. Sixty have linked assistant reviews and
+31 do not. All bound inputs and outputs were rechecked, as were the nine frozen
+source hashes. No runtime code changed; no new test-suite result is claimed.
+
+Next work
+---------
+Inspect the eleven saved memorandum packets / 82 pages listed in the receipt's
+remaining array. These include the hearing memos and the Cars briefing memo.
+Use the saved PDFs and renders; no refetch is needed. Preserve embedded witness
+lists, actual attachments, source pagination and missing-page evidence.
+Then assess the smaller remaining groups and build a proposed classification
+disposition for every reviewed case. Keep observed form, filename evidence,
+meeting context and attachment role separate. Use house_naming for any runtime
+rule changes, test against negative examples and replay affected groups before
+considering release. Assistant observations do not satisfy independent labels.
