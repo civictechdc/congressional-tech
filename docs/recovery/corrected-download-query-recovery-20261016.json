@@ -1,0 +1,26 @@
+{
+  "at": "2026-10-16T04:49:23.944237+00:00",
+  "actual_wait_exit": 0,
+  "requests": 2,
+  "paid_requests": 0,
+  "validated_pdfs": 2,
+  "recovered_original_links": 2,
+  "cause": "Original publisher href used &download=1 in the URL path; corrected ?download=1 query returned a validated PDF for both samples.",
+  "scope": "These two targets only; not proof that every download variant works.",
+  "evidence_hashes": {
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/corrected-query-probe/results.json": "202ba902116198c81d0d0b18135d719f1175d8d5eb21b5e4f7cf0e3f1339d807",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/corrected-query-probe/complete.json": "769a169019eab028588a5ae53776a0726129b6047bc9ea8bee86e6e54e3d90f0",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/corrected-query-probe/0/qualification.json": "69816f82c157853ab1525916c4c9b2edb87690ec74ef30e9954e262cce627ad8",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/corrected-query-probe/0/receipt.json": "99beb341d0ba4eec881ad52674ace99e4af4a3558a36add1ef760dca3660e9a7",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/corrected-query-probe/1/qualification.json": "e0a1bad5cd599e4f665a827152d597d4a5775c50a326671450ef31865d513b18",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/corrected-query-probe/1/receipt.json": "ab22b77e83f8e9765b997659738f4608f30cda56ffb588d7e015db69cdf58e1a",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/corrected-query-recovered.json": "323ce8b9923d50a29fcb820c2567c19a99ce342f1079ab17ffeefafab0f0384d",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/corrected-query-sample.json": "57ce9076e7b59c27f9c9039846be9744c400eb2eade930f79361c71528198619",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/probe_corrected_queries.py": "bcfe40dbe090dcbaa39af6236916eb61ba8c6f4f477c8a439c3247f6bfc589b1"
+  },
+  "next_steps": [
+    "Complete thirty-link direct pass and qualify warning PDFs separately",
+    "Generate query-corrected candidates for other remaining malformed download links",
+    "Reuse successful final URLs and retained bytes instead of repeating downloads"
+  ]
+}
