@@ -1,0 +1,36 @@
+{
+  "at": "2026-10-16T06:04:03.939431+00:00",
+  "actual_wait_exit": 0,
+  "exec_session": 75621,
+  "pid": 64011,
+  "physical_absence": true,
+  "import_complete": {
+    "complete": true,
+    "receipt_records": 1704,
+    "added_capture_rows": 1853,
+    "distinct_bodies": 1482,
+    "body_objects_missing_before_put": 545,
+    "previous_capture_rows": 3904092,
+    "capture_rows": 3905945,
+    "existing_download_states_preserved": 1296171,
+    "new_pending_states": 712,
+    "catalog_and_viewer_publication_complete": false
+  },
+  "preservation": {
+    "local_preservation_verified": true,
+    "previous_capture_rows": 3904092,
+    "added_capture_rows": 1853,
+    "existing_states_preserved": 1296171,
+    "new_pending_states": 712,
+    "receipt_records": 1704,
+    "physical_exit_verified": false,
+    "fresh_remote_readback_verified": false
+  },
+  "publication_complete": false,
+  "sha256": {
+    "output/corpus-retry-20261015/import-checkpoint12/events.jsonl": "d884bb475102fbece6a3a55c2e73c0d6c2ec95b75ddf8d147695d82dae2d8854",
+    "output/corpus-retry-20261015/import-checkpoint12/payloads/import-complete.json": "8e1250d52a946587cfc0365a66fd166edef0c1dac70c770651e3128ee1909085",
+    "output/corpus-retry-20261015/import-checkpoint12-preservation.json": "a3829a99bf8727383ba76c553c5fb074677840add0847eb3086cf2486dfc33aa",
+    "output/corpus-retry-20261015/publication-batches/checkpoint-12/manifest.json": "e4b1c8f614af1a195159bfe24b5f3718a260582e2dda3afaedb631e2ec5e4a5f"
+  }
+}
