@@ -447,3 +447,9 @@ See REVIEW_PUBLIC_SEARCH.txt and public_review_checkpoint_v1.json.
 The next research step remains independent reference review and frozen held-out
 evaluation. Then assess remaining unclassified groups and qualify bounded rules.
 Do not treat the optional assistant-review publication as classifier approval.
+
+Deployment verified: commit 0794510, Pages run 38959713308. All 671 public
+evidence files passed full hash readback; the live browser showed reviewed
+categories and explicit withdrawal. The R2 pointer remained unchanged.
+This deploy used the pinned code revision from codex/document-kind-publish;
+main was not merged or changed. See public_review_deployment_v1.json.
