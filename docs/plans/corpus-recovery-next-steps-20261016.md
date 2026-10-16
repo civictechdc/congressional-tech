@@ -166,3 +166,9 @@ Evidence: `../recovery/corpus-recovery-batch05-20261016.json`. Remote body readi
 Checkpoint 05 now has complete read-only remote body readiness: all 917 objects accounted for, with 559 exact existing bodies and 358 absent objects. Existing-body checks reused 437 earlier full-body verifications with fresh matching object versions/sizes and performed 122 new full-body reads. There were no conflicts or unresolved objects. All 1,245 capture rows reference this body inventory. The readiness hashes are included in `../recovery/corpus-recovery-batch05-20261016.json`.
 
 A fresh read-only dispatch preflight verified the sealed inputs and refused because cloud capture run 38823678887 remains active. It created no dispatch directory and performed no import. Keep the successful local preparation, finish the active NARA queue, and select a complete final cohort before the next publication attempt.
+
+### Two retained Word documents recovered
+
+Both remaining Word-document leads have retained bodies under the same full source URLs with different filename capitalization. Full SHA-256 and archived SHA-1 match, the legacy Word signatures are present, and native text conversion succeeds. Extracted text confirms the April 27, 2012 H.R. 4072 roll-call records for the Brown and Miller amendments. Deferred exclusions passed, and both original source timestamp/receipt associations were found.
+
+The two links were added to local preparation without publisher or archive requests. Source-record preparation now preserves `application/msword`, verified through the maintained capture function for both files. Evidence: `../recovery/retained-word-recovery-20261016.json`. Include these additions after checkpoint 05 in the final batch; preserve their Word format rather than labeling them PDF.
