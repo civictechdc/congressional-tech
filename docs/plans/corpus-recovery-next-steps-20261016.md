@@ -172,3 +172,11 @@ A fresh read-only dispatch preflight verified the sealed inputs and refused beca
 Both remaining Word-document leads have retained bodies under the same full source URLs with different filename capitalization. Full SHA-256 and archived SHA-1 match, the legacy Word signatures are present, and native text conversion succeeds. Extracted text confirms the April 27, 2012 H.R. 4072 roll-call records for the Brown and Miller amendments. Deferred exclusions passed, and both original source timestamp/receipt associations were found.
 
 The two links were added to local preparation without publisher or archive requests. Source-record preparation now preserves `application/msword`, verified through the maintained capture function for both files. Evidence: `../recovery/retained-word-recovery-20261016.json`. Include these additions after checkpoint 05 in the final batch; preserve their Word format rather than labeling them PDF.
+
+### NARA continuation completed; bounded temporary-error follow-up started
+
+The original continuation processed all 742 entries: 677 validated and 65 unsuccessful. Its actual wait exit was 0 and PID 55119 was physically absent. Final accounting matches the frozen queue; 481 response files passed full SHA-256 checks. The combined local recovery preparation then contained 1,132 URL links plus 149 ZIP-member PDFs.
+
+After success exclusion and final failure classification across both NARA runs, 64 temporary-error URLs remained eligible for one bounded retry. Their prior attempts were all more than five minutes old. A separate sequential direct worker started only after physical exit and completion verification, acquired the previous worker lock, and preserves all original evidence. It uses one candidate per URL, a 30-second request delay, validated-digest reuse, and the existing refusal/transport stop conditions. Latest successful URLs and deferred URL/body identities are excluded. The two known truncated-PDF cases are not retried.
+
+Follow-up PID 87884, parent 94792, execution session 53515. Evidence and frozen queue/code hashes: `../recovery/nara-continuation-complete-20261016.json`. No paid requests or shared publication writes were introduced. The follow-up outcomes must be merged and accounted for before choosing the final publication batch; broader unresolved lookup and filename-context work remains separate.

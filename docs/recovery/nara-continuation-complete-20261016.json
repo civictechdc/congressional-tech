@@ -1,0 +1,36 @@
+{
+  "at": "2026-10-16T03:40:03.796509+00:00",
+  "completed_run": {
+    "actual_wait_exit": 0,
+    "pid_absent": 55119,
+    "processed": 742,
+    "valid": 677,
+    "unsuccessful": 65
+  },
+  "followup": {
+    "pid": 87884,
+    "parent_pid": 94792,
+    "session_id": 53515,
+    "urls": 64,
+    "delay_seconds": 30,
+    "workers": 1,
+    "minimum_prior_cooldown_seconds": 300,
+    "truncated_urls_excluded": 2,
+    "paid_requests": 0
+  },
+  "published": false,
+  "files": {
+    "nara-direct-resume/completion-monitor.json": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/nara-direct-resume/completion-monitor.json",
+      "sha256": "8988e17fb968fc3f2223ece15bad767796dfd62c0f71dd6855a1df5e99b5b861"
+    },
+    "nara-temporary-error-retry/plan.json": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/nara-temporary-error-retry/plan.json",
+      "sha256": "4caf94a75eabcdd4f0275a2af5deb675b7e811cf52d28fc01264049778d6630a"
+    },
+    "nara-temporary-error-retry-queue.json": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/nara-temporary-error-retry-queue.json",
+      "sha256": "6507427e725f63ca4f23702ecfa1aee6e2b6ce605f1e52084ad3a1e0c0c3bc32"
+    }
+  }
+}
