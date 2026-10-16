@@ -104,20 +104,48 @@ The command validates the whole pair's references, then reads complete selected
 groups with ID scans and batches of 32. This bounds batch expansion, not the total
 size of the selected cohort or any single nested row.
 
-The new directory contains candidates.jsonl and summary.json. Candidate records
+The new directory contains candidates.jsonl and summary.json with bundle_version=1.
+The baseline section identifies the exact source and document paths and hashes.
+Candidate records
 include their compiled reviews; the summary binds source files, receipts, evidence,
 implementation and output bytes. The summary is the completion marker. Interrupted
 or failed outputs without a completed summary are not reusable, and existing output
 directories are refused. Inputs are hash-checked again before and after writing.
 Catalog indexes and publication selectors are never write targets.
 
+Reading a local bundle
+-----------------------
+document_review_bundle.load_bundle(summary_path, summary_sha256, sources, documents)
+requires an expected summary digest from the completed admission step. It verifies
+that summary, its candidate output, all evidence bindings, the exact baseline paths
+and bytes, and the admission implementation identity. It checks pair integrity,
+group coverage and status counts, then re-evaluates every saved candidate on the
+complete current rows. Inputs and implementation are checked again before return.
+Unknown versions and old unversioned outputs are refused; regenerate those through
+admission rather than editing their headers. A hash establishes identity, not trust
+in an arbitrary producer: use a pin from the verified admission workflow.
+
+The returned mapping is keyed by document_id. Call
+document_review_bundle.select_document(document, sources, candidates) for a fresh
+result. It rechecks the group digest and full saved candidate semantics on every
+use. It returns a detached copy; missing IDs preserve their baseline. Omit candidates
+to withdraw the bundle. Omission is explicit; callers must surface verification
+failures rather than silently treating a refused bundle as an absent one.
+
+Reload the bundle when changing baseline snapshots. A new file path, changed bytes
+or changed admission policy requires fresh admission; equal document IDs alone do
+not transfer review. This is intentionally a local exact-baseline interface, not
+a portable published index. Loading currently hashes every bound local evidence
+file, including retained PDFs, without reinterpreting their contents. This belongs
+at bundle admission to a consuming process, not in a per-document rendering loop.
+
 Remaining integration work
 --------------------------
-The explicit package command is now available; recurring catalog capture does not
-invoke it automatically. Before consuming its output in the viewer or publication,
-define how a reader verifies a bundle against its current baseline and rejects stale
-bindings while retaining annotations. Historical paths are local and must not be
-presented as a portable publication format. Independent references, the five
-unsupported packet forms, full-catalog execution and publication remain separate
-decisions. No source-body acquisition, held-out evaluation, automatic selection or
-release permission is introduced by this API.
+Explicit writing and verified local reading are now available; recurring capture
+and the viewer do not invoke them automatically. Next qualify selected-group
+admission/consumption against a complete catalog pair, and define portable evidence
+references before publication. Historical local paths must not be presented as a
+portable publication format. Independent references, the five unsupported packet
+forms, full-catalog execution and publication remain separate decisions. No
+source-body acquisition, held-out evaluation, automatic selection or release
+permission is introduced by these APIs.

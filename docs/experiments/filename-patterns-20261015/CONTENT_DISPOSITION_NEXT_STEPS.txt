@@ -314,3 +314,24 @@ group binding. Refuse stale or altered data and withdraw by omitting the bundle.
 Then qualify broader catalog use and portable publication references. Descriptive
 packet forms, independent references and held-out/publication requirements remain
 open; local filesystem paths are not a publication-ready evidence representation.
+
+Pinned local bundle consumption is implemented
+----------------------------------------------
+document_review_bundle now verifies a pinned versioned summary, exact baseline
+paths/bytes, implementation, evidence and candidate output hashes. It re-evaluates
+each saved candidate against full current rows and checks again before return.
+select_document checks scope on each use; omission withdraws the candidate and
+restores the current baseline. Unversioned outputs are preserved and must be
+regenerated through admission. New summaries explicitly identify baseline roles.
+
+All 85 relevant tests pass. The regenerated versioned bundle's candidate bytes
+match the prior admission exactly. Actual consumption reproduces all 81 candidates
+and five annotations, verifies withdrawal across all 86 groups and rejects a stale
+source. See bundle_consumption_checkpoint_v1.json and REVIEW_BUNDLE_CONSUMPTION.txt.
+No viewer, automatic capture or publication selection changed.
+
+Next qualify selected-group admission and consumption against the complete saved
+catalog pair. Measure read behavior and process memory, verify excluded baseline
+bytes remain unchanged and record the exact binding transition from the normalized
+subset to the supplied pair. This is separate from full-catalog classification
+refresh, independent references, unsupported packet taxonomy and portable evidence.

@@ -794,3 +794,12 @@ files are unchanged. See package_admission_checkpoint_v1.json and
 REVIEW_PACKAGE_ADMISSION.txt. Next implement pinned bundle consumption with exact
 baseline checks and withdrawal, then qualify broader use and portable references.
 Automatic capture, viewer selection and publication remain unchanged.
+
+Pinned local consumption now passes: versioned baseline identities, output/evidence
+hashes and full current-group semantics are checked before exposing candidates.
+Omitting the bundle restores the baseline; stale data is refused. All 85 relevant
+tests pass. Actual consumption reproduces all 86 groups with byte-identical prior
+candidates, working withdrawal and a rejected stale-source control. See
+bundle_consumption_checkpoint_v1.json and REVIEW_BUNDLE_CONSUMPTION.txt.
+Next exercise the same selected groups directly against the complete saved pair,
+measure memory/read behavior and record fresh bindings before broader adoption.
