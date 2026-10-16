@@ -1,0 +1,29 @@
+{
+  "at": "2026-10-16T14:02:33.832076+00:00",
+  "authorization": "User: delete failed-build evidence",
+  "targets": [
+    {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/publication-checkpoint12/build",
+      "files": 2,
+      "logical_bytes": 30196588544,
+      "allocated_bytes": 30196682752
+    },
+    {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/publication-checkpoint12-retry01/build",
+      "files": 1,
+      "logical_bytes": 709406720,
+      "allocated_bytes": 709406720
+    },
+    {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/publication-checkpoint12-retry02/build",
+      "files": 6564,
+      "logical_bytes": 30831442357,
+      "allocated_bytes": 30844141568
+    }
+  ],
+  "free_bytes_before": 1798483968,
+  "retained": "Recovered downloads, sealed batches, receipts, baseline inputs, and small failure logs",
+  "completed": true,
+  "free_bytes_after": 131713671168,
+  "free_bytes_increase": 129915187200
+}
