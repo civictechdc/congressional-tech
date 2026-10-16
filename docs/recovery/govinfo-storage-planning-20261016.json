@@ -1,0 +1,19 @@
+{
+  "qualified_packages": 98,
+  "download_bytes": 4279409707,
+  "expanded_member_bytes": 4677747379,
+  "rendered_page_bytes": 1054764943,
+  "combined_bytes": 10011922029,
+  "combined_to_archive_ratio": 2.339556788082969,
+  "free_disk_bytes": 57253249024,
+  "disk_reserve_bytes": 12884901888,
+  "scope": "Measured completed packages only; excludes failed partial transfers, logs and active catalog build; future package expansion is not guaranteed by this ratio",
+  "recommendation": "Keep later packages in bounded sequential batches; reassess disk after each batch, including member and render expansion.",
+  "evidence_path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/govinfo-package-storage-observation.json",
+  "evidence_sha256": "9941c64b40f3f1f3db8cae72937316b783998585d6d52a1e015b78be3362a56e",
+  "next_steps": [
+    "Finish the third batch and qualify only complete packages.",
+    "Download the seven remaining packages within current size limits before the 24 oversized packages.",
+    "For oversized packages, use a separately pinned plan with explicit archive/member/aggregate limits and fresh disk checks; preserve all prior successful bodies."
+  ]
+}
