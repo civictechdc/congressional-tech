@@ -60,3 +60,9 @@ The immutable `checkpoint-03` contains 518 recovered links, 15 ZIP parents, and 
 All 518 recovered links have source timestamps. An offline schema roundtrip retained all 682 capture rows from 533 receipts, including every ZIP member's filename, parent association, body reference, and source timestamp. The evidence is recorded in `../recovery/corpus-recovery-batch03-20261016.json`. The preview uses explicitly local placeholder receipt locators and must never be uploaded as an index. The guarded importer must create real immutable receipts, include every capture rather than just the first capture in each receipt, assign verified stored-body metadata, and preserve fresh download state.
 
 A direct follow-up on unresolved bill attachments returned identical HTML for two links and HTTP 403 for a third. The probe stopped and retained its responses; two further links were not attempted by that probe. These results do not establish that archive copies are absent.
+
+## Import assembly implementation
+
+`scripts/assemble_corpus_recovery_import.py` now assembles every capture in each prepared receipt and creates index rows without network access. Five focused tests cover ZIP member retention, unchanged existing retry state, pending new URLs, mismatched body metadata, missing source associations, and wrong ZIP parents. The frozen batch check produced all 682 capture rows, preserved 262 existing historical state rows, and left 204 additional source URLs pending. Evidence: `output/corpus-retry-20261015/publication-batches/checkpoint-03/assembly-verification.json`.
+
+The guarded importer still needs to call this assembly with fresh state and remotely verified body metadata, write immutable receipts, and conditionally update both indexes. This module does not itself acquire a lock, check cloud ownership, upload, or publish.
