@@ -1,0 +1,47 @@
+{
+  "at": "2026-10-16T04:58:03.367629+00:00",
+  "status": "Acquisition in progress; no new links merged this checkpoint",
+  "qualification_helper": "output/corpus-retry-20261015/qualify_completed_download_pass.py",
+  "qualification_helper_sha256": "0df7f39af492e8d7bae86ae405bb4026ec0b021385c4553d9a434dbe8db62e27",
+  "checks": [
+    "Helper compiles; execution validation pending completed sample",
+    "Requires terminal complete marker and physical process absence",
+    "Checks exact queue accounting, pinned script and queue, full retained body hashes",
+    "Accepts PDFs only after decoding and all-page rendering; preserves original bytes and warning logs",
+    "Actual child wait exit remains a separate caller requirement"
+  ],
+  "processes": "24521 94792 18:10 Ss   .venv/bin/python output/corpus-retry-20261015/recover_nara_html.py\n31041 94792 03:40 Ss   .venv/bin/python -u output/corpus-retry-20261015/live_download_followthrough.py\n33830 94792 01:26 Ss   .venv/bin/python -u output/corpus-retry-20261015/live_query_correction_sample.py\n",
+  "statuses": {
+    "nara-html-recovery": {
+      "processed": 35,
+      "total": 1409,
+      "valid_urls": 28,
+      "requests_made": 35,
+      "blocked": null,
+      "pid": 24521,
+      "parent_pid": 94792
+    },
+    "live-download-followthrough": {
+      "processed": 34,
+      "total": 5018,
+      "valid": 22,
+      "blocked": {},
+      "pid": 31041,
+      "parent_pid": 94792
+    },
+    "live-query-correction-sample": {
+      "processed": 13,
+      "total": 20,
+      "valid": 4,
+      "blocked": {},
+      "pid": 33830,
+      "parent_pid": 94792
+    }
+  },
+  "next_steps": [
+    "Wait for the 20-link corrected-query sample actual exit",
+    "Run qualification helper, merge qualifying files, and update remaining counts",
+    "Use sample results to decide corrected-query expansion",
+    "Import batch 10 only after cloud capture clears"
+  ]
+}
