@@ -98,3 +98,11 @@ Further inspection narrows the additional PDF candidates: 407 of 408 are filenam
 Of the 15 retained-body matches, one is qualified: `HHRG-113-IF14-20141210-SD001.pdf` has the same full hearing-document identifier and meeting ID `102797` at Congress.gov and docs.house.gov. Its full SHA-256, archive SHA-1, PDF validation, and deferred URL/body exclusions passed. It is included in local recovery preparation without a network request. Fourteen associations remain unresolved; several clearly differ in hearing date or bill number, such as HR980 versus HR1644 `finalvote.pdf`. Do not admit these from filename equality alone. Evidence hashes are recorded in `../recovery/retained-candidate-associations-20261016.json`.
 
 Next, inspect the one exact URL candidate, then prioritize distinctive document identifiers and source-page context among filename leads. Reuse verified retained bytes only after establishing the requested document association. Preserve unresolved leads for further search; do not count them as archive absence or recovered links.
+
+### Additional official report recovery
+
+The exact-URL archive candidate for the Iran Sanctions Enabling Act has the SHA-1 digest of an empty response in both available captures. Its PDF MIME label does not establish usable content; seek another capture or the exact official document.
+
+Nineteen additional URL leads carry structured document identifiers. Sixteen resolve to nine distinct congressional report packages. Public GovInfo package downloads completed with actual worker exit 0; all nine exact PDF members passed full hash, size, signature, EOF, and qpdf checks. Their 16 URL associations were merged into local preparation. No paid request or parallel NARA request was needed. Evidence: `../recovery/additional-report-packages-20261016.json`.
+
+Three remaining structured hearing-document leads and 387 filename leads still need retained-source or source-context investigation. The current NARA queue remains active, and public publication still awaits cloud-writer clearance and the guarded import/readback steps above.

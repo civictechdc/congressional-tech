@@ -1,0 +1,32 @@
+{
+  "at": "2026-10-16T03:09:57.302454+00:00",
+  "recovered_links": 16,
+  "distinct_bodies": 9,
+  "packages": 9,
+  "worker_actual_exit": 0,
+  "published": false,
+  "route": "public_govinfo_packages",
+  "paid_requests": 0,
+  "files": {
+    "additional-report-packages-queue.json": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/additional-report-packages-queue.json",
+      "sha256": "70a11a17ba687bb8077f263e3fda8d9f89793140ad32bc09ec1a85f0968dae07"
+    },
+    "additional-report-packages/summary.json": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/additional-report-packages/summary.json",
+      "sha256": "b588ff95175ded4a0092962a83f3bad38e28ce4d90a0f0acc76378ebc0928b72"
+    },
+    "additional-reports-recovered.json": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/additional-reports-recovered.json",
+      "sha256": "04bd9fe0795da50ebe3a373fd188845aac00448e2699c8140f06497dfbb027f9"
+    },
+    "additional-reports-validation.json": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/additional-reports-validation.json",
+      "sha256": "5a9d70f704cf328f5ef2f0eceb915023ee9b7814d7f3687c2db7e8433050ee89"
+    },
+    "next-pdf-candidate-batch.json": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/next-pdf-candidate-batch.json",
+      "sha256": "6572e3483412ce6a96365f9e991ee50aad7bbce0702ad223371937f4a41f01a8"
+    }
+  }
+}
