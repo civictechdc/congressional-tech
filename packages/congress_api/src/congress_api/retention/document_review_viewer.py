@@ -39,6 +39,12 @@ class ReviewSnapshot:
         if [_stamp(path) for path in self.paths] != self.stamps:
             raise ValueError('The catalog or review snapshot changed. Restart the viewer to verify it again.')
 
+    def classifications(self):
+        """Detached search fields already selected against the exact immutable pair."""
+        self.check()
+        return {key: dict(status=row['status'], **{field: deepcopy(row['document'].get(field))
+                    for field in CLASSIFICATION_FIELDS}) for key, row in self.candidates.items()}
+
     def selection(self, document, sources, *, withdrawn=False):
         self.check()
         reviewed = select_document(document, sources, self.candidates)

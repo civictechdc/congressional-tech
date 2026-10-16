@@ -285,3 +285,23 @@ size or modification/change-time differences require restarting and re-verifying
 the viewer. Evidence objects are rehashed when opened. The ordinary published
 viewer does not request this optional API when complete_body_reviews is absent.
 The optional local preview does not add a public review publication path.
+
+Reviewed-category search and public publication
+----------------------------------------------
+Local /api/rows accepts classification=reviewed and an optional review=SHA256 pin.
+Original catalog matching remains the default. Reviewed mode replaces kind,
+family and classification provenance on every alias of an applied group. Other
+fields keep source-level matching; null-kind/family filters use the selected
+group classification. Unsupported packets retain original matching and notes.
+
+The optional public review file is exported by apps/site/scripts/filename_reviews.py
+from a verified Catalog. It binds both original file hashes and the review manifest,
+and includes positional mappings, original/selected fields and public evidence
+links. The browser verifies the small file and exact source pair before use.
+The site build stages a pinned release archive, checking all evidence digests.
+The archive contains public document evidence, not the full local receipt store.
+
+The category selector is independent of panel withdrawal. Withdrawing a preview
+changes that panel only; selecting Original catalog restores original search.
+Catalog downloads always remain original. Assistant findings are labeled and do
+not constitute independent reference data or automatic-classifier qualification.

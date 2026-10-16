@@ -76,3 +76,7 @@ export function showPublicationUpdate({catalogId, message = 'New data available.
     link.onpointerdown = refresh;
   }
 }
+
+export function reviewPublicationUrl(base, origin) {
+  return new URL('data/document-reviews/reviews.json', new URL(base.replace(/\/?$/, '/'), origin)).href;
+}

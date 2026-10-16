@@ -71,6 +71,9 @@ jobs:
       - name: Install dependencies
         working-directory: apps/site
         run: npm install --no-audit --no-fund
+      - name: Verify review controls and static reader
+        working-directory: apps/site
+        run: node --test src/components/filename-reviews.test.mjs ../../tests/test_filename_viewer_ui.mjs
       - name: Build Astro site
         working-directory: apps/site
         run: npm run build

@@ -58,3 +58,9 @@ test('a recovery-only update notifies an open viewer on the same catalog', async
   assert.equal(updates[0].catalog_id,'same');assert.equal(updates[0].recovery_sha256,'new');
   stop();
 });
+
+test('review evidence uses the site base on project Pages and custom domains', async () => {
+  const {reviewPublicationUrl}=await import('./filename-publication.mjs');
+  for(const base of ['/congressional-tech','/congressional-tech/']) assert.equal(reviewPublicationUrl(base,'https://viewer.test'),'https://viewer.test/congressional-tech/data/document-reviews/reviews.json');
+  assert.equal(reviewPublicationUrl('/','https://viewer.test'),'https://viewer.test/data/document-reviews/reviews.json');
+});

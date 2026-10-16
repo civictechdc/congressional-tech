@@ -379,3 +379,5 @@ docs/youtube-coverage/research/scripts/as_run/cache/
 docs/youtube-coverage/research/scripts/as_run/.ratelimit.*
 output/
 apps/site/public/data/filenames/
+
+apps/site/public/data/document-reviews/

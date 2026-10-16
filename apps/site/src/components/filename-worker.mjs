@@ -3,10 +3,10 @@ let catalog;
 const requests = new Map();
 self.onmessage = async ({ data }) => {
   if (data.cancel) { requests.get(data.cancel)?.abort(); return; }
-  const { id, url, manifest, snapshot } = data, controller = new AbortController();
+  const { id, url, manifest, snapshot, reviewPublication } = data, controller = new AbortController();
   requests.set(id, controller);
   try {
-    catalog ||= createFilenameCatalog(manifest, fetch, snapshot).catch(error => { catalog = null; throw error; });
+    catalog ||= createFilenameCatalog(manifest, fetch, snapshot, reviewPublication).catch(error => { catalog = null; throw error; });
     const reader = await catalog;
     controller.signal.throwIfAborted();
     const request = new URL(url, manifest), query = Object.fromEntries(request.searchParams);
@@ -14,6 +14,7 @@ self.onmessage = async ({ data }) => {
     let result;
     if (request.pathname === '/api/info') result = reader.info;
     else if (request.pathname === '/api/rows') result = await reader.search(query, controller.signal);
+    else if (request.pathname.startsWith('/api/review/')) result = await reader.review(identity, query.catalog, controller.signal, query.selection === 'baseline');
     else if (request.pathname.startsWith('/api/entry-origin/')) result = await reader.entryOrigin(identity, query.catalog, controller.signal);
     else if (request.pathname.startsWith('/api/technical/') || request.pathname.startsWith('/api/full/')) result = await reader.technical(identity, query.catalog, controller.signal, request.pathname.startsWith('/api/full/'));
     else if (request.pathname.startsWith('/api/observations/') || request.pathname.startsWith('/api/origin/')) {

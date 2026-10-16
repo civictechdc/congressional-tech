@@ -286,3 +286,46 @@ test('relative source aliases link through the verified body without changing so
     `https://data.test/saved/${'a'.repeat(64)}/statement.pdf`);
   assert.deepEqual(record, before);
 });
+
+test('public reviewed search covers aliases, null filters, provenance, annotations and withdrawal', async () => {
+  const folder=await mkdtemp(join(tmpdir(),'reviewed-catalog-'));
+  try {
+    execFileSync(process.env.PYTHON || 'python3',[fileURLToPath(new URL('../../scripts/filename-test-fixture.py',import.meta.url)),folder]);
+    const manifest=JSON.parse(await readFile(join(folder,'public/manifest.json')));
+    const baseline=await createFilenameCatalog(pathToFileURL(join(folder,'public/manifest.json')),localFetch);
+    const rows=(await baseline.search({scope:'all'})).rows;
+    const a=rows.findIndex(row=>row.source_url==='https://committee.test/final');
+    const b=rows.findIndex(row=>row.source_url==='https://committee.test/unfetched');
+    assert.ok(a>=0 && b>=0);
+    const original={document_kind:['witness-statement'],document_family:['statement'],document_kind_source:null};
+    const selected={document_kind:['letter'],document_family:['correspondence'],document_kind_source:['assistant_complete_body_review']};
+    const body='evidence/'+'a'.repeat(64)+'.pdf',page='evidence/'+'b'.repeat(64)+'.png';
+    const base={review:{primary_forms:['letter'],component_forms:[],body_observation:{pages:1}},evidence:{body,pages:{1:page}}};
+    const data={version:1,catalog_id:manifest.info.catalog_id,review_sha256:'pin',baseline:Object.fromEntries(['filenames','documents'].map(name=>[name,manifest.source_manifest.files[name].sha256])),files:{[body]:{},[page]:{}},rows:[
+      {...base,group:a,sources:[0,1],status:'candidate_applied',baseline:original,selected},
+      {...base,group:b,sources:[2],status:'annotation_only_unsupported_forms',baseline:{document_kind:null,document_family:null,document_kind_source:null},selected:{document_kind:null,document_family:null,document_kind_source:null}}
+    ]};
+    const bytes=JSON.stringify(data),descriptor={url:'https://reviews.test/reviews.json',catalog_id:data.catalog_id,review_sha256:'pin',bytes:Buffer.byteLength(bytes),sha256:createHash('sha256').update(bytes).digest('hex')};
+    const reader=await createFilenameCatalog(pathToFileURL(join(folder,'public/manifest.json')),(url,options)=>String(url)===descriptor.url?Promise.resolve(new Response(bytes)):localFetch(url,options),undefined,descriptor);
+    for(const query of [{},{scope:'all'},{q:'alias'},{document_kind:'__null__'},{q:'unfetched',format:'pdf'}]) assert.deepEqual(await reader.search(query),await baseline.search(query));
+    const reviewed={classification:'reviewed',review:'pin'};
+    assert.equal((await reader.search({...reviewed,q:'alias',document_kind:'letter'})).total,1);
+    assert.equal((await reader.search({...reviewed,q:'alias',document_kind:'witness-statement'})).total,0);
+    assert.equal((await reader.search({...reviewed,q:'alias',document_kind:'__null__'})).total,0);
+    assert.equal((await reader.search({...reviewed,document_family:'correspondence'})).total,1);
+    assert.equal((await reader.search({...reviewed,field:'document_kind',q:'letter'})).total,1);
+    // This fixture has no provenance source column; validate the overlay fields
+    // through the returned row, while the actual publication retains that field.
+    const applied=(await reader.search({...reviewed,document_kind:'letter'})).rows[0];
+    assert.deepEqual(applied.document_kind_source,['assistant_complete_body_review']);
+    assert.deepEqual(applied.catalog_document_kind,['witness-statement']);
+    assert.equal(applied._review_status,'candidate_applied');
+    const annotation=(await reader.search({...reviewed,q:'unfetched',congress:'117'})).rows[0];
+    assert.equal(annotation._review_status,'annotation_only_unsupported_forms');assert.equal(annotation.document_kind,null);
+    assert.equal((await reader.review('0',data.catalog_id)).selected.document_kind[0],'letter');
+    assert.equal((await reader.review('0',data.catalog_id,undefined,true)).selected.document_kind[0],'witness-statement');
+    assert.equal((await reader.review('3',data.catalog_id)).status,'no_review');
+    await assert.rejects(reader.search({...reviewed,review:'old'}),/different review snapshot/);
+    applied.document_kind.push('mutated');assert.deepEqual((await reader.search({...reviewed,document_kind:'letter'})).rows[0].document_kind,['letter']);
+  }finally{await rm(folder,{recursive:true,force:true});}
+});

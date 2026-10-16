@@ -2,6 +2,7 @@ import { parquetMetadataAsync, parquetReadObjects } from 'hyparquet';
 import { compressors } from 'hyparquet-compressors';
 import { observationReader } from './filename-observations.mjs';
 import { loadPublication } from './filename-publication.mjs';
+import { loadReviews, reviewedMode } from './filename-reviews.mjs';
 import { loadRecoveries } from './filename-recoveries.mjs';
 
 const filters = ['congress', 'document_family', 'document_kind', 'format'];
@@ -91,12 +92,14 @@ export function rangeFile(url, byteLength, fetcher = fetch) {
   return { slice, file: signal => ({ byteLength, slice: (start, end) => slice(start, end, signal) }) };
 }
 
-export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalogId) {
+export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalogId, reviewPublication) {
   const publication = await loadPublication(manifestUrl, fetcher, catalogId);
   manifestUrl = publication.url;
   const manifest = publication.manifest, { info, files } = manifest;
   if (![2, 5].includes(manifest.version)) throw new Error('Unsupported filename catalog version.');
   const recovery = await loadRecoveries(publication.recovery, info, fetcher);
+  const reviews = await loadReviews(reviewPublication, manifest, fetcher);
+  Object.assign(info, reviews.info);
   const url = path => new URL(path, manifestUrl).href;
   async function binary(name) {
     const response = await fetcher(url(files[name].path));
@@ -251,11 +254,12 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
   }
   async function search(query, signal) {
     signal?.throwIfAborted();
+    const reviewed = reviewedMode(query, info);
     const field = query.field || 'filename', needle = (query.q || '').slice(0, 2000).toLowerCase();
     if (!info.fields.includes(field)) throw new Error('Unknown search field.');
     if (!['','yes','no'].includes(query.retained || '') || !['','all','capture-records'].includes(query.scope || '')) throw new Error('Unknown catalog filter.');
     const selectedFilters = filters.filter(key => query[key] && query[key] !== '__null__');
-    for (const key of selectedFilters) if (!info.facets[key].includes(query[key])) throw new Error(`Unknown ${key} filter.`);
+    for (const key of selectedFilters) if (!(info.review_facets?.[key] || info.facets[key]).includes(query[key])) throw new Error(`Unknown ${key} filter.`);
     const [preferred, flags] = await Promise.all(['preferred', 'flags'].map(index));
     signal?.throwIfAborted();
     const mask = new Uint8Array(info.entries).fill(needle || selectedFilters.length ? 0 : 1);
@@ -267,19 +271,27 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
       const names = [...new Set([...selectedFilters, ...(needle && !stream ? [field, ...(field === 'filename' && info.fields.includes('recovered_filename') ? ['recovered_filename'] : [])] : [])])];
       const loaded = new Map();
       for (const name of names) loaded.set(name, await column(name, signal));
+      const sourceValue = (source, field) => {
+        const review = reviewed && reviews.sources.get(source);
+        return review?.status === 'candidate_applied' && field in review.selected ? review.selected[field] : loaded.get(field)?.[source];
+      };
       const matches = (source, searchValue) => {
         if (needle && !text(searchValue).includes(needle) && !(field === 'filename' && text(loaded.get('recovered_filename')?.[source]).includes(needle))) return false;
-        return selectedFilters.every(key => values(loaded.get(key)[source]).some(value => (key === 'format' ? value.toLowerCase() : value) === query[key]));
+        return selectedFilters.every(key => values(sourceValue(source, key)).some(value => (key === 'format' ? value.toLowerCase() : value) === query[key]));
       };
       if (stream) {
         for await (const source of (await observationStore(signal)).matchingSources(needle, signal)) {
-          if (selectedFilters.every(key => values(loaded.get(key)[source]).some(value => (key === 'format' ? value.toLowerCase() : value) === query[key]))) mask[groups[source]] = 1;
+          if (selectedFilters.every(key => values(sourceValue(source, key)).some(value => (key === 'format' ? value.toLowerCase() : value) === query[key]))) mask[groups[source]] = 1;
         }
-      } else for (let source = 0; source < info.rows; source++) if (matches(source, loaded.get(field)?.[source])) mask[groups[source]] = 1;
+      } else for (let source = 0; source < info.rows; source++) if (matches(source, sourceValue(source, field))) mask[groups[source]] = 1;
     }
     const found = [];
     for (let group = 0; group < mask.length; group++) {
-      const flag = flags[group] | (recovery.groups.has(group) ? 1 : 0);
+      let flag = flags[group] | (recovery.groups.has(group) ? 1 : 0);
+      const review = reviewed && reviews.groups.get(group);
+      if (review?.status === 'candidate_applied') {
+        flag = (flag & ~12) | (review.selected.document_kind?.length ? 0 : 4) | (review.selected.document_family?.length ? 0 : 8);
+      }
       if (!mask[group] || (query.retained && !!(flag & 1) !== (query.retained === 'yes')) ||
           (!query.scope && !(flag & 2)) || (query.scope === 'capture-records' && (flag & 2)) ||
           (query.document_kind === '__null__' && !(flag & 4)) || (query.document_family === '__null__' && !(flag & 8))) continue;
@@ -290,6 +302,15 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
     rows.forEach((row, i) => { row._row = preferred[chosen[i]]; row.api_reference = flags[chosen[i]] & 16 ? apiReference(row.source_url) : null; row.video_reference = flags[chosen[i]] & 32 ? videoReference(row.source_url) : null; });
     rows.forEach((row, i) => {
       if (recovery.groups.has(chosen[i])) Object.assign(row, {retained: true, recovery: recovery.groups.get(chosen[i])[0], recoveries: recovery.groups.get(chosen[i])});
+    });
+    if (reviewed) rows.forEach((row, i) => {
+      const review = reviews.groups.get(chosen[i]);
+      if (!review) return;
+      row._review_status = review.status;
+      if (review.status === 'candidate_applied') {
+        row.catalog_document_kind = row.document_kind;
+        Object.assign(row, structuredClone(review.selected));
+      }
     });
     signal?.throwIfAborted();
     return { rows, total: found.length, page, pages, limit };
@@ -393,5 +414,13 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
     }
     return {origin_pending: false, origin, document_origin: {redirects: documentOrigin.redirects}, observation_count: evidence.total, origin_next: evidence.next};
   }
-  return { info: { ...info, recovery_sha256: publication.recovery?.sha256, downloads: { documents: url(files.documents.path), filenames: url(files.filenames.path), recoveries: publication.recovery?.url }, published_at: manifest.published_at }, search, entry, entryOrigin, technical, technicalOrigin, observationPage, sourceContext };
+  async function review(identity, catalog, signal, withdrawn = false) {
+    if (info.review_error) throw new Error(info.review_error);
+    if (!info.complete_body_reviews) throw new Error('Document reviews are not configured.');
+    const row = await resolve(identity, catalog, signal);
+    const value = reviews.sources.get(row);
+    if (!value) return {status: 'no_review'};
+    return structuredClone({...value, status: withdrawn ? 'withdrawn' : value.status, selected: withdrawn ? value.baseline : value.selected});
+  }
+  return { review, info: { ...info, recovery_sha256: publication.recovery?.sha256, downloads: { documents: url(files.documents.path), filenames: url(files.filenames.path), recoveries: publication.recovery?.url }, published_at: manifest.published_at }, search, entry, entryOrigin, technical, technicalOrigin, observationPage, sourceContext };
 }

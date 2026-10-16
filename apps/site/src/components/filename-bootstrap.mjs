@@ -1,4 +1,5 @@
-import { filenameManifestUrl, watchPublication, showPublicationUpdate } from './filename-publication.mjs';
+import reviewDescriptor from '../../document-review-publication.json';
+import { reviewPublicationUrl, filenameManifestUrl, watchPublication, showPublicationUpdate } from './filename-publication.mjs';
 const manifest = import.meta.env.PUBLIC_FILENAME_MANIFEST_URL || filenameManifestUrl;
 const snapshot = new URLSearchParams(location.search).get('catalog');
 const worker = new Worker(new URL('./filename-worker.mjs', import.meta.url), { type: 'module' });
@@ -24,6 +25,6 @@ window.filenameViewerApi = (url, signal) => new Promise((resolve, reject) => {
   const abort = () => { worker.postMessage({ cancel: id }); finish(); reject(signal.reason); };
   const finish = () => { pending.delete(id); signal?.removeEventListener('abort', abort); };
   pending.set(id, { resolve, reject, finish }); signal?.addEventListener('abort', abort, { once: true });
-  worker.postMessage({ id, url, manifest: new URL(manifest, location.origin).href, snapshot });
+  worker.postMessage({ id, url, manifest: new URL(manifest, location.origin).href, snapshot, reviewPublication: {...reviewDescriptor, url: reviewPublicationUrl(import.meta.env.BASE_URL, location.origin)} });
 });
 await import('../../../../docs/youtube-coverage/research/filename-viewer.mjs');

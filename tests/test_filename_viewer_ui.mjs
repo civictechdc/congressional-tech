@@ -819,3 +819,46 @@ test('late complete-review response cannot replace another selected source',asyn
   assert.doesNotMatch(get('complete-body-review').textContent,/Review unavailable/);
  } finally {dom.window.close();}
 });
+
+test('reviewed search pins URLs, preserves filters, and explicitly restores original categories',async()=>{
+ const {dom,w,get,requests}=await app(undefined,{complete_body_reviews:true,reviewed_search:true,review_sha256:'review-pin',reviewed_groups:81,
+  review_facets:{document_kind:['letter'],document_family:['correspondence']}});
+ try {
+  assert.equal(get('classification-control').hidden,false);
+  get('q').value='alias';get('document_kind').value='letter';
+  get('classification').value='reviewed';get('classification').dispatchEvent(new w.Event('change'));await flush();await flush();
+  let query=new URL(requests.filter(url=>url.startsWith('/api/rows')).at(-1),'https://viewer.test').searchParams;
+  assert.equal(query.get('classification'),'reviewed');assert.equal(query.get('review'),'review-pin');
+  assert.equal(query.get('q'),'alias');assert.equal(query.get('document_kind'),'letter');
+  assert.match(get('classification-note').textContent,/81 assistant-reviewed groups/);
+  assert.equal(new URL(w.location.href).searchParams.get('review'),'review-pin');
+  get('classification').value='';get('classification').dispatchEvent(new w.Event('change'));await flush();await flush();
+  query=new URL(requests.filter(url=>url.startsWith('/api/rows')).at(-1),'https://viewer.test').searchParams;
+  assert.equal(query.has('classification'),false);assert.equal(query.has('review'),false);assert.equal(query.get('document_kind'),'letter');
+  w.history.replaceState(null,'','?classification=reviewed&review=old');w.dispatchEvent(new w.PopStateEvent('popstate'));await flush();await flush();
+  assert.match(get('error').textContent,/different review snapshot/);
+ }finally{dom.window.close();}
+});
+test('a bookmarked reviewed search fails visibly when public reviews are unavailable',async()=>{
+ const {dom,w,get,requests}=await app();
+ try {
+  const before=requests.filter(url=>url.startsWith('/api/rows')).length;
+  w.history.replaceState(null,'','?classification=reviewed&review=pin');w.dispatchEvent(new w.PopStateEvent('popstate'));await flush();await flush();
+  assert.equal(get('classification-control').hidden,false);
+  assert.match(get('error').textContent,/unavailable/);
+  assert.equal(requests.filter(url=>url.startsWith('/api/rows')).length,before);
+ }finally{dom.window.close();}
+});
+
+test('public reviews link to published evidence and preserve the PDF download action',async()=>{
+ const result={status:'candidate_applied',baseline:{document_kind:['amendment']},selected:{document_kind:['committee-vote']},
+  review:{primary_forms:['committee-vote'],component_forms:[],body_observation:{pages:1}},
+  evidence:{body:'https://viewer.test/data/evidence/review.pdf',pages:{1:'https://viewer.test/data/evidence/page.png'}}};
+ const {dom,get}=await app(async url=>({ok:true,json:async()=>url.startsWith('/api/review/')?result:url.startsWith('/api/entry/')?entry:evidence}),{complete_body_reviews:true,reviewed_search:true});
+ try{
+  const links=[...get('complete-body-review').querySelectorAll('a')];
+  const pdf=links.find(link=>link.textContent==='Download the exact reviewed PDF');
+  assert.equal(pdf.href,result.evidence.body);assert.equal(pdf.download,'reviewed-document.pdf');
+  assert.equal(links.find(link=>link.textContent==='Page 1').href,result.evidence.pages[1]);
+ }finally{dom.window.close();}
+});

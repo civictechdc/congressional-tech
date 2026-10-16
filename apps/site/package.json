@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "python3 scripts/stage-document-reviews.py && astro build",
     "preview": "astro preview",
     "migrate": "node scripts/migrate-content.mjs",
     "generate:explorer-types": "node scripts/generate-explorer-types.mjs",

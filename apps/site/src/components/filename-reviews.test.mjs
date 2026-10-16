@@ -1,0 +1,41 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
+import {loadReviews, reviewedMode} from './filename-reviews.mjs';
+
+const manifest={info:{catalog_id:'pair',entries:3,rows:4,facets:{document_kind:['amendment'],document_family:['legislation']}},source_manifest:{files:{filenames:{sha256:'source'},documents:{sha256:'documents'}}}};
+const selected={document_kind:['letter'],document_family:['correspondence'],document_kind_source:['assistant_complete_body_review']};
+const baseline={document_kind:['amendment'],document_family:['legislation'],document_kind_source:['filename']};
+const body='evidence/'+ 'a'.repeat(64)+'.pdf',page='evidence/'+'b'.repeat(64)+'.png';
+function fixture(status='candidate_applied') {
+ const data={version:1,catalog_id:'pair',baseline:{filenames:'source',documents:'documents'},review_sha256:'pin',files:{[body]:{},[page]:{}},rows:[{group:1,sources:[0,1],status,baseline,selected:status==='candidate_applied'?selected:baseline,review:{body_observation:{pages:1}},evidence:{body,pages:{1:page}}}]};
+ return data;
+}
+function args(data) {
+ const bytes=JSON.stringify(data);
+ return [{url:'https://viewer.test/data/reviews.json',catalog_id:'pair',review_sha256:'pin',bytes:Buffer.byteLength(bytes),sha256:createHash('sha256').update(bytes).digest('hex')},manifest,async()=>new Response(bytes)];
+}
+test('verified review map binds the catalog pair, all aliases, pages and selected categories',async()=>{
+ const result=await loadReviews(...args(fixture()));
+ assert.equal(result.info.reviewed_search,true);
+ assert.equal(result.info.reviewed_groups,1);
+ assert.equal(result.sources.get(0),result.sources.get(1));
+ assert.equal(result.groups.get(1).evidence.pages[1],'https://viewer.test/data/'+page);
+ assert.deepEqual(result.info.review_facets.document_kind,['amendment','letter']);
+ assert.equal(reviewedMode({classification:'reviewed',review:'pin'},result.info),true);
+ assert.throws(()=>reviewedMode({classification:'reviewed',review:'old'},result.info),/different review snapshot/);
+ assert.throws(()=>reviewedMode({classification:'wrong'},result.info),/Unknown classification/);
+});
+test('unsupported packets remain annotations and cannot introduce searchable categories',async()=>{
+ const result=await loadReviews(...args(fixture('annotation_only_unsupported_forms')));
+ assert.equal(result.info.reviewed_groups,0);
+ assert.deepEqual(result.info.review_facets.document_kind,['amendment']);
+ const changed=fixture('annotation_only_unsupported_forms');changed.rows[0].selected=selected;
+ assert.match((await loadReviews(...args(changed))).info.review_error,/Unsupported forms/);
+});
+test('wrong bytes, catalog pair, duplicate positions and missing pages refuse reviews while baseline stays usable',async()=>{
+ const variants=[data=>data.baseline.filenames='other',data=>data.rows.push(data.rows[0]),data=>data.rows[0].sources.push(0),data=>delete data.rows[0].evidence.pages[1]];
+ for(const change of variants){const data=fixture();change(data);const result=await loadReviews(...args(data));assert.equal(result.groups.size,0);assert.equal(result.info.reviewed_search,false);assert.throws(()=>reviewedMode({classification:'reviewed'},result.info));assert.equal(reviewedMode({},result.info),false);}
+ const parameters=args(fixture());parameters[0].sha256='wrong';assert.match((await loadReviews(...parameters)).info.review_error,/failed verification/);
+ parameters[0].catalog_id='other';assert.deepEqual((await loadReviews(...parameters)).info,{});
+});

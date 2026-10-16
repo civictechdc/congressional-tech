@@ -6,6 +6,7 @@ Run from the repository root:
 from __future__ import annotations
 
 import argparse
+from copy import deepcopy
 from bisect import bisect_right
 from functools import lru_cache
 import gzip
@@ -277,6 +278,7 @@ class Catalog:
         self.retained = retained
         self.review_snapshot = None
         self.review_error = None
+        self.review_classifications = {}
         self.file = pq.ParquetFile(path)
         self.document_path = documents
         if not self.document_path.is_file():
@@ -372,8 +374,30 @@ class Catalog:
                 if not review_manifest or not review_sha256:
                     raise ValueError('Both a portable review manifest and its SHA-256 are required.')
                 self.review_snapshot = ReviewSnapshot(review_manifest, review_sha256, self.path, self.document_path)
+                self.review_classifications = {entries[key]: row for key, row in self.review_snapshot.classifications().items()}
             except (ValueError, OSError, KeyError, TypeError) as exc:
                 self.review_error = str(exc)
+        self.reviewed_entries = {key for key, row in self.review_classifications.items() if row['status'] == 'candidate_applied'}
+        self.info['reviewed_search'] = self.review_snapshot is not None and not self.review_error
+        if self.info['reviewed_search']:
+            self.info['review_sha256'] = review_sha256
+            self.info['reviewed_groups'] = len(self.reviewed_entries)
+            self.info['review_facets'] = {field: sorted(set(self.info['facets'][field]) | {
+                value for entry in self.reviewed_entries for value in self.review_classifications[entry][field] or []})
+                for field in ('document_kind', 'document_family')}
+            self.source_positions = pa.array(range(len(self.table)), type=pa.int64())
+            self.review_source_mask = self.source_mask(self.reviewed_entries)
+        elif self.review_error:
+            self.info['review_error'] = self.review_error
+
+    def source_mask(self, entries):
+        positions = [row for entry in entries for row in self.members[entry]]
+        return pc.is_in(self.source_positions, value_set=pa.array(positions, type=pa.int64()))
+
+    def reviewed_matches(self, baseline, field, predicate):
+        """Replace category readings on every alias of an applied reviewed group."""
+        accepted = {entry for entry in self.reviewed_entries if predicate(self.review_classifications[entry][field] or [])}
+        return pc.or_(pc.and_(baseline, pc.invert(self.review_source_mask)), self.source_mask(accepted))
 
     def resolve(self, identity, catalog_id=None):
         if catalog_id and catalog_id != self.info['catalog_id']:
@@ -401,6 +425,16 @@ class Catalog:
         return pc.binary_join(column, ' | ') if pa.types.is_list(column.type) else column
 
     def search(self, query):
+        mode = query.get('classification', '')
+        if mode not in ('', 'reviewed'):
+            raise ValueError('Unknown classification mode.')
+        reviewed = mode == 'reviewed'
+        if reviewed:
+            if self.review_error or self.review_snapshot is None:
+                raise ValueError(self.review_error or 'Reviewed-category search is not configured.')
+            if query.get('review', self.info['review_sha256']) != self.info['review_sha256']:
+                raise SnapshotChanged('This search belongs to a different review snapshot. Choose the classification mode again.')
+            self.review_snapshot.check()
         text = query.get('q', '')[:2000]
         field = query.get('field', 'filename')
         if field == 'publication_code_code' and field not in self.fields:
@@ -410,6 +444,8 @@ class Catalog:
         mask = pa.array([True] * len(self.table))
         if text:
             found = pc.fill_null(pc.match_substring(self.searchable(field), text, ignore_case=True), False)
+            if reviewed and field in ('document_kind', 'document_family', 'document_kind_source'):
+                found = self.reviewed_matches(found, field, lambda values: text.lower() in ' | '.join(values).lower())
             if field == 'filename' and 'recovered_filename' in self.fields:
                 found = pc.or_(found, pc.fill_null(pc.match_substring(
                     self.searchable('recovered_filename'), text, ignore_case=True), False))
@@ -419,9 +455,13 @@ class Catalog:
             if name in ('document_kind', 'document_family') and value == '__null__':
                 continue  # Check the grouped document, not an unclassified alias.
             if value:
-                if value not in self.info['facets'][name]:
+                allowed = self.info.get('review_facets', {}).get(name, self.info['facets'][name])
+                if value not in allowed:
                     raise ValueError(f'Unknown {name} filter.')
-                mask = pc.and_(mask, pc.fill_null(pc.match_substring(self.filter_text[name], '\0' + value + '\0'), False))
+                found = pc.fill_null(pc.match_substring(self.filter_text[name], '\0' + value + '\0'), False)
+                if reviewed and name in ('document_kind', 'document_family'):
+                    found = self.reviewed_matches(found, name, lambda values: value in values)
+                mask = pc.and_(mask, found)
         retained = query.get('retained', '')
         if retained not in ('', 'yes', 'no'):
             raise ValueError('Unknown retained-file filter.')
@@ -443,7 +483,11 @@ class Catalog:
                 column = (self.documents[name] if name in self.documents.column_names else
                           pa.nulls(len(self.documents), type=pa.list_(pa.string())))
                 missing = pc.equal(pc.fill_null(pc.list_value_length(column), 0), 0)
-                matching_entries.intersection_update(pc.indices_nonzero(missing).to_pylist())
+                missing_entries = set(pc.indices_nonzero(missing).to_pylist())
+                if reviewed:
+                    missing_entries.difference_update(self.reviewed_entries)
+                    missing_entries.update(entry for entry in self.reviewed_entries if not self.review_classifications[entry][name])
+                matching_entries.intersection_update(missing_entries)
         matches = [entry for entry in self.order.to_pylist() if entry in matching_entries]
         total = len(matches)
         limit = max(1, min(100, int(query.get('limit', 50))))
@@ -452,12 +496,20 @@ class Catalog:
         selected = matches[(page - 1) * limit:page * limit]
         rows = self.documents.take(pa.array(selected, type=pa.int64())).to_pylist()
         for row, entry in zip(rows, selected):
+            if reviewed and entry in self.review_classifications:
+                classification = self.review_classifications[entry]
+                row['_review_status'] = classification['status']
+                if entry in self.reviewed_entries:
+                    row['catalog_document_kind'] = row.get('document_kind')
+                    row.update({key: deepcopy(classification[key]) for key in ('document_kind', 'document_family', 'document_kind_source')})
             row['_row'] = self.preferred_sources[entry]
             row['source_count'] = len(self.members[entry])
             row.pop('body_key')
             row['retained'] = bool(self.saved_responses[entry])
             row['api_reference'] = self.api_sources.get(self.preferred_sources[entry]) if entry in self.api_entries else None
             row['video_reference'] = self.video_sources.get(self.preferred_sources[entry]) if entry in self.video_entries else None
+        if reviewed:
+            self.review_snapshot.check()
         return {'rows': rows, 'total': total, 'page': page, 'pages': pages, 'limit': limit}
 
     @lru_cache(maxsize=16)

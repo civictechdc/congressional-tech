@@ -434,3 +434,16 @@ Next steps, in order:
    frozen held-out evaluation, then a bounded classification refresh for qualified
    rules. No new taxonomy kind or release approval follows from these 86 assistant
    reviews alone. Keep the remaining unclassified-group census in that plan.
+
+2026-10-16 wrap-up: reviewed search and public publication
+-------------------------------------------------------
+Steps 1 and 2 above are implemented and tested. The user explicitly authorized
+public deployment. The new selector defaults to Original catalog, supports an
+explicit reviewed mode, and keeps all five unsupported packets as annotations.
+The compact public file binds the exact original pair and 86 reviewed groups;
+530 rendered pages and supporting PDFs/text remain inspectable.
+See REVIEW_PUBLIC_SEARCH.txt and public_review_checkpoint_v1.json.
+
+The next research step remains independent reference review and frozen held-out
+evaluation. Then assess remaining unclassified groups and qualify bounded rules.
+Do not treat the optional assistant-review publication as classifier approval.
