@@ -1,4 +1,4 @@
-"""One-shot publication of an imported recovery batch; no acquisition or raw writes.
+"""Explicit publication and continuation of an imported recovery batch; no acquisition or raw writes.
 
 Requires an actual completed import. Default mode verifies local evidence only.
 The maintained catalog and viewer implementations are loaded from --runtime.
@@ -108,6 +108,8 @@ def rebuild_retained_catalog(store, *, working, root):
 
 def run(args):
     batch, imported, runtime = args.batch.resolve(), args.imported.resolve(), args.runtime.resolve()
+    if getattr(args, 'resume', False) and not args.execute:
+        raise ValueError('--resume requires --execute')
     result = verify_import(batch, imported)
     if not args.execute:
         return dict(local_preflight=True, import_verified=True, writes=False)
@@ -115,16 +117,12 @@ def run(args):
     lock = (ROOT / '.cache/local-recovery.lock').open('a')
     fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     destination = args.destination.resolve()
-    destination.mkdir(parents=True, exist_ok=False)
     parent = os.getppid()
-    def save(name, raw):
-        path = destination / name
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open('xb') as stream:
-            stream.write(raw); stream.flush(); os.fsync(stream.fileno())
+    from recovery_publication_continuation import Continuation
     def report(name, value):
-        save(name, (json.dumps(value, indent=2) + '\n').encode())
+        continuation.save(name, (json.dumps(value, indent=2) + '\n').encode())
     def journal(event, value):
+        continuation.record(event, value)
         with (destination / 'events.jsonl').open('a') as stream:
             stream.write(json.dumps(dict(at=datetime.now(timezone.utc).isoformat(), event=event, value=value))+'\n')
             stream.flush(); os.fsync(stream.fileno())
@@ -132,8 +130,15 @@ def run(args):
                 'apps/site/scripts', 'docs/youtube-coverage/research/scripts']
              for p in (runtime / folder).rglob('*') if p.is_file() and '__pycache__' not in str(p)]
     paths += list(batch.glob('*.json')) + list((ROOT/'scripts').glob('*corpus_recovery*.py'))
-    paths += [ROOT/'scripts/guarded_recovery_publication_client.py', args.baseline.resolve()]
+    paths += [ROOT/'scripts/guarded_recovery_publication_client.py',
+              ROOT/'scripts/recovery_publication_continuation.py', args.baseline.resolve(),
+              imported/'payloads/import-complete.json', imported/'events.jsonl']
+    paths += [imported/'payloads'/key for key in ('indexes/captures.parquet', 'indexes/download-state.parquet')]
     pins = {str(p): digest(p) for p in paths}
+    binding = dict(pins=pins, batch=str(batch), imported=str(imported), runtime=str(runtime),
+                   baseline=str(args.baseline.resolve()))
+    continuation = Continuation(destination, binding, resume=getattr(args, 'resume', False))
+    save = continuation.save
     report('pins.json', pins)
     for package in ['congress_api', 'house-naming']:
         sys.path.insert(0, str(runtime/'packages'/package/'src'))
@@ -155,14 +160,20 @@ def run(args):
     bucket = 'congressional-tech-raw'
     protected = ['indexes/captures.parquet', 'indexes/download-state.parquet', 'indexes/catalog.json',
                  'viewer-publications/recoveries/accepted.json', 'viewer-publications/manifest.json']
-    versions = {}
-    for key in protected:
-        response = client.get_object(Bucket=bucket, Key=key)
-        with response['Body'] as stream: raw = stream.read()
-        if len(raw) != response['ContentLength']: raise ValueError('Incomplete publication baseline')
-        save('baseline/'+key, raw); versions[key] = response['ETag']
-        if key in protected[:2] and raw != (imported/'payloads'/key).read_bytes():
-            raise ValueError('Raw indexes changed since completed import; reconcile before publication')
+    versions = continuation.value['versions']
+    if not versions:
+        baseline_versions = {}
+        for key in protected:
+            response = client.get_object(Bucket=bucket, Key=key)
+            with response['Body'] as stream: raw = stream.read()
+            if len(raw) != response['ContentLength']: raise ValueError('Incomplete publication baseline')
+            save('baseline/'+key, raw); baseline_versions[key] = response['ETag']
+            if key in protected[:2] and raw != (imported/'payloads'/key).read_bytes():
+                raise ValueError('Raw indexes changed since completed import; reconcile before publication')
+        versions.update(baseline_versions)
+        continuation.flush()
+    if getattr(args, 'resume', False):
+        continuation.reconcile(client, bucket)
     def guard():
         cloud_clear()
         if os.getppid() != parent or shutil.disk_usage(destination).free < 12*1024**3:
@@ -174,13 +185,26 @@ def run(args):
             if client.head_object(Bucket=bucket, Key=key)['ETag'] != version:
                 raise RuntimeError('Publication input changed: '+key)
     def after_write(key, version):
-        if key in versions: versions[key] = version
-    proxy = GuardedPublicationClient(client, guard=guard, journal=journal, after_write=after_write)
+        if key in versions:
+            versions[key] = version
+            continuation.flush()
+    class ContinuedClient(GuardedPublicationClient):
+        def put_object(self, **kwargs):
+            with self.lock:
+                guard()
+                receipt = continuation.replay(client, kwargs['Bucket'], kwargs['Key'], kwargs['Body'])
+                return receipt if receipt is not None else super().put_object(**kwargs)
+    proxy = ContinuedClient(client, guard=guard, journal=journal, after_write=after_write)
     source = destination/'source'; expected = set(json.loads((batch/'bodies.json').read_text()))
     class Store(R2Store):
+        def read(self, key):
+            body = super().read(key)
+            if body is not None and (key.startswith('catalog-generations/') or key == 'indexes/catalog.json'):
+                save('source/'+key, body, replace=key == 'indexes/catalog.json')
+            return body
         def put(self, key, body, *, immutable=False):
             if key.startswith('catalog-generations/') or key == 'indexes/catalog.json':
-                save('source/'+key, body)
+                save('source/'+key, body, replace=key == 'indexes/catalog.json')
             return super().put(key, body, immutable=immutable)
         def put_catalog_manifest(self, data, *, expected_version):
             manifest = json.loads(data)
@@ -191,23 +215,54 @@ def run(args):
             return super().put_catalog_manifest(data, expected_version=expected_version)
     try:
         guard()
-        build = destination/'build'; build.mkdir(); (build/'indexes').mkdir()
-        working = WorkingCatalog(build/'working.sqlite')
-        try:
-            with ProgressLog(destination/'catalog-progress.json'):
-                catalog = rebuild_retained_catalog(Store(proxy,bucket), working=working, root=build)
-        finally: working.close()
+        def catalog_phase():
+            build = destination/'build'
+            # Only incomplete local scratch is replaced; retained source objects and
+            # remote receipts survive an interrupted catalog build.
+            if build.exists(): shutil.rmtree(build)
+            build.mkdir(); (build/'indexes').mkdir()
+            working = WorkingCatalog(build/'working.sqlite')
+            try:
+                with ProgressLog(destination/'catalog-progress.json'):
+                    catalog = rebuild_retained_catalog(Store(proxy,bucket), working=working, root=build)
+            finally: working.close()
+            manifest = json.loads((source/'indexes/catalog.json').read_text())
+            coverage = verify_coverage(source, manifest, expected)
+            validate_document_indexes(source/manifest['files']['filenames']['key'],
+                                      source/manifest['files']['documents']['key'])
+            report('coverage.json', coverage)
+            return catalog
+        catalog = continuation.phase('catalog', catalog_phase,
+            files=lambda: [*source.rglob('*parquet'), source/'indexes/catalog.json', destination/'coverage.json'])
         report('catalog-result.json', catalog)
-        mapping = publish_mappings(proxy, bucket=bucket,
-            baseline=json.loads(args.baseline.read_text()), prepared=json.loads((batch/'accepted.json').read_text()),
-            validate=accepted_rows, guard=guard, save_payload=save, journal=journal)
-        report('mapping-result.json', mapping)
-        builder = load(runtime/'apps/site/scripts/publish-filename-viewer.py', 'recovery_viewer_builder')
-        builder.publish(source, destination/'prepared')
         guard()
-        publisher = load(runtime/'apps/site/scripts/publish-viewer-r2.py', 'recovery_viewer_publisher')
-        publication = publisher.run(proxy, prepared=destination/'prepared')
-        if publication['status'] != 'published': raise ValueError('Viewer was not published')
+        def mapping_phase():
+            mapping = publish_mappings(proxy, bucket=bucket,
+                baseline=json.loads(args.baseline.read_text()), prepared=json.loads((batch/'accepted.json').read_text()),
+                validate=accepted_rows, guard=guard, save_payload=save, journal=journal)
+            return mapping
+        mapping = continuation.phase('mappings', mapping_phase, files=lambda: [p for p in (destination/'accepted-proposed.json', destination/'accepted-before.json') if p.exists()])
+        report('mapping-result.json', mapping)
+        guard()
+        def prepared_phase():
+            builder = load(runtime/'apps/site/scripts/publish-filename-viewer.py', 'recovery_viewer_builder')
+            return builder.publish(source, destination/'prepared')
+        continuation.phase('prepared', prepared_phase,
+            files=lambda: [p for p in (destination/'prepared').rglob('*') if p.is_file()])
+        guard()
+        def publication_phase():
+            publisher = load(runtime/'apps/site/scripts/publish-viewer-r2.py', 'recovery_viewer_publisher')
+            if 'release_plan' not in continuation.value:
+                import uuid
+                continuation.value['release_plan'] = dict(release='releases/'+uuid.uuid4().hex+'/',
+                    published_at=datetime.now(timezone.utc).isoformat())
+                continuation.flush()
+            publication = publisher.run(proxy, prepared=destination/'prepared',
+                                        publication_plan=continuation.value['release_plan'])
+            if publication['status'] not in {'published', 'unchanged'}:
+                raise ValueError('Viewer was not published')
+            return publication
+        publication = continuation.phase('publication', publication_phase, files=lambda: [])
         guard()
         report('complete.json', dict(complete=True, catalog=catalog, mapping=mapping,
                                     publication=publication, imported=result))
@@ -224,4 +279,5 @@ if __name__ == '__main__':
         parser.add_argument('--'+name, type=Path, required=True)
     parser.add_argument('--config', type=Path, default=ROOT/'.cache/r2-admin/rclone.conf')
     parser.add_argument('--execute', action='store_true')
+    parser.add_argument('--resume', action='store_true', help='Explicitly reconcile and continue this destination; requires --execute.')
     print(json.dumps(run(parser.parse_args()), indent=2))

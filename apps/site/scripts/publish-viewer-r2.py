@@ -200,11 +200,17 @@ def public_probe(base, pointer, manifest):
 
 
 def upload(client, root, manifest, *, previous_etag, selected_etag, public_url=PUBLIC_URL,
-           probe=public_probe, archive_only=False):
+           probe=public_probe, archive_only=False, publication_plan=None):
     files = prepared_files(root, manifest)
     print(f"Uploading and reading back {len(files)} viewer objects for {manifest['info']['catalog_id']}", flush=True)
-    release = 'releases/' + uuid.uuid4().hex + '/'
-    manifest = dict(manifest, published_at=datetime.now(timezone.utc).isoformat())
+    plan = publication_plan or dict(release='releases/' + uuid.uuid4().hex + '/',
+                                    published_at=datetime.now(timezone.utc).isoformat())
+    release = plan['release']
+    if (not release.startswith('releases/') or not release.endswith('/')
+            or len(release.split('/')) != 3 or len(release.split('/')[1]) != 32
+            or any(c not in '0123456789abcdef' for c in release.split('/')[1])):
+        raise ValueError('Invalid persisted publication release')
+    manifest = dict(manifest, published_at=plan['published_at'])
     manifest['info'] = dict(manifest['info'], publication_version=PUBLISHER_VERSION)
     pointer = {'version': 1, 'publisher_version': PUBLISHER_VERSION, 'catalog_id': manifest['info']['catalog_id'],
                'source_manifest': manifest['source_manifest'], 'published_at': manifest['published_at'],
@@ -317,10 +323,10 @@ def refresh_recoveries(client, pointer, *, public_url=PUBLIC_URL):
         return accept_recoveries(client, root, accepted['recoveries'], public_url=public_url)
 
 
-def run(client, *, prepared=None, public_url=PUBLIC_URL, archive_only=False):
+def run(client, *, prepared=None, public_url=PUBLIC_URL, archive_only=False, publication_plan=None):
     selected, selected_etag, modified = read_json(client, 'indexes/catalog.json')
     previous, previous_etag, _ = read_json(client, PREFIX + 'manifest.json', optional=True)
-    if not archive_only and previous and previous.get('source_manifest') == selected and previous.get('publisher_version') == PUBLISHER_VERSION:
+    if publication_plan is None and not archive_only and previous and previous.get('source_manifest') == selected and previous.get('publisher_version') == PUBLISHER_VERSION:
         return refresh_recoveries(client, previous, public_url=public_url)
     with tempfile.TemporaryDirectory(prefix='filename-publication-') as folder:
         folder = Path(folder)
@@ -351,7 +357,7 @@ def run(client, *, prepared=None, public_url=PUBLIC_URL, archive_only=False):
             manifest = publication.publish(source, root, modified)
         manifest['info']['remote_last_modified'] = modified if not archive_only else manifest['info'].get('remote_last_modified')
         return upload(client, root, manifest, previous_etag=previous_etag, selected_etag=selected_etag,
-                      public_url=public_url, archive_only=archive_only)
+                      public_url=public_url, archive_only=archive_only, publication_plan=publication_plan)
 
 
 if __name__ == '__main__':
