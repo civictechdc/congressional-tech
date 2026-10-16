@@ -1,0 +1,28 @@
+{
+  "at": "2026-10-16T05:10:14.734130+00:00",
+  "retained_catalog_lookup": {
+    "remaining_house_urls": 731,
+    "qualifying_pdf_rows": 0
+  },
+  "https_sample": {
+    "urls": 10,
+    "actual_exit": 0,
+    "recovered": 0,
+    "result": "All returned HTML Not Found pages with HTTP 200"
+  },
+  "remaining_unresolved": 19228,
+  "prepared_links": 4346,
+  "published": false,
+  "evidence": {
+    "house-docs-retained-catalog-candidates.json": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "house-docs-https-sample/completion-monitor.json": "f7a1da65327f35fde85c9405c1831ed98416c761df1e8b424996067102f9b354",
+    "remaining-recovery-summary.json": "a6d95d355c353b68f70875f2aedfc7f327556111a5003872848f28c56a949daf"
+  },
+  "decision": "Do not expand blind HTTPS retries for this House document cohort",
+  "next_steps": [
+    "Use retained hearing document listings to discover corrected file URLs",
+    "Keep prior failure receipts so successful or unsuccessful samples are not repeated",
+    "Continue the three existing acquisition workers",
+    "Run fresh cloud-clear check before batch 10 publication"
+  ]
+}
