@@ -1,0 +1,85 @@
+Package receipt admission and separate candidate output: self-review
+===================================================================
+Findings
+--------
+No blocking findings within this local admission path. The package verifies the
+existing receipt chain and compiles candidates without writing baseline indexes.
+It does not independently verify the assistant's visual conclusions or make a
+candidate a production selection. Local receipt paths remain a portability limit.
+
+Patch summary and function trace
+--------------------------------
+Package locations are relative to congress_api/retention/.
+
+Function | Location | Input -> output | Verified behavior
+file_digest / verified | document_review_receipts.py:18,30 | local file and expected hash -> verified path | Streaming SHA-256; fails mismatches and records every bound file.
+read_ledger | document_review_receipts.py:43 | JSONL -> original rows | Rejects duplicate document IDs.
+validate_record | document_review_receipts.py:50 | record, original, fetch evidence -> validation | Checks assistant status, exact body key/digest, PDF signature/page count, full render coverage and section/text evidence hashes.
+load_reviews | document_review_receipts.py:103 | pinned latest receipt -> verified records | Follows hash-bound parents, rejects cycles/duplicates/conflicts, verifies selection bindings and original/fetch rows.
+compile_review | document_review_receipts.py:138 | proposal, validated original/review, complete current group -> binding | Checks original hashes, current kind, role, exact source membership/locators, single eligible body, body union and complete proposed forms before package digest.
+implementation | document_review_catalog.py:18 | maintained source/runtime -> identity | Records admission/selection/index/evidence source hashes, house_naming fingerprint and reader versions.
+selected_groups | document_review_catalog.py:24 | pair file and selected IDs -> full selected rows | ID scan followed by batches of 32; filters before Python conversion; rejects duplicate/missing identities and preserves nested nulls/order/duplicates.
+write_candidates | document_review_catalog.py:39 | pair, pinned proposals/receipt, new directory -> candidate bundle | Exact group coverage, whole-pair references, receipt admission, current compilation, selection and withdrawal; rechecks inputs and implementation before writing and inputs afterward.
+CLI | document_review_catalog.py:87 | explicit required paths/hashes -> write_candidates | New output only, no publication or baseline mutation.
+
+Current experiment callers in current_review_candidates.py and
+normalized_review_candidates.py now import the package receipt reader. The old
+catalog_content_review.py remains byte-identical: earlier evidence directly binds
+its hash. It is a historical reference, not a dependency of maintained package code.
+
+Data flow and invariants
+------------------------
+H1: Receipt validation can move without changing reviewed meaning or provenance.
+Confirmed: maintained and historical readers return exactly the same 86 review
+records, 530 pages and complete binding map on the actual receipt chain. Saved PDF
+and render hashes remain identical; no source evidence is rewritten.
+H2: Fresh group compilation can discard a packet component or silently transfer
+review to changed members. Prevented by exact proposal/receipt set checks, original
+row hashes, member locator equality, eligible body and body-union checks. Unsupported
+forms remain whole-packet annotations through the shared selector.
+H3: A candidate bundle could become an accidental baseline update.
+Prevented structurally: only the new candidates.jsonl and summary.json are write
+targets. The source/document pair is read and hash-checked again. A valid completed
+summary marks completion; an interrupted output is not reusable and cannot be
+overwritten by this command. Actual selection still returns production_selected=false.
+
+Tests and executed evidence
+---------------------------
+tests/test_document_review_catalog.py:47 verifies complete and unsupported packets,
+input byte preservation, nested Unicode/null/duplicate values, withdrawal and output
+overwrite refusal. At :64, twelve refusals cover changed bytes/hashes, missing render
+or group, extra member, non-document role, body-union mismatch, changed selected kind,
+ineligible body, altered forms and approval. At :88 and :106, page coverage, partial
+reviews, reference/release flags, digests, duplicate forms/records/fetches/ledger rows,
+unknown components, actual PDF page counts and parent hashes are exercised. At :94,
+complete filtered rows and duplicate ID rejection are checked. Snapshot tests at :130
+change an input after reading or change implementation identity; both refuse output.
+The combined package, receipt, compiler, normalized candidate and import-fence suite
+passes 112 tests. The historical verifier tests remain as compatibility controls.
+
+The actual package command ran with package-only PYTHONPATH on the complete normalized
+86-group / 286-source input. It admitted 530 reviewed pages and wrote 81 candidates
+plus five whole-packet annotations. Every candidate and binding matches the previous
+experiment semantically; package output additionally retains Arrow null padding.
+The maintained/historical receipt comparison is saved as receipt-compatibility.json.
+Package-produced candidate bytes were then replayed through all seven grouping,
+cache and metadata-refresh scenarios. Every full baseline and candidate matched,
+and withdrawal restored every baseline. No new bindings were needed during replay.
+
+Limits and next steps
+---------------------
+This run qualifies the selected reviewed cohort, not every group in the full catalog.
+Batching limits conversion size per batch; the selected rows and candidates remain
+resident and a single large nested row can still dominate memory. The caller runs
+from the directory expected by historical receipt locators. A future published
+bundle must avoid leaking local paths and define portable evidence references.
+
+Next define and test a bundle reader that verifies a pinned summary/output hash,
+requires the matching baseline and rechecks each candidate's compiled group binding.
+It must reject stale or altered data and support withdrawing the bundle by omitting
+it. Then evaluate use against a broader catalog and resolve the five unsupported
+packet forms before any viewer/publication adoption. Independent reference and
+held-out/publication gates remain separate.
+
+VERDICT: APPROVE for package-owned local receipt admission and candidate output.
+Coverage: ADEQUATE. Confidence: HIGH for this cohort and explicit refusal paths.

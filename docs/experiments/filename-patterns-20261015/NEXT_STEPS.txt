@@ -785,3 +785,12 @@ See package_review_checkpoint_v1.json and REVIEW_PACKAGE_SELECTION.txt.
 Next implement package receipt admission plus an explicit candidate-output path
 separate from baseline caches, then qualify the broader catalog. Automatic catalog
 selection and publication remain unchanged.
+
+Package receipt admission and an explicit separate candidate-output command now
+pass on all 86 reviewed groups / 530 pages. The maintained and historical readers
+agree on all 757 bindings, and the historical verifier remains unchanged. All 112
+relevant tests and the seven-path replay pass; candidate semantics and baseline
+files are unchanged. See package_admission_checkpoint_v1.json and
+REVIEW_PACKAGE_ADMISSION.txt. Next implement pinned bundle consumption with exact
+baseline checks and withdrawal, then qualify broader use and portable references.
+Automatic capture, viewer selection and publication remain unchanged.

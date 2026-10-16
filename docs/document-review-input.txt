@@ -12,9 +12,11 @@ Ownership
 house_naming owns lexical filename interpretation and kind-to-family mappings.
 congress_api.retention owns retained body/source evidence, grouping and selection.
 A body review is evidence about captured bytes, not a new filename rule.
-The experiment receipt reader verifies its historical review format and compiles
-this input. It is not a package dependency. Future catalog integration must supply
-an equally verified input; loading arbitrary JSON is insufficient.
+document_review_receipts verifies local receipt chains and compiles this input.
+document_review_catalog admits a pinned proposal/receipt pair against complete
+current groups and writes a separate candidate bundle. The historical experiment
+reader remains unchanged because earlier receipts bind its source hash; it is not
+a package dependency. Current candidate experiments use the maintained reader.
 
 What goes in
 ------------
@@ -47,9 +49,11 @@ count, all-page coverage and retained evidence hashes. It must compare the propo
 forms with that review and verify exact original/current membership and body
 identity. The current group must have document role and exactly the reviewed
 eligible body, while its retained body union may also include old failed captures.
-The current experiment implements these checks in load_reviews, compare_case and
-select_candidates. The package selection API performs no file or network reads;
-digest equality alone does not establish review correctness or page coverage.
+The package implements these checks in document_review_receipts.load_reviews and
+compile_review, called by document_review_catalog.write_candidates. The selection
+API itself reads no receipt or body files; digest equality alone does not establish
+review correctness or page coverage. Receipt validation checks recorded all-page
+coverage and evidence hashes; it does not independently repeat a visual review.
 
 What happens and what comes out
 -------------------------------
@@ -82,12 +86,38 @@ The complete 86-group / 286-source cohort is replayed through seven grouping and
 refresh scenarios against its saved candidates to prove extraction compatibility.
 Import-fence tests keep retained-data code inside its package responsibility.
 
+Optional local command
+----------------------
+Run from the directory relative to which the historical receipt paths were saved:
+
+python -m congress_api.retention.document_review_catalog \
+  --sources PATH/TO/document-filenames.parquet \
+  --documents PATH/TO/documents.parquet \
+  --proposals PATH/TO/proposals.json --proposals-sha256 EXPECTED_PROPOSAL_HASH \
+  --receipt PATH/TO/latest-receipt.json --receipt-sha256 EXPECTED_RECEIPT_HASH \
+  --output NEW_OUTPUT_DIRECTORY
+
+Use hashes from the pinned evidence, not a hash recomputed after an unexpected
+change. Install the package's archive extras for Parquet/catalog support. Proposal
+records and the receipt chain must cover exactly the same reviewed group IDs.
+The command validates the whole pair's references, then reads complete selected
+groups with ID scans and batches of 32. This bounds batch expansion, not the total
+size of the selected cohort or any single nested row.
+
+The new directory contains candidates.jsonl and summary.json. Candidate records
+include their compiled reviews; the summary binds source files, receipts, evidence,
+implementation and output bytes. The summary is the completion marker. Interrupted
+or failed outputs without a completed summary are not reusable, and existing output
+directories are refused. Inputs are hash-checked again before and after writing.
+Catalog indexes and publication selectors are never write targets.
+
 Remaining integration work
 --------------------------
-The catalog pipeline still needs a package-owned receipt admission interface and
-explicit optional invocation/output storage for these candidates. It must preserve
-the baseline, serialize review evidence separately and support withdrawal without
-relying on cached candidate fields. Independent references, the five unsupported
-packet forms, full-catalog execution and publication remain separate decisions.
-No source-body acquisition, held-out evaluation, automatic selection or release
-permission is introduced by this API.
+The explicit package command is now available; recurring catalog capture does not
+invoke it automatically. Before consuming its output in the viewer or publication,
+define how a reader verifies a bundle against its current baseline and rejects stale
+bindings while retaining annotations. Historical paths are local and must not be
+presented as a portable publication format. Independent references, the five
+unsupported packet forms, full-catalog execution and publication remain separate
+decisions. No source-body acquisition, held-out evaluation, automatic selection or
+release permission is introduced by this API.

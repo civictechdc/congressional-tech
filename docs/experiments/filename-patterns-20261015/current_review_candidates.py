@@ -12,7 +12,7 @@ import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
 from catalog_alias_review import eligible_body
-from catalog_content_review import load_reviews, read_ledger
+from congress_api.retention.document_review_receipts import load_reviews, read_ledger
 from catalog_filename_replay import implementation_manifest, implementation_identity, normalized
 from catalog_review_evidence import row_digest, verified
 from congress_api.retention.catalog_publication import local_catalog_paths

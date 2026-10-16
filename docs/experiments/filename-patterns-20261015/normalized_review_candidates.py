@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 import shutil
 
-from catalog_content_review import load_reviews, read_ledger
+from congress_api.retention.document_review_receipts import load_reviews, read_ledger
 from catalog_filename_replay import implementation_manifest, implementation_identity, normalized
 from catalog_review_evidence import verified
 from congress_api.retention.document_index import restore_filename_kind, validate_document_indexes

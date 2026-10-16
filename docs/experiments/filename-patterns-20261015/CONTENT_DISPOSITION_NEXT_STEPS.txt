@@ -292,3 +292,25 @@ that writes candidates separately from baseline indexes. Validate the full evide
 chain and exact eligible body/member identities before invoking the selector. Keep
 the ordinary no-review path unchanged. Then resolve unsupported packet representation
 and complete broader/independent qualification before production activation.
+
+Package admission and separate output now work end to end
+---------------------------------------------------------
+document_review_receipts validates and compiles the retained review chain;
+document_review_catalog exposes an explicit local command that writes only a new
+candidate bundle. Current candidate workflows use the maintained receipt reader.
+The historical reader remains byte-identical because earlier evidence binds it.
+Both readers produce exactly the same 86 reviews and 757 evidence bindings.
+
+The package command admits all 530 reviewed pages and produces the same 81
+candidates and five whole-packet annotations on the 286-source / 86-group input.
+All 112 relevant tests pass. Package-produced candidates survive all seven replay
+scenarios unchanged, with working withdrawal. Baseline files and public selectors
+remain unchanged. See package_admission_checkpoint_v1.json and
+REVIEW_PACKAGE_ADMISSION.txt. docs/document-review-input.txt documents the command.
+
+Next implement a pinned candidate-bundle reader: verify summary/output hashes,
+match the current baseline and validate each saved candidate against its compiled
+group binding. Refuse stale or altered data and withdraw by omitting the bundle.
+Then qualify broader catalog use and portable publication references. Descriptive
+packet forms, independent references and held-out/publication requirements remain
+open; local filesystem paths are not a publication-ready evidence representation.
