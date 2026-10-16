@@ -1,0 +1,48 @@
+{
+  "at": "2026-10-16T07:06:00.728018+00:00",
+  "qualified_packages": 3,
+  "qualified_package_urls": [
+    "https://www.govinfo.gov/content/pkg/CHRG-116hhrg36794.zip",
+    "https://www.govinfo.gov/content/pkg/CHRG-116hhrg40774.zip",
+    "https://www.govinfo.gov/content/pkg/CHRG-116hhrg46031.zip"
+  ],
+  "members": 15,
+  "distinct_verified_bodies": 18,
+  "all_body_hashes_verified": true,
+  "qualification_evidence": [
+    {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/govinfo-bulk-qualified-04/001/complete.json",
+      "sha256": "9646702e91f7eef6cb33d21aad6414484763783b06f65d47233d22df1cd91795"
+    },
+    {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/govinfo-bulk-qualified-04/002/complete.json",
+      "sha256": "1a095259ed323ffe8170364be2097130901272f27ac3ec9370905f504b5dc600"
+    },
+    {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/govinfo-bulk-qualified-04/003/complete.json",
+      "sha256": "f436aec776dc738530aa0e22b957365e76e3314427b2d0bd23254cd001d0e9c6"
+    }
+  ],
+  "partial_batch": true,
+  "worker_exit_success_not_required_for_completed_items": true,
+  "source_requests": 0,
+  "published": false,
+  "sealed_batch14_unchanged": true,
+  "remaining_counts": {
+    "lookup_unresolved": 14345,
+    "validated_local_recovery": 3189,
+    "unprocessed_archive_candidate": 2579,
+    "attempted_not_recovered": 27,
+    "retained_copy_link_prepared": 3434
+  },
+  "remaining_unresolved": 16951,
+  "prepared_recovered_urls": 6623,
+  "ledger_sha256": "65d85133f61c22beac1054f12aa7093f7f51ccea58f6154e5c4fd56905db27d8",
+  "adoption_script_sha256": "00fa34d071cb98442f6de8901476a980ea36de16b7ceb283558c91b53945ee90",
+  "next_steps": [
+    "Restore storage headroom before publication or new downloads.",
+    "Publish already imported checkpoint12 after fresh baseline checks.",
+    "Publish sealed checkpoint14 only after its parent publication verifies.",
+    "Include these three packages in a later batch; preserve sealed checkpoint14 unchanged."
+  ]
+}
