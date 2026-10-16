@@ -1,0 +1,93 @@
+{
+  "scope": "Complete historical cohort alias metadata audit; no content approval",
+  "summary": {
+    "inputs": {
+      "before_sources": {
+        "path": "output/filename-patterns-20261015/prior-kind-current-input-v1/indexes/document-filenames.parquet",
+        "sha256": "36884e1d96e6df5eefc9763e2bfa88c401a60944fd96cca9f34e81a2a5030c45"
+      },
+      "before_documents": {
+        "path": "output/filename-patterns-20261015/prior-kind-current-input-v1/indexes/documents.parquet",
+        "sha256": "0461794398323eed38fb7ac29d82f15628ae7f15489efb6d05f25299e42012ca"
+      },
+      "after_sources": {
+        "path": "output/filename-patterns-20261015/genre-subject-replay-v1/catalog/indexes/document-filenames.parquet",
+        "sha256": "7251ccedb5120bc87b0282fae8195c84fea304c7afe0769a58ec64b242768dcd"
+      },
+      "after_documents": {
+        "path": "output/filename-patterns-20261015/genre-subject-replay-v1/catalog/indexes/documents.parquet",
+        "sha256": "be1944fb360fafabd0c12107e54bce37d6bb4d7f8a29ed07045450f4b9867c1c"
+      }
+    },
+    "evaluator_sha256": "dd46f8122ee43b0eaf8a88af7b0f16e94f147dd1e0d862dcaec836554b27e69d",
+    "implementation_sha256": "d9e1cf84eccd4829da0339b915e152c05af5b2b4177733464efd76f12be5a90d",
+    "source_rows": 7526,
+    "document_groups": 1949,
+    "unchanged_kind_groups": 46,
+    "changed_kind_groups": 1903,
+    "metadata_review": {
+      "same_family_aliases": 389,
+      "broad_specific_aliases": 821,
+      "needs_review": 693
+    },
+    "flags": {
+      "multiple_retained_bodies": 301,
+      "explicit_TEXT_wording": 15
+    },
+    "verified_alias_unions": 1949,
+    "input_bytes_unchanged": true,
+    "body_reads": false,
+    "classification_mutations": false,
+    "release_approved": false,
+    "limitation": "Metadata compatibility from all alias rows and shared retained body keys only; no content correctness or release approval.",
+    "outputs": {
+      "ledger.jsonl": "5f3231cd8c9c913f138d8feccb4a526d27d599886fc23f1180f0cc1402390155",
+      "groupings.csv": "0ca37f6c2bd92cca07ccd707f7280894342bf07978f9bcf33de42cdd091d1679"
+    }
+  },
+  "summary_sha256": "ffe2b9524c479fb690a0305ff2ac6506bfd42138bb2d96a08ccc3a7874286645",
+  "status_by_multiple_bodies": [
+    {
+      "metadata_review": "broad_specific_aliases",
+      "multiple_retained_bodies": false,
+      "count": 820
+    },
+    {
+      "metadata_review": "broad_specific_aliases",
+      "multiple_retained_bodies": true,
+      "count": 1
+    },
+    {
+      "metadata_review": "needs_review",
+      "multiple_retained_bodies": false,
+      "count": 424
+    },
+    {
+      "metadata_review": "needs_review",
+      "multiple_retained_bodies": true,
+      "count": 269
+    },
+    {
+      "metadata_review": "same_family_aliases",
+      "multiple_retained_bodies": false,
+      "count": 358
+    },
+    {
+      "metadata_review": "same_family_aliases",
+      "multiple_retained_bodies": true,
+      "count": 31
+    }
+  ],
+  "grouping_rows_read_in_full": 60,
+  "tests": {
+    "passed": 30,
+    "new_audit_tests": 13,
+    "existing_replay_tests": 17,
+    "failed_capture_red_cases": 3,
+    "log_sha256": "0684e342056f66cf2014faec0df316028f203eb0a59fd27de3a9360a287f9813",
+    "red_log_sha256": "0a230fd8ef3c6b3e016ac08fa2f51e14f2f6835d2022cfe4731e0190f41b9fdf"
+  },
+  "classification_changes": false,
+  "publication_performed": false,
+  "release_qualified": false
+}

@@ -222,3 +222,22 @@ and no publisher sites were visited. Preserve those failures and obtain changed
 archive-access evidence before retrying. Their current kinds remain unresolved.
 The live publication was still in progress at the latest readback. Keep its exact
 head and verification requirements; no new publication was dispatched.
+
+Complete alias audit checkpoint
+-------------------------------
+The complete alias audit is implemented and run on the 1,949-group cohort. It
+verifies all source memberships and filename/URL/body-key/filename-claim unions.
+Of 1,903 changed-kind groups, 821 broad/specific and 389 same-family additions
+have matching eligible body-key evidence. This establishes metadata compatibility
+only; every content review remains pending. The 693 other rows need another
+review basis, including prior filename-rule receipts where already available.
+All 60 grouped CSV rows were read in full. Thirty new/existing audit/replay tests
+pass. See REVIEW_ALIAS_EVIDENCE.txt and alias_evidence_checkpoint.json.
+
+Next, join the prior filename repair evidence into the current review ledger
+without treating it as content truth. Prioritize the 301 multi-body histories
+(32 are metadata-compatible) and 15 explicit TEXT groups for body-level review.
+Keep the four denied archive reads pending changed access evidence; the user has
+been asked to restore local archive read access asynchronously. Continue metadata
+review and exact publication verification independently. No production kinds or
+publication state were changed by this audit.

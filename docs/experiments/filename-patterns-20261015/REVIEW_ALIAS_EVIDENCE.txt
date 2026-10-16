@@ -1,0 +1,95 @@
+Complete alias evidence audit
+=============================
+
+Result and scope
+----------------
+The original historical cohort and current 3.2.4 tables contain the same 7,526
+source IDs, the same 1,949 document IDs and the same source-to-document membership.
+All 1,949 filename, URL, body-key and original-filename-claim unions agree with
+their complete source groups. Of the 1,903 changed-kind groups, 821 have compatible
+broad/specific additions and 389 have same-family additions supported by shared
+eligible retained body keys. The other 693 need a different review basis.
+
+These are metadata compatibility findings, not content approvals. Every ledger
+row says content_review=not_performed and release_approved=false. Thirty-two of
+the compatible groups still have multiple body keys: 31 same-family groups and
+one broad/specific group. The remaining 269 multi-body groups need other review
+basis. All 15 groups with explicit TEXT wording remain in needs_review. There
+are 46 unchanged-kind controls in the input cohort.
+
+All 60 grouped CSV rows, including up to three filename samples per transition,
+were read in full. The program audits every member, but this does not claim a
+manual content reading of all 1,903 documents. Earlier filename-rule corrections
+remain valid review evidence; needs_review here means the narrow alias criterion
+did not establish compatibility, not that the current classification is wrong.
+
+Implementation and function trace
+---------------------------------
+The CLI in catalog_alias_review.py:169 calls run (:94) with two complete catalog
+roots and a new output directory. local_catalog_paths resolves maintained table
+selection; validate_document_indexes checks each pair. read_rows (:82) reads only
+needed columns, refuses missing/duplicate IDs and retains all current source
+members. run verifies identity and membership equality before auditing each group.
+
+audit_group (:35) compares each document's original filename claims and literal
+filename/URL/body-key unions with its complete source members. It maps every
+claimed kind back to exact source IDs. eligible_body (:29) reuses the maintained
+document_index.document_body predicate, including response_failed, rather than
+creating a new capture policy. Failed responses and empty-body digests cannot
+supply a shared-body proof. document_families provides the package's existing
+explicit family relationships; this audit does not invent new taxonomy mappings.
+
+The narrow compatibility condition at :64-68 requires a strict addition to a
+nonempty prior kind set, with a qualifying shared body key for every added kind.
+The prior kind must remain present. An unchanged, removed, replaced or unsupported
+kind stays outside this criterion. Individual source readings, provenance,
+response metadata, exact body locators and the links remain in the output ledger.
+Multiple bodies and TEXT wording are separately visible flags, not erased by a
+compatible addition. No classifier, source table or publication is mutated.
+
+run rechecks both catalog selections, all four table hashes and the maintained
+project/experiment implementation manifest before writing output. An existing
+output directory is refused. This protects input and report provenance; it is
+not a claim that catalog classification or retained bytes have been verified.
+
+Review findings and tests
+-------------------------
+Resolved: comparing body-key strings alone would let a known failed response or
+empty body support compatibility. Three negative cases failed against the first
+audit candidate. The final code delegates eligibility to document_body; all
+three controls now pass, and the real cohort counts remain unchanged.
+Resolved by design: a reused endpoint with different body keys does not prove
+alias compatibility. The dedicated test retains multiple_retained_bodies and
+needs_review. Missing filename claims, filenames, URLs, body keys and foreign
+group membership also prevent a compatible disposition.
+Other tests verify same-family/broad-specific relationships without mutating
+inputs, retain pending content review, and exercise real complete-pair loading,
+all-member ledger output and overwrite refusal. The new 13 tests and existing
+17 replay tests pass together (30 total). No runtime package source changed;
+its 5,826-check validation remains recorded with the 3.2.4 repair.
+
+VERDICT: APPROVE this read-only metadata audit and its bounded interpretation.
+Coverage: ADEQUATE for compatibility, capture exclusions, union integrity and
+complete-pair output. Confidence: HIGH in the reported metadata relationships;
+content correctness and release qualification remain unproven.
+
+Next decisions
+--------------
+Preserve the compatible aliases and their broad/specific readings. Link prior
+filename-review receipts to the 693 remaining rows before repeating those reviews.
+Prioritize retained-body histories for the 301 multi-body groups and the explicit
+TEXT variants. Disclosure/biography and disclosure/statement combinations require
+separate review; a broad support label cannot prove the specific genre is right.
+The four exact archive reads denied in the preceding turn remain pending changed
+access evidence. The user has been asked asynchronously to restore local archive
+read access. Continue metadata review while that dependency is unresolved.
+
+Reproduce
+---------
+With the repository package paths on PYTHONPATH, run:
+  python docs/experiments/filename-patterns-20261015/catalog_alias_review.py \
+    --before-root output/filename-patterns-20261015/prior-kind-current-input-v1 \
+    --after-root output/filename-patterns-20261015/genre-subject-replay-v1/catalog \
+    --output output/filename-patterns-20261015/alias-review-new
+Use a new output directory. The audited v2 hashes and counts are recorded in
+alias_evidence_checkpoint.json; the v1 preliminary evidence remains retained.
