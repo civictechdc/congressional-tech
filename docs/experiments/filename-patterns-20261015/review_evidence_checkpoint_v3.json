@@ -1,0 +1,111 @@
+{
+  "scope": "Complete historical cohort review refresh against house_naming 3.2.5; no content truth or release qualification",
+  "summary_path": "output/filename-patterns-20261015/review-evidence-v3/summary.json",
+  "summary_sha256": "3e4366ee3234d87f4117e70791a798aa9455c7cffd663b626b9931b5c35fa7c8",
+  "registry_path": "docs/experiments/filename-patterns-20261015/review_receipts_v3.json",
+  "registry_sha256": "0192570bdb9aa513cb2e2f5e28b61092dad0df5a91c08d0362b3407a02878354",
+  "records": 1903,
+  "review_basis": {
+    "same_family_aliases": 389,
+    "broad_specific_aliases": 815,
+    "prior_interpretation_review": 381,
+    "needs_review": 109,
+    "filename_interpretation_review": 209
+  },
+  "matched_prior_reviews": {
+    "vote-targets": 288,
+    "disclosure-statements": 25,
+    "witness-specificity": 37,
+    "vote-actions": 24,
+    "genre-subjects": 7
+  },
+  "nonmatching_prior_reviews": 0,
+  "filename_review_decisions": {
+    "unresolved_award_list": 1,
+    "reviewed_explicit_disclosure_wording": 209
+  },
+  "nonmatching_filename_reviews": 0,
+  "outputs": {
+    "ledger.jsonl": "d92184926b42812dff3c36f9442c032a0841ff8ecd3e679b40f6c477595d1438",
+    "groupings.csv": "1bafdca5b542a222ed9bfd8f3fdb0ccc43df9062e57318070905d8b6341044b0"
+  },
+  "grouping_rows_read_in_full": 61,
+  "body_histories": [
+    {
+      "review_basis": "broad_specific_aliases",
+      "multiple_retained_bodies": false,
+      "count": 814
+    },
+    {
+      "review_basis": "broad_specific_aliases",
+      "multiple_retained_bodies": true,
+      "count": 1
+    },
+    {
+      "review_basis": "filename_interpretation_review",
+      "multiple_retained_bodies": false,
+      "count": 176
+    },
+    {
+      "review_basis": "filename_interpretation_review",
+      "multiple_retained_bodies": true,
+      "count": 33
+    },
+    {
+      "review_basis": "needs_review",
+      "multiple_retained_bodies": false,
+      "count": 86
+    },
+    {
+      "review_basis": "needs_review",
+      "multiple_retained_bodies": true,
+      "count": 23
+    },
+    {
+      "review_basis": "prior_interpretation_review",
+      "multiple_retained_bodies": false,
+      "count": 168
+    },
+    {
+      "review_basis": "prior_interpretation_review",
+      "multiple_retained_bodies": true,
+      "count": 213
+    },
+    {
+      "review_basis": "same_family_aliases",
+      "multiple_retained_bodies": false,
+      "count": 358
+    },
+    {
+      "review_basis": "same_family_aliases",
+      "multiple_retained_bodies": true,
+      "count": 31
+    }
+  ],
+  "disclosure_biography": {
+    "groups": 38,
+    "sources": 147,
+    "distinct_filenames": 84,
+    "profiles": {
+      "combined_filename_claims": 11,
+      "separate_alias_claims": 27
+    },
+    "multiple_body_groups": 6,
+    "groups_with_shared_body_claims": 38
+  },
+  "triage_artifacts": {
+    "output/filename-patterns-20261015/review-evidence-v3/disclosure-biography-selection.json": "a39ea567aa1e31760abea9e467f7e38c08005c086fc93176e24658ccf95b0992",
+    "output/filename-patterns-20261015/review-evidence-v3/disclosure-biography-triage.json": "876556c7053becffb12d2ad9478235b4285afebe0784be8842bf3bdfd3097745"
+  },
+  "tests": {
+    "passed": 62,
+    "linkage": 32,
+    "alias": 13,
+    "replay": 17,
+    "log_sha256": "ea73871739f21246e63d346f730fa40fbd3ba7f854f64396dd292caf49229f8d"
+  },
+  "frozen_source_hashes_unchanged": 9,
+  "body_reads": false,
+  "classification_changes": false,
+  "release_qualified": false
+}

@@ -2,7 +2,8 @@ from copy import deepcopy
 
 import pytest
 
-from catalog_review_evidence import match_group, verified
+from catalog_review_evidence import (apply_filename_reviews, load_filename_reviews,
+                                    match_group, row_digest, verified)
 
 
 def evidence():
@@ -48,6 +49,79 @@ def test_tampered_receipt_is_rejected_before_binding(tmp_path):
     with pytest.raises(ValueError, match='digest mismatch'):
         verified(path, '0'*64, bindings)
     assert bindings == {}
+
+
+def filename_receipt(tmp_path, interpretation='reviewed_explicit_disclosure_wording'):
+    import json
+    from pilot_reconcile import file_digest
+    row = dict(document_id='d', review_basis='needs_review', after_kind=['testimony-disclosure'],
+               members=[dict(source_id='s', body_key='body-a', filename='Truth in Testimony.pdf')],
+               content_review='not_performed', release_approved=False)
+    original = tmp_path/'original.jsonl'; original.write_text(json.dumps(row)+'\n')
+    decision = dict(document_id='d', source_row_sha256=row_digest(row), filename_interpretation=interpretation,
+                    content_review='not_performed', release_approved=False)
+    checkpoint = dict(input_ledger=str(original), input_ledger_sha256=file_digest(original), decisions=[decision])
+    path = tmp_path/'filename-checkpoint.json'; path.write_text(json.dumps(checkpoint))
+    note = tmp_path/'note.txt'; note.write_text('Filename interpretation only.')
+    spec = dict(name='filename-fixture', checkpoint=str(path), checkpoint_sha256=file_digest(path),
+                review=str(note), review_sha256=file_digest(note))
+    return row, checkpoint, spec
+
+
+def test_exact_filename_review_sets_only_interpretation_basis(tmp_path):
+    row, _, spec = filename_receipt(tmp_path)
+    original = deepcopy(row)
+    reviews = load_filename_reviews([spec], {})
+    apply_filename_reviews(row, reviews)
+    assert row['review_basis'] == 'filename_interpretation_review'
+    assert row['members'] == original['members'] and row['after_kind'] == original['after_kind']
+    assert row['content_review'] == 'not_performed' and row['release_approved'] is False
+    assert row['filename_reviews'][0]['scope'] == 'filename_interpretation_only'
+    assert not row['nonmatching_filename_reviews']
+
+
+def test_unresolved_filename_review_does_not_clear_pending_status(tmp_path):
+    row, _, spec = filename_receipt(tmp_path, 'unresolved_award_list')
+    apply_filename_reviews(row, load_filename_reviews([spec], {}))
+    assert row['review_basis'] == 'needs_review'
+    assert row['filename_reviews'][0]['interpretation'] == 'unresolved_award_list'
+
+
+@pytest.mark.parametrize('field,value', [('body_key','body-b'), ('filename','renamed.pdf'), ('source_id','s2')])
+def test_changed_alias_cannot_inherit_filename_review(tmp_path, field, value):
+    row, _, spec = filename_receipt(tmp_path)
+    row['members'][0][field] = value
+    apply_filename_reviews(row, load_filename_reviews([spec], {}))
+    assert row['review_basis'] == 'needs_review' and not row['filename_reviews']
+    assert row['nonmatching_filename_reviews'] == [{'name':'filename-fixture','reason':'complete_row_changed'}]
+
+
+@pytest.mark.parametrize('mutation,error', [
+    ('row_hash','does not bind'), ('unknown_id','does not bind'), ('duplicate','Duplicate filename review decision'),
+    ('unknown_decision','Unknown filename'), ('content','cannot approve'), ('release','cannot approve'),
+])
+def test_hash_valid_checkpoint_still_requires_valid_decisions(tmp_path, mutation, error):
+    import json
+    from pathlib import Path
+    from pilot_reconcile import file_digest
+    _, checkpoint, spec = filename_receipt(tmp_path)
+    decision = checkpoint['decisions'][0]
+    if mutation == 'row_hash': decision['source_row_sha256'] = '0'*64
+    elif mutation == 'unknown_id': decision['document_id'] = 'missing'
+    elif mutation == 'duplicate': checkpoint['decisions'].append(deepcopy(decision))
+    elif mutation == 'unknown_decision': decision['filename_interpretation'] = 'approved'
+    elif mutation == 'content': decision['content_review'] = 'verified'
+    elif mutation == 'release': decision['release_approved'] = True
+    path = Path(spec['checkpoint']); path.write_text(json.dumps(checkpoint))
+    spec['checkpoint_sha256'] = file_digest(path)
+    with pytest.raises(ValueError, match=error):
+        load_filename_reviews([spec], {})
+
+
+def test_duplicate_filename_review_is_rejected(tmp_path):
+    _, _, spec = filename_receipt(tmp_path)
+    with pytest.raises(ValueError, match='Duplicate filename review name'):
+        load_filename_reviews([spec, spec], {})
 
 
 def test_complete_linkage_keeps_content_pending_and_requires_checkpoint_binding(tmp_path):

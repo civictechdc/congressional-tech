@@ -296,3 +296,21 @@ Review disclosure/biography combinations and explicit TEXT cases against the
 updated evidence, preserving multiple-body histories. Exact-body adjudication
 remains pending for the Award List and denied archive reads. The separate live
 publication was still running at the latest readback; no release was dispatched.
+
+Current 3.2.5 review ledger
+--------------------------
+The refreshed full-cohort alias audit and review linkage are complete. All 61
+grouped CSV rows were read. Of 1,903 changed groups, 815 have broad/specific alias
+evidence, 389 same-family evidence, 381 historical repair reviews, 209 exact-row
+filename interpretations and 109 no review basis. Content review remains pending
+for all. All 62 linkage/alias/replay tests pass. See
+REVIEW_FILENAME_DECISION_LINKAGE.txt, review_receipts_v3.json and
+review_evidence_checkpoint_v3.json; older evidence remains intact.
+
+The 38 disclosure/biography groups were inventoried in full: 84 filenames and
+147 source records, 11 combined-filename cases, 27 separate-alias cases and six
+multiple-body histories. Metadata alone does not support dropping either kind.
+Keep their current classifications pending exact-body review. Next review the
+opening-statement and field-hearing-memo transitions, then explicit TEXT votes.
+The 109 pending cases include 23 multiple-body groups. Preserve all archive,
+publication and frozen-pilot gates; no new release was dispatched.

@@ -2,11 +2,12 @@
 import argparse
 from collections import Counter, defaultdict
 import csv
+from hashlib import sha256
 import json
 from pathlib import Path
 
 from catalog_alias_review import read_rows
-from catalog_filename_replay import implementation_identity, implementation_manifest
+from catalog_filename_replay import encode, implementation_identity, implementation_manifest
 from pilot_reconcile import file_digest
 
 
@@ -16,6 +17,69 @@ def verified(path, expected, bindings):
         raise ValueError('Evidence digest mismatch: ' + str(path))
     bindings[str(path)] = expected
     return path
+
+
+FILENAME_DECISIONS = {'reviewed_explicit_disclosure_wording': True, 'unresolved_award_list': False}
+
+
+def row_digest(row):
+    return sha256(encode(row).encode()).hexdigest()
+
+
+def load_filename_reviews(specs, bindings):
+    """Bind reviewed decisions to complete original rows, not document IDs alone."""
+    reviews = []
+    names = set()
+    for spec in specs:
+        if spec['name'] in names:
+            raise ValueError('Duplicate filename review name')
+        names.add(spec['name'])
+        checkpoint = json.loads(verified(spec['checkpoint'], spec['checkpoint_sha256'], bindings).read_text())
+        verified(spec['review'], spec['review_sha256'], bindings)
+        path = verified(checkpoint['input_ledger'], checkpoint['input_ledger_sha256'], bindings)
+        originals = {}
+        for line in path.read_text().splitlines():
+            row = json.loads(line)
+            key = row['document_id']
+            if key in originals:
+                raise ValueError('Duplicate filename review input ID')
+            originals[key] = row
+        decisions = {}
+        for decision in checkpoint['decisions']:
+            key = decision['document_id']
+            if key in decisions:
+                raise ValueError('Duplicate filename review decision ID')
+            if key not in originals or row_digest(originals[key]) != decision['source_row_sha256']:
+                raise ValueError('Filename decision does not bind its original row')
+            if decision['filename_interpretation'] not in FILENAME_DECISIONS:
+                raise ValueError('Unknown filename review decision')
+            if decision.get('content_review') != 'not_performed' or decision.get('release_approved') is not False:
+                raise ValueError('Filename review cannot approve content or release')
+            decisions[key] = decision
+        reviews.append((spec, decisions))
+    return reviews
+
+
+def apply_filename_reviews(row, reviews):
+    # Compare before adding any new review fields; all receipts see the same row.
+    digest = row_digest(row)
+    row['filename_reviews'] = []
+    row['nonmatching_filename_reviews'] = []
+    supported = False
+    for spec, decisions in reviews:
+        decision = decisions.get(row['document_id'])
+        if decision is None:
+            continue
+        if digest != decision['source_row_sha256']:
+            row['nonmatching_filename_reviews'].append(dict(name=spec['name'], reason='complete_row_changed'))
+            continue
+        interpretation = decision['filename_interpretation']
+        row['filename_reviews'].append(dict(name=spec['name'], review=spec['review'],
+            checkpoint_sha256=spec['checkpoint_sha256'], interpretation=interpretation,
+            scope='filename_interpretation_only'))
+        supported |= FILENAME_DECISIONS[interpretation]
+    if supported and row['review_basis'] == 'needs_review':
+        row['review_basis'] = 'filename_interpretation_review'
 
 
 def match_group(current, current_members, prior, prior_members):
@@ -106,6 +170,7 @@ def run(registry_path, output):
             if key not in documents or set(json.loads(row['after_kind'])) != set(documents[key].get('document_kind') or []):
                 raise ValueError('Receipt changed-kind row disagrees with its output table')
         receipts.append((spec, changed, documents, members))
+    filename_reviews = load_filename_reviews(registry.get('filename_reviews', []), bindings)
     counts = Counter()
     for row in ledger:
         key = row['document_id']
@@ -129,6 +194,7 @@ def run(registry_path, output):
         # Prior review notes never become independent content truth or approval.
         row['content_review'] = 'not_performed'
         row['release_approved'] = False
+        apply_filename_reviews(row, filename_reviews)
     if any(file_digest(path) != digest for path, digest in bindings.items()):
         raise ValueError('Review evidence changed during linkage')
     if implementation_identity(implementation_manifest()) != implementation_identity(implementation):
@@ -150,6 +216,12 @@ def run(registry_path, output):
     summary = dict(records=len(ledger), review_basis=dict(Counter(r['review_basis'] for r in ledger)),
                    matched_prior_reviews=dict(counts),
                    nonmatching_prior_reviews=sum(len(r['nonmatching_prior_reviews']) for r in ledger),
+                   filename_review_decisions=dict(Counter(review['interpretation'] for r in ledger
+                                                          for review in r['filename_reviews'])),
+                   nonmatching_filename_reviews=sum(len(r['nonmatching_filename_reviews']) for r in ledger),
+                   filename_reviews=[dict(name=spec['name'], decisions=len(decisions),
+                       outside_current_changed_ledger=len(set(decisions)-{r['document_id'] for r in ledger}))
+                       for spec, decisions in filename_reviews],
                    receipts=[dict(name=spec['name'], changed_groups=len(changed),
                                   outside_current_changed_ledger=len(set(changed)-{r['document_id'] for r in ledger}),
                                   outside_current_cohort=len(set(changed)-set(current)),
