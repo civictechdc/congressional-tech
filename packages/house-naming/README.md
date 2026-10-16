@@ -38,6 +38,10 @@ as amendment documents solely because they appear in a House publisher filename.
 It retains the wording and accepts separate operative evidence, such as an
 amendment number, a named bill/rules target, or proposed/offered wording.
 
+Version 3.2.3 also keeps report actions and oversight-plan targets out of vote
+record kinds. A report or plan explicitly about votes keeps its own genre.
+Literal references, combined documents and `TEXT` ambiguity remain available.
+
 ## Choose an API
 
 | Task | API | Result |

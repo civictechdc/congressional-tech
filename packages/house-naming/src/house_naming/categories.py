@@ -14,7 +14,7 @@ EVENT_KINDS = frozenset({'business-meeting', 'nomination', 'field-hearing', 'pan
 LEGISLATIVE_KINDS = frozenset({'amendment', 'committee-print', 'legislative-text', 'oversight-plan'})
 TOPIC_KINDS = frozenset({'report', 'summary', 'response', 'rules-memorandum', 'chair-mark',
                          'mark-modification', 'business-meeting', 'nomination',
-                         'tally-sheet', 'letter', 'exhibit', 'appendix', 'attachment',
+                         'tally-sheet', 'committee-vote', 'letter', 'exhibit', 'appendix', 'attachment',
                          'panelist-list', 'participant-list'}) | EVENT_KINDS
 CONSTITUTIONAL_ORDINAL = re.compile(
     r'(?<![a-z0-9])(?:first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|'
@@ -96,8 +96,11 @@ def document_category_fields(filename: str | None, observations: list[dict]) -> 
             continue
         # Long phrases own their nested generic wording, including QFR responses,
         # mark descriptions, opening statements and amendment/exhibit lists.
+        # Use the complete phrase even when its nested wording has the same
+        # kind: the "and" inside Authorization and Oversight Plan is not a
+        # connector to a separate document.
         if any(f['start'] <= a and b <= f['end'] and (a, b) != (f['start'], f['end'])
-               and f['category'] != kind for f in fields):
+               for f in fields):
             continue
         if any(f['category'].endswith('-' + kind) for f in fields):
             continue
@@ -153,10 +156,10 @@ def document_category_fields(filename: str | None, observations: list[dict]) -> 
     explicit_text = filename is not None and re.search(r'(?:^|[\s_.-])text(?:$|[\s_.-])', filename, re.I)
     refined = []
     for f in candidates:
-        # A vote record names the amendment or print it concerns. Keep that
-        # literal reference without treating the target as another genre.
+        # A vote record names its legislative target or the action to report it.
+        # Keep those literal references without adding document genres.
         # Explicitly coordinated documents still retain both kinds.
-        if filename is not None and not explicit_text and f['category'] in {'amendment', 'committee-print'} and any(
+        if filename is not None and not explicit_text and f['category'] in {'amendment', 'committee-print', 'oversight-plan', 'report'} and any(
                 other['category'] in {'tally-sheet', 'committee-vote'}
                 and (f['end'] <= other['start'] or other['end'] <= f['start'])
                 and not re.search(r'(?:^|[ _-])(?:and|&)(?:$|[ _-])',

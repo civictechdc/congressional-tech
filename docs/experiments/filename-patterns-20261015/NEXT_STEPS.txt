@@ -152,7 +152,7 @@ record-specific mappings, and 30 need a taxonomy decision. All 140 labels and
 the frozen candidate remain unchanged; taxonomy_validation.json records checks.
 The proposed next experiment targets explicit notices and committee memos after
 the current frozen evaluation, with a separate candidate and evaluation set.
-Once the live rebuild completes, prioritize verification, the fresh 400-ID ledger and the 3.1.0-to-3.2.2 full-pair comparison. Then collect and
+Once the live rebuild completes, prioritize verification, the fresh 400-ID ledger and the 3.1.0-to-current full-pair comparison. Then collect and
 seal held-out references before invoking the frozen evaluator. Independent
 review and a bounded retained-body refresh remain required for release. Avoid
 rule tuning or retries against the 100 unavailable exact bodies without a new
@@ -169,3 +169,32 @@ fresh baseline; a new generation must not legitimize an earlier evidence loss.
 Then reconcile all 400 frozen IDs and run the complete 3.1.0-to-current comparison.
 Independent held-out references, the frozen evaluator and a bounded retained-body
 refresh remain release requirements. These repairs do not replace those gates.
+
+Current grouped review continuation
+----------------------------------
+The combined historical repair cohort contains 7,526 source members of 1,949
+complete document groups. Its 3.2.2 replay produces 1,913 changed documents in
+64 transition groups. The full grouping CSV (up to three samples per transition)
+was read again after compaction. The per-document ledger remains pending; a
+review of samples is not complete adjudication or a precision estimate.
+
+All 343 source protected-field changes in that replay are source_record_type
+becoming error-page: 257 document-to-error-response transitions and 86 already
+error-response sources. No other protected source facts change; document-level
+protected fields are preserved. The strict historical comparison remains failed
+on these role/source-type differences, rather than weakening its checks.
+
+The 3.2.3 vote action/oversight-plan refinement is implemented and verified; see
+REVIEW_VOTE_ACTIONS.txt and vote_action_checkpoint.json for validation. Continue
+with primary document genres versus trailing subjects: testimony filenames with
+embedded memo templates, opening-statement and memo filenames naming report or
+amendment topics, and statements/letters explicitly on amendments. Use declared
+subject spans and existing selection rules, preserving literal observations and
+explicit combined components such as a memo with a witness list.
+
+Then adjudicate disclosure aliases against amendment topics, TEXT vote variants
+and mixed-body groups using exact retained evidence within the allowed scope.
+Do not collapse differing kinds across aliases: the HR1890 group links a bill
+body and a vote-sheet body through a reused URL. Preserve both identities and
+classifications pending body-level review. No new external source acquisition
+or held-out inspection is implied by this review.

@@ -1,0 +1,89 @@
+Vote action and oversight-plan review
+====================================
+
+Patch summary
+-------------
+The 64-row grouping CSV was read in full again, including all available samples
+(up to three per group). It exposed 18 report-to-vote/report transitions and six
+oversight-plan-to-vote/plan transitions. A vote's action to report a measure and
+its oversight-plan target should remain literal references, without supplying
+extra document kinds. This is filename interpretation, not proof of PDF content.
+
+house_naming 3.2.3 extends the maintained category selector. No new parser,
+publisher rule or content reader is introduced. Package, guide, schema and
+replay version pins move together. Existing historical receipts remain unchanged.
+
+Function trace
+--------------
+Engine.extract (engine.py:60) accepts a filename and optional publisher URL,
+extracts literal observations, and passes them to filename_metadata.
+filename_metadata (values.py:47) calls document_category_fields and uses field
+identity to select kinds. It still emits original literal field values.
+Extractor._subject_remainders (extraction.py:554) also calls the selector to decide
+which recognized labels may be trimmed from a descriptive subject.
+document_category_fields (categories.py:68) returns references to selected fields;
+it does not mutate the supplied observations or fetch the publisher URL.
+
+Data flow and invariants
+------------------------
+At categories.py:97-104 the complete recognized phrase owns its nested labels,
+including labels of the same kind. This prevents the internal conjunction in
+"Authorization and Oversight Plan" from looking like document coordination.
+The original field objects and their source spans remain available.
+At :144-149 an earlier genre with a topic connector governs committee-vote as
+well as the existing topic kinds. "Report on Recorded Votes" therefore remains
+a report before vote-target refinement runs.
+At :156-168 the existing vote refinement now includes report and oversight-plan.
+It preserves explicit TEXT ambiguity and intervening and/& coordination. Existing
+publisher matching still determines whether committee-vote is available at all.
+Fields from separate aliases never enter this per-filename selector together;
+this change cannot collapse a group's bill and vote bodies into one genre.
+
+Test behavior and edge cases
+----------------------------
+test_reviewed_house_publishers.py:177 checks five observed action/target names,
+retained category observations, source offsets and exact filename reconstruction.
+:199 checks topic direction, explicit combinations in either order, the full
+Authorization and Oversight Plan phrase and TEXT ambiguity. :205 verifies
+unrelated and spoofed publishers retain their report reading.
+Eight cases failed against the previous implementation; eight controls passed.
+Two further complete-phrase controls were added after the nested-label diagnosis.
+The package/metadata/replay run passed 4,674 checks; its one failure was an old
+version assertion already loaded before the test file was updated. A fresh run
+passes all 17 replay tests. All 106 filename-index, alias, recovery and viewer
+consumer tests pass. The catalog builder verifies all three JSON artifacts.
+All nine frozen PDF candidate source hashes remain unchanged.
+
+Findings
+--------
+Resolved: a report about votes must retain its primary report kind, so adding
+report to vote-target refinement alone would be unsafe. The topic-connector
+selection and reverse-direction controls cover that case.
+Resolved: nested same-kind labels must use the complete phrase for coordination.
+The selector now reuses its existing longest-phrase rule for this case.
+Limitation: ambiguous combined files, reused URLs and body identity differences
+still need retained-content adjudication. Full-catalog qualification and the
+held-out evaluation remain separate from this local historical cohort.
+
+Complete-group replay
+---------------------
+The 3.2.2-to-3.2.3 comparison replays all 7,526 source members of 1,949 complete
+historical groups in 251.2 seconds. It changes only 46 source kinds and 24 group
+kinds: 34 report references and 12 plan references at source level, mapping to
+18 report and six plan groups. Every changed row was read in full. All changes
+retain committee-vote and remove only report or oversight-plan. No IDs, group
+membership, roles, protected evidence, kind provenance or representative aliases
+change. Input bytes and bound implementation hashes remain stable. No bodies
+are read. The mixed bill/vote group and explicit TEXT cases remain unchanged.
+
+The preceding 3.0.0-to-3.2.2 cohort's 343 protected source differences were also
+compared field by field. All only add error-page source_record_type; 257 sources
+change document role to error-response and 86 already had that role. No other
+protected fields change. Its strict failed comparison remains retained.
+
+VERDICT: APPROVE the bounded local filename repair.
+Coverage: ADEQUATE for the changed selection paths. Confidence: HIGH in the
+observed cohort preservation and bounded filename behavior. These results do
+not establish body contents, population precision or release qualification.
+The remaining genre/topic ambiguities and fresh-publication gates are listed
+in NEXT_STEPS.txt; vote_action_checkpoint.json binds the retained evidence.

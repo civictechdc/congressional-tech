@@ -145,8 +145,8 @@ def run(catalog_root, output, *, publication_dir=None, rehearsal=False, workers=
     gate = publication_gate(publication_dir, catalog_root, meta)
     if not rehearsal and not gate['verified']:
         raise ValueError('Verified 3.1.0 publication is required; historical input needs explicit --rehearsal')
-    if index.__version__ != '3.2.2':
-        raise ValueError('This comparison is scoped to filename version 3.2.2')
+    if index.__version__ != '3.2.3':
+        raise ValueError('This comparison is scoped to filename version 3.2.3')
     required = RESERVE + 8 * (source_path.stat().st_size + document_path.stat().st_size)
     allocation_parent = output.parent
     while not allocation_parent.exists():

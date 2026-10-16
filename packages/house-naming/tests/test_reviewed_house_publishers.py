@@ -165,3 +165,43 @@ def test_constitutional_topic_does_not_supply_publisher_amendment_kind(engine, n
 def test_operative_amendment_wording_survives_constitutional_topic_filter(engine, name):
     result = engine.extract(name, source_url='https://judiciary.house.gov/' + quote(name))
     assert result['metadata']['document_kind'] == ['amendment']
+
+
+@pytest.mark.parametrize('name,host,target', [
+    ('rc_10_fav_report_on_hr_3588.pdf', 'naturalresources.house.gov', 'report'),
+    ('07.13.11_rcv_7_report.pdf', 'edworkforce.house.gov', 'report'),
+    ('rc_37_wilson_motion_to_report.pdf', 'edworkforce.house.gov', 'report'),
+    ('rc9_mceachin_002_to_authorization_and_oversight_plan.pdf', 'naturalresources.house.gov', 'oversight-plan'),
+    ('Oversight Plan Vote Sheet.pdf', 'judiciary.house.gov', 'oversight-plan'),
+])
+def test_vote_action_and_plan_target_remain_literal_references(engine, name, host, target):
+    result = engine.extract(name, source_url=f'https://{host}/' + quote(name))
+    assert result['metadata']['document_kind'] == ['committee-vote']
+    assert any(f.get('category') == target for m in result['observations'] for f in m['fields'])
+    assert ''.join(piece['raw'] for piece in result['pieces']) == name
+    assert all(name[f['start']:f['end']] == f['raw']
+               for m in result['observations'] for f in m['fields'])
+
+
+@pytest.mark.parametrize('name,kinds', [
+    ('Report on Recorded Votes.pdf', ['report']),
+    ('Report about Roll Call.pdf', ['report']),
+    ('Oversight Plan on Recorded Votes.pdf', ['oversight-plan']),
+    ('Report and Roll Call.pdf', ['committee-vote', 'report']),
+    ('Roll Call & Report.pdf', ['committee-vote', 'report']),
+    ('Oversight Plan and Vote Sheet.pdf', ['committee-vote', 'oversight-plan']),
+    ('Authorization and Oversight Plan and Vote Sheet.pdf', ['committee-vote', 'oversight-plan']),
+    ('Authorization and Oversight Plan.pdf', ['oversight-plan']),
+    ('Vote Sheet & Oversight Plan.pdf', ['committee-vote', 'oversight-plan']),
+    ('Roll Call Report TEXT.pdf', ['committee-vote', 'report']),
+    ('Oversight Plan Vote Sheet TEXT.pdf', ['committee-vote', 'oversight-plan']),
+])
+def test_vote_topics_and_explicit_combined_documents_keep_primary_genres(engine, name, kinds):
+    result = engine.extract(name, source_url='https://judiciary.house.gov/' + quote(name))
+    assert sorted(result['metadata']['document_kind']) == kinds
+
+
+@pytest.mark.parametrize('host', ['example.org', 'judiciary.house.gov.example.org'])
+def test_unqualified_vote_action_names_keep_report_reading(engine, host):
+    name = 'rc_37_wilson_motion_to_report.pdf'
+    assert engine.extract(name, source_url=f'https://{host}/' + name)['metadata']['document_kind'] == ['report']
