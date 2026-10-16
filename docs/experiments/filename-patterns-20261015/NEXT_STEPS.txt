@@ -261,3 +261,20 @@ review requirement. Thirteen prior repaired IDs are now unchanged against the
 original baseline; none is missing from the current cohort. Keep the four denied
 archive reads pending restored access and preserve the publication/frozen-pilot
 gates. The goal remains active; no new publication was dispatched.
+
+Truth-in-Testimony review checkpoint
+-----------------------------------
+All 355 distinct filenames across the selected 210 groups were read, following
+a complete reread of the 60-row grouping CSV. All 647 source records reproduce
+their saved filename kind. The checkpoint records 209 supported filename
+interpretations and leaves the Given Truth in Testimony Award List unresolved.
+All 63 unnamed sources share a retained body key with a named alias. The 33
+multiple-body groups still need content review. No content was read or approved.
+See REVIEW_TRUTH_IN_TESTIMONY.txt and truth_in_testimony_checkpoint.json.
+
+Next, examine complete disclosure-statement wording in the 18 statement groups
+and one attachment group. Preserve independent statement/disclosure combinations.
+The current ledger remains unchanged; join the exact-row-bound decisions before
+presenting an updated ledger count. Across that ledger plus this checkpoint,
+128 groups still lack a filename review basis. Keep all publication, archive
+access and frozen-pilot requirements in place.

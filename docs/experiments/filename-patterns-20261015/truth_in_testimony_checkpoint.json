@@ -1,0 +1,1722 @@
+{
+  "scope": "Manual filename interpretation review of the exact 210-group selection; no content adjudication",
+  "input_ledger": "output/filename-patterns-20261015/review-evidence-v2/ledger.jsonl",
+  "input_ledger_sha256": "b08702c53d84bd75f27faa8d518dd35f764c43e6aa4f0813a1bdd1c42f704a14",
+  "prior_checkpoint_sha256": "4c8527e5ba3dec3351ffa2ef5659de1bd4b8530d39c5a2554d9c18e3f4f808e1",
+  "house_naming_version": "3.2.4",
+  "grouping_rows_read_in_full": 60,
+  "distinct_filenames_read_in_full": 355,
+  "audit": {
+    "groups": 210,
+    "member_rows": 647,
+    "wording_basis": {
+      "truth_in_testimony_phrase": 292,
+      "native_ttf_code": 290,
+      "unnamed": 63,
+      "disclosure_alias": 2
+    },
+    "interpretation_counts": {
+      "unresolved_award_list": 1,
+      "reviewed_explicit_disclosure_wording": 209
+    },
+    "multiple_retained_bodies": 33,
+    "unnamed_members_with_named_body": 63,
+    "unnamed_members_without_named_body": 0,
+    "mismatched_filename_kinds": []
+  },
+  "remaining_without_filename_review": 128,
+  "original_ledger_unchanged": true,
+  "body_reads": false,
+  "classification_changes": false,
+  "release_qualified": false,
+  "frozen_source_files_unchanged": 9,
+  "artifacts": {
+    "output/filename-patterns-20261015/truth-in-testimony-review-v1/annotations.json": "f52d48628b428eaec43100b72333c3d7a47c3af2ffefc262a1155912415dc75e",
+    "output/filename-patterns-20261015/truth-in-testimony-review-v1/audit.json": "79dd2fc554436e63d37eb79f301a49c9a83ddfde7d5d0e9c064f6364b58e8156",
+    "output/filename-patterns-20261015/truth-in-testimony-review-v1/filenames.txt": "80a9f497f11e15002c66e63e5ef46573dcf1eaf10ad30ddd42d3e8c6caac722e",
+    "output/filename-patterns-20261015/truth-in-testimony-review-v1/implementation.json": "c8d3bb92771ca06b688dfd9c287ebbc991c62f2d745889d384c68e47a4907147",
+    "output/filename-patterns-20261015/truth-in-testimony-review-v1/selection.json": "089367c4324d49629b493dcac1c824e8f8070ad4144914ae394b8608b89b49be"
+  },
+  "decisions": [
+    {
+      "document_id": "01940862e3bc3b78b7561661018939cccc324214930e1592401d9514a6a56da5",
+      "source_row_sha256": "8cf67fd476682f96fb08f601290dc95d609eec4ee64f293b7c14f7480766f52d",
+      "filename_interpretation": "unresolved_award_list",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "024df6b89fa535b041a8b8cf38792b6e697227fd8c3e85f50fc9c7df09660a09",
+      "source_row_sha256": "4cc21161e84986ff22e0d9ebd1306478c407e79ad74e2954f95387aaa8eade82",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "03fd6bd3170ed2006373fadbe7a98153fa31ebb15fd1ae552849e2b90a009cdd",
+      "source_row_sha256": "00ad189cfcd79ea12e0ddf054f6afdd604e56f62bb3eae4b111fb52934dafa97",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": true,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "04b013bcd686783ce9c36c27d4ba5ca03011d5a01d6266de5f9416728b61cd81",
+      "source_row_sha256": "ab160580e784ce7fd718755449846b54770a0ca748e8d9a713d1d7a259b105b8",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "075ed621939494a235e4a4dd0849419724c5a45eb80a616bfa7d27cf92ae19f6",
+      "source_row_sha256": "d3d51bb51ed176988e727c78aa5ae4791c84d931db04ec65b592f17e9c96a1ba",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "0778798c91846828dd15ee431afa1823f66f460b188f3dfa7895446276749421",
+      "source_row_sha256": "7748ebacd64282b76a41ac9635c6d1acc190fa3d3796a8dfeb35bbb5165d3653",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "077e517fbed2b70a8fc88533e337bef99a7c3ffe89890113ee132f0818200096",
+      "source_row_sha256": "05b73b7546bdaa45a6288422f1610edcafdbfeb017036897b9b429ec4919125a",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "08f69754c8aaea9842b9eb91ad218ddc285f2953b78140963dc51078112edc9a",
+      "source_row_sha256": "88bc845208817e34c5f9675c9723bb56be7e36eca467485341d441199f4bc7ba",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "09647805fb7c222bc1d75a5263a40eaadd9e1f9303c521a80cc76ae7e03446a6",
+      "source_row_sha256": "19d58c1166ae217e8655ef33cb96b11764007dd7e57322088fe4df6b23ab464c",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "09ad865fab24a60ac2afaf46ada71a3514276f433aefa884352cc6707cc107d6",
+      "source_row_sha256": "38156b37d9b338fbd0ba60612146c5fd38b1751897c5b64788942caad0125101",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": true,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "0a1fd1fe13e733579aeaef68955b38196d128bf3f5e4303fb5d8d0585bb2b799",
+      "source_row_sha256": "1cd76e3f3ca9733d12f98ba44f50ca91a3f8d16a06fe6f44b3e07b88724a0d05",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "0a61009ad9d2640f88a2af906888fef30988bcdf0029b87d3be5292e84e085be",
+      "source_row_sha256": "784ea1050f3d5b2adf165bf4e7c1e91cf883820a9e3721e43393ffd013a84e95",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "0b3ebf86a5afb63e4623c3bff6bb57beec9aa2bae8bc606c3dc0bdc7b38185a6",
+      "source_row_sha256": "a5dcb530ee4cdf909db9c443be17a16357eaeb543d67940fc84d0cde3cbb2aed",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "0d0f9d15ddfd13ad8e89b43f327192528641a90ae66be87bf2dce90dc62d8f73",
+      "source_row_sha256": "bade962f1e416ee6357a80deefd864d833fdf84331aa73516b9452705475a66f",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "0ee2fdfbf37d183ba2c91a96ae19fed31bd74b3c25f5eade9aeb086dc0872ad3",
+      "source_row_sha256": "3e773fbefa768411fa692f2184f4922cba7ce679a46542e2d31a329d05e61e99",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "0f379eafef53f910afcfba58ec78a38e57c75377edcf6e14ce75bc450336c5f2",
+      "source_row_sha256": "5c0b6dcef396152be4342e782d214aaf12efa4010427b446b1cb51871c2087f5",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": true,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "0f536e46529cd50f86c7fdc9fb91e2ae08a53853fc462de2513b48d226a7ea77",
+      "source_row_sha256": "4daeeeea3c97c16c1b54c14265735f73352f21006f9f7faf3f219ec33bdae16b",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "0f7fee25fcb96a617edab61d0daf98ecfa60d567d69c34817a17129cfe4f5598",
+      "source_row_sha256": "f612675e6a4c3f197e492e2f7c3f3c341f60e34983df215196367004e0892dd6",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": true,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "102b08dbb484eea744477d864f56e19ec9fc9198af62b5e35b76fd5a92a62ca9",
+      "source_row_sha256": "a6c187b1781b9ffb5b3d853c1246bf9b82567877a984b2936c7c278be7a1a372",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "10c052aa10fb4e559ef8d006cfe9d3f2cf04552a8c89ed2a4e4c5cf43c82645b",
+      "source_row_sha256": "c67a69ad83952ab386fb1920805cdd06eb9c65d65334f241f6cf2861b74a2683",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "1170e6c8cdc0242116ff96e8e4b9ae24f811920559bd511ed12f49c90e36be5e",
+      "source_row_sha256": "6b2cf2bfb7663304f6f25280ec6dd5211544616d16505ebfd0850b7977f5df12",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "11fbbdfbd73138e15fb6b154a35c871f53b62537f262a3a5b41a8ee0ec15e4f3",
+      "source_row_sha256": "bd30ea274242ce8ea73a1866dab448039b390b4b1d154f359fbdb9acfdfa45e2",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": true,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "163a997132fd047e333f28ab1ea7b8aef4c1ee0e2fb51b599dd33c36257ea48b",
+      "source_row_sha256": "a1b477e62377b35969cd63c9dfe44fe91122ad4108c90cc9839b21d97a464cc2",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "18554131f54ee58f071b5acd24145b4b262f4ffbb24335c94450534e5fe886dd",
+      "source_row_sha256": "c32d7a7dd1a48acbf917603898b2add9e94f431617465b0fdc93878229e26e4c",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "190cae8e7d171d8119c8c8cea96983e0cf88a25607d6b45df2e1999cdea28866",
+      "source_row_sha256": "84ec10e8e51a49d63cf881d8077440d3560354e999c0b083a48a113ce30ecc7f",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "193969d99d070f2467a7c9f75e35ff06800fdbbd256539e07b6ba288953978a4",
+      "source_row_sha256": "afcc115b7fddb33d6756c100486847578bbf61d1524fe69d55ae557e0a3f1a34",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "19c824884db8cb34e18afe9234b939c239d960da1726b1c93e66a7c778206587",
+      "source_row_sha256": "3c4f73a8936c462615c0d99eb94b8f150340b5d6d061251c4590c4c69db2ef89",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "1bdd4aecd3980d786d948de4f4d56c511e7d4b21a964d26e14cffe235fec93d7",
+      "source_row_sha256": "faab7dbc8a43e0674b9714e72efac1afd2c4b65d8fad31bcf4825aad49036434",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "1cbeb66942eef9258678aad8e5e605ffeb255b8ae3e7f96e9e5ad628beaea7b1",
+      "source_row_sha256": "bd3181acba0350cea5ff092339dc8a4a3ff22d15b7f134e6df44a5347dcddcd5",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "1d30da4044a280a56e18e27d4dc05b2c1e9c0c3737d639596184df49d87ebfd0",
+      "source_row_sha256": "811adaec3f53239ea74281fead09e6f0ae8c62fbaa58dad33e9d47adba657a18",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "1de6053a0ec22d72fbf0413954fbefe4c54b5ab2046fff5693a3900baa3e3c0d",
+      "source_row_sha256": "13f4a2f68912c99b6c2847d60c05c87edd13423617c5cc6529380b8b9008a09f",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "1f07678f568d506ec58526bde0d0755ec48ad9bb1007ef7624a53304d35b61da",
+      "source_row_sha256": "c32cbaabd93c7493395f99a189c242a53c5fef8d3a18f2e317012aae844f876b",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "1f20895eefcc5f8de155c0f70e41d72c182d57e9f20351ea487c17d7423e758c",
+      "source_row_sha256": "287e2ffc00a4e15cbcb1e8052421da553279ffeb934e74e32c1347949c9de451",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "1f8fd78b868fa040ac2d831ecbd814ef4671307aa0d5e4a7898cde2d5ba2e009",
+      "source_row_sha256": "cbabe35703152181dec08a16f12408cc6bd92bf99c3d2389851c31555ec11367",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "20364c6cae6411d8a0306abc734c9647dfcb0c77911bf8f21a3bbcad5096066e",
+      "source_row_sha256": "a22a08ff007b95f6f5d56cd1acacc114478878bcd19e704478501aa48548d402",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": true,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "223223d77bf4b1563881dc1ea351b7f9707fb36a010497bd3f27457c8bffea06",
+      "source_row_sha256": "a0204797e4291553c6e218ff9136466027cbbc7f975372b9eaa8ea9f22a5bc3d",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "22b90b66c0afc0a374912b193d46e0aae7479f5cf19513812398338ff6c98ec8",
+      "source_row_sha256": "2e0902768bab061ceb9bdec6eded4c0e38212261eba36689e313b8324420923e",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "22f3cdd3c7b1c25d41ecfd796978c92de31614a7cb023f0dd7eeb4fd247022a0",
+      "source_row_sha256": "ba9e0b40aa86f5bdf76b48d1d4989dfb7b98c1cd8f2e69cbb869903b8df02f77",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "23b5676e06aaf4f10d46e2fa23d6e0d04e6c48f0dba28d6eea23c59f8fe0d9e2",
+      "source_row_sha256": "a830538b16c07c6c6d2691d3e966176829d611466e27a8dd7a1008ffdd55105a",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "2400032df125ee9bd36aeb6aaedf0b8843ddf958514073ed5cfc77fba21e3977",
+      "source_row_sha256": "14c6788084cd1862e1304c2bfa5c7ffed250fb73ba3138155bdc24d7c900c574",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": true,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "245774f83e6046638667fe4462576820ae721a22ac49622f7ecf03eeb277f1b0",
+      "source_row_sha256": "5d5d500fba2e55b38345262b55d1042c2cd747cb2ef0ee8f177fb183a9849c69",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "252f57811f5eb079ded5967fe65bf9b7ebb1a52698faecf95f4c6c43ee50429b",
+      "source_row_sha256": "16c7a48645faa55e9defa7fbf7815cdb4b604c7ebe8341295c0d1addaec970f1",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "2705958456d6144613cfd6ad479134030185f093cf919329219b8da760615a0d",
+      "source_row_sha256": "375073e36124ea03b154bc16828426c51ccafb72d37e97a5a7e38fd37794eb2f",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": true,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "289bfb86ae7d15d160f0bc10af7ba7d85cbcd458907e9ac29018cee9c17aee55",
+      "source_row_sha256": "257c5c9db5af5341f9d5fc9b5e000634380c0e3e7024a9d046b6491ad80d6189",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "293ff0ba8f3ee101aeb32dc866f189ed24ac806cf26cfa1cd14ec95ffe84e5c3",
+      "source_row_sha256": "b18ed6aee13b86af166b8e0deef8723501d75170ad6b6fdf028d1474f6071d85",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "2aee8ea1f86fb553252f7cc76e8609d8d0e0a611f7af3d17c96ad3f6543046e7",
+      "source_row_sha256": "5012946e057ca7aaadc47f69723ab683b2b06fe264c8ff5e5e92c6b91f44c9f3",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "2c65ef25a06423de010ca4f35f46f4c22054ae70f27277c924454a7346d47e26",
+      "source_row_sha256": "cfd5535dd96cc7f055cad651b6e23fbeff4aed428c6cd9885ba6a8575bec89f3",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "2dc37fe5f4af088d0ce659f865d34eac696b32f663f324428043fc6968461da9",
+      "source_row_sha256": "921a672a732c52251d14033942a6fa1c36c54208fadfdcebf7e2b9b8ca1e31da",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "2e2451b6f4bc402089ffe487954927f4420afdbf4002259db94c36ce034ee8fb",
+      "source_row_sha256": "28ad4fbadf539e27e84cd4d3a07515b0c72db3a0e858f47f72288ef93af4e41d",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "2e75d29f15d9115b42d9afcbc327794648ae596c33f335bd73f1189d9bd3f3d9",
+      "source_row_sha256": "325a6498debb130bb059599536591f8c902f208a230621c8adc0155a7f1698db",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "2f84af6ff02024bb45e2ccb326e37a7e74f933b8fe2b93a35c8bdf079606bfb8",
+      "source_row_sha256": "81e01750340abf9f35b9b0ee2a1c29947898a5d89adc56d7a2f151e430a5c08d",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": true,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "2fb19f17aa0e4741bef4901d1b609c1390e6363b19dc152ad57898182c068464",
+      "source_row_sha256": "0ebcc27b04b346e2132a6f7e927cde2f30b740cb613e4ea4a197fc98b323d576",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": true,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "2fe71e8d3172ed3c370f73d4fc4d3f9ccf73dadf28a54b8636223e8417c56ee1",
+      "source_row_sha256": "70738e4fd1e75acc6884e0c7b20d01af5d8ca207edd30626dd89c5b01f5f0234",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "316a1fd6bbdb4b8bf4686bd683de3b9ac50e7dda5afab10b9657038b1ece256d",
+      "source_row_sha256": "6c3afb666593c35d2dace7cfacd7fa4ac17c4a51c4ee06eab90822aad988b8b6",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "31e1951b5a182b9209cce95c6b1d2a86632ab49e85eedbab4d81e4651795f3f0",
+      "source_row_sha256": "9deaa5d026cc5905ac647dc6f4defc12218db2ad4b24b05b0f11f71f17b45806",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "328299ec9717caac02d12b10f7e13bdebbe2b65853c14f733664a67cd3df4e85",
+      "source_row_sha256": "fbb7021e6cd00161b42c22d4a731a868bab0761bb1937e00f106d44be78d221d",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "32950e23a503031d79264d06b3149871aa2e6786245f1fdd26689b6899d3d354",
+      "source_row_sha256": "c5bab8df5ef8d41545312b5bdcc2927d847175ab2d969da3690acfd27a5dcd72",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "32cb4fd1dd4d8615f0f297b7344ebf03427e4b2ed7cd69b55ad661b50ec688f2",
+      "source_row_sha256": "f10c6fc4353c3f760a3f2d1a1666e8b2c7ee33c596dd5634e98ce90cb5e6bab3",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "32d466e6be074eda0fab9547646790b8b14e2604e536209dcd5201a0b3abb055",
+      "source_row_sha256": "d228d5d5fa54f432253305b42ae7d1e15ebfbd3e1ed1ab5c547d9cf459763ca8",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "32ec5495fe0398fb46d600b2d1e42fcde7fee31c4f59e3a384b60e5382cf6256",
+      "source_row_sha256": "82fd228bd84b678ba841b0064f0eef93f526059c3a605bccd7df46b7f4733207",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "33be61bfa5888542eceb62ca5b98db90bdd5cd16db37fc3af380eeaa032e24a2",
+      "source_row_sha256": "2dd9e76a46b1e3ce90c714979e568235ad4aa06990b919afda544c03df9757f1",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "33c87a3d753ea2e11664380a18ebbc3c9f8a7cfda0e42dba2e97343bec69aeb4",
+      "source_row_sha256": "21f847909f7b35531d12bcec1f61daac5a227ca88985749d099278c4e0d54fe4",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "3513c43e1e5d87078dc08c958ae1229ffc2dd35880e0df9cf7f8cc0ab8c9ae53",
+      "source_row_sha256": "6689b749d0aa3f06a527bd43f9efba7b73affc4949876937ea885765e89785be",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "358917c1f89c82c4baef68eca5c5a00ae19e620324418391d5238f35d566ed8f",
+      "source_row_sha256": "bf3ab08a68e507de3ee4b41f02c3a4cf73122d1c1a146c78fcc189da61920864",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "35a3fe6e0f307335579764c0ef7d01e6bd8bdb0f1cce4e8ffbad8cc656279e5c",
+      "source_row_sha256": "5751a4cec24ee91fad196a2e85cd75fc03bc6fa40255927bc5bb513055345223",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "35ffbf6473fa6166910c3dde9fac8185ab307e99ec09ce37f9e3f3b8d8072a2f",
+      "source_row_sha256": "ebaaa52646d2afb7d0898e95500ad7861ae0c2b7e49551a170a4a67f71b4b9e4",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "36ec90d862292a9c6ffa7fca76547c168b82ad7b6365c192b3f0503f6a40fc7b",
+      "source_row_sha256": "8bc33f623ce98c345fd61045099aca2403cd52a4bcd71312f232c2ef3ae646fb",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "39a4b1256df3c30d6c3a6ec1a3832b6f7241e988928663466c11c3de40cd937f",
+      "source_row_sha256": "4c2622223a99c9dd7600082040d1bf8a25e9ea05a0b3bfa94eeedf0c8fbe4bbf",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "3b83f1efdc04269afc651a0cd469cbe0d344a60935de4f3e280d27237451d64c",
+      "source_row_sha256": "d654251d3ca70f64c55a8036a4f0de809b56d15fecb7992a42a8b373d940ead3",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "3bddc4f1d150fad0ea43007d28a4770a4b4e7c1648f1f04f98fa5bdc8948406c",
+      "source_row_sha256": "7524f4ca73981037946b148b70ef05032de0edac3dad34c41ad95c0fcd2646b4",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "3c553b3b477433d58a57514c183b1ad7fa5c64192d6a2d6bd8a5f888b00e0933",
+      "source_row_sha256": "e43216cd015de618bc731d5db8f0a870c21a4eba7649820995b777a55882c2a6",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "3d194c25a2702e60488cab168740dd401ec0889fa988bb44d9b2d786e7ef6f9b",
+      "source_row_sha256": "66895fbc0d2664e786f931a354917a768ae1d9ca75e96bb3687897dd4750b976",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "3ff65747139af4b37c5eca8873ea1ba4f753894cc1379140993f937fba98bd57",
+      "source_row_sha256": "36b5bdfbd84f98c133353bbd076bf87b10a501a0d23af5cbf5af36da20e6a6e9",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "41ed92f4d588a84425f7212cd61a375718733141d439728f5b4e7b4092fd4c2f",
+      "source_row_sha256": "1233906afc735703f461d28abab098b7177fe3056d051121acbd0248e1c1918c",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "4874e57c7491054a0f5f9119b1cefe94d4103905c0612006a42067a2d7fe3ad9",
+      "source_row_sha256": "25eb4b0e0700631b8f2a74e8175ee7c23e6354f220c179cf7abbaff1174a00ca",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "4a141b376d2cd49fc1fa9f42eb1153b2d3ca4011020a63965c737353a71f4a5c",
+      "source_row_sha256": "7c5a34e0b6d5dcd4339256ab125e265db07c4e805191a6d8a8296bbafdb5b6b3",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": true,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "4b2f339589a4114b5aa91c263a1365a69a80faeff9e78e73d6d0b7f5e46855ec",
+      "source_row_sha256": "36c7d6cc8ad98587b4414a168f6b7a2435645e924736502bfc6a3423073930ba",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "4c9568575f0e24da706f60b3315800fba87936e08db3935230aaca76cfc786b3",
+      "source_row_sha256": "cee0f5f2f878d1f3008aac933b4a5eb00f838845d864047486a89e2e15ec8037",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "4d9bb8bcd25323f225a0c7a191d8722459c9c62cdf1b37470fc9f28c81043079",
+      "source_row_sha256": "4ae0f36beb291b51318071b0f3601b12d00c720100861e30a8faa8556751f4d5",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "4ec4d0ba260f3bee8bdf55ac5f9297a029007de22c4b2d1cc0e0d4ed364e55de",
+      "source_row_sha256": "dcf8bcbe71cb40ed069a3ee742e88dea3d0677d041abf8f599df4cc611b5007e",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "52a78f99e7b8365fcb929d9f45b4999b432c6da7a86f1b86ae4b383669edd350",
+      "source_row_sha256": "166025d1790ecf41ed1fe003253a61d596234f32907cb90a3167698845dc63ec",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "555d71ce67df04e490ea82193fd8ae777ed68d53d99d4c6dc954f280a238537f",
+      "source_row_sha256": "4ce01eefe9095c382b2720966dc969cfec201f404e0edf12ac00906365f8c43e",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "59ca986634d8e382293c17cf872a428020c0bffd545e6cdbce84b75170dcf32a",
+      "source_row_sha256": "790ab3c8a0270c69a262530af67ffebdf08326328cdfe0035f2e4b1c2cf431db",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": true,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "5a3cc8272288de62dd33f30c60f3051f4eac46e9a8bef578858b90fba5d5713e",
+      "source_row_sha256": "7fff4a95351e3f6f66b7033e85ee8dc12a28023eafa3f1c2596aedc36d8895b9",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": true,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "5a415b2f5d277e486dd4222282b7b10b8a1a76d80138fc12f04ffbaff0f6d5c0",
+      "source_row_sha256": "21bf02ec00195b240d12c5d43fd62c01ea2afe4169e7f9de2340e50e8cb5f0bd",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "5aafc6fe06ea4f348c67098099cff053bb1f01eba820ad7d19ff5413e0eb2ca1",
+      "source_row_sha256": "33e009c00e78325c9c3db20d2e687a64fa3b4fe3270cc75047f32f12d88788ff",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "5af43dfe0b712fbd07402150364300ac88c6d6a9c67e8c2f2858a447388fef74",
+      "source_row_sha256": "f29804de28d02d7fe4a4f4b0f5a68068caf40ca2812a547ba83aeedde9365839",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "5b1aec04423b6d72fe4d425320760c3ec3d481b1ffbb42220032a68f60184e5e",
+      "source_row_sha256": "e297b87bba5e1515715444349d9c51a8239c3b6cad16ee09071b55442f848adf",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "5e6796cdef1b2fc788d5a79c11f885ec52865033c05fec67ee518ec39ffc865c",
+      "source_row_sha256": "01b5d0bba51adbdd2ce5acf94f022b5a2b9123db5b1d7cf86b00989eed329961",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "60f6916a8028f59c59db380cea7021c38baa110cb42ca3122ef9c61519084868",
+      "source_row_sha256": "e9520055a2fd0d524eb1129514347b752c48057ee320f7587a88cc801b4a53e2",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "61a6bb22df09d9dbf5fbddc0bed1c0ccc13dd2cfa6607efda73b490ecd771688",
+      "source_row_sha256": "30a7eec9f786369c63ae923223c71f9b5d2a2c5cf9be8c2645c2c7ee2c65339e",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": true,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "62496ce9eb53087af07890b892f7ef71f170985856428fb41155865a3b0f7306",
+      "source_row_sha256": "6a61ef101786355f8a1c439e4d3b7d4b310b836ec58be4c1e99a9060b3edf2a4",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "640faa897672236d5ebd04218fd9e5389473dc946b92b5213973953c602e49af",
+      "source_row_sha256": "c48a0f9c96bf0aa0239a35326042beb6a0d4ef8e1e94f02f3e54078ed01ae9ba",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "66dc4e1c05a585be68fc16cb9c7b46ce941e4ad25494f1909e1ecb32aa869bae",
+      "source_row_sha256": "2d2f25f5cdf3cfd09a86165b6cca33c6d6e58b2c70fa6c7516cf7fc5d6cd8548",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "6aa8f3e3733e05274646fc313530dc5f659ea10298b66a7321d1abf71c30ef73",
+      "source_row_sha256": "ba8cfeb1262e77a34c743a288482574139fa4dcdb6943d6d03517db487383e60",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "6ad3221c3e23412cb34c6100ca191d84155eb293c3ced53da2b3c999887d0d81",
+      "source_row_sha256": "8d6bd0230c417ff923d9048f2eb81a2cec69b50b86d591cf1d4e506a3b2f3a46",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "6aef9fc512c1b54dee2e22146a14200d228d0fd17c95fc6c5e3f066864babbef",
+      "source_row_sha256": "05d4a67e5e23c01919b754da0fa23965341ce7a455df3e9c67bb8702b43ea7a6",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "6e4a4bf4ea10e8a0a90ba03ee4a6c72d08d26a46ba3a7c3d1d29a83b62b65b69",
+      "source_row_sha256": "00adb37f71e68f9642906ed6e6e2f8b9bb85fbd960b233f347872513c4f907da",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "7222d7f543a38312ab063a5be0e3ca1614f6ad3cb6475a5342767c01da3b583a",
+      "source_row_sha256": "4be607f900c740f89b0a13e2b421c54f7858d7453bbbd9fccd605155f4437570",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "72404c0049a39a162d9966e1c57cef40396c18fd77531f3b761d765890bcea7d",
+      "source_row_sha256": "3db6a4f8f10d36443d236e7fa0610f29a9e86dec6801de8301c11363897150e5",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "72759f4afade7116b713417598339d404dd5d83b60b5a3c67b883c35edd58d1d",
+      "source_row_sha256": "2257158564217a50d6a23222fdab1ddca1a2c26ea4c7809146a6c8d68ebb61e0",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": true,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "7296c2d0bcebe5d4546530b3895a82121a66cd691875dc4557c919180c089085",
+      "source_row_sha256": "262f59086bdc4214be167a1dd7335675fe787d8681fdf5ba89e9146cdea99caf",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "7534bac61d2a21ece32aa038aeba92c747df19fb4fa3975b2526d9f15b2a5159",
+      "source_row_sha256": "15d7801dcfebdabf68ffda859d2f6357322d35c75c272810652f57fc79f116bd",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "78a6e81881c0230a704d87eaee53b31dfa2b1b625b7d41d673669f642a9dae20",
+      "source_row_sha256": "68566f2b06355ab66ed9c5d8001c90ca4a5c880492c40b60ed7952e41538c620",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "7ab612f8972512e3ff20029d5d2475ae54b5f0eb1414574e475aed7b798a31cd",
+      "source_row_sha256": "40bf57fdb2a34e2f01d0245f7bc613c6c3c4b7e23c8311b3feeea2ef24c0e6f3",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "7b591230e737a69967e3988a2c9ca8551c84f90cde96a5c26828690603466b34",
+      "source_row_sha256": "2a116afa689862d53da4296a08d9b53da61e478754c34735858990324e924343",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "7f5a92c94d459c397979ea2e38a4666d76283e00e07283eb32ed7a12c322d004",
+      "source_row_sha256": "6742400cc545ecec93a494db176d0f41c069c3da5cdda4f10bceef1517d15c0c",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "8025c4cf6e0ac51f9def33942be945840978a8af855a21f90dbf19e127c378ee",
+      "source_row_sha256": "fd5e96912e9f11252761257b81bb9046662b4be2ee04ae6190b83ee91aff6d95",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "803b811976201d0e7540dc3654bc095db2327d97041dcd114bd4add52cd0b019",
+      "source_row_sha256": "3adafc66d43bad43c007e0a5867303294459ac090aec722b7facd4a6695d3a37",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "8089847a2fa93c44e3c6e7c4a77350674bdd866131af8c439d5c4ed65016cf3a",
+      "source_row_sha256": "77aebbca76193e92c90c5ce4fbec2f99e4e19a6e738e4c3990e216a7d294f3f3",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": true,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "80a8f10fd0b59b8b7d40cadfb1ff5d06a352a70f4cad155afcd666da0e4bc796",
+      "source_row_sha256": "51782a34ab14c7565b24550625648e796b0fb27e79a8a874e4b5ca140dbba0bc",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "80d24134acdd42861c627c97f03cc96f17b1efbc7b225b148435db9d1e6d7282",
+      "source_row_sha256": "00cbbd28141dea8bb5b473f784b7d294123ff051627cfb8731d13a7498bc58d6",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "8123c7d686f4d1592db5b0be0b5d5f8d6c947fb97b210f183cf52642da88a376",
+      "source_row_sha256": "a8826081bc08a486ee5524203db97318a94a1a8be94dbf28ac55f53a50d097a6",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "8206d4573503fd87b362d3b4f5112e0b761585bf09afb553c9f86362e7d4bf0a",
+      "source_row_sha256": "11c2f669c7789b6f31181488164ffcdc60414decdc5b3c6fe112511fe3a22df1",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "82710394e5b6b57e326aba12f60d729e8e75556ff508f078c070d87612641ae3",
+      "source_row_sha256": "6631074d74a745cee6f0531c1760e9bf8de36afe50af3b75a54bdfc6319498dc",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "82ceb3afd34721f9205606b0c086771d23d2e3e18da1143ee3df127b9f794e76",
+      "source_row_sha256": "21db854329b984a2a12b826e16a2d479421df2630ca0321116805e1acfe16480",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "82d4bf7f60cfdc88afbe0d7d99fe3c24d39544942b85073c938b691dc94ac448",
+      "source_row_sha256": "c818d114501650e2c79fd0836b9b96a8dac4a3deb70a0a868579f71690701aad",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "8a188515bb7e40871220bc3971d6bd4d7a4a2aee673cf5ad7ac12fcad94f0bc8",
+      "source_row_sha256": "ea26a4ea901dc0d61503d7cf227391301b46fdcc25b17d2de4bd2413774f7034",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "8ab92a805f9fc0573f2a985da7a38e04bbcdd801a84fd75c7ea88a6a95ada148",
+      "source_row_sha256": "1e898a4c1eda94b46abe474bf569b43a11f23325336b6202eb4ff4d02f558e47",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "8af6378802b9c7212709fff64d3dd5a4e323214693927d871a5b533c62f8c218",
+      "source_row_sha256": "265ff7f06569e040edaf58050bbdfffc326b95c482e23136ef57cdc97dd725fe",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "8bd2f24a33cddf725ccc16f2ff07f16133dfd46b390bce17c04c4c041109ba1e",
+      "source_row_sha256": "6a69c947bb974bbe30c2f6d5b4f8274e039f0a2488b94605e2d1cd60fc03c925",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "8c498aa6f46618201099f9911e279b9500ab90a2138237d1b1bed8f025376e08",
+      "source_row_sha256": "ea72595d1283b7e3bb3b7f2ad9d875261e545f41326aad677af81f381a3af44f",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "8d3b28091714c450753cf4152b5251daa9dbaf5803dce909d940cd2ed06fda28",
+      "source_row_sha256": "e517d35c6b5807173c14238a51a3fa2147b605a62cb819db9727ca2caabdb4de",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": true,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "8e56d27a42055c175a1d775eff06f5ad55f03ec32f482bfdc41964adac8a7540",
+      "source_row_sha256": "6e835e626606e569132371e0a386de737d380aca5bd43d413a18bffa8d3a5675",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "8e828c49034ecafa312a784a24b9ce7e5911c739129d90114eb8a50b7abbd067",
+      "source_row_sha256": "8ab2c14ebb2108e297bb5ec25673106ba5371105600dcfd6955b9a83d8eba048",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "8eac8b8a227be93718074e41586aac9d1e3ca02c5afbafcc1df396c18b242f70",
+      "source_row_sha256": "42af24f415497db16cacf10aae43bce4ea55d589f6be387bf5f3bf4d5f2b1918",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "8ecda5e61df878e5c940ce140bd36f43f2c90e481ec88e75d338ad31e017b5fd",
+      "source_row_sha256": "a528bf8ba1e959af97fc4b4866673b6ff1f25d9b73697e74193b5316426158a5",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "8ed39fa38e60e430fbac3a358709bac213acb877195e4b69d23f1d6b1d3415b0",
+      "source_row_sha256": "aeaceee27f1cdd138a3261d921c76c177c853b77347d2398c66ce44862604030",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "8ef0e1f33c7ce0f3f2eb7bfeca27049ca3a0d427dc29b943320ea5202f3c73cf",
+      "source_row_sha256": "4330c79bcf90de2ab7074177bdf562d4f494b7bb1d86ef55e90de11f0bf65f41",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "9087b04841daf03e1b82462823c3a7a0bef50cd405f1e70e1fd68ef0719995f9",
+      "source_row_sha256": "d0e3791e4d3ad6e438116daaa41948c2d78d4e538c6d79f00d6e43b6a63c77eb",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "91b5e88d5c72c08cfac98c8876e983516dbbc5e4fb8cf5826dcf8d4e1fc79974",
+      "source_row_sha256": "376fad4c6c68196d0382c931225b727372f5c4861344626cb946b4b16ad6702f",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "91cd70ba9951738a3dd84ac547a544eb17e5699c9ca1578bbc9e2cd871f7edf0",
+      "source_row_sha256": "78eb06f8413383581a9a197073c9dfa1785ae4f980e190ea2e2c2327642d7603",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": true,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "966df9320e4508ab42979d5770b12fec699fbb441d6ed480a55abe142c966b37",
+      "source_row_sha256": "1dc6557471cb6c88421821a94d080e35f2f7d543bfd6b7309af238c9413a467a",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "9868b56d61bd4982283d21c6962e0321250f5800ee72b42382cf9cf0bc6b2f0d",
+      "source_row_sha256": "6f442e9ad91917020466642cf7700fc78eb5d524be0d57cb8a8b6773e8d8bdb5",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "987ac93eb03374b2ae8883bae2149cce99dd5f7ad98ed0e7bcd175833dd1087a",
+      "source_row_sha256": "87ced07b7134e7c72a7068e3c7a9b631d93e5594b657fcd0eec87f50c0866368",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "997aba1a1479ecda8f37327d0c398133b324859d50fdbc319296ec30a45e2e61",
+      "source_row_sha256": "4db2965aed09377078e683162b046d91fe9c2c3448bdbc3d909c93feaf4a5cb8",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": true,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "99dbc1e5b21ec7c0c22705739f21c3f69cff14c114ddbe3573f9147bcf8de559",
+      "source_row_sha256": "c89397280c1235849f5562cc36b663f39f1d86208191096aa2e89f0f8f3af761",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "9b3245bff851d299849d823dd32910fff56a0fe48e3088b4f8050437e4225c22",
+      "source_row_sha256": "14a7fc1bcf2d691ab4fab967fd84663d53728f4f131b541b82d6b75d5731cf27",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "9b66c7ffd28bbaaf3e6fa406ec35b7373d792b7ef2e57d4c3a4ec8233b15e1f8",
+      "source_row_sha256": "af6333e4f6e2d6fe8eff16a017566cacc3a1bfbbbaaf86c001d150ee3fd423d5",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": true,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "9bcdb9d17d45fbee988f2e6c40a65e509c58ca5c67c59a49182faaa2e8442301",
+      "source_row_sha256": "8f8eeb2016fd9a9567d199974882bf68b24e1b672ca9052fc183c038247bc78c",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "9efa12a31d069226f70b624128a5cddd01f1a3f96dcde25d0568e64c5409446b",
+      "source_row_sha256": "53138de41fd3be7b2c10d8512bde5fcb6f52622f9120e392d1b70b779aabda26",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "9f13fb9155d7eae4b79a0642fb214b11f6158666405157425ce7415341492540",
+      "source_row_sha256": "ff30d9febe95cf593eb6827222d47cb1783b32c8f486f9343340b0e5e27aee6f",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": true,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "a2ba98511e175aac8edd405455b5876ddba861c0bd03922d9e7d793bc72bf9af",
+      "source_row_sha256": "3a6f3a334804c6b01e38c0bc02f457113b152b85fe91d9dd8b787bc67e3d1168",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "a306ca1439c3a1b004bdfff44b432e2d39d2041353ce7a0fb43f00e1ada9e93e",
+      "source_row_sha256": "0a4e34afbfd32022096162d9a0bf3ccabef57fbcdd61fd8d2838671d2a3947af",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": true,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "a344a7a4816bddff99e284cf02cce2e5af97e241078b524aa1b9878cefae2d37",
+      "source_row_sha256": "86ab436a7701cbbf9dbae563251653053fa1a8e42203e9a08a65100e35bc63a1",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "a34bc053a79220f5703e02cfbd6e2a3b15639afc40729756a9c384943960b6aa",
+      "source_row_sha256": "0a3f5509792ab8cc95c0c255168aa2c10509ddd886b5dafbb746f46d9d72a43a",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "a5ec7528dc39ce5da97986de4059ae555be4dbdcfec7cb039b7376b09d42b576",
+      "source_row_sha256": "105417e77149f4f95d379db5c0dea5dc3a6e79c29c1b5b55f39908681a8a1e0b",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": true,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "a699a152c43487d73fe59aae33e27c17ec0c85218db25bf6f6eff88ac0ae0d54",
+      "source_row_sha256": "46885813b021d9a1eb989239a13b9b969d4c416bf06c10a8f1a99cb0da1b3aad",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "a9caa499835c2566331ca86a4e02fa180eb95ef5693f2b761919fbdd7a6b3b21",
+      "source_row_sha256": "3dc55807560e0bb92ff806eaf59609f9e6c4f699c8faa5eb01e9981d222299d1",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "a9de7d95dbb9c5a6d46cf3b9982f43fe9ed2c015921269fa892140b5f153286c",
+      "source_row_sha256": "501c5443f2611256c9b16ee903f640d89219a7be551b4cf2054a1dfd8d9fcf78",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "aa574787cb83c003a21893f3e92621342feb2c6d292b06d95ca093f02acf3b56",
+      "source_row_sha256": "05fb6ede5aaa13a2630c3ff3943accb45b9d1fb4d55e57ce1902132a02933ffe",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "acca802d32ecb2a881270b386e9a5a29c8add8033462eb9dc0e601d3ed2aada4",
+      "source_row_sha256": "d93dea9b78216733e232ba4cd789fb38d340176175a31fa480cba7685cbf060d",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": true,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "ae1c0816c7fc752d39dc5ad07f0d3bb3382e1cb8ecb7baf9ede41be346322fcc",
+      "source_row_sha256": "d3b45d1f0fd4709e22df044d597c156873ab44d6e2a3e59ad08da46ab44e33a5",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": true,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "b34263ef577617d088d74d961142f4a4143e317ad42b7c8151df48f9bbf53235",
+      "source_row_sha256": "8884e2da9b4f9744715b9842f5c90fa820b3ad4db2870e08502718f1e0cab699",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "b3a77b251dae209e21d1a3f7cab8c20f30c9ead245a7d6f34b481d5fd69e63af",
+      "source_row_sha256": "4c18a01fb7c1642bc9cb0c21a82185d601180b9ecb6a4de9e3ab003f7c282335",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "b43b6d72cdc875898c67ad14e3d1054ed379c2685483e3983e5d11363d9927be",
+      "source_row_sha256": "308137924cdeacd5fad6f2080b24cbb2ab6c8492101ecde2e6b80d7d8d8d7366",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "b44965cf6b034604f544e5315cf1de34208e8dc5e9788786cddb71a5ef18beff",
+      "source_row_sha256": "28675996024f2ddf353443fab251b783fb1c624f0fb1585bbdd205558979e4b8",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "b955065ae085d6fdd2ac0d81652297a1168389ace472eca6676f951eb7279b4f",
+      "source_row_sha256": "8c69f83c084c137834d5b9021ed023baba39bfe1a5318e8f7f4e8c3488c1fcdc",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "ba40067104a086d1924656f8a06f71d905540f169e129db9c604b689f730645e",
+      "source_row_sha256": "dab5bd70ca453a335fcd2d4d9fac1d2a50d0ce343cd2df61984b8da20c16b8b5",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "baefad623b7c62dcee906fb8c240198b444416ee6f428d473f0382632f6f5c05",
+      "source_row_sha256": "9764dbf3d6c04369f39dd2c0bed20ca1d0802d676678793bbb693a389303933e",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "baf0299e447ad031335fc8112e412c130f4d32b375c0e046a0972e78faddaf32",
+      "source_row_sha256": "715d88865e349207c5ae9a5802c1ca17080711c0a1169377b2d354ea5dd01aa8",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "bc1ea3a244fcbdf6684ec79db6b4f5a1ad66de51f556bc6c9ec6d930fb14aeae",
+      "source_row_sha256": "b1d7ef29c11963eb49839b4d8dc2e7d1f79015afb6ac1a538849c56a2d9c2b93",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": true,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "c06893f1cab11fc82e89b350df0e3ef95422645410f1704684dbc828c36e564b",
+      "source_row_sha256": "fc36ece42db52a79c00583caaa5029942890888085ee4ba08cc38b0bd3ae33bf",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": true,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "c0fc4098746ca96c51f653719080b98e3685ed6b13062ef2282c88bead3fa756",
+      "source_row_sha256": "c936d70172835a25757eadd13d60c6ba9bca69f2669a5a1aed2a57d078d879b5",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "c1458c5d2c0c6f8f0e72577394f1c765121cd533604d1fb42cd86388da020fe1",
+      "source_row_sha256": "f96b69de8848fa908cc422abcc605b78b450bb3a33a9067455aab28277433d39",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "c4588ffd48f91eab360d3c2c6f355f79b41444e440c3b46a7ea74ac3a2148c44",
+      "source_row_sha256": "f157c3ed887bb771b325371c4ae6c79c7b4ecb8eb711e9e67e490becd6fa0e75",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "c4e52b261f4862c7df9dc34524bca5ff1f1293269d3d27f94957dce59644d3da",
+      "source_row_sha256": "cff578c66d38d3e85b825ca3e6a3c09d4c52c6fc9fdd5574f7ac0c5155998d51",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "c4e9b6919c6381c5a6a0786f2149e5ae3238c413afefe15fad5d73b43cb2e9be",
+      "source_row_sha256": "a61eb19446a607b9d1212ba437415bb5bf93889710328d5e7fd9a3ce5d8b99f4",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "c945ac0ab3f12d13f2eea65883918f3e6a0289a8fecf73929cd457ca7f7e6b9c",
+      "source_row_sha256": "de1717347e62838be502e7984f47ddce8d8c98682653baddea73ca18d8a38842",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": true,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "c9ef8fe48f866133e08c13f373b385f620f3b00e876acb053ee31ce3022dd47a",
+      "source_row_sha256": "54a8669aea044270028f1d1debbb809b1707fb6fa3d9fdcc4cc13cbe39e37f8b",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "ca5f3c0b860993bbf515b710c00fc71587d319f331c5e456331c6c35477bde02",
+      "source_row_sha256": "2b68d2632b9bccd49b27f10159a1ea91ad17178328ebc2f2d46f07d81455b091",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": true,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "ca8ad954e4a6d88882c9d92ce12f774ea6dbc5fc94b89bff3d4dc47ff814f18c",
+      "source_row_sha256": "d1cada0aaa066e9c14b2c1745ee7fb2b5132819cb787630e19238ad864390183",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "d07c07f3064014275f081085c86674daaaf5f0e2fa13d0f58ddeb2085692e509",
+      "source_row_sha256": "ea9d11c15af713c289530db34b0380ca1babeed00269aff504c6728ce4a36aea",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "d1042f2f3df33bb3046fdb2caf78d68cff2d8b3a56f199235640f75e3de8c88e",
+      "source_row_sha256": "e23693c0eaa4a1a7d88951646d54a53ddf0001fe1fbab4218387108f122dfbae",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "d2382a13ec71b6d6043209f0860ddcfa03ed74ea6984213ec1e3009e18b2b304",
+      "source_row_sha256": "1006178795d60a171bf17b9ee424e6569609e8a7cc5cbae8ee10ae182c4932a7",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "d38bab7938c2abc3d4ee42a3da83b5691518b4deb11c3241de163f52a8a93573",
+      "source_row_sha256": "e86c4f31de023544d23351ed2bb31277742bcfabb2fd0d1c8e8acfa687631bde",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "d3db8e5b7806f06d3d9a3ab37fe4a95a159494c596638f4fc8f642d8ecca4810",
+      "source_row_sha256": "cc522843d425bbcbc986fdda8f25dba47c33e7dd07946250d3ab5df3f44467bb",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "d55ed0ee2e1df22b428509a1b91dd6b574c1dc47208ba5de4c35fdfec41d7465",
+      "source_row_sha256": "a7d43b6f89fc54b1e96056b1367b977241ad1e91b0f64bc1ecefd10160d25596",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "d5b13d1f372a99b1cd7a9392fd33ca53c82d3a9f78ef35898e9e4210ef37193f",
+      "source_row_sha256": "7a427791e198e10f2e3b661596fa6ccaa4fd41066047fbf747e09899cddbc6ad",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "d687237a1446080c1ebb4ac0c61d2c448ef818eaad484346399b6469ae7d0000",
+      "source_row_sha256": "e46169b669e7c7627436d5514da643cf9533bcf2d756e02975411d38b6b00d98",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "d7a3ecdbb5864e4f633a922b9186cea3fbbc8d3d6b6772d72e27f72499568fe6",
+      "source_row_sha256": "a9f9b0550bc2c7908985ea7b41d44e419cd9dd902d2eca5c63910657844d5cc9",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "da0ba25a21c972c4c2d252d080cb01bb68db587e3f32e063740d84c00815c8be",
+      "source_row_sha256": "8272072d2b94b7beadb393fcdf72e1b3ba418c0ce1fee21c3dd6059facb79cf7",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "da3e77d4e9d25515695c7c5b0f64bcce4043a5ebf7ecd7953cff164b8ccbd16d",
+      "source_row_sha256": "35623e0415413a791467aef96084c2a67e26d8db380e34b1812a0c5351353e58",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "da90e53d2ed1cc9cf96edbfae7ba4f28b459af5cf1a2a11d0866044fc68c39aa",
+      "source_row_sha256": "61bb7754182a588e53e589acaf033b19793f9b4e651ea025baba3a8df0efcf0b",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "db3354b06b6193be4347884f1b1a8477e739e916691f7049647d1cb8842caf6a",
+      "source_row_sha256": "65022f87e23742e8b703e1527e244a3bd944e2fb67da35981d7388d0e455aefd",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "db3c4edf729ba3d18ea6819b2f04180b84d8493d3e02fd7fd3e0d6bec5ef3b5b",
+      "source_row_sha256": "c3a120f633f9e473786b673d3d14a089eddaa76d2c0dcf7eb7b060ca8db25782",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "dc88bc437d850674b9e7894b0c9cec430065630a252a4d84ee4f309816c0fcda",
+      "source_row_sha256": "f27f31b5e86c5008d2e368da2413855f9658346566be371a028b8864c70bee03",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "dc96f348078f92709463e2ec9f6560bcc395bc830a218c546df8d712477fd383",
+      "source_row_sha256": "c46e66190de3f2c9f503967450c5f0ecf122f19105c4558fe42ccb5a5b45647d",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "de386d679ded3428be66e162814400883c35f49c5b059e00321f13895c40201b",
+      "source_row_sha256": "03b8cd8d414026abb41502e857ce29032be2e8d286b3053c9812db116e3727f3",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "de6e838cd2928d8aad95d2147d8e987551b41d3bac0a00d9548d0e2576c4f404",
+      "source_row_sha256": "9aed1649d2cca859e66789f706e6bea00940a0c3863b63fb0532f6c079600e0f",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "df0dd9ec78dc2854e2f45dcd315cc2362cae24e075abfbb3b1e5cb4b084e9507",
+      "source_row_sha256": "73de05fc4abb4c9f7b8e87e697b4fc5907cbd1d50f4a0e921231e5b1b1b79015",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "e23f7c100784224df7a207f425d5b5c8eb810a63050b7caf3ee30bf6c666adcb",
+      "source_row_sha256": "23c972ecf4c09258a4bcf73966d2bb141116064619d8432b8f8888f5705b2fe4",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "e3dc914bd8645756555af3fd053738815dd7b25b71e55b6bea628e2a99cac3d6",
+      "source_row_sha256": "5e48792b6a770ad6424d00c2b873d9567b575277b87a2765e8d75ef98925d621",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "e5e573e68dd8620e33bc7a278683e9f6d49f056a5f10065ab2f3231a59af0787",
+      "source_row_sha256": "289c4d627d50c38d93f4ec05df1e687656a4086ce44e25ec1ec582e2699a8ad2",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "e5ec3aaa3a0439040374ff20b884a75c1588553ae7c3f472c469de035e620ac4",
+      "source_row_sha256": "aa077f88a76536a9819169f70da2910320ec11b4a3c1478a1a38e082cd0021d9",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "e7e30b98f7effd7607f35a494bbb9e3c4a3b73e560dfe9aa77da804a6e45bc7a",
+      "source_row_sha256": "ad551a46799605778b605531b274e5529500fb7c36376ceb4dd0d407a1eadf11",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "eaab67bc95fe0ca6c99106c021918e320c3c0e4eb987ee32c1996e3a100211b5",
+      "source_row_sha256": "ba5ca4fb24a3f79074fba9411990910c418168b2ebd8d90433bc886f7205c33c",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": true,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "eb27813a43e9dfd0276b5fbc25565a6f247d404ea251f62629cced120cec68f4",
+      "source_row_sha256": "f4a92ba50d1eb775c3611aa36ee20a79548ade42c4626ffa03815450d38138dc",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "eddf40c7bb0fad17f99d486058cfcbd6cfdd9e26f0bdbeb02f424d42622b8b34",
+      "source_row_sha256": "1b4bd8c9f72e3ff12a950e99a29979ded4cd215462c881faa3f861fec0fdb956",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "edf49a2c57da201ef1d0271b521be124fef422768f519456855169f0812d83c3",
+      "source_row_sha256": "5aadeac26fe72aca572792d3348c79b31c26d2dd7445bccf67c2921231e67bf0",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "ee8b0c6b531a74fc0cd4c15897d50dff1c90d1893a774c7f4e82eebe040c667c",
+      "source_row_sha256": "dcf1a0d6dea59d1fe44b8d5074c71ee0ee66770a03662c00f5671c2ff5426f19",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": true,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "efcfe50711bc955850e05c617e455091f4986438fd719ea0c8f7d79a80ef0497",
+      "source_row_sha256": "9d23775688c76837f49677f95458a3a0ee79c2612400439cac3ef9c09d5df56b",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "f14498112f2b2e0b06f1fe689e429cccbeb6a87746cbded0e01286d28eed509f",
+      "source_row_sha256": "0feee3a3d5c3276078214d0383588104265a97ddca23426c6bcfa9b615664905",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": true,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "f1fb85cb2d59bde20f0bb57a578774134bf991141653978c753ee7ce1095c146",
+      "source_row_sha256": "fed43bf02a0f948ebcf9baaefc9fa621ac014595ed8700ae8b35c3ca1f54592b",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "f7c0508dfca9266ce312e011dc9b071fb98d1009586104eb9d7b60e14f3d1f69",
+      "source_row_sha256": "368bf0bedb50eae0a386f5962d1adffd98bc4a48443386d7957811b7051f10ed",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "f8f6e013389d86f4683dea1fcfde6cb124cadd6e156089cffa22a4d807d30689",
+      "source_row_sha256": "4c0449675dddccd59156ecae6dd81fa3c75963b49a214e115c70f7cfc9a4bf2f",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "f9886bb2ad741ecd0962e76c8472d617e808b6ef5a08e72dace375a60d419d7a",
+      "source_row_sha256": "18a09d563663c2ea848f56d42782180719fe6874577233b6ca3029de59481a72",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": true,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "fc777649bbb54830a69d85d16f3f0a51ad3976e85a3f6e67c182796215f6c71e",
+      "source_row_sha256": "d83ac10a1d10aa880f8aa97232ee6396c2513a13de4294d2736d579633aa1d32",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "fe029e1114a3de433e4a9253ff5ca9a685614c5c0f7c346f4fddd584b415d9b1",
+      "source_row_sha256": "a20cd90e32760d98651814ad6efcfd49699316f154b537b2ddda3acd539b20bc",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    },
+    {
+      "document_id": "ffbdad2ac9c2b11123072272755fcf06b3a451ae861ffa9396598c817810f8be",
+      "source_row_sha256": "9fa78cac0dd7c4d6c40fa04c7b881c226fa04c3174dcc9227e1e31fb8353392c",
+      "filename_interpretation": "reviewed_explicit_disclosure_wording",
+      "multiple_retained_bodies": false,
+      "content_review": "not_performed",
+      "release_approved": false
+    }
+  ]
+}
