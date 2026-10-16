@@ -127,7 +127,7 @@ def tree_document_links(tree, url, *, include_link=None, exclude_link=None):
     publisher_routes = host.endswith(('.house.gov', '.senate.gov')) or host in {'house.gov', 'senate.gov', 'csce.gov', 'www.csce.gov'}
     result = []
     seen = set()
-    for node in tree.xpath('//a[@href] | //object[@data] | //embed[@src] | //iframe[@src] | //meta[@http-equiv]'):
+    for node in tree.xpath('//a[@href] | //link[@href] | //object[@data] | //embed[@src] | //iframe[@src] | //meta[@http-equiv]'):
         value = node.get('href') or node.get('data') or node.get('src') or ''
         label = ' '.join(node.text_content().split())
         target = http_url(value, base) if value.strip() else None
@@ -142,6 +142,10 @@ def tree_document_links(tree, url, *, include_link=None, exclude_link=None):
                 basis = 'download_link'
             elif include_link and include_link(node):
                 basis = 'publisher_document_context'
+        elif (node.tag == 'link' and 'alternate' in node.get('rel', '').lower().split()
+                and node.get('type', '').split(';', 1)[0].strip().lower()
+                in {'application/pdf', 'application/xml', 'text/xml'}):
+            basis = 'alternate_document'
         elif node.tag == 'meta' and node.get('http-equiv', '').lower() == 'refresh':
             if match := re.fullmatch(r'\s*\d+(?:\.\d+)?\s*;\s*url\s*=\s*(.+?)\s*', node.get('content', ''), re.I):
                 value, basis = match[1].strip('\'"'), 'meta_refresh'
@@ -155,6 +159,22 @@ def tree_document_links(tree, url, *, include_link=None, exclude_link=None):
             result.append(DocumentLink(url=target, basis=basis, text=label,
                                        tag=node.tag, attributes=dict(node.attrib)))
     return result
+
+
+def binary_pdf_header(body: bytes) -> bool:
+    """Recognize a bounded binary preamble, not PDF mentions in text/markup.
+
+    This is only a format hint. Capture must validate readability before accepting
+    these irregular files; all original bytes and offsets remain untouched.
+    """
+    prefix = body[:1024]
+    if prefix.lstrip(b'\xef\xbb\xbf \t\r\n').startswith(b'%PDF-'):
+        return False
+    match = re.search(br'%PDF-[12]\.\d(?:\r|\n)', prefix)
+    if not match or not match.start():
+        return False
+    preamble = prefix[:match.start()]
+    return b'<' not in preamble and any(b >= 128 or b < 9 for b in preamble)
 
 
 def response_kind(body: bytes, media_type: str) -> str:
@@ -177,6 +197,8 @@ def response_kind(body: bytes, media_type: str) -> str:
         return 'html'
     if prefix.startswith(b'<?xml'):
         return 'xml'
+    if binary_pdf_header(body):
+        return 'pdf'
     if media == 'application/pdf':
         return 'unverified_pdf'  # Headers alone do not establish PDF bytes.
     return 'other'

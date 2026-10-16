@@ -16,6 +16,7 @@ import pyarrow.parquet as pq
 
 from congress_api.parsers.document_cover import COVER_FIELDS, document_cover, document_page_fields
 from congress_api.retention.pdf_tools import opening_page_text, opening_page_text_file, page_count_file
+from congress_api.parsers.document_links import response_kind
 from congress_api.retention.document_evidence import (
     BODY_FIELDS, document_body_fields, evidence_fingerprint,
 )
@@ -50,7 +51,7 @@ def read_document(data, body_key, fingerprint, inspect=inspect_document):
         except Exception as exc:
             # A reader failure is evidence, not a failed raw-body upload.
             status, error = 'failed', type(exc).__name__
-            if data.lstrip().startswith(b'%PDF-'):
+            if response_kind(data, '') == 'pdf':
                 fields = {'body_format': ['pdf']}
     return dict(body_key=body_key, parser_fingerprint=fingerprint,
                 status=status, error_type=error, **fields)
@@ -81,7 +82,7 @@ def read_document_file(path, body_key, fingerprint, inspect=inspect_document, *,
         if path.stat().st_size <= BODY_LIMIT:
             data = source.read(BODY_LIMIT + 1)
             return read_document(data, body_key, fingerprint, inspect)
-        pdf = source.read(1024).lstrip().startswith(b'%PDF-')
+        pdf = response_kind(source.read(1024), '') == 'pdf'
     fields, error, status = {}, None, 'size_limit'
     if pdf and large_pdf:
         fields = {'body_format': ['pdf']}

@@ -17,6 +17,7 @@ from zipfile import is_zipfile
 from congress_api.parsers.house_xml import parse_house_meeting, parse_house_witnesses
 from congress_api.parsers.document_cover import COVER_FIELDS, document_cover
 from congress_api.retention import pdf_tools
+from congress_api.parsers import document_links
 from congress_api.parsers.xml import parse_xml, xml_element
 
 
@@ -42,7 +43,7 @@ def evidence_fingerprint():
     import congress_api.parsers.xml as xml
     from congress_api.retention import image_tools
     digest = sha256()
-    for path in (__file__, models.__file__, xml_models.__file__, house_xml.__file__, xml.__file__, document_cover.__file__, pdf_tools.__file__):
+    for path in (__file__, models.__file__, xml_models.__file__, house_xml.__file__, xml.__file__, document_cover.__file__, pdf_tools.__file__, document_links.__file__):
         digest.update(Path(path).read_bytes())
     for tool, identity in sorted(pdf_tools.reader_versions().items()):
         digest.update(f'{tool}={identity}\n'.encode())
@@ -213,7 +214,7 @@ def document_body_fields(data):
         # Format facts are distinct from capture validity, just as for PDFs.
         # Capture validates pixels once; catalog replay must retain failed images too.
         return {'body_format': [kind]}
-    if data.lstrip().startswith(b'%PDF-'):
+    if document_links.response_kind(data, '') == 'pdf':
         return {'body_format': ['pdf']}
     if data.startswith(b'PK\x03\x04') and is_zipfile(BytesIO(data)):
         return {'body_format': ['zip']}

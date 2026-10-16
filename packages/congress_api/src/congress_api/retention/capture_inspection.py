@@ -11,7 +11,7 @@ from lxml import etree
 from lxml.html.defs import tags as HTML_TAGS
 
 from congress_api.parsers.archive_links import capture_links, related_links
-from congress_api.parsers.document_links import download_query_fallback, response_kind
+from congress_api.parsers.document_links import binary_pdf_header, download_query_fallback, response_kind
 from congress_api.parsers.file_wrapper import regular_file
 from congress_api.retention.body_files import CapturedFile, content_body
 from congress_api.retention.image_tools import image_kind, image_info, ImageReadError
@@ -44,7 +44,7 @@ def inspect_capture(response, *, replay=False):
         # Other formats and malformed PDFs keep the existing bounded parsers.
         prefix = body.prefix()
         media = response.get('content', {}).get('media_type', '')
-        if response_kind(prefix, media) == 'pdf':
+        if response_kind(prefix, media) == 'pdf' and not binary_pdf_header(prefix):
             with body.path.open('rb') as source:
                 source.seek(max(0, len(body) - 8192))
                 tail = source.read(8192)
@@ -93,6 +93,8 @@ def inspect_body(body, url, media):
             return 'invalid_document', image
         return 'saved', image
     if kind == "pdf":
+        if binary_pdf_header(body):
+            return ("saved" if readable_pdf(body) else "invalid_document"), kind
         return ("saved" if b"%%EOF" in body[-8192:] or readable_pdf(body)
                 else "invalid_document"), kind
     if kind == "file_wrapper":
