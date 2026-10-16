@@ -1,0 +1,28 @@
+{
+  "at": "2026-10-16T05:01:54.459245+00:00",
+  "new_retained_url_mappings": 8,
+  "basis": "Previously accepted URL differs only by HTTP versus HTTPS; exact body digest reverified from retained R2 bytes",
+  "checks": [
+    "Full SHA256 of all eight uncompressed R2 bodies",
+    "PDF structure and text decoding",
+    "Full-page render for qpdf warning cases",
+    "Deferred URL and body exclusions",
+    "Prior recovery maps preserved"
+  ],
+  "remaining_unresolved": 19275,
+  "prepared_links": 4299,
+  "retained_mappings": 3002,
+  "new_capture_uploads_required_for_these_links": 0,
+  "published": false,
+  "files": {
+    "retained-scheme-verified-mappings.json": "fa84dc67d44bfba9117d5f4043e7a020434721182a625513361cfe898fa4895d",
+    "retained-url-variant-mappings.json": "55d8b404bebfa9adc1e0f30cf81965c681d7ebe58818abe692b1388d5c02fac0",
+    "remaining-recovery-summary.json": "7dacfc5ffde44171f6c79556f6f5185c1869480b986f54357ae403939931eeb4"
+  },
+  "next_steps": [
+    "Continue existing acquisition workers",
+    "Join additional unresolved links against retained source evidence before network retries",
+    "Include these mappings in the next sealed batch; batch 10 remains immutable",
+    "Publish completed batches after cloud writer clears"
+  ]
+}
