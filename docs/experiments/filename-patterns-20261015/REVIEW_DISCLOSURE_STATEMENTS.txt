@@ -1,0 +1,76 @@
+Disclosure Statement phrase review
+==================================
+
+Result and rationale
+--------------------
+house_naming 3.2.5 recognizes publisher-qualified Disclosure Statement and
+Disclosure STMT as complete disclosure phrases. Previously, Goetze's Witness
+Disclosure Statement supplied both statement and testimony-disclosure kinds.
+It now supplies testimony-disclosure alone. An explicit Disclosure and Statement
+still supplies both kinds; a Disclosure Statement Attachment keeps attachment.
+
+This change extends one catalog pattern rather than adding another selection
+algorithm. It reuses the existing rule that a longer phrase owns its nested
+generic wording. Runtime Python selection code and native body readers are
+unchanged. Literal filename reconstruction, field spans and convention parsing
+remain available. These are filename interpretations, not verified body contents.
+
+Evidence and execution path
+---------------------------
+All 38 filenames across the 19 pending statement/disclosure groups were read.
+They consistently name Disclosure Statement or Disclosure STMT, including joined
+WitnessDisclosureStatement spelling and the attachment case. The broader cohort
+also contains six groups with native meeting-support aliases; those independent
+aliases must keep their kind.
+
+Engine.extract (engine.py:61) passes the supplied filename and source URL through
+the catalog-backed Extractor, then calls filename_metadata (values.py). The
+publisher-house-disclosure pattern in data/guide.json:27271 retains its existing
+host, extension, native-code and unrelated-disclosure exclusions. Its
+document_wording field now optionally includes the adjacent Statement or STMT,
+with a trailing letter boundary. Separators may be absent for joined spellings.
+The original disclosure match remains available when no such suffix follows.
+
+filename_metadata calls document_category_fields at values.py:47. The existing
+containment check at categories.py:126-128 removes the nested generic statement
+field from selected categories. The literal observations remain present. There
+is no global rule removing statement whenever disclosure appears elsewhere in
+the filename, and no rule collapsing different aliases in a document group.
+
+Validation and review
+----------------------
+Five newly added phrase cases failed before the pattern changed. The final
+focused publisher suite passes all 128 tests. Fourteen new cases cover observed
+phrases, joined spellings, STMT, attachments, separate coordinated statements,
+opening statements, unrelated/spoofed hosts and financial/protected disclosures.
+Tests also check exact reconstruction, field spans and unchanged parse results.
+
+All 5,840 maintained offline workflow tests pass in 106.03 seconds. The separate
+replay, alias and linkage suites pass all 50 checks. The catalog builder verifies
+all three JSON artifacts. All nine frozen native-PDF experiment source hashes
+remain unchanged. disclosure_statement_checkpoint.json records the complete
+historical-cohort replay, actual changed-row counts, preservation checks and hashes.
+
+Review finding resolved: matching only the disclosure token left a nested generic
+statement as a second kind. Extending that token to the observed complete phrase
+fixes the cause while reusing maintained selection behavior. Focused controls
+and complete-cohort changes support the bounded repair. This is a self-review,
+not an independent evaluation or population precision measurement.
+
+The completed replay covers all 7,526 source records and 1,949 groups in 199.59
+seconds. All 48 changed source filenames and all 25 changed group alias sets
+were read. Each change removes only the generic statement kind. The six groups
+with native meeting-support aliases keep that kind; the attachment case keeps
+attachment. IDs, membership, representatives, roles, protected evidence and kind
+provenance are preserved. Input and implementation bytes pass the replay checks.
+
+VERDICT: APPROVE the bounded local filename repair. Publication, independent references,
+content adjudication and the frozen held-out evaluation remain separate gates.
+
+Next work
+---------
+Regenerate the original-baseline grouping and complete alias audit against 3.2.5.
+Link this replay plus the 209 exact-row-bound Truth-in-Testimony decisions without
+promoting filename interpretations into content approvals. Review remaining
+disclosure/biography combinations, then explicit TEXT and multiple-body cases.
+Keep the Award List exception and four denied exact archive reads unresolved.

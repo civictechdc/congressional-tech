@@ -9,6 +9,38 @@ from house_naming import Engine
 def engine():return Engine()
 
 
+@pytest.mark.parametrize('name,expected', [
+    ('Goetze_-_Witness_Disclosure_Statement.pdf', ['testimony-disclosure']),
+    ('craig_fabian_witnessdisclosurestatement.pdf', ['testimony-disclosure']),
+    ('Craig_Fabian_WitnessDisclosureStatement.pdf', ['testimony-disclosure']),
+    ('Odysseus_Lanier_-_Witness_Disclosure_STMT.pdf', ['testimony-disclosure']),
+    ('7-25-2013_Scherman_-_Disclosure_Stmt.pdf', ['testimony-disclosure']),
+    ('Jones_Disclosure_Statement.pdf', ['testimony-disclosure']),
+    ('Odysseus_Lanier_Disclosure_Statement_Attachment.pdf', ['attachment', 'testimony-disclosure']),
+    ('Disclosure and Statement.pdf', ['statement', 'testimony-disclosure']),
+    ('Statement and Disclosure.pdf', ['statement', 'testimony-disclosure']),
+    ('Disclosure_Statement_and_Opening_Statement.pdf', ['opening-statement', 'testimony-disclosure']),
+])
+def test_disclosure_statement_is_one_phrase_without_losing_combined_forms(engine, name, expected):
+    result = engine.extract(name, source_url='https://smallbusiness.house.gov/' + quote(name))
+    assert sorted(result['metadata']['document_kind']) == sorted(expected)
+    assert ''.join(piece['raw'] for piece in result['pieces']) == name
+    assert all(name[f['start']:f['end']] == f['raw']
+               for observation in result['observations'] for f in observation['fields'])
+    assert {k: result[k] for k in engine.parse(name)} == engine.parse(name)
+
+
+@pytest.mark.parametrize('name,host', [
+    ('Witness_Disclosure_Statement.pdf', 'example.org'),
+    ('Witness_Disclosure_Statement.pdf', 'smallbusiness.house.gov.example.org'),
+    ('Financial_Disclosure_Statement.pdf', 'smallbusiness.house.gov'),
+    ('Protected_Disclosure_Statement.pdf', 'smallbusiness.house.gov'),
+])
+def test_disclosure_statement_keeps_publisher_and_subject_exclusions(engine, name, host):
+    result = engine.extract(name, source_url=f'https://{host}/' + quote(name))
+    assert 'testimony-disclosure' not in result['metadata'].get('document_kind', [])
+
+
 @pytest.mark.parametrize('name,host,kind',[
     ('hearing_memo_--_leg_hrg_on_h.r._212_11.15.17.pdf','naturalresources.house.gov','committee-memorandum'),
     ('Dem-Memo-OI-Hrg-Anti-Doping-2017-02-28.pdf','democrats-energycommerce.house.gov','committee-memorandum'),

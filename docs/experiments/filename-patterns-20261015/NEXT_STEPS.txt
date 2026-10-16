@@ -278,3 +278,21 @@ The current ledger remains unchanged; join the exact-row-bound decisions before
 presenting an updated ledger count. Across that ledger plus this checkpoint,
 128 groups still lack a filename review basis. Keep all publication, archive
 access and frozen-pilot requirements in place.
+
+Disclosure Statement repair checkpoint
+--------------------------------------
+house_naming 3.2.5 extends the existing publisher disclosure match through an
+adjacent Statement or STMT suffix. The existing longest-phrase selection removes
+the nested generic statement kind. Explicit combinations and attachment labels
+remain. All 5,840 offline workflow checks and 50 experiment checks pass; the
+complete-cohort replay preserves every comparison invariant. It removes only
+generic statement from 48 source records and 25 groups. All changed filenames
+and group alias sets were read. See REVIEW_DISCLOSURE_STATEMENTS.txt and
+disclosure_statement_checkpoint.json. No content reader or frozen source changed.
+
+Next, regenerate the original-baseline grouping and alias audit against 3.2.5,
+then join this replay and the exact-row-bound Truth-in-Testimony decisions.
+Review disclosure/biography combinations and explicit TEXT cases against the
+updated evidence, preserving multiple-body histories. Exact-body adjudication
+remains pending for the Award List and denied archive reads. The separate live
+publication was still running at the latest readback; no release was dispatched.

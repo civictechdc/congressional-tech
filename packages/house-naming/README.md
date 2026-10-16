@@ -42,6 +42,12 @@ Version 3.2.3 also keeps report actions and oversight-plan targets out of vote
 record kinds. A report or plan explicitly about votes keeps its own genre.
 Literal references, combined documents and `TEXT` ambiguity remain available.
 
+Version 3.2.5 recognizes publisher-qualified `Disclosure Statement` and
+`Disclosure STMT` as complete disclosure phrases. The existing longest-phrase
+selection removes the nested generic statement kind while preserving original
+wording, attachment labels and explicit combinations such as `Disclosure and
+Statement`. It performs no body inspection.
+
 Version 3.2.4 uses recognized statement/testimony subject spans and leading
 publisher-qualified memo/opening labels to keep topic words out of document
 kinds. Explicit combined components and attachment labels remain available.

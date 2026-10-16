@@ -1,6 +1,6 @@
 {
   "id": "house-document-naming",
-  "catalog_version": "3.2.4",
+  "catalog_version": "3.2.5",
   "document": {
     "title": "Document Naming Conventions",
     "version": "1.2.1",
@@ -27272,7 +27272,7 @@
       "scope": "source-stem",
       "priority": 0,
       "scan_stage": "supplemental",
-      "pattern": "(?!(?:[a-f0-9]{64}\\.)?(?:HHRG|HMTG|HMKP|BILLS|CRPT)[ _-])(?!.*(?:whistle[\\s_.-]*blower|protected[\\s_.-]*disclosure|financial[\\s_.-]*disclosure|6103)).*?(?P<document_wording>disclosure|(?<![a-z])ttf(?![a-z])|truth[\\s_.-]+in[\\s_.-]+(?:testimony|testifying)).*",
+      "pattern": "(?!(?:[a-f0-9]{64}\\.)?(?:HHRG|HMTG|HMKP|BILLS|CRPT)[ _-])(?!.*(?:whistle[\\s_.-]*blower|protected[\\s_.-]*disclosure|financial[\\s_.-]*disclosure|6103)).*?(?P<document_wording>disclosure(?:[\\s_.-]*(?:statement|stmt)(?![a-z]))?|(?<![a-z])ttf(?![a-z])|truth[\\s_.-]+in[\\s_.-]+(?:testimony|testifying)).*",
       "source_hosts": [
         "appropriations.house.gov",
         "democrats-edworkforce.house.gov",
