@@ -1,0 +1,15 @@
+{
+  "verified_at": "2026-10-16T03:56:39.738499+00:00",
+  "processed": 64,
+  "recovered": 62,
+  "requests": 32,
+  "actual_wait_exit": 0,
+  "physical_pid_absent": true,
+  "unrecovered": [
+    "https://edlabor.house.gov/imo/media/doc/STEEL_A5.pdf",
+    "https://edworkforce.house.gov/imo/media/doc/steel_a5.pdf"
+  ],
+  "completion_evidence": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/nara-temporary-error-retry/completion-monitor.json",
+  "completion_sha256": "269e906dc6e4c722a2451586fc2ef466e8db12629a0c1de3884f8a89fc870574",
+  "publication_pending": true
+}
