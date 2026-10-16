@@ -36,12 +36,30 @@ class RunnerTests(unittest.TestCase):
         record=dict(pid=1,parent_pid=0,started='old',command='old')
         with patch.object(runner,'identity',return_value=dict(record,started='new')):
             self.assertFalse(runner.same_process(record))
+    def test_reparented_child_remains_live(self):
+        record=dict(pid=12,parent_pid=11,started='same',command='worker')
+        with patch.object(runner,'identity',return_value=dict(record,parent_pid=1)):
+            self.assertTrue(runner.same_process(record))
     def test_missing_wait_is_never_success(self):
         self.prepare();self.assertEqual(runner.run(self.dest,interval=.01),0)
         (self.dest/'attempt-0001/exit.json').unlink()
         with patch.object(runner,'same_process',return_value=False):
             self.assertEqual(runner.reconcile(self.dest)['state'],'requires_reconciliation')
             self.assertFalse(runner.reconcile(self.dest)['complete'])
+    def test_incomplete_dispatch_never_allows_second_child(self):
+        self.prepare(resume='pass')
+        (self.dest/'attempt-0001').mkdir()
+        with self.assertRaisesRegex(RuntimeError,'identity was not recorded'):
+            runner.run(self.dest,resume=True,interval=.01)
+    def test_dispatch_record_failure_reaps_child(self):
+        self.prepare('import time; time.sleep(30)')
+        original=runner.atomic
+        def atomic(path,value):
+            if Path(path).name=='dispatch.json':raise OSError('record failed')
+            original(path,value)
+        with patch.object(runner,'atomic',side_effect=atomic):
+            with self.assertRaisesRegex(OSError,'record failed'):runner.run(self.dest,interval=.01)
+        self.assertTrue((self.dest/'attempt-0001/exit.json').exists())
     def test_relative_executable_is_rejected(self):
         with self.assertRaises(ValueError):runner.prepare(self.dest,cwd=self.cwd,command=['python','-c','pass'])
 

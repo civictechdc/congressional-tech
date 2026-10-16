@@ -48,7 +48,10 @@ def identity(pid):
 
 
 def same_process(record):
-    return bool(record) and identity(record['pid']) == record
+    if not record:
+        return False
+    current = identity(record['pid'])
+    return bool(current) and all(current[key] == record[key] for key in ('pid', 'started', 'command'))
 
 
 def prepare(destination, *, cwd, command, resume_command=None, pins=(), reserve_bytes=12 * 1024**3):
@@ -121,6 +124,8 @@ def run(destination, *, resume=False, interval=5):
     with (destination/'.runner.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         before = reconcile(destination)
+        if before['state'] == 'dispatch_incomplete_requires_reconciliation':
+            raise RuntimeError('Dispatch identity was not recorded; do not launch another child')
         if before.get('child_alive') or (before.get('supervisor_alive') and 'actual_child_wait_exit' not in before):
             raise RuntimeError('Prior run is still alive')
         if before['attempts']:
@@ -140,10 +145,10 @@ def run(destination, *, resume=False, interval=5):
         stop_reason = None
         with (attempt/'stdout.log').open('xb') as out, (attempt/'stderr.log').open('xb') as err:
             child = subprocess.Popen(command, cwd=plan['cwd'], stdout=out, stderr=err)
-            child_identity = identity(child.pid)
-            atomic(attempt/'dispatch.json', dict(at=now(), command=command, cwd=plan['cwd'],
-                   supervisor=supervisor, child=child_identity, child_pid=child.pid, parent=parent))
             try:
+                child_identity = identity(child.pid)
+                atomic(attempt/'dispatch.json', dict(at=now(), command=command, cwd=plan['cwd'],
+                       supervisor=supervisor, child=child_identity, child_pid=child.pid, parent=parent))
                 while child.poll() is None:
                     free = shutil.disk_usage(plan['cwd']).free
                     if not same_process(parent) or free < plan['reserve_bytes']:

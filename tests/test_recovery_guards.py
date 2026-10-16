@@ -36,6 +36,12 @@ class GuardTests(unittest.TestCase):
         self.cloud.side_effect = None
         self.guard.check(); self.assertEqual(self.cloud.call_count, 4)
 
+    def test_slow_cloud_scan_cannot_mint_fresh_clearance(self):
+        def slow():self.now += 31
+        self.cloud.side_effect = slow
+        with self.assertRaisesRegex(RuntimeError, 'freshness window'):self.guard.shared_commit()
+        self.assertIsNone(self.guard._cloud_at)
+        self.assertEqual(self.protected.call_count, 0)
     def test_changes_fail_before_next_write(self):
         self.guard.boundary(); self.path.write_bytes(b'change')
         with self.assertRaisesRegex(RuntimeError, 'Pinned input changed'): self.guard.check()

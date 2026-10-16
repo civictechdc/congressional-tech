@@ -90,7 +90,9 @@ class RecoveryGuard:
             self._cloud_at = None
             self.counts['cloud'] += 1
             self.cloud_check()
-            self._cloud_at = self.clock()
+            if self.clock() - now > 30:
+                raise RuntimeError('Cloud writer check exceeded freshness window')
+            self._cloud_at = now
 
     def check(self):
         """For immutable content writes only; content remains unselected."""

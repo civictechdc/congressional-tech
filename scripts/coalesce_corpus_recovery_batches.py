@@ -64,7 +64,13 @@ def coalesce(batches, *, baseline, destination):
         for name, target in [('prepared-source-records.json', records), ('zip-receipts.json', zips)]:
             for row in json.loads((batch/name).read_text()):
                 target.setdefault(canonical(row), row)
-    accepted.update(additions)
+    for url, row in additions.items():
+        if url in accepted:
+            if accepted[url]['body_key'] != row['body_key']:
+                raise ValueError('Recovery conflicts with authoritative baseline body')
+            # Existing decisions and their metadata remain unchanged.
+            continue
+        accepted[url] = row
     accepted_value = dict(baseline_value, recoveries=list(accepted.values()))
     values = {'recoveries.json': list(recovered.values()), 'bodies.json': bodies,
               'accepted.json': accepted_value, 'zip-receipts.json': list(zips.values()),
@@ -92,10 +98,25 @@ def coalesce(batches, *, baseline, destination):
     return manifest
 
 
+def coalesce_when_due(batches, *, baseline, destination, flush=False, now=None,
+                      max_wait_seconds=900, minimum_urls=100):
+    manifests = [json.loads((Path(batch)/'manifest.json').read_text()) for batch in batches]
+    if not flush and not publication_due(manifests, now=now,
+            max_wait_seconds=max_wait_seconds, minimum_urls=minimum_urls):
+        return dict(status='waiting_for_bounded_batch_window', ready=False,
+                    max_wait_seconds=max_wait_seconds, minimum_urls=minimum_urls,
+                    input_batches=len(batches), writes=False)
+    return coalesce(batches, baseline=baseline, destination=destination)
+
+
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--batch',type=Path,action='append',required=True)
     parser.add_argument('--baseline',type=Path,required=True)
     parser.add_argument('--destination',type=Path,required=True)
+    parser.add_argument('--flush', action='store_true', help='Seal now even below the batch window limits.')
+    parser.add_argument('--max-wait-seconds', type=int, default=900)
+    parser.add_argument('--minimum-urls', type=int, default=100)
     args=parser.parse_args()
-    print(json.dumps(coalesce(args.batch,baseline=args.baseline,destination=args.destination),indent=2))
+    print(json.dumps(coalesce_when_due(args.batch,baseline=args.baseline,destination=args.destination,
+        flush=args.flush,max_wait_seconds=args.max_wait_seconds,minimum_urls=args.minimum_urls),indent=2))
