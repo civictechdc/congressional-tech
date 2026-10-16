@@ -812,3 +812,12 @@ Next specify the representation of the five unsupported packets using their exis
 page evidence, then portable evidence references and snapshot-level loading before
 viewer integration. This check does not qualify a full classification refresh or
 independent accuracy. Held-out body review and publication remain separate gates.
+
+Version 2 bundles now preserve complete validated body observations and compare them
+with their bound receipt on load. All 94 tests and the complete-catalog cohort run
+pass: 86 observations / 530 pages, unchanged prior candidate fields and working
+withdrawal. The five unsupported packets retain 223 pages and 44 sections without
+new taxonomy kinds. See packet_observation_checkpoint_v1.json and
+REVIEW_PACKET_OBSERVATION.txt. Next define portable evidence export/resolution and
+snapshot-level loading before viewer integration; preserve literal locators and
+exact-byte bindings. Independent references and publication remain separate gates.

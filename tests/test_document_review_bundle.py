@@ -26,12 +26,13 @@ def test_bundle_selection_withdrawal_and_detached_results(tmp_path,unsupported):
     assert select_document(doc,sources)['document']==doc
     assert select_document(doc,sources,{})['document']==doc
     result['document']['document_kind'].append('mutation')
+    result['review']['body_observation']['page_sections'][0]['description']='mutation'
     assert (doc,sources,candidates)==before
     control=dict(doc,document_id='other');control_sources=[dict(sources[0],document_id='other')]
     assert select_document(control,control_sources,candidates)['document']==control
 
 
-@pytest.mark.parametrize('change',['summary_bytes','candidate_bytes','baseline_bytes','evidence_bytes','version','approval',
+@pytest.mark.parametrize('change',['summary_bytes','candidate_bytes','baseline_bytes','evidence_bytes','version','old_version','approval',
     'duplicate','coverage','counts','candidate_kind','candidate_context','review_scope','implementation','output_path'])
 def test_bundle_refuses_stale_or_tampered_data(tmp_path,change):
     args,summary=bundle(tmp_path);expected=file_digest(summary);meta=json.loads(summary.read_text())
@@ -43,6 +44,7 @@ def test_bundle_refuses_stale_or_tampered_data(tmp_path,change):
     elif change=='evidence_bytes':(tmp_path/'body.pdf').write_bytes(b'changed')
     else:
         if change=='version':meta['bundle_version']=True
+        elif change=='old_version':meta['bundle_version']=1
         elif change=='approval':meta['release_approved']=True
         elif change=='coverage':meta['reviewed_groups']=2
         elif change=='counts':meta['case_status']={'no_review':1}
@@ -57,6 +59,29 @@ def test_bundle_refuses_stale_or_tampered_data(tmp_path,change):
             meta['outputs']['candidates.jsonl']=file_digest(candidate)
         summary.write_text(json.dumps(meta));expected=file_digest(summary)
     with pytest.raises(ValueError):load_bundle(summary,expected,args['sources'],args['documents'])
+
+
+@pytest.mark.parametrize('change',['missing','page','note','body','forms','unbound_receipt','duplicate_record','missing_record'])
+def test_packet_observation_must_match_the_bound_receipt(tmp_path,change):
+    args,summary=bundle(tmp_path,unsupported=True)
+    meta=json.loads(summary.read_text());candidate=args['output']/'candidates.jsonl'
+    row=json.loads(candidate.read_text());review=row['review'];receipt=args['receipt']
+    if change=='missing':review.pop('body_observation')
+    elif change=='page':review['body_observation']['page_sections'][0]['observed_form']='letter'
+    elif change=='note':review['body_observation']['source_completeness_observations']=[]
+    elif change=='body':review['body_sha256']='0'*64
+    elif change=='forms':review['observed_forms']=['letter']
+    elif change=='unbound_receipt':meta['bindings'].pop(str(receipt))
+    else:
+        record=json.loads(receipt.read_text())
+        record['records']=record['records']*2 if change=='duplicate_record' else []
+        receipt.write_text(json.dumps(record))
+        review['receipt_sha256']=meta['bindings'][str(receipt)]=file_digest(receipt)
+    candidate.write_text(json.dumps(row)+'\n')
+    meta['outputs']['candidates.jsonl']=file_digest(candidate)
+    summary.write_text(json.dumps(meta))
+    with pytest.raises(ValueError,match='[Pp]acket observation'):
+        load_bundle(summary,file_digest(summary),args['sources'],args['documents'])
 
 
 def test_loaded_candidates_are_rechecked_when_current_rows_change(tmp_path):

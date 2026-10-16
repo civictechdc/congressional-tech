@@ -38,6 +38,7 @@ receipt, receipt_sha256 | Locator and verified hash of the complete review recei
 body_key, body_sha256 | Retained body locator and verified decoded-byte digest.
 observed_forms | Distinct document forms observed across the complete body.
 primary_forms, component_forms | Reviewed packet roles; their union equals observed_forms.
+body_observation | Complete validated receipt record, copied without removing page sections, notes, limitations or evidence locators. Required in version 2 bundles; the low-level selector still accepts previously compiled inputs.
 reviewer | assistant for the current admitted review input.
 independent_reference, release_approved | Explicit false; selection does not establish either.
 
@@ -104,7 +105,7 @@ The command validates the whole pair's references, then reads complete selected
 groups with ID scans and batches of 32. This bounds batch expansion, not the total
 size of the selected cohort or any single nested row.
 
-The new directory contains candidates.jsonl and summary.json with bundle_version=1.
+The new directory contains candidates.jsonl and summary.json with bundle_version=2.
 The baseline section identifies the exact source and document paths and hashes.
 Candidate records
 include their compiled reviews; the summary binds source files, receipts, evidence,
@@ -121,8 +122,12 @@ that summary, its candidate output, all evidence bindings, the exact baseline pa
 and bytes, and the admission implementation identity. It checks pair integrity,
 group coverage and status counts, then re-evaluates every saved candidate on the
 complete current rows. Inputs and implementation are checked again before return.
-Unknown versions and old unversioned outputs are refused; regenerate those through
-admission rather than editing their headers. A hash establishes identity, not trust
+The reader also requires each embedded body_observation to match its exact record
+in a receipt bound by the admission summary. Body identity and observed forms must
+agree with the compiled review. A receipt is read once per load and all file hashes
+are rechecked before return. Missing, edited or substituted observations are refused.
+Unknown versions, version 1 and old unversioned outputs are refused; regenerate them
+through admission rather than editing their headers. A hash establishes identity, not trust
 in an arbitrary producer: use a pin from the verified admission workflow.
 
 The returned mapping is keyed by document_id. Call
@@ -139,6 +144,39 @@ a portable published index. Loading currently hashes every bound local evidence
 file, including retained PDFs, without reinterpreting their contents. This belongs
 at bundle admission to a consuming process, not in a per-document rendering loop.
 
+Packet representation
+---------------------
+Every admitted review retains the complete body_observation, including all original
+receipt fields and their ordering within lists. Consumers can read pages,
+page_sections, observations, notes and source_completeness_observations when present.
+The record also retains rendered-page hashes and native-text evidence references.
+Absent page sections remain absent; complete body review does not invent page-level
+assignments or establish completeness of the original filing.
+
+Primary/component roles remain in review.primary_forms and review.component_forms.
+Observed forms describe the captured body; they are separate from the baseline's
+literal filename claims, publisher context and selected kinds. Supporting context
+and source limitations remain in the receipt's own words. A consumer must not
+interpret descriptive forms as new taxonomy entries or copied review prose as a
+new filename rule. Fields outside the observation keep their existing meanings.
+
+For the five unsupported packets, the representation preserves:
+
+- Grant-award list: nine pages, with disclosure-role context in the observations.
+- Federal-award expenditure schedule: seventy pages, including the five column
+  blocks and the limits of the retained source.
+- Contract-award list: eight pages, with continuous rows and literal discrepancies.
+- Committee-rules amendment: seventeen pages, separating the amendment instructions
+  from proposed replacement rules without implying their adoption.
+- Simmons disclosure: 119 pages, including embedded biography, tax returns,
+  extension requests and observations about missing original filing material.
+
+These packets remain annotation_only_unsupported_forms with their entire baseline
+document unchanged. The supported portion is not selected in isolation. Version 2
+preserves the evidence needed to explain or later reconsider this decision; it
+does not expand the supported-kind set. Ordinary supported packets carry the same
+complete observation structure, so consumers use one representation for both.
+
 Remaining integration work
 --------------------------
 Explicit writing and verified local reading are now available; recurring capture
@@ -150,9 +188,9 @@ rows, preserving both complete files. It is not a full classification refresh.
 Raw and filename-normalized rows require distinct bindings even when group IDs
 match; the check preserves both and verifies refusal across that boundary.
 
-Next define the representation of the five unsupported packets and portable
-evidence references before viewer integration. Historical local paths must not be
-presented as a portable publication format. Independent references, held-out
+Next define portable evidence references and the consumer loading lifecycle before
+viewer integration. Historical local paths must not be presented as a portable
+publication format. Independent references, held-out
 evaluation, full classification refresh and publication remain separate decisions.
 No source-body acquisition, automatic selection or release permission is introduced
 by these APIs.

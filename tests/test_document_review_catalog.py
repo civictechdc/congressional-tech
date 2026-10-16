@@ -26,7 +26,10 @@ def fixture(tmp_path, unsupported=False):
     fetch=tmp_path/'fetch.json';fetch.write_text(json.dumps(dict(results=[fetched])))
     forms=['letter']+(['tax-return'] if unsupported else [])
     record=dict(fetched,reviewer='assistant',all_pages_visually_reviewed=True,observed_document_forms=forms,
-        rendered_pages={str(render):file_digest(render)},independent_reference=False,release_approved=False)
+        rendered_pages={str(render):file_digest(render)},independent_reference=False,release_approved=False,
+        page_sections=[dict(first_page=1,last_page=1,observed_form='|'.join(forms),description='Embedded forms')],
+        observations=['Filename role does not establish body form.'],notes='Preserve literal discrepancies.',
+        source_completeness_observations=[dict(pdf_pages=[1],observation='Original filing completeness unknown.')])
     receipt=tmp_path/'receipt.json'
     receipt.write_text(json.dumps(dict(input_ledger=str(ledger),input_ledger_sha256=file_digest(ledger),
         fetch_results_path=str(fetch),fetch_results_sha256=file_digest(fetch),records=[record],
@@ -54,6 +57,8 @@ def test_package_bundle_preserves_inputs_nested_values_and_full_packet(tmp_path,
     assert candidate['status']==('annotation_only_unsupported_forms' if unsupported else 'candidate_applied')
     assert candidate['document']['source_occurrences']==[{'literal':['é',None,'é']}]
     assert candidate['document']['document_kind']==(['amendment'] if unsupported else ['letter'])
+    assert result['bundle_version']==2
+    assert candidate['review']['body_observation']==json.loads(args['receipt'].read_text())['records'][0]
     assert all(p.read_bytes()==data for p,data in before.items())
     assert not result['production_selected'] and not result['independent_reference']
     with pytest.raises(FileExistsError):write_candidates(**args)

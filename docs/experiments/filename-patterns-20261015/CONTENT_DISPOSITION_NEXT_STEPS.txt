@@ -360,3 +360,25 @@ evidence references and loading once per snapshot before viewer integration.
 Independent references, held-out evaluation, full classification refresh and
 publication remain separate requirements. Public raw access is working; credentials
 are not required for known object paths on the recorded public R2 endpoint.
+
+Complete packet observations now survive package admission and consumption
+-------------------------------------------------------------------------
+Version 2 bundles carry the entire validated receipt record as body_observation.
+The reader requires exact equality with the bound receipt, including page sections,
+notes, source discrepancies and completeness observations. Primary/component roles
+remain distinct from baseline filename claims and selected kinds. Unsupported
+packets retain their complete annotation and unchanged baseline; no kind was added.
+Version 1 bundles remain preserved and require fresh admission to use the new reader.
+
+All 94 relevant tests pass. The complete-catalog run preserves all prior candidate
+fields for 86 groups / 530 pages, with 81 selections, five annotations and working
+withdrawal. The five unsupported packets retain all 223 pages and 44 sections.
+Both full baseline files and frozen evaluation inputs remain unchanged. See
+packet_observation_checkpoint_v1.json and REVIEW_PACKET_OBSERVATION.txt.
+
+Next make evidence references portable without rewriting source locator text or
+weakening exact-byte bindings. Define a local export/resolution format, validate
+relocation plus missing/altered evidence, and load once per catalog/review snapshot.
+Then integrate the verified packet description into the viewer. Independent
+reference review, held-out evaluation, classification refresh and public release
+remain separate requirements.

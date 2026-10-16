@@ -170,4 +170,5 @@ def compile_review(proposal, original, document, sources, review):
         original_row_sha256=review['source_row_sha256'],receipt=review['receipt'],receipt_sha256=review['receipt_sha256'],
         body_key=observed['body_key'],body_sha256=observed['sha256'],observed_forms=sorted(observed['observed_document_forms']),
         primary_forms=list(proposal['proposed_primary_forms']),component_forms=list(proposal['proposed_component_forms']),
+        body_observation=deepcopy(observed),
         reviewer='assistant',independent_reference=False,release_approved=False)

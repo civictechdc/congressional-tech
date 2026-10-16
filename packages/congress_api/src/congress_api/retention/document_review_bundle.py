@@ -26,7 +26,7 @@ def load_bundle(summary_path, summary_sha256, sources, documents):
     bindings = {}
     summary_path = verified(summary_path,summary_sha256,bindings)
     summary = json.loads(summary_path.read_text())
-    if type(summary.get('bundle_version')) is not int or summary['bundle_version'] != 1:
+    if type(summary.get('bundle_version')) is not int or summary['bundle_version'] != 2:
         raise ValueError('Unsupported review bundle version')
     if (any(summary.get(f) is not False for f in ['production_selected','independent_reference','release_approved'])
             or summary.get('baseline_files_unchanged') is not True
@@ -50,6 +50,23 @@ def load_bundle(summary_path, summary_sha256, sources, documents):
     if (not candidates or len(candidates) != len(rows) or type(summary['reviewed_groups']) is not int
             or len(candidates) != summary['reviewed_groups']):
         raise ValueError('Missing or duplicate candidate identities')
+    receipts = {}
+    for candidate in rows:
+        review = candidate['review']
+        path = review['receipt']
+        if summary['bindings'].get(path) != review['receipt_sha256']:
+            raise ValueError('Packet observation receipt is not bound by admission')
+        if path not in receipts:
+            records = json.loads(Path(path).read_text())['records']
+            receipts[path] = {r['document_id']:r for r in records}
+            if len(receipts[path]) != len(records):
+                raise ValueError('Duplicate packet observation in receipt')
+        observed = receipts[path].get(review['document_id'])
+        if (observed is None or review.get('body_observation') != observed
+                or review['body_key'] != observed['body_key']
+                or review['body_sha256'] != observed['sha256']
+                or set(review['observed_forms']) != set(observed['observed_document_forms'])):
+            raise ValueError('Packet observation differs from the verified receipt')
     validate_document_indexes(sources,documents)
     source_rows = selected_groups(sources,set(candidates),'source_id')
     docs = selected_groups(documents,set(candidates),'document_id')

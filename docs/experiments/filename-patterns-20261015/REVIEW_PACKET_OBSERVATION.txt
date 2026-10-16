@@ -1,0 +1,104 @@
+Complete packet observations in local review bundles: self-review
+=================================================================
+Findings
+--------
+No blocking finding in the representation or reader checks. The prior compiled
+review retained form names and a receipt locator but omitted page sections,
+notes, source discrepancies and completeness observations. Version 2 carries the
+entire validated receipt record and requires exact equality with its bound source
+before exposing a candidate. This makes the five unsupported packets explainable
+without changing selected kinds or discarding unsupported components.
+
+Compatibility is explicit: version 1 bundles must be regenerated through admission.
+Existing files remain intact. The low-level selector still accepts prior compiled
+inputs; the package writer always emits complete observations in version 2. This
+is local evidence representation, not an independent rereading or public release.
+
+Patch summary and function trace
+--------------------------------
+Package filenames below are relative to congress_api/retention/.
+
+Function | Location | Input -> output | Verified behavior
+compile_review | document_review_receipts.py:138,173 | validated observation, original/current members and proposal -> compiled review | Adds a detached body_observation containing every validated record field; existing form roles and exact scope are unchanged.
+write_candidates | document_review_catalog.py:39,63,78 | verified inputs and current pair -> separate bundle | Calls the compiler as before and declares bundle_version=2; no baseline write or taxonomy expansion.
+load_bundle | document_review_bundle.py:24,53-69 | pinned bundle and exact pair -> validated candidate map | Requires version 2, receipt binding, unique record identity and exact embedded-observation equality; checks body locator/digest and observed forms against that record.
+select_document | document_review_bundle.py:12 | baseline plus optional candidate map -> detached result | Existing full-result comparison and deep copy preserve the observation through use; omission withdraws and stale scope remains refused.
+apply_review_candidate | document_reviews.py:45 | baseline and optional compiled review -> selection or annotation | Unchanged implementation; unsupported packets preserve the entire baseline and retain the full review separately.
+validate_record | document_review_receipts.py:50 | receipt record, original row and saved body -> verified evidence | Existing full page/render/hash checks run during admission; source notes remain attributed observations, not independent truth.
+
+Data flow and invariants
+------------------------
+H1: Projecting a small list of page-related fields is sufficient. Refined after
+reading all five packet records: Simmons also has source_completeness_observations,
+while funding tables and proposed rules carry critical distinctions in observations.
+Copying the complete validated record preserves both known and future fields and
+avoids a second lossy field mapping. List order and literal strings remain intact.
+Primary/component roles remain in the existing compiled fields; source filenames,
+claims and selected kinds remain separate on the baseline document.
+
+H2: An embedded observation alone establishes its provenance. Refuted: the reader
+first requires the receipt path/hash in the admission bindings, then matches the
+entire object to the exact document's record in that receipt. Duplicate and absent
+records are refused. Body identity and form set must agree with the compiled review.
+All bound files and the implementation are rechecked before returning candidates.
+A receipt is parsed once per load; each observation is copied in the detached result.
+
+H3: Describing unsupported forms requires selecting their supported subset.
+Refuted: the existing annotation status already preserves the complete packet.
+The new representation supplies its evidence without changing that status. In
+particular, disclosure-role filenames do not turn funding tables into signed
+questionnaires; proposed replacement rules do not imply adopted rules; a complete
+retained-PDF review does not establish completeness of original tax filings.
+
+Tests and edge cases
+--------------------
+tests/test_document_review_catalog.py:50 checks version 2, exact observation equality,
+nested values and unchanged inputs for supported and mixed supported/descriptive
+packets. The fixture includes a same-page composite, source notes and completeness
+observations. Existing refusal tests at :69, :93, :111 and :135 still cover bad
+inputs, incomplete page coverage, invalid lineage and mid-admission changes.
+
+tests/test_document_review_bundle.py:19 checks nested observation detachment and
+withdrawal. At :37 the existing tampering tests now include explicit version 1
+refusal. At :65 eight cases cover missing observations, edited page assignments,
+removed completeness notes, changed body digest or forms, unbound receipts,
+duplicate receipt records and absent records. These tests repin the changed output
+so refusal must come from evidence checks rather than only the outer file hash.
+Existing current-row, path and mid-read refusal tests at :87, :96 and :103 pass.
+The admission, bundle, selector and import-fence suite passes 94 tests in 1.36s.
+
+Actual cohort check
+-------------------
+packet-observation-v1 admits and consumes version 2 directly on the complete saved
+catalog pair. All 86 observations / 530 reviewed pages equal their receipt records
+exactly. Removing only the new body_observation field restores every prior candidate
+value, including selected kinds, group bindings, roles and statuses. The result
+remains 81 selected candidates and five whole-packet annotations; all withdrawal
+checks pass on complete source/document rows with matching full-catalog digests.
+Both entire catalog files, nine frozen sources and the pilot/labels remain unchanged.
+
+The five unsupported packets retain 223 pages across 44 recorded sections: grant
+awards 9 pages, expenditure schedule 70, contract awards 8, proposed rules 17 and
+Simmons 119. Embedded same-page forms and all source-completeness notes are retained.
+The complete candidate file grows from 3,027,282 to 3,251,447 bytes
+(224,165 additional bytes) to carry the observations. No performance improvement
+is claimed. Admission took 83.523s, consumption 60.164s, and the complete
+run 145.467s with peak process RSS 2,275,540,992 bytes on macOS. These are
+single-run diagnostics with a different measurement scope from the earlier runs.
+The package implementation and reader hashes, tests, input bindings and exact
+outputs are pinned in packet_observation_checkpoint_v1.json.
+
+Limits and next steps
+---------------------
+The embedded record intentionally retains historical local paths, including render
+and native-text references. It is not portable yet. Next define local export and
+resolution of content-addressed evidence while preserving original locator text,
+then specify loading once per catalog/review snapshot and explicit refusal or
+withdrawal for consumers. Validate relocation and altered/missing evidence before
+viewer integration. Do not silently use a refused bundle as if no review existed.
+Independent reference review, held-out evaluation, classification refresh and
+publication remain separate requirements.
+
+VERDICT: APPROVE for complete local packet evidence with unchanged selection.
+Coverage: ADEQUATE for the changed admission/reader paths and actual reviewed cohort.
+Confidence: HIGH within this scope; no claim of independent classification accuracy.

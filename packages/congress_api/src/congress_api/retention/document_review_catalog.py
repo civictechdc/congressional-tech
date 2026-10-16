@@ -75,7 +75,7 @@ def write_candidates(sources, documents, proposals, proposals_sha256, receipt, r
         for candidate in candidates: stream.write(json.dumps(candidate,ensure_ascii=False)+'\n')
     # A completed summary is the completion marker; partial output is not reusable.
     for path,digest in bindings.items(): verified(path,digest,{})
-    summary = dict(bundle_version=1,
+    summary = dict(bundle_version=2,
         baseline={name:dict(path=str(path),sha256=bindings[str(path)]) for name,path in [('sources',sources),('documents',documents)]},
         reviewed_groups=len(candidates),source_rows=len(source_rows),
         reviewed_pages=sum(r['observation']['pages'] for r in reviews.values()),
