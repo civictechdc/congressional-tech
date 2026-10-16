@@ -81,7 +81,7 @@ class DispatcherContinuationTests(unittest.TestCase):
         from recovery_publication_continuation import Continuation
         scripts = Path(__file__).resolve().parents[1]/'scripts'
         sys.path.insert(0, str(scripts))
-        for failed_phase in ('catalog', 'mappings', 'prepared', 'publication'):
+        for failed_phase in ('catalog', 'mappings', 'prepared', 'publication', 'incomplete_catalog'):
             with self.subTest(phase=failed_phase), tempfile.TemporaryDirectory() as folder:
                 root = Path(folder); repo = root/'repo'; (repo/'.cache').mkdir(parents=True)
                 (repo/'scripts').mkdir()
@@ -111,6 +111,9 @@ class DispatcherContinuationTests(unittest.TestCase):
                 calls = dict(catalog=0, mappings=0, prepared=0, publication=0)
                 def catalog(store, **kwargs):
                     calls['catalog'] += 1
+                    if failed_phase == 'incomplete_catalog':
+                        (kwargs['root']/'diagnostic.txt').write_text('Preserve incomplete build evidence')
+                        raise RuntimeError('Injected incomplete catalog failure')
                     store.read('indexes/catalog.json')
                     for item in self.manifest['files'].values(): store.read(item['key'])
                     return {'unchanged': True}
@@ -145,8 +148,16 @@ class DispatcherContinuationTests(unittest.TestCase):
                     with patch.object(Continuation, 'phase', fail_after_accept):
                         with self.assertRaisesRegex(RuntimeError, 'Injected'): module.run(args)
                     args.resume = True
-                    self.assertEqual(module.run(args), {'status': 'published'})
-                self.assertEqual(calls, dict(catalog=1, mappings=1, prepared=1, publication=1))
+                    if failed_phase == 'incomplete_catalog':
+                        with self.assertRaisesRegex(RuntimeError, 'Incomplete catalog build retained'):
+                            module.run(args)
+                        self.assertEqual((args.destination/'build/diagnostic.txt').read_text(), 'Preserve incomplete build evidence')
+                    else:
+                        self.assertEqual(module.run(args), {'status': 'published'})
+                expected_calls = (dict(catalog=1, mappings=0, prepared=0, publication=0)
+                                  if failed_phase == 'incomplete_catalog'
+                                  else dict(catalog=1, mappings=1, prepared=1, publication=1))
+                self.assertEqual(calls, expected_calls)
 
 
 class ExternalReadinessTests(unittest.TestCase):

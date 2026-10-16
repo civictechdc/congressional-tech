@@ -224,9 +224,11 @@ def run(args):
         guard.boundary()
         def catalog_phase():
             build = destination/'build'
-            # Only incomplete local scratch is replaced; retained source objects and
-            # remote receipts survive an interrupted catalog build.
-            if build.exists(): shutil.rmtree(build)
+            # An unaccepted build may contain the only diagnostic SQLite state.
+            # Explicit continuation reuses accepted phases; it never deletes or
+            # silently restarts incomplete catalog work.
+            if build.exists():
+                raise RuntimeError('Incomplete catalog build retained; reconcile before continuation: '+str(build))
             build.mkdir(); (build/'indexes').mkdir()
             working = WorkingCatalog(build/'working.sqlite')
             try:
