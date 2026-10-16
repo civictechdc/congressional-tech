@@ -91,6 +91,18 @@ class ContinuationTests(unittest.TestCase):
         continued = self.resume(); continued.reconcile(remote, 'b')
         self.assertEqual(continued.replay(remote, 'b', key, b'full bytes'), {'ETag': 'v1'})
         self.assertEqual(remote.puts, 1)
+    def test_definite_immutable_locator_refusal_does_not_block_later_resume(self):
+        remote = Remote(); key = 'viewer-publications/catalogs/existing.json'
+        remote.objects[key] = (b'old locator', 'old')
+        def refuse(**kwargs):
+            raise ClientError({'Error': {'Code': 'PreconditionFailed'}}, 'PutObject')
+        remote.put_object = refuse
+        proxy = GuardedPublicationClient(remote, guard=lambda: None,
+            journal=self.c.record, after_write=lambda *a: None)
+        with self.assertRaises(ClientError):
+            proxy.put_object(Bucket='b', Key=key, Body=b'new locator', IfNoneMatch='*')
+        self.assertNotIn(key, self.c.value['writes'])
+        self.resume().reconcile(remote, 'b')
     def test_different_replay_payload_is_refused(self):
         remote = Remote(); key = 'viewer-publications/releases/x/file'
         self.intent(key, b'exact', IfNoneMatch='*'); remote.objects[key] = (b'exact', 'v1')

@@ -120,12 +120,24 @@ class GuardedPublicationClient:
                 sha256=digest, expected_etag=kwargs.get('IfMatch'),
                 if_none_match=kwargs.get('IfNoneMatch')))
             uncertain = False
+            request_error = None
             try:
                 result = self.client.put_object(**kwargs)
-            except Exception:
+            except Exception as error:
+                request_error = error
                 # Verify the possible commit once; never resend this request.
                 uncertain, result = True, {}
-            version = verify()
+            try:
+                version = verify()
+            except ValueError:
+                # Preserve a definite condition refusal for maintained callers
+                # that deliberately keep an existing immutable catalog locator.
+                from botocore.exceptions import ClientError
+                if (isinstance(request_error, ClientError)
+                        and request_error.response['Error']['Code'] in {'PreconditionFailed', '412'}):
+                    self.journal('publication_write_refused', dict(key=key, reason='condition_failed'))
+                    raise request_error
+                raise
             if uncertain:
                 result = {'ETag': version}
                 self.journal('publication_acknowledgment_reconciled', dict(key=key))

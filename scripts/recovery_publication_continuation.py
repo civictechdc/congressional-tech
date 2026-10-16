@@ -70,6 +70,8 @@ class Continuation:
         with self.lock:
             if event == 'publication_write_intent':
                 self.value['writes'][value['key']] = dict(value, verified=False)
+            elif event == 'publication_write_refused':
+                self.value['writes'].pop(value['key'], None)
             elif event == 'publication_write_verified':
                 self.value['writes'][value['key']].update(value, verified=True)
             else:

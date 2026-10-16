@@ -12,6 +12,7 @@ import tempfile
 import threading
 import unittest
 from unittest.mock import patch
+from botocore.exceptions import ClientError
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT/'scripts'))
@@ -39,6 +40,8 @@ class Remote:
                 self.active += 1; self.peak = max(self.peak, self.active)
             self.barrier.wait(timeout=5)
         key = kwargs['Key']; body = kwargs['Body']
+        if kwargs.get('IfNoneMatch') == '*' and key in self.objects:
+            raise ClientError({'Error': {'Code': 'PreconditionFailed'}}, 'PutObject')
         raw = body if isinstance(body, bytes) else body.read()
         etag = hashlib.md5(raw).hexdigest()
         self.objects[key] = raw, etag; self.puts[key] += 1
@@ -63,6 +66,7 @@ class TransferTests(unittest.TestCase):
                 remote = Remote(); remote.lost_ack = lost_ack
                 selected = {'catalog_id': 'selected'}
                 remote.objects['indexes/catalog.json'] = (json.dumps(selected).encode(), 'selected-etag')
+                remote.objects['viewer-publications/catalogs/selected.json'] = (b'old saved locator', 'old-locator')
                 manifest = dict(info={'catalog_id': 'selected'}, source_manifest=selected)
                 probes = []
                 def public_open(request):
