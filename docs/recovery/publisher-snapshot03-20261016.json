@@ -1,0 +1,37 @@
+{
+  "at": "2026-10-16T05:40:05.184882+00:00",
+  "snapshot_qualification_complete": true,
+  "workers_complete": false,
+  "qualified_urls": 113,
+  "distinct_bodies": 113,
+  "snapshots": [
+    {
+      "worker": "publisher-continuation-02",
+      "completed_receipts": 156,
+      "total": 8619,
+      "snapshot_sha256": "f61d8da2e8875642b20b118192c80270e921e42a6c3933f8c1e3d3c5f52cb7ac",
+      "worker_completion_claimed": false
+    }
+  ],
+  "actual_qualification_wait_exit": 0,
+  "qualification_physical_absence": true,
+  "published": false,
+  "next_steps": [
+    "Include 113 qualified PDFs and 50 retained transcript mappings in a successor batch.",
+    "Keep batch12 immutable until its import and catalog publication are verified.",
+    "Continue NARA and unblocked publisher routes; no duplicate downloads."
+  ],
+  "remaining_counts": {
+    "lookup_unresolved": 15957,
+    "validated_local_recovery": 1808,
+    "unprocessed_archive_candidate": 2679,
+    "attempted_not_recovered": 31,
+    "retained_copy_link_prepared": 3099
+  },
+  "evidence_sha256": {
+    "output/corpus-retry-20261015/publisher-snapshot-03/qualified.json": "c3f1e82b7b0bdf90f71559dfdb87068035a1f029a0cc7c4d8ddbd10f8f974339",
+    "output/corpus-retry-20261015/publisher-snapshot-03/complete.json": "4f5fa4123fc44f89feeba670efc51bb4ea431a42fb8c6a1e92c6b0328f0aab00",
+    "output/corpus-retry-20261015/snapshot_publisher_continuation_02.py": "757afa86c8fae6196851bbe4dd6363c4580714be7c48d6ae50cd5322d99840f3",
+    "output/corpus-retry-20261015/retained-empty-html-fulltext-rescan.json": "70699070348cc38ca09c98a4997eb9b89cb2658b635b2b56e3836b9330d4cb81"
+  }
+}
