@@ -664,3 +664,18 @@ six unavailable cases unresolved. Use the proposals to select small, supported
 house_naming changes with positive and negative tests plus cohort replay.
 Independent reference labels and fresh raw-catalog qualification remain separate
 unfinished requirements.
+
+Case-specific content dispositions prepared
+------------------------------------------
+The complete 91-row proposal CSV and detailed JSON are ready. They cover 85
+reviewed bodies / 527 pages and six unresolved unavailable cases, with exact
+body/row bindings and source limitations. All forms are supported by the linked
+reviews; original metadata decisions remain unchanged. No runtime code changed.
+
+CONTENT_DISPOSITION_NEXT_STEPS.txt supersedes the prior instruction to prepare
+these proposals. Next compare current catalog selection with the proposals,
+starting with the existing retained-content refinement and restoration paths.
+Filename rules remain in house_naming; exact-body evidence selection belongs in
+congress_api retention. Do not force body-specific findings into filename rules
+or broadly invert filename/content precedence. Preserve composite forms and
+unsupported descriptive labels while testing a narrow evidence-selection change.

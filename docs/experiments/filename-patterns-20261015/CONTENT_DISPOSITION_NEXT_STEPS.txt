@@ -1,0 +1,88 @@
+Use retained content without erasing filename evidence
+=====================================================
+
+Result and recommendation
+-------------------------
+All 91 metadata needs_review cases now have a case-specific proposal in
+content_disposition_proposals_v1.csv and its detailed JSON counterpart. The
+85 reviewed bodies cover 527 retained pages: 55 single-form cases, 25 composite
+packets using existing labels, three funding tables with descriptive form labels,
+and two composites with descriptive component labels. Six cases have no eligible
+retained body and remain unresolved. These are assistant proposals, not independent
+reference labels or runtime classification changes. The complete CSV was reread.
+
+The JSON keeps original before/after kinds, literal source claims, exact original
+row and body identities, review receipts, page sections and source limitations.
+The CSV is a compact review view. Primary/component distinctions propose how to
+describe a packet; they are not an approved public schema. A primary list may
+contain several forms when no single form describes the packet.
+
+What belongs where
+------------------
+house_naming owns reusable filename interpretation. Its Engine reads filenames
+and publisher context offline; it does not inspect bodies. Keep improvements to
+literal phrase interpretation there when filename evidence supports them.
+
+congress_api.retention.document_index owns evidence selection. Its
+_select_document_kind currently prefers filename kinds except the narrow
+retained witness-statement refinement of generic testimony. Content otherwise
+fills a missing filename classification. A correct body observation therefore
+does not automatically correct a misleading filename classification.
+
+Do not teach house_naming that Bio, Wstate, Amendment or Disclosure filenames
+universally mean the forms found in this selected cohort. Nor should the current
+catalog start preferring every existing content_document_kind value: older cover
+readings do not establish complete packet contents. The frozen content reader
+and its evaluation population remain unchanged.
+
+Next implementation sequence
+----------------------------
+1. Trace the existing filename/content selection through source refresh, cached
+   extraction, both groupers and retained aliases. Use the prior witness-specificity
+   implementation and tests as the starting point, not a second selection system.
+   Record which reviewed cases already have usable native content readings and
+   which would require explicit full-packet evidence. Use saved data only.
+
+2. Build a local comparison for the 91 exact rows that reports current selected
+   kinds beside proposed forms, component forms and the reason for each conflict.
+   Do not equate missing content evidence with agreement, and do not apply a review
+   to another body at the same URL. Preserve six unavailable outcomes and both
+   distinct Palmer document IDs. Keep the original 1,902-row ledger immutable.
+
+3. From that comparison, implement the smallest supported selection change. Any
+   complete-body review input must be an explicit, separately attributed evidence
+   source with exact body and row identity; a filename rule or old cover reading
+   must not acquire that authority. Keep unsupported descriptive forms in review
+   annotations until their public representation is decided. Preserve all actual
+   packet components and the disclosure/attachment role independently.
+
+4. Verify mismatched body identity, changed rows, unavailable content, corrected or
+   withdrawn reviews, multiple body aliases, scan-only evidence and composite
+   packets. Test refresh, cache reuse and both groupers so derived classifications
+   never become filename claims. Replay the entire reviewed cohort plus unaffected
+   controls; stop promotion on unexplained changes. Do not use the locked pilot as
+   a tuning set or treat these assistant proposals as independent evaluation.
+
+5. Complete fresh raw-catalog qualification and independent reference review
+   separately. Local house_naming remains 3.2.7. These artifacts neither qualify
+   that release nor authorize publication.
+
+Useful controls already reviewed
+--------------------------------
+The 30 disclosure-only bodies contrast with 11 disclosure/biography packets and
+two biography-only bodies carrying disclosure filenames. The 12 vote bodies
+contrast with genuine substitute amendments containing a letter or proposed rules.
+The three funding tables are disclosure support without signed questionnaires.
+Nine memorandum packets contain witness lists; three do not. Two news releases
+reproduce opening statements, while seven opening statements do not establish a
+separate release form. The public-witness packet and Simmons packet require
+multiple forms and preserved page-level evidence.
+
+Verification completed for the proposals
+----------------------------------------
+Receipt chains, saved body/render hashes and original-row identities passed the
+existing validator. All 91 proposal IDs match the needs_review set exactly;
+85 have reviewed evidence and six have none. Proposed forms equal reviewed forms,
+without additions or omissions. JSON and CSV were read back; nine frozen source
+hashes and original ledger fields remain unchanged. No runtime code changed, so
+no new runtime test-suite result is claimed. See content_disposition_checkpoint_v1.json.

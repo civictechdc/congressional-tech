@@ -1,0 +1,25 @@
+{
+  "inputs": {
+    "output/filename-patterns-20261015/content-review-linkage-v9/ledger.jsonl": "00f510bbcf5dcaaa4a76a04e6b30a8dc9f72ff4fb3e73337f0f40b722abdd787",
+    "output/filename-patterns-20261015/review-evidence-v4/ledger.jsonl": "218c5ecc8a8eeb05b047414f4ffb7d5a9938d4a1f8d0d1e419b9c998932971e5",
+    "docs/experiments/filename-patterns-20261015/remaining_content_review_v3.json": "74fbfadfd42817785edfc1b78ad196b95ceba16522723784af2f74385190c16d",
+    "docs/experiments/filename-patterns-20261015/content_review_linkage_checkpoint_v9.json": "8ddfde0fc903666ae00be8d237284bea7cc7a468b15c446528fa606e58090c38"
+  },
+  "outputs": {
+    "docs/experiments/filename-patterns-20261015/content_disposition_proposals_v1.json": "82001330a71762375598d88e94d7dc8bf6e0db65c0c26eda2a49065b90cd7b8c",
+    "docs/experiments/filename-patterns-20261015/content_disposition_proposals_v1.csv": "f87be7647c82a4532c28bb969d715cd5cdf030f36b3911c876103b31655c5528"
+  },
+  "verified": {
+    "all_receipt_bindings_rechecked": true,
+    "all_original_fields_except_content_review_unchanged": true,
+    "exact_proposal_coverage": 91,
+    "reviewed_documents": 85,
+    "reviewed_pages": 527,
+    "unresolved_without_body": 6,
+    "all_proposed_forms_have_review_support": true,
+    "frozen_source_hashes_unchanged": 9
+  },
+  "classification_mutations": false,
+  "independent_reference": false,
+  "release_approved": false
+}
