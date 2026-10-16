@@ -1,0 +1,23 @@
+{
+  "at": "2026-10-16T04:31:58.643659+00:00",
+  "status": "retained_review_completed_acquisition_queue_not_dispatched",
+  "additional_retained_html_full_hash_checked": 173,
+  "additional_retained_html_without_document_body": 173,
+  "new_recovery_mappings": 0,
+  "remaining_html_groups": 1470,
+  "remaining_html_urls": 1471,
+  "local_pdf_candidates_with_qpdf_warnings": 3,
+  "next_steps": [
+    "Wait for active 20-attachment NARA worker actual completion",
+    "Resolve PDF warning candidates using full decode or retained full-render evidence",
+    "Use identity replay on the remaining HTML queue, reusing probe payloads",
+    "Keep empty pages and no-prepared-statement metadata distinct from recovered documents",
+    "Seal successor batch including 2933 new mappings and completed PDF recoveries before import"
+  ],
+  "evidence_hashes": {
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/html-slash-other-html-review.json": "415da047dc1be75baa16ee27b0421fc260ec0032744e61da26765f27887b7fde",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/html-slash-pdf-validation.json": "6ef1f3c52bb37f65edc4ccbff3c95a4c720f97a5fc412b2a0dc9b6011346e75e",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/remaining-html-acquisition-queue.json": "b67e7bdd9042e907e60739659c2869d9046902bfc2e10fb3b535f67045d49411"
+  },
+  "limitation": "Remaining queue still includes some retained PDF variants; reconcile those before network dispatch."
+}
