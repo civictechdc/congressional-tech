@@ -13,5 +13,23 @@
     "manifest.json": "89784266a92b06dee429a23e77c4db5987414af95f727df73eb682abf9bb458e",
     "prepared-source-records.json": "9587122cee99806d0be2344eeae77681632ecdba51f85ed1a5af89043331fe79",
     "source-record-preparation.json": "f63b3bc61b61bdd889264397f17dc4dae5bd8dd6865f66480e8c884bdcd34766"
+  },
+  "remote_readiness": {
+    "at": "2026-10-16T03:28:35.400315+00:00",
+    "local_only": true,
+    "source_records": 1081,
+    "zip_parent_records": 15,
+    "capture_rows": 1245,
+    "distinct_capture_bodykeys": 917,
+    "remote_existing": 559,
+    "remote_absent": 358,
+    "prior_full_readback_reused_with_fresh_head": 437,
+    "new_full_body_readbacks": 122,
+    "files": {
+      "manifest.json": "89784266a92b06dee429a23e77c4db5987414af95f727df73eb682abf9bb458e",
+      "prepared-source-records.json": "9587122cee99806d0be2344eeae77681632ecdba51f85ed1a5af89043331fe79",
+      "source-record-preparation.json": "f63b3bc61b61bdd889264397f17dc4dae5bd8dd6865f66480e8c884bdcd34766",
+      "remote-body-readback.json": "7765549814568f0a09e0a0b80ba7e4cb2cb6b3f6a0e144760832b604676d9072"
+    }
   }
 }
