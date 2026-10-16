@@ -1,0 +1,26 @@
+{
+  "at": "2026-10-16T07:10:27.097201+00:00",
+  "actual_wait_exit": 0,
+  "qualified_urls": 35,
+  "full_body_hashes_verified": true,
+  "archive_index_sha1_verified": true,
+  "source_requests": 0,
+  "published": false,
+  "complete_sha256": "5db37ca80b194475cc7341b25eb033253aab880ec367c017608fb839684c97be",
+  "remaining_counts": {
+    "lookup_unresolved": 14092,
+    "validated_local_recovery": 3477,
+    "unprocessed_archive_candidate": 2544,
+    "attempted_not_recovered": 27,
+    "retained_copy_link_prepared": 3434
+  },
+  "remaining_unresolved": 16663,
+  "prepared_recovered_urls": 6911,
+  "ledger_sha256": "f69bb8ecf3153a9302ec0cd02e17231ebc182dd6af5789af08bdf29b31623508",
+  "next_steps": [
+    "Keep checkpoint12 publication as the sole active writer.",
+    "Publish sealed checkpoint14 after checkpoint12 readback succeeds.",
+    "Prepare a later delta for the 253 publisher PDFs, 35 NARA HTML captures, and three ZIP packages verified after checkpoint14 was sealed.",
+    "Resume remaining source routes only with adequate space and skip every retained successful download."
+  ]
+}
