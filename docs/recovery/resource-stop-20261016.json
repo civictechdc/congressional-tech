@@ -1,0 +1,75 @@
+{
+  "at": "2026-10-16T07:01:01.921688+00:00",
+  "resource_failure": true,
+  "free_disk_bytes": 10952941568,
+  "reserve_bytes": 12884901888,
+  "workers": [
+    {
+      "job": "publication-checkpoint12-retry01",
+      "pid": 21797,
+      "exec_session": 79117,
+      "actual_wait_exit": 130,
+      "physical_absence_verified": true,
+      "completion_not_implied_by_exit_zero": true
+    },
+    {
+      "job": "publisher-continuation-02",
+      "pid": 63910,
+      "exec_session": 57405,
+      "actual_wait_exit": 130,
+      "physical_absence_verified": true,
+      "completion_not_implied_by_exit_zero": true
+    },
+    {
+      "job": "publisher-file-refusal-continuation",
+      "pid": 75285,
+      "exec_session": 12831,
+      "actual_wait_exit": 0,
+      "physical_absence_verified": true,
+      "completion_not_implied_by_exit_zero": true
+    },
+    {
+      "job": "nara-html-continuation-03",
+      "pid": 66915,
+      "exec_session": 36527,
+      "actual_wait_exit": 1,
+      "physical_absence_verified": true,
+      "completion_not_implied_by_exit_zero": true
+    },
+    {
+      "job": "govinfo-bulk-packages-04",
+      "pid": 22629,
+      "exec_session": 39401,
+      "actual_wait_exit": 0,
+      "physical_absence_verified": true,
+      "completion_not_implied_by_exit_zero": true
+    },
+    {
+      "job": "govinfo-bulk-qualified-04",
+      "pid": 22643,
+      "exec_session": 9458,
+      "actual_wait_exit": 1,
+      "physical_absence_verified": true,
+      "completion_not_implied_by_exit_zero": true
+    }
+  ],
+  "compression_attempt": {
+    "script": "output/corpus-retry-20261015/compress_failed_build_copy.py",
+    "parent_pid": 23137,
+    "child_pid": 23220,
+    "child_last_state": "?E",
+    "termination_signals_sent": true,
+    "atomic_replacement_not_reached": true,
+    "original_sqlite_bytes": 30196588544,
+    "original_sqlite_mtime_ns": 1792133331289030622,
+    "evidence_preserved": true,
+    "explanation": "Transparent compression attempt coincided with severe memory pressure and growing swap; resource stop requested before replacement. Child remained in OS exiting state."
+  },
+  "publication_retry_write_intents": 0,
+  "restart_dispatched": false,
+  "next_steps": [
+    "Resolve disk pressure and verify compression child physical exit; do not touch system swap files or unrelated processes.",
+    "Use user-provided storage or an authorized byte-preserving archive strategy for the failed 28.1 GiB SQLite build.",
+    "Reconcile terminal receipts and preserve successes before any selective continuation."
+  ]
+}
