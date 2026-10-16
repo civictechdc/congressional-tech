@@ -15,6 +15,17 @@ operations work offline and do not read or download documents.
 A filename can supply useful evidence without proving a document's contents,
 identity or legislative status. The APIs keep those distinctions visible.
 
+Catalog 3.2.0 adds four complete, publisher-qualified PDF layouts: public-law
+package names on GovInfo, GPO and Congress.gov; House short bill names ending in
+`RH_xml` or `SUS_xml` on `docs.house.gov`; and Financial Services hearing serial
+names such as `112-12.pdf`. Public laws retain their own `public-law` kind within
+the legislation family. Numeric hearing names supply `published-hearing` and a
+literal `serial_token`, not a verified Congress or GPO publication number:
+the reviewed `103-3.pdf` cover actually prints serial `113-3`. Summaries,
+amendment suffixes, unrelated publishers and non-PDF files remain outside these
+rules. The content checks and frozen-population replay are recorded in
+[`CONTINUATION.txt`](../../docs/experiments/filename-patterns-20261015/CONTINUATION.txt).
+
 ## Choose an API
 
 | Task | API | Result |

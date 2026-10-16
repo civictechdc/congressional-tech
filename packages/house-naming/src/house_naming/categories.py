@@ -29,7 +29,7 @@ _FAMILY_MEMBERS = {
     'transcript': ('committee-transcript',),
     'report': ('committee-report', 'committee-report-part', 'committee-report-unnumbered',
                'conference-report', 'conference-unnumbered', 'published-report'),
-    'legislation': ('legislative-text', 'bill-named-draft', 'bill-numbered', 'bill-numbered-described',
+    'legislation': ('public-law', 'legislative-text', 'bill-named-draft', 'bill-numbered', 'bill-numbered-described',
                     'bill-preintroduced', 'bill-suspension-numbered', 'bill-titled-draft',
                     'bill-unnumbered', 'bill-untyped-draft', 'bill-untyped-numbered',
                     'appropriation-described', 'appropriation-routed', 'conference-legislation-part'),

@@ -1,0 +1,74 @@
+Document-kind classification: next steps
+=======================================
+
+Starting point
+--------------
+The 3.2.0 continuation adds 831 classifications in the frozen experiment and
+prepares a 400-record PDF review set. It preserves all 9,427 earlier kinds.
+The broader retained-source rebuild for 3.1.0 is still in progress at planning
+time. These phases describe future work; this commit does not publish 3.2.0.
+
+1. Verify the current publication and freeze a full-catalog baseline
+-----------------------------------------------------------------
+Read back the 3.1.0 rebuild summary, paired catalog identity and public viewer
+manifest. Verify hashes, row counts and naming version. If the run fails, retain
+its diagnostics and address that failure before starting another rebuild.
+
+Use the completed catalog to count unresolved document groups by publisher,
+format, role and evidence availability. Include unnamed records. Reconcile the
+frozen study against this catalog; do not extrapolate its coverage percentages.
+
+Deliverable: verified publication receipt and a reproducible full-catalog census.
+
+2. Qualify the committed filename changes against that baseline
+-------------------------------------------------------------
+Replay 3.2.0 against the complete baseline. Inspect every changed existing kind,
+alongside newly classified and still-unresolved records. Recheck ID conservation,
+role decisions and paired-table consistency. Separate real classification changes
+from differences caused by additional or refreshed source records.
+
+Deliverable: full-catalog before/after report suitable for the next release.
+Release condition: explain all changed prior kinds; no unexplained losses or
+identity changes. Batch the next approved publication rather than overlapping
+retained-source rebuilds.
+
+3. Extract and label the frozen PDF pilot
+---------------------------------------
+Resolve the 400 selected document IDs against the fresh baseline without quietly
+replacing unavailable or newly classified examples. Report changed eligibility.
+Read retained bytes and check body hashes. Extract first-page/title text, inspect
+additional pages where needed, and use OCR for scans. Preserve retrieval failures.
+
+Create reference labels with page numbers and short evidence excerpts. Use the
+200 development records to refine deterministic rules and any model-assisted
+candidate classifier. Keep the 200 held-out records separate until evaluation;
+do not tune on their outcomes. Labels remain reviewable decisions, not cluster
+membership propagated to every filename.
+
+Deliverable: completed reference set and comparison of precision, coverage,
+abstentions, disagreements, time and processing cost. Report per-kind sample
+sizes and uncertainty. Choose automation thresholds after seeing enough evidence;
+the balanced pilot alone is not a population-wide precision estimate.
+
+4. Resolve XML roles and source associations as separate investigations
+--------------------------------------------------------------------
+For the 9,724 unresolved XML records in the frozen study, inspect native roots,
+schemas and identifiers. Reuse maintained parsers to separate document content
+from meeting, package and index metadata. Refresh these counts from phase 1.
+
+For the 802 uncertain source associations, query current retained capture and
+redirect receipts before further network recovery. The local capture snapshot
+predates the associations, and all 48 direct original-link probes failed. Use
+archive evidence or exact body matches when available; retain contradictory
+claims. Filename similarity alone never proves a page-to-document relationship.
+
+Deliverables: an XML role map and a ledger of proven, conflicting and unresolved
+associations. Integrate only proof-backed findings through maintained readers.
+
+Recommended execution order
+---------------------------
+Complete publication verification and full-catalog qualification first. Pilot
+extraction/reference labeling can proceed while the existing rebuild runs, with
+fresh-catalog eligibility reconciled before evaluation. Finish the pilot before
+funding broad PDF processing. Prioritize further association recovery only where
+current retained or archive evidence offers a concrete route beyond failed URLs.
