@@ -1,0 +1,18 @@
+{
+  "url": "https://webharvest.gov/collections/congress115th/house_committees.html",
+  "final_url": "https://webharvest.gov/collections/congress115th/house_committees.html",
+  "status": 200,
+  "headers": {
+    "accept-ranges": "bytes",
+    "etag": "W/\"26044-1759180985000\"",
+    "last-modified": "Mon, 29 Sep 2025 21:23:05 GMT",
+    "content-type": "text/html",
+    "content-length": "26044",
+    "date": "Wed, 14 Oct 2026 21:48:12 GMT",
+    "server": "Unknown",
+    "strict-transport-security": "max-age=63072000; includeSubDomains; preload"
+  },
+  "retrieved_at": "2026-10-14T21:48:12.801646+00:00",
+  "sha256": "3cd70415b2134ceb3a388ded9d9a54096a7ffd99a6e6bd7abb322b828a443d54",
+  "bytes": 26044
+}

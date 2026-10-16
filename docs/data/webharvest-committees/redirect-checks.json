@@ -1,0 +1,336 @@
+{
+  "scope": "One listed homepage per chamber and Congress; response headers only. No PDF availability or body validation. Canonical archive hostname used to skip its www redirect.",
+  "checked_at": "2026-10-14T21:49:49.586149+00:00",
+  "checks": [
+    {
+      "source_page": "https://webharvest.gov/collections/congress109th/house_committees.html",
+      "record_id": 0,
+      "requested_url": "https://webharvest.gov/congress109th/20061114000000/agriculture.house.gov/",
+      "requested_at": "2026-10-14T21:49:34.928105+00:00",
+      "method": "GET",
+      "response_body_read": false,
+      "status": 302,
+      "headers": {
+        "server": "gunicorn",
+        "date": "Wed, 14 Oct 2026 21:49:35 GMT",
+        "content-type": "text/plain; charset=utf-8",
+        "content-length": "0",
+        "x-archive-redirect-reason": "found capture at 20061114004539",
+        "location": "https://webharvest.gov/congress109th/20061114004539/http://agriculture.house.gov/",
+        "server-timing": "replay.capture_query;dur=25.282963, rules.lookup;dur=15.984060, rulesengine.query;dur=15.935133, postgres.wait.rules;dur=0.042297, cdx.fetch;dur=7.723474, cdx.fetch.congress109th;dur=7.716960, rules.check;dur=0.165025, cdx.read;dur=0.169694, cdx.read.congress109th;dur=0.169694, cdx.bytes;dur=0.000822, cdx.bytes.congress109th;dur=0.000822, replay.captures.eager;dur=0.000517, replay.captures;dur=0.026507"
+      },
+      "location": "https://webharvest.gov/congress109th/20061114004539/http://agriculture.house.gov/",
+      "redirect": {
+        "congress": 109,
+        "domain": "agriculture.house.gov",
+        "redirect_prefix": "https://webharvest.gov/congress109th/20061114004539/",
+        "selector": "20061114004539",
+        "selector_kind": "timestamp",
+        "original_url": "http://agriculture.house.gov/",
+        "embedded_url_literal": "http://agriculture.house.gov/",
+        "embedded_url_style": "explicit_scheme"
+      }
+    },
+    {
+      "source_page": "https://webharvest.gov/collections/congress109th/senate_committees.html",
+      "record_id": 21,
+      "requested_url": "https://webharvest.gov/congress109th/20061114000000/aging.senate.gov/",
+      "requested_at": "2026-10-14T21:49:36.490574+00:00",
+      "method": "GET",
+      "response_body_read": false,
+      "status": 302,
+      "headers": {
+        "server": "gunicorn",
+        "date": "Wed, 14 Oct 2026 21:49:36 GMT",
+        "content-type": "text/plain; charset=utf-8",
+        "content-length": "0",
+        "x-archive-redirect-reason": "found capture at 20061114004602",
+        "location": "https://webharvest.gov/congress109th/20061114004602/http://aging.senate.gov/",
+        "server-timing": "replay.capture_query;dur=97.696961, rules.lookup;dur=15.663209, rulesengine.query;dur=15.630967, postgres.wait.rules;dur=0.028466, cdx.fetch;dur=80.883574, cdx.fetch.congress109th;dur=80.878965, rules.check;dur=0.115677, cdx.read;dur=0.120106, cdx.read.congress109th;dur=0.120106, cdx.bytes;dur=0.001014, cdx.bytes.congress109th;dur=0.001014, replay.captures.eager;dur=0.000452, replay.captures;dur=0.017589"
+      },
+      "location": "https://webharvest.gov/congress109th/20061114004602/http://aging.senate.gov/",
+      "redirect": {
+        "congress": 109,
+        "domain": "aging.senate.gov",
+        "redirect_prefix": "https://webharvest.gov/congress109th/20061114004602/",
+        "selector": "20061114004602",
+        "selector_kind": "timestamp",
+        "original_url": "http://aging.senate.gov/",
+        "embedded_url_literal": "http://aging.senate.gov/",
+        "embedded_url_style": "explicit_scheme"
+      }
+    },
+    {
+      "source_page": "https://webharvest.gov/collections/congress110th/house_committees.html",
+      "record_id": 40,
+      "requested_url": "https://webharvest.gov/congress110th/20081204214953/http://agriculture.house.gov/",
+      "requested_at": "2026-10-14T21:49:37.736128+00:00",
+      "method": "GET",
+      "response_body_read": false,
+      "status": 302,
+      "headers": {
+        "server": "gunicorn",
+        "date": "Wed, 14 Oct 2026 21:49:37 GMT",
+        "content-type": "text/plain; charset=utf-8",
+        "content-length": "0",
+        "x-archive-redirect-reason": "found capture at 20081212011526",
+        "location": "https://webharvest.gov/congress110th/20081212011526/http://agriculture.house.gov/",
+        "server-timing": "replay.capture_query;dur=105.469453, rules.lookup;dur=17.157165, rulesengine.query;dur=17.130009, postgres.wait.rules;dur=0.028303, cdx.fetch;dur=87.060662, cdx.fetch.congress110th;dur=87.055755, rules.check;dur=0.204206, cdx.read;dur=0.158560, cdx.read.congress110th;dur=0.158560, cdx.bytes;dur=0.002229, cdx.bytes.congress110th;dur=0.002229, replay.captures.eager;dur=0.000406, replay.captures;dur=0.022621"
+      },
+      "location": "https://webharvest.gov/congress110th/20081212011526/http://agriculture.house.gov/",
+      "redirect": {
+        "congress": 110,
+        "domain": "agriculture.house.gov",
+        "redirect_prefix": "https://webharvest.gov/congress110th/20081212011526/",
+        "selector": "20081212011526",
+        "selector_kind": "timestamp",
+        "original_url": "http://agriculture.house.gov/",
+        "embedded_url_literal": "http://agriculture.house.gov/",
+        "embedded_url_style": "explicit_scheme"
+      }
+    },
+    {
+      "source_page": "https://webharvest.gov/collections/congress110th/senate_committees.html",
+      "record_id": 80,
+      "requested_url": "https://webharvest.gov/congress110th/20081204214953/http://aging.senate.gov/",
+      "requested_at": "2026-10-14T21:49:38.966033+00:00",
+      "method": "GET",
+      "response_body_read": false,
+      "status": 302,
+      "headers": {
+        "server": "gunicorn",
+        "date": "Wed, 14 Oct 2026 21:49:39 GMT",
+        "content-type": "text/plain; charset=utf-8",
+        "content-length": "0",
+        "x-archive-redirect-reason": "found capture at 20081212012427",
+        "location": "https://webharvest.gov/congress110th/20081212012427/http://aging.senate.gov/",
+        "server-timing": "replay.capture_query;dur=57.529117, rules.lookup;dur=15.189767, rulesengine.query;dur=15.146365, postgres.wait.rules;dur=0.057021, cdx.fetch;dur=39.786633, cdx.fetch.congress110th;dur=39.778692, rules.check;dur=0.451898, cdx.read;dur=0.316579, cdx.read.congress110th;dur=0.316579, cdx.bytes;dur=0.002431, cdx.bytes.congress110th;dur=0.002431, replay.captures.eager;dur=0.000852, replay.captures;dur=0.039180"
+      },
+      "location": "https://webharvest.gov/congress110th/20081212012427/http://aging.senate.gov/",
+      "redirect": {
+        "congress": 110,
+        "domain": "aging.senate.gov",
+        "redirect_prefix": "https://webharvest.gov/congress110th/20081212012427/",
+        "selector": "20081212012427",
+        "selector_kind": "timestamp",
+        "original_url": "http://aging.senate.gov/",
+        "embedded_url_literal": "http://aging.senate.gov/",
+        "embedded_url_style": "explicit_scheme"
+      }
+    },
+    {
+      "source_page": "https://webharvest.gov/collections/congress111th/house_committees.html",
+      "record_id": 104,
+      "requested_url": "https://webharvest.gov/congress111th/20101202070456/http://agriculture.house.gov/",
+      "requested_at": "2026-10-14T21:49:40.129987+00:00",
+      "method": "GET",
+      "response_body_read": false,
+      "status": 200,
+      "headers": {
+        "server": "gunicorn",
+        "date": "Wed, 14 Oct 2026 21:49:40 GMT",
+        "content-type": "text/html; charset=utf-8",
+        "x-archive-orig-x-powered-by": "ASP.NET, UrlRewriter.NET 1.8.0",
+        "x-archive-orig-x-aspnet-version": "2.0.50727",
+        "x-archive-orig-server": "U.S. House of Representatives",
+        "x-archive-orig-cache-control": "private, max-age=2662",
+        "x-archive-orig-date": "Thu, 02 Dec 2010 07:04:58 GMT",
+        "x-archive-orig-connection": "close",
+        "x-archive-guessed-content-type": "text/html",
+        "x-archive-guessed-charset": "utf-8",
+        "memento-datetime": "Thu, 02 Dec 2010 07:04:56 GMT",
+        "link": "<http://agriculture.house.gov/>; rel=\"original\", <https://webharvest.gov/congress111th/timemap/link/http://agriculture.house.gov/>; rel=\"timemap\"; type=\"application/link-format\", <https://webharvest.gov/congress111th/http://agriculture.house.gov/>; rel=\"timegate\"",
+        "content-security-policy": "default-src 'self' 'unsafe-eval' 'unsafe-inline' data: blob: archive-it.org wayback.archive-it.org analytics.archive-it.org partner.archive-it.org; report-uri https://partner.archive-it.org/csp-report",
+        "content-length": "44050",
+        "x-archive-src": "NARA-111TH-CONGRESS-2010-CRAWL-20101205185520-00222-00007-crawling117/NARA-111TH-CONGRESS-2010-HARVEST-20101202070444-00002-crawling116.us.archive.org.warc.gz",
+        "server-timing": "replay.capture_query;dur=26.569901, rules.lookup;dur=15.188577, rulesengine.query;dur=15.136170, postgres.wait.rules;dur=0.055610, cdx.fetch;dur=8.799613, cdx.fetch.congress111th;dur=8.789526, rules.check;dur=0.371933, cdx.read;dur=0.323342, cdx.read.congress111th;dur=0.323342, cdx.bytes;dur=0.001443, cdx.bytes.congress111th;dur=0.001443, replay.captures.eager;dur=0.001155, replay.captures;dur=0.051576, replay.load_resource;dur=403.158680, resource.load;dur=403.136607, pathindex.get;dur=0.006420, resource.block;dur=402.865635, pbox.loc.local;dur=0.001068, PetaboxLoader3.datanode;dur=392.353250, resource.block.size;dur=0.036923, replay.sniff;dur=7.723094"
+      }
+    },
+    {
+      "source_page": "https://webharvest.gov/collections/congress111th/senate_committees.html",
+      "record_id": 145,
+      "requested_url": "https://webharvest.gov/congress111th/20101202070854/http://ag.senate.gov/site/",
+      "requested_at": "2026-10-14T21:49:41.680275+00:00",
+      "method": "GET",
+      "response_body_read": false,
+      "status": 200,
+      "headers": {
+        "server": "gunicorn",
+        "date": "Wed, 14 Oct 2026 21:49:41 GMT",
+        "x-archive-orig-date": "Thu, 02 Dec 2010 07:08:54 GMT",
+        "x-archive-orig-server": "Apache",
+        "x-archive-orig-last-modified": "Thu, 16 Sep 2010 14:34:41 GMT",
+        "x-archive-orig-etag": "\"c237c-3114-4906158b00258\"",
+        "x-archive-orig-accept-ranges": "bytes",
+        "x-archive-orig-content-length": "12564",
+        "x-archive-orig-connection": "close",
+        "content-type": "text/html",
+        "x-archive-guessed-content-type": "text/html",
+        "x-archive-guessed-charset": "utf-8",
+        "memento-datetime": "Thu, 02 Dec 2010 07:08:54 GMT",
+        "link": "<http://ag.senate.gov/site/>; rel=\"original\", <https://webharvest.gov/congress111th/timemap/link/http://ag.senate.gov/site/>; rel=\"timemap\"; type=\"application/link-format\", <https://webharvest.gov/congress111th/http://ag.senate.gov/site/>; rel=\"timegate\"",
+        "content-security-policy": "default-src 'self' 'unsafe-eval' 'unsafe-inline' data: blob: archive-it.org wayback.archive-it.org analytics.archive-it.org partner.archive-it.org; report-uri https://partner.archive-it.org/csp-report",
+        "content-length": "16516",
+        "x-archive-src": "NARA-111TH-CONGRESS-2010-CRAWL-20101205185520-00222-00007-crawling117/NARA-111TH-CONGRESS-2010-HARVEST-20101202070444-00002-crawling116.us.archive.org.warc.gz",
+        "server-timing": "replay.capture_query;dur=37.007502, rules.lookup;dur=14.060668, rulesengine.query;dur=14.014581, postgres.wait.rules;dur=0.085193, cdx.fetch;dur=20.778661, cdx.fetch.congress111th;dur=20.771859, rules.check;dur=0.232514, cdx.read;dur=0.243008, cdx.read.congress111th;dur=0.243008, cdx.bytes;dur=0.000833, cdx.bytes.congress111th;dur=0.000833, replay.captures.eager;dur=0.001015, replay.captures;dur=0.045418, replay.load_resource;dur=41.912092, resource.load;dur=41.891197, pathindex.get;dur=0.006713, resource.block;dur=41.559773, pbox.loc.local;dur=0.000894, PetaboxLoader3.datanode;dur=18.562684, resource.block.size;dur=0.013150, replay.sniff;dur=3.455774"
+      }
+    },
+    {
+      "source_page": "https://webharvest.gov/collections/congress112th/house_committees.html",
+      "record_id": 167,
+      "requested_url": "https://webharvest.gov/congress112th/20121211213041/http://agriculture.house.gov/",
+      "requested_at": "2026-10-14T21:49:43.023796+00:00",
+      "method": "GET",
+      "response_body_read": false,
+      "status": 200,
+      "headers": {
+        "server": "gunicorn",
+        "date": "Wed, 14 Oct 2026 21:49:43 GMT",
+        "x-archive-orig-x-drupal-cache": "HIT",
+        "x-archive-orig-etag": "\"1355259541-1\"",
+        "x-archive-orig-content-language": "en",
+        "x-archive-orig-x-generator": "Drupal 7 (http://drupal.org)",
+        "x-archive-orig-last-modified": "Tue, 11 Dec 2012 20:59:01 +0000",
+        "content-type": "text/html; charset=utf-8",
+        "x-archive-orig-vary": "Cookie",
+        "x-archive-orig-cache-control": "public, max-age=0",
+        "x-archive-orig-expires": "Tue, 11 Dec 2012 21:30:41 GMT",
+        "x-archive-orig-date": "Tue, 11 Dec 2012 21:30:41 GMT",
+        "x-archive-orig-connection": "close",
+        "x-archive-guessed-content-type": "text/html",
+        "x-archive-guessed-charset": "utf-8",
+        "memento-datetime": "Tue, 11 Dec 2012 21:30:41 GMT",
+        "link": "<http://agriculture.house.gov/>; rel=\"original\", <https://webharvest.gov/congress112th/timemap/link/http://agriculture.house.gov/>; rel=\"timemap\"; type=\"application/link-format\", <https://webharvest.gov/congress112th/http://agriculture.house.gov/>; rel=\"timegate\"",
+        "content-security-policy": "default-src 'self' 'unsafe-eval' 'unsafe-inline' data: blob: archive-it.org wayback.archive-it.org analytics.archive-it.org partner.archive-it.org; report-uri https://partner.archive-it.org/csp-report",
+        "content-length": "63101",
+        "x-archive-src": "NARA-112TH-CONGRESS-2012-20121211213007728-00000-00009-wbgrp-crawl025/NARA-112TH-CONGRESS-2012-20121211213007952-00002-18872~wbgrp-crawl025.us.archive.org~8443.warc.gz",
+        "server-timing": "replay.capture_query;dur=45.394586, rules.lookup;dur=10.790838, rulesengine.query;dur=10.752908, postgres.wait.rules;dur=0.028568, cdx.fetch;dur=33.258396, cdx.fetch.congress112th;dur=33.250655, rules.check;dur=0.172186, cdx.read;dur=0.211996, cdx.read.congress112th;dur=0.211996, cdx.bytes;dur=0.000607, cdx.bytes.congress112th;dur=0.000607, replay.captures.eager;dur=0.000818, replay.captures;dur=0.033349, replay.load_resource;dur=54.692987, resource.load;dur=54.671805, pathindex.get;dur=0.005120, resource.block;dur=54.398353, pbox.loc.local;dur=0.000881, PetaboxLoader3.datanode;dur=22.023506, resource.block.size;dur=0.053188, replay.sniff;dur=12.766238"
+      }
+    },
+    {
+      "source_page": "https://webharvest.gov/collections/congress112th/senate_committees.html",
+      "record_id": 208,
+      "requested_url": "https://webharvest.gov/congress112th/20121212002929/http://aging.senate.gov/",
+      "requested_at": "2026-10-14T21:49:44.497626+00:00",
+      "method": "GET",
+      "response_body_read": false,
+      "status": 200,
+      "headers": {
+        "server": "gunicorn",
+        "date": "Wed, 14 Oct 2026 21:49:44 GMT",
+        "x-archive-orig-date": "Wed, 12 Dec 2012 00:29:27 GMT",
+        "x-archive-orig-server": "Apache",
+        "x-archive-orig-connection": "close",
+        "content-type": "text/html; charset=UTF-8",
+        "x-archive-guessed-content-type": "text/html",
+        "x-archive-guessed-charset": "iso-8859-1",
+        "memento-datetime": "Wed, 12 Dec 2012 00:29:29 GMT",
+        "link": "<http://aging.senate.gov/>; rel=\"original\", <https://webharvest.gov/congress112th/timemap/link/http://aging.senate.gov/>; rel=\"timemap\"; type=\"application/link-format\", <https://webharvest.gov/congress112th/http://aging.senate.gov/>; rel=\"timegate\"",
+        "content-security-policy": "default-src 'self' 'unsafe-eval' 'unsafe-inline' data: blob: archive-it.org wayback.archive-it.org analytics.archive-it.org partner.archive-it.org; report-uri https://partner.archive-it.org/csp-report",
+        "content-length": "14282",
+        "x-archive-src": "NARA-112TH-CONGRESS-2012-20121212001610502-00040-00049-wbgrp-crawl025/NARA-112TH-CONGRESS-2012-20121212001837569-00043-18872~wbgrp-crawl025.us.archive.org~8443.warc.gz",
+        "server-timing": "replay.capture_query;dur=22.245798, rules.lookup;dur=14.138675, rulesengine.query;dur=14.096272, postgres.wait.rules;dur=0.039880, cdx.fetch;dur=6.194239, cdx.fetch.congress112th;dur=6.184160, rules.check;dur=0.193229, cdx.read;dur=0.233407, cdx.read.congress112th;dur=0.233407, cdx.bytes;dur=0.000586, cdx.bytes.congress112th;dur=0.000586, replay.captures.eager;dur=0.001130, replay.captures;dur=0.043995, replay.load_resource;dur=42.613819, resource.load;dur=42.588613, pathindex.get;dur=0.006563, resource.block;dur=42.282208, cache.pbox_loc.get;dur=0.874424, cache.pbox_loc.hit;dur=0.001055, PetaboxLoader3.datanode;dur=30.824495, resource.block.size;dur=0.010808, replay.sniff;dur=4.322451"
+      }
+    },
+    {
+      "source_page": "https://webharvest.gov/collections/congress113th/house_committees.html",
+      "record_id": 233,
+      "requested_url": "https://webharvest.gov/congress113th/2014/http://agriculture.house.gov",
+      "requested_at": "2026-10-14T21:49:45.923766+00:00",
+      "method": "GET",
+      "response_body_read": false,
+      "status": 302,
+      "headers": {
+        "server": "gunicorn",
+        "date": "Wed, 14 Oct 2026 21:49:46 GMT",
+        "content-type": "text/plain; charset=utf-8",
+        "content-length": "0",
+        "x-archive-redirect-reason": "found capture at 20141229220110",
+        "location": "https://webharvest.gov/congress113th/20141229220110/https://agriculture.house.gov/",
+        "server-timing": "replay.capture_query;dur=47.893938, rules.lookup;dur=15.869197, rulesengine.query;dur=15.831115, postgres.wait.rules;dur=0.045706, cdx.fetch;dur=29.876855, cdx.fetch.congress113th;dur=29.869504, rules.check;dur=0.365093, cdx.read;dur=0.292599, cdx.read.congress113th;dur=0.292599, cdx.bytes;dur=0.001209, cdx.bytes.congress113th;dur=0.001209, replay.captures.eager;dur=0.001036, replay.captures;dur=0.040579"
+      },
+      "location": "https://webharvest.gov/congress113th/20141229220110/https://agriculture.house.gov/",
+      "redirect": {
+        "congress": 113,
+        "domain": "agriculture.house.gov",
+        "redirect_prefix": "https://webharvest.gov/congress113th/20141229220110/",
+        "selector": "20141229220110",
+        "selector_kind": "timestamp",
+        "original_url": "https://agriculture.house.gov/",
+        "embedded_url_literal": "https://agriculture.house.gov/",
+        "embedded_url_style": "explicit_scheme"
+      }
+    },
+    {
+      "source_page": "https://webharvest.gov/collections/congress113th/senate_committees.html",
+      "record_id": 294,
+      "requested_url": "https://webharvest.gov/congress113th/2014/http://aging.senate.gov/",
+      "requested_at": "2026-10-14T21:49:47.220302+00:00",
+      "method": "GET",
+      "response_body_read": false,
+      "status": 302,
+      "headers": {
+        "server": "gunicorn",
+        "date": "Wed, 14 Oct 2026 21:49:47 GMT",
+        "content-type": "text/plain; charset=utf-8",
+        "content-length": "0",
+        "x-archive-redirect-reason": "found capture at 20141205201041",
+        "location": "https://webharvest.gov/congress113th/20141205201041/http://aging.senate.gov/",
+        "server-timing": "replay.capture_query;dur=29.260887, rules.lookup;dur=19.309441, rulesengine.query;dur=19.255113, postgres.wait.rules;dur=0.059381, cdx.fetch;dur=7.725186, cdx.fetch.congress113th;dur=7.714551, rules.check;dur=0.208954, cdx.read;dur=0.237020, cdx.read.congress113th;dur=0.237020, cdx.bytes;dur=0.000586, cdx.bytes.congress113th;dur=0.000586, replay.captures.eager;dur=0.001052, replay.captures;dur=0.037754"
+      },
+      "location": "https://webharvest.gov/congress113th/20141205201041/http://aging.senate.gov/",
+      "redirect": {
+        "congress": 113,
+        "domain": "aging.senate.gov",
+        "redirect_prefix": "https://webharvest.gov/congress113th/20141205201041/",
+        "selector": "20141205201041",
+        "selector_kind": "timestamp",
+        "original_url": "http://aging.senate.gov/",
+        "embedded_url_literal": "http://aging.senate.gov/",
+        "embedded_url_style": "explicit_scheme"
+      }
+    },
+    {
+      "source_page": "https://webharvest.gov/collections/congress114th/house_committees.html",
+      "record_id": 319,
+      "requested_url": "https://webharvest.gov/congress114th/2016/http://agriculture.house.gov/",
+      "requested_at": "2026-10-14T21:49:48.375294+00:00",
+      "method": "GET",
+      "response_body_read": false,
+      "status": 302,
+      "headers": {
+        "server": "gunicorn",
+        "date": "Wed, 14 Oct 2026 21:49:48 GMT",
+        "content-type": "text/plain; charset=utf-8",
+        "content-length": "0",
+        "x-archive-redirect-reason": "found capture at 20170111232923",
+        "location": "https://webharvest.gov/congress114th/20170111232923/http://agriculture.house.gov/",
+        "server-timing": "replay.capture_query;dur=25.975116, rules.lookup;dur=17.018643, rulesengine.query;dur=16.974134, postgres.wait.rules;dur=0.055633, cdx.fetch;dur=5.713797, cdx.fetch.congress114th;dur=5.705153, rules.check;dur=0.881133, cdx.read;dur=0.426040, cdx.read.congress114th;dur=0.426040, cdx.bytes;dur=0.004973, cdx.bytes.congress114th;dur=0.004973, replay.captures.eager;dur=0.000952, replay.captures;dur=0.042543"
+      },
+      "location": "https://webharvest.gov/congress114th/20170111232923/http://agriculture.house.gov/",
+      "redirect": {
+        "congress": 114,
+        "domain": "agriculture.house.gov",
+        "redirect_prefix": "https://webharvest.gov/congress114th/20170111232923/",
+        "selector": "20170111232923",
+        "selector_kind": "timestamp",
+        "original_url": "http://agriculture.house.gov/",
+        "embedded_url_literal": "http://agriculture.house.gov/",
+        "embedded_url_style": "explicit_scheme"
+      }
+    },
+    {
+      "source_page": "https://webharvest.gov/collections/congress114th/senate_committees.html",
+      "record_id": 365,
+      "requested_url": "https://webharvest.gov/congress114th/2016/http://aging.senate.gov/",
+      "requested_at": "2026-10-14T21:49:49.511931+00:00",
+      "method": "GET",
+      "response_body_read": false,
+      "status": 429,
+      "headers": {
+        "content-length": "470",
+        "content-type": "text/html"
+      }
+    }
+  ]
+}

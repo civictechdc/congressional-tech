@@ -1,0 +1,90 @@
+{
+  "checked_at": "2026-10-14T22:06:42.205649+00:00",
+  "route": "direct; environment proxies disabled",
+  "minimum_pause_seconds": 15,
+  "attempted_links": 3,
+  "resolved_links": 3,
+  "checks": [
+    {
+      "requested_url": "https://webharvest.gov/congress118th/3/https://agriculture.house.gov/",
+      "requested_at": "2026-10-14T22:05:32.394131+00:00",
+      "route": "direct",
+      "proxy_enabled": false,
+      "automatic_redirects": false,
+      "status": 302,
+      "headers": {
+        "server": "gunicorn",
+        "date": "Wed, 14 Oct 2026 22:05:32 GMT",
+        "content-type": "text/plain; charset=utf-8",
+        "content-length": "0",
+        "x-archive-redirect-reason": "found capture at 20241231225425",
+        "location": "https://webharvest.gov/congress118th/20241231225425/https://agriculture.house.gov/",
+        "server-timing": "replay.capture_query;dur=72.046897, rules.lookup;dur=16.462389, rulesengine.query;dur=16.418643, postgres.wait.rules;dur=0.031313, cdx.fetch;dur=52.931609, cdx.fetch.congress118th;dur=52.920906, rules.check;dur=0.534790, cdx.read;dur=0.425736, cdx.read.congress118th;dur=0.425736, cdx.bytes;dur=0.002189, cdx.bytes.congress118th;dur=0.002189, replay.captures.eager;dur=0.001059, replay.captures;dur=0.043137"
+      },
+      "prefix_bytes": 0,
+      "prefix_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "outcome": "capture_redirect_observed",
+      "location": "https://webharvest.gov/congress118th/20241231225425/https://agriculture.house.gov/",
+      "resolved_prefix": "https://webharvest.gov/congress118th/20241231225425/",
+      "resolved_original_url": "https://agriculture.house.gov/"
+    },
+    {
+      "requested_url": "https://webharvest.gov/congress117th/3/https://appropriations.house.gov",
+      "requested_at": "2026-10-14T22:05:47.774532+00:00",
+      "route": "direct",
+      "proxy_enabled": false,
+      "automatic_redirects": false,
+      "outcome": "transport_error",
+      "error_type": "ConnectionError"
+    },
+    {
+      "requested_url": "https://webharvest.gov/congress109th/20061114000000/agriculture.house.gov/",
+      "requested_at": "2026-10-14T22:06:02.852542+00:00",
+      "route": "direct",
+      "proxy_enabled": false,
+      "automatic_redirects": false,
+      "status": 302,
+      "headers": {
+        "server": "gunicorn",
+        "date": "Wed, 14 Oct 2026 22:06:03 GMT",
+        "content-type": "text/plain; charset=utf-8",
+        "content-length": "0",
+        "x-archive-redirect-reason": "found capture at 20061114004539",
+        "location": "https://webharvest.gov/congress109th/20061114004539/http://agriculture.house.gov/",
+        "server-timing": "replay.capture_query;dur=21.910734, rules.lookup;dur=12.888450, rulesengine.query;dur=12.851557, postgres.wait.rules;dur=0.042063, cdx.fetch;dur=7.190129, cdx.fetch.congress109th;dur=7.183200, rules.check;dur=0.219130, cdx.read;dur=0.194168, cdx.read.congress109th;dur=0.194168, cdx.bytes;dur=0.000822, cdx.bytes.congress109th;dur=0.000822, replay.captures.eager;dur=0.000683, replay.captures;dur=0.028133"
+      },
+      "prefix_bytes": 0,
+      "prefix_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "outcome": "capture_redirect_observed",
+      "location": "https://webharvest.gov/congress109th/20061114004539/http://agriculture.house.gov/",
+      "resolved_prefix": "https://webharvest.gov/congress109th/20061114004539/",
+      "resolved_original_url": "http://agriculture.house.gov/"
+    },
+    {
+      "requested_url": "https://webharvest.gov/congress117th/3/https://appropriations.house.gov",
+      "requested_at": "2026-10-14T22:06:41.918522+00:00",
+      "route": "direct",
+      "proxy_enabled": false,
+      "automatic_redirects": false,
+      "retry_reason": "Prior connection error; fresh connection after delay",
+      "status": 302,
+      "headers": {
+        "server": "gunicorn",
+        "date": "Wed, 14 Oct 2026 22:06:42 GMT",
+        "content-type": "text/plain; charset=utf-8",
+        "content-length": "0",
+        "x-archive-redirect-reason": "found capture at 20221209090642",
+        "location": "https://webharvest.gov/congress117th/20221209090642/http://appropriations.house.gov/",
+        "server-timing": "replay.capture_query;dur=18.139395, rules.lookup;dur=10.669469, rulesengine.query;dur=10.639126, postgres.wait.rules;dur=0.035620, cdx.fetch;dur=5.869684, cdx.fetch.congress117th;dur=5.864510, rules.check;dur=0.296245, cdx.read;dur=0.216781, cdx.read.congress117th;dur=0.216781, cdx.bytes;dur=0.002634, cdx.bytes.congress117th;dur=0.002634, replay.captures.eager;dur=0.000574, replay.captures;dur=0.023530"
+      },
+      "prefix_bytes": 0,
+      "prefix_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "outcome": "capture_redirect_observed",
+      "location": "https://webharvest.gov/congress117th/20221209090642/http://appropriations.house.gov/",
+      "resolved_prefix": "https://webharvest.gov/congress117th/20221209090642/",
+      "resolved_original_url": "http://appropriations.house.gov/"
+    }
+  ],
+  "scope": "Three homepage redirect checks; no PDF availability validation.",
+  "attempts": 4
+}

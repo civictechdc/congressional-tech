@@ -1,0 +1,18 @@
+{
+  "url": "https://webharvest.gov/collections/congress112th/senate_committees.html",
+  "final_url": "https://webharvest.gov/collections/congress112th/senate_committees.html",
+  "status": 200,
+  "headers": {
+    "accept-ranges": "bytes",
+    "etag": "W/\"27039-1759181118000\"",
+    "last-modified": "Mon, 29 Sep 2025 21:25:18 GMT",
+    "content-type": "text/html",
+    "content-length": "27039",
+    "date": "Wed, 14 Oct 2026 21:48:06 GMT",
+    "server": "Unknown",
+    "strict-transport-security": "max-age=63072000; includeSubDomains; preload"
+  },
+  "retrieved_at": "2026-10-14T21:48:06.916585+00:00",
+  "sha256": "6ad414e02d4d9270df6347b112c9de6e5d64350055dbdb4d217d3280239b732c",
+  "bytes": 27039
+}

@@ -1,0 +1,18 @@
+{
+  "url": "https://webharvest.gov/collections/congress114th/house_committees.html",
+  "final_url": "https://webharvest.gov/collections/congress114th/house_committees.html",
+  "status": 200,
+  "headers": {
+    "accept-ranges": "bytes",
+    "etag": "W/\"31679-1759181019000\"",
+    "last-modified": "Mon, 29 Sep 2025 21:23:39 GMT",
+    "content-type": "text/html",
+    "content-length": "31679",
+    "date": "Wed, 14 Oct 2026 21:48:10 GMT",
+    "server": "Unknown",
+    "strict-transport-security": "max-age=63072000; includeSubDomains; preload"
+  },
+  "retrieved_at": "2026-10-14T21:48:10.478761+00:00",
+  "sha256": "24d5cdf5c44aadcf281657e65913b14636f06cbdf89eaceab4d34ec4184b1834",
+  "bytes": 31679
+}

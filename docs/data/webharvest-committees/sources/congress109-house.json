@@ -1,0 +1,18 @@
+{
+  "url": "https://webharvest.gov/collections/congress109th/house_committees.html",
+  "final_url": "https://webharvest.gov/collections/congress109th/house_committees.html",
+  "status": 200,
+  "headers": {
+    "accept-ranges": "bytes",
+    "etag": "W/\"25582-1759181193000\"",
+    "last-modified": "Mon, 29 Sep 2025 21:26:33 GMT",
+    "content-type": "text/html",
+    "content-length": "25582",
+    "date": "Wed, 14 Oct 2026 21:47:57 GMT",
+    "server": "Unknown",
+    "strict-transport-security": "max-age=63072000; includeSubDomains; preload"
+  },
+  "retrieved_at": "2026-10-14T21:47:57.784349+00:00",
+  "sha256": "3fb705935df790f5075f04e4582cbd72db6b4817ebf4b13ed299477e9132f34c",
+  "bytes": 25582
+}

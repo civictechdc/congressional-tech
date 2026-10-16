@@ -1,0 +1,24 @@
+[
+  {
+    "published_replay_url": "https://www.webharvest.gov/congress118th/20241107041104/https://energycommerce.house.gov/",
+    "requested_url": "https://webharvest.gov/congress118th/20241107041104/https://energycommerce.house.gov/",
+    "requested_at": "2026-10-14T21:52:49.813234+00:00",
+    "route": "zyte_https_proxy",
+    "geolocation": "US",
+    "hop": 0,
+    "method": "GET",
+    "automatic_redirects": false,
+    "status": 200,
+    "headers": {
+      "zyte-request-id": "cba5e3b3-cf46-4ede-8d21-9b3bdadcaef0",
+      "transfer-encoding": "chunked",
+      "content-type": "text/html",
+      "connection": "close"
+    },
+    "prefix_bytes": 470,
+    "prefix_sha256": "40a0457e763902ed12097cffc3536f1e9a2306a95a701ab2df18f7d47e2b9c39",
+    "outcome": "rate_limited",
+    "page_title": "Rate limit reached",
+    "body_prefix_file": "8300bf57211fd82673b997cf3806b3ce029eef4290af40fa6f58651773725a59.prefix"
+  }
+]

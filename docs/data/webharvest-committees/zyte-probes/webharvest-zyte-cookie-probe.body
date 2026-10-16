@@ -1,0 +1,13 @@
+<html>
+    <head>
+        <title>Rate limit reached</title>
+    </head>
+    <body>
+        <div style="text-align: center;">
+            <p>
+                You've reached the limit for the number of requests that can be made in a short period of time. Please wait a moment and try again.
+                If you believe this message was shown in error or need assistance, please contact us at Aitratelimit@archive.org
+            </p>
+        </div>
+    </body>
+</html>

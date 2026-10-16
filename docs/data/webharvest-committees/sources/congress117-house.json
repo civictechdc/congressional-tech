@@ -1,0 +1,18 @@
+{
+  "url": "https://webharvest.gov/collections/congress117th/house_committees.html",
+  "final_url": "https://webharvest.gov/collections/congress117th/house_committees.html",
+  "status": 200,
+  "headers": {
+    "accept-ranges": "bytes",
+    "etag": "W/\"28263-1759180922000\"",
+    "last-modified": "Mon, 29 Sep 2025 21:22:02 GMT",
+    "content-type": "text/html",
+    "content-length": "28263",
+    "date": "Wed, 14 Oct 2026 21:48:17 GMT",
+    "server": "Unknown",
+    "strict-transport-security": "max-age=63072000; includeSubDomains; preload"
+  },
+  "retrieved_at": "2026-10-14T21:48:17.602394+00:00",
+  "sha256": "36d931ff93ba767b1c43006e6cbb39e4b4bbcef44213f6e4afb352c7d49bbbf4",
+  "bytes": 28263
+}

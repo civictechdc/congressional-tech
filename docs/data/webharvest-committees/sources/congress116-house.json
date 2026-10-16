@@ -1,0 +1,18 @@
+{
+  "url": "https://webharvest.gov/collections/congress116th/house_committees.html",
+  "final_url": "https://webharvest.gov/collections/congress116th/house_committees.html",
+  "status": 200,
+  "headers": {
+    "accept-ranges": "bytes",
+    "etag": "W/\"27205-1759180964000\"",
+    "last-modified": "Mon, 29 Sep 2025 21:22:44 GMT",
+    "content-type": "text/html",
+    "content-length": "27205",
+    "date": "Wed, 14 Oct 2026 21:48:15 GMT",
+    "server": "Unknown",
+    "strict-transport-security": "max-age=63072000; includeSubDomains; preload"
+  },
+  "retrieved_at": "2026-10-14T21:48:15.179171+00:00",
+  "sha256": "9da6d7ccde36a543750cc6dbc1d8b88f3fa85965da1b76f80cae5ec8f931e081",
+  "bytes": 27205
+}

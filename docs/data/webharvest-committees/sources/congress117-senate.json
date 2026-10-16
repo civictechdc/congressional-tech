@@ -1,0 +1,18 @@
+{
+  "url": "https://webharvest.gov/collections/congress117th/senate_committees.html",
+  "final_url": "https://webharvest.gov/collections/congress117th/senate_committees.html",
+  "status": 200,
+  "headers": {
+    "accept-ranges": "bytes",
+    "etag": "W/\"26630-1759180922000\"",
+    "last-modified": "Mon, 29 Sep 2025 21:22:02 GMT",
+    "content-type": "text/html",
+    "content-length": "26630",
+    "date": "Wed, 14 Oct 2026 21:48:18 GMT",
+    "server": "Unknown",
+    "strict-transport-security": "max-age=63072000; includeSubDomains; preload"
+  },
+  "retrieved_at": "2026-10-14T21:48:18.806675+00:00",
+  "sha256": "57aa7139a5d5a689dca987f4e33ec59f37b3ee276c1642b93499e090b77e0820",
+  "bytes": 26630
+}

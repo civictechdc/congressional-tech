@@ -1,0 +1,18 @@
+{
+  "url": "https://webharvest.gov/collections/congress112th/house_committees.html",
+  "final_url": "https://webharvest.gov/collections/congress112th/house_committees.html",
+  "status": 200,
+  "headers": {
+    "accept-ranges": "bytes",
+    "etag": "W/\"30304-1759181118000\"",
+    "last-modified": "Mon, 29 Sep 2025 21:25:18 GMT",
+    "content-type": "text/html",
+    "content-length": "30304",
+    "date": "Wed, 14 Oct 2026 21:48:05 GMT",
+    "server": "Unknown",
+    "strict-transport-security": "max-age=63072000; includeSubDomains; preload"
+  },
+  "retrieved_at": "2026-10-14T21:48:05.745823+00:00",
+  "sha256": "9a82963a48e4c5890b2ec97fe9a25a8c8403f8a279fc7533c6cf4186cd2477c8",
+  "bytes": 30304
+}

@@ -1,0 +1,13 @@
+{
+  "checked_at": "2026-10-14T21:52:50.667537+00:00",
+  "stop_reason": "rate_limited",
+  "unique_published_links": 600,
+  "attempted_links": 1,
+  "resolved_links": 0,
+  "unattempted_links": 599,
+  "outcomes": {
+    "rate_limited": 1
+  },
+  "scope": "Homepage redirect/header observations only; no PDF availability check.",
+  "mapping_canonical_sha256": "88386ea01d9e7d8d04904f2bf3f845e012dd7ee670dc7f533fb83aedff93b2fe"
+}

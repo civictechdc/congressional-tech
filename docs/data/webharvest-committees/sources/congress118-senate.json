@@ -1,0 +1,18 @@
+{
+  "url": "https://webharvest.gov/collections/congress118th/senate_committees.html",
+  "final_url": "https://webharvest.gov/collections/congress118th/senate_committees.html",
+  "status": 200,
+  "headers": {
+    "accept-ranges": "bytes",
+    "etag": "W/\"26280-1759180904000\"",
+    "last-modified": "Mon, 29 Sep 2025 21:21:44 GMT",
+    "content-type": "text/html",
+    "content-length": "26280",
+    "date": "Wed, 14 Oct 2026 21:48:19 GMT",
+    "server": "Unknown",
+    "strict-transport-security": "max-age=63072000; includeSubDomains; preload"
+  },
+  "retrieved_at": "2026-10-14T21:48:19.964698+00:00",
+  "sha256": "2589c689138a20965df5c31eb01c8897b9a47dcf6787ac1d2df7bb237396cd28",
+  "bytes": 26280
+}

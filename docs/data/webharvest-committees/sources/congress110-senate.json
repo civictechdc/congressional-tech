@@ -1,0 +1,18 @@
+{
+  "url": "https://webharvest.gov/collections/congress110th/senate_committees.html",
+  "final_url": "https://webharvest.gov/collections/congress110th/senate_committees.html",
+  "status": 200,
+  "headers": {
+    "accept-ranges": "bytes",
+    "etag": "W/\"26615-1759181169000\"",
+    "last-modified": "Mon, 29 Sep 2025 21:26:09 GMT",
+    "content-type": "text/html",
+    "content-length": "26615",
+    "date": "Wed, 14 Oct 2026 21:48:01 GMT",
+    "server": "Unknown",
+    "strict-transport-security": "max-age=63072000; includeSubDomains; preload"
+  },
+  "retrieved_at": "2026-10-14T21:48:01.644435+00:00",
+  "sha256": "203cc2a0728ee41bd0ddb3cf06726b5756f41ae33bb025d83e9e426adb0c726e",
+  "bytes": 26615
+}
