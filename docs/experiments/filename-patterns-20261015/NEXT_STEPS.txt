@@ -1,74 +1,107 @@
 Document-kind classification: next steps
 =======================================
 
-Starting point
---------------
-The 3.2.0 continuation adds 831 classifications in the frozen experiment and
-prepares a 400-record PDF review set. It preserves all 9,427 earlier kinds.
-The broader retained-source rebuild for 3.1.0 is still in progress at planning
-time. These phases describe future work; this commit does not publish 3.2.0.
+Current checkpoint
+------------------
+Filename version 3.2.0 is committed in 20114c8. The frozen PDF pilot and its
+140 development labels are committed in 38f7557. This change adds the explicit
+PDF content candidate to congress_api, with its fixtures and evaluation tools.
 
-1. Verify the current publication and freeze a full-catalog baseline
------------------------------------------------------------------
-Read back the 3.1.0 rebuild summary, paired catalog identity and public viewer
-manifest. Verify hashes, row counts and naming version. If the run fails, retain
-its diagnostics and address that failure before starting another rebuild.
+The actual PDF-reader comparison increases development assignments from 10 to
+24 of 140, preserves every earlier assignment and finds no disagreements with
+the assistant-reviewed labels. The exact candidate passed 5,742 offline tests.
+These are development results, not independent validation or release evidence.
+The 200 held-out records remain unevaluated. Production does not use OCR.
 
-Use the completed catalog to count unresolved document groups by publisher,
-format, role and evidence availability. Include unnamed records. Reconcile the
-frozen study against this catalog; do not extrapolate its coverage percentages.
+content_rule_freeze.json records the code and evidence at freeze time. Its
+candidate_committed=false field describes that historical moment; committing
+these unchanged bytes does not change the candidate's source fingerprints.
 
-Deliverable: verified publication receipt and a reproducible full-catalog census.
+The 3.1.0 publication run 38823678887 is still rebuilding the catalog at this
+checkpoint. No new publication or retained-body refresh is started by this
+commit. Work proceeds in the following order.
 
-2. Qualify the committed filename changes against that baseline
+1. Verify the active publication and reconcile the full catalog
 -------------------------------------------------------------
-Replay 3.2.0 against the complete baseline. Inspect every changed existing kind,
-alongside newly classified and still-unresolved records. Recheck ID conservation,
-role decisions and paired-table consistency. Separate real classification changes
-from differences caused by additional or refreshed source records.
+Inspect the current run's progress and final diagnostics. If it fails, retain
+the failure evidence and identify the cause before another rebuild. On success,
+verify the paired catalog identities, object hashes, row counts, naming version
+and public viewer manifest. Preserve the previous verified catalog.
 
-Deliverable: full-catalog before/after report suitable for the next release.
-Release condition: explain all changed prior kinds; no unexplained losses or
-identity changes. Batch the next approved publication rather than overlapping
-retained-source rebuilds.
+Build a census of unresolved records by publisher, format, role and evidence
+availability, including unnamed records. Reconcile all 400 pilot IDs, recording
+newly classified, changed-body, missing and still-eligible samples. Do not
+replace unavailable samples or alter the frozen split.
 
-3. Extract and label the frozen PDF pilot
----------------------------------------
-Resolve the 400 selected document IDs against the fresh baseline without quietly
-replacing unavailable or newly classified examples. Report changed eligibility.
-Read retained bytes and check body hashes. Extract first-page/title text, inspect
-additional pages where needed, and use OCR for scans. Preserve retrieval failures.
+Deliverable: verified publication receipt, full-catalog census and a 400-row
+eligibility ledger. This is the prerequisite for held-out evaluation.
 
-Create reference labels with page numbers and short evidence excerpts. Use the
-200 development records to refine deterministic rules and any model-assisted
-candidate classifier. Keep the 200 held-out records separate until evaluation;
-do not tune on their outcomes. Labels remain reviewable decisions, not cluster
-membership propagated to every filename.
+2. Qualify filename version 3.2.0 against that catalog
+---------------------------------------------------
+Replay the already committed filename rules on the complete verified baseline.
+Separate classification changes from refreshed source evidence. Review every
+changed prior kind, preserve document IDs and roles, and verify the paired
+source/document tables.
 
-Deliverable: completed reference set and comparison of precision, coverage,
-abstentions, disagreements, time and processing cost. Report per-kind sample
-sizes and uncertainty. Choose automation thresholds after seeing enough evidence;
-the balanced pilot alone is not a population-wide precision estimate.
+Deliverable: full-catalog before/after comparison. Explain every changed prior
+kind; no unexplained losses, ID changes or role changes are acceptable.
+This work can proceed alongside held-out reference review after step 1.
 
-4. Resolve XML roles and source associations as separate investigations
---------------------------------------------------------------------
-For the 9,724 unresolved XML records in the frozen study, inspect native roots,
-schemas and identifiers. Reuse maintained parsers to separate document content
-from meeting, package and index metadata. Refresh these counts from phase 1.
+3. Evaluate the frozen PDF candidate on held-out records
+------------------------------------------------------
+Verify every source hash in content_rule_freeze.json before running the code.
+Prepare blind reference packets without candidate predictions. Review the
+available held-out PDFs, including additional pages or images when needed,
+and retain unavailable/ambiguous outcomes. Labels must include exact body and
+text hashes, a page number, a short quote and a review note.
 
-For the 802 uncertain source associations, query current retained capture and
-redirect receipts before further network recovery. The local capture snapshot
-predates the associations, and all 48 direct original-link probes failed. Use
-archive evidence or exact body matches when available; retain contradictory
-claims. Filename similarity alone never proves a page-to-document relationship.
+After labels are fixed, run the exact candidate through the maintained PDF
+reader path. Report assignments, exact agreements, disagreements, abstentions,
+reader failures and sample sizes by kind. Include uncertainty intervals and
+keep native production results separate from optional OCR experiments.
 
-Deliverables: an XML role map and a ledger of proven, conflicting and unresolved
-associations. Integrate only proof-backed findings through maintained readers.
+Independently review new positives and ambiguous references before release.
+Any false positive or unexplained prior-kind regression blocks its affected
+rule. Do not tune on held-out outcomes. Sparse kinds need a separate additional
+review set; zero observed errors in a tiny set does not establish precision.
 
-Recommended execution order
----------------------------
-Complete publication verification and full-catalog qualification first. Pilot
-extraction/reference labeling can proceed while the existing rebuild runs, with
-fresh-catalog eligibility reconciled before evaluation. Finish the pilot before
-funding broad PDF processing. Prioritize further association recovery only where
-current retained or archive evidence offers a concrete route beyond failed URLs.
+Deliverable: frozen held-out evaluation and a per-rule release decision.
+
+4. Prepare a bounded retained-body refresh for qualified rules
+------------------------------------------------------------
+A code update or ordinary catalog rebuild preserves earlier body readings.
+Select exact retained URLs/body hashes that need reinspection and report the
+scope and expected processing cost. Use the maintained --reinspect-retained
+--urls path, or validated explicit body readings, rather than broad acquisition
+or a second uncontrolled PDF scan. Retain old readings and failure receipts.
+
+After release authorization, publish the qualified code, reinspect the selected
+retained bodies and rebuild the paired tables. Verify the resulting kind/source
+fields, identities, counts and public viewer readback. Batch this with qualified
+filename changes when practical; do not overlap the current rebuild.
+
+Deliverable: bounded refresh manifest, processing receipts, catalog comparison
+and verified publication receipt. Deployment is separate from local commits.
+
+5. Choose the next coverage work from the refreshed census
+--------------------------------------------------------
+Use the actual remaining distribution to choose the next investment. Review
+external reports, legal texts and mixed legislative packets before extending
+the taxonomy; the 37 research labels are not automatically production kinds.
+Keep filename grammar in house_naming and content readers in congress_api.
+
+Investigate unresolved XML using native roots/schemas and maintained readers.
+Revisit uncertain source associations only where current retained captures or
+archive evidence provide a concrete route beyond prior failed direct probes.
+Filename similarity alone cannot prove a page-to-document association.
+
+Deliverable: ranked remaining groups, a proposed taxonomy mapping and a bounded
+next experiment. Broader model-assisted classification follows these findings;
+it is not required to release the three explicit-form rules.
+
+Work that can proceed while publication runs
+-------------------------------------------
+Prepare the reconciliation/evaluation tools, a blind reference-review interface
+and a proposed taxonomy mapping using development records only. Preserve the
+candidate and held-out boundary. Avoid further rule tuning or retries against
+the 100 unavailable exact bodies without a new evidence source.

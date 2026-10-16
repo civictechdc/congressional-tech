@@ -282,6 +282,14 @@ retained page digest. `source_link_heading` preserves the publisher's words;
 from filename/link-word inference. `parsers.document_cover` recognizes numbered
 GPO hearings, stenographic transcripts, opening statements, explicit testimony,
 paper-hearing questions, and official bill/substitute covers from native text.
+It also recognizes House hearing publications with an explicit serial, chamber,
+committee, hearing heading and Government Publishing/Printing Office imprint;
+operative amendments with a drafting heading, target, sponsor and editing
+instruction; and committee roll-call sheets with vote columns and recorded
+marks. A House serial alone is not promoted to a GPO citation. Summaries,
+quoted forms, incomplete vote templates and ambiguous OCR remain unclassified
+by these rules. New body-reader code changes the evidence fingerprint; existing
+retained readings require explicit reprocessing, not merely a catalog rebuild.
 GPO covers must be on page one; a blank first page permits checking page two for
 proceedings. `content_document_kind`, `content_citation`, `content_congress`, and
 `content_amendment_type` retain supported meanings separately from filename

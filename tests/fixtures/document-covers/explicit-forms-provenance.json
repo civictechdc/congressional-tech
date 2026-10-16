@@ -1,0 +1,23 @@
+[
+  {
+    "file": "house-amendment.pdf",
+    "review_id": "D099",
+    "original_body_sha256": "b4778c5930766cab0af6d3ff2bcff150e47002732e00fd0629c72e170dcafc2b",
+    "page": 1,
+    "fixture_sha256": "83cc4bd6ef60b79fa7b976e136f804a7370d4b4e0eed7cf7e004d8c9f1d1f89f"
+  },
+  {
+    "file": "house-vote.pdf",
+    "review_id": "D111",
+    "original_body_sha256": "3bf55c2f760501a9bb8f8b6144c0f9c098bf7f966483bc3c1b7e88710059e8ff",
+    "page": 1,
+    "fixture_sha256": "9141eb879cf13213a69e1aa47b021564f31fe8da83969bbf472be73ad61100c3"
+  },
+  {
+    "file": "house-hearing.pdf",
+    "review_id": "D141",
+    "original_body_sha256": "b59a0be04753f46ff0713cd8d712a75c4a9a894314dfc9a733f26a20b5502b5a",
+    "page": 1,
+    "fixture_sha256": "057aff1efb9030af7a6c0207810e72f8a7810d776ddc1b12e0912d84fdb91178"
+  }
+]

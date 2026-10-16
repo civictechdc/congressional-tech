@@ -66,6 +66,8 @@ on:
       - 'tests/test_recovery_queue.py'
       - 'tests/test_pdf_file_metadata.py'
       - 'tests/test_pdf_metadata_refresh.py'
+      - 'tests/test_explicit_document_forms.py'
+      - 'tests/fixtures/document-covers/**'
   schedule:
     # Acquisition is explicitly dispatched after the previous batch verifies.
     - cron: '23 3 * * *'
@@ -211,7 +213,7 @@ jobs:
           tests/test_archive_members.py tests/test_archive_member_capture.py tests/test_archive_member_catalog.py
           tests/test_capture_url_admission.py
           tests/test_document_evidence.py tests/test_document_retained_recovery.py
-          tests/test_published_hearing_cover.py
+          tests/test_published_hearing_cover.py tests/test_explicit_document_forms.py
           tests/test_document_metadata_preservation.py tests/test_document_source_context.py tests/test_document_source_lineage.py
           tests/test_senate_document_sections.py packages/house-naming/tests
           .github/tests/test_raw_source_workflow.py
