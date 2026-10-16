@@ -101,3 +101,17 @@ Three packets remain: Oreskes (40 pages), Public Witness (51), and Simmons
 (119), totaling 210 pages. Their saved PDF paths and hashes are in the v2
 receipt. Review those locally in bounded batches and record exact page coverage.
 Only mark a packet complete after every page has been inspected.
+
+Continuation: complete Oreskes packet
+------------------------------------
+The v3 receipt records visual inspection of all 40 pages: a disclosure form
+on page 1 and a 39-page CV on pages 2-40. The CV includes headings for expert
+testimony, publications, research funding and lectures. Those sections describe
+past work and appearances; they do not turn the packet into the cited testimony,
+articles or reports. Preserve both disclosure and biography as observed forms.
+
+Cumulative coverage is now 36 documents / 109 pages: 23 disclosure-only,
+11 disclosure plus biography, and two biography-only. Public Witness (51 pages)
+and Simmons (119 pages) remain unreviewed. Exact PDF identity, page count,
+all 40 rendered-page hashes, selection bindings, frozen-pilot exclusions and
+the nine frozen source hashes were verified. No runtime classification changed.

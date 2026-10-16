@@ -421,3 +421,12 @@ The existing viewer publication run 38855840917 remained active when checked
 in this continuation; no replacement publication was dispatched. Version 3.2.7
 and these review receipts remain local. Workflow completion alone cannot confirm
 public selector/readback or qualify the fresh raw catalog for held-out evaluation.
+
+Disclosure/biography retained review, part 3
+------------------------------------------
+Completed the 40-page Oreskes packet; the v3 receipt binds all pages and the
+prior v2 checkpoint. Review now covers 36 of 38 packets / 109 of 279 pages.
+Next inspect all 51 pages of Public Witness, then all 119 pages of Simmons,
+using the saved exact PDFs. Their paths and hashes remain in the v3 receipt.
+Then implement the separate content-review linkage described above, preserving
+filename claims and distinguishing review completion from classification approval.
