@@ -29,9 +29,10 @@ def cloud_clear():
     active_cloud_writers()
 
 
-def verify_import(batch, imported):
+def verify_import(batch, imported, *, readiness=None):
     manifest = json.loads((batch / 'manifest.json').read_text())
-    ready = json.loads((batch / 'import-readiness.json').read_text())
+    readiness = readiness.resolve() if readiness is not None else batch/'import-readiness.json'
+    ready = json.loads(readiness.read_text())
     for name, expected in ready['files'].items():
         if name in manifest['files'] and manifest['files'][name] != expected:
             raise ValueError('Conflicting batch evidence hashes')
@@ -56,8 +57,8 @@ def verify_import(batch, imported):
             or result['distinct_bodies'] != len(bodykeys)):
         raise ValueError('Import completion does not cover the sealed batch')
     pins = next(e['value'] for e in events if e['event'] == 'pins')
-    for name in ['manifest.json', 'prepared-source-records.json', 'import-readiness.json']:
-        if pins.get(str(batch / name)) != digest(batch / name):
+    for path in [batch/'manifest.json', batch/'prepared-source-records.json', readiness]:
+        if pins.get(str(path)) != digest(path):
             raise ValueError('Import belongs to a different batch')
     return result
 
@@ -105,7 +106,8 @@ def run(args):
     batch, imported, runtime = args.batch.resolve(), args.imported.resolve(), args.runtime.resolve()
     if getattr(args, 'resume', False) and not args.execute:
         raise ValueError('--resume requires --execute')
-    result = verify_import(batch, imported)
+    readiness = getattr(args, 'readiness', None)
+    result = verify_import(batch, imported, readiness=readiness)
     if not args.execute:
         return dict(local_preflight=True, import_verified=True, writes=False)
     cloud_clear()
@@ -131,6 +133,10 @@ def run(args):
               args.baseline.resolve(), args.config.resolve(),
               imported/'payloads/import-complete.json', imported/'events.jsonl']
     paths += [imported/'payloads'/key for key in ('indexes/captures.parquet', 'indexes/download-state.parquet')]
+    if readiness is not None:
+        paths += [readiness.resolve()]
+        body_readback = readiness.resolve().with_name('body-readback.json')
+        if body_readback.exists(): paths += [body_readback]
     pins = {str(p): digest(p) for p in paths}
     binding = dict(pins=pins, batch=str(batch), imported=str(imported), runtime=str(runtime),
                    baseline=str(args.baseline.resolve()))
@@ -281,6 +287,7 @@ if __name__ == '__main__':
     for name in ['batch','imported','runtime','baseline','destination']:
         parser.add_argument('--'+name, type=Path, required=True)
     parser.add_argument('--config', type=Path, default=ROOT/'.cache/r2-admin/rclone.conf')
+    parser.add_argument('--readiness', type=Path, help='Reconciled readiness evidence pinned by the completed import.')
     parser.add_argument('--execute', action='store_true')
     parser.add_argument('--resume', action='store_true', help='Explicitly reconcile and continue this destination; requires --execute.')
     print(json.dumps(run(parser.parse_args()), indent=2))
