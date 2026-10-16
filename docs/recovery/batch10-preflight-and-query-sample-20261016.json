@@ -1,0 +1,40 @@
+{
+  "at": "2026-10-16T04:56:49.853511+00:00",
+  "batch10_preflight": {
+    "at": "2026-10-16T04:56:16.982292+00:00",
+    "mapping_coverage": {
+      "recovered": 1277,
+      "retained": 2994,
+      "prior_preserved": 11337
+    },
+    "preflight_exit": 1,
+    "stdout": "",
+    "stderr": "Traceback (most recent call last):\n  File \"/Users/mikewolfd/Work/congressional-tech/scripts/dispatch_corpus_recovery_import.py\", line 159, in <module>\n    print(json.dumps(run(parser.parse_args()), indent=2))\n                     ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/mikewolfd/Work/congressional-tech/scripts/dispatch_corpus_recovery_import.py\", line 58, in run\n    cloud_clear()\n  File \"/Users/mikewolfd/Work/congressional-tech/scripts/dispatch_corpus_recovery_import.py\", line 35, in cloud_clear\n    raise RuntimeError(f'Cloud capture writer active: {active}')\nRuntimeError: Cloud capture writer active: [38823678887]\n",
+    "writes": false,
+    "destination_absent": true,
+    "batch_manifest_sha256": "5bdd76cb1361f7d89bee5fac2534317e76b32a5db24ab7411e48f8cab5369b43"
+  },
+  "next_route": {
+    "candidate_urls": 3969,
+    "status": "Twenty-link sample running; candidates are not recoveries",
+    "exec_session": 91597,
+    "plan": {
+      "queue_sha256": "799b96d9ba02645e89af57a5019fc81b496a596fbaf0d7e94f445c775d50342f",
+      "script_sha256": "0cbb3eb4731a2484884e025c2830722f2bae763fa140d3b697f2098673c324a0",
+      "urls": 20,
+      "workers": 1,
+      "minimum_delay_seconds": 3,
+      "paid_requests": 0,
+      "pid": 33830,
+      "parent_pid": 94792
+    },
+    "process_evidence": "33830 94792 00:12 Ss   .venv/bin/python -u output/corpus-retry-20261015/live_query_correction_sample.py",
+    "candidate_file_sha256": "c76a084cb4cea9eef8bb988a5d97ab3b188dc3b6f04b7e79ff13b879b922c8ef"
+  },
+  "next_steps": [
+    "Verify sample completion and qualify downloaded bodies",
+    "Expand corrected-query route only if sample supports it",
+    "Continue the existing NARA and publisher workers",
+    "Import batch 10 after a fresh cloud-clear preflight"
+  ]
+}
