@@ -1,0 +1,54 @@
+{
+  "at": "2026-10-16T04:30:13.282812+00:00",
+  "status": "attachment_worker_running_not_complete",
+  "process": "20606",
+  "exec_session": 41268,
+  "urls": 20,
+  "workers": 1,
+  "minimum_delay_seconds": 30,
+  "paid_requests": 0,
+  "match_basis": "Explicit PDF hyperlinks extracted from retained source pages, matched by exact path/query in retained NARA index",
+  "additional_retained_mappings": 538,
+  "total_retained_mappings": 2933,
+  "summary": {
+    "at": "2026-10-16T04:29:37.705170+00:00",
+    "eligible_urls": 23574,
+    "counts": {
+      "lookup_unresolved": 16573,
+      "validated_local_recovery": 1222,
+      "unprocessed_archive_candidate": 2837,
+      "attempted_not_recovered": 9,
+      "retained_copy_link_prepared": 2933
+    },
+    "accounted": 23574,
+    "published": false,
+    "scope": "Eligible queue only; unresolved lookup is not proof of archive absence",
+    "nara": {
+      "processed": 742,
+      "total": 742,
+      "valid": 677,
+      "requests_made": 471,
+      "blocked": null,
+      "pid": 55119,
+      "parent_pid": 94792
+    },
+    "wayback_retry": {
+      "at": "2026-10-16T01:33:44.797255+00:00",
+      "reason": "three_consecutive_transport_failures",
+      "pid": 64224,
+      "command": ".venv/bin/python output/corpus-retry-20261015/wayback_priority_index_retry.py",
+      "completed_receipts": 3,
+      "unfinished_request_may_have_partial_body": true,
+      "prior_evidence_preserved": true
+    },
+    "ledger_sha256": "32af13fa3ff94a4a25e90953c5727ec69ee465463bdb8842a673c94203a135c6"
+  },
+  "evidence_hashes": {
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/nara_linked_attachments.py": "41a286400c45472d3216634c98d89e4228e53bfba6d1d0c534599e073e57624e",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/nara-linked-attachments-queue.json": "fe2cfbf9402e1b5239d0df28d6b7f4dc78f01021d68941241cd454fae8e803e7",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/retained-url-variant-mappings.json": "831e92f01d70cb3d59ac6a6d81144057668c6b9a28516dddb362b9be9cb3f6a2",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/html-slash-commoncrawl-review.json": "0d738190041d15de96e024a910a702200ecc286b65c808c94c658cbe71b0733b",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/html-slash-commoncrawl-added.json": "4607f990584a13b9182c9fad624d8a6a54b78645a0427609ff7d76acd103702b",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/remaining-recovery-summary.json": "becb11d003b0371000de6f04e1c65abb287da48c6502310df3f0626d88e6d635"
+  }
+}
