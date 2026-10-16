@@ -116,6 +116,40 @@ def test_policy_change_requires_explicit_group_rebuild(tmp_path,monkeypatch):
     assert pq.read_table(path.with_name('documents.parquet')).to_pylist()[0]['document_kind'] == ['changed-policy']
 
 
+def test_cached_legacy_groups_restore_filename_claims_without_reselecting_kinds(tmp_path):
+    rows = [dict(source('amendment.pdf','https://example.gov/amendment.pdf','shared'), document_kind=['amendment']),
+            dict(source('opaque.pdf','https://example.gov/opaque.pdf','shared'), content_document_kind=['letter'])]
+    schema = pa.schema([*index.SOURCE_SCHEMA, ('capture_outcome',index.STRINGS),
+                        ('document_kind',index.STRINGS), ('content_document_kind',index.STRINGS)])
+    path = tmp_path/'document-filenames.parquet'
+    index.write_document_indexes(path, rows, schema)
+    # Older files persisted selected kinds but left the new filename field null.
+    for file in [path,path.with_name('documents.parquet')]:
+        table = pq.read_table(file)
+        legacy = table.to_pylist()
+        for row in legacy: row['filename_document_kind'] = None
+        pq.write_table(pa.Table.from_pylist(legacy,schema=table.schema),file)
+    previous = pq.ParquetFile(path); old_sources = previous.read().to_pylist()
+    old_documents = pq.ParquetFile(path.with_name('documents.parquet'))
+    reused = tmp_path/'reused'; reused.mkdir()
+    result = index.write_document_indexes(reused/path.name, [dict(r) for r in old_sources],previous.schema_arrow,
+        previous=previous,previous_documents=old_documents)
+    assert result['reused_document_groups'] == 1 and result['recomputed_document_groups'] == 0
+    current = pq.read_table(reused/path.name).to_pylist()
+    for row in current:
+        old = next(r for r in old_sources if r['source_id']==row['source_id'])
+        assert row['document_kind'] == old['document_kind']
+        assert row['document_kind_source'] == old['document_kind_source']
+        assert row['filename_document_kind'] == (['amendment'] if row['filename']=='amendment.pdf' else None)
+    document, = pq.read_table(reused/'documents.parquet').to_pylist()
+    assert document['filename_document_kind'] == ['amendment']
+    assert document['document_kind'] == old_documents.read().to_pylist()[0]['document_kind']
+    clean = tmp_path/'clean';clean.mkdir()
+    index.write_document_indexes(clean/path.name,[dict(r) for r in old_sources],previous.schema_arrow)
+    for name in [path.name,'documents.parquet']:
+        assert semantic(pq.read_table(reused/name)) == semantic(pq.read_table(clean/name))
+
+
 def test_recovery_coalesces_duplicate_source_observations(tmp_path):
     from congress_api.retention.document_recovery import recover_sources
     state = WorkingCatalog(tmp_path / 'working.sqlite')

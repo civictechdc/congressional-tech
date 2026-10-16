@@ -327,6 +327,10 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
             for row in batch.to_pylist():
                 original = sparse_row(row)
                 normalize(row)
+                # Legacy pairs may omit the filename claim. Keep its restored
+                # representation consistent with the signature, without
+                # reselecting the cached kind or its provenance.
+                original['filename_document_kind'] = row.get('filename_document_kind')
                 db.execute('INSERT OR REPLACE INTO prior_sources VALUES (?,?,?,?)',
                            (row['source_id'], original.get('document_id'), signature(row), pickle.dumps(original)))
         documents = pq.ParquetFile(pa.BufferReader(previous_documents)) if isinstance(previous_documents, bytes) else previous_documents
@@ -528,18 +532,23 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
                 document_count += 1
                 if document_count % 1000 == 0:
                     index.progress.report('combine_document_metadata', completed=document_count, total=group_count, unit='document_groups')
-                db.execute('INSERT INTO output_documents VALUES (?,?,?)', ((document.get('filename') or '').casefold(), document['document_id'], pickle.dumps(document)))
+                filename_claims = set()
                 output_rows = (pickle.loads(payload) for payload, in db.execute('''
                     SELECT p.value FROM members m JOIN current_sources c ON c.id=m.id
                     JOIN prior_sources p ON p.source_id=c.source_id WHERE m.component=? ORDER BY m.id''',(component,))) if is_reused else component_rows(component)
                 for row in output_rows:
-                    if not is_reused:
+                    if is_reused:
+                        filename_claims.update(row.get('filename_document_kind') or [])
+                    else:
                         row['document_id'] = document['document_id']
                         index.fill_document_kind(row)
                     pending.append(row)
                     if len(pending) == 1024:
                         writer.write_table(pa.Table.from_pylist(pending,schema=source_schema))
                         pending = []
+                if is_reused:
+                    document['filename_document_kind'] = sorted(filename_claims) or None
+                db.execute('INSERT INTO output_documents VALUES (?,?,?)', ((document.get('filename') or '').casefold(), document['document_id'], pickle.dumps(document)))
             if pending:
                 writer.write_table(pa.Table.from_pylist(pending,schema=source_schema))
         with pq.ParquetWriter(temporary_document, document_schema, compression='zstd') as writer:
