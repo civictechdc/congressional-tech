@@ -1,0 +1,60 @@
+{
+  "at": "2026-10-16T07:09:49.724979+00:00",
+  "exec_session": 94244,
+  "supervisor_pid": 26321,
+  "catalog_pid": 26323,
+  "process_evidence": "26321 94792 Fri Oct 16 03:09:28 2026     .venv/bin/python -u output/corpus-retry-20261015/supervise_publication_retry02.py\n26323 26321 Fri Oct 16 03:09:28 2026     .venv/bin/python -u scripts/dispatch_corpus_recovery_publication.py --batch /Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/publication-batches/checkpoint-12 --imported /Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/import-checkpoint12 --runtime /Users/mikewolfd/.codex/worktrees/viewer-retained-sync/congressional-tech --baseline /Users/mikewolfd/Work/congressional-tech/output/corpus-reconcile-20261015/accepted-before.json --destination /Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/publication-checkpoint12-retry02 --execute\n",
+  "pins_verified": 246,
+  "lock_held": true,
+  "status": {
+    "at": "2026-10-16T07:09:48.302929+00:00",
+    "child_pid": 26323,
+    "free_disk_bytes": 67355123712,
+    "child_running": true
+  },
+  "preflight": {
+    "at": "2026-10-16T07:08:59.625183+00:00",
+    "pins_verified": 246,
+    "protected_remote_objects_unchanged": [
+      {
+        "key": "indexes/captures.parquet",
+        "etag": "\"52fac486d3fe9e3a6f16d7723cd163bd\"",
+        "bytes": 282497811
+      },
+      {
+        "key": "indexes/catalog.json",
+        "etag": "\"c019ce85155e28c40c1c2b226be21fe2\"",
+        "bytes": 532
+      },
+      {
+        "key": "indexes/download-state.parquet",
+        "etag": "\"75fb5f1b387b0242f8aa0f8c03d81479\"",
+        "bytes": 96998392
+      },
+      {
+        "key": "viewer-publications/manifest.json",
+        "etag": "\"ff2ab81eac88e4fdecba747e86ccb63e\"",
+        "bytes": 973
+      },
+      {
+        "key": "viewer-publications/recoveries/accepted.json",
+        "etag": "\"37db5dc29219999e79429625f3509fff\"",
+        "bytes": 4693694
+      }
+    ],
+    "old_processes_absent": true,
+    "lock_available": true,
+    "free_disk_bytes": 66280202240,
+    "restart_dispatched": false,
+    "storage_assessment": {
+      "previous_failed_sqlite_bytes": 30196588544,
+      "minimum_start_free_bytes": 64424509440,
+      "write_guard_reserve_bytes": 12884901888,
+      "concurrent_acquisition": false,
+      "note": "Observed prior SQLite size is not a guaranteed peak; monitor free space during build."
+    }
+  },
+  "publication_complete": false,
+  "baseline_downloads_may_still_be_running": true,
+  "supervisor_script_sha256": "6025eb6648a3eeedef22e234c583053bf18344cfab20b5a485ed795629a7827f"
+}
