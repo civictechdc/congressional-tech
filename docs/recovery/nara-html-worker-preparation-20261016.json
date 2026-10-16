@@ -1,0 +1,28 @@
+{
+  "at": "2026-10-16T04:37:47.601970+00:00",
+  "status": "prepared_not_dispatched",
+  "groups": 1409,
+  "urls": 1410,
+  "workers": 1,
+  "minimum_delay_seconds": 30,
+  "paid_requests": 0,
+  "checks": [
+    "Six content-classifier tests passed",
+    "Real five-response archive probe classified",
+    "Network-disabled worker fixture reused exact retained digest with zero requests"
+  ],
+  "requirements": [
+    "Prior attachment worker actual exit zero and physical absence",
+    "Exclusive predecessor and worker locks",
+    "Deferred URL and body exclusions",
+    "Full archive digest match before content acceptance",
+    "Preserve attachments, empty pages and no-statement metadata separately",
+    "No automatic restart after refusal or three consecutive transport errors"
+  ],
+  "evidence_hashes": {
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/recover_nara_html.py": "4b2ea00cadca9339b55b2eba3d3652be4bb6102e99b702b2ee2134bed3420878",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/check_nara_html_worker.py": "a1650b49396d52c8c0d4c349c4f14d35239100b698a48dcce3c1528187991519",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/remaining-html-acquisition-queue-v2.json": "56271753b0c79374ef0a33a504ff2fe0036b1366418f4221553bb1a8751d6eb0",
+    "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/remaining-html-retained-digest-candidates.json": "59f31beb8efdfaac849dd52bde3cdd1b4623a18d75aae2f09baebce8e6757db7"
+  }
+}
