@@ -55,7 +55,6 @@ class BuilderBoundaryTests(unittest.TestCase):
         with patch('congress_api.retention.raw_catalog._rebuild_catalog', side_effect=internal):
             self.assertEqual(module.rebuild_retained_catalog(store, working=working, root=root), [])
 
-if __name__=='__main__':unittest.main()
 
 class DispatcherContinuationTests(unittest.TestCase):
     setUp = CoverageTests.setUp
@@ -134,3 +133,36 @@ class DispatcherContinuationTests(unittest.TestCase):
                     args.resume = True
                     self.assertEqual(module.run(args), {'status': 'published'})
                 self.assertEqual(calls, dict(catalog=1, mappings=1, prepared=1, publication=1))
+
+
+class ExternalReadinessTests(unittest.TestCase):
+    def test_publication_uses_import_pinned_external_readiness_and_remote_proof(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder).resolve(); batch = root/'batch'; batch.mkdir()
+            imported = root/'imported'; (imported/'payloads').mkdir(parents=True)
+            reconciled = root/'reconciled'; reconciled.mkdir()
+            capture = dict(captures=[dict(body_key='body')])
+            (batch/'prepared-source-records.json').write_text(json.dumps([capture]))
+            (batch/'zip-receipts.json').write_text('[]')
+            manifest = dict(files={name: module.digest(batch/name) for name in
+                                  ('prepared-source-records.json', 'zip-receipts.json')})
+            (batch/'manifest.json').write_text(json.dumps(manifest))
+            manifest_sha = module.digest(batch/'manifest.json')
+            (batch/'source-record-preparation.json').write_text(json.dumps(dict(unresolved=[], batch_manifest_sha256=manifest_sha)))
+            readback = reconciled/'remote-body-readback.json'
+            readback.write_text(json.dumps(dict(batch_manifest_sha256=manifest_sha)))
+            ready = reconciled/'import-readiness.json'
+            ready.write_text(json.dumps(dict(files=manifest['files'], capture_rows=1,
+                remote_body_readback_sha256=module.digest(readback))))
+            result = dict(complete=True, added_capture_rows=1, distinct_bodies=1)
+            (imported/'payloads/import-complete.json').write_text(json.dumps(result))
+            pins = {str(path): module.digest(path) for path in (batch/'manifest.json', batch/'prepared-source-records.json', ready)}
+            (imported/'events.jsonl').write_text('\n'.join(json.dumps(event) for event in
+                [dict(event='pins', value=pins), dict(event='import_complete', value=result)]))
+            self.assertEqual(module.verify_import(batch, imported, readiness=ready), result)
+            readback.write_text('{}')
+            with self.assertRaisesRegex(ValueError, 'evidence changed'):
+                module.verify_import(batch, imported, readiness=ready)
+
+
+if __name__ == '__main__': unittest.main()

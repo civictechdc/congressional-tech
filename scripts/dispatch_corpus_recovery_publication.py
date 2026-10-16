@@ -33,6 +33,12 @@ def verify_import(batch, imported, *, readiness=None):
     manifest = json.loads((batch / 'manifest.json').read_text())
     readiness = readiness.resolve() if readiness is not None else batch/'import-readiness.json'
     ready = json.loads(readiness.read_text())
+    if ready.get('remote_body_readback_sha256'):
+        readback = readiness.with_name('remote-body-readback.json')
+        if digest(readback) != ready['remote_body_readback_sha256']:
+            raise ValueError('Body reconciliation evidence changed')
+        if json.loads(readback.read_text())['batch_manifest_sha256'] != digest(batch/'manifest.json'):
+            raise ValueError('Body reconciliation belongs to another batch')
     for name, expected in ready['files'].items():
         if name in manifest['files'] and manifest['files'][name] != expected:
             raise ValueError('Conflicting batch evidence hashes')
@@ -118,7 +124,7 @@ def run(args):
     paths += [imported/'payloads'/key for key in ('indexes/captures.parquet', 'indexes/download-state.parquet')]
     if readiness is not None:
         paths += [readiness.resolve()]
-        body_readback = readiness.resolve().with_name('body-readback.json')
+        body_readback = readiness.resolve().with_name('remote-body-readback.json')
         if body_readback.exists(): paths += [body_readback]
     pins = {str(p): digest(p) for p in paths}
     binding = dict(pins=pins, batch=str(batch), imported=str(imported), runtime=str(runtime),
