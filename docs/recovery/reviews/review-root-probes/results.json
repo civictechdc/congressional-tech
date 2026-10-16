@@ -1,0 +1,31 @@
+{
+  "dispatch_crash": {
+    "prior_status": {
+      "state": "dispatch_incomplete_requires_reconciliation",
+      "complete": false,
+      "attempts": 1
+    },
+    "resume_exit": 0,
+    "old_child_still_alive": true
+  },
+  "orphan_identity": {
+    "same_pid_start_command_parent_changed": true
+  },
+  "cloud_scan_age": {
+    "cloud_scan_started": [
+      0.0
+    ],
+    "now": 101.0,
+    "freshness_recorded_at": 100.0,
+    "second_check_reused": true
+  },
+  "baseline_overwrite": {
+    "recoveries": [
+      {
+        "original_url": "kept",
+        "body_key": "bodies/sha256/ae/ae907ab9a383483e5c37beee966723544b9e6f12148a7dcd56ceea7ad44c5a7b.gz"
+      }
+    ],
+    "schema": 1
+  }
+}
