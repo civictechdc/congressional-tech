@@ -1,0 +1,31 @@
+{
+  "summary_path": "output/filename-patterns-20261015/content-review-linkage-v2/summary.json",
+  "summary_sha256": "a94556db4ecc59ad6b8680fa159aed62e15a053b610a7c41cb1f5f4cbaed3f14",
+  "outputs": {
+    "ledger.jsonl": "80921430e0cc0d67a7dc2dcd119befed4f91f18b5987e4811b480313cb68cdad",
+    "implementation.json": "79afc13f5ec759b5ee098b582b42be6e01d182f07790e071c93d8432ef273242"
+  },
+  "input_ledger_sha256": "218c5ecc8a8eeb05b047414f4ffb7d5a9938d4a1f8d0d1e419b9c998932971e5",
+  "receipt_path": "docs/experiments/filename-patterns-20261015/ways_means_vote_content_review_v1.json",
+  "receipt_sha256": "b3fd009ee5d2c37b7970fd95f658d3cf833f6cc1a5e038bd6750432e72ccaad3",
+  "records": 1902,
+  "linked_documents": 49,
+  "reviewed_pages": 291,
+  "nonmatching_reviews": 0,
+  "metadata_needs_review": 91,
+  "metadata_needs_review_with_complete_assistant_review": 49,
+  "metadata_needs_review_without_linked_content_review": 42,
+  "verification": {
+    "all_original_fields_except_content_review_unchanged": true,
+    "all_bound_inputs_and_outputs_reverified": true,
+    "frozen_source_hashes_unchanged": 9,
+    "new_reviews_outside_all_400_pilot_ids_and_body_keys": true
+  },
+  "classification_mutations": false,
+  "independent_reference": false,
+  "release_approved": false,
+  "limitations": [
+    "Evidence-only continuation using unchanged linker; no runtime change or publication.",
+    "49 complete assistant reviews do not resolve the 91 metadata classification decisions."
+  ]
+}

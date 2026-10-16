@@ -1,0 +1,46 @@
+Ways and Means amendment/vote content review
+==========================================
+All 11 remaining amendment/vote groups have complete assistant reviews of
+12 retained pages. Each packet contains a committee vote narrative and a
+named-member roll-call table from June 13, 2023. The amendment is the subject
+of the vote. No legislative amendment text was observed in these packets.
+
+The additive ways_means_vote_content_review_v1.json receipt binds the exact
+original v4 ledger, selection, fetched PDFs, native text and every page render.
+It extends the completed disclosure/biography receipt chain. The unchanged
+content-review linker accepted all 49 receipts / 291 pages with no mismatches.
+All 1,902 original rows retain every original field except content_review;
+91 metadata decisions remain open, including 42 without linked content review.
+
+Chu consists of two scanned pages and has no extracted native text. Both
+pages were visually inspected without OCR. The Doggett narrative states
+18 yeas and 25 nays, while the table shows 18 yea marks and 24 nay marks;
+the Steube row is blank. This inconsistency is retained without correction.
+The literal Blumeanauer filename spelling is retained alongside Blumenauer
+in the body. Parser offset warnings on ten PDFs did not prevent parsing or
+rendering; original bytes were preserved.
+
+Verification
+------------
+Rechecked all selected input hashes, exact PDF identity and page counts,
+complete render coverage, all linked output hashes and unchanged ledger fields.
+All 11 new documents and body keys are outside the 400-record frozen pilot.
+The nine frozen source hashes are unchanged. This is an evidence-only change;
+the linker and house_naming runtime were not modified. The previous linker's
+84-test result remains its code validation; no new test result is claimed here.
+
+Decision and next step
+----------------------
+Preserve filename claims and content observations separately. These packets
+support an observed committee-vote form, but do not justify a general rule
+that converts bare Amendment filenames to votes. Before resolving a kind,
+require unchanged membership/body evidence and preserve any conflicting alias.
+
+Next inspect the older amendment/Swalwell receipts for a lossless adapter to
+the current linkage format. Require exact identity, page coverage and unchanged
+source membership; incomplete legacy evidence must remain unlinked. Then review
+the opening/memo packets. Any runtime rule belongs in house_naming and needs
+focused tests plus full affected-catalog replay before a release decision.
+
+Assistant review is neither independent reference labeling nor release approval.
+No production classifications, frozen rules, publication or acquisition changed.

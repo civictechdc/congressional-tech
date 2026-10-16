@@ -509,3 +509,31 @@ Next bounded steps:
 4. Qualify the fresh raw catalog pair and obtain independent reference labels
    before unlocking held-out evaluation. The latest local runtime is still
    3.2.7; the verified published catalog remains 3.1.0.
+
+Ways and Means vote review completed
+-----------------------------------
+All 11 remaining amendment/vote packets / 12 pages now have complete assistant
+reviews. The v2 linkage contains 49 reviewed documents / 291 pages with zero
+mismatches. Original filename and metadata fields remain unchanged. Of the
+91 open metadata decisions, 49 now have linked content review and 42 do not.
+See REVIEW_WAYS_MEANS_VOTE_CONTENT.txt and content_review_linkage_checkpoint_v2.json.
+
+Continue with the existing amendment/Swalwell receipt adapter. First inventory
+its saved PDF identity, page coverage and original source membership. Reuse the
+current strict validator through an explicit normalized receipt; do not weaken
+checks merely to accept old records. Missing coverage or membership evidence
+requires a new bounded review. Then inspect opening/memo packets and propose
+narrow runtime changes only where document and alias evidence justify them.
+Keep the frozen candidate and independent-reference gates unchanged. Local
+house_naming remains 3.2.7; this evidence commit does not publish a release.
+
+Legacy receipt inventory narrows the adapter scope
+-------------------------------------------------
+Compared all 18 legacy review document IDs against v3 and v4. Only the four-page
+VE-letter substitute remains in v4, and its complete row is identical to v3.
+The other 17 IDs are outside the current changed-group ledger. Therefore the
+next adapter should link the VE-letter review to that unchanged row and report
+the other reviews as outside the current ledger, not as pending current cases.
+Preserve all legacy receipts. Swalwell uses a different artifact naming/schema;
+it has no current row to resolve. This inventory supersedes an assumption that
+all 18 older reviews would reduce the 42 remaining unlinked current cases.

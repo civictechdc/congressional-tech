@@ -1,0 +1,471 @@
+{
+  "scope": "Complete assistant review of 11 remaining amendment/vote groups and all 12 retained pages",
+  "previous_review": "docs/experiments/filename-patterns-20261015/disclosure_biography_content_review_v5.json",
+  "previous_review_sha256": "fa1657a0f16d9cd31d2365d50b7a00d9d79cd219ecfa517311087c88735be99e",
+  "input_ledger": "output/filename-patterns-20261015/review-evidence-v4/ledger.jsonl",
+  "input_ledger_sha256": "218c5ecc8a8eeb05b047414f4ffb7d5a9938d4a1f8d0d1e419b9c998932971e5",
+  "fetch_results_path": "output/filename-patterns-20261015/public-retained-review-v4/results.json",
+  "fetch_results_sha256": "80af136983cde402786bb245f85939c060ec21e8a5584865bd2ebf8a5e19c8ce",
+  "selection_bindings": {
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/docs/experiments/filename-patterns-20261015/content_readiness_checkpoint.json": "b40dbe84dcb68e5aaf014084e8c55e7260c257074cd2d3b8314360ae0a504857",
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/output/filename-patterns-20261015/public-retained-review-v4/fetch.py": "27c66d1e7b89b261a4bf5fd22e5f7c2a32628ea650ea77d8d6e784426974f33c",
+    "output/filename-patterns-20261015/review-evidence-v3/ledger.jsonl": "d92184926b42812dff3c36f9442c032a0841ff8ecd3e679b40f6c477595d1438",
+    "output/filename-patterns-20261015/remaining-content-readiness-v1/readiness.json": "113859c8c35a6fc502603261c39622ac7f1f77377529755d2950b1a38e8dc4f0",
+    "docs/experiments/filename-patterns-20261015/catalog_alias_review.py": "dd46f8122ee43b0eaf8a88af7b0f16e94f147dd1e0d862dcaec836554b27e69d",
+    "packages/congress_api/src/congress_api/retention/document_index.py": "ec575da15c10615bd983baf3566e7bf5c1e63c5311715b0ab9e5b22917cc2667",
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/output/filename-patterns-20261015/continuation-v1/pilot.json": "55b3256dc0bfee57d90235b7d8d9b216060bc145d82926709a5b01beed619237",
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/docs/experiments/filename-patterns-20261015/review_evidence_checkpoint_v4.json": "869462f1085c1217c3ff4146fda6626ee504fda8d9deb84aa548cf6cc0c8144b",
+    "output/filename-patterns-20261015/review-evidence-v4/summary.json": "fad13d1d0101aebde561911cb9c6ecfff4c68b2dc8b0be65bd315d2a24fb8517",
+    "output/filename-patterns-20261015/review-evidence-v4/ledger.jsonl": "218c5ecc8a8eeb05b047414f4ffb7d5a9938d4a1f8d0d1e419b9c998932971e5",
+    "output/filename-patterns-20261015/public-retained-review-v4/selection.json": "965d439ad3030467219fe94379d0b22e23db0a9f36629e18acbe9fe34f7821d3",
+    "output/filename-patterns-20261015/public-retained-review-v4/input-check.json": "8b66497695bbf4f330e9579c901a6934ff9c3f9abe098bf0db9cfb384045fc21"
+  },
+  "records": [
+    {
+      "document_id": "042c5e9c1f0300282bf585442ea3bcc2fccb1b24a0d5b744bc7c495ffa4ff765",
+      "filename": "Neal-3938-Amendment.pdf",
+      "body_key": "bodies/sha256/5a/5a0e65882a14dbebae4b0eb89d0bbe92b33b8a6598c791945f6b1766a7aabb39.gz",
+      "sha256": "5a0e65882a14dbebae4b0eb89d0bbe92b33b8a6598c791945f6b1766a7aabb39",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v4/5a0e65882a14dbebae4b0eb89d0bbe92b33b8a6598c791945f6b1766a7aabb39.pdf",
+      "pages": 1,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v4/5a0e65882a14dbebae4b0eb89d0bbe92b33b8a6598c791945f6b1766a7aabb39.txt",
+      "text_sha256": "482195be2f90d2fd522dc64d875415fbe7c60308f70e285c467fc54fc36cba76",
+      "selection_index": 1,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "committee-vote"
+      ],
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 1,
+          "observed_form": "committee-vote",
+          "description": "Ways and Means June 13, 2023 recorded vote on the Neal amendment to H.R. 3938: research expenditures in China. Vote narrative and named-member Yea/Nay/Present table."
+        }
+      ],
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v4/page-01-1.png": "68939484b9fa30ce659b242a262a07b218577d56983f7da7c32320a455a41b70"
+      },
+      "literal_filename_aliases": [
+        "CRPT-118-WM00-Vote004-20230613.pdf",
+        "Neal-3938-Amendment.pdf"
+      ],
+      "observations": [
+        "Heading identifies votes of the committee; the amendment is the subject of the recorded vote.",
+        "No legislative amendment text observed in the retained packet."
+      ],
+      "native_text_extraction": "pypdf; visual inspection of every rendered page is the review basis",
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "055d1e1984f84abad9bf163f42dd730890598e0bfb775ce8e39262c0ef0b7870",
+      "filename": "Chu-3936-Amendment.pdf",
+      "body_key": "bodies/sha256/2b/2b9953462e7fe732c3e364452566dcea64ba94458909d623cbce3d309b89a766.gz",
+      "sha256": "2b9953462e7fe732c3e364452566dcea64ba94458909d623cbce3d309b89a766",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v4/2b9953462e7fe732c3e364452566dcea64ba94458909d623cbce3d309b89a766.pdf",
+      "pages": 2,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v4/2b9953462e7fe732c3e364452566dcea64ba94458909d623cbce3d309b89a766.txt",
+      "text_sha256": "e479439f5daf99e46eb441128d0e1dd0e533372630c5a3271cf94ca917affe7e",
+      "selection_index": 2,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "committee-vote"
+      ],
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 2,
+          "observed_form": "committee-vote",
+          "description": "Ways and Means June 13, 2023 recorded vote on the Chu amendment to H.R. 3936: Travel for Care Act provisions. Vote narrative and named-member Yea/Nay/Present table."
+        }
+      ],
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v4/page-02-1.png": "f250a70c68413b93948133edf58471bc46a4bba1fb01fbe34a1d2c96c6a36e6d",
+        "output/filename-patterns-20261015/public-retained-review-v4/page-02-2.png": "1fc4221bcccb60ea5a689ca9e753e6cb20bfe52d4e0f41b6f9d470b90319b5b2"
+      },
+      "literal_filename_aliases": [
+        "CRPT-118-WM00-Vote016-20230613.pdf",
+        "Chu-3936-Amendment.pdf"
+      ],
+      "observations": [
+        "Heading identifies votes of the committee; the amendment is the subject of the recorded vote.",
+        "No legislative amendment text observed in the retained packet.",
+        "Two scanned pages: narrative on page 1, roll-call table on page 2. Native text extraction is empty; no OCR used."
+      ],
+      "native_text_extraction": "pypdf; visual inspection of every rendered page is the review basis",
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "366371f295e4b34bd9cc04c0da836163267ea6de6d9af0d38fa06c572e4e8ecf",
+      "filename": "Kildee-3938-Amendment.pdf",
+      "body_key": "bodies/sha256/d2/d21db38a38d30644588924b25969719c649892a0ec0e518f1cd0befa51a8768d.gz",
+      "sha256": "d21db38a38d30644588924b25969719c649892a0ec0e518f1cd0befa51a8768d",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v4/d21db38a38d30644588924b25969719c649892a0ec0e518f1cd0befa51a8768d.pdf",
+      "pages": 1,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v4/d21db38a38d30644588924b25969719c649892a0ec0e518f1cd0befa51a8768d.txt",
+      "text_sha256": "fd2c57d9c85c4a99e7da231ab600900396048a037d9dfb748362b97e13f4c03e",
+      "selection_index": 3,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "committee-vote"
+      ],
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 1,
+          "observed_form": "committee-vote",
+          "description": "Ways and Means June 13, 2023 recorded vote on the Kildee amendment to H.R. 3938: electric vehicle credit conditions. Vote narrative and named-member Yea/Nay/Present table."
+        }
+      ],
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v4/page-03-1.png": "f5bcc291919bc6a241c2af4fb9bdeb8f5dbd41f0069810a90ed545b0d5cf6637"
+      },
+      "literal_filename_aliases": [
+        "CRPT-118-WM00-Vote006-20230613.pdf",
+        "Kildee-3938-Amendment.pdf"
+      ],
+      "observations": [
+        "Heading identifies votes of the committee; the amendment is the subject of the recorded vote.",
+        "No legislative amendment text observed in the retained packet."
+      ],
+      "native_text_extraction": "pypdf; visual inspection of every rendered page is the review basis",
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "68a130ccdd5b972bbe899d3fe96db59fa18ddc7db8b3c53d091c3a6d2be76c5a",
+      "filename": "CRPT-118-WM00-Vote002-20230613.pdf",
+      "body_key": "bodies/sha256/6a/6a71f8e05a681e1d9a986da7e42e42adf7078ad626bf32ba55e9df961b78cbda.gz",
+      "sha256": "6a71f8e05a681e1d9a986da7e42e42adf7078ad626bf32ba55e9df961b78cbda",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v4/6a71f8e05a681e1d9a986da7e42e42adf7078ad626bf32ba55e9df961b78cbda.pdf",
+      "pages": 1,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v4/6a71f8e05a681e1d9a986da7e42e42adf7078ad626bf32ba55e9df961b78cbda.txt",
+      "text_sha256": "760d02117f408d6b83f7fe504a6560bc1bcc26943521a4d56c743acf5a7ac8f0",
+      "selection_index": 4,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "committee-vote"
+      ],
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 1,
+          "observed_form": "committee-vote",
+          "description": "Ways and Means June 13, 2023 recorded vote on the Beyer amendment to H.R. 3937: qualified small business stock exclusion. Vote narrative and named-member Yea/Nay/Present table."
+        }
+      ],
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v4/page-04-1.png": "e67f53b003ec9b0543ae6db3bcc87682cf4cec568f761a075a2f9e303b7501e4"
+      },
+      "literal_filename_aliases": [
+        "Beyer-3937-Amendment.pdf",
+        "CRPT-118-WM00-Vote002-20230613.pdf"
+      ],
+      "observations": [
+        "Heading identifies votes of the committee; the amendment is the subject of the recorded vote.",
+        "No legislative amendment text observed in the retained packet."
+      ],
+      "native_text_extraction": "pypdf; visual inspection of every rendered page is the review basis",
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "9d72fd65c5f5114ab9bb7e5dc4570e4ce385033adbb06b666f3051129f3b75af",
+      "filename": "Thompson-3938-Amendment.pdf",
+      "body_key": "bodies/sha256/c3/c38dd137d037d510b5f646773d4ad87fe206a54d339a5f9f218e48aa91a31352.gz",
+      "sha256": "c38dd137d037d510b5f646773d4ad87fe206a54d339a5f9f218e48aa91a31352",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v4/c38dd137d037d510b5f646773d4ad87fe206a54d339a5f9f218e48aa91a31352.pdf",
+      "pages": 1,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v4/c38dd137d037d510b5f646773d4ad87fe206a54d339a5f9f218e48aa91a31352.txt",
+      "text_sha256": "a5701b610993c491cdf596be73b457d627c2556a0e6438a6a8539f9ed1174e8e",
+      "selection_index": 5,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "committee-vote"
+      ],
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 1,
+          "observed_form": "committee-vote",
+          "description": "Ways and Means June 13, 2023 recorded vote on the Thompson amendment to H.R. 3938: PGA Tour tax exemption. Vote narrative and named-member Yea/Nay/Present table."
+        }
+      ],
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v4/page-05-1.png": "331ef1c548045b54ff799f854aed70fb6d95c6c9c9f710eb528f6b8031bac99a"
+      },
+      "literal_filename_aliases": [
+        "CRPT-118-WM00-Vote010-20230613.pdf",
+        "Thompson-3938-Amendment.pdf"
+      ],
+      "observations": [
+        "Heading identifies votes of the committee; the amendment is the subject of the recorded vote.",
+        "No legislative amendment text observed in the retained packet."
+      ],
+      "native_text_extraction": "pypdf; visual inspection of every rendered page is the review basis",
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "ae4697a5ff62d270b6e9fc173f53c87f2caf60419f049cdfc65713955e999ec2",
+      "filename": "Sanchez-3938-Amendment.pdf",
+      "body_key": "bodies/sha256/9a/9a2d90f0f45944377623ca6ff99ba10c48331c1b8bc8d1e7ef1de6273060713f.gz",
+      "sha256": "9a2d90f0f45944377623ca6ff99ba10c48331c1b8bc8d1e7ef1de6273060713f",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v4/9a2d90f0f45944377623ca6ff99ba10c48331c1b8bc8d1e7ef1de6273060713f.pdf",
+      "pages": 1,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v4/9a2d90f0f45944377623ca6ff99ba10c48331c1b8bc8d1e7ef1de6273060713f.txt",
+      "text_sha256": "5b42097802daba5abcd2da7036a5e98db4d8fbeb7f2ffab7d638e366a903e837",
+      "selection_index": 6,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "committee-vote"
+      ],
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 1,
+          "observed_form": "committee-vote",
+          "description": "Ways and Means June 13, 2023 recorded vote on the Sanchez amendment to H.R. 3938: wages and union dues. Vote narrative and named-member Yea/Nay/Present table."
+        }
+      ],
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v4/page-06-1.png": "95f14d87df448ebbea251afd851b016eb3f8af69587ca3e63a212fc03f558df9"
+      },
+      "literal_filename_aliases": [
+        "CRPT-118-WM00-Vote005-20230613.pdf",
+        "Sanchez-3938-Amendment.pdf"
+      ],
+      "observations": [
+        "Heading identifies votes of the committee; the amendment is the subject of the recorded vote.",
+        "No legislative amendment text observed in the retained packet."
+      ],
+      "native_text_extraction": "pypdf; visual inspection of every rendered page is the review basis",
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "b850938ab6d4ee9cc7dea79ce00ea9aa9945481097ea24860fe44a3add2e5688",
+      "filename": "CRPT-118-WM00-Vote018-20230613.pdf",
+      "body_key": "bodies/sha256/98/98f4a609b7d9ba200c618e46a76ab361c666ca43c38d235ae486582f71852c43.gz",
+      "sha256": "98f4a609b7d9ba200c618e46a76ab361c666ca43c38d235ae486582f71852c43",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v4/98f4a609b7d9ba200c618e46a76ab361c666ca43c38d235ae486582f71852c43.pdf",
+      "pages": 1,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v4/98f4a609b7d9ba200c618e46a76ab361c666ca43c38d235ae486582f71852c43.txt",
+      "text_sha256": "e750dd5da0bad91f95095e064b278be4b1e427eb2f50aa01dcc7c07d969e1f3d",
+      "selection_index": 7,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "committee-vote"
+      ],
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 1,
+          "observed_form": "committee-vote",
+          "description": "Ways and Means June 13, 2023 recorded vote on the Davis amendment to H.R. 3936: child care deductions. Vote narrative and named-member Yea/Nay/Present table."
+        }
+      ],
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v4/page-07-1.png": "bf2686b6fe28360f200c964df169df5bf1ccf9cbea052b5a664bb5c82e73719f"
+      },
+      "literal_filename_aliases": [
+        "3936-Davis-Amendment.pdf",
+        "CRPT-118-WM00-Vote018-20230613.pdf"
+      ],
+      "observations": [
+        "Heading identifies votes of the committee; the amendment is the subject of the recorded vote.",
+        "No legislative amendment text observed in the retained packet."
+      ],
+      "native_text_extraction": "pypdf; visual inspection of every rendered page is the review basis",
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "bbcbe3cb2d3aae5395449090a063064f3a6db1e7523c10882ea1523c712135d9",
+      "filename": "CRPT-118-WM00-Vote014-20230613.pdf",
+      "body_key": "bodies/sha256/8f/8f977f85241e4e7424fb57dd0971412642b40333285a8e5a59a9346d1b87b61a.gz",
+      "sha256": "8f977f85241e4e7424fb57dd0971412642b40333285a8e5a59a9346d1b87b61a",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v4/8f977f85241e4e7424fb57dd0971412642b40333285a8e5a59a9346d1b87b61a.pdf",
+      "pages": 1,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v4/8f977f85241e4e7424fb57dd0971412642b40333285a8e5a59a9346d1b87b61a.txt",
+      "text_sha256": "fca3fa3c3e86b3bd7f5f5faa2df854ac371b1bb49320b1b876eb9d9023916dae",
+      "selection_index": 8,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "committee-vote"
+      ],
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 1,
+          "observed_form": "committee-vote",
+          "description": "Ways and Means June 13, 2023 recorded vote on the Schneider amendment to H.R. 3936: Charitable Act provisions. Vote narrative and named-member Yea/Nay/Present table."
+        }
+      ],
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v4/page-08-1.png": "8dd4d72dcd074b2d98f4e802f6282af797bc3df232b44b18afe422e101a1c02e"
+      },
+      "literal_filename_aliases": [
+        "3936-Schneider-Amendment.pdf",
+        "CRPT-118-WM00-Vote014-20230613.pdf"
+      ],
+      "observations": [
+        "Heading identifies votes of the committee; the amendment is the subject of the recorded vote.",
+        "No legislative amendment text observed in the retained packet."
+      ],
+      "native_text_extraction": "pypdf; visual inspection of every rendered page is the review basis",
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "d680c5d4a26d8b2c0fa25631c454336dd30b7577732d58379fc551ec80a97143",
+      "filename": "Doggett-3938-Amendment.pdf",
+      "body_key": "bodies/sha256/26/267aec48534ec744019483900a342d6d042e8190b60dd4825a436f0454e843c9.gz",
+      "sha256": "267aec48534ec744019483900a342d6d042e8190b60dd4825a436f0454e843c9",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v4/267aec48534ec744019483900a342d6d042e8190b60dd4825a436f0454e843c9.pdf",
+      "pages": 1,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v4/267aec48534ec744019483900a342d6d042e8190b60dd4825a436f0454e843c9.txt",
+      "text_sha256": "c31cddb2a4d7cd283f04018c5353f023112e1f6833ff5622db18c112a94bce99",
+      "selection_index": 9,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "committee-vote"
+      ],
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 1,
+          "observed_form": "committee-vote",
+          "description": "Ways and Means June 13, 2023 recorded vote on the Doggett amendment to H.R. 3938: foreign income and tax credits. Vote narrative and named-member Yea/Nay/Present table."
+        }
+      ],
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v4/page-09-1.png": "07387dfc8a447b44e02221fe26b4f4de3b9e90001d942570ae32f331fda8d519"
+      },
+      "literal_filename_aliases": [
+        "CRPT-118-WM00-Vote009-20230613.pdf",
+        "Doggett-3938-Amendment.pdf"
+      ],
+      "observations": [
+        "Heading identifies votes of the committee; the amendment is the subject of the recorded vote.",
+        "No legislative amendment text observed in the retained packet."
+      ],
+      "native_text_extraction": "pypdf; visual inspection of every rendered page is the review basis",
+      "independent_reference": false,
+      "release_approved": false,
+      "source_consistency_notes": [
+        "Narrative states 18 yeas and 25 nays; the rendered table shows 18 yea marks and 24 nay marks, with the Steube row blank. Preserve this source discrepancy without correcting the record."
+      ]
+    },
+    {
+      "document_id": "e4f72098ebca93fe22bf42281cfb3d8cd0b88a1324830405c7319d7760d8770f",
+      "filename": "Sewell-3938-Amendment.pdf",
+      "body_key": "bodies/sha256/14/1452be3a00bc0a757beff5dd57310541831cb1eb92d1231ae2de38df2cf561fa.gz",
+      "sha256": "1452be3a00bc0a757beff5dd57310541831cb1eb92d1231ae2de38df2cf561fa",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v4/1452be3a00bc0a757beff5dd57310541831cb1eb92d1231ae2de38df2cf561fa.pdf",
+      "pages": 1,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v4/1452be3a00bc0a757beff5dd57310541831cb1eb92d1231ae2de38df2cf561fa.txt",
+      "text_sha256": "f159588a2b408b4a316cc8bf672f9e2c22ae6f53816f0db424211370ca0822b6",
+      "selection_index": 10,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "committee-vote"
+      ],
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 1,
+          "observed_form": "committee-vote",
+          "description": "Ways and Means June 13, 2023 recorded vote on the Sewell amendment to H.R. 3938: Junk Fee Prevention Act limitations. Vote narrative and named-member Yea/Nay/Present table."
+        }
+      ],
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v4/page-10-1.png": "75f26577aced5856538a49c2d6bec7ed7da0ae761250dddb61f8ab1e2d6c2391"
+      },
+      "literal_filename_aliases": [
+        "CRPT-118-WM00-Vote007-20230613.pdf",
+        "Sewell-3938-Amendment.pdf"
+      ],
+      "observations": [
+        "Heading identifies votes of the committee; the amendment is the subject of the recorded vote.",
+        "No legislative amendment text observed in the retained packet."
+      ],
+      "native_text_extraction": "pypdf; visual inspection of every rendered page is the review basis",
+      "independent_reference": false,
+      "release_approved": false
+    },
+    {
+      "document_id": "e50aadbdaf0938d97a8f4695eabf81d56ac62f966352f9eb4a0c9df4b69c8bcc",
+      "filename": "CRPT-118-WM00-Vote008-20230613.pdf",
+      "body_key": "bodies/sha256/d7/d79956ab2b58896986e0402ed10487efa6327e6befd79f97d3fa595218a7de26.gz",
+      "sha256": "d79956ab2b58896986e0402ed10487efa6327e6befd79f97d3fa595218a7de26",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v4/d79956ab2b58896986e0402ed10487efa6327e6befd79f97d3fa595218a7de26.pdf",
+      "pages": 1,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v4/d79956ab2b58896986e0402ed10487efa6327e6befd79f97d3fa595218a7de26.txt",
+      "text_sha256": "03e0d5bddfdd38dce2c7d5f198b025f347a40d6495dce0612f956ce8aca07785",
+      "selection_index": 11,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "observed_document_forms": [
+        "committee-vote"
+      ],
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 1,
+          "observed_form": "committee-vote",
+          "description": "Ways and Means June 13, 2023 recorded vote on the Blumenauer amendment to H.R. 3938: Superfund excise tax and green tax credits. Vote narrative and named-member Yea/Nay/Present table."
+        }
+      ],
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v4/page-11-1.png": "e9a3cfbd190e3c8c2161725d90c0883e1d09ea24b5d101fda7e5fc6ba39b5805"
+      },
+      "literal_filename_aliases": [
+        "Blumeanauer-3938-Amendment.pdf",
+        "CRPT-118-WM00-Vote008-20230613.pdf"
+      ],
+      "observations": [
+        "Heading identifies votes of the committee; the amendment is the subject of the recorded vote.",
+        "No legislative amendment text observed in the retained packet.",
+        "Literal alias Blumeanauer-3938-Amendment.pdf differs from the body spelling Blumenauer; preserve both."
+      ],
+      "native_text_extraction": "pypdf; visual inspection of every rendered page is the review basis",
+      "independent_reference": false,
+      "release_approved": false
+    }
+  ],
+  "summary": {
+    "new_completed_documents": 11,
+    "new_completed_pages": 12,
+    "cumulative_completed_documents": 49,
+    "cumulative_completed_pages": 291
+  },
+  "verification": {
+    "frozen_source_hashes_unchanged": 9,
+    "all_400_pilot_ids_and_body_keys_excluded": true,
+    "all_selection_bindings_unchanged": true
+  },
+  "pilot_overlap": false,
+  "publisher_acquisition": false,
+  "production_ocr": false,
+  "production_changes": false,
+  "independent_reference": false,
+  "release_approved": false,
+  "limitations": [
+    "Assistant observations are not independent reference labels or release approval.",
+    "Filename claims and metadata dispositions remain unchanged; review completion does not resolve production kinds.",
+    "The vote-form observation does not justify treating every bare Amendment filename as a vote."
+  ]
+}
