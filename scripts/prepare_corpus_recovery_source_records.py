@@ -82,7 +82,10 @@ def prepare(batch, captures, timestamp_aliases=None):
     inputs = {}
     def read(path):
         path = Path(path).resolve(); raw = path.read_bytes()
-        inputs[str(path)] = hashlib.sha256(raw).hexdigest()
+        actual = hashlib.sha256(raw).hexdigest()
+        if str(path) in inputs and inputs[str(path)] != actual:
+            raise ValueError('Preparation input changed while records were built: '+str(path))
+        inputs[str(path)] = actual
         return json.loads(raw)
     manifest = read(batch/'manifest.json')
     for name, expected in manifest['files'].items():

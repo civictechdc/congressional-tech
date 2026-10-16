@@ -206,3 +206,18 @@ def test_missing_bound_receipt_timestamp_remains_unresolved(fixture,tmp_path):
     module.prepare(batch,captures); records,report = outputs()
     assert records == []
     assert report['unresolved'][0]['reason'] == 'source_timestamp_not_established'
+
+
+
+def test_rows_changed_between_manifest_check_and_read_are_refused(fixture):
+    batch,row,captures,seal,outputs = fixture
+    original_digest = module.digest
+    def tamper_after_check(path):
+        result = original_digest(path)
+        if Path(path).name == 'recoveries.json':
+            Path(path).write_text('[]')
+        return result
+    with patch.object(module,'digest',side_effect=tamper_after_check):
+        with pytest.raises(ValueError,match='Preparation input changed'):
+            module.prepare(batch,captures)
+    assert not any((batch/name).exists() for name in module.OUTPUTS)
