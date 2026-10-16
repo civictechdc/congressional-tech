@@ -1,0 +1,48 @@
+{
+  "at": "2026-10-16T05:08:05.848607+00:00",
+  "recovered_joint_statement_links": 1,
+  "basis": "Retained Irving page explicitly points to Williamson joint statement; retained full statement title names both authors",
+  "remaining_unresolved": 19228,
+  "prepared_links": 4346,
+  "published": false,
+  "pending_exact_archive_targets": 3,
+  "evidence": {
+    "williamson-irving-joint-statement-recovery.json": "40c9d8f335923ed2f3e47016bfed122231d5db504b49e9e658269011e0c81279",
+    "joint-statement-retained-title-matches.json": "72564d4cb24e406229e9f28f7d61d7e1780c067879d418e4f1a58c8cd6d2210c",
+    "pending-exact-linked-archive-targets.json": "a02238e01b1be7413918b4058686048cd13c472505f60bc4195106acf6744dcf",
+    "remaining-recovery-summary.json": "9b561b82d6badac6fe389d8e2c07651f263a412c13192497f70998cdbb4eda5f"
+  },
+  "live_worker_status": {
+    "nara-html-recovery": {
+      "processed": 55,
+      "total": 1409,
+      "valid_urls": 47,
+      "requests_made": 55,
+      "blocked": null,
+      "pid": 24521,
+      "parent_pid": 94792
+    },
+    "live-download-followthrough": {
+      "processed": 129,
+      "total": 5018,
+      "valid": 70,
+      "blocked": {},
+      "pid": 31041,
+      "parent_pid": 94792
+    },
+    "live-query-correction-followthrough": {
+      "processed": 78,
+      "total": 3939,
+      "valid": 29,
+      "blocked": {},
+      "pid": 36297,
+      "parent_pid": 94792
+    }
+  },
+  "next_steps": [
+    "Continue existing acquisition passes; retain warning-bearing PDFs for qualification",
+    "Resolve remaining ambiguous statement candidates using hearing context",
+    "Fetch three pending archive targets after existing NARA pass without overlapping requests",
+    "Run fresh cloud-clear preflight before batch 10 import and publication"
+  ]
+}
