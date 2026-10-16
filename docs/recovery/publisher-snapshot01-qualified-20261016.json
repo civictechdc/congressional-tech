@@ -1,0 +1,52 @@
+{
+  "at": "2026-10-16T05:20:17.986387+00:00",
+  "snapshot": {
+    "at": "2026-10-16T05:14:49.201822+00:00",
+    "snapshot_qualification_complete": true,
+    "workers_complete": false,
+    "qualified_urls": 314,
+    "distinct_bodies": 313,
+    "snapshots": [
+      {
+        "worker": "live-download-followthrough",
+        "completed_receipts": 178,
+        "total": 5018,
+        "snapshot_sha256": "5b302165f903c10182ee3e30c2770543e40545684fdbd2636fbcd98b10e73577",
+        "worker_completion_claimed": false
+      },
+      {
+        "worker": "live-query-correction-followthrough",
+        "completed_receipts": 137,
+        "total": 3939,
+        "snapshot_sha256": "5f27122fbf7628fdc601d6b88d7d245f66eefa3f17967184406551cae2933ebb",
+        "worker_completion_claimed": false
+      }
+    ]
+  },
+  "snapshot_process_actual_exit": 0,
+  "new_recovered_links": 314,
+  "recovered_url_total": 1611,
+  "retained_mappings": 3049,
+  "prepared_links": 4660,
+  "remaining_unresolved": 18914,
+  "published": false,
+  "workers_remain_running": true,
+  "house_http_sample": {
+    "actual_exit": 0,
+    "recovered": 0,
+    "reason": "All eight exact listed HTTP links redirect through HTTPS to HTML Not Found"
+  },
+  "evidence": {
+    "publisher-snapshot-01/complete.json": "96cc561ac696cd0734a7620120dc8661e98fb7c9c856512d3a60526d042a0938",
+    "publisher-snapshot-01/qualified.json": "7ba49f5bb66e36f8fd805d83203b18d97322ccbf7c16250f7a6ec805178772a3",
+    "house-listed-http-sample/completion-monitor.json": "8fbd663058527c1391423e7048d10af87e0075257dc5c0cd873e00401b5bdf37",
+    "remaining-recovery-summary.json": "71ba989dac8d640b3ad0c62c07acb503bcf2bbe0727b29705fad48cc8d6dbf2f",
+    "snapshot_completed_publisher_downloads.py": "f66e76d8770704238f4666539a2d72f42968f3eadf5f452f143a1105cbcfb89c"
+  },
+  "next_steps": [
+    "Seal successor batch including the verified snapshot and retained-link additions",
+    "Import and publish after a fresh cloud-clear check",
+    "Continue live workers; later snapshots must exclude these already qualified receipts",
+    "Use archival alternatives for the broken official House links"
+  ]
+}
