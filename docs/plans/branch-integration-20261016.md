@@ -13,7 +13,9 @@ State after the kill, all checked directly:
 - All 260 pinned inputs in `publication-checkpoint19/pins.json` re-hash unchanged: 228 runtime, 16 integration and 16 primary files. The binding is intact.
 - Both locks (`.cache/local-recovery.lock`, `.runner.lock`) are free. `build/working.sqlite` is a 15 GB partial build; the design does not resume an incomplete SQLite computation. Free disk is 54 GB (97% used).
 
-## Phase 0 — finish checkpoint 19 (owner approval required; it publishes)
+## Phase 0 — finish checkpoint 19 (owner approved; running)
+
+**Underway since 18:32 EDT.** The runner was reconciled (`runner-checkpoint19-publication/reconcile-20261016T2240Z.json`). The unaccepted build was moved to `publication-checkpoint19/build-incomplete-attempt-0001` (the dispatcher refuses to continue while `build/` exists, and it never deletes it). Attempt 2 runs as launchd job `org.codex.corpus-publication-resume.checkpoint19`: supervisor parent is PID 1, child runs the saved `--resume` command, and it passed the continuation and baseline checks into `load_indexes`. Remove the launchd job after it exits.
 
 Resume checkpoint 19 on its pinned runtime before integrating. Do not republish it from the integrated branch: that would combine new recovery data with the house-naming 3.0.0 → 3.2.7 classification change in one publication, and it would need fresh pins and readiness.
 
