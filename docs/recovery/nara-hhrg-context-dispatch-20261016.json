@@ -1,0 +1,20 @@
+{
+  "at": "2026-10-16T04:12:00.822967+00:00",
+  "status": "running_not_complete",
+  "process": "11635 .venv/bin/python output/corpus-retry-20261015/nara_hhrg_context.py\n",
+  "exec_session": 40798,
+  "urls": 17,
+  "matching_basis": "Full HHRG document filename and six-digit hearing ID both match",
+  "route": "direct_saved_NARA_session",
+  "workers": 1,
+  "min_delay_seconds": 30,
+  "paid_requests": 0,
+  "existing_batch_preserved": "checkpoint-07",
+  "source_sha256": "f115d131d6cc0616ab58f166195a62e1dc80acd305a856a6e1b907205d5baea7",
+  "queue_sha256": "68f9aaba5e8b44ad624413b9ac0d4ebd94296ada9924d3718ac3d8702600f7d2",
+  "completion_requirements": [
+    "Actual wait exit and physical process evidence",
+    "Exact queue accounting",
+    "Full successful payload and archive digest verification"
+  ]
+}
