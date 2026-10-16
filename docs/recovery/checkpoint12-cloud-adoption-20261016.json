@@ -1,0 +1,65 @@
+{
+  "at": "2026-10-16T14:07:00.090782+00:00",
+  "cloud_catalog_verification": {
+    "at": "2026-10-16T14:05:51.299809+00:00",
+    "catalog": {
+      "catalog_id": "d42b9f6697914e68a688600705e1d65f",
+      "files": {
+        "documents": {
+          "bytes": 537318138,
+          "key": "catalog-generations/840b6faf202e41a592e08385eb3e981c/documents.parquet",
+          "rows": 1240374,
+          "sha256": "c61bfbae47eb21da55c0447dbee67f41b872928bffa6e57d1cbe539b79fa3f67"
+        },
+        "filenames": {
+          "bytes": 541322250,
+          "key": "catalog-generations/840b6faf202e41a592e08385eb3e981c/document-filenames.parquet",
+          "rows": 1680227,
+          "sha256": "b922b29903be2f083ae1ecc1a9cf9ae9a232d429fde9a2dbfbd92fa1abe79280"
+        }
+      },
+      "generation": "840b6faf202e41a592e08385eb3e981c",
+      "version": 1
+    },
+    "catalog_etag": "\"af84a88484c383af3a883ceb1292dda1\"",
+    "viewer_etag": "\"9b4f1b4296018d05515e7ef8c09b5eb0\"",
+    "paired_tables": [
+      {
+        "label": "documents",
+        "bytes": 537318138,
+        "key": "catalog-generations/840b6faf202e41a592e08385eb3e981c/documents.parquet",
+        "rows": 1240374,
+        "sha256": "c61bfbae47eb21da55c0447dbee67f41b872928bffa6e57d1cbe539b79fa3f67",
+        "full_hash_verified": true
+      },
+      {
+        "label": "filenames",
+        "bytes": 541322250,
+        "key": "catalog-generations/840b6faf202e41a592e08385eb3e981c/document-filenames.parquet",
+        "rows": 1680227,
+        "sha256": "b922b29903be2f083ae1ecc1a9cf9ae9a232d429fde9a2dbfbd92fa1abe79280",
+        "full_hash_verified": true
+      }
+    ],
+    "expected_recovery_bodies": 1482,
+    "found_recovery_bodies": 1482,
+    "missing_body_keys": [],
+    "viewer_selects_same_catalog": true,
+    "disk_payload_bytes_written": 0,
+    "raw_remote_writes": 0,
+    "scope": "Full paired file hashes and IDs; filename body-key coverage for imported checkpoint12. Does not establish accepted URL mapping publication."
+  },
+  "mapping_publication": {
+    "complete": true,
+    "wrote": true,
+    "etag": "\"a5c0d99fffbc3a0c1dab2c18d08e9981\"",
+    "sha256": "f50651fccd300fbaedf258a966373cbf8286476021c7e61a530d545349a61733",
+    "acknowledgment_reconciled": false,
+    "rows": 21184,
+    "viewer_pointer_advanced": false
+  },
+  "mapping_actual_wait_exit": 0,
+  "cloud_verifier_actual_wait_exit": 0,
+  "local_catalog_rebuild_avoided": true,
+  "viewer_refresh_pending": true
+}
