@@ -1,0 +1,41 @@
+{
+  "at": "2026-10-16T04:59:57.051434+00:00",
+  "completed_sample": {
+    "qualified_urls": 20,
+    "processed": 20,
+    "full_body_hashes_checked": 20,
+    "physical_absence": true,
+    "all_targets_processed": true,
+    "actual_wait_exit": 0,
+    "scanned_image_document_checked": "Item 3 displays a one-page Perlmutter/Lofgren amendment to H.R. 2225; empty text extraction is not empty content"
+  },
+  "remaining_unresolved": 19283,
+  "recovered_urls": 1297,
+  "retained_mappings": 2994,
+  "published": false,
+  "batch10_unchanged": true,
+  "new_followthrough": {
+    "plan": {
+      "queue_sha256": "bd3fdf1d3cac0eac5efebdfbc9ee98a3f2512f3e5f4019081c72e2c8192e7452",
+      "script_sha256": "816a48315f88f1efa71dfd6df3423d8911a0acfaf7c50bfffe6c1030794e4b57",
+      "urls": 3939,
+      "workers": 1,
+      "minimum_delay_seconds": 3,
+      "paid_requests": 0,
+      "pid": 36297,
+      "parent_pid": 94792
+    },
+    "exec_session": 17410,
+    "process_evidence": "36297 94792 00:13 Ss   .venv/bin/python -u output/corpus-retry-20261015/live_query_correction_followthrough.py"
+  },
+  "evidence": {
+    "live-query-correction-sample-recovered.json": "778a6aeb7f0be639582e8c14f0ae7e074ac2422e23cc88d6aae19963908c36b4",
+    "remaining-recovery-summary.json": "ddda3e4861055bea27ecc43602ab32bbd8dd4f3229c8f75ff3e478d433678034",
+    "qualify_completed_download_pass.py": "0df7f39af492e8d7bae86ae405bb4026ec0b021385c4553d9a434dbe8db62e27"
+  },
+  "next_steps": [
+    "Continue three live public recovery passes without repeating successful downloads",
+    "Qualify and merge completed files with full byte and PDF checks",
+    "Import sealed batch 10 after the cloud writer finishes; include subsequent recoveries in a successor batch"
+  ]
+}
