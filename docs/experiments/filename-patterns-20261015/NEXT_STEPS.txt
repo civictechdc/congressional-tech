@@ -757,3 +757,12 @@ See current_review_paths_checkpoint_v1.json and REVIEW_CURRENT_REVIEW_PATHS.txt.
 Next explicitly record normalization, revalidate receipts and create fresh group
 bindings before repeating all seven scenarios. Do not weaken the digest to ignore
 the restored evidence field. Full-catalog and production adoption remain open.
+
+Explicit normalization binding and seven-path replay now pass for all 86 groups.
+The 81 selections and five annotations are identical in every scenario, and all
+baselines restore on withdrawal. Raw rows, original receipts and old bindings
+remain preserved. See normalized_review_checkpoint_v1.json and
+REVIEW_NORMALIZED_REVIEW_CANDIDATES.txt. The 70 relevant tests pass.
+Next audit family provenance using actual rows and counterexamples, then define
+the production review input/withdrawal boundary and resolve descriptive packet
+forms before broader qualification. Held-out body review remains locked.
