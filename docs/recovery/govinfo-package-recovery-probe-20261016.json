@@ -1,0 +1,74 @@
+{
+  "probe": {
+    "url": "https://www.govinfo.gov/content/pkg/CHRG-106hhrg55253.zip",
+    "complete": true,
+    "valid_zip": true,
+    "paid_requests": 0,
+    "at": "2026-10-16T06:09:28.264833+00:00",
+    "status": 200,
+    "headers": {
+      "date": "Fri, 16 Oct 2026 06:09:28 GMT",
+      "content-type": "application/zip",
+      "content-length": "72207042",
+      "connection": "keep-alive",
+      "server": "cloudflare",
+      "last-modified": "Sun, 04 Oct 2026 07:13:19 GMT",
+      "accept-ranges": "bytes, bytes",
+      "content-disposition": "attachment; filename=\"CHRG-106hhrg55253.zip\"",
+      "x-frame-options": "SAMEORIGIN",
+      "x-content-type-options": "nosniff",
+      "x-xss-protection": "1; mode=block",
+      "referrer-policy": "no-referrer-when-downgrade",
+      "strict-transport-security": "max-age=31536000; includeSubDomains",
+      "content-security-policy": "default-src 'self'  https://analytics.govinfo.gov https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://maxcdn.bootstrapcdn.com; frame-ancestors 'self'; script-src 'unsafe-inline' 'unsafe-eval' 'self' *.videodelivery.net *.cloudflarestream.com  https://cdn.jsdelivr.net  https://stackpath.bootstrapcdn.com https://api.data.gov https://maxcdn.bootstrapcdn.com https://www.google.com/recaptcha https://recaptcha.google.com/recaptcha; object-src 'unsafe-inline' 'self' ; style-src 'unsafe-inline' 'self' https://cdn.jsdelivr.net https://maxcdn.bootstrapcdn.com https://api.data.gov  https://stackpath.bootstrapcdn.com https://fonts.googleapis.com https://www.google.com/recaptcha https://recaptcha.google.com/recaptcha; img-src 'unsafe-inline' 'self' https://maxcdn.bootstrapcdn.com https://stackpath.bootstrapcdn.com  https://analytics.govinfo.gov data:; font-src 'unsafe-inline' 'self' https://cdn.jsdelivr.net  https://stackpath.bootstrapcdn.com https://api.data.gov https://maxcdn.bootstrapcdn.com https://fonts.gstatic.com https://fonts.googleapis.com; connect-src 'self' *.videodelivery.net *.cloudflarestream.com https://cdn.jsdelivr.net  https://api.data.gov https://analytics.govinfo.gov; frame-src 'self'  https://stackpath.bootstrapcdn.com https://maxcdn.bootstrapcdn.com https://www.google.com/recaptcha https://recaptcha.google.com/recaptcha;",
+      "cf-cache-status": "DYNAMIC",
+      "cf-ray": "a4b4e51878a30620-IAD"
+    },
+    "bytes": 72207042,
+    "sha256": "da1ce8e56eb35f6eaa74ec8899d12700b906a829fdbb8b8719a71579b30bdaee",
+    "members": [
+      {
+        "name": "CHRG-106hhrg55253/dip.xml",
+        "bytes": 1957,
+        "compressed_bytes": 797
+      },
+      {
+        "name": "CHRG-106hhrg55253/html/CHRG-106hhrg55253.htm",
+        "bytes": 4622,
+        "compressed_bytes": 1755
+      },
+      {
+        "name": "CHRG-106hhrg55253/pdf/CHRG-106hhrg55253.pdf",
+        "bytes": 96843329,
+        "compressed_bytes": 71967708
+      },
+      {
+        "name": "CHRG-106hhrg55253/premis.xml",
+        "bytes": 7619324,
+        "compressed_bytes": 232517
+      },
+      {
+        "name": "CHRG-106hhrg55253/mods.xml",
+        "bytes": 28764,
+        "compressed_bytes": 3451
+      }
+    ],
+    "crc_failure": null
+  },
+  "actual_wait_exit": 0,
+  "exec_session": 45623,
+  "recovery_count_changed": false,
+  "remaining_outside_assigned_queues": 8821,
+  "govinfo_zip_urls_outside_assigned_queues": 151,
+  "next_steps": [
+    "Qualify the retained package members and preserve parent/member provenance before adding recovery mappings.",
+    "Use maintained archive extraction with explicit per-package bounds: this ZIP and its PDF exceed default 64 MiB limits; do not change running runtime settings.",
+    "Check the remaining ZIP package sizes and existing complete bodies before a bounded public bulk-package retry.",
+    "Keep catalog publication as the sole raw-selector writer."
+  ],
+  "evidence_sha256": {
+    "output/corpus-retry-20261015/govinfo-incomplete-zip-probe/receipt.json": "40dddda2019c3e38c560cb3f87467d159055c4232ca766aae5500ac095808a16",
+    "output/corpus-retry-20261015/probe_govinfo_incomplete_zip.py": "31bdbadea36b63dd241af67f07accea5a216bb49fe0cf5d77ca5209f156fcfb2",
+    "output/corpus-retry-20261015/remaining-outside-current-queues.json": "9f52137f0bafe2120f3839658547836f5bcb957fccb08a369d33c572ef298936"
+  }
+}
