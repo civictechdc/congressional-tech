@@ -118,6 +118,13 @@ location; REVIEW_CATALOG_REPLAY.txt records tests and review. First inspect that
 run's terminal result and every identity/role/evidence or prior-kind change.
 Do not substitute historical results for qualification of the new publication.
 
+The complete historical baseline census and 400-ID reconciliation are recorded
+in HISTORICAL_CATALOG_FINDINGS.txt and historical_catalog_checkpoint.json. This
+input pair already lacks 145 pilot IDs: 66 have URL matches without the frozen
+nonempty body, and 79 have neither body nor URL matches. Preserve every selected
+ID and repeat reconciliation on the verified publication; do not remap IDs from
+URL similarity or interpret historical absence as a filename-replay regression.
+
 The development-only taxonomy proposal is now recorded in taxonomy_mapping.json
 and TAXONOMY_NEXT_STEPS.txt: 107 records reuse existing kinds, three have proposed
 record-specific mappings, and 30 need a taxonomy decision. All 140 labels and
