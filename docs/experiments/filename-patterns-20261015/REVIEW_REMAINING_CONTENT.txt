@@ -73,3 +73,23 @@ all pages before completing its receipt. Six unavailable groups remain unresolve
 After that review, propose decisions for all 91 metadata cases, including explicit
 unavailable outcomes. Preserve the distinction between form and disclosure role;
 a financial schedule can support a disclosure without being a signed form.
+
+Remaining retained-content review completed
+------------------------------------------
+The Wallace expenditure schedule is fully reviewed: all 70 retained pages and
+native text, arranged as five fourteen-page column blocks. Its funding-schedule
+form remains distinct from its filename disclosure-attachment role. The receipt
+preserves clipped values, unusual program identifiers and negative amounts.
+See remaining_content_review_v3.json and content_review_linkage_checkpoint_v9.json.
+
+The v9 linkage has 85 reviewed documents / 527 pages and zero mismatches. All
+bound inputs, outputs and nine frozen source hashes passed verification. All
+91 metadata cases still need classification decisions; six lack eligible bodies.
+No runtime code changed. Local house_naming 3.2.7 remains unpublished.
+
+Next prepare case-specific proposed dispositions for all 91 rows, preserving
+filename claims, observed forms, source context and attachment roles. Keep the
+six unavailable cases unresolved. Use the proposals to select small, supported
+house_naming changes with positive and negative tests plus cohort replay.
+Independent reference labels and fresh raw-catalog qualification remain separate
+unfinished requirements.

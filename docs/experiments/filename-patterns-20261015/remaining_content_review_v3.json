@@ -1,0 +1,216 @@
+{
+  "scope": "Complete review of the Wallace federal-award expenditure schedule",
+  "previous_review": "docs/experiments/filename-patterns-20261015/remaining_content_review_v2.json",
+  "previous_review_sha256": "b714c6d74cac17761897179265fb6a2af4f559dc926310090b7295123e39c5f1",
+  "input_ledger": "output/filename-patterns-20261015/review-evidence-v4/ledger.jsonl",
+  "input_ledger_sha256": "218c5ecc8a8eeb05b047414f4ffb7d5a9938d4a1f8d0d1e419b9c998932971e5",
+  "fetch_results_path": "output/filename-patterns-20261015/public-retained-review-v6/results.json",
+  "fetch_results_sha256": "98549d9b78fc109afa2996bfa89230afdf73b1deb5614599ad5658794a40a975",
+  "selection_bindings": {
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/docs/experiments/filename-patterns-20261015/content_readiness_checkpoint.json": "b40dbe84dcb68e5aaf014084e8c55e7260c257074cd2d3b8314360ae0a504857",
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/output/filename-patterns-20261015/public-retained-review-v6/fetch.py": "357c5e4e63134fca55c2568a4d3255118769409c959e7f5ec836a3419474fa13",
+    "output/filename-patterns-20261015/review-evidence-v3/ledger.jsonl": "d92184926b42812dff3c36f9442c032a0841ff8ecd3e679b40f6c477595d1438",
+    "output/filename-patterns-20261015/remaining-content-readiness-v1/readiness.json": "113859c8c35a6fc502603261c39622ac7f1f77377529755d2950b1a38e8dc4f0",
+    "docs/experiments/filename-patterns-20261015/catalog_alias_review.py": "dd46f8122ee43b0eaf8a88af7b0f16e94f147dd1e0d862dcaec836554b27e69d",
+    "packages/congress_api/src/congress_api/retention/document_index.py": "ec575da15c10615bd983baf3566e7bf5c1e63c5311715b0ab9e5b22917cc2667",
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/output/filename-patterns-20261015/continuation-v1/pilot.json": "55b3256dc0bfee57d90235b7d8d9b216060bc145d82926709a5b01beed619237",
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/docs/experiments/filename-patterns-20261015/review_evidence_checkpoint_v4.json": "869462f1085c1217c3ff4146fda6626ee504fda8d9deb84aa548cf6cc0c8144b",
+    "output/filename-patterns-20261015/review-evidence-v4/summary.json": "fad13d1d0101aebde561911cb9c6ecfff4c68b2dc8b0be65bd315d2a24fb8517",
+    "output/filename-patterns-20261015/review-evidence-v4/ledger.jsonl": "218c5ecc8a8eeb05b047414f4ffb7d5a9938d4a1f8d0d1e419b9c998932971e5",
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/docs/experiments/filename-patterns-20261015/content_review_linkage_checkpoint_v6.json": "c9f96d4d768cc50463e13ffcae047090f5f75a1dfab4a982d845308727f8d25e",
+    "output/filename-patterns-20261015/content-review-linkage-v6/summary.json": "adf9480fb6bd752ed07bf5b76a47cb01dc6703d9d3583c4f3dd6a4f9192a8d2c",
+    "output/filename-patterns-20261015/content-review-linkage-v6/ledger.jsonl": "2cb985b8789e7ebb87b6d6fc81e62c59fb9f01c046fd37a8e315b66f290d835d",
+    "output/filename-patterns-20261015/public-retained-review-v6/selection.json": "eeb63bec6b56688aa4f2024bcdecb2662c15c2c1b851e07c7bf622769388f089",
+    "output/filename-patterns-20261015/public-retained-review-v6/input-check.json": "438b53f4062d48689bc4686a9a0fd31a38eddef5f7a8e6c56ece8a65581173d3",
+    "docs/experiments/filename-patterns-20261015/remaining_retained_review_readiness_v2.json": "bccf30a4d2e7fac92fb6201450bcada690f38c79bcce903360c743baa1218726"
+  },
+  "records": [
+    {
+      "document_id": "16e435116a0b2859332cd6e56826e1fd0306c833c59eec5f089371750e6a07b6",
+      "filename": "disclosure_wallace_attachment.pdf",
+      "body_key": "bodies/sha256/d8/d84a233364ea118eacc05f5483338d50a69de0e6abc21ef2216e03a3b7adf2d4.gz",
+      "sha256": "d84a233364ea118eacc05f5483338d50a69de0e6abc21ef2216e03a3b7adf2d4",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v6/d84a233364ea118eacc05f5483338d50a69de0e6abc21ef2216e03a3b7adf2d4.pdf",
+      "pages": 70,
+      "text_path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-retained-review-v6/d84a233364ea118eacc05f5483338d50a69de0e6abc21ef2216e03a3b7adf2d4.txt",
+      "text_sha256": "1680a5320768c1a5250e7e92493cecd9a347e69f3aa943109e9b45c05b89013f",
+      "selection_index": 2,
+      "reviewer": "assistant",
+      "all_pages_visually_reviewed": true,
+      "independent_reference": false,
+      "release_approved": false,
+      "rendered_pages": {
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-01.png": "d9971b3e26e252176c1358f564ff50852674d91f21863a68ab38ed7673923054",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-02.png": "30250eddbbc60687e63ca771def05c0c1218e5787400f90037712210dcebdc29",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-03.png": "f9508c01a44533bf9f719008b2b973b70ef14ddc919d537a827433903f115498",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-04.png": "542aaace5ca2d88985749bd197e7864e2609fcf53d06c2a26da7afed2a3db0e4",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-05.png": "ddbcdbebb7b037565dd74c494b34b2d1ec4f2eca8bd9e244eb60b12a839dc3eb",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-06.png": "5a0325ae19ed904e5d09ad4953ba173f3888f54e10544733994249c80c68b33a",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-07.png": "8e8d950cb337e0769cbbd4433fe1926b83f9eabb128f8569e367757f66e30400",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-08.png": "c0f6c37b0b4cf41f46a9a5f2a0a7f55ab86f5e5df27f0b60ee03cd0dbf585129",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-09.png": "655ff639d68ca5751d38fc5b6c4bf717bad059b59a72263eaee08b15f8ef4d7f",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-10.png": "91fa5c420a59a4209f198bd2965924c46dc5a289b2855a150c4c923de2a06699",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-11.png": "2df45273a55fdbd463fa51f5045264606b0ac652f56458140f6a684e31efde37",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-12.png": "b0c3bd6ef8c421a39585b390c30cbaed21645d374b303a4a466668e71ca5312c",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-13.png": "340eeba598054310c5c24b5dab07735e213ba00d2c460a773df99eb20c961b15",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-14.png": "a58731dddebdc22ec68757021f74331d9eadbafbd0d54b43019b49f488ec94c8",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-15.png": "afd3492675fcdd96471612b4bb716d3c34f97b49619af25d6b6888b7637de20c",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-16.png": "d2448f0bae9d629e98f6ac41c46aba3e7051cfe70b525c09a4862488f750d6ed",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-17.png": "75b16a1e0ae7abfea9f6a10407c253d820577746c032deae4ce23bcbd4b1bfd2",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-18.png": "d6e9586359b94e90121cee7383201da675925c471224626abac345a37df54271",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-19.png": "5bb8629972f2ef9a356c807bd19512742f8f7a339234ea2cc90e5b6287bd5b87",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-20.png": "0441e786c2e5dc62c3beb4d64d7d1a47ab5029a1232d9e6d6f01f49830828dbf",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-21.png": "1bb762521415c545af1feba4032769754d4110f6f23509bbd9ecc0db59ccbac2",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-22.png": "307124b83ad0f3a380594ce180a247c2baf9a035df711b12ff96873d5a465290",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-23.png": "3345640ff199ea182861e2fe80eefac941ff48874dfb3384f85f2544d34e8e81",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-24.png": "eca5059f7fb66a77255f7a0800c5d4b27322b2395dc241c86507c8fd1ce27817",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-25.png": "5e357b8eb54e49a5fce3f67fbb1e7ca1fa336831fd143b163a33c9f82e02e5db",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-26.png": "786c5c6447d52b13e7697a81330c26a88d37824932f0dedd00ab3584f2771208",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-27.png": "9cc43a05d1e9c274cf88197fcd5e9811b0f57a8731821884fd0f8979946752b0",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-28.png": "a259373657bae8f84f0d04d05347146814e101aa7ae46a59b233146d29f3c200",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-29.png": "1bc41871d3598dd6003b2c828b2c56029e6d216a9aeacc421939ef514fb88c69",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-30.png": "b9c3b653b2b54ed767f86a2bad8b8965a0f7ca49ab9c6215d6fd114dd9f42230",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-31.png": "b9c3b653b2b54ed767f86a2bad8b8965a0f7ca49ab9c6215d6fd114dd9f42230",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-32.png": "b9c3b653b2b54ed767f86a2bad8b8965a0f7ca49ab9c6215d6fd114dd9f42230",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-33.png": "b9c3b653b2b54ed767f86a2bad8b8965a0f7ca49ab9c6215d6fd114dd9f42230",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-34.png": "b9c3b653b2b54ed767f86a2bad8b8965a0f7ca49ab9c6215d6fd114dd9f42230",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-35.png": "b9c3b653b2b54ed767f86a2bad8b8965a0f7ca49ab9c6215d6fd114dd9f42230",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-36.png": "b9c3b653b2b54ed767f86a2bad8b8965a0f7ca49ab9c6215d6fd114dd9f42230",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-37.png": "b859d118a2fc0a7985e4c61f9e49c51ed19a2f6bba45f9d3ec3db5671641cf6e",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-38.png": "1c21b417db2cd476aafc328753527886307ce92f2625bf28f3410a47b2c49115",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-39.png": "1c21b417db2cd476aafc328753527886307ce92f2625bf28f3410a47b2c49115",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-40.png": "1c21b417db2cd476aafc328753527886307ce92f2625bf28f3410a47b2c49115",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-41.png": "1c21b417db2cd476aafc328753527886307ce92f2625bf28f3410a47b2c49115",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-42.png": "d4449b5d8ed6eabae458f79b1c546fe57ae9a52ef67b9745631c9f6dc1529987",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-43.png": "205455935208c698a215f9fb7607dab7a655cd2cb3b896dced2cd95240d33e6e",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-44.png": "bef2d10179ad9ad9fb1335371de1fdd657e16e43018199947facfd5407862a76",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-45.png": "ceac2665547519a3e88294881482f0f7946ed30a0bfb3f0dd6dc05b36fc933a9",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-46.png": "b5ea8b25fa990cc71042a39aae3810c7f94fa7aff0b96fa15f6fb34cf3d74933",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-47.png": "0474b3c6aabadf69cd869ed17e26b7258f62a09c5aeac17c5c91d8b8f9fb7fa3",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-48.png": "da0a431bf2cb615aaccd1240fbef5e1b48892e42d903b2648f4dde56f72b50e0",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-49.png": "886b74086cb65a20e801a651c13d482495d801737e2fd3979731c916c73c94b2",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-50.png": "bf8caab6427e049cb1f17d259eda79627761fdfae8934083f7d2cc3bfcd1cc5f",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-51.png": "50e71fadf4c7aa113f3ab83545f9b3b448168a24f2280d32fc39b16e51ad4180",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-52.png": "5b708be3f47870a4e477b63984f009b4f3805cf1fd1289e2be27dbd0929ceb8f",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-53.png": "750f243e25e3911b34e77b79dc09d2e7bd224bf5b8688f97e3184f268ee7d347",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-54.png": "b084af85cf2248a25f54bad7f699483aff6b1020ccf0e2a73653a53200dfb4fe",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-55.png": "c916835eb716c8f087a38a60c13dd7e5cbbfc55e825838d1ce96fc212fff5a94",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-56.png": "1668121f0ff4d3a591b882784cf58ed20584fa54c362f59c39de2d5d288779de",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-57.png": "508d5e3110f1946026f3ed6c4919e8a0d2ea3a39f26b43da9bf0b979743d1e5c",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-58.png": "c2babee911a396076851a66f545030ce24b0dfddb801fd88c1ca5e10aa20e2c1",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-59.png": "180283d523a80f499d37efcc246df87590d7d0418d407deb67cde87013287104",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-60.png": "dd7480bcb87ed3dd1ddb324395dde9fea2491fbe01a3e1d077a3455877cc2951",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-61.png": "5f516be31820d9a1d005d2af28e861d9536b405833213e496fc1c848e009f27d",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-62.png": "41422c14141d66b33b46eeeb41ae3a4f3325547272eb06864658ca540503536a",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-63.png": "e92fd785caf6d531c46243d59b37af1183be4d35eb0f7639105c0ae1ec0c6b4b",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-64.png": "7c308bc0fa6f9060695209d7cad3feb2a4b679a0e44b66d8285cef1fb1ec8883",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-65.png": "68e942dc599d88262aa425a8600fedd12a4c5e7183b345a2aaea7c4ffda507a0",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-66.png": "237de85898f6c77eceead2ae00e7f9280e5a66a3a15d2b39b9697ff5dfdd8a38",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-67.png": "9772cfe90bf476fb8b9b64103536aa5c33da2d9a5cc77e5c12211675e62ef830",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-68.png": "0685186307039ff87d26f9160d4762516b175e11b19e1da9dbea3daca79f3e18",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-69.png": "0ba9f823f8f145477859ab59c1c1af93c9ad37598c0c06e168b86c7bdc087bc6",
+        "output/filename-patterns-20261015/public-retained-review-v6/page-02-70.png": "c537c27b9a64eb3164c9d94ccfcfc2401a04c2aae7de4c52f289a42d9974b7dc"
+      },
+      "native_text_extraction": "pypdf; all rendered pages visually reviewed; no OCR",
+      "observed_document_forms": [
+        "federal-award-expenditure-schedule"
+      ],
+      "page_sections": [
+        {
+          "first_page": 1,
+          "last_page": 14,
+          "observed_form": "federal-award-expenditure-schedule",
+          "description": "Nature Conservancy fiscal 2017 schedule: program identifiers for Interior and Agriculture awards."
+        },
+        {
+          "first_page": 15,
+          "last_page": 28,
+          "observed_form": "federal-award-expenditure-schedule",
+          "description": "Project title and project name column, continuing the same row layout."
+        },
+        {
+          "first_page": 29,
+          "last_page": 42,
+          "observed_form": "federal-award-expenditure-schedule",
+          "description": "Federal grantor column, continuing the same row layout."
+        },
+        {
+          "first_page": 43,
+          "last_page": 56,
+          "observed_form": "federal-award-expenditure-schedule",
+          "description": "Pass-through grantor column, including DIRECT and named organizations."
+        },
+        {
+          "first_page": 57,
+          "last_page": 70,
+          "observed_form": "federal-award-expenditure-schedule",
+          "description": "Agreement identifiers and fiscal 2017 expenses; Interior subtotal on page 65, Agriculture subtotal and combined total on page 70."
+        }
+      ],
+      "observations": [
+        "All seventy retained pages and their native text were read. Five fourteen-page column blocks form one wide expenditure schedule, rather than separate documents.",
+        "The filename identifies a disclosure attachment role. The observed body is a federal-award expenditure schedule; no signed disclosure questionnaire, named witness or narrative testimony appears in the retained packet.",
+        "The title crosses the printed column boundary between pages 1 and 15. Some project-name dash glyphs are garbled, and some identifiers and amounts are visibly clipped while native text retains fuller strings. Preserve both representations without silently repairing the source.",
+        "Negative amounts appear in parentheses and a dash appears for an expense on page 62. Preserve these literal values. Program identifier strings include nonstandard values and must not be silently normalized into valid program codes.",
+        "The printed Interior subtotal of 21,210,142.68 and Agriculture subtotal of 13,829,436.89 add to the printed combined total of 35,039,579.57. This arithmetic consistency is not an independent financial audit or verification of individual awards.",
+        "Complete review covers the retained seventy-page packet, not proof that it contains all source material or all federal awards."
+      ]
+    }
+  ],
+  "remaining": [],
+  "unavailable": [
+    {
+      "document_id": "0455360798ba44b54527b521541495d050e6f60f0cf2155c029b0806fb067ccc",
+      "filename": "Error.aspx",
+      "reason": "No eligible retained document body; full evidence preserved in bound selection"
+    },
+    {
+      "document_id": "76727488c1e72856ef7e3a8f08092dc893262e2906dc46d642b08bc147740885",
+      "filename": "Issa Amendment to PRA Statement_0.doc",
+      "reason": "No eligible retained document body; full evidence preserved in bound selection"
+    },
+    {
+      "document_id": "ad3f448e3b875ee18a1ac791ba7d2dd1b01529c56d865b960856728bf231f5fc",
+      "filename": "Issa Amendment to PRA Statement_1.doc",
+      "reason": "No eligible retained document body; full evidence preserved in bound selection"
+    },
+    {
+      "document_id": "d635bd70987af968f54775678331381f6d50f7f7a3abe5882391528e0e519355",
+      "filename": "170215EECOpeningStatement-PRESSVERSION.pdf",
+      "reason": "No eligible retained document body; full evidence preserved in bound selection"
+    },
+    {
+      "document_id": "db3059629d6f1b4f605711b9aecdafb5398affbf494003bff14a5c6ad3c15ecc",
+      "filename": "Chairman-Gary-Palmer\u2014Opening-Statement.pdf",
+      "reason": "No eligible retained document body; full evidence preserved in bound selection"
+    },
+    {
+      "document_id": "edd081b3f61bc42e49f35ff51d76f11bf142c8773881fd5711a572589aa5b331",
+      "filename": "Chairman-Gary-Palmer\u2014Opening-Statement.pdf",
+      "reason": "No eligible retained document body; full evidence preserved in bound selection"
+    }
+  ],
+  "summary": {
+    "selected_groups": 20,
+    "verified_retained_pdfs": 14,
+    "verified_retained_pages": 116,
+    "new_completed_documents": 1,
+    "new_completed_pages": 70,
+    "remaining_available_documents": 0,
+    "remaining_available_pages": 0,
+    "unavailable_documents": 6,
+    "cumulative_completed_documents": 85,
+    "cumulative_completed_pages": 527
+  },
+  "pilot_overlap": false,
+  "publisher_acquisition": false,
+  "production_ocr": false,
+  "production_changes": false,
+  "independent_reference": false,
+  "release_approved": false,
+  "limitations": [
+    "Complete retained-page review does not prove source completeness.",
+    "Observed forms do not resolve metadata classification decisions or establish independent reference labels.",
+    "All available packets are reviewed; six selected cases have no eligible retained body."
+  ]
+}
