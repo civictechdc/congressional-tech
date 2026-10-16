@@ -1,0 +1,21 @@
+{
+  "at": "2026-10-16T05:43:55.705524+00:00",
+  "probe_requests": 2,
+  "probe_actual_wait_exit": 0,
+  "qualified_pdfs": 2,
+  "pending_urls": 3506,
+  "policy": "A 403 ends that target. Three consecutive target 403 responses stop that host. A 401, 429, Retry-After, or three consecutive transport failures stops that host immediately or at the stated threshold.",
+  "prior_results_preserved": true,
+  "paid_requests": 0,
+  "duplicate_acquisition_prevention": "Only two hosts already blocked in the still-running predecessor; exclude every attempted predecessor URL and every consolidated or probe success.",
+  "next_steps": [
+    "Run the isolated continuation for the two skipped hosts.",
+    "Keep raw import as sole writer, verify completion, then publish."
+  ],
+  "evidence_sha256": {
+    "output/corpus-retry-20261015/publisher-other-file-probe/results.json": "927b76e019fcf3b29c1e43257634b0f52505a7961e1cd78e21c524984e454b67",
+    "output/corpus-retry-20261015/publisher-other-file-probe/qualification-summary.json": "d6e7c9b2453a277f1f283b572ade2b3a930e0beb02dae09671c688124b4267bf",
+    "output/corpus-retry-20261015/publisher-file-refusal-continuation-queue.json": "43dd1508589825ccac0906fe875799d1c5b9c4ee8b6793c8e57a74e0042c7138",
+    "output/corpus-retry-20261015/publisher_file_refusal_continuation.py": "58778818efba57c818c1640fccc16003a9f9319a616620dbeb36cf6dbc8f794f"
+  }
+}
