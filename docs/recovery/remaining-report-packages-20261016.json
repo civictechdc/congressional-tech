@@ -1,0 +1,21 @@
+{
+  "at": "2026-10-16T03:23:16.580307+00:00",
+  "packages": 2,
+  "recovered_links": 3,
+  "worker_actual_exit": 0,
+  "published": false,
+  "files": {
+    "remaining-report-packages-queue.json": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/remaining-report-packages-queue.json",
+      "sha256": "8bc0b0f82a6e9778d546f76346356a31d869293823dcd960b030087facadf15b"
+    },
+    "remaining-report-package-downloads/summary.json": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/remaining-report-package-downloads/summary.json",
+      "sha256": "b0ec00f9db57461d7891191bbcee40941b5b9f83322886f7075852d0b30d7a1d"
+    },
+    "remaining-reports-recovered.json": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/remaining-reports-recovered.json",
+      "sha256": "a14eaaf1d7d39401fd36ce48906c1aed410381e6b329387b94d495777e1be99e"
+    }
+  }
+}

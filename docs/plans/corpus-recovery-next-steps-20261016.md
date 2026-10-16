@@ -144,3 +144,9 @@ Evidence: `../recovery/additional-xml-packages-20261016.json`. Preserve the actu
 A scan found 49 unresolved PDF URLs naming 27 exact congressional report identifiers. Retained official GovInfo/GPO body records supplied 25 identifiers, covering 46 links. Each body passed its full content hash and qpdf checks; deferred URL/body exclusions also passed. These links were merged into local preparation without requests to the original publishers. Evidence: `../recovery/retained-reports-recovery-20261016.json`.
 
 Two identifiers covering three links remain for public package lookup: CRPT-116hrpt411 and CRPT-119hrpt694. Preserve exact report identifiers and use the existing bounded package route. Import must reuse the original official source URL, body identity, and capture timestamp. All added mappings remain local pending the cloud-writer, import, publication, and readback gates.
+
+### Remaining report packages completed
+
+Both remaining report packages downloaded successfully; the bounded worker exited 0. CRPT-119hrpt694 supplied its exact PDF. CRPT-116hrpt411 supplied only `CRPT-116hrpt411-pt1.pdf`; its package MODS metadata identifies that granule with the requested report citation. The sole PDF passed full hash/size and qpdf checks, and its `pt1` identity is retained explicitly in recovery evidence and the recovered URL. All three URL links were added to local preparation. This completes the 49-link exact report-identifier batch: 46 retained-file reuses and three links from two public packages.
+
+Evidence: `../recovery/remaining-report-packages-20261016.json`. These remain local recoveries pending final import and publication. Continue the active NARA queue, account for unsuccessful captures, and regenerate the final sealed batch including later PDF/XML additions. Do not reuse checkpoint 04 as if it contained the completed cohort.
