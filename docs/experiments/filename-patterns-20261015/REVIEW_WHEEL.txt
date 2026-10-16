@@ -1,0 +1,97 @@
+Wheel runtime verification review
+================================
+
+Findings
+--------
+No blocking defect was found in this test-only change. The wheel now has a
+regression check for bundled runtime files, version agreement and execution from
+its own payload. This is local packaging evidence, not catalog qualification,
+independent classification validation or publication.
+
+OBSERVATION: the installation rehearsal uses --no-index --no-deps and the
+existing interpreter's jsonschema installation. It does not test dependency
+resolution from an empty environment or a public package registry. The core
+probe rejects preloaded congress_api, pydantic and pyarrow, then refuses imports
+of those modules. The optional typed/corpus runtimes are outside this probe.
+
+Patch summary
+-------------
+packages/house-naming/tests/test_distribution.py now builds a wheel in addition
+to the existing source-archive check. A shared source_tree fixture copies the
+package into a private temporary directory for both tests, removing duplicated
+build preparation without changing runtime behavior. No performance claim is
+made. Production source files, guide data and package versions are unchanged.
+
+Function trace
+--------------
+Locations below are relative to packages/house-naming.
+
+Function / caller                             Location                       Input -> output
+source_tree                                   tests/test_distribution.py:14  Package tree -> private build copy
+source-archive test                           tests/test_distribution.py:22  Copy -> sdist, development-file checks and commands
+wheel-runtime test                            tests/test_distribution.py:49  Copy -> wheel, byte checks, private unpacked runtime
+RejectOptionalDependencies.find_spec           tests/test_distribution.py:75  Import name -> refusal for three non-core packages
+wheel subprocess                              tests/test_distribution.py:101 Private wheel path -> catalog/CLI/extraction assertions
+load_guide / _bundled                          src/house_naming/catalog.py:192,199 Bundled resources -> validated guide copy
+Engine.extract                                src/house_naming/engine.py:61  Filename and publisher URL -> literal metadata
+cli.main                                      src/house_naming/cli.py:20     check command -> catalog validation and exit status
+
+Pytest calls both tests through the fixture. The existing source-archive test
+still builds with setuptools, checks its development files, verifies deterministic
+catalog generation, collects the package tests and runs the documented rendering
+command. Test collection is not a claim that every collected test executed here.
+
+The wheel test calls setuptools.build_meta.build_wheel on the private copy.
+It compares every source Python/JSON file and py.typed with the wheel member,
+then checks LICENSE and NOTICE bytes. Member paths use POSIX separators so the
+archive lookup does not depend on the host's path separator. The archive is
+built locally from the inspected package; no external archive is extracted.
+
+Data flow and invariants
+------------------------
+H1: a checkout import cannot substitute for the wheel runtime. CONFIRMED for
+this probe: a new Python process uses -I, its working directory is outside the
+package, and the wheel path is inserted first. Assertions bind both the imported
+module file and distribution metadata to that exact private path. The test
+fails if the payload cannot supply the requested package or its metadata.
+
+H2: bundled version/data drift is visible. CONFIRMED: source bytes are compared
+with wheel members before execution; distribution metadata, module version and
+catalog_version must agree. Missing payload files fail archive access or runtime
+loading. A separate installed-copy fault check removed guide.json temporarily:
+loading failed with FileNotFoundError, then passed after exact restoration.
+
+H3: the core engine does not need the optional package interfaces exercised
+elsewhere in the repository. CONFIRMED for the tested calls: the child checks
+that congress_api, pydantic and pyarrow are not already loaded and adds an import
+finder that rejects each. It validates the guide through the CLI entry point,
+constructs Engine and runs the four 3.2.0 publisher-qualified filename layouts.
+The corpus entry point's metadata is checked without importing its optional code.
+This is not an exhaustive proof about every public API or every dependency.
+
+H4: wheel execution preserves the tested filename semantics. CONFIRMED: the
+probe checks public-law, RH_xml, SUS_xml and numeric hearing layouts, exact input
+reconstruction, rejection of an unrelated publisher, and the public-law family.
+Engine.extract delegates to the maintained Extractor and filename_metadata;
+it does not acquire the supplied source URL (engine.py:61-88).
+
+Test behavior and executed evidence
+-----------------------------------
+Both distribution tests passed in 5.18 seconds. The existing source archive path
+continues to work after fixture extraction. The new wheel test uses a bounded
+30-second subprocess timeout for build and execution; this is a local test bound,
+not an estimate for full-catalog replay.
+
+The resulting wheel was also installed with pip into a new target directory.
+The same runtime probe passed against that installed directory, and the generated
+house-naming script passed its check command. The missing-guide fault check
+failed as intended and the restored installation passed again. Exact wheel,
+test source, bundled guide and log hashes are in wheel_verification_checkpoint.json.
+The built wheel and full logs remain in output/filename-patterns-20261015/
+wheel-verification-v2. Nothing was uploaded to a package registry.
+
+VERDICT: APPROVE
+The change checks a previously uncovered wheel boundary while preserving the
+source-archive check. Coverage is ADEQUATE for the claimed local packaging
+behavior; confidence is HIGH for the exercised payload and core runtime paths.
+The active full-catalog replay and verified publication remain separate gates.

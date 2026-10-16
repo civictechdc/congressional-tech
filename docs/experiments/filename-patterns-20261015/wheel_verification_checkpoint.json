@@ -1,0 +1,48 @@
+{
+  "status": "passed",
+  "scope": "local-wheel-installation",
+  "source_commit": "afc29f9",
+  "distribution": "house-naming-guide",
+  "version": "3.2.0",
+  "wheel": "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/output/filename-patterns-20261015/wheel-verification-v2/test_wheel_contains_a_self_con0/dist/house_naming_guide-3.2.0-py3-none-any.whl",
+  "wheel_sha256": "09b9e52b63ccf403dad27c211896ae9377c7d465409b783073259aeaf7036eaf",
+  "test_source_sha256": "ec2359e6c03b68008c3cb545437a856d82c9f58c8fac6b78a89113f47a39b29c",
+  "tests": 2,
+  "install_command": [
+    "/Users/mikewolfd/Work/congressional-tech/.venv/bin/python",
+    "-m",
+    "pip",
+    "install",
+    "--disable-pip-version-check",
+    "--no-index",
+    "--no-deps",
+    "--no-compile",
+    "--target",
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/output/filename-patterns-20261015/wheel-verification-v2/pip-installed",
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/output/filename-patterns-20261015/wheel-verification-v2/test_wheel_contains_a_self_con0/dist/house_naming_guide-3.2.0-py3-none-any.whl"
+  ],
+  "installation_dependencies": "Existing interpreter provides declared jsonschema dependency; pip install used --no-index --no-deps.",
+  "checks": [
+    "Wheel payload matches source Python/JSON/py.typed bytes",
+    "LICENSE and NOTICE included",
+    "Imported runtime and distribution metadata resolve inside wheel payload",
+    "Distribution, module and catalog versions agree",
+    "Core runtime succeeds with no preloaded congress_api, pydantic or pyarrow and with subsequent imports refused",
+    "Four publisher-qualified positive cases and an unrelated-host negative pass",
+    "Literal filename reconstruction and public-law family preserved",
+    "pip installation and generated house-naming CLI succeed",
+    "Missing installed guide is rejected; restored guide passes"
+  ],
+  "catalog_sha256": "2a95cb47a54714bc8c6d64d8b6a60563b2bf7fe44a5447dd24b7680b26b5e806",
+  "artifacts": {
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/output/filename-patterns-20261015/wheel-verification-v2/pip-install.log": "5951f3feb88be4e978b2e84a11feac40bf47465f9a6fa0442d01d926fbe2a153",
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/output/filename-patterns-20261015/wheel-verification-v2/installed-runtime.log": "0f5974ebf58b0f827f5a18bcc710073e9d924ba8d16ae30a23024bcd48fdb7a2",
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/output/filename-patterns-20261015/wheel-verification-v2/installed-cli.log": "0f5974ebf58b0f827f5a18bcc710073e9d924ba8d16ae30a23024bcd48fdb7a2",
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/output/filename-patterns-20261015/wheel-verification-v2/missing-guide-refusal.log": "322a83675f0539027a611e56553bbe629994b4e74fdc43b602291b4875d25086",
+    "/Users/mikewolfd/.codex/worktrees/document-kind-publish/congressional-tech/output/filename-patterns-20261015/wheel-verification-v2-tests.xml": "89c0e9fae089a19ba3eb807910aa51a9166e7d630753a302edf1c8d2b618c844"
+  },
+  "published": false,
+  "full_catalog_qualified": false,
+  "active_replay_implementation_unchanged": true,
+  "frozen_pdf_candidate_and_labels_unchanged": true
+}

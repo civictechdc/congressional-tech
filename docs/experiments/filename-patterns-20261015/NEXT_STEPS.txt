@@ -125,6 +125,11 @@ nonempty body, and 79 have neither body nor URL matches. Preserve every selected
 ID and repeat reconciliation on the verified publication; do not remap IDs from
 URL similarity or interpret historical absence as a filename-replay regression.
 
+The 3.2.0 wheel payload and core runtime are now checked by the package
+distribution tests. A local pip installation and generated CLI also passed;
+REVIEW_WHEEL.txt and wheel_verification_checkpoint.json record the boundary and
+limitations. This packaging evidence does not qualify or publish the catalog.
+
 The development-only taxonomy proposal is now recorded in taxonomy_mapping.json
 and TAXONOMY_NEXT_STEPS.txt: 107 records reuse existing kinds, three have proposed
 record-specific mappings, and 30 need a taxonomy decision. All 140 labels and
