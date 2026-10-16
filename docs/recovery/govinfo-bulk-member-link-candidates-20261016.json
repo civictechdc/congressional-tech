@@ -1,0 +1,140 @@
+{
+  "at": "2026-10-16T06:26:28.777050+00:00",
+  "candidate_urls": 16,
+  "candidates": [
+    {
+      "original_url": "https://www.govinfo.gov/content/pkg/CHRG-109hhrg26292v1/html/CHRG-109hhrg26292v1.htm",
+      "package_id": "CHRG-109hhrg26292v1",
+      "archive_url": "https://www.govinfo.gov/content/pkg/CHRG-109hhrg26292v1.zip",
+      "required_member": "CHRG-109hhrg26292v1/html/CHRG-109hhrg26292v1.htm",
+      "basis": "Exact GovInfo package identifier and full member path",
+      "qualified": false
+    },
+    {
+      "original_url": "https://www.govinfo.gov/content/pkg/CHRG-109hhrg26292v2/html/CHRG-109hhrg26292v2.htm",
+      "package_id": "CHRG-109hhrg26292v2",
+      "archive_url": "https://www.govinfo.gov/content/pkg/CHRG-109hhrg26292v2.zip",
+      "required_member": "CHRG-109hhrg26292v2/html/CHRG-109hhrg26292v2.htm",
+      "basis": "Exact GovInfo package identifier and full member path",
+      "qualified": false
+    },
+    {
+      "original_url": "https://www.govinfo.gov/content/pkg/CHRG-109shrg42268/html/CHRG-109shrg42268.htm",
+      "package_id": "CHRG-109shrg42268",
+      "archive_url": "https://www.govinfo.gov/content/pkg/CHRG-109shrg42268.zip",
+      "required_member": "CHRG-109shrg42268/html/CHRG-109shrg42268.htm",
+      "basis": "Exact GovInfo package identifier and full member path",
+      "qualified": false
+    },
+    {
+      "original_url": "https://www.govinfo.gov/content/pkg/CHRG-109shrg42271/html/CHRG-109shrg42271.htm",
+      "package_id": "CHRG-109shrg42271",
+      "archive_url": "https://www.govinfo.gov/content/pkg/CHRG-109shrg42271.zip",
+      "required_member": "CHRG-109shrg42271/html/CHRG-109shrg42271.htm",
+      "basis": "Exact GovInfo package identifier and full member path",
+      "qualified": false
+    },
+    {
+      "original_url": "https://www.govinfo.gov/content/pkg/CHRG-109shrg42274/html/CHRG-109shrg42274.htm",
+      "package_id": "CHRG-109shrg42274",
+      "archive_url": "https://www.govinfo.gov/content/pkg/CHRG-109shrg42274.zip",
+      "required_member": "CHRG-109shrg42274/html/CHRG-109shrg42274.htm",
+      "basis": "Exact GovInfo package identifier and full member path",
+      "qualified": false
+    },
+    {
+      "original_url": "https://www.govinfo.gov/content/pkg/CHRG-111hhrg54476/html/CHRG-111hhrg54476.htm",
+      "package_id": "CHRG-111hhrg54476",
+      "archive_url": "https://www.govinfo.gov/content/pkg/CHRG-111hhrg54476.zip",
+      "required_member": "CHRG-111hhrg54476/html/CHRG-111hhrg54476.htm",
+      "basis": "Exact GovInfo package identifier and full member path",
+      "qualified": false
+    },
+    {
+      "original_url": "https://www.govinfo.gov/content/pkg/CHRG-119hhrg64154/pdf/CHRG-119hhrg64154.pdf",
+      "package_id": "CHRG-119hhrg64154",
+      "archive_url": "https://www.govinfo.gov/content/pkg/CHRG-119hhrg64154.zip",
+      "required_member": "CHRG-119hhrg64154/pdf/CHRG-119hhrg64154.pdf",
+      "basis": "Exact GovInfo package identifier and full member path",
+      "qualified": false
+    },
+    {
+      "original_url": "https://www.govinfo.gov/content/pkg/CHRG-119hhrg64242/pdf/CHRG-119hhrg64242.pdf",
+      "package_id": "CHRG-119hhrg64242",
+      "archive_url": "https://www.govinfo.gov/content/pkg/CHRG-119hhrg64242.zip",
+      "required_member": "CHRG-119hhrg64242/pdf/CHRG-119hhrg64242.pdf",
+      "basis": "Exact GovInfo package identifier and full member path",
+      "qualified": false
+    },
+    {
+      "original_url": "https://www.govinfo.gov/content/pkg/CHRG-119hhrg64246/pdf/CHRG-119hhrg64246.pdf",
+      "package_id": "CHRG-119hhrg64246",
+      "archive_url": "https://www.govinfo.gov/content/pkg/CHRG-119hhrg64246.zip",
+      "required_member": "CHRG-119hhrg64246/pdf/CHRG-119hhrg64246.pdf",
+      "basis": "Exact GovInfo package identifier and full member path",
+      "qualified": false
+    },
+    {
+      "original_url": "https://www.govinfo.gov/content/pkg/CHRG-119hhrg64458/pdf/CHRG-119hhrg64458.pdf",
+      "package_id": "CHRG-119hhrg64458",
+      "archive_url": "https://www.govinfo.gov/content/pkg/CHRG-119hhrg64458.zip",
+      "required_member": "CHRG-119hhrg64458/pdf/CHRG-119hhrg64458.pdf",
+      "basis": "Exact GovInfo package identifier and full member path",
+      "qualified": false
+    },
+    {
+      "original_url": "https://www.govinfo.gov/content/pkg/CHRG-119hhrg64512/pdf/CHRG-119hhrg64512.pdf",
+      "package_id": "CHRG-119hhrg64512",
+      "archive_url": "https://www.govinfo.gov/content/pkg/CHRG-119hhrg64512.zip",
+      "required_member": "CHRG-119hhrg64512/pdf/CHRG-119hhrg64512.pdf",
+      "basis": "Exact GovInfo package identifier and full member path",
+      "qualified": false
+    },
+    {
+      "original_url": "https://www.govinfo.gov/content/pkg/CHRG-119jhrg61127/html/CHRG-119jhrg61127.htm",
+      "package_id": "CHRG-119jhrg61127",
+      "archive_url": "https://www.govinfo.gov/content/pkg/CHRG-119jhrg61127.zip",
+      "required_member": "CHRG-119jhrg61127/html/CHRG-119jhrg61127.htm",
+      "basis": "Exact GovInfo package identifier and full member path",
+      "qualified": false
+    },
+    {
+      "original_url": "https://www.govinfo.gov/content/pkg/CHRG-119jhrg61803/html/CHRG-119jhrg61803.htm",
+      "package_id": "CHRG-119jhrg61803",
+      "archive_url": "https://www.govinfo.gov/content/pkg/CHRG-119jhrg61803.zip",
+      "required_member": "CHRG-119jhrg61803/html/CHRG-119jhrg61803.htm",
+      "basis": "Exact GovInfo package identifier and full member path",
+      "qualified": false
+    },
+    {
+      "original_url": "https://www.govinfo.gov/content/pkg/CHRG-119jhrg62143/pdf/CHRG-119jhrg62143.pdf",
+      "package_id": "CHRG-119jhrg62143",
+      "archive_url": "https://www.govinfo.gov/content/pkg/CHRG-119jhrg62143.zip",
+      "required_member": "CHRG-119jhrg62143/pdf/CHRG-119jhrg62143.pdf",
+      "basis": "Exact GovInfo package identifier and full member path",
+      "qualified": false
+    },
+    {
+      "original_url": "https://www.govinfo.gov/content/pkg/CHRG-119shrg58614/pdf/CHRG-119shrg58614.pdf",
+      "package_id": "CHRG-119shrg58614",
+      "archive_url": "https://www.govinfo.gov/content/pkg/CHRG-119shrg58614.zip",
+      "required_member": "CHRG-119shrg58614/pdf/CHRG-119shrg58614.pdf",
+      "basis": "Exact GovInfo package identifier and full member path",
+      "qualified": false
+    },
+    {
+      "original_url": "https://www.govinfo.gov/content/pkg/CHRG-119shrg58615/pdf/CHRG-119shrg58615.pdf",
+      "package_id": "CHRG-119shrg58615",
+      "archive_url": "https://www.govinfo.gov/content/pkg/CHRG-119shrg58615.zip",
+      "required_member": "CHRG-119shrg58615/pdf/CHRG-119shrg58615.pdf",
+      "basis": "Exact GovInfo package identifier and full member path",
+      "qualified": false
+    }
+  ],
+  "ledger_sha256": "5cb131afadd781481e897ffad39720bf766ea59cc8e3051b7f29ffbc8b781ae9",
+  "source_requests": 0,
+  "recovery_count_changed": false,
+  "evidence_path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/govinfo-bulk-member-link-candidates.json",
+  "evidence_sha256": "07cded39878a7c5aa1094ad14e8918c003367a87da551e0fc091e622d68f19c4",
+  "next_step": "After full package qualification, match exact member paths and hashes. PDF members require validation; HTML members require content classification so package placeholders are not counted as hearing transcripts."
+}
