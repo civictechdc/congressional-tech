@@ -1,0 +1,26 @@
+{
+  "batch": "checkpoint-13",
+  "status": "sealed_local_delta_not_dispatched",
+  "recovered_urls": 145,
+  "distinct_bodies": 141,
+  "prior_1689_recovery_urls_excluded": true,
+  "prior_15_zip_parents_excluded": true,
+  "parent_dependency": {
+    "parent_batch": "output/corpus-retry-20261015/publication-batches/checkpoint-12",
+    "parent_manifest_sha256": "e4b1c8f614af1a195159bfe24b5f3718a260582e2dda3afaedb631e2ec5e4a5f",
+    "requires_parent_import_and_publication_verified": true,
+    "parent_complete_not_yet_verified": true,
+    "new_recovery_urls": 145,
+    "previous_recovery_urls_excluded": 1689,
+    "previous_zip_parents_excluded": 15,
+    "scope": "Planning and sealing only; no second writer authorized while parent is active"
+  },
+  "all_prior_mapping_pairs_preserved": true,
+  "manifest_sha256": "7a787cdb80e7a9f30452edf2711ecf051aa4d5fba2cdaa7b603b3aa47b390173",
+  "next_steps": [
+    "Require actual checkpoint12 import exit zero, preserved state audit and remote readback.",
+    "Publish and verify checkpoint12 catalog and viewer.",
+    "Prepare checkpoint13 source records and fresh remote body inventory only after the parent completes.",
+    "Use one guarded importer; do not replay checkpoint12 captures or ZIP members."
+  ]
+}
