@@ -1,0 +1,67 @@
+{
+  "observed_at": "2026-10-16T02:01:30.487448+00:00",
+  "status": "acquisition_active_publication_blocked",
+  "combined_preview": {
+    "status": "local_preparation_not_published",
+    "recovered_url_links": 351,
+    "distinct_recovered_bodies": 289,
+    "zip_members": 149,
+    "distinct_zip_bodies": 149,
+    "prepared_url_maps": 20596,
+    "new_maps": 6091,
+    "document_groups_without_saved_before": 311,
+    "document_groups_without_saved_after_preview": 277,
+    "zip_members_not_yet_in_catalog_preview": true,
+    "deferred_files_preserved": 164,
+    "prior_maps_preserved": 14505
+  },
+  "frozen_batch_checks": {
+    "batch": "checkpoint-02",
+    "body_counts": {
+      "absent": 202,
+      "verified_exact_body": 123
+    },
+    "body_total": 325,
+    "source_records": 208,
+    "source_timestamp_unresolved": [],
+    "source_urls": 208
+  },
+  "publication_blocker": {
+    "run_id": 38823678887,
+    "status": "in_progress"
+  },
+  "evidence": [
+    {
+      "path": "output/corpus-retry-20261015/recovery-summary.json",
+      "sha256": "ee8464a3e459a41b56e642b26ee3b30d476cec74f307b0654411e4b38255b42a"
+    },
+    {
+      "path": "output/corpus-retry-20261015/publication-batches/checkpoint-02/manifest.json",
+      "sha256": "771555f4a4a9de05ecb8ff1766485421964a027b933b0d83a6ece48cbb3d6763"
+    },
+    {
+      "path": "output/corpus-retry-20261015/publication-batches/checkpoint-02/remote-body-readback.json",
+      "sha256": "96aa48d8ab0f4782c30e3eadbe826ea7750b4114f4e0239c6948722ca9b03183"
+    },
+    {
+      "path": "output/corpus-retry-20261015/publication-batches/checkpoint-02/prepared-source-records.json",
+      "sha256": "a5f62e8a9b8b0a92977d0865e460180cb1ec07456e1b3b637ff12a6e779b0a08"
+    },
+    {
+      "path": "output/corpus-retry-20261015/publication-batches/checkpoint-02/source-record-preparation.json",
+      "sha256": "5acfedcf84123b436703244b67018d11b24a1631fae532c5bb193727221495fe"
+    },
+    {
+      "path": "output/corpus-retry-20261015/nara-direct-resume/status.json",
+      "sha256": "50934807dee895c1e029fe257e01c03c80518293a639f234f9769867bb4ea164"
+    },
+    {
+      "path": "output/corpus-retry-20261015/official-bills-validation.json",
+      "sha256": "5b5cecd04a78dbbe4250819f8047d212d04334ee5ec26b441cd1cba9c831c011"
+    },
+    {
+      "path": "output/corpus-retry-20261015/wayback-priority-index-retry/monitor-stop.json",
+      "sha256": "2c270759492d08a76d55bf6099dd6854fba9e17f0e67e96a11aaf43fe3adf71a"
+    }
+  ]
+}

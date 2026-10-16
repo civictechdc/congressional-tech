@@ -38,3 +38,11 @@ Completion requires successful publication and readback, not just this plan, a r
 ```
 
 The first snapshot was successfully prepared. Five offline tests verify the valid case and rejection of corrupt bodies, deferred URLs, missing mappings, and ZIP members lacking receipt coverage. This local batch is an input to the guarded importer; it does not replace the fresh cloud/input checks or final publication readback above.
+
+## Readiness update
+
+The separate `../recovery/corpus-recovery-readiness-20261016.json` records the newer preview and evidence hashes. Its frozen `checkpoint-02` batch contains 208 URL links; it is smaller than the still-growing combined preview. Full R2 readback verified 123 existing body objects, and 202 body keys were absent. There were no conflicting bodies. All 208 source records have established timestamps and provenance; three bill records preserve their original GPO capture URLs rather than implying new GovInfo requests. These checks do not authorize reuse of stale selector or raw-index versions.
+
+Acquisition now includes 132 official GovInfo bill packages for 144 explicit bill-version URLs outside the active NARA queue. Package-generation responses use their requested delay and at most three total attempts per package. Successful packages are reused across continuations. Wayback's eight incomplete partition lookups remain unresolved: its retry worker was stopped after three consecutive transport failures, preserving partial evidence.
+
+At publication time, regenerate the final batch from the completed acquisition evidence, extend the body/source-record checks to all additions, and use fresh shared-state versions. Keep the ZIP member import, raw-state preservation, selected catalog rebuild, accepted mapping update, and public viewer readback in the completion checklist. Local source-record preparation has not assigned fresh download state or written receipts remotely.
