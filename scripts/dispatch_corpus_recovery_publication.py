@@ -49,9 +49,16 @@ def verify_import(batch, imported):
     result = json.loads((imported / 'payloads/import-complete.json').read_text())
     events = [json.loads(line) for line in (imported / 'events.jsonl').read_text().splitlines()]
     completed = [e['value'] for e in events if e['event'] == 'import_complete']
+    prepared = json.loads((batch / 'prepared-source-records.json').read_text())
+    prepared += json.loads((batch / 'zip-receipts.json').read_text())
+    capture_rows = sum(len(item['captures']) for item in prepared)
+    bodykeys = {cap['body_key'] for item in prepared for cap in item['captures']}
+    if (ready.get('capture_rows', capture_rows) != capture_rows
+            or ready.get('distinct_capture_bodykeys', len(bodykeys)) != len(bodykeys)):
+        raise ValueError('Readiness counts differ from sealed source records')
     if (not result.get('complete') or completed != [result]
-            or result['added_capture_rows'] != ready['capture_rows']
-            or result['distinct_bodies'] != ready['distinct_capture_bodykeys']):
+            or result['added_capture_rows'] != capture_rows
+            or result['distinct_bodies'] != len(bodykeys)):
         raise ValueError('Import completion does not cover the sealed batch')
     pins = next(e['value'] for e in events if e['event'] == 'pins')
     for name in ['manifest.json', 'prepared-source-records.json', 'import-readiness.json']:

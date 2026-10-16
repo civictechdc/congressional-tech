@@ -25,12 +25,16 @@ def checked_put(store, key, payload, *, immutable, guard, journal):
     try:
         store.put(key, payload, immutable=immutable)
     except Exception:
-        if store.read(key) != payload:
+        remote = store.read(key)
+        if remote != payload:
             raise
         journal('acknowledgment_reconciled', dict(key=key))
-    if store.read(key) != payload:
+    else:
+        remote = store.read(key)
+    if remote != payload:
         raise ValueError(f'Write readback mismatch: {key}')
     journal('write_verified', dict(key=key))
+    return remote
 
 
 def import_batch(store, *, prepared, body_paths, captures, state, source_file,
@@ -56,9 +60,8 @@ Any failure requires evidence reconciliation, not automatic restart.
             raise ValueError('Local body changed during import')
         remote = store.read(key)
         if remote is None:
-            checked_put(store, key, payload, immutable=True, guard=guard, journal=journal)
+            remote = checked_put(store, key, payload, immutable=True, guard=guard, journal=journal)
             uploaded += 1
-            remote = store.read(key)
         if gzip.decompress(remote) != raw:
             raise ValueError(f'Retained body conflict: {key}')
         info.update(stored_sha256=hashlib.sha256(remote).hexdigest(), stored_bytes=len(remote))

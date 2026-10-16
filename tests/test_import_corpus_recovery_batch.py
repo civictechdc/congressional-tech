@@ -16,10 +16,12 @@ class Store:
     def __init__(self, lost_ack=False, fail_key=None):
         self.data = {}
         self.writes = []
+        self.reads = []
         self.lost_ack = lost_ack
         self.fail_key = fail_key
 
     def read(self, key):
+        self.reads.append(key)
         return self.data.get(key)
 
     def put(self, key, payload, *, immutable):
@@ -78,12 +80,16 @@ class ImportTests(unittest.TestCase):
         self.assertFalse(result['catalog_and_viewer_publication_complete'])
         self.assertEqual(store.writes[-2:], [(STATE_KEY, False), (CAPTURES_KEY, False)])
         self.assertEqual(store.data[CAPTURES_KEY], self.saved[CAPTURES_KEY])
+        for key in self.paths:
+            self.assertEqual(store.reads.count(key), 2)  # Presence check and full readback.
 
     def test_lost_ack_reconciled_without_duplicate_write(self):
         store = Store(lost_ack=True)
         self.run_import(store)
         self.assertEqual(len(store.writes), len({k for k, _ in store.writes}))
         self.assertIn('acknowledgment_reconciled', [e for e, _ in self.events])
+        for key in self.paths:
+            self.assertEqual(store.reads.count(key), 2)
 
     def test_guard_refusal_prevents_writes(self):
         def refuse():
