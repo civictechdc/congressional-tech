@@ -80,3 +80,13 @@ Five network-disabled tests passed for complete ZIP import, lost acknowledgment 
 Four offline driver checks passed. A live read-only preflight correctly refused while cloud run 38823678887 was active and created no dispatch directory. After acquisition finishes, prepare a new complete batch and its source/readiness evidence, then run preflight again. Execute only after the cloud writer is clear; use a fresh destination and inspect any failure journal before considering another attempt. A successful raw import still requires catalog rebuild, mapping publication, and viewer readback.
 
 The driver suite now has six passing offline checks, including end-to-end execution through the maintained `R2Store` with a simulated conditional object store. The successful case verified immutable conditions on bodies/receipts and baseline-version conditions on both indexes. An injected competing capture-index update after the state write stopped before the capture PUT, preserved the failure journal, and produced no completion marker. This is simulated boundary evidence, not a live import.
+
+## Recovery work beyond the active NARA batch
+
+The 2026-10-16 03:05 UTC ledger accounts for 23,574 eligible URLs: 644 validated local recoveries, 6,209 unprocessed archive candidates, 16,682 unresolved lookups, and 39 unsuccessful attempts. These categories count URLs, not unique missing documents, and are not a publication claim.
+
+Offline triage of the 6,209 unprocessed candidates identifies 388 entries still in the active NARA queue, 408 additional PDF candidates, 26 XML candidates, two Word candidates, and 5,385 HTML candidates. Preserve all categories: an HTML capture can be a useful source page, but does not establish recovery of a linked PDF. MIME labels are planning hints pending body validation.
+
+A full local hash check of 579 retained bodies found archive-digest matches for 15 of the additional 408 PDF candidates. Before downloading the next batch, validate those target associations and deferred exclusions and admit qualified reused bodies with their original acquisition evidence. The remaining 393 PDF candidates need retained-store or official-package checks before new archive requests. Do not add a second NARA downloader while the current worker remains active. XML and Word need format-specific validation; source pages need extraction of useful document links rather than a blanket recovered label.
+
+Evidence: `output/corpus-retry-20261015/remaining-candidate-triage.json` and `additional-pdf-retained-reuse.json`. These are timestamped planning findings; refresh success exclusions before dispatch. The cloud capture writer was still active at this checkpoint, so shared import and publication remain pending.
