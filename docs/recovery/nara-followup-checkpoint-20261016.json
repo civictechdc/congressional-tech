@@ -1,0 +1,11 @@
+{
+  "at": "2026-10-16T03:24:15.063020+00:00",
+  "status": "planning_only_wait_for_active_worker_exit",
+  "unresolved_urls": 55,
+  "counts": {
+    "different_digest_or_official_source": 2,
+    "single_cooldown_retry": 53
+  },
+  "evidence_path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/nara-followup-plan-20261016T0325Z.json",
+  "evidence_sha256": "579504453b26570c1e5662b96a0835992b4ae96b4dfebeaefe1155eb21f6c634"
+}
