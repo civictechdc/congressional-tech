@@ -1,0 +1,113 @@
+"""Bound expensive recovery checks by phase; keep shared commits fresh.
+
+An immutable upload may reuse recent cloud clearance. A mutable object or shared
+pointer must call shared_commit immediately before its conditional write.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+from pathlib import Path
+import subprocess
+import threading
+import time
+from typing import Callable, Mapping
+
+ACTIVE_STATUSES = ('queued', 'in_progress', 'requested', 'waiting', 'pending')
+
+
+def active_cloud_writers(*, run=subprocess.check_output, max_pages=10):
+    """Query active runs only. Refuse incomplete or malformed results."""
+    active = []
+    for status in ACTIVE_STATUSES:
+        for page in range(1, max_pages + 1):
+            route = ('repos/civictechdc/congressional-tech/actions/workflows/'
+                     f'capture-raw-sources.yml/runs?status={status}&per_page=100&page={page}')
+            result = json.loads(run(['gh', 'api', route], text=True, timeout=30))
+            rows = result['workflow_runs']
+            if not isinstance(rows, list) or not isinstance(result['total_count'], int):
+                raise RuntimeError('Cloud writer status malformed')
+            for row in rows:
+                if row['status'] == 'completed':
+                    continue
+                if row['status'] not in ACTIVE_STATUSES:
+                    raise RuntimeError('Cloud writer status unknown')
+                if row['event'] != 'push':
+                    active.append(row['id'])
+            if len(rows) < 100 and page * 100 >= result['total_count']:
+                break
+            if page == max_pages:
+                raise RuntimeError('Cloud writer inventory incomplete')
+    if active:
+        raise RuntimeError(f'Cloud capture writer active: {sorted(set(active))}')
+
+
+def _digest(path):
+    with path.open('rb') as stream:
+        return hashlib.file_digest(stream, 'sha256').hexdigest()
+
+
+def _identity(path):
+    stat = path.stat()
+    return stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns
+
+
+class RecoveryGuard:
+    """One run's checks; never persist or reuse clearance in another process."""
+
+    def __init__(self, *, pins: Mapping, local_check: Callable,
+                 cloud_check: Callable, protected_check: Callable,
+                 clock=time.monotonic, max_cloud_age=30.0):
+        if not 0 <= max_cloud_age <= 30:
+            raise ValueError('Cloud clearance lifetime must be between 0 and 30 seconds')
+        self.pins = {Path(path): value for path, value in pins.items()}
+        self.local_check, self.cloud_check = local_check, cloud_check
+        self.protected_check, self.clock = protected_check, clock
+        self.max_cloud_age = max_cloud_age
+        self._identities = {}
+        self._cloud_at = None
+        self._lock = threading.RLock()
+        self.counts = dict(local=0, hashed_files=0, cloud=0, protected=0)
+
+    def _local(self):
+        self.local_check()
+        self.counts['local'] += 1
+
+    def _pins(self, *, full):
+        for path, expected in self.pins.items():
+            before = _identity(path)
+            if full or self._identities.get(path) != before:
+                actual = _digest(path)
+                self.counts['hashed_files'] += 1
+                if actual != expected or _identity(path) != before:
+                    raise RuntimeError(f'Pinned input changed: {path}')
+                self._identities[path] = before
+
+    def _cloud(self, *, fresh):
+        now = self.clock()
+        if fresh or self._cloud_at is None or now - self._cloud_at >= self.max_cloud_age:
+            # A failed refresh must never leave a usable previous success.
+            self._cloud_at = None
+            self.counts['cloud'] += 1
+            self.cloud_check()
+            self._cloud_at = self.clock()
+
+    def check(self):
+        """For immutable content writes only; content remains unselected."""
+        with self._lock:
+            self._local()
+            self._pins(full=False)
+            self._cloud(fresh=False)
+
+    __call__ = check
+
+    def boundary(self):
+        """Revalidate all sealed inputs and protected versions at a phase seam."""
+        with self._lock:
+            self._local()
+            self._pins(full=True)
+            self._cloud(fresh=True)
+            self.protected_check()
+            self.counts['protected'] += 1
+
+    shared_commit = boundary
