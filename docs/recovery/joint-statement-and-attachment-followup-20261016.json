@@ -1,0 +1,27 @@
+{
+  "at": "2026-10-16T05:06:45.692210+00:00",
+  "recovered_joint_statement_links": 1,
+  "basis": "Explicit retained reference to Bilmes/Stiglitz joint statement and full retained statement title naming both authors",
+  "remaining_unresolved": 19229,
+  "prepared_links": 4345,
+  "published": false,
+  "index_lookup": {
+    "verified_local_index_payloads": 79,
+    "attachment_references": 9,
+    "exact_path_query_candidates": 4,
+    "one_reference_now_resolved_by_retained_joint_statement": true,
+    "other_three_require_content_verification": true
+  },
+  "evidence": {
+    "bilmes-stiglitz-joint-statement-recovery.json": "5e412a1c1f62fac4c25b5a89bd1d9061b8460f2a728835b079814a87703111a6",
+    "remaining-linked-attachment-candidates.json": "9b616b0934b54e2f3960762ed8661fee2741941eb7c4a13470f9076f8d0f7df0",
+    "remaining-linked-attachment-summary.json": "67cc548299905087ecfa414fdb0bcefc0ccc886f745e112df45e40068665b16a",
+    "remaining-recovery-summary.json": "a279ceeadf6c15594b8dc4b0ab0d42685a39c0a997570295dfc4d951b8480653"
+  },
+  "next_steps": [
+    "Use retained hearing context to resolve other joint-statement references",
+    "Queue three unresolved exact archive targets after the existing NARA worker; do not duplicate it",
+    "Continue publisher acquisition and qualify completed outputs",
+    "Import and publish after cloud capture clears"
+  ]
+}
