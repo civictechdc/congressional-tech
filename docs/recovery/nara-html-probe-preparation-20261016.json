@@ -1,0 +1,31 @@
+{
+  "at": "2026-10-16T04:17:49.379485+00:00",
+  "status": "prepared_not_dispatched",
+  "script": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/probe_nara_html.py",
+  "script_sha256": "4b398bd2e55607dc22c18574c20c40c320bd42a29e64997a2141ccd449edd51c",
+  "maximum_requests": 10,
+  "delay_seconds": 30,
+  "paid_requests": 0,
+  "classes": [
+    "hearing_transcript",
+    "opening_statement",
+    "other_html",
+    "record_submission",
+    "witness_testimony"
+  ],
+  "purpose": "Compare original and rewritten archive HTML, then inspect actual testimony text before any bulk HTML recovery.",
+  "checks": {
+    "import_no_side_effects": true,
+    "missing_predecessor_completion_blocks_before_output_creation": true,
+    "syntax_compile": true
+  },
+  "recovery_claims": 0,
+  "requirements": [
+    "Predecessor actual wait exit zero and completion monitor",
+    "Exclusive predecessor worker lock",
+    "Preserve response bytes and headers without session secrets",
+    "Do not follow redirects or accept HTTP 200 as recovery",
+    "Stop on refusal or probe error",
+    "Review HTML content and archive digest before qualifying any links"
+  ]
+}
