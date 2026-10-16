@@ -1,0 +1,119 @@
+{
+  "batch11": {
+    "at": "2026-10-16T05:22:11.278038+00:00",
+    "local_only": true,
+    "source_records": 1611,
+    "zip_parent_records": 15,
+    "capture_rows": 1775,
+    "distinct_capture_bodykeys": 1404,
+    "remote_existing": 922,
+    "remote_absent": 482,
+    "retained_url_mappings_included": 3049,
+    "files": {
+      "manifest.json": "bcc5cc416fae4d685993956b499c9fce0238b4d279b2c8b78be0c95009617798",
+      "prepared-source-records.json": "f78fcb6baf0cef9b51d4bd98d30bb31146e97d097494c5e1c99f425919a118fd",
+      "source-record-preparation.json": "f719d0fedf557e621fe588487dd9e1c32f8210e04bbe33ba03c57efb6d915e28",
+      "remote-body-readback.json": "e547738171c149108a4c48b1dd86700fe2dc9936dce70982cab2a203cdebf82e",
+      "mapping-coverage.json": "0630c8ca60f8ea52dbe19a92d8d0baebfc733390b33ef5cc6313fec95f5a7e73"
+    }
+  },
+  "workers_terminal": {
+    "nara-html-recovery": {
+      "actual_wait_exit": 0,
+      "physical_absence": true,
+      "complete_marker": {
+        "all_targets_processed": false,
+        "processed": 72,
+        "total": 1409,
+        "requests_made": 71,
+        "blocked": {
+          "status": null,
+          "title": "",
+          "error": "ConnectionError",
+          "evidence": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/nara-html-recovery/aaebabb88492549fdd852e09c58eb7ad3441c25fbcec7e6d30a3fba42320af85/receipt.json"
+        }
+      },
+      "skipped_rows": 0,
+      "all_downloads_complete": false
+    },
+    "live-download-followthrough": {
+      "actual_wait_exit": 0,
+      "physical_absence": true,
+      "complete_marker": {
+        "processed": 5018,
+        "total": 5018,
+        "valid": 99,
+        "blocked": {
+          "democrats-edworkforce.house.gov": {
+            "reason": "three_consecutive_transport_failures"
+          },
+          "democrats-homeland.house.gov": {
+            "reason": "three_consecutive_transport_failures"
+          },
+          "democrats-naturalresources.house.gov": {
+            "reason": "three_consecutive_transport_failures"
+          }
+        },
+        "paid_requests": 0
+      },
+      "skipped_rows": 4818,
+      "all_downloads_complete": false
+    },
+    "live-query-correction-followthrough": {
+      "actual_wait_exit": 0,
+      "physical_absence": true,
+      "complete_marker": {
+        "processed": 3939,
+        "total": 3939,
+        "valid": 66,
+        "blocked": {
+          "democrats-science.house.gov": {
+            "reason": "three_consecutive_transport_failures"
+          },
+          "democrats-transportation.house.gov": {
+            "reason": "three_consecutive_transport_failures"
+          }
+        },
+        "paid_requests": 0
+      },
+      "skipped_rows": 3791,
+      "all_downloads_complete": false
+    }
+  },
+  "connectivity": {
+    "at": "2026-10-16T05:21:52.659187+00:00",
+    "read_only_heads": true,
+    "results": [
+      {
+        "host": "webharvest.gov",
+        "dns_addresses": [
+          "207.241.232.8",
+          "207.241.225.8"
+        ],
+        "head_status": 200
+      },
+      {
+        "host": "democrats-edworkforce.house.gov",
+        "dns_addresses": [
+          "23.213.78.250"
+        ],
+        "head_status": 200
+      },
+      {
+        "host": "democrats-science.house.gov",
+        "dns_addresses": [
+          "23.213.78.250"
+        ],
+        "head_status": 200
+      }
+    ]
+  },
+  "published": false,
+  "restarted": false,
+  "next_steps": [
+    "Qualify remaining completed receipts and NARA retained successes; do not repeat the 314 already merged",
+    "Use saved failed/skipped URL lists for a separately checked continuation after diagnosing transient connectivity",
+    "Publish completed batch 11 once cloud capture clears",
+    "Preserve all terminal run evidence and old sealed batches"
+  ]
+}
