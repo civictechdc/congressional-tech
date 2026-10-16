@@ -106,7 +106,16 @@ now implemented and tested. REVIEW_WORKFLOW.txt gives commands, checks and
 limitations. The historical rehearsal retains all 400 IDs and keeps held-out
 review locked. The development practice packet is blind-review-development-v4.
 
-Remaining preparation includes the frozen-label evaluation runner and a proposed
-taxonomy mapping using development records only. Preserve the candidate and
-held-out boundary. Avoid further rule tuning or retries against the 100
+The reference sealer and native PDF comparison runner are now implemented. They
+preserve every selected record, separate errors from abstentions, report
+unscored predictions and flag prior-kind regressions. REVIEW_WORKFLOW.txt gives
+the commands and the explicit interruption/recovery limit. The current workflow
+tests pass; REVIEW_EVALUATION.txt records the code review and development replay.
+
+Next, prepare the full-catalog filename comparison path and a proposed taxonomy
+mapping using development records only while publication runs. Once the live
+rebuild completes, prioritize its verification and the fresh 400-ID ledger over
+additional tooling. Then collect and seal held-out references before invoking
+the frozen evaluator. Independent review and a bounded retained-body refresh
+remain required for release. Avoid rule tuning or retries against the 100
 unavailable exact bodies without a new evidence source.

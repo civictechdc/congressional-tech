@@ -1,0 +1,159 @@
+Reference and evaluation workflow review
+=======================================
+
+Findings first
+--------------
+No blocking defect remains in the reviewed local workflow. The review and
+development execution support using it for controlled reference collection and
+evaluation. They do not qualify any classification rule for production.
+
+Resolved correctness finding: the initial new evaluator built rule decisions
+only from candidate/reference kinds. A baseline kind could therefore disappear
+from rule decisions when the candidate abstained and the reference was uncertain.
+pilot_evaluate.py:179-187 now includes every changed baseline kind.
+test_pilot_evaluate.py:136 exercises that exact loss without a usable reference.
+
+Operational limitation: pilot_evaluate.py:208-211 deliberately refuses another
+held-out run after its start marker exists. Interrupted output requires explicit
+inspection and recovery; automatic resume is not implemented. That limitation
+is documented in REVIEW_WORKFLOW.txt and tested at test_pilot_evaluate.py:198.
+
+Evidence limitation: reference labels are assistant-reviewed. The publication
+rebuild was still running at this checkpoint, so no real held-out packet or
+evaluation was produced. Synthetic held-out tests prove local checks, not live
+publication or independent reference quality.
+
+Patch summary and scope
+-----------------------
+Reviewed all six files in fd1a2e1 and their relevant callers/callees, then the
+reference sealing/evaluation addition and its tests. The browser template is
+unchanged in this addition. Native classifier source and content_rule_freeze.json
+remain unchanged. Shared packet/decision validation was extracted from import
+so sealing and evaluation reuse the same checks instead of duplicating them.
+
+Function trace
+--------------
+Paths below are relative to docs/experiments/filename-patterns-20261015 unless
+an absolute repository-relative package path is given.
+
+Function                         Location                   Input -> output / verified behavior
+file_digest                      pilot_reconcile.py:18      File -> streaming SHA256
+body_hashes                      pilot_reconcile.py:26      Retained keys -> sorted unique hashes
+reconcile_record                 pilot_reconcile.py:30      Frozen/current/receipt -> eligibility and change flags
+publication_gate                 pilot_reconcile.py:56      Saved readback + selected pair -> matched evidence result
+run                              pilot_reconcile.py:82      Sample and catalog -> complete ledger and census
+fingerprint                      pilot_blind_review.py:22   JSON data -> stable packet identity
+verify_candidate                 pilot_blind_review.py:26   Freeze -> checked source, sample and labels
+held_out_eligibility              pilot_blind_review.py:36   Reconciliation -> checked full selected-ID map
+build                            pilot_blind_review.py:60   Split/evidence -> blind packet and HTML
+validate_packet                  pilot_blind_review.py:108  Packet/freeze -> checked packet, including held-out gate
+validate_decisions               pilot_blind_review.py:130  Export/packet -> validated normalized references
+import_decisions                 pilot_blind_review.py:171  Export -> append only new, compatible, unsealed decisions
+write_new                        pilot_evaluate.py:32       JSON -> exclusive new artifact
+environment                      pilot_evaluate.py:37       Runtime -> version/source fingerprints
+checked_references               pilot_evaluate.py:46       Packet/journal -> all selected records, no invented labels
+seal                             pilot_evaluate.py:71       Complete references -> exclusive label-freeze.json
+verify_seal                      pilot_evaluate.py:88       Packet/freeze -> rechecked evidence and runtime
+worker                           pilot_evaluate.py:104      Exact PDF/baseline -> maintained native file reading
+read_pdf                         pilot_evaluate.py:116      Worker inputs -> bounded result/error diagnostics
+kind                             pilot_evaluate.py:138      Successful reading -> kind; failed reading -> no assignment
+interval                         pilot_evaluate.py:142      Successes/count -> descriptive Wilson bounds or null
+summarize                        pilot_evaluate.py:154      All comparison rows -> counts, disagreements and rule flags
+evaluate                         pilot_evaluate.py:195      Sealed packet -> native comparisons and checked summary
+evaluate.one                     pilot_evaluate.py:217      One selected record -> baseline/candidate or not_run
+show/showPage/progress            blind_review.html:29-31    Selected/saved record -> textContent and form state
+navigation/save/export handlers   blind_review.html:32-35    Browser inputs -> validated local decisions and JSON export
+
+Important callers are each module's CLI and the workflow tests. evaluate calls
+verify_seal before and after workers; seal and import call the shared validators.
+build calls pilot_review.page_text (pilot_review.py:29), which checks extracted
+text hashes. The catalog path uses local_catalog_paths (catalog_publication.py:123)
+and validate_document_indexes (document_index.py:661), which check selected file
+properties and relational references. Native workers call read_document_file
+(packages/congress_api/src/congress_api/retention/capture_metadata.py:71).
+Its small-body path calls read_document/inspect_document (:41/:33); its large-PDF
+path calls inspect_pdf_file (:59). Baseline workers replace the cover callbacks
+in their isolated process. document_body_fields (document_evidence.py:207) only
+identifies PDF format before the cover callbacks; it does not leak candidate
+classification into the baseline. Reader fingerprints use the maintained
+document_evidence.evidence_fingerprint (:36) and pdf_tools.reader_versions (:97).
+
+Data flow and invariants
+------------------------
+H1: a historical subset cannot unlock held-out review. CONFIRMED: standalone
+reconciliation sets paired_catalog_validated=false, and the held-out validator
+rejects its summary before reading pilot evidence. A verified selected manifest
+must agree with both public manifests and the saved publication readback.
+
+H2: every frozen selected ID remains accounted for. CONFIRMED: reconciliation
+iterates the original selection; packet construction preserves split order;
+checked_references creates one output per packet record. Missing available
+decisions block sealing. Unavailable/visual/changed records retain explicit
+states and empty reference kinds, not substituted samples.
+
+H3: labels and evidence cannot silently change between review and comparison.
+CONFIRMED for the supported local workflow: source, sample, packet/interface,
+quote, PDF, journal and runtime checks run before evaluation. The label-freeze
+hash is rechecked after evaluation. New imports cannot alter a sealed reference
+set. These are integrity checks, not cryptographic proof of who reviewed text;
+the tool always preserves human_validated=false.
+
+H4: failures and missing evidence cannot inflate agreement. CONFIRMED:
+summarize distinguishes not_run, reader errors, successful abstentions, scored
+assignments and unscored assignments. Changed prior kinds include lost kinds and
+candidate errors. The interval denominator contains scored assignments only;
+missing/unscored evidence is reported separately. Every rule retains
+automatic_release=false regardless of sample results.
+
+Test behavior and concrete edge cases
+------------------------------------
+The existing workflow suite covers missing/changed IDs, duplicate IDs, invalid
+pair references, checksum mismatch, publication changes, ledger mutation, early
+held-out access, changed source/body/text, unsupported quotes, duplicate/foreign
+review IDs, changed interface, conflicting relabels, idempotent imports, symlink
+PDF links and unusable extracted text (test_pilot_workflow.py:69-268).
+The browser test from fd1a2e1 exercised save/reload/export/import; no browser
+behavior changed in this addition.
+
+New evaluator tests (test_pilot_evaluate.py):
+  :33 available-but-unlabeled record -> seal refuses before writing
+  :41 changed journal/runtime/PDF/freeze/interface -> no reader or result directory
+  :62 native reader version mismatch -> seal refuses
+  :69 unavailable row retained; new sealed imports refuse; identical import succeeds
+  :106 exact/wrong/error/abstention/uncertain/missing mixture -> conserved totals
+  :128 failed baseline/candidate -> no false new assignment or failed agreement
+  :136 lost baseline kind without reference -> affected rule remains flagged
+  :142 small/empty sample -> expected Wilson bounds or null
+  :150 sealed comparison -> both readers invoked and bound summary written
+  :174 wrong baseline bytes -> no reader invoked
+  :183 real PDF fixture -> maintained native reader returns amendment
+  :191 changed PDF hash -> worker_failed with retained diagnostic
+  :198 synthetic publication change -> no worker; restored evidence -> one run;
+       second held-out run -> refused before more reader calls
+
+Execution: 68 tests passed across test_pilot_evaluate.py, test_pilot_workflow.py,
+test_pilot_evidence.py and test_rule_review.py. These are focused workflow checks;
+the earlier 5,742 runtime tests were not rerun because runtime source is unchanged.
+
+Development replay
+------------------
+The full 200-record development packet was built, its existing 140 references
+imported without editing pilot_adjudications.json, and all 200 records sealed.
+Native readers processed 141 PDFs. Both abstained on the one visual-review
+record; 59 unavailable PDFs remained not_run. Candidate: 24 assignments, 24 exact
+agreements, 117 abstentions, zero reader errors. Baseline: 10 assignments,
+10 exact agreements, 131 abstentions, zero reader errors. All 14 new assignments
+match the earlier development comparison; no prior kind changed.
+
+Artifacts: output/filename-patterns-20261015/evaluation-development-v1/
+reference/label-freeze.json and results/{manifest.json,readings.jsonl,
+comparison.csv,summary.json}. evaluation_development_checkpoint.json retains
+the summary counts and hashes in Git. This remains a development rehearsal.
+
+VERDICT: APPROVE for the local evaluation workflow
+Justification: the implementation conserves samples, requires complete frozen
+references before predictions, reuses maintained readers and reports failures
+and uncertainty without automatic rule promotion.
+Coverage of changed paths: ADEQUATE for the implemented local workflow.
+Confidence: HIGH for the tested checks and development replay; no claim of
+held-out accuracy, independent review, interrupted-run recovery or release.

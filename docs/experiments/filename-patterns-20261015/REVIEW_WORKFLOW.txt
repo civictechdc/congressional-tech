@@ -93,7 +93,53 @@ marked needs_visual_review cannot receive a classified decision through this
 path. Additional-page or image-only adjudication needs separately retained,
 hashed evidence before it can enter evaluation. Preserve those outcomes in the
 denominator. Reference collection does not itself freeze a completed label set
-or run an evaluation; those are subsequent steps.
+or run an evaluation; use the following explicit steps.
+
+Seal references and run the frozen comparison
+--------------------------------------------
+Import all decisions for records whose state is review, including uncertain
+outcomes. The sealer refuses missing decisions for those records. It preserves
+all other selected records as not_reviewable with their original evidence state;
+it does not invent a reference kind for missing or unusable evidence.
+
+  python docs/experiments/filename-patterns-20261015/pilot_evaluate.py seal \
+    --packet output/filename-patterns-20261015/blind-review-heldout-v1 \
+    --reconciliation output/filename-patterns-20261015/reconciliation-published-v1
+
+This creates label-freeze.json exclusively. It records the exact journal hash,
+validated decisions, packet hash, candidate freeze hash, Python version, native
+reader versions, maintained reader fingerprint and evaluation/validation source
+hashes. Reader versions must match content_rule_freeze.json. Subsequent imports
+cannot add or replace decisions; identical reimports remain safe.
+
+  python docs/experiments/filename-patterns-20261015/pilot_evaluate.py evaluate \
+    --packet output/filename-patterns-20261015/blind-review-heldout-v1 \
+    --reconciliation output/filename-patterns-20261015/reconciliation-published-v1 \
+    --output output/filename-patterns-20261015/evaluation-heldout-v1
+
+The evaluator rechecks publication, candidate, journal, runtime and PDF bytes.
+It checks the baseline parser extracted from the frozen Git revision, then calls
+capture_metadata.read_document_file in isolated workers for baseline and
+candidate. The maintained small-body/large-file dispatch stays in place, with
+three concurrent comparisons and a 30-second limit per reader call. No OCR runs.
+
+All selected records appear in readings.jsonl and comparison.csv. summary.json
+separates assignments, exact agreements, disagreements, abstentions, reader
+errors, unscored assignments and records not run. It reports counts per kind,
+changed prior kinds, new assignments and 95% Wilson agreement intervals among
+scored assignments. These intervals describe the balanced sample, not population
+precision. A rule with an observed disagreement or changed prior kind is flagged;
+all other rules still require independent review. None is approved automatically.
+
+A held-out packet gets evaluation-started.json before workers launch. A second
+run is refused. If interrupted, preserve that marker and the partial readings,
+inspect the exact failure, and design an explicit recovery step before resuming.
+The current implementation does not automatically resume or replace a partial
+run. Completed summaries are written only after the final evidence checks pass.
+
+Use a development packet, without --reconciliation, to rehearse the workflow.
+The output remains purpose=practice and human_validated=false. Frozen development
+labels may be imported into that practice packet without modifying their source.
 
 Verification at this checkpoint
 ------------------------------

@@ -105,7 +105,8 @@ def build(split, output, freeze_path, reconciliation=None):
     return manifest
 
 
-def import_decisions(packet_directory, decisions_path, *, freeze_path, reconciliation=None):
+def validate_packet(packet_directory, *, freeze_path, reconciliation=None):
+    """Shared evidence checks for reference import, sealing and evaluation."""
     verify_candidate(freeze_path)
     directory = Path(packet_directory)
     manifest = json.loads((directory / 'manifest.json').read_text())
@@ -123,7 +124,11 @@ def import_decisions(packet_directory, decisions_path, *, freeze_path, reconcili
         held_out_eligibility(reconciliation)
         if file_digest(Path(reconciliation) / 'summary.json') != packet['reconciliation_sha256']:
             raise ValueError('Packet reconciliation changed')
-    decisions = json.loads(Path(decisions_path).read_text())
+    return packet
+
+
+def validate_decisions(packet, decisions, directory):
+    """Normalize an export without changing the packet or decision journal."""
     if decisions['packet_id'] != packet['packet_id']:
         raise ValueError('Decision export belongs to another packet')
     records = {r['review_id']: r for r in packet['records']}
@@ -160,6 +165,13 @@ def import_decisions(packet_directory, decisions_path, *, freeze_path, reconcili
                      note=decision.get('note', ''), body_sha256=source['body_sha256'],
                      text_sha256=page['text_sha256'] if page else None)
         additions.append(entry)
+    return additions
+
+
+def import_decisions(packet_directory, decisions_path, *, freeze_path, reconciliation=None):
+    directory = Path(packet_directory)
+    packet = validate_packet(directory, freeze_path=freeze_path, reconciliation=reconciliation)
+    additions = validate_decisions(packet, json.loads(Path(decisions_path).read_text()), directory)
     journal = directory / 'reference-decisions.jsonl'
     previous = [json.loads(line) for line in journal.read_text().splitlines()] if journal.exists() else []
     existing = {r['review_id']: r for r in previous}
@@ -167,9 +179,12 @@ def import_decisions(packet_directory, decisions_path, *, freeze_path, reconcili
         if entry['review_id'] in existing and existing[entry['review_id']] != entry:
             raise ValueError('Existing decision differs; preserve it and record a separate adjudication')
     new = [entry for entry in additions if entry['review_id'] not in existing]
-    with journal.open('a') as stream:
-        for entry in new:
-            stream.write(json.dumps(entry, ensure_ascii=False) + '\n')
+    if new and (directory / 'label-freeze.json').exists():
+        raise ValueError('Reference decisions are sealed; preserve the frozen label set')
+    if new:
+        with journal.open('a') as stream:
+            for entry in new:
+                stream.write(json.dumps(entry, ensure_ascii=False) + '\n')
     print('Imported', len(new), 'decisions; frozen development labels unchanged.')
     return new
 
