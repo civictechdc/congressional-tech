@@ -101,6 +101,16 @@ def test_amendment_xml_retains_native_meaning_and_replays_without_body_reads(tmp
     assert replay == sources
 
 
+def test_uncached_typed_xml_does_not_expand_body_inspection():
+    from congress_api.retention import document_evidence as evidence
+    row = dict(body_key='retained-xml', filename='CPRT-119HPRT59719.xml',
+               source_url=None, document_kind=['committee-print'])
+    evidence.enrich_sources([row], read_body=lambda _: pytest.fail('Typed uncached XML must not be inspected'),
+                            extract=lambda _: {}, cached={})
+    assert row['document_kind'] == ['committee-print']
+    assert not row.get('content_xml_root')
+
+
 @pytest.mark.parametrize('data', [
     b'<amendment-doc/>', b'<amendment-doc amend-type="unknown"><amendment-form/></amendment-doc>',
     b'<html><amendment-doc amend-type="house-amendment"/></html>',

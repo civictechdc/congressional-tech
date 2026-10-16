@@ -380,13 +380,15 @@ def test_native_cached_xml_evidence_follows_alias_across_4096_rows(tmp_path,monk
         assert document[field] == values
 
 
-def test_typed_xml_cache_requires_original_qualifying_alias():
+def test_typed_xml_restores_admitted_cache_without_original_qualifying_alias():
     from congress_api.retention.document_evidence import enrich_sources
     row={**source('WList.xml','https://example.gov/WList.xml','shared-xml'),'document_kind':['witness-list']}
     cached={('xml','shared-xml'):{'body_format':['xml'],'source_record_type':['witness-list']}}
-    enrich_sources([row],read_body=lambda key: None,extract=lambda key: {},cached=cached)
-    assert row.get('body_format') is None
-    assert row.get('source_record_type') is None
+    def no_read(key):
+        raise AssertionError('Previously admitted XML must not be read again')
+    enrich_sources([row],read_body=no_read,extract=lambda key: {},cached=cached)
+    assert row['body_format'] == ['xml']
+    assert row['source_record_type'] == ['witness-list']
 
 
 def test_document_output_order_uses_scalar_index_for_large_payloads(tmp_path):

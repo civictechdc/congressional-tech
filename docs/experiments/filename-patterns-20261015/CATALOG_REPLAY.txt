@@ -73,17 +73,22 @@ The caller must still watch available space during a large rehearsal.
 
 Current checkpoint
 ------------------
-A historical rehearsal was launched on the local naming-3.0.0 pair with catalog
-ID 7f0b0aa7b53e4205b050ac260d0bc6a7: 1,672,092 source rows and 1,235,122 document
-groups. Its output is output/filename-patterns-20261015/catalog-replay-historical-v1;
-the sibling catalog-replay-historical-v1.log contains live progress events.
-At this checkpoint the input pair validation had completed and filename parsing
-was advancing. No completed full-catalog comparison is claimed yet.
+The historical 3.0.0 rehearsal completed: 1,672,092 source rows and 1,235,122
+document groups, with no missing/added IDs or changed document memberships.
+The source and grouped comparisons failed role/evidence preservation checks.
+There are 1,864 changed prior document kinds, including one error-page group
+correctly losing its former assignment. These counts are not release approval.
 
-The process must be checked live before interpreting this saved checkpoint.
-Do not restart merely because a tool wait expires. Preserve the historical
-outputs; they test the workflow but cannot qualify the still-running 3.1.0
-publication. GitHub run 38823678887 also remained in progress at this checkpoint.
+A real XML cache-restoration defect affected 34 source rows in 17 complete
+groups. The repair preserves all fields and kinds in a replay of those groups;
+see REVIEW_XML_PRESERVATION.txt. The complete historical output remains unchanged
+at output/filename-patterns-20261015/catalog-replay-historical-v1. Its summary
+and the repaired subset are bound in xml_preservation_checkpoint.json.
+
+The original manifest binds filename, index and runner code but omits imported
+retention modules. Record the complete relevant implementation in the next run;
+the repair checkpoint explicitly includes document_evidence.py's source hash.
+The 3.1.0 publication was still running when this checkpoint was written.
 
 Next actions
 ------------

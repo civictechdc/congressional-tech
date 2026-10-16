@@ -112,11 +112,19 @@ unscored predictions and flag prior-kind regressions. REVIEW_WORKFLOW.txt gives
 the commands and the explicit interruption/recovery limit. The current workflow
 tests pass; REVIEW_EVALUATION.txt records the code review and development replay.
 
-The full-pair filename replay is implemented and its historical 3.0.0 rehearsal
-is running. CATALOG_REPLAY.txt records its exact scope, commands and live-log
-location; REVIEW_CATALOG_REPLAY.txt records tests and review. First inspect that
-run's terminal result and every identity/role/evidence or prior-kind change.
-Do not substitute historical results for qualification of the new publication.
+The historical 3.0.0 full-pair replay completed with all identities and document
+memberships preserved, but failed role/evidence preservation checks. It exposed
+34 source rows across 17 groups losing cached XML amendment facts. The repair
+passes all 167 focused/consumer tests and an exact replay of those complete
+groups. REVIEW_XML_PRESERVATION.txt and xml_preservation_checkpoint.json record
+the evidence. The original failed full replay remains unchanged and unqualified.
+
+Next, review grouped protected-field differences and the 1,864 changed prior
+document kinds. Confirmed examples need filename genre/target separation for
+vote records and First Amendment bill titles; also assess generic filename
+testimony overriding retained witness-statement evidence. Bind all relevant
+retention code in the next replay manifest. Do not substitute historical results
+or the repaired subset for qualification of the new publication.
 
 The complete historical baseline census and 400-ID reconciliation are recorded
 in HISTORICAL_CATALOG_FINDINGS.txt and historical_catalog_checkpoint.json. This

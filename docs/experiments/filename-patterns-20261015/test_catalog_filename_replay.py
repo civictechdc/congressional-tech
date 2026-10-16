@@ -74,6 +74,34 @@ def test_complete_pair_replay_preserves_aliases_body_readings_roles_and_unnamed(
     assert result['comparisons']['documents']['changes']['new_assignment'] == 1
 
 
+@pytest.mark.parametrize('name', ['BILLS-117HR3684RH-RCP117-9.xml', 'CPRT-119HPRT59719.xml'])
+def test_replay_retains_cached_xml_when_filename_has_kind(tmp_path, monkeypatch, name):
+    root = tmp_path / 'input'
+    (root / 'indexes').mkdir(parents=True)
+    url = 'https://www.govinfo.gov/content/pkg/example/xml/' + name
+    fields = dict(body_format=['xml'], content_document_kind=['amendment'],
+                  content_xml_root=['amendment-doc'], content_amendment_type=['house-amendment'],
+                  content_amendment_stage=['proposed'], content_amendment_degree=['first'],
+                  content_legis_num=['Rules Committee Print 117–9'])
+    row = dict(body_key='bodies/sha256/' + 'd' * 64 + '.gz', filename=name, source_url=url,
+               media_type=['application/xml'], http_status=['200'], **index.extract((name, url)), **fields)
+    assert row['document_kind'], 'Fixture must exercise an already typed filename'
+    names = set(row) - set(index.SOURCE_SCHEMA.names)
+    schema = pa.schema([*index.SOURCE_SCHEMA, *[(k, index.metadata_type(k)) for k in sorted(names)]],
+                       metadata={'house_naming_version': '3.1.0', 'body_evidence_fingerprint': 'retained-xml-reader'})
+    index.write_document_indexes(root / 'indexes/document-filenames.parquet', [row], schema)
+    monkeypatch.setattr(index, 'read_retained_body', lambda *a: pytest.fail('Cached XML must not be reread'))
+    output = tmp_path / 'result'
+    result = replay.run(root, output, rehearsal=True, workers=1)
+    assert result['invariants_preserved']
+    assert result['changed_prior_kinds_need_review'] == 0
+    for path in local_catalog_paths(output / 'catalog'):
+        table = pq.read_table(path)
+        actual, = table.to_pylist()
+        assert {key: actual.get(key) for key in fields} == fields
+        assert table.schema.metadata[b'body_evidence_fingerprint'] == b'retained-xml-reader'
+
+
 @pytest.mark.parametrize('change', ['role', 'evidence', 'kind', 'missing', 'duplicate', 'document_id'])
 def test_comparison_exposes_changes_or_rejects_invalid_ids(tmp_path, change):
     root = baseline(tmp_path)
