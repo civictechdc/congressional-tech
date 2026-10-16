@@ -1,0 +1,29 @@
+{
+  "at": "2026-10-16T04:22:16.534125+00:00",
+  "status": "running_not_complete",
+  "process": "16308",
+  "exec_session": 96507,
+  "maximum_requests": 10,
+  "paid_requests": 0,
+  "qualified_urls": 0,
+  "source_sha256": "4b398bd2e55607dc22c18574c20c40c320bd42a29e64997a2141ccd449edd51c",
+  "previous_pdf_pass": "17/17 complete, actual wait exit 0 and full payload hashes verified",
+  "recovery_summary": {
+    "status": "local_preparation_not_published",
+    "recovered_url_links": 1222,
+    "distinct_recovered_bodies": 854,
+    "zip_members": 149,
+    "distinct_zip_bodies": 149,
+    "prepared_url_maps": 21471,
+    "new_maps": 6966,
+    "document_groups_without_saved_before": 311,
+    "document_groups_without_saved_after_preview": 272,
+    "zip_members_not_yet_in_catalog_preview": true,
+    "deferred_files_preserved": 164,
+    "prior_maps_preserved": 14505
+  },
+  "merge_script_hashes": {
+    "prepare_recovered.py": "aa4eaa36cb11c93b9438db78d1caca02231dd8958e88602736ba147a8013abfc",
+    "update_remaining.py": "1e5f23a51dd35cd41520db8d0c74575639f640bcd62c5c1538daadfcefa21982"
+  }
+}
