@@ -1,0 +1,22 @@
+{
+  "batch": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/publication-batches/checkpoint-15",
+  "manifest_sha256": "d375cde0cff6d554859f249a4e674c63ba100d99a16e3999ac26a73e8131c93c",
+  "counts": {
+    "recovered_urls": 288,
+    "zip_parents": 3,
+    "zip_distinct_members": 15,
+    "distinct_bodies": 306
+  },
+  "parent_dependency": {
+    "parent_batch": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/publication-batches/checkpoint-14",
+    "parent_manifest_sha256": "3e02a63c2231eabdfdabd754921f85bbd2684fafbc4c6c17a0a5c371850ab74a",
+    "requires_parent_import_and_publication_verified": true,
+    "parent_complete_not_yet_verified": true,
+    "all_parent_url_body_identities_preserved": true,
+    "all_parent_accepted_mappings_preserved": true,
+    "remote_operations_performed": false
+  },
+  "source_requests": 0,
+  "published": false,
+  "script_sha256": "d42cdf534a42741065b64487f314ed528291adc3cd02d02a705600b0ae8c9ff1"
+}
