@@ -1,0 +1,42 @@
+{
+  "at": "2026-10-16T05:56:40.144550+00:00",
+  "snapshot_qualification_complete": true,
+  "workers_complete": false,
+  "qualified_urls": 258,
+  "distinct_bodies": 258,
+  "snapshots": [
+    {
+      "worker": "publisher-continuation-02",
+      "completed_receipts": 401,
+      "total": 8619,
+      "snapshot_sha256": "217ff806846f7c5735ab1476c88a036e04c1c3c991a8e0464215598ef1ba4f45",
+      "worker_completion_claimed": false
+    },
+    {
+      "worker": "publisher-file-refusal-continuation",
+      "completed_receipts": 111,
+      "total": 3506,
+      "snapshot_sha256": "5a1eed82551051fd506c9949b95a249e5d680432c479d231d40621f1d4523a1c",
+      "worker_completion_claimed": false
+    }
+  ],
+  "actual_qualification_wait_exit": 0,
+  "exec_session": 28769,
+  "published": false,
+  "remaining_counts": {
+    "lookup_unresolved": 15697,
+    "validated_local_recovery": 2092,
+    "unprocessed_archive_candidate": 2655,
+    "attempted_not_recovered": 31,
+    "retained_copy_link_prepared": 3099
+  },
+  "next_steps": [
+    "Keep checkpoint13 immutable; add these newer results to a later delta batch.",
+    "Finish and publish checkpoint12 before dispatching another importer."
+  ],
+  "evidence_sha256": {
+    "output/corpus-retry-20261015/publisher-snapshot-04/qualified.json": "a9b18d318f9be31dcffcbd2d6fd3dbff1b3caf71648427089e58dfdabdd13608",
+    "output/corpus-retry-20261015/publisher-snapshot-04/complete.json": "26fd79525d19cff83f4bc331079890fdacf4e733beaf79a0efb0bb3824ce9810",
+    "output/corpus-retry-20261015/snapshot_publisher_continuations_04.py": "f95be2bbf6c8b2ff9d2b48e02b529c5901bed34cbb68aab6cfeb8d233b390498"
+  }
+}
