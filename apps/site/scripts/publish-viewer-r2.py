@@ -225,16 +225,20 @@ def upload(client, root, manifest, *, previous_etag, selected_etag, public_url=P
         expected = digest(path)
         content_type = ('application/vnd.apache.parquet' if name.endswith('.parquet') else
                         'application/json' if name.endswith('.json') else 'application/octet-stream')
-        client.upload_file(str(path), BUCKET, key, ExtraArgs={
+        receipt = client.upload_file(str(path), BUCKET, key, ExtraArgs={
             'ContentType': content_type, 'CacheControl': 'public, max-age=31536000, immutable',
             'Metadata': {'sha256': expected}})
-        # Managed downloads retry interrupted ranges. Still verify every byte;
-        # multipart ETags are not content hashes.
-        with tempfile.TemporaryDirectory(prefix='viewer-readback-') as folder:
-            downloaded = Path(folder) / 'object'
-            client.download_file(BUCKET, key, str(downloaded))
-            if downloaded.stat().st_size != path.stat().st_size or digest(downloaded) != expected:
-                raise ValueError('Uploaded object failed readback: ' + name)
+        confirm = getattr(client, 'confirm_transfer', None)
+        verified = confirm is not None and confirm(receipt, bucket=BUCKET, key=key,
+                                                   size=path.stat().st_size, sha256=expected)
+        if not verified:
+            # Plain SDK clients retain independent full-byte readback. A guarded
+            # result can replace it only while its exact remote version remains.
+            with tempfile.TemporaryDirectory(prefix='viewer-readback-') as folder:
+                downloaded = Path(folder) / 'object'
+                client.download_file(BUCKET, key, str(downloaded))
+                if downloaded.stat().st_size != path.stat().st_size or digest(downloaded) != expected:
+                    raise ValueError('Uploaded object failed readback: ' + name)
         if path.stat().st_size > 1_000_000:
             print(f'Verified {name}: {path.stat().st_size:,} bytes', flush=True)
         return path.stat().st_size

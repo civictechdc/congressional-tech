@@ -25,13 +25,8 @@ def digest(path):
 
 
 def cloud_clear():
-    pages = json.loads(subprocess.check_output(['gh', 'api', '--paginate', '--slurp',
-        'repos/civictechdc/congressional-tech/actions/workflows/capture-raw-sources.yml/runs?per_page=100'],
-        text=True, timeout=60))
-    active = [r['id'] for p in pages for r in p['workflow_runs']
-              if r['event'] != 'push' and r['status'] != 'completed']
-    if active:
-        raise RuntimeError(f'Cloud capture writer active: {active}')
+    from recovery_guards import active_cloud_writers
+    active_cloud_writers()
 
 
 def verify_import(batch, imported):
@@ -119,6 +114,7 @@ def run(args):
     destination = args.destination.resolve()
     parent = os.getppid()
     from recovery_publication_continuation import Continuation
+    from recovery_guards import RecoveryGuard
     def report(name, value):
         continuation.save(name, (json.dumps(value, indent=2) + '\n').encode())
     def journal(event, value):
@@ -131,7 +127,8 @@ def run(args):
              for p in (runtime / folder).rglob('*') if p.is_file() and '__pycache__' not in str(p)]
     paths += list(batch.glob('*.json')) + list((ROOT/'scripts').glob('*corpus_recovery*.py'))
     paths += [ROOT/'scripts/guarded_recovery_publication_client.py',
-              ROOT/'scripts/recovery_publication_continuation.py', args.baseline.resolve(),
+              ROOT/'scripts/recovery_publication_continuation.py', ROOT/'scripts/recovery_guards.py',
+              args.baseline.resolve(), args.config.resolve(),
               imported/'payloads/import-complete.json', imported/'events.jsonl']
     paths += [imported/'payloads'/key for key in ('indexes/captures.parquet', 'indexes/download-state.parquet')]
     pins = {str(p): digest(p) for p in paths}
@@ -174,26 +171,32 @@ def run(args):
         continuation.flush()
     if getattr(args, 'resume', False):
         continuation.reconcile(client, bucket)
-    def guard():
-        cloud_clear()
+    def local_check():
         if os.getppid() != parent or shutil.disk_usage(destination).free < 12*1024**3:
             raise RuntimeError('Publication parent or disk reserve changed')
         held, named = os.fstat(lock.fileno()), (ROOT/'.cache/local-recovery.lock').stat()
         if (held.st_dev, held.st_ino) != (named.st_dev, named.st_ino): raise RuntimeError('Lock replaced')
-        if any(digest(p) != h for p,h in pins.items()): raise RuntimeError('Publication pin changed')
+    def protected_check():
         for key, version in versions.items():
             if client.head_object(Bucket=bucket, Key=key)['ETag'] != version:
                 raise RuntimeError('Publication input changed: '+key)
+    guard = RecoveryGuard(pins=pins, local_check=local_check, cloud_check=cloud_clear,
+                          protected_check=protected_check)
     def after_write(key, version):
         if key in versions:
             versions[key] = version
             continuation.flush()
     class ContinuedClient(GuardedPublicationClient):
         def put_object(self, **kwargs):
-            with self.lock:
-                guard()
+            with self.write_lock(kwargs):
+                if continuation.value['writes'].get(kwargs['Key'], {}).get('verified'):
+                    self.check_guard(kwargs)
                 receipt = continuation.replay(client, kwargs['Bucket'], kwargs['Key'], kwargs['Body'])
-                return receipt if receipt is not None else super().put_object(**kwargs)
+                if receipt is not None:
+                    saved = continuation.value['writes'][kwargs['Key']]
+                    return self.verified_result(receipt, bucket=kwargs['Bucket'], key=kwargs['Key'],
+                        size=saved['bytes'], sha256=saved['sha256'], etag=saved['etag'])
+                return super().put_object(**kwargs)
     proxy = ContinuedClient(client, guard=guard, journal=journal, after_write=after_write)
     source = destination/'source'; expected = set(json.loads((batch/'bodies.json').read_text()))
     class Store(R2Store):
@@ -214,7 +217,7 @@ def run(args):
             report('coverage.json', coverage)
             return super().put_catalog_manifest(data, expected_version=expected_version)
     try:
-        guard()
+        guard.boundary()
         def catalog_phase():
             build = destination/'build'
             # Only incomplete local scratch is replaced; retained source objects and
@@ -235,21 +238,21 @@ def run(args):
         catalog = continuation.phase('catalog', catalog_phase,
             files=lambda: [*source.rglob('*parquet'), source/'indexes/catalog.json', destination/'coverage.json'])
         report('catalog-result.json', catalog)
-        guard()
+        guard.boundary()
         def mapping_phase():
             mapping = publish_mappings(proxy, bucket=bucket,
                 baseline=json.loads(args.baseline.read_text()), prepared=json.loads((batch/'accepted.json').read_text()),
-                validate=accepted_rows, guard=guard, save_payload=save, journal=journal)
+                validate=accepted_rows, guard=guard.boundary, save_payload=save, journal=journal)
             return mapping
         mapping = continuation.phase('mappings', mapping_phase, files=lambda: [p for p in (destination/'accepted-proposed.json', destination/'accepted-before.json') if p.exists()])
         report('mapping-result.json', mapping)
-        guard()
+        guard.boundary()
         def prepared_phase():
             builder = load(runtime/'apps/site/scripts/publish-filename-viewer.py', 'recovery_viewer_builder')
             return builder.publish(source, destination/'prepared')
         continuation.phase('prepared', prepared_phase,
             files=lambda: [p for p in (destination/'prepared').rglob('*') if p.is_file()])
-        guard()
+        guard.boundary()
         def publication_phase():
             publisher = load(runtime/'apps/site/scripts/publish-viewer-r2.py', 'recovery_viewer_publisher')
             if 'release_plan' not in continuation.value:
@@ -263,7 +266,7 @@ def run(args):
                 raise ValueError('Viewer was not published')
             return publication
         publication = continuation.phase('publication', publication_phase, files=lambda: [])
-        guard()
+        guard.boundary()
         report('complete.json', dict(complete=True, catalog=catalog, mapping=mapping,
                                     publication=publication, imported=result))
         return publication

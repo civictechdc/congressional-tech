@@ -3,9 +3,19 @@
 The caller supplies ownership, cloud, input and pin checks. SDK write retries
 must be disabled. Only derived catalog and viewer objects may be written.
 """
+from dataclasses import dataclass
 import hashlib
 from pathlib import Path
 import threading
+
+
+@dataclass(frozen=True)
+class VerifiedTransfer:
+    bucket: str
+    key: str
+    bytes: int
+    sha256: str
+    etag: str
 
 
 class GuardedPublicationClient:
@@ -15,6 +25,42 @@ class GuardedPublicationClient:
         self.journal = journal
         self.after_write = after_write
         self.lock = threading.RLock()
+        self._key_locks = {}
+        self._receipts = {}
+
+    @staticmethod
+    def immutable_write(kwargs):
+        return (kwargs.get('IfNoneMatch') == '*' and
+                kwargs['Key'].startswith(('catalog-generations/', 'catalog-history/sha256/',
+                    'indexes/processing/body-results/', 'viewer-publications/releases/',
+                    'viewer-publications/catalogs/')))
+
+    def write_lock(self, kwargs):
+        if not self.immutable_write(kwargs):
+            return self.lock
+        with self.lock:
+            return self._key_locks.setdefault((kwargs['Bucket'], kwargs['Key']), threading.RLock())
+
+    def check_guard(self, kwargs):
+        method = 'check' if self.immutable_write(kwargs) else 'shared_commit'
+        return getattr(self.guard, method, self.guard)()
+
+    def verified_result(self, result, *, bucket, key, size, sha256, etag):
+        receipt = VerifiedTransfer(bucket, key, size, sha256, etag)
+        with self.lock:
+            self._receipts[id(receipt)] = receipt
+        return dict(result, _verified_transfer=receipt)
+
+    def confirm_transfer(self, receipt, *, bucket, key, size, sha256):
+        # A result applies only to this client, exact request and current version.
+        with self.lock:
+            issued = self._receipts.pop(id(receipt), None)
+        if issued is not receipt or receipt is None:
+            return False
+        if (receipt.bucket, receipt.key, receipt.bytes, receipt.sha256) != (bucket, key, size, sha256):
+            return False
+        response = self.client.head_object(Bucket=bucket, Key=key)
+        return response['ETag'] == receipt.etag and response.get('ContentLength') == size
 
     def get_object(self, **kwargs):
         return self.client.get_object(**kwargs)
@@ -68,31 +114,35 @@ class GuardedPublicationClient:
                 raise ValueError('Publication readback differs: ' + key)
             return response['ETag']
 
-        with self.lock:
-            self.guard()
+        with self.write_lock(kwargs):
+            self.check_guard(kwargs)
             self.journal('publication_write_intent', dict(key=key, bytes=size,
                 sha256=digest, expected_etag=kwargs.get('IfMatch'),
                 if_none_match=kwargs.get('IfNoneMatch')))
+            uncertain = False
             try:
                 result = self.client.put_object(**kwargs)
             except Exception:
-                # The request may have committed. Never repeat it automatically.
-                version = verify()
+                # Verify the possible commit once; never resend this request.
+                uncertain, result = True, {}
+            version = verify()
+            if uncertain:
                 result = {'ETag': version}
                 self.journal('publication_acknowledgment_reconciled', dict(key=key))
-            version = verify()
             self.after_write(key, version)
             self.journal('publication_write_verified', dict(key=key, etag=version,
                                                            sha256=digest, bytes=size))
-            return result
+            return self.verified_result(result, bucket=kwargs['Bucket'], key=key,
+                                        size=size, sha256=digest, etag=version)
 
     def upload_file(self, filename, bucket, key, ExtraArgs=None):
         # Replace managed multipart writes with one conditional, streamed PUT.
-        # The maintained publisher independently downloads and hashes it too.
+        # Return the exact verified result so callers can avoid a second full GET.
         path = Path(filename)
         if path.stat().st_size >= 5 * 1024**3:
             raise ValueError('Publication file exceeds single-PUT limit')
         options = dict(ExtraArgs or {})
         with path.open('rb') as stream:
-            self.put_object(Bucket=bucket, Key=key, Body=stream,
+            result = self.put_object(Bucket=bucket, Key=key, Body=stream,
                             ContentLength=path.stat().st_size, IfNoneMatch='*', **options)
+        return result.get('_verified_transfer')

@@ -73,7 +73,7 @@ class DispatcherContinuationTests(unittest.TestCase):
                 root = Path(folder); repo = root/'repo'; (repo/'.cache').mkdir(parents=True)
                 (repo/'scripts').mkdir()
                 for name in ('dispatch_corpus_recovery_publication.py', 'guarded_recovery_publication_client.py',
-                             'recovery_publication_continuation.py'):
+                             'recovery_publication_continuation.py', 'recovery_guards.py'):
                     shutil.copyfile(scripts/name, repo/'scripts'/name)
                 batch = root/'batch'; batch.mkdir()
                 (batch/'bodies.json').write_text('["pdf", "zip-member"]')
