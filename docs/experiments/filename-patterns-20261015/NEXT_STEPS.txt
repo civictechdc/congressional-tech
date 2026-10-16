@@ -241,3 +241,23 @@ Keep the four denied archive reads pending changed access evidence; the user has
 been asked to restore local archive read access asynchronously. Continue metadata
 review and exact publication verification independently. No production kinds or
 publication state were changed by this audit.
+
+Linked interpretation review checkpoint
+---------------------------------------
+The exact historical-review linkage is implemented and tested. The current
+1,903-row changed-kind ledger contains 821 broad/specific alias additions, 389
+same-family additions, 356 matching prior interpretation reviews and 337 rows
+without a linked basis. All 60 updated grouping rows were read in full. The
+356 matches preserve IDs, kinds, provenance, roles, body keys and complete alias
+readings against their bound historical outputs. These are not content approvals.
+See REVIEW_LINKED_EVIDENCE.txt and review_evidence_checkpoint.json. All 50 linkage,
+alias and replay tests pass; production classifiers and source tables are unchanged.
+
+Next, review the 210 Truth-in-Testimony transitions, then the remaining disclosure,
+biography, statement and TEXT combinations. There are 56 multi-body groups and
+15 explicit TEXT groups among the 337 rows still without a review basis. The
+213 multi-body groups with prior interpretation reviews also retain their body
+review requirement. Thirteen prior repaired IDs are now unchanged against the
+original baseline; none is missing from the current cohort. Keep the four denied
+archive reads pending restored access and preserve the publication/frozen-pilot
+gates. The goal remains active; no new publication was dispatched.

@@ -1,0 +1,89 @@
+Historical review linkage
+=========================
+
+Result
+------
+The current 1,903-row ledger now distinguishes 821 broad/specific alias additions,
+389 same-family additions, 356 exact matches to earlier interpretation reviews,
+and 337 rows without either basis. The five historical review records are bound
+in review_receipts.json to their committed checkpoints, review notes and replay
+summaries. This is historical interpretation evidence, not new content truth.
+
+The matched rows comprise 288 vote-target corrections, 37 witness-statement
+refinements, 24 vote-action corrections and seven genre/topic corrections. No
+candidate match failed current kind or alias-evidence comparison. Thirteen other
+changed rows in those receipts are present in the current cohort but now have
+the same kinds as the original 3.0.0 baseline, so they are outside the changed-kind
+ledger: two constitutional-topic repairs, one witness case and ten genre cases.
+No reviewed changed IDs are missing from the current cohort.
+
+All 60 updated grouping rows, with up to three samples each, were read in full.
+Of the 337 rows still without a linked review basis, 210 are Truth-in-Testimony
+transitions, 56 have multiple retained bodies and 15 have explicit TEXT wording.
+The 356 linked rows include 213 multi-body histories; a filename interpretation
+review does not settle the contents of all captures. Those flags remain visible.
+
+Function trace and data flow
+----------------------------
+The CLI in catalog_review_evidence.py:165 calls run (:63) with a registry and a
+new output directory. verified (:13) hashes each file against its recorded digest
+and records the binding. run verifies the alias checkpoint, summary and ledger,
+then loads the current complete source and document tables through load_tables
+(:47) and the maintained alias-audit read_rows helper. Missing/duplicate IDs,
+row-count mismatch and source/document membership mismatch are refused.
+
+For each historical receipt, run (:83-108) verifies the checkpoint and confirms
+that it actually names the selected replay summary. It verifies the review note,
+summary, changed-kind CSV and output tables, requires a completed preservation
+replay, and checks that each CSV after-kind matches its saved output row. Only
+actual kind-change rows are eligible; unchanged controls are not silently counted
+as newly matched interpretation reviews.
+
+match_group (:21) requires matching document and representative IDs, current kinds
+and provenance, roles, complete filename/URL/body-key sets and retained content
+kinds. It also compares the full source membership and each source's filename,
+URL, body key, selected kind, provenance, role, content kind and publisher type
+facts. A matching document ID alone is insufficient. These are bounded metadata
+comparisons, not a claim that all possible catalog fields or body bytes match.
+
+run (:119-131) attaches matched notes or explicit mismatch reasons while retaining
+all original alias-audit fields. content_review stays not_performed and release
+approval stays false. It rechecks all input file hashes and the project/experiment
+implementation identity before writing immutable new ledger/grouping artifacts.
+The input audit, historical receipts and production classifications are unchanged.
+
+Review findings and tests
+-------------------------
+Resolved by design: a successful historical replay is not evidence about a changed
+body or a different alias membership. Negative tests cover changed group IDs,
+representatives, kinds, provenance, roles, filenames, URLs, body keys, native
+content kinds and source-level readings.
+Resolved: merely verifying a checkpoint file hash does not prove that it names
+the selected replay. The final implementation checks that explicit relationship.
+A real complete-pair integration test links an interpretation, preserves pending
+content status and then refuses a hash-valid checkpoint that lacks the binding.
+A separate corrupted-digest test refuses the file before recording its binding.
+Twenty new linkage tests plus 13 alias-audit and 17 replay tests pass (50 total).
+The actual v2 linkage completes with all evidence bindings unchanged. Its output
+counts match the preliminary run after the checkpoint-binding guard was added.
+
+VERDICT: APPROVE this read-only linkage of historical interpretation evidence.
+Coverage: ADEQUATE for stale evidence, checkpoint binding, complete-group matching
+and pending content status. Confidence: HIGH in the reported linkage; population
+precision, independent references and release qualification remain unproven.
+
+Next steps and reproduction
+---------------------------
+Review the 210 Truth-in-Testimony transitions and the remaining disclosure,
+biography, statement and TEXT combinations. Preserve their separate body histories.
+Keep the four denied archive reads pending changed access evidence; the async
+request to restore local archive read access remains outstanding. When the live
+publication completes, verify its exact head, artifacts and public selected pair
+before any fresh-catalog qualification or frozen pilot evaluation.
+
+With the repository package paths on PYTHONPATH, run:
+  python docs/experiments/filename-patterns-20261015/catalog_review_evidence.py \
+    --registry docs/experiments/filename-patterns-20261015/review_receipts.json \
+    --output output/filename-patterns-20261015/review-evidence-new
+Use a new output directory. review_evidence_checkpoint.json binds the v2 summary,
+registry and outputs. The preliminary v1 result remains retained.
