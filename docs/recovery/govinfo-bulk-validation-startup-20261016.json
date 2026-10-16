@@ -1,0 +1,98 @@
+{
+  "dispatch": {
+    "pid": 2526,
+    "parent_pid": 94792,
+    "source_pid": 1172,
+    "pins": {
+      "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/qualify_govinfo_bulk_packages.py": "47c814f2cbd0d64bb15d640ecbad1a00dba664f05376cf2da09c8d052e8b3e2d",
+      "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/govinfo-bulk-package-plan.json": "462214664eae0be12d3c4c5412210694c765fc079539723fbd7b8635d6b58c07",
+      "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/govinfo-bulk-packages-01/dispatch.json": "85e46502d940897a9664d28a6a315eb409ed8369d86f40cca31803484ea64b01",
+      "/Users/mikewolfd/Work/congressional-tech/packages/congress_api/src/congress_api/retention/archive_members.py": "b3d2415fd3fadf800094703e243a292e42f98fbfa9e56f5cfe1d9cb924b42a83",
+      "/Users/mikewolfd/Work/congressional-tech/packages/congress_api/src/congress_api/retention/raw_archive.py": "545d0803787e5c77486d8cd6e6cb617d6e0cecbe006b39574db3681079761689"
+    },
+    "source_requests": 0,
+    "remote_writes": 0
+  },
+  "exec_session": 18980,
+  "process_verified": "2526 94792 Fri Oct 16 02:24:43 2026     .venv/bin/python -u output/corpus-retry-20261015/qualify_govinfo_bulk_packages.py",
+  "completed_package_snapshot": [
+    {
+      "url": "https://www.govinfo.gov/content/pkg/CHRG-119jhrg61127.zip",
+      "members": 4,
+      "capture_rows": 5,
+      "complete_path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/govinfo-bulk-qualified-01/000/complete.json",
+      "complete_sha256": "178150d1047b7f454c738cabbf3d0b1f8b7159cce8efcd3ebd47cad4257fa056"
+    },
+    {
+      "url": "https://www.govinfo.gov/content/pkg/CHRG-119jhrg61803.zip",
+      "members": 4,
+      "capture_rows": 5,
+      "complete_path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/govinfo-bulk-qualified-01/001/complete.json",
+      "complete_sha256": "9004948646c8941952fc73500dd3feac9bdc320f0723155a34c1d6a1be9118a8"
+    },
+    {
+      "url": "https://www.govinfo.gov/content/pkg/CHRG-111hhrg54476.zip",
+      "members": 4,
+      "capture_rows": 5,
+      "complete_path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/govinfo-bulk-qualified-01/002/complete.json",
+      "complete_sha256": "860894b5f7afd689ef1ce3c77219ec350bcb31c2c85d4869b88ef315d819f226"
+    },
+    {
+      "url": "https://www.govinfo.gov/content/pkg/CHRG-109shrg42271.zip",
+      "members": 4,
+      "capture_rows": 5,
+      "complete_path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/govinfo-bulk-qualified-01/003/complete.json",
+      "complete_sha256": "5ef48f7573110615b7f06d5ed336c5bcca1184f9733fd9f919b489c3ffb61bc2"
+    },
+    {
+      "url": "https://www.govinfo.gov/content/pkg/CHRG-109shrg42268.zip",
+      "members": 4,
+      "capture_rows": 5,
+      "complete_path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/govinfo-bulk-qualified-01/004/complete.json",
+      "complete_sha256": "38fc6bb8ddabdf2d2a979abe26f8b0001245aed9722db757e1a4540f93b7cb92"
+    },
+    {
+      "url": "https://www.govinfo.gov/content/pkg/CHRG-109shrg42274.zip",
+      "members": 4,
+      "capture_rows": 5,
+      "complete_path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/govinfo-bulk-qualified-01/005/complete.json",
+      "complete_sha256": "02b2f584f15e9812e7a7188ce04bf35a8c3e8a9f2bdf6377e554270ad3fd92b2"
+    },
+    {
+      "url": "https://www.govinfo.gov/content/pkg/CHRG-116hhrg44864.zip",
+      "members": 5,
+      "capture_rows": 6,
+      "complete_path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/govinfo-bulk-qualified-01/006/complete.json",
+      "complete_sha256": "306762136cc74e2fb99b22ae0ac949107cbf91bf6bff1bd43692ccf4eea10783"
+    },
+    {
+      "url": "https://www.govinfo.gov/content/pkg/CHRG-116hhrg45263.zip",
+      "members": 5,
+      "capture_rows": 6,
+      "complete_path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/govinfo-bulk-qualified-01/007/complete.json",
+      "complete_sha256": "bb6b0fb6ffb13a0446ce966c44ee359d9eca5cb648a64262fd56d347bfbfd47a"
+    },
+    {
+      "url": "https://www.govinfo.gov/content/pkg/CHRG-116shrg35773.zip",
+      "members": 5,
+      "capture_rows": 6,
+      "complete_path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/govinfo-bulk-qualified-01/008/complete.json",
+      "complete_sha256": "bddd0c3341e203f0831165244f4090399881c6b527799d5d166701c5b31b7ce5"
+    },
+    {
+      "url": "https://www.govinfo.gov/content/pkg/CHRG-116hhrg45882.zip",
+      "members": 5,
+      "capture_rows": 6,
+      "complete_path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/govinfo-bulk-qualified-01/009/complete.json",
+      "complete_sha256": "cabc4a7e793cd86d9ebc992e26b9911b568a4cf5b46c3a17e5dec59110f393e2"
+    }
+  ],
+  "source_job_still_running": true,
+  "all_snapshot_body_hashes_verified": true,
+  "publication": false,
+  "next_steps": [
+    "Wait for both download and validation workers to exit; verify their actual results and full receipt coverage.",
+    "Append only newly qualified package receipts and members to the next delta; preserve all earlier package receipts.",
+    "Complete current catalog publication before dispatching another raw import."
+  ]
+}
