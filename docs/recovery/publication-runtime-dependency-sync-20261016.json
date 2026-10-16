@@ -1,0 +1,20 @@
+{
+  "source_runtime": "/Users/mikewolfd/.codex/worktrees/viewer-retained-sync/congressional-tech",
+  "source_head": "c361df34aa60f83877cd0c2e287a8d1410952ff1",
+  "reason": "Complete imports for the maintained viewer recovery alias validator",
+  "files": {
+    "packages/congress_api/src/congress_api/retention/saved_responses.py": {
+      "sha256": "dac79862a5ecaf94609435b2cd869f74c3f1342af97ebb10b4350d9a9d8797cf",
+      "bytes": 2576
+    },
+    "packages/congress_api/src/congress_api/retention/saved_response_reviews.json": {
+      "sha256": "202f3108e389c4811b94e9015eb0d0d035e84e22ad6c410b3a63f83765799ce0",
+      "bytes": 13973
+    }
+  },
+  "verified_imports": [
+    "publish-viewer-r2.py",
+    "publish-filename-viewer.py"
+  ],
+  "remote_writes": false
+}
