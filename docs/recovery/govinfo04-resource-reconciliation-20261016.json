@@ -1,0 +1,137 @@
+{
+  "at": "2026-10-16T07:04:56.287872+00:00",
+  "free_disk_bytes": 4424888320,
+  "processes_checked_absent": [
+    23137,
+    23220,
+    21797,
+    63910,
+    75285,
+    66915,
+    22629,
+    22643
+  ],
+  "completed_downloads_hash_verified": 5,
+  "qualified_package_markers": 3,
+  "partial_downloads": 1,
+  "unrequested_urls": [
+    "https://www.govinfo.gov/content/pkg/CHRG-117shrg47198.zip"
+  ],
+  "packages": [
+    {
+      "url": "https://www.govinfo.gov/content/pkg/CHRG-106hhrg55894.zip",
+      "download_complete": true,
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/govinfo-bulk-packages-04/000/body.zip",
+      "bytes_on_disk": 130528197,
+      "sha256": "3ea6bbeb744f2b0e7951df27fe9844b0e30c24bc9dc1d3839ae0422edf36da69",
+      "expanded_bytes": 142032935,
+      "oversized_members": [
+        {
+          "name": "CHRG-106hhrg55894/pdf/CHRG-106hhrg55894.pdf",
+          "bytes": 135955340
+        }
+      ],
+      "next_action": "Reuse retained bytes; never redownload. Review member size limits before qualification.",
+      "qualification_result": {
+        "url": "https://www.govinfo.gov/content/pkg/CHRG-106hhrg55894.zip",
+        "qualified": false,
+        "receipt_sha256": "e55f6b567dd62a774448a5bbdfc57df45996c4ee4a1e5593c184b60f02043beb",
+        "error_type": "AssertionError",
+        "error": ""
+      }
+    },
+    {
+      "url": "https://www.govinfo.gov/content/pkg/CHRG-116hhrg36794.zip",
+      "download_complete": true,
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/govinfo-bulk-packages-04/001/body.zip",
+      "bytes_on_disk": 132243840,
+      "sha256": "0c9e356fdeb5ea3cc790baa32e150ef3a3a1928525d7ab6a05906e93c3ec97dc",
+      "expanded_bytes": 133831442,
+      "oversized_members": [],
+      "next_action": "Reconcile completed qualification before adoption.",
+      "qualification_result": {
+        "url": "https://www.govinfo.gov/content/pkg/CHRG-116hhrg36794.zip",
+        "qualified": true,
+        "receipt_sha256": "494b40d693cd4d15c3f4a268bec284859486255526b7abdb52ec51c66b1ff117",
+        "members": 5,
+        "capture_rows": 6,
+        "archive_sha256": "0c9e356fdeb5ea3cc790baa32e150ef3a3a1928525d7ab6a05906e93c3ec97dc"
+      }
+    },
+    {
+      "url": "https://www.govinfo.gov/content/pkg/CHRG-116hhrg40774.zip",
+      "download_complete": true,
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/govinfo-bulk-packages-04/002/body.zip",
+      "bytes_on_disk": 119873692,
+      "sha256": "b6abe2868641c1ecb00bd59e0f1d969d06133c3939565458d779cc3e6927af6c",
+      "expanded_bytes": 131654635,
+      "oversized_members": [],
+      "next_action": "Reconcile completed qualification before adoption.",
+      "qualification_result": {
+        "url": "https://www.govinfo.gov/content/pkg/CHRG-116hhrg40774.zip",
+        "qualified": true,
+        "receipt_sha256": "d7c0b3f66fb7ee5dd53c58cca576a601ffa90e77b57e00e5e7bf7281e9c6b35a",
+        "members": 5,
+        "capture_rows": 6,
+        "archive_sha256": "b6abe2868641c1ecb00bd59e0f1d969d06133c3939565458d779cc3e6927af6c"
+      }
+    },
+    {
+      "url": "https://www.govinfo.gov/content/pkg/CHRG-116hhrg46031.zip",
+      "download_complete": true,
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/govinfo-bulk-packages-04/003/body.zip",
+      "bytes_on_disk": 120071226,
+      "sha256": "87aee96f28f6281cd17b262630e9f8df2af0b4417c7499ea75cd9d19846ce550",
+      "expanded_bytes": 134701903,
+      "oversized_members": [],
+      "next_action": "Reconcile completed qualification before adoption.",
+      "qualification_result": {
+        "url": "https://www.govinfo.gov/content/pkg/CHRG-116hhrg46031.zip",
+        "qualified": true,
+        "receipt_sha256": "dc0c74a67acdf99082f40b3c900f335c607e7d21d58007608b8aa12229de4511",
+        "members": 5,
+        "capture_rows": 6,
+        "archive_sha256": "87aee96f28f6281cd17b262630e9f8df2af0b4417c7499ea75cd9d19846ce550"
+      }
+    },
+    {
+      "url": "https://www.govinfo.gov/content/pkg/CHRG-116shrg37306.zip",
+      "download_complete": true,
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/govinfo-bulk-packages-04/004/body.zip",
+      "bytes_on_disk": 129525282,
+      "sha256": "fe46f65e7824d815bcca921399c9b55431726f8ebc00c45c6c48be8af9da0ba9",
+      "expanded_bytes": 136053681,
+      "oversized_members": [
+        {
+          "name": "CHRG-116shrg37306/pdf/CHRG-116shrg37306.pdf",
+          "bytes": 135758184
+        }
+      ],
+      "next_action": "Reuse retained bytes; never redownload. Review member size limits before qualification.",
+      "qualification_result": {
+        "url": "https://www.govinfo.gov/content/pkg/CHRG-116shrg37306.zip",
+        "qualified": false,
+        "receipt_sha256": "e66b4398754f3d5a75c3d3066dff962f9c53e0cc0a9f71b8af19b8badcbf7283",
+        "error_type": "AssertionError",
+        "error": ""
+      }
+    },
+    {
+      "url": "https://www.govinfo.gov/content/pkg/CHRG-116shrg37811.zip",
+      "download_complete": false,
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/govinfo-bulk-packages-04/005/body.zip",
+      "bytes_on_disk": 65994752,
+      "next_action": "Retain partial evidence; retry only after storage is available.",
+      "qualification_result": null
+    }
+  ],
+  "remote_requests": 0,
+  "extracted_bytes": 0,
+  "published": false,
+  "next_steps": [
+    "Obtain additional storage before restarting downloads or publication.",
+    "Reuse all five hash-verified ZIPs; two require member-size review, not another download.",
+    "Adopt three completed qualifications after verifying their payloads.",
+    "Resume publication in a fresh destination after storage and baseline checks."
+  ]
+}
