@@ -1,0 +1,27 @@
+{
+  "at": "2026-10-16T03:16:03.946505+00:00",
+  "recovered_links": 4,
+  "distinct_bodies": 4,
+  "kind": "xml",
+  "new_network_requests": 0,
+  "published": false,
+  "validation": "Full body hash and size, parsed bill/resolution, congress, bill number, legislative stage, deferred URL/body exclusion, maintained capture preparation",
+  "files": {
+    "official-xml-recovered.json": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/official-xml-recovered.json",
+      "sha256": "f9ad86127338b30a4677a8b822ae8aa47c841af86129d6d5ba5d7a99aeaccb83"
+    },
+    "official-xml-capture-checks.json": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/official-xml-capture-checks.json",
+      "sha256": "1cdb62320d89701f0138e49e31ab2cc0352633c9a570cd128a67cb3f8fbdf7df"
+    },
+    "reuse_official_xml.py": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/reuse_official_xml.py",
+      "sha256": "52c64a70babace25149f85a4d5c281ee20836fbbe4c5992758812bd5d2703d39"
+    },
+    "prepare_source_records_v2.py": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/prepare_source_records_v2.py",
+      "sha256": "251658888bef8c595cdea3991b3218d03aef33385856ff6ab424af14ced3b981"
+    }
+  }
+}
