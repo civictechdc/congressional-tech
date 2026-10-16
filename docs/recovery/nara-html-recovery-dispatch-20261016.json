@@ -1,0 +1,62 @@
+{
+  "at": "2026-10-16T04:40:03.521033+00:00",
+  "status": "running_not_complete",
+  "process": "24521",
+  "exec_session": 72525,
+  "plan": {
+    "pins": {
+      "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/recover_nara_html.py": "4b2ea00cadca9339b55b2eba3d3652be4bb6102e99b702b2ee2134bed3420878",
+      "/Users/mikewolfd/Work/congressional-tech/scripts/classify_recovery_html.py": "e73ab799e37151564f7cceecf334d9a0f4ea80a0712fff4c9c59b9b612a584bb",
+      "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/remaining-html-acquisition-queue-v2.json": "56271753b0c79374ef0a33a504ff2fe0036b1366418f4221553bb1a8751d6eb0",
+      "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/nara-html-recovery/queue.json": "56271753b0c79374ef0a33a504ff2fe0036b1366418f4221553bb1a8751d6eb0"
+    },
+    "groups": 1409,
+    "urls": 1410,
+    "workers": 1,
+    "delay_seconds": 30,
+    "paid_requests": 0
+  },
+  "summary": {
+    "at": "2026-10-16T04:39:45.325428+00:00",
+    "eligible_urls": 23574,
+    "counts": {
+      "lookup_unresolved": 16573,
+      "validated_local_recovery": 1242,
+      "unprocessed_archive_candidate": 2756,
+      "attempted_not_recovered": 9,
+      "retained_copy_link_prepared": 2994
+    },
+    "accounted": 23574,
+    "published": false,
+    "scope": "Eligible queue only; unresolved lookup is not proof of archive absence",
+    "nara": {
+      "processed": 742,
+      "total": 742,
+      "valid": 677,
+      "requests_made": 471,
+      "blocked": null,
+      "pid": 55119,
+      "parent_pid": 94792
+    },
+    "wayback_retry": {
+      "at": "2026-10-16T01:33:44.797255+00:00",
+      "reason": "three_consecutive_transport_failures",
+      "pid": 64224,
+      "command": ".venv/bin/python output/corpus-retry-20261015/wayback_priority_index_retry.py",
+      "completed_receipts": 3,
+      "unfinished_request_may_have_partial_body": true,
+      "prior_evidence_preserved": true
+    },
+    "ledger_sha256": "be209fad56e8f4baeabad9337126d73578178266cf9e034727586c0448674b01"
+  },
+  "merge_script_hashes": {
+    "prepare_recovered.py": "527432c04298f604b74eff63869c041151878e91796f550f1c462c75c64ed055",
+    "update_remaining.py": "62c0d6370ff3db6026426ed907487e6fb8477c76a2179ee69850913c9c4b3d26"
+  },
+  "completion_requirements": [
+    "Actual child wait exit and physical absence",
+    "Exact queue accounting",
+    "All qualifying full payload hashes and archive digests",
+    "Retain metadata, attachment links and errors separately"
+  ]
+}
