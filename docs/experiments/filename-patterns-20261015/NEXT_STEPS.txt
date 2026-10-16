@@ -119,8 +119,10 @@ passes all 167 focused/consumer tests and an exact replay of those complete
 groups. REVIEW_XML_PRESERVATION.txt and xml_preservation_checkpoint.json record
 the evidence. The original failed full replay remains unchanged and unqualified.
 
-Next, review grouped protected-field differences and the 1,864 changed prior
-document kinds. The 3.2.1 vote-target repair now passes a complete-group subset replay;
+All grouped protected-field differences are now diagnosed: 80,510 groups
+change only derived source type/identifier; the other 17 are the repaired XML
+groups. See grouped_evidence_checkpoint.json. Review the 1,864 changed prior
+document kinds and source-role transitions next. The 3.2.1 vote-target repair now passes a complete-group subset replay;
 REVIEW_VOTE_TARGETS.txt records all 329 reviewed names, 288 changed group kinds,
 and the explicit TEXT exceptions. Next address First Amendment bill titles and
 generic filename testimony overriding retained witness-statement evidence. Bind all relevant

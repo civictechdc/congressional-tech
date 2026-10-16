@@ -119,3 +119,15 @@ Reconciliation exited successfully. Pair validation, unique coverage of all 400
 IDs, census conservation, all 145 missing-ID diagnostics and present-ID body/
 role/kind checks passed. The full replay and publication were still running when
 this checkpoint was prepared. No completed replay or release is claimed.
+
+Completed replay: grouped evidence diagnosis
+--------------------------------------------
+Every one of the 80,527 grouped documents flagged for protected-evidence changes
+has now been compared, rather than sampled. In 80,510 groups, only derived
+source_record_type and source_record_identifier differ. The other 17 groups lose
+exactly the seven XML amendment fields already repaired by commit 4785e15.
+Their document IDs exactly match the complete-group XML repair selection.
+grouped_evidence_checkpoint.json records this result and its artifact hashes.
+The strict comparator still flags all of these changes; the original complete
+replay remains unqualified. Source-role transitions, classification changes and
+qualification against the fresh published catalog remain separate work.
