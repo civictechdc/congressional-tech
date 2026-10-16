@@ -1,0 +1,69 @@
+{
+  "qualification": {
+    "at": "2026-10-16T06:41:30.525826+00:00",
+    "actual_wait_exit": 0,
+    "physical_absence_verified": true,
+    "pid": 14269,
+    "exec_session": 22321,
+    "all_targets_processed": true,
+    "qualified_package_urls": [
+      "https://www.govinfo.gov/content/pkg/CHRG-116hhrg40609.zip"
+    ],
+    "members": 5,
+    "full_body_hashes_verified": true,
+    "published": false,
+    "complete_sha256": "56be3a244a8436124ea426721639fdb82fc76e47113d0aa14a554a23682d059f"
+  },
+  "download": {
+    "at": "2026-10-16T06:41:03.699899+00:00",
+    "actual_wait_exit": 0,
+    "physical_absence_verified": true,
+    "pid": 14252,
+    "exec_session": 40236,
+    "all_targets_processed": true,
+    "complete_sha256": "7f8a86edf2a185d04e7b5a38504e91eb08b1296dc8ee8da00db734b476658072",
+    "full_download_sha256_verified": true,
+    "published": false
+  },
+  "ledger": {
+    "at": "2026-10-16T06:41:30.853825+00:00",
+    "eligible_urls": 23574,
+    "counts": {
+      "lookup_unresolved": 14724,
+      "validated_local_recovery": 2810,
+      "unprocessed_archive_candidate": 2579,
+      "attempted_not_recovered": 27,
+      "retained_copy_link_prepared": 3434
+    },
+    "accounted": 23574,
+    "published": false,
+    "scope": "Eligible queue only; unresolved lookup is not proof of archive absence",
+    "nara": {
+      "processed": 742,
+      "total": 742,
+      "valid": 677,
+      "requests_made": 471,
+      "blocked": null,
+      "pid": 55119,
+      "parent_pid": 94792
+    },
+    "wayback_retry": {
+      "at": "2026-10-16T01:33:44.797255+00:00",
+      "reason": "three_consecutive_transport_failures",
+      "pid": 64224,
+      "command": ".venv/bin/python output/corpus-retry-20261015/wayback_priority_index_retry.py",
+      "completed_receipts": 3,
+      "unfinished_request_may_have_partial_body": true,
+      "prior_evidence_preserved": true
+    },
+    "ledger_sha256": "87c04d18a75cb5c5b1d41077c9d39741b0cdbf381f8d08e0ed927c70b43650ff"
+  },
+  "remaining_urls": 17330,
+  "prior_incomplete_body_and_receipt_preserved": true,
+  "successful_downloads_repeated": 0,
+  "next_steps": [
+    "Finish validating the other second-batch packages and adopt the successful subset.",
+    "Preserve the failed original receipt and successful retry as separate evidence.",
+    "Keep newer imports behind the active catalog publication."
+  ]
+}
