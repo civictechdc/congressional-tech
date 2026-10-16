@@ -90,3 +90,11 @@ Offline triage of the 6,209 unprocessed candidates identifies 388 entries still 
 A full local hash check of 579 retained bodies found archive-digest matches for 15 of the additional 408 PDF candidates. Before downloading the next batch, validate those target associations and deferred exclusions and admit qualified reused bodies with their original acquisition evidence. The remaining 393 PDF candidates need retained-store or official-package checks before new archive requests. Do not add a second NARA downloader while the current worker remains active. XML and Word need format-specific validation; source pages need extraction of useful document links rather than a blanket recovered label.
 
 Evidence: `output/corpus-retry-20261015/remaining-candidate-triage.json` and `additional-pdf-retained-reuse.json`. These are timestamped planning findings; refresh success exclusions before dispatch. The cloud capture writer was still active at this checkpoint, so shared import and publication remain pending.
+
+### Target association review
+
+Further inspection narrows the additional PDF candidates: 407 of 408 are filename-only matches; only one is an exact canonical URL match. They are search leads, not an established queue of 408 replacement files. Retained body digest equality verifies candidate bytes, but cannot establish that a generic filename belongs to the requested hearing or bill.
+
+Of the 15 retained-body matches, one is qualified: `HHRG-113-IF14-20141210-SD001.pdf` has the same full hearing-document identifier and meeting ID `102797` at Congress.gov and docs.house.gov. Its full SHA-256, archive SHA-1, PDF validation, and deferred URL/body exclusions passed. It is included in local recovery preparation without a network request. Fourteen associations remain unresolved; several clearly differ in hearing date or bill number, such as HR980 versus HR1644 `finalvote.pdf`. Do not admit these from filename equality alone. Evidence hashes are recorded in `../recovery/retained-candidate-associations-20261016.json`.
+
+Next, inspect the one exact URL candidate, then prioritize distinctive document identifiers and source-page context among filename leads. Reuse verified retained bytes only after establishing the requested document association. Preserve unresolved leads for further search; do not count them as archive absence or recovered links.
