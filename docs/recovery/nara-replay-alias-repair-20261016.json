@@ -1,0 +1,21 @@
+{
+  "at": "2026-10-16T05:35:05.373293+00:00",
+  "problem": "Case variants selected one replay and collided on the output directory; printed HTML hearing transcripts were classified as empty Drupal bodies.",
+  "change": "Use replay plus original URL group for receipt directories, reuse digest-verified retained responses, and recognize substantial printed hearing HTML with committee title and document markers.",
+  "tests": {
+    "classifier_tests_passed": 10,
+    "duplicate_replay_test": "Two URL variants recovered from retained bytes with zero requests"
+  },
+  "evidence": {
+    "output/corpus-retry-20261015/recover_nara_html_continuation_03.py": "30b95bc36f7681c087a26fecacfa68b22d8d86fd6e72e2bdfae5c00fef859a7d",
+    "output/corpus-retry-20261015/check_nara_duplicate_replay.py": "365141001ade3270227f0b0b79e70d5853008ea83657bef409100b181d7ca4b8",
+    "output/corpus-retry-20261015/nara-html-continuation-03-queue.json": "72d42728497a3db2850202df371a11229f48b105a98f92fefc8e143d9473713c",
+    "output/corpus-retry-20261015/nara-html-continuation-02/terminal-monitor.json": "688f26698d8dfcaeaf3b34387d2d7e81ea520c675a2c9d6ba9e8bbc8e65206b6"
+  },
+  "publication": false,
+  "next_steps": [
+    "Dispatch NARA continuation only after prior physical exit, preserve all receipts and successful downloads.",
+    "Keep batch12 importer as sole raw writer; require exit and readback before catalog publication.",
+    "Qualify continuation results into a successor batch; preserve host refusals for separate routing."
+  ]
+}
