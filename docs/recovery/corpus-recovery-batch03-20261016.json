@@ -1,0 +1,33 @@
+{
+  "at": "2026-10-16T02:21:31.571923+00:00",
+  "local_only": true,
+  "source_records": 518,
+  "zip_parent_records": 15,
+  "capture_rows": 682,
+  "distinct_capture_bodykeys": 615,
+  "remote_existing": 302,
+  "remote_absent": 313,
+  "prior_full_readback_reused_with_fresh_head": 123,
+  "new_full_body_readbacks": 179,
+  "files": {
+    "manifest.json": "d7af69c6b7968fe247ecde63aae1a67b316450297fab83265e0dabacbc68aba6",
+    "prepared-source-records.json": "2eadc96d79bf6dbce224e41f912af3bea932ca46fcf8cc9fdb62b8e04c97419e",
+    "source-record-preparation.json": "217c4f8ebe0b8a707f272a542934a686f4691c4a9217ea8b60180005785a18ea",
+    "remote-body-readback.json": "2b6e809a152c9b483a0ac0adc78cf2df1d98b20ca9fa4fb50fbb585c5872b3a0"
+  },
+  "capture_index_roundtrip": {
+    "local_only": true,
+    "not_imported": true,
+    "receipts": 533,
+    "capture_rows": 682,
+    "zip_members": 149,
+    "all_member_parent_names_pointers_preserved": true,
+    "all_source_associations_present": true,
+    "parquet_roundtrip_exact": true,
+    "preview_sha256": "b400811f5242247a0756c0db9ba7a765f0694c53b15b19b86e05dd845fb3030b",
+    "source_sha256": "cea638d946df3af2cb590c2009ba743f17a8b8f1aa5dbbf4cb50ae0ad3804cbc",
+    "limitation": "Stored compression hashes and fresh download state are assigned only by the guarded importer. Placeholder receipt locators are not publishable."
+  },
+  "batch_directory": "output/corpus-retry-20261015/publication-batches/checkpoint-03",
+  "snapshot_only_acquisition_continues": true
+}

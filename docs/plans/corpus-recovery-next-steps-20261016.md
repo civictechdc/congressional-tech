@@ -52,3 +52,11 @@ At publication time, regenerate the final batch from the completed acquisition e
 The 132-package queue is fully accounted for: 127 packages yielded validated PDFs covering 139 URL links; five package routes returned HTML rather than ZIPs. No package remains unprocessed. The exact unresolved identifiers and evidence hash are recorded in `../recovery/govinfo-package-completion-20261016.json`. Those five links need their original committee attachment or an archive capture of the requested version; do not silently substitute another bill version.
 
 The combined local preview at this checkpoint contains 508 recovered links referencing 441 distinct bodies, plus 149 ZIP-member PDFs. NARA acquisition remains active, so these counts are a snapshot. Finish that queue, classify its unsuccessful results, and prepare the final publication batch. The existing cloud capture run remains active; import and publication are still pending.
+
+## Expanded import preparation
+
+The immutable `checkpoint-03` contains 518 recovered links, 15 ZIP parents, and 149 ZIP-member PDFs. Its 615 distinct body objects include 302 verified existing R2 objects and 313 absent objects. Existing-object verification used 179 fresh full-body reads and 123 earlier full-body verifications with fresh matching object versions and sizes. No conflicts or unresolved objects were found. This is a preparation snapshot, not publication.
+
+All 518 recovered links have source timestamps. An offline schema roundtrip retained all 682 capture rows from 533 receipts, including every ZIP member's filename, parent association, body reference, and source timestamp. The evidence is recorded in `../recovery/corpus-recovery-batch03-20261016.json`. The preview uses explicitly local placeholder receipt locators and must never be uploaded as an index. The guarded importer must create real immutable receipts, include every capture rather than just the first capture in each receipt, assign verified stored-body metadata, and preserve fresh download state.
+
+A direct follow-up on unresolved bill attachments returned identical HTML for two links and HTTP 403 for a third. The probe stopped and retained its responses; two further links were not attempted by that probe. These results do not establish that archive copies are absent.
