@@ -1,0 +1,50 @@
+{
+  "at": "2026-10-16T06:33:33.086078+00:00",
+  "jobs": [
+    {
+      "dispatch": {
+        "at": "2026-10-16T06:32:58.737678+00:00",
+        "pid": 8868,
+        "parent_pid": 94792,
+        "plan_sha256": "ad22f35449c21ed011a2173d7a4b055fba159f6dcc7a87e11959d5343b120b98",
+        "script_sha256": "7412c3cd2cd44941b44b693c1676c60ea35876be0ae671395c6ab5fcd5a03799",
+        "packages": 29,
+        "paid_requests": 0,
+        "remote_writes": 0,
+        "minimum_delay_seconds": 3
+      },
+      "process_verified": "8868 94792 Fri Oct 16 02:32:58 2026     .venv/bin/python -u output/corpus-retry-20261015/download_govinfo_bulk_packages_02.py",
+      "exec_session": 63071
+    },
+    {
+      "dispatch": {
+        "pid": 8896,
+        "parent_pid": 94792,
+        "source_pid": 8868,
+        "pins": {
+          "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/qualify_govinfo_bulk_packages_02.py": "d1c493559a9bcf0063b7cf64327e2302326b5e0dfdd7f5fa4ed97662e2624327",
+          "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/govinfo-bulk-package-plan-02.json": "ad22f35449c21ed011a2173d7a4b055fba159f6dcc7a87e11959d5343b120b98",
+          "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/govinfo-bulk-packages-02/dispatch.json": "5ffed601323dfc116478532c0a9a16e986264c5aba9593ddd881244c5cc264b5",
+          "/Users/mikewolfd/Work/congressional-tech/packages/congress_api/src/congress_api/retention/archive_members.py": "b3d2415fd3fadf800094703e243a292e42f98fbfa9e56f5cfe1d9cb924b42a83",
+          "/Users/mikewolfd/Work/congressional-tech/packages/congress_api/src/congress_api/retention/raw_archive.py": "545d0803787e5c77486d8cd6e6cb617d6e0cecbe006b39574db3681079761689"
+        },
+        "source_requests": 0,
+        "remote_writes": 0
+      },
+      "process_verified": "8896 94792 Fri Oct 16 02:33:07 2026     .venv/bin/python -u output/corpus-retry-20261015/qualify_govinfo_bulk_packages_02.py",
+      "exec_session": 94907
+    }
+  ],
+  "selected_packages": 29,
+  "declared_bytes": 2132314717,
+  "overlap_with_first_batch": 0,
+  "already_prepared_packages_excluded": 85,
+  "unassigned_inventory_packages": 52,
+  "published": false,
+  "plan_sha256": "ad22f35449c21ed011a2173d7a4b055fba159f6dcc7a87e11959d5343b120b98",
+  "next_steps": [
+    "Verify both worker exits, complete payload hashes, member validation and deferred exclusions before adopting this batch.",
+    "The remaining 52 inventoried packages include 24 above the first-pass per-package limit; evaluate bounded package or member retrieval after current batch.",
+    "Continue current catalog publication without another raw writer; publish later recovery deltas afterward."
+  ]
+}
