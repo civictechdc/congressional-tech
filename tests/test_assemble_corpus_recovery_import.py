@@ -70,3 +70,26 @@ class AssemblyTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+def test_assembly_copies_only_accessed_baseline_rows():
+    class Unused:
+        def __deepcopy__(self, memo):
+            raise AssertionError('Unrelated baseline row copied')
+    fixture = AssemblyTests()
+    fixture.setUp()
+    baseline = {'unused': Unused(), fixture.url: dict(url=fixture.url, outcome='failed', nested=[None, {'value': 7}])}
+    receipts, states = module.assemble([fixture.item], baseline, fixture.bodies, 'test')
+    states[fixture.url]['nested'][1]['value'] = 8
+    assert baseline[fixture.url]['nested'][1]['value'] == 7
+    assert receipts[0]['download_state']['nested'][1]['value'] == 7
+    assert len(states) == 2
+
+
+def test_duplicate_prepared_urls_share_one_pending_state_and_keep_both_receipts():
+    fixture = AssemblyTests()
+    fixture.setUp()
+    receipts, states = module.assemble([fixture.item, fixture.item], {}, fixture.bodies, 'test')
+    assert len(receipts) == 2
+    assert len(states) == 1
+    assert len(module.index_rows(receipts, 'test')) == 4

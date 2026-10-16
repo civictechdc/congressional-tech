@@ -4,11 +4,43 @@ The caller supplies fresh download state and verified remote body metadata.
 Cloud checks, locking, conditional writes, and readback remain caller duties.
 """
 from copy import deepcopy
+from collections.abc import Mapping
+from itertools import chain
 import json
 
 
+class PreservedStates(Mapping):
+    """Copy only requested rows; keep the supplied baseline out of Python copies.
+
+    Existing rows are copied on first access, so editing a returned state cannot
+    mutate the caller's baseline. New URLs are appended in first-seen order.
+    """
+    def __init__(self, baseline):
+        self.baseline = baseline
+        self.accessed = {}
+        self.added = {}
+
+    def __getitem__(self, url):
+        if url in self.added:
+            return self.added[url]
+        if url not in self.accessed:
+            self.accessed[url] = deepcopy(self.baseline[url])
+        return self.accessed[url]
+
+    def __iter__(self):
+        return chain(self.baseline, self.added)
+
+    def __len__(self):
+        return len(self.baseline) + len(self.added)
+
+    def setdefault(self, url, value):
+        if url not in self.baseline and url not in self.added:
+            self.added[url] = value
+        return self[url]
+
+
 def assemble(prepared, existing_states, verified_bodies, source_file):
-    states = deepcopy(existing_states)
+    states = PreservedStates(existing_states)
     receipts = []
     for item in prepared:
         if item.get('preserve_download_state') is not True:

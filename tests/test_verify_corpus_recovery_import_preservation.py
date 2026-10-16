@@ -61,3 +61,23 @@ def test_detects_missing_capture_despite_completion_marker(tmp_path):
     fixture(tmp_path, missing=True)
     with pytest.raises(ValueError, match='coverage differ'):
         verify(tmp_path)
+
+
+def test_streaming_prefix_checks_cross_different_row_groups(tmp_path):
+    from verify_corpus_recovery_import_preservation import compare_prefix
+    rows = pa.table({'value': pa.array([None, 2**64-1, 7, 7] * 2500, type=pa.uint64()),
+                     'nested': pa.array([[b'x', None]] * 10000)})
+    pq.write_table(rows, tmp_path / 'old.parquet', row_group_size=1001)
+    pq.write_table(pa.concat_tables([rows, rows.slice(0, 3)]), tmp_path / 'new.parquet', row_group_size=2222)
+    assert compare_prefix(tmp_path / 'old.parquet', tmp_path / 'new.parquet', 'rows') == (10000, 10003)
+    pq.write_table(rows.set_column(0, 'value', pa.array([0] * 10000, type=pa.uint64())), tmp_path / 'new.parquet')
+    with pytest.raises(ValueError, match='Existing rows changed'):
+        compare_prefix(tmp_path / 'old.parquet', tmp_path / 'new.parquet', 'rows')
+
+
+def test_duplicate_state_urls_fail_even_when_prefix_is_unchanged(tmp_path):
+    from verify_corpus_recovery_import_preservation import unique_state_urls
+    for url in ('same', None):
+        pq.write_table(pa.table({'url': pa.array([url, url], type=pa.string())}), tmp_path / 'states.parquet')
+        with pytest.raises(ValueError, match='Duplicate'):
+            unique_state_urls(tmp_path / 'states.parquet')

@@ -10,6 +10,7 @@ import json
 from pathlib import Path
 
 import pyarrow as pa
+import pyarrow.compute as pc
 
 from assemble_corpus_recovery_import import assemble, index_rows
 from congress_api.retention.catalog_cache import capture_digest
@@ -49,6 +50,8 @@ Any failure requires evidence reconciliation, not automatic restart.
 body_readback, when supplied, must have its file digest pinned by the caller.
 """
     commit_guard = commit_guard or guard
+    if pc.count_distinct(state['url'], mode='all').as_py() != len(state):
+        raise ValueError('Duplicate URLs in baseline download state')
     # Reject changed local bytes before the first remote write.
     for key, path in body_paths.items():
         with Path(path).open('rb') as stream:
@@ -80,9 +83,10 @@ body_readback, when supplied, must have its file digest pinned by the caller.
             raise ValueError(f'Retained body conflict: {key}')
         info.update(stored_sha256=hashlib.sha256(remote).hexdigest(), stored_bytes=len(remote))
         body_info[key] = info
-    original_states = {r['url']: r for r in state.to_pylist()}
-    if len(original_states) != len(state):
-        raise ValueError('Duplicate URLs in baseline download state')
+    requested_urls = pa.array(list(dict.fromkeys(item['record']['url'] for item in prepared)),
+                              type=state.schema.field('url').type)
+    selected = state.filter(pc.is_in(state['url'], value_set=requested_urls))
+    original_states = {r['url']: r for r in selected.to_pylist()}
     receipts, states = assemble(prepared, original_states, body_info, source_file)
     additions = []
     for offset in range(0, len(receipts), 100):
@@ -99,7 +103,8 @@ body_readback, when supplied, must have its file digest pinned by the caller.
     metadata = dict(state.schema.metadata or {})
     metadata.update({b'capture_rows': str(len(combined)).encode(),
                      b'capture_digest': capture_digest(combined).encode()})
-    newstate = pa.Table.from_pylist(list(states.values()), schema=state.schema.with_metadata(metadata))
+    appended = pa.Table.from_pylist(list(states.added.values()), schema=state.schema)
+    newstate = pa.concat_tables([state, appended]).replace_schema_metadata(metadata)
     payloads = {STATE_KEY: encode_table(newstate), CAPTURES_KEY: encode_table(combined)}
     for key, payload in payloads.items():
         save_payload(key, payload)
@@ -112,8 +117,8 @@ body_readback, when supplied, must have its file digest pinned by the caller.
     result = dict(complete=True, receipt_records=len(receipts), added_capture_rows=len(additions),
                   distinct_bodies=len(body_info), body_objects_missing_before_put=uploaded,
                   previous_capture_rows=len(captures), capture_rows=len(combined),
-                  existing_download_states_preserved=len(original_states),
-                  new_pending_states=len(states) - len(original_states),
+                  existing_download_states_preserved=len(state),
+                  new_pending_states=len(states.added),
                   catalog_and_viewer_publication_complete=False)
     journal('import_complete', result)
     return result

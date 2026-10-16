@@ -183,3 +183,43 @@ def test_missing_bodies_compress_once_each_even_after_lost_ack():
         assert all(store.writes.count((key, True)) == 1 for key in fixture.paths)
     finally:
         fixture.doCleanups()
+
+
+def test_arrow_append_preserves_types_nulls_and_capture_multiplicity():
+    from congress_api.retention.raw_archive import decode_table
+    fixture = ImportTests()
+    fixture.setUp()
+    try:
+        state_schema = STATE_SCHEMA.append(pa.field('extra', pa.struct([
+            pa.field('large', pa.uint64()), pa.field('nested', pa.list_(pa.binary()))])))
+        old = pa.Table.from_pylist([dict(url='untouched', outcome='failed', attempts=7,
+            extra=dict(large=2**64-1, nested=[None, b'exact'])), dict(url=None, outcome=None)], schema=state_schema)
+        cap = pa.Table.from_pylist([dict(body_key='duplicate', bytes=None)] * 2, schema=CAPTURE_SCHEMA)
+        store = Store()
+        result = import_batch(store, prepared=fixture.prepared, body_paths=fixture.paths,
+            captures=cap, state=old, source_file='test', receipt_prefix='receipts/test',
+            guard=lambda:None, journal=lambda *args:None, save_payload=lambda *args:None)
+        final = decode_table(store.data[STATE_KEY])
+        assert final.slice(0, len(old)).equals(old)
+        assert final.schema.equals(old.schema, check_metadata=False)
+        assert decode_table(store.data[CAPTURES_KEY]).slice(0, 2).equals(cap)
+        assert result['existing_download_states_preserved'] == 2
+        assert result['new_pending_states'] == 1
+    finally:
+        fixture.doCleanups()
+
+
+def test_duplicate_baseline_urls_rejected_explicitly():
+    import pytest
+    fixture = ImportTests()
+    fixture.setUp()
+    try:
+        for url in ('same', None):
+            with pytest.raises(ValueError, match='Duplicate URLs'):
+                import_batch(Store(), prepared=[], body_paths={},
+                    captures=pa.Table.from_pylist([], schema=CAPTURE_SCHEMA),
+                    state=pa.Table.from_pylist([dict(url=url)] * 2, schema=STATE_SCHEMA),
+                    source_file='test', receipt_prefix='receipts/test',
+                    guard=lambda:None, journal=lambda *args:None, save_payload=lambda *args:None)
+    finally:
+        fixture.doCleanups()
