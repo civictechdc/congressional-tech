@@ -1,6 +1,25 @@
 # Integrate local main with the pushed branches
 
-Status: 17 October 2026, 00:30 EDT. Phases 0 and 1 are done. Phase 2 is done locally: `main` is fast-forwarded to the integrated tree. Pushing `main` waits for owner approval, because it deploys the site.
+Status: **complete**, 17 October 2026, 10:00 EDT. All phases are done. The phases below are kept as the record.
+
+**Final state.** `origin/main` is `0939aa9`; the only remaining branches are `main`, `pipeline-data`, the `archive/document-catalog-20261016` snapshot, `refs/archive/*`, and one remote branch belonging to another contributor (`78-implement-library-for-data-warehouse`).
+
+- **Integration:** pushed `1a57561..bfe8d7a` with owner approval. Both WIP branches landed as `a52b6c3` and `9e0f8a1`. The redundant remote branches `codex/document-kind-publish` and `integrate/main-dkp` are deleted.
+- **R2 publisher incident:** after the push, `publish-filename-viewer.yml` refused safely ("A different accepted recovery mapping already exists"). Checkpoint 19's mapping writer had stored 793 non-canonical rows, including public local `body_path`s.
+  - Fixed in `742add0`.
+  - The R2 `viewer-publications/recoveries/accepted.json` was rewritten once to canonical form through a guarded conditional write: 24,028 rows, 0 local paths, sha256 `00922c1e…` (`output/corpus-retry-20261015/mapping-canonicalization-20261017/`).
+  - The workflow was paused during the fix and then re-enabled. It published catalog `76758ea7…`, which a scheduled capture had selected, at 12:36 UTC.
+- **Reviewed search:** it had been dark since checkpoint 16. It is rebound to `76758ea7…` (48 groups unchanged, 38 rebound, 0 withdrawn; `review_rebind_checkpoint_v2.json`), with release `document-reviews-fc5d361e-v1`. It was deployed in `3375ff7` and verified live (`public_review_deployment_v2.json`).
+- **Committee Explorer:** it had failed out of memory on every run since 11 October.
+  - `729f186` adds swap and a memory cap; `9cacf8a` streams sources. The first success came at a 14.66 GB peak.
+  - `0939aa9` (option 3a) keeps history-only sources on disk: 13.36 GB peak, and 12 minutes instead of 22–24.
+
+Remaining:
+- The house-naming 3.2.7 re-baseline at the next recovery publication will need another review rebind.
+- The held-out evaluation must re-check `document_cover.py` and `capture-raw-sources.yml`, which changed upstream after they were frozen.
+- `~/Work/pipeline-data` is a stale local snapshot. Refresh it with a 1.4 GB fetch only when needed.
+
+Previous status (17 October 00:30 EDT): Phases 0 and 1 done; Phase 2 done locally, waiting for owner approval to push `main`.
 
 **Checkpoint 19 result:** attempt 3 exited 0 at 04:14 UTC.
 - Catalog `16b8f0e1ae0b46619551071b3f5a06d0` (generation `3bc4b469…`, 1,683,404 rows, 1,241,131 documents); 24,028 accepted mappings; viewer release `86687447…`.

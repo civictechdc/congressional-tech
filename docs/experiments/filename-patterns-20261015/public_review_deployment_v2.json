@@ -1,0 +1,28 @@
+{
+ "status": "verified",
+ "code_commit": "3375ff7a1f5e404263e3234ce3ac2844a23ed978",
+ "workflow_run": 39035182034,
+ "url": "https://civictechdc.github.io/congressional-tech/filenames/",
+ "catalog_id": "76758ea73fa94075bda46ce79e569fd3",
+ "catalog_generation": "cbcf65877e2843ae8b23915c3d05a18f",
+ "release": "document-reviews-fc5d361e-v1",
+ "review_sha256": "fc5d361e4f2c01db8e8be90267f18cf072cc6db02bc1cd57ef5621b8aac1354c",
+ "publication_sha256": "322869766390f46a26bb9b430ac020c13152283c08c959d1aab549ae2a24066e",
+ "archive_sha256": "52ad06ab45d73070d0fc82ad3686e3f6441a6cc8c5452fbb50aef9b4ed28e792",
+ "groups": 86,
+ "pages": 530,
+ "evidence_files": 671,
+ "evidence_bytes": 156283397,
+ "seconds": 9.39,
+ "workflow_url": "https://github.com/civictechdc/congressional-tech/actions/runs/39035182034",
+ "deployed_from_branch": "main",
+ "rebind_checkpoint": "docs/experiments/filename-patterns-20261015/review_rebind_checkpoint_v2.json",
+ "supersedes": "public_review_deployment_v1.json (catalog d42b9f6697914e68a688600705e1d65f; dark since checkpoint 16 replaced that catalog on 2026-10-16 20:29 UTC)",
+ "verifier": "output/filename-patterns-20261015/review-rebind-v2/verify_deployment.py 3375ff7 39035182034",
+ "browser": {
+  "checked_at": "2026-10-17T13:20Z",
+  "original_mode": "Neal-3938-Amendment.pdf: 1 entry, Amendment \u00b7 Committee vote",
+  "reviewed_mode": "Using 81 assistant-reviewed groups; Neal-3938-Amendment.pdf: Committee vote (Assistant-reviewed category)",
+  "viewer_generation_in_page_links": "cbcf65877e2843ae8b23915c3d05a18f"
+ }
+}
