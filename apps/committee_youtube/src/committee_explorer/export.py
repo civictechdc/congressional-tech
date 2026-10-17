@@ -537,6 +537,9 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=
         if issue_decisions:
             c, content = context(issue_decisions, "curated-issue-decisions")
             catalog = apply_decisions(catalog, json.loads(content), c, retained)
+        # Every identity is allocated. Release the registry before publication.
+        ids.stage()
+        cleanup.callback(ids.discard)
         def published_sources():
             # Assembly orders sources by ID; documented decisions append theirs.
             return chain(merge(catalog.sources[:assembled], retained.records(), key=attrgetter("id")), catalog.sources[assembled:])

@@ -2,6 +2,8 @@
 import gzip
 import json
 
+import pytest
+
 from committee_explorer.export import _retain_senate_meeting_ids
 from committee_explorer.ids import IdRegistry
 from congress_api.adapters.meetings import meeting_key
@@ -25,6 +27,45 @@ def test_id_registry_save_streams_large_keys_without_changing_bytes(tmp_path):
         tracemalloc.stop()
     assert registry.path.read_bytes() == expected
     assert peak < 8 * 1024 * 1024
+
+
+def test_staged_registry_is_released_then_saved_unchanged(tmp_path):
+    ids = IdRegistry(tmp_path / 'ids.json')
+    ids('meeting', 'old')
+    ids.save()
+    saved = ids.path.read_bytes()
+    new = ids('meeting', 'new')
+    expected = (json.dumps(ids.values, sort_keys=True, ensure_ascii=False, indent=1) + '\n').encode()
+    ids.stage()
+    assert ids.path.read_bytes() == saved
+    for lookup in (lambda: ids('meeting', 'other'), lambda: ids.existing('meeting', 'old'),
+                   lambda: ids.alias('meeting', 'other', 'old')):
+        with pytest.raises(RuntimeError, match='allocation is closed'):
+            lookup()
+    ids.save()
+    assert ids.path.read_bytes() == expected and not ids.path.with_suffix('.tmp').exists()
+    assert IdRegistry(ids.path).existing('meeting', 'new') == new
+
+
+def test_export_releases_ids_before_publication_and_discards_them_on_failure(tmp_path, monkeypatch):
+    import committee_explorer.parquet as parquet
+    path = write_meetings(tmp_path, [native()])
+    run(tmp_path, path, format='parquet')
+    saved = (tmp_path / 'state' / 'ids.json').read_bytes()
+    published = parquet.write_catalog
+    def write_catalog(*args):
+        # Publication, the export's memory peak, runs without the registry.
+        assert (tmp_path / 'state' / 'ids.tmp').exists()
+        raise RuntimeError('publication failed')
+    monkeypatch.setattr(parquet, 'write_catalog', write_catalog)
+    write_meetings(tmp_path, [native(), {**native(), 'eventId': '106246'}])
+    with pytest.raises(RuntimeError, match='publication failed'):
+        run(tmp_path, path, format='parquet')
+    assert (tmp_path / 'state' / 'ids.json').read_bytes() == saved
+    assert not (tmp_path / 'state' / 'ids.tmp').exists()
+    monkeypatch.setattr(parquet, 'write_catalog', published)
+    run(tmp_path, path, format='parquet')
+    assert IdRegistry(tmp_path / 'state' / 'ids.json').existing('meeting', meeting_key({**native(), 'eventId': '106246'}))
 
 
 def source_state(events=(), urls=(URL,)):
