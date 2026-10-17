@@ -1,6 +1,11 @@
 # Integrate local main with the pushed branches
 
-Status: in progress, 16 October 2026, 19:45 EDT. Phase 1 is done: `integrate/main-dkp` is merged and verified. Phase 0 (checkpoint 19, attempt 3) is running and gates Phases 2–4.
+Status: 17 October 2026, 00:30 EDT. Phases 0 and 1 are done. Phase 2 is done locally: `main` is fast-forwarded to the integrated tree. Pushing `main` waits for owner approval, because it deploys the site.
+
+**Checkpoint 19 result:** attempt 3 exited 0 at 04:14 UTC.
+- Catalog `16b8f0e1ae0b46619551071b3f5a06d0` (generation `3bc4b469…`, 1,683,404 rows, 1,241,131 documents); 24,028 accepted mappings; viewer release `86687447…`.
+- `output/corpus-retry-20261015/verify_publication19.py` passed all 16 checks (`publication19-final-readback/readback.json`): runner exit and processes, the 523 plan pins and 260 dispatcher pins, dispatcher completion and coverage, and the public pointer. The pointer matches the journal and advanced from checkpoint 16's `9ff4da5c…` to `d6719be7…`; the release, catalog record, range request and CORS also check out.
+- `publish-filename-viewer.yml` is re-enabled. The paused `claude-hardening` builds were resumed automatically. The three run worktrees and `codex/viewer-direct-detail` are removed. The primary checkout's deferred edits are preserved in `refs/archive/wip/document-recovery-gaps-original` (`5064990`) and the saved `house_sites` patch, then restored to HEAD.
 
 ## Blocker: checkpoint 19 was killed, nothing published
 
@@ -136,6 +141,7 @@ The `npm run build` step is the first proof that the merged tree contains a buil
 ## Phase 3 — deliberate re-baselines, one at a time
 
 - **house-naming 3.0.0 → 3.2.7** changes `document_kind` values; recovery evidence pins 3.0.0. Take the next recovery publication after checkpoint 19 from the integrated runtime as a declared re-baseline.
+- **Reviewed-category search is dark now.** `d42b9f66…` was the public catalog at 17:42 UTC on 16 October (`docs/experiments/filename-patterns-20261015/public_raw_catalog_checkpoint_v1.json`). Checkpoint 16 replaced it at 20:29 UTC, and checkpoint 19 replaced that, so reviews have not loaded since checkpoint 16. Rebinding means re-verifying the 86 review groups against `16b8f0e1…`, publishing a new review release asset, and redeploying Pages. All of that is outward-facing.
 - **Reviewed-category search** (`document-review-publication.json`) is pinned to catalog `d42b9f66…`. `loadReviews` returns nothing when the catalog ID differs, so rebind the review bundle to the checkpoint-19 catalog as soon as it publishes, or reviewed search goes dark on the public site.
 - **`wip/document-recovery-gaps`**: fast-forward or merge it after `main` lands. It does not re-read saved evidence, because the fingerprint change is provenance only. Its rules apply to newly read bodies. Applying them to existing bodies is a deliberate refresh (`refresh_body_keys`, or a catalog rebuild with body inspection) that changes link counts, so schedule that as its own re-baseline.
 - **`wip/webharvest-discovery`**: ready; `surt` is declared and the tests pass. Land it after `main`.
