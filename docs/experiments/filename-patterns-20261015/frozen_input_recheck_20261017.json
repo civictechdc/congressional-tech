@@ -1,0 +1,28 @@
+{
+ "checked_at": "2026-10-17",
+ "freeze": "docs/experiments/filename-patterns-20261015/content_rule_freeze.json",
+ "head": "d92e9ad477966a3721b403d2f746c944540d89bd",
+ "result": "7 frozen inputs unchanged, 2 changed, 0 missing; both changes are non-semantic",
+ "changed": {
+  "packages/congress_api/src/congress_api/parsers/document_cover.py": {
+   "frozen_at": "a22eecc",
+   "changed_by": [
+    "8b7ddf8"
+   ],
+   "current_sha256": "534812d45ca890da31bdc69d535fae42ea74b23028afabddf3117be94efe4765",
+   "nature": "Dependency injection only: document_cover(data, read_page) and _page_text(..., read_page) take the bounded fallback page reader as an argument instead of importing parsers.pdf_tools.opening_page_text. All callers (retention/capture_metadata.py, retention/document_evidence.py) pass retention.pdf_tools.opening_page_text, a byte-identical move of the frozen reader (blob 9c0a650). Cover rules, pypdf reading and outputs are unchanged."
+  },
+  ".github/workflows/capture-raw-sources.yml": {
+   "frozen_at": "a22eecc",
+   "changed_by": [
+    "4d7f536",
+    "3c1c45e",
+    "8b7ddf8",
+    "8cf8994"
+   ],
+   "current_sha256": "417e0ab1534a5a70f38a231b1459cbfa08cdca112f6e7626401db7beadf3f205",
+   "nature": "CI configuration only: push-path trigger lists and offline/native test file lists. No classifier, rule or label input."
+  }
+ },
+ "action_for_held_out_evaluation": "The freeze file is intentionally not edited here. Before running the held-out evaluation, either re-freeze these two hashes citing this record, or evaluate with the a22eecc versions of both files."
+}
