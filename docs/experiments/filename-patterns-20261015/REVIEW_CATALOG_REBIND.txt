@@ -1,56 +1,59 @@
-Reviewed search rebound to public catalog 16b8f0e1: self-review
+Reviewed search rebound to public catalog 76758ea7: self-review
 ================================================================
 Scope: re-admit the 86 published review groups against the exact public pair
-that replaced d42b9f6697914e68a688600705e1d65f, and regenerate the public review
-file. Nothing was published: no release asset, push, Pages deploy or R2 write.
+that now replaces d42b9f6697914e68a688600705e1d65f, and regenerate the public
+review file. Nothing was published: no release asset, push, Pages deploy or R2
+write. The 16b8f0e1 attempt (v1, below) was superseded before publication.
 
-Findings first
---------------
-All 86 groups survive unchanged; none changes and none is withdrawn. Both public
-selectors (raw R2 indexes/catalog.json and the viewer Worker manifest) choose
-catalog 16b8f0e1ae0b46619551071b3f5a06d0, generation 3bc4b469114444b3ab065b00395e0856:
-1,683,404 source rows and 1,241,131 document groups. Both downloaded files match
-the selector's sizes and SHA-256 values. Every reviewed group is still present,
-with the same 286 source IDs, one eligible body each (the reviewed body) and the
-same selected kinds. All complete rows are equal column for column, nulls and
-types included, under two separate reads (bounded package reads with group
-digests; an Arrow dataset filter with exact column equality).
+Findings first (v2, review_rebind_checkpoint_v2.json)
+-----------------------------------------------------
+Outcome: 48 groups are unchanged, 38 changed and were rebound, and none is
+withdrawn. Both public selectors (raw R2 indexes/catalog.json and the viewer
+Worker manifest, published 2026-10-17T12:36:17Z) choose catalog
+76758ea73fa94075bda46ce79e569fd3, generation cbcf65877e2843ae8b23915c3d05a18f.
+It has 1,683,404 source rows and 1,241,131 document groups. Both downloaded files
+match the selector's sizes and SHA-256 values. The catalog metadata reports
+house_naming 3.1.0 (fingerprint 776e93fe..., grouping 9f0afe61..., the same as
+d42b9f). The coordinator reports a scheduled capture at pre-merge code 1a57561
+built it.
 
-Maintained admission writes candidates.jsonl byte-identical to the deployed bundle
-(81 candidates, five whole-packet annotations, 530 pages). Every published finding
-and all 671 evidence objects are identical. Only the bound pair, catalog ID and
-group/source positions change, because the catalog grew by 757 groups and 3,177
-sources. All 86 group positions and every group's source positions moved.
-Withdrawal restores every baseline. The new summary binds the previous 758
-locators with identical digests plus the new pair (760). The run's
-evidence_bindings_unchanged=false compares old bindings minus the old pair. The
-old pair stays bound because Palmer's receipt cites it, so that comparison was
-too strict; the exact transition is the one stated above.
+Every reviewed group is present with the same 286 source IDs. Each still has
+exactly one eligible body (the reviewed one) and the same selected kinds. Every
+admission precondition holds for all 86 groups.
 
-The new catalog metadata reports house_naming 3.0.0, not 3.1.0 (d42b9f) or the
-local 3.2.7. Selected kinds of the reviewed groups did not change. The planned
-3.2.7 re-baseline will replace this catalog again; loadReviews will then refuse
-the review file and reviewed search will go dark until another rebind.
+For 48 groups, the complete document and source rows equal the deployed d42b9f
+binding. Two separate reads agree: bounded package reads with group digests, and
+an Arrow dataset filter with exact column equality.
+
+The other 38 groups differ in exactly one column, source_occurrences, at document
+level and in one source row each. occurrence_diff.py shows 41 added congress.gov
+publisher occurrences and none removed. The additions are 12 Committee Recorded
+Vote, 8 Witness Statement, 8 Witness Truth in Testimony, 5 Witness Biography,
+3 Witness Support Document and 2 Support Document meeting documents. The
+review-relevant fields are unchanged.
+
+Maintained admission rebinds those 38 groups with fresh group digests. A
+candidate field comparison (candidate-diff.json) finds the 48 unchanged
+candidates byte-identical. The 38 rebound candidates differ only in
+baseline_group_sha256, review.group_sha256 and document.source_occurrences.
+Selected kind, family and provenance are unchanged everywhere.
+
+Every published finding and all 671 evidence objects are identical to the
+deployed file. Only positions and the bound pair change, and withdrawal restores
+every baseline. The new summary binds the previous 758 locators with identical
+digests plus the new pair (760). The d42b9f pair stays bound because Palmer's
+receipt cites it as selection evidence.
 
 Literal-path admission no longer works. Nine locators bound by the receipt chain
 name the removed Codex worktree (/Users/mikewolfd/.codex/worktrees/
 document-kind-publish/...): three checkpoints, the frozen pilot.json and five
-fetch.py selection scripts.
-Receipts must not be rewritten, so admission now accepts a closed resolver. The
-pinned portable store (manifest c5e4c563...) supplies those bytes from its
-object map.
-
-Attempt 1 was refused. I edited document_review_catalog.py while it ran, and
-the bundle verifier rejected the changed implementation after export. The log
-is retained as attempt1-run.log. Its partial outputs were deleted, and the run
-repeated with frozen code.
+fetch.py selection scripts. Receipts must not be rewritten, so admission accepts
+a closed resolver. The pinned portable store (manifest c5e4c563...) supplies
+those bytes from its object map.
 
 Two frozen classifier inputs changed upstream on main after content_rule_freeze:
 parsers/document_cover.py (8b7ddf8) and capture-raw-sources.yml. This rebind
 does not use or modify them. The held-out evaluation must verify those hashes first.
-
-The new store is 2.2 GB, holding both catalog pairs. Palmer's receipt binds the
-d42b9f pair as selection evidence, and the new pair is the baseline.
 
 Patch summary and function trace (congress_api/retention/)
 ---------------------------------------------------------
@@ -62,33 +65,45 @@ _ObjectStore/_EvidenceFiles | document_review_portable.py:23,51 | pinned manifes
 store_resolver | document_review_portable.py:73 | earlier pinned manifest -> closed resolver | Object map only; never trusts or loads that store's bundle; unmapped locators refused.
 export_bundle | document_review_portable.py:85 | new bundle + resolver -> new store | Verifies with the shared bundle loader through the same resolver before copying.
 
-Tests and verification
-----------------------
+Tests and verification (v2, branch rebased onto origin/main 9cacf8a)
+--------------------------------------------------------------------
 New tests (test_document_review_portable.py) delete all original files, alter the
 earlier store's reader policy and re-admit against a copied pair at a new path.
 They require byte-identical candidates, original locator text, a loadable new
 store and refusal of unmapped locators. Altered objects, a wrong manifest pin and
 a removed locator are refused before output.
 
-Executed evidence is in output/filename-patterns-20261015/review-rebind-v1 and
-review_rebind_checkpoint_v1.json. It covers reconciliation, strict comparison,
+Executed evidence is in output/filename-patterns-20261015/review-rebind-v2. It
+covers reconciliation, strict comparison, occurrence and candidate diffs,
 admission, portable export, viewer snapshot and public export. The 1,039
 alias/filter search checks pass over the new pair, and original and reviewed
 all-record counts are both 1,241,131.
-A read-only static-reader check over the live public catalog resolves all 286
+
+A read-only static-reader check over the live 76758ea7 catalog resolves all 286
 reviewed sources by stable source ID through the live ID index. Each matches its
 reviewed selection and withdrawal. Reviewed mode moves Neal-3938 from amendment
 to committee-vote. The live site still serves the c5e4c563 file bound to d42b9f,
 so reviewed search there remains dark until deployment.
 
-The run took 375 s. Admission took 45 s, portable export 89 s, viewer
-verification 54 s and search checks 186 s. Peak process RSS was 6.2 GB, mostly
-from the viewer catalog and search checks. Python review/viewer tests: 143
-passed, 3 socket tests skipped by the offline runner. The full offline CI Python
-suite had 8,702 passed, 49 skipped and none failed. Node tests: test:explorer
-109 passed; the deploy workflow's review/UI step 47 passed. npm run build
-verified the staged local assets, and the Pages budget passed. Commands ran in a
-dedicated Python 3.12 venv installed like validate-explorer.yml, first on PATH.
+The run took 604 s while another job shared the machine. Admission took 109 s,
+portable export 185 s, viewer verification 98 s and search checks 212 s. Peak
+process RSS was 5.1 GB. Python review/viewer tests: 143 passed, 3 socket tests
+skipped by the offline runner. The full offline CI Python suite had 8,711 passed,
+49 skipped and none failed. Node tests: test:explorer 109 passed; the deploy workflow's review/UI
+step 47 passed. npm run build verified the staged local assets, and the Pages
+budget passed. Commands ran in a dedicated Python 3.12 venv installed like
+validate-explorer.yml, first on PATH.
+
+Superseded v1: catalog 16b8f0e1 (review_rebind_checkpoint_v1.json)
+-------------------------------------------------------------------
+Generation 3bc4b469 reported house_naming 3.0.0. All 86 groups were unchanged
+from d42b9f, the candidates were byte-identical, and review 4a0e8194 was
+prepared. Its first attempt was refused: document_review_catalog.py was edited
+during the run, and the bundle verifier rejected the changed implementation
+(attempt1-run.log). The repeat with frozen code passed. The scheduled capture
+replaced 16b8f0e1 before publication, so release document-reviews-4a0e8194-v1
+must not be published. v1's review_sha256 refers to the v1 text of this file,
+which is committed in the commit that records review_rebind_checkpoint_v1.json.
 
 Limits and next steps
 ---------------------

@@ -1,0 +1,778 @@
+{
+  "supersedes": {
+    "path": "docs/experiments/filename-patterns-20261015/review_rebind_checkpoint_v1.json",
+    "sha256": "1f65b701cce2e97e6d6018310f8709c13a509bddb4e384848aa2f282b4ffaccb",
+    "catalog_id": "16b8f0e1ae0b46619551071b3f5a06d0",
+    "reason": "replaced as the public catalog before publication"
+  },
+  "deployed_catalog_id": "d42b9f6697914e68a688600705e1d65f",
+  "deployed_review_sha256": "c5e4c563c4b64c77d4798ad3e005830a107197b88551844b96c1df5e3c1d94c1",
+  "catalog_id": "76758ea73fa94075bda46ce79e569fd3",
+  "generation": "cbcf65877e2843ae8b23915c3d05a18f",
+  "catalog_house_naming_version": "3.1.0",
+  "catalog_built_by": "scheduled capture workflow at pre-merge code 1a57561 (reported by the coordinator; metadata: house_naming 3.1.0, fingerprint 776e93fe..., grouping 9f0afe61...)",
+  "viewer_published_at": "2026-10-17T12:36:17.879619+00:00",
+  "code_base": "origin/main 9cacf8a",
+  "public_raw_base_url": "https://pub-1b36ca710ab14e7f8e65813c41761724.r2.dev/",
+  "viewer_manifest_url": "https://congressional-viewer-data.mdeeb.workers.dev/manifest.json",
+  "pair": {
+    "sources": {
+      "path": "output/filename-patterns-20261015/public-raw-catalog-v3/catalog/catalog-generations/cbcf65877e2843ae8b23915c3d05a18f/document-filenames.parquet",
+      "sha256": "6e66df67fa44395c083e17dd30546bf95772718b1aabc4e7e0dab67a695ba534"
+    },
+    "documents": {
+      "path": "output/filename-patterns-20261015/public-raw-catalog-v3/catalog/catalog-generations/cbcf65877e2843ae8b23915c3d05a18f/documents.parquet",
+      "sha256": "f8f30ffd5cc5bb3f97b0942c563c1bd3a08f0736058b7998d2761ea495aafe55"
+    }
+  },
+  "summary_path": "output/filename-patterns-20261015/review-rebind-v2/summary.json",
+  "summary_sha256": "c48f2f4489ccfbf636c2df5ee72d5949da7b5cbb235f747777b8be6b181f08e8",
+  "bundle_summary_path": "output/filename-patterns-20261015/review-rebind-v2/bundle/summary.json",
+  "bundle_summary_sha256": "484d7a470ad645a99c23e84d73d620d3111a4f41b17dff58f4e9f3a1c9c281a2",
+  "manifest_path": "output/filename-patterns-20261015/review-rebind-v2/portable/manifest.json",
+  "manifest_sha256": "fc5d361e4f2c01db8e8be90267f18cf072cc6db02bc1cd57ef5621b8aac1354c",
+  "evidence_store": "output/filename-patterns-20261015/portable-review-v1/relocated/manifest.json (primary checkout, read only)",
+  "reviewed_groups": 86,
+  "source_rows": 286,
+  "reviewed_pages": 530,
+  "case_status": {
+    "candidate_applied": 81,
+    "annotation_only_unsupported_forms": 5
+  },
+  "group_outcomes": {
+    "unchanged": 48,
+    "changed": 38,
+    "withdrawn": 0
+  },
+  "differing_columns": [
+    "source_occurrences"
+  ],
+  "publisher_occurrences_added": 41,
+  "publisher_occurrences_removed": 0,
+  "source_rows_changed": 38,
+  "groups": [
+    {
+      "document_id": "0184ba0a8f79d9fff7b0a6c85c796083959b154579635f6581d63060932e4cfc",
+      "filename": "redacted_disclosure_johnson_with_cv.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "01940862e3bc3b78b7561661018939cccc324214930e1592401d9514a6a56da5",
+      "filename": "given_truth_in_testimony_award_list.pdf",
+      "status": "annotation_only_unsupported_forms",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "01d4eb831138f29162bfba3e176376256ae21158b6bf3b4af592077e4a16846f",
+      "filename": "beandisclosure.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "042c5e9c1f0300282bf585442ea3bcc2fccb1b24a0d5b744bc7c495ffa4ff765",
+      "filename": "Neal-3938-Amendment.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "055d1e1984f84abad9bf163f42dd730890598e0bfb775ce8e39262c0ef0b7870",
+      "filename": "Chu-3936-Amendment.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "0ac2f8d6923ab5e2e95e15d6e42dfea4cdc90bf1ced683b1a72d32f44f75daaf",
+      "filename": "HMTG-114-SM00-Bio-SilvermanS-20160427.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "0db2a0fb07597bd2841fd101b5a3984f633b943236bf88f3cc873012a48cfc1b",
+      "filename": "JSOpeningStatement.020514.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "0f4f0e6adcb4edb74ca0b8b6586a1883350552d38ba976353db0687e8a1f9a0a",
+      "filename": "hearing_memo_--_field_hearing_in_oklahoma_city_ok_04.04.25.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "16e435116a0b2859332cd6e56826e1fd0306c833c59eec5f089371750e6a07b6",
+      "filename": "disclosure_wallace_attachment.pdf",
+      "status": "annotation_only_unsupported_forms",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "1c194d4be0b58d4e5f026fc9fd6165520a734cd0b93c3c38c40cecad21cfffea",
+      "filename": "HHRG-115-SM00-Wstate-SchmitzB-20180425.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "1de91d1132948efde5797c3d6f72e86bf3398971625e86d87120d1dfbf5e8dcf",
+      "filename": "2-22-16_full_field_hearing_memo.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "1eb29427f93389a648572f4f3fccaf26cbab0c92ee28c228e94de845bf9739e0",
+      "filename": "2021-10-18_oi-emr_field_hearing_memo_re_oil_spill.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "234ea2b8c2eee77a0de8e0e6176780525ee4e8848efd3088098bbc2733d05dcb",
+      "filename": "oreskesdisclosurefinal1.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "2abf44f67fdba6638419bf5ac0ccdee0b3d0c9e6dde5d04315eb000290ca3354",
+      "filename": "HHRG-114-WM03-Bio-BrownB-20150715.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "2ae4a3f69b4a9093158de40ca289215caa83fa72e94ed3c795dc01293111d656",
+      "filename": "BILLS-114HR1890ih.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 2 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "2cf618d97e88a6ee50e0c621b68c4affb21d842349c4d6d5f6eaac974316135a",
+      "filename": "EBJOpeningStatement[PRESS].pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "3058ffb92c52c9b49369c99daa11be64ae971289da921790d7fd056fb7505422",
+      "filename": "redacted_disclosure_kent_with_cv.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "3595976d758124be49c77ef3ac64907fbe5ebd903d668039a1e5bb2f86aabe59",
+      "filename": "2.11.15-RCSOpeningStatement-HR5Markup-formatted.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "366371f295e4b34bd9cc04c0da836163267ea6de6d9af0d38fa06c572e4e8ecf",
+      "filename": "Kildee-3938-Amendment.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "3987d079ab4024c09865e985488cfe10188a000dd49fec85a36772753a2a0e28",
+      "filename": "disclosure--__kitcheyan_resume_2.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "3bcec962ef835b996f30d0ae474d6a6ffcc1c658172882a0bec656ebbc6a0a58",
+      "filename": "redacted_disclosure_kirpalani_with_cv.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "3dad5ad97e06a7bf95e049b3b4fc2e90534069142493e521ca966d746b6403c4",
+      "filename": "Budget-Reconciliation-Legislative-Recommendations-Relating-to-Repeal-of-Independent-Payment-Advisory-Board-092915.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "3e1d4c0cdb9d02a6bc56456a7974fea6fbb1a6bd60c5bb686635569269eaefeb",
+      "filename": "Pages_from_Humann_Disclosure030513OS.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "461c81b71e35865ad062b6d0e2f9bfa04c5a118eaa3442bbbdbac0d71b41b3c1",
+      "filename": "disclosure_as_resume_stefanko.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "4aa2c510685eaee2d871c644548fc2739b5af59ee05dbc25cdcb19aac8b97e5c",
+      "filename": "co_field_hearing_memo_--_ov_hrg_06.01.18.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "4f59facce2567a8571fb84c6ee5f383e29d80d22b9105309bfe126b4f995d027",
+      "filename": "HHRG-114-WM01-Bio-PhillipsW-20150225.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "557a6f50e9a5f0f45313194714f2b56887f8a5a90023fcae7f6d2ed0551a7202",
+      "filename": "HHRG-114-SM25-Wstate-CarberryC-20160712.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "5d8616c647e7d0245c1542e8a09187f6c6c80ede1d58e805a5be14ed793e2585",
+      "filename": "Memo-EE-Markup-TSCA-Modernization-Act-Attachment-2015-5-14.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "5efc4cf00f1c2d7d7669edaaadde5fcf2504627c5655ed8cebc0f8490d091163",
+      "filename": "whitedisclosurefinal1_4_29_15.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "671085aa12fa7fdefbfc2443e9b4dbcdafec3623a471582f07b3969b2bfbf0d5",
+      "filename": "HHRG-115-II13-Wstate-HueterR-20180417.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "68a130ccdd5b972bbe899d3fe96db59fa18ddc7db8b3c53d091c3a6d2be76c5a",
+      "filename": "CRPT-118-WM00-Vote002-20230613.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "6ccb7c12d1875fd774c31bb62be3aa85040cc2def92134fe2a4be6dd5ca87607",
+      "filename": "militodisclosure04-25-13.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "6cdad3e8a334de9e699a8794b21408a828c22909797674a6b95f6181292706da",
+      "filename": "Pages_from_041415_HL_Corlette_Disclosure.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "70e1b3f65c993898fa2a7145bd09ccb4a95a5d39e1e4ec632cf190e1f1917914",
+      "filename": "Chairman-Gary-Palmer\u2014Opening-Statement.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "7710785f53b20e09abad5a6b42d39533c447badc73bf81fb4be351eeae4cd180",
+      "filename": "disclosure_and_resume_eberhart.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "7b002a2a734901d18fd8308f293919c410c786b95327b40b3796d34ec7d898f3",
+      "filename": "HHRG-113-WM02-Bio-JostT-20130710.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "7baddc1e74d9a398dec59424481c70c3d8c5f376517fb5a37d2ac539603f52b7",
+      "filename": "Matthew-Schreiner-Truth-in-Testimony-041416TR.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "7d333ad05147cbee93a22ffad43aa2ae28e2ecb85d390e9d06bc45eb92704967",
+      "filename": "lunnydisclosurefinal.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "8018cc6ec27b3df7995aeddeecd79ec454da163f66aafdbfd119ecadcc4bed32",
+      "filename": "HMTG-114-SM00-Wstate-HardyJ-20160427.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "82c72c2960dba31d596349026f7a605847a4a7e01b5278e37ff48bbb57c7613f",
+      "filename": "HHRG-114-SM00-Wstate-DunnK-20160420.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "8616e9f9f2296680b923f520a7af3fb3e6b081485029bc26b6235ceb48c2b7fe",
+      "filename": "HHRG-114-SM27-Bio-RussellR-20160413.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "877c875952f8c37c04592b6b2cbac55ccf3e6173fc34989b105c426003f9fbcf",
+      "filename": "FP-Opening-CHIP-CHC-Opening-Remarks-10-04-2017.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "88f7d5016f18d5f2a6392f5f6d9540698f0773897cf3658add306f8206c1bbc0",
+      "filename": "HHRG-115-II06-Bio-ColemanA-20180315.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "93b5982165309071320417d513b3887c6abb3fefb74fbb133fe5baa745a93ade",
+      "filename": "small_business_access_to_capital_in_scottsdale_arizona_field_hearing_memo.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "95b10ccc7fef430454d168067b7344f4c5c652a29757db2b434928811c865b1a",
+      "filename": "disclosure_and_bio_sweeney.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "95b67bdacaf7b69198ecbf2346c7d97ee35402e2351a607f518023025c79e2db",
+      "filename": "05.11.11_Public_Witness_Testimony_CV_and_Disclosure.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "962e30e94b007d85007307268791a977f5daee4351a0bac31546038ac51e940a",
+      "filename": "07.24.18 RM Johnson Space Weather Amendment Statement.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "98215feaf3c7fd3fc59dc3a4c640c8b6d2ea61cd0675522a868f38796c545243",
+      "filename": "field_hearing_memo_emr_odessa_texas_02.13.23.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "98c127c94e3533a50ff13616e864938b5e39259d7411bfb64693c982b828adbe",
+      "filename": "2-22-16_aet_field_hearing_memo.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "9b8dd63213da02696d61cfeae395db2c88e5de89dba79fc811d0782c60b08b1b",
+      "filename": "HHRG-113-WM02-Bio-GottliebS-20131204.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "9d72fd65c5f5114ab9bb7e5dc4570e4ce385033adbb06b666f3051129f3b75af",
+      "filename": "Thompson-3938-Amendment.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "9de34df9d62f85af6d8e83d20f173326535670405703b876fcd3f9a7e13c5359",
+      "filename": "HHRG-114-WM06-Bio-MetzgerJ-20150723.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "a10cfb42f1f680788f282a0cc2e81ae8a4dd0aee2da30fb15ed9a5918a4725d2",
+      "filename": "HHRG-114-WM05-Bio-SchultzC-20151201.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 2 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "a148e1651d947672950484afb263b44cc83eea653ad0cbd9bc723beadacf8a59",
+      "filename": "HHRG-115-II06-Bio-MartinezS-20180606.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "a25283342a9c909707062d16dcb7f011e465b6d14e76013879a0a4eef99e5487",
+      "filename": "HHRG-114-SY16-20151117-SD008.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "a3344317e40634df6b174dac6f1154b5316e0e44819ad2b6c9a33d8091a9c3e4",
+      "filename": "HHRG-114-WM03-Bio-WillauerT-20160518.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "a6341e3156fe50bba9cb8a86f24c433f648c90eec680faa20fa491305765e411",
+      "filename": "HHRG-114-WM03-Bio-CarpenterW-20160907.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "ab34f34051abcbb5e88e37def69288b92f677fa068cdc760968bf13ed43fad2f",
+      "filename": "galarza_disclosure_attachment.pdf",
+      "status": "annotation_only_unsupported_forms",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "abb2c11317927e190d30e1a508fdbb45928b0e82337769e1474e48a043c326a6",
+      "filename": "HHRG-115-II06-Bio-LyleI-20180418.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 2 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "ac542c123b84854e497fd22350c198f2292999d898a07f8f30e17272e2bf53e4",
+      "filename": "HHRG-114-WM02-Bio-MoffitR-20160316.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "ad0447d4c4001c0ce776bd97321f6e6e527691c66dcc9235563a02a21316f33f",
+      "filename": "hearing_memo_--_fc_ov_field_hearing_in_guam_08.24.23.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "ae4697a5ff62d270b6e9fc173f53c87f2caf60419f049cdfc65713955e999ec2",
+      "filename": "Sanchez-3938-Amendment.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "b0079a064001403d81234bdd03272896c1258b2dc23042d812febdf8fb53ceef",
+      "filename": "Amendment-in-the-Nature-of-a-Substitute-to-VE-LEtter-FY2024.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "b18cbcbab02a1fe301beea32edb568df87fa8fd94730313402c7243ff6d1c43e",
+      "filename": "12711-EECOpeningStatementMedicaidpress.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "b6a74e618c0531aeb502abc91978f107257a8ce25cc42c761f976811e6f3245d",
+      "filename": "koenig_bio_witness_disclosure_form.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "b850938ab6d4ee9cc7dea79ce00ea9aa9945481097ea24860fe44a3add2e5688",
+      "filename": "CRPT-118-WM00-Vote018-20230613.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "bbcbe3cb2d3aae5395449090a063064f3a6db1e7523c10882ea1523c712135d9",
+      "filename": "CRPT-118-WM00-Vote014-20230613.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "bbe11ad1aec2d38c62c6cab8e6075227594a80e366ef31cc96a310aa049f56e1",
+      "filename": "Democratic Alternative to Committee Rules 114th Amendment - EBJ.pdf",
+      "status": "annotation_only_unsupported_forms",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "be97aead1f5db8d707016da9a6071ac470c06fc5d727f8f97838471acccf5be0",
+      "filename": "HMTG-114-SM00-Wstate-BrillA-20160427.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "c0a6ccb99823c92d97a98d4e7e7342cbc9b8fb78cafc36ff5d728b257c4c6d38",
+      "filename": "Pages_from_Van_de_Water_Disclosure_030513OS.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "c1610662324b16aa180cd285df49db7ebd6b985814344649892377fba97a0d93",
+      "filename": "long_island_field_hearing_hearing_memo.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "c4d0b2cda36f5997694c53c058bb5fba822e95d776fba4157a42387ef5261602",
+      "filename": "simmonsdisclosure04-25-13.pdf",
+      "status": "annotation_only_unsupported_forms",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "c538e3129b40f6f792690e4961f6692f41e250dd708a0965a0e08f81d9842fcf",
+      "filename": "HHRG-114-SM23-Bio-JanewayM-20151118.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "c5d4151ca026d9a98180b375d8ab83ea7b485399d715fd910c77e96d73876084",
+      "filename": "disclosure_sgamma.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "ca4a15baea9abe4c3f886af8aab55ac1ae5a794d4250b5cc3f310986390ece9f",
+      "filename": "hearing_memo_field_hearing_09_15_15.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "d680c5d4a26d8b2c0fa25631c454336dd30b7577732d58379fc551ec80a97143",
+      "filename": "Doggett-3938-Amendment.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "d6f8ab1d08d329767127190f64c766860eedc2ea0977ec30e7d05f9384348277",
+      "filename": "GMOpeningStatement-Service2009.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "d8820fd61e2b94a39ed03d3b24c55d73ae411759271adfc3f38c9a03cf256d3a",
+      "filename": "EECOpeningStatement012412.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "da02cbb4716280b5340ef404438ac1301100fc53687254769b8f42401f61585b",
+      "filename": "redacted_disclosure_williams_with_cv.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "dcac86ba4ed33aed0d6d2072c0e51ae632344af9d185dd368d3811a94bc5a915",
+      "filename": "Briefing Memo_ECCCPC Hearing_2019.06.20_Cars_Final with Witness List_1.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "e4f72098ebca93fe22bf42281cfb3d8cd0b88a1324830405c7319d7760d8770f",
+      "filename": "Sewell-3938-Amendment.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "e50aadbdaf0938d97a8f4695eabf81d56ac62f966352f9eb4a0c9df4b69c8bcc",
+      "filename": "CRPT-118-WM00-Vote008-20230613.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    },
+    {
+      "document_id": "e76aeb83d79657aff7e48272f9966bb5f162a95f06f0b715d3b306a0b9346679",
+      "filename": "HHRG-113-WM02-Bio-EvansE-20140520.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "f98a4e31a7271a4585cf33627c5ce7aac7385a956e780e23722b72afea71a6e0",
+      "filename": "disclosure_and_resume_otoole.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "fbb08e8e687631dcf7c8f17c19c7f6e669d42ff829129e0a2263b317bd447b11",
+      "filename": "GeorgeMillerWIAOpeningStatementFormatted 6-7-2012.pdf",
+      "status": "candidate_applied",
+      "outcome": "unchanged",
+      "reason": "complete document and source rows identical to the deployed d42b9f binding"
+    },
+    {
+      "document_id": "fd9e22a90e06fa4ad9ebdc54384b6965b81bd8e429d8debb80dc2a783db3be96",
+      "filename": "Pages-from-Heather-Terenzio-Disclosure-Form.pdf",
+      "status": "candidate_applied",
+      "outcome": "changed",
+      "reason": "rebound: 1 congress.gov publisher occurrence(s) added to source_occurrences (none removed); body, members, selected kinds and review finding unchanged"
+    }
+  ],
+  "candidates_bytes_identical": false,
+  "published_findings_identical": true,
+  "evidence_files_identical": true,
+  "binding_transition": {
+    "previous_locators": 758,
+    "previous_digests_identical": true,
+    "added": [
+      "output/filename-patterns-20261015/public-raw-catalog-v3/catalog/catalog-generations/cbcf65877e2843ae8b23915c3d05a18f/document-filenames.parquet",
+      "output/filename-patterns-20261015/public-raw-catalog-v3/catalog/catalog-generations/cbcf65877e2843ae8b23915c3d05a18f/documents.parquet"
+    ],
+    "locators": 760,
+    "previous_pair_still_bound": "palmer_current_content_review_v1 selection evidence"
+  },
+  "groups_moved": 86,
+  "sources_moved": 86,
+  "withdrawal_restores_all_baselines": true,
+  "alias_filter_checks": 1039,
+  "original_groups": 1241131,
+  "reviewed_groups_all": 1241131,
+  "public_descriptor": {
+    "sha256": "322869766390f46a26bb9b430ac020c13152283c08c959d1aab549ae2a24066e",
+    "bytes": 292002,
+    "groups": 86,
+    "evidence_files": 671,
+    "evidence_bytes": 156283397,
+    "catalog_id": "76758ea73fa94075bda46ce79e569fd3",
+    "review_sha256": "fc5d361e4f2c01db8e8be90267f18cf072cc6db02bc1cd57ef5621b8aac1354c",
+    "release": "document-reviews-fc5d361e-v1",
+    "asset": "document-reviews.tar.gz",
+    "archive_sha256": "52ad06ab45d73070d0fc82ad3686e3f6441a6cc8c5452fbb50aef9b4ed28e792"
+  },
+  "peak_process_rss_bytes": 5099356160,
+  "elapsed_seconds": 604.123,
+  "frozen_inputs": {
+    "protected": 11,
+    "unchanged": 9,
+    "changed_upstream_on_main": {
+      "packages/congress_api/src/congress_api/parsers/document_cover.py": "8b7ddf8",
+      ".github/workflows/capture-raw-sources.yml": "8cf8994/8b7ddf8"
+    },
+    "used_or_modified_here": false
+  },
+  "checks": {
+    "python_review_viewer_tests": {
+      "passed": 143,
+      "skipped": 3
+    },
+    "python_full_offline_suite": {
+      "passed": 8711,
+      "skipped": 49,
+      "failed": 0
+    },
+    "javascript_test_explorer": {
+      "passed": 109,
+      "failed": 0
+    },
+    "javascript_deploy_review_ui": {
+      "passed": 47,
+      "failed": 0
+    },
+    "explorer_types_match": true,
+    "astro_build": "passed with staged local review assets",
+    "pages_budget_bytes": 158689051,
+    "archive_extract_verified": true,
+    "static_live_aliases_verified_by_source_id": 286,
+    "static_live_catalog_id": "76758ea73fa94075bda46ce79e569fd3",
+    "alias_filter_checks": 1039,
+    "deployment_verifier_negative_control": "fails as expected: live site serves 0c107565 (catalog d42b9f)"
+  },
+  "source_sha256": {
+    "packages/congress_api/src/congress_api/retention/document_review_receipts.py": "72fdf22f9a160e8bc16d61cffb71597d6e9bb68f93c37520af7d98e67fd83aaf",
+    "packages/congress_api/src/congress_api/retention/document_review_catalog.py": "22df645ab658458c70bf257441b4737fc0b47aa4caf3be9e20b00b1febb42a40",
+    "packages/congress_api/src/congress_api/retention/document_review_portable.py": "c15cc0706f802cb0614c07324ad1b2e2c34d55eee6a72b245d3caa3725f1c4d7",
+    "tests/test_document_review_portable.py": "d97401989784cd0e3ff0c635596ae39308c409f4bfaa3b92a2297e6c42835a3b",
+    "docs/document-review-input.txt": "ec485de20d09426598c3ae1ba4924ba2e36c12e915c9ab5fe7678e8159ec3eaf",
+    "apps/site/document-review-publication.json": "10a9cfb7afe112d27150e5162c3e469c311fc19b5a7e8faa729f47f8da0012bf"
+  },
+  "review_path": "docs/experiments/filename-patterns-20261015/REVIEW_CATALOG_REBIND.txt",
+  "review_sha256": "eb07c7b4bb187ef6c4ecb91cd1c67ad87c2c5815a36a43b4885fb68b9d321aa9",
+  "evidence": {
+    "output/filename-patterns-20261015/public-raw-catalog-v3/raw-selector.json": "e7d4165e450a1a6f73f20183c95d44a816e4aa8ba65bb5898feba89195c154ff",
+    "output/filename-patterns-20261015/public-raw-catalog-v3/receipt.json": "c6b37472706d4911b3e3510052af20d33dca4b6659cc34d9f6d9ba450e8d8177",
+    "output/filename-patterns-20261015/public-raw-catalog-v3/viewer-selector.json": "e51e37341277145ddda8c9b8b8ef004e99050a60959a1cb6ef9b4eaf8bcc531f",
+    "output/filename-patterns-20261015/review-rebind-v2/build.log": "9c7124487f2800037f94d3d9cc78a1d705abd25ddbb184ffd4363f23621cd1f8",
+    "output/filename-patterns-20261015/review-rebind-v2/bundle/candidates.jsonl": "d3364a4d5f26a0d54e8ed55a19216d69a571ff8014076c58fd96a9245562db82",
+    "output/filename-patterns-20261015/review-rebind-v2/bundle/summary.json": "484d7a470ad645a99c23e84d73d620d3111a4f41b17dff58f4e9f3a1c9c281a2",
+    "output/filename-patterns-20261015/review-rebind-v2/candidate-diff.json": "01956e7f216cd88db7d2a29acdf6c47df22310d12cbd1341f8070f118f416fcf",
+    "output/filename-patterns-20261015/review-rebind-v2/candidate_diff.py": "3d0e661a22f3dba08da11378c5527b47cdcef7dac00b8b0a94cf549c81db452f",
+    "output/filename-patterns-20261015/review-rebind-v2/check_static.mjs": "de0015ed9bbfc74ad2a47fc98afd238ac201c432848e598ddd40fea693816abb",
+    "output/filename-patterns-20261015/review-rebind-v2/checkpoint.py": "ec610619ce52bdcb4b80f2aa0d81f9929336ec05b1ba20fbf9609ca118232ca8",
+    "output/filename-patterns-20261015/review-rebind-v2/document-reviews.tar.gz": "52ad06ab45d73070d0fc82ad3686e3f6441a6cc8c5452fbb50aef9b4ed28e792",
+    "output/filename-patterns-20261015/review-rebind-v2/full-python-tests.log": "617e54cd4ccbfe2fffda6081a9784fc16779a9455bee18e2b64eebf1ae7a1719",
+    "output/filename-patterns-20261015/review-rebind-v2/js-tests.log": "b013e43069939ce3c6c5791e6eb35c6c8736aa5433d479dd8d0ef3d85a41ab7f",
+    "output/filename-patterns-20261015/review-rebind-v2/occurrence-diff.json": "2c4c65a672ca66a30345e0ce5854af8c0813fec6b99b210ad8f87c3349a53228",
+    "output/filename-patterns-20261015/review-rebind-v2/occurrence-diff.log": "d2d04bcbb57865bc0ee9a9d4dd5b01f081feb2f85062e1b08245386305ebd100",
+    "output/filename-patterns-20261015/review-rebind-v2/occurrence_diff.py": "24353b7a3346f2fc295113d4891f2cfd8872f7f964603d4b438579fa8793ebb6",
+    "output/filename-patterns-20261015/review-rebind-v2/outcomes.json": "fb54effc11d0ad848f5505b0f4ccf9ea6d0e818d890b8fecf4d845e5ad4f219d",
+    "output/filename-patterns-20261015/review-rebind-v2/portable/manifest.json": "fc5d361e4f2c01db8e8be90267f18cf072cc6db02bc1cd57ef5621b8aac1354c",
+    "output/filename-patterns-20261015/review-rebind-v2/public/reviews.json": "322869766390f46a26bb9b430ac020c13152283c08c959d1aab549ae2a24066e",
+    "output/filename-patterns-20261015/review-rebind-v2/python-tests.log": "716f7186ad48b452e1a44d1ea86ec6ffa327874cbfbfcee213d80911de3cf39e",
+    "output/filename-patterns-20261015/review-rebind-v2/reconcile-summary.json": "2314fb71e2d4f1c361d6188e18583918fe6a7acd6b4389d98956fb912904c223",
+    "output/filename-patterns-20261015/review-rebind-v2/reconcile.log": "dcd8df28addf3355176a4692d6604db549fd0a34aac3cc26623ac92b59880efc",
+    "output/filename-patterns-20261015/review-rebind-v2/reconcile.py": "aac5f65f1f2e6139508d441583e2bf12c1885db99d5c0767d6218b90034b7a02",
+    "output/filename-patterns-20261015/review-rebind-v2/reconciliation.json": "d2149f895c828301f948505a06dbfc0bb23e604190173940013cb9cce7a7ee5c",
+    "output/filename-patterns-20261015/review-rebind-v2/release-notes.txt": "a95e998b9383fd3c3f0d5af15b05201286090a9b14ab315e4caf36579d832e77",
+    "output/filename-patterns-20261015/review-rebind-v2/run.log": "fdb7ee8e2db4624ebba30e43dfc33d8f52a3d3d740437921820ab869c994b0ad",
+    "output/filename-patterns-20261015/review-rebind-v2/run.py": "c215569ed3fb8b3f467326966064009219606fbff825eec99bcfb905178ec06d",
+    "output/filename-patterns-20261015/review-rebind-v2/static-live-check.json": "bc4eee3059164a56aaa5895a52aab591f8ae16c187059f50cb83d7e78abcca6f",
+    "output/filename-patterns-20261015/review-rebind-v2/static-live-check.log": "f631829db59195f556251484e2251b3d5b0e99af08e313496f2558706435999c",
+    "output/filename-patterns-20261015/review-rebind-v2/strict-compare.json": "466c3a40e5a21fc29db6a9c6ebedbd0b85dfa23d91ba932116b64fb530dfe19a",
+    "output/filename-patterns-20261015/review-rebind-v2/strict-compare.log": "466c3a40e5a21fc29db6a9c6ebedbd0b85dfa23d91ba932116b64fb530dfe19a",
+    "output/filename-patterns-20261015/review-rebind-v2/strict_compare.py": "99d1195781989bd1abbd0e10768b5b90d66af16d9bbb3e013ea1d24351fb6e6d",
+    "output/filename-patterns-20261015/review-rebind-v2/summary.json": "c48f2f4489ccfbf636c2df5ee72d5949da7b5cbb235f747777b8be6b181f08e8",
+    "output/filename-patterns-20261015/review-rebind-v2/ui-tests.log": "c20d58d2e194999d167db8f21902baba6f04ca254b963d56bebb565e857f4ca2",
+    "output/filename-patterns-20261015/review-rebind-v2/verify_deployment.py": "1cd8d331960693662a75ff780170da09dda0a54038c2bc470ec20ad460442c9d"
+  },
+  "production_selected": false,
+  "independent_reference": false,
+  "release_approved": false,
+  "publication": false,
+  "deployment": "pending owner release upload, push and Pages deploy"
+}

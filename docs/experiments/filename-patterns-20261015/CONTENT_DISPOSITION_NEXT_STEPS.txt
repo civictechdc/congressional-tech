@@ -453,3 +453,22 @@ evidence files passed full hash readback; the live browser showed reviewed
 categories and explicit withdrawal. The R2 pointer remained unchanged.
 This deploy used the pinned code revision from codex/document-kind-publish;
 main was not merged or changed. See public_review_deployment_v1.json.
+
+2026-10-17: rebind prepared for catalog 76758ea7 (not published)
+--------------------------------------------------------------
+d42b9f was replaced on 16 October, so reviewed search has been dark since then.
+A rebind to 16b8f0e1 (review_rebind_checkpoint_v1.json) was superseded before
+publication. A scheduled capture then selected 76758ea7 (generation cbcf6587,
+house_naming 3.1.0). The 86 review groups were re-admitted against that exact
+public pair through a separately recorded step:
+- 48 groups are unchanged.
+- 38 groups were rebound. Each gained congress.gov publisher occurrences in
+  source_occurrences (41 added, none removed), which gives it a new group digest.
+- No group is withdrawn.
+Bodies, members, selected kinds, every published finding and all evidence
+objects are identical. Historical evidence came from the pinned portable store,
+because nine bound locators name a removed worktree. The regenerated descriptor
+pins review fc5d361e and release document-reviews-fc5d361e-v1. See
+review_rebind_checkpoint_v2.json and REVIEW_CATALOG_REBIND.txt. Next, the owner
+uploads the release, merges, deploys and records deployment readback. Repeat for
+every public catalog replacement.
