@@ -80,6 +80,22 @@ class PublishTests(unittest.TestCase):
         self.assertFalse(self.run_publish(client)['wrote'])
         self.assertFalse(client.writes)
 
+    def test_stores_canonical_rows_and_cleans_a_non_canonical_mapping(self):
+        def validate(rows):
+            return [{key: row[key] for key in ('original_url', 'body_key')} for row in rows]
+        raw = dict(version=1, recoveries=[dict(original_url='https://example.org/a', body_key='new',
+                                               body_path='/Users/someone/local/body.html')])
+        client = Client(raw)
+        self.saved = {}
+        result = publish_mappings(client, bucket='test', baseline=raw, prepared=raw, validate=validate,
+            guard=lambda: None, save_payload=self.saved.__setitem__, journal=lambda event, value: None)
+        self.assertTrue(result['wrote'])
+        self.assertEqual(json.loads(client.raw), doc('new'))
+        # Once canonical, the same publication is a no-op.
+        self.assertFalse(publish_mappings(client, bucket='test', baseline=doc('new'), prepared=raw,
+            validate=validate, guard=lambda: None, save_payload=self.saved.__setitem__,
+            journal=lambda event, value: None)['wrote'])
+
     def test_validator_failure_blocks_write(self):
         def validate(rows):
             raise ValueError('Invalid mapping')

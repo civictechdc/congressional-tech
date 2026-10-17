@@ -21,12 +21,18 @@ def publish_mappings(client, *, bucket, baseline, prepared, validate,
             raise ValueError('Incomplete recovery mapping read')
         return raw, response['ETag']
 
+    def canonical(document):
+        return {**document, 'recoveries': validate(document['recoveries'])}
+
     guard()
     previous, expected = read()
     fresh = json.loads(previous)
-    merged = merge_mappings(baseline, prepared, fresh)
-    # Validate with the maintained viewer validator without dropping fields.
-    validate(merged['recoveries'])
+    # Store exactly the viewer validator's canonical rows: the viewer publisher
+    # requires accepted_rows() of the stored mapping to equal the stored mapping,
+    # and batch evidence fields (local body paths, candidates) must stay in local
+    # batch evidence, not in this public object. Comparing canonical inputs also
+    # lets a previously non-canonical mapping be rewritten without conflicts.
+    merged = canonical(merge_mappings(canonical(baseline), canonical(prepared), canonical(fresh)))
     if merged == fresh:
         return dict(complete=True, wrote=False, etag=expected,
                     sha256=hashlib.sha256(previous).hexdigest())
