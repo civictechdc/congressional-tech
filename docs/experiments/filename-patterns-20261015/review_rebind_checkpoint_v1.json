@@ -1,0 +1,157 @@
+{
+  "previous_catalog_id": "d42b9f6697914e68a688600705e1d65f",
+  "previous_review_sha256": "c5e4c563c4b64c77d4798ad3e005830a107197b88551844b96c1df5e3c1d94c1",
+  "catalog_id": "16b8f0e1ae0b46619551071b3f5a06d0",
+  "generation": "3bc4b469114444b3ab065b00395e0856",
+  "catalog_house_naming_version": "3.0.0",
+  "public_raw_base_url": "https://pub-1b36ca710ab14e7f8e65813c41761724.r2.dev/",
+  "viewer_manifest_url": "https://congressional-viewer-data.mdeeb.workers.dev/manifest.json",
+  "pair": {
+    "sources": {
+      "path": "output/filename-patterns-20261015/public-raw-catalog-v2/catalog/catalog-generations/3bc4b469114444b3ab065b00395e0856/document-filenames.parquet",
+      "sha256": "620f7a54ef0e3616e5364f9965cdf4c9a85c2242dd3aaf10e8abcd85def66b1c"
+    },
+    "documents": {
+      "path": "output/filename-patterns-20261015/public-raw-catalog-v2/catalog/catalog-generations/3bc4b469114444b3ab065b00395e0856/documents.parquet",
+      "sha256": "0f3c1aaa61a59077740aed2b864a2118fe569b5e8042286a8dfe4b94d9d56d31"
+    }
+  },
+  "summary_path": "output/filename-patterns-20261015/review-rebind-v1/summary.json",
+  "summary_sha256": "8fe24fab9a657364c16112388eeef8c28ab25bd4b9f7d93a221eeb3f5004bfcd",
+  "bundle_summary_path": "output/filename-patterns-20261015/review-rebind-v1/bundle/summary.json",
+  "bundle_summary_sha256": "decb5cc33148bec4c3766f44461d642df48820226f970dee565690ec6a5de4bc",
+  "manifest_path": "output/filename-patterns-20261015/review-rebind-v1/portable/manifest.json",
+  "manifest_sha256": "4a0e8194ffa37d00f0ac9f3b339f9d35ef10853c92c00b0e412e84093ca35bef",
+  "evidence_store": "output/filename-patterns-20261015/portable-review-v1/relocated/manifest.json (primary checkout, read only)",
+  "reviewed_groups": 86,
+  "source_rows": 286,
+  "reviewed_pages": 530,
+  "case_status": {
+    "candidate_applied": 81,
+    "annotation_only_unsupported_forms": 5
+  },
+  "group_outcomes": {
+    "unchanged": 86,
+    "changed": 0,
+    "withdrawn": 0
+  },
+  "complete_rows_identical": 86,
+  "candidates_bytes_identical": true,
+  "binding_transition": {
+    "previous_locators": 758,
+    "previous_digests_identical": true,
+    "added": [
+      "new sources",
+      "new documents"
+    ],
+    "locators": 760,
+    "previous_pair_still_bound": "palmer_current_content_review_v1 selection evidence"
+  },
+  "peak_process_rss_bytes": 6195724288,
+  "elapsed_seconds": 374.742,
+  "frozen_inputs": {
+    "protected": 11,
+    "unchanged": 9,
+    "changed_upstream_on_main": {
+      "packages/congress_api/src/congress_api/parsers/document_cover.py": "8b7ddf8",
+      ".github/workflows/capture-raw-sources.yml": "8cf8994/8b7ddf8"
+    },
+    "used_or_modified_here": false
+  },
+  "published_findings_identical": true,
+  "evidence_files_identical": true,
+  "groups_moved": 86,
+  "sources_moved": 86,
+  "withdrawal_restores_all_baselines": true,
+  "alias_filter_checks": 1039,
+  "original_groups": 1241131,
+  "reviewed_groups_all": 1241131,
+  "public_descriptor": {
+    "sha256": "45ec48740ceb62907912ed3b98125ae49dfbdc45c53f3b4e7cde8eb964d03e23",
+    "bytes": 292002,
+    "groups": 86,
+    "evidence_files": 671,
+    "evidence_bytes": 156283397,
+    "catalog_id": "16b8f0e1ae0b46619551071b3f5a06d0",
+    "review_sha256": "4a0e8194ffa37d00f0ac9f3b339f9d35ef10853c92c00b0e412e84093ca35bef",
+    "release": "document-reviews-4a0e8194-v1",
+    "asset": "document-reviews.tar.gz",
+    "archive_sha256": "3747945dfe775fbaf9ef32fc54cd578e5dec8aff0560110cc7554df0233bc1ba"
+  },
+  "checks": {
+    "python_review_viewer_tests": {
+      "passed": 143,
+      "skipped": 3
+    },
+    "python_full_offline_suite": {
+      "passed": 8702,
+      "skipped": 49,
+      "failed": 0
+    },
+    "javascript_test_explorer": {
+      "passed": 109,
+      "failed": 0
+    },
+    "javascript_deploy_review_ui": {
+      "passed": 47,
+      "failed": 0
+    },
+    "explorer_types_match": true,
+    "astro_build": "passed with staged local review assets",
+    "pages_budget_bytes": 158689051,
+    "static_live_aliases_verified_by_source_id": 286,
+    "alias_filter_checks": 1039,
+    "live_site_currently_serves": "0c10756589f6cf2d22434bd571ebeec7d477e591f58225afa062d553f0725cfe (catalog d42b9f, reviewed search dark)"
+  },
+  "attempts": {
+    "attempt1": "refused: document_review_catalog.py edited during the run; the bundle verifier rejected the changed implementation (attempt1-run.log)"
+  },
+  "source_sha256": {
+    "packages/congress_api/src/congress_api/retention/document_review_receipts.py": "72fdf22f9a160e8bc16d61cffb71597d6e9bb68f93c37520af7d98e67fd83aaf",
+    "packages/congress_api/src/congress_api/retention/document_review_catalog.py": "22df645ab658458c70bf257441b4737fc0b47aa4caf3be9e20b00b1febb42a40",
+    "packages/congress_api/src/congress_api/retention/document_review_portable.py": "c15cc0706f802cb0614c07324ad1b2e2c34d55eee6a72b245d3caa3725f1c4d7",
+    "tests/test_document_review_portable.py": "d97401989784cd0e3ff0c635596ae39308c409f4bfaa3b92a2297e6c42835a3b",
+    "docs/document-review-input.txt": "ec485de20d09426598c3ae1ba4924ba2e36c12e915c9ab5fe7678e8159ec3eaf",
+    "apps/site/document-review-publication.json": "46ef255650624ae815e0e940a2baa50c358ed052b344614a984c6fa0845f536e"
+  },
+  "review_path": "docs/experiments/filename-patterns-20261015/REVIEW_CATALOG_REBIND.txt",
+  "review_sha256": "edaed0291b440ab704c39ef8f2e61f4632f4db3d696b32b37a7b88a0ea08936e",
+  "evidence": {
+    "output/filename-patterns-20261015/public-raw-catalog-v2/raw-selector.json": "dcfd756e03dcbdeab05d36c7c72d9eaf725ca33c29393f818dab470c4b99b290",
+    "output/filename-patterns-20261015/public-raw-catalog-v2/receipt.json": "9a32cd46218a83e42f02b343522b69145396352b0eb4bb5c54bdd15f478f2fde",
+    "output/filename-patterns-20261015/public-raw-catalog-v2/viewer-selector.json": "d6719be7f3499173b2e785de3261e6715a27ed763b858d14f6d539a20c58322f",
+    "output/filename-patterns-20261015/review-rebind-v1/attempt1-run.log": "801837db8fa4eae220692c9f5ce4e91644d943613507d44dbb795b0c2744f1ab",
+    "output/filename-patterns-20261015/review-rebind-v1/build.log": "dd9e626c1ad1581adc5a9b09baa7271207df1e809e26a8fe37948bc14a579f36",
+    "output/filename-patterns-20261015/review-rebind-v1/bundle/candidates.jsonl": "124a3ff7f634151ba1617275c1de2b59e0c146c88a8c062dcd8305dee53002b8",
+    "output/filename-patterns-20261015/review-rebind-v1/bundle/summary.json": "decb5cc33148bec4c3766f44461d642df48820226f970dee565690ec6a5de4bc",
+    "output/filename-patterns-20261015/review-rebind-v1/check_static.mjs": "de0015ed9bbfc74ad2a47fc98afd238ac201c432848e598ddd40fea693816abb",
+    "output/filename-patterns-20261015/review-rebind-v1/checkpoint.py": "bf6c40fe2629b6841d4258eb8c9f29453b81a95d90f20252f2ef78f56cae5c94",
+    "output/filename-patterns-20261015/review-rebind-v1/document-reviews.tar.gz": "3747945dfe775fbaf9ef32fc54cd578e5dec8aff0560110cc7554df0233bc1ba",
+    "output/filename-patterns-20261015/review-rebind-v1/full-python-tests.log": "69cfae9490b06f1eba11b1f664694889ebfe45c27760c4032f9c319005f76a8e",
+    "output/filename-patterns-20261015/review-rebind-v1/js-tests.log": "874645a94ff8d27803479f5588ce4ea03f0b6f7ab6454a289aeffc2873926079",
+    "output/filename-patterns-20261015/review-rebind-v1/outcomes.json": "b324d08c87c287f55022b43303ff2ed0b46a9eb999da069e08fa000d5a7893b2",
+    "output/filename-patterns-20261015/review-rebind-v1/portable/manifest.json": "4a0e8194ffa37d00f0ac9f3b339f9d35ef10853c92c00b0e412e84093ca35bef",
+    "output/filename-patterns-20261015/review-rebind-v1/public/reviews.json": "45ec48740ceb62907912ed3b98125ae49dfbdc45c53f3b4e7cde8eb964d03e23",
+    "output/filename-patterns-20261015/review-rebind-v1/python-tests.log": "478e3448203668b08d68d19b82a80b67bc2278023aa579b2e0d15b3e9a6bff52",
+    "output/filename-patterns-20261015/review-rebind-v1/reconcile-summary.json": "53255790784f9d93063b6ac0da2ba189239183137eda02ae2b5bf5352f085a2f",
+    "output/filename-patterns-20261015/review-rebind-v1/reconcile.log": "f31890415886cc395c8ce74579192086db636df4a7e36eba46553e9b7442b96e",
+    "output/filename-patterns-20261015/review-rebind-v1/reconcile.py": "17bc85f0bcae10542a3f335fea0de7be56bfe7aac9ac331b9845abf280aa7e8e",
+    "output/filename-patterns-20261015/review-rebind-v1/reconciliation.json": "7f67ba0cd721ea6009f34993df49eb81e5a0c90e0fedc656b050dd6fea4a19e0",
+    "output/filename-patterns-20261015/review-rebind-v1/release-notes.txt": "3832dab9f5155bcc8ddcd947bde10415c886fe66addbc09a4189aa4b87fe9fd4",
+    "output/filename-patterns-20261015/review-rebind-v1/run.log": "f98836772469425660ca14c64339d5eab8d3ba542ed2d76d60357e657f91d179",
+    "output/filename-patterns-20261015/review-rebind-v1/run.py": "897d96d93bcd0934ba9572f9c5499bc65b20eddc4b8e26e02b319fada5e65598",
+    "output/filename-patterns-20261015/review-rebind-v1/static-live-check.json": "06248cfa17efc660be4e87df5c8eadb2fbbf8640c8e5a22a13a32545da17932b",
+    "output/filename-patterns-20261015/review-rebind-v1/static-live-check.log": "f631829db59195f556251484e2251b3d5b0e99af08e313496f2558706435999c",
+    "output/filename-patterns-20261015/review-rebind-v1/strict-compare.json": "008346def5265bcdd2fbbc0dabff8b224c539301c26fde1441607cb2c3f5edde",
+    "output/filename-patterns-20261015/review-rebind-v1/strict-compare.log": "008346def5265bcdd2fbbc0dabff8b224c539301c26fde1441607cb2c3f5edde",
+    "output/filename-patterns-20261015/review-rebind-v1/strict_compare.py": "fb5064633991315a010d50a8b7af0019896ff65d79635b4cb668e6d862e06d44",
+    "output/filename-patterns-20261015/review-rebind-v1/summary.json": "8fe24fab9a657364c16112388eeef8c28ab25bd4b9f7d93a221eeb3f5004bfcd",
+    "output/filename-patterns-20261015/review-rebind-v1/ui-tests.log": "bede8313b54e7991be003bc077d8f9fe56da25f2cfafb36b0389e1646794a964",
+    "output/filename-patterns-20261015/review-rebind-v1/verify_deployment.py": "4d3679233dc8deafbfb8ebdcdb0e2624f2f3d41f02ada4de854cc8617fd6ec71"
+  },
+  "production_selected": false,
+  "independent_reference": false,
+  "release_approved": false,
+  "publication": false,
+  "deployment": "pending owner release upload, push and Pages deploy"
+}
