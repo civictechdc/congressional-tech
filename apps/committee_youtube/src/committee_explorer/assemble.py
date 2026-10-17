@@ -10,6 +10,7 @@ from committee_meeting.common import Ref
 from pydantic import TypeAdapter, ValidationError
 
 from .collector_labels import collector_placeholder_conflict
+from .history import RetainedSources
 
 
 _DOMAIN_RECORD = TypeAdapter(DomainRecord)
@@ -56,6 +57,7 @@ class Assembly:
         self.records = _ValidatedRecords()
         self.current = set()
         self.previous = previous
+        self.retained = RetainedSources()  # Filled by finish() from the previous history.
         self.ids, self.now = ids, now
 
     def add(self, items):
@@ -156,6 +158,11 @@ class Assembly:
             previous = self.previous if isinstance(self.previous, Mapping) else {
                 (v.kind, v.id): v for values in (self.previous.sources, self.previous.records) for v in values}
             issues = previous.iter_issues() if hasattr(previous, "iter_issues") else (v for k, v in previous.items() if k[0] == "data_issue")
+            # Old sources are not loaded. Each weekly input snapshot re-keys whole
+            # providers, so sources that only old issues cite grow with every
+            # generation. Their IDs suffice for the graph; their content streams
+            # from the previous history into publication and the next history.
+            retained = set()
             seen = set()
             for issue in issues:
                 issue = self._review_old_label_conflict(issue, previous)
@@ -166,26 +173,34 @@ class Assembly:
                     if key in seen:
                         continue
                     seen.add(key)
-                    into = self.sources if isinstance(old, SourceRecord) else self.records
-                    if key not in into:
-                        into[key] = old
+                    if key not in self.records:
+                        self.records[key] = old
                     elif isinstance(old, DataIssue):
-                        now = into[key]
+                        now = self.records[key]
                         # Preserve original detection/evidence. A current finding
                         # can reopen a closed issue; disappearance never closes it.
                         citations = {c.model_dump_json(): c for c in (*old.provenance.citations, *now.provenance.citations)}
                         provenance = now.provenance.model_copy(update={"citations": tuple(citations[k] for k in sorted(citations))})
-                        into[key] = now.model_copy(update={"detected_at": old.detected_at, "provenance": provenance})
+                        self.records[key] = now.model_copy(update={"detected_at": old.detected_at, "provenance": provenance})
                     for reference in _references(old):
                         refkey = (reference.kind, reference.id)
-                        if refkey not in seen:
+                        if reference.kind == "source_record":
+                            # Sources cite nothing further. As for every record,
+                            # a current observation replaces the retained one.
+                            if refkey in self.sources or reference.id in retained:
+                                continue
+                            if refkey not in previous:
+                                raise ValueError(f"Issue history is missing {reference.kind}/{reference.id}")
+                            retained.add(reference.id)
+                        elif refkey not in seen:
                             try:
                                 pending.append(previous[refkey])
                             except KeyError:
                                 raise ValueError(f"Issue history is missing {reference.kind}/{reference.id}") from None
+            self.retained = RetainedSources(previous, retained)
         # Every record crossed validated() individually. Constructing the tuples
         # must not ask Pydantic to copy the entire corpus a second time. The full
         # graph validator still checks all links, ownership rules and cycles.
         catalog = Catalog.model_construct(sources=tuple(self.sources[k] for k in sorted(self.sources)),
                                           records=tuple(self.records[k] for k in sorted(self.records)))
-        return catalog.check_graph()
+        return catalog.check_graph_with(self.retained)

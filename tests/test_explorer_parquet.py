@@ -4,6 +4,7 @@ import subprocess
 import sys
 import tracemalloc
 
+import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 from committee_explorer.browser import package, verify
@@ -144,6 +145,123 @@ def test_catalog_sources_publish_in_id_order_whatever_the_catalog_order(tmp_path
     write_catalog(unordered, {(r.kind, r.id) for r in catalog.records}, stage, lambda *a, **k: None, lambda *a, **k: None, {})
     ids = pq.read_table(stage / 'sources.parquet', columns=['id'])['id'].to_pylist()
     assert len(ids) > 1 and ids == sorted(s.id for s in catalog.sources)
+
+
+def source_record(i, size=0):
+    import random
+    from committee_meeting.common import Identifier
+    from committee_meeting.provenance import SourceRecord
+    return SourceRecord(id=f'{i:06d}', provider=f'test-{i % 3}', identifier=Identifier(scheme='test:record', value=str(i)),
+                        url=f'https://example.org/{i}', payload={'text': 'évidence' * (i % 13), 'noise': random.Random(i).randbytes(size).hex()})
+
+
+def release_files(root):
+    _, directory, _ = verify(root)
+    return {path.relative_to(directory).as_posix(): path.read_bytes() for path in sorted(directory.rglob('*')) if path.is_file()}
+
+
+@pytest.mark.parametrize('file_target', [None, 60_000])
+def test_retained_sources_merge_into_the_current_id_range_with_identical_bytes(tmp_path, monkeypatch, file_target):
+    from committee_meeting import Catalog
+    from committee_explorer import parquet
+    if file_target:  # Several source files: boundaries depend only on the merged row stream.
+        monkeypatch.setattr(parquet, 'SOURCE_FILE_TARGET', file_target)
+    sources = [source_record(i, size=(i * 7919) % 200) for i in range(3000)]
+    # Every third ID is a historical copy that issue history alone retains.
+    current, retained = [s for i, s in enumerate(sources) if i % 3], [s for i, s in enumerate(sources) if not i % 3]
+    written = {}
+    for name, catalog, rest in (('in-memory', Catalog.model_construct(sources=tuple(sources), records=()), ()),
+                                ('streamed', Catalog.model_construct(sources=tuple(reversed(current)), records=()), iter(retained))):
+        stage = tmp_path / name
+        stage.mkdir()
+        calls = []
+        parquet.write_catalog(catalog, set(), stage, lambda path, role, schema, count, **kw: calls.append((path, role, count)),
+                              lambda *a, **k: None, {}, rest)
+        written[name] = (calls, {p.name: p.read_bytes() for p in sorted(stage.iterdir())})
+    assert written['streamed'] == written['in-memory']
+    counts = [count for _, role, count in written['streamed'][0] if role == 'sources']
+    assert sum(counts) == 3000 and (len(counts) > 1) == bool(file_target)
+
+
+def deterministic_ids(monkeypatch, seed):
+    """Two exports from copies of one state allocate the same new persistent IDs."""
+    import random
+    import uuid
+    from committee_explorer import ids
+    generator = random.Random(seed)
+    monkeypatch.setattr(ids, 'uuid4', lambda: uuid.UUID(int=generator.getrandbits(128), version=4))
+
+
+def in_memory_finish(finish):
+    """Assembly before history sources stayed on disk: every one loads into the catalog."""
+    from committee_meeting import Catalog
+    from committee_explorer.history import RetainedSources
+    def load_retained(self):
+        catalog = finish(self)
+        for key in self.retained:
+            self.sources[key] = self.retained[key]
+        self.retained = RetainedSources()
+        return Catalog.model_construct(sources=tuple(self.sources[k] for k in sorted(self.sources)),
+                                       records=catalog.records).check_graph()
+    return load_retained
+
+
+@pytest.mark.parametrize('format', ['parquet', 'json'])
+def test_history_sources_publish_exactly_as_when_loaded_in_memory(tmp_path, monkeypatch, format):
+    """Every input snapshot re-keys its sources; old issues keep citing the old ones.
+
+    The streamed export must publish the same files, manifest (retained input
+    snapshots, coverage counts) and issue history as the in-memory catalog did.
+    """
+    import gzip
+    import shutil
+    import sqlite3
+    from committee_explorer.assemble import Assembly
+    rows = [{**native(), 'eventId': str(106245 + i), 'date': 'invalid date'} for i in range(12)]
+    def run(root, generation, **kwargs):
+        meetings = tmp_path / f'meetings-{generation}.jsonl.gz'  # Same rows, new snapshot bytes.
+        meetings.write_bytes(gzip.compress(b'\n'.join(json.dumps(r).encode() for r in rows), mtime=generation))
+        return export(meetings=meetings, output_dir=root / 'public', state_dir=root / 'state',
+                      as_of=NOW.replace(day=20 + generation), format=format, **kwargs)
+    deterministic_ids(monkeypatch, 1)
+    _, first = run(tmp_path / 'previous', 1)
+    decisions = tmp_path / 'decisions.json'
+    issue = next(r for r in first.records if r.kind == 'data_issue')
+    decisions.write_text(json.dumps([{'issue_id': issue.id, 'status': 'dismissed', 'explanation': 'Reviewed.'}]))
+    for name in ('in-memory', 'streamed'):
+        shutil.copytree(tmp_path / 'previous', tmp_path / name)
+    original = Assembly.finish
+    for generation in (2, 3):  # 2 records a new decision; 3 replays it from history.
+        results = {}
+        for name in ('in-memory', 'streamed'):
+            deterministic_ids(monkeypatch, generation)
+            monkeypatch.setattr(Assembly, 'finish', in_memory_finish(original) if name == 'in-memory' else original)
+            manifest, catalog = run(tmp_path / name, generation, issue_decisions=decisions)
+            with sqlite3.connect(next((tmp_path / name / 'state/issue-history').glob('*.sqlite'))) as connection:
+                digest = connection.execute("SELECT value FROM metadata WHERE key='content_sha256'").fetchone()
+            state = {path: (tmp_path / name / 'state' / path).read_bytes() for path in ('ids.json', 'publication.json')}
+            results[name] = (release_files(tmp_path / name / 'public'), digest, state, catalog)
+        assert results['streamed'][:3] == results['in-memory'][:3]
+        # The case is real: retained sources interleave with current ones by ID.
+        files, _, _, catalog = results['streamed']
+        if format == 'parquet':
+            published = [row for path in sorted(files) if path.startswith('sources')
+                         for row in pq.read_table(pa.BufferReader(files[path]), columns=['id', 'input_snapshot_id']).to_pylist()]
+        else:
+            published = json.loads(files['catalog.json'])['sources']
+        decision_sources = [s.id for s in catalog.sources if s.provider == 'curated-issue-decisions']
+        assert bool(decision_sources) == (generation == 2)  # Generation 3 reuses the retained observation.
+        # Parquet sorts every source; catalog.json keeps a new decision source last, as before.
+        ids = [row['id'] for row in published]
+        tail = decision_sources if format == 'json' else []
+        head = ids[:len(ids) - len(tail)]
+        assert head == sorted(head) and ids[len(head):] == tail
+        current = {s.id for s in catalog.sources}
+        retained = {row['id']: row['input_snapshot_id'] for row in published if row['id'] not in current}
+        assert current and retained and current <= {row['id'] for row in published}
+        assert any(min(current) < id < max(current) for id in retained)
+        # Snapshots of earlier generations stay in the manifest for retained sources only.
+        assert set(retained.values()) <= {s.id for s in manifest.inputs} - {s.input_snapshot_id for s in catalog.sources}
 
 
 def test_file_link_building_does_not_retain_complete_representation_payloads(tmp_path):

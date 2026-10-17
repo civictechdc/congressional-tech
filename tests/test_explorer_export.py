@@ -42,6 +42,14 @@ def run(tmp_path, path, **kw):
     return export(meetings=path, output_dir=tmp_path / "public", state_dir=tmp_path / "state", as_of=NOW, **kw)
 
 
+def published(tmp_path):
+    """The current JSON publication's complete catalog, including retained history sources."""
+    from committee_meeting import Catalog
+    pointer = json.loads((tmp_path / "public/CURRENT.json").read_text())
+    directory = tmp_path / "public" / Path(pointer["manifest_path"]).parent
+    return Catalog.model_validate_json((directory / "catalog.json").read_bytes())
+
+
 @pytest.mark.parametrize("valid", [True, False])
 def test_transcript_snapshot_and_representation_use_one_read(tmp_path, monkeypatch, valid):
     meetings = write_meetings(tmp_path, [native()])
@@ -180,12 +188,14 @@ def test_documented_issue_resolution_retains_original_evidence(tmp_path):
     assert closed.provenance == original.provenance
     assert closed.resolution.provenance.basis == "curated"
     assert closed.detected_at == original.detected_at
-    # Issue history retains this decision source; the next export must reuse it.
+    # Issue history retains this decision source; the next export must reuse it
+    # from there rather than record the same decision as a new observation.
     _, third = run(tmp_path, path, issue_decisions=decisions)
     replay = next(r for r in third.records if r.kind == 'data_issue' and r.id == original.id)
     assert replay.resolution == closed.resolution
-    decision_sources = [s for s in third.sources if s.provider == 'curated-issue-decisions']
-    assert len(decision_sources) == 1
+    assert not any(s.provider == 'curated-issue-decisions' for s in third.sources)  # Retained, not reloaded.
+    decision_sources = [s for s in published(tmp_path).sources if s.provider == 'curated-issue-decisions']
+    assert [s.id for s in decision_sources] == [c.source.id for c in closed.resolution.provenance.citations]
 
 
 def test_explicit_youtube_id_unifies_native_link_and_cache_metadata(tmp_path):

@@ -6,6 +6,7 @@ meeting, witness or material they describe, not published as navigation steps.
 """
 import json
 from collections import defaultdict, deque
+from heapq import merge
 from itertools import batched
 from operator import attrgetter, itemgetter
 from pathlib import Path
@@ -445,7 +446,8 @@ def write_tables(records, sources, query_rows, stage, descriptor):
         descriptor(path, 'sources', 'committee_explorer.parquet.source_record', count, media_type='application/vnd.apache.parquet')
 
 
-def write_catalog(catalog, current, stage, descriptor, write, evidence_states):
+def write_catalog(catalog, current, stage, descriptor, write, evidence_states, retained_sources=()):
+    """``retained_sources``: sources only issue history holds, streamed in ascending ID order."""
     from .query import write_queries
     query_rows, info = deque(), {}
     def collect(path, value, role, schema_name, count, **kwargs):
@@ -458,10 +460,11 @@ def write_catalog(catalog, current, stage, descriptor, write, evidence_states):
         while query_rows:
             yield query_rows.popleft()
     # Assembly already orders sources by ID, so this sorts references in linear
-    # time; apply_decisions appends its decision sources.
+    # time; apply_decisions appends its decision sources. Retained sources join
+    # in the same pass, one decoded row at a time.
+    sources = merge(sorted(catalog.sources, key=attrgetter('id')), retained_sources, key=attrgetter('id'))
     write_tables((r.model_dump(mode='json') for r in catalog.records),
-                 (s.model_dump(mode='json') for s in sorted(catalog.sources, key=attrgetter('id'))),
-                 consume_query_rows(), stage, descriptor)
+                 (s.model_dump(mode='json') for s in sources), consume_query_rows(), stage, descriptor)
     info.pop('partitions', None)
     info.update(storage='parquet', query_columns=QUERY_COLUMNS)
     write('queries.json', info, 'index', 'committee_explorer.queries', len(info['kinds']))

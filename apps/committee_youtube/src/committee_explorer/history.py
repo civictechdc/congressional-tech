@@ -2,7 +2,8 @@
 
 Only issues and the typed references needed to inspect their evidence survive.
 SQLite keeps traversal and migration queues on disk. Loading history does not
-load a previous catalog or deserialize every historical record.
+load a previous catalog or deserialize every historical record. Sources that
+only history still cites are published and carried forward from this file.
 """
 from collections import ChainMap
 from collections.abc import Mapping
@@ -80,6 +81,15 @@ class IssueHistory(Mapping):
         for (payload,) in self.connection.execute("SELECT payload FROM records WHERE kind='data_issue' ORDER BY id"):
             yield _decode(payload)
 
+    def iter_records(self, kind, ids):
+        """Decode the records of one kind whose IDs are in ``ids``, in ID order.
+
+        The primary key orders this scan; other rows are skipped undecoded.
+        """
+        for identity, payload in self.connection.execute("SELECT id, payload FROM records WHERE kind=? ORDER BY id", (kind,)):
+            if identity in ids:
+                yield _decode(payload)
+
     def close(self):
         self.connection.close()
 
@@ -88,6 +98,40 @@ class IssueHistory(Mapping):
 
     def __exit__(self, *_):
         self.close()
+
+
+class RetainedSources(Mapping):
+    """Source observations that only retained issue history still cites.
+
+    The assembled catalog holds current sources. These stay in the previous
+    history file and are published from it: membership is an in-memory ID set,
+    and lookups and the ordered scan decode one row at a time.
+    """
+
+    def __init__(self, history=None, ids=frozenset()):
+        self.history, self.ids = history, ids  # ids: a set of source IDs held in history.
+
+    def __contains__(self, key):
+        return key[0] == "source_record" and key[1] in self.ids
+
+    def __getitem__(self, key):
+        if key not in self:
+            raise KeyError(key)
+        return self.history[key]
+
+    def __iter__(self):
+        return (("source_record", identity) for identity in sorted(self.ids))
+
+    def __len__(self):
+        return len(self.ids)
+
+    def records(self):
+        """Yield every retained source in ascending ID order, as write_tables requires."""
+        if isinstance(self.history, IssueHistory):
+            yield from self.history.iter_records("source_record", self.ids)
+        else:
+            for key in self:
+                yield self.history[key]
 
 
 def load_history(state_dir, publication_id):
@@ -115,10 +159,11 @@ def _issues(records):
     elif isinstance(records, ChainMap):
         # ChainMap.__iter__ constructs a union of all keys. Avoid that allocation
         # for the large, disjoint source/domain dictionaries used by assembly.
+        # Iterate keys: a disk-backed mapping decodes only the issues it yields.
         for index, mapping in enumerate(records.maps):
-            for key, record in mapping.items():
+            for key in mapping:
                 if key[0] == "data_issue" and not any(key in earlier for earlier in records.maps[:index]):
-                    yield record
+                    yield mapping[key]
     else:
         for key, record in records.items():
             if key[0] == "data_issue":
@@ -130,7 +175,9 @@ def save_history(state_dir, publication_id, records):
 
     Call after all issue decisions, before updating the publication pointer.
     Snapshots are immutable, so a failed publication cannot overwrite the prior
-    history. ``ChainMap(assembly.records, assembly.sources)`` needs no new index.
+    history. ``ChainMap(assembly.records, assembly.sources, assembly.retained)``
+    needs no new index; retained sources are decoded one at a time from the
+    previous history, which must stay open until this returns.
     """
     if not isinstance(records, Mapping):
         raise TypeError("save_history requires a record mapping; use migrate_history for iterables")

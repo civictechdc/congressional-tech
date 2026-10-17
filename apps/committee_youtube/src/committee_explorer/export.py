@@ -10,7 +10,11 @@ import logging
 import shutil
 import tempfile
 from collections import ChainMap, Counter, defaultdict
+from contextlib import ExitStack
 from datetime import datetime, timezone
+from heapq import merge
+from itertools import chain
+from operator import attrgetter
 from pathlib import Path
 
 from committee_meeting import SCHEMA_VERSION
@@ -36,7 +40,7 @@ from congress_api.matching import reviewed_committees
 
 from .assemble import Assembly
 from .coverage import build as coverage
-from .history import load_history, migrate_history, save_history
+from .history import RetainedSources, load_history, migrate_history, save_history
 from .ids import IdRegistry
 from .issues import apply_decisions
 from .query import write_queries
@@ -65,15 +69,27 @@ def read(path):
     return data, body
 
 
-def validate_selectors(catalog):
+def validate_selectors(catalog, retained=RetainedSources()):
+    """Resolve every JSON-pointer citation; summarize the retained sources in the same pass.
+
+    Citations of retained sources wait for one ordered scan of the issue history,
+    which decodes one source at a time. Returns those sources' provider counts and
+    input snapshot IDs, which the coverage report and manifest need.
+    """
     from committee_meeting.catalog import _pointer_exists
     from committee_meeting.common import Model
     sources = {s.id: s for s in catalog.sources}
+    waiting = defaultdict(set)
+    def check(source, selector):
+        if source.payload is None or not _pointer_exists(source.payload, selector):
+            raise ValueError(f"Citation does not resolve: {source.id} {selector}")
     def visit(value):
         if isinstance(value, Citation) and value.selector_type == "json_pointer":
-            payload = sources[value.source.id].payload
-            if payload is None or not _pointer_exists(payload, value.selector):
-                raise ValueError(f"Citation does not resolve: {value.source.id} {value.selector}")
+            source = sources.get(value.source.id)
+            if source is None:
+                waiting[value.source.id].add(value.selector)
+            else:
+                check(source, value.selector)
         elif isinstance(value, Model):
             for name in type(value).model_fields:
                 visit(getattr(value, name))
@@ -82,6 +98,16 @@ def validate_selectors(catalog):
                 visit(item)
     for record in catalog.records:
         visit(record)
+    providers, inputs = Counter(), set()
+    for source in retained.records():
+        providers[source.provider] += 1
+        inputs.add(source.input_snapshot_id)
+        for selector in waiting.pop(source.id, ()):
+            check(source, selector)
+    if waiting:
+        identity = min(waiting)
+        raise ValueError(f"Citation does not resolve: {identity} {min(waiting[identity])}")
+    return providers, inputs
 
 
 def load_previous(output, state):
@@ -184,7 +210,7 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=
     output, state = Path(output_dir), Path(state_dir)
     state.mkdir(parents=True, exist_ok=True)
     output.mkdir(parents=True, exist_ok=True)
-    with (state / "export.lock").open("a") as lock:
+    with (state / "export.lock").open("a") as lock, ExitStack() as cleanup:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         reuse_key = None
         if reuse_from is not None:
@@ -199,6 +225,9 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=
                 return reused, None
         ids = IdRegistry(state / "ids.json")
         previous, previous_manifest = load_previous(output, state)
+        if previous is not None:
+            # Retained sources are read from this file until the new history is saved.
+            cleanup.callback(previous.close)
         previous_id = previous_manifest.publication_id if previous_manifest else None
         assembly = Assembly(previous, ids=ids, now=now)
         snapshots, scopes, reconciliation = [], [], []
@@ -501,18 +530,24 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=
         print_decisions = assemble_inputs()
         LOGGER.info('Validating %d records and %d source observations', len(assembly.records), len(assembly.sources))
         catalog = assembly.finish()
-        if previous is not None: previous.close()
+        # The catalog holds current sources; sources only old issues cite stay in
+        # the previous history and stream from it wherever all sources are read.
+        retained, assembled = assembly.retained, len(catalog.sources)
+        LOGGER.info('Checking citations; %d source observations remain in issue history', len(retained))
         if issue_decisions:
             c, content = context(issue_decisions, "curated-issue-decisions")
-            catalog = apply_decisions(catalog, json.loads(content), c)
-        validate_selectors(catalog)
+            catalog = apply_decisions(catalog, json.loads(content), c, retained)
+        def published_sources():
+            # Assembly orders sources by ID; documented decisions append theirs.
+            return chain(merge(catalog.sources[:assembled], retained.records(), key=attrgetter("id")), catalog.sources[assembled:])
+        retained_providers, retained_inputs = validate_selectors(catalog, retained)
         # Previous issue evidence may reference earlier inputs. Preserve those
         # snapshots from the previous manifest instead of inventing freshness.
         known = {s.id for s in snapshots}
+        used = {s.input_snapshot_id for s in catalog.sources} | retained_inputs
         if previous_id:
-            used = {s.input_snapshot_id for s in catalog.sources}
             snapshots += [s for s in previous_manifest.inputs if s.id in used and s.id not in known]
-        if any(s.input_snapshot_id not in {v.id for v in snapshots} for s in catalog.sources):
+        if not used <= {s.id for s in snapshots}:
             raise ValueError("A source refers to an input absent from the manifest")
         if format == "json":
             current_records = [r for r in catalog.records if (r.kind, r.id) in assembly.current]
@@ -546,7 +581,7 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=
                 # duplicate the largest artifact in memory before writing any bytes.
                 with (stage / "catalog.json").open("wb") as stream:
                     stream.write(b'{"schema_version":' + json.dumps(SCHEMA_VERSION).encode())
-                    for field, values in (("sources", catalog.sources), ("records", catalog.records)):
+                    for field, values in (("sources", published_sources()), ("records", catalog.records)):
                         stream.write(b',"' + field.encode() + b'":[')
                         for i, record in enumerate(values):
                             if i: stream.write(b',')
@@ -585,7 +620,7 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=
                         keys.append(record.kind + "/" + record.id)
                         size += len(raw) + 1
                     flush()
-                chunks(catalog.sources, "sources", "sources", "committee_explorer.sources")
+                chunks(published_sources(), "sources", "sources", "committee_explorer.sources")
                 chunks(catalog.records, "records", "details", "committee_explorer.records")
                 buckets = {}
                 for bucket, entries in sorted(locations.items()):
@@ -601,12 +636,12 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=
             evidence_states = {}
             report = coverage(catalog, assembly.current, [s.id for s in snapshots], states_out=evidence_states)
             report["input_reconciliation"] = reconciliation
-            report["source_observation_counts"] = dict(Counter(s.provider for s in catalog.sources))
+            report["source_observation_counts"] = dict(Counter(s.provider for s in catalog.sources) + retained_providers)
             write("coverage.json", report, "coverage", "committee_explorer.coverage", len(report["metrics"]))
             if format == "parquet":
                 from .parquet import write_catalog
                 LOGGER.info('Writing Parquet publication')
-                write_catalog(catalog, assembly.current, stage, descriptor, write, evidence_states)
+                write_catalog(catalog, assembly.current, stage, descriptor, write, evidence_states, retained.records())
             else:
                 write_queries(catalog, assembly.current, write, evidence_states=evidence_states)
             publication_id = sha(encode({"inputs": [s.id for s in snapshots], "partitions": [p.sha256 for p in partitions], "generated_at": now.isoformat()}))[:24]
@@ -620,11 +655,13 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=
                 if file_sha(stage / p.path) != p.sha256 or (stage / p.path).stat().st_size != p.byte_size:
                     raise ValueError(f"Export verification failed: {p.path}")
             # Persist IDs before publishing references that depend on them.
-            history_records = ChainMap(assembly.records, assembly.sources)
+            history_records = ChainMap(assembly.records, assembly.sources, retained)
             if issue_decisions:
-                history_records = {(r.kind,r.id):r for values in (catalog.records,catalog.sources) for r in values}
+                history_records = ChainMap({(r.kind,r.id):r for values in (catalog.records,catalog.sources) for r in values}, retained)
             LOGGER.info('Saving retained issue history')
             save_history(state, publication_id, history_records)
+            if previous is not None:
+                previous.close()  # Its retained sources are now in the new history.
             LOGGER.info('Saving persistent IDs')
             ids.save()
             release = output / "releases" / publication_id
@@ -680,7 +717,10 @@ def main():
     if catalog is None:
         print(f"Reused verified publication {manifest.publication_id}; inputs and implementation are unchanged")
     else:
-        print(f"Published locally {manifest.publication_id}: {len(catalog.records)} records, {len(catalog.sources)} source observations")
+        # The returned catalog holds current sources only; count what was published.
+        sources = sum(p.record_count for p in manifest.partitions
+                      if p.schema_name in ("committee_explorer.sources", "committee_explorer.parquet.source_record"))
+        print(f"Published locally {manifest.publication_id}: {len(catalog.records)} records, {sources} source observations")
 
 
 if __name__ == "__main__":

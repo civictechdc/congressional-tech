@@ -4,7 +4,9 @@ from committee_meeting import Catalog
 from committee_meeting.issues import IssueResolution
 
 
-def apply_decisions(catalog, rows, context):
+def apply_decisions(catalog, rows, context, retained=None):
+    """``retained`` maps (kind, id) to sources the catalog cites but issue history holds."""
+    retained = {} if retained is None else retained
     records = {(r.kind, r.id): r for r in catalog.records}
     sources = {source.id: source for source in catalog.sources}
     seen = set()
@@ -19,7 +21,11 @@ def apply_decisions(catalog, rows, context):
         if row.get("status") not in ("resolved", "dismissed"):
             raise ValueError("Issue decision status must be resolved or dismissed")
         source = context.source(issue_id, row)
+        # A replayed decision's source may be retained only by issue history; it
+        # stays there and is published from there.
         previous = sources.get(source.id)
+        if previous is None:
+            previous = retained.get((source.kind, source.id))
         if previous is not None:
             # Replaying the same retained decision is the same observation.
             # Keep its original import time; never replace different evidence.
@@ -31,4 +37,5 @@ def apply_decisions(catalog, rows, context):
         decided = datetime.fromisoformat(row["decided_at"]) if row.get("decided_at") else source.imported_at or context.now
         resolution = IssueResolution(decided_at=decided, explanation=row["explanation"], provenance=context.evidence(source, basis="curated"))
         records[key] = type(records[key]).model_validate(records[key].model_copy(update={"status": row["status"], "resolution": resolution}))
-    return Catalog.model_construct(sources=tuple(sources.values()), records=tuple(records[k] for k in sorted(records))).check_graph()
+    return Catalog.model_construct(sources=tuple(sources.values()),
+                                   records=tuple(records[k] for k in sorted(records))).check_graph_with(retained)
