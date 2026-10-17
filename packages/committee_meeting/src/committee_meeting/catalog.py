@@ -61,15 +61,26 @@ class Catalog(Model):
 
     @model_validator(mode="after")
     def check_graph(self):
+        return self.check_graph_with({})
+
+    def check_graph_with(self, external_sources):
+        """Validate this catalog where some cited source observations are stored elsewhere.
+
+        ``external_sources`` maps ("source_record", id) to a SourceRecord that is
+        part of the same export but not held in ``sources``. Membership must be
+        cheap; a check loads a record only when it reads its fields. An external
+        identity may not repeat one in this catalog.
+        """
         index = {}
         for item in (*self.sources, *self.records):
             key = (item.kind, item.id)
-            if key in index:
+            if key in index or key in external_sources:
                 raise ValueError(f"duplicate record identity: {key}")
             index[key] = item
 
         def resolve(ref):
-            return index[(ref.kind, ref.id)]
+            key = (ref.kind, ref.id)
+            return index[key] if key in index else external_sources[key]
 
         def require(condition, message):
             if not condition:
@@ -77,7 +88,8 @@ class Catalog(Model):
 
         for item in self.records:
             for ref in _references(item):
-                require((ref.kind, ref.id) in index, f"{item.kind}/{item.id}: missing {ref.kind}/{ref.id}")
+                key = (ref.kind, ref.id)
+                require(key in index or key in external_sources, f"{item.kind}/{item.id}: missing {ref.kind}/{ref.id}")
             paths = [e.path for e in item.field_evidence]
             require(len(paths) == len(set(paths)), f"{item.id}: duplicate field evidence paths")
             if paths:

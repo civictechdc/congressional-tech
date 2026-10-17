@@ -89,6 +89,30 @@ class ModelTests(unittest.TestCase):
         self.data["sources"] = []
         self.invalid("missing source_record")
 
+    def test_sources_stored_elsewhere_still_satisfy_and_constrain_the_graph(self):
+        catalog = Catalog.model_validate(self.data)
+        external = {(s.kind, s.id): s for s in catalog.sources}
+        partial = Catalog.model_construct(sources=(), records=catalog.records)
+        with self.assertRaisesRegex(ValueError, "missing source_record"):
+            partial.check_graph()
+        self.assertIs(partial.check_graph_with(external), partial)
+        # An issue about a source reads that stored source's fields.
+        from committee_meeting.issues import DataIssue
+        source = catalog.sources[0]
+        issue = {"kind": "data_issue", "id": "source-issue", "subject": reference("source_record", source.id),
+                 "category": "unverified", "summary": "Check the source", "detected_at": "2026-09-25T12:00:00Z",
+                 "provenance": self.row("hearing")["provenance"]}
+        for path, valid in (("/missing", False), ("/provider", True)):
+            stored = Catalog.model_construct(sources=(), records=(
+                *catalog.records, DataIssue.model_validate({**issue, "field_path": path})))
+            if valid:
+                stored.check_graph_with(external)
+            else:
+                with self.assertRaisesRegex(ValueError, "issue field path does not exist"):
+                    stored.check_graph_with(external)
+        with self.assertRaisesRegex(ValueError, "duplicate record identity"):
+            Catalog.model_construct(sources=(source,), records=catalog.records).check_graph_with(external)
+
     def test_wrong_ref_type_and_dangling_links_are_rejected(self):
         link = self.row("print-hearing")
         link["subject"] = reference("person", "nobody")

@@ -268,7 +268,10 @@ deduplication.
 discriminated list of typed records. **It is not the browser payload.** Validate
 relationships before partitioning into small indexes, details and downloads.
 A detail file may contain outgoing references; validate it as records, not as
-a complete catalog with everything else missing.
+a complete catalog with everything else missing. An exporter that keeps some
+source observations on disk validates the rest with `check_graph_with`, which
+accepts those sources' identities and loads one only when a check reads it; the
+published export still contains every source.
 
 `PublicationManifest` identifies the export, generator, pinned input artifacts,
 source coverage/freshness, latest attempt outcomes, limitations, previous
