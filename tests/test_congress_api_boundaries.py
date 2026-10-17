@@ -14,7 +14,7 @@ from congress_api.cli.common import source_args
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / 'packages/congress_api/src/congress_api'
 SCRIPTS = {
-    'house-meeting-records', 'senate-meeting-records', 'meeting-inventory',
+    'house-committee-sites', 'house-meeting-records', 'senate-meeting-records', 'meeting-inventory',
     'gpo-fetch', 'gpo-match',
     'senate-captions', 'hearing-transcribe', 'gpo-transcripts',
     'congress-meetings', 'congress-committees', 'raw-source-sync',

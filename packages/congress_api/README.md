@@ -228,7 +228,7 @@ Files are grouped by responsibility, with provider names inside each group:
 | `matching/` | Classify meetings and associate documents, recordings and witnesses | `meetings.py`, `prints.py`, `recordings.py`, `completeness.py` |
 | `transcripts/` | Produce published-text, caption and generated transcripts with distinct origins | `gpo.py`, `senate.py`, `generate.py`, `context.py`, `render.py` |
 | `replay/` | Reinterpret saved evidence without fetching replacements | `house.py`, `senate.py`, `gpo.py` |
-| `cli/` | Parse command arguments and connect collection, matching and output | Ten console entrypoints plus common flags |
+| `cli/` | Parse command arguments and connect collection, matching and output | Twelve console entrypoints plus common flags |
 
 The dependency direction is concrete: collectors use transports, parsers and
 retention; parsers and matchers accept supplied data; adapters receive identity

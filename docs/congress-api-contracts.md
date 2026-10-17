@@ -90,7 +90,7 @@ helpers from depending on application adapters or normalized record models.
 
 ## Commands and artifacts
 
-These ten production console script names are stable. Default data paths are relative
+These twelve production console script names are stable. Default data paths are relative
 to `packages/congress_shared/src/congress_shared/data/`, not the working directory.
 Paths marked required have no default. CLI `--help` is safe without credentials.
 
@@ -100,12 +100,14 @@ Paths marked required have no default. CLI `--help` is safe without credentials.
 | `congress-committees` | Required `--output-path`: gzip JSONL Congress-specific lists plus full committee details/history with separate capture times; adjacent `.rejected.json` when listing/detail validation fails | Custom; required `--meetings-path`, optional `--gpo-path` |
 | `gpo-fetch` | `gpo_hearings.csv`; optional `--evidence-path`: gzip JSONL of retained MODS/HTML and acquisition receipts | Custom; `--output-path`, `--chambers` (`hsj`), `--min-congress`, `--full-relist`, `--nthreads` (4), `--refresh-limit` (100) |
 | `gpo-match` | `gpo_hearing_videos.csv`; default coverage file beside it, named `gpo_hearing_video_coverage.csv` | Global `--tinydb_dir`; `--gpo-path`, `--meetings`, `--channels-csv-path`, `--overrides`, `--no-overrides`, `--output-path`, `--coverage-path` |
+| `house-committee-sites` | Required `--state-dir/house-sites.json.gz`; `--output-dir/{house_site_events,house_site_documents,house_site_coverage}.csv` | Custom; required `--committees`; `--refresh-limit` (450), `--limit`, repeatable `--site`, `--retry-requests`, `--workers` (8), `--requests-per-second`, `--as-of`, `--offline`, `--reparse`, `--zyte`, `--zyte-fallback` |
 | `house-meeting-records` | Required `--state-dir/house.json.gz`; `--output-dir/{house_documents_found,house_witnesses_found,house_amendments_found}.csv` | Source flags; required `--gpo-path`; `--refresh-limit` (400), `--limit`, `--zyte`, `--threads` |
 | `senate-meeting-records` | `--state-dir/senate.json.gz`; `--output-dir/{senate_hearing_pages_found,senate_witnesses_found,senate_documents_found}.csv` | Source flags; `--refresh-limit` (450), repeatable `--site`, `--since`, `--limit` |
 | `meeting-inventory` | `--state-dir/inventory.json.gz`; `--output-dir/{hearing_text_sources,meetings_without_records,meeting_completeness,meeting_witnesses}.csv` | Source flags; required `--gpo-path`, `--videos-path`, `--tinydb_dir`, `--recordings`; optional `--channels-csv-path`, `--youtube-caption-index`, `--senate-caption-index` |
 | `gpo-transcripts` | Required `--out-dir/<package>.txt`, with original HTML observation in `source/<package>.json`, including short rejected text | Custom; `--gpo-path`, `--congress`, `--committee`, `--chamber`, `--package-ids`, `--nthreads` (4) |
 | `senate-captions` | Required `--out-dir/<filename>.txt`, `<filename>.captions.json.gz` (raw playlists/WebVTT), `caption_receipts/<filename>.json`, and `captions_index.csv` | Custom; `--urls`, `--urls-file`, `--nthreads` (4) |
 | `hearing-transcribe` | Required `--out-dir/{stem}.json` and `{stem}.gpo.txt`; `source/` contains retained HTML/Gemini attempts | Custom; `--event-id`, `--gpo-package`, `--video-id`, `--senate-url`, `--audio`, `--proxy`, `--gpo-path`, `--meetings` |
+| `raw-source-sync` | `--bucket` (`congressional-tech-raw`): missing bodies, appended receipts, capture/retry indexes and rebuilt filename/document tables; `--summary` (`raw-capture-summary.json`) | Custom; at most one of `--plan-only`, `--capture-only`, `--update-only`, `--rebuild-only`; see the [package README](../packages/congress_api/README.md) |
 
 `cli.common.source_args` defines required `--meetings`, `--state-dir`,
 `--output-dir`, optional `--seed-cache` (expanded path), `--offline`, and
