@@ -6,6 +6,8 @@ meeting, witness or material they describe, not published as navigation steps.
 """
 import json
 from collections import defaultdict, deque
+from itertools import batched
+from operator import attrgetter, itemgetter
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -55,6 +57,11 @@ TABLE_COLUMNS = {
 }
 TABLE_SCHEMAS = {kind: pa.schema([SCHEMA.field(name) for name in names])
                  for kind, names in TABLE_COLUMNS.items()}
+# GitHub's per-file limit, also enforced by publication-budget.py. A source file
+# closes before its next row group could take it past the target.
+FILE_LIMIT = 100_000_000
+SOURCE_FILE_TARGET = 85_000_000
+SOURCE_ROW_GROUP = 512
 
 
 def sources_of(record):
@@ -76,41 +83,84 @@ def _write_table(rows, schema, path, *, row_group_size):
             writer.write_table(table, row_group_size=row_group_size)
 
 
+def _source_row(source):
+    row = {key: source.get(key) for key in SOURCE_SCHEMA.names}
+    row['source_modified_at'] = (source.get('source_modified_at') or {}).get('date')
+    row['identifier'] = json.dumps(source.get('identifier'), ensure_ascii=False)
+    row['retained_uri'] = (source.get('retained') or {}).get('uri')
+    row['retained_sha256'] = (source.get('retained') or {}).get('sha256')
+    row['payload'] = json.dumps(source.get('payload'), ensure_ascii=False, separators=(',', ':'))
+    return row
+
+
+def _write_sources(rows, stage):
+    """Stream ID-ordered rows into files below the size target; hold one row group.
+
+    One file keeps the name sources.parquet; more are sources-1, -2, ... in ID
+    order. Returns (path, row count) pairs.
+    """
+    batches = (pa.Table.from_pylist(list(batch), schema=SOURCE_SCHEMA) for batch in batched(rows, SOURCE_ROW_GROUP))
+    pending = next(batches, None)
+    if pending is None:  # An empty table still needs the same empty row group as write_table.
+        pending = pa.Table.from_pylist([], schema=SOURCE_SCHEMA)
+    files = []
+    while pending is not None:
+        path, count = Path(stage) / f'sources-{len(files) + 1}.parquet', 0
+        with pa.OSFile(str(path), 'wb') as sink, \
+                pq.ParquetWriter(sink, SOURCE_SCHEMA, compression='snappy', write_statistics=True) as writer:
+            # Close the file before a row group whose in-memory size would take
+            # it past the target; written row groups are smaller in practice.
+            while pending is not None and (not count or sink.tell() + pending.nbytes <= SOURCE_FILE_TARGET):
+                writer.write_table(pending, row_group_size=SOURCE_ROW_GROUP)
+                count += pending.num_rows
+                pending = next(batches, None)
+        files.append((path, count))
+    if len(files) == 1:
+        files = [(files[0][0].rename(Path(stage) / 'sources.parquet'), files[0][1])]
+    for path, _ in files:
+        if path.stat().st_size >= FILE_LIMIT:
+            raise ValueError('Source table exceeds GitHub file limit')
+    return [(path.name, count) for path, count in files]
+
+
 def write_tables(records, sources, query_rows, stage, descriptor):
-    """Accept iterables so a retained JSON publication can migrate without reassembly."""
-    source_rows, native_documents, native_meetings, reviewed_document_types = [], {}, {}, {}
-    committee_documents = {}
-    for source in sources:
-        if source['provider'] == 'congress.gov' and isinstance(source.get('payload'), dict):
-            native_meetings[source['id']] = {k: source['payload'].get(k) for k in ('type', 'title')}
-            for group in ('meetingDocuments', 'witnessDocuments'):
-                for i, document in enumerate(source['payload'].get(group) or []):
-                    native_documents[(source['id'], f'/{group}/{i}')] = (group, document)
-        payload = source.get('payload') or {}
-        if source['provider'] == 'docs.house.gov':
-            from congress_api.parsers.house_documents import XML_KINDS
-            for i, group in enumerate((payload.get('evidence') or {}).get('document_groups', [])):
-                code = group.get('type')
-                label = XML_KINDS.get(code, code)
-                if label: label = label[:1].upper() + label[1:]
-                origin = {'meeting_xml': 'Meeting documents', 'witness_xml': 'Witness documents'}.get(group.get('source'))
-                committee_documents[source['id'], f'/evidence/document_groups/{i}'] = (label, origin, code, [])
-        if source['provider'] == 'senate.committees':
-            for url, metadata in (payload.get('document_metadata') or {}).items():
-                selector = '/document_metadata/' + url.replace('~', '~0').replace('/', '~1')
-                labels = metadata.get('labels') or []
-                committee_documents[source['id'], selector] = (
-                    None, 'Witness documents' if metadata.get('witness_indexes') else None, None, labels)
-        if source['provider'] == 'gpo.committee-review' and isinstance(source.get('payload'), dict):
-            label = source['payload'].get('source_document_type')
-            if isinstance(label, str) and label: reviewed_document_types[source['id']] = label
-        row = {key: source.get(key) for key in SOURCE_SCHEMA.names}
-        row['source_modified_at'] = (source.get('source_modified_at') or {}).get('date')
-        row['identifier'] = json.dumps(source.get('identifier'), ensure_ascii=False)
-        row['retained_uri'] = (source.get('retained') or {}).get('uri')
-        row['retained_sha256'] = (source.get('retained') or {}).get('sha256')
-        row['payload'] = json.dumps(source.get('payload'), ensure_ascii=False, separators=(',', ':'))
-        source_rows.append(row)
+    """Accept iterables so a retained JSON publication can migrate without reassembly.
+
+    Sources must arrive in ascending ID order. They stream to Parquet while the
+    small lookups the records need are collected in the same pass.
+    """
+    native_documents, native_meetings, reviewed_document_types, committee_documents = {}, {}, {}, {}
+    def source_rows():
+        previous = None
+        for source in sources:
+            if previous is not None and source['id'] <= previous:
+                raise ValueError(f"Sources must be unique and in ascending ID order: {source['id']} follows {previous}")
+            previous = source['id']
+            if source['provider'] == 'congress.gov' and isinstance(source.get('payload'), dict):
+                native_meetings[source['id']] = {k: source['payload'].get(k) for k in ('type', 'title')}
+                for group in ('meetingDocuments', 'witnessDocuments'):
+                    for i, document in enumerate(source['payload'].get(group) or []):
+                        native_documents[(source['id'], f'/{group}/{i}')] = (group, document)
+            payload = source.get('payload') or {}
+            if source['provider'] == 'docs.house.gov':
+                from congress_api.parsers.house_documents import XML_KINDS
+                for i, group in enumerate((payload.get('evidence') or {}).get('document_groups', [])):
+                    code = group.get('type')
+                    label = XML_KINDS.get(code, code)
+                    if label: label = label[:1].upper() + label[1:]
+                    origin = {'meeting_xml': 'Meeting documents', 'witness_xml': 'Witness documents'}.get(group.get('source'))
+                    committee_documents[source['id'], f'/evidence/document_groups/{i}'] = (label, origin, code, [])
+            if source['provider'] == 'senate.committees':
+                for url, metadata in (payload.get('document_metadata') or {}).items():
+                    selector = '/document_metadata/' + url.replace('~', '~0').replace('/', '~1')
+                    labels = metadata.get('labels') or []
+                    committee_documents[source['id'], selector] = (
+                        None, 'Witness documents' if metadata.get('witness_indexes') else None, None, labels)
+            if source['provider'] == 'gpo.committee-review' and isinstance(source.get('payload'), dict):
+                label = source['payload'].get('source_document_type')
+                if isinstance(label, str) and label: reviewed_document_types[source['id']] = label
+            yield _source_row(source)
+    source_files = _write_sources(source_rows(), stage)
     rows = {kind: {} for kind in TABLES if kind != 'source_record'}
     for row in query_rows:
         rows[row['kind']][row['id']] = {**row, 'files': [], 'facts': [], 'meeting_ids': [],
@@ -387,27 +437,12 @@ def write_tables(records, sources, query_rows, stage, descriptor):
                 raise ValueError(f"{kind} {row['id']} has populated fields outside its table schema: {populated}")
         path = TABLES[kind] + '.parquet'
         _write_table(values, TABLE_SCHEMAS[kind], Path(stage) / path, row_group_size=2048)
-        if (Path(stage) / path).stat().st_size >= 100_000_000:
+        if (Path(stage) / path).stat().st_size >= FILE_LIMIT:
             raise ValueError(f'{path} exceeds GitHub file limit; partition this table before publishing')
         descriptor(path, 'details', 'committee_explorer.parquet.' + kind, len(values), media_type='application/vnd.apache.parquet')
-    source_rows.sort(key=lambda r: r['id'])
-    def write_sources(path, values):
-        _write_table(values, SOURCE_SCHEMA, Path(stage) / path, row_group_size=512)
-    write_sources('sources.parquet', source_rows)
-    if (Path(stage) / 'sources.parquet').stat().st_size < 100_000_000:
-        descriptor('sources.parquet', 'sources', 'committee_explorer.parquet.source_record', len(source_rows), media_type='application/vnd.apache.parquet')
-    else:
-        total_bytes = (Path(stage) / 'sources.parquet').stat().st_size
-        chunk_rows = max(1, int(len(source_rows) * 85_000_000 / total_bytes))
-        (Path(stage) / 'sources.parquet').unlink()
-        # Split only when required by GitHub's per-file limit.
-        for i, start in enumerate(range(0, len(source_rows), chunk_rows)):
-            values = source_rows[start:start + chunk_rows]
-            path = f'sources-{i + 1}.parquet'
-            write_sources(path, values)
-            if (Path(stage) / path).stat().st_size >= 100_000_000:
-                raise ValueError('Source table exceeds GitHub file limit')
-            descriptor(path, 'sources', 'committee_explorer.parquet.source_record', len(values), media_type='application/vnd.apache.parquet')
+    # Source files were written first; the manifest still lists them last.
+    for path, count in source_files:
+        descriptor(path, 'sources', 'committee_explorer.parquet.source_record', count, media_type='application/vnd.apache.parquet')
 
 
 def write_catalog(catalog, current, stage, descriptor, write, evidence_states):
@@ -422,8 +457,11 @@ def write_catalog(catalog, current, stage, descriptor, write, evidence_states):
         # original immediately instead of keeping both sets until publication.
         while query_rows:
             yield query_rows.popleft()
+    # Assembly already orders sources by ID, so this sorts references in linear
+    # time; apply_decisions appends its decision sources.
     write_tables((r.model_dump(mode='json') for r in catalog.records),
-                 (s.model_dump(mode='json') for s in catalog.sources), consume_query_rows(), stage, descriptor)
+                 (s.model_dump(mode='json') for s in sorted(catalog.sources, key=attrgetter('id'))),
+                 consume_query_rows(), stage, descriptor)
     info.pop('partitions', None)
     info.update(storage='parquet', query_columns=QUERY_COLUMNS)
     write('queries.json', info, 'index', 'committee_explorer.queries', len(info['kinds']))
@@ -455,7 +493,8 @@ def migrate(input_dir, output_dir):
         partitions.append(ExportPartition(path=path, role=role, schema_name=schema_name, schema_version=manifest.schema_version,
             record_count=count, byte_size=dest.stat().st_size, sha256=file_sha(dest), media_type=media_type))
     try:
-        write_tables(values('committee_explorer.records', 'records'), values('committee_explorer.sources', 'sources'),
+        write_tables(values('committee_explorer.records', 'records'),
+                     sorted(values('committee_explorer.sources', 'sources'), key=itemgetter('id')),
                      values('committee_explorer.query-rows', 'rows'), stage, descriptor)
         info = read(next(p for p in manifest.partitions if p.schema_name == 'committee_explorer.queries'))
         info.pop('partitions', None)

@@ -31,15 +31,119 @@ def test_parquet_source_conversion_has_bounded_arrow_memory(tmp_path):
     script = '''
 import sys
 import pyarrow as pa
-from committee_explorer.parquet import SOURCE_SCHEMA, _write_table
-rows = [dict(id=str(i), payload='evidence' * 512) for i in range(8193)]
-_write_table(rows, SOURCE_SCHEMA, sys.argv[1], row_group_size=512)
+from committee_explorer.parquet import _write_sources
+rows = (dict(id=f'{i:05d}', payload='evidence' * 512) for i in range(8193))
+_write_sources(rows, sys.argv[1])
 print(pa.default_memory_pool().max_memory())
 '''
-    result = subprocess.run([sys.executable, '-c', script, str(tmp_path / 'sources.parquet')],
+    result = subprocess.run([sys.executable, '-c', script, str(tmp_path)],
                             capture_output=True, text=True, check=True, timeout=30)
     assert int(result.stdout) < 16 * 1024 * 1024
     assert pq.read_metadata(tmp_path / 'sources.parquet').num_rows == 8193
+
+
+def source(i, size=0):
+    import random
+    return dict(kind='source_record', id=f'{i:06d}', provider='test', url=f'https://example.org/{i}',
+                identifier={'scheme': 'test:record', 'value': str(i)}, retained={'uri': f'sha256:{i}', 'sha256': str(i)},
+                payload={'text': 'évidence' * (i % 13), 'noise': random.Random(i).randbytes(size).hex()})
+
+
+def legacy_sources(sources, stage, *, limit=100_000_000, target=85_000_000):
+    """The writer before streaming: collect every row, sort, split by row count."""
+    from committee_explorer.parquet import SOURCE_SCHEMA, _source_row, _write_table
+    rows = sorted((_source_row(s) for s in sources), key=lambda r: r['id'])
+    _write_table(rows, SOURCE_SCHEMA, stage / 'sources.parquet', row_group_size=512)
+    total = (stage / 'sources.parquet').stat().st_size
+    if total < limit:
+        return [('sources.parquet', len(rows))]
+    (stage / 'sources.parquet').unlink()
+    chunk = max(1, int(len(rows) * target / total))
+    for i, start in enumerate(range(0, len(rows), chunk)):
+        _write_table(rows[start:start + chunk], SOURCE_SCHEMA, stage / f'sources-{i + 1}.parquet', row_group_size=512)
+    return [(f'sources-{i + 1}.parquet', len(rows[start:start + chunk])) for i, start in enumerate(range(0, len(rows), chunk))]
+
+
+@pytest.mark.parametrize('count', [0, 1, 512, 1025])
+def test_streamed_sources_keep_single_file_bytes_and_manifest_order(tmp_path, count):
+    from committee_explorer.parquet import write_tables
+    legacy, streamed = tmp_path / 'legacy', tmp_path / 'streamed'
+    legacy.mkdir(), streamed.mkdir()
+    sources = [source(i) for i in range(count)]
+    expected = legacy_sources(reversed(sources), legacy)
+    calls = []
+    write_tables([], iter(sources), [], streamed, lambda path, role, schema, count, **kw: calls.append((path, role, count)))
+    assert expected == [('sources.parquet', count)]
+    assert [role for _, role, _ in calls] == ['details'] * 5 + ['sources']
+    assert calls[-1] == ('sources.parquet', 'sources', count)
+    assert (streamed / 'sources.parquet').read_bytes() == (legacy / 'sources.parquet').read_bytes()
+
+
+def test_large_source_tables_stream_into_id_ordered_files_below_the_limit(tmp_path, monkeypatch):
+    import pyarrow as pa
+    from committee_explorer import parquet
+    monkeypatch.setattr(parquet, 'SOURCE_FILE_TARGET', 200_000)
+    monkeypatch.setattr(parquet, 'FILE_LIMIT', 240_000)
+    legacy, streamed = tmp_path / 'legacy', tmp_path / 'streamed'
+    legacy.mkdir(), streamed.mkdir()
+    sources = [source(i, size=(i * 7919) % 300) for i in range(5000)]
+    expected = legacy_sources(sources, legacy, limit=240_000, target=200_000)
+    calls = []
+    parquet.write_tables([], iter(sources), [], streamed,
+                         lambda path, role, schema, count, **kw: calls.append((path, count)) if role == 'sources' else None)
+    assert len(expected) > 1 and len(calls) > 1
+    assert [path for path, _ in calls] == [f'sources-{i + 1}.parquet' for i in range(len(calls))]
+    assert not (streamed / 'sources.parquet').exists()
+    groups = []
+    for path, count in calls:
+        metadata = pq.read_metadata(streamed / path)
+        assert metadata.num_rows == count
+        assert (streamed / path).stat().st_size < 240_000
+        groups += [metadata.row_group(i).num_rows for i in range(metadata.num_row_groups)]
+    assert sum(count for _, count in calls) == 5000
+    assert groups[:-1] == [512] * (len(groups) - 1)
+    # Only file and row-group boundaries differ: same rows, order and schema.
+    published = pa.concat_tables([pq.read_table(streamed / path) for path, _ in calls])
+    assert published.equals(pa.concat_tables([pq.read_table(legacy / path) for path, _ in expected]), check_metadata=True)
+
+
+@pytest.mark.parametrize('ids', [['b', 'a'], ['a', 'a']])
+def test_sources_must_arrive_unique_and_in_id_order(tmp_path, ids):
+    from committee_explorer.parquet import write_tables
+    with pytest.raises(ValueError, match='ascending ID order'):
+        write_tables([], [dict(kind='source_record', id=id, provider='test', payload={}) for id in ids], [],
+                     tmp_path, lambda *a, **k: None)
+
+
+def test_source_streaming_does_not_retain_serialized_payloads(tmp_path):
+    from committee_explorer.parquet import write_tables
+
+    def sources():  # 32 MiB of serialized payloads; one row group holds 4 MiB.
+        for i in range(4096):
+            yield dict(kind='source_record', id=f'{i:05d}', provider='test', payload={'text': 'evidence' * 1024})
+
+    tracemalloc.start()
+    try:
+        write_tables([], sources(), [], tmp_path, lambda *a, **k: None)
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    assert peak < 16 * 1024 * 1024
+    assert pq.read_metadata(tmp_path / 'sources.parquet').num_rows == 4096
+
+
+def test_catalog_sources_publish_in_id_order_whatever_the_catalog_order(tmp_path):
+    from committee_meeting import Catalog
+    from committee_explorer.parquet import write_catalog
+    meetings = write_meetings(tmp_path, [native(), {**native(), 'eventId': '106246'}, {**native(), 'eventId': '106247'}])
+    _, catalog = export(meetings=meetings, output_dir=tmp_path / 'json', state_dir=tmp_path / 'state', as_of=NOW, format='json')
+    # apply_decisions appends its decision sources after the assembled order.
+    unordered = Catalog.model_construct(sources=tuple(reversed(catalog.sources)), records=catalog.records)
+    stage = tmp_path / 'stage'
+    stage.mkdir()
+    write_catalog(unordered, {(r.kind, r.id) for r in catalog.records}, stage, lambda *a, **k: None, lambda *a, **k: None, {})
+    ids = pq.read_table(stage / 'sources.parquet', columns=['id'])['id'].to_pylist()
+    assert len(ids) > 1 and ids == sorted(s.id for s in catalog.sources)
 
 
 def test_file_link_building_does_not_retain_complete_representation_payloads(tmp_path):
@@ -115,7 +219,7 @@ def test_issue_resolution_evidence_is_available_inline(tmp_path):
                  provenance={'citations': [{'source': {'id': 'original'}}]},
                  resolution={'explanation': 'Reviewed collector labels.', 'decided_at': '2026-09-28T00:00:00Z',
                              'provenance': {'citations': [{'source': {'id': 'decision'}}]}})
-    sources = [dict(kind='source_record', id=id, provider='test', payload={'id': id}) for id in ('original', 'decision')]
+    sources = [dict(kind='source_record', id=id, provider='test', payload={'id': id}) for id in ('decision', 'original')]
     queries = [dict(kind='meeting', id='meeting', title='Meeting'),
                dict(kind='data_issue', id='issue', title='Closed finding', status='dismissed')]
     write_tables([dict(kind='meeting', id='meeting'), issue], sources, queries, tmp_path, lambda *a, **k: None)
@@ -358,8 +462,8 @@ def test_shared_bill_does_not_attach_other_meetings_as_source_evidence(tmp_path)
                dict(kind='legislative_item', id='bill', item_type='bill', designation='H.R. 10', provenance=evidence('other')),
                dict(kind='meeting_subject', id='agenda', meeting=dict(kind='meeting', id='meeting'),
                     item=dict(kind='legislative_item', id='bill'), provenance=evidence('own'))]
-    sources = [dict(kind='source_record', id='own', provider='congress.gov', payload=dict(type='Meeting')),
-               dict(kind='source_record', id='other', provider='congress.gov', payload=dict(type='Markup'))]
+    sources = [dict(kind='source_record', id='other', provider='congress.gov', payload=dict(type='Markup')),
+               dict(kind='source_record', id='own', provider='congress.gov', payload=dict(type='Meeting'))]
     write_tables(records, sources, [dict(kind='meeting', id='meeting', title='Current meeting')], tmp_path, lambda *args, **kwargs: None)
     row = pq.read_table(tmp_path/'meetings.parquet').to_pylist()[0]
     assert row['type'] == 'meeting'
@@ -460,8 +564,8 @@ def test_reviewed_gpo_document_type_survives_without_replacing_category_or_title
     sources.append(dict(kind='source_record', id='unrelated-review', provider='gpo.committee-review',
                         payload={'source_document_type': 'Different document'}))
     queries = [dict(kind='material', id=material.id, type='document', title=material.title, category=material.details.category)]
-    write_tables((r.model_dump(mode='json') for r in records if r.kind != 'source_record'), sources, queries,
-                 tmp_path, lambda *a, **k: None)
+    write_tables((r.model_dump(mode='json') for r in records if r.kind != 'source_record'),
+                 sorted(sources, key=lambda s: s['id']), queries, tmp_path, lambda *a, **k: None)
     published = pq.read_table(tmp_path/'materials.parquet').to_pylist()[0]
     assert published['title'] == 'Original package title'
     assert published['category'] == category
