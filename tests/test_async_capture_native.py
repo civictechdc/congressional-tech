@@ -17,6 +17,8 @@ from congress_api.retention.raw_archive import Archive
 from congress_api.retention.r2 import AsyncBodies
 from test_raw_source_sync import MemoryStore, response
 
+pytestmark = pytest.mark.loopback
+
 
 @contextmanager
 def s3_responses(responses):

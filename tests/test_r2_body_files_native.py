@@ -2,7 +2,12 @@
 
 import base64
 import hashlib
+
+import pytest
+
 from congress_api.retention.r2 import R2Store
+
+pytestmark = pytest.mark.loopback
 
 
 def test_sdk_file_upload_sends_complete_bytes_and_conditional_md5(tmp_path):

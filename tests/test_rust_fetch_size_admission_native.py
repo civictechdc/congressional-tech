@@ -12,7 +12,8 @@ from congress_api.retention.raw_archive import Archive, metadata_body_keys, prep
 from test_raw_source_sync import MemoryStore
 
 BINARY = os.environ.get('SOURCE_FETCH_BINARY')
-pytestmark = pytest.mark.skipif(not BINARY, reason='Set SOURCE_FETCH_BINARY for native loopback checks')
+pytestmark = [pytest.mark.loopback,
+              pytest.mark.skipif(not BINARY, reason='Set SOURCE_FETCH_BINARY for native loopback checks')]
 
 
 @pytest.fixture

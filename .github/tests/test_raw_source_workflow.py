@@ -379,6 +379,15 @@ def test_validation_is_reused_only_for_exact_revision_and_dependency_environment
         if step.get('name') == 'Verify native concurrency and request pacing on loopback')
 
 
+def test_loopback_tests_run_in_a_native_step():
+    # tests/conftest.py skips `loopback` tests under offline-python.py.
+    marked = {f'tests/{path.name}' for path in (ROOT / 'tests').glob('test_*.py')
+              if 'pytest.mark.loopback' in path.read_text()}
+    native = {word for step in STEPS if 'python -m pytest' in (run := step.get('run', ''))
+              and 'offline-python.py' not in run for word in run.split()}
+    assert marked and marked <= native, sorted(marked - native)
+
+
 def test_explicit_repair_uses_same_command(tmp_path, recording_command):
     result = run_step(PUBLISH, tmp_path, SYNC_MODE='rebuild', REPAIR='true', **recording_command)
     assert result.returncode == 0, result.stderr

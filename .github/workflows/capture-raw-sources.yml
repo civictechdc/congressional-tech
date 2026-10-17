@@ -224,7 +224,9 @@ jobs:
           .github/tests/test_raw_source_workflow.py
       - name: Verify async storage and process workers locally
         if: steps.verified.outputs.cache-hit != 'true'
-        run: python -m pytest -q tests/test_async_capture_native.py tests/test_capture_processes_native.py tests/test_r2_body_files_native.py tests/test_document_filename_viewer.py
+        run: >-
+          python -m pytest -q tests/test_async_capture_native.py tests/test_capture_processes_native.py
+          tests/test_r2_body_files_native.py tests/test_document_filename_viewer.py tests/test_document_review_viewer.py
       - name: Mark successful code validation
         if: steps.verified.outputs.cache-hit != 'true'
         run: |

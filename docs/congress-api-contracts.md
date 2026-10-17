@@ -152,6 +152,13 @@ the allowed folder imports declared in `pyproject.toml`, including relative and
 nested imports. This is a local/CI
 regression gate, not evidence that a new workflow has run on GitHub.
 
+`offline-python.py` blocks every socket connection, including loopback servers
+and multiprocessing managers. Tests that need them carry
+`@pytest.mark.loopback`; `tests/conftest.py` skips them when connections are
+blocked, and capture-raw-sources.yml runs their files without the wrapper.
+`.github/tests/test_raw_source_workflow.py` fails if a marked file is missing
+from those native steps.
+
 ## Offline behavior
 
 See [meeting-state.md](youtube-coverage/meeting-state.md). `--offline` disables

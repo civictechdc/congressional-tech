@@ -15,7 +15,8 @@ from congress_api.transport.source_capture import fetch_source
 
 
 BINARY = os.environ.get('SOURCE_FETCH_BINARY')
-pytestmark = pytest.mark.skipif(not BINARY, reason='Set SOURCE_FETCH_BINARY to run native loopback checks')
+pytestmark = [pytest.mark.loopback,
+              pytest.mark.skipif(not BINARY, reason='Set SOURCE_FETCH_BINARY to run native loopback checks')]
 
 
 @pytest.fixture

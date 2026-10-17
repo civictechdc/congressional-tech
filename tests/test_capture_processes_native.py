@@ -21,6 +21,7 @@ def synchronized_reader(data, *, barrier, pids):
     return inspect_document(data)
 
 
+@pytest.mark.loopback  # Manager events connect over a local socket.
 def test_three_readers_run_in_separate_processes_with_identical_metadata(monkeypatch):
     from congress_api.acquisition import raw_sync
 
@@ -52,6 +53,7 @@ def paused_reader(data, *, reading, release):
     return inspect_document(data)
 
 
+@pytest.mark.loopback
 def test_metadata_reading_and_upload_overlap_for_one_file(monkeypatch):
     from congress_api.acquisition import raw_sync
 

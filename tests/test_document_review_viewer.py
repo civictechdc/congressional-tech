@@ -74,6 +74,7 @@ def test_wrong_viewer_baseline_refused_before_admitting_review(tmp_path):
         bridge.ReviewSnapshot(manifest, file_digest(manifest), args['sources'], args['documents'])
 
 
+@pytest.mark.loopback
 def test_http_review_evidence_snapshot_errors_and_failed_configuration(tmp_path):
     import pyarrow as pa
     from threading import Thread

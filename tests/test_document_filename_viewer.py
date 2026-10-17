@@ -451,6 +451,7 @@ def test_filename_fallback_exposes_its_uncertainty():
     assert any('not a verified person' in (f['note'] or '') for f in reading['observations'])
 
 
+@pytest.mark.loopback
 @pytest.mark.parametrize('as_pdf', [False, True])
 def test_http_saved_file_verifies_bytes_and_refuses_stale_links_and_other_hosts(tmp_path, as_pdf):
     from threading import Thread
