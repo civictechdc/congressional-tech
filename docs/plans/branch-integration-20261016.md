@@ -18,6 +18,7 @@ State after the kill, all checked directly:
 **Attempt 3 underway since 19:39 EDT.** The runner was reconciled (`runner-checkpoint19-publication/reconcile-20261016T2240Z.json`). Each unaccepted build is moved aside as `publication-checkpoint19/build-incomplete-attempt-000N`, with a `.reconciliation.json` note; the dispatcher refuses to continue while `build/` exists, and it never deletes it. The resume runs as launchd job `org.codex.corpus-publication-resume.checkpoint19` (supervisor parent PID 1, saved `--resume` command). Remove the launchd job after it exits.
 
 - Attempt 2 (18:32–18:57) stopped cleanly on the runner's 16 GiB disk reserve (exit -2) during `restore_previous_source_metadata`. Other sessions on this machine transiently filled `/private/tmp`: `claude-hardening-20261015` grew to 102 GB and later shrank to 23 GB. Free disk fell from 48 GB to 14 GB in about 20 minutes. A full catalog build needs about 35 GB (checkpoint 16's `build/`). Keep large parallel jobs off this disk until checkpoint 19 exits.
+- Attempt 3 was starved by the same `claude-hardening-20261015` run: six parallel `cargo test --workspace` jobs, load about 60 on 14 cores, swap full. It managed about 3,600 rows/min at about 1.6% CPU. With owner approval, that run's `cargo`/`rustc` processes are SIGSTOPped (PIDs in `.cache/repo-cleanup-20261016/paused-hardening-pids-stopped.txt`). A background guard pauses any new ones every 15 s and sends SIGCONT to all of them when attempt 3 exits. The rate rose to about 49,000 rows/min.
 - The GitHub "Publish filename viewer data to R2" workflow (`publish-filename-viewer.yml`, twice-hourly schedule plus triggers) writes `viewer-publications/`, two keys of which checkpoint 19 guards. The recovery guard checks only `capture-raw-sources.yml`. With owner approval it is disabled (`gh workflow disable`) until checkpoint 19's readbacks pass, then re-enabled. Before the restart, its runs reported `"status": "unchanged"`.
 - Before-state: the public manifest (`https://congressional-viewer-data.mdeeb.workers.dev/manifest.json`) is still checkpoint 16's (sha256 `9ff4da5c…`, catalog `407b6cce…`). A successful attempt must change it to the checkpoint-19 catalog recorded in the dispatcher's `complete.json`.
 
@@ -82,8 +83,16 @@ Rebase only the two `wip/*` branches, each one commit, onto the merged result wh
   - `test_unchanged_catalog_does_not_download_repack_or_write` failed on the merge and on `c361df3`: a3c4528 reads the pointer's `catalog_id`, which this fixture omitted. Fixed in `07b63a9`.
   - `test_refinement_limit_reaches_all_consumers` passes in isolation on all three trees (13/13 in its file). Load-related flake.
   - Pre-existing on both parents, not merge-caused: the 3 `test_congress_api_boundaries` guards (parser-version registry stale for `house_sites` 14≠5 and `senate` 20≠11, `models/content.py` uses `read_bytes`, script-name check) and 3 loopback HTTP tests that the offline wrapper blocks.
-- CI has no green baseline for the full offline suite. `update-data` failed on `main` on 4 and 11 October for the same native and loopback reasons, and `validate-explorer` last ran on 28 September.
-- **`wip/document-recovery-gaps`** is rebased onto `integrate/main-dkp` as the identical patch (`2444988`). **`wip/webharvest-discovery`** (`b1d9384`) is rebased too; it now declares `surt>=0.3.1,<0.4` in `congress_api[archive]` and takes `--bulk-recovery`/`--archive-ladder` instead of dated `.cache` paths. Both still wait for Phase 3.
+- CI had no green baseline for the full offline suite. `update-data` failed on `main` on 4 and 11 October for the same native and loopback reasons, and `validate-explorer` last ran on 28 September.
+- **Pre-existing failures fixed** (`636a241..8cf8994`, fast-forwarded into `integrate/main-dkp`). The CI offline command now exits 0: 8,653 passed, 49 skipped (31 of them `loopback` tests, skipped only under the socket-blocking wrapper and run natively by `capture-raw-sources.yml`).
+  - The parser-version registry is updated to House 14 and Senate 20.
+  - `house-committee-sites` is added to the stable script names.
+  - File-reading code moves out of the interpretation layer into `retention/` (`body_files`, `capture_inspection`, `pdf_tools`, `image_tools`). The readers are byte-identical moves.
+  - The moved modules are added to `source_fingerprint` and the capture workflow's paths.
+- **Fingerprints, verified in code:** `evidence_fingerprint` and `source_fingerprint` are recorded as provenance only. `CaptureMetadata` reuses every body already read; `raw_catalog` reuse depends on capture/seed/lineage digests. The only fingerprint that invalidates cached work is `parser_fingerprint()` (the house-naming rules plus `extract`), via `catalog_cache.load_results`.
+- **`wip/document-recovery-gaps`** (`59deb26`) is rebased onto `8cf8994`. Its `inspect_capture`/`inspect_body` edits now live in `retention/capture_inspection.py`. Its tests, plus the capture, evidence and boundary tests, pass (115).
+- **`wip/webharvest-discovery`** (`b878a70`) declares `surt>=0.3.1,<0.4` in `congress_api[archive]` and takes `--bulk-recovery`/`--archive-ladder` instead of dated `.cache` paths. Its tests pass (25).
+- Both WIP branches still wait for Phase 3.
 
 ## Phase 1 — build the integration branch (safe now, in parallel with Phase 0)
 
@@ -128,8 +137,8 @@ The `npm run build` step is the first proof that the merged tree contains a buil
 
 - **house-naming 3.0.0 → 3.2.7** changes `document_kind` values; recovery evidence pins 3.0.0. Take the next recovery publication after checkpoint 19 from the integrated runtime as a declared re-baseline.
 - **Reviewed-category search** (`document-review-publication.json`) is pinned to catalog `d42b9f66…`. `loadReviews` returns nothing when the catalog ID differs, so rebind the review bundle to the checkpoint-19 catalog as soon as it publishes, or reviewed search goes dark on the public site.
-- **`wip/document-recovery-gaps`**: `git rebase main` and land it as its own re-baseline. `evidence_fingerprint` now hashes `document_links.py`, so all document evidence is re-read and link counts change. Expect conflicts in `archive_links.py` and `capture_metadata.py`, which `document-kind-publish` also changed.
-- **`wip/webharvest-discovery`**: declare `surt` as a dependency first, then rebase and land it.
+- **`wip/document-recovery-gaps`**: fast-forward or merge it after `main` lands. It does not re-read saved evidence, because the fingerprint change is provenance only. Its rules apply to newly read bodies. Applying them to existing bodies is a deliberate refresh (`refresh_body_keys`, or a catalog rebuild with body inspection) that changes link counts, so schedule that as its own re-baseline.
+- **`wip/webharvest-discovery`**: ready; `surt` is declared and the tests pass. Land it after `main`.
 
 ## Phase 4 — remote and side cleanup (owner's call)
 
