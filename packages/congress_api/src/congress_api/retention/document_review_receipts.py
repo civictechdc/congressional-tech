@@ -1,7 +1,8 @@
 """Verify local assistant review receipts and compile exact current group bindings.
 
-Historical receipt paths are relative to the caller's working directory. This
-reader validates retained evidence; it does not independently repeat the review.
+Historical receipt paths are relative to the caller's working directory unless
+a closed resolver maps them, unchanged, to verified bytes elsewhere. This reader
+validates retained evidence; it does not independently repeat the review.
 """
 from copy import deepcopy
 from hashlib import sha256
@@ -27,12 +28,17 @@ def row_digest(row):
     return sha256(json.dumps(row, ensure_ascii=False, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
 
 
-def verified(path, expected, bindings):
-    path = Path(path)
-    if file_digest(path) != expected:
+def verified(path, expected, bindings, resolve=Path):
+    """Hash the bytes a locator resolves to; bindings keep the original locator text.
+
+    The default reads the locator as a path. A closed resolver (for example a
+    pinned portable store) relocates bytes without rewriting historical locators.
+    """
+    located = Path(resolve(path))
+    if file_digest(located) != expected:
         raise ValueError('Evidence digest mismatch: ' + str(path))
-    bindings[str(path)] = expected
-    return path
+    bindings[str(Path(path))] = expected
+    return located
 
 
 def eligible_body(row):
@@ -47,7 +53,7 @@ def read_ledger(path):
     return {row['document_id']: row for row in rows}
 
 
-def validate_record(record, original, fetched, bindings):
+def validate_record(record, original, fetched, bindings, resolve=Path):
     """Verify coverage and saved evidence; this does not independently redo the review."""
     if (record.get('reviewer') != 'assistant'
             or record.get('all_pages_visually_reviewed') is not True
@@ -68,7 +74,7 @@ def validate_record(record, original, fetched, bindings):
     pages = record['pages']
     if type(pages) is not int or pages < 1:
         raise ValueError('Invalid page count')
-    pdf = verified(record['path'], digest, bindings)
+    pdf = verified(record['path'], digest, bindings, resolve)
     if not pdf.read_bytes().startswith(b'%PDF-') or len(PdfReader(pdf).pages) != pages:
         raise ValueError('Saved PDF page count or signature mismatch')
     forms = record.get('observed_document_forms')
@@ -81,7 +87,7 @@ def validate_record(record, original, fetched, bindings):
         if not match:
             raise ValueError('Render path lacks a page number')
         numbers.append(int(match[1]))
-        verified(path, expected, bindings)
+        verified(path, expected, bindings, resolve)
     if sorted(numbers) != list(range(1, pages + 1)):
         raise ValueError('Incomplete or duplicate rendered page coverage')
     if 'page_sections' in record:
@@ -97,13 +103,13 @@ def validate_record(record, original, fetched, bindings):
             raise ValueError('Incomplete or overlapping component coverage')
     for path_key, hash_key in [('text_path', 'text_sha256'), ('native_text_path', 'native_text_sha256')]:
         if path_key in record:
-            verified(record[path_key], record[hash_key], bindings)
+            verified(record[path_key], record[hash_key], bindings, resolve)
 
 
-def load_reviews(receipt_path, expected, bindings):
+def load_reviews(receipt_path, expected, bindings, resolve=Path):
     reviews, seen_paths = {}, set()
     while True:
-        path = verified(receipt_path, expected, bindings)
+        path = verified(receipt_path, expected, bindings, resolve)
         if path.resolve() in seen_paths:
             raise ValueError('Cyclic receipt chain')
         seen_paths.add(path.resolve())
@@ -113,22 +119,22 @@ def load_reviews(receipt_path, expected, bindings):
         if ('independent_reference' in receipt and receipt['independent_reference'] is not False
                 or receipt.get('release_approved') is not False):
             raise ValueError('Assistant receipt cannot approve reference or release')
-        originals = read_ledger(verified(receipt['input_ledger'], receipt['input_ledger_sha256'], bindings))
-        fetched_path = verified(receipt['fetch_results_path'], receipt['fetch_results_sha256'], bindings)
+        originals = read_ledger(verified(receipt['input_ledger'], receipt['input_ledger_sha256'], bindings, resolve))
+        fetched_path = verified(receipt['fetch_results_path'], receipt['fetch_results_sha256'], bindings, resolve)
         fetched_rows = json.loads(fetched_path.read_text())['results']
         fetched = {r['document_id']: r for r in fetched_rows}
         if len(fetched) != len(fetched_rows):
             raise ValueError('Duplicate fetched document ID')
         for bound, digest in receipt.get('selection_bindings', {}).items():
-            verified(bound, digest, bindings)
+            verified(bound, digest, bindings, resolve)
         for record in receipt['records']:
             key = record['document_id']
             if key in reviews:
                 raise ValueError('Duplicate or conflicting content review for document: ' + key)
             if key not in originals or key not in fetched:
                 raise ValueError('Review document absent from bound evidence')
-            validate_record(record, originals[key], fetched[key], bindings)
-            reviews[key] = dict(receipt=str(path), receipt_sha256=expected,
+            validate_record(record, originals[key], fetched[key], bindings, resolve)
+            reviews[key] = dict(receipt=str(Path(receipt_path)), receipt_sha256=expected,
                                 source_row_sha256=row_digest(originals[key]), observation=deepcopy(record))
         if 'previous_review' not in receipt:
             return reviews

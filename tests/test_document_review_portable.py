@@ -96,3 +96,50 @@ def test_failed_copy_has_no_completion_marker_and_cannot_be_reused(tmp_path,monk
     assert not (output/'manifest.json').exists()
     with pytest.raises(FileExistsError):
         portable.export_bundle(summary,file_digest(summary),args['sources'],args['documents'],output)
+
+
+def readmission(tmp_path):
+    """An earlier store from another reader version, a new pair path and no original files."""
+    args,manifest=exported(tmp_path)
+    before=(args['output']/'candidates.jsonl').read_bytes()
+    pair=tmp_path/'new-pair';pair.mkdir()
+    sources,documents=pair/'sources.parquet',pair/'documents.parquet'
+    shutil.copy(args['sources'],sources);shutil.copy(args['documents'],documents)
+    store=tmp_path/'store';manifest.parent.rename(store);manifest=store/'manifest.json'
+    shutil.rmtree(tmp_path/'original')
+    data=json.loads(manifest.read_text());data['reader_policy']={'document_review_portable.py':'0'*64}
+    manifest.write_text(json.dumps(data))
+    return args,before,sources,documents,manifest
+
+
+def test_readmission_from_an_earlier_store_binds_a_new_pair(tmp_path,monkeypatch):
+    args,before,sources,documents,manifest=readmission(tmp_path);pin=file_digest(manifest)
+    with pytest.raises(ValueError,match='reader'):portable.load_portable(manifest,pin)
+    resolve=portable.store_resolver(manifest,pin)
+    elsewhere=tmp_path/'elsewhere';elsewhere.mkdir();monkeypatch.chdir(elsewhere)
+    output=tmp_path/'readmitted'
+    summary=write_candidates(sources,documents,args['proposals'],args['proposals_sha256'],
+                             args['receipt'],args['receipt_sha256'],output,resolve=resolve)
+    # Same reviewed rows and receipts: identical candidates, original locator text, new baseline.
+    assert (output/'candidates.jsonl').read_bytes()==before
+    assert summary['baseline']['sources']=={'path':str(sources),'sha256':file_digest(sources)}
+    assert str(args['receipt']) in summary['bindings'] and str(args['sources']) not in summary['bindings']
+    new_store=tmp_path/'new-store'
+    portable.export_bundle(output/'summary.json',file_digest(output/'summary.json'),sources,documents,
+                           new_store,resolve=resolve)
+    candidates=portable.load_portable(new_store/'manifest.json',file_digest(new_store/'manifest.json'))
+    assert candidates['d']['status']=='candidate_applied'
+    with pytest.raises(ValueError,match='Unbound'):resolve(str(sources))
+
+
+@pytest.mark.parametrize('change',['object','manifest','unbound'])
+def test_readmission_refuses_altered_or_unmapped_store_evidence(tmp_path,change):
+    args,_,sources,documents,manifest=readmission(tmp_path);pin=file_digest(manifest)
+    data=json.loads(manifest.read_text())
+    if change=='object':(manifest.parent/'objects'/data['locators'][str(args['receipt'])]).write_bytes(b'{}')
+    elif change=='manifest':pin='0'*64
+    else:data['locators'].pop(str(args['receipt']));manifest.write_text(json.dumps(data));pin=file_digest(manifest)
+    with pytest.raises(ValueError):
+        write_candidates(sources,documents,args['proposals'],args['proposals_sha256'],args['receipt'],
+                         args['receipt_sha256'],tmp_path/'readmitted',resolve=portable.store_resolver(manifest,pin))
+    assert not (tmp_path/'readmitted').exists()

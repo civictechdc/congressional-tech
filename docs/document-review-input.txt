@@ -239,6 +239,18 @@ file extension; consumers must use the known evidence type rather than infer it
 from the object's filename. resolve_evidence checks the requested bytes, not the
 complete bundle; use load_portable first when selecting review candidates.
 
+Re-admission from a pinned store
+--------------------------------
+A new catalog pair requires fresh admission, but the original evidence locators
+may no longer exist (some name removed worktrees). store_resolver(manifest_path,
+manifest_sha256) serves those locators from an earlier store's object map only.
+It does not load or trust that store's bundle, so a store written by an earlier
+reader version still works. Pass it as resolve= to write_candidates and then to
+export_bundle for the new pair. Admission still checks every byte against the
+receipt chain's own digests; summary bindings keep the original locator text.
+The pair and the new bundle's own files are read directly; unmapped locators
+are refused rather than read from disk. See review_rebind_checkpoint_v1.json.
+
 Load once per pinned catalog/review snapshot, retain its baseline separately, and
 call select_document on the complete current group for each selection. Changing
 the snapshot requires a fresh load. Surface verification failure instead of

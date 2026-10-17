@@ -20,30 +20,19 @@ def _add_binding(bindings, locator, digest):
     bindings[locator] = digest
 
 
-class _EvidenceFiles:
+class _ObjectStore:
+    """A pinned manifest's content-addressed object map, without bundle semantics."""
     def __init__(self, manifest_path, expected):
         self.manifest_path = verified(manifest_path,expected,{})
         self.expected = expected
         self.root = self.manifest_path.parent.resolve()
-        manifest = json.loads(self.manifest_path.read_text())
+        self.manifest = manifest = json.loads(self.manifest_path.read_text())
         if type(manifest.get('portable_version')) is not int or manifest['portable_version'] != 1:
             raise ValueError('Unsupported portable evidence version')
-        self.policy = _reader_policy()
-        if manifest['reader_policy'] != self.policy:
-            raise ValueError('Portable review reader implementation changed')
         self.locators = manifest['locators']
         if not isinstance(self.locators,dict) or any(not isinstance(k,str) or not isinstance(v,str)
                 or not re.fullmatch(r'[0-9a-f]{64}',v) for k,v in self.locators.items()):
             raise ValueError('Invalid portable evidence locators')
-        self.summary_locator = manifest['summary_locator']
-        self.summary_sha256 = self.locators[self.summary_locator]
-        self.summary = json.loads(self.verified_path(self.summary_locator).read_text())
-        required = dict(self.summary['bindings'])
-        _add_binding(required,self.summary_locator,self.summary_sha256)
-        _add_binding(required,Path(self.summary_locator).parent/'candidates.jsonl',
-                     self.summary['outputs']['candidates.jsonl'])
-        if self.locators != required:
-            raise ValueError('Portable evidence does not match the complete admission bindings')
 
     def path(self, locator):
         """Resolve only recorded objects; never fall back to an original path."""
@@ -58,19 +47,54 @@ class _EvidenceFiles:
     def verified_path(self, locator):
         return verified(self.path(locator),self.locators[str(locator)],{})
 
+
+class _EvidenceFiles(_ObjectStore):
+    def __init__(self, manifest_path, expected):
+        super().__init__(manifest_path,expected)
+        self.policy = _reader_policy()
+        if self.manifest['reader_policy'] != self.policy:
+            raise ValueError('Portable review reader implementation changed')
+        self.summary_locator = self.manifest['summary_locator']
+        self.summary_sha256 = self.locators[self.summary_locator]
+        self.summary = json.loads(self.verified_path(self.summary_locator).read_text())
+        required = dict(self.summary['bindings'])
+        _add_binding(required,self.summary_locator,self.summary_sha256)
+        _add_binding(required,Path(self.summary_locator).parent/'candidates.jsonl',
+                     self.summary['outputs']['candidates.jsonl'])
+        if self.locators != required:
+            raise ValueError('Portable evidence does not match the complete admission bindings')
+
     def recheck(self):
         verified(self.manifest_path,self.expected,{})
         if _reader_policy() != self.policy:
             raise ValueError('Portable review reader changed during verification')
 
 
-def export_bundle(summary_path, summary_sha256, sources, documents, output):
-    """Copy a verified local bundle and every bound file into a new object store."""
+def store_resolver(manifest_path, manifest_sha256):
+    """Supply historical evidence for re-admission from an earlier pinned store.
+
+    Only the object map is used, so a store written by an earlier reader version
+    still serves its bytes; its bundle is never loaded or trusted. Each object is
+    hash-checked here, and callers check it again against their own bindings.
+    Unmapped locators are refused; original paths are never a fallback.
+    """
+    store = _ObjectStore(manifest_path,manifest_sha256)
+    return store.verified_path
+
+
+def export_bundle(summary_path, summary_sha256, sources, documents, output, resolve=Path):
+    """Copy a verified local bundle and every bound file into a new object store.
+
+    resolve supplies bound evidence other than the pair and this bundle's own
+    files, for example store_resolver after re-admission against a new pair.
+    """
     output = Path(output)
     if output.exists():
         raise FileExistsError(output)
     policy = _reader_policy()
-    document_review_bundle.load_bundle(summary_path,summary_sha256,sources,documents)
+    local = {str(Path(path)) for path in [sources,documents,summary_path,Path(summary_path).parent/'candidates.jsonl']}
+    locate = lambda locator: Path(locator) if str(Path(locator)) in local else resolve(locator)
+    document_review_bundle._load_bundle(summary_path,summary_sha256,sources,documents,resolve=locate)
     summary_path = verified(summary_path,summary_sha256,{})
     summary = json.loads(summary_path.read_text())
     locators = dict(summary['bindings'])
@@ -79,7 +103,7 @@ def export_bundle(summary_path, summary_sha256, sources, documents, output):
     objects = output/'objects'
     objects.mkdir(parents=True)
     for locator,digest in locators.items():
-        source = verified(locator,digest,{})
+        source = verified(locator,digest,{},locate)
         target = objects/digest
         if not target.exists():
             with source.open('rb') as incoming, target.open('xb') as outgoing:

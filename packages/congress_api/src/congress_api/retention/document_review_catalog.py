@@ -36,16 +36,22 @@ def selected_groups(path, ids, identity):
     return result
 
 
-def write_candidates(sources, documents, proposals, proposals_sha256, receipt, receipt_sha256, output):
-    """Admit verified evidence and publish only a separate local candidate bundle."""
+def write_candidates(sources, documents, proposals, proposals_sha256, receipt, receipt_sha256, output, resolve=Path):
+    """Admit verified evidence and publish only a separate local candidate bundle.
+
+    resolve maps review locators to bytes (default: the locator as a path). The
+    catalog pair is always read directly; summary bindings keep locator text.
+    """
     output = Path(output)
     if output.exists(): raise FileExistsError(output)
     policy = implementation()
     bindings = {str(path):file_digest(path) for path in [sources,documents]}
-    proposal_rows = json.loads(verified(proposals,proposals_sha256,bindings).read_text())['records']
+    pair = {str(Path(path)) for path in [sources,documents]}
+    locate = lambda path: Path(path) if str(Path(path)) in pair else resolve(path)
+    proposal_rows = json.loads(verified(proposals,proposals_sha256,bindings,locate).read_text())['records']
     proposed = {row['document_id']:row for row in proposal_rows}
     if not proposed or len(proposed) != len(proposal_rows): raise ValueError('Empty or duplicate proposal identities')
-    reviews = load_reviews(receipt,receipt_sha256,bindings)
+    reviews = load_reviews(receipt,receipt_sha256,bindings,locate)
     if set(reviews) != set(proposed): raise ValueError('Proposals and receipt chain must cover exactly the same groups')
     validate_document_indexes(sources,documents)
     source_rows = selected_groups(sources,set(proposed),'source_id')
@@ -58,8 +64,8 @@ def write_candidates(sources, documents, proposals, proposals_sha256, receipt, r
     for key in sorted(proposed):
         review = reviews[key]
         if review['receipt'] not in originals:
-            record = json.loads(Path(review['receipt']).read_text())
-            originals[review['receipt']] = read_ledger(verified(record['input_ledger'],record['input_ledger_sha256'],bindings))
+            record = json.loads(verified(review['receipt'],review['receipt_sha256'],bindings,locate).read_text())
+            originals[review['receipt']] = read_ledger(verified(record['input_ledger'],record['input_ledger_sha256'],bindings,locate))
         compiled = compile_review(proposed[key],originals[review['receipt']][key],docs[key],members[key],review)
         candidate = apply_review_candidate(docs[key],members[key],compiled)
         if candidate['status'] not in {'candidate_applied','annotation_only_unsupported_forms'}:
@@ -67,14 +73,14 @@ def write_candidates(sources, documents, proposals, proposals_sha256, receipt, r
         if apply_review_candidate(docs[key],members[key])['document'] != docs[key]:
             raise ValueError('Withdrawal changed baseline')
         candidates.append(candidate)
-    for path,digest in bindings.items(): verified(path,digest,{})
+    for path,digest in bindings.items(): verified(path,digest,{},locate)
     if implementation() != policy: raise ValueError('Review implementation changed during admission')
     output.mkdir(parents=True)
     candidate_path = output/'candidates.jsonl'
     with candidate_path.open('x') as stream:
         for candidate in candidates: stream.write(json.dumps(candidate,ensure_ascii=False)+'\n')
     # A completed summary is the completion marker; partial output is not reusable.
-    for path,digest in bindings.items(): verified(path,digest,{})
+    for path,digest in bindings.items(): verified(path,digest,{},locate)
     summary = dict(bundle_version=2,
         baseline={name:dict(path=str(path),sha256=bindings[str(path)]) for name,path in [('sources',sources),('documents',documents)]},
         reviewed_groups=len(candidates),source_rows=len(source_rows),
