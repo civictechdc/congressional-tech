@@ -40,9 +40,10 @@ the production readers. Implement against the integrated production code;
 preserve the draft rather than reintroducing deleted research scripts.
 
 All source-code citations below use this reviewed production directory unless
-marked **model**:
+marked **model**. It was reviewed at commit `b5b1590` (`codex/source-fidelity`);
+line numbers refer to that revision:
 
-`/Users/mikewolfd/Work/congressional-tech-production/packages/congress_api/src/congress_api/`
+`packages/congress_api/src/congress_api/` (repository root)
 
 Model references are relative to `src/committee_meeting/` in this package.
 The parent product proposal is the [Committee Explorer design](../../docs/youtube-coverage/committee-explorer-design.md).
@@ -69,7 +70,7 @@ available and is not treated as a requirement.
 
 The production workflow already isolates committee-site failures from GPO and
 video output saves. Preserve that behavior when adding an export job
-([application README](/Users/mikewolfd/Work/congressional-tech-production/apps/committee_youtube/README.md:24),
+([application README](../../apps/committee_youtube/README.md),
 `.github/workflows/update-data.yml:71–162`).
 
 ## Ownership and dependency direction
