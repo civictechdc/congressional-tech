@@ -20,9 +20,9 @@ SCRIPTS = {
     'congress-meetings', 'congress-committees', 'raw-source-sync',
 }
 VERSIONS = {
-    ('acquisition/house_sites.py', 'PARSER_VERSION'): 5,
+    ('acquisition/house_sites.py', 'PARSER_VERSION'): 14,
     ('parsers/house_evidence.py', 'SCHEMA_VERSION'): '1.1',
-    ('parsers/senate.py', 'PARSER_VERSION'): 11,
+    ('parsers/senate.py', 'PARSER_VERSION'): 20,
     ('parsers/gpo_hearings.py', 'PARSER_VERSION'): '3',
     ('parsers/witness_pdf.py', 'PARSER_VERSION'): 2,
     ('transcripts/senate.py', 'CAPTURE_VERSION'): '3',

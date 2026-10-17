@@ -177,10 +177,10 @@ are not separate owners. The AST registry test catches new or changed constants.
 
 | Owner | Version | What it governs / consumer |
 | --- | --- | --- |
-| `acquisition.house_sites.PARSER_VERSION` | `10` | Retained House committee pages; explicit document-page pointers and local document roles; offline House reparse and bounded refresh |
+| `acquisition.house_sites.PARSER_VERSION` | `14` | Retained House committee pages; explicit document-page pointers, local document roles and supporting-statement sections; offline House reparse and bounded refresh |
 | `acquisition.house_sites.PAGINATION_VERSION` | `5` | Derived listing fingerprints; explicit empty calendars and unrelated site alerts do not contribute navigation; old fingerprints are discarded when new records are checked |
 | `parsers.house_evidence.SCHEMA_VERSION` | `"1.1"` | House evidence; House reader refresh queue and House replay |
-| `parsers.senate.PARSER_VERSION` | `16` | Parsed Senate pages; shared explicit document labels and local occurrence roles; bounded maintenance and Senate replay |
+| `parsers.senate.PARSER_VERSION` | `20` | Parsed Senate pages; shared explicit document labels, local occurrence roles and supporting-statement sections; bounded maintenance and Senate replay |
 | `parsers.gpo_hearings.PARSER_VERSION` | `"3"` | GPO CSV/evidence interpretation; fetch and cached replay |
 | `parsers.witness_pdf.PARSER_VERSION` | `2` | PDF/MODS witness observations; retained with names and bytes |
 | `transcripts.senate.CAPTURE_VERSION` | `"3"` | Caption-capture completeness; stale receipts trigger recapture |
@@ -219,6 +219,16 @@ and repository links remain generic references with their source attributes.
 Direct PDF links remain files even when their label says Committee Repository.
 These readings identify publisher pointers, not verified destination contents.
 No destination is fetched or decoded into a replacement URL during parsing.
+
+House version 13 and Senate version 19 (1e3e8c4) recover documents a publisher
+designates on its preceding line, table row or participant card. Submission
+prompts and fragment-bearing site roots stay page links, with their literal
+hrefs and roles in metadata. `tests/test_house_acceptance_corrections.py` pins
+113 reviewed page-target pairs from retained bytes, and
+`tests/test_house_acceptance_boundaries.py` pins the unresolved controls.
+House version 14 and Senate version 20 (f61eb09) treat a statement cited under
+its own Resources or Submitted for the record heading as a support document,
+even inside a witness container (`tests/test_house_support_statements.py`).
 
 ## Adapter identity policy
 
