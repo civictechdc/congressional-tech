@@ -6,7 +6,7 @@ from committee_meeting import Catalog
 from committee_meeting.catalog import DomainRecord, _references
 from committee_meeting.issues import DataIssue, IssueResolution
 from committee_meeting.provenance import AlternativeValue, FieldEvidence, Method, Provenance, SourceRecord
-from committee_meeting.common import Ref
+from committee_meeting.common import Model, Ref
 from pydantic import TypeAdapter, ValidationError
 
 from .collector_labels import collector_placeholder_conflict
@@ -14,15 +14,46 @@ from .history import RetainedSources
 
 
 _DOMAIN_RECORD = TypeAdapter(DomainRecord)
+_FIELD_NAMES = {}  # frozenset of names -> the one set every equal instance shares
+_SHARED = set()  # ids of those sets; they live as long as this module
+
+
+def _share_field_names(value):
+    """Point every model in a validated record at one shared set of set-field names.
+
+    Pydantic gives each instance its own ``__pydantic_fields_set__``. At 216-728
+    bytes, those sets were nearly half of an assembled record's memory. Frozen
+    models never add to theirs, model_copy copies it before an update, and
+    revalidation reuses the input's set, so equal sets can be shared without
+    changing any dump. Source payloads are JSON, not models, and are not walked.
+    """
+    if isinstance(value, Model):
+        names = value.__pydantic_fields_set__
+        if id(names) not in _SHARED:
+            key = frozenset(names)
+            shared = _FIELD_NAMES.get(key)
+            if shared is None:
+                shared = _FIELD_NAMES[key] = set(key)
+                _SHARED.add(id(shared))
+            object.__setattr__(value, "__pydantic_fields_set__", shared)
+        for item in value.__dict__.values():
+            if isinstance(item, (Model, tuple)):
+                _share_field_names(item)
+    elif isinstance(value, tuple):
+        for item in value:
+            if isinstance(item, (Model, tuple)):
+                _share_field_names(item)
 
 
 def validated(record):
     """Validate one record, including nested instances changed with model_copy."""
     try:
-        return SourceRecord.model_validate(record) if isinstance(record, SourceRecord) else _DOMAIN_RECORD.validate_python(record)
+        record = SourceRecord.model_validate(record) if isinstance(record, SourceRecord) else _DOMAIN_RECORD.validate_python(record)
     except ValidationError as error:
         # A source payload can be large. Errors must not reproduce input data.
         raise ValueError(str(error.errors(include_input=False, include_url=False)[:10])) from None
+    _share_field_names(record)
+    return record
 
 
 class _ValidatedRecords(MutableMapping):

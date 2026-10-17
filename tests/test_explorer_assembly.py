@@ -2,10 +2,11 @@
 from datetime import UTC, datetime
 
 import pytest
+from pydantic import ValidationError
 
 from committee_explorer.assemble import Assembly
 from committee_meeting import Catalog
-from committee_meeting.common import Identifier, Ref
+from committee_meeting.common import Identifier, Model, Ref
 from committee_meeting.issues import DataIssue
 from committee_meeting.meetings import Appearance, Meeting, RecordedName
 from committee_meeting.provenance import Citation, FieldEvidence, Provenance, SourceRecord
@@ -66,6 +67,33 @@ def test_finish_reuses_individually_validated_instances_and_runs_graph_check(mon
     assert catalog.records[0] is record
     assert catalog.sources[0] is assembly.sources[("source_record", "source")]
     assert catalog.schema_version and catalog.scope == "complete"
+
+
+def test_assembled_models_share_field_name_sets_without_changing_any_dump():
+    # Each instance's own set was nearly half of an assembled record's memory.
+    first, second = meeting(), meeting().model_copy(update={"id": "other"})
+    dumps = {r.id: (r.model_dump_json(), r.model_dump_json(exclude_unset=True)) for r in (first, second)}
+    assembly = Assembly()
+    assembly.add([source(), first, second, meeting(chamber="house").model_copy(update={"id": "third"})])
+    one, two, three = (assembly.records["meeting", identity] for identity in ("meeting", "other", "third"))
+    assert one.__pydantic_fields_set__ is two.__pydantic_fields_set__
+    assert one.provenance.citations[0].source.__pydantic_fields_set__ is two.provenance.citations[0].source.__pydantic_fields_set__
+    assert three.model_fields_set == one.model_fields_set | {"chamber"}
+    for record in (one, two):
+        assert (record.model_dump_json(), record.model_dump_json(exclude_unset=True)) == dumps[record.id]
+    shared = set(one.model_fields_set)
+    # Updates copy the shared set first; frozen models reject assignment before touching it.
+    assert "chamber" in one.model_copy(update={"chamber": "senate"}).model_fields_set
+    with pytest.raises(ValidationError):
+        one.chamber = "senate"
+    assert one.model_fields_set == shared == two.model_fields_set and "chamber" not in shared
+    assert first.model_fields_set == shared  # The caller's instances are untouched.
+    # Sharing is safe only while no model can be assigned to after validation.
+    pending, models = [Model], []
+    while pending:
+        models.append(cls := pending.pop())
+        pending.extend(cls.__subclasses__())
+    assert len(models) > 20 and all(cls.model_config.get("frozen") for cls in models)
 
 
 def test_complete_graph_validator_still_rejects_missing_and_wrong_ownership():
