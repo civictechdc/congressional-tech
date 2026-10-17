@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 from congress_api.acquisition import house_sites
-from congress_api.models.content import content_bytes
+from congress_api.retention.body_files import content_bytes
 from congress_api.parsers.committee_pages import parse_event_page, document_groups, event_identity
 from congress_api.parsers.committee_discovery import key, task
 from congress_api.parsers.document_links import document_links

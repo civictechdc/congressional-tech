@@ -608,7 +608,7 @@ def test_recovery_at_each_acquisition_write_boundary(failed_prefix, receipt_dura
 
 def test_undeclared_xml_capture_validates_bytes_and_discovers_links():
     from pathlib import Path
-    from congress_api.parsers.archive_links import inspect_capture
+    from congress_api.retention.capture_inspection import inspect_capture
     body = (Path(__file__).parent / 'fixtures/raw_source_floor_schedule.xml').read_bytes()
     url = 'https://docs.house.gov/floor/Download.aspx?file=/billsthisweek/20200323/20200323.xml'
     capture = response(url, body, 'application/x-octet-stream')
@@ -629,7 +629,7 @@ def test_undeclared_xml_capture_validates_bytes_and_discovers_links():
     '<source-record><title>Public data</title></source-record>'.encode('utf-16'),
 ])
 def test_complete_xml_needs_no_filename_or_media_hint(body):
-    from congress_api.parsers.archive_links import inspect_body
+    from congress_api.retention.capture_inspection import inspect_body
     assert inspect_body(body, 'https://example.gov/download', 'application/octet-stream') == ('saved', 'xml')
 
 
@@ -643,18 +643,18 @@ def test_complete_xml_needs_no_filename_or_media_hint(body):
     (b'<title>Just a moment</title>', 'application/octet-stream', 'challenge'),
 ])
 def test_xml_detection_does_not_promote_html_or_malformed_markup(body, media, outcome):
-    from congress_api.parsers.archive_links import inspect_body
+    from congress_api.retention.capture_inspection import inspect_body
     assert inspect_body(body, 'https://example.gov/download', media)[0] == outcome
 
 
 def test_explicit_xml_hint_retains_ambiguous_root_and_strict_validation():
-    from congress_api.parsers.archive_links import inspect_body
+    from congress_api.retention.capture_inspection import inspect_body
     assert inspect_body(b'<data/>', 'https://example.gov/download.xml', 'application/octet-stream') == ('saved', 'xml')
     assert inspect_body(b'<data>', 'https://example.gov/download.xml', 'application/octet-stream') == ('invalid_document', 'xml')
 
 
 def test_implicit_xml_never_expands_external_entities(tmp_path):
-    from congress_api.parsers.archive_links import inspect_capture
+    from congress_api.retention.capture_inspection import inspect_capture
     secret = tmp_path / 'external.txt'
     secret.write_text('https://example.gov/should-not-be-read.pdf')
     body = f'<!DOCTYPE records [<!ENTITY external SYSTEM "{secret.as_uri()}">]><records><url>&external;</url></records>'.encode()
@@ -665,7 +665,7 @@ def test_implicit_xml_never_expands_external_entities(tmp_path):
 
 def test_explicit_xml_replay_keeps_receipts_metadata_and_attempt_count():
     from pathlib import Path
-    from congress_api.parsers.archive_links import inspect_capture
+    from congress_api.retention.capture_inspection import inspect_capture
     body = (Path(__file__).parent / 'fixtures/raw_source_floor_schedule.xml').read_bytes()
     url = 'https://docs.house.gov/floor/Download.aspx?file=/billsthisweek/20200323/20200323.xml'
     source = response(url, body, 'application/x-octet-stream')

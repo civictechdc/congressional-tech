@@ -6,7 +6,7 @@ import sys
 
 import pytest
 
-from congress_api.parsers import pdf_tools
+from congress_api.retention import pdf_tools
 from congress_api.retention import capture_metadata as module
 from congress_api.retention.capture_metadata import CaptureMetadata, read_document_file
 from test_capture_metadata import readings

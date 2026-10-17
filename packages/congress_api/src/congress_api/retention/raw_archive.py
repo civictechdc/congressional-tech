@@ -17,10 +17,12 @@ from urllib.parse import urlsplit
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from congress_api.models.content import CapturedBody, CapturedFile
-from congress_api.parsers.archive_links import allowed_url, capture_links, inspect_body, related_links
+from congress_api.models.content import CapturedBody
+from congress_api.parsers.archive_links import allowed_url, capture_links, related_links
 from congress_api.parsers.source_family import family
+from congress_api.retention.body_files import CapturedFile
 from congress_api.retention.bundles import separate
+from congress_api.retention.capture_inspection import inspect_body
 from congress_api.retention.archive_members import (
     ArchiveReadError, ZipLimits, is_office_zip, iter_archive_members,
 )

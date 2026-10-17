@@ -1,6 +1,7 @@
 """Failure audit regressions exercise public parsers and the capture writer."""
 
-from congress_api.parsers.archive_links import inspect_capture, related_links
+from congress_api.parsers.archive_links import related_links
+from congress_api.retention.capture_inspection import inspect_capture
 from congress_api.parsers.senate import parse_page
 from congress_api.acquisition.raw_sync import run_sync
 from congress_api.retention.raw_archive import Archive
@@ -53,7 +54,7 @@ def test_capture_reports_local_size_limit_separately_from_interruption():
 
 def test_size_limited_direct_capture_skips_provider_and_preserves_bytes(tmp_path):
     from congress_api.transport.rust_fetch import RustFetcher, RustResponse
-    from congress_api.models.content import content_bytes
+    from congress_api.retention.body_files import content_bytes
 
     class LimitedFetcher(RustFetcher):
         def __init__(self):

@@ -12,7 +12,8 @@ import base64
 import hashlib
 from collections.abc import Callable
 
-from congress_api.models.content import CapturedBody, CapturedFile, RawContent, content_body
+from congress_api.models.content import CapturedBody, RawContent
+from congress_api.retention.body_files import CapturedFile, content_body
 
 
 def _copy_json(value):

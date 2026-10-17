@@ -5,7 +5,7 @@ import sys
 
 import pytest
 
-from congress_api.models.content import content_bytes
+from congress_api.retention.body_files import content_bytes
 from congress_api.transport.rust_fetch import RustFetcher
 
 

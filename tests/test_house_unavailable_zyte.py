@@ -8,7 +8,8 @@ import json
 import pytest
 import requests
 from congress_api.acquisition import house, house_sites
-from congress_api.models.content import RawContent, content_bytes
+from congress_api.models.content import RawContent
+from congress_api.retention.body_files import content_bytes
 from congress_api.parsers.committee_discovery import key, task
 from congress_api.transport import http
 from test_house_sites import client, TODAY, DIRECTORY, HOME, BODY

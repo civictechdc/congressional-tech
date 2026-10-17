@@ -178,7 +178,8 @@ def test_member_cards_using_witness_layout_remain_member_statements():
 
 def test_readable_pdf_with_empty_user_password_retains_substitute_metadata():
     from congress_api.parsers.document_cover import document_cover
-    fields = document_cover((FIXTURES/'document-covers/substitute-original.pdf').read_bytes())
+    from congress_api.retention.pdf_tools import opening_page_text
+    fields = document_cover((FIXTURES/'document-covers/substitute-original.pdf').read_bytes(), opening_page_text)
     assert fields['content_document_kind'] == ['amendment']
     assert fields['content_amendment_type'] == ['substitute']
     assert fields['content_congress'] == ['116']
@@ -188,11 +189,12 @@ def test_password_required_pdf_abstains():
     from io import BytesIO
     from pypdf import PdfReader, PdfWriter
     from congress_api.parsers.document_cover import document_cover
+    from congress_api.retention.pdf_tools import opening_page_text
     writer=PdfWriter()
     writer.add_page(PdfReader(FIXTURES/'document-covers/bill.pdf').pages[0])
     writer.encrypt('test-password')
     stream=BytesIO();writer.write(stream)
-    assert document_cover(stream.getvalue()) == {}
+    assert document_cover(stream.getvalue(), opening_page_text) == {}
 
 
 def test_source_refresh_keeps_native_publisher_evidence_not_repeated_by_reader(tmp_path):

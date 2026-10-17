@@ -8,7 +8,8 @@ from types import SimpleNamespace
 import pytest
 
 from congress_api.acquisition import house_sites
-from congress_api.models.content import RawContent, content_bytes
+from congress_api.models.content import RawContent
+from congress_api.retention.body_files import content_bytes
 from congress_api.parsers.committee_discovery import discover, event_url, key, task
 from congress_api.parsers.committee_pages import parse_event_page
 from congress_api.retention.document_index import DocumentSources

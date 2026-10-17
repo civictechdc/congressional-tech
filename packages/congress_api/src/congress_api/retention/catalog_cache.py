@@ -166,14 +166,20 @@ def capture_digest_matches(table, expected):
 
 def source_fingerprint():
     """Source interpretation changes independently of filename and PDF-cover rules."""
-    from congress_api.retention import document_index, document_recovery, raw_catalog, catalog_staging, catalog_availability
+    from congress_api.retention import (
+        body_files, capture_inspection, catalog_availability, catalog_staging, document_index,
+        document_recovery, image_tools, pdf_tools, raw_catalog,
+    )
     from congress_api import parsers, models
 
+    # Capture inspection, owned capture files and the bounded readers interpret
+    # source bytes too; they are in retention because they read files.
     paths = [
         Path(__file__),
         *(
             Path(module.__file__)
-            for module in (document_index, document_recovery, raw_catalog, catalog_staging, catalog_availability)
+            for module in (document_index, document_recovery, raw_catalog, catalog_staging, catalog_availability,
+                           body_files, capture_inspection, image_tools, pdf_tools)
         ),
     ]
     for module in (parsers, models):

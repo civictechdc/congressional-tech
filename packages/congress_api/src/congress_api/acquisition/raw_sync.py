@@ -13,9 +13,9 @@ from pathlib import Path
 
 import pyarrow.compute as pc
 
-from congress_api.models.content import CapturedFile, RawContent, capture_files, close_capture_files
+from congress_api.models.content import RawContent
 from congress_api.parsers import archive_links
-from congress_api.parsers.archive_links import capture_links, inspect_capture
+from congress_api.parsers.archive_links import capture_links
 from congress_api.retention.raw_archive import (
     BodyLimitExceeded, prepare_capture, body_payload, existing_body_info, metadata_body_keys,
     NON_DOWNLOAD_OUTCOMES,
@@ -23,7 +23,8 @@ from congress_api.retention.raw_archive import (
 from congress_api.retention import raw_progress as progress
 from congress_api.retention.capture_metadata import BODY_LIMIT, CaptureMetadata, read_document, read_document_file
 from congress_api.retention.r2 import threaded_bodies
-from congress_api.retention.body_files import retain_body_file
+from congress_api.retention.body_files import CapturedFile, capture_files, close_capture_files, retain_body_file
+from congress_api.retention.capture_inspection import inspect_capture
 from congress_api.retention.archive_members import ZipLimits
 
 

@@ -18,7 +18,7 @@ from congress_api.acquisition.refresh import due
 from congress_api.acquisition.house import request, timestamp
 from congress_api.parsers.committee_discovery import discover, key, task, comparison_key, listing_records, page_link_exclusion, pagination_field, UnrecognizedSitemap
 from congress_api.parsers.committee_pages import event_identity, parse_event_page, same_site, listing_url
-from congress_api.models.content import content_bytes
+from congress_api.retention.body_files import content_bytes
 from congress_api.retention.committees import read as read_committees
 from congress_api.retention.tables import read_state, write_state, write_csv
 from congress_api.transport.http import HttpRequestError, RequestPacer

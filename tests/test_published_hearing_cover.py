@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from congress_api.parsers.document_cover import document_cover, document_page_fields, senate_hearing_citation
+from congress_api.retention.pdf_tools import opening_page_text
 from congress_api.retention.document_evidence import enrich_document_covers
 from congress_api.retention.document_index import fill_document_kind, refresh_source_metadata
 
@@ -52,7 +53,7 @@ def test_resolution_in_later_page_does_not_override_opening_document():
 
 def test_actual_pdf_cover_yields_publication_identity():
     # First page of retained PDF 739cae101d58cb29a624a919816767f89d866fa7166ea7d8b9bb9f1f8dade6c8.
-    assert document_cover(PDF) == {
+    assert document_cover(PDF, opening_page_text) == {
         'content_document_kind': ['published-hearing'], 'content_citation': ['S. Hrg. 117-16']}
 
 
@@ -66,8 +67,8 @@ def test_cover_reader_closes_its_pdf_buffer_on_success_and_failure(monkeypatch):
         streams.append(stream)
         return stream
     monkeypatch.setattr(module, 'BytesIO', tracked)
-    assert document_cover(PDF)['content_document_kind'] == ['published-hearing']
-    assert document_cover(b'%PDF-1.7\ninvalid') == {}
+    assert document_cover(PDF, opening_page_text)['content_document_kind'] == ['published-hearing']
+    assert document_cover(b'%PDF-1.7\ninvalid', opening_page_text) == {}
     assert all(stream.closed for stream in streams)
 
 
@@ -106,7 +107,7 @@ def test_spacing_and_former_printing_office_name():
 
 @pytest.mark.parametrize('body', [b'', b'<html>HEARING</html>', b'%PDF-1.4\ninvalid'])
 def test_unreadable_or_non_pdf_contents_abstain(body):
-    assert document_cover(body) == {}
+    assert document_cover(body, opening_page_text) == {}
 
 
 def test_cover_in_a_later_appendix_does_not_classify_the_containing_pdf():
@@ -118,7 +119,7 @@ def test_cover_in_a_later_appendix_does_not_classify_the_containing_pdf():
     writer.add_page(PdfReader(BytesIO(PDF)).pages[0])
     output = BytesIO()
     writer.write(output)
-    assert document_cover(output.getvalue()) == {}
+    assert document_cover(output.getvalue(), opening_page_text) == {}
 
 
 def test_cover_evidence_follows_identical_bytes_and_keeps_filename_kind():

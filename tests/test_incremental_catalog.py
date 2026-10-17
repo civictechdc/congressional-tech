@@ -108,7 +108,7 @@ def test_filename_cache_independent_of_body_fields_and_negative_cover_is_cached(
     (tmp_path / "indexes").mkdir()
     calls = []
     monkeypatch.setattr(
-        evidence, "document_cover", lambda body: calls.append(body) or {}
+        evidence, "document_cover", lambda body, read_page: calls.append(body) or {}
     )
     index.write_filename_metadata(tmp_path, [dict(source)], workers=1, inspect_bodies=True)
     before = pa.parquet.read_table(selected_path(tmp_path / "indexes/document-filenames.parquet"))
@@ -505,7 +505,7 @@ def test_explicit_body_inspection_preserves_readings_on_later_metadata_only_upda
     url = 'https://example.gov/opaque.pdf'
     retain(store, {'url': url}, family='documents', source_file='capture.json',
            url=url, body=b'%PDF-1.7\n%%EOF')
-    monkeypatch.setattr(evidence, 'document_cover', lambda _: {
+    monkeypatch.setattr(evidence, 'document_cover', lambda body, read_page: {
         'content_document_kind': ['hearing-transcript'], 'content_citation': ['S. Hrg. 119-1']})
     rebuild_catalog(store, workers=1)
     assert table(store).to_pylist()[0]['document_kind'] is None

@@ -16,7 +16,7 @@ from zipfile import is_zipfile
 
 from congress_api.parsers.house_xml import parse_house_meeting, parse_house_witnesses
 from congress_api.parsers.document_cover import COVER_FIELDS, document_cover
-from congress_api.parsers import pdf_tools
+from congress_api.retention import pdf_tools
 from congress_api.parsers.xml import parse_xml, xml_element
 
 
@@ -40,7 +40,7 @@ def evidence_fingerprint():
     import congress_api.parsers.house_xml as house_xml
     import congress_api.parsers.document_cover as document_cover
     import congress_api.parsers.xml as xml
-    from congress_api.parsers import image_tools
+    from congress_api.retention import image_tools
     digest = sha256()
     for path in (__file__, models.__file__, xml_models.__file__, house_xml.__file__, xml.__file__, document_cover.__file__, pdf_tools.__file__):
         digest.update(Path(path).read_bytes())
@@ -208,7 +208,7 @@ def document_body_fields(data):
     """Identify ambiguous bytes independently of names, headers, and HTTP status."""
     if data is None:
         return {}
-    from congress_api.parsers.image_tools import image_kind
+    from congress_api.retention.image_tools import image_kind
     if kind := image_kind(data):
         # Format facts are distinct from capture validity, just as for PDFs.
         # Capture validates pixels once; catalog replay must retain failed images too.
@@ -410,7 +410,7 @@ def enrich_document_covers(rows, *, read_body, cached=None):
             continue
         data = read_body(key)
         if data is not None:
-            covers[key] = document_cover(data)
+            covers[key] = document_cover(data, pdf_tools.opening_page_text)
             cached[('cover', key)] = covers[key]
     for row in rows:
         if fields := covers.get(row.get('body_key')):

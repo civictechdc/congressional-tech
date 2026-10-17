@@ -8,8 +8,8 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 
 from congress_api.acquisition.raw_sync import run_sync
-from congress_api.models.content import CapturedFile, content_bytes
-from congress_api.parsers.archive_links import inspect_capture
+from congress_api.retention.body_files import CapturedFile, content_bytes
+from congress_api.retention.capture_inspection import inspect_capture
 from congress_api.retention.bundles import restore
 from congress_api.retention.raw_archive import Archive
 from congress_api.transport.rust_fetch import RustFetcher, RustResponse

@@ -4,19 +4,18 @@ import re
 
 from pypdf import PdfReader
 from pypdf.errors import PyPdfError
-from congress_api.parsers.pdf_tools import opening_page_text
 
 COVER_FIELDS = frozenset({'content_document_kind', 'content_citation', 'content_congress',
                          'content_amendment_type'})
 
 
-def _page_text(page, data, number):
+def _page_text(page, data, number, read_page):
     try:
         return page.extract_text() or ''
     except (PyPdfError, ValueError, KeyError, TypeError, IndexError, RecursionError):
         # A separate parser handles readable PDFs with unsupported content
         # operands. Page selection and classification still follow the same rules.
-        return opening_page_text(data, number)
+        return read_page(data, number)
 
 
 def senate_hearing_citation(text: str) -> str | None:
@@ -218,10 +217,12 @@ def legislative_cover_fields(clean: str) -> dict[str, list[str]]:
     return {'content_document_kind': [kind], **fields}
 
 
-def document_cover(data: bytes, *, strict: bool = False) -> dict[str, list[str]]:
+def document_cover(data: bytes, read_page, *, strict: bool = False) -> dict[str, list[str]]:
     """Read at most two opening pages; unreadable or ambiguous content abstains.
 
-    The caller bounds and validates the supplied body. No OCR or network access.
+    The caller bounds and validates the supplied body and supplies
+    `read_page(data, number)`, its bounded reader for pages pypdf cannot extract
+    (retention.pdf_tools.opening_page_text). No OCR or network access.
     Capture can request errors to distinguish unreadable PDFs from abstentions.
     """
     if not data.lstrip().startswith(b'%PDF-'):
@@ -234,13 +235,13 @@ def document_cover(data: bytes, *, strict: bool = False) -> dict[str, list[str]]
                 return {}
             if not pdf.pages:
                 return {}
-            first = _page_text(pdf.pages[0], data, 1)
+            first = _page_text(pdf.pages[0], data, 1, read_page)
             if result := document_page_fields(first):
                 return result
             # Second-page fallback is exclusively for coverless proceedings, not
             # a new cover or an opening statement embedded in a different document.
             if not first.strip() and len(pdf.pages) > 1:
-                result = document_page_fields('', _page_text(pdf.pages[1], data, 2))
+                result = document_page_fields('', _page_text(pdf.pages[1], data, 2, read_page))
                 if result.get('content_document_kind') == ['transcript']:
                     return result
     except (PyPdfError, ValueError, KeyError, TypeError, IndexError, RecursionError):

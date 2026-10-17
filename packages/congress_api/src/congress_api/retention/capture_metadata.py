@@ -15,7 +15,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from congress_api.parsers.document_cover import COVER_FIELDS, document_cover, document_page_fields
-from congress_api.parsers.pdf_tools import page_count_file, opening_page_text_file
+from congress_api.retention.pdf_tools import opening_page_text, opening_page_text_file, page_count_file
 from congress_api.retention.document_evidence import (
     BODY_FIELDS, document_body_fields, evidence_fingerprint,
 )
@@ -34,7 +34,7 @@ def inspect_document(data):
     """Reuse native XML/format readers and the bounded PDF opening-page reader."""
     fields = document_body_fields(data)
     if fields.get('body_format') == ['pdf']:
-        fields.update(document_cover(data, strict=True))
+        fields.update(document_cover(data, opening_page_text, strict=True))
     return fields
 
 

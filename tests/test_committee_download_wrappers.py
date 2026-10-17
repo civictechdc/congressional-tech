@@ -9,8 +9,9 @@ import pytest
 
 from congress_api.acquisition.documents import resolve_document
 from congress_api.acquisition.raw_sync import run_sync
-from congress_api.models.content import content_bytes
-from congress_api.parsers.archive_links import inspect_capture, related_links
+from congress_api.retention.body_files import content_bytes
+from congress_api.parsers.archive_links import related_links
+from congress_api.retention.capture_inspection import inspect_capture
 from congress_api.parsers.committee_pages import parse_event_page, document_groups
 from congress_api.parsers.document_links import document_links
 from congress_api.parsers.senate import parse_page

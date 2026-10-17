@@ -10,7 +10,8 @@ import pytest
 
 from congress_api.acquisition import house
 from congress_api.acquisition.house_fallback import CommitteeFallback, committee_websites, merge_documents, needs_fallback
-from congress_api.models.content import RawContent, content_bytes
+from congress_api.models.content import RawContent
+from congress_api.retention.body_files import content_bytes
 from congress_api.models.house import HouseParsedRecord
 from congress_api.parsers.committee_pages import calendar_links, discovery_links, match_event, parse_event_page
 from congress_api.parsers.document_links import document_links

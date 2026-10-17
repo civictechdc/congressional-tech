@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from congress_api.models.content import content_bytes
+from congress_api.retention.body_files import content_bytes
 from congress_api.parsers.committee_pages import parse_event_page
 from congress_api.parsers.document_links import http_url
 

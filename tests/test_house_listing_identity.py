@@ -8,7 +8,7 @@ from urllib.parse import parse_qs, urlsplit
 import pytest
 
 from congress_api.acquisition import house_sites
-from congress_api.models.content import content_bytes
+from congress_api.retention.body_files import content_bytes
 from congress_api.parsers.committee_discovery import discover, event_url, key, listing_records, task
 from congress_api.parsers.committee_pages import event_identity, listing_url, parse_event_page
 

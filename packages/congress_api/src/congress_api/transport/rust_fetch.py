@@ -13,8 +13,8 @@ from urllib.parse import urlsplit
 
 import requests
 
-from congress_api.parsers.archive_links import inspect_capture
-from congress_api.models.content import CapturedFile, content_bytes
+from congress_api.retention.body_files import CapturedFile, content_bytes
+from congress_api.retention.capture_inspection import inspect_capture
 from congress_api.transport.source_capture import fetch_source, read_bounded
 from congress_api.transport import zyte
 

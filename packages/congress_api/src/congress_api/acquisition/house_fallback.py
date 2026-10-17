@@ -4,7 +4,7 @@ from collections import defaultdict
 from urllib.parse import urlsplit
 
 from congress_api.matching.committees import native_parent
-from congress_api.models.content import content_bytes
+from congress_api.retention.body_files import content_bytes
 from congress_api.parsers.committee_pages import document_groups, match_event, same_site
 from congress_api.parsers.document_links import http_url
 

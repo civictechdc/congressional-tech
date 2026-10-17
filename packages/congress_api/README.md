@@ -223,7 +223,7 @@ Files are grouped by responsibility, with provider names inside each group:
 | `parsers/` | Interpret supplied bytes or decoded data; no files or HTTP | `congress.py`, `house.py`, `senate.py`, `gpo.py`, `witness_pdf.py`, `captions.py` |
 | `acquisition/` | Select and collect source records; manage refresh decisions | `meetings.py`, `committees.py`, `house.py`, `senate.py`, `gpo.py`, `gaps.py` |
 | `transport/` | Implement retries, pacing and provider/media access | `http.py`, `zyte.py`, `senate.py`, `audio.py`, `gemini.py` |
-| `retention/` | Read/write captures, generated tables, failures and refresh state | `tables.py`, `meetings.py`, `gpo.py`, `captions.py`, `rejected_pages.py` |
+| `retention/` | Read/write captures, generated tables, failures and refresh state; owned capture files and bounded PDF/image reader processes | `tables.py`, `meetings.py`, `body_files.py`, `pdf_tools.py`, `rejected_pages.py` |
 | `adapters/` | Convert source data to `committee_meeting` using supplied identity/import context | Meeting, material, committee and transcript adapters |
 | `matching/` | Classify meetings and associate documents, recordings and witnesses | `meetings.py`, `prints.py`, `recordings.py`, `completeness.py` |
 | `transcripts/` | Produce published-text, caption and generated transcripts with distinct origins | `gpo.py`, `senate.py`, `generate.py`, `context.py`, `render.py` |

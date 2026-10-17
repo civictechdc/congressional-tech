@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from congress_api.acquisition import house_sites
-from congress_api.models.content import content_bytes
+from congress_api.retention.body_files import content_bytes
 from congress_api.parsers.committee_discovery import discover, key, task
 from congress_api.parsers.document_links import document_links, download_query_fallback
 from test_house_sites import client, DIRECTORY, HOME, TODAY

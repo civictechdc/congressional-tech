@@ -7,8 +7,8 @@ import subprocess
 import pytest
 from PIL import Image
 
-from congress_api.parsers import image_tools as reader
-from congress_api.parsers.archive_links import inspect_body
+from congress_api.retention import image_tools as reader
+from congress_api.retention.capture_inspection import inspect_body
 from congress_api.retention.document_evidence import document_body_fields
 
 

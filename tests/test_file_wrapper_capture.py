@@ -7,7 +7,7 @@ import struct
 
 import pytest
 
-from congress_api.parsers.archive_links import inspect_body, inspect_capture
+from congress_api.retention.capture_inspection import inspect_body, inspect_capture
 from congress_api.retention.raw_archive import prepare_capture, metadata_body_keys
 from test_raw_source_sync import response
 

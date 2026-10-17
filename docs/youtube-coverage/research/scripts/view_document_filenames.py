@@ -249,7 +249,7 @@ class RetainedFiles:
         if len(data) > 16 * 1024**2:
             result['note'] = 'Saved bytes verified. This PDF exceeds the 16 MiB text-inspection limit.'
             return result
-        from congress_api.parsers.pdf_tools import page_count_file, opening_page_text_file
+        from congress_api.retention.pdf_tools import page_count_file, opening_page_text_file
         from congress_api.parsers.document_cover import document_page_fields
         with TemporaryDirectory() as temporary:
             path = Path(temporary) / 'document.pdf'

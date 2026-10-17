@@ -8,7 +8,8 @@ from urllib.parse import urljoin, urlsplit, urlunsplit
 
 import requests
 
-from congress_api.models.content import CapturedBody, CapturedFile, RawContent
+from congress_api.models.content import CapturedBody, RawContent
+from congress_api.retention.body_files import CapturedFile
 from congress_api.models.transport import SourceCapture, ZyteResponse
 from congress_api.parsers.archive_links import allowed_url
 from congress_api.transport import zyte

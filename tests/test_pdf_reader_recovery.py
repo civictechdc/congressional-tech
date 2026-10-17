@@ -8,8 +8,8 @@ import sys
 import pytest
 from pypdf import PdfWriter
 
-from congress_api.parsers.archive_links import inspect_body
-from congress_api.parsers.pdf_tools import PdfToolError, _run, opening_page_text, reader_versions
+from congress_api.retention.capture_inspection import inspect_body
+from congress_api.retention.pdf_tools import PdfToolError, _run, opening_page_text, reader_versions
 from congress_api.retention.capture_metadata import read_document
 
 FIXTURES = Path(__file__).parent / 'fixtures/capture-failures'
