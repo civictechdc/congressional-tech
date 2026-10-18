@@ -82,6 +82,22 @@ def test_input_pinning_detects_missing_objects_listings_and_repeated_read_change
     assert not store.inputs_unchanged()
 
 
+def test_derived_input_snapshot_survives_proof_enrichment_but_detects_byte_changes(tmp_path):
+    mirror = tmp_path / 'mirror'
+    path = mirror / 'indexes/documents.parquet'
+    path.parent.mkdir(parents=True)
+    path.write_bytes(b'original')
+    store = benchmark.MirrorOverlay(mirror, tmp_path / 'output')
+    owned = tmp_path / 'owned.parquet'
+    proof = store.read_derived_file('indexes/documents.parquet', owned)
+    proof.update(rows=1, catalog_id='catalog', key='indexes/documents.parquet')
+    assert proof.require(owned) is proof
+    assert store.inputs_unchanged()
+    assert set(store.source_inventory['indexes/documents.parquet']) == {'sha256', 'bytes'}
+    path.write_bytes(b'changed')
+    assert not store.inputs_unchanged()
+
+
 def test_rebuild_qualification_pins_inputs_and_checks_real_output_pair(tmp_path, monkeypatch):
     from congress_api.retention.raw_archive import Archive
     from congress_api.retention.catalog_publication import read_catalog
@@ -93,8 +109,8 @@ def test_rebuild_qualification_pins_inputs_and_checks_real_output_pair(tmp_path,
     benchmark.rebuild_catalog(store, workers=1)
     snapshot = read_catalog(store)
     reference = tmp_path / 'reference'; reference.mkdir()
-    (reference / 'document-filenames.parquet').write_bytes(snapshot.filenames)
-    (reference / 'documents.parquet').write_bytes(snapshot.documents)
+    (reference / 'document-filenames.parquet').write_bytes(snapshot.filenames_path.read_bytes())
+    (reference / 'documents.parquet').write_bytes(snapshot.documents_path.read_bytes())
     mirror = tmp_path / 'mirror'
     for key, body in store.objects.items():
         path = mirror / key; path.parent.mkdir(parents=True, exist_ok=True); path.write_bytes(body)
@@ -107,6 +123,7 @@ def test_rebuild_qualification_pins_inputs_and_checks_real_output_pair(tmp_path,
     assert report['inputs_unchanged'] and report['semantic_equivalence_passed']
     assert report['source_inventory']['indexes/captures.parquet']['sha256']
     assert report['storage_reads']['indexes'] > 0
+    assert report['counters']['context_result_reads'] > 0
     assert report['stages'] and report['rebuild_memory']['process_peak_bytes'] > 0
 
     assert report['candidate_inventory']['documents.parquet']['sha256']

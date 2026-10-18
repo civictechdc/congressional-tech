@@ -71,6 +71,65 @@ def test_shared_url_occurrences_keep_parent_titles_and_hashes_paired():
         ((PAGE,), ('a' * 64,)), ((PAGE + '-two',), ('b' * 64,))}
 
 
+@pytest.fixture(params=['resident', 'sqlite'])
+def context_store(request, tmp_path):
+    from congress_api.retention.catalog_staging import WorkingCatalog
+    working = WorkingCatalog(tmp_path / 'context.sqlite') if request.param == 'sqlite' else None
+    try:
+        yield DocumentSources(working=working)
+    finally:
+        if working is not None:
+            working.close()
+
+
+def test_one_pass_context_matches_sorted_reference_and_preserves_legacy_filters(context_store):
+    context = context_store
+    context.add_url(LINK, {'source_page_title': ['Legacy title'], 'source_occurrences': []})
+    for number in reversed(range(40)):
+        context.add_url(LINK, {
+            'source_page_url': [f'https://example.test/{number}'],
+            'source_link_label': [f'Label {number}'],
+            'source_receipt_line': [str(number)],
+        })
+    # This is the former two-pass path, including identity-sorted occurrences.
+    expected = {field: sorted(values) for field, values in context.by_url[LINK].items()}
+    stored = context.occurrences[LINK]
+    expected['source_occurrences'] = [stored[key] for key in sorted(stored)]
+    before = context.statistics.copy()
+    assert context.for_url(LINK) == expected
+    assert context.statistics['context_occurrence_scans'] - before['context_occurrence_scans'] == 1
+    assert context.statistics['context_occurrence_rows_read'] - before['context_occurrence_rows_read'] == 40
+    first = context.for_url(LINK)
+    first['source_page_title'].append('consumer mutation')
+    first['source_occurrences'][0]['source_link_label'].append('consumer mutation')
+    assert context.for_url(LINK) == expected
+    assert context.statistics['context_result_reads'] == 3
+
+
+def test_large_context_is_read_fresh_each_time(context_store):
+    context = context_store
+    context.add_url(LINK, {'source_link_label': ['large value ' * 10000]})
+    first = context.for_url(LINK)
+    first['source_occurrences'][0]['source_link_label'].clear()
+    assert context.for_url(LINK)['source_occurrences'][0]['source_link_label'] == ['large value ' * 10000]
+    assert context.statistics['context_occurrence_scans'] == 2
+    assert context.statistics['context_result_reads'] == 2
+
+
+def test_link_predicate_uses_occurrences_and_extra_filters_without_pairing(context_store):
+    context = context_store
+    context.add_url(LINK, {'source_page_url': [PAGE], 'source_link_label': ['Not a link']})
+    assert not context.has_source_link(LINK)
+    context.add_url(LINK, {'source_occurrences': [], 'source_link_url': ['legacy://literal-link']})
+    scans = context.statistics['context_occurrence_scans']
+    assert context.has_source_link(LINK)
+    assert context.statistics['context_occurrence_scans'] == scans
+    assert not context.transfers  # Flat legacy filters cannot establish an edge.
+    context.add_url(FAILED, {'source_link_url': [REQUESTED]})
+    assert context.has_source_link(FAILED)
+    assert not context.has_source_link(CANDIDATE)
+
+
 def test_each_anchor_keeps_its_own_label_heading_and_witness():
     raw = '<section><h2>Witnesses</h2><div class="vcard"><span class="fn">Jane Smith</span><h3>Jane attachment</h3><a href="/shared.pdf">Testimony</a></div><div class="vcard"><span class="fn">John Jones</span><h3>John attachment</h3><a href="/shared.pdf">Article</a></div></section>'
     people = [{'name': 'Jane Smith'}, {'name': 'John Jones'}]

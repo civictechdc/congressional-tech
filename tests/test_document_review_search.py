@@ -16,8 +16,8 @@ from test_document_review_catalog import fixture
 from test_document_filename_viewer import viewer
 
 
-def search_catalog(tmp_path, unsupported=False, unclassified=False):
-    args=fixture(tmp_path,unsupported)
+def search_catalog(tmp_path, unsupported=False, unclassified=False, pages=1):
+    args=fixture(tmp_path,unsupported,pages=pages)
     render=tmp_path/'page-1.png'
     render.write_bytes(b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a3ioAAAAASUVORK5CYII='))
     source=pq.read_table(args['sources']).to_pylist()[0]
@@ -41,7 +41,11 @@ def search_catalog(tmp_path, unsupported=False, unclassified=False):
     original=dict(document_id='d',filename=source['filename'],after_kind=document['document_kind'] or [],members=[source,alias])
     ledger=tmp_path/'ledger.jsonl';ledger.write_text(json.dumps(original)+'\n')
     receipt=json.loads(args['receipt'].read_text());receipt['input_ledger_sha256']=file_digest(ledger)
-    receipt['records'][0]['rendered_pages']={str(render):file_digest(render)}
+    renders = {}
+    for number in range(1, pages + 1):
+        path = tmp_path / f'page-{number}.png'; path.write_bytes(render.read_bytes())
+        renders[str(path)] = file_digest(path)
+    receipt['records'][0]['rendered_pages']=renders
     args['receipt'].write_text(json.dumps(receipt));args['receipt_sha256']=file_digest(args['receipt'])
     proposals=json.loads(args['proposals'].read_text())
     proposals['records'][0]['source_row_sha256']=row_digest(original)

@@ -90,3 +90,93 @@ def test_actual_viewer_materialization_accepts_the_shared_pair_proof(tmp_path):
     assert result['info']['rows'] == 1
     assert result['info']['video_reference_groups'] == 0
     assert all((tmp_path/'prepared'/item['path']).is_file() for item in result['files'].values())
+
+
+def test_direct_build_refuses_existing_publication_before_reading_inputs(tmp_path):
+    target = tmp_path / 'published'; target.mkdir()
+    original = b'{"previous":true}\n'
+    (target / 'manifest.json').write_bytes(original)
+    with __import__('pytest').raises(ValueError, match='fresh empty directory'):
+        builder.publish(tmp_path / 'missing-source', target)
+    assert (target / 'manifest.json').read_bytes() == original
+    assert list(target.iterdir()) == [target / 'manifest.json']
+
+
+def test_normal_catalog_rebuild_checks_references_once_and_fresh_process_has_no_proof(tmp_path, monkeypatch):
+    from congress_api.retention import document_index as index
+    from congress_api.retention.raw_catalog import rebuild_catalog
+    from test_raw_catalog import initialize
+    store = initialize(tmp_path)
+    original, calls = index.validate_document_indexes, []
+    def counted(*args, **kwargs):
+        calls.append(args)
+        return original(*args, **kwargs)
+    monkeypatch.setattr(index, 'validate_document_indexes', counted)
+    result = rebuild_catalog(store, workers=1, repair=True)
+    assert len(calls) == 1
+    assert __import__('json').loads(__import__('json').dumps(result))['catalog_id'] == result['catalog_id']
+
+
+def test_reference_content_proof_reuses_one_scan_across_owned_copy_and_rejects_forgery(tmp_path):
+    from congress_api.retention.catalog_validation import validate_references, validate_catalog_pair
+    from congress_api.retention.catalog_publication import _properties
+    from test_catalog_publication import pair
+    from types import SimpleNamespace
+    import shutil
+    import pytest
+    paths = pair(tmp_path / 'build')
+    calls = []
+    def validator(*args, **kwargs): calls.append(args)
+    reference = validate_references(*paths, validator=validator)
+    properties = {label: _properties(path) for label, path in zip(('filenames', 'documents'), paths)}
+    content = reference.content(properties)
+    root = tmp_path / 'retained'; generation = 'a' * 32
+    manifest = dict(version=1, generation=generation, catalog_id='one', files={})
+    for label, source in zip(('filenames', 'documents'), paths):
+        key = f'catalog-generations/{generation}/{source.name}'
+        path = root / key; path.parent.mkdir(parents=True, exist_ok=True); shutil.copyfile(source, path)
+        manifest['files'][label] = dict(key=key, **{k: v for k, v in properties[label].items() if k != 'catalog_id'})
+    proof = validate_catalog_pair(root, manifest, validator=validator, references=content)
+    proof.require(root, manifest)
+    assert len(calls) == 1
+    with pytest.raises(ValueError, match='no longer applies'):
+        copy.copy(proof).require(root, manifest)
+    with pytest.raises(ValueError, match='no longer applies'):
+        copy.copy(content).require(manifest, validator=validator)
+    with pytest.raises(ValueError, match='no longer applies'):
+        reference.require(*paths, validator=lambda *_: None)
+    paths[0].write_bytes(paths[0].read_bytes())
+    with pytest.raises(ValueError, match='no longer applies'):
+        reference.require(*paths, validator=validator)
+
+
+@__import__('pytest').mark.parametrize('damage', ['interrupt', 'corrupt', 'manifest', 'success'])
+def test_fetch_stages_complete_pair_before_replacing_prior_selection(tmp_path, damage):
+    from congress_api.retention.catalog_cache import LocalStore
+    from congress_api.retention.catalog_publication import publish_catalog, read_catalog
+    from test_catalog_publication import pair
+    from datetime import datetime, timezone
+    import io
+    import json
+    import pytest
+    remote = tmp_path / 'remote'; remote.mkdir()
+    store = LocalStore(remote)
+    publish_catalog(store, *pair(tmp_path / 'new', 'new'), previous=read_catalog(store))
+    manifest = json.loads((remote / 'indexes/catalog.json').read_text())
+    root = tmp_path / 'local'; (root / 'indexes').mkdir(parents=True)
+    original = b'{"prior":"selected"}'
+    (root / 'indexes/catalog.json').write_bytes(original)
+    body = io.BytesIO(b'{}' if damage == 'manifest' else json.dumps(manifest).encode())
+    class Client:
+        def get_object(self, **kwargs): return dict(Body=body, LastModified=datetime.now(timezone.utc))
+        def download_file(self, bucket, key, path):
+            Path(path).write_bytes(b'partial' if damage == 'corrupt' else (remote / key).read_bytes())
+            if damage == 'interrupt': raise OSError('injected interrupted download')
+    if damage == 'success':
+        builder.fetch(root, client=Client())
+        builder.verify(root, json.loads((root / 'indexes/catalog.json').read_text()))
+    else:
+        with pytest.raises((ValueError, OSError)):
+            builder.fetch(root, client=Client())
+        assert (root / 'indexes/catalog.json').read_bytes() == original
+    assert body.closed

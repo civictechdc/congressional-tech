@@ -1,9 +1,29 @@
-async function verifiedJson(fetcher, url, sha256, length, label) {
-  const response = await fetcher(url);
+export const reviewStartupPolicy = Object.freeze({deadlineMs: 15_000, maxBytes: 16 * 1024 * 1024});
+
+async function verifiedJson(fetcher, url, sha256, length, label, signal, policy) {
+  if (!Number.isSafeInteger(length) || length < 1 || length > policy.maxBytes) throw new Error(`${label} exceeds the review startup byte limit.`);
+  const response = await fetcher(url, {signal});
   if (!response.ok) throw new Error(`Could not load the ${label}.`);
-  const bytes = await response.arrayBuffer();
+  const declared = response.headers.get('Content-Length');
+  // Fetch exposes decoded bytes; an encoded or CORS-hidden Content-Length
+  // may describe the compressed transfer, so only identity responses can use it.
+  const encoding=response.headers.get('Content-Encoding');
+  if (declared !== null && response.type !== 'cors' && (!encoding || encoding.toLowerCase()==='identity') && Number(declared) !== length) { await response.body?.cancel(); throw new Error(`${label} has an unexpected response length.`); }
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error(`Could not read the ${label}.`);
+  const bytes = new Uint8Array(length); let offset = 0;
+  try {
+    while (true) {
+      signal.throwIfAborted();
+      const {value, done} = await reader.read();
+      if (done) break;
+      if (offset + value.byteLength > length) throw new Error(`${label} exceeds its expected response length.`);
+      bytes.set(value, offset); offset += value.byteLength;
+    }
+  } catch (error) { await reader.cancel().catch(() => {}); throw error; }
+  finally { reader.releaseLock(); }
   const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(v => v.toString(16).padStart(2, '0')).join('');
-  if (hash !== sha256 || bytes.byteLength !== length) throw new Error(`${label[0].toUpperCase()}${label.slice(1)} failed verification.`);
+  if (hash !== sha256 || offset !== length) throw new Error(`${label[0].toUpperCase()}${label.slice(1)} failed verification.`);
   return JSON.parse(new TextDecoder().decode(bytes));
 }
 
@@ -14,20 +34,29 @@ async function verifiedJson(fetcher, url, sha256, length, label) {
  * reviews keep the original categories. Without a binding, the reviews apply
  * only to the exact catalog pair they were exported from.
  */
-export async function loadReviews(descriptor, manifest, fetcher, manifestUrl) {
+export async function loadReviews(descriptor, manifest, fetcher, manifestUrl, configuredPolicy = {}) {
   const empty = {groups: new Map(), sources: new Map(), info: {}};
   const bound = manifest.files?.review_binding;
   if (!descriptor || (!bound && descriptor.catalog_id !== manifest.info.catalog_id)) return empty;
+  const policy = {...reviewStartupPolicy, ...configuredPolicy};
+  const controller = new AbortController();
+  let timer;
+  // The race also settles a fetch implementation that fails to honor abort.
+  const deadline = new Promise((_, reject) => {
+    timer = setTimeout(() => { const error = new Error('Document reviews exceeded the startup deadline.'); controller.abort(error); reject(error); }, policy.deadlineMs);
+  });
+  const verified = (...args) => Promise.race([verifiedJson(...args, controller.signal, policy), deadline]);
   try {
+    if (!Number.isFinite(policy.deadlineMs) || policy.deadlineMs <= 0 || !Number.isSafeInteger(policy.maxBytes) || policy.maxBytes < 1) throw new Error('Invalid review startup policy.');
     let placement = null;
     if (bound) {
-      const binding = await verifiedJson(fetcher, new URL(bound.path, manifestUrl).href, bound.sha256, bound.bytes, 'document review binding');
+      const binding = await verified(fetcher, new URL(bound.path, manifestUrl).href, bound.sha256, bound.bytes, 'document review binding');
       if (binding.version !== 1 || binding.review_sha256 !== descriptor.review_sha256 || binding.catalog_id !== manifest.info.catalog_id) {
         throw new Error('Document review binding belongs to a different publication.');
       }
       placement = new Map(binding.rows.map(row => [row.index, row]));
     }
-    const data = await verifiedJson(fetcher, descriptor.url, descriptor.sha256, descriptor.bytes, 'document review publication');
+    const data = await verified(fetcher, descriptor.url, descriptor.sha256, descriptor.bytes, 'document review publication');
     if (data.version !== 1 || data.review_sha256 !== descriptor.review_sha256 || (!placement && (data.catalog_id !== manifest.info.catalog_id ||
         ['filenames','documents'].some(name => data.baseline[name] !== manifest.source_manifest?.files[name]?.sha256)))) {
       throw new Error('Document reviews belong to a different catalog pair.');
@@ -67,7 +96,7 @@ export async function loadReviews(descriptor, manifest, fetcher, manifestUrl) {
       reviewed_groups: [...groups.values()].filter(row => row.status === 'candidate_applied').length, review_facets: facets}};
   } catch (error) {
     return {...empty, info: {complete_body_reviews: true, reviewed_search: false, review_error: error.message}};
-  }
+  } finally { clearTimeout(timer); controller.abort(); }
 }
 
 export function reviewedMode(query, info) {

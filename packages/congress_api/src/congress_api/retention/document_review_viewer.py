@@ -4,6 +4,13 @@ from hashlib import sha256
 import json
 from pathlib import Path
 import re
+import weakref
+
+_selections = weakref.WeakValueDictionary()
+
+
+class ReviewSelection(dict):
+    """Optimization for owned, unchanged complete rows; not mutable-row attestation."""
 
 from .document_review_bundle import select_document
 from .document_review_portable import load_portable, resolve_evidence
@@ -50,13 +57,23 @@ class ReviewSnapshot:
         reviewed = select_document(document, sources, self.candidates)
         selected = select_document(document, sources) if withdrawn else reviewed
         self.check()
-        return dict(status='withdrawn' if withdrawn and reviewed['review'] else reviewed['status'],
+        result = ReviewSelection(status='withdrawn' if withdrawn and reviewed['review'] else reviewed['status'],
                     baseline={key: deepcopy(document.get(key)) for key in CLASSIFICATION_FIELDS},
                     selected={key: selected['document'].get(key) for key in CLASSIFICATION_FIELDS},
                     review=reviewed['review'])
+        result.snapshot, result.document, result.sources = self, document, sources
+        result.verified_review = deepcopy(reviewed['review'])
+        _selections[id(result)] = result
+        return result
 
-    def evidence(self, document, sources, kind, page=None):
-        review = self.selection(document, sources)['review']
+    def evidence(self, document, sources, kind, page=None, *, selection=None):
+        if selection is None:
+            selection = self.selection(document, sources)
+        if (not isinstance(selection, ReviewSelection) or _selections.get(id(selection)) is not selection
+                or selection.snapshot is not self or selection.document is not document or selection.sources is not sources):
+            raise ValueError('Review selection does not cover these complete rows')
+        self.check()
+        review = selection.verified_review
         if review is None:
             raise ValueError('This document has no verified complete-body review.')
         observed = review['body_observation']

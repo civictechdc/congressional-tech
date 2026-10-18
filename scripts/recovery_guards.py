@@ -17,17 +17,26 @@ ACTIVE_STATUSES = ('queued', 'in_progress', 'requested', 'waiting', 'pending')
 
 
 def active_cloud_writers(*, run=subprocess.check_output, max_pages=10):
-    """Query active runs only. Refuse incomplete or malformed results."""
+    """Observe capture runs only; this is not an exclusion lease.
+
+    Other publication writers are fenced by their own locks and per-object
+    conditions. A successful inventory cannot exclude a writer starting later.
+    """
     active = []
     for status in ACTIVE_STATUSES:
         for page in range(1, max_pages + 1):
             route = ('repos/civictechdc/congressional-tech/actions/workflows/'
                      f'capture-raw-sources.yml/runs?status={status}&per_page=100&page={page}')
             result = json.loads(run(['gh', 'api', route], text=True, timeout=30))
-            rows = result['workflow_runs']
-            if not isinstance(rows, list) or not isinstance(result['total_count'], int):
+            if not isinstance(result, dict):
+                raise RuntimeError('Cloud writer status malformed')
+            rows = result.get('workflow_runs')
+            if not isinstance(rows, list) or type(result.get('total_count')) is not int or result['total_count'] < 0:
                 raise RuntimeError('Cloud writer status malformed')
             for row in rows:
+                if (not isinstance(row, dict) or not isinstance(row.get('status'), str)
+                        or type(row.get('id')) is not int or not isinstance(row.get('event'), str)):
+                    raise RuntimeError('Cloud writer row malformed')
                 if row['status'] == 'completed':
                     continue
                 if row['status'] not in ACTIVE_STATUSES:
@@ -104,10 +113,14 @@ class RecoveryGuard:
     __call__ = check
 
     def boundary(self):
-        """Revalidate all sealed inputs and protected versions at a phase seam."""
+        """Check exact local custody and fresh protected versions at a phase seam.
+
+        A new guard hashes every pin. The same process reuses only unchanged
+        device/inode/size/mtime/ctime identities, including across phase seams.
+        """
         with self._lock:
             self._local()
-            self._pins(full=True)
+            self._pins(full=False)
             self._cloud(fresh=True)
             self.protected_check()
             self.counts['protected'] += 1

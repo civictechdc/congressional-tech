@@ -14,9 +14,10 @@ from test_raw_source_sync import MemoryStore, response
 
 def table(store, key=FILENAMES):
     from congress_api.retention.catalog_publication import read_catalog
-    snapshot = read_catalog(store) if key in (FILENAMES, DOCUMENTS) else None
-    payload = (snapshot.filenames if key == FILENAMES else snapshot.documents) if snapshot else store.read(key)
-    return pq.read_table(selected_path(pa.BufferReader(payload)))
+    if key in (FILENAMES, DOCUMENTS):
+        with read_catalog(store) as snapshot:
+            return pq.read_table(snapshot.filenames_path if key == FILENAMES else snapshot.documents_path)
+    return pq.read_table(pa.BufferReader(store.read(key)))
 
 
 def initialize(tmp_path):
@@ -213,7 +214,7 @@ def test_metadata_only_refresh_preserves_capture_outcome(tmp_path):
     rebuild_catalog(store, a.captures, workers=1)
     from congress_api.retention.catalog_publication import read_catalog
     snapshot = read_catalog(store)
-    for key, payload in ((FILENAMES, snapshot.filenames), (DOCUMENTS, snapshot.documents)):
+    for key, payload in ((FILENAMES, snapshot.filenames_path.read_bytes()), (DOCUMENTS, snapshot.documents_path.read_bytes())):
         (tmp_path / key).write_bytes(payload)
     from congress_api.retention.catalog_cache import LocalStore
     from congress_api.retention.catalog_publication import publish_catalog

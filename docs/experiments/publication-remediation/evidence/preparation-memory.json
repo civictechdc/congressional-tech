@@ -1,0 +1,41 @@
+{
+  "catalog": {
+    "search": {
+      "seconds": 0.41824887495022267,
+      "python_peak_bytes": 10153392,
+      "arrow_retained_bytes": 12560384,
+      "filter_bytes": 1525000,
+      "source_rows": 25000,
+      "documents": 5000,
+      "peak_rss_bytes": 153239552
+    },
+    "preparation": {
+      "seconds": 0.38003783393651247,
+      "python_peak_bytes": 10153452,
+      "arrow_retained_bytes": 11035072,
+      "filter_bytes": 0,
+      "source_rows": 25000,
+      "documents": 5000,
+      "peak_rss_bytes": 145866752
+    }
+  },
+  "navigation": {
+    "before": {
+      "seconds": 2.0084400420309976,
+      "python_peak_bytes": 8973165,
+      "hashes": {
+        "detail_navigation": "eaa55b7f60d8d55638bc8bab16581ecc59ae357503e46637213597fa5f50fee4",
+        "detail_members": "2fadeb03b6d797daf4d2a3fdfdbe5662d50eaa343fc153b249894a336bf0ebba"
+      }
+    },
+    "after": {
+      "seconds": 2.4094270830973983,
+      "python_peak_bytes": 992970,
+      "hashes": {
+        "detail_navigation": "eaa55b7f60d8d55638bc8bab16581ecc59ae357503e46637213597fa5f50fee4",
+        "detail_members": "2fadeb03b6d797daf4d2a3fdfdbe5662d50eaa343fc153b249894a336bf0ebba"
+      }
+    }
+  },
+  "scope": "bounded offline fixtures; no production extrapolation"
+}

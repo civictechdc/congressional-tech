@@ -7,7 +7,7 @@ test('review links select an archived immutable publication and validate its ide
   const root = 'https://data.test/manifest.json';
   const requests = [];
   const fetcher = async (url, options) => {
-    assert.equal(options.cache, 'no-store'); requests.push(String(url));
+    assert.equal(options.cache, String(url) === root ? 'no-store' : 'force-cache'); requests.push(String(url));
     return Response.json(String(url) === root ? {version: 1, catalog_id: latest, manifest: `releases/${latest}/manifest.json`}
       : String(url).includes('/catalogs/') ? {version: 1, catalog_id: old, manifest: `releases/${release}/manifest.json`}
       : {version: 2, info: {catalog_id: old}});
@@ -63,4 +63,13 @@ test('review evidence uses the site base on project Pages and custom domains', a
   const {reviewPublicationUrl}=await import('./filename-publication.mjs');
   for(const base of ['/congressional-tech','/congressional-tech/']) assert.equal(reviewPublicationUrl(base,'https://viewer.test'),'https://viewer.test/congressional-tech/data/document-reviews/reviews.json');
   assert.equal(reviewPublicationUrl('/','https://viewer.test'),'https://viewer.test/data/document-reviews/reviews.json');
+});
+
+test('stopping a pending freshness check aborts transfer and suppresses notification', async()=>{
+ const win=new EventTarget(),doc=new EventTarget();doc.visibilityState='visible';
+ win.setInterval=()=>1;win.clearInterval=()=>{};let signal,finish;const updates=[];
+ const stop=watchPublication({url:'https://data.test/manifest.json',current:'old',window:win,document:doc,
+  fetcher:(_url,options)=>{signal=options.signal;return new Promise(resolve=>finish=resolve);},onUpdate:value=>updates.push(value)});
+ stop();assert.equal(signal.aborted,true);finish(Response.json({catalog_id:'new'}));await new Promise(setImmediate);
+ assert.deepEqual(updates,[]);
 });

@@ -30,49 +30,8 @@ def cloud_clear():
 
 
 def verify_import(batch, imported, *, readiness=None):
-    manifest = json.loads((batch / 'manifest.json').read_text())
-    readiness = readiness.resolve() if readiness is not None else batch/'import-readiness.json'
-    ready = json.loads(readiness.read_text())
-    if ready.get('remote_body_readback_sha256'):
-        readback = readiness.with_name('remote-body-readback.json')
-        if digest(readback) != ready['remote_body_readback_sha256']:
-            raise ValueError('Body reconciliation evidence changed')
-        if json.loads(readback.read_text())['batch_manifest_sha256'] != digest(batch/'manifest.json'):
-            raise ValueError('Body reconciliation belongs to another batch')
-    for name, expected in ready['files'].items():
-        if name in manifest['files'] and manifest['files'][name] != expected:
-            raise ValueError('Conflicting batch evidence hashes')
-    for name, expected in (manifest['files'] | ready['files']).items():
-        if Path(name).name != name or digest(batch / name) != expected:
-            raise ValueError('Batch evidence changed: ' + name)
-    preparation = json.loads((batch / 'source-record-preparation.json').read_text())
-    if preparation['unresolved'] or preparation['batch_manifest_sha256'] != digest(batch / 'manifest.json'):
-        raise ValueError('Source records do not cover the sealed batch')
-    result = json.loads((imported / 'payloads/import-complete.json').read_text())
-    events = [json.loads(line) for line in (imported / 'events.jsonl').read_text().splitlines()]
-    completed = [e['value'] for e in events if e['event'] == 'import_complete']
-    prepared = json.loads((batch / 'prepared-source-records.json').read_text())
-    prepared += json.loads((batch / 'zip-receipts.json').read_text())
-    capture_rows = sum(len(item['captures']) for item in prepared)
-    bodykeys = {cap['body_key'] for item in prepared for cap in item['captures']}
-    if (ready.get('capture_rows', capture_rows) != capture_rows
-            or ready.get('distinct_capture_bodykeys', len(bodykeys)) != len(bodykeys)):
-        raise ValueError('Readiness counts differ from sealed source records')
-    if (not result.get('complete') or completed != [result]
-            or result['added_capture_rows'] != capture_rows
-            or result['distinct_bodies'] != len(bodykeys)):
-        raise ValueError('Import completion does not cover the sealed batch')
-    pins = next(e['value'] for e in events if e['event'] == 'pins')
-    for path in [batch/'manifest.json', batch/'prepared-source-records.json', readiness]:
-        if pins.get(str(path)) != digest(path):
-            raise ValueError('Import belongs to a different batch')
-    return result
-
-
-def verify_coverage(root, manifest, expected):
-    from congress_api.retention.catalog_validation import validate_catalog_pair
-    return validate_catalog_pair(root, manifest, validator=lambda *_: None,
-                                 expected_bodies=expected).coverage
+    from publication_import_evidence import verify_import as verify
+    return verify(batch, imported, readiness=readiness)
 
 
 def load(path, name):
@@ -82,13 +41,19 @@ def load(path, name):
     return module
 
 
-def rebuild_retained_catalog(store, *, working, root):
-    """Apply the maintained public wrapper's input normalization to durable builds."""
-    from congress_api.retention.raw_catalog import _rebuild_catalog
-    from congress_api.retention.document_index import validated_body_readings
-    return _rebuild_catalog(store, None, seeds=(), workers=4, repair=False,
-                            inspect_bodies=False, working=working, root=root,
-                            body_readings=validated_body_readings(()))
+def publication_conditions(continuation):
+    """Persist the first publication conditions separately from advancing versions."""
+    conditions = continuation.value.get('publication_inputs')
+    if conditions is None:
+        conditions = {'previous_etag': continuation.value['versions']['viewer-publications/manifest.json'],
+                      'selected_etag': continuation.value['versions']['indexes/catalog.json']}
+        continuation.value['publication_inputs'] = conditions
+        continuation.flush()
+    if (not isinstance(conditions, dict) or set(conditions) != {'previous_etag','selected_etag'}
+            or not isinstance(conditions['selected_etag'], str) or not conditions['selected_etag']
+            or (conditions['previous_etag'] is not None and not isinstance(conditions['previous_etag'],str))):
+        raise ValueError('Malformed original local publication conditions')
+    return conditions
 
 
 def run(args):
@@ -121,6 +86,7 @@ def run(args):
     paths += list(batch.glob('*.json')) + list((ROOT/'scripts').glob('*corpus_recovery*.py'))
     paths += [ROOT/'scripts/guarded_recovery_publication_client.py',
               ROOT/'scripts/recovery_publication_continuation.py', ROOT/'scripts/recovery_guards.py',
+              ROOT/'scripts/publication_import_evidence.py',
               args.baseline.resolve(), args.config.resolve(),
               imported/'payloads/import-complete.json', imported/'events.jsonl']
     paths += [imported/'payloads'/key for key in ('indexes/captures.parquet', 'indexes/download-state.parquet')]
@@ -144,8 +110,9 @@ def run(args):
     from congress_api.cli.raw_progress import ProgressLog
     from congress_api.retention.document_index import validate_document_indexes
     from congress_api.retention.catalog_validation import validate_catalog_pair
+    from congress_api.retention.raw_catalog import rebuild_catalog_in_directory
     from filename_recoveries import accepted_rows
-    from guarded_recovery_publication_client import GuardedPublicationClient
+    from guarded_recovery_publication_client import ContinuedPublicationClient
     from publish_corpus_recovery_mappings import publish_mappings
     config = configparser.ConfigParser(); config.read(args.config); account = config['congressionalraw']
     client = boto3.client('s3', endpoint_url=account['endpoint'], region_name='auto',
@@ -184,37 +151,41 @@ def run(args):
         if key in versions:
             versions[key] = version
             continuation.flush()
-    class ContinuedClient(GuardedPublicationClient):
-        def put_object(self, **kwargs):
-            with self.write_lock(kwargs):
-                if continuation.value['writes'].get(kwargs['Key'], {}).get('verified'):
-                    self.check_guard(kwargs)
-                receipt = continuation.replay(client, kwargs['Bucket'], kwargs['Key'], kwargs['Body'])
-                if receipt is not None:
-                    saved = continuation.value['writes'][kwargs['Key']]
-                    return self.verified_result(receipt, bucket=kwargs['Bucket'], key=kwargs['Key'],
-                        size=saved['bytes'], sha256=saved['sha256'], etag=saved['etag'])
-                return super().put_object(**kwargs)
-    proxy = ContinuedClient(client, guard=guard, journal=journal, after_write=after_write)
+    proxy = ContinuedPublicationClient(client, continuation=continuation, guard=guard, journal=journal, after_write=after_write)
     source = destination/'source'; expected = set(json.loads((batch/'bodies.json').read_text()))
     pair_validation = None
+    content_validation = None
     def validate_pair(manifest):
         nonlocal pair_validation
         if pair_validation is not None:
             return pair_validation.require(source, manifest, validator=validate_document_indexes, expected_bodies=expected)
         pair_validation = validate_catalog_pair(source, manifest, validator=validate_document_indexes,
-                                               expected_bodies=expected)
+                                               expected_bodies=expected, references=content_validation)
         return pair_validation.coverage
     class Store(R2Store):
+        def accept_catalog_validation(self, validation):
+            nonlocal content_validation
+            content_validation = validation
         def read(self, key):
             body = super().read(key)
-            if body is not None and (key.startswith('catalog-generations/') or key == 'indexes/catalog.json'):
+            if body is not None and key == 'indexes/catalog.json':
                 save('source/'+key, body, replace=key == 'indexes/catalog.json')
             return body
         def put(self, key, body, *, immutable=False):
-            if key.startswith('catalog-generations/') or key == 'indexes/catalog.json':
+            if key == 'indexes/catalog.json':
                 save('source/'+key, body, replace=key == 'indexes/catalog.json')
             return super().put(key, body, immutable=immutable)
+        def save_derived(self, key, path, identity):
+            from congress_api.retention.derived_files import retain_verified_file
+            return retain_verified_file(path, source / key, expected=identity, key=key)
+        def read_derived_file(self, key, path, *, expected=None):
+            identity = super().read_derived_file(key, path, expected=expected)
+            if identity is not None:
+                self.save_derived(key, path, identity)
+            return identity
+        def put_derived_file(self, key, path, *, expected):
+            self.save_derived(key, path, expected)
+            return super().put_derived_file(key, path, expected=expected)
         def put_catalog_manifest(self, data, *, expected_version):
             manifest = json.loads(data)
             coverage = validate_pair(manifest)
@@ -233,7 +204,7 @@ def run(args):
             working = WorkingCatalog(build/'working.sqlite')
             try:
                 with ProgressLog(destination/'catalog-progress.json'):
-                    catalog = rebuild_retained_catalog(Store(proxy,bucket), working=working, root=build)
+                    catalog = rebuild_catalog_in_directory(Store(proxy,bucket), working=working, root=build)
             finally: working.close()
             manifest = json.loads((source/'indexes/catalog.json').read_text())
             coverage = validate_pair(manifest)
@@ -254,7 +225,11 @@ def run(args):
         def prepared_phase():
             builder = load(runtime/'apps/site/scripts/publish-filename-viewer.py', 'recovery_viewer_builder')
             validate_pair(json.loads((source/'indexes/catalog.json').read_text()))
-            return builder.publish(source, destination/'prepared', validation=pair_validation)
+            selected_metadata = client.head_object(Bucket=bucket, Key='indexes/catalog.json')
+            if selected_metadata['ETag'] != versions['indexes/catalog.json']:
+                raise ValueError('Selected catalog changed before accepted viewer preparation')
+            modified = selected_metadata.get('LastModified')
+            return builder.publish(source, destination/'prepared', modified.isoformat() if modified else None, validation=pair_validation)
         continuation.phase('prepared', prepared_phase,
             files=lambda: [p for p in (destination/'prepared').rglob('*') if p.is_file()])
         guard.boundary()
@@ -265,8 +240,10 @@ def run(args):
                 continuation.value['release_plan'] = dict(release='releases/'+uuid.uuid4().hex+'/',
                     published_at=datetime.now(timezone.utc).isoformat())
                 continuation.flush()
-            publication = publisher.run(proxy, prepared=destination/'prepared',
-                                        publication_plan=continuation.value['release_plan'])
+            prepared_root = destination/'prepared'
+            manifest = json.loads((prepared_root/'manifest.json').read_text())
+            publication = publisher.upload(proxy, prepared_root, manifest,
+                **publication_conditions(continuation), publication_plan=continuation.value['release_plan'])
             if publication['status'] not in {'published', 'unchanged'}:
                 raise ValueError('Viewer was not published')
             return publication

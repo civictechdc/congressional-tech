@@ -126,7 +126,9 @@ def test_paired_validation_rejects_mismatched_catalog_before_writes(tmp_path, mo
         pq.write_table(doc.replace_schema_metadata({**doc.schema.metadata, b'catalog_id': b'wrong'}), path)
         return result
     monkeypatch.setattr(index, 'write_filename_metadata', corrupt)
-    with pytest.raises(ValueError, match='catalog_id'):
+    # Rewriting the verified file invalidates its custody proof before a fresh
+    # footer read. The earlier refusal must still precede all catalog writes.
+    with pytest.raises(ValueError, match='Catalog reference validation no longer applies'):
         rebuild_catalog(store, table(store, CAPTURES_KEY), workers=1)
     assert all(key.startswith("indexes/processing/") for key in store.writes)
 

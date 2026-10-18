@@ -1,8 +1,8 @@
 // The mutable pointer is tiny. All large reads use one immutable release.
 export const filenameManifestUrl = 'https://congressional-viewer-data.mdeeb.workers.dev/manifest.json';
 
-async function read(url, fetcher) {
-  const response = await fetcher(url, {cache: 'no-store'});
+async function read(url, fetcher, signal, immutable = false) {
+  const response = await fetcher(url, {cache: immutable ? 'force-cache' : 'no-store', signal});
   if (!response.ok) throw new Error('This catalog snapshot is not available. Open the latest catalog to continue.');
   return response.json();
 }
@@ -13,7 +13,7 @@ export async function loadPublication(url, fetcher = fetch, catalogId) {
   if (manifest.version === 1 && manifest.manifest) {
     if (catalogId && catalogId !== manifest.catalog_id) {
       if (!/^[a-f0-9]{32}$/.test(catalogId)) throw new Error('Invalid catalog snapshot.');
-      manifest = await read(new URL(`catalogs/${catalogId}.json`, url), fetcher);
+      manifest = await read(new URL(`catalogs/${catalogId}.json`, url), fetcher, undefined, true);
       if (manifest.catalog_id !== catalogId) throw new Error('Catalog locator identity mismatch.');
     }
     if (!/^releases\/[a-f0-9]{32}\/manifest\.json$/.test(manifest.manifest)) throw new Error('Invalid publication location.');
@@ -23,25 +23,26 @@ export async function loadPublication(url, fetcher = fetch, catalogId) {
     }
     const identity = manifest.catalog_id;
     url = new URL(manifest.manifest, url).href;
-    manifest = await read(url, fetcher);
+    manifest = await read(url, fetcher, undefined, true);
     if (manifest.info?.catalog_id !== identity) throw new Error('Catalog publication identity mismatch.');
   }
   return {manifest, url, recovery};
 }
 
-export async function latestPublication(url, fetcher = fetch) {
-  const value = await read(url, fetcher);
+export async function latestPublication(url, fetcher = fetch, signal) {
+  const value = await read(url, fetcher, signal);
   return {catalog_id: value.catalog_id || value.info?.catalog_id, published_at: value.published_at, recovery_sha256: value.recovery?.sha256};
 }
 
 export function watchPublication({url, current, currentRecovery, onUpdate, onError = () => {}, fetcher = fetch,
                                   window: win = window, document: doc = document}) {
   let pending = false, stopped = false;
+  const controller = new AbortController();
   async function check() {
     if (pending || stopped || doc.visibilityState === 'hidden') return;
     pending = true;
     try {
-      const latest = await latestPublication(url, fetcher);
+      const latest = await latestPublication(url, fetcher, controller.signal);
       if (!stopped && latest.catalog_id && (latest.catalog_id !== current || latest.recovery_sha256 !== currentRecovery)) onUpdate(latest);
     } catch (error) { if (!stopped) onError(error); }
     finally { pending = false; }
@@ -50,7 +51,7 @@ export function watchPublication({url, current, currentRecovery, onUpdate, onErr
   doc.addEventListener('visibilitychange', check);
   const timer = win.setInterval(check, 60_000);
   check();
-  return () => { stopped = true; win.clearInterval(timer); win.removeEventListener('focus', check); doc.removeEventListener('visibilitychange', check); };
+  return () => { stopped = true; controller.abort(); win.clearInterval(timer); win.removeEventListener('focus', check); doc.removeEventListener('visibilitychange', check); };
 }
 
 export function latestReviewUrl(href, catalogId) {

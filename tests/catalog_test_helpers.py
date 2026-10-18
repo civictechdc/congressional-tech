@@ -11,3 +11,10 @@ def selected_path(path):
             if (root / MANIFEST_KEY).is_file():
                 return local_catalog_paths(root)[candidate.name=='documents.parquet']
     return path
+
+
+def selected_table(store, *, documents=False):
+    import pyarrow.parquet as pq
+    from congress_api.retention.catalog_publication import read_catalog
+    with read_catalog(store) as snapshot:
+        return pq.read_table(snapshot.documents_path if documents else snapshot.filenames_path)

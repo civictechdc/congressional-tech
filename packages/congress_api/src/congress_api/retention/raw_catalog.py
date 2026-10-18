@@ -8,6 +8,8 @@ Readers validate the selected files and their matching catalog_id values.
 """
 
 from hashlib import sha256
+from contextlib import ExitStack
+import shutil
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -38,21 +40,36 @@ SOURCE_LINEAGE_VERSION = '1'
 def rebuild_catalog(store, captures=None, *, seeds=(), workers=4, repair=False, inspect_bodies=False,
                     body_readings=()):
     """Publish derived tables; explicitly supplied PDF readings refresh only their bodies."""
-    body_readings = index.validated_body_readings(body_readings)
     with TemporaryDirectory(prefix="raw-catalog-") as directory:
         root = Path(directory)
         (root / "indexes").mkdir()
         working = WorkingCatalog(root / "working.sqlite")
         try:
-            return _rebuild_catalog(store, captures, seeds=seeds, workers=workers,
+            return rebuild_catalog_in_directory(store, captures, seeds=seeds, workers=workers,
                                     repair=repair, inspect_bodies=inspect_bodies,
                                     working=working, root=root, body_readings=body_readings)
         finally:
             working.close()
 
 
+def rebuild_catalog_in_directory(store, captures=None, *, working, root, seeds=(), workers=4,
+                                 repair=False, inspect_bodies=False, body_readings=()):
+    """Build into an explicitly caller-owned durable workspace and open SQLite state."""
+    return _rebuild_catalog(store, captures, seeds=seeds, workers=workers, repair=repair,
+        inspect_bodies=inspect_bodies, working=working, root=Path(root),
+        body_readings=index.validated_body_readings(body_readings))
+
+
 def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies, working, root,
                      body_readings):
+    with ExitStack() as owners:
+        return _rebuild_catalog_owned(store, captures, seeds=seeds, workers=workers,
+            repair=repair, inspect_bodies=inspect_bodies, working=working, root=root,
+            body_readings=body_readings, owners=owners)
+
+
+def _rebuild_catalog_owned(store, captures, *, seeds, workers, repair, inspect_bodies,
+                           working, root, body_readings, owners):
     def read(key):
         data = store.read(key)
         progress.advance('objects_read')
@@ -68,13 +85,10 @@ def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies,
         del data
     if captures.schema.remove_metadata() != CAPTURE_SCHEMA:
         raise ValueError("Unexpected capture index schema")
-    snapshot = read_catalog(store, read=read)
-    previous_bytes = snapshot.filenames
-    # Keep compressed input and stream the columns each stage needs. Decoding
-    # every nested occurrence here duplicates a multi-gigabyte working set.
-    previous = pq.ParquetFile(pa.BufferReader(previous_bytes)) if previous_bytes else None
-    # Read both ETags before publication; also retain any unmatched prior pair.
-    previous_documents = snapshot.documents
+    snapshot = owners.enter_context(read_catalog(store, read=read))
+    # Verified owned files stay alive through interpretation and archival.
+    previous = pq.ParquetFile(snapshot.filenames_path) if snapshot.filenames_path else None
+    previous_documents = pq.ParquetFile(snapshot.documents_path) if snapshot.documents_path else None
     meta = (previous.schema_arrow.metadata or {}) if previous is not None else {}
     previous_rows = previous.metadata.num_rows if previous is not None else 0
     if int(meta.get(b"raw_capture_rows", b"0")) > len(captures):
@@ -113,17 +127,17 @@ def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies,
             and meta.get(b'download_state_digest') == state_digest.encode()
             and meta.get(b'availability_policy') == b'2'
             and previous_documents is not None
-            and (pq.read_schema(pa.BufferReader(previous_documents)).metadata or {}).get(b'catalog_id') == meta.get(b'catalog_id')):
+            and (previous_documents.schema_arrow.metadata or {}).get(b'catalog_id') == meta.get(b'catalog_id')):
         if lineage_refresh:
-            result = refresh_lineage_pair(previous, pq.ParquetFile(pa.BufferReader(previous_documents)),
+            result = refresh_lineage_pair(previous, previous_documents,
                 captures, read, root=root, working=working, version=SOURCE_LINEAGE_VERSION)
             return _publish_result(store, root, snapshot, result)
         if snapshot.manifest is None:
-            (root / FILENAMES).write_bytes(previous_bytes)
-            (root / DOCUMENTS).write_bytes(previous_documents)
+            shutil.copyfile(snapshot.filenames_path, root / FILENAMES)
+            shutil.copyfile(snapshot.documents_path, root / DOCUMENTS)
             publish_catalog(store, root / FILENAMES, root / DOCUMENTS, previous=snapshot)
         progress.report('catalog_unchanged')
-        return {'unchanged': True, 'rows': previous_rows, 'document_rows': pq.ParquetFile(pa.BufferReader(previous_documents)).metadata.num_rows,
+        return {'unchanged': True, 'rows': previous_rows, 'document_rows': previous_documents.metadata.num_rows,
                 'catalog_id': meta[b'catalog_id'].decode(), 'raw_capture_rows': capture_rows}
     sources, context = working.mapping("sources"), index.DocumentSources(working=working)
     if reusable:
@@ -257,8 +271,8 @@ def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies,
     context.refresh_meeting_context()
     # Metadata-only publisher records can list files with no capture yet.
     progress.report('prepare_source_associations')
-    for url, values in context.by_url.items():
-        if values.get("source_link_url"):
+    for url in context.by_url:
+        if context.has_source_link(url):
             for name, basis in index.url_document_names(url) or [(index.url_filename(url), "url_path")]:
                 add(None, name, url, filename_origins=[basis] if name else [])
     # Redirect/recovery evidence belongs to its destination's inventory row.
@@ -295,6 +309,7 @@ def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies,
         sources[key] = row
     # Every row now owns its paired source observations. Release parent lookup
     # pages before recovery builds its own indexed working rows.
+    context.report_statistics()
     context = None
     for name in ("occurrences","occurrence_urls","extra_filters","transfers","meetings","events"):
         working.connection.execute(f"DROP TABLE IF EXISTS {name}")
@@ -340,17 +355,23 @@ def _rebuild_catalog(store, captures, *, seeds, workers, repair, inspect_bodies,
 
 def _publish_result(store, root, snapshot, result):
     progress.report('validate_document_tables')
-    index.validate_document_indexes(root / FILENAMES, root / DOCUMENTS,
-                                    source_rows=result["rows"], document_rows=result["document_rows"])
+    from congress_api.retention.catalog_validation import validate_references
+    validation = getattr(result, 'validation', None)
+    if validation is None:
+        validation = validate_references(root / FILENAMES, root / DOCUMENTS,
+            validator=index.validate_document_indexes, source_rows=result["rows"], document_rows=result["document_rows"])
+    else:
+        validation.require(root / FILENAMES, root / DOCUMENTS, validator=index.validate_document_indexes)
     # Retain evidence that exists only in an older generated table, including
     # columns whose original publisher/parser basis can no longer be proved.
     progress.report('archive_previous_tables')
-    for label, key, data in (("filenames", FILENAMES, snapshot.filenames),
-                             ("documents", DOCUMENTS, snapshot.documents)):
-        if data is not None:
-            saved = f"catalog-history/sha256/{sha256(data).hexdigest()}/{Path(key).name}"
-            store.put(saved, data, immutable=True)
+    for label, key, path in (("filenames", FILENAMES, snapshot.filenames_path),
+                             ("documents", DOCUMENTS, snapshot.documents_path)):
+        if path is not None:
+            identity = snapshot.files[label]
+            saved = f"catalog-history/sha256/{identity['sha256']}/{Path(key).name}"
+            store.put_derived_file(saved, path, expected=identity)
             result[f"previous_{label}_key"] = saved
     progress.report('publish_document_snapshot')
-    result.update(publish_catalog(store, root / FILENAMES, root / DOCUMENTS, previous=snapshot))
+    result.update(publish_catalog(store, root / FILENAMES, root / DOCUMENTS, previous=snapshot, validation=validation))
     return {k: v for k, v in result.items() if k not in ("output", "documents_output")}

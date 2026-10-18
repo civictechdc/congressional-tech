@@ -1,0 +1,35 @@
+{
+  "before": {
+    "seconds": 0.9236203749896958,
+    "python_peak_bytes": 15477832,
+    "peak_rss_bytes": 134168576,
+    "output_bytes": 3435461,
+    "output_sha256": "c4216921fd737387af0d0604508a887ca17b97a856dfc2e25a75cccf91cb8e96",
+    "source_rows": 18001,
+    "source_scans": 3,
+    "metrics": {}
+  },
+  "after": {
+    "seconds": 1.6181366249220446,
+    "python_peak_bytes": 9530369,
+    "peak_rss_bytes": 130514944,
+    "output_bytes": 3435461,
+    "output_sha256": "c4216921fd737387af0d0604508a887ca17b97a856dfc2e25a75cccf91cb8e96",
+    "source_rows": 18001,
+    "source_scans": 1,
+    "metrics": {
+      "source_scans": 1,
+      "max_batch_rows": 128,
+      "max_batch_arrow_bytes": 15760,
+      "source_rows": 18001,
+      "candidate_pairs": 12000,
+      "body_versions": 6001,
+      "output_budget_bytes_used": 3435360,
+      "exact_output_bytes": 3435461,
+      "output_header_check_seconds": 8.695793803781271e-05,
+      "scratch_bytes": 5488640,
+      "sqlite_cache_kib": 8192
+    }
+  },
+  "scope": "bounded offline high-cardinality/fanout fixture; no production extrapolation"
+}

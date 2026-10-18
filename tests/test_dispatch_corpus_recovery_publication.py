@@ -10,6 +10,11 @@ import pyarrow.parquet as pq
 spec=importlib.util.spec_from_file_location('publication_dispatch',Path(__file__).resolve().parents[1]/'scripts/dispatch_corpus_recovery_publication.py')
 module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
 
+def verify_coverage(root,manifest,expected):
+    from congress_api.retention.catalog_validation import validate_catalog_pair
+    return validate_catalog_pair(root,manifest,validator=lambda *_:None,expected_bodies=expected).coverage
+
+
 class CoverageTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
@@ -19,22 +24,22 @@ class CoverageTests(unittest.TestCase):
             table=pa.table({'body_key':['pdf','zip-member']}).replace_schema_metadata({b'catalog_id':b'paired'})
             pq.write_table(table,p);self.manifest['files'][label]=dict(key=key,bytes=p.stat().st_size,sha256=module.digest(p),rows=2)
     def test_all_imported_bodies_required(self):
-        result=module.verify_coverage(self.root,self.manifest,{'pdf','zip-member'})
+        result=verify_coverage(self.root,self.manifest,{'pdf','zip-member'})
         self.assertEqual(result['missing_bodies'],0)
         with self.assertRaisesRegex(ValueError,'absent'):
-            module.verify_coverage(self.root,self.manifest,{'pdf','missing-member'})
+            verify_coverage(self.root,self.manifest,{'pdf','missing-member'})
     def test_corrupt_pair_refused(self):
         p=self.root/self.manifest['files']['documents']['key'];p.write_bytes(b'corrupt')
         with self.assertRaisesRegex(ValueError,'bytes differ'):
-            module.verify_coverage(self.root,self.manifest,{'pdf'})
+            verify_coverage(self.root,self.manifest,{'pdf'})
     def test_mixed_identity_refused(self):
         self.manifest['catalog_id']='other'
         with self.assertRaisesRegex(ValueError,'identity differs'):
-            module.verify_coverage(self.root,self.manifest,{'pdf'})
+            verify_coverage(self.root,self.manifest,{'pdf'})
     def test_bad_path_refused(self):
         self.manifest['files']['documents']['key']='../elsewhere'
         with self.assertRaisesRegex(ValueError,'path'):
-            module.verify_coverage(self.root,self.manifest,{'pdf'})
+            verify_coverage(self.root,self.manifest,{'pdf'})
     def test_missing_import_cannot_dispatch(self):
         with self.assertRaises(FileNotFoundError):
             module.verify_import(self.root,self.root/'absent-import')
@@ -67,7 +72,8 @@ class BuilderBoundaryTests(unittest.TestCase):
             # The real builder consumes values after expensive receipt recovery.
             return list(kwargs['body_readings'].values())
         with patch('congress_api.retention.raw_catalog._rebuild_catalog', side_effect=internal):
-            self.assertEqual(module.rebuild_retained_catalog(store, working=working, root=root), [])
+            from congress_api.retention.raw_catalog import rebuild_catalog_in_directory
+            self.assertEqual(rebuild_catalog_in_directory(store, working=working, root=root), [])
 
 
 class DispatcherContinuationTests(unittest.TestCase):
@@ -86,7 +92,7 @@ class DispatcherContinuationTests(unittest.TestCase):
                 root = Path(folder); repo = root/'repo'; (repo/'.cache').mkdir(parents=True)
                 (repo/'scripts').mkdir()
                 for name in ('dispatch_corpus_recovery_publication.py', 'guarded_recovery_publication_client.py',
-                             'recovery_publication_continuation.py', 'recovery_guards.py'):
+                             'recovery_publication_continuation.py', 'recovery_guards.py', 'publication_import_evidence.py'):
                     shutil.copyfile(scripts/name, repo/'scripts'/name)
                 batch = root/'batch'; batch.mkdir()
                 (batch/'bodies.json').write_text('["pdf", "zip-member"]')
@@ -108,17 +114,20 @@ class DispatcherContinuationTests(unittest.TestCase):
                     def get_object(self, *, Bucket, Key):
                         return dict(Body=io.BytesIO(remote[Key]), ContentLength=len(remote[Key]), ETag='fixed')
                     def head_object(self, **kwargs): return {'ETag': 'fixed'}
+                    def put_object(self, **kwargs): raise AssertionError('Unexpected fixture mutation')
                 calls = dict(catalog=0, mappings=0, prepared=0, publication=0)
                 def catalog(store, **kwargs):
                     calls['catalog'] += 1
                     if failed_phase == 'incomplete_catalog':
                         (kwargs['root']/'diagnostic.txt').write_text('Preserve incomplete build evidence')
                         raise RuntimeError('Injected incomplete catalog failure')
-                    store.read('indexes/catalog.json')
-                    for item in self.manifest['files'].values(): store.read(item['key'])
+                    from congress_api.retention.catalog_publication import read_catalog
+                    with read_catalog(store) as snapshot:
+                        self.assertTrue(snapshot.filenames_path.is_file())
+                        self.assertTrue(snapshot.documents_path.is_file())
                     return {'unchanged': True}
                 def mapping(*args, **kwargs): calls['mappings'] += 1; return {'complete': True}
-                def prepare(source, target, *, validation=None):
+                def prepare(source, target, modified=None, *, validation=None):
                     self.assertIsNotNone(validation)
                     calls['prepared'] += 1
                     self.assertEqual(json.loads((source/'indexes/catalog.json').read_text()), self.manifest)
@@ -130,7 +139,7 @@ class DispatcherContinuationTests(unittest.TestCase):
                     self.assertTrue(kwargs['publication_plan']['release'].startswith('releases/'))
                     return {'status': 'published'}
                 def load(path, name):
-                    return SimpleNamespace(publish=prepare) if 'builder' in name else SimpleNamespace(run=publish)
+                    return SimpleNamespace(publish=prepare) if 'builder' in name else SimpleNamespace(upload=publish)
                 original = Continuation.phase
                 def fail_after_accept(continuation, name, *args, **kwargs):
                     result = original(continuation, name, *args, **kwargs)
@@ -139,7 +148,7 @@ class DispatcherContinuationTests(unittest.TestCase):
                 args = SimpleNamespace(batch=batch, imported=imported, runtime=root/'runtime', baseline=baseline,
                                        config=config, destination=root/'publication', execute=True, resume=False)
                 with patch.object(module, 'ROOT', repo), patch.object(module, 'verify_import', return_value={'complete': True}), \
-                     patch.object(module, 'cloud_clear'), patch.object(module, 'rebuild_retained_catalog', side_effect=catalog), \
+                     patch.object(module, 'cloud_clear'), patch('congress_api.retention.raw_catalog.rebuild_catalog_in_directory', side_effect=catalog), \
                      patch.object(module, 'load', side_effect=load), patch('boto3.client', return_value=Client()), \
                      patch('congress_api.retention.r2._configure_retries'), \
                      patch('congress_api.retention.document_index.validate_document_indexes'), \
@@ -191,3 +200,71 @@ class ExternalReadinessTests(unittest.TestCase):
 
 
 if __name__ == '__main__': unittest.main()
+
+
+def sealed_import_fixture(tmp_path):
+    batch = tmp_path / 'batch'; batch.mkdir()
+    imported = tmp_path / 'imported'; (imported / 'payloads').mkdir(parents=True)
+    capture = dict(captures=[dict(body_key='body')])
+    (batch / 'prepared-source-records.json').write_text(json.dumps([capture]))
+    (batch / 'zip-receipts.json').write_text('[]')
+    files = {name: module.digest(batch / name) for name in ('prepared-source-records.json', 'zip-receipts.json')}
+    (batch / 'manifest.json').write_text(json.dumps(dict(files=files)))
+    (batch / 'source-record-preparation.json').write_text(json.dumps(dict(unresolved=[], batch_manifest_sha256=module.digest(batch / 'manifest.json'))))
+    (batch / 'import-readiness.json').write_text(json.dumps(dict(files=files, capture_rows=1, distinct_capture_bodykeys=1)))
+    result = dict(complete=True, added_capture_rows=1, distinct_bodies=1)
+    (imported / 'payloads/import-complete.json').write_text(json.dumps(result))
+    pins = {str(path): module.digest(path) for path in (batch / 'manifest.json', batch / 'prepared-source-records.json', batch / 'import-readiness.json')}
+    events = [dict(event='pins', value=pins), dict(event='import_complete', value=result)]
+    (imported / 'events.jsonl').write_text('\n'.join(map(json.dumps, events)))
+    return batch, imported, events
+
+
+def test_bounded_import_evidence_names_malformed_fields_and_keeps_primary_error(tmp_path, monkeypatch):
+    import publication_import_evidence as evidence
+    import pytest
+    batch, imported, _ = sealed_import_fixture(tmp_path)
+    assert module.verify_import(batch, imported)['complete']
+    path = batch / 'import-readiness.json'
+    original = path.read_bytes()
+    path.write_text('{broken')
+    with pytest.raises(ValueError, match='import-readiness.json.*invalid JSON') as caught:
+        module.verify_import(batch, imported)
+    assert isinstance(caught.value.__cause__, json.JSONDecodeError)
+    path.write_text('{"files":[]}')
+    with pytest.raises(ValueError, match='import-readiness.json.*files'):
+        module.verify_import(batch, imported)
+    path.write_bytes(original)
+    monkeypatch.setattr(evidence, 'JSON_BYTES', 4)
+    with pytest.raises(ValueError, match='manifest.json.*byte budget'):
+        module.verify_import(batch, imported)
+
+
+@__import__('pytest').mark.parametrize('damage', ['duplicate', 'pins', 'wrong_batch', 'count', 'hash', 'event_size', 'event_count'])
+def test_import_evidence_rejects_wrong_or_unbounded_completion_before_dispatch(tmp_path, monkeypatch, damage):
+    import publication_import_evidence as evidence
+    import pytest
+    batch, imported, events = sealed_import_fixture(tmp_path)
+    if damage == 'duplicate': events.append(events[-1])
+    elif damage == 'pins': events.pop(0)
+    elif damage == 'wrong_batch': events[0]['value'][str(batch / 'manifest.json')] = 'f' * 64
+    elif damage == 'count':
+        path = batch / 'import-readiness.json'; value = json.loads(path.read_text()); value['capture_rows'] = 2
+        path.write_text(json.dumps(value))
+    elif damage == 'hash': (batch / 'zip-receipts.json').write_text('[{}]')
+    elif damage == 'event_size': monkeypatch.setattr(evidence, 'EVENT_BYTES', 10)
+    elif damage == 'event_count': monkeypatch.setattr(evidence, 'EVENT_COUNT', 1)
+    (imported / 'events.jsonl').write_text('\n'.join(map(json.dumps, events)))
+    with pytest.raises(ValueError):
+        module.verify_import(batch, imported)
+
+
+def test_local_publication_keeps_original_conditions_after_own_selector_advance(tmp_path):
+    from recovery_publication_continuation import Continuation
+    continuation=Continuation(tmp_path/'attempt',{})
+    continuation.value['versions'].update({'viewer-publications/manifest.json':'before-viewer','indexes/catalog.json':'selected-source'})
+    original=module.publication_conditions(continuation)
+    continuation.value['versions']['viewer-publications/manifest.json']='our-selected-pointer'
+    continuation.flush()
+    restored=Continuation(continuation.root,{},resume=True)
+    assert module.publication_conditions(restored)==original=={'previous_etag':'before-viewer','selected_etag':'selected-source'}

@@ -9,21 +9,19 @@ echo "🚀 Setting up Congressional Tech development environment..."
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
-# Install the Python package graph editable. Order is leaf-first so the
-# cross-package deps resolve from the local tree instead of an index:
-#   house-naming / committee_meeting / congress_shared (models and shared data)
-#     -> youtube_api  (youtube-fetch / youtube-analyze console scripts)
-#     -> congress_api (congress-meetings and source-reader console scripts)
-#     -> committee_youtube (aggregator app; pulls both packages)
-# Install every local dependency so pip does not resolve it from an index.
-echo "🐍 Installing Python package graph (editable)..."
-pip install --user \
-  -e packages/house-naming \
-  -e packages/committee_meeting \
-  -e packages/congress_shared \
-  -e packages/youtube_api \
-  -e packages/congress_api \
-  -e apps/committee_youtube
+# The same lock and prerequisite checks used by CI. Poppler is an explicit
+# container dependency; the macOS doctor only prints its installation command.
+sudo apt-get update
+sudo apt-get install -y --no-install-recommends poppler-utils procps
+if ! command -v uv >/dev/null 2>&1; then
+    python3 -m pip install --user 'uv==0.11.21'
+    export PATH="$HOME/.local/bin:$PATH"
+fi
+uv sync --locked
+. .venv/bin/activate
+python scripts/dev.py prepare-baseline
+python scripts/dev.py inventory
+python scripts/dev.py doctor
 
 # Node workspaces (Astro site, etc.) - best effort. The Python CLI jobs don't
 # need it, so a hiccup here must not fail container setup.
@@ -44,7 +42,7 @@ fi
 
 echo "✅ Development environment setup complete!"
 echo ""
-echo "🔗 Available console scripts (ensure ~/.local/bin is on PATH):"
+echo "🔗 Available console scripts (run source .venv/bin/activate):"
 echo "  - youtube-fetch --help"
 echo "  - youtube-analyze --help"
 echo "  - congress-meetings --help"

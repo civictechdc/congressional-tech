@@ -1,8 +1,10 @@
+import { retainedBytes, sharedLoad } from './filename-cache.mjs';
+import { yieldToMessages, scanBatchRows } from './filename-cooperative.mjs';
 import { decompressBrotli } from 'hyparquet-compressors';
 
 /** Decode only bounded blocks containing the selected source's observations. */
-export function observationReader(index, data, references) {
-  if (index.version !== 1 || index.max_part_bytes > 1024 * 1024) throw new Error('Unsupported observation index.');
+export function observationReader(index, data, references, {metrics = {}, cache} = {}) {
+  if (index.version !== 1 || !Number.isSafeInteger(index.max_part_bytes) || index.max_part_bytes < 1 || index.max_part_bytes > 1024 * 1024) throw new Error('Unsupported observation index.');
   function locate(blocks, row) {
     let low = 0, high = blocks.length;
     while (low < high) {
@@ -13,24 +15,40 @@ export function observationReader(index, data, references) {
     if (!block || row >= block.start + block.count) throw new Error('Invalid observation reference.');
     return block;
   }
+  const pending = new Map();
   async function decode(file, block, signal) {
-    const pieces = [];
-    for (const [offset, length, decoded] of block.parts) {
-      signal?.throwIfAborted();
-      if (!Number.isSafeInteger(decoded) || decoded < 1 || decoded > index.max_part_bytes) throw new Error('Invalid observation block size.');
-      const bytes = await file.slice(offset, offset + length, signal);
-      const result = decompressBrotli(new Uint8Array(bytes), decoded);
-      if (result.length !== decoded) throw new Error('Incomplete observation block.');
-      pieces.push(result);
-    }
-    // Parts can split a UTF-8 character. Decode only after joining the bytes.
-    const bytes = new Uint8Array(pieces.reduce((sum, piece) => sum + piece.length, 0));
-    let offset = 0;
-    for (const piece of pieces) { bytes.set(piece, offset); offset += piece.length; }
-    const values = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
-    if (!Array.isArray(values) || values.length !== block.count) throw new Error('Observation block count mismatch.');
     signal?.throwIfAborted();
-    return values;
+    const key=`${file===references?'reference':'observation'}-block:${block.start}`;
+    const retained=cache?.get(key);
+    if(retained)return retained;
+    return sharedLoad(pending,key,async () => {
+      metrics.logicalDecodeCalls=(metrics.logicalDecodeCalls||0)+1;
+      const decoder=new TextDecoder('utf-8',{fatal:true});let json='',logicalBytes=0,parts=0;
+      try {
+        for (const [offset,length,decoded] of block.parts) {
+          if (!Number.isSafeInteger(offset) || offset<0 || !Number.isSafeInteger(length) || length<1 || !Number.isSafeInteger(decoded) || decoded<1 || decoded>index.max_part_bytes) throw new Error('Invalid observation block size.');
+          const bytes=await file.slice(offset,offset+length);
+          const result=decompressBrotli(new Uint8Array(bytes),decoded);
+          if(result.length!==decoded)throw new Error('Incomplete observation block.');
+          // Streaming UTF-8 retains split code points without a whole-block byte join.
+          json+=decoder.decode(result,{stream:true});logicalBytes+=decoded;
+          metrics.maxDecodedPartBytes=Math.max(metrics.maxDecodedPartBytes||0,decoded);
+          if(++parts % 4===0)await yieldToMessages(undefined,metrics);
+        }
+        json+=decoder.decode();
+        metrics.maxLogicalDecodedBytes=Math.max(metrics.maxLogicalDecodedBytes||0,logicalBytes);
+        metrics.maxLogicalTextBytes=Math.max(metrics.maxLogicalTextBytes||0,json.length*2);
+        metrics.joinedDecodedBytes=0;
+        if(logicalBytes>16*1024*1024)metrics.oversizedLogicalDecodes=(metrics.oversizedLogicalDecodes||0)+1;
+        const values=JSON.parse(json);
+        if(!Array.isArray(values)||values.length!==block.count)throw new Error('Observation block count mismatch.');
+        const size=retainedBytes(values);metrics.maxParsedValueBytes=Math.max(metrics.maxParsedValueBytes||0,size);
+        cache?.set(key,values,size);return values;
+      } catch(error) {
+        if(error instanceof RangeError)throw new Error('This exact observation exceeds available browser memory. Download the source Parquet for complete values.',{cause:error});
+        throw error;
+      }
+    },signal);
   }
   async function refsFor(row, signal) {
     const block = locate(index.references.blocks, row);
@@ -73,23 +91,53 @@ export function observationReader(index, data, references) {
       if (tail[0] + tail[1] > loadedThrough) {
         const start = block.parts[0][0];
         loadedThrough = Math.min(start + 4 * 1024 * 1024, end);
-        await file.slice(start, loadedThrough, signal);
+        if (!file.canRetain || file.canRetain(loadedThrough-start)) await file.slice(start, loadedThrough, signal);
       }
       yield {start: block.start, rows: await decode(file, block, signal)};
     }
   }
+  async function observationTexts(start,rows,signal) {
+    const key=`observation-search:${start}`, retained=cache?.get(key);
+    if(retained)return retained;
+    if(!cache)return null;
+    const budget=Math.min(8*1024*1024,cache.stats.maxBytes/4), output=[];let bytes=24;
+    for(let i=0;i<rows.length;i++) {
+      if(i && i % scanBatchRows===0)await yieldToMessages(signal,metrics);
+      const row=rows[i], restored=row===null ? null : Object.fromEntries(index.fields.map(key=>[key,row[key]??null]));
+      const value=JSON.stringify(restored).toLowerCase();metrics.observationNormalizations=(metrics.observationNormalizations||0)+1;
+      bytes+=24+value.length*2;if(bytes>budget)return null;
+      output.push(value);
+    }
+    cache.set(key,output,bytes);return output;
+  }
   async function* matchingSources(needle, signal) {
-    const matches = new Uint8Array(index.observations.rows);
-    // Scan each unique observation once, without decoding nested source row groups.
+    const matches = new Uint8Array(index.observations.rows); let work = 0;
+    // Count work across logical blocks: small blocks do not add a timer per row.
     for await (const {start, rows} of scan(data, index.observations, signal)) {
-      rows.forEach((row, i) => {
-        const restored = row === null ? null : Object.fromEntries(index.fields.map(key => [key, row[key] ?? null]));
-        if (JSON.stringify(restored).toLowerCase().includes(needle)) matches[start + i] = 1;
-      });
+      const prepared=await observationTexts(start,rows,signal);
+      for (let i=0;i<rows.length;i++) {
+        if (work && work % scanBatchRows === 0) await yieldToMessages(signal, metrics);
+        work++; metrics.observationScanVisits = (metrics.observationScanVisits || 0) + 1;
+        let value=prepared?.[i];
+        if(value===undefined) {
+          const row=rows[i], restored = row === null ? null : Object.fromEntries(index.fields.map(key => [key, row[key] ?? null]));
+          value=JSON.stringify(restored).toLowerCase();metrics.observationNormalizations=(metrics.observationNormalizations||0)+1;
+        }
+        if (value.includes(needle)) matches[start + i] = 1;
+      }
     }
     for await (const {start, rows} of scan(references, index.references, signal)) {
-      for (let i = 0; i < rows.length; i++) if (rows[i]?.some(ref => matches[ref])) yield start + i;
+      for (let i=0;i<rows.length;i++) {
+        if (work && work % scanBatchRows === 0) await yieldToMessages(signal, metrics);
+        work++; metrics.referenceScanVisits = (metrics.referenceScanVisits || 0) + 1;
+        for (let j=0;j<(rows[i]?.length || 0);j++) {
+          if (work && work % scanBatchRows === 0) await yieldToMessages(signal, metrics);
+          work++;
+          if (matches[rows[i][j]]) { yield start+i; break; }
+        }
+      }
     }
+    signal?.throwIfAborted();
   }
   return { read, page, matchingSources };
 }

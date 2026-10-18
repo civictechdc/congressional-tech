@@ -1,0 +1,254 @@
+{
+  "version": 1,
+  "scope": "small generated fixture and in-memory remote only",
+  "inputs": {
+    "source_manifest_sha256": "b74045a6dbddaab6a3a53a75071d36c1098a1bacd3da26f3ea361709a89ba6d1",
+    "source_files": {
+      "expected.json": {
+        "bytes": 21035,
+        "sha256": "203843aee3a35a03ad10201d7a1fcc04e5c78b272d7c878a7c5dab7bd43ef800"
+      },
+      "source-records.json": {
+        "bytes": 6210,
+        "sha256": "8715f725d1850ee92e2dbd2cd06f89ff3009834fc5fa8ff22e7a98956eaee17d"
+      },
+      "indexes/catalog.json": {
+        "bytes": 536,
+        "sha256": "b74045a6dbddaab6a3a53a75071d36c1098a1bacd3da26f3ea361709a89ba6d1"
+      },
+      "catalog-generations/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/documents.parquet": {
+        "bytes": 25339,
+        "sha256": "412d476561bd70d77058d439a3edb8578c9fc14e24d7c21c5a8ae1a737a58940"
+      },
+      "catalog-generations/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/document-filenames.parquet": {
+        "bytes": 31137,
+        "sha256": "add665a5eb6f06b09fe8c7ecea88e48590671b0e4a65dc05034468ea2cb8b4d7"
+      }
+    },
+    "revision": "f9f4499beceb405e614bc18cad41a2bb1134a845",
+    "source_identity": {
+      "revision": "f9f4499beceb405e614bc18cad41a2bb1134a845",
+      "dependencies": "9b318b3ea6770a792101fb80fe0cc6d4a584dd0cb67bc36367e5a4c787d288ec",
+      "files": {
+        "apps/site/scripts/filename-test-fixture.py": "bfc3e74a4303a8a1f4d7df7cc16444583bc248e03eb4fd19015b49f662986f01",
+        "apps/site/scripts/filename_aliases.py": "a0f68b19b7366c679a776ff549c1714784534271e0f8876f38733c3574d9c9eb",
+        "apps/site/scripts/filename_details.py": "0f18c42dadc37cd3c4c7d2d8dcc121c58c57267bb53154ea3409883570152b03",
+        "apps/site/scripts/filename_navigation.py": "f51f866a67dd4cd007d54af246daedc7e897dfb8710805e8db7f71937e36a4be",
+        "apps/site/scripts/filename_observations.py": "77a1f59476afc03ba31fac9a9700281e855a142114b1100d40969dd6c54968d9",
+        "apps/site/scripts/filename_recoveries.py": "5eb7c8232ae617c39b5439d2a7ceac9de95d29cd9876e567806a97dab535ff93",
+        "apps/site/scripts/filename_review_binding.py": "6dcaa7e5e526a0c77a50065b1ac63535ccf9f90bec492d446173b002ec1bc164",
+        "apps/site/scripts/filename_reviews.py": "9f294f1cc2ee1bf4681187f76ec4aa3290c9b724ef9907e2db63c4a6cae475fd",
+        "apps/site/scripts/publish-filename-viewer.py": "9f0608bf87eecdaeaa3dcf5edee7d8ed2425e6ef5a2402ce4489631a6b66de77",
+        "apps/site/scripts/publish-viewer-r2.py": "941a9abfd0e6597a86bb183faee995f4ce3ce082fd7cad8d10013ae970cfec00",
+        "scripts/viewer_publication_attempt.py": "551eb82e7830188270814b16e4d1680af9a6d216065d0b85f2e08d462b84982a",
+        "scripts/recovery_publication_continuation.py": "2ebae8885ab34d6c4a799e06b7ba836f859a29ce1cd4f00aa705012ae827340c",
+        "scripts/guarded_recovery_publication_client.py": "61c82854e1604d344ff20dec71d283140a16822e769365bd6125a57ebff3b093"
+      },
+      "review_identities": "4e9062a4a34fccb50696793f9fb3587c49cf1fc97de29812a3e60f00a47b392c"
+    },
+    "python": "3.12.13 (main, Apr  7 2026, 21:09:58) [Clang 22.1.1 ]",
+    "executable": "/Users/mikewolfd/.codex/worktrees/publication-integration/congressional-tech/.venv/bin/python",
+    "maximum_source_bytes": 1048576,
+    "controlled_request_latency_ms": 1.0,
+    "runtime": {
+      "implementation": "CPython",
+      "platform": "macOS-26.6-arm64-arm-64bit",
+      "machine": "arm64",
+      "packages": {
+        "pyarrow": "25.0.1",
+        "boto3": "1.43.106",
+        "botocore": "1.43.106",
+        "lxml": "6.0.2",
+        "duckdb": null,
+        "zstandard": null,
+        "ijson": "3.6.0"
+      }
+    },
+    "command_process_model": "source identity cache starts cold for each timed command; interpreter/import startup excluded",
+    "prepared_recovery_supported": false,
+    "measurement_sources": {
+      "publication_costs.py": "8f641bcc409190e9b6dc9b1fa4659af878e845e8582b0988c871c3988f1686c2",
+      "measure_publication_control.py": "9c81ca8649237bd6cffa513198b4f2f9b15cdb612e460bc9bf82b67f973d4aab",
+      "benchmark_viewer_publication.py": "cea9a35c69ccaf50b8faa9a772d18bb5832c4e6750bbc51a493f72ea564be237"
+    }
+  },
+  "outcomes": {
+    "successful_publication": {
+      "catalog_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "bytes": 58957,
+      "files": 269,
+      "manifest": "releases/558f5b2163c043ddb1b1781779747ec3/manifest.json",
+      "status": "published",
+      "attempt": "123-1-c29a22f116ccc005f365182e5f38fedbcad4f76974c0e0b1215354589fa8d8c9",
+      "preparation_reused": false
+    },
+    "unchanged_poll": {
+      "status": "unchanged",
+      "catalog_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "accepted_recoveries": 0,
+      "affected_sources": 0,
+      "affected_groups": 0,
+      "recovery": {
+        "bytes": 123,
+        "path": "releases/d0a71ed2cd9cfd4532f61cc3a42d8eef/6b4cd4687227d7fd44eaa3f6b271f27e/viewer-v2/recovery-status.json",
+        "sha256": "d0a71ed2cd9cfd4532f61cc3a42d8eef6b4cd4687227d7fd44eaa3f6b271f27e"
+      },
+      "catalog_payloads_reused": true,
+      "raw_catalog_unchanged": true
+    },
+    "explicit_resume_failure": {
+      "status": "failed",
+      "error_type": "RuntimeError",
+      "error": "Explicit bounded fixture probe failure"
+    },
+    "explicit_resume": {
+      "catalog_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "bytes": 58957,
+      "files": 269,
+      "manifest": "releases/558f5b2163c043ddb1b1781779747ec3/manifest.json",
+      "status": "published",
+      "attempt": "123-1-c29a22f116ccc005f365182e5f38fedbcad4f76974c0e0b1215354589fa8d8c9",
+      "preparation_reused": true
+    }
+  },
+  "stages": [
+    {
+      "stage": "accepted_preparation",
+      "status": "complete",
+      "seconds": 0.30678720807190984,
+      "sampled_process_tree_rss_peak_bytes": 119455744,
+      "memory_samples": 5,
+      "scratch_bytes": 157250,
+      "counts": {
+        "get_requests": 3,
+        "remote_body_bytes_read": 536,
+        "json_dumps_calls": 28,
+        "json_serialized_characters": 79361,
+        "json_serialization_seconds": 0.0007033749716356397,
+        "hash_helper_bytes": 733154,
+        "hash_helper_passes": 869,
+        "state_json_dump_calls": 2,
+        "state_json_serialized_characters": 51964,
+        "state_json_serialization_seconds": 0.000603041029535234,
+        "fsync_calls": 6,
+        "fsync_seconds": 0.0003237099153921008,
+        "download_requests": 2,
+        "download_bytes": 56476,
+        "decode_read_passes": 2,
+        "decode_iterator_passes": 10,
+        "decoded_batches": 10,
+        "decoded_rows": 67,
+        "largest_decoded_batch_bytes": 2131,
+        "sqlite_selects": 3
+      }
+    },
+    {
+      "stage": "successful_publication",
+      "status": "complete",
+      "seconds": 3.08099804201629,
+      "sampled_process_tree_rss_peak_bytes": 123666432,
+      "memory_samples": 40,
+      "scratch_bytes": 758896,
+      "counts": {
+        "get_requests": 834,
+        "remote_body_bytes_read": 307004,
+        "json_dumps_calls": 559,
+        "json_serialized_characters": 253375,
+        "json_serialization_seconds": 0.00945548783056438,
+        "hash_helper_bytes": 523898,
+        "hash_helper_passes": 853,
+        "state_json_dump_calls": 548,
+        "state_json_serialized_characters": 62310081,
+        "state_json_serialization_seconds": 0.6641453740885481,
+        "fsync_calls": 2193,
+        "fsync_seconds": 0.19091241946443915,
+        "decode_iterator_passes": 3,
+        "decoded_batches": 3,
+        "decoded_rows": 21,
+        "put_requests": 821,
+        "put_body_bytes": 303162,
+        "head_requests": 269
+      }
+    },
+    {
+      "stage": "unchanged_poll",
+      "status": "complete",
+      "seconds": 0.20716091699432582,
+      "sampled_process_tree_rss_peak_bytes": 123568128,
+      "memory_samples": 4,
+      "scratch_bytes": 758896,
+      "counts": {
+        "get_requests": 11,
+        "remote_body_bytes_read": 10560,
+        "json_dumps_calls": 3,
+        "json_serialized_characters": 4266,
+        "json_serialization_seconds": 0.00011779088526964188,
+        "hash_helper_bytes": 158422,
+        "hash_helper_passes": 14
+      }
+    },
+    {
+      "stage": "explicit_resume_failure",
+      "status": "failed",
+      "seconds": 2.7092202909989282,
+      "sampled_process_tree_rss_peak_bytes": 124289024,
+      "memory_samples": 36,
+      "scratch_bytes": 759426,
+      "counts": {
+        "get_requests": 828,
+        "remote_body_bytes_read": 306197,
+        "json_dumps_calls": 9,
+        "json_serialized_characters": 13497,
+        "json_serialization_seconds": 0.0003391680074855685,
+        "hash_helper_bytes": 514953,
+        "hash_helper_passes": 853,
+        "state_json_dump_calls": 547,
+        "state_json_serialized_characters": 96523320,
+        "state_json_serialization_seconds": 0.898002507048659,
+        "fsync_calls": 1096,
+        "fsync_seconds": 0.1057496692519635,
+        "decode_iterator_passes": 3,
+        "decoded_batches": 3,
+        "decoded_rows": 21,
+        "put_requests": 1,
+        "put_body_bytes": 265,
+        "head_requests": 540
+      }
+    },
+    {
+      "stage": "explicit_resume",
+      "status": "complete",
+      "seconds": 2.7994375419802964,
+      "sampled_process_tree_rss_peak_bytes": 124354560,
+      "memory_samples": 38,
+      "scratch_bytes": 760136,
+      "counts": {
+        "get_requests": 835,
+        "remote_body_bytes_read": 310774,
+        "json_dumps_calls": 12,
+        "json_serialized_characters": 16902,
+        "json_serialization_seconds": 0.0005190001102164388,
+        "hash_helper_bytes": 523898,
+        "hash_helper_passes": 853,
+        "state_json_dump_calls": 547,
+        "state_json_serialized_characters": 96523320,
+        "state_json_serialization_seconds": 0.9934832534054294,
+        "fsync_calls": 1097,
+        "fsync_seconds": 0.11065888649318367,
+        "decode_iterator_passes": 3,
+        "decoded_batches": 3,
+        "decoded_rows": 21,
+        "put_requests": 1,
+        "put_body_bytes": 355,
+        "head_requests": 542
+      }
+    }
+  ],
+  "sampling_errors": [],
+  "limits": {
+    "memory_sample_interval_seconds": 0.05,
+    "remote_network": false,
+    "excluded": "interpreter/import startup, GitHub artifact API, public HTTP, actual GitHub Actions setup/downloads; native Arrow I/O bytes and internal hashes",
+    "full_linux_oom_stage": "unknown; no retry or resource change"
+  }
+}

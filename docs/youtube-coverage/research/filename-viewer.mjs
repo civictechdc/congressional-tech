@@ -1,3 +1,7 @@
+import { createViewerAdapter } from './filename-adapter.mjs';
+import { fieldTextCache } from './filename-detail-state.mjs';
+import { evidenceGraph, provenanceUrlKey, mergeOrigin } from './filename-provenance.mjs';
+import { positiveInteger, filenameDate } from './filename-rules.mjs';
 const $ = id => document.getElementById(id);
 const number = n => new Intl.NumberFormat().format(n);
 const keys = ['q','field','congress','document_family','document_kind','format','retained','scope','classification'];
@@ -6,6 +10,8 @@ const formatLabel = value => value.includes('/') ? value : value.toUpperCase();
 const display = value => value && typeof value === 'object' ? (Array.isArray(value) ? value.map(display).join(' · ') : JSON.stringify(value)) : (value ?? '—');
 const savedLabel = row => row.recovery?.recovery_status==='recovered' ? 'Recovered' : !row.retained ? 'No saved response' : row.record_role?.includes('error-response') ? 'Saved failed response' : row.response_usable?.includes('false') || row.response_body_complete?.includes('false') ? 'Saved · needs review' : 'Saved';
 let detailEntry, technicalPromise, technicalReady = false, observationData;
+const formattedFields = fieldTextCache();
+let sourceOffset=0, sourcePageId=null;
 let reviewPin = null;
 let info, page = 1, pages = 1, rowData, searchController, detailController, detailOpener, timer, searchField = 'filename';
 const fieldLabels = {body_key:'Saved file location',filename:'Filename',source_url:'Publisher URL',filename_origins:'Filename obtained from',media_type:'Server-reported type',http_status:'HTTP response',response_usable:'Recorded usability assessment',response_body_complete:'Complete response saved',response_format:'Response format check',response_result:'Response diagnostic',capture_outcome:'Capture result',body_format:'Detected file format',format:'File format',extension:'Filename extension',name_token:'Remaining filename text',date_token:'Date text in filename',date_token_candidates:'Possible filename dates',document_kind:'Document classification',document_family:'Classification family',document_kind_source:'Classification evidence',source_capture_file:'Capture run',source_capture_pointer:'Path within captured record',source_receipt_key:'Receipt file',source_receipt_line:'Receipt line (one-based)',source_occurrences:'Related source observations',source_occurrence_scope:'Observation type',source_id:'Source record ID',document_id:'Grouped document ID',source_associated_url:'Associated original URL',source_association_basis:'URL relationship evidence',source_original_page_url:'Original referring page',source_page_url:'Recorded source page',source_page_title:'Source page title',source_link_label:'Publisher link text',source_link_url:'Recorded link URL',source_capture_url:'Capture request URL',source_chamber:'Chamber from source',source_congress:'Congress from source',source_committee_name:'Committee from source',congress:'Congress from filename',content_document_kind:'Document kind from PDF',content_congress:'Congress from PDF',content_citation:'Publication citation'};
@@ -16,11 +22,11 @@ fieldLabels.recovery='Recovered copy';
 const label = key => (fieldLabels[key] || key.replaceAll('_',' ').replace(/^./, x=>x.toUpperCase())).replace(/\b(url|id|uuid|http|pdf|xml|api)\b/gi,x=>x.toUpperCase());
 const present = value => value!==null && value!==undefined && value!=='' && (!Array.isArray(value)||value.length>0);
 const friendly = value => String(value).replaceAll('_',' ').replaceAll('-',' ').replace(/^./, x=>x.toUpperCase()).replace(/\b(url|http|pdf|xml|api)\b/gi,x=>x.toUpperCase());
-const filenameDate = value => { const date=new Date(value+'T00:00:00Z'); return /^\d{4}-\d{2}-\d{2}$/.test(value)&&!Number.isNaN(date.valueOf()) ? new Intl.DateTimeFormat(undefined,{dateStyle:'long',timeZone:'UTC'}).format(date) : value; };
 const dateLabel = value => { const date=new Date(value); return Number.isNaN(date.valueOf()) ? value : new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'long'}).format(date); };
 function node(tag, text, className) { const el=document.createElement(tag); if(text !== undefined) el.textContent=text; if(className) el.className=className; return el; }
 function sourceUrl(value) { try { const url=new URL(value); return ['http:','https:'].includes(url.protocol)&&!url.username&&!url.password ? url : null; } catch { return null; } }
-async function api(url, signal) { if(window.filenameViewerApi) return window.filenameViewerApi(url,signal); const res=await fetch(url,{signal}); const data=await res.json(); if(!res.ok) throw new Error(data.error || 'Could not read the catalog.'); return data; }
+const adapter = createViewerAdapter({mode: document.body.dataset.filenameMode, workerApi: () => window.filenameViewerApi, fetcher: (...args) => fetch(...args)});
+const api = adapter.request;
 function currentQuery() { const p=new URLSearchParams(); for(const key of keys) if($(key).value && !(key==='field' && $(key).value==='filename')) p.set(key,$(key).value); if($('classification').value==='reviewed')p.set('review',reviewPin||info.review_sha256||'');if(page>1) p.set('page',page); return p; }
 function saveUrl(mode='replaceState') { const p=currentQuery(); if($('detail').open && $('detail').dataset.row) { p.set('source',$('detail').dataset.row); p.set('catalog',$('detail').dataset.catalog || info.catalog_id); } history[mode](null,'',`${location.pathname}${p.size?'?'+p:''}`); }
 const secondaryKeys = ['congress','document_family','document_kind','format'];
@@ -60,7 +66,7 @@ function restore() {
  const p=new URLSearchParams(location.search); selectField(p.get('field')||'filename');
  for(const key of keys.filter(key=>key!=='field')) $(key).value=p.get(key)||(key==='format'?p.get('extension'):'')||'';
  reviewPin=p.get('review')||info.review_sha256||null;
- page=Math.max(1,Number(p.get('page'))||1); filterNotes();
+ page=positiveInteger(p.get('page')); filterNotes();
  $('secondary-filters').open=secondaryKeys.some(key=>$(key).value)||$('field').value!=='filename';
  return p.has('source')||p.has('row')?{id:p.get('source')||p.get('row'),catalog:p.get('catalog')}:null;
 }
@@ -132,53 +138,76 @@ async function load() {
  finally { if(controller===searchController) { $('results').setAttribute('aria-busy','false'); $('results').inert=false; document.querySelector('.pager').inert=false; } }
 }
 function closeDetail(update=true) {
- detailController?.abort(); const wasOpen=$('detail').open; $('detail').close();
+ detailController?.abort(); detailController=null; detailEntry=null; rowData=null; technicalPromise=null; technicalReady=false; observationData=null; formattedFields.clear(); const wasOpen=$('detail').open; $('detail').close();
  delete $('detail').dataset.row; delete $('detail').dataset.catalog;
+ for(const section of ['detail-data','source-variants','origin','document-summary','complete-body-review','filename-findings','saved-evidence'])$(section).replaceChildren();
  if(wasOpen) (detailOpener?.isConnected&&detailOpener!==document.body?detailOpener:$('q')).focus();
  if(update) saveUrl();
 }
-async function openDetail(id, update=true, catalog=info.catalog_id) {
- if(!$('detail').open) detailOpener=document.activeElement;
- detailController?.abort(); const controller=detailController=new AbortController(); rowData=null; detailEntry=null; technicalPromise=null; technicalReady=false; observationData=null; $('detail').dataset.row=String(id); $('detail').dataset.catalog=catalog || info.catalog_id; setDetailTitle('Loading…'); $('detail-data').replaceChildren(); $('field-count').textContent=''; $('field-search').value=''; $('show-empty').checked=false; $('copy').disabled=true; $('share').disabled=true; $('source-link').hidden=true; $('saved-link').hidden=true; $('detail-selected').hidden=true; $('copy-status').textContent=''; $('share-status').textContent='';
+function resetDetail(id,catalog) {
+ detailController?.abort(); detailController=new AbortController(); rowData=null; detailEntry=null; formattedFields.clear(); sourceOffset=0; sourcePageId=null; technicalPromise=null; technicalReady=false; observationData=null; $('detail').dataset.row=String(id); $('detail').dataset.catalog=catalog || info.catalog_id; setDetailTitle('Loading…'); $('detail-data').replaceChildren(); $('field-count').textContent=''; $('field-search').value=''; $('show-empty').checked=false; $('copy').disabled=true; $('share').disabled=true; $('source-link').hidden=true; $('saved-link').hidden=true; $('detail-selected').hidden=true; $('copy-status').textContent=''; $('share-status').textContent='';
  for(const section of ['document-summary','complete-body-review','origin','filename-findings','saved-evidence']) { $(section).replaceChildren(); $(section).hidden=true; }
  document.querySelector('.detail-secondary').hidden=true;
  $('technical').open=false; $('technical').hidden=true; $('detail').setAttribute('aria-busy','true'); $('source-history').hidden=true; $('source-history').querySelector('details').open=false; $('detail').scrollTop=0;
  $('source-variants').replaceChildren(); $('source-variants').hidden=true;
+ return detailController;
+}
+async function openDetail(id, update=true, catalog=info.catalog_id) {
+ if(!$('detail').open) detailOpener=document.activeElement;
+ const controller=resetDetail(id,catalog);
  if(!$('detail').open) $('detail').showModal(); if(update) saveUrl('pushState');
  try { const problem=reviewModeProblem();if(problem)throw new Error(problem);const entry=await api('/api/entry/'+encodeURIComponent(id)+'?catalog='+encodeURIComponent(catalog || info.catalog_id),controller.signal); if(controller!==detailController) return; const data=entry.record; rowData=data; detailEntry=entry; $('detail').dataset.row=data.source_id; $('detail').dataset.catalog=entry.catalog_id; saveUrl(); setDetailTitle(identity({...data,filename:entry.filename,api_reference:entry.api_reference,video_reference:entry.video_reference}),entry.api_reference||entry.video_reference?'title':'filename'); $('copy').disabled=false; $('share').disabled=false;
  if(data.filename!==entry.filename) { $('detail-selected').hidden=false; $('detail-selected').textContent='Selected source filename: '+(data.filename || 'Not recorded'); }
- renderSummary(entry); renderCurrentOrigin(); renderFilename(entry);
- if(info.complete_body_reviews)loadCompleteReview(entry,controller);
- renderSources(entry);
  const url=sourceUrl(data.source_url); if(url) {
   $('source-link').href=url.href; $('source-link').replaceChildren(node('span',entry.video_reference?'Watch video ↗':entry.api_reference?'Open API record ↗':'Open original URL ↗'),node('span',url.hostname.replace(/^www\./,''),'link-caption')); $('source-link').hidden=false;
  }
- if(entry.saved_file_available||sourceUrl(entry.saved_file_url)) {
+ const savedUrl=adapter.savedUrl(entry);
+ if(savedUrl) {
   const recovered=(data.recovery||entry.recovery)?.recovery_status==='recovered',failed=!recovered&&data.record_role?.includes('error-response');
   const savedFormats=recovered?[(data.recovery||entry.recovery).kind]:(data.body_format?.length?data.body_format:data.format)||[];
   const webpage=!failed&&savedFormats.some(value=>['html','text/html','application/xhtml+xml'].includes(value?.toLowerCase()));
   const caption=[webpage&&entry.video_reference?'Webpage only':null,recovered?(data.recovery?'Recovered copy':'Recovered via related URL'):failed?'Failed response':null,entry.published_only?'R2 archive':'Saved in archive'].filter(Boolean).join(' · ');
-  $('saved-link').hidden=false; $('saved-link').replaceChildren(node('span',failed?'Open saved response ↗':webpage?'Open saved webpage ↗':entry.video_reference?'Open saved response ↗':'Open saved copy ↗'),node('span',caption,'link-caption')); $('saved-link').href=entry.saved_file_url||'/saved/'+encodeURIComponent(data.source_id)+'?catalog='+encodeURIComponent(entry.catalog_id);
+  $('saved-link').hidden=false; $('saved-link').replaceChildren(node('span',failed?'Open saved response ↗':webpage?'Open saved webpage ↗':entry.video_reference?'Open saved response ↗':'Open saved copy ↗'),node('span',caption,'link-caption')); $('saved-link').href=savedUrl;
  }
+ renderSummary(entry); renderFilename(entry); renderSources(entry); renderCurrentOrigin();
+ if(info.complete_body_reviews)loadCompleteReview(entry,controller);
  $('technical').hidden=false; document.querySelector('.detail-secondary').hidden=false; loadEvidence(entry,controller); if(entry.origin_pending)loadEntryOrigin(entry,controller); }
  catch(error) { if(error.name!=='AbortError'&&controller===detailController) { setDetailTitle('Record unavailable'); $('document-summary').hidden=false; $('document-summary').append(node('p',error.message)); const retry=node('button','Retry this record','outline');retry.addEventListener('click',()=>openDetail(id,false,catalog));$('document-summary').append(retry); } }
  finally { if(controller===detailController)$('detail').setAttribute('aria-busy','false'); }
 }
-function renderSources(entry) {
- const focused=$('source-variants').contains(document.activeElement)?document.activeElement.dataset.source:null;
+function renderSources(entry, focusPage) {
+ const active=$('source-variants').contains(document.activeElement)?document.activeElement:null;
+ const focused=active?.dataset.source;
+ focusPage=focusPage||(active?.tagName==='BUTTON'&&!focused?active.textContent:null);
  $('source-variants').replaceChildren();
  if(entry.sources.length>1) {
+  const pageSize=20;
+  if(sourcePageId!==entry.record.source_id) {
+   sourcePageId=entry.record.source_id;
+   sourceOffset=Math.floor(Math.max(0,entry.sources.findIndex(source=>source.source_id===sourcePageId))/pageSize)*pageSize;
+  }
   $('source-history').hidden=false; $('source-variants-caption').textContent=`${entry.sources.length} source records in this group`;
   $('source-variants').hidden=false;
   $('source-variants').append(node('p',entry.sources_share_saved_file?'These records share one saved file. Select a record to inspect it.':'Select a source record to inspect its own metadata.'));
-  for(const source of entry.sources) {
-   const redirects=entry.document_origin?.redirects || entry.origin.redirects;
-   const role=!source.source_url?'Source record':entry.origin_pending?'Source URL':redirects.some(r=>r.original===source.source_url)?'Original URL':redirects.some(r=>r.final===source.source_url)?'Redirect destination':'Alternate source URL';
+  const redirects=entry.document_origin?.redirects || entry.origin.redirects;
+  const originals=new Set(redirects.map(row=>row.original)), finals=new Set(redirects.map(row=>row.final));
+  for(const source of entry.sources.slice(sourceOffset,sourceOffset+pageSize)) {
+   const role=!source.source_url?'Source record':entry.origin_pending?'Source URL':originals.has(source.source_url)?'Original URL':finals.has(source.source_url)?'Redirect destination':'Alternate source URL';
    const caption=[role,source.format?.map(formatLabel).join(' · ') || 'Unknown format',savedLabel(source)].join(' · ');
    const button=node('button',caption,'outline'); button.dataset.source=source.source_id; button.setAttribute('aria-pressed',String(source.source_id===entry.record.source_id));
    button.append(node('span',source.source_url || source.filename || 'No URL or filename recorded','source'));
    button.addEventListener('click',()=>openDetail(source.source_id)); $('source-variants').append(button);
    if(focused===source.source_id)button.focus({preventScroll:true});
+  }
+  if(entry.sources.length>pageSize) {
+   $('source-variants').append(node('p',`${number(sourceOffset+1)}–${number(Math.min(sourceOffset+pageSize,entry.sources.length))} of ${number(entry.sources.length)} source records`,'section-note'));
+   const navigation=node('div',undefined,'actions');
+   for(const [caption,delta] of [['Previous sources',-pageSize],['Next sources',pageSize]]) {
+    const button=node('button',caption,'outline');button.type='button';button.disabled=sourceOffset+delta<0||sourceOffset+delta>=entry.sources.length;
+    button.addEventListener('click',()=>{sourceOffset+=delta;renderSources(entry,caption);});navigation.append(button);
+   }
+   $('source-variants').append(navigation);
+   if(focusPage) {const preferred=[...navigation.children].find(button=>button.textContent===focusPage);(preferred?.disabled?$('source-variants').querySelector('button[data-source]'):preferred)?.focus({preventScroll:true});}
   }
  }
 }
@@ -223,7 +252,7 @@ async function loadCompleteReview(entry, controller, withdrawn=false) {
   if(result.status==='annotation_only_unsupported_forms')el.append(node('p','This packet includes forms outside the supported categories. All findings are retained together; none changes the catalog classification.','warning'));
   const toggle=node('button',withdrawn?'Restore reviewed preview':'Withdraw review from preview','outline');
   toggle.addEventListener('click',()=>{toggle.disabled=true;loadCompleteReview(entry,controller,!withdrawn);});el.append(toggle);
-  const evidenceUrl=(kind,page)=> (result.evidence ? (kind==='page'?result.evidence.pages[page]:result.evidence[kind]) : '/review-evidence/'+encodeURIComponent(entry.record.source_id)+'?catalog='+encodeURIComponent(entry.catalog_id)+'&kind='+kind+(page?'&page='+page:''));
+  const evidenceUrl=(kind,page)=>adapter.reviewEvidence(entry,result,kind,page);
   const pdf=node('p'),pdfLink=link(new URL(evidenceUrl('body'),location.href).href,'Download the exact reviewed PDF');
   pdfLink.removeAttribute('target');pdfLink.download='reviewed-document.pdf';pdf.append(pdfLink);el.append(pdf);
   for(const [kind,field,caption] of [['text','text_path','Saved extracted text'],['native-text','native_text_path','Saved native text']])if(observed[field]) {
@@ -301,50 +330,24 @@ function pageLink(value,title) {
  return block;
 }
 function renderOrigin(origin,apiReference,observationCount,recovery) {
- const el=section('origin','Where it came from'), unique=new Map(), linkEvidence=[];
- const urlKey=value=>{const url=sourceUrl(value);return url?url.host+url.pathname+url.search+url.hash:null;};
- const edgeKey=value=>sourceUrl(value)?.href;
- const edges=new Map(), ancestors=[], targets=new Set(), covered=new Set();
- for(const page of origin.pages) if(page.urls.length===1&&page.link_urls.length===1&&page.relationship!=='Possible source page') {
-  const from=edgeKey(page.urls[0]),to=edgeKey(page.link_urls[0]);if(!from||!to||from===to)continue;
-  if(!edges.has(from))edges.set(from,[]);edges.get(from).push({page,to});
-  if(page.relationship==='Linked through'){ancestors.push(page);targets.add(to);}
- }
- for(const redirect of origin.redirects) {
-  const from=edgeKey(redirect.original);if(!edges.has(from))edges.set(from,[]);
-  edges.get(from).push({to:edgeKey(redirect.final),redirect:true});
- }
- const roots=ancestors.filter(page=>!targets.has(edgeKey(page.urls[0]))||(page.types||[]).some(type=>/hearing/i.test(type))), rendered=new Set();
- for(const root of roots) {
-  const start=edgeKey(root.urls[0]);if(rendered.has(start))continue;
-  const queue=[{url:start,path:[]}],visited=new Set([start]);let path;
-  for(let i=0;i<queue.length;i++) {
-   const current=queue[i];if(current.url===edgeKey(origin.file_url)){path=current.path;break;}
-   for(const edge of edges.get(current.url)||[]) if(!visited.has(edge.to)) {
-    visited.add(edge.to);queue.push({url:edge.to,path:[...current.path,edge]});
-   }
-  }
-  if(!path)continue;rendered.add(start);
+ const el=section('origin','Where it came from'), linkEvidence=[], covered=new Set();
+ const urlKey=provenanceUrlKey, graph=evidenceGraph(origin);
+ for(const {root,path} of graph.paths) {
   const group=node('div',undefined,'source-path'),list=node('ol',undefined,'source-chain');
   group.append(node('p',(root.types||[]).some(type=>/hearing/i.test(type))?'Associated hearing':'Related source','link-caption'));
   for(const edge of path) if(edge.page) {
    const page=edge.page,value=page.urls[0],item=node('li');covered.add(urlKey(value));
-   const title=page.titles.length===1?page.titles[0]:null;
-   item.append(pageLink(value,title));
-   if(page.dates?.length===1)item.append(node('p',filenameDate(page.dates[0]),'link-caption'));
-   if(page.link_labels.length===1)linkEvidence.push({from:sourceUrl(value).hostname.replace(/^www\./,''),text:page.link_labels[0]});
+   const observed=graph.referenceByKey.get(urlKey(value)).pages.filter(page=>page.urls.length===1);
+   const titles=[...new Set(observed.flatMap(page=>page.titles))], dates=[...new Set(observed.flatMap(page=>page.dates||[]))];
+   item.append(pageLink(value,titles.length===1?titles[0]:null));
+   if(dates.length===1)item.append(node('p',filenameDate(dates[0]),'link-caption'));
+   const labels=new Set(observed.filter(page=>page.link_urls.length===1&&sourceUrl(page.link_urls[0])?.href===edge.to).flatMap(page=>page.link_labels));
+   for(const text of labels)linkEvidence.push({from:sourceUrl(value).hostname.replace(/^www\./,''),text});
    list.append(item);
   }
   list.append(node('li','This file','chain-current'));group.append(list);el.append(group);
  }
- for(const page of origin.pages) for(const value of page.urls) {
-  const url=sourceUrl(value); if(!url)continue;
-  const key=urlKey(value);
-  if(!unique.has(key))unique.set(key,{url:value,pages:[]});
-  const item=unique.get(key);item.pages.push(page);
-  if(url.protocol==='https:')item.url=value;
- }
- const references=[...unique.values()], human=references.filter(item=>referenceRole(item.url)==='Website page');
+ const references=graph.references, human=references.filter(item=>referenceRole(item.url)==='Website page');
  const machine=references.filter(item=>referenceRole(item.url)!=='Website page');
  function destination(value,title,caption) {
   const block=node('div',undefined,'provenance-item'),url=sourceUrl(value);
@@ -421,7 +424,7 @@ function showFields(query) {
 }
 function renderFilename(entry) {
  if(entry.video_reference) { $('filename-findings').hidden=true; return; }
- const el=section('filename-findings','Filename clues'), row=entry.record, reading=entry.reading, dl=node('dl',undefined,'facts'), consumed=new Set(['extension']);
+ const el=section('filename-findings','Filename clues'), row=entry.record, reading=adapter.reading(entry), dl=node('dl',undefined,'facts'), consumed=new Set(['extension']);
  el.classList.remove('compact');
  consumed.add('congress');
  if(row.measure_references?.length) {
@@ -445,7 +448,7 @@ function renderFilename(entry) {
  else {el.replaceChildren();el.classList.add('compact');}
  const support=node('details');support.append(node('summary',hasFindings?'How this filename was read':'Filename analysis'));
  if(entry.filename_field_count||fields.length) { const inspect=node('button','Inspect filename fields','quiet evidence-link');inspect.type='button';inspect.addEventListener('click',()=>showFields('Filename interpretations'));support.append(inspect); }
- if(entry.published_only) support.append(node('p',`Published house-naming results · version ${info.house_naming_version}. This page reads the catalog snapshot; it does not rerun the naming rules.`,'section-note'));
+ if(adapter.published(entry)) support.append(node('p',`Published house-naming results · version ${info.house_naming_version}. This page reads the catalog snapshot; it does not rerun the naming rules.`,'section-note'));
  if(row.filename_origins?.length) support.append(node('p','Filename obtained from: '+row.filename_origins.map(friendly).join(' · ')));
  if(entry.api_reference) support.append(node('p','Literal URL-derived filename: '+row.filename));
  if(reading) {
@@ -494,7 +497,7 @@ function renderOccurrences(occurrences) {
 function webUrlOrText(value) { return sourceUrl(value)?link(value):node('span',typeof value==='object'?JSON.stringify(value):String(value)); }
 async function loadEvidence(entry,controller) {
  const el=section('saved-evidence','Saved response evidence'), summary=$('content-summary');
- if(entry.published_only) {
+ if(adapter.published(entry)) {
   const content=Object.entries(entry.record).filter(([key,value])=>key.startsWith('content_')&&present(value));
   summary.hidden=!content.length;
   summary.replaceChildren(node('p','Saved contents · published findings','link-caption'));
@@ -577,7 +580,7 @@ function renderCurrentOrigin() {
    try {
     const result=await api(detailUrl('origin',`&offset=${entry.origin_next}&limit=20`),controller.signal);
     if(controller!==detailController)return;
-    entry.origin.pages.push(...result.origin.pages);entry.origin.redirects.push(...result.origin.redirects);entry.origin_next=result.next;renderCurrentOrigin();
+    entry.origin=mergeOrigin(entry.origin,result.origin);entry.origin_next=result.next;renderCurrentOrigin();
    } catch(error) {if(controller===detailController&&error.name!=='AbortError'){more.disabled=false;more.textContent='Retry source pages';more.title=error.message;}}
   });$('origin').append(more);
  }
@@ -611,7 +614,7 @@ function renderFieldValues(key, value) {
 function renderDetails() {
  if(!rowData||!technicalReady) return;
  const q=$('field-search').value.toLowerCase(); const populated=Object.values(rowData).filter(v=>v!==null&&v!==''&&(!Array.isArray(v)||v.length)).length;
- const entries=Object.entries(rowData).filter(([key,value])=>($('show-empty').checked || present(value)) && (!q || [label(key),key,fieldCategory(key),String(display(value))].some(text=>text.toLowerCase().includes(q))));
+ const entries=Object.entries(rowData).filter(([key,value])=>($('show-empty').checked || present(value)) && (!q || ([label(key),key,fieldCategory(key)].some(text=>text.toLowerCase().includes(q)) || formattedFields.text(key,value,display).includes(q))));
  $('field-count').textContent=`${entries.length} ${entries.length===1?'field':'fields'} shown · ${populated} with values · ${Object.keys(rowData).length} total`;
  const groups=new Map(['Identity and classification','Source and provenance','Download and storage','Saved content findings','Filename interpretations'].map(title=>[title,[]]));
  for(const entry of entries)groups.get(fieldCategory(entry[0])).push(entry);
@@ -632,7 +635,7 @@ $('field-picker-search').addEventListener('input',renderFieldPicker);
 $('close-field-picker').addEventListener('click',()=>{$('advanced-field').hidden=true;$('field').focus();});
 $('retry').addEventListener('click',()=>info?load():location.reload());
 $('reset').addEventListener('click',reset); $('empty-reset').addEventListener('click',reset);
-function goToPage(value) {page=Math.max(1,Math.min(pages,Number(value)||1));saveUrl('pushState');load();$('results-bar').scrollIntoView({block:'start'});}
+function goToPage(value) {page=positiveInteger(value,1,pages);saveUrl('pushState');load();$('results-bar').scrollIntoView({block:'start'});}
 for(const [id,delta] of [['previous',-1],['next',1]]) $(id).addEventListener('click',()=>goToPage(page+delta));
 $('page-form').addEventListener('submit',event=>{event.preventDefault();goToPage($('page-number').value);});
 $('back-to-results').addEventListener('click',()=>$('results-bar').scrollIntoView({block:'start'}));
@@ -651,9 +654,9 @@ $('detail').addEventListener('cancel',event=>{event.preventDefault();closeDetail
 $('detail').addEventListener('click',event=>{if(event.target===$('detail') && event.clientX<$('detail').getBoundingClientRect().left) closeDetail();});
 $('technical').addEventListener('toggle',()=>{if($('technical').open)ensureTechnical();});
 $('field-search').addEventListener('input',renderDetails); $('show-empty').addEventListener('change',renderDetails);
-$('copy').addEventListener('click',async()=>{const controller=detailController;$('copy').disabled=true;$('copy-status').textContent='Preparing complete metadata…';try{const record=detailEntry.record_complete===false?await api(detailUrl('full'),controller.signal):rowData;if(controller!==detailController)return;await navigator.clipboard.writeText(JSON.stringify(record,null,2));$('copy-status').textContent='Copied';}catch(error){if(controller===detailController&&error.name!=='AbortError')$('copy-status').textContent='Could not copy complete metadata: '+error.message;}finally{if(controller===detailController)$('copy').disabled=false;}});
-$('share').addEventListener('click',async()=>{try{saveUrl();await navigator.clipboard.writeText(location.href);$('share-status').textContent='Copied';}catch{$('share-status').textContent='Clipboard unavailable';}});
-window.addEventListener('popstate',()=>{const row=restore();load();if(row!==null)openDetail(row.id,false,row.catalog);else closeDetail(false);});
+$('copy').addEventListener('click',async()=>{const controller=detailController;$('copy').disabled=true;$('copy-status').textContent='Preparing complete metadata…';try{const record=detailEntry.record_complete===false?await api(detailUrl('full'),controller.signal):rowData;if(controller!==detailController)return;await navigator.clipboard.writeText(JSON.stringify(record,null,2));if(controller===detailController)$('copy-status').textContent='Copied';}catch(error){if(controller===detailController&&error.name!=='AbortError')$('copy-status').textContent='Could not copy complete metadata: '+error.message;}finally{if(controller===detailController)$('copy').disabled=false;}});
+$('share').addEventListener('click',async()=>{const controller=detailController;try{saveUrl();await navigator.clipboard.writeText(location.href);if(controller===detailController)$('share-status').textContent='Copied';}catch{if(controller===detailController)$('share-status').textContent='Clipboard unavailable';}});
+window.addEventListener('popstate',()=>{if(!info)return;const row=restore();load();if(row!==null)openDetail(row.id,false,row.catalog);else closeDetail(false);});
 try {
  info=await api('/api/info');
  $('search-form').inert=false; $('search-form').removeAttribute('inert');

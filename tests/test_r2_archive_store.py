@@ -106,8 +106,8 @@ def test_existing_body_is_preserved_and_receipt_name_collision_fails():
 
 
 @pytest.mark.parametrize('saved', [b'previous catalog', b'different bytes'])
-@pytest.mark.parametrize('prefix', ['catalog-history/sha256/', 'indexes/processing/body-results/'])
-def test_catalog_history_retry_requires_identical_bytes(saved, prefix):
+def test_body_result_retry_requires_identical_bytes(saved):
+    prefix = 'indexes/processing/body-results/'
     c = client()
     data = b'previous catalog'
     key = f'{prefix}{hashlib.sha256(data).hexdigest()}/document-filenames.parquet'

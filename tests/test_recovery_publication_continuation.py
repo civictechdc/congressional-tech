@@ -103,6 +103,33 @@ class ContinuationTests(unittest.TestCase):
             proxy.put_object(Bucket='b', Key=key, Body=b'new locator', IfNoneMatch='*')
         self.assertNotIn(key, self.c.value['writes'])
         self.resume().reconcile(remote, 'b')
+    def test_reconciled_proof_reuses_one_full_read_only_for_exact_client_and_version(self):
+        class Counted(Remote):
+            gets = 0; heads = 0
+            def get_object(self, **kwargs):
+                self.gets += 1
+                return super().get_object(**kwargs)
+            def head_object(self, **kwargs):
+                self.heads += 1
+                raw, version = self.objects[kwargs['Key']]
+                return {'ETag': version, 'ContentLength': len(raw)}
+        remote = Counted(); key = 'viewer-publications/releases/x/file'
+        self.intent(key, b'exact', IfNoneMatch='*'); remote.objects[key] = (b'exact', 'v1')
+        self.c.reconcile(remote, 'b')
+        body = io.BytesIO(b'prefixexact'); body.seek(6)
+        self.assertEqual(self.c.replay(remote, 'b', key, body), {'ETag': 'v1'})
+        self.assertEqual(body.tell(), 6)
+        self.assertEqual((remote.gets, remote.heads), (1, 1))
+        other = Counted(); other.objects = dict(remote.objects)
+        self.c.replay(other, 'b', key, b'exact')
+        self.assertEqual((other.gets, other.heads), (1, 0))
+        self.resume().replay(remote, 'b', key, b'exact')
+        self.assertEqual(remote.gets, 2)  # Serialized receipts never issue a proof.
+        for raw, version in [(b'exact', 'v2'), (b'longer', 'v1')]:
+            remote.objects[key] = (raw, version)
+            with self.assertRaisesRegex(ValueError, 'object changed'):
+                self.c.replay(remote, 'b', key, b'exact')
+
     def test_different_replay_payload_is_refused(self):
         remote = Remote(); key = 'viewer-publications/releases/x/file'
         self.intent(key, b'exact', IfNoneMatch='*'); remote.objects[key] = (b'exact', 'v1')

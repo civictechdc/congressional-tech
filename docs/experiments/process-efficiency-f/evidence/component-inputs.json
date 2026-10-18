@@ -1,0 +1,35 @@
+{
+  "root": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-raw-catalog-v3/catalog",
+  "selector_sha256": "e7d4165e450a1a6f73f20183c95d44a816e4aa8ba65bb5898feba89195c154ff",
+  "manifest": {
+    "catalog_id": "76758ea73fa94075bda46ce79e569fd3",
+    "files": {
+      "documents": {
+        "bytes": 539110541,
+        "key": "catalog-generations/cbcf65877e2843ae8b23915c3d05a18f/documents.parquet",
+        "rows": 1241131,
+        "sha256": "f8f30ffd5cc5bb3f97b0942c563c1bd3a08f0736058b7998d2761ea495aafe55"
+      },
+      "filenames": {
+        "bytes": 544061564,
+        "key": "catalog-generations/cbcf65877e2843ae8b23915c3d05a18f/document-filenames.parquet",
+        "rows": 1683404,
+        "sha256": "6e66df67fa44395c083e17dd30546bf95772718b1aabc4e7e0dab67a695ba534"
+      }
+    },
+    "generation": "cbcf65877e2843ae8b23915c3d05a18f",
+    "version": 1
+  },
+  "verified_files": {
+    "documents": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-raw-catalog-v3/catalog/catalog-generations/cbcf65877e2843ae8b23915c3d05a18f/documents.parquet",
+      "bytes": 539110541,
+      "sha256": "f8f30ffd5cc5bb3f97b0942c563c1bd3a08f0736058b7998d2761ea495aafe55"
+    },
+    "filenames": {
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-raw-catalog-v3/catalog/catalog-generations/cbcf65877e2843ae8b23915c3d05a18f/document-filenames.parquet",
+      "bytes": 544061564,
+      "sha256": "6e66df67fa44395c083e17dd30546bf95772718b1aabc4e7e0dab67a695ba534"
+    }
+  }
+}

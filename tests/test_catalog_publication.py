@@ -29,7 +29,7 @@ def test_legacy_migration_and_selected_pair(tmp_path):
     assert selected.manifest['catalog_id'] == 'one'
     assert result['generation'] in local_catalog_paths(tmp_path)[0].as_posix()
     paths[0].write_bytes(b'stale root')
-    assert read_catalog(store).filenames == selected.filenames
+    assert read_catalog(store).files['filenames']['sha256'] == selected.files['filenames']['sha256']
 
 
 @pytest.mark.parametrize('failure', [1, 2, 3])
@@ -37,7 +37,7 @@ def test_interrupted_publication_keeps_previous_pair(tmp_path, failure):
     store = LocalStore(tmp_path)
     publish_catalog(store, *pair(tmp_path / 'build1'), previous=read_catalog(store))
     previous = read_catalog(store)
-    original = store.put
+    original, original_file = store.put, store.put_derived_file
     calls = 0
     def fail(key, data, **options):
         nonlocal calls
@@ -46,6 +46,13 @@ def test_interrupted_publication_keeps_previous_pair(tmp_path, failure):
             raise RuntimeError('interrupted')
         return original(key, data, **options)
     store.put = fail
+    def fail_file(key, path, **options):
+        nonlocal calls
+        calls += 1
+        if calls == failure:
+            raise RuntimeError('interrupted')
+        return original_file(key, path, **options)
+    store.put_derived_file = fail_file
     with pytest.raises(RuntimeError, match='interrupted'):
         publish_catalog(store, *pair(tmp_path / 'build2', 'two'), previous=previous)
     assert read_catalog(store).manifest == previous.manifest

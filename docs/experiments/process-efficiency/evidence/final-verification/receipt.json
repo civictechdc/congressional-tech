@@ -1,0 +1,353 @@
+{
+  "tested_revision": "5b128da7c432cde64893fce10c9a167d40a5d616",
+  "base_revision": "24137dd08241c34f1632afcd78a80a6138e5779d",
+  "worktree": "/Users/mikewolfd/.codex/worktrees/process-efficiency/congressional-tech",
+  "branch": "codex/process-efficiency",
+  "runtime": {
+    "platform": "macOS-26.6-arm64-arm-64bit",
+    "python": "3.12.13",
+    "pyarrow": "25.0.1",
+    "node": "v26.9.0",
+    "npm": "11.19.1",
+    "poppler": "26.06.0",
+    "rust_build_toolchain": "1.89.0",
+    "native_binary": "/Users/mikewolfd/.codex/worktrees/process-efficiency/congressional-tech/packages/source-fetch/target/release/source-fetch",
+    "native_binary_sha256": "1d66d0b443b020fb469903f3b810eee1917217e558a9beececde28f1031cabd8"
+  },
+  "commands": [
+    {
+      "name": "production-offline",
+      "command": [
+        "/Users/mikewolfd/.codex/worktrees/process-efficiency/congressional-tech/.venv/bin/python",
+        "scripts/dev.py",
+        "test",
+        "production-offline"
+      ],
+      "cwd": "/Users/mikewolfd/.codex/worktrees/process-efficiency/congressional-tech",
+      "seconds": 193.04346680641174,
+      "exit_code": 0
+    },
+    {
+      "name": "active-experiment",
+      "command": [
+        "/Users/mikewolfd/.codex/worktrees/process-efficiency/congressional-tech/.venv/bin/python",
+        "scripts/dev.py",
+        "test",
+        "active-experiment-regression"
+      ],
+      "cwd": "/Users/mikewolfd/.codex/worktrees/process-efficiency/congressional-tech",
+      "seconds": 8.0697500705719,
+      "exit_code": 0
+    },
+    {
+      "name": "native-loopback",
+      "command": [
+        "/Users/mikewolfd/.codex/worktrees/process-efficiency/congressional-tech/.venv/bin/python",
+        "scripts/dev.py",
+        "test",
+        "native-loopback"
+      ],
+      "cwd": "/Users/mikewolfd/.codex/worktrees/process-efficiency/congressional-tech",
+      "seconds": 69.15245389938354,
+      "exit_code": 0
+    },
+    {
+      "name": "npm-install",
+      "command": [
+        "npm",
+        "install",
+        "--workspace",
+        "apps/site",
+        "--workspace",
+        "viewer-data",
+        "--include-workspace-root",
+        "--no-audit",
+        "--no-fund"
+      ],
+      "cwd": "/Users/mikewolfd/.codex/worktrees/process-efficiency/congressional-tech",
+      "seconds": 1.15397310256958,
+      "exit_code": 0
+    },
+    {
+      "name": "npm-runtime",
+      "command": [
+        "npm",
+        "ls",
+        "--workspace",
+        "apps/site",
+        "--workspace",
+        "viewer-data",
+        "--depth=0"
+      ],
+      "cwd": "/Users/mikewolfd/.codex/worktrees/process-efficiency/congressional-tech",
+      "seconds": 0.29615116119384766,
+      "exit_code": 0
+    },
+    {
+      "name": "explorer-tests",
+      "command": [
+        "npm",
+        "run",
+        "test:explorer",
+        "--workspace",
+        "apps/site"
+      ],
+      "cwd": "/Users/mikewolfd/.codex/worktrees/process-efficiency/congressional-tech",
+      "seconds": 2.1830637454986572,
+      "exit_code": 0
+    },
+    {
+      "name": "explorer-types",
+      "command": [
+        "npm",
+        "run",
+        "check:explorer-types",
+        "--workspace",
+        "apps/site"
+      ],
+      "cwd": "/Users/mikewolfd/.codex/worktrees/process-efficiency/congressional-tech",
+      "seconds": 0.5222861766815186,
+      "exit_code": 0
+    },
+    {
+      "name": "astro-check",
+      "command": [
+        "npx",
+        "--no-install",
+        "astro",
+        "check"
+      ],
+      "cwd": "/Users/mikewolfd/.codex/worktrees/process-efficiency/congressional-tech/apps/site",
+      "seconds": 4.822502851486206,
+      "exit_code": 0
+    },
+    {
+      "name": "viewer-data",
+      "command": [
+        "npm",
+        "test",
+        "--workspace",
+        "viewer-data"
+      ],
+      "cwd": "/Users/mikewolfd/.codex/worktrees/process-efficiency/congressional-tech",
+      "seconds": 0.32961416244506836,
+      "exit_code": 0
+    },
+    {
+      "name": "site-build",
+      "command": [
+        "npm",
+        "run",
+        "build",
+        "--workspace",
+        "apps/site"
+      ],
+      "cwd": "/Users/mikewolfd/.codex/worktrees/process-efficiency/congressional-tech",
+      "seconds": 2.497089147567749,
+      "exit_code": 0
+    }
+  ],
+  "results": {
+    "production_offline": {
+      "passed": 8838,
+      "deselected": 49,
+      "subtests_passed": 38,
+      "skipped": 0,
+      "pytest_seconds": 191.63
+    },
+    "active_experiment": {
+      "passed": 241,
+      "skipped": 0,
+      "pytest_seconds": 7.35
+    },
+    "native_loopback": {
+      "passed": 49,
+      "deselected": 3983,
+      "skipped": 0,
+      "pytest_seconds": 68.13
+    },
+    "explorer": {
+      "passed": 113,
+      "skipped": 0
+    },
+    "viewer_data": {
+      "passed": 7,
+      "skipped": 0
+    },
+    "astro": {
+      "files": 53,
+      "errors": 0,
+      "warnings": 0,
+      "hints": 0
+    },
+    "site_build": {
+      "pages": 29
+    }
+  },
+  "preserved_failed_attempts": [
+    {
+      "attempt": 1,
+      "passed": 8816,
+      "failed": 2,
+      "errors": 20,
+      "skipped": 2,
+      "deselected": 47,
+      "subtests_passed": 38,
+      "resolution_commits": [
+        "9876d2a",
+        "32551b4"
+      ]
+    },
+    {
+      "attempt": 2,
+      "passed": 8837,
+      "failed": 1,
+      "deselected": 49,
+      "subtests_passed": 38,
+      "resolution_commits": [
+        "5b128da"
+      ]
+    }
+  ],
+  "protected_files": {
+    ".github/workflows/capture-raw-sources.yml": {
+      "sha256": "417e0ab1534a5a70f38a231b1459cbfa08cdca112f6e7626401db7beadf3f205",
+      "identical_to_base": true
+    },
+    "packages/congress_api/src/congress_api/parsers/document_cover.py": {
+      "sha256": "534812d45ca890da31bdc69d535fae42ea74b23028afabddf3117be94efe4765",
+      "identical_to_base": true
+    }
+  },
+  "site_build_assets": {
+    "source": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/review-rebind-v2/public",
+    "descriptor": "apps/site/document-review-publication.json",
+    "verified_by": "filename_reviews.verify_directory before build",
+    "temporary_symlink": "/Users/mikewolfd/.codex/worktrees/process-efficiency/congressional-tech/apps/site/public/data/document-reviews",
+    "removed_after_build": true,
+    "source_assets_and_dist_retained": true
+  },
+  "limits": [
+    "Local macOS Node 26.9.0 proof; maintained CI Node 22 not executed here",
+    "Complete Linux native Rust transport lane unqualified",
+    "Full-catalog viewer build and browser delivery unqualified after preserved Linux memory failure",
+    "Hosted artifact, durable journal and public delivery latency unmeasured",
+    "No deployment, production writes or workflow dispatch"
+  ],
+  "retained_files": [
+    {
+      "original": "output/process-efficiency/verification/active-experiment.log",
+      "retained": "docs/experiments/process-efficiency/evidence/final-verification/active-experiment.log.gz",
+      "bytes": 2535,
+      "sha256": "600450b26872025b5c1f9319ab80634d1840dae0caa848c18ccac9ef9655ad85"
+    },
+    {
+      "original": "output/process-efficiency/verification/astro-check.log",
+      "retained": "docs/experiments/process-efficiency/evidence/final-verification/astro-check.log.gz",
+      "bytes": 473,
+      "sha256": "ae03c65ddbeeb796634d415c9b8688fd89245f43423b0df5876c1b8521e81d99"
+    },
+    {
+      "original": "output/process-efficiency/verification/attempt-1/production-offline.log",
+      "retained": "docs/experiments/process-efficiency/evidence/final-verification/attempt-1/production-offline.log.gz",
+      "bytes": 69161,
+      "sha256": "4d182ae77f5bb2c873fe349e9127741442cae23efd5732755cb6bbcc813df561"
+    },
+    {
+      "original": "output/process-efficiency/verification/attempt-1/results.json",
+      "retained": "docs/experiments/process-efficiency/evidence/final-verification/attempt-1/results.json.gz",
+      "bytes": 373,
+      "sha256": "37cfbe466d5bcc4ad025e3ea2320e2e25c08c52ece35af4cb45df8cca368a080"
+    },
+    {
+      "original": "output/process-efficiency/verification/attempt-2/production-offline.log",
+      "retained": "docs/experiments/process-efficiency/evidence/final-verification/attempt-2/production-offline.log.gz",
+      "bytes": 13412,
+      "sha256": "87c1bf20b54b4b7105b17b7f453b7dcbef0c3192092bf3b792f989e6306f71e6"
+    },
+    {
+      "original": "output/process-efficiency/verification/attempt-2/results.json",
+      "retained": "docs/experiments/process-efficiency/evidence/final-verification/attempt-2/results.json.gz",
+      "bytes": 372,
+      "sha256": "7dfa36640e055d5679514504eb2a01775bd70dc5d4ea21b0bbf7207f2303df6b"
+    },
+    {
+      "original": "output/process-efficiency/verification/capture-verification-focused.log",
+      "retained": "docs/experiments/process-efficiency/evidence/final-verification/capture-verification-focused.log.gz",
+      "bytes": 99,
+      "sha256": "8c852d3ac78da510699ce670f1e03db6575d93e9c0f6ebf9a7d5223ab188f4a8"
+    },
+    {
+      "original": "output/process-efficiency/verification/explorer-tests.log",
+      "retained": "docs/experiments/process-efficiency/evidence/final-verification/explorer-tests.log.gz",
+      "bytes": 12357,
+      "sha256": "0d21d3c12cfa657702e5a4dfeb2941bdc86cb8fe9c3bcf9f6030482fc6e995b9"
+    },
+    {
+      "original": "output/process-efficiency/verification/explorer-types.log",
+      "retained": "docs/experiments/process-efficiency/evidence/final-verification/explorer-types.log.gz",
+      "bytes": 328,
+      "sha256": "ee670f3ad25ec81374980ac7014edfa330c062467b32b40c5abbf927ad2718c0"
+    },
+    {
+      "original": "output/process-efficiency/verification/native-loopback.log",
+      "retained": "docs/experiments/process-efficiency/evidence/final-verification/native-loopback.log.gz",
+      "bytes": 2244,
+      "sha256": "b138849b6ed47eb4a091d45296dd1bb51a5eb1a2a13719947b8884fa3109fb24"
+    },
+    {
+      "original": "output/process-efficiency/verification/npm-install-initial.log",
+      "retained": "docs/experiments/process-efficiency/evidence/final-verification/npm-install-initial.log.gz",
+      "bytes": 542,
+      "sha256": "4ba8b9dca0b9bc99a31c141290f89c46e0c56b67f3794f844b90476f4faefe56"
+    },
+    {
+      "original": "output/process-efficiency/verification/npm-install.log",
+      "retained": "docs/experiments/process-efficiency/evidence/final-verification/npm-install.log.gz",
+      "bytes": 828,
+      "sha256": "ade1f22d5a28e9c51d4b6ec71d1142567a9e9972691169d690edd311a3030215"
+    },
+    {
+      "original": "output/process-efficiency/verification/npm-runtime.log",
+      "retained": "docs/experiments/process-efficiency/evidence/final-verification/npm-runtime.log.gz",
+      "bytes": 885,
+      "sha256": "4c65a46a101c5f6d1600582bd655f56db1c66a432c5efd9b526d8cdaaecb5acb"
+    },
+    {
+      "original": "output/process-efficiency/verification/production-offline.log",
+      "retained": "docs/experiments/process-efficiency/evidence/final-verification/production-offline.log.gz",
+      "bytes": 12007,
+      "sha256": "fab9e91661a9a63d9a30caac711c295854a05f6f43a65f4b98ebb0bbbb3082df"
+    },
+    {
+      "original": "output/process-efficiency/verification/results.json",
+      "retained": "docs/experiments/process-efficiency/evidence/final-verification/results.json.gz",
+      "bytes": 3229,
+      "sha256": "6582d5c1f254e9f73b4a03313e02db4dca61acd960ddaba74607e63ce4f6b8fc"
+    },
+    {
+      "original": "output/process-efficiency/verification/run.py",
+      "retained": "docs/experiments/process-efficiency/evidence/final-verification/run.py.gz",
+      "bytes": 2894,
+      "sha256": "f1694d57d8ecbf411b8b94f55bc89da57b142909fc76183bd4b029f0df03a3e9"
+    },
+    {
+      "original": "output/process-efficiency/verification/site-build.log",
+      "retained": "docs/experiments/process-efficiency/evidence/final-verification/site-build.log.gz",
+      "bytes": 4350,
+      "sha256": "22ae6ababecb4cfe89383e4de081d08181786427078a2f00aafe0255557494c8"
+    },
+    {
+      "original": "output/process-efficiency/verification/viewer-data.log",
+      "retained": "docs/experiments/process-efficiency/evidence/final-verification/viewer-data.log.gz",
+      "bytes": 942,
+      "sha256": "4bc176a291f117e04c707ad8eeb7be0db06f7eb89de50c4b35501425e17c1f44"
+    },
+    {
+      "original": "output/process-efficiency/verification/workflow-lanes-focused.log",
+      "retained": "docs/experiments/process-efficiency/evidence/final-verification/workflow-lanes-focused.log.gz",
+      "bytes": 179,
+      "sha256": "452a80776a53901fcd6dc4d6644ad5bfe6a28083c9737eaaec24fd428066e27f"
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "scope": "local integration; original 42 remediation tickets",
+  "measured_before": "f9f4499beceb405e614bc18cad41a2bb1134a845",
+  "measured_after": "f5257491a88b1cd19082d33d91426578d8e2cf4d",
+  "analysis_guard_revision": "5142b741eae7dddb363028c72148bf4fcd7a6bed",
+  "checks": {
+    "production_offline_passed": 9072,
+    "production_subtests_passed": 38,
+    "production_deselected": 50,
+    "javascript_passed": 152,
+    "built_pages": 29,
+    "built_bootstrap_passed": 2,
+    "comparison_passed": 54
+  },
+  "original_ticket_count": 42,
+  "qualification_followup": "ct-x7vx",
+  "comparison_sha256": "a95eb4cb9ffbefb0ce8de1f5303e072195cd7a3319a380fbd629977c8386129d",
+  "report": "docs/experiments/publication-remediation/combined-verification.md",
+  "logs": {
+    "publication-final-built-smoke-20261018.log": {
+      "bytes": 752,
+      "sha256": "fc93d65f6413f1dffe74223cfc747c17d9b85bc57620b90666f8d8680066bd6d"
+    },
+    "publication-final-comparison-tests-20261018.log": {
+      "bytes": 99,
+      "sha256": "e0b34fed486f2b495d44064898cc88961cddd15b3781bb6e38ec51914d873dec"
+    },
+    "publication-final-build-20261018.log": {
+      "bytes": 5329,
+      "sha256": "b45be64d5e8ba372f20ddefa24a4c84ab33a22e3350295761aa58048051244b7"
+    },
+    "publication-final-js-integrated-20261018.log": {
+      "bytes": 40281,
+      "sha256": "4f5b4e167b0dc8759bd161513d97df5aa99e0b399c9246e7242744dced3aa35b"
+    },
+    "publication-final-repaired-regressions-20261018.log": {
+      "bytes": 99,
+      "sha256": "5203b0e6c12f3e935f046dc1b3fff178c0863a23ba4bab3e960968e1e3492ada"
+    },
+    "publication-final-production-offline-20261018.log": {
+      "bytes": 32675,
+      "sha256": "a9255a7236e3240e469c9e818020e7103e5bf1b311a06cd9c4bcd562d8696af8"
+    },
+    "publication-final-production-offline-corrected-20261018.log": {
+      "bytes": 12023,
+      "sha256": "c17f4fbf577ef7581bf7b38bf0fd34b260d2f0b9e1f787e10795584e51361b1c"
+    }
+  },
+  "production_rollout": false
+}

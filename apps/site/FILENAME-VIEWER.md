@@ -140,21 +140,34 @@ objects remain in R2 rather than being duplicated into the Pages build.
 
 ## Build and check
 
-Install the existing Python archive dependencies and the site npm dependencies.
-To publish the currently selected catalog using the existing R2 credentials:
+Install the locked Python workspace with `uv sync --locked` and the site npm
+dependencies. The publication workflow prepares output, verifies its complete
+inventory, and uploads an immutable GitHub artifact before making public writes.
+The three explicit commands are:
 
 ```sh
-python apps/site/scripts/publish-viewer-r2.py --report viewer-publication.json
+python apps/site/scripts/publish-viewer-r2.py prepare --directory viewer-preparation --run-id RUN_ID --run-attempt 1 --report viewer-publication.json
+python apps/site/scripts/publish-viewer-r2.py verify-prepared --directory viewer-preparation
+python apps/site/scripts/publish-viewer-r2.py publish --directory viewer-preparation --artifact-id ARTIFACT_ID --artifact-digest ARTIFACT_SHA256 --run-id RUN_ID --repository OWNER/REPO --report viewer-publication.json
 npm run build --workspace apps/site
 npm run preview --workspace apps/site -- --port 8791
 ```
 
 Set `CLOUDFLARE_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, and `R2_SECRET_ACCESS_KEY`
-only in the publisher environment. Pages no longer needs these credentials.
-The command skips unchanged catalogs before downloading or repacking anything.
-`--prepared <directory>` reuses a verified local viewer publication only if its
-source manifest equals the selected R2 catalog. `--archive-only --prepared ...`
-retains an older snapshot without changing the current selection.
+only in the publisher environment. Pages needs no publisher credentials. Artifact
+verification also needs authenticated `gh` access to the exact preparation run.
+An unchanged preparation check reads only small identity/status objects. Changed
+mappings prepare only their recovery-index inputs; changed catalogs build the full
+publication with Zstandard level 9 and exact value verification.
+
+To resume a failed attempt, manually dispatch the workflow with the original run,
+Git revision, artifact ID/digest and attempt identity. It restores every accepted
+file and reconciles the durable remote write journal before using the original
+release and conditional writes. The CLI adds `--resume --attempt ORIGINAL_ATTEMPT`
+to the publish command. See the
+[preparation and restart details](../../docs/experiments/process-efficiency/durable-publication.md).
+Old snapshots remain readable through immutable catalog locators; the normal
+publication CLI selects only the currently bound catalog.
 
 For local data development, build with
 `PUBLIC_FILENAME_MANIFEST_URL=/congressional-tech/data/filenames/manifest.json`

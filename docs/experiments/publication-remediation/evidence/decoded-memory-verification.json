@@ -1,0 +1,47 @@
+{
+  "scope": "local focused verification, no production operations",
+  "base": "6bd7206",
+  "runtime": {
+    "python": "3.12.13",
+    "pyarrow": "25.0.1",
+    "ijson": "3.6.0",
+    "ijson_backend": "yajl2_c",
+    "node": "22.22.2",
+    "npm": "11.19.1"
+  },
+  "checks": {
+    "uv_sync_locked": "passed",
+    "npm_ci_engine_strict": "passed",
+    "focused_python": 235,
+    "filename_browser": 100,
+    "site_build_pages": 29,
+    "emitted_bootstrap_smoke": 2,
+    "custody_verification_cli_before_final_runtime_merge": 60,
+    "coalescing_followup_python": 80,
+    "coalescing_filename_browser": 100
+  },
+  "fixture": "decoded-memory.json",
+  "raw_artifacts": "output/decoded-memory-final8-20261018",
+  "limits": [
+    "physical footer bytes and actual Arrow admission do not guarantee native single-row decoder allocation",
+    "logical nbytes does not measure retained sliced buffers; per-object retained buffer metrics reported separately",
+    "fixture RSS ceiling is observed watchdog evidence, not universal OS allocation quota",
+    "global catalog indexes remain resident; no full-catalog performance or deployment claim"
+  ],
+  "detail_layout_comparison": {
+    "before": {
+      "commit": "a80ec34",
+      "rows": 12004,
+      "row_groups": 101,
+      "bytes": 237429
+    },
+    "after": {
+      "rows": 12004,
+      "row_groups": 2,
+      "bytes": 21688
+    },
+    "exact_ordered_arrow_equal": true,
+    "scope": "same bounded fixture; no full-catalog size extrapolation",
+    "baseline_sha256": "f81b5de8b138f0d98f268c8a40675b1275e90cab8fa83e72f33797ccc330682c"
+  }
+}

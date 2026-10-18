@@ -319,7 +319,7 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
         return sha256(json.dumps(values, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
 
     if reusable and previous_documents is not None:
-        previous_document_schema = (pq.read_schema(pa.BufferReader(previous_documents)) if isinstance(previous_documents,bytes) else previous_documents.schema_arrow)
+        previous_document_schema = previous_documents.schema_arrow
         reusable = (previous_document_schema.metadata or {}).get(b'catalog_id') == (previous_schema.metadata or {}).get(b'catalog_id')
     if reusable and previous_documents is not None:
         batches = previous.iter_batches(batch_size=256) if hasattr(previous, 'iter_batches') else previous.to_batches(max_chunksize=256)
@@ -333,7 +333,7 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
                 original['filename_document_kind'] = row.get('filename_document_kind')
                 db.execute('INSERT OR REPLACE INTO prior_sources VALUES (?,?,?,?)',
                            (row['source_id'], original.get('document_id'), signature(row), pickle.dumps(original)))
-        documents = pq.ParquetFile(pa.BufferReader(previous_documents)) if isinstance(previous_documents, bytes) else previous_documents
+        documents = previous_documents
         for batch in documents.iter_batches(batch_size=256):
             for row in batch.to_pylist():
                 db.execute('INSERT OR REPLACE INTO prior_documents VALUES (?,?)', (row['document_id'], pickle.dumps(sparse_row(row))))
@@ -562,12 +562,13 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
                 writer.write_table(pa.Table.from_pylist(pending,schema=document_schema))
         index.progress.report('write_document_tables', completed=len(staged)+document_count, unit='rows')
         index.progress.report('validate_document_tables')
-        index.validate_document_indexes(temporary_source,temporary_document,source_rows=len(staged),document_rows=document_count)
-        temporary_source.replace(destination)
-        temporary_document.replace(document_path)
+        from congress_api.retention.catalog_validation import validate_references, CatalogBuildResult
+        validation = validate_references(temporary_source,temporary_document,
+            validator=index.validate_document_indexes, source_rows=len(staged),document_rows=document_count)
+        validation = validation.install(destination,document_path)
     finally:
         temporary_source.unlink(missing_ok=True)
         temporary_document.unlink(missing_ok=True)
-    return dict(document_rows=document_count,columns=len(source_schema),documents_output=str(document_path),
+    return CatalogBuildResult(document_rows=document_count,columns=len(source_schema),documents_output=str(document_path),
                 documents_bytes=document_path.stat().st_size,reused_document_groups=reused,
-                recomputed_document_groups=recomputed)
+                recomputed_document_groups=recomputed, validation=validation)

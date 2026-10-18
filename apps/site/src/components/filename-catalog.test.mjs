@@ -9,6 +9,7 @@ import { createFilenameCatalog, rangeFile, sourceContext, savedCopyUrl, videoRef
 import { observationReader } from './filename-observations.mjs';
 import { brotliCompressSync } from 'node:zlib';
 import { createHash } from 'node:crypto';
+import {byteCache,retainedBytes} from './filename-cache.mjs';
 
 test('saved-copy links prefer accepted recoveries and preserve the original record', () => {
   const manifest = 'https://data.test/releases/catalog/manifest.json';
@@ -358,4 +359,109 @@ test('public reviewed search covers aliases, null filters, provenance, annotatio
     await assert.rejects(reader.search({...reviewed,review:'old'}),/different review snapshot/);
     applied.document_kind.push('mutated');assert.deepEqual((await reader.search({...reviewed,document_kind:'letter'})).rows[0].document_kind,['letter']);
   }finally{await rm(folder,{recursive:true,force:true});}
+});
+
+
+test('concurrent column/table/store loads share work and wide columns use exact uncached fallback',async()=>{
+ const folder=await mkdtemp(join(tmpdir(),'filename-cache-'));
+ try {
+  execFileSync(process.env.PYTHON||'python3',[fileURLToPath(new URL('../../scripts/filename-test-fixture.py',import.meta.url)),folder],{env:{...process.env,FILENAME_FIXTURE_WIDTH:'5000'}});
+  const manifest=pathToFileURL(join(folder,'public/manifest.json'));
+  const reader=await createFilenameCatalog(manifest,localFetch);
+  const [first,second]=await Promise.all([reader.search({q:'Wide',field:'content_document_kind'}),reader.search({q:'Wide',field:'content_document_kind'})]);
+  assert.deepEqual(first,second);assert.equal(first.total,2);assert.equal(reader.diagnostics().columnLoads,1);
+  const cold=reader.diagnostics();await reader.search({q:'Wide',field:'content_document_kind'});const warm=reader.diagnostics();
+  assert.equal(warm.columnLoads,cold.columnLoads);assert.equal(warm.rangeRequests,cold.rangeRequests);
+  const limited=await createFilenameCatalog(manifest,localFetch,undefined,undefined,{decodedBytes:64*1024,compressedBytes:128*1024});
+  assert.deepEqual(await limited.search({q:'Wide',field:'content_document_kind'}),first);
+  assert.deepEqual(await limited.search({q:'Wide',field:'content_document_kind'}),first);
+  const bounded=limited.diagnostics();assert(bounded.decoded.peak<=64*1024);assert(bounded.compressed.peak<=128*1024);assert.equal(bounded.columnLoads,2);
+  const simultaneous=await createFilenameCatalog(manifest,localFetch);
+  const [one,two]=await Promise.all([simultaneous.observationPage('2'),simultaneous.observationPage('2')]);assert.deepEqual(one,two);assert.equal(simultaneous.diagnostics().observationStoreLoads,1);assert.equal(simultaneous.diagnostics().tableLoads,0);
+  console.log('controlled cache metrics',JSON.stringify({cold,warm,bounded}));
+ } finally {await rm(folder,{recursive:true,force:true});}
+});
+
+
+test('prefix shards share bounded reads and oversized prefetch does no unused transfer',async()=>{
+ const folder=await mkdtemp(join(tmpdir(),'filename-reads-'));
+ try {
+  execFileSync(process.env.PYTHON||'python3',[fileURLToPath(new URL('../../scripts/filename-test-fixture.py',import.meta.url)),folder],{env:{...process.env,FILENAME_FIXTURE_SHARED_PREFIX:'1',FILENAME_FIXTURE_SPARSE:'1'}});
+  const manifest=pathToFileURL(join(folder,'public/manifest.json')),sources=JSON.parse(await readFile(join(folder,'source-records.json')));
+  let shards=0;
+  const reader=await createFilenameCatalog(manifest,(url,options)=>{if(String(url).endsWith('/aa.bin'))shards++;return localFetch(url,options);});
+  await reader.entry(sources[0].source_id,undefined,undefined,{deferOrigin:true});
+  await reader.entry(sources[1].source_id,undefined,undefined,{deferOrigin:true});
+  assert.equal(shards,1);
+  const all=await reader.search({scope:'all'}),before=reader.diagnostics();
+  const sparse=await reader.search({scope:'all',q:'sparse-marker'}),after=reader.diagnostics();
+  assert.equal(sparse.total,2);
+  const positions=sparse.rows.map(row=>all.rows.findIndex(other=>other.filename===row.filename));
+  const span=Math.max(...positions)-Math.min(...positions)+1;
+  assert(span>positions.length,'fixture selects separated rows in one physical group');
+  assert.equal(after.normalizationValues-before.normalizationValues,14+46,'normalize two source columns plus only two selected browse rows');
+  const ranges=[];const measured=options=>createFilenameCatalog(manifest,(url,init)=>{if(init?.headers?.Range)ranges.push([String(url),init.headers.Range]);return localFetch(url,init);},undefined,undefined,options);
+  const skipped=await measured({rangeEntryBytes:1});await skipped.search({scope:'all',limit:2});const first=[...ranges];ranges.length=0;
+  const direct=await measured({rangeEntryBytes:1,prefetch:false});await direct.search({scope:'all',limit:2});
+  assert.deepEqual(ranges,first,'unadmitted prefetch adds no transfer compared with direct decoding');
+  assert(skipped.diagnostics().skippedPrefetches>0);
+  const bytes=list=>list.reduce((sum,[,range])=>{const [a,b]=range.slice(6).split('-').map(Number);return sum+b-a+1;},0);
+  console.log('controlled read metrics',JSON.stringify({samePrefixShards:shards,unadmittedRangeRequests:first.length,unadmittedBytes:bytes(first),physicalColumnValues:skipped.diagnostics().physicalColumnValues,normalizedSelectedValues:skipped.diagnostics().normalizationValues}));
+ } finally {await rm(folder,{recursive:true,force:true});}
+});
+
+
+test('wide scalar and group scans yield to cancellation after bounded completed work',async()=>{
+ const folder=await mkdtemp(join(tmpdir(),'filename-cancel-'));
+ try {
+  execFileSync(process.env.PYTHON||'python3',[fileURLToPath(new URL('../../scripts/filename-test-fixture.py',import.meta.url)),folder],{env:{...process.env,FILENAME_FIXTURE_ROWS:'4096'}});
+  const reader=await createFilenameCatalog(pathToFileURL(join(folder,'public/manifest.json')),localFetch);
+  const throughputStarted=performance.now();await reader.search({q:'warm'});console.log('controlled cold scan throughput',JSON.stringify({rows:4096,elapsedMs:performance.now()-throughputStarted}));
+  for(const query of [{q:'different'},{scope:'all'}]) {
+   const before=reader.diagnostics(),controller=new AbortController();
+   const started=performance.now(),pending=reader.search(query,controller.signal);
+   setTimeout(()=>controller.abort(),0);await assert.rejects(pending,{name:'AbortError'});
+   const after=reader.diagnostics();
+   assert(after.sourceScanVisits-before.sourceScanVisits<=512);assert(after.groupScanVisits-before.groupScanVisits<=512);
+   console.log('controlled scan cancellation',JSON.stringify({query,latencyMs:performance.now()-started,sourceVisits:after.sourceScanVisits-before.sourceScanVisits,groupVisits:after.groupScanVisits-before.groupScanVisits}));
+  }
+ } finally {await rm(folder,{recursive:true,force:true});}
+});
+
+
+test('repeated exact search reuses budgeted text and retains only requested plus last page',async()=>{
+ const folder=await mkdtemp(join(tmpdir(),'filename-search-'));
+ try {
+  execFileSync(process.env.PYTHON||'python3',[fileURLToPath(new URL('../../scripts/filename-test-fixture.py',import.meta.url)),folder]);
+  const reader=await createFilenameCatalog(pathToFileURL(join(folder,'public/manifest.json')),localFetch);
+  const query={q:'a',scope:'all',limit:1};
+  const cold=await reader.search(query),before=reader.diagnostics();assert.deepEqual(await reader.search(query),cold);const after=reader.diagnostics();
+  assert.equal(after.searchNormalizations,before.searchNormalizations);assert.equal(after.columnLoads,before.columnLoads);assert.equal(after.rangeRequests,before.rangeRequests);
+  const obs={q:'josé 🏛️',field:'source_occurrences',scope:'all',limit:1};
+  const original=await reader.search(obs),obsBefore=reader.diagnostics();assert.equal(original.total,1);assert.deepEqual(await reader.search(obs),original);const obsAfter=reader.diagnostics();
+  assert.equal(obsAfter.observationNormalizations,obsBefore.observationNormalizations);
+  const all=await reader.search({scope:'all',limit:1});
+  const last=await reader.search({scope:'all',limit:1,page:999});assert.equal(last.page,all.pages);assert.equal(last.total,all.total);
+  assert.equal(reader.diagnostics().maxMatchedGroupsRetained,2);
+  const fallback=await createFilenameCatalog(pathToFileURL(join(folder,'public/manifest.json')),localFetch,undefined,undefined,{searchNormalizationBytes:0});
+  assert.deepEqual(await fallback.search(query),cold);const once=fallback.diagnostics();assert.deepEqual(await fallback.search(query),cold);assert(fallback.diagnostics().searchNormalizations>once.searchNormalizations);
+  console.log('controlled search metrics',JSON.stringify({cold:before,repeated:after,observationCold:obsBefore.observationNormalizations,observationRepeated:obsAfter.observationNormalizations,fallbackNormalizations:fallback.diagnostics().searchNormalizations}));
+ } finally {await rm(folder,{recursive:true,force:true});}
+});
+
+
+test('streamed logical decode preserves a value over 1 MiB without joined byte copies',async()=>{
+ function packed(rows) {
+  const raw=Buffer.from(JSON.stringify(rows)),chunks=[],parts=[];let offset=0;
+  for(let start=0;start<raw.length;start+=65537){const piece=raw.subarray(start,start+65537),compressed=brotliCompressSync(piece);chunks.push(compressed);parts.push([offset,compressed.length,piece.length]);offset+=compressed.length;}
+  const bytes=Buffer.concat(chunks);return {descriptor:{rows:rows.length,blocks:[{start:0,count:rows.length,parts}]},file:{slice:async(start,end)=>bytes.buffer.slice(bytes.byteOffset+start,bytes.byteOffset+end)}};
+ }
+ const label='José 🏛️ '.repeat(120000),data=packed([{label:[label]},null]),refs=packed([[0,0,1],Array(10000).fill(1),null]);
+ const index={version:1,max_part_bytes:65537,fields:['label','missing'],observations:data.descriptor,references:refs.descriptor};
+ const metrics={},cache=byteCache(1024*1024),reader=observationReader(index,data.file,refs.file,{metrics,cache});
+ const full=await reader.read(0);assert.deepEqual(full,[{label:[label],missing:null},{label:[label],missing:null},null]);
+ assert.equal((await reader.read(1)).length,10000);assert((await reader.read(1)).every(value=>value===null));assert.equal(await reader.read(2),null);
+ assert(metrics.maxLogicalDecodedBytes>1024*1024);assert(metrics.maxDecodedPartBytes<=65537);assert.equal(metrics.joinedDecodedBytes,0);assert(cache.stats.peak<=1024*1024);
+ const cloned=structuredClone(full),json=JSON.stringify(full);assert.deepEqual(JSON.parse(json),cloned);
+ console.log('controlled logical decode accounting',JSON.stringify({...metrics,retainedCacheBytes:cache.stats.bytes,workerCloneEstimate:retainedBytes(cloned),fullJsonUtf16Bytes:json.length*2,fullJsonUtf8Bytes:Buffer.byteLength(json)}));
 });

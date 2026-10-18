@@ -1,0 +1,177 @@
+{
+  "runs": [
+    {
+      "run": "1-baseline",
+      "arm": "baseline",
+      "status": "passed",
+      "inputs_unchanged": true,
+      "equivalent": true,
+      "association_seconds": 1.677465339016635,
+      "complete_rebuild_seconds": 16.719117466011085,
+      "qualification_seconds": 19.095255773019744,
+      "peak_rss_bytes": 350830592,
+      "counters": {
+        "objects_read": 5,
+        "bytes_read": 508942
+      }
+    },
+    {
+      "run": "2-cached",
+      "arm": "cached",
+      "status": "passed",
+      "inputs_unchanged": true,
+      "equivalent": true,
+      "association_seconds": 1.7060793630080298,
+      "complete_rebuild_seconds": 15.07263103700825,
+      "qualification_seconds": 17.413409608998336,
+      "peak_rss_bytes": 358236160,
+      "counters": {
+        "objects_read": 5,
+        "bytes_read": 508942,
+        "context_finalizations": 1,
+        "context_occurrence_scans": 96,
+        "context_occurrence_rows_read": 4128,
+        "context_occurrence_decodes": 4128,
+        "context_cache_misses": 64,
+        "context_cache_bytes": 1046153,
+        "context_cache_peak_bytes": 1046153,
+        "context_cache_hits": 480,
+        "context_cache_evictions": 37
+      }
+    },
+    {
+      "run": "3-cached",
+      "arm": "cached",
+      "status": "passed",
+      "inputs_unchanged": true,
+      "equivalent": true,
+      "association_seconds": 1.3049748259945773,
+      "complete_rebuild_seconds": 14.49520541599486,
+      "qualification_seconds": 16.81313481699908,
+      "peak_rss_bytes": 366395392,
+      "counters": {
+        "objects_read": 5,
+        "bytes_read": 508942,
+        "context_finalizations": 1,
+        "context_occurrence_scans": 96,
+        "context_occurrence_rows_read": 4128,
+        "context_occurrence_decodes": 4128,
+        "context_cache_misses": 64,
+        "context_cache_bytes": 1046153,
+        "context_cache_peak_bytes": 1046153,
+        "context_cache_hits": 480,
+        "context_cache_evictions": 37
+      }
+    },
+    {
+      "run": "4-baseline",
+      "arm": "baseline",
+      "status": "passed",
+      "inputs_unchanged": true,
+      "equivalent": true,
+      "association_seconds": 1.710113012988586,
+      "complete_rebuild_seconds": 16.077394263993483,
+      "qualification_seconds": 18.687605602986878,
+      "peak_rss_bytes": 355794944,
+      "counters": {
+        "objects_read": 5,
+        "bytes_read": 508942
+      }
+    },
+    {
+      "run": "5-baseline",
+      "arm": "baseline",
+      "status": "passed",
+      "inputs_unchanged": true,
+      "equivalent": true,
+      "association_seconds": 1.8882325919985306,
+      "complete_rebuild_seconds": 20.106664527993416,
+      "qualification_seconds": 23.293372812011512,
+      "peak_rss_bytes": 348930048,
+      "counters": {
+        "objects_read": 5,
+        "bytes_read": 508942
+      }
+    },
+    {
+      "run": "6-cached",
+      "arm": "cached",
+      "status": "passed",
+      "inputs_unchanged": true,
+      "equivalent": true,
+      "association_seconds": 1.5000139589828905,
+      "complete_rebuild_seconds": 17.296071707009105,
+      "qualification_seconds": 20.54878386700875,
+      "peak_rss_bytes": 347545600,
+      "counters": {
+        "objects_read": 5,
+        "bytes_read": 508942,
+        "context_finalizations": 1,
+        "context_occurrence_scans": 96,
+        "context_occurrence_rows_read": 4128,
+        "context_occurrence_decodes": 4128,
+        "context_cache_misses": 64,
+        "context_cache_bytes": 1046153,
+        "context_cache_peak_bytes": 1046153,
+        "context_cache_hits": 480,
+        "context_cache_evictions": 37
+      }
+    }
+  ],
+  "arms": {
+    "baseline": {
+      "association_seconds": {
+        "median": 1.710113012988586,
+        "min": 1.677465339016635,
+        "max": 1.8882325919985306
+      },
+      "complete_rebuild_seconds": {
+        "median": 16.719117466011085,
+        "min": 16.077394263993483,
+        "max": 20.106664527993416
+      },
+      "qualification_seconds": {
+        "median": 19.095255773019744,
+        "min": 18.687605602986878,
+        "max": 23.293372812011512
+      },
+      "peak_rss_bytes": {
+        "median": 350830592,
+        "min": 348930048,
+        "max": 355794944
+      }
+    },
+    "cached": {
+      "association_seconds": {
+        "median": 1.5000139589828905,
+        "min": 1.3049748259945773,
+        "max": 1.7060793630080298
+      },
+      "complete_rebuild_seconds": {
+        "median": 15.07263103700825,
+        "min": 14.49520541599486,
+        "max": 17.296071707009105
+      },
+      "qualification_seconds": {
+        "median": 17.413409608998336,
+        "min": 16.81313481699908,
+        "max": 20.54878386700875
+      },
+      "peak_rss_bytes": {
+        "median": 358236160,
+        "min": 347545600,
+        "max": 366395392
+      }
+    }
+  },
+  "association_improvement_fraction": 0.12285682432094203,
+  "complete_regression_fraction": -0.098479266764531,
+  "peak_change_fraction": 0.029793700497329212,
+  "cache_adoption_gates": {
+    "exact_semantics": true,
+    "association_improvement_at_least_20_percent": false,
+    "complete_regression_at_most_5_percent": true,
+    "no_increased_measured_peak": false
+  },
+  "all_cache_gates_passed": false
+}

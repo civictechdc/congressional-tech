@@ -32,6 +32,8 @@ class Remote:
         return dict(ETag=etag, ContentLength=len(raw))
     def get_object(self, *, Bucket, Key):
         self.gets[Key] += 1
+        if Key not in self.objects:
+            raise ClientError({'Error': {'Code': 'NoSuchKey'}}, 'GetObject')
         raw, etag = self.objects[Key]
         return dict(Body=io.BytesIO(raw), ContentLength=len(raw), ETag=etag, LastModified=datetime(2026, 10, 16, tzinfo=timezone.utc))
     def put_object(self, **kwargs):
@@ -73,7 +75,8 @@ class TransferTests(unittest.TestCase):
                     probes.append('pointer')
                     return io.BytesIO(remote.objects['viewer-publications/manifest.json'][0])
                 with patch.object(publisher, 'prepared_files', return_value=files), \
-                     patch.object(publisher, 'recovery_for_publication', return_value=None), \
+                     patch.object(publisher, 'recovery_for_publication', return_value=({'path': 'recovery'}, (None, None, None, None))), \
+                     patch.object(publisher, 'recovery_inputs', return_value={}), \
                      patch.object(publisher, 'open_public', side_effect=public_open):
                     result = publisher.upload(self.proxy(remote), root, manifest,
                         previous_etag='before', selected_etag='selected-etag',
@@ -116,3 +119,28 @@ class TransferTests(unittest.TestCase):
         self.assertEqual(calls, ['check', 'shared', 'shared'])
 
 if __name__ == '__main__': unittest.main()
+
+
+def test_guarded_json_consumes_one_exact_proof_and_plain_client_keeps_full_readback():
+    for guarded in (True, False):
+        remote = Remote()
+        proxy = GuardedPublicationClient(remote, guard=lambda: None, journal=lambda *a: None, after_write=lambda *a: None) if guarded else remote
+        descriptor = publisher.store_recovery_index(proxy, {'version': 1, 'sources': [], 'groups': []})
+        key = publisher.PREFIX + descriptor['path']
+        assert remote.gets[key] == 1
+        if guarded:
+            assert not proxy._receipts
+            assert not proxy._key_locks
+
+
+@__import__('pytest').mark.parametrize('field,wrong', [('bucket','other'), ('key','other'), ('size',6), ('sha256','f'*64)])
+def test_exact_proof_rejects_every_wrong_request_field(tmp_path, field, wrong):
+    remote = Remote()
+    proxy = GuardedPublicationClient(remote, guard=lambda: None, journal=lambda *a: None, after_write=lambda *a: None)
+    key = 'viewer-publications/releases/x/file'
+    path = tmp_path / 'file'; path.write_bytes(b'bytes')
+    proof = proxy.upload_file(path, 'b', key)
+    expected = dict(bucket='b', key=key, size=5, sha256=hashlib.sha256(b'bytes').hexdigest())
+    expected[field] = wrong
+    assert proxy.confirm_transfer(proof, **expected) is False
+    assert not proxy._receipts

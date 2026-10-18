@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "recorded_at": "2026-10-18T20:33:44.624741+00:00",
+  "code_revision": "8c87edecd8535d8b894b2dc18f4f9f5a4f3bc702",
+  "runtime": {
+    "node": "22.22.2",
+    "npm": "11.19.1"
+  },
+  "install": {
+    "command": "npm ci --workspaces=false --engine-strict --no-audit --no-fund",
+    "exit_code": 0,
+    "lock_sha256": "ef5529088d88e2b34298a2136f801cecfff88e2f39e5261202c92b4cb740ef27"
+  },
+  "checks": {
+    "maintained_js": {
+      "passed": 146,
+      "failed": 0
+    },
+    "python_viewer": {
+      "passed": 41,
+      "failed": 0
+    },
+    "explicit_worktree_pythonpath_catalog_worker": {
+      "passed": 19,
+      "failed": 0
+    },
+    "astro_build": {
+      "pages": 29,
+      "exit_code": 0
+    },
+    "emitted_bootstrap": {
+      "passed": 2,
+      "failed": 0,
+      "scenarios": [
+        "ordinary Pages initialization",
+        "immutable catalog and source deep link"
+      ]
+    }
+  },
+  "assets": {
+    "_astro/filename-worker-CVkTfwKj.js": {
+      "bytes": 204455,
+      "sha256": "a5d6a0160510740235e4d1404ef6b8ffa11caae741b696a4c2ae3de16020ef16"
+    },
+    "_astro/filename-viewer.Bc8qCUI4.js": {
+      "bytes": 54115,
+      "sha256": "7b6e46854df541cb15aeafd163ad7a83e48acc1388216c8792012e0c967f71ee"
+    },
+    "_astro/filenames.astro_astro_type_script_index_0_lang.CTSYW-n7.js": {
+      "bytes": 4252,
+      "sha256": "119290d9b2e52496ca445cc081a561ed1616294f964ca3b20e5d6909dc16aa04"
+    }
+  },
+  "scope": "Local generated fixtures and actual emitted bootstrap/UI with deterministic Worker transport. Reader routes use actual worker module and generated Parquet. No full-catalog performance or deployed/publication claim."
+}

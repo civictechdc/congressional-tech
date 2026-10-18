@@ -11,12 +11,21 @@ on:
       - "packages/house-naming/**"
       - "packages/congress_shared/**"
       - "packages/youtube_api/**"
+      - "packages/source-fetch/**"
       - "tests/**"
       - "docs/youtube-coverage/**"
       - ".github/scripts/**"
       - ".github/tests/**"
       - ".github/workflows/**"
       - "package.json"
+      - "pyproject.toml"
+      - ".python-version"
+      - "uv.lock"
+      - "pytest.ini"
+      - "test-suites.toml"
+      - "scripts/dev.py"
+      - "docs/experiments/**"
+      - ".github/actions/**"
   workflow_dispatch: {}
 
 permissions:
@@ -34,15 +43,19 @@ jobs:
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-      - name: Install local Python packages and test tools
-        run: >-
-          pip install -e 'packages/house-naming[test]' -e packages/committee_meeting -e packages/congress_shared
-          -e packages/youtube_api -e 'packages/congress_api[archive,test]' -e apps/committee_youtube 'PyYAML>=6,<7'
+      - uses: ./.github/actions/setup-python-project
       - name: Test models, retained-source adapters and publication offline
-        run: python .github/scripts/offline-python.py -m pytest -q tests packages/committee_meeting/tests packages/house-naming/tests .github/tests
+        run: python scripts/dev.py test production-offline
+      - name: Test active experiment fixtures and historical PDF worker
+        run: python scripts/dev.py test active-experiment-regression
+      - name: Build the native loopback transport
+        run: |
+          rustup toolchain install 1.89.0 --profile minimal
+          cargo +1.89.0 build --locked --release --manifest-path packages/source-fetch/Cargo.toml --bin source-fetch
+      - name: Test real sockets and spawned workers on loopback
+        env:
+          SOURCE_FETCH_BINARY: ${{ github.workspace }}/packages/source-fetch/target/release/source-fetch
+        run: python scripts/dev.py test native-loopback
       - uses: actions/setup-node@v4
         with:
           node-version: "22"

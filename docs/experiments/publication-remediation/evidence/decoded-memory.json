@@ -1,0 +1,207 @@
+{
+  "scope": "bounded offline adversarial fixtures, not full-catalog qualification",
+  "runtime": {
+    "python": "3.12.13",
+    "pyarrow": "25.0.1",
+    "ijson": "3.6.0",
+    "ijson_backend": "yajl2_c"
+  },
+  "source": {
+    "rows": 12004,
+    "row_groups": 94,
+    "max_physical_group_bytes": 6465547
+  },
+  "artifacts_retained": true,
+  "accepted": {
+    "status": "accepted",
+    "source_sha256": "ed4758705f23c7ba98aacbc354188de1bcfd70ecb1066c944dffe25857d089dd",
+    "source_preserved": true,
+    "stages": {
+      "repack_and_full_arrow_equality": {
+        "seconds": 0.10542616690509021,
+        "python_peak_bytes": 71407,
+        "arrow_retained_bytes": 0,
+        "process_high_water_rss_bytes": 185745408
+      },
+      "observations_and_full_value_verification": {
+        "seconds": 5.7678185841068625,
+        "python_peak_bytes": 21794594,
+        "arrow_retained_bytes": 832,
+        "process_high_water_rss_bytes": 253526016
+      },
+      "details_and_full_emitted_value_verification": {
+        "seconds": 1.4795286249136552,
+        "python_peak_bytes": 25854595,
+        "arrow_retained_bytes": 640,
+        "process_high_water_rss_bytes": 285474816
+      },
+      "dictionary_expansion_and_full_arrow_equality": {
+        "seconds": 0.07307079201564193,
+        "python_peak_bytes": 98798,
+        "arrow_retained_bytes": 640,
+        "process_high_water_rss_bytes": 342278144
+      },
+      "dictionary_row_refusal_before_python": {
+        "converted_rows": 0,
+        "refused": true
+      },
+      "detail_layout": {
+        "rows": 12004,
+        "row_groups": 2,
+        "max_group_rows": 8192,
+        "bytes": 21688
+      }
+    },
+    "metrics": {
+      "max_physical_group_bytes": 6465547,
+      "max_native_batch_arrow_bytes": 8389120,
+      "max_native_batch_buffer_bytes": 8389124,
+      "max_native_batch_rows": 128,
+      "oversized_rows_admitted": 7,
+      "max_batch_arrow_bytes": 6291575,
+      "max_admitted_buffer_bytes": 8389124,
+      "max_python_json_estimate": 100667248,
+      "max_repack_staged_arrow_bytes": 6291575,
+      "max_repack_staged_buffer_bytes": 16778248,
+      "serialized_values": 58007,
+      "max_serialized_value_bytes": 3460367,
+      "observation_serializations": 46003,
+      "dedup_entries": 22004,
+      "dedup_sqlite_cache_bytes": 8388608,
+      "dedup_disk_bytes": 983040,
+      "decoded_parts": 18,
+      "max_decoded_part_bytes": 1048576,
+      "verification_lookups": 46003,
+      "max_detail_staged_arrow_bytes": 3581789,
+      "max_detail_staged_buffer_bytes": 3585197
+    },
+    "policy": {
+      "native_batch_rows": 128,
+      "physical_group_bytes": 67108864,
+      "batch_arrow_bytes": 4194304,
+      "row_arrow_bytes": 16777216,
+      "batch_python_estimate": 33554432,
+      "row_python_estimate": 134217728,
+      "logical_json_bytes": 33554432,
+      "sqlite_cache_kib": 8192
+    },
+    "peak_rss_bytes": 342327296,
+    "output_files": {
+      "sources.parquet": {
+        "bytes": 152446,
+        "sha256": "a0d5b6bec70b37c5d5a0fec9cb00b5b4fff60eae0b502745d80f8330a522a4de"
+      },
+      "observations.bin": {
+        "bytes": 25397,
+        "sha256": "412dfca7475485c3a407c940634227ae9a576a101b176b72e08d19f0c4ecb18c"
+      },
+      "dictionary-expanded.parquet": {
+        "bytes": 3878,
+        "sha256": "4f8dc8a5c39978fc94d2f848698e79678248c53a9e4474cd45edb76aea006344"
+      },
+      "details.parquet": {
+        "bytes": 21688,
+        "sha256": "a18138a841113a4637c343dc91bf3925af24d16029c10023b1e64b369b42cbe8"
+      },
+      "observation-rows.bin": {
+        "bytes": 22170,
+        "sha256": "e79afa37afe4b56f11b460eef6820b8b9955d9a436d54aff0915d76a0caca139"
+      },
+      "observation-index.json": {
+        "bytes": 1022,
+        "sha256": "893eee8835c54e965736d3ec1217875c03f481e37e88fc26b2559fc467c0cb69"
+      }
+    },
+    "parts": 18,
+    "ceiling_bytes": 536870912,
+    "sampled_peak_rss_bytes": 341327872,
+    "ceiling_passed": true,
+    "ceiling_method": "50 ms ps watchdog plus process lifetime ru_maxrss; fixture verification, not OS allocation quota"
+  },
+  "refused": {
+    "status": "refused",
+    "source_sha256": "ed4758705f23c7ba98aacbc354188de1bcfd70ecb1066c944dffe25857d089dd",
+    "source_preserved": true,
+    "stages": {
+      "repack_and_full_arrow_equality": {
+        "seconds": 0.10362379194702953,
+        "python_peak_bytes": 71406,
+        "arrow_retained_bytes": 0,
+        "process_high_water_rss_bytes": 185778176
+      }
+    },
+    "metrics": {
+      "max_physical_group_bytes": 6465547,
+      "max_native_batch_arrow_bytes": 6588400,
+      "max_native_batch_buffer_bytes": 6589733,
+      "max_native_batch_rows": 128,
+      "oversized_rows_admitted": 4,
+      "max_batch_arrow_bytes": 6291575,
+      "max_admitted_buffer_bytes": 6589733,
+      "max_python_json_estimate": 100667248,
+      "max_repack_staged_arrow_bytes": 6291575,
+      "max_repack_staged_buffer_bytes": 9084173
+    },
+    "policy": {
+      "native_batch_rows": 128,
+      "physical_group_bytes": 67108864,
+      "batch_arrow_bytes": 4194304,
+      "row_arrow_bytes": 16777216,
+      "batch_python_estimate": 33554432,
+      "row_python_estimate": 134217728,
+      "logical_json_bytes": 1048576,
+      "sqlite_cache_kib": 8192
+    },
+    "peak_rss_bytes": 205357056,
+    "output_files": {
+      "sources.parquet": {
+        "bytes": 152446,
+        "sha256": "a0d5b6bec70b37c5d5a0fec9cb00b5b4fff60eae0b502745d80f8330a522a4de"
+      },
+      "observations.bin": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "preparation-memory-failure.json": {
+        "bytes": 1023,
+        "sha256": "a9212b5bf2325535bbcdfa47ea3388adf8d0bafe4ed9540d526bd2809e0be6d9"
+      },
+      "observation-rows.bin": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "ceiling_bytes": 536870912,
+    "sampled_peak_rss_bytes": 185778176,
+    "ceiling_passed": true,
+    "ceiling_method": "50 ms ps watchdog plus process lifetime ru_maxrss; fixture verification, not OS allocation quota"
+  },
+  "detail_encoder": {
+    "whole_batch": {
+      "python_peak_bytes": 25024265,
+      "seconds": 0.0498242499306798,
+      "sha256": "5a360870fc02dadad8c483d46522b46300c1e2ad20293de5866a93ea7aa949b2"
+    },
+    "streamed_rows": {
+      "python_peak_bytes": 139190,
+      "seconds": 0.18123591702897102,
+      "sha256": "5a360870fc02dadad8c483d46522b46300c1e2ad20293de5866a93ea7aa949b2"
+    }
+  },
+  "detail_layout_comparison": {
+    "before": {
+      "commit": "a80ec34",
+      "rows": 12004,
+      "row_groups": 101,
+      "bytes": 237429
+    },
+    "after": {
+      "rows": 12004,
+      "row_groups": 2,
+      "bytes": 21688
+    },
+    "exact_ordered_arrow_equal": true,
+    "scope": "same bounded fixture; no full-catalog size extrapolation",
+    "baseline_sha256": "f81b5de8b138f0d98f268c8a40675b1275e90cab8fa83e72f33797ccc330682c"
+  }
+}

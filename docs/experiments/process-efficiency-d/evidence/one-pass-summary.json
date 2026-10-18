@@ -1,0 +1,162 @@
+{
+  "runs": [
+    {
+      "run": "1-baseline",
+      "arm": "baseline",
+      "status": "passed",
+      "inputs_unchanged": true,
+      "equivalent": true,
+      "association_seconds": 1.8591708620078862,
+      "complete_rebuild_seconds": 18.952743834001012,
+      "qualification_seconds": 22.50747645299998,
+      "peak_rss_bytes": 349945856,
+      "counters": {
+        "objects_read": 5,
+        "bytes_read": 508942
+      }
+    },
+    {
+      "run": "2-one-pass",
+      "arm": "one-pass",
+      "status": "passed",
+      "inputs_unchanged": true,
+      "equivalent": true,
+      "association_seconds": 2.5782005700166337,
+      "complete_rebuild_seconds": 20.130328336003004,
+      "qualification_seconds": 23.892599864979275,
+      "peak_rss_bytes": 359952384,
+      "counters": {
+        "objects_read": 5,
+        "bytes_read": 508942,
+        "context_occurrence_scans": 576,
+        "context_occurrence_rows_read": 34848,
+        "context_occurrence_decodes": 34848,
+        "context_result_reads": 544
+      }
+    },
+    {
+      "run": "3-one-pass",
+      "arm": "one-pass",
+      "status": "passed",
+      "inputs_unchanged": true,
+      "equivalent": true,
+      "association_seconds": 1.8194454710173886,
+      "complete_rebuild_seconds": 17.959765084990067,
+      "qualification_seconds": 21.406768023996847,
+      "peak_rss_bytes": 354902016,
+      "counters": {
+        "objects_read": 5,
+        "bytes_read": 508942,
+        "context_occurrence_scans": 576,
+        "context_occurrence_rows_read": 34848,
+        "context_occurrence_decodes": 34848,
+        "context_result_reads": 544
+      }
+    },
+    {
+      "run": "4-baseline",
+      "arm": "baseline",
+      "status": "passed",
+      "inputs_unchanged": true,
+      "equivalent": true,
+      "association_seconds": 2.0498713749984745,
+      "complete_rebuild_seconds": 19.097041926987004,
+      "qualification_seconds": 22.94591079498059,
+      "peak_rss_bytes": 364699648,
+      "counters": {
+        "objects_read": 5,
+        "bytes_read": 508942
+      }
+    },
+    {
+      "run": "5-baseline",
+      "arm": "baseline",
+      "status": "passed",
+      "inputs_unchanged": true,
+      "equivalent": true,
+      "association_seconds": 2.268784396990668,
+      "complete_rebuild_seconds": 20.729192599013913,
+      "qualification_seconds": 24.323811784008285,
+      "peak_rss_bytes": 356245504,
+      "counters": {
+        "objects_read": 5,
+        "bytes_read": 508942
+      }
+    },
+    {
+      "run": "6-one-pass",
+      "arm": "one-pass",
+      "status": "passed",
+      "inputs_unchanged": true,
+      "equivalent": true,
+      "association_seconds": 1.7098957639827859,
+      "complete_rebuild_seconds": 18.334462002996588,
+      "qualification_seconds": 22.042082970991032,
+      "peak_rss_bytes": 365293568,
+      "counters": {
+        "objects_read": 5,
+        "bytes_read": 508942,
+        "context_occurrence_scans": 576,
+        "context_occurrence_rows_read": 34848,
+        "context_occurrence_decodes": 34848,
+        "context_result_reads": 544
+      }
+    }
+  ],
+  "arms": {
+    "baseline": {
+      "association_seconds": {
+        "median": 2.0498713749984745,
+        "min": 1.8591708620078862,
+        "max": 2.268784396990668
+      },
+      "complete_rebuild_seconds": {
+        "median": 19.097041926987004,
+        "min": 18.952743834001012,
+        "max": 20.729192599013913
+      },
+      "qualification_seconds": {
+        "median": 22.94591079498059,
+        "min": 22.50747645299998,
+        "max": 24.323811784008285
+      },
+      "peak_rss_bytes": {
+        "median": 356245504,
+        "min": 349945856,
+        "max": 364699648
+      }
+    },
+    "one-pass": {
+      "association_seconds": {
+        "median": 1.8194454710173886,
+        "min": 1.7098957639827859,
+        "max": 2.5782005700166337
+      },
+      "complete_rebuild_seconds": {
+        "median": 18.334462002996588,
+        "min": 17.959765084990067,
+        "max": 20.130328336003004
+      },
+      "qualification_seconds": {
+        "median": 22.042082970991032,
+        "min": 21.406768023996847,
+        "max": 23.892599864979275
+      },
+      "peak_rss_bytes": {
+        "median": 359952384,
+        "min": 354902016,
+        "max": 365293568
+      }
+    }
+  },
+  "association_improvement_fraction": 0.11240993302872837,
+  "complete_regression_fraction": -0.039931834831067436,
+  "peak_change_fraction": 0.0016285181607853527,
+  "cache_adoption_gates": {
+    "exact_semantics": true,
+    "association_improvement_at_least_20_percent": false,
+    "complete_regression_at_most_5_percent": true,
+    "no_increased_measured_peak": false
+  },
+  "all_cache_gates_passed": false
+}

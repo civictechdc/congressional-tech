@@ -80,3 +80,51 @@ def test_each_dictionary_part_is_decoded_once_despite_distant_reuse(tmp_path, mo
     observations.verify_observations(source, tmp_path, index)
     assert len(calls) == sum(len(block['parts']) for name in ('observations', 'references')
                              for block in index[name]['blocks'])
+
+
+@pytest.mark.parametrize('failure', ['second_open', 'serialize', 'compress', 'write', 'verify'])
+def test_all_observation_writers_close_and_abort_never_flushes_pending_rows(tmp_path, monkeypatch, failure):
+    schema = pa.schema([('source_occurrences', pa.list_(pa.struct([('label', pa.list_(pa.string()))])))])
+    source = pa.Table.from_pylist([{'source_occurrences': [{'label': ['complete value']}]}], schema=schema)
+    class Source:
+        schema_arrow = schema
+        def iter_batches(self, **kwargs): return iter(source.to_batches())
+    opened, flushed = [], []
+    Original = observations.Blocks
+    class Tracked(Original):
+        def __init__(self, path, *args, **kwargs):
+            if failure == 'second_open' and path.name == 'observation-rows.bin': raise OSError('injected second_open')
+            super().__init__(path, *args, **kwargs); opened.append(self)
+            if failure == 'write':
+                original = self.stream
+                class Broken:
+                    @property
+                    def closed(self): return original.closed
+                    def tell(self): return original.tell()
+                    def write(self, value): raise OSError('injected write')
+                    def close(self): original.close()
+                self.stream = Broken()
+        def flush(self):
+            flushed.append(self.path.name)
+            return super().flush()
+    monkeypatch.setattr(observations, 'Blocks', Tracked)
+    if failure == 'serialize': monkeypatch.setattr(observations, 'json_chunks', lambda *a, **kw: (_ for _ in ()).throw(ValueError('injected serialize')))
+    elif failure == 'compress': monkeypatch.setattr(observations.pa, 'compress', lambda *a, **kw: (_ for _ in ()).throw(ValueError('injected compress')))
+    elif failure == 'verify': monkeypatch.setattr(observations, 'verify_observations', lambda *a, **kw: (_ for _ in ()).throw(ValueError('injected verify')))
+    with pytest.raises((OSError, ValueError), match='injected'):
+        observations.publish_observations(Source(), tmp_path)
+    assert opened and all(writer.stream.closed for writer in opened)
+    assert not (tmp_path / 'observation-index.json').exists()
+    if failure in ('second_open', 'serialize'): assert flushed == []
+
+
+def test_resource_cleanup_keeps_primary_exception_and_records_close_error():
+    from filename_resources import owned_resources
+    class Reader:
+        def __enter__(self): return self
+        def __exit__(self, *args): raise OSError('injected close failure')
+    with pytest.raises(ValueError, match='primary value error') as caught:
+        with owned_resources() as owned:
+            owned.enter_context(Reader())
+            raise ValueError('primary value error')
+    assert any('injected close failure' in note for note in caught.value.__notes__)

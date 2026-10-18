@@ -1,5 +1,6 @@
 """Logical checkpoint identity and verified legacy checkpoint transitions."""
 from copy import deepcopy
+from catalog_test_helpers import selected_table
 from pathlib import Path
 
 import pyarrow as pa
@@ -25,12 +26,12 @@ def checkpoint(store, *, digest=None, cursor=None):
 
 def catalog_checkpoint(store, digest):
     snapshot = read_catalog(store)
-    filenames = decode_table(snapshot.filenames)
+    filenames = pq.read_table(snapshot.filenames_path)
     metadata = dict(filenames.schema.metadata)
     metadata[b'capture_digest'] = digest
     # Exercise the supported pre-manifest catalog without altering selected bytes.
     store.objects[FILENAMES] = encode_table(filenames.replace_schema_metadata(metadata))
-    store.objects[DOCUMENTS] = snapshot.documents
+    store.objects[DOCUMENTS] = snapshot.documents_path.read_bytes()
     store.objects.pop(MANIFEST_KEY, None)
 
 
@@ -112,7 +113,7 @@ def test_catalog_legacy_checkpoint_reuses_then_upgrades_on_changed_input():
     archive.record(response('https://example.gov/b.pdf', b'%PDF-1.7\nnew\n%%EOF'), outcome='saved', links=[])
     archive.save()
     rebuild_catalog(store, workers=1)
-    assert decode_table(read_catalog(store).filenames).schema.metadata[b'capture_digest'].startswith(b'rows-v1:')
+    assert selected_table(store).schema.metadata[b'capture_digest'].startswith(b'rows-v1:')
 
 
 def test_catalog_mismatch_refuses_source_replay_until_explicit_rebuild():
@@ -146,11 +147,11 @@ def test_incomplete_catalog_checkpoint_refuses_replay(missing):
     store, _ = saved_archive()
     rebuild_catalog(store, workers=1)
     snapshot = read_catalog(store)
-    filenames = decode_table(snapshot.filenames)
+    filenames = pq.read_table(snapshot.filenames_path)
     metadata = dict(filenames.schema.metadata)
     del metadata[missing]
     store.objects[FILENAMES] = encode_table(filenames.replace_schema_metadata(metadata))
-    store.objects[DOCUMENTS] = snapshot.documents
+    store.objects[DOCUMENTS] = snapshot.documents_path.read_bytes()
     store.objects.pop(MANIFEST_KEY)
     before = dict(store.objects)
     with pytest.raises(ValueError, match='checkpoint digest mismatch'):
@@ -168,9 +169,9 @@ def test_filename_refresh_preserves_catalog_checkpoint_for_next_update(tmp_path)
     archive.record(response('https://example.gov/a.pdf', b'%PDF-1.7\n%%EOF'), outcome='saved', links=[])
     archive.save()
     rebuild_catalog(store, workers=1)
-    before = decode_table(read_catalog(store).filenames).schema.metadata
+    before = selected_table(store).schema.metadata
     refresh_filename_metadata(tmp_path, workers=1)
-    after = decode_table(read_catalog(store).filenames).schema.metadata
+    after = selected_table(store).schema.metadata
     for key in (b'raw_capture_rows', b'capture_digest', b'seed_digest', b'deferred_source_bodies', b'source_lineage_version',
                 b'download_state_digest', b'download_state_rows', b'availability_policy',
                 b'source_fingerprint', b'retained_recovery_fingerprint'):

@@ -28,7 +28,37 @@ def test_static_images_decode_with_fact_based_format(kind):
 
 @pytest.mark.parametrize('kind', ['PNG', 'JPEG'])
 def test_truncation_rejected(kind):
-    body = encoded(kind)[:100]
+    complete = encoded(kind)
+    if kind == 'PNG':
+        # Locate IDAT data, then remove required compressed pixels. A fixed
+        # offset can leave the full image intact and cut only its trailer.
+        offset = 8  # PNG signature
+        while offset < len(complete):
+            length = struct.unpack('>I', complete[offset:offset + 4])[0]
+            chunk = complete[offset + 4:offset + 8]
+            if chunk == b'IDAT':
+                start = offset + 8
+                cut = start + length // 2
+                assert start < cut < start + length
+                body = complete[:cut]
+                compressed = complete[start:cut]
+                decoder = zlib.decompressobj()
+                decoder.decompress(compressed)
+                assert not decoder.eof, 'Fixture must remove compressed image data'
+                break
+            offset += length + 12
+        else:
+            pytest.fail('PNG fixture has no IDAT chunk')
+    else:
+        # Cut within the JPEG entropy-coded scan, preserving its header while
+        # removing encoded pixels and the end marker.
+        marker = complete.index(b'\xff\xda')
+        start = marker + 2 + struct.unpack('>H', complete[marker + 2:marker + 4])[0]
+        end = complete.rindex(b'\xff\xd9')
+        cut = start + (end - start) // 2
+        assert start < cut < end
+        body = complete[:cut]
+    assert len(body) < len(complete)
     with pytest.raises(reader.ImageReadError):
         reader.image_info(body)
     assert inspect_body(body, 'https://example.gov/a.png', 'image/png')[0] == 'invalid_document'

@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "scope": "explicit in-memory bounded control fixture; no remote requests or credentials; timing excludes interpreter/import startup and all hosted-job work",
+  "python": "3.12.13",
+  "source_sha256": {
+    "scripts/publication_preflight.py": "befbbf24c6418d69eb2c71d0f4ceea48ed56e2f0b613b0a0c051d0e522d5f3de",
+    "scripts/viewer_release_identity.py": "48f2fbcb594494edb6a2d76f68769a1141f385ddf30883d9e2864f431e173217",
+    "tests/test_publication_preflight.py": "b296b0f666466e653116c34c0beebb3794a3ed11ad7e4133d4cca8350cb317a1"
+  },
+  "observations": [
+    {
+      "mapping": "absent",
+      "private_gets": 8,
+      "public_gets": 2,
+      "private_bytes": 2620,
+      "public_bytes": 1157,
+      "elapsed_seconds": 0.0001906250836327672,
+      "result": {
+        "status": "unchanged",
+        "write_authority": false,
+        "table_reads": 0,
+        "publication_writes": 0,
+        "reason": "exact_control_and_public_readback",
+        "catalog_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    {
+      "mapping": "empty",
+      "private_gets": 8,
+      "public_gets": 2,
+      "private_bytes": 2676,
+      "public_bytes": 1156,
+      "elapsed_seconds": 6.66249543428421e-05,
+      "result": {
+        "status": "unchanged",
+        "write_authority": false,
+        "table_reads": 0,
+        "publication_writes": 0,
+        "reason": "exact_control_and_public_readback",
+        "catalog_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  ],
+  "qualification": {
+    "complete_hosted_noop_job_duration": "pending future deployed unchanged run",
+    "complete_hosted_noop_downloads": "pending future deployed unchanged run",
+    "workflow_dispatched": false,
+    "followup_ticket": "ct-x7vx"
+  }
+}

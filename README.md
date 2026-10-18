@@ -60,7 +60,7 @@ Two sister tools built by [AgoraDMV](https://github.com/AgoraDMV), forked into t
 
 ## Getting started
 
-**Prerequisites:** Node 20+, Python 3.12+, and [`uv`](https://docs.astral.sh/uv/) or `pip`.
+**Prerequisites:** Node 20+, Python 3.12.13, [`uv`](https://docs.astral.sh/uv/), and Poppler for PDF validation.
 
 ### The website
 
@@ -75,14 +75,21 @@ Content lives as markdown under `src/content/` (themes, proposals, projects) —
 
 ### The Python tools
 
-One editable install pulls the whole package graph:
+One locked environment installs the six maintained Python packages:
 
 ```bash
-pip install -e packages/house-naming -e packages/committee_meeting -e packages/congress_shared -e packages/youtube_api -e packages/congress_api -e apps/committee_youtube
-# or: uv pip install -e apps/committee_youtube
+uv sync --locked
+source .venv/bin/activate
+python scripts/dev.py doctor
+python scripts/dev.py prepare-baseline
+python scripts/dev.py test production-offline
+python scripts/dev.py test active-experiment-regression
 ```
 
-The CLIs are then on your PATH:
+Install Poppler with `brew install poppler` on macOS or
+`sudo apt-get install poppler-utils procps` on Ubuntu. See the
+[development guide](docs/development.md) for test lanes, native checks and frozen
+research boundaries. The CLIs are then on your PATH:
 
 ```bash
 youtube-fetch --help
@@ -116,10 +123,20 @@ The repo ships a [dev container](https://containers.dev/) that installs the Pyth
 
 | Workflow | Cadence | What it does |
 | --- | --- | --- |
+| `capture-raw-sources.yml` | daily, manual, or validation on code changes | Retains source evidence and rebuilds document tables; exposes a run-bound heartbeat. |
 | `deploy-pages.yml` | on push to `main` | Builds `apps/site` and deploys it to GitHub Pages. |
 | `bls-cpi-update.yml` | monthly | Refreshes the CPI baseline and the multi-source inflation table. |
 | `update-data.yml` | weekly | Refreshes YouTube, GovInfo, Congress.gov, committee-source and inventory data. |
 | `publish-explorer.yml` | after collection completes, source changes, or manual dispatch | Publishes and verifies Explorer data from retained inputs before deployment. |
+
+Inspect an existing capture or rebuild run without changing it:
+
+```bash
+.venv/bin/python scripts/pipeline_status.py --run RUN_ID
+```
+
+The [pipeline status guide](docs/pipeline-status.md) explains identity checks,
+expired heartbeats, saved evidence and the separate publication-verification step.
 
 ## Contributing
 

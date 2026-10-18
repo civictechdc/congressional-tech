@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Reject oversized generated files before a Git push or Pages deployment."""
 import argparse
+import os
 from pathlib import Path
 
 
@@ -8,15 +9,24 @@ def check(root, *, file_limit=None, total_limit=None):
     root = Path(root)
     if not root.is_dir():
         raise ValueError(f"Publication directory does not exist: {root}")
-    files = [path for path in root.rglob("*") if path.is_file() and ".git" not in path.relative_to(root).parts]
-    sizes = [(path, path.stat().st_size) for path in files]
-    too_large = [f"{path.relative_to(root)} ({size:,} bytes)" for path, size in sizes if file_limit is not None and size >= file_limit]
+    count = total = 0
+    too_large = []
+    for directory, directories, names in os.walk(root):
+        directories[:] = [name for name in directories if name != ".git"]
+        for name in names:
+            path = Path(directory) / name
+            if name == ".git" or not path.is_file():
+                continue
+            size = path.stat().st_size
+            count += 1
+            total += size
+            if file_limit is not None and size >= file_limit and len(too_large) < 20:
+                too_large.append(f"{path.relative_to(root)} ({size:,} bytes)")
     if too_large:
-        raise ValueError("Files exceed the publication limit: " + ", ".join(too_large[:20]))
-    total = sum(size for _, size in sizes)
+        raise ValueError("Files exceed the publication limit: " + ", ".join(too_large))
     if total_limit is not None and total >= total_limit:
         raise ValueError(f"Publication uses {total:,} bytes; it must stay below {total_limit:,}")
-    return len(files), total
+    return count, total
 
 
 def main():

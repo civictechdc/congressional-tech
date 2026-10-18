@@ -139,7 +139,7 @@ def test_compression_preserves_original_headers_and_limits_decoded_bytes(server,
         assert len(body) == 1024 and result['error'] == 'response_limit'
 
 
-def test_spooled_pipeline_downloads_ahead_with_default_memory_budget(server, monkeypatch):
+def test_spooled_pipeline_downloads_ahead_with_explicit_memory_budget(server, monkeypatch):
     from functools import partial
     from congress_api.acquisition.raw_sync import run_sync
     from congress_api.retention.raw_archive import Archive
@@ -157,6 +157,7 @@ def test_spooled_pipeline_downloads_ahead_with_default_memory_budget(server, mon
         store = MemoryStore()
         result = run_sync(Archive(store, 'native-spool'),
             [{'url': f'{url}/{i}'} for i in range(16)], workers=16, download_workers=16,
+            max_buffer_bytes=512 * 1024**2,
             fetch_spooled=partial(fetcher.fetch_spooled, transport='direct'))
         assert result['saved'] == len(starts) == 16
         assert 4 <= peak() <= 16

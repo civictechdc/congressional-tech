@@ -74,3 +74,29 @@ test('a binding for another review publication, another catalog or changed bytes
  const invalid=bound({version:1,review_sha256:'pin',catalog_id:'next',rows:[{index:0,group:9,sources:[2]}]});
  assert.match((await loadReviews(...invalid)).info.review_error,/Invalid reviewed group/);
 });
+
+test('optional review startup settles hung and oversized responses under explicit limits',async()=>{
+ const parameters=args(fixture());let signal;
+ parameters[2]=(_url,options)=>{signal=options.signal;return new Promise(()=>{});};
+ const hung=await loadReviews(...parameters,undefined,{deadlineMs:10});
+ assert.equal(hung.info.reviewed_search,false);assert.match(hung.info.review_error,/deadline/);assert.equal(signal.aborted,true);
+ const oversized=args(fixture());oversized[2]=async()=>new Response(new ReadableStream({start(controller){controller.enqueue(new Uint8Array(oversized[0].bytes+1));controller.close();}}));
+ assert.match((await loadReviews(...oversized)).info.review_error,/expected response length/);
+ const bounded=args(fixture());
+ assert.match((await loadReviews(...bounded,undefined,{maxBytes:1})).info.review_error,/byte limit/);
+ const headers=args(fixture());headers[2]=async()=>new Response('{}',{headers:{'Content-Length':'2'}});
+ assert.match((await loadReviews(...headers)).info.review_error,/unexpected response length/);
+});
+
+
+test('decoded gzip and CORS responses verify actual bytes rather than encoded Content-Length',async()=>{
+ for(const cors of [false,true]) {
+  const parameters=args(fixture());const body=JSON.stringify(fixture());
+  parameters[2]=async()=>{
+   const response=new Response(body,{headers:{'Content-Length':'12',...(!cors?{'Content-Encoding':'gzip'}:{})}});
+   if(!cors)return response;
+   return {type:'cors',ok:response.ok,headers:response.headers,body:response.body};
+  };
+  assert.equal((await loadReviews(...parameters)).info.reviewed_search,true);
+ }
+});

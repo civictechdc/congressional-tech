@@ -333,72 +333,74 @@ class Archive:
         if version == 'missing':
             version = object_version(FILENAMES)
         self.filename_version = version
-        names = None
-        if repair or version is None or saved_metadata.get(b'filename_version') != str(version).encode():
-            snapshot = read_catalog(store)
-            names = snapshot.filenames
-        if names:
-            from congress_api.retention.capture_url_admission import (
-                PROVENANCE_COLUMNS, publisher_download_candidate, independent_publisher_link,
-            )
-            filename_file = pq.ParquetFile(pa.BufferReader(names))
-            columns = [
-                "source_url",
-                "body_key",
-                "format",
-                "http_status",
-                "media_type",
-            ]
-            columns.extend(name for name in PROVENANCE_COLUMNS
-                           if name in filename_file.schema_arrow.names)
-            rows = (row for batch in filename_file.iter_batches(batch_size=256, columns=columns)
-                    for row in batch.to_pylist())
-            for row in rows:
-                if not publisher_download_candidate(row):
-                    continue  # Retain probe evidence without scheduling new guesses.
-                links = self.seed_links({"url": row["source_url"]},
-                                        publisher_link=independent_publisher_link(row))
-                # An aggregate catalog body cannot be assigned to a recovered URL.
-                url = links[0]['url'] if len(links) == 1 and not links[0].get('url_repair') else None
-                if (
-                    not url
-                    or self.state[url]['outcome'] == 'excluded_probe'
-                    or not row["body_key"]
-                    or self.state[url].get("body_key")
-                    or self.state[url].get("checked_at")
-                    or "200" not in (row["http_status"] or [])
-                ):
-                    continue
-                formats = set(row["format"] or [])
-                # A claimed format is not proof of a usable file. Inspect retained
-                # bytes once before treating it as a successful document.
-                if formats and formats <= {
-                    "pdf",
-                    "doc",
-                    "docx",
-                    "xls",
-                    "xlsx",
-                    "ppt",
-                    "pptx",
-                    "zip",
-                    "rtf",
-                }:
-                    self.state[url].update(
-                        body_key=row["body_key"],
-                        sha256=row["body_key"].rsplit("/", 1)[-1].removesuffix(".gz"),
-                        media_type=next(iter(row["media_type"] or []), None),
-                        # The filename index aggregates observations; it does not
-                        # associate one HTTP status with this particular body.
-                        http_status=None,
-                        fidelity="retained-file",
-                        outcome="retained",
-                        links_scanned=False,
-                    )
+        from contextlib import ExitStack
+        with ExitStack() as owners:
+            names = None
+            if repair or version is None or saved_metadata.get(b'filename_version') != str(version).encode():
+                snapshot = owners.enter_context(read_catalog(store))
+                names = snapshot.filenames_path
+            if names:
+                from congress_api.retention.capture_url_admission import (
+                    PROVENANCE_COLUMNS, publisher_download_candidate, independent_publisher_link,
+                )
+                filename_file = pq.ParquetFile(names)
+                columns = [
+                    "source_url",
+                    "body_key",
+                    "format",
+                    "http_status",
+                    "media_type",
+                ]
+                columns.extend(name for name in PROVENANCE_COLUMNS
+                               if name in filename_file.schema_arrow.names)
+                rows = (row for batch in filename_file.iter_batches(batch_size=256, columns=columns)
+                        for row in batch.to_pylist())
+                for row in rows:
+                    if not publisher_download_candidate(row):
+                        continue  # Retain probe evidence without scheduling new guesses.
+                    links = self.seed_links({"url": row["source_url"]},
+                                            publisher_link=independent_publisher_link(row))
+                    # An aggregate catalog body cannot be assigned to a recovered URL.
+                    url = links[0]['url'] if len(links) == 1 and not links[0].get('url_repair') else None
+                    if (
+                        not url
+                        or self.state[url]['outcome'] == 'excluded_probe'
+                        or not row["body_key"]
+                        or self.state[url].get("body_key")
+                        or self.state[url].get("checked_at")
+                        or "200" not in (row["http_status"] or [])
+                    ):
+                        continue
+                    formats = set(row["format"] or [])
+                    # A claimed format is not proof of a usable file. Inspect retained
+                    # bytes once before treating it as a successful document.
+                    if formats and formats <= {
+                        "pdf",
+                        "doc",
+                        "docx",
+                        "xls",
+                        "xlsx",
+                        "ppt",
+                        "pptx",
+                        "zip",
+                        "rtf",
+                    }:
+                        self.state[url].update(
+                            body_key=row["body_key"],
+                            sha256=row["body_key"].rsplit("/", 1)[-1].removesuffix(".gz"),
+                            media_type=next(iter(row["media_type"] or []), None),
+                            # The filename index aggregates observations; it does not
+                            # associate one HTTP status with this particular body.
+                            http_status=None,
+                            fidelity="retained-file",
+                            outcome="retained",
+                            links_scanned=False,
+                        )
         # Persisted attempts/validation take precedence over legacy bootstrap guesses.
         if not resumed:
             self.state.update(saved_state)
         # Recover all published batches, including a run interrupted before save().
-        for key in store.keys("receipts/"):
+        for key in sorted(store.keys("receipts/")):
             if "/download-" not in key or key in indexed:
                 continue
             for line_number, line in enumerate(
