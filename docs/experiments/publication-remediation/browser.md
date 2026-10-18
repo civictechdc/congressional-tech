@@ -2,6 +2,11 @@
 
 These checks use controlled fixtures. They do not establish full-catalog browser memory, throughput, or deployed behavior.
 
+The later actual-catalog parsed-metadata reuse failure and its separate reader
+correction are recorded in [browser-metadata-reuse.md](browser-metadata-reuse.md).
+The correction preserves cache limits and the independently accepted backend
+preparation result.
+
 ## Reader lifecycle and input rules
 
 The browser owns pending request cleanup in `filename-client.mjs`. Error, cancellation, failed structured clone, and result paths each remove the abort listener and pending entry once. Worker errors terminate that worker; a later request creates a fresh reader with the same pinned catalog. Initial information failures keep the existing Reload action.
