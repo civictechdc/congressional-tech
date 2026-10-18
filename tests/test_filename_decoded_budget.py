@@ -416,13 +416,13 @@ def test_arrow_staging_checks_limits_before_aggregation_and_keeps_write_error():
     class Writer:
         def write_table(self, table, **kwargs): written.append(table)
     staging = ArrowStager(Writer(), batch.schema, row_group_size=6,
-                          policy=replace(DEFAULT_DECODED_POLICY, batch_arrow_bytes=600))
+                          policy=replace(DEFAULT_DECODED_POLICY, writer_buffer_bytes=600))
     staging.append(batch); staging.append(batch); staging.flush()
     assert [len(table) for table in written] == [4, 4]
     staging.append(pa.record_batch([['x' * 100] * 8], names=['value'])); staging.flush()
     assert all(table.nbytes <= 600 and len(table) <= 6 for table in written)
     strict = ArrowStager(Writer(), batch.schema,
-                         policy=replace(DEFAULT_DECODED_POLICY, row_arrow_bytes=100, batch_arrow_bytes=600))
+                         policy=replace(DEFAULT_DECODED_POLICY, row_arrow_bytes=100, writer_buffer_bytes=600))
     with pytest.raises(DecodedBudgetExceeded, match='single output-row'):
         strict.append(batch)
     class Broken:
@@ -430,6 +430,65 @@ def test_arrow_staging_checks_limits_before_aggregation_and_keeps_write_error():
     staging = ArrowStager(Broken(), batch.schema)
     staging.append(batch)
     with pytest.raises(OSError, match='injected staged write'): staging.flush()
+
+
+def test_writer_detaches_shared_nested_parents_and_preserves_exact_order_and_metadata():
+    from filename_budget import ArrowStager
+    schema = pa.schema([('values', pa.list_(pa.string()))], metadata={b'exact': b'preserve'})
+    parent = pa.RecordBatch.from_arrays([pa.array([[str(i), None, '', 'é', 'é', '🏛️'] for i in range(10000)])], schema=schema)
+    written, metrics = [], {}
+    class Writer:
+        def write_table(self, table, **kwargs): written.append(table)
+    policy = replace(DEFAULT_DECODED_POLICY, writer_buffer_bytes=32 * 1024)
+    stage = ArrowStager(Writer(), schema, row_group_size=4, policy=policy, metrics=metrics)
+    for offset in range(5000, 5010, 2): stage.append(parent.slice(offset, 2))
+    stage.flush()
+    assert [len(table) for table in written] == [4, 4, 2]
+    assert pa.concat_tables(written).equals(pa.Table.from_batches([parent.slice(5000, 10)]), check_metadata=True)
+    assert metrics['output_compacted_batches'] == 5
+    assert metrics['max_output_incoming_buffer_bytes'] == parent.get_total_buffer_size() > policy.writer_buffer_bytes
+    assert metrics['max_output_pending_buffer_bytes'] <= policy.writer_buffer_bytes
+    assert metrics['max_output_staged_buffer_bytes'] <= policy.writer_buffer_bytes
+
+
+def test_writer_retained_limit_refuses_dictionary_backing_that_survives_compaction():
+    from filename_budget import ArrowStager
+    dictionary = pa.array(['x' * 1024**2, 'é']).slice(1, 1)
+    batch = pa.record_batch([pa.DictionaryArray.from_arrays(pa.array([0], type=pa.int8()), dictionary)], names=['value'])
+    assert batch.nbytes < 1024 and batch.get_total_buffer_size() > 1024**2
+    class Writer:
+        def write_table(self, *args, **kwargs): raise AssertionError('refused dictionary written')
+    stage = ArrowStager(Writer(), batch.schema, policy=replace(DEFAULT_DECODED_POLICY, writer_buffer_bytes=256 * 1024))
+    with pytest.raises(DecodedBudgetExceeded, match='retained Arrow bytes'): stage.append(batch)
+    assert stage.pending == []
+
+
+def test_writer_compaction_failure_propagates_without_flushing_pending(monkeypatch):
+    from filename_budget import ArrowStager
+    parent = pa.record_batch([['x' * 1024] * 1000], names=['value'])
+    class Writer:
+        def write_table(self, *args, **kwargs): raise AssertionError('abort flushed pending data')
+    stage = ArrowStager(Writer(), parent.schema)
+    stage.append(pa.record_batch([['first']], names=['value']))
+    def fail(*args, **kwargs): raise MemoryError('injected Arrow compaction')
+    monkeypatch.setattr(pa, 'concat_arrays', fail)
+    with pytest.raises(MemoryError, match='injected Arrow compaction'): stage.append(parent.slice(1, 1))
+    assert stage.rows == 1 and len(stage.pending) == 1
+
+
+def test_writer_budget_is_independent_of_decode_batch_size():
+    from filename_budget import ArrowStager
+    batch = pa.record_batch([['x' * 100] * 128], names=['value'])
+    written, metrics = [], {}
+    class Writer:
+        def write_table(self, table, **kwargs): written.append(table)
+    policy = replace(DEFAULT_DECODED_POLICY, batch_arrow_bytes=1024, writer_buffer_bytes=1024**2)
+    stage = ArrowStager(Writer(), batch.schema, policy=policy, metrics=metrics)
+    for _ in range(64): stage.append(batch)
+    stage.flush()
+    assert len(written) == 1 and written[0].num_rows == 8192
+    assert metrics['max_output_staged_arrow_bytes'] > policy.batch_arrow_bytes
+    assert metrics['max_output_pending_buffer_bytes'] <= policy.writer_buffer_bytes
 
 
 def test_borrowed_reader_survives_repack_failure_and_owned_output_closes(tmp_path, monkeypatch):

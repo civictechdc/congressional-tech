@@ -20,6 +20,7 @@ class DecodedPolicy:
     row_arrow_bytes: int = 16 * MiB
     batch_python_estimate: int = 32 * MiB
     row_python_estimate: int = 128 * MiB
+    writer_buffer_bytes: int = 64 * MiB
     logical_json_bytes: int = 32 * MiB
     sqlite_cache_kib: int = 8192
 
@@ -133,30 +134,50 @@ def open_parquet(path):
 
 
 class ArrowStager:
-    """Coalesce admitted batches without copying; logical bytes are not RSS."""
+    """Coalesce rows under a separate, conservative retained-buffer budget.
+
+    The pending budget excludes native decoder ownership and temporary copy /
+    codec allocations. Shared buffers may be counted more than once, never less.
+    """
     def __init__(self, writer, schema, *, row_group_size=8192, policy=DEFAULT_DECODED_POLICY,
                  metrics=None, stage='output'):
         self.writer, self.schema = writer, schema
         self.row_group_size, self.policy, self.stage = row_group_size, policy, stage
         self.metrics = metrics if metrics is not None else {}
-        self.pending, self.size, self.rows = [], 0, 0
+        self.pending, self.size, self.rows, self.retained = [], 0, 0, 0
 
     def append(self, batch):
         if not len(batch): return
         if len(batch) == 1 and batch.nbytes > self.policy.row_arrow_bytes:
             refuse(self.stage, 'single output-row Arrow bytes', batch.nbytes, self.policy.row_arrow_bytes)
-        if len(batch) > 1 and (batch.nbytes > min(self.policy.batch_arrow_bytes, self.policy.row_arrow_bytes) or
+        if len(batch) > 1 and (batch.nbytes > self.policy.row_arrow_bytes or
                                len(batch) > self.row_group_size):
             middle = len(batch) // 2
             self.append(batch.slice(0, middle)); self.append(batch.slice(middle))
             return
-        if self.pending and (self.size + batch.nbytes > self.policy.batch_arrow_bytes or
+        retained = batch.get_total_buffer_size()
+        maximum(self.metrics, f'max_{self.stage}_incoming_buffer_bytes', retained)
+        # Slices can retain hundreds of MiB for a few admitted rows. Maintained
+        # Arrow concatenation copies only the selected array contents; inspect
+        # its actual result too, since dictionary backing can remain shared.
+        if retained > max(2 * batch.nbytes, 64 * 1024) or retained > self.policy.writer_buffer_bytes:
+            batch = pa.RecordBatch.from_arrays([pa.concat_arrays([column]) for column in batch.columns], schema=batch.schema)
+            retained = batch.get_total_buffer_size()
+            self.metrics[f'{self.stage}_compacted_batches'] = self.metrics.get(f'{self.stage}_compacted_batches', 0) + 1
+            maximum(self.metrics, f'max_{self.stage}_compacted_buffer_bytes', retained)
+        if retained > self.policy.writer_buffer_bytes:
+            if len(batch) == 1:
+                refuse(self.stage, 'single output-row retained Arrow bytes', retained, self.policy.writer_buffer_bytes)
+            middle = len(batch) // 2
+            self.append(batch.slice(0, middle)); self.append(batch.slice(middle))
+            return
+        if self.pending and (self.retained + retained > self.policy.writer_buffer_bytes or
                              self.rows + len(batch) > self.row_group_size):
             self.flush()
-        self.pending.append(batch); self.size += batch.nbytes; self.rows += len(batch)
+        self.pending.append(batch); self.size += batch.nbytes; self.rows += len(batch); self.retained += retained
         maximum(self.metrics, f'max_{self.stage}_staged_arrow_bytes', self.size)
-        # An admitted oversized single row gets its own output group.
-        if self.size >= self.policy.batch_arrow_bytes or self.rows >= self.row_group_size:
+        maximum(self.metrics, f'max_{self.stage}_pending_buffer_bytes', self.retained)
+        if self.retained >= self.policy.writer_buffer_bytes or self.rows >= self.row_group_size:
             self.flush()
 
     def flush(self):
@@ -164,7 +185,7 @@ class ArrowStager:
         table = pa.Table.from_batches(self.pending, schema=self.schema)
         maximum(self.metrics, f'max_{self.stage}_staged_buffer_bytes', table.get_total_buffer_size())
         self.writer.write_table(table, row_group_size=self.row_group_size)
-        self.pending, self.size, self.rows = [], 0, 0
+        self.pending, self.size, self.rows, self.retained = [], 0, 0, 0
 
 
 def json_chunks(value, *, policy=DEFAULT_DECODED_POLICY, default=None, metrics=None):
