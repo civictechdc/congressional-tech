@@ -4,10 +4,10 @@
   "baseline_commit": "38f7557",
   "candidate_committed": false,
   "source_hashes": {
-    "packages/congress_api/src/congress_api/parsers/document_cover.py": "5bbeb02dce3e2957f1e6924e1772a34cc6afb7872de5bbc65cfc75cc8ed6eb06",
+    "packages/congress_api/src/congress_api/parsers/document_cover.py": "534812d45ca890da31bdc69d535fae42ea74b23028afabddf3117be94efe4765",
     "docs/experiments/filename-patterns-20261015/content_rule_review.py": "e2992542a59ac07b370556b5a8509545162e9236dbf8fc535400a492ecf36dbc",
     "tests/test_explicit_document_forms.py": "ce414dab035a4a345062f544560e9c01a9df87ed95f267c1de9b2c20ef40c7ba",
-    ".github/workflows/capture-raw-sources.yml": "cb4593613825dc629b64053651641f6dc050afdbc888fae1e434541722849e98",
+    ".github/workflows/capture-raw-sources.yml": "417e0ab1534a5a70f38a231b1459cbfa08cdca112f6e7626401db7beadf3f205",
     "tests/fixtures/document-covers/development-forms.json": "ddf685a463df26462f564e15c628a985f83e5239b159d5f35a1821324b3a4b93",
     "tests/fixtures/document-covers/explicit-forms-provenance.json": "777b276bf662ecc05df21e6c09bdc56125208cc47b45f1c47c0a62c4a7511835",
     "tests/fixtures/document-covers/house-amendment.pdf": "83cc4bd6ef60b79fa7b976e136f804a7370d4b4e0eed7cf7e004d8c9f1d1f89f",

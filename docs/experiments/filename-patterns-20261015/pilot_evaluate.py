@@ -21,7 +21,7 @@ import time
 import pilot_blind_review as blind
 from pilot_reconcile import file_digest
 from rule_review import HERE, ROOT
-from congress_api.parsers import pdf_tools
+from congress_api.retention import pdf_tools
 from congress_api.retention import capture_metadata
 from congress_api.retention.document_evidence import evidence_fingerprint
 
@@ -105,10 +105,16 @@ def worker(pdf, expected_sha, fingerprint, baseline=None):
     if file_digest(pdf) != expected_sha:
         raise ValueError('PDF changed before reader invocation')
     if baseline:
+        # Each reading runs in its own process. Keep the hashed historical
+        # source intact while supplying its reader at the original import path.
+        # The reader moved byte-for-byte from parsers to retention.
+        sys.modules['congress_api.parsers.pdf_tools'] = pdf_tools
         spec = importlib.util.spec_from_file_location('frozen_baseline_cover', baseline)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        capture_metadata.document_cover = module.document_cover
+        def baseline_cover(data, read_page, *, strict=False):
+            return module.document_cover(data, strict=strict)
+        capture_metadata.document_cover = baseline_cover
         capture_metadata.document_page_fields = module.document_page_fields
     return capture_metadata.read_document_file(pdf, expected_sha, fingerprint)
 

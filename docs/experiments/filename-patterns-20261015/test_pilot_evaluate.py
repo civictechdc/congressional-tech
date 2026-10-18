@@ -188,6 +188,23 @@ def test_actual_pdf_worker_uses_maintained_reader():
     assert result['parser_fingerprint'] == 'test-native-reader'
 
 
+def test_frozen_baseline_worker_survives_reader_move(tmp_path):
+    freeze = json.loads((evaluate.HERE / 'content_rule_freeze.json').read_text())
+    source = evaluate.subprocess.run(
+        ['git', 'show', freeze['baseline_commit'] + ':' + evaluate.COVER],
+        cwd=evaluate.ROOT, check=True, capture_output=True).stdout
+    baseline = tmp_path / 'baseline_document_cover.py'
+    baseline.write_bytes(source)
+    assert file_digest(baseline) == freeze['development_summary']['baseline_parser_sha256']
+    pdf = evaluate.ROOT / 'tests/fixtures/document-covers/house-amendment.pdf'
+    before = evaluate.read_pdf(pdf, file_digest(pdf), 'baseline-reader', baseline)
+    after = evaluate.read_pdf(pdf, file_digest(pdf), 'candidate-reader')
+    assert before['status'] == 'completed', before
+    assert not before.get('content_document_kind')
+    assert after['status'] == 'completed', after
+    assert after['content_document_kind'] == ['amendment']
+
+
 def test_worker_refuses_changed_body():
     pdf = evaluate.ROOT / 'tests/fixtures/document-covers/house-amendment.pdf'
     result = evaluate.read_pdf(pdf, '0' * 64, 'test-native-reader')

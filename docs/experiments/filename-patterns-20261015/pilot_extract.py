@@ -19,7 +19,7 @@ from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
 from rule_review import DEFAULT_INPUT, digest
-from congress_api.parsers import pdf_tools
+from congress_api.retention import pdf_tools
 
 LIMIT = 32 * 1024**2
 

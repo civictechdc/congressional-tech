@@ -1,0 +1,58 @@
+{
+  "updated_at": "2026-10-18T14:41:51.743071+00:00",
+  "freeze": "docs/experiments/filename-patterns-20261015/content_rule_freeze.json",
+  "candidate": "explicit-content-forms-v3",
+  "source_revision": "a095de1720db26b995116a245ffb888557d5c52b",
+  "previous_freeze_sha256": "f17f4d3975015c7aab322f69b6dbc084e19f335e61a7ff95a5f7cba79a5a9bbe",
+  "updated_freeze_sha256": "b92bf994eab648962ddd135bd82c277a7f8f5684aa46e278c80f55a3706b2c5e",
+  "authorization": {
+    "session": "d61fff3f-b0f6-47bd-94f1-fabe6f31148d",
+    "response_id": "77df846f-61e7-479b-9e38-66dc59ff28f2",
+    "answered_at": "2026-10-18T13:57:49.310Z",
+    "answer": "Yes, update the record",
+    "scope": "Update these two frozen source fingerprints, cite the recheck, and push."
+  },
+  "recheck": "docs/experiments/filename-patterns-20261015/frozen_input_recheck_20261017.json",
+  "recheck_sha256": "381ab2c1ad1b3fc3642ee7a509b6c68e9e7caff22b569f978bdfcce6746d5b65",
+  "changed_sources": {
+    "packages/congress_api/src/congress_api/parsers/document_cover.py": {
+      "previous_sha256": "5bbeb02dce3e2957f1e6924e1772a34cc6afb7872de5bbc65cfc75cc8ed6eb06",
+      "updated_sha256": "534812d45ca890da31bdc69d535fae42ea74b23028afabddf3117be94efe4765",
+      "reason": "Dependency injection only: document_cover(data, read_page) and _page_text(..., read_page) take the bounded fallback page reader as an argument instead of importing parsers.pdf_tools.opening_page_text. All callers (retention/capture_metadata.py, retention/document_evidence.py) pass retention.pdf_tools.opening_page_text, a byte-identical move of the frozen reader (blob 9c0a650). Cover rules, pypdf reading and outputs are unchanged."
+    },
+    ".github/workflows/capture-raw-sources.yml": {
+      "previous_sha256": "cb4593613825dc629b64053651641f6dc050afdbc888fae1e434541722849e98",
+      "updated_sha256": "417e0ab1534a5a70f38a231b1459cbfa08cdca112f6e7626401db7beadf3f205",
+      "reason": "CI configuration only: push-path trigger lists and offline/native test file lists. No classifier, rule or label input."
+    }
+  },
+  "verification": {
+    "source_hashes_verified": 9,
+    "other_source_hashes_unchanged": 7,
+    "sample_sha256": "55b3256dc0bfee57d90235b7d8d9b216060bc145d82926709a5b01beed619237",
+    "development_labels_sha256": "f943463bd36ea11ddf43f9550da3d8a6dbe8e25b0241fe65b9bf04528ee253c3",
+    "changes_since_recheck": "none",
+    "fallback_reader_identical_to_frozen_version": true,
+    "reader_versions": {
+      "pypdf": "6.19.0",
+      "pdfinfo": "pdfinfo version 26.06.0",
+      "pdftotext": "pdftotext version 26.06.0"
+    },
+    "reader_versions_match": true,
+    "fallback_reader_git_blob": "9c0a65027a8c74b16f52f96935fbda7d5b622b5b"
+  },
+  "scope": "Only the two source_hashes entries changed. Original development results and their parser hash remain historical evidence.",
+  "evaluation_status": "Held-out evaluation has not run. Fresh catalog reconciliation and independent sealed references remain required.",
+  "existing_packets": "Packets pinned to the prior freeze retain their historical evidence and do not validate against this updated freeze; prepare any new evaluation packet using the updated freeze.",
+  "evaluation_tool_repairs": {
+    "pilot_extract.py": "Import the unchanged PDF helper from its maintained retention location.",
+    "pilot_evaluate.py": "Use the maintained PDF helper. In the isolated historical-baseline worker, supply its original import name and adapt its old document_cover call signature without editing the frozen baseline source.",
+    "test_pilot_evaluate.py": "Exercise the actual historical and candidate workers on the existing development amendment fixture; baseline abstains and candidate identifies amendment. The regression test failed on the stale import before the worker repair."
+  },
+  "validation": {
+    "result": "110 passed",
+    "seconds": 3.84,
+    "command": "PATH=\"$PWD/.venv/bin:$PATH\" .venv/bin/python .github/scripts/offline-python.py -m pytest -q tests/test_explicit_document_forms.py docs/experiments/filename-patterns-20261015/test_pilot_evidence.py docs/experiments/filename-patterns-20261015/test_pilot_workflow.py docs/experiments/filename-patterns-20261015/test_pilot_evaluate.py",
+    "log_sha256": "46d08245ab2b1e7a18afb698430e4d95d3e4499d6bd5265383e27b64aa6f3559"
+  }
+}
