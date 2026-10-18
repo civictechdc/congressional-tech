@@ -1,7 +1,7 @@
 ---
 id: ct-hnxb
 status: in_progress
-deps: [ct-sv16]
+deps: [ct-sv16, ct-lvvr]
 links: [ct-gubr, ct-gesp, ct-zika]
 created: 2026-10-18T19:21:16Z
 type: task
@@ -76,3 +76,7 @@ Observation conversion-unit correction: writer and complete verifier retain oute
 **2026-10-18T23:17:48Z**
 
 Complete retained-catalog local preparation passed at frozen 2feb8c7: 1,241,157 document rows, 1,683,430 filenames, 7,246,240 observations serialized and fully checked, 86 reviews bound / 0 withdrawn, 270 output files SHA/size verified, source/runtime custody unchanged. Whole watchdog wall 3,155.71 seconds; peak RSS 7,310,491,648 B under unchanged local 7 GiB / 180 minute / 8 GiB disk-floor watchdog. Observation write plus full readback took 2,492.45 seconds; details 437.80 seconds. Filename layout is 249 groups / 13,073,006 B footer. Output total 1,290,775,040 B; documents and filenames together add 210,386,731 B versus saved selected-release descriptors, while the other eleven declared payload hashes/sizes match. No aggregate savings claim, retry, product resource override, classifier or remote mutation. Evidence docs/experiments/publication-remediation/current-catalog-qualification-20261018.md. Local macOS preparation only; keep in_progress until hosted/live verification. Browser probe and ct-x7vx deployed unchanged-job observation remain separate.
+
+**2026-10-18T23:20:03Z**
+
+Full backend qualification passed. The focused browser probe then found 45 repeated metadata parses per technical read (19.09 s cold, 17.44 s warm) and a 120 s source_url search timeout. Reopened cache ticket ct-lvvr is now a release prerequisite. Preserve the qualified backend artifacts; fix browser operation ownership under unchanged cache limits, then repeat only the changed browser path.
