@@ -1,0 +1,13 @@
+# Admit the observation being converted
+
+The full retained-catalog trial at frozen c8dda5d stopped in observations after copying documents and proving complete filename equality. One outer list had a 376,238,952-byte Python estimate against the unchanged 134,217,728-byte row limit. The writer serializes one observation at a time, so converting the entire list created an unnecessary allocation and admission failure.
+
+The writer and complete verifier now keep each source list in Arrow and convert one nested struct after applying the existing Python estimate to that struct. Actual outer Arrow row and batch limits still apply. The retained reference list gets a conservative count-based estimate (64 + 48 bytes per reference) before allocation. The existing Python row, JSON value, part, SQLite, and Arrow limits remain unchanged. Values from the previous conversion are released before converting the next observation.
+
+A default-policy fixture with 60,000 small observations has 4,357,504 Arrow bytes and a 252,120,392-byte aggregate Python estimate. The prior whole-list admission refuses it. The new writer and complete verifier finish in 5.20 seconds, with a maximum admitted observation estimate of 4,928 bytes and a 2,880,064-byte reference-list estimate. Its count handoff remains 60,000; deduplication produces two dictionary entries. Process highwater is 93,126,656 bytes, including fixture construction and imports. These estimates describe admission accounting, not measured heap allocation.
+
+Sixty-five focused observation and decoded-budget tests pass. They include refusal before scalar conversion in both stages, reference allocation refusal, exact derived dictionary/reference bytes, null versus empty, order, duplicates, Unicode, timestamp strings, integer/boolean values, and sliced Arrow list offsets. Existing JSON/Arrow refusals, count handoff and full value checks remain covered.
+
+Local receipt and runnable fixture: primary ignored output `output/publication-remediation-20261018/rollout/observation-units/{check.py,receipt.json}`. The failed full trial remains in `output/publication-remediation-20261018/rollout/local-current-catalog/trial-c8dda5d/`. No full catalog retry has run after this correction. Combined publisher acceptance, filename layout/browser behavior, hosted Linux behavior, and deployment remain separate pending checks.
+
+Focused command: `PYTHONPATH=apps/site/scripts:scripts:packages/congress_api/src /Users/mikewolfd/Work/congressional-tech/.venv/bin/python -m pytest tests/test_filename_observations.py tests/test_filename_decoded_budget.py -q` (65 passed in 9.32 seconds).
