@@ -4,6 +4,8 @@ The caller supplies ownership, cloud, input and pin checks. SDK write retries
 must be disabled. Only derived catalog and viewer objects may be written.
 """
 from dataclasses import dataclass
+from contextlib import contextmanager
+import weakref
 import hashlib
 from pathlib import Path
 import threading
@@ -18,32 +20,71 @@ class VerifiedTransfer:
     etag: str
 
 
+class CallbackPublicationGuard:
+    """Adapter for a caller that deliberately runs one complete check per write."""
+    def __init__(self, callback):
+        self.callback = callback
+    def check(self):
+        return self.callback()
+    shared_commit = check
+
+
+def require_publication_client(client):
+    if not all(callable(getattr(client, name, None)) for name in ('get_object', 'put_object')):
+        raise TypeError('Publication client requires complete reads and conditional put_object')
+    metadata = getattr(client, 'meta', None)
+    if metadata is not None:
+        retries = getattr(getattr(metadata, 'config', None), 'retries', {})
+        if retries.get('total_max_attempts') != 1:
+            raise ValueError('Publication SDK mutation retries must be disabled (total_max_attempts=1)')
+    return client
+
+
 class GuardedPublicationClient:
-    def __init__(self, client, *, guard, journal, after_write):
+    def __init__(self, client, *, guard, journal, after_write, strict_conditions=False):
+        require_publication_client(client)
+        if callable(guard) and not all(callable(getattr(guard, name, None)) for name in ('check','shared_commit')):
+            guard = CallbackPublicationGuard(guard)
+        if not all(callable(getattr(guard, name, None)) for name in ('check','shared_commit')):
+            raise TypeError('Publication guard requires explicit check and shared_commit methods')
         self.client = client
         self.guard = guard
         self.journal = journal
         self.after_write = after_write
+        self.strict_conditions = strict_conditions
         self.lock = threading.RLock()
         self._key_locks = {}
-        self._receipts = {}
+        self._receipts = weakref.WeakValueDictionary()
 
     @staticmethod
     def immutable_write(kwargs):
         return (kwargs.get('IfNoneMatch') == '*' and
                 kwargs['Key'].startswith(('catalog-generations/', 'catalog-history/sha256/',
                     'indexes/processing/body-results/', 'viewer-publications/releases/',
-                    'viewer-publications/catalogs/')))
+                    'viewer-publications/catalogs/', 'viewer-publications/attempts/')))
 
+    @contextmanager
     def write_lock(self, kwargs):
         if not self.immutable_write(kwargs):
-            return self.lock
+            with self.lock:
+                yield
+            return
+        key = (kwargs['Bucket'], kwargs['Key'])
         with self.lock:
-            return self._key_locks.setdefault((kwargs['Bucket'], kwargs['Key']), threading.RLock())
+            entry = self._key_locks.setdefault(key, [threading.RLock(), 0])
+            entry[1] += 1  # Include waiters, so cleanup cannot split same-key exclusion.
+        try:
+            with entry[0]:
+                yield
+        finally:
+            with self.lock:
+                entry[1] -= 1
+                if entry[1] == 0:
+                    del self._key_locks[key]
 
     def check_guard(self, kwargs):
         method = 'check' if self.immutable_write(kwargs) else 'shared_commit'
-        return getattr(self.guard, method, self.guard)()
+        return getattr(self.guard, method)()
 
     def verified_result(self, result, *, bucket, key, size, sha256, etag):
         receipt = VerifiedTransfer(bucket, key, size, sha256, etag)
@@ -81,6 +122,7 @@ class GuardedPublicationClient:
         return self.client.download_file(bucket, key, filename)
 
     def put_object(self, **kwargs):
+        local_validation = kwargs.pop('_local_validation', None)
         key = kwargs['Key']
         if not (key.startswith(('catalog-generations/', 'catalog-history/sha256/',
                                 'indexes/processing/', 'viewer-publications/'))
@@ -93,13 +135,20 @@ class GuardedPublicationClient:
             size, digest = len(body), hashlib.sha256(body).hexdigest()
         else:
             start = body.tell()
-            digestor = hashlib.sha256()
-            size = 0
-            while chunk := body.read(1024 * 1024):
-                size += len(chunk)
-                digestor.update(chunk)
-            body.seek(start)
-            digest = digestor.hexdigest()
+            if local_validation is not None:
+                from congress_api.retention.derived_files import VerifiedFile
+                if not isinstance(local_validation, VerifiedFile) or start != 0:
+                    raise ValueError('Invalid local publication file proof')
+                local_validation.require(body.name)
+                size, digest = local_validation['bytes'], local_validation['sha256']
+            else:
+                digestor = hashlib.sha256()
+                size = 0
+                while chunk := body.read(1024 * 1024):
+                    size += len(chunk)
+                    digestor.update(chunk)
+                body.seek(start)
+                digest = digestor.hexdigest()
 
         def verify():
             response = self.client.get_object(Bucket=kwargs['Bucket'], Key=key)
@@ -125,11 +174,15 @@ class GuardedPublicationClient:
                 result = self.client.put_object(**kwargs)
             except Exception as error:
                 request_error = error
+                if self.strict_conditions:
+                    from botocore.exceptions import ClientError
+                    if isinstance(error, ClientError) and error.response['Error']['Code'] in {'PreconditionFailed', '412'}:
+                        raise
                 # Verify the possible commit once; never resend this request.
                 uncertain, result = True, {}
             try:
                 version = verify()
-            except ValueError:
+            except Exception as reconciliation_error:
                 # Preserve a definite condition refusal for maintained callers
                 # that deliberately keep an existing immutable catalog locator.
                 from botocore.exceptions import ClientError
@@ -137,6 +190,16 @@ class GuardedPublicationClient:
                         and request_error.response['Error']['Code'] in {'PreconditionFailed', '412'}):
                     self.journal('publication_write_refused', dict(key=key, reason='condition_failed'))
                     raise request_error
+                if request_error is not None:
+                    failure = RuntimeError('Publication write and reconciliation failed for ' + key
+                        + '; upload outcome is uncertain; no request was resent')
+                    failure.add_note('Original request failure type: ' + type(request_error).__name__)
+                    failure.add_note('Reconciliation failure type: ' + type(reconciliation_error).__name__)
+                    # Keep exact exceptions available to operators without formatting
+                    # transport messages that might contain signed URLs or credentials.
+                    failure.request_error = request_error
+                    failure.reconciliation_error = reconciliation_error
+                    raise failure from request_error
                 raise
             if uncertain:
                 result = {'ETag': version}
@@ -148,13 +211,44 @@ class GuardedPublicationClient:
                                         size=size, sha256=digest, etag=version)
 
     def upload_file(self, filename, bucket, key, ExtraArgs=None):
+        return self._upload_file(filename, bucket, key, ExtraArgs)
+
+    def upload_verified_file(self, filename, bucket, key, ExtraArgs=None, *, validation):
+        return self._upload_file(filename, bucket, key, ExtraArgs, validation=validation)
+
+    def _upload_file(self, filename, bucket, key, ExtraArgs=None, *, validation=None):
         # Replace managed multipart writes with one conditional, streamed PUT.
         # Return the exact verified result so callers can avoid a second full GET.
         path = Path(filename)
         if path.stat().st_size >= 5 * 1024**3:
             raise ValueError('Publication file exceeds single-PUT limit')
         options = dict(ExtraArgs or {})
+        if validation is not None:
+            validation.require(path)
+            options['_local_validation'] = validation
         with path.open('rb') as stream:
             result = self.put_object(Bucket=bucket, Key=key, Body=stream,
                             ContentLength=path.stat().st_size, IfNoneMatch='*', **options)
         return result.get('_verified_transfer')
+
+
+class ContinuedPublicationClient(GuardedPublicationClient):
+    """One original-condition replay boundary for cloud and local acceptance."""
+    def __init__(self, client, *, continuation, **kwargs):
+        self.continuation = continuation
+        super().__init__(client, **kwargs)
+
+    def put_object(self, **kwargs):
+        with self.write_lock(kwargs):
+            saved = self.continuation.value['writes'].get(kwargs['Key'])
+            if saved:
+                if (saved.get('expected_etag'), saved.get('if_none_match')) != (kwargs.get('IfMatch'), kwargs.get('IfNoneMatch')):
+                    raise ValueError('Continued publication write conditions differ')
+                if saved['verified']:
+                    self.check_guard(kwargs)
+                reused = self.continuation.replay(self.client, kwargs['Bucket'], kwargs['Key'], kwargs['Body'],
+                                                  validation=kwargs.get('_local_validation'))
+                if reused is not None:
+                    return self.verified_result(reused, bucket=kwargs['Bucket'], key=kwargs['Key'],
+                        size=saved['bytes'], sha256=saved['sha256'], etag=saved['etag'])
+            return super().put_object(**kwargs)

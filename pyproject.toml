@@ -1,0 +1,37 @@
+[project]
+name = "congressional-tech-workspace"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "house-naming-guide[test]",
+    "committee-meeting",
+    "congress-shared",
+    "youtube-api",
+    "congress-api[archive,test]",
+    "congress-youtube",
+]
+
+[dependency-groups]
+dev = ["PyYAML>=6,<7"]
+
+[tool.uv]
+package = false
+
+
+[tool.uv.workspace]
+members = [
+    "packages/house-naming",
+    "packages/committee_meeting",
+    "packages/congress_shared",
+    "packages/youtube_api",
+    "packages/congress_api",
+    "apps/committee_youtube",
+]
+
+[tool.uv.sources]
+house-naming-guide = { workspace = true }
+committee-meeting = { workspace = true }
+congress-shared = { workspace = true }
+youtube-api = { workspace = true }
+congress-api = { workspace = true }
+congress-youtube = { workspace = true }

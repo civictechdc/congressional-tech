@@ -6,13 +6,18 @@ Run from the repository root:
 from __future__ import annotations
 
 import argparse
+from array import array
 from copy import deepcopy
+from collections import OrderedDict
 from bisect import bisect_right
 from functools import lru_cache
+from contextlib import ExitStack
+import weakref
 import gzip
 from hashlib import sha256
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -41,6 +46,15 @@ LIST_COLUMNS = ('filename', 'source_url', 'body_key', 'congress', 'document_kind
                 'recovered_filename', 'recovered_source_url', 'source_congress',
                 'source_record_type', 'capture_outcome', 'state_outcome')
 FILTERS = ('congress', 'document_family', 'document_kind', 'format')
+
+
+def positive_integer(value, fallback=1, maximum=9007199254740991):
+    """Match the browser's positive finite floor-and-clamp page rule."""
+    try:
+        number = float(value)
+        return min(maximum, math.floor(number)) if math.isfinite(number) and number >= 1 else fallback
+    except (TypeError, ValueError, OverflowError):
+        return fallback
 
 
 class SnapshotChanged(ValueError):
@@ -267,7 +281,37 @@ class RetainedFiles:
 
 
 class Catalog:
-    def __init__(self, path: Path, retained=None, *, review_manifest=None, review_sha256=None):
+    def __init__(self, path: Path, retained=None, *, review_manifest=None, review_sha256=None, search_indexes=True):
+        self._readers = ExitStack()
+        self._cleanup = weakref.finalize(self, self._readers.close)
+        try:
+            self._initialize(path, retained, review_manifest=review_manifest, review_sha256=review_sha256,
+                             search_indexes=search_indexes)
+        except BaseException as error:
+            try:
+                self.close()
+            except BaseException as cleanup:
+                error.add_note(f'Catalog reader cleanup also failed: {cleanup}')
+            raise
+
+    def close(self):
+        if hasattr(self, '_complete_groups'):
+            self._complete_groups.clear()
+            self._complete_group_bytes = 0
+        self._cleanup()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, kind, error, traceback):
+        try:
+            self.close()
+        except BaseException as cleanup:
+            if error is None:
+                raise
+            error.add_note(f'Catalog reader cleanup also failed: {cleanup}')
+
+    def _initialize(self, path, retained, *, review_manifest, review_sha256, search_indexes):
         from congress_api.retention.catalog_publication import local_catalog_paths
         if path.name == 'document-filenames.parquet' and path.parent.name == 'indexes':
             path, documents = local_catalog_paths(path.parent.parent)
@@ -279,11 +323,15 @@ class Catalog:
         self.review_snapshot = None
         self.review_error = None
         self.review_classifications = {}
-        self.file = pq.ParquetFile(path)
+        self.row_group_budget = 32 * 1024**2
+        self._complete_groups = OrderedDict()
+        self._complete_group_bytes = 0
+        read_options = {} if search_indexes else {'pre_buffer': False, 'buffer_size': 64 * 1024}
+        self.file = self._readers.enter_context(pq.ParquetFile(path, **read_options))
         self.document_path = documents
         if not self.document_path.is_file():
             raise ValueError('Build the root document index first with index_document_filenames.py --documents-only.')
-        self.document_file = pq.ParquetFile(self.document_path)
+        self.document_file = self._readers.enter_context(pq.ParquetFile(self.document_path, **read_options))
         catalog_id = (self.file.schema_arrow.metadata or {}).get(b'catalog_id')
         if not catalog_id or catalog_id != (self.document_file.schema_arrow.metadata or {}).get(b'catalog_id'):
             raise ValueError('The document indexes are from different builds. Rebuild them together.')
@@ -291,6 +339,7 @@ class Catalog:
         self.table = self.file.read(columns=[c for c in LIST_COLUMNS if c in self.fields])
         self.documents = self.document_file.read(columns=[c for c in LIST_COLUMNS if c in self.fields])
         entries = {key: i for i, key in enumerate(self.documents['document_id'].to_pylist())}
+        self.document_id_entries = entries
         sources = {key: i for i, key in enumerate(self.table['source_id'].to_pylist())}
         self.source_ids = sources
         self.entry_ids = [entries[key] for key in self.table['document_id'].to_pylist()]
@@ -306,6 +355,9 @@ class Catalog:
                 row_id += 1
         self.preferred_sources = [sources[key] for key in self.documents['source_id'].to_pylist()]
         self.order = pc.sort_indices(self.documents, sort_keys=[('filename', 'ascending')])
+        self.entry_positions = array('I', [0]) * len(self.documents)
+        for position, entry in enumerate(self.order.to_pylist()):
+            self.entry_positions[entry] = position
         self.document_entries = set(
             i for i, roles in enumerate(self.documents['record_role'].to_pylist())
             if roles == ['document']
@@ -344,11 +396,11 @@ class Catalog:
             column = (self.table[field] if field in self.table.column_names else
                       pa.nulls(len(self.table), type=pa.list_(pa.string())))
             values = pc.list_flatten(column)
-            joined = pc.binary_join(column, '\0')
             if field == 'format':
-                values, joined = pc.utf8_lower(values), pc.utf8_lower(joined)
+                values = pc.utf8_lower(values)
             facets[field] = sorted(v for v in pc.unique(values).to_pylist() if v)
-            self.filter_text[field] = pc.binary_join_element_wise('\0', joined, '\0', '')
+        if search_indexes:
+            self._ensure_search_indexes()
         self.info = {
             'file': path.name, 'rows': len(self.table),
             'filenames': pc.count_distinct(self.table['filename']).as_py(),
@@ -385,19 +437,32 @@ class Catalog:
             self.info['review_facets'] = {field: sorted(set(self.info['facets'][field]) | {
                 value for entry in self.reviewed_entries for value in self.review_classifications[entry][field] or []})
                 for field in ('document_kind', 'document_family')}
-            self.source_positions = pa.array(range(len(self.table)), type=pa.int64())
-            self.review_source_mask = self.source_mask(self.reviewed_entries)
         elif self.review_error:
             self.info['review_error'] = self.review_error
 
     def source_mask(self, entries):
+        if not hasattr(self, 'source_positions'):
+            self.source_positions = pa.array(range(len(self.table)), type=pa.int64())
         positions = [row for entry in entries for row in self.members[entry]]
         return pc.is_in(self.source_positions, value_set=pa.array(positions, type=pa.int64()))
 
     def reviewed_matches(self, baseline, field, predicate):
         """Replace category readings on every alias of an applied reviewed group."""
         accepted = {entry for entry in self.reviewed_entries if predicate(self.review_classifications[entry][field] or [])}
+        if not hasattr(self, 'review_source_mask'):
+            self.review_source_mask = self.source_mask(self.reviewed_entries)
         return pc.or_(pc.and_(baseline, pc.invert(self.review_source_mask)), self.source_mask(accepted))
+
+    def _ensure_search_indexes(self):
+        if self.filter_text:
+            return
+        for field in FILTERS:
+            column = (self.table[field] if field in self.table.column_names else
+                      pa.nulls(len(self.table), type=pa.list_(pa.string())))
+            joined = pc.binary_join(column, '\0')
+            if field == 'format':
+                joined = pc.utf8_lower(joined)
+            self.filter_text[field] = pc.binary_join_element_wise('\0', joined, '\0', '')
 
     def resolve(self, identity, catalog_id=None):
         if catalog_id and catalog_id != self.info['catalog_id']:
@@ -425,6 +490,7 @@ class Catalog:
         return pc.binary_join(column, ' | ') if pa.types.is_list(column.type) else column
 
     def search(self, query):
+        self._ensure_search_indexes()
         mode = query.get('classification', '')
         if mode not in ('', 'reviewed'):
             raise ValueError('Unknown classification mode.')
@@ -490,9 +556,9 @@ class Catalog:
                 matching_entries.intersection_update(missing_entries)
         matches = [entry for entry in self.order.to_pylist() if entry in matching_entries]
         total = len(matches)
-        limit = max(1, min(100, int(query.get('limit', 50))))
+        limit = positive_integer(query.get('limit'), 50, 100)
         pages = max(1, (total + limit - 1) // limit)
-        page = max(1, min(pages, int(query.get('page', 1))))
+        page = positive_integer(query.get('page'), 1, pages)
         selected = matches[(page - 1) * limit:page * limit]
         rows = self.documents.take(pa.array(selected, type=pa.int64())).to_pylist()
         for row, entry in zip(rows, selected):
@@ -512,14 +578,42 @@ class Catalog:
             self.review_snapshot.check()
         return {'rows': rows, 'total': total, 'page': page, 'pages': pages, 'limit': limit}
 
-    @lru_cache(maxsize=16)
     def record(self, row_id):
-        if row_id < 0 or row_id >= len(self.table):
-            raise ValueError('Row does not exist.')
-        group = bisect_right(self.group_starts, row_id) - 1
-        # Read all columns only for the selected row's group, never for the whole catalog.
+        return self.records([row_id])[0]
+
+    def _complete_rows(self, row_ids, *, documents=False):
+        file = self.document_file if documents else self.file
+        starts = self.document_starts if documents else self.group_starts
+        requested = {}
+        for position, row_id in enumerate(row_ids):
+            if type(row_id) is not int or not 0 <= row_id < starts[-1]:
+                raise ValueError('Row does not exist.')
+            group = bisect_right(starts, row_id) - 1
+            requested.setdefault(group, []).append((position, row_id - starts[group]))
+        rows = [None] * len(row_ids)
         with self.read_lock:
-            return self.file.read_row_group(group).slice(row_id - self.group_starts[group], 1).to_pylist()[0]
+            for group, positions in requested.items():
+                key = (documents, group)
+                table = self._complete_groups.pop(key, None)
+                if table is not None:
+                    self._complete_group_bytes -= table.nbytes
+                else:
+                    table = file.read_row_group(group)
+                if table.nbytes <= self.row_group_budget:
+                    while self._complete_groups and self._complete_group_bytes + table.nbytes > self.row_group_budget:
+                        _, removed = self._complete_groups.popitem(last=False)
+                        self._complete_group_bytes -= removed.nbytes
+                    self._complete_groups[key] = table
+                    self._complete_group_bytes += table.nbytes
+                # Oversized row groups have one-operation lifetime and never
+                # enter the retained cache; only complete requested rows escape.
+                selected = table.take(pa.array([offset for _, offset in positions], type=pa.int64())).to_pylist()
+                for (position, _), row in zip(positions, selected, strict=True):
+                    rows[position] = row
+        return rows
+
+    def records(self, row_ids):
+        return self._complete_rows(list(row_ids))
 
     def entry(self, row_id):
         record = self.record(row_id)
@@ -544,10 +638,10 @@ class Catalog:
                 'saved_file_available': bool(self.retained and saved_response(record))}
 
     def document(self, row_id):
+        if type(row_id) is not int or not 0 <= row_id < len(self.entry_ids):
+            raise ValueError('Row does not exist.')
         position = self.entry_ids[row_id]
-        group = bisect_right(self.document_starts, position) - 1
-        with self.read_lock:
-            return self.document_file.read_row_group(group).slice(position - self.document_starts[group], 1).to_pylist()[0]
+        return self._complete_rows([position], documents=True)[0]
 
     def review_rows(self, row_id):
         if self.review_error:
@@ -555,7 +649,11 @@ class Catalog:
         if self.review_snapshot is None:
             raise ValueError('Complete-body review access is not configured.')
         self.review_snapshot.check()
-        return self.document(row_id), [self.record(i) for i in self.members[self.entry_ids[row_id]]]
+        if type(row_id) is not int or not 0 <= row_id < len(self.entry_ids):
+            raise ValueError('Row does not exist.')
+        result = self.document(row_id), self.records(self.members[self.entry_ids[row_id]])
+        self.review_snapshot.check()
+        return result
 
     def review(self, row_id, withdrawn=False):
         # An unaffected group needs no full nested-row read. A configured but
@@ -607,9 +705,15 @@ def handler_for(catalog):
             try:
                 query = {k: v[-1] for k, v in parse_qs(url.query).items()}
                 if url.path == '/':
-                    self.send(HTML.read_bytes(), 'text/html; charset=utf-8')
-                elif url.path == '/filename-viewer.mjs':
-                    self.send(SCRIPT.read_bytes(), 'text/javascript; charset=utf-8')
+                    shell = HTML.read_bytes()
+                    marker = b'<!-- filename-viewer:body -->'
+                    if shell.count(marker) != 1:
+                        raise ValueError('Filename viewer shell needs exactly one body marker')
+                    self.send(shell.replace(marker, HTML.with_name('filename-viewer-body.html').read_bytes()), 'text/html; charset=utf-8')
+                elif url.path == '/filename-viewer.css':
+                    self.send(HTML.with_suffix('.css').read_bytes(), 'text/css; charset=utf-8')
+                elif url.path in {'/filename-adapter.mjs', '/filename-viewer.mjs', '/filename-rules.mjs', '/filename-provenance.mjs', '/filename-detail-state.mjs'}:
+                    self.send(SCRIPT.with_name(url.path[1:]).read_bytes(), 'text/javascript; charset=utf-8')
                 elif url.path == '/api/info':
                     self.json(catalog.info)
                 elif url.path == '/api/rows':
@@ -704,6 +808,7 @@ def main():
         pass
     finally:
         server.server_close()
+        catalog.close()
 
 
 if __name__ == '__main__':

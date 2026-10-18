@@ -43,7 +43,7 @@ def invoke(root,mode,row):
 @pytest.mark.parametrize('failure',['second_stage_replace','second_generation_upload','selector'])
 def test_failed_standalone_publication_preserves_input_pair(tmp_path,monkeypatch,mode,selected,failure):
     row,legacy,snapshot=setup(tmp_path,selected)
-    replace,put=Path.replace,LocalStore.put
+    replace,put=Path.replace,LocalStore.put_derived_file
     def fail_replace(path,target):
         if Path(target).name=='documents.parquet':
             assert Path(target).parent != tmp_path / 'indexes'
@@ -56,13 +56,13 @@ def test_failed_standalone_publication_preserves_input_pair(tmp_path,monkeypatch
     def fail_select(*args,**kwargs):
         raise OSError('injected selector failure')
     if failure=='second_stage_replace':monkeypatch.setattr(Path,'replace',fail_replace)
-    elif failure=='second_generation_upload':monkeypatch.setattr(LocalStore,'put',fail_put)
+    elif failure=='second_generation_upload':monkeypatch.setattr(LocalStore,'put_derived_file',fail_put)
     else:monkeypatch.setattr(LocalStore,'put_catalog_manifest',fail_select)
     with pytest.raises(OSError,match='injected'):
         invoke(tmp_path,mode,row)
     assert {name:(tmp_path / 'indexes' / name).read_bytes() for name in legacy} == legacy
     current=read_catalog(LocalStore(tmp_path))
-    assert current.filenames==snapshot.filenames and current.documents==snapshot.documents
+    assert current.files==snapshot.files
     assert current.version==snapshot.version
     assert (tmp_path / MANIFEST_KEY).is_file()==selected
 

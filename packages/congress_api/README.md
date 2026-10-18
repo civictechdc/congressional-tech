@@ -397,6 +397,16 @@ live log. The final job summary and downloadable artifact retain the last local
 progress file even when publication fails. Existing jobs keep the code they
 started with, so new progress reporting begins with the next updated run.
 
+Catalog readers own verified temporary Parquet files for the complete rebuild,
+including prior-table archival. The selector remains a small conditional JSON
+write. Derived-file operations accept only the exact root table, generation, and
+history paths; body-file operations retain their separate body-only restriction.
+Reads verify size, SHA256 and catalog metadata while R2 retries retain the same
+object version. Failed reads or durable file writes retain owned evidence with
+its path in the exception; successful snapshots remove their temporary files.
+This trades compressed-table Python allocations for bounded streaming buffers
+and temporary disk copies. See the local F experiment for measured limits.
+
 Before either derived table is replaced, its previous bytes are retained under
 `catalog-history/sha256/<digest>/<table>.parquet`. The summary reports
 `previous_filenames_key` and `previous_documents_key`. This preserves old-only

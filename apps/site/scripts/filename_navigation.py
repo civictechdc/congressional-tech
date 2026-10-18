@@ -20,27 +20,36 @@ def publish_navigation(groups, preferred, output):
         cursor += count
     members = array('I', [0]) * rows
     positions = array('I', offsets)
-    navigation = bytearray(rows * 16)
-    for row, group in enumerate(groups):
-        members[positions[group]] = row
-        positions[group] += 1
-        struct.pack_into('<IIII', navigation, row * 16, group, preferred[group], offsets[group], counts[group])
+    nav_path, member_path = output / 'detail-navigation.bin', output / 'detail-members.bin'
+    with nav_path.open('wb') as stream:
+        for row, group in enumerate(groups):
+            members[positions[group]] = row
+            positions[group] += 1
+            stream.write(struct.pack('<IIII', group, preferred[group], offsets[group], counts[group]))
     if sys.byteorder != 'little':
         members.byteswap()
-    nav_path, member_path = output / 'detail-navigation.bin', output / 'detail-members.bin'
-    nav_path.write_bytes(navigation)
-    member_path.write_bytes(members.tobytes())
+    with member_path.open('wb') as stream:
+        members.tofile(stream)
     # Verify every source's navigation and each group's ordered membership.
-    packed = nav_path.read_bytes()
-    restored = array('I')
-    restored.frombytes(member_path.read_bytes())
-    if sys.byteorder != 'little':
-        restored.byteswap()
-    for row, group in enumerate(groups):
-        if struct.unpack_from('<IIII', packed, row * 16) != (group, preferred[group], offsets[group], counts[group]):
-            raise ValueError('Navigation changed during publication')
-    for group, offset in enumerate(offsets):
-        subset = restored[offset:offset + counts[group]]
-        if any(groups[row] != group for row in subset) or any(a >= b for a, b in zip(subset, subset[1:])):
-            raise ValueError('Navigation membership changed during publication')
+    with nav_path.open('rb') as stream:
+        for row, group in enumerate(groups):
+            raw = stream.read(16)
+            if len(raw) != 16 or struct.unpack('<IIII', raw) != (group, preferred[group], offsets[group], counts[group]):
+                raise ValueError('Navigation changed during publication')
+        if stream.read(1):
+            raise ValueError('Unexpected navigation bytes')
+    with member_path.open('rb') as stream:
+        for group, offset in enumerate(offsets):
+            stream.seek(offset * 4)
+            previous = -1
+            for _ in range(counts[group]):
+                raw = stream.read(4)
+                if len(raw) != 4:
+                    raise ValueError('Navigation membership changed during publication')
+                row, = struct.unpack('<I', raw)
+                if row >= rows or groups[row] != group or row <= previous:
+                    raise ValueError('Navigation membership changed during publication')
+                previous = row
+        if stream.read(1):
+            raise ValueError('Unexpected navigation membership bytes')
     return {'detail_navigation': nav_path, 'detail_members': member_path}

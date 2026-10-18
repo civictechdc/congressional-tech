@@ -9,8 +9,14 @@ import {showPublicationUpdate} from '../apps/site/src/components/filename-public
 
 const require = createRequire(new URL('../apps/site/package.json', import.meta.url));
 const {JSDOM} = require('jsdom');
-const html = await readFile(new URL('../docs/youtube-coverage/research/filename-viewer.html', import.meta.url), 'utf8');
-const script = await readFile(new URL('../docs/youtube-coverage/research/filename-viewer.mjs', import.meta.url), 'utf8');
+const shell = await readFile(new URL('../docs/youtube-coverage/research/filename-viewer.html', import.meta.url), 'utf8');
+const markup = await readFile(new URL('../docs/youtube-coverage/research/filename-viewer-body.html', import.meta.url), 'utf8');
+const html = shell.replace('<!-- filename-viewer:body -->',markup);
+const rules = await readFile(new URL('../docs/youtube-coverage/research/filename-rules.mjs', import.meta.url), 'utf8');
+const provenance = await readFile(new URL('../docs/youtube-coverage/research/filename-provenance.mjs', import.meta.url), 'utf8');
+const detailState = await readFile(new URL('../docs/youtube-coverage/research/filename-detail-state.mjs', import.meta.url), 'utf8');
+const adapters = await readFile(new URL('../docs/youtube-coverage/research/filename-adapter.mjs', import.meta.url), 'utf8');
+const script = adapters.replaceAll('export ', '') + detailState.replaceAll('export ', '') + rules.replaceAll('export ', '') + provenance.replaceAll('export ', '') + (await readFile(new URL('../docs/youtube-coverage/research/filename-viewer.mjs', import.meta.url), 'utf8')).replace(/^import .*;\n/gm, '');
 const original = 'https://committee.test/UploadedFiles/Resolution.pdf';
 const final = 'https://committee.test/uploadedfiles/resolution.pdf';
 const origin = {file_url: final, pages: [], recovered_urls: [], redirects: [{original, final}]};
@@ -50,7 +56,7 @@ test('new data is reachable inside an open detail panel and follows the selected
   } finally { dom.window.close(); }
 });
 
-async function app(respond, info={}) {
+async function app(respond, info={}, beforeInfo, mode='local') {
   const dom = new JSDOM(html, {url: 'https://viewer.test/?row=12', runScripts: 'outside-only'});
   const w = dom.window;
   w.HTMLDialogElement.prototype.showModal = function() {this.open = true;};
@@ -59,15 +65,111 @@ async function app(respond, info={}) {
   const requests = [];
   w.fetch = async url => {
     requests.push(url);
-    if (url === '/api/info') return {ok:true, json:async()=>({catalog_id:'snapshot', house_naming_version:'published',
-      documents:1, capture_records:0, rows:2, fields:Object.keys(record), facets:{congress:[],document_kind:[],document_family:[],format:['pdf']},...info})};
+    if (url === '/api/info') { await beforeInfo?.(w); return {ok:true, json:async()=>({catalog_id:'snapshot', house_naming_version:'published',
+      documents:1, capture_records:0, rows:2, fields:Object.keys(record), facets:{congress:[],document_kind:[],document_family:[],format:['pdf']},...info})}; }
     if (url.startsWith('/api/rows')) return {ok:true, json:async()=>({rows:[{...record,_row:12,retained:true,source_count:2}],total:1,page:1,pages:1,limit:100})};
     return respond ? respond(url) : {ok:true, json:async()=>url.startsWith('/api/entry/') ? entry : evidence};
   };
+  w.document.body.dataset.filenameMode=mode;
+  if(mode==='published') {
+    const respond=w.fetch;
+    w.filenameViewerApi=async(url,signal)=>{const response=await respond(url,{signal});const value=await response.json();if(!response.ok)throw new Error(value.error);return value;};
+    w.fetch=async()=>{throw new Error('Unexpected public HTTP fallback');};
+  }
   await w.eval('(async()=>{' + script + '\n})()');
   await flush();
   return {dom,w,requests,get:id=>w.document.getElementById(id)};
 }
+
+test('large source groups retain every selectable source with at most twenty source buttons', async()=>{
+  const large=structuredClone(entry);
+  large.sources=[structuredClone(record), ...Array.from({length:1000},(_,i)=>({...record, source_id:'source-'+i, source_url:'https://committee.test/'+i}))];
+  large.published_only=true;
+  const {dom,get,requests}=await app(async url=>({ok:true,json:async()=>{
+    const selected=decodeURIComponent(url.split('/api/entry/')[1]?.split('?')[0]||'');
+    return {...large,record:large.sources.find(source=>source.source_id===selected)||large.record};
+  }}));
+  try {
+    assert.equal(get('source-link').hidden,false); assert.equal(get('saved-link').hidden,false);
+    let pages=0;
+    for(;;) {
+      assert.ok(get('source-variants').querySelectorAll('button[data-source]').length<=20);
+      const next=[...get('source-variants').querySelectorAll('button')].find(button=>button.textContent==='Next sources');
+      if(next.disabled)break;
+      next.click();pages++;
+    }
+    assert.equal(pages,50);
+    const last=get('source-variants').querySelector('[data-source="source-999"]');
+    assert.ok(last);last.click();await flush();
+    assert.equal(get('detail').dataset.row,'source-999');
+    assert.equal(get('source-variants').querySelector('[data-source="source-999"]').getAttribute('aria-pressed'),'true');
+    assert.equal(requests.some(url=>url.startsWith('/api/full/')),false);
+  } finally {dom.window.close();}
+});
+
+test('late clipboard completion cannot update a new detail or a closed panel', async()=>{
+  const {dom,w,get}=await app();
+  let copied;
+  Object.defineProperty(w.navigator,'clipboard',{value:{writeText:()=>new Promise(resolve=>copied=resolve)}});
+  try {
+    get('copy').click();await flush();
+    get('close-detail').click();copied();await flush();
+    assert.notEqual(get('copy-status').textContent,'Copied');
+    assert.equal(get('detail').open,false);
+  } finally {dom.window.close();}
+});
+
+test('origin page failure retains earlier context and retry deduplicates exact evidence', async()=>{
+  const first={urls:['https://committee.test/hearing'], titles:['Recorded hearing'], link_urls:[], link_labels:[], relationship:'Linked from'};
+  const selected={...structuredClone(entry), origin:{...origin,pages:[first]}, origin_next:20, published_only:true};
+  let attempts=0;
+  const {dom,get}=await app(async url=>{
+    if(url.startsWith('/api/origin/')) {
+      if(++attempts===1)throw new Error('temporary page failure');
+      return {ok:true,json:async()=>({origin:{pages:[first,{...first,titles:['Competing hearing title']}],redirects:[]},next:null})};
+    }
+    return {ok:true,json:async()=>selected};
+  });
+  try {
+    const more=()=>[...get('origin').querySelectorAll('button')].find(button=>/source pages/.test(button.textContent));
+    more().click();await flush();
+    assert.match(get('origin').textContent,/Recorded hearing/);
+    assert.equal(more().textContent,'Retry source pages');
+    more().click();await flush();
+    assert.equal(get('origin').querySelectorAll('a[href="https://committee.test/hearing"]').length,1);
+    assert.doesNotMatch(get('origin').textContent,/Recorded hearing|Competing hearing title/);
+    assert.equal(more(),undefined);
+  } finally {dom.window.close();}
+});
+
+test('late origin redraw preserves source navigation focus and close releases detail DOM', async()=>{
+  let finish;
+  const pending=new Promise(resolve=>finish=resolve), selected=structuredClone(entry);
+  selected.sources=[record,...Array.from({length:40},(_,i)=>({...record,source_id:'extra-'+i}))];
+  selected.origin_pending=true;selected.published_only=true;
+  const {dom,get}=await app(url=>url.startsWith('/api/entry-origin/')?pending:Promise.resolve({ok:true,json:async()=>selected}));
+  try {
+    [...get('source-variants').querySelectorAll('button')].find(button=>button.textContent==='Next sources').focus();
+    finish({ok:true,json:async()=>({origin_pending:false,origin,document_origin:origin})});await flush();
+    assert.equal(dom.window.document.activeElement.textContent,'Next sources');
+    get('close-detail').click();
+    assert.equal(get('source-variants').childElementCount,0);
+    assert.equal(get('origin').childElementCount,0);
+    assert.equal(get('detail-data').childElementCount,0);
+  } finally {dom.window.close();}
+});
+
+test('provenance path preserves competing titles and publisher link labels', async()=>{
+  const selected=structuredClone(entry);
+  const root={urls:['https://committee.test/hearing'], titles:['First title'], link_urls:['https://committee.test/article'], link_labels:['First label'], relationship:'Linked through'};
+  selected.origin.pages=[root,{...root,titles:['Competing title'],link_labels:['Second label']},
+    {urls:['https://committee.test/article'],titles:[],link_urls:[final],link_labels:[],relationship:'Linked from'}];
+  const {dom,get}=await app(async url=>({ok:true,json:async()=>url.startsWith('/api/entry/')?selected:evidence}));
+  try {
+    assert.doesNotMatch(get('origin').querySelector('.source-chain').textContent,/First title|Competing title/);
+    assert.match(get('origin').querySelector('.supporting-links').textContent,/First label.*Second label/s);
+  } finally {dom.window.close();}
+});
 
 test('review shows publisher, catalog uncertainty, saved evidence and stable links separately', async()=>{
   const {dom,w,get} = await app();
@@ -436,19 +538,19 @@ test('empty results and search errors provide recovery without stale pagination'
   const {dom,w,get}=await app();
   try {
     get('close-detail').click();
-    w.filenameViewerApi=async()=>({rows:[],total:0,page:1,pages:0,limit:50});
+    w.fetch=async()=>({ok:true,json:async()=>({rows:[],total:0,page:1,pages:0,limit:50})});
     get('q').value='no match';
     get('search-form').dispatchEvent(new w.Event('submit',{cancelable:true}));await flush();
     assert.equal(get('empty').hidden,false);
     assert.equal(w.document.querySelector('.pager').hidden,true);
     assert.equal(get('reset').disabled,false);
-    w.filenameViewerApi=async()=>{throw new Error('Temporary range failure');};
+    w.fetch=async()=>{throw new Error('Temporary range failure');};
     get('search-form').dispatchEvent(new w.Event('submit',{cancelable:true}));await flush();
     assert.equal(get('empty').hidden,true);
     assert.equal(get('error').hidden,false);
     assert.match(get('error-message').textContent,/Temporary range failure/);
     assert.equal(get('results').inert,false);
-    w.filenameViewerApi=async()=>({rows:[],total:0,page:1,pages:0,limit:50});
+    w.fetch=async()=>({ok:true,json:async()=>({rows:[],total:0,page:1,pages:0,limit:50})});
     get('retry').click();await flush();
     assert.equal(get('error').hidden,true);
     assert.equal(get('empty').hidden,false);
@@ -861,4 +963,37 @@ test('public reviews link to published evidence and preserve the PDF download ac
   assert.equal(pdf.href,result.evidence.body);assert.equal(pdf.download,'reviewed-document.pdf');
   assert.equal(links.find(link=>link.textContent==='Page 1').href,result.evidence.pages[1]);
  }finally{dom.window.close();}
+});
+
+
+test('history changes while info is pending apply only the latest deep link',async()=>{
+ const errors=[];
+ const {dom,w,requests}=await app(undefined,{},async w=>{
+  w.addEventListener('error',event=>errors.push(event.error));
+  w.history.replaceState(null,'','?source=obsolete&catalog=snapshot&q=old');
+  w.dispatchEvent(new w.PopStateEvent('popstate'));
+  await flush();
+  w.history.replaceState(null,'','?source=latest&catalog=snapshot&q=new');
+  w.dispatchEvent(new w.PopStateEvent('popstate'));
+ });
+ try {
+  assert.deepEqual(errors,[]);assert(requests.some(url=>url.startsWith('/api/entry/latest?catalog=snapshot')));
+  assert(!requests.some(url=>url.includes('/api/entry/obsolete')));
+  assert.equal(w.document.getElementById('q').value,'new');
+ } finally {dom.window.close();}
+});
+
+
+test('published mode uses only the worker and ignores local comparison payloads',async()=>{
+ const selected={...structuredClone(entry),saved_file_url:'https://archive.test/saved/document.pdf'};
+ const {dom,get,requests}=await app(async url=>{
+  if(!url.startsWith('/api/entry/'))throw new Error('Unexpected local service '+url);
+  return {ok:true,json:async()=>selected};
+ },{},undefined,'published');
+ try {
+  assert.equal(get('error').hidden,true);assert.equal(get('saved-link').href,selected.saved_file_url);
+  assert.match(get('filename-findings').textContent,/does not rerun the naming rules/);
+  assert.doesNotMatch(get('filename-findings').textContent,/Current reader|supported naming convention matched/);
+  assert(!requests.some(url=>url.startsWith('/api/evidence/')||url.startsWith('/review-evidence/')));
+ } finally {dom.window.close();}
 });

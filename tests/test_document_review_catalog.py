@@ -12,9 +12,10 @@ from congress_api.retention.document_review_catalog import write_candidates, sel
 from congress_api.retention.document_review_receipts import file_digest, row_digest, load_reviews
 
 
-def fixture(tmp_path, unsupported=False):
+def fixture(tmp_path, unsupported=False, pages=1):
     pdf=tmp_path/'body.pdf';writer=PdfWriter()
-    writer.add_blank_page(width=100,height=100);writer.write(pdf)
+    for _ in range(pages): writer.add_blank_page(width=100,height=100)
+    writer.write(pdf)
     digest=file_digest(pdf);body=f'bodies/sha256/{digest[:2]}/{digest}.gz'
     source=dict(document_id='d',source_id='s',filename='amendment.pdf',body_key=body,record_role=['document'],
         media_type=['application/pdf'],http_status=['200'],body_format=['pdf'],document_kind=['amendment'])
@@ -22,14 +23,14 @@ def fixture(tmp_path, unsupported=False):
     original=dict(document_id='d',filename='amendment.pdf',after_kind=['amendment'],members=[deepcopy(source)])
     ledger=tmp_path/'ledger.jsonl';ledger.write_text(json.dumps(original)+'\n')
     render=tmp_path/'page-1.png';render.write_bytes(b'fixture-render')
-    fetched=dict(document_id='d',filename='amendment.pdf',body_key=body,sha256=digest,path=str(pdf),pages=1)
+    fetched=dict(document_id='d',filename='amendment.pdf',body_key=body,sha256=digest,path=str(pdf),pages=pages)
     fetch=tmp_path/'fetch.json';fetch.write_text(json.dumps(dict(results=[fetched])))
     forms=['letter']+(['tax-return'] if unsupported else [])
     record=dict(fetched,reviewer='assistant',all_pages_visually_reviewed=True,observed_document_forms=forms,
         rendered_pages={str(render):file_digest(render)},independent_reference=False,release_approved=False,
-        page_sections=[dict(first_page=1,last_page=1,observed_form='|'.join(forms),description='Embedded forms')],
+        page_sections=[dict(first_page=1,last_page=pages,observed_form='|'.join(forms),description='Embedded forms')],
         observations=['Filename role does not establish body form.'],notes='Preserve literal discrepancies.',
-        source_completeness_observations=[dict(pdf_pages=[1],observation='Original filing completeness unknown.')])
+        source_completeness_observations=[dict(pdf_pages=list(range(1, pages + 1)),observation='Original filing completeness unknown.')])
     receipt=tmp_path/'receipt.json'
     receipt.write_text(json.dumps(dict(input_ledger=str(ledger),input_ledger_sha256=file_digest(ledger),
         fetch_results_path=str(fetch),fetch_results_sha256=file_digest(fetch),records=[record],
@@ -37,7 +38,7 @@ def fixture(tmp_path, unsupported=False):
     proposal=dict(document_id='d',source_row_sha256=row_digest(original),status='assistant_proposal',
         proposed_primary_forms=['letter'],proposed_component_forms=forms[1:],independent_reference=False,
         release_approved=False,evidence=dict(receipt=str(receipt),receipt_sha256=file_digest(receipt),
-            body_key=body,sha256=digest,pages=1))
+            body_key=body,sha256=digest,pages=pages))
     proposals=tmp_path/'proposals.json';proposals.write_text(json.dumps(dict(records=[proposal])))
     paths=[]
     for name,row in [('sources.parquet',source),('documents.parquet',doc)]:
@@ -115,7 +116,7 @@ def test_package_receipt_validation_rejects_invalid_coverage_and_lineage(tmp_pat
     elif change=='approval':record['release_approved']=True
     elif change=='digest':record['sha256']='not-a-digest'
     elif change=='duplicate_forms':record['observed_document_forms']*=2
-    elif change=='unknown_component':record['page_sections']=[dict(first_page=1,last_page=1,observed_form='tax-return')]
+    elif change=='unknown_component':record['page_sections']=[dict(first_page=1,last_page=record['pages'],observed_form='tax-return')]
     elif change=='page_count':
         record['pages']=2
         fetch=Path(receipt['fetch_results_path']);rows=json.loads(fetch.read_text());rows['results'][0]['pages']=2

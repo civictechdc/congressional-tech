@@ -1,0 +1,11 @@
+{
+  "scope": "fixture with in-memory remote; artifact copy uses local filesystem",
+  "preparation_seconds": 0.22556641697883606,
+  "artifact_transfer_seconds": 0.04969524999614805,
+  "artifact_restore_seconds": 0.10864925000350922,
+  "retry_including_journal_seconds": 1.06312295794487,
+  "retry_total_seconds": 1.1717722079483792,
+  "journal_bytes": 237067,
+  "builder_calls_on_resume": 0,
+  "repeated_release_payload_writes": 0
+}

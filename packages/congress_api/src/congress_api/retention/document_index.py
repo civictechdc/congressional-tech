@@ -24,8 +24,9 @@ URLs and receipt locator, even when no publisher filename was saved.
 
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import Counter, defaultdict
 from collections.abc import Mapping
+from contextlib import ExitStack
 from concurrent.futures import ProcessPoolExecutor
 from hashlib import sha256
 from uuid import uuid4
@@ -1038,6 +1039,7 @@ class DocumentSources:
 
     def __init__(self, urls=None, *, working=None):
         self.working = working
+        self.statistics = Counter()
         self.urls = {http_url(url) or url for url in urls} if urls is not None else None
         self.occurrences = defaultdict(dict)
         self.extra_filters = {}
@@ -1052,6 +1054,34 @@ class DocumentSources:
             self.meetings = working.mapping("meetings")
             self.events = working.mapping("events", set)
             self.by_url = SourceFilters(self.occurrences, self.extra_filters)
+
+    def report_statistics(self):
+        for name, amount in self.statistics.items():
+            progress.advance(name, amount)
+
+    def _sorted_occurrences(self, url):
+        observations = self.occurrences.get(url)
+        if observations is None:
+            return
+        self.statistics['context_occurrence_scans'] += 1
+        if self.working is None:
+            # Readers own their lists; later row merges cannot alter context.
+            values = ({field: list(items) for field, items in observations[key].items()}
+                      for key in sorted(observations))
+        else:
+            values = observations.sorted_values()
+        for occurrence in values:
+            self.statistics['context_occurrence_rows_read'] += 1
+            if self.working is not None:
+                self.statistics['context_occurrence_decodes'] += 1
+            yield occurrence
+
+    def has_source_link(self, url):
+        """Test authoritative values without building unrelated aggregate fields."""
+        url = (http_url(url) or url) if isinstance(url, str) else url
+        if self.extra_filters.get(url, {}).get('source_link_url'):
+            return True
+        return any(occurrence.get('source_link_url') for occurrence in self._sorted_occurrences(url))
 
     def add_url(self, url, values):
         if isinstance(url, str):
@@ -1203,11 +1233,15 @@ class DocumentSources:
 
     def for_url(self, url):
         url = (http_url(url) or url) if isinstance(url, str) else url
-        result = {key: sorted(values) for key, values in self.by_url.get(url, {}).items() if values}
-        observations = self.occurrences.get(url)
+        self.statistics['context_result_reads'] += 1
+        filters, observations = {}, []
+        merge_context(filters, self.extra_filters.get(url, {}))
+        for occurrence in self._sorted_occurrences(url):
+            merge_context(filters, occurrence)
+            observations.append(occurrence)
+        result = {key: sorted(values) for key, values in filters.items() if values}
         if observations:
-            result["source_occurrences"] = ([observations[key] for key in sorted(observations)]
-                                            if self.working is None else list(observations.sorted_values()))
+            result['source_occurrences'] = observations
         return result
 
     def add_link(self, link, receipt=None):
@@ -1942,10 +1976,9 @@ def refresh_source_metadata(root, context=None):
     from congress_api.retention.catalog_staging import WorkingCatalog
     from congress_api.retention.catalog_cache import LocalStore
     from congress_api.retention.catalog_publication import read_catalog
-    snapshot = read_catalog(LocalStore(root))
-    if snapshot.filenames is None:
-        raise ValueError("Missing filename index")
-    with TemporaryDirectory(prefix="source-refresh-") as directory:
+    with read_catalog(LocalStore(root)) as snapshot, TemporaryDirectory(prefix="source-refresh-") as directory:
+        if snapshot.filenames_path is None:
+            raise ValueError("Missing filename index")
         working = WorkingCatalog(Path(directory) / "working.sqlite")
         try:
             staged = Path(directory) / "output"
@@ -1958,7 +1991,7 @@ def refresh_source_metadata(root, context=None):
 def _refresh_source_metadata(root, context, *, working, snapshot, output_root):
     """Refresh retained provenance and response facts, then regroup without parsing names."""
     from congress_api.retention.catalog_staging import DiskRows
-    source = pq.ParquetFile(pa.BufferReader(snapshot.filenames))
+    source = pq.ParquetFile(snapshot.filenames_path)
     path = output_root / "indexes/document-filenames.parquet"
     if context is None:
         context = read_document_sources(root, context=DocumentSources(working=working))
@@ -2265,13 +2298,13 @@ def write_filename_metadata(
     if working is None:
         from tempfile import TemporaryDirectory
         from congress_api.retention.catalog_staging import WorkingCatalog
-        with TemporaryDirectory(prefix="filename-working-") as directory:
+        with TemporaryDirectory(prefix="filename-working-") as directory, ExitStack() as owners:
             working = WorkingCatalog(Path(directory) / "working.sqlite")
             try:
                 from congress_api.retention.catalog_cache import LocalStore
                 from congress_api.retention.catalog_publication import read_catalog
                 local_store = LocalStore(root)
-                snapshot = publication_snapshot or read_catalog(local_store)
+                snapshot = publication_snapshot or owners.enter_context(read_catalog(local_store))
                 staged = Path(directory) / "output"
                 (staged / "indexes").mkdir(parents=True)
                 result = write_filename_metadata(root, source_rows, workers=workers, previous=previous,
@@ -2491,7 +2524,8 @@ def write_filename_metadata(
         )
     destination = (output_root or root) / "indexes/document-filenames.parquet"
     document_stats = write_document_indexes(destination, finalized_rows(), output_schema, working=working, previous=previous, previous_documents=previous_documents, reuse_groups=reuse_results)
-    return dict(
+    from congress_api.retention.catalog_validation import CatalogBuildResult
+    return CatalogBuildResult(
         rows=len(rows),
         **document_stats,
         distinct_bodies=len(bodies),
@@ -2503,6 +2537,7 @@ def write_filename_metadata(
         output=str(destination),
         output_bytes=destination.stat().st_size,
         elapsed_seconds=round(time.monotonic() - started),
+        validation=getattr(document_stats, 'validation', None),
     )
 
 
@@ -2512,8 +2547,7 @@ def build(root, inventory_dir, *, workers=4, families=FAMILIES, inspect_bodies=F
     from congress_api.retention.catalog_cache import LocalStore
     from congress_api.retention.catalog_publication import read_catalog
     store = LocalStore(root)
-    snapshot = read_catalog(store)
-    with TemporaryDirectory(prefix="inventory-working-") as directory:
+    with read_catalog(store) as snapshot, TemporaryDirectory(prefix="inventory-working-") as directory:
         working = WorkingCatalog(Path(directory) / "working.sqlite")
         try:
             staged = Path(directory) / "output"
@@ -2589,13 +2623,13 @@ def refresh_filename_metadata(root, *, workers=4, inspect_bodies=False, repair=F
     """Reuse saved interpretations unless explicitly rebuilding; never acquire sources."""
     from congress_api.retention.catalog_cache import LocalStore
     from congress_api.retention.catalog_publication import read_catalog
-    snapshot = read_catalog(LocalStore(root))
-    if snapshot.filenames is None:
-        raise ValueError("Missing filename index")
-    source = pq.ParquetFile(pa.BufferReader(snapshot.filenames))
-    rows, metadata = filename_refresh_inputs(source)
-    return write_filename_metadata(root, rows, workers=workers, previous=source, reuse_results=not repair,
-        inspect_bodies=inspect_bodies, publication_snapshot=snapshot, previous_documents=snapshot.documents, metadata=metadata)
+    with read_catalog(LocalStore(root)) as snapshot:
+        if snapshot.filenames_path is None:
+            raise ValueError("Missing filename index")
+        source = pq.ParquetFile(snapshot.filenames_path)
+        rows, metadata = filename_refresh_inputs(source)
+        return write_filename_metadata(root, rows, workers=workers, previous=source, reuse_results=not repair,
+            inspect_bodies=inspect_bodies, publication_snapshot=snapshot, previous_documents=pq.ParquetFile(snapshot.documents_path) if snapshot.documents_path else None, metadata=metadata)
 
 
 def reindex_documents(root):
@@ -2603,16 +2637,16 @@ def reindex_documents(root):
     from tempfile import TemporaryDirectory
     from congress_api.retention.catalog_cache import LocalStore
     from congress_api.retention.catalog_publication import read_catalog
-    snapshot = read_catalog(LocalStore(root))
-    if snapshot.filenames is None:
-        raise ValueError("Missing filename index")
-    source = pq.ParquetFile(pa.BufferReader(snapshot.filenames))
-    rows = ({key:value for key,value in row.items() if value is not None}
-            for batch in source.iter_batches(batch_size=4096) for row in batch.to_pylist())
-    with TemporaryDirectory(prefix="document-reindex-") as directory:
-        path = Path(directory) / "document-filenames.parquet"
-        result = dict(rows=source.metadata.num_rows, **write_document_indexes(path,rows,source.schema_arrow))
-        return publish_local_result(root,path,result,snapshot)
+    with read_catalog(LocalStore(root)) as snapshot:
+        if snapshot.filenames_path is None:
+            raise ValueError("Missing filename index")
+        source = pq.ParquetFile(snapshot.filenames_path)
+        rows = ({key:value for key,value in row.items() if value is not None}
+                for batch in source.iter_batches(batch_size=4096) for row in batch.to_pylist())
+        with TemporaryDirectory(prefix="document-reindex-") as directory:
+            path = Path(directory) / "document-filenames.parquet"
+            result = dict(rows=source.metadata.num_rows, **write_document_indexes(path,rows,source.schema_arrow))
+            return publish_local_result(root,path,result,snapshot)
 
 
 def publish_local_result(root, filename_path, result, snapshot):

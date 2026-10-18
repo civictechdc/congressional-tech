@@ -8,6 +8,7 @@ import shutil
 from pathlib import Path
 import subprocess
 import sys
+import tomllib
 
 import pytest
 import yaml
@@ -380,12 +381,30 @@ def test_validation_is_reused_only_for_exact_revision_and_dependency_environment
 
 
 def test_loopback_tests_run_in_a_native_step():
-    # tests/conftest.py skips `loopback` tests under offline-python.py.
+    # Keep the frozen raw workflow's original native checks. New cases belong
+    # to the maintained lane; extending this frozen workflow is a separate choice.
+    native = {word for step in STEPS if 'python -m pytest' in (run := step.get('run', ''))
+              and 'offline-python.py' not in run for word in run.split()
+              if word.startswith('tests/') and word.endswith('.py')}
+    assert native == {
+        'tests/test_async_capture_native.py', 'tests/test_capture_processes_native.py',
+        'tests/test_r2_body_files_native.py', 'tests/test_document_filename_viewer.py',
+        'tests/test_document_review_viewer.py', 'tests/test_rust_fetch_native.py',
+        'tests/test_rust_fetch_size_admission_native.py',
+    }
     marked = {f'tests/{path.name}' for path in (ROOT / 'tests').glob('test_*.py')
               if 'pytest.mark.loopback' in path.read_text()}
-    native = {word for step in STEPS if 'python -m pytest' in (run := step.get('run', ''))
-              and 'offline-python.py' not in run for word in run.split()}
-    assert marked and marked <= native, sorted(marked - native)
+    lane = tomllib.loads((ROOT / 'test-suites.toml').read_text())['lanes']['native-loopback']
+    assert lane['marker'] == 'loopback' and lane['offline'] is False
+    assert lane['required_binary_env'] == 'SOURCE_FETCH_BINARY'
+    covered = {name for name in marked if any(
+        name == root or name.startswith(root.rstrip('/') + '/') for root in lane['roots'])}
+    assert marked and marked == covered, sorted(marked - covered)
+    maintained = yaml.load((ROOT / '.github/workflows/validate-explorer.yml').read_text(), Loader=yaml.BaseLoader)
+    native_steps = [step for step in maintained['jobs']['validate']['steps']
+                    if step.get('run', '').strip() == 'python scripts/dev.py test native-loopback']
+    assert len(native_steps) == 1
+    assert native_steps[0]['env']['SOURCE_FETCH_BINARY'].endswith('/packages/source-fetch/target/release/source-fetch')
 
 
 def test_explicit_repair_uses_same_command(tmp_path, recording_command):

@@ -25,7 +25,7 @@ class GuardTests(unittest.TestCase):
         for _ in range(1000): self.guard.check()
         self.assertEqual(self.guard.counts, dict(local=1002, hashed_files=1, cloud=1, protected=1))
         self.guard.shared_commit()
-        self.assertEqual(self.guard.counts, dict(local=1004, hashed_files=2, cloud=2, protected=2))
+        self.assertEqual(self.guard.counts, dict(local=1004, hashed_files=1, cloud=2, protected=2))
 
     def test_unknown_cloud_invalidates_allowance(self):
         self.guard.check(); self.now = 31
@@ -83,3 +83,23 @@ class GuardTests(unittest.TestCase):
 
 
 if __name__ == '__main__': unittest.main()
+
+
+@__import__('pytest').mark.parametrize('value', [[], {}, {'workflow_runs':[], 'total_count':True},
+    {'workflow_runs':[], 'total_count':-1}, {'workflow_runs':[{}], 'total_count':1}])
+def test_malformed_writer_inventory_fails_closed_with_explicit_diagnostic(value):
+    import pytest
+    with pytest.raises(RuntimeError, match='malformed'):
+        active_cloud_writers(run=lambda *a, **k: json.dumps(value))
+
+
+def test_same_size_rewrite_with_restored_mtime_invalidates_cached_guard_pin(tmp_path):
+    import os
+    import pytest
+    path = tmp_path / 'pin'; path.write_bytes(b'first')
+    guard = RecoveryGuard(pins={path:hashlib.sha256(b'first').hexdigest()}, local_check=lambda:None,
+        cloud_check=lambda:None, protected_check=lambda:None)
+    guard.boundary(); before=path.stat()
+    path.write_bytes(b'other'); os.utime(path, ns=(before.st_atime_ns,before.st_mtime_ns))
+    with pytest.raises(RuntimeError, match='Pinned input changed'):
+        guard.shared_commit()

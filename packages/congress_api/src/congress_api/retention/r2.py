@@ -175,7 +175,14 @@ class R2Store:
                 raise
             try:
                 with closing(response["Body"]) as stream:
-                    data = stream.read()
+                    if key == 'indexes/catalog.json':
+                        if response['ContentLength'] > 1024**2:
+                            raise ValueError('Catalog selector exceeds 1 MiB read budget')
+                        data = stream.read(1024**2 + 1)
+                        if len(data) > 1024**2:
+                            raise ValueError('Catalog selector exceeds 1 MiB read budget')
+                    else:
+                        data = stream.read()
             except (ReadTimeoutError, ResponseStreamingError, IncompleteReadError) as error:
                 delay = _stream_retry_delay(self.client, key, response, error, attempt)
                 if delay is None:
@@ -206,8 +213,8 @@ class R2Store:
             if error.response["Error"]["Code"] in {"PreconditionFailed", "412"}:
                 if immutable and key.startswith("bodies/"):
                     return False
-                if immutable and key.startswith(("catalog-history/sha256/", "indexes/processing/body-results/")) and self.read(key) == body:
-                    return False  # A retry may preserve the same prior table again.
+                if immutable and key.startswith("indexes/processing/body-results/") and self.read(key) == body:
+                    return False  # A retry may preserve the same processing result again.
                 raise RuntimeError(
                     f"Concurrent update or reused receipt name: {key}; published receipts remain recoverable."
                 ) from error
@@ -279,6 +286,84 @@ class R2Store:
         from congress_api.retention.catalog_publication import MANIFEST_KEY
         self.index_etags[MANIFEST_KEY] = expected_version
         return self.put(MANIFEST_KEY, data)
+
+    def read_derived_file(self, key, path, *, expected=None):
+        """Stream only catalog tables, pinning the object version across retries."""
+        from botocore.exceptions import ClientError, IncompleteReadError, ReadTimeoutError, ResponseStreamingError
+        from congress_api.retention.derived_files import require_derived_key, copy_checked
+        require_derived_key(key)
+        etag = None
+        for attempt in range(1, _stream_read_attempts(self.client) + 1):
+            try:
+                response = self.client.get_object(Bucket=self.bucket, Key=key,
+                    **({'IfMatch': etag} if etag else {}))
+            except ClientError as error:
+                if error.response['Error']['Code'] in {'NoSuchKey', '404'} and etag is None:
+                    return None
+                raise
+            try:
+                with closing(response['Body']) as source:
+                    if etag is not None and response['ETag'] != etag:
+                        raise ValueError('Stored catalog changed during file read')
+                    etag = response['ETag']
+                    size = response['ContentLength']
+                    if expected is not None and size != expected['bytes']:
+                        raise ValueError(f'Selected catalog size mismatch: {key}')
+                    result = copy_checked(source, path, size=size, expected=expected, key=key)
+                    return {**result, 'version': etag}
+            except (IncompleteReadError, ReadTimeoutError, ResponseStreamingError) as error:
+                delay = _stream_retry_delay(self.client, key, response, error, attempt)
+                if delay is None:
+                    raise
+                time.sleep(delay)
+
+    def put_derived_file(self, key, path, *, expected):
+        """Upload an immutable catalog file with streamed checksum verification."""
+        import os
+        from pathlib import Path
+        import shutil
+        import tempfile
+        from botocore.exceptions import ClientError
+        from congress_api.retention.derived_files import require_derived_key, check_identity, VerifiedFile
+        require_derived_key(key)
+        with Path(path).open('rb') as source:
+            before = os.fstat(source.fileno())
+            proven = isinstance(expected, VerifiedFile)
+            if proven:
+                expected.require(path)
+            md5, digest, count = hashlib.md5(), None if proven else hashlib.sha256(), 0
+            for chunk in iter(lambda: source.read(1024**2), b''):
+                md5.update(chunk)
+                if digest is not None:
+                    digest.update(chunk)
+                count += len(chunk)
+            actual = {'bytes': count, 'sha256': expected['sha256'] if proven else digest.hexdigest()}
+            check_identity(actual, expected, key)
+            source.seek(0)
+            try:
+                result = self.client.put_object(Bucket=self.bucket, Key=key, Body=source,
+                    ContentLength=count, ContentMD5=base64.b64encode(md5.digest()).decode(),
+                    ContentType='application/vnd.apache.parquet', IfNoneMatch='*')
+            except ClientError as error:
+                if error.response['Error']['Code'] not in {'PreconditionFailed', '412'}:
+                    raise
+                if not key.startswith('catalog-history/sha256/'):
+                    raise RuntimeError(f'Concurrent update or reused catalog generation: {key}') from error
+                directory = Path(tempfile.mkdtemp(prefix='catalog-history-verify-'))
+                try:
+                    if self.read_derived_file(key, directory / 'existing.parquet', expected=expected) is None:
+                        raise ValueError(f'Missing immutable catalog history: {key}')
+                except BaseException as failure:
+                    failure.add_note(f'Catalog verification evidence retained: {directory}')
+                    raise
+                shutil.rmtree(directory)
+                return False
+            after = os.fstat(source.fileno())
+            if (before.st_size, before.st_mtime_ns, before.st_ctime_ns) != (after.st_size, after.st_mtime_ns, after.st_ctime_ns):
+                raise ValueError(f'Catalog source changed during upload: {path}')
+        if result['ETag'].strip('"') != md5.hexdigest():
+            raise ValueError('Catalog upload checksum mismatch')
+        return True
 
     def version(self, key):
         """Read an object's version without downloading its contents."""

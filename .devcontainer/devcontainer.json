@@ -9,7 +9,7 @@
       "nodeGypDependencies": true
     },
     "ghcr.io/devcontainers/features/python:1": {
-      "version": "3.12",
+      "version": "3.12.13",
       "installTools": true
     },
     "ghcr.io/devcontainers/features/git:1": {},
@@ -26,7 +26,7 @@
         "ms-vscode.vscode-typescript-next"
       ],
       "settings": {
-        "python.defaultInterpreterPath": "/usr/local/bin/python3",
+        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
         "python.linting.enabled": true,
         "python.linting.pylintEnabled": true,
         "python.formatting.provider": "black",

@@ -1,0 +1,385 @@
+{
+  "status": "completed",
+  "python": "3.12.13 (main, Apr  7 2026, 21:09:58) [Clang 22.1.1 ]",
+  "pyarrow": "25.0.1",
+  "platform": "macOS-26.6-arm64-arm-64bit",
+  "source": "/Users/mikewolfd/Work/congressional-tech/output/filename-patterns-20261015/public-raw-catalog-v3/catalog",
+  "trials": [
+    {
+      "file": "documents",
+      "round": 1,
+      "level": 19,
+      "write_seconds": 0.49348000006284565,
+      "equality_seconds": 0.024837209028191864,
+      "total_seconds": 0.5183172090910375,
+      "bytes": 823378,
+      "sha256": "b13882ee453baebd7f462dc6ad67a6fb39541dd4013ebacd1c3a31973da09631",
+      "fidelity": true
+    },
+    {
+      "file": "documents",
+      "round": 1,
+      "level": 9,
+      "write_seconds": 0.06555625004693866,
+      "equality_seconds": 0.022974250023253262,
+      "total_seconds": 0.08853050007019192,
+      "bytes": 892414,
+      "sha256": "f917b632ed89703a5137514c8fd89742b0903618a8463d52322491514243f06d",
+      "fidelity": true
+    },
+    {
+      "file": "documents",
+      "round": 1,
+      "level": 3,
+      "write_seconds": 0.04551754193380475,
+      "equality_seconds": 0.022995916078798473,
+      "total_seconds": 0.06851345801260322,
+      "bytes": 918983,
+      "sha256": "06e7782c084bb2e99a6d62f3befff4fba8be53f30d437b24095e24407d25e96e",
+      "fidelity": true
+    },
+    {
+      "file": "filenames",
+      "round": 1,
+      "level": 19,
+      "write_seconds": 0.4514470840804279,
+      "equality_seconds": 0.024006000021472573,
+      "total_seconds": 0.47545308410190046,
+      "bytes": 689254,
+      "sha256": "56485d6322a8c0def1532ac86bbb29c5088abdb8890311c03cad8b7180aa2666",
+      "fidelity": true
+    },
+    {
+      "file": "filenames",
+      "round": 1,
+      "level": 9,
+      "write_seconds": 0.06103495799470693,
+      "equality_seconds": 0.023140207980759442,
+      "total_seconds": 0.08417516597546637,
+      "bytes": 740721,
+      "sha256": "67f5f6eeb9f7da0cc638deb5b4c3817d5430a13efb12f41adfa0945dff2ab6d3",
+      "fidelity": true
+    },
+    {
+      "file": "filenames",
+      "round": 1,
+      "level": 3,
+      "write_seconds": 0.04501262493431568,
+      "equality_seconds": 0.023447917075827718,
+      "total_seconds": 0.0684605420101434,
+      "bytes": 762050,
+      "sha256": "c0422ceb83d57262243262141952f74dd15409eb38fbb60da8f2c44b9b73166a",
+      "fidelity": true
+    },
+    {
+      "file": "documents",
+      "round": 2,
+      "level": 3,
+      "write_seconds": 0.04386908409651369,
+      "equality_seconds": 0.021579957916401327,
+      "total_seconds": 0.06544904201291502,
+      "bytes": 918983,
+      "sha256": "06e7782c084bb2e99a6d62f3befff4fba8be53f30d437b24095e24407d25e96e",
+      "fidelity": true
+    },
+    {
+      "file": "documents",
+      "round": 2,
+      "level": 9,
+      "write_seconds": 0.06230391701683402,
+      "equality_seconds": 0.022155874990858138,
+      "total_seconds": 0.08445979200769216,
+      "bytes": 892414,
+      "sha256": "f917b632ed89703a5137514c8fd89742b0903618a8463d52322491514243f06d",
+      "fidelity": true
+    },
+    {
+      "file": "documents",
+      "round": 2,
+      "level": 19,
+      "write_seconds": 0.5504461670061573,
+      "equality_seconds": 0.03126041602808982,
+      "total_seconds": 0.5817065830342472,
+      "bytes": 823378,
+      "sha256": "b13882ee453baebd7f462dc6ad67a6fb39541dd4013ebacd1c3a31973da09631",
+      "fidelity": true
+    },
+    {
+      "file": "filenames",
+      "round": 2,
+      "level": 3,
+      "write_seconds": 0.07256179198157042,
+      "equality_seconds": 0.032785916002467275,
+      "total_seconds": 0.1053477079840377,
+      "bytes": 762050,
+      "sha256": "c0422ceb83d57262243262141952f74dd15409eb38fbb60da8f2c44b9b73166a",
+      "fidelity": true
+    },
+    {
+      "file": "filenames",
+      "round": 2,
+      "level": 9,
+      "write_seconds": 0.08147120801731944,
+      "equality_seconds": 0.06679549999535084,
+      "total_seconds": 0.14826670801267028,
+      "bytes": 740721,
+      "sha256": "67f5f6eeb9f7da0cc638deb5b4c3817d5430a13efb12f41adfa0945dff2ab6d3",
+      "fidelity": true
+    },
+    {
+      "file": "filenames",
+      "round": 2,
+      "level": 19,
+      "write_seconds": 0.5971795830409974,
+      "equality_seconds": 0.037770124967209995,
+      "total_seconds": 0.6349497080082074,
+      "bytes": 689254,
+      "sha256": "56485d6322a8c0def1532ac86bbb29c5088abdb8890311c03cad8b7180aa2666",
+      "fidelity": true
+    },
+    {
+      "file": "documents",
+      "round": 3,
+      "level": 9,
+      "write_seconds": 0.07292875007260591,
+      "equality_seconds": 0.033951165969483554,
+      "total_seconds": 0.10687991604208946,
+      "bytes": 892414,
+      "sha256": "f917b632ed89703a5137514c8fd89742b0903618a8463d52322491514243f06d",
+      "fidelity": true
+    },
+    {
+      "file": "documents",
+      "round": 3,
+      "level": 19,
+      "write_seconds": 0.4926132920663804,
+      "equality_seconds": 0.029045916977338493,
+      "total_seconds": 0.5216592090437189,
+      "bytes": 823378,
+      "sha256": "b13882ee453baebd7f462dc6ad67a6fb39541dd4013ebacd1c3a31973da09631",
+      "fidelity": true
+    },
+    {
+      "file": "documents",
+      "round": 3,
+      "level": 3,
+      "write_seconds": 0.0548687499249354,
+      "equality_seconds": 0.026590750087052584,
+      "total_seconds": 0.08145950001198798,
+      "bytes": 918983,
+      "sha256": "06e7782c084bb2e99a6d62f3befff4fba8be53f30d437b24095e24407d25e96e",
+      "fidelity": true
+    },
+    {
+      "file": "filenames",
+      "round": 3,
+      "level": 9,
+      "write_seconds": 0.06605970894452184,
+      "equality_seconds": 0.024648958002217114,
+      "total_seconds": 0.09070866694673896,
+      "bytes": 740721,
+      "sha256": "67f5f6eeb9f7da0cc638deb5b4c3817d5430a13efb12f41adfa0945dff2ab6d3",
+      "fidelity": true
+    },
+    {
+      "file": "filenames",
+      "round": 3,
+      "level": 19,
+      "write_seconds": 0.4877577089937404,
+      "equality_seconds": 0.025797999929636717,
+      "total_seconds": 0.5135557089233771,
+      "bytes": 689254,
+      "sha256": "56485d6322a8c0def1532ac86bbb29c5088abdb8890311c03cad8b7180aa2666",
+      "fidelity": true
+    },
+    {
+      "file": "filenames",
+      "round": 3,
+      "level": 3,
+      "write_seconds": 0.04607841605320573,
+      "equality_seconds": 0.02516579197254032,
+      "total_seconds": 0.07124420802574605,
+      "bytes": 762050,
+      "sha256": "c0422ceb83d57262243262141952f74dd15409eb38fbb60da8f2c44b9b73166a",
+      "fidelity": true
+    }
+  ],
+  "samples": {
+    "documents": {
+      "selection": [
+        {
+          "row_group": 0,
+          "rows": 256,
+          "decoded_bytes": 666155
+        },
+        {
+          "row_group": 152,
+          "rows": 256,
+          "decoded_bytes": 956351
+        },
+        {
+          "row_group": 303,
+          "rows": 256,
+          "decoded_bytes": 1621685
+        },
+        {
+          "row_group": 454,
+          "rows": 256,
+          "decoded_bytes": 755687
+        },
+        {
+          "row_group": 606,
+          "rows": 256,
+          "decoded_bytes": 2126406
+        },
+        {
+          "row_group": 758,
+          "rows": 256,
+          "decoded_bytes": 1782353
+        },
+        {
+          "row_group": 909,
+          "rows": 256,
+          "decoded_bytes": 578082
+        },
+        {
+          "row_group": 1060,
+          "rows": 256,
+          "decoded_bytes": 574918
+        },
+        {
+          "row_group": 1212,
+          "rows": 43,
+          "decoded_bytes": 444392
+        }
+      ],
+      "rows": 2091,
+      "decoded_bytes": 9506029,
+      "sample_sha256": "666a7f2a75f9ec1938c409acbef3a38a585d0e74fd8b3d470c3e27862f4dd467",
+      "schema_sha256": "2dcd955f548c55d6b4fadd484607050322a3455350d92302a4494d8a38e881c7"
+    },
+    "filenames": {
+      "selection": [
+        {
+          "row_group": 0,
+          "rows": 256,
+          "decoded_bytes": 3024934
+        },
+        {
+          "row_group": 205,
+          "rows": 256,
+          "decoded_bytes": 1097116
+        },
+        {
+          "row_group": 411,
+          "rows": 256,
+          "decoded_bytes": 1762733
+        },
+        {
+          "row_group": 616,
+          "rows": 256,
+          "decoded_bytes": 1401989
+        },
+        {
+          "row_group": 822,
+          "rows": 256,
+          "decoded_bytes": 1292127
+        },
+        {
+          "row_group": 1027,
+          "rows": 256,
+          "decoded_bytes": 849436
+        },
+        {
+          "row_group": 1232,
+          "rows": 256,
+          "decoded_bytes": 512128
+        },
+        {
+          "row_group": 1438,
+          "rows": 256,
+          "decoded_bytes": 513152
+        },
+        {
+          "row_group": 1643,
+          "rows": 256,
+          "decoded_bytes": 954363
+        }
+      ],
+      "rows": 2304,
+      "decoded_bytes": 11407978,
+      "sample_sha256": "1af89ce79dcb45662c5bee9100b4e7bb396bda96aff69c5b7b1ccd844c4f93ee",
+      "schema_sha256": "86d1840a9a702d004b34bcebf162c482cd0590168e3cc0c58483aeda4c671e4b"
+    }
+  },
+  "manifest": {
+    "catalog_id": "76758ea73fa94075bda46ce79e569fd3",
+    "files": {
+      "documents": {
+        "bytes": 539110541,
+        "key": "catalog-generations/cbcf65877e2843ae8b23915c3d05a18f/documents.parquet",
+        "rows": 1241131,
+        "sha256": "f8f30ffd5cc5bb3f97b0942c563c1bd3a08f0736058b7998d2761ea495aafe55"
+      },
+      "filenames": {
+        "bytes": 544061564,
+        "key": "catalog-generations/cbcf65877e2843ae8b23915c3d05a18f/document-filenames.parquet",
+        "rows": 1683404,
+        "sha256": "6e66df67fa44395c083e17dd30546bf95772718b1aabc4e7e0dab67a695ba534"
+      }
+    },
+    "generation": "cbcf65877e2843ae8b23915c3d05a18f",
+    "version": 1
+  },
+  "sample_receipt": "/Users/mikewolfd/Work/congressional-tech/output/process-audit-20261018/delivery/compression-attempt2/compression-results.json",
+  "elapsed_seconds": 4.4703262919792905,
+  "peak_rss_bytes": 242073600,
+  "summary": {
+    "documents": {
+      "19": {
+        "median_total_seconds": 0.5216592090437189,
+        "min_total_seconds": 0.5183172090910375,
+        "max_total_seconds": 0.5817065830342472,
+        "median_write_seconds": 0.49348000006284565,
+        "bytes": 823378
+      },
+      "9": {
+        "median_total_seconds": 0.08853050007019192,
+        "min_total_seconds": 0.08445979200769216,
+        "max_total_seconds": 0.10687991604208946,
+        "median_write_seconds": 0.06555625004693866,
+        "bytes": 892414
+      },
+      "3": {
+        "median_total_seconds": 0.06851345801260322,
+        "min_total_seconds": 0.06544904201291502,
+        "max_total_seconds": 0.08145950001198798,
+        "median_write_seconds": 0.04551754193380475,
+        "bytes": 918983
+      }
+    },
+    "filenames": {
+      "19": {
+        "median_total_seconds": 0.5135557089233771,
+        "min_total_seconds": 0.47545308410190046,
+        "max_total_seconds": 0.6349497080082074,
+        "median_write_seconds": 0.4877577089937404,
+        "bytes": 689254
+      },
+      "9": {
+        "median_total_seconds": 0.09070866694673896,
+        "min_total_seconds": 0.08417516597546637,
+        "max_total_seconds": 0.14826670801267028,
+        "median_write_seconds": 0.06605970894452184,
+        "bytes": 740721
+      },
+      "3": {
+        "median_total_seconds": 0.07124420802574605,
+        "min_total_seconds": 0.0684605420101434,
+        "max_total_seconds": 0.1053477079840377,
+        "median_write_seconds": 0.04607841605320573,
+        "bytes": 762050
+      }
+    }
+  }
+}

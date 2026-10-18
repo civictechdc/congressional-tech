@@ -1,0 +1,12 @@
+Retained one-pass implementation, macOS worktree Python 3.12.13 / PyArrow 25.0.1
+
+Command:
+.venv/bin/python -m pytest tests/test_document_source_context.py tests/test_catalog_staging.py tests/test_raw_catalog.py tests/test_incremental_catalog.py tests/test_core_benchmark.py tests/test_document_source_lineage.py -q --basetemp output/process-efficiency-d/final-tests
+
+........................................................................ [ 64%]
+........................................                                 [100%]
+112 passed in 5.31s
+
+Rejected cache candidate: the same suites passed 116 tests before cache removal. Its separate 12 lineage tests and 104 context/staging/raw/incremental/benchmark tests were run before timing. The earlier development-only benchmark assertion expecting an occurrence decode on a fixture without source observations failed; the assertion was corrected to check result reads. No production behavior was weakened.
+
+All 12 Linux timed rebuilds passed complete semantic comparison and input rechecks. Cache and one-pass runs used the same pinned image and offline framework.

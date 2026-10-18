@@ -26,26 +26,59 @@ class LocalStore:
 
     def read(self, key):
         path = self.root / key
-        return path.read_bytes() if path.is_file() else None
+        if not path.is_file():
+            return None
+        with path.open('rb') as stream:
+            data = stream.read(1024**2 + 1) if key == 'indexes/catalog.json' else stream.read()
+        if key == 'indexes/catalog.json' and len(data) > 1024**2:
+            raise ValueError('Catalog selector exceeds 1 MiB read budget')
+        return data
 
-    def keys(self, prefix):
-        return (str(path.relative_to(self.root))
-                for path in sorted((self.root / prefix).rglob('*')) if path.is_file())
+    def read_derived_file(self, key, path, *, expected=None):
+        from congress_api.retention.derived_files import require_derived_key, copy_checked
+        require_derived_key(key)
+        try:
+            source = (self.root / key).open('rb')
+        except FileNotFoundError:
+            return None
+        with source:
+            before = os.fstat(source.fileno())
+            result = copy_checked(source, path, size=before.st_size, expected=expected, key=key)
+            after = os.fstat(source.fileno())
+            if (before.st_size, before.st_mtime_ns, before.st_ctime_ns) != (after.st_size, after.st_mtime_ns, after.st_ctime_ns):
+                raise ValueError(f'Stored catalog changed during file read: {key}')
+        return result
+
+    def put_derived_file(self, key, path, *, expected):
+        from congress_api.retention.derived_files import require_derived_key, copy_checked
+        require_derived_key(key)
+        with Path(path).open('rb') as source:
+            return copy_checked(source, self.root / key, size=expected['bytes'],
+                                expected=expected, key=key, exclusive=True)
+
+    def keys(self, prefix, *, ordered=False):
+        paths = (self.root / prefix).rglob('*')
+        if ordered:
+            paths = sorted(paths)
+        return (str(path.relative_to(self.root)) for path in paths if path.is_file())
 
     def put(self, key, data, *, immutable=False):
         path = self.root / key
         path.parent.mkdir(parents=True, exist_ok=True)
-        if immutable and path.exists():
-            if path.read_bytes() != data:
-                raise ValueError(f"Conflicting immutable object: {key}")
-            return
         fd, temporary = tempfile.mkstemp(dir=path.parent)
         try:
             with os.fdopen(fd, "wb") as stream:
                 stream.write(data)
                 stream.flush()
                 os.fsync(stream.fileno())
-            os.replace(temporary, path)
+            if immutable:
+                try:
+                    os.link(temporary, path)
+                except FileExistsError:
+                    if path.read_bytes() != data:
+                        raise ValueError(f'Conflicting immutable object: {key}')
+            else:
+                os.replace(temporary, path)
             directory = os.open(path.parent, os.O_RDONLY)
             try:
                 os.fsync(directory)

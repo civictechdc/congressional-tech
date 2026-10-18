@@ -80,3 +80,13 @@ def test_legacy_and_unsafe_values_are_unchanged(tmp_path):
     assert derive(tmp_path, [target(), dict(source_url='javascript:'+URL),
         dict(source_url='mailto:https://user@www.congress.gov/a.pdf'),
         dict(source_url='mailto:'+URL+'\n')]) == []
+
+
+@pytest.mark.parametrize('invalid', [None, '../hr1.pdf', 'javascript:invalid'])
+def test_invalid_and_self_resolution_values_remain_conflict_evidence(tmp_path, invalid):
+    assert derive(tmp_path, [dict(source_url='../hr1.pdf', source_resolved_url=[URL, invalid]), target()]) == []
+
+
+def test_null_only_resolution_cannot_create_a_non_url_alias(tmp_path):
+    assert derive(tmp_path, [dict(source_url='../hr1.pdf', source_resolved_url=[None]),
+                             {**target(), 'source_url': None}]) == []

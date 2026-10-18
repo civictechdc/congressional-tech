@@ -10,7 +10,8 @@
     "migrate": "node scripts/migrate-content.mjs",
     "generate:explorer-types": "node scripts/generate-explorer-types.mjs",
     "check:explorer-types": "node scripts/generate-explorer-types.mjs --check",
-    "test:explorer": "node --test src/components/explorer/*.test.mjs src/components/filename-*.test.mjs ../../tests/test_filename_viewer_ui.mjs ../../docs/youtube-coverage/committee-explorer-charts.test.mjs"
+    "test:explorer": "node --test src/components/explorer/*.test.mjs src/components/filename-*.test.mjs scripts/verify-live-publication.test.mjs ../../tests/test_filename_viewer_ui.mjs ../../docs/youtube-coverage/committee-explorer-charts.test.mjs",
+    "test:built-filenames": "node --experimental-vm-modules --test scripts/built-filenames.test.mjs"
   },
   "dependencies": {
     "@astrojs/react": "^4.4.0",
@@ -29,5 +30,6 @@
     "jsdom": "30.1.2",
     "json-schema-to-typescript": "16.0.0",
     "typescript": "^5.8.0"
-  }
+  },
+  "packageManager": "npm@11.19.1"
 }

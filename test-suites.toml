@@ -1,0 +1,75 @@
+# One local/CI test inventory. Experiment files are deliberately enumerated so a
+# new historical tool cannot silently miss ordinary validation.
+[environment]
+python_version_file = ".python-version"
+
+[environment.native.pdfinfo]
+arguments = ["-v"]
+macos_remedy = "brew install poppler"
+linux_remedy = "sudo apt-get install poppler-utils"
+
+[environment.native.pdftotext]
+arguments = ["-v"]
+macos_remedy = "brew install poppler"
+linux_remedy = "sudo apt-get install poppler-utils"
+
+[environment.native.ps]
+arguments = ["-o", "pid=", "-p", "{pid}"]
+macos_remedy = "restore the system /bin/ps command and include /bin in PATH"
+linux_remedy = "sudo apt-get install procps"
+
+[environment.imports]
+house_naming = "packages/house-naming/src"
+committee_meeting = "packages/committee_meeting/src"
+congress_shared = "packages/congress_shared/src"
+youtube_api = "packages/youtube_api/src"
+congress_api = "packages/congress_api/src"
+committee_explorer = "apps/committee_youtube/src"
+
+[baseline]
+freeze = "docs/experiments/filename-patterns-20261015/content_rule_freeze.json"
+# Full identity for fetching the abbreviated baseline_commit recorded by freeze.
+commit = "38f75574d217d3e4908e3f37e0c0906b1090990a"
+parser = "packages/congress_api/src/congress_api/parsers/document_cover.py"
+
+[lanes.production-offline]
+roots = ["tests", "packages/committee_meeting/tests", "packages/house-naming/tests", ".github/tests"]
+marker = "not loopback"
+offline = true
+purpose = "Production regression with an in-process Python socket tripwire; child processes are not network-isolated."
+
+[lanes.native-loopback]
+roots = ["tests"]
+marker = "loopback"
+offline = false
+required_binary_env = "SOURCE_FETCH_BINARY"
+purpose = "Real local sockets, spawned workers and the compiled source-fetch transport."
+
+[lanes.active-experiment-regression]
+roots = [
+    "docs/experiments/filename-patterns-20261015/test_catalog_alias_review.py",
+    "docs/experiments/filename-patterns-20261015/test_catalog_content_review.py",
+    "docs/experiments/filename-patterns-20261015/test_catalog_disposition_compare.py",
+    "docs/experiments/filename-patterns-20261015/test_catalog_filename_replay.py",
+    "docs/experiments/filename-patterns-20261015/test_catalog_review_evidence.py",
+    "docs/experiments/filename-patterns-20261015/test_current_review_candidates.py",
+    "docs/experiments/filename-patterns-20261015/test_current_review_path_replay.py",
+    "docs/experiments/filename-patterns-20261015/test_normalized_review_candidates.py",
+    "docs/experiments/filename-patterns-20261015/test_packet_review_candidate.py",
+    "docs/experiments/filename-patterns-20261015/test_pilot_evaluate.py",
+    "docs/experiments/filename-patterns-20261015/test_pilot_evidence.py",
+    "docs/experiments/filename-patterns-20261015/test_pilot_workflow.py",
+    "docs/experiments/filename-patterns-20261015/test_review_catalog_reconcile.py",
+    "docs/experiments/filename-patterns-20261015/test_rule_review.py",
+]
+offline = true
+requires_baseline = true
+purpose = "Synthetic fixtures plus the historical/current PDF worker seam; no held-out evaluation."
+
+[lanes.frozen-reproduction]
+roots = []
+offline = true
+owner = "Filename-patterns experiment maintainers"
+requirements = "docs/experiments/filename-patterns-20261015/requirements.lock"
+rationale = "Historical research requires its separately frozen runtime and reviewed protocol. All fourteen test files run as active regressions; none are retained-only."
+purpose = "Reserved for deliberate research reproduction in an isolated environment; never inferred from regression success."

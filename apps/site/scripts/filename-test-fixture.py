@@ -2,6 +2,7 @@
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 import sys
 
@@ -37,6 +38,12 @@ for i, (filename, url, body, group, role, kind) in enumerate([
     row.update(filename=filename, source_url=url, body_key=body, source_id=hashlib.sha256(str(i).encode()).hexdigest(),
                document_id=group, record_role=[role], document_kind=kind, document_family=['statement'] if kind else None,
                format=['pdf'] if filename.endswith('.pdf') else None, congress=['117'] if i == 2 else None)
+    if os.environ.get('FILENAME_FIXTURE_SPARSE') and i in (1, 6):
+        row['filename'] += ' sparse-marker'
+    if os.environ.get('FILENAME_FIXTURE_SHARED_PREFIX'):
+        row['source_id'] = 'aa' + row['source_id'][2:]
+    if os.environ.get('FILENAME_FIXTURE_WIDTH'):
+        row['content_document_kind'] = ['Wide 🏛️ ' * int(os.environ['FILENAME_FIXTURE_WIDTH'])]
     if i == 1:
         row.update(http_status=['200'], response_usable=['true'], response_body_complete=['true','false'], state_checked_at=['2026-10-14T09:00:00-04:00'])
     if i == 2:
@@ -46,15 +53,20 @@ for i, (filename, url, body, group, role, kind) in enumerate([
     if i == 4:
         row['recovered_filename'] = ['Recovered witness.pdf']
     rows.append(row)
+if os.environ.get('FILENAME_FIXTURE_ROWS'):
+    original = rows
+    rows = [{**original[i % len(original)],
+             'source_id': hashlib.sha256(str(i).encode()).hexdigest(),
+             'document_id': str(i)} for i in range(int(os.environ['FILENAME_FIXTURE_ROWS']))]
 files = {}
-for name, subset in [('filenames', rows), ('documents', [rows[i] for i in [1,2,3,4,5,6]])]:
+for name, subset in [('filenames', rows), ('documents', rows if os.environ.get('FILENAME_FIXTURE_ROWS') else [rows[i] for i in [1,2,3,4,5,6]])]:
     path = folder / ('document-filenames.parquet' if name == 'filenames' else 'documents.parquet')
-    pq.write_table(pa.Table.from_pylist(subset, schema=schema), path, row_group_size=2, compression='zstd')
+    pq.write_table(pa.Table.from_pylist(subset, schema=schema), path, row_group_size=256 if os.environ.get('FILENAME_FIXTURE_ROWS') else 2, compression='zstd')
     files[name] = dict(key=str(path.relative_to(root)), bytes=path.stat().st_size, rows=len(subset), sha256=publisher.digest(path))
 (root / 'indexes/catalog.json').write_text(json.dumps(dict(version=1, generation=generation, catalog_id=catalog_id, files=files)))
 # Fixture catalogs are not the reviewed catalog; tests supply their own review data.
 publisher.publish(root, root / 'public', review_identities=None)
-queries = [{}, {'scope':'all'}, {'retained':'no','scope':'all'}, {'q':'alias','retained':'no'}, {'q':'alias'},
+queries = [{'q':'alias','document_kind':'witness-statement'}, {'q':'JOSÉ 🏛️','field':'source_occurrences'}, {'q':'\"source_page_url\":','field':'source_occurrences'}, {}, {'scope':'all'}, {'retained':'no','scope':'all'}, {'q':'alias','retained':'no'}, {'q':'alias'},
            {'q':'ALIAS','document_kind':'__null__'}, {'document_kind':'__null__'}, {'scope':'capture-records','retained':'no'},
            {'q':'Witness name','field':'source_occurrences'}, {'scope':'all','q':'Recovered witness'}, {'congress':'117'}, {'q':'unfetched','format':'pdf'}, {'scope':'all','page':'99','limit':'2'}]
 catalog = publisher.viewer.Catalog(folder / 'document-filenames.parquet')

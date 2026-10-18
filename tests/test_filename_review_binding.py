@@ -24,7 +24,7 @@ def catalog(documents, sources, catalog_id='next'):
                            order=pc.sort_indices(table, sort_keys=[('filename', 'ascending')]), info={'catalog_id': catalog_id})
 
 
-IDENTITIES = {'version': 1, 'review_sha256': 'pin', 'rows': [
+IDENTITIES = {'version': 1, 'catalog_id': 'pair', 'review_sha256': 'a' * 64, 'rows': [
     {'index': 0, 'document_id': 'reviewed', 'body_key': 'bodies/a', 'source_ids': ['s1', 's2']}]}
 
 
@@ -34,7 +34,7 @@ def test_positions_are_recomputed_when_documents_move():
                   [('s0', 0), ('s9', 1), ('s1', 2), ('s2', 2)])
     assert binding.bind(old, IDENTITIES)['rows'] == [{'index': 0, 'group': 0, 'sources': [0, 1]}]
     placed = binding.bind(new, IDENTITIES)
-    assert placed == {'version': 1, 'review_sha256': 'pin', 'catalog_id': 'next',
+    assert placed == {'version': 1, 'review_sha256': 'a' * 64, 'catalog_id': 'next',
                       'rows': [{'index': 0, 'group': 1, 'sources': [2, 3]}], 'withdrawn': []}
 
 
@@ -52,7 +52,7 @@ def test_changed_reviews_are_withdrawn_with_a_reason(documents, sources, reason)
 
 def test_identities_round_trip_from_a_review_publication_and_refuse_mismatches():
     pinned = catalog([('reviewed', 'bodies/a', 'b.pdf'), ('other', 'bodies/x', 'c.pdf')], [('s2', 0), ('s1', 0), ('s9', 1)], 'pair')
-    reviews = {'catalog_id': 'pair', 'review_sha256': 'pin', 'rows': [{'group': 0, 'sources': [0, 1], 'document_id': 'reviewed'}]}
+    reviews = {'catalog_id': 'pair', 'review_sha256': 'a' * 64, 'rows': [{'group': 0, 'sources': [0, 1], 'document_id': 'reviewed'}]}
     identities = binding.identities_from(pinned, reviews)
     assert identities['rows'] == IDENTITIES['rows']
     assert binding.bind(pinned, identities)['rows'] == [{'index': 0, 'group': 0, 'sources': [0, 1]}]
@@ -68,3 +68,41 @@ def test_committed_identities_name_the_published_review_pin():
     assert identities['review_sha256'] == descriptor['review_sha256']
     assert len(identities['rows']) == descriptor['groups']
     assert len({row['document_id'] for row in identities['rows']}) == len(identities['rows'])
+
+
+def test_loaded_identities_require_pins_unique_rows_and_required_file(tmp_path):
+    import json
+    from copy import deepcopy
+    path = tmp_path / 'identities.json'
+    with pytest.raises(ValueError, match='missing'):
+        binding.load_identities(path, descriptor=None)
+    for damage in ('pin', 'index', 'document', 'sources'):
+        value = deepcopy(IDENTITIES)
+        if damage == 'pin': value.pop('review_sha256')
+        elif damage == 'index': value['rows'] *= 2
+        elif damage == 'document': value['rows'].append({**value['rows'][0], 'index': 1})
+        else: value['rows'][0]['source_ids'] = ['s1', 's1']
+        path.write_text(json.dumps(value))
+        with pytest.raises(ValueError):
+            binding.load_identities(path, descriptor=None)
+    path.write_text(json.dumps(IDENTITIES))
+    descriptor = tmp_path / 'descriptor.json'
+    descriptor.write_text(json.dumps(dict(review_sha256='b' * 64, catalog_id='pair', groups=1)))
+    with pytest.raises(ValueError, match='pins'):
+        binding.load_identities(path, descriptor=descriptor)
+
+
+def test_identity_generation_requires_exact_pinned_review_bytes(tmp_path):
+    import hashlib
+    import json
+    value = dict(version=1, catalog_id='pair', review_sha256='a' * 64, rows=[])
+    data = json.dumps(value).encode()
+    path = tmp_path / 'reviews.json'; path.write_bytes(data)
+    descriptor = dict(bytes=len(data), sha256=hashlib.sha256(data).hexdigest(), groups=0,
+                      catalog_id='pair', review_sha256='a' * 64)
+    assert binding.pinned_reviews(path, descriptor) == value
+    with pytest.raises(ValueError, match='pins'):
+        binding.pinned_reviews(path, {**descriptor, 'catalog_id': 'other'})
+    path.write_bytes(data + b' ')
+    with pytest.raises(ValueError, match='bytes'):
+        binding.pinned_reviews(path, descriptor)

@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 import gzip
 from hashlib import sha256
 import importlib.util
+from io import BytesIO
 import json
 from pathlib import Path
 
@@ -15,6 +16,7 @@ from congress_api.models.content import RawContent
 from congress_api.retention.capture_metadata import MetadataWriter, PREFIX
 from congress_api.retention.catalog_cache import capture_digest, legacy_capture_digest
 from congress_api.retention.raw_archive import Archive, CAPTURE_SCHEMA, encode_table
+from congress_api.retention.derived_files import copy_checked, require_derived_key
 
 
 SCRIPT = Path(__file__).resolve().parents[1] / 'scripts/verify-capture-run.py'
@@ -48,6 +50,12 @@ class MemoryStore:
     def read(self, key):
         self.reads.append(key)
         return self.objects.get(key)
+
+    def read_derived_file(self, key, path, *, expected=None):
+        require_derived_key(key)
+        data = self.read(key)
+        if data is not None:
+            return copy_checked(BytesIO(data), path, size=len(data), expected=expected, key=key)
 
     def keys(self, prefix):
         return sorted(key for key in self.objects if key.startswith(prefix))

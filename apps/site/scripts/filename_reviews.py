@@ -5,6 +5,28 @@ import json
 from pathlib import Path
 import re
 import tarfile
+import os
+import shutil
+import tempfile
+from contextlib import contextmanager
+
+
+@contextmanager
+def installation_lock(target):
+    import fcntl
+    target.parent.mkdir(parents=True,exist_ok=True)
+    with target.with_name('.'+target.name+'.lock').open('a+b') as stream:
+        fcntl.flock(stream,fcntl.LOCK_EX)
+        yield
+
+
+def recover_directory(target):
+    """Restore the last installed tree after interruption between directory renames."""
+    target=Path(target)
+    with installation_lock(target):
+        previous=target.with_name('.'+target.name+'.previous')
+        if not target.exists() and previous.exists():
+            os.replace(previous,target)
 
 FIELDS = ('document_kind', 'document_family', 'document_kind_source')
 
@@ -33,11 +55,11 @@ def export_reviews(catalog, target):
         links = {}
         for kind, suffix, field in [('body','pdf','path'),('text','txt','text_path'),('native-text','txt','native_text_path')]:
             if field in observed:
-                data, _ = catalog.review_snapshot.evidence(document, members, kind)
+                data, _ = catalog.review_snapshot.evidence(document, members, kind, selection=result)
                 links[kind] = save(data, suffix)
         links['pages'] = {}
         for page in range(1, observed['pages']+1):
-            data, _ = catalog.review_snapshot.evidence(document, members, 'page', page)
+            data, _ = catalog.review_snapshot.evidence(document, members, 'page', page, selection=result)
             links['pages'][str(page)] = save(data, 'png')
         # Publish the complete observations and section boundaries, with public
         # evidence locators replacing machine-specific receipt and file paths.
@@ -50,9 +72,12 @@ def export_reviews(catalog, target):
         rows.append(dict(group=position[entry], sources=catalog.members[entry], document_id=document['document_id'],
             status=result['status'], baseline=result['baseline'], selected=result['selected'], review=review, evidence=links))
     catalog.review_snapshot.check()
+    baseline = {}
+    for name, path in [('filenames',catalog.path),('documents',catalog.document_path)]:
+        with path.open('rb') as stream:
+            baseline[name] = hashlib.file_digest(stream,'sha256').hexdigest()
     value = dict(version=1, catalog_id=catalog.info['catalog_id'], review_sha256=catalog.review_snapshot.pin,
-        baseline={name: hashlib.file_digest(path.open('rb'),'sha256').hexdigest() for name,path in
-                  [('filenames',catalog.path),('documents',catalog.document_path)]},
+        baseline=baseline,
         rows=rows, files=files, independent_reference=False, automatic_classifier_approved=False)
     data = (json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode()
     (target/'reviews.json').write_bytes(data)
@@ -62,6 +87,8 @@ def export_reviews(catalog, target):
 
 def verify_directory(root, expected):
     root=Path(root)
+    if root.is_symlink() or (root/'reviews.json').is_symlink():
+        raise ValueError('Review publication must contain regular files')
     data=(root/'reviews.json').read_bytes()
     if hashlib.sha256(data).hexdigest()!=expected: raise ValueError('Review publication digest mismatch')
     value=json.loads(data)
@@ -83,17 +110,48 @@ def extract_archive(archive, target, descriptor):
     with archive.open('rb') as stream:
         if hashlib.file_digest(stream,'sha256').hexdigest()!=descriptor['archive_sha256']:
             raise ValueError('Review archive digest mismatch')
-    target.mkdir(parents=True,exist_ok=False)
-    with tarfile.open(archive,'r:gz') as bundle:
-        for member in bundle:
-            if not member.isfile() or not re.fullmatch(r'reviews.json|evidence/[a-f0-9]{64}\.(pdf|png|txt)',member.name):
-                raise ValueError('Invalid review archive member')
-            path=target/member.name
-            path.parent.mkdir(parents=True,exist_ok=True)
-            with path.open('xb') as out, bundle.extractfile(member) as source:
-                import shutil
-                shutil.copyfileobj(source,out)
-    return verify_directory(target,descriptor['sha256'])
+    target.parent.mkdir(parents=True,exist_ok=True)
+    # Own all incomplete work in a sibling directory. A corrupt cache or an old
+    # descriptor is replaceable only after the replacement verifies completely.
+    with tempfile.TemporaryDirectory(prefix=f'.{target.name}-',dir=target.parent) as temporary:
+        staged=Path(temporary)/'verified'
+        staged.mkdir()
+        with tarfile.open(archive,'r:gz') as bundle:
+            for member in bundle:
+                if not member.isfile() or not re.fullmatch(r'reviews.json|evidence/[a-f0-9]{64}\.(pdf|png|txt)',member.name):
+                    raise ValueError('Invalid review archive member')
+                path=staged/member.name
+                path.parent.mkdir(parents=True,exist_ok=True)
+                with path.open('xb') as out, bundle.extractfile(member) as source:
+                    shutil.copyfileobj(source,out)
+        value=verify_directory(staged,descriptor['sha256'])
+        # A directory cannot replace a nonempty directory portably. Keep the
+        # prior tree at a deterministic sibling throughout the two-rename swap;
+        # the next invocation restores it even after process death in the gap.
+        with installation_lock(target):
+            previous=target.with_name('.'+target.name+'.previous')
+            if not target.exists() and previous.exists():
+                os.replace(previous,target)
+            # A prior successful install may have died before backup cleanup.
+            # Current stays visible while deleting that stale backup; then the
+            # newest current always moves to the deterministic recovery path.
+            if previous.exists() and target.exists():
+                shutil.rmtree(previous)
+            displaced=previous
+            if target.exists() or target.is_symlink():
+                os.replace(target,displaced)
+            try:
+                os.replace(staged,target)
+            except BaseException as error:
+                if displaced.exists() or displaced.is_symlink():
+                    try:
+                        os.replace(displaced,target)
+                    except BaseException as cleanup_error:
+                        error.add_note(f'Prior review tree retained at {previous}; restore failed: {cleanup_error}')
+                raise
+            if previous.exists():
+                shutil.rmtree(previous)
+        return value
 
 
 if __name__=='__main__':

@@ -1,0 +1,83 @@
+"""Standard-library release identity shared by early checks and publication."""
+import hashlib
+import importlib.metadata
+import json
+from pathlib import Path
+import platform
+import tomllib
+import threading
+
+_source_cache = {}
+_source_lock = threading.RLock()
+
+PACKAGES = ('pyarrow','boto3','botocore','lxml','duckdb','zstandard','ijson')
+
+
+def encoded(value):
+    return json.dumps(value,sort_keys=True,separators=(',',':')).encode()
+
+
+def source_files(root):
+    root=Path(root)
+    def custody_of(paths):
+        values={}
+        for path in paths:
+            stat=path.stat()
+            values[str(path.relative_to(root))]=(stat.st_dev,stat.st_ino,stat.st_size,stat.st_mtime_ns,stat.st_ctime_ns)
+        return values
+    paths=set((root/'apps/site/scripts').glob('filename*.py'))
+    paths.update((root/'packages/congress_api/src/congress_api').rglob('*.py'))
+    paths.update((root/'docs/youtube-coverage/research/scripts').glob('*.py'))
+    paths.update(root/name for name in (
+        'apps/site/scripts/publish-filename-viewer.py','apps/site/scripts/publish-viewer-r2.py',
+        'scripts/viewer_publication_attempt.py','scripts/publication_cli.py',
+        'scripts/recovery_publication_continuation.py','scripts/guarded_recovery_publication_client.py',
+        'scripts/viewer_release_identity.py','scripts/publication_preflight.py',
+        'apps/site/document-review-identities.json','apps/site/document-review-publication.json',
+        '.python-version','pyproject.toml','uv.lock','.github/actions/setup-python-project/action.yml'))
+    paths=sorted(path for path in paths if path.is_file())
+    custody=custody_of(paths)
+    with _source_lock:
+        cached=_source_cache.get(root.resolve())
+        if cached is not None and cached[0]==custody:
+            return dict(cached[1])
+        values={}
+        for path in paths:
+            with path.open('rb') as stream:
+                values[str(path.relative_to(root))]=hashlib.file_digest(stream,'sha256').hexdigest()
+        after=custody_of(paths)
+        if after!=custody:
+            raise ValueError('Release source changed during hashing')
+        _source_cache[root.resolve()]=(custody,values)
+        return dict(values)
+
+
+def runtime_fingerprint(packages,python=None):
+    return hashlib.sha256(encoded({'python':python or platform.python_version(),
+        'implementation':platform.python_implementation(),'system':platform.system(),'machine':platform.machine(),
+        'packages':packages})).hexdigest()
+
+
+def installed_runtime():
+    packages={}
+    for name in PACKAGES:
+        try:packages[name]=importlib.metadata.version(name)
+        except importlib.metadata.PackageNotFoundError:packages[name]=None
+    return runtime_fingerprint(packages)
+
+
+def locked_runtime(root):
+    """Expected runtime after the unchanged locked workspace setup, without installing it."""
+    root=Path(root)
+    with (root/'uv.lock').open('rb') as stream:
+        lock=tomllib.load(stream)
+    packages={name:None for name in PACKAGES}
+    for name in PACKAGES:
+        versions={item['version'] for item in lock['package'] if item['name']==name}
+        if len(versions)>1:
+            raise ValueError('Ambiguous locked publication runtime package: '+name)
+        if versions:packages[name]=versions.pop()
+    python=(root/'.python-version').read_text().strip()
+    if python!=platform.python_version():
+        raise ValueError('Preflight Python differs from the locked workspace Python')
+    return runtime_fingerprint(packages,python)

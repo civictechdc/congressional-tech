@@ -1,9 +1,7 @@
 """The collection job validates its installed packages, without unrelated research."""
-import os
+import importlib.util
 from pathlib import Path
 import shutil
-import subprocess
-import sys
 
 import yaml
 
@@ -11,11 +9,16 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_meeting_validation_runs_offline_and_excludes_uninstalled_packages(tmp_path):
+def test_meeting_validation_runs_declared_offline_suite(tmp_path, monkeypatch, capfd):
     workflow = yaml.load((ROOT / '.github/workflows/update-data.yml').read_text(), Loader=yaml.BaseLoader)
     steps = workflow['jobs']['meetings']['steps']
     command = next(step['run'] for step in steps if step.get('name') == 'Test source parsing and refresh decisions')
-    for directory in ('tests', 'packages/committee_meeting/tests', 'packages/house-naming/tests', '.github/tests'):
+    assert command == 'python scripts/dev.py test production-offline'
+    spec = importlib.util.spec_from_file_location('dev_workflow_test', ROOT / 'scripts/dev.py')
+    dev = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(dev)
+    config = dev.declaration()
+    for directory in config['lanes']['production-offline']['roots']:
         path = tmp_path / directory
         path.mkdir(parents=True)
         (path / ('test_' + directory.replace('/', '_').replace('-', '_').replace('.', '') + '.py')).write_text(
@@ -30,20 +33,28 @@ def test_meeting_validation_runs_offline_and_excludes_uninstalled_packages(tmp_p
     scripts = tmp_path / '.github/scripts'
     scripts.mkdir()
     shutil.copyfile(ROOT / '.github/scripts/offline-python.py', scripts / 'offline-python.py')
-    result = subprocess.run(['bash', '-eo', 'pipefail', '-c', command], cwd=tmp_path,
-                            env={**os.environ, 'PATH': f'{Path(sys.executable).parent}:{os.defpath}',
-                                 'PYTEST_ADDOPTS': ''}, capture_output=True, text=True, timeout=30)
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert '4 passed' in result.stdout
+    shutil.copyfile(ROOT / 'pytest.ini', tmp_path / 'pytest.ini')
+    monkeypatch.setattr(dev, 'ROOT', tmp_path)
+    # Preflight failure cases are checked independently in test_dev_environment.py.
+    monkeypatch.setattr(dev, 'inventory', lambda config: None)
+    monkeypatch.setattr(dev, 'doctor', lambda *args: None)
+    monkeypatch.setenv('PYTEST_ADDOPTS', '')
+    assert dev.test(config, 'production-offline', [], []) == 0
+    assert '4 passed' in capfd.readouterr().out
 
 
-def test_meeting_validation_installs_its_archive_and_filename_test_dependencies():
+def test_meeting_validation_uses_shared_locked_setup():
     workflow = yaml.load((ROOT / '.github/workflows/update-data.yml').read_text(), Loader=yaml.BaseLoader)
-    install = next(step['run'] for step in workflow['jobs']['meetings']['steps']
-                   if step.get('name') == 'Install packages')
-    assert 'packages/congress_api[archive,test]' in install
-    assert 'packages/house-naming[test]' in install
-    assert 'PyYAML' in install
+    steps = workflow['jobs']['meetings']['steps']
+    assert any(step.get('uses') == './.github/actions/setup-python-project' for step in steps)
+    setup = yaml.load((ROOT / '.github/actions/setup-python-project/action.yml').read_text(), Loader=yaml.BaseLoader)
+    commands = '\n'.join(step.get('run', '') for step in setup['runs']['steps'])
+    assert 'uv sync --locked' in commands
+    python_setup = next(step for step in setup['runs']['steps'] if step.get('uses', '').startswith('actions/setup-python@'))
+    assert python_setup['with']['python-version-file'] == '.python-version'
+    assert 'poppler-utils' in commands
+    assert 'scripts/dev.py prepare-baseline' in commands
+    assert any(step.get('run') == 'python scripts/dev.py test active-experiment-regression' for step in steps)
 
 
 def test_house_directory_and_site_pages_precede_xml_fallback_and_save_partial_progress():

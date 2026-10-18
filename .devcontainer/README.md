@@ -1,14 +1,15 @@
 # Development container
 
-The container uses Ubuntu 22.04, Python 3.12, Node 20, Git and the GitHub CLI.
-VS Code runs `.devcontainer/post-create.sh` to install the local Python package
-graph and npm workspaces. The website is Astro under `apps/site`.
+The container uses Ubuntu 22.04, Python 3.12.13, Node 20, Git and the GitHub CLI.
+VS Code runs `.devcontainer/post-create.sh` to sync the locked Python workspace, install Poppler, check prerequisites
+and install npm workspaces. The website is Astro under `apps/site`.
 
 Open the repository in VS Code and choose **Dev Containers: Reopen in Container**.
-After setup, `~/.local/bin` contains the installed console scripts. From the
-repository root:
+After setup, `.venv/bin` contains the installed console scripts. From the
+repository root, activate that environment:
 
 ```bash
+source .venv/bin/activate
 congress-meetings --help
 congress-committees --help
 house-meeting-records --help
@@ -51,8 +52,12 @@ Astro site, committee YouTube app, and inflation app respectively.
 ## Validation and CI
 
 ```bash
-python -m pip install -e 'packages/congress_api[test]' -e 'packages/house-naming[test]'
-python -m pytest tests packages/committee_meeting/tests packages/house-naming/tests -q
+uv sync --locked
+source .venv/bin/activate
+python scripts/dev.py doctor
+python scripts/dev.py prepare-baseline
+python scripts/dev.py test production-offline
+python scripts/dev.py test active-experiment-regression
 ```
 
 GitHub Actions installs Python directly; it does not run collection through this
@@ -63,5 +68,8 @@ See the [job and artifact inventory](../docs/congress-api-contracts.md#weekly-ci
 Container settings live in `devcontainer.json`, OS dependencies in `Dockerfile`,
 installation steps in `post-create.sh`, and navigation aliases in `bashrc`.
 Rebuild the container after changing its base or features. For missing commands,
-check setup output and `~/.local/bin` on `PATH`; for empty reports, check retained
+check setup output and `.venv/bin` on `PATH`; for empty reports, check retained
 inputs and acquisition receipts before refetching.
+
+See [development and validation](../docs/development.md) for the shared suite
+inventory and the separate native and frozen research lanes.

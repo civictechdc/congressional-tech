@@ -10,31 +10,65 @@ when its document, members and body are unchanged; anything else is withdrawn
 and shows the original catalog category.
 """
 import argparse
+import hashlib
 import importlib.util
 import json
+import re
 from pathlib import Path
 
 IDENTITIES = Path(__file__).resolve().parents[1] / 'document-review-identities.json'
+DESCRIPTOR = IDENTITIES.with_name('document-review-publication.json')
 
 
-def load_identities(path=IDENTITIES):
+def validate_identities(value, descriptor=None):
+    """Reject ambiguous rows and unpinned input before any binding is emitted."""
+    if (not isinstance(value, dict) or value.get('version') != 1
+            or not isinstance(value.get('review_sha256'), str)
+            or not re.fullmatch('[a-f0-9]{64}', value['review_sha256'])
+            or not isinstance(value.get('catalog_id'), str) or not value['catalog_id']
+            or not isinstance(value.get('rows'), list)):
+        raise ValueError('Unsupported review identity file or missing pins')
+    indexes, documents = set(), set()
+    for row in value['rows']:
+        if (not isinstance(row, dict) or type(row.get('index')) is not int or row['index'] < 0
+                or not isinstance(row.get('document_id'), str) or not row['document_id']
+                or not isinstance(row.get('body_key'), (str, type(None)))
+                or not isinstance(row.get('source_ids'), list) or not row['source_ids']
+                or any(not isinstance(source, str) or not source for source in row['source_ids'])
+                or len(set(row['source_ids'])) != len(row['source_ids'])):
+            raise ValueError('Invalid review identity row')
+        if row['index'] in indexes or row['document_id'] in documents:
+            raise ValueError('Duplicate review identity index or document')
+        indexes.add(row['index']); documents.add(row['document_id'])
+    if indexes != set(range(len(value['rows']))):
+        raise ValueError('Review identity indexes must be complete')
+    if descriptor is not None and (value['review_sha256'] != descriptor['review_sha256']
+            or value['catalog_id'] != descriptor['catalog_id'] or len(value['rows']) != descriptor['groups']):
+        raise ValueError('Review identity pins differ from publication descriptor')
+    return value
+
+
+def load_identities(path=IDENTITIES, *, descriptor=DESCRIPTOR):
     path = Path(path)
     if not path.is_file():
-        return None
+        raise ValueError(f'Required review identity file is missing: {path}')
     identities = json.loads(path.read_text())
-    if identities.get('version') != 1 or not identities.get('review_sha256'):
-        raise ValueError('Unsupported review identity file')
-    return identities
+    return validate_identities(identities, json.loads(Path(descriptor).read_text()) if descriptor else None)
 
 
 def bind(catalog, identities):
     """Positions for reviews whose document, members and body are unchanged.
 
-    O(D + S + R) for D documents, S source rows and R reviewed sources: one
-    document_id index, then constant work per reviewed member.
+    O(D + sum(k_i log k_i)) for D documents and k_i members of each review:
+    reuse positional indexes and compare complete member multisets.
     """
-    position = {entry: index for index, entry in enumerate(catalog.order.to_pylist())}
-    entries = {key: index for index, key in enumerate(catalog.documents['document_id'].to_pylist())}
+    validate_identities(identities)
+    position = getattr(catalog, 'entry_positions', None)
+    if position is None:
+        position = {entry: index for index, entry in enumerate(catalog.order.to_pylist())}
+    entries = getattr(catalog, 'document_id_entries', None)
+    if entries is None:
+        entries = {key: index for index, key in enumerate(catalog.documents['document_id'].to_pylist())}
     source_ids, body_keys = catalog.table['source_id'], catalog.documents['body_key']
     rows, withdrawn = [], []
     for item in identities['rows']:
@@ -69,19 +103,33 @@ def identities_from(catalog, reviews):
     return dict(version=1, review_sha256=reviews['review_sha256'], catalog_id=reviews['catalog_id'], rows=rows)
 
 
+def pinned_reviews(path, descriptor):
+    data = Path(path).read_bytes()
+    if len(data) != descriptor['bytes'] or hashlib.sha256(data).hexdigest() != descriptor['sha256']:
+        raise ValueError('Review publication bytes differ from pinned descriptor')
+    value = json.loads(data)
+    if (value.get('version') != 1 or value.get('review_sha256') != descriptor['review_sha256']
+            or value.get('catalog_id') != descriptor['catalog_id'] or len(value.get('rows', [])) != descriptor['groups']):
+        raise ValueError('Review publication pins differ from descriptor')
+    return value
+
+
 def main():
     parser = argparse.ArgumentParser(description='Record stable review identities from a verified review publication.')
     parser.add_argument('reviews', type=Path, help='reviews.json of the pinned review publication')
     parser.add_argument('filenames', type=Path, help='document-filenames.parquet of the exact catalog the reviews name')
     parser.add_argument('--output', type=Path, default=IDENTITIES)
+    parser.add_argument('--descriptor', type=Path, default=DESCRIPTOR)
     args = parser.parse_args()
     viewer_path = Path(__file__).resolve().parents[3] / 'docs/youtube-coverage/research/scripts/view_document_filenames.py'
     spec = importlib.util.spec_from_file_location('filename_viewer', viewer_path)
     viewer = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(viewer)
-    catalog = viewer.Catalog(args.filenames)
-    identities = identities_from(catalog, json.loads(args.reviews.read_text()))
-    binding = bind(catalog, identities)
+    descriptor = json.loads(args.descriptor.read_text())
+    reviews = pinned_reviews(args.reviews, descriptor)
+    with viewer.Catalog(args.filenames, search_indexes=False) as catalog:
+        identities = validate_identities(identities_from(catalog, reviews), descriptor)
+        binding = bind(catalog, identities)
     if binding['withdrawn'] or len(binding['rows']) != len(identities['rows']):
         raise ValueError('The recorded identities do not bind back to their own catalog')
     args.output.write_text(json.dumps(identities, indent=1, sort_keys=True) + '\n')

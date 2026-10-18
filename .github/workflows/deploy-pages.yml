@@ -7,8 +7,13 @@ on:
     branches: [main]
     paths:
       - "apps/site/**"
+      - ".node-version"
+      - ".python-version"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/actions/setup-python-project/**"
       - ".github/workflows/deploy-pages.yml"
-      - "docs/youtube-coverage/research/filename-viewer.*"
+      - "docs/youtube-coverage/research/filename-*"
       - "docs/youtube-coverage/research/scripts/view_document_filenames.py"
   workflow_dispatch:
     inputs:
@@ -42,13 +47,7 @@ jobs:
         with:
           ref: ${{ inputs.pipeline_revision || 'pipeline-data' }}
           path: pipeline-data
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-      - name: Install publication verifier
-        run: >-
-          pip install -e packages/house-naming -e packages/committee_meeting -e packages/congress_shared
-          -e packages/youtube_api -e "packages/congress_api[archive]" -e apps/committee_youtube
+      - uses: ./.github/actions/setup-python-project
       - name: Verify and stage only published browser files
         run: |
           python - <<'PYTHON'
@@ -67,16 +66,23 @@ jobs:
           PYTHON
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version-file: ".node-version"
+          cache: npm
+          cache-dependency-path: apps/site/package-lock.json
+      - name: Use the declared npm runtime
+        run: npm install --global npm@11.19.1 --ignore-scripts --no-audit --no-fund
       - name: Install dependencies
         working-directory: apps/site
-        run: npm install --no-audit --no-fund
+        run: npm ci --workspaces=false --engine-strict --no-audit --no-fund
       - name: Verify review controls and static reader
         working-directory: apps/site
-        run: node --test src/components/filename-reviews.test.mjs ../../tests/test_filename_viewer_ui.mjs
+        run: npm run test:explorer
       - name: Build Astro site
         working-directory: apps/site
         run: npm run build
+      - name: Smoke test the built filename page
+        working-directory: apps/site
+        run: npm run test:built-filenames
       - name: Enforce the Pages publication size limit
         run: python .github/scripts/publication-budget.py apps/site/dist --total-limit 1000000000
       - uses: actions/configure-pages@v5

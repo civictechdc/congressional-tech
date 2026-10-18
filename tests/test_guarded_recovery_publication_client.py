@@ -64,3 +64,91 @@ class GuardTests(unittest.TestCase):
 
 
 if __name__ == '__main__': unittest.main()
+
+
+def test_upload_and_reconciliation_errors_are_both_preserved_without_resend():
+    request = TimeoutError('original PUT')
+    readback = OSError('GET failed')
+    client = Client()
+    def put(**kwargs):
+        client.calls.append(kwargs)
+        raise request
+    def get(**kwargs):
+        raise readback
+    client.put_object = put; client.get_object = get
+    events = []
+    proxy = GuardedPublicationClient(client, guard=lambda: None, journal=lambda e, v: events.append(e), after_write=lambda *a: None)
+    import pytest
+    with pytest.raises(RuntimeError, match='outcome is uncertain') as caught:
+        proxy.put_object(Bucket='bucket', Key='viewer-publications/releases/x/file', Body=b'raw', IfNoneMatch='*')
+    assert caught.value.__cause__ is request
+    assert caught.value.request_error is request
+    assert caught.value.reconciliation_error is readback
+    assert len(client.calls) == 1
+    assert events == ['publication_write_intent']
+    assert not proxy._receipts and not proxy._key_locks
+
+
+def test_ignored_receipts_and_completed_key_locks_have_no_retained_owner():
+    client = Client()
+    proxy = GuardedPublicationClient(client, guard=lambda: None, journal=lambda *a: None, after_write=lambda *a: None)
+    for i in range(50):
+        proxy.put_object(Bucket='bucket', Key=f'viewer-publications/releases/x/{i}', Body=b'raw', IfNoneMatch='*')
+    assert not proxy._receipts
+    assert not proxy._key_locks
+
+
+def test_same_key_lock_cleanup_keeps_all_waiters_excluded():
+    from concurrent.futures import ThreadPoolExecutor
+    import threading
+    import time
+    active = 0
+    peak = 0
+    lock = threading.Lock()
+    client = Client()
+    original = client.put_object
+    def slow(**kwargs):
+        nonlocal active, peak
+        with lock:
+            active += 1; peak = max(peak, active)
+        try:
+            time.sleep(.002)
+            return original(**kwargs)
+        finally:
+            with lock:
+                active -= 1
+    client.put_object = slow
+    proxy = GuardedPublicationClient(client, guard=lambda: None, journal=lambda *a: None, after_write=lambda *a: None)
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        list(pool.map(lambda _: proxy.put_object(Bucket='bucket', Key='viewer-publications/releases/x/same', Body=b'raw', IfNoneMatch='*'), range(24)))
+    assert peak == 1
+    assert not proxy._key_locks
+    assert not proxy._receipts
+
+
+def test_invalid_guard_client_and_sdk_retry_policy_fail_before_any_write():
+    import pytest
+    from types import SimpleNamespace
+    options=dict(journal=lambda *a:None,after_write=lambda *a:None)
+    with pytest.raises(TypeError,match='conditional put_object'):
+        GuardedPublicationClient(SimpleNamespace(get_object=lambda **k:None),guard=lambda:None,**options)
+    client=Client()
+    with pytest.raises(TypeError,match='check and shared_commit'):
+        GuardedPublicationClient(client,guard=SimpleNamespace(check=lambda:None),**options)
+    client.meta=SimpleNamespace(config=SimpleNamespace(retries={'total_max_attempts':2}))
+    with pytest.raises(ValueError,match='retries must be disabled'):
+        GuardedPublicationClient(client,guard=lambda:None,**options)
+    assert client.calls==[]
+
+
+def test_shared_continuation_client_refuses_changed_original_write_condition(tmp_path):
+    import pytest
+    from guarded_recovery_publication_client import ContinuedPublicationClient
+    from recovery_publication_continuation import Continuation
+    state=Continuation(tmp_path/'attempt',{})
+    client=Client()
+    proxy=ContinuedPublicationClient(client,continuation=state,guard=lambda:None,journal=state.record,after_write=lambda *a:None)
+    proxy.put_object(Bucket='bucket',Key='indexes/catalog.json',Body=b'raw',IfMatch='original')
+    with pytest.raises(ValueError,match='conditions differ'):
+        proxy.put_object(Bucket='bucket',Key='indexes/catalog.json',Body=b'raw',IfMatch='changed')
+    assert len(client.calls)==1

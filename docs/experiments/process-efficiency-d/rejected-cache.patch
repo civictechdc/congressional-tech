@@ -1,0 +1,221 @@
+--- a/packages/congress_api/src/congress_api/retention/document_index.py
++++ b/packages/congress_api/src/congress_api/retention/document_index.py
+@@ -24,7 +24,7 @@
+ 
+ from __future__ import annotations
+ 
+-from collections import Counter, defaultdict
++from collections import Counter, OrderedDict, defaultdict
+ from collections.abc import Mapping
+ from concurrent.futures import ProcessPoolExecutor
+ from hashlib import sha256
+@@ -36,10 +36,11 @@
+ from io import BytesIO
+ from itertools import groupby
+ import json
++import pickle
+ from multiprocessing import get_context
+ from pathlib import Path
+ import re
+-from sys import intern
++from sys import getsizeof, intern
+ import time
+ import unicodedata
+ from urllib.parse import parse_qsl, unquote, urlencode, urljoin, urlsplit, urlunsplit
+@@ -1039,6 +1040,9 @@
+     def __init__(self, urls=None, *, working=None):
+         self.working = working
+         self.statistics = Counter()
++        self._finalized = False
++        self._cache = OrderedDict()
++        self._cache_budget = 0
+         self.urls = {http_url(url) or url for url in urls} if urls is not None else None
+         self.occurrences = defaultdict(dict)
+         self.extra_filters = {}
+@@ -1054,6 +1058,19 @@
+             self.events = working.mapping("events", set)
+             self.by_url = SourceFilters(self.occurrences, self.extra_filters)
+ 
++    def _require_mutable(self):
++        if self._finalized:
++            raise RuntimeError("Source context is finalized")
++
++    def finalize(self, *, cache_bytes=1024 * 1024):
++        """Freeze completed context; reuse only detached, byte-budgeted results."""
++        if cache_bytes < 0:
++            raise ValueError("Source context cache budget must be nonnegative")
++        self._require_mutable()
++        self._finalized = True
++        self._cache_budget = cache_bytes
++        self.statistics['context_finalizations'] += 1
++
+     def report_statistics(self):
+         for name, amount in self.statistics.items():
+             progress.advance(name, amount)
+@@ -1064,7 +1081,7 @@
+             return
+         self.statistics['context_occurrence_scans'] += 1
+         if self.working is None:
+-            # Readers own their lists; later row merges cannot alter context.
++            # Readers own their lists, including before finalization.
+             values = ({field: list(items) for field, items in observations[key].items()}
+                       for key in sorted(observations))
+         else:
+@@ -1083,6 +1100,7 @@
+         return any(occurrence.get('source_link_url') for occurrence in self._sorted_occurrences(url))
+ 
+     def add_url(self, url, values):
++        self._require_mutable()
+         if isinstance(url, str):
+             url = http_url(url) or url
+         if not isinstance(url, str) or not url or self.urls is not None and url not in self.urls:
+@@ -1183,6 +1201,7 @@
+         return result
+ 
+     def add_transfer(self, requested, final, values):
++        self._require_mutable()
+         requested = (http_url(requested) or requested) if isinstance(requested, str) else requested
+         final = (http_url(final) or final) if isinstance(final, str) else final
+         if not all(isinstance(url, str) and url for url in (requested, final)) or requested == final:
+@@ -1232,7 +1251,11 @@
+ 
+     def for_url(self, url):
+         url = (http_url(url) or url) if isinstance(url, str) else url
+-        self.statistics['context_result_reads'] += 1
++        if self._finalized and url in self._cache:
++            self.statistics['context_cache_hits'] += 1
++            self._cache.move_to_end(url)
++            return pickle.loads(self._cache[url][0])
++        self.statistics['context_cache_misses'] += 1
+         filters, observations = {}, []
+         merge_context(filters, self.extra_filters.get(url, {}))
+         for occurrence in self._sorted_occurrences(url):
+@@ -1241,6 +1264,22 @@
+         result = {key: sorted(values) for key, values in filters.items() if values}
+         if observations:
+             result['source_occurrences'] = observations
++        if self._finalized and self._cache_budget:
++            payload = pickle.dumps(result, protocol=pickle.HIGHEST_PROTOCOL)
++            # Charge serialized data, the key, and conservative per-entry map
++            # bookkeeping. One logical result may itself exceed this budget.
++            size = getsizeof(payload) + getsizeof(url) + 256
++            if size > self._cache_budget:
++                self.statistics['context_cache_oversize_bypasses'] += 1
++            else:
++                while self.statistics['context_cache_bytes'] + size > self._cache_budget:
++                    _, (_, removed) = self._cache.popitem(last=False)
++                    self.statistics['context_cache_bytes'] -= removed
++                    self.statistics['context_cache_evictions'] += 1
++                self._cache[url] = (payload, size)
++                self.statistics['context_cache_bytes'] += size
++                self.statistics['context_cache_peak_bytes'] = max(
++                    self.statistics['context_cache_peak_bytes'], self.statistics['context_cache_bytes'])
+         return result
+ 
+     def add_link(self, link, receipt=None):
+@@ -1337,6 +1376,7 @@
+ 
+     def refresh_meeting_context(self):
+         """Join later meeting facts to earlier links using their scoped event ID."""
++        self._require_mutable()
+         for url, observations in self.occurrences.items():
+             snapshot = list(observations.values()) if self.working is None else observations.values()
+             for occurrence in snapshot:
+@@ -1357,6 +1397,7 @@
+                     self.add_url(url, expanded)
+ 
+     def add_meeting(self, record, receipt=None):
++        self._require_mutable()
+         if not isinstance(record, dict):
+             return
+         record = record.get("committeeMeeting", record)
+--- a/packages/congress_api/src/congress_api/retention/raw_catalog.py
++++ b/packages/congress_api/src/congress_api/retention/raw_catalog.py
+@@ -255,6 +255,7 @@
+             for name, basis, url in index.inventory_names(record):
+                 add(None, name, url, filename_origins=[basis])
+     context.refresh_meeting_context()
++    context.finalize()
+     # Metadata-only publisher records can list files with no capture yet.
+     progress.report('prepare_source_associations')
+     for url in context.by_url:
+--- a/tests/test_document_source_context.py
++++ b/tests/test_document_source_context.py
+@@ -99,21 +99,60 @@
+     assert context.for_url(LINK) == expected
+     assert context.statistics['context_occurrence_scans'] - before['context_occurrence_scans'] == 1
+     assert context.statistics['context_occurrence_rows_read'] - before['context_occurrence_rows_read'] == 40
++    context.finalize()
+     first = context.for_url(LINK)
++    scans = context.statistics['context_occurrence_scans']
+     first['source_page_title'].append('consumer mutation')
+     first['source_occurrences'][0]['source_link_label'].append('consumer mutation')
+     assert context.for_url(LINK) == expected
+-    assert context.statistics['context_result_reads'] == 3
+-
+-
+-def test_large_context_is_read_fresh_each_time(context_store):
++    assert context.statistics['context_occurrence_scans'] == scans
++    assert context.statistics['context_cache_hits'] == 1
++    assert context.statistics['context_finalizations'] == 1
++
++
++def test_finalized_context_refuses_later_mutation(context_store):
++    context_store.finalize()
++    for mutate in (
++        lambda: context_store.add_url(LINK, {'source_link_label': ['Later']}),
++        lambda: context_store.add_transfer(PAGE, LINK, {}),
++        lambda: context_store.add_meeting({}),
++        context_store.refresh_meeting_context,
++        context_store.finalize,
++    ):
++        with pytest.raises(RuntimeError, match='finalized'):
++            mutate()
++
++
++def test_context_cache_budget_eviction_and_oversize_rescans(context_store):
++    import pickle
++    import sys
++    context = context_store
++    other = LINK + '-other'
++    for url in (LINK, other):
++        context.add_url(url, {'source_link_label': ['same small result']})
++    value = context.for_url(LINK)
++    budget = sys.getsizeof(pickle.dumps(value, protocol=pickle.HIGHEST_PROTOCOL)) + sys.getsizeof(other) + 256
++    context.finalize(cache_bytes=budget)
++    context.for_url(LINK)
++    context.for_url(other)
++    scans = context.statistics['context_occurrence_scans']
++    context.for_url(LINK)
++    assert context.statistics['context_cache_evictions'] == 2
++    assert context.statistics['context_occurrence_scans'] == scans + 1
++    assert 0 < context.statistics['context_cache_bytes'] <= budget
++    assert context.statistics['context_cache_peak_bytes'] <= budget
++
++
++def test_context_larger_than_cache_is_read_fresh_each_time(context_store):
+     context = context_store
+     context.add_url(LINK, {'source_link_label': ['large value ' * 10000]})
++    context.finalize(cache_bytes=1024)
+     first = context.for_url(LINK)
+     first['source_occurrences'][0]['source_link_label'].clear()
+     assert context.for_url(LINK)['source_occurrences'][0]['source_link_label'] == ['large value ' * 10000]
++    assert context.statistics['context_cache_oversize_bypasses'] == 2
+     assert context.statistics['context_occurrence_scans'] == 2
+-    assert context.statistics['context_result_reads'] == 2
++    assert context.statistics['context_cache_bytes'] == 0
+ 
+ 
+ def test_link_predicate_uses_occurrences_and_extra_filters_without_pairing(context_store):
+--- a/tests/test_core_benchmark.py
++++ b/tests/test_core_benchmark.py
+@@ -107,7 +107,8 @@
+     assert report['inputs_unchanged'] and report['semantic_equivalence_passed']
+     assert report['source_inventory']['indexes/captures.parquet']['sha256']
+     assert report['storage_reads']['indexes'] > 0
+-    assert report['counters']['context_result_reads'] > 0
++    assert report['counters']['context_finalizations'] == 1
++    assert report['counters']['context_cache_misses'] > 0
+     assert report['stages'] and report['rebuild_memory']['process_peak_bytes'] > 0
+ 
+     assert report['candidate_inventory']['documents.parquet']['sha256']

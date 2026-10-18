@@ -1,8 +1,6 @@
 ---
-import html from '../../../../docs/youtube-coverage/research/filename-viewer.html?raw';
-const css = html.match(/<style>([\s\S]*?)<\/style>/)?.[1];
-const body = html.match(/<body>([\s\S]*?)<script type="module"/)?.[1];
-if (!css || !body) throw new Error('Filename viewer template is missing its style or body.');
+import css from '../../../../docs/youtube-coverage/research/filename-viewer.css?raw';
+import body from '../../../../docs/youtube-coverage/research/filename-viewer-body.html?raw';
 ---
 <!doctype html>
 <html lang="en">
@@ -14,7 +12,7 @@ if (!css || !body) throw new Error('Filename viewer template is missing its styl
     <meta name="description" content="Review filename classifications, publisher provenance, and saved-response coverage across the congressional document archive." />
     <style is:global set:html={css}></style>
   </head>
-  <body>
+  <body data-filename-mode="published">
     <Fragment set:html={body} />
     <script>import '../components/filename-bootstrap.mjs';</script>
   </body>

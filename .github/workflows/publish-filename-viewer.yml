@@ -8,10 +8,46 @@ on:
   schedule:
     # Also discovers catalogs selected by verified local recovery runs.
     - cron: '11,41 * * * *'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      preparation_run_id:
+        description: Original run containing accepted preparation (explicit resume only)
+        required: false
+      preparation_revision:
+        description: Exact original preparation Git revision
+        required: false
+      artifact_id:
+        description: Immutable preparation artifact ID
+        required: false
+      artifact_digest:
+        description: SHA256 artifact digest from the original upload
+        required: false
+      attempt:
+        description: Original publication attempt identity
+        required: false
   push:
     branches: [main]
     paths:
+      - 'packages/congress_api/src/congress_api/**'
+      - 'docs/youtube-coverage/research/scripts/**'
+      - 'apps/site/document-review-identities.json'
+      - 'apps/site/document-review-publication.json'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - 'apps/site/scripts/filename*.py'
+      - 'scripts/publication_preflight.py'
+      - 'tests/test_publication_preflight.py'
+      - '.python-version'
+      - '.github/actions/setup-python-project/action.yml'
+      - 'scripts/viewer_release_identity.py'
+      - 'scripts/publication_cli.py'
+      - 'scripts/viewer_publication_attempt.py'
+      - 'scripts/recovery_publication_continuation.py'
+      - 'scripts/guarded_recovery_publication_client.py'
+      - 'tests/test_viewer_publication_attempt.py'
+      - 'tests/test_recovery_publication_continuation.py'
+      - 'tests/test_guarded_recovery_publication_client.py'
+      - 'tests/test_recovery_viewer_transfers.py'
       - 'apps/site/scripts/publish-viewer-r2.py'
       - 'apps/site/scripts/publish-filename-viewer.py'
       - 'apps/site/scripts/filename-test-fixture.py'
@@ -28,6 +64,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 # This publisher writes only viewer-publications/, never the archive selector.
 concurrency:
@@ -45,31 +82,131 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     steps:
+      - name: Begin publication job cost observation
+        run: |
+          python3 - <<'PYTHON'
+          import json, os, time
+          from pathlib import Path
+          received = sum(int(path.read_text()) for path in Path('/sys/class/net').glob('*/statistics/rx_bytes'))
+          Path(os.environ['RUNNER_TEMP'], 'publication-job-start.json').write_text(json.dumps({'time':time.time(),'received_bytes':received}))
+          PYTHON
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.preparation_revision || github.sha }}
       - uses: actions/setup-python@v6
         with:
-          python-version: '3.12'
-      - name: Install catalog publication tools
-        run: >-
-          pip install pytest -e packages/house-naming -e packages/committee_meeting
-          -e packages/congress_shared -e 'packages/congress_api[archive]'
-      - name: Verify publication fidelity and recovery mapping
-        run: PYTHONPATH=apps/site/scripts python -m pytest -q .github/tests/test_filename_publication.py .github/tests/test_viewer_r2.py tests/test_filename_recoveries.py tests/test_filename_observations.py tests/test_filename_details.py
-      - name: Publish only a changed, verified catalog
+          python-version-file: '.python-version'
+      - name: Validate explicit resume inputs
+        env:
+          PREPARATION_RUN: ${{ inputs.preparation_run_id }}
+          PREPARATION_REVISION: ${{ inputs.preparation_revision }}
+          ARTIFACT_ID: ${{ inputs.artifact_id }}
+          ARTIFACT_DIGEST: ${{ inputs.artifact_digest }}
+          ATTEMPT: ${{ inputs.attempt }}
+        run: |
+          python - <<'PYTHON'
+          import os
+          fields = [os.environ[name] for name in ('PREPARATION_RUN', 'PREPARATION_REVISION', 'ARTIFACT_ID', 'ARTIFACT_DIGEST', 'ATTEMPT')]
+          if any(fields) and not all(fields):
+              raise SystemExit('Explicit resume requires all five original preparation inputs')
+          PYTHON
+      - name: Read-only publication preflight before workspace setup
+        id: preflight
+        if: ${{ !inputs.preparation_run_id }}
         env:
           CLOUDFLARE_ACCOUNT_ID: '174055408ff1560e60601c4d12c561c4'
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-        run: python apps/site/scripts/publish-viewer-r2.py --report viewer-publication.json
+        run: python scripts/publication_preflight.py --report viewer-preflight.json
+      - uses: ./.github/actions/setup-python-project
+        if: github.event_name == 'push' || inputs.preparation_run_id || steps.preflight.outputs.status == 'preparation_required'
+      - name: Verify publication fidelity and recovery mapping
+        if: github.event_name == 'push' || inputs.preparation_run_id || steps.preflight.outputs.status == 'preparation_required'
+        run: PYTHONPATH=apps/site/scripts:scripts python -m pytest -q .github/tests/test_filename_publication.py .github/tests/test_viewer_r2.py tests/test_filename_recoveries.py tests/test_filename_observations.py tests/test_filename_details.py tests/test_viewer_publication_attempt.py tests/test_guarded_recovery_publication_client.py tests/test_recovery_publication_continuation.py tests/test_publication_preflight.py tests/test_publication_cli.py tests/test_publication_state_bounds.py tests/test_publication_control_reads.py
+      - name: Prepare a changed catalog or recovery index
+        id: prepare
+        if: ${{ !inputs.preparation_run_id && steps.preflight.outputs.status == 'preparation_required' }}
+        env:
+          CLOUDFLARE_ACCOUNT_ID: '174055408ff1560e60601c4d12c561c4'
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: python apps/site/scripts/publish-viewer-r2.py prepare --directory viewer-preparation --report viewer-publication.json
+      - name: Accept preparation before any publication write
+        id: accepted
+        if: steps.prepare.outputs.status == 'prepared'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.prepare.outputs.artifact_name }}
+          path: viewer-preparation/
+          compression-level: 0
+          if-no-files-found: error
+          overwrite: false
+      - name: Restore explicitly selected preparation
+        if: inputs.preparation_run_id
+        uses: actions/download-artifact@v5
+        with:
+          artifact-ids: ${{ inputs.artifact_id }}
+          run-id: ${{ inputs.preparation_run_id }}
+          github-token: ${{ github.token }}
+          path: viewer-preparation
+          merge-multiple: true
+      - name: Verify complete preparation inventory
+        if: steps.prepare.outputs.status == 'prepared' || inputs.preparation_run_id
+        run: python apps/site/scripts/publish-viewer-r2.py verify-prepared --directory viewer-preparation
+      - name: Publish accepted preparation
+        if: steps.prepare.outputs.status == 'prepared' || inputs.preparation_run_id
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CLOUDFLARE_ACCOUNT_ID: '174055408ff1560e60601c4d12c561c4'
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          ARTIFACT_ID: ${{ steps.accepted.outputs.artifact-id || inputs.artifact_id }}
+          ARTIFACT_DIGEST: ${{ steps.accepted.outputs.artifact-digest || inputs.artifact_digest }}
+          PREPARATION_RUN: ${{ inputs.preparation_run_id || github.run_id }}
+          RESUME_ATTEMPT: ${{ inputs.attempt }}
+        run: |
+          options=()
+          if [ -n "$RESUME_ATTEMPT" ]; then options+=(--resume --attempt "$RESUME_ATTEMPT"); fi
+          python apps/site/scripts/publish-viewer-r2.py publish --directory viewer-preparation \
+            --artifact-id "$ARTIFACT_ID" --artifact-digest "$ARTIFACT_DIGEST" \
+            --run-id "$PREPARATION_RUN" --report viewer-publication.json "${options[@]}"
+      - name: Record observed publication job cost
+        if: always()
+        env:
+          PREFLIGHT_STATUS: ${{ steps.preflight.outputs.status }}
+        run: |
+          python - <<'PYTHON'
+          import json, os, time
+          from pathlib import Path
+          start = json.loads(Path(os.environ['RUNNER_TEMP'], 'publication-job-start.json').read_text())
+          received = sum(int(path.read_text()) for path in Path('/sys/class/net').glob('*/statistics/rx_bytes'))
+          value = {'version':1,'observed_job_step_seconds':time.time()-start['time'],
+                   'observed_host_received_bytes':received-start['received_bytes'],
+                   'preflight_status':os.environ['PREFLIGHT_STATUS'],
+                   'full_workspace_setup_skipped':os.environ['PREFLIGHT_STATUS']=='unchanged' and os.environ['GITHUB_EVENT_NAME']!='push',
+                   'scope':'first job step through this receipt; excludes runner allocation, post-job cleanup and artifact upload; host bytes include managed background traffic'}
+          if Path('viewer-preflight.json').exists(): value['preflight']=json.loads(Path('viewer-preflight.json').read_text())
+          Path('viewer-job-cost.json').write_text(json.dumps(value,indent=2)+'\n')
+          PYTHON
       - name: Record publication outcome
         if: always()
         run: |
+          if [ -f viewer-preflight.json ]; then cat viewer-preflight.json >> "$GITHUB_STEP_SUMMARY"; fi
           if [ -f viewer-publication.json ]; then
             cat viewer-publication.json >> "$GITHUB_STEP_SUMMARY"
           fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: viewer-publication-${{ github.run_id }}
-          path: viewer-publication.json
+          name: viewer-publication-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            viewer-publication.json
+            viewer-preflight.json
+            viewer-job-cost.json
+            viewer-preparation/continuation.json
+            viewer-preparation/journal/
+            viewer-preparation/journal-intents/
+            viewer-preparation/publication-result.json
+            viewer-preparation/preparation.json
+            viewer-preparation/prepared-result.json
           if-no-files-found: ignore

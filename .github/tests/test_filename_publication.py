@@ -67,7 +67,7 @@ def test_publication_includes_bounded_provenance_lookup(catalog):
 def test_generation_cannot_escape_the_selected_snapshot(catalog):
     manifest = json.loads((catalog / 'indexes/catalog.json').read_text())
     manifest['files']['filenames']['key'] = 'catalog-generations/' + manifest['generation'] + '/../other.parquet'
-    with pytest.raises(ValueError, match='Invalid immutable catalog location'):
+    with pytest.raises(ValueError, match='Invalid catalog generation path'):
         publication.verify(catalog, manifest)
 
 
@@ -128,3 +128,31 @@ def test_detail_navigation_preserves_members_and_preferred_sources(catalog):
 def test_detail_navigation_rejects_invalid_group_and_preferred_links(tmp_path, groups, preferred):
     with pytest.raises(ValueError):
         publication.navigation.publish_navigation(groups, preferred, tmp_path)
+
+
+@pytest.mark.parametrize('level', [19, 9, 3])
+def test_compression_policy_preserves_all_values_across_row_groups(tmp_path, level):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    schema = pa.schema([('id', pa.string()), ('values', pa.list_(pa.struct([('value', pa.string())])))],
+                       metadata={b'catalog_id': b'exact', b'custom': b'preserve'})
+    rows = [{'id': str(i), 'values': None if i % 3 == 0 else ([] if i % 3 == 1 else
+             [{'value': None}, {'value': 'duplicate'}, {'value': 'duplicate'}])} for i in range(19)]
+    source, destination = tmp_path / 'source.parquet', tmp_path / 'output.parquet'
+    pq.write_table(pa.Table.from_pylist(rows, schema=schema), source)
+    policy = publication.DEFAULT_COMPRESSION_POLICY._replace(level=level, batch_size=8, row_group_size=4)
+    result = publication.repack_and_verify(source, destination, policy)
+    assert result['exact_equal'] and result['rows'] == 19 and result['row_groups'] == 5
+    assert pq.read_table(destination).to_pylist() == rows
+    assert pq.read_schema(destination).equals(pq.read_schema(source), check_metadata=True)
+
+
+def test_default_compression_uses_research_supported_level_9(catalog, tmp_path):
+    timing = {}
+    events = []
+    result = publication.publish(catalog, tmp_path / 'public', stage_timings=timing, stage_event=events.append)
+    assert result['compression_policy'] == {'codec': 'zstd', 'level': 9, 'batch_size': 8192, 'row_group_size': 8192}
+    assert timing['documents_repack']['exact_equal'] and timing['filenames_repack']['exact_equal']
+    assert timing['total_seconds'] > timing['documents_preparation']
+    assert events[0] == {'event': 'stage_started', 'stage': 'input_verification'}
+    assert events[-1]['event'] == 'stage_completed' and events[-1]['stage'] == 'manifest'

@@ -1,0 +1,28 @@
+name: Set up the Python workspace
+description: Install native PDF tools and the locked six-member Python environment.
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v6
+      with:
+        python-version-file: ".python-version"
+    - uses: astral-sh/setup-uv@v6
+      with:
+        version: "0.11.21"
+        enable-cache: true
+    - name: Install PDF and process tools
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends poppler-utils procps
+    - name: Sync the locked workspace
+      shell: bash
+      run: |
+        uv sync --locked
+        echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
+    - name: Prepare historical baseline and check prerequisites
+      shell: bash
+      run: |
+        python scripts/dev.py prepare-baseline
+        python scripts/dev.py inventory
+        python scripts/dev.py doctor

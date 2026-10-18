@@ -75,6 +75,7 @@ def test_cli_modes_refused_before_storage(tmp_path, argv):
         execute(tmp_path, object(), *argv)
 
 
+@pytest.mark.loopback
 @pytest.mark.skipif(not os.environ.get('SOURCE_FETCH_BINARY'), reason='Requires native worker')
 @pytest.mark.parametrize('kind', ['pdf', 'zip'])
 def test_native_capture_over_64_mib_and_zip_members_with_no_file_policy(tmp_path, monkeypatch, kind):

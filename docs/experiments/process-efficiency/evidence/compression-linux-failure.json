@@ -1,0 +1,78 @@
+{
+  "adoption": "unqualified",
+  "gates": {},
+  "inputs": {
+    "builder_sha256": "0ecba05e0cb3a4f81a31210fa49af6fc4425e3800be9089263ffaeacc04e9433",
+    "cache_condition": "warm filesystem; no privileged cache flush; fresh process per trial",
+    "limits": {
+      "minimum_free_bytes": 12884901888,
+      "process_tree_rss_bytes": 3221225472,
+      "seconds_per_trial": 5400.0
+    },
+    "order": [
+      19,
+      9,
+      3,
+      3,
+      9,
+      19,
+      19,
+      9,
+      3
+    ],
+    "review_identity_sha256": "4e9062a4a34fccb50696793f9fb3587c49cf1fc97de29812a3e60f00a47b392c",
+    "revision": "3d6718ffaee6fdd062823a7e707556990b7b52b2",
+    "source_manifest": {
+      "catalog_id": "76758ea73fa94075bda46ce79e569fd3",
+      "files": {
+        "documents": {
+          "bytes": 539110541,
+          "key": "catalog-generations/cbcf65877e2843ae8b23915c3d05a18f/documents.parquet",
+          "rows": 1241131,
+          "sha256": "f8f30ffd5cc5bb3f97b0942c563c1bd3a08f0736058b7998d2761ea495aafe55"
+        },
+        "filenames": {
+          "bytes": 544061564,
+          "key": "catalog-generations/cbcf65877e2843ae8b23915c3d05a18f/document-filenames.parquet",
+          "rows": 1683404,
+          "sha256": "6e66df67fa44395c083e17dd30546bf95772718b1aabc4e7e0dab67a695ba534"
+        }
+      },
+      "generation": "cbcf65877e2843ae8b23915c3d05a18f",
+      "version": 1
+    },
+    "source_manifest_sha256": "e7d4165e450a1a6f73f20183c95d44a816e4aa8ba65bb5898feba89195c154ff"
+  },
+  "remaining_gates": [
+    "three complete Linux pairs",
+    "fixed real-loader browser cases including reviews, recovery, navigation and worst records",
+    "p95 browser-read regression <=10%",
+    "unchanged IDs, derived values and review pins across candidates"
+  ],
+  "trials": [
+    {
+      "elapsed_seconds": 10.052970667020418,
+      "exit_code": -9,
+      "level": 19,
+      "peak_process_tree_rss_bytes": 2391310336,
+      "scratch_bytes": 312,
+      "status": "failed",
+      "worker": {
+        "policy": {
+          "batch_size": 8192,
+          "codec": "zstd",
+          "level": 19,
+          "row_group_size": 8192
+        },
+        "runtime": {
+          "machine": "aarch64",
+          "platform": "Linux-6.8.0-117-generic-aarch64-with-glibc2.36",
+          "pyarrow": "25.0.1",
+          "python": "3.12.15"
+        },
+        "status": "running",
+        "timings": {}
+      }
+    }
+  ]
+}

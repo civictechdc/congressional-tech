@@ -565,4 +565,80 @@ def test_shared_parquet_reads_are_serialized_between_detail_and_search(tmp_path)
         if i%3==1: return catalog.record(i%2)['filename']
         return catalog.searchable('source_occurrences').to_pylist()
     with ThreadPoolExecutor(max_workers=8) as pool:results=list(pool.map(read,range(60)))
-    assert len(results)==60 and count>=20 and active==0
+    assert len(results)==60 and 2 <= count < 20 and active==0
+
+
+@pytest.mark.loopback
+def test_local_route_composes_shared_markup_and_serves_every_module():
+    from http.client import HTTPConnection
+    from http.server import ThreadingHTTPServer
+    from threading import Thread
+    server = ThreadingHTTPServer(('127.0.0.1', 0), viewer.handler_for(object()))
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        connection = HTTPConnection(*server.server_address, timeout=5)
+        connection.request('GET', '/')
+        response = connection.getresponse()
+        page = response.read().decode()
+        assert response.status == 200
+        assert '<!-- filename-viewer:body -->' not in page
+        assert 'data-filename-mode="local"' in page
+        assert '<dialog id="detail"' in page
+        assert page.index('/filename-viewer.css') < page.index('<body') < page.index('/filename-viewer.mjs')
+        for name in ('filename-viewer.mjs', 'filename-adapter.mjs', 'filename-rules.mjs',
+                     'filename-provenance.mjs', 'filename-detail-state.mjs', 'filename-viewer.css'):
+            connection.request('GET', '/' + name)
+            response = connection.getresponse()
+            assert response.status == 200
+            assert response.read() == viewer.HTML.with_name(name).read_bytes()
+        connection.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_local_search_normalizes_fractional_nonfinite_and_out_of_range_pages(tmp_path):
+    catalog = catalog_from_sources(tmp_path, [
+        ('first.pdf', 'https://committee.test/first', None, None, None),
+        ('second.pdf', 'https://committee.test/second', None, None, None),
+    ])
+    expected = catalog.search({'scope': 'all', 'limit': '1', 'page': '2'})
+    assert catalog.search({'scope': 'all', 'limit': '1.9', 'page': '999999999999999999999'}) == expected
+    for value in ('NaN', 'Infinity', '-1', '0', ''):
+        result = catalog.search({'scope': 'all', 'limit': value, 'page': value})
+        assert result['limit'] == 50
+        assert result['page'] == 1
+        assert result['rows'] == catalog.search({'scope': 'all'})['rows']
+
+
+def test_complete_document_access_rejects_negative_and_out_of_range_source_rows(tmp_path):
+    (tmp_path / 'indexes').mkdir()
+    index.write_filename_metadata(tmp_path, [dict(filename='probe.pdf', source_url='https://x.test/1', body_key=None)], workers=1)
+    with viewer.Catalog(tmp_path / 'indexes/document-filenames.parquet', search_indexes=False) as catalog:
+        assert catalog.filter_text == {}
+        assert not hasattr(catalog, 'source_positions')
+        for row in (-1, len(catalog.table), 0.5, True):
+            with __import__('pytest').raises(ValueError, match='Row does not exist'):
+                catalog.document(row)
+        assert catalog.search({})['total'] == 1
+        assert catalog.filter_text
+
+
+def test_catalog_constructor_failure_closes_first_reader(tmp_path, monkeypatch):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    schema = pa.schema([('source_id', pa.string()), ('document_id', pa.string()), ('filename', pa.string()),
+                        ('source_url', pa.string()), ('body_key', pa.string())], metadata={b'catalog_id': b'pair'})
+    source = tmp_path / 'sources.parquet'
+    pq.write_table(pa.Table.from_pylist([dict(source_id='s', document_id='d', filename='a.pdf', source_url='https://x.test/a', body_key=None)], schema=schema), source)
+    (tmp_path / 'documents.parquet').write_bytes(source.read_bytes())
+    original, acquired = pq.ParquetFile, []
+    def opening(path, *args, **kwargs):
+        if acquired: raise OSError('injected second reader open')
+        reader = original(path, *args, **kwargs); acquired.append(reader); return reader
+    monkeypatch.setattr(viewer.pq, 'ParquetFile', opening)
+    with __import__('pytest').raises(OSError, match='injected second reader'):
+        viewer.Catalog(source, search_indexes=False)
+    assert acquired[0].closed

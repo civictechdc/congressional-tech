@@ -19,7 +19,14 @@ dependencies = [
 
 [project.optional-dependencies]
 # Checkpoint digests include Parquet writer metadata; readers/writers must match.
-archive = ["pyarrow==25.0.1", "boto3>=1.40,<2", "aiobotocore>=3.9,<4", "house-naming-guide", "surt>=0.3.1,<0.4"]
+archive = [
+    "pyarrow==25.0.1",
+    "boto3>=1.40,<2",
+    "aiobotocore>=3.9,<4",
+    "house-naming-guide",
+    "surt>=0.3.1,<0.4",
+    "ijson>=3.4,<4",
+]
 test = ["pytest>=9,<10"]
 
 [project.scripts]
@@ -43,12 +50,6 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["src"]
 
-# uv-native path sources (ignored by pip). Lets `uv pip install -e .`
-# resolve the sibling packages from the local tree instead of an index.
-[tool.uv.sources]
-committee-meeting = { path = "../committee_meeting", editable = true }
-congress-shared = { path = "../congress_shared", editable = true }
-house-naming-guide = { path = "../house-naming", editable = true }
 
 # Direct imports between responsibility folders. Same-folder imports are allowed.
 # tests/test_congress_api_imports.py checks absolute, relative and function-local imports.

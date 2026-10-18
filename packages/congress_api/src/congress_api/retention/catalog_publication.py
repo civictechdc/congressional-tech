@@ -3,13 +3,17 @@
 Retained receipts remain authoritative. The manifest only selects immutable
 Parquet files; root files are accepted as migration inputs when it is absent.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from hashlib import sha256
 import json
 from pathlib import Path
 from uuid import uuid4
+import shutil
+import tempfile
+import weakref
 
-import pyarrow as pa
+from congress_api.retention.derived_files import file_identity, check_identity
+
 import pyarrow.parquet as pq
 
 from congress_api.retention import raw_progress as progress
@@ -21,19 +25,42 @@ DOCUMENTS = 'indexes/documents.parquet'
 
 @dataclass
 class CatalogSnapshot:
-    filenames: bytes | None
-    documents: bytes | None
+    filenames_path: Path | None
+    documents_path: Path | None
     manifest: dict | None
     version: str | None
+    directory: Path
+    files: dict = field(default_factory=dict)
+    _cleanup: object = field(init=False, repr=False)
+
+    def __post_init__(self):
+        self._cleanup = weakref.finalize(self, shutil.rmtree, self.directory, ignore_errors=True)
+
+    def __enter__(self):
+        return self
+
+    def close(self):
+        self._cleanup()
+
+    def preserve(self, error):
+        self._cleanup.detach()
+        error.add_note(f'Owned catalog snapshot retained for diagnosis: {self.directory}')
+
+    def __exit__(self, kind, error, traceback):
+        if error is not None:
+            self.preserve(error)
+        else:
+            self.close()
 
 
-def _properties(data):
-    source = pq.ParquetFile(pa.BufferReader(data))
-    catalog_id = (source.schema_arrow.metadata or {}).get(b'catalog_id')
-    if not catalog_id:
-        raise ValueError('Catalog file has no catalog_id')
-    return {'sha256': sha256(data).hexdigest(), 'bytes': len(data),
-            'rows': source.metadata.num_rows, 'catalog_id': catalog_id.decode()}
+def _properties(path, *, identity=None):
+    with pq.ParquetFile(path) as source:
+        catalog_id = (source.schema_arrow.metadata or {}).get(b'catalog_id')
+        if not catalog_id:
+            raise ValueError('Catalog file has no catalog_id')
+        actual = identity if identity is not None else file_identity(path)
+        actual.update(rows=source.metadata.num_rows, catalog_id=catalog_id.decode())
+        return actual
 
 
 def _manifest(data):
@@ -57,44 +84,68 @@ def _manifest(data):
         raise ValueError('Invalid selected catalog manifest') from error
 
 
-def _validate(data, item, catalog_id):
-    if data is None:
+def _validate(path, item, catalog_id, *, identity=None):
+    if path is None:
         raise ValueError(f"Missing selected catalog file: {item['key']}")
-    # Check bytes before passing any potentially corrupted file to Parquet.
-    if len(data) != item['bytes'] or sha256(data).hexdigest() != item['sha256']:
-        raise ValueError(f"Selected catalog checksum mismatch: {item['key']}")
-    properties = _properties(data)
+    actual = identity or file_identity(path)
+    check_identity(actual, item, item['key'])
+    properties = _properties(path, identity=actual)
     if properties['rows'] != item['rows'] or properties['catalog_id'] != catalog_id:
         raise ValueError(f"Selected catalog metadata mismatch: {item['key']}")
+    return properties
 
 
 def read_catalog(store, *, read=None):
-    """Read the selection once. A corrupt selection never falls back to roots."""
+    """Own verified files until the caller closes the selected snapshot.
+
+    A corrupt selection never falls back to root files. Failed reads preserve
+    their owned partials and selector bytes, with the directory in the error.
+    """
     read = read or store.read
     selected = read(MANIFEST_KEY)
     version = (getattr(store, 'index_etags', {}).get(MANIFEST_KEY)
                if hasattr(store, 'index_etags') else
                sha256(selected).hexdigest() if selected is not None else None)
-    if selected is None:
-        # Legacy files can be absent or mismatched: the rebuild repairs them.
-        return CatalogSnapshot(read(FILENAMES), read(DOCUMENTS), None, version)
-    manifest = _manifest(selected)
-    contents = {}
-    for label, item in manifest['files'].items():
-        if label not in ('filenames', 'documents'):
-            continue
-        contents[label] = read(item['key'])
-        _validate(contents[label], item, manifest['catalog_id'])
-    return CatalogSnapshot(contents['filenames'], contents['documents'], manifest, version)
+    snapshot = CatalogSnapshot(None, None, None, version,
+                               Path(tempfile.mkdtemp(prefix='catalog-snapshot-')))
+    try:
+        if selected is not None:
+            (snapshot.directory / 'selected.json').write_bytes(selected)
+            snapshot.manifest = _manifest(selected)
+        for label, legacy in [('filenames', FILENAMES), ('documents', DOCUMENTS)]:
+            item = snapshot.manifest['files'][label] if snapshot.manifest else None
+            key = item['key'] if item else legacy
+            path = snapshot.directory / Path(legacy).name
+            identity = store.read_derived_file(key, path, expected=item)
+            progress.advance('objects_read')
+            progress.advance('bytes_read', identity['bytes'] if identity else 0)
+            if item:
+                _validate(path if identity else None, item, snapshot.manifest['catalog_id'], identity=identity)
+            if identity is not None:
+                setattr(snapshot, label + '_path', path)
+                identity['key'] = key
+                snapshot.files[label] = identity
+        return snapshot
+    except BaseException as error:
+        snapshot.preserve(error)
+        raise
 
 
-def publish_catalog(store, filenames_path, documents_path, *, previous):
+def publish_catalog(store, filenames_path, documents_path, *, previous, validation=None):
     """Upload immutable pair, then conditionally select it as the final write."""
     from congress_api.retention.document_index import validate_document_indexes
-    validate_document_indexes(filenames_path, documents_path)
-    contents = {'filenames': Path(filenames_path).read_bytes(),
-                'documents': Path(documents_path).read_bytes()}
-    properties = {label: _properties(data) for label, data in contents.items()}
+    if not callable(getattr(store, 'put_catalog_manifest', None)) or not callable(getattr(store, 'put_derived_file', None)):
+        raise TypeError('Catalog publication requires conditional selector and exclusive immutable file operations')
+    if validation is None:
+        from congress_api.retention.catalog_validation import validate_references
+        validation = validate_references(filenames_path, documents_path, validator=validate_document_indexes)
+    else:
+        validation.require(filenames_path, documents_path, validator=validate_document_indexes)
+    paths = {'filenames': Path(filenames_path), 'documents': Path(documents_path)}
+    properties = {label: _properties(path) for label, path in paths.items()}
+    content_validation = validation.content(properties)
+    if accept := getattr(store, 'accept_catalog_validation', None):
+        accept(content_validation)
     catalog_id = properties['filenames']['catalog_id']
     if catalog_id != properties['documents']['catalog_id']:
         raise ValueError('Catalog pair has different catalog_id values')
@@ -104,17 +155,14 @@ def publish_catalog(store, filenames_path, documents_path, *, previous):
     for label, name in [('filenames', 'document-filenames.parquet'), ('documents', 'documents.parquet')]:
         key = f'catalog-generations/{generation}/{name}'
         files[label] = {'key': key, **{k: v for k, v in properties[label].items() if k != 'catalog_id'}}
-        store.put(key, contents[label], immutable=True)
+        store.put_derived_file(key, paths[label], expected=properties[label])
         progress.report('publish_catalog_files', completed=len(files), total=2, unit='tables')
     manifest = {'version': 1, 'generation': generation, 'catalog_id': catalog_id, 'files': files}
     data = json.dumps(manifest, sort_keys=True, separators=(',', ':')).encode()
     # LocalStore compares the exact manifest read before the build. R2Store's
     # indexes/ conditional write uses the ETag retained by read_catalog.
     progress.report('select_catalog_generation')
-    if hasattr(store, 'put_catalog_manifest'):
-        store.put_catalog_manifest(data, expected_version=previous.version)
-    else:
-        store.put(MANIFEST_KEY, data)
+    store.put_catalog_manifest(data, expected_version=previous.version)
     progress.report('catalog_published', completed=1, total=1, unit='generations')
     return {'manifest_key': MANIFEST_KEY, 'generation': generation, 'catalog_id': catalog_id,
             'filenames_key': files['filenames']['key'], 'documents_key': files['documents']['key']}
@@ -132,20 +180,8 @@ def local_catalog_paths(root):
         path = root / (item['key'] if item else legacy)
         if not path.is_file():
             raise ValueError(f'Missing selected catalog file: {path}')
-        if item:
-            digest = sha256()
-            with path.open('rb') as stream:
-                for block in iter(lambda: stream.read(1024 * 1024), b''):
-                    digest.update(block)
-            if path.stat().st_size != item['bytes'] or digest.hexdigest() != item['sha256']:
-                raise ValueError(f'Selected catalog checksum mismatch: {path}')
-        source = pq.ParquetFile(path)
-        catalog_id = (source.schema_arrow.metadata or {}).get(b'catalog_id')
-        if not catalog_id:
-            raise ValueError('Catalog file has no catalog_id')
-        ids.append(catalog_id.decode())
-        if item and (source.metadata.num_rows != item['rows'] or ids[-1] != manifest['catalog_id']):
-            raise ValueError(f'Selected catalog metadata mismatch: {path}')
+        properties = _validate(path, item, manifest['catalog_id']) if item else _properties(path)
+        ids.append(properties['catalog_id'])
         paths.append(path)
     if ids[0] != ids[1]:
         raise ValueError('Legacy catalog pair has different catalog_id values')

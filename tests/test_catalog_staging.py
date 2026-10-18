@@ -43,7 +43,7 @@ def test_transitive_merge_split_and_unchanged_groups_equal_clean_replay(tmp_path
     path = tmp_path / 'document-filenames.parquet'
     index.write_document_indexes(path, rows, schema)
     previous = pq.ParquetFile(path)
-    previous_documents = path.with_name('documents.parquet').read_bytes()
+    previous_documents = pq.ParquetFile(path.with_name('documents.parquet'))
     # Same endpoint has a new body: connects A and B transitively, C is intact.
     added = source('a.pdf','https://example.gov/a.pdf','body-B')
     merged = tmp_path / 'merged'; merged.mkdir()
@@ -58,7 +58,8 @@ def test_transitive_merge_split_and_unchanged_groups_equal_clean_replay(tmp_path
     # Removing the bridge splits the component and recomputes both sides.
     split = tmp_path / 'split';split.mkdir()
     result = index.write_document_indexes(split / path.name,rows,schema,
-        previous=pq.ParquetFile(merged / path.name),previous_documents=(merged / 'documents.parquet').read_bytes())
+        previous=pq.ParquetFile(merged / path.name),
+        previous_documents=pq.ParquetFile(merged / 'documents.parquet'))
     assert result['reused_document_groups'] == 1
     assert result['recomputed_document_groups'] == 2
     for name in (path.name,'documents.parquet'):
@@ -102,7 +103,7 @@ def test_policy_change_requires_explicit_group_rebuild(tmp_path,monkeypatch):
     schema = schema.append(pa.field('source_occurrences', index.metadata_type('source_occurrences')))
     index.write_document_indexes(path,[row],schema)
     previous = pq.ParquetFile(path)
-    documents = path.with_name('documents.parquet').read_bytes()
+    documents = pq.ParquetFile(path.with_name('documents.parquet'))
     original = index.fill_document_kind
     def changed(row):
         original(row)
@@ -518,7 +519,7 @@ def test_sparse_grouping_keeps_null_empty_and_paired_observations(tmp_path):
         actual = pq.read_table(file)
         assert semantic(actual) == semantic(pa.Table.from_pylist(expected,schema=actual.schema))
     previous = pq.ParquetFile(path)
-    documents = path.with_name('documents.parquet').read_bytes()
+    documents = pq.ParquetFile(path.with_name('documents.parquet'))
     result = index.write_document_indexes(path,rows,schema,previous=previous,previous_documents=documents)
     assert result['reused_document_groups'] == 3
     assert result['recomputed_document_groups'] == 0
@@ -547,5 +548,5 @@ def test_redundant_publication_code_does_not_invalidate_group_reuse(tmp_path):
     path=tmp_path/'document-filenames.parquet'
     index.write_document_indexes(path,rows,schema)
     result=index.write_document_indexes(path,rows,schema,previous=pq.ParquetFile(path),
-        previous_documents=path.with_name('documents.parquet').read_bytes())
+        previous_documents=pq.ParquetFile(path.with_name('documents.parquet')))
     assert result['reused_document_groups']==1

@@ -2,7 +2,9 @@
 from datetime import datetime, timezone
 import re
 import hashlib
-import json
+from contextlib import closing
+from filename_resources import owned_resources
+from filename_budget import DEFAULT_DECODED_POLICY, ArrowStager, DecodedBudgetExceeded, bounded_batches, failure_receipt, json_chunks, open_parquet
 
 from congress_api.retention.saved_responses import FIELDS as SAVED_FIELDS, saved_response
 
@@ -42,7 +44,17 @@ def typed_value(name, values):
     return value
 
 
-def publish_details(source, path):
+def publish_details(source, path, *, observation_counts, policy=DEFAULT_DECODED_POLICY, metrics=None):
+    metrics = metrics if metrics is not None else {}
+    try:
+        with owned_resources() as owned:
+            return _publish_details(source, path, owned, observation_counts, policy, metrics)
+    except DecodedBudgetExceeded as error:
+        failure_receipt(path.parent, error, policy, metrics)
+        raise
+
+
+def _publish_details(source, path, owned, observation_counts, policy, metrics):
     names = source.schema_arrow.names
     core = [name for name in CORE + ORIGIN if name in names]
     core += [name for name in names if name.startswith('content_')]
@@ -55,25 +67,24 @@ def publish_details(source, path):
                       [pa.field(name, TYPES[name]) for name in typed] +
                       [pa.field('fact_alternatives', READINGS), pa.field('filename_readings', READINGS),
                        pa.field('filename_field_count', pa.uint16())], metadata=source.schema_arrow.metadata)
-    def observation_counts():
-        folder = path.parent
-        descriptor = json.loads((folder / 'observation-index.json').read_text())
-        with (folder / 'observation-rows.bin').open('rb') as stream:
-            for block in descriptor['references']['blocks']:
-                parts = []
-                for start, size, decoded in block['parts']:
-                    stream.seek(start); parts.append(pa.decompress(stream.read(size), decoded, codec='brotli').to_pybytes())
-                for refs in json.loads(b''.join(parts)):
-                    yield len(refs or [])
-    counts = observation_counts()
+    counts = owned.enter_context(closing(observation_counts.values(source)))
     expected = hashlib.sha256()
-    encode = lambda table: json.dumps(table.to_pylist(), ensure_ascii=False, separators=(',', ':'), default=lambda value: value.isoformat()).encode()
+    def update(hasher, rows):
+        # Per-row framing makes exact verification independent of batch boundaries.
+        for row in rows:
+            for piece in json_chunks(row, policy=policy, default=lambda value: value.isoformat()):
+                hasher.update(piece)
+            hasher.update(b'\n')
     count = 0
     with pq.ParquetWriter(path, schema, compression='zstd', compression_level=9, write_page_index=True) as writer:
-        for batch in source.iter_batches(batch_size=8192, columns=list(dict.fromkeys(core + typed + readings + [name for name in SAVED_FIELDS if name in names]))):
+        staging = ArrowStager(writer, schema, policy=policy, metrics=metrics, stage='detail')
+        columns = list(dict.fromkeys(core + typed + readings + [name for name in SAVED_FIELDS if name in names]))
+        for batch in bounded_batches(source, columns=columns, policy=policy, stage='details', metrics=metrics):
             result = []
             for row in batch.to_pylist():
-                has_observations = next(counts) > 0
+                value = next(counts, None)
+                if value is None: raise ValueError('Detail/source observation row counts differ')
+                has_observations = value > 0
                 record = {name: None if name in ORIGIN and has_observations else row[name] for name in core}
                 # The full source export retains failed-response evidence.
                 # Only usable content receives a saved-copy link in the viewer.
@@ -89,18 +100,21 @@ def publish_details(source, path):
                 record['filename_field_count'] = sum(bool(row[name]) for name in readings)
                 result.append(record)
             table = pa.Table.from_pylist(result, schema=schema)
-            expected.update(encode(table))
-            writer.write_table(table, row_group_size=8192)
+            result.clear()
+            update(expected, (row.as_py() for row in table.to_struct_array()))
+            for emitted in table.to_batches(): staging.append(emitted)
             count += len(table)
+        staging.flush()
     # Check every emitted typed/derived value, independently of browser reads.
-    written = pq.ParquetFile(path)
+    written = owned.enter_context(open_parquet(path))
     if written.metadata.num_rows != count or count != source.metadata.num_rows or next(counts, None) is not None:
         raise ValueError('Detail/source observation row counts differ')
     actual = hashlib.sha256()
-    for batch in written.iter_batches(batch_size=8192):
-        if not batch.schema.equals(schema):
+    for batch in bounded_batches(written, policy=policy, stage='detail verification', metrics=metrics):
+        # Parquet normalizes generated list child names (item/element).
+        if not batch.schema.equals(schema) or batch.schema.metadata != schema.metadata:
             raise ValueError('Detail schema changed during publication')
-        actual.update(encode(batch))
+        update(actual, (row.as_py() for row in batch.to_struct_array()))
     if actual.digest() != expected.digest():
         raise ValueError('Detail values changed during publication')
     return {'rows': count, 'typed_fields': typed}

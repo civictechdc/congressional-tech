@@ -1,4 +1,9 @@
-import { parquetMetadataAsync, parquetReadObjects } from 'hyparquet';
+import { sourceContext } from '../../../../docs/youtube-coverage/research/filename-provenance.mjs';
+export { sourceContext };
+import { yieldToMessages, scanBatchRows } from './filename-cooperative.mjs';
+import { byteCache, retainedBytes, sharedLoad } from './filename-cache.mjs';
+import { positiveInteger } from '../../../../docs/youtube-coverage/research/filename-rules.mjs';
+import { parquetMetadataAsync, parquetReadObjects, parquetRead } from 'hyparquet';
 import { compressors } from 'hyparquet-compressors';
 import { observationReader } from './filename-observations.mjs';
 import { loadPublication } from './filename-publication.mjs';
@@ -44,55 +49,37 @@ export function videoReference(value) {
   return /^[A-Za-z0-9_-]{11}$/.test(id || '') ? {provider: 'YouTube', id} : null;
 }
 
-export function sourceContext(record) {
-  const file_url = validUrl(record.source_url) ? record.source_url : null;
-  const recovered_urls = values(record.recovered_source_url).filter(validUrl);
-  const pages = [], redirects = [], seen = new Set();
-  for (const observation of record.source_occurrences?.length ? record.source_occurrences : [record]) {
-    const basis = values(observation.source_association_basis);
-    if (basis.includes('publisher_redirect') && !basis.includes('linked_page') && file_url) for (const original of values(observation.source_associated_url)) {
-      if (validUrl(original) && original !== file_url && !redirects.some(row => row.original === original)) redirects.push({ original, final: file_url });
-    }
-    const urls = [...new Set(['source_original_page_url','source_page_url'].flatMap(key => values(observation[key])))].filter(value => validUrl(value) && value !== file_url && !recovered_urls.includes(value));
-    if (!urls.length) continue;
-    const page = { urls, titles: values(observation.source_page_title), link_labels: values(observation.source_link_label), link_urls: values(observation.source_link_url).filter(validUrl),
-      relationship: basis.some(value => !['publisher_redirect','retained_html_link','linked_page'].includes(value)) ? 'Possible source page' : basis.includes('linked_page') ? 'Linked through' : JSON.stringify(observation.source_occurrence_scope) === '["anchor"]' ? 'Linked from' : 'Recorded source page' };
-    if (observation.source_page_type?.length) page.types = values(observation.source_page_type);
-    if (observation.source_page_date?.length) page.dates = values(observation.source_page_date);
-    const key = JSON.stringify(page);
-    if (!seen.has(key)) { pages.push(page); seen.add(key); }
-  }
-  return { file_url, recovered_urls, pages, redirects };
-}
-
 /** Bounded compressed-byte cache; the host must return the exact requested range. */
-export function rangeFile(url, byteLength, fetcher = fetch) {
-  const cache = new Map(); let size = 0;
+export function rangeFile(url, byteLength, fetcher = fetch, cache = byteCache(48 * 1024 * 1024, 32 * 1024 * 1024), metrics = {}) {
+  const pending = new Map();
   async function slice(start, end = byteLength, signal) {
     signal?.throwIfAborted();
-    for (const [key, item] of cache) if (item.start <= start && item.end >= end) {
-      cache.delete(key); cache.set(key, item);
+    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || end <= start || end > byteLength) throw new Error('Invalid catalog byte range.');
+    for (const [key, item] of cache.entries()) if (item.url === url && item.start <= start && item.end >= end) {
+      cache.get(key); metrics.rangeHits = (metrics.rangeHits || 0) + 1;
       return item.bytes.slice(start - item.start, end - item.start);
     }
-    const response = await fetcher(url, { signal, headers: { Range: `bytes=${start}-${end - 1}` } });
-    if (response.status !== 206 || response.headers.get('Content-Range') !== `bytes ${start}-${end - 1}/${byteLength}`) {
-      await response.body?.cancel();
-      throw new Error('The catalog host did not return a valid Parquet byte range. Reload and retry.');
-    }
-    const bytes = await response.arrayBuffer();
-    if (bytes.byteLength !== end - start) throw new Error('Incomplete Parquet byte range.');
-    signal?.throwIfAborted();
-    const key = `${start}/${end}`;
-    if (bytes.byteLength <= 32 * 1024 * 1024 && !cache.has(key)) {
-      cache.set(key, { start, end, bytes }); size += bytes.byteLength;
-      while (size > 48 * 1024 * 1024) { const first = cache.keys().next().value; size -= cache.get(first).bytes.byteLength; cache.delete(first); }
-    }
-    return bytes;
+    const key = `${url}:${start}/${end}`;
+    const bytes = await sharedLoad(pending, key, async () => {
+      const response = await fetcher(url, { headers: { Range: `bytes=${start}-${end - 1}` } });
+      if (response.status !== 206 || response.headers.get('Content-Range') !== `bytes ${start}-${end - 1}/${byteLength}`) {
+        await response.body?.cancel();
+        throw new Error('The catalog host did not return a valid Parquet byte range. Reload and retry.');
+      }
+      const bytes = await response.arrayBuffer();
+      metrics.rangeRequests = (metrics.rangeRequests || 0) + 1;
+      metrics.rangeBytes = (metrics.rangeBytes || 0) + bytes.byteLength;
+      if (bytes.byteLength !== end - start) throw new Error('Incomplete Parquet byte range.');
+      cache.set(key, {url, start, end, bytes}, bytes.byteLength);
+      return bytes;
+    }, signal);
+    signal?.throwIfAborted(); return bytes;
   }
-  return { slice, file: signal => ({ byteLength, slice: (start, end) => slice(start, end, signal) }) };
+  return { slice, canRetain: size => cache.admits(size,`${url}:${byteLength}/${byteLength}`), cacheBudget: cache.stats.maxBytes,
+    file: signal => ({ byteLength, slice: (start, end) => slice(start, end, signal) }) };
 }
 
-export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalogId, reviewPublication) {
+export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalogId, reviewPublication, options = {}) {
   const publication = await loadPublication(manifestUrl, fetcher, catalogId);
   manifestUrl = publication.url;
   const manifest = publication.manifest, { info, files } = manifest;
@@ -101,6 +88,16 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
   const reviews = await loadReviews(reviewPublication, manifest, fetcher, manifestUrl);
   Object.assign(info, reviews.info);
   const url = path => new URL(path, manifestUrl).href;
+  const metrics = {sourceScanVisits: 0, groupScanVisits: 0, columnLoads: 0, tableLoads: 0, observationStoreLoads: 0, decodedRows: 0, normalizationValues: 0};
+  const compressedCache = byteCache(options.compressedBytes ?? 48 * 1024 * 1024, options.rangeEntryBytes ?? 32 * 1024 * 1024);
+  const decodedCache = byteCache(options.decodedBytes ?? 64 * 1024 * 1024);
+  const loads = new Map();
+  const ranged = part => rangeFile(url(part.path), part.bytes, fetcher, compressedCache, metrics);
+  const cached = (key, load, signal) => {
+    signal?.throwIfAborted();
+    const value = decodedCache.get(key);
+    return value ? Promise.resolve(value) : sharedLoad(loads, key, async () => { const value = await load(); decodedCache.set(key,value); return value; }, signal);
+  };
   async function binary(name) {
     const response = await fetcher(url(files[name].path));
     if (!response.ok) throw new Error('Could not load the catalog navigation index.');
@@ -140,7 +137,7 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
   function navigationFile(name, length) {
     const part = files[name];
     if (!part || part.bytes !== length) throw new Error('Invalid detail navigation index.');
-    if (!navigationFiles.has(name)) navigationFiles.set(name, rangeFile(url(part.path), part.bytes, fetcher));
+    if (!navigationFiles.has(name)) navigationFiles.set(name, ranged(part));
     return navigationFiles.get(name);
   }
   async function navigation(row, signal) {
@@ -159,11 +156,11 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
     if (!members.includes(row) || !members.includes(preferred) || members.some((member, i) => member >= info.rows || (i && member <= members[i - 1]))) throw new Error('Invalid detail group membership.');
     return {group, preferred, members};
   }
-  const tables = new Map(), columnCache = new Map();
-  async function table(name, signal) {
-    if (tables.has(name)) return tables.get(name);
-    const part = files[name], buffer = rangeFile(url(part.path), part.bytes, fetcher);
-    const metadata = await parquetMetadataAsync(buffer.file(signal));
+  function table(name, signal) {
+    return cached(`table:${name}`, async () => {
+    metrics.tableLoads++;
+    const part = files[name], buffer = ranged(part);
+    const metadata = await parquetMetadataAsync(buffer.file());
     if (Number(metadata.num_rows) !== part.rows) throw new Error('Parquet rows disagree with the publication.');
     let offset = 0;
     const spans = metadata.row_groups.map(group => {
@@ -171,9 +168,11 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
       const chunks = group.columns.map(column => column.meta_data);
       return { start, end: offset, chunks };
     });
-    const result = { buffer, metadata, spans }; tables.set(name, result); return result;
+    return { buffer, metadata, spans };
+    }, signal);
   }
   async function prefetchColumns(name, start, end, columns, signal) {
+    if (options.prefetch === false) return;
     const { buffer, spans } = await table(name, signal);
     const ranges = [];
     for (const span of spans) if (span.end > start && span.start < end) {
@@ -189,27 +188,30 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
       if (last && range[0] <= last[1] + 1024) last[1] = Math.max(last[1], range[1]);
       else merged.push([...range]);
     }
+    // Unadmitted prefetch transfers would be downloaded again by the decoder.
+    if (merged.reduce((sum,[start,end])=>sum+end-start+512,0) > buffer.cacheBudget || merged.some(([start,end])=>!buffer.canRetain(end-start))) {
+      metrics.skippedPrefetches = (metrics.skippedPrefetches || 0) + 1;
+      return;
+    }
     for (const [start, end] of merged) await buffer.slice(start, end, signal);
   }
   async function read(name, start, end, columns, signal, prefetch = false) {
     const { buffer, metadata } = await table(name, signal);
     if (prefetch) await prefetchColumns(name, start, end, columns, signal);
     const rows = await parquetReadObjects({ file: buffer.file(signal), metadata, compressors, columns, rowStart: start, rowEnd: end });
-    signal?.throwIfAborted(); return rows.map(normalized);
+    signal?.throwIfAborted(); metrics.decodedRows += rows.length; metrics.normalizationValues += rows.length * (columns?.length ?? metadata.schema.length); return rows.map(normalized);
   }
-  let observations;
   const originColumns = ['source_association_basis','source_associated_url','source_original_page_url','source_page_url','source_page_title','source_link_label','source_link_url','source_occurrence_scope','source_page_type','source_page_date'];
-  async function observationStore(signal) {
-    if (!observations) {
-      const response = await fetcher(url(files.observation_index.path), {signal});
+  function observationStore(signal) {
+    return cached('observation-store', async () => {
+      metrics.observationStoreLoads++;
+      const response = await fetcher(url(files.observation_index.path));
       if (!response.ok) throw new Error('Could not load the observation index.');
       const descriptor = await response.json();
       if (descriptor.references.rows !== info.rows) throw new Error('Observation rows disagree with the publication.');
-      observations = observationReader(descriptor,
-        rangeFile(url(files.observations.path), files.observations.bytes, fetcher),
-        rangeFile(url(files.observation_rows.path), files.observation_rows.bytes, fetcher));
-    }
-    return observations;
+      const store = observationReader(descriptor, ranged(files.observations), ranged(files.observation_rows), {metrics, cache: decodedCache});
+      return {...store, descriptor};
+    }, signal);
   }
   async function scalarRecord(row, signal) {
     const columns = info.fields.filter(name => name !== 'source_occurrences');
@@ -220,41 +222,80 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
     for (let start = 0; start < columns.length; start += 8) {
       Object.assign(record, (await read('filenames', row, row + 1, columns.slice(start, start + 8), signal))[0]);
     }
+    metrics.maxScalarRecordBytes = Math.max(metrics.maxScalarRecordBytes || 0,retainedBytes(record));
     return record;
   }
   async function sourceRecord(row, signal) {
     const record = await scalarRecord(row, signal);
     record.source_occurrences = await (await observationStore(signal)).read(row, signal);
     // Keep the original field order for copied JSON and technical metadata.
-    return Object.fromEntries(info.fields.map(name => [name, record[name]]));
+    const output = Object.fromEntries(info.fields.map(name => [name, record[name]]));
+    metrics.maxFullRecordBytes = Math.max(metrics.maxFullRecordBytes || 0,retainedBytes(output));
+    return output;
   }
   async function selected(name, positions, columns, signal) {
-    const { spans } = await table(name, signal), result = new Map();
+    const {buffer, metadata, spans} = await table(name, signal), result = new Map();
+    const ordered = [...new Set(positions)].sort((a,b)=>a-b); let cursor = 0;
     for (const span of spans) {
-      const wanted = positions.filter(position => position >= span.start && position < span.end);
+      const wanted = [];
+      while (cursor < ordered.length && ordered[cursor] < span.end) {
+        const position = ordered[cursor++];
+        if (position < span.start) throw new Error('Invalid catalog row position.');
+        wanted.push(position); result.set(position, {});
+      }
       if (!wanted.length) continue;
-      const start = Math.min(...wanted), end = Math.max(...wanted) + 1;
-      const rows = await read(name, start, end, columns, signal, true);
-      for (const position of wanted) result.set(position, rows[position - start]);
+      await prefetchColumns(name, span.start, span.end, columns, signal);
+      // Let the maintained reader assemble columns, then construct only selected
+      // row objects. Physical column chunks still decode at row-group granularity.
+      await parquetRead({file: buffer.file(signal), metadata, compressors, columns,
+        rowStart: span.start, rowEnd: span.end, rowFormat: 'object', onChunk({columnName,columnData,rowStart,rowEnd}) {
+          metrics.physicalColumnValues = (metrics.physicalColumnValues || 0) + columnData.length;
+          for (const position of wanted) if (position >= rowStart && position < rowEnd) {
+            result.get(position)[columnName] = normalized(columnData[position-rowStart]);
+            metrics.normalizationValues++;
+          }
+        }});
+      signal?.throwIfAborted(); metrics.decodedRows += wanted.length;
     }
+    if (cursor !== ordered.length) throw new Error('Invalid catalog row position.');
     return positions.map(position => result.get(position));
   }
-  async function column(name, signal) {
-    if (columnCache.has(name)) { const value = columnCache.get(name); columnCache.delete(name); columnCache.set(name, value); return value; }
-    const { spans } = await table('filenames', signal), output = new Array(info.rows), queue = [...spans];
-    await Promise.all(Array.from({ length: 6 }, async () => {
-      while (queue.length) {
-        const span = queue.shift(), rows = await read('filenames', span.start, span.end, [name], signal);
-        for (let i = 0; i < rows.length; i++) output[span.start + i] = rows[i][name];
+  function column(name, signal) {
+    return cached(`column:${name}`, async () => {
+      metrics.columnLoads++;
+      const {spans} = await table('filenames'), output = new Array(info.rows);
+      let nextSpan = 0;
+      await Promise.all(Array.from({length: Math.min(6,spans.length)}, async () => {
+        while (nextSpan < spans.length) {
+          const span = spans[nextSpan++], rows = await read('filenames',span.start,span.end,[name]);
+          for (let i=0;i<rows.length;i++) output[span.start+i] = rows[i][name];
+        }
+      }));
+      return output;
+    }, signal);
+  }
+  function searchTexts(name, source, signal) {
+    const key = `search:${name}`, retained = decodedCache.get(key);
+    if (retained) return Promise.resolve(retained);
+    const budget = Math.min(options.searchNormalizationBytes ?? 8 * 1024 * 1024, decodedCache.stats.maxBytes / 4);
+    if (retainedBytes(source) > budget) return Promise.resolve(null);
+    return sharedLoad(loads,key,async () => {
+      const output = []; let bytes = 24;
+      for (let i=0;i<source.length;i++) {
+        if (i && i % scanBatchRows === 0) await yieldToMessages(undefined,metrics);
+        const value = text(source[i]); metrics.searchNormalizations = (metrics.searchNormalizations || 0) + 1;
+        bytes += 24 + value.length*2;
+        if (bytes > budget) return null;
+        output.push(value);
       }
-    }));
-    signal?.throwIfAborted(); columnCache.set(name, output);
-    while (columnCache.size > 4) columnCache.delete(columnCache.keys().next().value);
-    return output;
+      decodedCache.set(key,output,bytes);return output;
+    },signal);
   }
   async function search(query, signal) {
     signal?.throwIfAborted();
     const reviewed = reviewedMode(query, info);
+    const limit = positiveInteger(query.limit,50,100), requestedPage = positiveInteger(query.page);
+    const firstWanted = (requestedPage-1)*limit;
     const field = query.field || 'filename', needle = (query.q || '').slice(0, 2000).toLowerCase();
     if (!info.fields.includes(field)) throw new Error('Unknown search field.');
     if (!['','yes','no'].includes(query.retained || '') || !['','all','capture-records'].includes(query.scope || '')) throw new Error('Unknown catalog filter.');
@@ -275,18 +316,30 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
         const review = reviewed && reviews.sources.get(source);
         return review?.status === 'candidate_applied' && field in review.selected ? review.selected[field] : loaded.get(field)?.[source];
       };
+      const preparedText = needle && !stream ? await searchTexts(field,loaded.get(field),signal) : null;
+      const recoveredText = needle && field === 'filename' && loaded.has('recovered_filename') ? await searchTexts('recovered_filename',loaded.get('recovered_filename'),signal) : null;
+      const normalizeText = value => {metrics.searchNormalizations = (metrics.searchNormalizations || 0) + 1;return text(value);};
       const matches = (source, searchValue) => {
-        if (needle && !text(searchValue).includes(needle) && !(field === 'filename' && text(loaded.get('recovered_filename')?.[source]).includes(needle))) return false;
+        const review = reviewed && reviews.sources.get(source);
+        const changed = review?.status === 'candidate_applied' && field in review.selected;
+        if (needle && !(changed ? normalizeText(searchValue) : preparedText?.[source] ?? normalizeText(searchValue)).includes(needle) &&
+            !(field === 'filename' && (recoveredText?.[source] ?? normalizeText(loaded.get('recovered_filename')?.[source])).includes(needle))) return false;
         return selectedFilters.every(key => values(sourceValue(source, key)).some(value => (key === 'format' ? value.toLowerCase() : value) === query[key]));
       };
       if (stream) {
         for await (const source of (await observationStore(signal)).matchingSources(needle, signal)) {
           if (selectedFilters.every(key => values(sourceValue(source, key)).some(value => (key === 'format' ? value.toLowerCase() : value) === query[key]))) mask[groups[source]] = 1;
         }
-      } else for (let source = 0; source < info.rows; source++) if (matches(source, sourceValue(source, field))) mask[groups[source]] = 1;
+      } else for (let source = 0; source < info.rows; source++) {
+        if (source && source % scanBatchRows === 0) await yieldToMessages(signal, metrics);
+        metrics.sourceScanVisits++;
+        if (matches(source, sourceValue(source, field))) mask[groups[source]] = 1;
+      }
     }
-    const found = [];
+    let total=0, chosen=[], last=[];
     for (let group = 0; group < mask.length; group++) {
+      if (group && group % scanBatchRows === 0) await yieldToMessages(signal, metrics);
+      metrics.groupScanVisits++;
       let flag = flags[group] | (recovery.groups.has(group) ? 1 : 0);
       const review = reviewed && reviews.groups.get(group);
       if (review?.status === 'candidate_applied') {
@@ -295,10 +348,15 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
       if (!mask[group] || (query.retained && !!(flag & 1) !== (query.retained === 'yes')) ||
           (!query.scope && !(flag & 2)) || (query.scope === 'capture-records' && (flag & 2)) ||
           (query.document_kind === '__null__' && !(flag & 4)) || (query.document_family === '__null__' && !(flag & 8))) continue;
-      found.push(group);
+      if (total % limit === 0) last=[];
+      last.push(group);
+      if (total >= firstWanted && total < firstWanted+limit) chosen.push(group);
+      total++;
+      metrics.maxMatchedGroupsRetained = Math.max(metrics.maxMatchedGroupsRetained || 0,chosen.length+last.length);
     }
-    const limit = Math.max(1, Math.min(100, Number(query.limit) || 50)), pages = Math.max(1, Math.ceil(found.length / limit)), page = Math.max(1, Math.min(pages, Number(query.page) || 1));
-    const chosen = found.slice((page - 1) * limit, page * limit), rows = await selected('browse', chosen, undefined, signal);
+    const pages=Math.max(1,Math.ceil(total/limit)), page=Math.min(requestedPage,pages);
+    if (page !== requestedPage) chosen=last;
+    const rows = await selected('browse', chosen, undefined, signal);
     rows.forEach((row, i) => { row._row = preferred[chosen[i]]; row.api_reference = flags[chosen[i]] & 16 ? apiReference(row.source_url) : null; row.video_reference = flags[chosen[i]] & 32 ? videoReference(row.source_url) : null; });
     rows.forEach((row, i) => {
       if (recovery.groups.has(chosen[i])) Object.assign(row, {retained: true, recovery: recovery.groups.get(chosen[i])[0], recoveries: recovery.groups.get(chosen[i])});
@@ -313,7 +371,7 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
       }
     });
     signal?.throwIfAborted();
-    return { rows, total: found.length, page, pages, limit };
+    return { rows, total, page, pages, limit };
   }
   const resolved = new Map();
   async function resolve(identity, catalog, signal) {
@@ -322,9 +380,16 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
     if (/^\d{1,11}$/.test(identity) && Number(identity) < info.rows) return Number(identity);
     if (!/^[a-f0-9]{64}$/.test(identity)) throw new Error('Source record is not present in this catalog.');
     if (resolved.has(identity)) return resolved.get(identity);
-    const response = await fetcher(url(manifest.ids + identity.slice(0, 2) + '.bin'), { signal });
-    if (!response.ok) throw new Error('Could not resolve the source record.');
-    const buffer = await response.arrayBuffer(), bytes = new Uint8Array(buffer), view = new DataView(buffer);
+    const prefix = identity.slice(0, 2);
+    const buffer = await cached(`ids:${prefix}`, async () => {
+      const response = await fetcher(url(manifest.ids + prefix + '.bin'));
+      if (!response.ok) throw new Error('Could not resolve the source record.');
+      const buffer = await response.arrayBuffer(), view = new DataView(buffer);
+      if (buffer.byteLength % 36) throw new Error('Incomplete source ID index.');
+      for (let offset=0;offset<buffer.byteLength;offset+=36) if (view.getUint32(offset+32,true)>=info.rows) throw new Error('Invalid source ID index.');
+      return buffer;
+    }, signal);
+    const bytes = new Uint8Array(buffer), view = new DataView(buffer);
     if (bytes.length % 36) throw new Error('Incomplete source ID index.');
     const wanted = identity.match(/../g).map(value => parseInt(value, 16));
     for (let offset = 0; offset < bytes.length; offset += 36) if (wanted.every((value, i) => value === bytes[offset + i])) {
@@ -357,8 +422,8 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
   }
   async function observationPage(identity, catalog, options = {}, signal) {
     const row = await resolve(identity, catalog, signal);
-    const offset = Math.max(0, Math.trunc(Number(options.offset) || 0));
-    const limit = Math.max(1, Math.min(100, Math.trunc(Number(options.limit) || 20)));
+    const offset = positiveInteger(options.offset, 0);
+    const limit = positiveInteger(options.limit, 20, 100);
     return (await observationStore(signal)).page(row, {offset, limit, ...(options.origin ? {columns: originColumns} : {})}, signal);
   }
   async function technical(identity, catalog, signal, full = false) {
@@ -422,5 +487,5 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
     if (!value) return {status: 'no_review'};
     return structuredClone({...value, status: withdrawn ? 'withdrawn' : value.status, selected: withdrawn ? value.baseline : value.selected});
   }
-  return { review, info: { ...info, recovery_sha256: publication.recovery?.sha256, downloads: { documents: url(files.documents.path), filenames: url(files.filenames.path), recoveries: publication.recovery?.url }, published_at: manifest.published_at }, search, entry, entryOrigin, technical, technicalOrigin, observationPage, sourceContext };
+  return { diagnostics: () => ({...metrics, compressed: compressedCache.stats, decoded: decodedCache.stats}), review, info: { ...info, recovery_sha256: publication.recovery?.sha256, downloads: { documents: url(files.documents.path), filenames: url(files.filenames.path), recoveries: publication.recovery?.url }, published_at: manifest.published_at }, search, entry, entryOrigin, technical, technicalOrigin, observationPage, sourceContext };
 }

@@ -25,6 +25,31 @@ class MemoryStore:
     def read(self, key):
         return self.objects.get(key)
 
+    def read_derived_file(self, key, path, *, expected=None):
+        from io import BytesIO
+        from congress_api.retention.derived_files import require_derived_key, copy_checked
+        require_derived_key(key)
+        data = self.read(key)
+        if data is None:
+            return None
+        return copy_checked(BytesIO(data), path, size=len(data), expected=expected, key=key)
+
+    def put_derived_file(self, key, path, *, expected):
+        from pathlib import Path
+        from congress_api.retention.derived_files import require_derived_key, check_identity, file_identity
+        require_derived_key(key)
+        check_identity(file_identity(path), expected, key)
+        return self.put(key, Path(path).read_bytes(), immutable=True)
+
+    def put_catalog_manifest(self, data, *, expected_version):
+        from hashlib import sha256
+        key = 'indexes/catalog.json'
+        current = self.read(key)
+        version = sha256(current).hexdigest() if current is not None else None
+        if version != expected_version:
+            raise RuntimeError('Concurrent catalog update; selected snapshot preserved')
+        return self.put(key, data)
+
     def put(self, key, body, *, immutable=False):
         if immutable and key in self.objects:
             assert self.objects[key] == body

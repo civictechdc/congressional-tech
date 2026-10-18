@@ -1,0 +1,62 @@
+{
+  "cached-runs-1-baseline.json.gz": {
+    "original_report": "output/process-efficiency-d/cached-runs/1-baseline/benchmark.json",
+    "sha256": "67597cf1895f3626e5cc7a0b43b62217747835866a5f76eabdf47bf337b30f74",
+    "bytes": 78197
+  },
+  "cached-runs-2-cached.json.gz": {
+    "original_report": "output/process-efficiency-d/cached-runs/2-cached/benchmark.json",
+    "sha256": "d4fb4c14c0987430c73af01130f8cf79ebe6f6822c4b130db500e75aedcada11",
+    "bytes": 78534
+  },
+  "cached-runs-3-cached.json.gz": {
+    "original_report": "output/process-efficiency-d/cached-runs/3-cached/benchmark.json",
+    "sha256": "77ba07e387ecdfe4f24b36cf5db8c0a84499b7d58f757dcb87f70185697fe7da",
+    "bytes": 78534
+  },
+  "cached-runs-4-baseline.json.gz": {
+    "original_report": "output/process-efficiency-d/cached-runs/4-baseline/benchmark.json",
+    "sha256": "47a2c9857e4b299a16ab0e48afb269738d8dc3a371888e933c65562637389873",
+    "bytes": 78207
+  },
+  "cached-runs-5-baseline.json.gz": {
+    "original_report": "output/process-efficiency-d/cached-runs/5-baseline/benchmark.json",
+    "sha256": "dc6d13bd7672d559928f5523c8139a78d4eb46d8eae4f530be5719dd00031692",
+    "bytes": 78202
+  },
+  "cached-runs-6-cached.json.gz": {
+    "original_report": "output/process-efficiency-d/cached-runs/6-cached/benchmark.json",
+    "sha256": "9326d769ac794bb106826d36adac9aeec119cdaa5dfb49a0cd39427f43b266c3",
+    "bytes": 78542
+  },
+  "one-pass-runs-1-baseline.json.gz": {
+    "original_report": "output/process-efficiency-d/one-pass-runs/1-baseline/benchmark.json",
+    "sha256": "a736f9e77c76b5d902da3d7d361053768ab6a74e14240a45f47304e3d374f0f0",
+    "bytes": 78203
+  },
+  "one-pass-runs-2-one-pass.json.gz": {
+    "original_report": "output/process-efficiency-d/one-pass-runs/2-one-pass/benchmark.json",
+    "sha256": "f71a8d98e4c328e60394daee7b3d6b6ffb6477b6070c0dd6d66c8a6608b9af5d",
+    "bytes": 78366
+  },
+  "one-pass-runs-3-one-pass.json.gz": {
+    "original_report": "output/process-efficiency-d/one-pass-runs/3-one-pass/benchmark.json",
+    "sha256": "00d4cc45bc5f2768e5cc3897899606f3dd331a0bf76f15fa0f7b9dc8dfb696c0",
+    "bytes": 78365
+  },
+  "one-pass-runs-4-baseline.json.gz": {
+    "original_report": "output/process-efficiency-d/one-pass-runs/4-baseline/benchmark.json",
+    "sha256": "d96200e49ff8e01596bcf72e1a6cd32b91f35cdc0df78af96ad26e02fedd8530",
+    "bytes": 78204
+  },
+  "one-pass-runs-5-baseline.json.gz": {
+    "original_report": "output/process-efficiency-d/one-pass-runs/5-baseline/benchmark.json",
+    "sha256": "ba332c29c35992486a44b40525a8639efd3b6f7d6385dacddb0cf7ccf162c1f0",
+    "bytes": 78196
+  },
+  "one-pass-runs-6-one-pass.json.gz": {
+    "original_report": "output/process-efficiency-d/one-pass-runs/6-one-pass/benchmark.json",
+    "sha256": "77fd6e6704bc6eee88aba8908ce2c5204345b72236e83667ed747cef6b5a74d2",
+    "bytes": 78367
+  }
+}

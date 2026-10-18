@@ -54,7 +54,9 @@ def process_tree_resident_bytes():
 
 
 class MemorySampler:
-    def __init__(self):
+    def __init__(self, scratch_root=None):
+        self.scratch_peak_bytes = self.scratch_peak_allocated_bytes = 0
+        self.scratch_root = scratch_root
         self.peak = None; self.stop = threading.Event()
         self.thread = threading.Thread(target=self.watch, daemon=True)
     def watch(self):
@@ -62,6 +64,17 @@ class MemorySampler:
             amount = process_tree_resident_bytes()
             if amount is not None:
                 self.peak = max(self.peak or 0, amount)
+            logical = allocated = 0
+            for path in self.scratch_root.rglob('*') if self.scratch_root is not None else ():
+                try:
+                    if path.is_file():
+                        info = path.stat()
+                        logical += info.st_size
+                        allocated += info.st_blocks * 512
+                except FileNotFoundError:
+                    pass  # Owned temporary files may disappear during a sample.
+            self.scratch_peak_bytes = max(self.scratch_peak_bytes, logical)
+            self.scratch_peak_allocated_bytes = max(self.scratch_peak_allocated_bytes, allocated)
             if self.stop.wait(0.25):
                 return
     def start(self):
@@ -275,8 +288,11 @@ def compare_only(reference, candidate_root, output, original_report):
 
 class StageLog(logging.Handler):
     def __init__(self):
-        super().__init__(); self.stages = []; self.current = None
+        super().__init__(); self.stages = []; self.current = None; self.counters = Counter()
     def emit(self, record):
+        if hasattr(record, 'counter'):
+            metric, amount = record.counter
+            self.counters[metric] += amount
         if not hasattr(record, 'progress'):
             return
         stage = record.progress['stage']
@@ -315,6 +331,27 @@ class MirrorOverlay:
         family = key.split('/')[0]
         self.reads[family] += 1; self.read_bytes[family] += len(data or b'')
         return data
+    def read_derived_file(self, key, path, *, expected=None):
+        from congress_api.retention.catalog_cache import LocalStore
+        from_mirror = not (self.output / key).is_file()
+        identity = LocalStore(self.root if from_mirror else self.output).read_derived_file(
+            key, path, expected=expected)
+        if from_mirror:
+            # Callers enrich the issued proof with catalog metadata. The input
+            # snapshot owns only the immutable source byte facts.
+            observed = {name: identity[name] for name in ('sha256', 'bytes')} if identity is not None else None
+            if key in self.source_inventory and self.source_inventory[key] != observed:
+                raise RuntimeError(f'Pinned source changed during rebuild: {key}')
+            self.source_inventory[key] = observed
+        family = key.split('/')[0]
+        self.reads[family] += 1
+        self.read_bytes[family] += identity['bytes'] if identity else 0
+        return identity
+    def put_derived_file(self, key, path, *, expected):
+        from congress_api.retention.catalog_cache import LocalStore
+        result = LocalStore(self.output).put_derived_file(key, path, expected=expected)
+        self.writes.append(key)
+        return result
     def keys(self, prefix):
         found = sorted(str(path.relative_to(self.root)) for path in (self.root / prefix).rglob('*') if path.is_file())
         if prefix in self.source_listings and self.source_listings[prefix] != found:
@@ -358,7 +395,9 @@ def main(argv=None):
     parser.add_argument('--reference', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--seed', type=Path, action='append', default=[])
+    parser.add_argument('--code-revision', help='Revision of an archived source tree without Git metadata; file hashes remain authoritative')
     parser.add_argument('--workers', type=int, default=2)
+    parser.add_argument('--scratch-root', type=Path, help='Owned temporary directory to sample; set TMPDIR to this same path')
     parser.add_argument('--repair', action='store_true')
     parser.add_argument('--max-peak-gib', type=float, default=8)
     args = parser.parse_args(argv)
@@ -374,7 +413,8 @@ def main(argv=None):
     if args.output.exists():
         raise SystemExit('Use a new output directory for each pinned run')
     args.output.mkdir(parents=True)
-    revision = subprocess.run(['git', 'rev-parse', 'HEAD'], capture_output=True, text=True, check=True).stdout.strip()
+    revision = args.code_revision or subprocess.run(
+        ['git', 'rev-parse', 'HEAD'], capture_output=True, text=True, check=True).stdout.strip()
     report = {'status': 'running', 'code_revision': revision, 'benchmark_sha256': digest_file(Path(__file__)),
               'code_inventory': implementation_inventory(),
               'dependencies': {name: importlib.metadata.version(name) for name in ('pyarrow', 'pydantic')}, 'platform': platform.platform(), 'python': sys.version,
@@ -389,7 +429,7 @@ def main(argv=None):
     store = MirrorOverlay(args.mirror, args.output / 'objects')
     stages = StageLog(); old_level = LOGGER.level
     LOGGER.setLevel(logging.INFO); LOGGER.addHandler(stages)
-    sampler = MemorySampler(); sampler.start()
+    sampler = MemorySampler(args.scratch_root); sampler.start()
     started = time.monotonic()
     try:
         report['result'] = rebuild_catalog(store, seeds=seed_files(args.seed), workers=args.workers,
@@ -398,8 +438,12 @@ def main(argv=None):
         sampler.finish()
         report['sampled_process_tree_peak_resident_bytes'] = sampler.peak
         report['process_tree_sample_interval_seconds'] = 0.25
+        report['sampled_scratch_peak_bytes'] = sampler.scratch_peak_bytes
+        report['sampled_scratch_peak_allocated_bytes'] = sampler.scratch_peak_allocated_bytes
+        report['scratch_scope'] = str(sampler.scratch_root) if sampler.scratch_root is not None else None
         stages.finish()
         report['stages'] = stages.stages
+        report['counters'] = dict(stages.counters)
         report['storage_reads'] = dict(store.reads)
         report['storage_read_bytes'] = dict(store.read_bytes)
         report['storage_writes'] = store.writes
@@ -441,6 +485,7 @@ def main(argv=None):
     finally:
         sampler.finish()
         stages.finish(); report['stages'] = stages.stages
+        report['counters'] = dict(stages.counters)
         report.setdefault('rebuild_elapsed_seconds', time.monotonic() - started)
         report.setdefault('rebuild_memory', memory_usage())
         report.setdefault('sampled_process_tree_peak_resident_bytes', sampler.peak)
@@ -450,6 +495,7 @@ def main(argv=None):
         report['source_inventory'] = store.source_inventory
         report['source_listings'] = store.source_listings
         report['input_hash_seconds_in_rebuild'] = store.input_hash_seconds
+        report['qualification_elapsed_seconds'] = time.monotonic() - started
         LOGGER.removeHandler(stages); LOGGER.setLevel(old_level)
         report_path.write_text(json.dumps(report, indent=2) + '\n')
     return 0 if report['status'] in {'passed', 'semantic_passed_memory_unqualified'} else 1

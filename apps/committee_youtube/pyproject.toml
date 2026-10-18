@@ -28,10 +28,3 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
-# uv-native path sources (ignored by pip). Lets `uv pip install -e .`
-# resolve the sibling packages from the local tree instead of an index.
-[tool.uv.sources]
-committee-meeting = { path = "../../packages/committee_meeting", editable = true }
-congress-api = { path = "../../packages/congress_api", editable = true }
-youtube-api = { path = "../../packages/youtube_api", editable = true }

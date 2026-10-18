@@ -1,13 +1,13 @@
 """Publish the selected catalog to R2 without writing any archive/catalog keys."""
 from __future__ import annotations
 
-import argparse
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 import hashlib
 import importlib.util
 import json
 import os
+import subprocess
 from pathlib import Path, PurePosixPath
 import tempfile
 import time
@@ -15,6 +15,7 @@ import urllib.request
 import urllib.parse
 import urllib.error
 import uuid
+from typing import NamedTuple
 
 from botocore.exceptions import ClientError
 from filename_recoveries import ACCEPTED_KEY, accepted_rows, index_recoveries
@@ -22,8 +23,7 @@ from filename_recoveries import ACCEPTED_KEY, accepted_rows, index_recoveries
 BUCKET = 'congressional-tech-raw'
 PREFIX = 'viewer-publications/'
 PUBLIC_URL = 'https://congressional-viewer-data.mdeeb.workers.dev/'
-PUBLISHER_VERSION = 9
-PAGES_MANIFEST = 'https://civictechdc.github.io/congressional-tech/data/filenames/manifest.json'
+PUBLISHER_VERSION = 10
 USER_AGENT = 'congressional-tech-viewer-publisher/1.0 (+https://github.com/civictechdc/congressional-tech)'
 
 
@@ -55,20 +55,153 @@ def digest(path):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
-def read_json(client, key, *, optional=False):
+# These ceilings bound complete control-plane documents, never catalog payloads.
+# Recovery status and admission mappings have larger per-source entries; exceeding
+# a supported ceiling is an explicit format/capacity decision, not partial proof.
+CONTROL_LIMITS = {'manifest': 4 * 1024**2, 'accepted': 16 * 1024**2, 'recovery': 32 * 1024**2}
+
+
+def bounded_control_read(stream, *, kind='manifest', declared=None, expected=None):
+    limit = CONTROL_LIMITS[kind]
+    if expected is not None and (type(expected) is not int or not 0 <= expected <= limit):
+        raise ValueError('Unsupported ' + kind + ' expected byte length')
+    if declared is not None:
+        try:
+            declared = int(declared)
+        except (ValueError, TypeError) as error:
+            raise ValueError('Invalid ' + kind + ' declared byte length') from error
+        if declared < 0 or declared > limit or (expected is not None and declared != expected):
+            raise ValueError('Unsupported ' + kind + ' declared byte length')
+    chunks, count = [], 0
+    while chunk := stream.read(min(64 * 1024, limit + 1 - count)):
+        count += len(chunk)
+        if count > limit or (expected is not None and count > expected):
+            raise ValueError('Oversized ' + kind + ' control response')
+        chunks.append(chunk)
+    if (declared is not None and count != declared) or (expected is not None and count != expected):
+        raise ValueError('Incomplete ' + kind + ' control response')
+    return b''.join(chunks)
+
+
+def public_control(response, *, kind='manifest', expected=None):
+    # open_public retries opening only; a body-read failure propagates. No write
+    # or response-body retry is hidden here, including incomplete HTTP transfers.
+    return bounded_control_read(response, kind=kind, declared=getattr(response, 'headers', {}).get('Content-Length'), expected=expected)
+
+
+class ProtectedIdentity(NamedTuple):
+    value: object
+    etag: str | None
+    modified: str | None
+    sha256: str | None
+
+
+def validate_prepared_output(root, manifest):
+    """Refuse unsupported outputs before artifact acceptance or any remote write."""
+    for path in root.rglob('*'):
+        if path.is_file() and path.stat().st_size >= 5 * 1024**3:
+            raise ValueError('Prepared publication exceeds single-PUT limit: ' + str(path.relative_to(root)))
+    if len(encoded(manifest)) > CONTROL_LIMITS['manifest']:
+        raise ValueError('Prepared manifest exceeds control byte limit')
+    recovery = root / 'recovery-prepared.json'
+    if recovery.exists() and recovery.stat().st_size > CONTROL_LIMITS['recovery']:
+        raise ValueError('Prepared recovery status exceeds control byte limit')
+
+
+def read_identity(client, key, *, optional=False):
     try:
         response = client.get_object(Bucket=BUCKET, Key=key)
     except ClientError as error:
         if optional and error.response['Error']['Code'] in ('NoSuchKey', '404'):
-            return None, None, None
+            return ProtectedIdentity(None, None, None, None)
         raise
     with response['Body'] as stream:
-        return json.load(stream), response['ETag'], response['LastModified'].isoformat()
+        payload = bounded_control_read(stream, kind='accepted' if key == ACCEPTED_KEY else 'manifest',
+                                       declared=response.get('ContentLength'))
+    return ProtectedIdentity(json.loads(payload), response['ETag'], response['LastModified'].isoformat(),
+            hashlib.sha256(payload).hexdigest())
 
 
-def prepared_files(root, manifest):
+
+def read_json(client, key, *, optional=False):
+    return read_identity(client, key, optional=optional)[:3]
+
+
+def release_source_files(root=None):
+    from viewer_release_identity import source_files
+    return source_files(root or Path(__file__).resolve().parents[3])
+
+
+def implementation_identity():
+    return hashlib.sha256(encoded(release_source_files())).hexdigest()
+
+
+def dependency_fingerprint():
+    from viewer_release_identity import installed_runtime
+    return installed_runtime()
+
+
+def full_release_identity():
+    return {'version': 1, 'implementation': implementation_identity(),
+            'dependencies': dependency_fingerprint(), 'publisher_version': PUBLISHER_VERSION}
+
+
+def validated_accepted(value):
+    if value is None:
+        return []
+    if not isinstance(value, dict) or value.get('version') != 1 or not isinstance(value.get('recoveries'), list):
+        raise ValueError('Invalid accepted recovery mapping.')
+    return accepted_rows(value['recoveries'])
+
+
+def recovery_inputs(selected_digest, manifest_digest, manifest, accepted, *, release_identity=None):
+    rows = validated_accepted(accepted)
+    return {'version': 1, 'raw_manifest_sha256': selected_digest,
+            'viewer_manifest_sha256': manifest_digest,
+            'files': {name: manifest['files'][name]['sha256'] for name in ('filenames', 'groups')},
+            'accepted': {'present': accepted is not None, 'sha256': hashlib.sha256(encoded(rows)).hexdigest()},
+            'full_release_inputs': release_identity or full_release_identity()}
+
+
+def verify_recovery_status(client, descriptor, pointer, *, public_url):
+    if (not isinstance(descriptor, dict) or not isinstance(descriptor.get('path'), str)
+            or not descriptor['path'].startswith('releases/') or '..' in PurePosixPath(descriptor['path']).parts):
+        raise ValueError('Invalid selected recovery descriptor.')
+    response = client.get_object(Bucket=BUCKET, Key=PREFIX + descriptor['path'])
+    with response['Body'] as stream:
+        payload = bounded_control_read(stream, kind='recovery', declared=response.get('ContentLength'), expected=descriptor['bytes'])
+    if len(payload) != descriptor['bytes'] or hashlib.sha256(payload).hexdigest() != descriptor['sha256']:
+        raise ValueError('Selected recovery status hash mismatch.')
+    index = json.loads(payload)
+    if index.get('version') != 1 or index.get('catalog_id') != pointer['catalog_id']:
+        raise ValueError('Selected recovery status identity mismatch.')
+    with open_public(public_request(public_url + descriptor['path'], {'Origin': 'https://civictechdc.github.io'})) as response:
+        if public_control(response, kind='recovery', expected=descriptor['bytes']) != payload or response.headers.get('Access-Control-Allow-Origin') != '*':
+            raise ValueError('Public recovery status or browser access differs.')
+    return index
+
+
+def check_recovery_inputs(client, selected_record, accepted_record, pointer_record):
+    # These separate reads are a freshness observation, not a cross-object transaction.
+    # The final viewer IfMatch still fences competing selector writers; source or
+    # accepted inputs can advance after their individual read and need a later poll.
+    if read_identity(client, 'indexes/catalog.json') != selected_record:
+        raise ValueError('Catalog changed while preparing recovery status.')
+    if read_identity(client, ACCEPTED_KEY, optional=True) != accepted_record:
+        raise ValueError('Accepted recovery mappings changed before selection.')
+    if read_identity(client, PREFIX + 'manifest.json') != pointer_record:
+        raise ValueError('Viewer pointer changed while preparing recovery status.')
+
+
+def recovery_result(pointer, index, rows, *, status):
+    return {'status': status, 'catalog_id': pointer['catalog_id'],
+            'accepted_recoveries': len(rows), 'affected_sources': len(index['sources']),
+            'affected_groups': len(index['groups']), 'recovery': pointer['recovery'],
+            'catalog_payloads_reused': True, 'raw_catalog_unchanged': True}
+
+def prepared_files(root, manifest, *, validation=None):
     """Allow only manifest-declared files and the bounded source-ID shards."""
-    if manifest.get('version') not in (2, 5):
+    if manifest.get('version') != 5:
         raise ValueError('Unsupported viewer manifest version.')
     selected = manifest['source_manifest']
     if selected['catalog_id'] != manifest['info']['catalog_id']:
@@ -80,7 +213,9 @@ def prepared_files(root, manifest):
         if not name.startswith(expected_prefix) or '..' in PurePosixPath(name).parts:
             raise ValueError('Invalid publication path.')
         path = root / name
-        if path.is_symlink() or path.stat().st_size != item['bytes'] or digest(path) != item['sha256']:
+        if validation is not None:
+            validation.file(path, expected=item)
+        if path.is_symlink() or path.stat().st_size != item['bytes'] or (validation is None and digest(path) != item['sha256']):
             raise ValueError('Prepared publication differs from its manifest: ' + name)
         files[name] = path
     if manifest['ids'] != expected_prefix + 'ids/':
@@ -89,6 +224,8 @@ def prepared_files(root, manifest):
     for prefix in range(256):
         name = manifest['ids'] + f'{prefix:02x}.bin'
         path = root / name
+        if validation is not None:
+            validation.file(path)
         if path.is_symlink() or path.stat().st_size % 36:
             raise ValueError('Invalid source-ID shard.')
         rows += path.stat().st_size // 36
@@ -101,72 +238,88 @@ def prepared_files(root, manifest):
 def put_json(client, key, value, **condition):
     if not key.startswith(PREFIX):
         raise ValueError('Viewer publisher cannot write archive keys.')
-    client.put_object(Bucket=BUCKET, Key=key, Body=encoded(value),
+    return client.put_object(Bucket=BUCKET, Key=key, Body=encoded(value),
                       ContentType='application/json', CacheControl='no-store', **condition)
 
 
 def store_recovery_index(client, value):
     payload = encoded(value)
+    if len(payload) > CONTROL_LIMITS['recovery']:
+        raise ValueError('Recovery status exceeds control byte limit before upload')
     sha256 = hashlib.sha256(payload).hexdigest()
     # Use the gateway's existing immutable publication path allowlist.
     path = f'releases/{sha256[:32]}/{sha256[32:]}/viewer-v2/recovery-status.json'
+    result = None
     try:
-        put_json(client, PREFIX + path, value, IfNoneMatch='*')
+        result = put_json(client, PREFIX + path, value, IfNoneMatch='*')
     except ClientError as error:
         if error.response['Error']['Code'] not in ('PreconditionFailed', '412'):
             raise
-    response = client.get_object(Bucket=BUCKET, Key=PREFIX + path)
-    with response['Body'] as stream:
-        if stream.read() != payload:
-            raise ValueError('Recovery status failed complete readback.')
+    confirm = getattr(client, 'confirm_transfer', None)
+    proof = result.get('_verified_transfer') if isinstance(result, dict) else None
+    if confirm is None or not confirm(proof, bucket=BUCKET, key=PREFIX + path, size=len(payload), sha256=sha256):
+        response = client.get_object(Bucket=BUCKET, Key=PREFIX + path)
+        with response['Body'] as stream:
+            if bounded_control_read(stream, kind='recovery', declared=response.get('ContentLength'), expected=len(payload)) != payload:
+                raise ValueError('Recovery status failed complete readback.')
     return {'path': path, 'bytes': len(payload), 'sha256': sha256}
 
 
-def recovery_for_publication(client, root, manifest):
-    accepted, _, _ = read_json(client, ACCEPTED_KEY, optional=True)
-    index = index_recoveries(root, manifest, accepted['recoveries'] if accepted else [])
-    return store_recovery_index(client, index) if index['recoveries'] else None
+def recovery_preparation_inputs(manifest, accepted_record):
+    return dict(version=1, source_manifest=manifest['source_manifest'],
+        files={name: manifest['files'][name] for name in ('filenames', 'groups')},
+        catalog={key: manifest['info'][key] for key in ('catalog_id', 'rows', 'entries')},
+        accepted_present=accepted_record[0] is not None, accepted_sha256=accepted_record[3])
 
 
-def accept_recoveries(client, root, rows, *, public_url=PUBLIC_URL):
-    """Amend only viewer status; reuse every existing publication payload."""
-    selected, selected_etag, _ = read_json(client, 'indexes/catalog.json')
-    pointer, pointer_etag, _ = read_json(client, PREFIX + 'manifest.json')
-    manifest = json.loads((root / 'manifest.json').read_text())
-    remote_manifest, _, _ = read_json(client, PREFIX + pointer['manifest'])
-    if (pointer['source_manifest'] != selected or manifest['source_manifest'] != selected
-            or manifest['files'] != remote_manifest['files'] or manifest['info']['catalog_id'] != pointer['catalog_id']):
-        raise ValueError('Recovery status requires the currently selected viewer publication.')
-    accepted = {'version': 1, 'recoveries': accepted_rows(rows)}
-    index = index_recoveries(root, manifest, accepted['recoveries'])
-    previous, _, _ = read_json(client, ACCEPTED_KEY, optional=True)
-    if previous is not None and previous != accepted:
-        raise ValueError('A different accepted recovery mapping already exists.')
-    if previous is None:
-        put_json(client, ACCEPTED_KEY, accepted, IfNoneMatch='*')
-    readback, _, _ = read_json(client, ACCEPTED_KEY)
-    if readback != accepted:
-        raise ValueError('Accepted recovery mapping failed readback.')
+def prepare_recovery(root, manifest, accepted_record, *, validation=None):
+    value = index_recoveries(root, manifest, validated_accepted(accepted_record[0]),
+                             **({'validation': validation} if validation is not None else {}))
+    prepared = dict(version=1, inputs=recovery_preparation_inputs(manifest, accepted_record), value=value)
+    payload = encoded(prepared)
+    if len(payload) > CONTROL_LIMITS['recovery']:
+        raise ValueError('Prepared recovery status exceeds control byte limit')
+    (root / 'recovery-prepared.json').write_bytes(payload)
+    return prepared
+
+
+def load_prepared_recovery(root, manifest, accepted_record, *, validation):
+    path = root / 'recovery-prepared.json'
+    validation.file(path)
+    prepared = json.loads(path.read_bytes())
+    if prepared.get('version') != 1 or prepared.get('inputs') != recovery_preparation_inputs(manifest, accepted_record):
+        raise ValueError('Prepared recovery inputs changed')
+    value = prepared['value']
+    if (value.get('catalog_id') != manifest['info']['catalog_id'] or value.get('rows') != manifest['info']['rows']
+            or value.get('entries') != manifest['info']['entries']):
+        raise ValueError('Prepared recovery status identity changed')
+    return value
+
+
+def recovery_for_publication(client, root, manifest, *, validation=None):
+    accepted_record = read_identity(client, ACCEPTED_KEY, optional=True)
+    index = (load_prepared_recovery(root, manifest, accepted_record, validation=validation)
+             if validation is not None else index_recoveries(root, manifest, validated_accepted(accepted_record[0])))
+    return store_recovery_index(client, index), accepted_record
+
+
+def select_recoveries(client, root, manifest, selected_record, accepted_record, pointer_record,
+                      manifest_digest, *, public_url, index=None):
+    pointer, pointer_etag = pointer_record[:2]
+    accepted = validated_accepted(accepted_record[0])
+    if index is None:
+        index = index_recoveries(root, manifest, accepted)
     descriptor = store_recovery_index(client, index)
-    with open_public(public_request(public_url + descriptor['path'], {'Origin': 'https://civictechdc.github.io'})) as response:
-        if (response.read() != encoded(index) or response.headers.get('Access-Control-Allow-Origin') != '*'):
-            raise ValueError('Public recovery status or browser access differs.')
-    fresh, fresh_etag, _ = read_json(client, 'indexes/catalog.json')
-    if fresh != selected or fresh_etag != selected_etag:
-        raise ValueError('Catalog changed while preparing recovery status.')
-    fresh_accepted, _, _ = read_json(client, ACCEPTED_KEY)
-    if fresh_accepted != accepted:
-        raise ValueError('Accepted recovery mappings changed before selection.')
-    updated = dict(pointer, recovery=descriptor)
+    updated = dict(pointer, recovery=descriptor,
+                   recovery_inputs=recovery_inputs(selected_record[3], manifest_digest, manifest, accepted_record[0]))
+    verify_recovery_status(client, descriptor, updated, public_url=public_url)
+    check_recovery_inputs(client, selected_record, accepted_record, pointer_record)
     if updated != pointer:
         put_json(client, PREFIX + 'manifest.json', updated, IfMatch=pointer_etag)
     with open_public(public_request(public_url + 'manifest.json')) as response:
-        if json.load(response) != updated:
+        if json.loads(public_control(response)) != updated:
             raise ValueError('Public recovery pointer differs.')
-    return {'status': 'recovery_updated', 'catalog_id': pointer['catalog_id'],
-            'accepted_recoveries': len(accepted['recoveries']), 'affected_sources': len(index['sources']),
-            'affected_groups': len(index['groups']), 'recovery': descriptor,
-            'catalog_payloads_reused': True, 'raw_catalog_unchanged': True}
+    return recovery_result(updated, index, accepted, status='recovery_updated')
 
 
 def public_probe(base, pointer, manifest):
@@ -174,8 +327,15 @@ def public_probe(base, pointer, manifest):
     manifest_url = base + pointer['manifest']
     request = public_request(manifest_url, {'Origin': 'https://civictechdc.github.io'})
     with open_public(request) as response:
-        if json.load(response) != manifest or response.headers.get('Access-Control-Allow-Origin') != '*':
+        if json.loads(public_control(response)) != manifest or response.headers.get('Access-Control-Allow-Origin') != '*':
             raise ValueError('Public manifest or browser access differs.')
+    # Recovery links are selected by the pointer and need their own public proof.
+    if descriptor := pointer.get('recovery'):
+        with open_public(public_request(base + descriptor['path'], {'Origin': 'https://civictechdc.github.io'})) as response:
+            payload = public_control(response, kind='recovery', expected=descriptor['bytes'])
+            if (len(payload) != descriptor['bytes'] or hashlib.sha256(payload).hexdigest() != descriptor['sha256']
+                    or response.headers.get('Access-Control-Allow-Origin') != '*'):
+                raise ValueError('Public recovery status failed verification.')
     # Detail views need the navigation and observation files as well as Parquet.
     def check_file(item):
         request = public_request(urllib.parse.urljoin(manifest_url, item['path']), {
@@ -200,8 +360,16 @@ def public_probe(base, pointer, manifest):
 
 
 def upload(client, root, manifest, *, previous_etag, selected_etag, public_url=PUBLIC_URL,
-           probe=public_probe, archive_only=False, publication_plan=None):
-    files = prepared_files(root, manifest)
+           probe=public_probe, publication_plan=None, validation=None):
+    from guarded_recovery_publication_client import require_publication_client
+    require_publication_client(client)
+    if not all(callable(getattr(client,name,None)) for name in ('get_object','put_object','download_file')):
+        raise TypeError('Viewer publication client requires conditional writes and complete file upload/readback')
+    validate_prepared_output(root, manifest)
+    files = prepared_files(root, manifest, **({'validation': validation} if validation is not None else {}))
+    # Bind accepted status to the unmodified prepared manifest. Presentation-only
+    # publication timestamps below do not change the accepted indexing inputs.
+    recovery_manifest = manifest
     print(f"Uploading and reading back {len(files)} viewer objects for {manifest['info']['catalog_id']}", flush=True)
     plan = publication_plan or dict(release='releases/' + uuid.uuid4().hex + '/',
                                     published_at=datetime.now(timezone.utc).isoformat())
@@ -214,20 +382,36 @@ def upload(client, root, manifest, *, previous_etag, selected_etag, public_url=P
     manifest['info'] = dict(manifest['info'], publication_version=PUBLISHER_VERSION)
     pointer = {'version': 1, 'publisher_version': PUBLISHER_VERSION, 'catalog_id': manifest['info']['catalog_id'],
                'source_manifest': manifest['source_manifest'], 'published_at': manifest['published_at'],
-               'manifest': release + 'manifest.json'}
-    recovery = recovery_for_publication(client, root, manifest)
-    if recovery:
-        pointer['recovery'] = recovery
+               'manifest': release + 'manifest.json', 'full_release_inputs': full_release_identity()}
+    recovery, accepted_record = recovery_for_publication(client, root, recovery_manifest,
+        **({'validation': validation} if validation is not None else {}))
+    pointer['recovery'] = recovery
+    selected_record = read_identity(client, 'indexes/catalog.json')
+    pointer['recovery_inputs'] = recovery_inputs(
+        hashlib.sha256(encoded(manifest['source_manifest'])).hexdigest(),
+        hashlib.sha256(encoded(manifest)).hexdigest(), manifest, accepted_record[0])
+    if selected_record[0] == manifest['source_manifest']:
+        pointer['recovery_inputs']['raw_manifest_sha256'] = selected_record[3]
 
     def transfer(item):
         name, path = item
         key = PREFIX + release + name
-        expected = digest(path)
+        local = validation.file(path) if validation is not None else None
+        expected = local['sha256'] if local is not None else digest(path)
         content_type = ('application/vnd.apache.parquet' if name.endswith('.parquet') else
                         'application/json' if name.endswith('.json') else 'application/octet-stream')
-        receipt = client.upload_file(str(path), BUCKET, key, ExtraArgs={
-            'ContentType': content_type, 'CacheControl': 'public, max-age=31536000, immutable',
-            'Metadata': {'sha256': expected}})
+        options = {'ContentType': content_type, 'CacheControl': 'public, max-age=31536000, immutable',
+                   'Metadata': {'sha256': expected}}
+        upload_local = getattr(client, 'upload_verified_file', None) if local is not None else None
+        if upload_local is not None:
+            receipt = upload_local(str(path), BUCKET, key, ExtraArgs=options, validation=local)
+        else:
+            # Plain SDK adapters also get one explicitly conditional single PUT.
+            # Managed upload_file can retry/multipart without this condition.
+            with path.open('rb') as stream:
+                response = client.put_object(Bucket=BUCKET, Key=key, Body=stream,
+                    ContentLength=path.stat().st_size, IfNoneMatch='*', **options)
+            receipt = response.get('_verified_transfer') if isinstance(response, dict) else None
         confirm = getattr(client, 'confirm_transfer', None)
         verified = confirm is not None and confirm(receipt, bucket=BUCKET, key=key,
                                                    size=path.stat().st_size, sha256=expected)
@@ -254,11 +438,11 @@ def upload(client, root, manifest, *, previous_etag, selected_etag, public_url=P
         if error.response['Error']['Code'] not in ('PreconditionFailed', '412'):
             raise
     result = {'catalog_id': pointer['catalog_id'], 'bytes': total, 'files': len(files), 'manifest': pointer['manifest']}
-    if archive_only:
-        return dict(result, status='archived')
     selected, etag, _ = read_json(client, 'indexes/catalog.json')
     if etag != selected_etag or selected != manifest['source_manifest']:
         return dict(result, status='superseded', reason='The raw catalog advanced; the next check will publish it.')
+    if read_identity(client, ACCEPTED_KEY, optional=True) != accepted_record:
+        return dict(result, status='superseded', reason='Accepted recovery mappings changed before selection.')
     try:
         put_json(client, PREFIX + 'manifest.json', pointer,
                  **({'IfMatch': previous_etag} if previous_etag else {'IfNoneMatch': '*'}))
@@ -270,117 +454,36 @@ def upload(client, root, manifest, *, previous_etag, selected_etag, public_url=P
     if actual != pointer:
         raise ValueError('Selected viewer manifest failed readback.')
     with open_public(public_request(public_url + 'manifest.json')) as response:
-        if json.load(response) != pointer:
+        if json.loads(public_control(response)) != pointer:
             raise ValueError('Public viewer manifest differs from the selected publication.')
     return dict(result, status='published')
 
 
-def bootstrap_pages(selected, root):
-    """One-time migration reuses the current public files when their source matches."""
-    try:
-        with open_public(public_request(PAGES_MANIFEST), timeout=30) as response:
-            manifest = json.load(response)
-    except (OSError, ValueError):
-        return None
-    if manifest.get('version') != 2 or manifest.get('source_manifest') != selected:
-        return None
-    expected = selected['generation'] + '/viewer-v2/'
-    names = [item['path'] for item in manifest['files'].values()]
-    if manifest['ids'] != expected + 'ids/':
-        raise ValueError('Invalid legacy source-ID directory.')
-    names += [manifest['ids'] + f'{prefix:02x}.bin' for prefix in range(256)]
-    for name in names:
-        if not name.startswith(expected) or '..' in PurePosixPath(name).parts:
-            raise ValueError('Invalid legacy publication path.')
-    def download(name):
-        path = root / name
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with open_public(public_request(urllib.parse.urljoin(PAGES_MANIFEST, name)), timeout=120) as response, path.open('wb') as output:
-            while data := response.read(8 * 1024 * 1024):
-                output.write(data)
-    print('Migrating the matching verified Pages publication', flush=True)
-    with ThreadPoolExecutor(max_workers=8) as pool:
-        list(pool.map(download, names))
-    return manifest
-
-
-def refresh_recoveries(client, pointer, *, public_url=PUBLIC_URL):
-    """Refresh URL mappings against the existing immutable viewer tables."""
-    accepted, accepted_etag, _ = read_json(client, ACCEPTED_KEY, optional=True)
-    if accepted is None:
-        return {'status': 'unchanged', 'catalog_id': pointer['catalog_id']}
-    manifest, _, _ = read_json(client, PREFIX + pointer['manifest'])
-    with tempfile.TemporaryDirectory(prefix='viewer-recovery-refresh-') as folder:
-        root = Path(folder)
-        (root / 'manifest.json').write_bytes(encoded(manifest))
-        release = str(PurePosixPath(pointer['manifest']).parent) + '/'
-        for name in ('filenames', 'groups'):
-            item = manifest['files'][name]
-            path = root / item['path']
-            if not path.resolve().is_relative_to(root.resolve()):
-                raise ValueError('Invalid recovery input path.')
-            path.parent.mkdir(parents=True, exist_ok=True)
-            client.download_file(BUCKET, PREFIX + release + item['path'], str(path))
-        fresh, fresh_etag, _ = read_json(client, ACCEPTED_KEY)
-        if fresh != accepted or fresh_etag != accepted_etag:
-            raise ValueError('Accepted recovery mappings changed during refresh.')
-        return accept_recoveries(client, root, accepted['recoveries'], public_url=public_url)
-
-
-def run(client, *, prepared=None, public_url=PUBLIC_URL, archive_only=False, publication_plan=None):
-    selected, selected_etag, modified = read_json(client, 'indexes/catalog.json')
-    previous, previous_etag, _ = read_json(client, PREFIX + 'manifest.json', optional=True)
-    if publication_plan is None and not archive_only and previous and previous.get('source_manifest') == selected and previous.get('publisher_version') == PUBLISHER_VERSION:
-        return refresh_recoveries(client, previous, public_url=public_url)
-    with tempfile.TemporaryDirectory(prefix='filename-publication-') as folder:
-        folder = Path(folder)
-        if prepared:
-            root = prepared
-            manifest = json.loads((root / 'manifest.json').read_text())
-            if not archive_only and manifest['source_manifest'] != selected:
-                raise ValueError('Prepared publication is not the currently selected R2 catalog.')
-        else:
-            if archive_only:
-                raise ValueError('Archiving requires a prepared publication.')
-            root = folder / 'publication'
-            manifest = bootstrap_pages(selected, root) if previous is None else None
-        if not prepared and manifest is None:
-            spec = importlib.util.spec_from_file_location('filename_publication', Path(__file__).with_name('publish-filename-viewer.py'))
-            publication = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(publication)
-            source = folder / 'source'
-            (source / 'indexes').mkdir(parents=True)
-            (source / 'indexes/catalog.json').write_bytes(encoded(selected))
-            for item in selected['files'].values():
-                key = item['key']
-                if not key.startswith('catalog-generations/' + selected['generation'] + '/') or '..' in PurePosixPath(key).parts:
-                    raise ValueError('Invalid immutable source location.')
-                path = source / key
-                path.parent.mkdir(parents=True, exist_ok=True)
-                client.download_file(BUCKET, key, str(path))
-            manifest = publication.publish(source, root, modified)
-        manifest['info']['remote_last_modified'] = modified if not archive_only else manifest['info'].get('remote_last_modified')
-        return upload(client, root, manifest, previous_etag=previous_etag, selected_etag=selected_etag,
-                      public_url=public_url, archive_only=archive_only, publication_plan=publication_plan)
+def check_selected_publication(client, pointer, *, public_url=PUBLIC_URL, records=None, release_identity=None):
+    """Read-only: verify exact reuse, or require a new accepted preparation."""
+    selected_record, accepted_record, pointer_record = records or (
+        read_identity(client, 'indexes/catalog.json'), read_identity(client, ACCEPTED_KEY, optional=True),
+        read_identity(client, PREFIX + 'manifest.json'))
+    if pointer_record[0] != pointer or pointer['source_manifest'] != selected_record[0]:
+        raise ValueError('Recovery status requires the currently selected viewer publication.')
+    rows = validated_accepted(accepted_record[0])
+    manifest, _, _, manifest_digest = read_identity(client, PREFIX + pointer['manifest'])
+    if (manifest['source_manifest'] != selected_record[0]
+            or manifest['info']['catalog_id'] != pointer['catalog_id']):
+        raise ValueError('Selected viewer manifest differs from the catalog.')
+    inputs = recovery_inputs(selected_record[3], manifest_digest, manifest, accepted_record[0], release_identity=release_identity)
+    if pointer.get('recovery_inputs') == inputs:
+        index = verify_recovery_status(client, pointer.get('recovery'), pointer, public_url=public_url)
+        with open_public(public_request(public_url + 'manifest.json')) as response:
+            if json.loads(public_control(response)) != pointer:
+                raise ValueError('Public recovery pointer differs.')
+        check_recovery_inputs(client, selected_record, accepted_record, pointer_record)
+        return recovery_result(pointer, index, rows, status='unchanged')
+    return {'status': 'recovery_preparation_required', 'catalog_id': pointer['catalog_id']}
 
 
 if __name__ == '__main__':
-    import boto3
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--prepared', type=Path, help='Reuse an already verified viewer publication during migration.')
-    parser.add_argument('--archive-only', action='store_true', help='Retain a previous review snapshot without selecting it.')
-    parser.add_argument('--public-url', default=PUBLIC_URL)
-    parser.add_argument('--report', type=Path)
-    parser.add_argument('--accept-recoveries', type=Path, help='Mark retained URL variants recovered without rebuilding or uploading catalog tables; requires --prepared.')
-    args = parser.parse_args()
-    client = boto3.client('s3', endpoint_url=f'https://{os.environ["CLOUDFLARE_ACCOUNT_ID"]}.r2.cloudflarestorage.com',
-                          aws_access_key_id=os.environ['R2_ACCESS_KEY_ID'], aws_secret_access_key=os.environ['R2_SECRET_ACCESS_KEY'], region_name='auto')
-    if args.accept_recoveries:
-        if not args.prepared or args.archive_only:
-            parser.error('--accept-recoveries requires --prepared and cannot be combined with --archive-only')
-        result = accept_recoveries(client, args.prepared, json.loads(args.accept_recoveries.read_text()), public_url=args.public_url)
-    else:
-        result = run(client, prepared=args.prepared, public_url=args.public_url, archive_only=args.archive_only)
-    if args.report:
-        args.report.write_text(json.dumps(result, indent=2) + '\n')
-    print(json.dumps(result, indent=2))
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'scripts'))
+    from publication_cli import main
+    raise SystemExit(main(sys.modules[__name__]))

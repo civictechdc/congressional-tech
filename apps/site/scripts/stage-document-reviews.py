@@ -3,14 +3,15 @@ import json
 from pathlib import Path
 import tempfile
 import urllib.request
-from filename_reviews import extract_archive, verify_directory
+from filename_reviews import extract_archive, verify_directory, recover_directory
 
 root = Path(__file__).resolve().parents[1]
 descriptor = json.loads((root/'document-review-publication.json').read_text())
 target = root/'public/data/document-reviews'
-if target.exists():
+recover_directory(target)
+try:
     verify_directory(target, descriptor['sha256'])
-else:
+except (OSError, ValueError, KeyError, TypeError):
     url = f"https://github.com/civictechdc/congressional-tech/releases/download/{descriptor['release']}/{descriptor['asset']}"
     with tempfile.TemporaryDirectory(prefix='document-reviews-') as temporary:
         archive = Path(temporary)/descriptor['asset']

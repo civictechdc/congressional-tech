@@ -1,0 +1,14 @@
+{
+  "scope": "fixture with in-memory remote; counts exclude GitHub artifact metadata API and public probes",
+  "publication_puts": 273,
+  "journal_puts": 548,
+  "journal_get_calls": 549,
+  "journal_full_readbacks": 548,
+  "mutable_identity_gets": {
+    "indexes/catalog.json": 4,
+    "viewer-publications/recoveries/accepted.json": 4,
+    "viewer-publications/manifest.json": 4
+  },
+  "file_version_heads": 269,
+  "journal_bytes": 236828
+}

@@ -1,0 +1,25 @@
+{
+  "kind": "constructed-high-fanout",
+  "urls": 32,
+  "source_rows_per_url": 16,
+  "occurrences_per_url": 64,
+  "source_rows": 512,
+  "files": {
+    "indexes/.catalog.lock": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "indexes/captures.parquet": {
+      "bytes": 3300,
+      "sha256": "9630d48a896fa23e0e2261169243ceecb873b526f29a3c53360fc0975b227dae"
+    },
+    "indexes/document-filenames.parquet": {
+      "bytes": 251700,
+      "sha256": "322aa501796a535a2940b1ea2b48d92f776405c91423e7d3a249e3349a10b1f5"
+    },
+    "indexes/documents.parquet": {
+      "bytes": 253942,
+      "sha256": "b456b24cb8ec105f41e2e160325765c1fa75f36776a77a9b982e98a38fa5ba82"
+    }
+  }
+}
