@@ -151,11 +151,91 @@ def test_default_compression_uses_research_supported_level_9(catalog, tmp_path):
     timing = {}
     events = []
     result = publication.publish(catalog, tmp_path / 'public', stage_timings=timing, stage_event=events.append)
-    assert result['compression_policy'] == {'codec': 'zstd', 'level': 9, 'batch_size': 8192, 'row_group_size': 8192}
-    assert timing['documents_repack']['exact_equal'] and timing['filenames_repack']['exact_equal']
+    assert result['compression_policy'] == {'codec': 'zstd', 'level': 9, 'batch_size': 8192, 'row_group_size': 8192,
+                                            'applies_to': ['filenames']}
+    assert timing['documents_copy']['verification_method'] == 'complete_sha256_bytes'
+    assert 'documents_repack' not in timing and timing['filenames_repack']['exact_equal']
     assert timing['total_seconds'] > timing['documents_preparation']
     assert events[0] == {'event': 'stage_started', 'stage': 'input_verification'}
     assert events[-1]['event'] == 'stage_completed' and events[-1]['stage'] == 'manifest'
+
+
+def test_document_archive_copies_exact_source_bytes_without_repack_or_rehash(catalog, tmp_path, monkeypatch):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from congress_api.retention.viewer_inventory import issue_inventory, verify_inventory
+    root, target = tmp_path / 'input', tmp_path / 'publication'
+    shutil.copytree(catalog, root)
+    raw = json.loads((root / 'indexes/catalog.json').read_text())
+    source = root / raw['files']['documents']['key']
+    table = pq.read_table(source)
+    # Archive-only nested data includes a row above the unchanged Arrow limit.
+    # The browsing columns still fit their ordinary reader path.
+    table = table.append_column('archive_only', pa.array(
+        [[None, '', 'é', 'é', 'x' * publication.DEFAULT_DECODED_POLICY.row_arrow_bytes]] +
+        [None] * (len(table) - 1), type=pa.list_(pa.string())))
+    pq.write_table(table, source, compression='gzip', row_group_size=2)
+    raw['files']['documents'].update(bytes=source.stat().st_size, sha256=publication.digest(source))
+    (root / 'indexes/catalog.json').write_text(json.dumps(raw))
+    original_catalog, original_identity, original_repack = publication.viewer.Catalog, publication.file_identity, publication.repack_and_verify
+    readers, repacks = [], []
+    def load(*args, **kwargs):
+        value = original_catalog(*args, **kwargs)
+        def forbidden(*args, **kwargs): raise AssertionError('document archive decoded for repack')
+        value.document_file.iter_batches = forbidden
+        readers.append(value); return value
+    def identify(path):
+        assert path.name != 'documents.parquet', 'copied destination unnecessarily rehashed'
+        return original_identity(path)
+    def repack(reader, destination, *args, **kwargs):
+        assert reader is readers[0].file and destination.name == 'filenames.parquet'
+        repacks.append(destination.name)
+        return original_repack(reader, destination, *args, **kwargs)
+    monkeypatch.setattr(publication.viewer, 'Catalog', load)
+    monkeypatch.setattr(publication, 'file_identity', identify)
+    monkeypatch.setattr(publication, 'repack_and_verify', repack)
+    timings = {}
+    manifest = publication.publish(root, target, review_identities=None, stage_timings=timings)
+    descriptor = manifest['files']['documents']; output = target / descriptor['path']
+    assert output.read_bytes() == source.read_bytes()
+    assert pq.read_schema(output).equals(pq.read_schema(source), check_metadata=True)
+    assert descriptor['encoding'] == {'mode': 'source_passthrough', 'source_sha256': raw['files']['documents']['sha256']}
+    assert timings['documents_copy']['verification_method'] == 'complete_sha256_bytes'
+    assert timings['documents_copy']['sha256'] == descriptor['sha256'] == raw['files']['documents']['sha256']
+    assert repacks == ['filenames.parquet'] and timings['filenames_repack']['exact_equal']
+    proof = manifest.identities[descriptor['path']]
+    assert proof.require(output)['sha256'] == descriptor['sha256']
+    inventory = issue_inventory(target, manifest.identities, context={'source': raw})
+    restored = json.loads(json.dumps(inventory.files))
+    verify_inventory(target, restored, context={'source': raw})
+    with output.open('ab') as stream: stream.write(b'altered')
+    with pytest.raises(ValueError, match='custody'): proof.require(output)
+    with pytest.raises(ValueError, match='changed'): verify_inventory(target, restored, context={'source': raw})
+
+
+@pytest.mark.parametrize('when', ['before_copy', 'during_copy'])
+def test_document_archive_copy_refuses_changed_source_custody(catalog, tmp_path, monkeypatch, when):
+    root, target = tmp_path / 'input', tmp_path / 'publication'
+    shutil.copytree(catalog, root)
+    raw = json.loads((root / 'indexes/catalog.json').read_text())
+    source = root / raw['files']['documents']['key']
+    expected = source.read_bytes()
+    def replace_source():
+        replacement = source.with_suffix('.replacement')
+        replacement.write_bytes(expected); replacement.replace(source)
+    if when == 'before_copy':
+        original = publication.viewer.Catalog
+        def load(*args, **kwargs):
+            value = original(*args, **kwargs); replace_source(); return value
+        monkeypatch.setattr(publication.viewer, 'Catalog', load)
+    else:
+        original = publication.copy_checked
+        def copy(*args, **kwargs):
+            result = original(*args, **kwargs); replace_source(); return result
+        monkeypatch.setattr(publication, 'copy_checked', copy)
+    with pytest.raises(ValueError, match='source custody'):
+        publication.publish(root, target, review_identities=None)
+    assert source.read_bytes() == expected and not (target / 'manifest.json').exists()
 
 
 def test_failed_preparation_upload_keeps_memory_receipts_without_partial_payloads(tmp_path):

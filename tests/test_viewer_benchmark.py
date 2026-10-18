@@ -41,14 +41,38 @@ def test_short_or_failed_browser_runs_cannot_qualify():
     assert not benchmark.compare_browser(reference, None)['qualified']
 
 
-def test_only_recompressed_physical_bytes_may_change():
+def test_only_reencoded_filename_bytes_may_change():
     reference = {'worker': {'manifest': {'source_manifest': {'catalog_id': 'same'}, 'files': {
         'documents': {'path': 'docs.parquet'}, 'filenames': {'path': 'names.parquet'}}},
         'inventory': {'docs.parquet': {'sha256': 'a'}, 'names.parquet': {'sha256': 'b'},
                       'ids/aa.bin': {'sha256': 'id'}, 'review-binding.json': {'sha256': 'review'}}}}
-    candidate = deepcopy(reference); candidate['worker']['inventory']['docs.parquet']['sha256'] = 'compressed'
+    candidate = deepcopy(reference); candidate['worker']['inventory']['names.parquet']['sha256'] = 'compressed'
     assert benchmark.compare_outputs(reference, candidate)
+    candidate['worker']['inventory']['docs.parquet']['sha256'] = 'changed-archive'
+    assert not benchmark.compare_outputs(reference, candidate)
     candidate['worker']['inventory']['ids/aa.bin']['sha256'] = 'changed-id'
     assert not benchmark.compare_outputs(reference, candidate)
     candidate = deepcopy(reference); candidate['worker']['inventory']['review-binding.json']['sha256'] = 'changed-review'
     assert not benchmark.compare_outputs(reference, candidate)
+
+
+def test_exact_gate_requires_source_archive_bytes_and_filename_value_verification():
+    facts = {'bytes': 10, 'sha256': 'source', 'rows': 2}
+    worker = {'manifest': {'source_manifest': {'files': {'documents': facts}},
+        'files': {'documents': dict(facts, path='docs.parquet', encoding={'mode': 'source_passthrough', 'source_sha256': 'source'})}},
+        'inventory': {'docs.parquet': {'bytes': 10, 'sha256': 'source'}},
+        'timings': {'documents_copy': dict(facts, verification_method='complete_sha256_bytes'),
+                    'filenames_repack': {'exact_equal': True}}}
+    assert benchmark.exact_table_verification(worker)
+    for where, key, changed in [('documents_copy', 'sha256', 'changed'), ('documents_copy', 'rows', 3),
+                                ('documents_copy', 'verification_method', 'sample'),
+                                ('filenames_repack', 'exact_equal', False)]:
+        candidate = deepcopy(worker); candidate['timings'][where][key] = changed
+        assert not benchmark.exact_table_verification(candidate)
+    candidate = deepcopy(worker); candidate['manifest']['files']['documents']['encoding']['mode'] = 'reencoded'
+    assert not benchmark.exact_table_verification(candidate)
+    for missing in (False, True):
+        candidate = deepcopy(worker)
+        if missing: del candidate['inventory']['docs.parquet']
+        else: candidate['inventory']['docs.parquet']['sha256'] = 'altered'
+        assert not benchmark.exact_table_verification(candidate)

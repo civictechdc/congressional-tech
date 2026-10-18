@@ -465,15 +465,14 @@ def test_publication_reuses_its_catalog_readers_and_preparation_options(tmp_path
     def catalog_open(*args, **kwargs):
         value = original_catalog(*args, **kwargs); catalog.append(value); return value
     def repack(source, destination, *args, **kwargs):
-        expected = catalog[0].document_file if destination.name == 'documents.parquet' else catalog[0].file
-        assert source is expected
+        assert destination.name == 'filenames.parquet' and source is catalog[0].file
         repacks.append(destination.name)
         return original_repack(source, destination, *args, **kwargs)
     monkeypatch.setattr(pq, 'ParquetFile', opening)
     monkeypatch.setattr(publisher.viewer, 'Catalog', catalog_open)
     monkeypatch.setattr(publisher, 'repack_and_verify', repack)
     publisher.publish(root, tmp_path / 'public', review_identities=None)
-    assert sorted(repacks) == ['documents.parquet', 'filenames.parquet']
+    assert repacks == ['filenames.parquet']
     # One independent manifest check plus one owned Catalog open per input.
     assert all(sum(path == candidate for candidate, _ in opens) == 2 for path in source_paths)
     preparation = [options for _, options in opens if options]
