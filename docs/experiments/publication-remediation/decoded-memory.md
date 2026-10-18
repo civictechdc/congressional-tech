@@ -12,7 +12,7 @@ The default policy is explicit in `filename_budget.DecodedPolicy`:
 | Admission | Default | Meaning |
 | --- | ---: | --- |
 | Native decode rows | 128 | Maximum requested rows per native batch, within one physical row group |
-| Physical uncompressed group bytes | 64 MiB | Footer preflight of selected encoded column chunks, before decoding any group |
+| Native row planning | Selected chunk bytes / group rows | Mean-density planning only; no aggregate refusal or allocation guarantee |
 | Ordinary admitted Arrow bytes | 4 MiB | Larger returned batches split before Python conversion |
 | Ordinary Python/JSON estimate | 32 MiB | Payload factor plus explicit nested list/struct and field-name accounting |
 | Single-row Arrow bytes | 16 MiB | Explicit oversized-row path; stricter Python estimate also applies |
@@ -20,26 +20,30 @@ The default policy is explicit in `filename_budget.DecodedPolicy`:
 | Logical JSON value | 32 MiB | Serialization and logical block reconstruction limit, distinct from 1 MiB parts |
 | SQLite cache per index | 8 MiB | Observation identity and verification dictionaries spill to temporary files |
 
-The physical limit is conservative admission, not a decoded Arrow allocation
-bound. Parquet dictionary and repetition encoding can expand before Arrow
-returns even one row. The native row cap limits multi-row amplification; an
-individual nested row can still expand substantially inside the native decoder.
-Actual returned Arrow bytes and the estimated Python working set are checked
-before `to_pylist`. Slices and zero-copy coalescing can retain larger underlying native buffers.
+Physical uncompressed group bytes now guide the native batch row count; they
+are not a simultaneous allocation bound or a refusal threshold. The retained
+rebuilt documents group 389 totals 163,912,431 bytes across 1,024 rows, so the
+4 MiB target plans 26 native rows. Dictionary and repetition encoding, page
+sizes and row skew can still expand before Arrow returns even one row. Actual
+returned Arrow bytes and the estimated Python working set are checked before
+`to_pylist`; true oversized rows still fail explicitly.
+
+Slices and zero-copy coalescing can retain larger underlying native buffers.
 Summed `nbytes` measures logical admitted data, not retained allocation. Metrics
 also record `get_total_buffer_size()` for native/admitted batches and coalesced
 repack tables; Arrow deduplicates shared buffers within each measured object.
-These per-object maxima do not measure all simultaneous process allocations. Global catalog
-navigation indexes, codec buffers, parser allocations and runtime memory remain
-additional costs. This policy and the fixture watchdog do **not** provide a
-universal process resident-memory guarantee.
+These per-object maxima do not measure all simultaneous process allocations.
+Global catalog indexes, footer metadata, codecs, parsers and runtime memory
+remain additional costs. This policy and the fixture watchdog do **not** provide
+a universal process resident-memory guarantee.
 
-The 64 MiB physical default leaves room above the observed largest physical
-filename groups in two retained local catalogs: 30,575,188 bytes across 1,633
-groups / 1,672,092 rows (`ee9bbad71e4648ffbcacb63ccb8bebe2`) and 33,843,154 bytes
-across 1,001 groups / 1,024,227 rows (`60321acca79849e6ba2487f618bef139`). These
-were footer-only observations, not complete publication runs or qualification of
-the current full catalog.
+The original 64 MiB aggregate refusal was based on two older cached filename
+catalogs and failed the retained rebuilt documents footer. That invalid inference
+is removed; the actual Arrow/Python/JSON limits remain unchanged. Historical
+`decoded-memory.json` receipts below retain their original policy and do not
+qualify this correction. Current correction evidence and limitations are in
+[admission-correction.md](admission-correction.md) and
+[evidence/admission-correction-memory.json](evidence/admission-correction-memory.json).
 
 Observation construction serializes each input observation once and reuses the
 bytes when assigning a new dictionary ID. SQLite replaces the unbounded Python
@@ -70,7 +74,7 @@ keeps the source and partial files for diagnosis, and writes
 write failures become notes on the original error. A fresh output directory is
 required for another build. Existing valid publications remain unchanged.
 
-## Verification
+## Historical verification before the admission correction
 
 Reproduce the bounded offline measurement with:
 

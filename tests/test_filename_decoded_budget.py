@@ -13,7 +13,7 @@ import pyarrow.parquet as pq
 import pytest
 
 from filename_budget import (DEFAULT_DECODED_POLICY, DecodedBudgetExceeded, bounded_batches,
-                             json_chunks)
+                             json_chunks, plan_native_rows, open_parquet)
 from filename_json_stream import ObservationCounts, block_items, decoded_json_default
 import filename_details as details
 import filename_observations as observations
@@ -47,14 +47,103 @@ def test_adaptive_batches_bound_admitted_arrow_and_allow_explicit_single_row(tmp
     assert metrics['oversized_rows_admitted'] > 0
 
 
-def test_physical_admission_precedes_any_decode_including_later_groups(tmp_path):
-    path = source_file(tmp_path, [{'filename': 'x'}] * 3 + [{'filename': 'x' * 20000}])
+def footer_group(rows, columns):
+    from types import SimpleNamespace
+    chunks = [SimpleNamespace(path_in_schema=path, total_uncompressed_size=size) for path, size in columns]
+    return SimpleNamespace(num_rows=rows, num_columns=len(chunks), column=chunks.__getitem__)
+
+
+def test_retained_real_footer_shape_plans_rows_without_aggregate_refusal():
+    # Exact retained rebuilt-documents group389 shape, no real-data decode.
+    group = footer_group(1024, [('source_occurrences.list.element.source_link_label.list.element', 89688776),
+                                ('source_link_label.list.element', 72737052), ('other', 1486603)])
+    metrics = {}
+    assert plan_native_rows(group, metrics=metrics) == 26
+    assert metrics['max_physical_group_bytes'] == 163912431
+    assert plan_native_rows(group, batch_rows=7) == 7
+    assert plan_native_rows(footer_group(1, [('huge', 10**12)])) == 1
+    assert plan_native_rows(footer_group(0, [])) == 1
+
+
+def test_planner_matches_nested_prefixes_once_and_distinguishes_empty_projection():
+    group = footer_group(1024, [('source_occurrences.list.element.label.list.element', 163912431),
+        ('source_occurrences.list.element.label_extra.list.element', 8192), ('filename', 4096)])
+    metrics = {}
+    assert plan_native_rows(group, columns=['source_occurrences.list.element.label'], metrics=metrics) == 26
+    assert metrics['max_physical_group_bytes'] == 163912431
+    for columns, expected in [(None, 163924719), ([], 0), (['filename'], 4096),
+        (['source_occurrences', 'source_occurrences.list.element.label'], 163920623)]:
+        metrics = {}; plan_native_rows(group, columns=columns, metrics=metrics)
+        assert metrics['max_physical_group_bytes'] == expected
+
+
+def test_native_calls_use_each_groups_plan_and_return_all_rows(tmp_path):
+    batch = pa.record_batch([['value']], names=['filename'])
+    groups = [footer_group(1024, [('filename', 163912431)]), footer_group(1024, [('filename', 4096)])]
+    class Metadata:
+        num_row_groups = 2
+        def row_group(self, index): return groups[index]
+    class Source:
+        metadata = Metadata()
+        calls = []
+        def iter_batches(self, **kwargs): self.calls.append(kwargs); return iter([batch])
+    source = Source()
+    assert [b.column(0)[0].as_py() for b in bounded_batches(source)] == ['value', 'value']
+    assert [call['batch_size'] for call in source.calls] == [26, 128]
+    assert [call['row_groups'] for call in source.calls] == [[0], [1]]
+    assert all(call['use_threads'] is False for call in source.calls)
+
+
+def test_large_physical_group_of_small_rows_repacks_with_full_value_verification(tmp_path):
+    path = tmp_path / 'large-group.parquet'
+    # A real >64MiB uncompressed physical group, with individually small rows.
+    table = pa.table({'value': pa.repeat(pa.scalar('é' * 512), 65536)})
+    pq.write_table(table, path, row_group_size=65536, use_dictionary=False, compression='zstd')
+    del table
     with pq.ParquetFile(path) as source:
-        class NoDecode:
-            metadata = source.metadata
-            def iter_batches(self, **kwargs): raise AssertionError('decoded before preflight completed')
-        with pytest.raises(DecodedBudgetExceeded, match='row-group 1'):
-            list(bounded_batches(NoDecode(), columns=['filename'], policy=replace(DEFAULT_DECODED_POLICY, physical_group_bytes=1024)))
+        assert source.metadata.row_group(0).column(0).total_uncompressed_size > 64 * 1024**2
+    metrics = {}
+    result = publisher.repack_and_verify(path, tmp_path / 'repacked.parquet', metrics=metrics)
+    assert result['rows'] == 65536 and result['exact_equal'] is True
+    assert metrics['max_physical_group_bytes'] > 64 * 1024**2
+    assert metrics['max_native_batch_rows'] <= 128
+    assert metrics['max_batch_arrow_bytes'] <= DEFAULT_DECODED_POLICY.batch_arrow_bytes
+
+
+def test_empty_projection_and_empty_parquet_preserve_source_row_count(tmp_path):
+    path = tmp_path / 'empty.parquet'
+    pq.write_table(pa.table({'value': pa.array([], type=pa.string())}), path)
+    assert publisher.repack_and_verify(path, tmp_path / 'empty-copy.parquet')['rows'] == 0
+    with pq.ParquetFile(path) as source:
+        assert sum(len(batch) for batch in bounded_batches(source, columns=[])) == 0
+    nonempty = tmp_path / 'nonempty.parquet'
+    pq.write_table(pa.table({'value': ['one', 'two', 'three']}), nonempty)
+    with pq.ParquetFile(nonempty) as source:
+        projected = list(bounded_batches(source, columns=[]))
+        assert sum(len(batch) for batch in projected) == 3
+        assert all(batch.num_columns == 0 for batch in projected)
+
+
+def test_repack_borrows_original_reader_without_reopening_or_closing_it(tmp_path, monkeypatch):
+    path = source_file(tmp_path, [{'filename': 'one'}, {'filename': 'two'}])
+    original = publisher.open_parquet; opened = []
+    def opening(candidate):
+        assert candidate != path, 'borrowed input footer reopened'
+        opened.append(candidate); return original(candidate)
+    monkeypatch.setattr(publisher, 'open_parquet', opening)
+    with open_parquet(path) as source:
+        metadata = source.metadata
+        assert publisher.repack_and_verify(source, tmp_path / 'copy.parquet')['exact_equal']
+        assert source.metadata is metadata and source.read().num_rows == 2
+    assert opened == [tmp_path / 'copy.parquet']
+
+
+def test_preparation_readers_disable_readahead_and_buffer_column_reads(monkeypatch):
+    import filename_budget
+    calls = []
+    monkeypatch.setattr(filename_budget.pq, 'ParquetFile', lambda *args, **kwargs: calls.append((args, kwargs)))
+    filename_budget.open_parquet('owned.parquet')
+    assert calls == [(('owned.parquet',), {'pre_buffer': False, 'buffer_size': 65536})]
 
 
 @pytest.mark.parametrize('limit', ['row_arrow_bytes', 'row_python_estimate', 'logical_json_bytes'])
@@ -272,3 +361,52 @@ def test_arrow_staging_checks_limits_before_aggregation_and_keeps_write_error():
     staging = ArrowStager(Broken(), batch.schema)
     staging.append(batch)
     with pytest.raises(OSError, match='injected staged write'): staging.flush()
+
+
+def test_borrowed_reader_survives_repack_failure_and_owned_output_closes(tmp_path, monkeypatch):
+    path = source_file(tmp_path, [{'filename': 'one'}, {'filename': 'two'}])
+    original_open, original_batches = publisher.open_parquet, publisher.bounded_batches
+    acquired = []
+    def opening(candidate):
+        result = original_open(candidate); acquired.append(result); return result
+    monkeypatch.setattr(publisher, 'open_parquet', opening)
+    with open_parquet(path) as source:
+        def batches(candidate, **kwargs):
+            if candidate is not source: raise ValueError('injected output readback')
+            return original_batches(candidate, **kwargs)
+        monkeypatch.setattr(publisher, 'bounded_batches', batches)
+        with pytest.raises(ValueError, match='injected output readback'):
+            publisher.repack_and_verify(source, tmp_path / 'copy.parquet')
+        assert not source.closed and source.read().num_rows == 2
+    assert acquired and all(reader.closed for reader in acquired)
+
+
+def test_publication_reuses_its_catalog_readers_and_preparation_options(tmp_path, monkeypatch):
+    import subprocess, sys
+    fixture = Path(__file__).resolve().parents[1] / 'apps/site/scripts/filename-test-fixture.py'
+    root = tmp_path / 'fixture'
+    subprocess.run([sys.executable, str(fixture), str(root)], check=True, capture_output=True)
+    manifest = json.loads((root / 'indexes/catalog.json').read_text())
+    source_paths = {root / item['key'] for item in manifest['files'].values()}
+    original_file, original_catalog, original_repack = pq.ParquetFile, publisher.viewer.Catalog, publisher.repack_and_verify
+    opens, catalog, repacks = [], [], []
+    def opening(path, *args, **kwargs):
+        if path in source_paths: opens.append((path, kwargs))
+        return original_file(path, *args, **kwargs)
+    def catalog_open(*args, **kwargs):
+        value = original_catalog(*args, **kwargs); catalog.append(value); return value
+    def repack(source, destination, *args, **kwargs):
+        expected = catalog[0].document_file if destination.name == 'documents.parquet' else catalog[0].file
+        assert source is expected
+        repacks.append(destination.name)
+        return original_repack(source, destination, *args, **kwargs)
+    monkeypatch.setattr(pq, 'ParquetFile', opening)
+    monkeypatch.setattr(publisher.viewer, 'Catalog', catalog_open)
+    monkeypatch.setattr(publisher, 'repack_and_verify', repack)
+    publisher.publish(root, tmp_path / 'public', review_identities=None)
+    assert sorted(repacks) == ['documents.parquet', 'filenames.parquet']
+    # One independent manifest check plus one owned Catalog open per input.
+    assert all(sum(path == candidate for candidate, _ in opens) == 2 for path in source_paths)
+    preparation = [options for _, options in opens if options]
+    assert preparation == [{'pre_buffer': False, 'buffer_size': 65536}] * 2
+    assert catalog[0].file.closed and catalog[0].document_file.closed

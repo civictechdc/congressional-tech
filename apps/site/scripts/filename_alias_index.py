@@ -5,9 +5,7 @@ import shutil
 import sqlite3
 import tempfile
 
-import pyarrow.parquet as pq
-
-from filename_budget import DEFAULT_DECODED_POLICY, DecodedBudgetExceeded, bounded_batches, failure_receipt
+from filename_budget import DEFAULT_DECODED_POLICY, DecodedBudgetExceeded, bounded_batches, failure_receipt, open_parquet
 from filename_aliases import content_kind, valid_body, wrapped_target
 from congress_api.parsers.archive_links import allowed_url
 from congress_api.retention.saved_responses import FIELDS, saved_response
@@ -91,7 +89,7 @@ class AliasIndex:
         db.executemany('INSERT INTO accepted VALUES (?)', ((row['original_url'],) for row in self.accepted))
         position = 0
         self.metrics.update(source_scans=1, max_batch_rows=0, max_batch_arrow_bytes=0)
-        with pq.ParquetFile(self.path) as source:
+        with open_parquet(self.path) as source:
             columns = [name for name in (*FIELDS, 'source_resolved_url') if name in source.schema_arrow.names]
             for batch in bounded_batches(source, batch_rows=128, columns=columns, policy=self.policy,
                                          stage='alias index', metrics=self.metrics):

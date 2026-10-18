@@ -23,12 +23,13 @@ import time
 from congress_api.retention.derived_files import file_identity
 from congress_api.retention.viewer_inventory import PreparedManifest
 from filename_resources import owned_resources
-from filename_budget import DEFAULT_DECODED_POLICY, ArrowStager, DecodedBudgetExceeded, bounded_batches, failure_receipt, validate_physical
+from filename_budget import DEFAULT_DECODED_POLICY, ArrowStager, DecodedBudgetExceeded, bounded_batches, failure_receipt, open_parquet
 from filename_json_stream import ObservationCounts
 
 import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
+from pyarrow.parquet import ParquetFile
 
 ROOT = Path(__file__).resolve().parents[3]
 VIEWER = ROOT / 'docs/youtube-coverage/research/scripts/view_document_filenames.py'
@@ -150,7 +151,9 @@ def _repack_and_verify(source, destination, policy, owned, decoded_policy, metri
     """Repack one complete table and compare its exact schema and ordered values."""
     if policy.codec != 'zstd' or not 1 <= policy.level <= 22 or min(policy.batch_size, policy.row_group_size) < 1:
         raise ValueError('Invalid viewer compression policy.')
-    source = owned.enter_context(pq.ParquetFile(source))
+    # A borrowed reader keeps its original file/metadata pairing.
+    if not isinstance(source, ParquetFile):
+        source = owned.enter_context(open_parquet(source))
     started = time.perf_counter()
     with pq.ParquetWriter(destination, source.schema_arrow, compression=policy.codec,
                           compression_level=policy.level) as writer:
@@ -160,7 +163,7 @@ def _repack_and_verify(source, destination, policy, owned, decoded_policy, metri
             staging.append(batch)
         staging.flush()
     written = time.perf_counter()
-    rewritten = owned.enter_context(pq.ParquetFile(destination))
+    rewritten = owned.enter_context(open_parquet(destination))
     if not rewritten.schema_arrow.equals(source.schema_arrow, check_metadata=True):
         raise ValueError('Repacking changed the schema.')
     # Adaptive source/output batches may have different boundaries. Compare
@@ -216,9 +219,6 @@ def _publish(root, target, modified, *, validation, review_identities, compressi
         stage_event({'event': 'stage_started', 'stage': 'input_verification'})
     manifest = json.loads((root / 'indexes/catalog.json').read_text())
     verify(root, manifest, validation=validation)
-    for item in manifest['files'].values():
-        with pq.ParquetFile(root / item['key']) as physical:
-            validate_physical(physical, policy=decoded_policy, stage='input admission', metrics=memory_metrics)
     stage('input_verification', 'catalog_loading')
     catalog = owned.enter_context(viewer.Catalog(root / manifest['files']['filenames']['key'], search_indexes=False))
     stage('catalog_loading', 'documents_preparation')
@@ -240,20 +240,22 @@ def _publish(root, target, modified, *, validation, review_identities, compressi
 
     for name in ('documents', 'filenames'):
         path = output / f'{name}.parquet'
-        result = repack_and_verify(root / manifest['files'][name]['key'], path, compression_policy, decoded_policy=decoded_policy, metrics=memory_metrics)
+        input_file = catalog.document_file if name == 'documents' else catalog.file
+        result = repack_and_verify(input_file, path, compression_policy,
+            decoded_policy=decoded_policy, metrics=memory_metrics)
         timings[name + '_repack'] = result
         describe(name, path, result['rows'])
         stage(name + '_preparation', 'filenames_preparation' if name == 'documents' else 'observations')
         print(f'{name}: {path.stat().st_size:,} bytes; all values verified', flush=True)
 
-    source = owned.enter_context(pq.ParquetFile(root / manifest['files']['filenames']['key']))
+    source = catalog.file
     counts = owned.enter_context(ObservationCounts(source))
     observations.publish_observations(source, output, counts=counts, policy=decoded_policy, metrics=memory_metrics)
     for name, filename in [('observations', 'observations.bin'), ('observation_rows', 'observation-rows.bin'), ('observation_index', 'observation-index.json')]:
         describe(name, output / filename)
     print('Source observations: every reconstructed value verified', flush=True)
     stage('observations', 'details')
-    document_file = owned.enter_context(pq.ParquetFile(root / manifest['files']['documents']['key']))
+    document_file = catalog.document_file
     detail_path = output / 'details.parquet'
     detail_info = details.publish_details(source, detail_path, observation_counts=counts, policy=decoded_policy, metrics=memory_metrics)
     describe('details', detail_path, detail_info['rows'])

@@ -4,7 +4,7 @@ import re
 import hashlib
 from contextlib import closing
 from filename_resources import owned_resources
-from filename_budget import DEFAULT_DECODED_POLICY, ArrowStager, DecodedBudgetExceeded, bounded_batches, failure_receipt, json_chunks
+from filename_budget import DEFAULT_DECODED_POLICY, ArrowStager, DecodedBudgetExceeded, bounded_batches, failure_receipt, json_chunks, open_parquet
 
 from congress_api.retention.saved_responses import FIELDS as SAVED_FIELDS, saved_response
 
@@ -106,7 +106,7 @@ def _publish_details(source, path, owned, observation_counts, policy, metrics):
             count += len(table)
         staging.flush()
     # Check every emitted typed/derived value, independently of browser reads.
-    written = owned.enter_context(pq.ParquetFile(path))
+    written = owned.enter_context(open_parquet(path))
     if written.metadata.num_rows != count or count != source.metadata.num_rows or next(counts, None) is not None:
         raise ValueError('Detail/source observation row counts differ')
     actual = hashlib.sha256()

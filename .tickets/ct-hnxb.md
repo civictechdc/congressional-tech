@@ -1,6 +1,6 @@
 ---
 id: ct-hnxb
-status: in_progress
+status: closed
 deps: [ct-sv16]
 links: [ct-gubr, ct-gesp, ct-zika]
 created: 2026-10-18T19:21:16Z
@@ -57,3 +57,7 @@ Independent static review approved implementation a80ec34 and staging fix868e52a
 **2026-10-18T21:27:51Z**
 
 Release preflight found a real-input regression before merge: rebuilt documents row group 389 declares 163,912,431 uncompressed bytes, so the current whole-row-group 64 MiB check rejects it before bounded streaming. Small fixtures missed this. Repair admission without raising resource limits or weakening exact-value checks; verify the retained real footer and meaningful oversized-input refusals before closing.
+
+**2026-10-18T21:42:46Z**
+
+Corrected aggregate admission in reviewed commit 2829e2e: physical group bytes now plan native rows (retained group 389 -> 26); actual Arrow/Python/JSON record limits and exact equality remain. Reuses owned Catalog readers, removing six input footer opens. Passed 91+142 overlapping focused Python checks, 17 browser-reader checks and edge cases. One unchanged 512 MiB fixture watchdog passed: accepted 264257536 B, refused 188448768 B; source preserved. Independent exact-commit review approved. Real full-catalog memory/row acceptance remains unqualified until normal publication; the stopped zero-row probe was not retried.

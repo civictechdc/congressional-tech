@@ -1,0 +1,67 @@
+{
+  "scope": "local focused admission correction, not full-catalog or deployed qualification",
+  "base_revision": "28360df",
+  "runtime": {
+    "python": "3.12.13",
+    "pyarrow": "25.0.1",
+    "ijson": "3.6.0",
+    "node": "22.22.2",
+    "npm": "11.19.1"
+  },
+  "policy": {
+    "native_batch_rows": 128,
+    "batch_arrow_bytes": 4194304,
+    "row_arrow_bytes": 16777216,
+    "batch_python_estimate": 33554432,
+    "row_python_estimate": 134217728,
+    "logical_json_bytes": 33554432,
+    "sqlite_cache_kib": 8192
+  },
+  "checks": [
+    {
+      "command": ".venv/bin/python -m pytest tests/test_filename_decoded_budget.py tests/test_filename_observations.py tests/test_filename_details.py tests/test_filename_aliases.py tests/test_filename_recoveries.py -q",
+      "passed": 91,
+      "seconds": 8.89
+    },
+    {
+      "command": ".venv/bin/python -m pytest tests/test_filename_decoded_budget.py .github/tests/test_filename_publication.py tests/test_catalog_availability.py tests/test_catalog_pair_validation.py tests/test_document_filename_viewer.py -q",
+      "passed": 142,
+      "seconds": 6.94
+    },
+    {
+      "command": ".venv/bin/python -m pytest tests/test_filename_decoded_budget.py -q -k \"retained_real_footer_shape or empty_projection\"",
+      "passed": 2,
+      "reason": "exact zero-row arithmetic boundary after review"
+    },
+    {
+      "command": "node --test src/components/filename-catalog.test.mjs",
+      "passed": 17,
+      "seconds": 3.99
+    },
+    {
+      "command": ".venv/bin/python scripts/measure_preparation_decoded.py --artifacts output/admission-correction-fixture --output docs/experiments/publication-remediation/evidence/admission-correction-memory.json",
+      "runs": 1,
+      "status": "passed",
+      "ceiling_bytes": 536870912
+    }
+  ],
+  "overlap": "Python invocations overlap; counts are not summed as distinct coverage",
+  "fixture_receipt": "admission-correction-memory.json",
+  "ignored_artifacts": "output/admission-correction-fixture",
+  "prior_hosted_validation": {
+    "revision": "28360df",
+    "reported_by": "root",
+    "offline": 9100,
+    "subtests": 38,
+    "active_fixture": 241,
+    "native_loopback": 50,
+    "js_astro_r2_static_build": "passed",
+    "applies_to_this_correction": false
+  },
+  "limitations": [
+    "mean-density planner is not an allocation bound",
+    "native page/dictionary allocations can precede actual admission",
+    "logical nbytes differs from retained buffers and process RSS",
+    "stopped real-data probe was not retried; full production row acceptance remains unverified"
+  ]
+}

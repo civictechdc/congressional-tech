@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import pyarrow as pa
+import pyarrow.parquet as pq
 
 MiB = 1024**2
 
@@ -15,7 +16,6 @@ class DecodedBudgetExceeded(ValueError):
 @dataclass(frozen=True)
 class DecodedPolicy:
     native_batch_rows: int = 128
-    physical_group_bytes: int = 64 * MiB
     batch_arrow_bytes: int = 4 * MiB
     row_arrow_bytes: int = 16 * MiB
     batch_python_estimate: int = 32 * MiB
@@ -90,27 +90,37 @@ def bounded_batches(source, *, columns=None, batch_rows=8192, policy=DEFAULT_DEC
         for batch in source.iter_batches(batch_size=batch_rows, columns=columns):
             yield from admitted(batch)
         return
-    validate_physical(source, columns=columns, policy=policy, stage=stage, metrics=metrics)
     for group in range(metadata.num_row_groups):
-        for batch in source.iter_batches(batch_size=batch_rows, columns=columns, row_groups=[group]):
+        planned = plan_native_rows(metadata.row_group(group), columns=columns, batch_rows=batch_rows,
+                                   policy=policy, metrics=metrics)
+        for batch in source.iter_batches(batch_size=planned, columns=columns, row_groups=[group], use_threads=False):
             maximum(metrics, 'max_native_batch_arrow_bytes', batch.nbytes)
             maximum(metrics, 'max_native_batch_buffer_bytes', batch.get_total_buffer_size())
             maximum(metrics, 'max_native_batch_rows', len(batch))
             yield from admitted(batch)
 
 
-def validate_physical(source, *, columns=None, policy=DEFAULT_DECODED_POLICY, stage='preparation', metrics=None):
+def plan_native_rows(group, *, columns=None, batch_rows=8192, policy=DEFAULT_DECODED_POLICY, metrics=None):
+    """Plan from mean selected chunk bytes per row; not an allocation bound."""
     metrics = metrics if metrics is not None else {}
-    metadata = source.metadata
-    selected = set(columns) if columns else None
-    # Refuse before the first decode, including later oversized row groups.
-    for group in range(metadata.num_row_groups):
-        item = metadata.row_group(group)
-        size = sum(item.column(i).total_uncompressed_size for i in range(item.num_columns)
-                   if selected is None or item.column(i).path_in_schema.split('.')[0] in selected)
-        maximum(metrics, 'max_physical_group_bytes', size)
-        if size > policy.physical_group_bytes:
-            refuse(stage, f'row-group {group} uncompressed bytes', size, policy.physical_group_bytes)
+    selected = None if columns is None else tuple(columns)
+    size = 0
+    for index in range(group.num_columns):
+        column = group.column(index)
+        if selected is None or any(column.path_in_schema == prefix or
+                column.path_in_schema.startswith(prefix + '.') for prefix in selected):
+            size += column.total_uncompressed_size
+    maximum(metrics, 'max_physical_group_bytes', size)
+    rows = max(1, min(batch_rows, policy.native_batch_rows,
+                      policy.batch_arrow_bytes * group.num_rows // max(1, size)))
+    maximum(metrics, 'max_planned_native_rows', rows)
+    metrics['min_planned_native_rows'] = min(metrics.get('min_planned_native_rows', rows), rows)
+    return rows
+
+
+def open_parquet(path):
+    """Open an owned reader with bounded read buffering and no parallel readahead."""
+    return pq.ParquetFile(path, pre_buffer=False, buffer_size=64 * 1024)
 
 
 class ArrowStager:

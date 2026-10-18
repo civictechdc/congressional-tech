@@ -326,11 +326,12 @@ class Catalog:
         self.row_group_budget = 32 * 1024**2
         self._complete_groups = OrderedDict()
         self._complete_group_bytes = 0
-        self.file = self._readers.enter_context(pq.ParquetFile(path))
+        read_options = {} if search_indexes else {'pre_buffer': False, 'buffer_size': 64 * 1024}
+        self.file = self._readers.enter_context(pq.ParquetFile(path, **read_options))
         self.document_path = documents
         if not self.document_path.is_file():
             raise ValueError('Build the root document index first with index_document_filenames.py --documents-only.')
-        self.document_file = self._readers.enter_context(pq.ParquetFile(self.document_path))
+        self.document_file = self._readers.enter_context(pq.ParquetFile(self.document_path, **read_options))
         catalog_id = (self.file.schema_arrow.metadata or {}).get(b'catalog_id')
         if not catalog_id or catalog_id != (self.document_file.schema_arrow.metadata or {}).get(b'catalog_id'):
             raise ValueError('The document indexes are from different builds. Rebuild them together.')
