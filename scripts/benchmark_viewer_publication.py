@@ -81,13 +81,27 @@ def worker(args):
 
 
 def compare_outputs(reference, candidate):
-    """Only the two recompressed tables may have different physical bytes."""
+    """Only reencoded filename bytes may differ; the document archive is exact."""
     left, right = reference['worker'], candidate['worker']
-    changed_allowed = {left['manifest']['files'][name]['path'] for name in ('documents', 'filenames')}
+    changed_allowed = {left['manifest']['files']['filenames']['path']}
     changed_allowed.add('manifest.json')
     return (left['manifest']['source_manifest'] == right['manifest']['source_manifest']
             and {name: item for name, item in left['inventory'].items() if name not in changed_allowed}
             == {name: item for name, item in right['inventory'].items() if name not in changed_allowed})
+
+
+def exact_table_verification(worker):
+    """Distinguish complete archive byte identity from filename Arrow equality."""
+    manifest, timings = worker['manifest'], worker['timings']
+    archive = manifest['files']['documents']
+    source = manifest['source_manifest']['files']['documents']
+    copy = timings.get('documents_copy', {})
+    inventory = worker.get('inventory', {}).get(archive['path'], {})
+    return (timings.get('filenames_repack', {}).get('exact_equal') is True
+            and copy.get('verification_method') == 'complete_sha256_bytes'
+            and archive.get('encoding') == dict(mode='source_passthrough', source_sha256=source['sha256'])
+            and all(copy.get(key) == archive.get(key) == source[key] for key in ('bytes', 'sha256', 'rows'))
+            and all(inventory.get(key) == source[key] for key in ('bytes', 'sha256')))
 
 
 def compare_browser(reference, candidate):
@@ -227,7 +241,8 @@ def main(args):
         if len(trials) == args.repeats:
             summary['gates'][str(level)] = {'median_preparation_seconds': statistics.median(r['worker']['timings']['total_seconds'] for r in trials),
                 'median_output_bytes': statistics.median(sum(v['bytes'] for v in r['worker']['inventory'].values()) for r in trials),
-                'exact_parquet_equality': all(r['worker']['timings'][name + '_repack']['exact_equal'] for r in trials for name in ('documents', 'filenames'))}
+                'exact_filename_values_and_archive_bytes': all(exact_table_verification(r['worker']) for r in trials),
+                'compression_policy_applies_to': ['filenames'], 'document_encoding': 'source_passthrough'}
     if 19 in arms and len(arms[19]) == args.repeats:
         baseline = summary['gates']['19']
         for level in args.levels:
@@ -242,7 +257,7 @@ def main(args):
             gate['browser'] = [compare_browser(reference.get('browser'), trial.get('browser')) for trial in arms[level]]
             gate['linux_preparation'] = all(trial['worker']['runtime']['platform'].startswith('Linux-') for trial in arms[19] + arms[level])
             gate['linux_browser'] = all(trial.get('browser', {}).get('runtime', {}).get('platform') == 'linux' for trial in arms[19] + arms[level])
-            gate['qualified'] = (args.scope == 'complete-catalog' and args.repeats >= 3 and gate['timing_and_size_pass'] and gate['exact_parquet_equality']
+            gate['qualified'] = (args.scope == 'complete-catalog' and args.repeats >= 3 and gate['timing_and_size_pass'] and gate['exact_filename_values_and_archive_bytes']
                                  and gate['exact_derived_id_review_equality'] and gate['linux_preparation'] and gate['linux_browser']
                                  and all(item['qualified'] for item in gate['browser']))
     qualified = [int(level) for level, gate in summary['gates'].items() if gate.get('qualified')]

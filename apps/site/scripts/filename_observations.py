@@ -12,7 +12,8 @@ import sqlite3
 import tempfile
 from pathlib import Path
 
-from filename_budget import DEFAULT_DECODED_POLICY, DecodedBudgetExceeded, bounded_batches, failure_receipt, json_chunks
+from filename_budget import (DEFAULT_DECODED_POLICY, DecodedBudgetExceeded, bounded_batches,
+                             failure_receipt, json_chunks, maximum, python_estimate, refuse)
 from filename_json_stream import ObservationCounts, block_items, decoded_json_default
 
 import pyarrow as pa
@@ -22,6 +23,35 @@ BLOCK_BYTES = 1024 * 1024
 
 def json_bytes(value):
     return json.dumps(value, ensure_ascii=False, separators=(',', ':'), allow_nan=False).encode()
+
+
+def observation_rows(source, *, policy, metrics, stage):
+    # The outer list remains in Arrow. Its actual row/batch Arrow limits still
+    # apply; Python admission belongs to each observation converted below.
+    for batch in bounded_batches(source, columns=['source_occurrences'], batch_rows=128,
+                                 policy=policy, stage=stage, metrics=metrics, python_values=False):
+        for scalar in batch.column(0):
+            if not scalar.is_valid:
+                yield None
+                continue
+            values = scalar.values
+            # References are the only Python list retained for the whole source
+            # row. Allow for list capacity, pointers and distinct Python ints.
+            estimate = 64 + 48 * len(values)
+            if estimate > policy.row_python_estimate:
+                refuse(stage, 'reference-list Python estimate', estimate, policy.row_python_estimate)
+            maximum(metrics, 'max_reference_list_python_estimate', estimate)
+            yield values
+
+
+def observation_value(values, index, *, policy, metrics, stage):
+    one = pa.RecordBatch.from_arrays([values.slice(index, 1)], names=['observation'])
+    estimate = python_estimate(one)
+    if estimate > policy.row_python_estimate:
+        refuse(stage, 'single-observation Python/JSON estimate', estimate, policy.row_python_estimate)
+    maximum(metrics, 'max_python_json_estimate', estimate)
+    maximum(metrics, 'max_observation_python_estimate', estimate)
+    return values[index].as_py()
 
 
 class Blocks:
@@ -121,20 +151,21 @@ def _publish_observations(source, output, owned, counts, policy, metrics):
     identities.executescript(f'PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA cache_size=-{policy.sqlite_cache_kib}; '
                             'CREATE TABLE identities(digest BLOB PRIMARY KEY,id INTEGER NOT NULL) WITHOUT ROWID;')
     count = 0
-    for batch in bounded_batches(source, columns=['source_occurrences'], batch_rows=128, policy=policy, stage='observations', metrics=metrics):
-        for values in batch.column(0).to_pylist():
-            refs = None if values is None else []
-            for observation in values or []:
-                compact = None if observation is None else {key: value for key, value in observation.items() if value is not None}
-                encoded = b''.join(json_chunks(compact, policy=policy, metrics=metrics))
-                metrics['observation_serializations'] = metrics.get('observation_serializations', 0) + 1
-                identity = hashlib.sha256(encoded).digest()
-                row = identities.execute('SELECT id FROM identities WHERE digest=?', (identity,)).fetchone()
-                if row is None:
-                    row = (count,); identities.execute('INSERT INTO identities VALUES (?,?)', (identity, count)); count += 1
-                    observations.append_encoded(encoded)
-                refs.append(row[0])
-            references.append(refs); counts.append(len(values or []))
+    for values in observation_rows(source, policy=policy, metrics=metrics, stage='observations'):
+        refs = None if values is None else []
+        for position in range(len(values) if values is not None else 0):
+            observation = observation_value(values, position, policy=policy, metrics=metrics, stage='observations')
+            compact = None if observation is None else {key: value for key, value in observation.items() if value is not None}
+            encoded = b''.join(json_chunks(compact, policy=policy, metrics=metrics))
+            metrics['observation_serializations'] = metrics.get('observation_serializations', 0) + 1
+            identity = hashlib.sha256(encoded).digest()
+            row = identities.execute('SELECT id FROM identities WHERE digest=?', (identity,)).fetchone()
+            if row is None:
+                row = (count,); identities.execute('INSERT INTO identities VALUES (?,?)', (identity, count)); count += 1
+                observations.append_encoded(encoded)
+            refs.append(row[0])
+            del observation, compact, encoded
+        references.append(refs); counts.append(len(values) if values is not None else 0)
     counts.seal(getattr(getattr(source, 'metadata', None), 'num_rows', counts.rows))
     metrics['dedup_entries'] = count
     metrics['dedup_sqlite_cache_bytes'] = policy.sqlite_cache_kib * 1024
@@ -191,24 +222,26 @@ def verify_observations(source, output, index, *, policy=DEFAULT_DECODED_POLICY,
             references = resources.enter_context(closing(reference_rows()))
             sentinel = object()
             checked = 0
-            for batch in bounded_batches(source, columns=['source_occurrences'], batch_rows=128, policy=policy, stage='observation verification', metrics=metrics):
-                for expected in batch.column(0).to_pylist():
-                    refs = next(references, sentinel)
-                    if refs is sentinel or (expected is None) != (refs is None):
+            for expected in observation_rows(source, policy=policy, metrics=metrics, stage='observation verification'):
+                refs = next(references, sentinel)
+                if refs is sentinel or (expected is None) != (refs is None):
+                    raise ValueError('Observation publication changed source values.')
+                if expected is not None:
+                    if not isinstance(refs, list) or len(refs) != len(expected):
                         raise ValueError('Observation publication changed source values.')
-                    if expected is not None:
-                        if not isinstance(refs, list) or len(refs) != len(expected):
+                    for position, ref in enumerate(refs):
+                        value = observation_value(expected, position, policy=policy, metrics=metrics,
+                                                  stage='observation verification')
+                        if type(ref) is not int or ref < 0:
+                            raise ValueError('Invalid observation reference.')
+                        metrics['verification_lookups'] = metrics.get('verification_lookups', 0) + 1
+                        stored = db.execute('SELECT value FROM observations WHERE id=?', (ref,)).fetchone()
+                        if stored is None or stored[0] != canonical(value):
                             raise ValueError('Observation publication changed source values.')
-                        for ref, value in zip(refs, expected, strict=True):
-                            if type(ref) is not int or ref < 0:
-                                raise ValueError('Invalid observation reference.')
-                            metrics['verification_lookups'] = metrics.get('verification_lookups', 0) + 1
-                            stored = db.execute('SELECT value FROM observations WHERE id=?', (ref,)).fetchone()
-                            if stored is None or stored[0] != canonical(value):
-                                raise ValueError('Observation publication changed source values.')
-                    checked += 1
-                    if checked % 65536 == 0:
-                        print(f'Verified source observations: {checked:,}', flush=True)
+                        del value, stored
+                checked += 1
+                if checked % 65536 == 0:
+                    print(f'Verified source observations: {checked:,}', flush=True)
             if next(references, sentinel) is not sentinel or checked != index['references']['rows']:
                 raise ValueError('Unexpected observation row count.')
         finally:

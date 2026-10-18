@@ -1,7 +1,7 @@
 ---
 id: ct-hnxb
-status: closed
-deps: [ct-sv16]
+status: in_progress
+deps: [ct-sv16, ct-lvvr]
 links: [ct-gubr, ct-gesp, ct-zika]
 created: 2026-10-18T19:21:16Z
 type: task
@@ -61,3 +61,22 @@ Release preflight found a real-input regression before merge: rebuilt documents 
 **2026-10-18T21:42:46Z**
 
 Corrected aggregate admission in reviewed commit 2829e2e: physical group bytes now plan native rows (retained group 389 -> 26); actual Arrow/Python/JSON record limits and exact equality remain. Reuses owned Catalog readers, removing six input footer opens. Passed 91+142 overlapping focused Python checks, 17 browser-reader checks and edge cases. One unchanged 512 MiB fixture watchdog passed: accepted 264257536 B, refused 188448768 B; source preserved. Independent exact-commit review approved. Real full-catalog memory/row acceptance remains unqualified until normal publication; the stopped zero-row probe was not retried.
+
+**2026-10-18T21:50:25Z**
+
+Reopened after hosted viewer preparation 39169129734 failed in repack before accepting or publishing output: single-row Python/JSON estimate 167939288 B exceeded 134217728 B. Repack writes and compares Arrow values without converting them to Python, so stage admission currently charges an unused conversion. Preserve true Arrow limits and Python/JSON checks where conversion occurs. Failure ZIP12151991789 and logs preserved locally; no workflow retry or resource change. Also retain the memory failure receipt in the always-uploaded diagnostic artifact.
+
+**2026-10-18T22:16:26Z**
+
+Complete local retained-catalog trial at runtime c8dda5d passed exact document bytes and all 1,683,430 filename values, then refused aggregate observation-list Python estimate 376238952 > 134217728 bytes. Peak RSS 3788423168 bytes; sources unchanged, no manifest accepted. Filename layout regressed to 2673 groups / 777356470 bytes / 135166663-byte footer. PR115 held. Parallel fixes under this same ticket: convert one observation at a time with unchanged per-conversion limits; separate measured retained writer staging from decode batching. Evidence: primary output/publication-remediation-20261018/rollout/local-current-catalog/trial-c8dda5d/qualification-receipt.json.
+**2026-10-18T22:18:42Z**
+
+Observation conversion-unit correction: writer and complete verifier retain outer Arrow lists and admit/convert one observation struct at a time; reference lists preflight 64+48*count under unchanged Python row budget. Outer actual Arrow, Python/JSON, logical JSON, SQLite and part limits retained. 65 focused tests passed; 60,000-observation default fixture previously refused aggregate estimate 252,120,392 B; full build/equality now succeeds in 5.20 seconds at 93,126,656 B process highwater. docs/experiments/publication-remediation/observation-units.md records exact scope; full current-catalog combined qualification remains pending. Ticket remains in_progress.
+
+**2026-10-18T23:17:48Z**
+
+Complete retained-catalog local preparation passed at frozen 2feb8c7: 1,241,157 document rows, 1,683,430 filenames, 7,246,240 observations serialized and fully checked, 86 reviews bound / 0 withdrawn, 270 output files SHA/size verified, source/runtime custody unchanged. Whole watchdog wall 3,155.71 seconds; peak RSS 7,310,491,648 B under unchanged local 7 GiB / 180 minute / 8 GiB disk-floor watchdog. Observation write plus full readback took 2,492.45 seconds; details 437.80 seconds. Filename layout is 249 groups / 13,073,006 B footer. Output total 1,290,775,040 B; documents and filenames together add 210,386,731 B versus saved selected-release descriptors, while the other eleven declared payload hashes/sizes match. No aggregate savings claim, retry, product resource override, classifier or remote mutation. Evidence docs/experiments/publication-remediation/current-catalog-qualification-20261018.md. Local macOS preparation only; keep in_progress until hosted/live verification. Browser probe and ct-x7vx deployed unchanged-job observation remain separate.
+
+**2026-10-18T23:20:03Z**
+
+Full backend qualification passed. The focused browser probe then found 45 repeated metadata parses per technical read (19.09 s cold, 17.44 s warm) and a 120 s source_url search timeout. Reopened cache ticket ct-lvvr is now a release prerequisite. Preserve the qualified backend artifacts; fix browser operation ownership under unchanged cache limits, then repeat only the changed browser path.

@@ -13,7 +13,7 @@ import pyarrow.parquet as pq
 import pytest
 
 from filename_budget import (DEFAULT_DECODED_POLICY, DecodedBudgetExceeded, bounded_batches,
-                             json_chunks, plan_native_rows, open_parquet)
+                             json_chunks, plan_native_rows, open_parquet, python_estimate)
 from filename_json_stream import ObservationCounts, block_items, decoded_json_default
 import filename_details as details
 import filename_observations as observations
@@ -257,6 +257,75 @@ def test_repack_full_arrow_comparison_crosses_adaptive_row_group_boundaries(tmp_
         assert before.read().equals(after.read(), check_metadata=True)
 
 
+def test_arrow_only_repack_preserves_large_row_without_estimating_unused_python_values(tmp_path, monkeypatch):
+    import filename_budget
+    schema = pa.schema([('payload', pa.string()), ('values', pa.list_(pa.string())),
+                        ('observations', pa.list_(pa.struct([('label', pa.string())])))],
+                       metadata={b'catalog_id': b'stage-budget', b'custom': b'preserve'})
+    table = pa.Table.from_pylist([{'payload': 'é' * (5 * 1024**2), 'values': [None, '', 'é', 'é'],
+        'observations': [None, {'label': None}, {'label': '🏛️'}, {'label': '🏛️'}]}], schema=schema)
+    source, output = tmp_path / 'source.parquet', tmp_path / 'output.parquet'
+    pq.write_table(table, source)
+    batch = table.to_batches()[0]
+    assert 10 * 1024**2 <= batch.nbytes < DEFAULT_DECODED_POLICY.row_arrow_bytes
+    assert python_estimate(batch) > DEFAULT_DECODED_POLICY.row_python_estimate
+    with open_parquet(source) as reader, pytest.raises(DecodedBudgetExceeded, match='single-row Python/JSON estimate'):
+        list(bounded_batches(reader))
+    def unused_estimate(batch):
+        raise AssertionError('Arrow-only repack or equality attempted a Python estimate')
+    monkeypatch.setattr(filename_budget, 'python_estimate', unused_estimate)
+    metrics = {}
+    result = publisher.repack_and_verify(source, output, metrics=metrics)
+    assert result['exact_equal'] and result['rows'] == 1
+    # Compare the persisted input schema too: Parquet normalizes list-child
+    # names and masked children when the synthetic table is first written.
+    with open_parquet(source) as before, open_parquet(output) as after:
+        assert before.read().equals(after.read(), check_metadata=True)
+    assert metrics['oversized_rows_admitted'] == 3  # write, source equality, output equality
+    assert 'max_python_json_estimate' not in metrics
+    assert metrics['max_native_batch_rows'] == 1
+    assert metrics['max_batch_arrow_bytes'] == batch.nbytes
+    assert metrics['max_admitted_buffer_bytes'] >= batch.nbytes
+
+
+@pytest.mark.parametrize('python_values', [True, False])
+def test_true_default_arrow_row_refusal_applies_in_both_conversion_modes(tmp_path, python_values):
+    source = tmp_path / 'oversized.parquet'
+    pq.write_table(pa.table({'value': ['x' * DEFAULT_DECODED_POLICY.row_arrow_bytes]}), source)
+    digest = hashlib.sha256(source.read_bytes()).hexdigest()
+    # Four string-offset bytes put this row beyond the unchanged 16 MiB limit.
+    with open_parquet(source) as reader, pytest.raises(DecodedBudgetExceeded, match='single-row Arrow bytes'):
+        list(bounded_batches(reader, python_values=python_values))
+    with pytest.raises(DecodedBudgetExceeded, match='single-row Arrow bytes'):
+        publisher.repack_and_verify(source, tmp_path / 'refused.parquet')
+    receipt = json.loads((tmp_path / 'preparation-memory-failure.json').read_text())
+    assert receipt['source_preserved'] and not receipt['partial_publication_accepted']
+    assert hashlib.sha256(source.read_bytes()).hexdigest() == digest
+
+
+@pytest.mark.parametrize('python_values', [True, False])
+def test_conversion_mode_controls_only_python_admission_not_stage_names(tmp_path, python_values):
+    source = tmp_path / 'modes.parquet'
+    table = pa.table({'value': ['é' * 100] * 4})
+    pq.write_table(table, source)
+    policy = replace(DEFAULT_DECODED_POLICY, batch_arrow_bytes=500, batch_python_estimate=1000,
+                     row_python_estimate=2000)
+    with open_parquet(source) as reader:
+        batches = bounded_batches(reader, policy=policy, python_values=python_values, stage='repack')
+        if python_values:
+            with pytest.raises(DecodedBudgetExceeded, match='Python/JSON estimate'): list(batches)
+        else:
+            admitted = list(batches)
+            assert all(batch.nbytes <= 500 for batch in admitted)
+            assert pa.Table.from_batches(admitted).equals(table)
+
+
+@pytest.mark.parametrize('invalid', [None, 0, 1, 'false'])
+def test_python_conversion_admission_requires_explicit_boolean(invalid):
+    with pytest.raises(ValueError, match='python_values must explicitly'):
+        list(bounded_batches(None, python_values=invalid))
+
+
 def test_refused_existing_publication_is_never_overwritten(tmp_path):
     target = tmp_path / 'valid'; target.mkdir(); (target / 'manifest.json').write_text('valid')
     with pytest.raises(ValueError, match='fresh empty'): publisher.publish(tmp_path, target)
@@ -347,13 +416,13 @@ def test_arrow_staging_checks_limits_before_aggregation_and_keeps_write_error():
     class Writer:
         def write_table(self, table, **kwargs): written.append(table)
     staging = ArrowStager(Writer(), batch.schema, row_group_size=6,
-                          policy=replace(DEFAULT_DECODED_POLICY, batch_arrow_bytes=600))
+                          policy=replace(DEFAULT_DECODED_POLICY, writer_buffer_bytes=600))
     staging.append(batch); staging.append(batch); staging.flush()
     assert [len(table) for table in written] == [4, 4]
     staging.append(pa.record_batch([['x' * 100] * 8], names=['value'])); staging.flush()
     assert all(table.nbytes <= 600 and len(table) <= 6 for table in written)
     strict = ArrowStager(Writer(), batch.schema,
-                         policy=replace(DEFAULT_DECODED_POLICY, row_arrow_bytes=100, batch_arrow_bytes=600))
+                         policy=replace(DEFAULT_DECODED_POLICY, row_arrow_bytes=100, writer_buffer_bytes=600))
     with pytest.raises(DecodedBudgetExceeded, match='single output-row'):
         strict.append(batch)
     class Broken:
@@ -361,6 +430,65 @@ def test_arrow_staging_checks_limits_before_aggregation_and_keeps_write_error():
     staging = ArrowStager(Broken(), batch.schema)
     staging.append(batch)
     with pytest.raises(OSError, match='injected staged write'): staging.flush()
+
+
+def test_writer_detaches_shared_nested_parents_and_preserves_exact_order_and_metadata():
+    from filename_budget import ArrowStager
+    schema = pa.schema([('values', pa.list_(pa.string()))], metadata={b'exact': b'preserve'})
+    parent = pa.RecordBatch.from_arrays([pa.array([[str(i), None, '', 'é', 'é', '🏛️'] for i in range(10000)])], schema=schema)
+    written, metrics = [], {}
+    class Writer:
+        def write_table(self, table, **kwargs): written.append(table)
+    policy = replace(DEFAULT_DECODED_POLICY, writer_buffer_bytes=32 * 1024)
+    stage = ArrowStager(Writer(), schema, row_group_size=4, policy=policy, metrics=metrics)
+    for offset in range(5000, 5010, 2): stage.append(parent.slice(offset, 2))
+    stage.flush()
+    assert [len(table) for table in written] == [4, 4, 2]
+    assert pa.concat_tables(written).equals(pa.Table.from_batches([parent.slice(5000, 10)]), check_metadata=True)
+    assert metrics['output_compacted_batches'] == 5
+    assert metrics['max_output_incoming_buffer_bytes'] == parent.get_total_buffer_size() > policy.writer_buffer_bytes
+    assert metrics['max_output_pending_buffer_bytes'] <= policy.writer_buffer_bytes
+    assert metrics['max_output_staged_buffer_bytes'] <= policy.writer_buffer_bytes
+
+
+def test_writer_retained_limit_refuses_dictionary_backing_that_survives_compaction():
+    from filename_budget import ArrowStager
+    dictionary = pa.array(['x' * 1024**2, 'é']).slice(1, 1)
+    batch = pa.record_batch([pa.DictionaryArray.from_arrays(pa.array([0], type=pa.int8()), dictionary)], names=['value'])
+    assert batch.nbytes < 1024 and batch.get_total_buffer_size() > 1024**2
+    class Writer:
+        def write_table(self, *args, **kwargs): raise AssertionError('refused dictionary written')
+    stage = ArrowStager(Writer(), batch.schema, policy=replace(DEFAULT_DECODED_POLICY, writer_buffer_bytes=256 * 1024))
+    with pytest.raises(DecodedBudgetExceeded, match='retained Arrow bytes'): stage.append(batch)
+    assert stage.pending == []
+
+
+def test_writer_compaction_failure_propagates_without_flushing_pending(monkeypatch):
+    from filename_budget import ArrowStager
+    parent = pa.record_batch([['x' * 1024] * 1000], names=['value'])
+    class Writer:
+        def write_table(self, *args, **kwargs): raise AssertionError('abort flushed pending data')
+    stage = ArrowStager(Writer(), parent.schema)
+    stage.append(pa.record_batch([['first']], names=['value']))
+    def fail(*args, **kwargs): raise MemoryError('injected Arrow compaction')
+    monkeypatch.setattr(pa, 'concat_arrays', fail)
+    with pytest.raises(MemoryError, match='injected Arrow compaction'): stage.append(parent.slice(1, 1))
+    assert stage.rows == 1 and len(stage.pending) == 1
+
+
+def test_writer_budget_is_independent_of_decode_batch_size():
+    from filename_budget import ArrowStager
+    batch = pa.record_batch([['x' * 100] * 128], names=['value'])
+    written, metrics = [], {}
+    class Writer:
+        def write_table(self, table, **kwargs): written.append(table)
+    policy = replace(DEFAULT_DECODED_POLICY, batch_arrow_bytes=1024, writer_buffer_bytes=1024**2)
+    stage = ArrowStager(Writer(), batch.schema, policy=policy, metrics=metrics)
+    for _ in range(64): stage.append(batch)
+    stage.flush()
+    assert len(written) == 1 and written[0].num_rows == 8192
+    assert metrics['max_output_staged_arrow_bytes'] > policy.batch_arrow_bytes
+    assert metrics['max_output_pending_buffer_bytes'] <= policy.writer_buffer_bytes
 
 
 def test_borrowed_reader_survives_repack_failure_and_owned_output_closes(tmp_path, monkeypatch):
@@ -396,15 +524,14 @@ def test_publication_reuses_its_catalog_readers_and_preparation_options(tmp_path
     def catalog_open(*args, **kwargs):
         value = original_catalog(*args, **kwargs); catalog.append(value); return value
     def repack(source, destination, *args, **kwargs):
-        expected = catalog[0].document_file if destination.name == 'documents.parquet' else catalog[0].file
-        assert source is expected
+        assert destination.name == 'filenames.parquet' and source is catalog[0].file
         repacks.append(destination.name)
         return original_repack(source, destination, *args, **kwargs)
     monkeypatch.setattr(pq, 'ParquetFile', opening)
     monkeypatch.setattr(publisher.viewer, 'Catalog', catalog_open)
     monkeypatch.setattr(publisher, 'repack_and_verify', repack)
     publisher.publish(root, tmp_path / 'public', review_identities=None)
-    assert sorted(repacks) == ['documents.parquet', 'filenames.parquet']
+    assert repacks == ['filenames.parquet']
     # One independent manifest check plus one owned Catalog open per input.
     assert all(sum(path == candidate for candidate, _ in opens) == 2 for path in source_paths)
     preparation = [options for _, options in opens if options]

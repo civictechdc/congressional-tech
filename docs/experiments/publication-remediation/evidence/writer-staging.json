@@ -1,0 +1,253 @@
+{
+  "version": 1,
+  "runtime_commit": "52e3b18e9515015ac571f13464e36ae8025321a0",
+  "scope": "bounded writer staging policy comparison; not full catalog qualification",
+  "runtime": {
+    "python": "3.12.13",
+    "pyarrow": "25.0.1"
+  },
+  "code_sha256": {
+    "apps/site/scripts/filename_budget.py": "b48aca9ad0611d96f0b64631fb831f06281efbf94dcff77e9e4a25634818b3b7"
+  },
+  "prior_closed_filename_output": {
+    "path": "/Users/mikewolfd/Work/congressional-tech/output/publication-remediation-20261018/rollout/local-current-catalog/trial-c8dda5d/publication/596f08fa2dbf4875bb8da7dc94e33847/viewer-v2/filenames.parquet",
+    "bytes": 777356470,
+    "footer_bytes": 135166663,
+    "footer_with_trailer_bytes": 135166671,
+    "trailer_hex": "c77a0e0850415231",
+    "inspection": "8-byte trailer after filenames_preparation completed; no body decoding",
+    "reader_default_range_entry_cache_bytes": 33554432,
+    "reader_compressed_cache_bytes": 50331648,
+    "footer_fits_reader_default_range_entry_cache": false,
+    "footer_fits_reader_default_compressed_cache": false,
+    "metadata_parse": "not repeated: footer exceeds 32 MiB metadata-only inspection bound; whole publisher continues under approved watchdog",
+    "row_groups": 2673,
+    "rows": 1683430,
+    "row_group_evidence": "Already-returned actual publisher repack result; no additional metadata parse"
+  },
+  "verified_source_descriptor": {
+    "bytes": 546848353,
+    "key": "catalog-generations/596f08fa2dbf4875bb8da7dc94e33847/document-filenames.parquet",
+    "rows": 1683430,
+    "sha256": "2af2dbdb100fd0d9e96ae5af76ee22406a783944bdae0166869c44bb663fa174"
+  },
+  "source_integrity_scope": "previously verified local raw file; this bounded experiment checks stat custody before and after, not a new full SHA pass",
+  "chosen_default_writer_buffer_bytes": 67108864,
+  "measurement_initial_default_writer_buffer_bytes": 33554432,
+  "arm_budgets_explicitly_overridden": true,
+  "synthetic": {
+    "worker": {
+      "scope": "bounded selected source groups; not complete catalog qualification",
+      "source": "output/writer-staging-synthetic/synthetic.parquet",
+      "policy": {
+        "native_batch_rows": 128,
+        "batch_arrow_bytes": 4194304,
+        "row_arrow_bytes": 16777216,
+        "batch_python_estimate": 33554432,
+        "row_python_estimate": 134217728,
+        "writer_buffer_bytes": 33554432,
+        "logical_json_bytes": 33554432,
+        "sqlite_cache_kib": 8192
+      },
+      "runtime": {
+        "python": "3.12.13 (main, Apr  7 2026, 21:09:58) [Clang 22.1.1 ]",
+        "pyarrow": "25.0.1"
+      },
+      "arms": {
+        "32": {
+          "metrics": {
+            "max_output_incoming_buffer_bytes": 899660,
+            "max_output_staged_arrow_bytes": 33286976,
+            "max_output_pending_buffer_bytes": 33287420,
+            "max_output_staged_buffer_bytes": 33287420
+          },
+          "rows": 8192,
+          "exact_equal": true,
+          "bytes": 1361,
+          "row_groups": 2,
+          "footer_bytes": 937,
+          "max_group_rows": 4736
+        },
+        "64": {
+          "metrics": {
+            "max_output_incoming_buffer_bytes": 899660,
+            "max_output_staged_arrow_bytes": 57577472,
+            "max_output_pending_buffer_bytes": 57578240,
+            "max_output_staged_buffer_bytes": 57578240
+          },
+          "rows": 8192,
+          "exact_equal": true,
+          "bytes": 975,
+          "row_groups": 1,
+          "footer_bytes": 753,
+          "max_group_rows": 8192
+        }
+      },
+      "selection": {
+        "largest_group": 0,
+        "physical_bytes_proxy": 7190109,
+        "groups": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "rows": 8192,
+        "declared_before_decode": true,
+        "selection_basis": "maximum aggregate uncompressed physical chunks; not actual decoded bytes"
+      },
+      "both_writes_seconds": 0.0955062909051776,
+      "native_admission": {
+        "max_physical_group_bytes": 7190109,
+        "max_planned_native_rows": 128,
+        "min_planned_native_rows": 128,
+        "max_native_batch_arrow_bytes": 899648,
+        "max_native_batch_buffer_bytes": 899660,
+        "max_native_batch_rows": 128,
+        "max_batch_arrow_bytes": 899648,
+        "max_admitted_buffer_bytes": 899660
+      },
+      "status": "complete",
+      "source_preserved": true,
+      "peak_rss_bytes": 141508608
+    },
+    "watchdog": {
+      "exit_code": 0,
+      "sampled_peak_rss_bytes": 141508608,
+      "ceiling_bytes": 536870912,
+      "timeout_seconds": 180,
+      "seconds": 0.28057279204949737,
+      "killed": null,
+      "highwater_peak_rss_bytes": 141508608
+    }
+  },
+  "retained": {
+    "worker": {
+      "scope": "bounded selected source groups; not complete catalog qualification",
+      "source": "/Users/mikewolfd/Work/congressional-tech/output/publication-remediation-20261018/rollout/local-current-catalog/mirror/catalog-generations/596f08fa2dbf4875bb8da7dc94e33847/document-filenames.parquet",
+      "policy": {
+        "native_batch_rows": 128,
+        "batch_arrow_bytes": 4194304,
+        "row_arrow_bytes": 16777216,
+        "batch_python_estimate": 33554432,
+        "row_python_estimate": 134217728,
+        "writer_buffer_bytes": 33554432,
+        "logical_json_bytes": 33554432,
+        "sqlite_cache_kib": 8192
+      },
+      "runtime": {
+        "python": "3.12.13 (main, Apr  7 2026, 21:09:58) [Clang 22.1.1 ]",
+        "pyarrow": "25.0.1"
+      },
+      "arms": {
+        "32": {
+          "metrics": {
+            "max_output_incoming_buffer_bytes": 69049693,
+            "max_output_staged_arrow_bytes": 33273778,
+            "max_output_pending_buffer_bytes": 33454091,
+            "output_compacted_batches": 44,
+            "max_output_compacted_buffer_bytes": 3964518,
+            "max_output_staged_buffer_bytes": 33454091
+          },
+          "rows": 8192,
+          "exact_equal": true,
+          "bytes": 4723450,
+          "row_groups": 6,
+          "footer_bytes": 386690,
+          "max_group_rows": 6528
+        },
+        "64": {
+          "metrics": {
+            "max_output_incoming_buffer_bytes": 69049693,
+            "max_output_staged_arrow_bytes": 65881139,
+            "max_output_pending_buffer_bytes": 66556260,
+            "output_compacted_batches": 44,
+            "max_output_compacted_buffer_bytes": 3964518,
+            "max_output_staged_buffer_bytes": 66556260
+          },
+          "rows": 8192,
+          "exact_equal": true,
+          "bytes": 4443476,
+          "row_groups": 3,
+          "footer_bytes": 241517,
+          "max_group_rows": 6400
+        }
+      },
+      "selection": {
+        "largest_group": 1052,
+        "physical_bytes_proxy": 109364035,
+        "groups": [
+          1052,
+          1053,
+          1054,
+          1055,
+          1056,
+          1057,
+          1058,
+          1059
+        ],
+        "rows": 8192,
+        "declared_before_decode": true,
+        "selection_basis": "maximum aggregate uncompressed physical chunks; not actual decoded bytes"
+      },
+      "both_writes_seconds": 1.558848459040746,
+      "native_admission": {
+        "max_physical_group_bytes": 109364035,
+        "max_planned_native_rows": 128,
+        "min_planned_native_rows": 39,
+        "max_native_batch_arrow_bytes": 69046489,
+        "max_native_batch_buffer_bytes": 69049693,
+        "max_native_batch_rows": 128,
+        "max_batch_arrow_bytes": 3961358,
+        "max_admitted_buffer_bytes": 69049693
+      },
+      "status": "complete",
+      "source_preserved": true,
+      "peak_rss_bytes": 1104068608
+    },
+    "watchdog": {
+      "exit_code": 0,
+      "sampled_peak_rss_bytes": 1104068608,
+      "ceiling_bytes": 7516192768,
+      "timeout_seconds": 180,
+      "seconds": 3.5946651250123978,
+      "killed": null,
+      "highwater_peak_rss_bytes": 1104068608
+    }
+  },
+  "raw_artifact_root": "/Users/mikewolfd/.codex/worktrees/publication-writer-staging/congressional-tech/output",
+  "commands": [
+    "PYTHONPATH=apps/site/scripts /Users/mikewolfd/Work/congressional-tech/.venv/bin/python docs/experiments/publication-remediation/measure_writer_staging.py --output output/writer-staging-synthetic",
+    "PYTHONPATH=apps/site/scripts /Users/mikewolfd/Work/congressional-tech/.venv/bin/python docs/experiments/publication-remediation/measure_writer_staging.py --source /Users/mikewolfd/Work/congressional-tech/output/publication-remediation-20261018/rollout/local-current-catalog/mirror/catalog-generations/596f08fa2dbf4875bb8da7dc94e33847/document-filenames.parquet --output output/writer-staging-retained --max-rss-bytes 7516192768 --timeout 180"
+  ],
+  "focused_verification": {
+    "command": "PYTHONPATH=apps/site/scripts:scripts /Users/mikewolfd/Work/congressional-tech/.venv/bin/python -m pytest -q tests/test_filename_decoded_budget.py .github/tests/test_filename_publication.py tests/test_filename_observations.py tests/test_filename_details.py tests/test_filename_aliases.py tests/test_filename_recoveries.py tests/test_viewer_benchmark.py",
+    "passed": 130,
+    "seconds": 2.6
+  },
+  "decode_row_python_json_limits_changed": false,
+  "writer_budget_scope": "conservative sum of pending retained Arrow buffers only; native parents, recursion temporaries and codec allocations remain outside",
+  "production_operations": false,
+  "prior_retained_buffer_metrics": {
+    "max_physical_group_bytes": 109364035,
+    "max_planned_native_rows": 128,
+    "min_planned_native_rows": 1,
+    "max_native_batch_arrow_bytes": 499123058,
+    "max_native_batch_buffer_bytes": 499123438,
+    "max_native_batch_rows": 128,
+    "max_batch_arrow_bytes": 15673733,
+    "max_admitted_buffer_bytes": 499123438,
+    "max_repack_staged_arrow_bytes": 15673733,
+    "max_repack_staged_buffer_bytes": 486852980,
+    "oversized_rows_admitted": 1829,
+    "max_python_json_estimate": 131264072,
+    "serialized_values": 3663470,
+    "max_serialized_value_bytes": 76715,
+    "observation_serializations": 3345626
+  },
+  "prior_retained_buffer_evidence": "/Users/mikewolfd/Work/congressional-tech/output/publication-remediation-20261018/rollout/local-current-catalog/trial-c8dda5d/worker-receipt.json"
+}

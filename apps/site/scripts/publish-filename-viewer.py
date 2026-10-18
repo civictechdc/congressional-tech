@@ -1,7 +1,7 @@
 """Publish a verified R2 filename snapshot as static, range-readable files.
 
-No service or credentials are needed by the browser. Repacking preserves the
-Arrow schema and row order; small derived indexes only accelerate navigation.
+No service or credentials are needed by the browser. The document archive keeps
+its source bytes; filename repacking preserves schema and ordered values.
 """
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ import re
 import struct
 import sys
 import time
-from congress_api.retention.derived_files import file_identity
+from congress_api.retention.derived_files import VerifiedFile, copy_checked, custody_identity, file_identity
 from congress_api.retention.viewer_inventory import PreparedManifest
 from filename_resources import owned_resources
 from filename_budget import DEFAULT_DECODED_POLICY, ArrowStager, DecodedBudgetExceeded, bounded_batches, failure_receipt, open_parquet
@@ -159,7 +159,8 @@ def _repack_and_verify(source, destination, policy, owned, decoded_policy, metri
                           compression_level=policy.level) as writer:
         staging = ArrowStager(writer, source.schema_arrow, row_group_size=policy.row_group_size,
                               policy=decoded_policy, metrics=metrics, stage='repack')
-        for batch in bounded_batches(source, batch_rows=policy.batch_size, policy=decoded_policy, stage='repack', metrics=metrics):
+        for batch in bounded_batches(source, batch_rows=policy.batch_size, policy=decoded_policy,
+                                     stage='repack', metrics=metrics, python_values=False):
             staging.append(batch)
         staging.flush()
     written = time.perf_counter()
@@ -168,8 +169,10 @@ def _repack_and_verify(source, destination, policy, owned, decoded_policy, metri
         raise ValueError('Repacking changed the schema.')
     # Adaptive source/output batches may have different boundaries. Compare
     # ordered Arrow slices directly without converting either side to Python.
-    before = iter(bounded_batches(source, batch_rows=policy.batch_size, policy=decoded_policy, stage='repack source verification', metrics=metrics))
-    after = iter(bounded_batches(rewritten, batch_rows=policy.batch_size, policy=decoded_policy, stage='repack output verification', metrics=metrics))
+    before = iter(bounded_batches(source, batch_rows=policy.batch_size, policy=decoded_policy,
+                                 stage='repack source verification', metrics=metrics, python_values=False))
+    after = iter(bounded_batches(rewritten, batch_rows=policy.batch_size, policy=decoded_policy,
+                                stage='repack output verification', metrics=metrics, python_values=False))
     left, right = next(before, None), next(after, None)
     lo = ro = 0
     while left is not None and right is not None:
@@ -218,6 +221,9 @@ def _publish(root, target, modified, *, validation, review_identities, compressi
     if stage_event:
         stage_event({'event': 'stage_started', 'stage': 'input_verification'})
     manifest = json.loads((root / 'indexes/catalog.json').read_text())
+    document_item = manifest['files']['documents']
+    document_path = root / document_item['key']
+    document_custody = custody_identity(document_path)
     verify(root, manifest, validation=validation)
     stage('input_verification', 'catalog_loading')
     catalog = owned.enter_context(viewer.Catalog(root / manifest['files']['filenames']['key'], search_indexes=False))
@@ -230,23 +236,46 @@ def _publish(root, target, modified, *, validation, review_identities, compressi
     files = {}
     file_proofs = {}
 
-    def describe(name, path, rows=None):
-        proof = file_identity(path)
+    def describe(name, path, rows=None, *, proof=None):
+        if proof is None:
+            proof = file_identity(path)
+        elif not isinstance(proof, VerifiedFile):
+            raise ValueError('Describing a copied file requires its issued destination proof')
+        proof.require(path)
         relative = str(path.relative_to(target))
         file_proofs[relative] = proof
         files[name] = dict(path=relative, **proof)
         if rows is not None:
             files[name]['rows'] = rows
 
-    for name in ('documents', 'filenames'):
-        path = output / f'{name}.parquet'
-        input_file = catalog.document_file if name == 'documents' else catalog.file
-        result = repack_and_verify(input_file, path, compression_policy,
-            decoded_policy=decoded_policy, metrics=memory_metrics)
-        timings[name + '_repack'] = result
-        describe(name, path, result['rows'])
-        stage(name + '_preparation', 'filenames_preparation' if name == 'documents' else 'observations')
-        print(f'{name}: {path.stat().st_size:,} bytes; all values verified', flush=True)
+    # Documents are an archive download, not a browser decoding input. Preserve
+    # their verified bytes without requiring a giant source row to fit a decoder.
+    document_file = catalog.document_file
+    if (catalog.document_path.resolve() != document_path.resolve()
+            or custody_identity(document_path) != document_custody
+            or document_file.metadata.num_rows != document_item['rows']
+            or (document_file.schema_arrow.metadata or {}).get(b'catalog_id', b'').decode() != manifest['catalog_id']):
+        raise ValueError('Document archive source custody or catalog identity changed')
+    path = output / 'documents.parquet'
+    copy_started = time.perf_counter()
+    with document_path.open('rb') as stream:
+        proof = copy_checked(stream, path, size=document_item['bytes'], expected=document_item, key=document_item['key'])
+    if custody_identity(document_path) != document_custody:
+        raise ValueError('Document archive source custody changed during copy')
+    describe('documents', path, document_file.metadata.num_rows, proof=proof)
+    files['documents']['encoding'] = dict(mode='source_passthrough', source_sha256=document_item['sha256'])
+    timings['documents_copy'] = dict(rows=document_file.metadata.num_rows, **proof,
+        copy_seconds=time.perf_counter() - copy_started, verification_method='complete_sha256_bytes')
+    stage('documents_preparation', 'filenames_preparation')
+    print(f"documents: {proof['bytes']:,} bytes; complete source SHA-256/bytes verified", flush=True)
+
+    path = output / 'filenames.parquet'
+    result = repack_and_verify(catalog.file, path, compression_policy,
+        decoded_policy=decoded_policy, metrics=memory_metrics)
+    timings['filenames_repack'] = result
+    describe('filenames', path, result['rows'])
+    stage('filenames_preparation', 'observations')
+    print(f'filenames: {path.stat().st_size:,} bytes; all values verified', flush=True)
 
     source = catalog.file
     counts = owned.enter_context(ObservationCounts(source))
@@ -325,7 +354,7 @@ def _publish(root, target, modified, *, validation, review_identities, compressi
     info.pop('synced_at', None)
     publication = dict(version=5, published_at=datetime.now(timezone.utc).isoformat(), info=info, files=files,
                        source_manifest=manifest, ids=str(ids.relative_to(target)) + '/',
-                       compression_policy=compression_policy._asdict())
+                       compression_policy=dict(compression_policy._asdict(), applies_to=['filenames']))
     (target / 'manifest.json').write_text(json.dumps(publication, ensure_ascii=False, separators=(',', ':')))
     print(f'Publication: {sum(p.stat().st_size for p in target.rglob("*") if p.is_file()):,} bytes', flush=True)
     stage('manifest')

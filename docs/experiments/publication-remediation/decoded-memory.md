@@ -14,9 +14,10 @@ The default policy is explicit in `filename_budget.DecodedPolicy`:
 | Native decode rows | 128 | Maximum requested rows per native batch, within one physical row group |
 | Native row planning | Selected chunk bytes / group rows | Mean-density planning only; no aggregate refusal or allocation guarantee |
 | Ordinary admitted Arrow bytes | 4 MiB | Larger returned batches split before Python conversion |
-| Ordinary Python/JSON estimate | 32 MiB | Payload factor plus explicit nested list/struct and field-name accounting |
-| Single-row Arrow bytes | 16 MiB | Explicit oversized-row path; stricter Python estimate also applies |
-| Single-row Python/JSON estimate | 128 MiB | Larger rows fail visibly; no truncation or dropped fields |
+| Ordinary Python/JSON estimate | 32 MiB | Applies before Python conversion; payload factor plus explicit nested list/struct and field-name accounting |
+| Single-row Arrow bytes | 16 MiB | Explicit oversized-row path; applies to every consumer |
+| Single-row Python/JSON estimate | 128 MiB | Applies before Python conversion; larger rows fail visibly without truncation or dropped fields |
+| Pending writer buffers | 64 MiB | Conservative sum of actual retained Arrow buffers; separate from decode admission and process memory |
 | Logical JSON value | 32 MiB | Serialization and logical block reconstruction limit, distinct from 1 MiB parts |
 | SQLite cache per index | 8 MiB | Observation identity and verification dictionaries spill to temporary files |
 
@@ -27,6 +28,15 @@ rebuilt documents group 389 totals 163,912,431 bytes across 1,024 rows, so the
 sizes and row skew can still expand before Arrow returns even one row. Actual
 returned Arrow bytes and the estimated Python working set are checked before
 `to_pylist`; true oversized rows still fail explicitly.
+
+Filename repacking and its two ordered comparison streams explicitly pass
+`python_values=False`. They retain native planning and actual Arrow admission,
+but do not estimate a Python conversion they never perform. Every observation,
+detail and alias consumer keeps the default Python checks. The hosted refusal
+that exposed this distinction and the local regression evidence are recorded in
+[stage-budget-correction.md](stage-budget-correction.md).
+The archive-only documents file instead preserves its exact verified source
+bytes through checked copying; see [document-archive-copy.md](document-archive-copy.md).
 
 Slices and zero-copy coalescing can retain larger underlying native buffers.
 Summed `nbytes` measures logical admitted data, not retained allocation. Metrics
@@ -63,9 +73,12 @@ missing, trailing or changed counts. Detail preparation consumes this file and
 does not reopen reference sidecars for counts. Detail comparison streams one
 canonical row and JSON fragment at a time rather than allocating complete batch
 Python lists, JSON strings and encoded bytes. Repacking keeps Arrow comparison
-independent of adaptive batch boundaries and coalesces admitted batches without
-copying, up to the logical Arrow staging budget and requested output row-group size.
-That staging metric is not a hard retained-buffer or process-memory ceiling.
+independent of adaptive batch boundaries. Writers coalesce admitted batches up to
+8,192 rows under a separate 64 MiB pending-buffer budget. Disproportionately
+retained slices are compacted with maintained Arrow array copying; actual
+post-copy buffers still govern admission. Native parents, compaction temporaries
+and codec allocations remain separate costs. The bounded writer comparison and
+its qualification limits are in [writer-staging.md](writer-staging.md).
 Alias preparation now uses the same decode admission helper.
 
 A budget refusal closes owned writers without flushing unfinished observations,

@@ -1,0 +1,355 @@
+{
+  "status": "complete_local_preparation",
+  "frozen_revision": "2feb8c75c69f5fc6a5c33ae6ad25197722590f3f",
+  "actual_head_after_trial": "9289ae38eef68800973aa06757b171d367ff4aba",
+  "runtime_scopes_unchanged": [
+    "apps/site/scripts",
+    "scripts",
+    "packages",
+    "docs/youtube-coverage/research/scripts",
+    "pyproject.toml",
+    "uv.lock",
+    ".python-version"
+  ],
+  "source_files_digest": "b69ec34403f8a4fdd8c19a1cf37d8dc4f07d3100af700903a7b1574977cd315a",
+  "source_files_digest_encoding": "SHA256 of sorted compact JSON relative-path to SHA256 mapping",
+  "runtime": {
+    "python": "3.12.13 (main, Apr  7 2026, 21:09:58) [Clang 22.1.1 ]",
+    "platform": "macOS-26.6-arm64-arm-64bit",
+    "pyarrow": "25.0.1",
+    "arrow_cpu_count": 14,
+    "arrow_io_thread_count": 8
+  },
+  "inputs": {
+    "documents": {
+      "bytes": 541147000,
+      "sha256": "f0bf8fb6fcf4f1067d2182372661917ed23741e47943d575f96d2fc4d44552b7"
+    },
+    "filenames": {
+      "bytes": 546848353,
+      "sha256": "2af2dbdb100fd0d9e96ae5af76ee22406a783944bdae0166869c44bb663fa174"
+    }
+  },
+  "source_selector_sha256": "94a327cf82a32dd119bca84395578569cc3b9261fb5b3d7f911c9838a508d5d9",
+  "source_custody_and_values_verified": true,
+  "counts": {
+    "documents": 1241157,
+    "filenames": 1683430,
+    "browse": 1241157,
+    "observation_serializations": 7246240,
+    "verification_lookups": 7246240,
+    "dedup_entries": 4307909,
+    "inventory_files": 270,
+    "review_bound": 86,
+    "review_withdrawn": 0
+  },
+  "review_identity_sha256": "4e9062a4a34fccb50696793f9fb3587c49cf1fc97de29812a3e60f00a47b392c",
+  "review_binding_metadata": {
+    "catalog_id": "469ef1ebf6864739a2c8a4c096defcc0",
+    "review_sha256": "fc5d361e4f2c01db8e8be90267f18cf072cc6db02bc1cd57ef5621b8aac1354c",
+    "version": 1
+  },
+  "published_manifest": {
+    "bytes": 13930,
+    "sha256": "cdcd21dff8b5983abca4c041aa293c0aa2f07bb168e759b16c81a96db7a01764"
+  },
+  "stage_timings": {
+    "input_verification": 1.0236242080572993,
+    "catalog_loading": 8.022026374936104,
+    "documents_copy": {
+      "rows": 1241157,
+      "sha256": "f0bf8fb6fcf4f1067d2182372661917ed23741e47943d575f96d2fc4d44552b7",
+      "bytes": 541147000,
+      "copy_seconds": 0.42709595907945186,
+      "verification_method": "complete_sha256_bytes"
+    },
+    "documents_preparation": 0.42827749997377396,
+    "filenames_repack": {
+      "rows": 1683430,
+      "row_groups": 249,
+      "repack_seconds": 111.18272895808332,
+      "equality_seconds": 94.808627624996,
+      "exact_equal": true
+    },
+    "filenames_preparation": 206.1816231670091,
+    "observations": 2492.453235917026,
+    "details": 437.7962812499609,
+    "navigation": 3.53866358299274,
+    "review_binding": 0.0035508330911397934,
+    "browse": 2.7207517919596285,
+    "ids": 0.6122157500358298,
+    "manifest": 0.0036049579503014684,
+    "total_seconds": 3152.784024417051,
+    "decoded_memory": {
+      "policy": {
+        "native_batch_rows": 128,
+        "batch_arrow_bytes": 4194304,
+        "row_arrow_bytes": 16777216,
+        "batch_python_estimate": 33554432,
+        "row_python_estimate": 134217728,
+        "writer_buffer_bytes": 67108864,
+        "logical_json_bytes": 33554432,
+        "sqlite_cache_kib": 8192
+      },
+      "observed": {
+        "max_physical_group_bytes": 109364035,
+        "max_planned_native_rows": 128,
+        "min_planned_native_rows": 22,
+        "max_native_batch_arrow_bytes": 499123058,
+        "max_native_batch_buffer_bytes": 499123438,
+        "max_native_batch_rows": 128,
+        "max_batch_arrow_bytes": 15673733,
+        "max_admitted_buffer_bytes": 499123438,
+        "max_repack_incoming_buffer_bytes": 486852980,
+        "max_repack_staged_arrow_bytes": 66834798,
+        "max_repack_pending_buffer_bytes": 66994998,
+        "repack_compacted_batches": 612,
+        "max_repack_compacted_buffer_bytes": 15676937,
+        "max_repack_staged_buffer_bytes": 66994998,
+        "oversized_rows_admitted": 1380,
+        "max_reference_list_python_estimate": 579136,
+        "max_python_json_estimate": 33162448,
+        "max_observation_python_estimate": 2391344,
+        "serialized_values": 8929670,
+        "max_serialized_value_bytes": 152878,
+        "observation_serializations": 7246240,
+        "dedup_entries": 4307909,
+        "dedup_sqlite_cache_bytes": 8388608,
+        "dedup_disk_bytes": 198205440,
+        "decoded_parts": 4741,
+        "max_decoded_part_bytes": 1048575,
+        "verification_lookups": 7246240,
+        "max_detail_incoming_buffer_bytes": 175671,
+        "max_detail_staged_arrow_bytes": 8930003,
+        "max_detail_pending_buffer_bytes": 8950227,
+        "max_detail_staged_buffer_bytes": 8950227
+      }
+    }
+  },
+  "watchdog": {
+    "success": true,
+    "exit_code": 0,
+    "stop": null,
+    "sampled_peak_tree_rss_bytes": 7310491648,
+    "worker_highwater_rss_bytes": 7310491648,
+    "seconds": 3155.7071252079913,
+    "sample_interval_seconds": 0.05,
+    "ceiling_bytes": 7516192768,
+    "deadline_seconds": 10800,
+    "disk_floor_bytes": 8589934592,
+    "automatic_retry": false,
+    "limitations": "macOS local preparation qualification, not Linux/GitHub deployment proof. Process-tree RSS is sampled; worker highwater covers spikes in the primary publisher process. No product resource limits changed."
+  },
+  "minimum_observed_disk_free_bytes": 35305832448,
+  "memory_metrics": {
+    "max_physical_group_bytes": 109364035,
+    "max_planned_native_rows": 128,
+    "min_planned_native_rows": 22,
+    "max_native_batch_arrow_bytes": 499123058,
+    "max_native_batch_buffer_bytes": 499123438,
+    "max_native_batch_rows": 128,
+    "max_batch_arrow_bytes": 15673733,
+    "max_admitted_buffer_bytes": 499123438,
+    "max_repack_incoming_buffer_bytes": 486852980,
+    "max_repack_staged_arrow_bytes": 66834798,
+    "max_repack_pending_buffer_bytes": 66994998,
+    "repack_compacted_batches": 612,
+    "max_repack_compacted_buffer_bytes": 15676937,
+    "max_repack_staged_buffer_bytes": 66994998,
+    "oversized_rows_admitted": 1380,
+    "max_reference_list_python_estimate": 579136,
+    "max_python_json_estimate": 33162448,
+    "max_observation_python_estimate": 2391344,
+    "serialized_values": 8929670,
+    "max_serialized_value_bytes": 152878,
+    "observation_serializations": 7246240,
+    "dedup_entries": 4307909,
+    "dedup_sqlite_cache_bytes": 8388608,
+    "dedup_disk_bytes": 198205440,
+    "decoded_parts": 4741,
+    "max_decoded_part_bytes": 1048575,
+    "verification_lookups": 7246240,
+    "max_detail_incoming_buffer_bytes": 175671,
+    "max_detail_staged_arrow_bytes": 8930003,
+    "max_detail_pending_buffer_bytes": 8950227,
+    "max_detail_staged_buffer_bytes": 8950227
+  },
+  "filenames_layout": {
+    "bytes": 409292782,
+    "sha256": "b7069c964507407b5171fd04e0e1b4bc5dac37b8e2b878ae34ea85dceac6ff4b",
+    "rows": 1683430,
+    "row_groups": 249,
+    "footer_bytes": 13073006,
+    "footer_fits_32MiB_range_entry_cache": true
+  },
+  "output_bytes": 1290775040,
+  "payload_files": {
+    "documents": {
+      "path": "596f08fa2dbf4875bb8da7dc94e33847/viewer-v2/documents.parquet",
+      "sha256": "f0bf8fb6fcf4f1067d2182372661917ed23741e47943d575f96d2fc4d44552b7",
+      "bytes": 541147000,
+      "rows": 1241157,
+      "encoding": {
+        "mode": "source_passthrough",
+        "source_sha256": "f0bf8fb6fcf4f1067d2182372661917ed23741e47943d575f96d2fc4d44552b7"
+      }
+    },
+    "filenames": {
+      "path": "596f08fa2dbf4875bb8da7dc94e33847/viewer-v2/filenames.parquet",
+      "sha256": "b7069c964507407b5171fd04e0e1b4bc5dac37b8e2b878ae34ea85dceac6ff4b",
+      "bytes": 409292782,
+      "rows": 1683430
+    },
+    "observations": {
+      "path": "596f08fa2dbf4875bb8da7dc94e33847/viewer-v2/observations.bin",
+      "sha256": "6ddb3d463e29aab8c7fce49882124cb5edd87093ed4646bc02e8a7cc352f7171",
+      "bytes": 69314244
+    },
+    "observation_rows": {
+      "path": "596f08fa2dbf4875bb8da7dc94e33847/viewer-v2/observation-rows.bin",
+      "sha256": "6a42abee174ba11400e2c3d1437d01ef2321f18c6e825b6cdcd6aee26852e25a",
+      "bytes": 6541548
+    },
+    "observation_index": {
+      "path": "596f08fa2dbf4875bb8da7dc94e33847/viewer-v2/observation-index.json",
+      "sha256": "bbbac1f78411a551495499af62a9c8950e8540e6ed7e690ed1fa9f55d0237895",
+      "bytes": 302833
+    },
+    "details": {
+      "path": "596f08fa2dbf4875bb8da7dc94e33847/viewer-v2/details.parquet",
+      "sha256": "3f7bcfb93ee12b9bbc0c9838174a28ccc87d871eeaff4d6b2c14bef0e686b678",
+      "bytes": 137114383,
+      "rows": 1683430
+    },
+    "groups": {
+      "path": "596f08fa2dbf4875bb8da7dc94e33847/viewer-v2/groups.bin",
+      "sha256": "e2d713229cd4fcf61c0ffd8b541f0d60aaa902f50857b519abe5d02db43f2a25",
+      "bytes": 6733720
+    },
+    "preferred": {
+      "path": "596f08fa2dbf4875bb8da7dc94e33847/viewer-v2/preferred.bin",
+      "sha256": "a9ff6874684b844793b3f7fa8501c813262a28cf20646b82a0ca4403b11060e0",
+      "bytes": 4964628
+    },
+    "detail_navigation": {
+      "path": "596f08fa2dbf4875bb8da7dc94e33847/viewer-v2/detail-navigation.bin",
+      "sha256": "4ef62be38ab338e199e0a7c4ec7238ad5ba0dd63bb5c7bef217b5e5944c23e7f",
+      "bytes": 26934880
+    },
+    "detail_members": {
+      "path": "596f08fa2dbf4875bb8da7dc94e33847/viewer-v2/detail-members.bin",
+      "sha256": "b765ae1b0a28b50355ade609effc0455f5bc279e1c3c788e0562ddeff01f5937",
+      "bytes": 6733720
+    },
+    "flags": {
+      "path": "596f08fa2dbf4875bb8da7dc94e33847/viewer-v2/flags.bin",
+      "sha256": "6cac6d78fa4a081248fdfd6494b13526829726f1655a79b87605c2bdf2268f14",
+      "bytes": 1241157
+    },
+    "review_binding": {
+      "path": "596f08fa2dbf4875bb8da7dc94e33847/viewer-v2/review-binding.json",
+      "sha256": "f70fbd4b64eded6cf143fca33fdf15663a271262388263ba1b65cc7e99f6551e",
+      "bytes": 5632
+    },
+    "browse": {
+      "path": "596f08fa2dbf4875bb8da7dc94e33847/viewer-v2/browse.parquet",
+      "sha256": "22fa591bbff8c4c75b17621976a2002dda068362bb2fad4956a3377ec9dba197",
+      "bytes": 19831103,
+      "rows": 1241157
+    }
+  },
+  "saved_live_manifest_comparison": {
+    "documents": {
+      "before_bytes": 380338200,
+      "after_bytes": 541147000,
+      "sha256_equal": false
+    },
+    "filenames": {
+      "before_bytes": 359714851,
+      "after_bytes": 409292782,
+      "sha256_equal": false
+    },
+    "observations": {
+      "before_bytes": 69314244,
+      "after_bytes": 69314244,
+      "sha256_equal": true
+    },
+    "observation_rows": {
+      "before_bytes": 6541548,
+      "after_bytes": 6541548,
+      "sha256_equal": true
+    },
+    "observation_index": {
+      "before_bytes": 302833,
+      "after_bytes": 302833,
+      "sha256_equal": true
+    },
+    "details": {
+      "before_bytes": 137114383,
+      "after_bytes": 137114383,
+      "sha256_equal": true
+    },
+    "groups": {
+      "before_bytes": 6733720,
+      "after_bytes": 6733720,
+      "sha256_equal": true
+    },
+    "preferred": {
+      "before_bytes": 4964628,
+      "after_bytes": 4964628,
+      "sha256_equal": true
+    },
+    "detail_navigation": {
+      "before_bytes": 26934880,
+      "after_bytes": 26934880,
+      "sha256_equal": true
+    },
+    "detail_members": {
+      "before_bytes": 6733720,
+      "after_bytes": 6733720,
+      "sha256_equal": true
+    },
+    "flags": {
+      "before_bytes": 1241157,
+      "after_bytes": 1241157,
+      "sha256_equal": true
+    },
+    "review_binding": {
+      "before_bytes": 5632,
+      "after_bytes": 5632,
+      "sha256_equal": true
+    },
+    "browse": {
+      "before_bytes": 19831103,
+      "after_bytes": 19831103,
+      "sha256_equal": true
+    }
+  },
+  "observation_timing_boundary": "One emitted stage includes writing and full dictionary/source readback; exact split not instrumented. Filename write/equality times are separately measured.",
+  "pending": [
+    "Browser probe is separate",
+    "Hosted Linux publication qualification",
+    "R2 upload and deployed readback",
+    "Ordinary deployed unchanged-job duration/download observation; ct-x7vx"
+  ],
+  "limitations": [
+    "Single macOS trial, no baseline duration arm",
+    "RSS is 50 ms sampled process tree plus publisher highwater, not total allocations or heap proof",
+    "Initial catalog loading highwater 5,085,020,160 B preceded writer, so total peak not attributed to 64 MiB writer pending",
+    "Local 7 GiB ceiling is a qualification choice, not a declared production allocation; production resources unchanged",
+    "No classifier, network access, source-document acquisition, remote writes, dispatch or automatic retry"
+  ],
+  "raw_evidence": "/Users/mikewolfd/Work/congressional-tech/output/publication-remediation-20261018/rollout/local-current-catalog/trial-2feb8c7",
+  "evidence_sha256": {
+    "configuration.json": "dd5ba86c9c5662590e77f18d4b041176f4a1cbb08895ba6795c3f77d04e89bdc",
+    "frozen-runtime-check.json": "0fbbc260a599f033968cf9cbb4f65c5b26a89d2e41b2e4161f6f9cc8cccb10a5",
+    "worker-receipt.json": "61326692e15d985e4c86498fedd91dc8f822eda782dae70169e0d5cbc34dbda1",
+    "watchdog.json": "ca691b03c7d519e7f5dedad4f8ffb61d48f98912da0dad71274e501461d6a03e",
+    "progress.jsonl": "f047dde5e46ab46e9c494c826a74a9d645d39662189d3837f6b7ebc90864d796",
+    "rss.jsonl": "3aba48361e2a019eba211f201354569a9ed840bcc40a1e1a6965f5baf6a11281",
+    "stdout.log": "dfb1fe678e16e24fbf0ac1c90d78087b62e7a9f26eea58dd188027cb5d85e031",
+    "stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "helper_sha256": "6393545e1570dc570a48863410f83c3a70653dc63838766db5590bf422b61fd3",
+  "observed_at": "2026-10-18T23:16:45.937230+00:00"
+}

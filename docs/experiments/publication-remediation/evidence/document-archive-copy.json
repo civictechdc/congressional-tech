@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "runtime_commit": "c8dda5dbc7f2ea92fa98b63b73a70483f5c8b579",
+  "scope": "local archive-copy implementation and focused synthetic verification; complete retained-data publication remains separate",
+  "runtime": {
+    "python": "3.12.13",
+    "pyarrow": "25.0.1"
+  },
+  "source_evidence": {
+    "folder": "/Users/mikewolfd/Work/congressional-tech/output/publication-remediation-20261018/rollout/local-documents-repack",
+    "failure_receipt": "worker-receipt.json",
+    "design_review": "architecture-review-source-copy.md",
+    "refused_arrow_row_bytes": 43807597,
+    "unchanged_arrow_row_limit": 16777216,
+    "source_preserved": true,
+    "prior_local_repack_seconds": 70.74558062502183,
+    "published_manifest": "/Users/mikewolfd/Work/congressional-tech/output/session-continuation-20261018/downstream-39163532286/live-manifest.json"
+  },
+  "archive_tradeoff": {
+    "published_bytes": 380338200,
+    "published_sha256": "198a296f961eb7a2b447743d20b4502538a5c34e16849e0cbd056c74d781810a",
+    "source_copy_bytes": 541147000,
+    "source_sha256": "f0bf8fb6fcf4f1067d2182372661917ed23741e47943d575f96d2fc4d44552b7",
+    "additional_bytes": 160808800,
+    "additional_percent_rounded": 42.28,
+    "ordinary_browser_loads_archive": false,
+    "complete_publication_speed_size_qualified": false
+  },
+  "code_sha256": {
+    "apps/site/scripts/publish-filename-viewer.py": "0f4ad73f9d9bd84dc1be18796069d56cb3f4b86fd408502fdc051faf72b6a986",
+    "apps/site/scripts/filename_budget.py": "36744075cdfd1de60f2216ef21bf9d25a1fc8146415de1c32c49dc044a58ad96",
+    "scripts/benchmark_viewer_publication.py": "38b0e7e94a9e063ebdee8a3eda74566761538ea1a28a4f1e9ed9a7aaba3f61e2"
+  },
+  "checks": [
+    {
+      "command": ".venv/bin/python -m pytest -q .github/tests/test_filename_publication.py tests/test_filename_decoded_budget.py tests/test_viewer_benchmark.py tests/test_catalog_files.py tests/test_viewer_publication_attempt.py",
+      "passed": 129,
+      "seconds": 41.78
+    },
+    {
+      "command": ".venv/bin/python -m pytest -q tests/test_viewer_benchmark.py",
+      "passed": 5,
+      "seconds": 0.03,
+      "scope": "after reviewer-requested independent inventory binding"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0
+    }
+  ],
+  "limits_changed": false,
+  "real_data_probe_retried": false,
+  "publication_performed": false
+}
