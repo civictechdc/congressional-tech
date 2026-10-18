@@ -13,7 +13,7 @@ import pyarrow.parquet as pq
 import pytest
 
 from filename_budget import (DEFAULT_DECODED_POLICY, DecodedBudgetExceeded, bounded_batches,
-                             json_chunks, plan_native_rows, open_parquet)
+                             json_chunks, plan_native_rows, open_parquet, python_estimate)
 from filename_json_stream import ObservationCounts, block_items, decoded_json_default
 import filename_details as details
 import filename_observations as observations
@@ -255,6 +255,75 @@ def test_repack_full_arrow_comparison_crosses_adaptive_row_group_boundaries(tmp_
     assert info['exact_equal'] and info['rows'] == len(rows)
     with pq.ParquetFile(path) as before, pq.ParquetFile(output) as after:
         assert before.read().equals(after.read(), check_metadata=True)
+
+
+def test_arrow_only_repack_preserves_large_row_without_estimating_unused_python_values(tmp_path, monkeypatch):
+    import filename_budget
+    schema = pa.schema([('payload', pa.string()), ('values', pa.list_(pa.string())),
+                        ('observations', pa.list_(pa.struct([('label', pa.string())])))],
+                       metadata={b'catalog_id': b'stage-budget', b'custom': b'preserve'})
+    table = pa.Table.from_pylist([{'payload': 'é' * (5 * 1024**2), 'values': [None, '', 'é', 'é'],
+        'observations': [None, {'label': None}, {'label': '🏛️'}, {'label': '🏛️'}]}], schema=schema)
+    source, output = tmp_path / 'source.parquet', tmp_path / 'output.parquet'
+    pq.write_table(table, source)
+    batch = table.to_batches()[0]
+    assert 10 * 1024**2 <= batch.nbytes < DEFAULT_DECODED_POLICY.row_arrow_bytes
+    assert python_estimate(batch) > DEFAULT_DECODED_POLICY.row_python_estimate
+    with open_parquet(source) as reader, pytest.raises(DecodedBudgetExceeded, match='single-row Python/JSON estimate'):
+        list(bounded_batches(reader))
+    def unused_estimate(batch):
+        raise AssertionError('Arrow-only repack or equality attempted a Python estimate')
+    monkeypatch.setattr(filename_budget, 'python_estimate', unused_estimate)
+    metrics = {}
+    result = publisher.repack_and_verify(source, output, metrics=metrics)
+    assert result['exact_equal'] and result['rows'] == 1
+    # Compare the persisted input schema too: Parquet normalizes list-child
+    # names and masked children when the synthetic table is first written.
+    with open_parquet(source) as before, open_parquet(output) as after:
+        assert before.read().equals(after.read(), check_metadata=True)
+    assert metrics['oversized_rows_admitted'] == 3  # write, source equality, output equality
+    assert 'max_python_json_estimate' not in metrics
+    assert metrics['max_native_batch_rows'] == 1
+    assert metrics['max_batch_arrow_bytes'] == batch.nbytes
+    assert metrics['max_admitted_buffer_bytes'] >= batch.nbytes
+
+
+@pytest.mark.parametrize('python_values', [True, False])
+def test_true_default_arrow_row_refusal_applies_in_both_conversion_modes(tmp_path, python_values):
+    source = tmp_path / 'oversized.parquet'
+    pq.write_table(pa.table({'value': ['x' * DEFAULT_DECODED_POLICY.row_arrow_bytes]}), source)
+    digest = hashlib.sha256(source.read_bytes()).hexdigest()
+    # Four string-offset bytes put this row beyond the unchanged 16 MiB limit.
+    with open_parquet(source) as reader, pytest.raises(DecodedBudgetExceeded, match='single-row Arrow bytes'):
+        list(bounded_batches(reader, python_values=python_values))
+    with pytest.raises(DecodedBudgetExceeded, match='single-row Arrow bytes'):
+        publisher.repack_and_verify(source, tmp_path / 'refused.parquet')
+    receipt = json.loads((tmp_path / 'preparation-memory-failure.json').read_text())
+    assert receipt['source_preserved'] and not receipt['partial_publication_accepted']
+    assert hashlib.sha256(source.read_bytes()).hexdigest() == digest
+
+
+@pytest.mark.parametrize('python_values', [True, False])
+def test_conversion_mode_controls_only_python_admission_not_stage_names(tmp_path, python_values):
+    source = tmp_path / 'modes.parquet'
+    table = pa.table({'value': ['é' * 100] * 4})
+    pq.write_table(table, source)
+    policy = replace(DEFAULT_DECODED_POLICY, batch_arrow_bytes=500, batch_python_estimate=1000,
+                     row_python_estimate=2000)
+    with open_parquet(source) as reader:
+        batches = bounded_batches(reader, policy=policy, python_values=python_values, stage='repack')
+        if python_values:
+            with pytest.raises(DecodedBudgetExceeded, match='Python/JSON estimate'): list(batches)
+        else:
+            admitted = list(batches)
+            assert all(batch.nbytes <= 500 for batch in admitted)
+            assert pa.Table.from_batches(admitted).equals(table)
+
+
+@pytest.mark.parametrize('invalid', [None, 0, 1, 'false'])
+def test_python_conversion_admission_requires_explicit_boolean(invalid):
+    with pytest.raises(ValueError, match='python_values must explicitly'):
+        list(bounded_batches(None, python_values=invalid))
 
 
 def test_refused_existing_publication_is_never_overwritten(tmp_path):

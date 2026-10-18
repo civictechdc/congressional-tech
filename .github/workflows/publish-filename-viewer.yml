@@ -209,4 +209,6 @@ jobs:
             viewer-preparation/publication-result.json
             viewer-preparation/preparation.json
             viewer-preparation/prepared-result.json
+            viewer-preparation/publication/preparation-memory-failure.json
+            viewer-preparation/publication/**/preparation-memory-failure.json
           if-no-files-found: ignore

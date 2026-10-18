@@ -14,9 +14,9 @@ The default policy is explicit in `filename_budget.DecodedPolicy`:
 | Native decode rows | 128 | Maximum requested rows per native batch, within one physical row group |
 | Native row planning | Selected chunk bytes / group rows | Mean-density planning only; no aggregate refusal or allocation guarantee |
 | Ordinary admitted Arrow bytes | 4 MiB | Larger returned batches split before Python conversion |
-| Ordinary Python/JSON estimate | 32 MiB | Payload factor plus explicit nested list/struct and field-name accounting |
-| Single-row Arrow bytes | 16 MiB | Explicit oversized-row path; stricter Python estimate also applies |
-| Single-row Python/JSON estimate | 128 MiB | Larger rows fail visibly; no truncation or dropped fields |
+| Ordinary Python/JSON estimate | 32 MiB | Applies before Python conversion; payload factor plus explicit nested list/struct and field-name accounting |
+| Single-row Arrow bytes | 16 MiB | Explicit oversized-row path; applies to every consumer |
+| Single-row Python/JSON estimate | 128 MiB | Applies before Python conversion; larger rows fail visibly without truncation or dropped fields |
 | Logical JSON value | 32 MiB | Serialization and logical block reconstruction limit, distinct from 1 MiB parts |
 | SQLite cache per index | 8 MiB | Observation identity and verification dictionaries spill to temporary files |
 
@@ -27,6 +27,13 @@ rebuilt documents group 389 totals 163,912,431 bytes across 1,024 rows, so the
 sizes and row skew can still expand before Arrow returns even one row. Actual
 returned Arrow bytes and the estimated Python working set are checked before
 `to_pylist`; true oversized rows still fail explicitly.
+
+Arrow-only repacking and its two ordered comparison streams explicitly pass
+`python_values=False`. They retain native planning and actual Arrow admission,
+but do not estimate a Python conversion they never perform. Every observation,
+detail and alias consumer keeps the default Python checks. The hosted refusal
+that exposed this distinction and the local regression evidence are recorded in
+[stage-budget-correction.md](stage-budget-correction.md).
 
 Slices and zero-copy coalescing can retain larger underlying native buffers.
 Summed `nbytes` measures logical admitted data, not retained allocation. Metrics

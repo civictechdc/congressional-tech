@@ -159,7 +159,8 @@ def _repack_and_verify(source, destination, policy, owned, decoded_policy, metri
                           compression_level=policy.level) as writer:
         staging = ArrowStager(writer, source.schema_arrow, row_group_size=policy.row_group_size,
                               policy=decoded_policy, metrics=metrics, stage='repack')
-        for batch in bounded_batches(source, batch_rows=policy.batch_size, policy=decoded_policy, stage='repack', metrics=metrics):
+        for batch in bounded_batches(source, batch_rows=policy.batch_size, policy=decoded_policy,
+                                     stage='repack', metrics=metrics, python_values=False):
             staging.append(batch)
         staging.flush()
     written = time.perf_counter()
@@ -168,8 +169,10 @@ def _repack_and_verify(source, destination, policy, owned, decoded_policy, metri
         raise ValueError('Repacking changed the schema.')
     # Adaptive source/output batches may have different boundaries. Compare
     # ordered Arrow slices directly without converting either side to Python.
-    before = iter(bounded_batches(source, batch_rows=policy.batch_size, policy=decoded_policy, stage='repack source verification', metrics=metrics))
-    after = iter(bounded_batches(rewritten, batch_rows=policy.batch_size, policy=decoded_policy, stage='repack output verification', metrics=metrics))
+    before = iter(bounded_batches(source, batch_rows=policy.batch_size, policy=decoded_policy,
+                                 stage='repack source verification', metrics=metrics, python_values=False))
+    after = iter(bounded_batches(rewritten, batch_rows=policy.batch_size, policy=decoded_policy,
+                                stage='repack output verification', metrics=metrics, python_values=False))
     left, right = next(before, None), next(after, None)
     lo = ro = 0
     while left is not None and right is not None:

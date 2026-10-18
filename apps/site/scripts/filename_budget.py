@@ -62,27 +62,36 @@ def python_estimate(batch):
 
 
 def bounded_batches(source, *, columns=None, batch_rows=8192, policy=DEFAULT_DECODED_POLICY,
-                    stage='preparation', metrics=None):
+                    stage='preparation', metrics=None, python_values=True):
+    """Admit Arrow batches and, by default, their planned Python conversion.
+
+    Only consumers that keep values in Arrow throughout may disable the Python
+    estimate. Native planning and actual Arrow limits apply in either mode.
+    """
+    if type(python_values) is not bool:
+        raise ValueError('python_values must explicitly enable or disable Python conversion admission')
     metrics = metrics if metrics is not None else {}
     batch_rows = min(batch_rows, policy.native_batch_rows)
     def admitted(batch):
-        estimate = python_estimate(batch)
+        estimate = python_estimate(batch) if python_values else None
+        python_batch_exceeded = python_values and estimate > policy.batch_python_estimate
         if batch.num_rows == 1:
             if batch.nbytes > policy.row_arrow_bytes:
                 refuse(stage, 'single-row Arrow bytes', batch.nbytes, policy.row_arrow_bytes)
-            if estimate > policy.row_python_estimate:
+            if python_values and estimate > policy.row_python_estimate:
                 refuse(stage, 'single-row Python/JSON estimate', estimate, policy.row_python_estimate)
-            if batch.nbytes > policy.batch_arrow_bytes or estimate > policy.batch_python_estimate:
+            if batch.nbytes > policy.batch_arrow_bytes or python_batch_exceeded:
                 metrics['oversized_rows_admitted'] = metrics.get('oversized_rows_admitted', 0) + 1
         elif (batch.nbytes > min(policy.batch_arrow_bytes, policy.row_arrow_bytes) or
-              estimate > min(policy.batch_python_estimate, policy.row_python_estimate)):
+              (python_values and estimate > min(policy.batch_python_estimate, policy.row_python_estimate))):
             middle = batch.num_rows // 2
             yield from admitted(batch.slice(0, middle))
             yield from admitted(batch.slice(middle))
             return
         maximum(metrics, 'max_batch_arrow_bytes', batch.nbytes)
         maximum(metrics, 'max_admitted_buffer_bytes', batch.get_total_buffer_size())
-        maximum(metrics, 'max_python_json_estimate', estimate)
+        if python_values:
+            maximum(metrics, 'max_python_json_estimate', estimate)
         yield batch
     metadata = getattr(source, 'metadata', None)
     if metadata is None:

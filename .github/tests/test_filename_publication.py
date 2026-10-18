@@ -156,3 +156,26 @@ def test_default_compression_uses_research_supported_level_9(catalog, tmp_path):
     assert timing['total_seconds'] > timing['documents_preparation']
     assert events[0] == {'event': 'stage_started', 'stage': 'input_verification'}
     assert events[-1]['event'] == 'stage_completed' and events[-1]['stage'] == 'manifest'
+
+
+def test_failed_preparation_upload_keeps_memory_receipts_without_partial_payloads(tmp_path):
+    import yaml
+    workflow = yaml.safe_load((ROOT / '.github/workflows/publish-filename-viewer.yml').read_text())
+    uploads = [step for job in workflow['jobs'].values() for step in job['steps']
+               if step.get('uses') == 'actions/upload-artifact@v4' and step.get('if') == 'always()']
+    assert len(uploads) == 1
+    patterns = uploads[0]['with']['path'].splitlines()
+    root = 'viewer-preparation/publication/'
+    assert root + 'preparation-memory-failure.json' in patterns
+    assert root + '**/preparation-memory-failure.json' in patterns
+    # Exercise root and nested receipts against the entire diagnostic path list.
+    receipts = {root + 'preparation-memory-failure.json',
+                root + 'catalog/viewer-v2/preparation-memory-failure.json'}
+    partials = {root + 'catalog/viewer-v2/documents.parquet',
+                root + 'catalog/viewer-v2/observation-rows.bin',
+                root + 'catalog/viewer-v2/manifest.json', root + 'other.json'}
+    for name in receipts | partials:
+        path = tmp_path / name; path.parent.mkdir(parents=True, exist_ok=True); path.touch()
+    matched = {str(path.relative_to(tmp_path)) for pattern in patterns for path in tmp_path.glob(pattern)}
+    assert matched == receipts
+    assert uploads[0]['with']['if-no-files-found'] == 'ignore'

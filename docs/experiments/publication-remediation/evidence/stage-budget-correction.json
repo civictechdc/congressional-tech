@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "base_revision": "2b44cdc",
+  "scope": "local stage-aware decoded admission and failure-diagnostic upload; no complete-catalog qualification",
+  "runtime": {
+    "python": "3.12.13",
+    "pyarrow": "25.0.1",
+    "ijson": "3.6.0"
+  },
+  "source_failure": {
+    "run_id": 39169129734,
+    "artifact_id": 12151991789,
+    "artifact_sha256": "1209b8773929035258a05204aa43f5087e148e2f006717431a3324c8e5a78b27",
+    "archive_sha256_rechecked_locally": true,
+    "source_folder": "/Users/mikewolfd/Work/congressional-tech/output/publication-remediation-20261018/rollout",
+    "log": "viewer-failure-39169129734.log",
+    "archive": "viewer-failure-artifact-12151991789.zip",
+    "inspection": "viewer-failure-artifact-inspection.json",
+    "memory_receipt_in_original_archive": false,
+    "error": "repack: single-row Python/JSON estimate 167939288 exceeds decoded preparation limit 134217728; source retained, no partial publication is accepted"
+  },
+  "code_sha256": {
+    "apps/site/scripts/filename_budget.py": "36744075cdfd1de60f2216ef21bf9d25a1fc8146415de1c32c49dc044a58ad96",
+    "apps/site/scripts/publish-filename-viewer.py": "7d754063fb94d0f27cfda9cc2a26f92f7ab6c63456b309918556a846332cf73b"
+  },
+  "checks": [
+    {
+      "command": ".venv/bin/python -m pytest -q tests/test_filename_decoded_budget.py .github/tests/test_filename_publication.py tests/test_filename_observations.py tests/test_filename_details.py tests/test_filename_aliases.py tests/test_filename_recoveries.py tests/test_publication_preflight.py",
+      "passed": 162,
+      "seconds": 2.96
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0
+    }
+  ],
+  "regressions": {
+    "large_arrow_row_logical_bytes_minimum": 10485760,
+    "large_arrow_row_python_estimate_exceeds": 134217728,
+    "all_three_arrow_only_streams_must_not_call_estimator": true,
+    "persisted_input_output_exact_schema_metadata_and_values": true,
+    "default_arrow_row_limit_both_modes": 16777216,
+    "python_mode_still_refuses": true,
+    "unconditional_diagnostic_upload_excludes_partial_payloads": true
+  },
+  "limits_changed": false,
+  "real_data_probe_retried": false,
+  "publication_performed": false
+}
