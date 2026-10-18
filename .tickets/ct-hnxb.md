@@ -1,6 +1,6 @@
 ---
 id: ct-hnxb
-status: closed
+status: in_progress
 deps: [ct-sv16]
 links: [ct-gubr, ct-gesp, ct-zika]
 created: 2026-10-18T19:21:16Z
@@ -61,3 +61,7 @@ Release preflight found a real-input regression before merge: rebuilt documents 
 **2026-10-18T21:42:46Z**
 
 Corrected aggregate admission in reviewed commit 2829e2e: physical group bytes now plan native rows (retained group 389 -> 26); actual Arrow/Python/JSON record limits and exact equality remain. Reuses owned Catalog readers, removing six input footer opens. Passed 91+142 overlapping focused Python checks, 17 browser-reader checks and edge cases. One unchanged 512 MiB fixture watchdog passed: accepted 264257536 B, refused 188448768 B; source preserved. Independent exact-commit review approved. Real full-catalog memory/row acceptance remains unqualified until normal publication; the stopped zero-row probe was not retried.
+
+**2026-10-18T21:50:25Z**
+
+Reopened after hosted viewer preparation 39169129734 failed in repack before accepting or publishing output: single-row Python/JSON estimate 167939288 B exceeded 134217728 B. Repack writes and compares Arrow values without converting them to Python, so stage admission currently charges an unused conversion. Preserve true Arrow limits and Python/JSON checks where conversion occurs. Failure ZIP12151991789 and logs preserved locally; no workflow retry or resource change. Also retain the memory failure receipt in the always-uploaded diagnostic artifact.
