@@ -1,20 +1,45 @@
-/** A pinned publication of assistant findings bound to one original catalog pair. */
-export async function loadReviews(descriptor, manifest, fetcher) {
+async function verifiedJson(fetcher, url, sha256, length, label) {
+  const response = await fetcher(url);
+  if (!response.ok) throw new Error(`Could not load the ${label}.`);
+  const bytes = await response.arrayBuffer();
+  const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(v => v.toString(16).padStart(2, '0')).join('');
+  if (hash !== sha256 || bytes.byteLength !== length) throw new Error(`${label[0].toUpperCase()}${label.slice(1)} failed verification.`);
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
+/**
+ * Assistant findings, published once, placed on the current catalog version.
+ * A viewer publication with a review binding supplies this version's positions
+ * for each review whose document, members and body are unchanged; withdrawn
+ * reviews keep the original categories. Without a binding, the reviews apply
+ * only to the exact catalog pair they were exported from.
+ */
+export async function loadReviews(descriptor, manifest, fetcher, manifestUrl) {
   const empty = {groups: new Map(), sources: new Map(), info: {}};
-  if (!descriptor || descriptor.catalog_id !== manifest.info.catalog_id) return empty;
+  const bound = manifest.files?.review_binding;
+  if (!descriptor || (!bound && descriptor.catalog_id !== manifest.info.catalog_id)) return empty;
   try {
-    const response = await fetcher(descriptor.url);
-    if (!response.ok) throw new Error('Could not load the document reviews.');
-    const bytes = await response.arrayBuffer();
-    const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(v => v.toString(16).padStart(2, '0')).join('');
-    if (hash !== descriptor.sha256 || bytes.byteLength !== descriptor.bytes) throw new Error('Document review publication failed verification.');
-    const data = JSON.parse(new TextDecoder().decode(bytes));
-    if (data.version !== 1 || data.catalog_id !== manifest.info.catalog_id || data.review_sha256 !== descriptor.review_sha256 ||
-        ['filenames','documents'].some(name => data.baseline[name] !== manifest.source_manifest?.files[name]?.sha256)) {
+    let placement = null;
+    if (bound) {
+      const binding = await verifiedJson(fetcher, new URL(bound.path, manifestUrl).href, bound.sha256, bound.bytes, 'document review binding');
+      if (binding.version !== 1 || binding.review_sha256 !== descriptor.review_sha256 || binding.catalog_id !== manifest.info.catalog_id) {
+        throw new Error('Document review binding belongs to a different publication.');
+      }
+      placement = new Map(binding.rows.map(row => [row.index, row]));
+    }
+    const data = await verifiedJson(fetcher, descriptor.url, descriptor.sha256, descriptor.bytes, 'document review publication');
+    if (data.version !== 1 || data.review_sha256 !== descriptor.review_sha256 || (!placement && (data.catalog_id !== manifest.info.catalog_id ||
+        ['filenames','documents'].some(name => data.baseline[name] !== manifest.source_manifest?.files[name]?.sha256)))) {
       throw new Error('Document reviews belong to a different catalog pair.');
     }
     const groups = new Map(), sources = new Map(), facets = {};
-    for (const row of data.rows) {
+    for (const [index, row] of data.rows.entries()) {
+      if (placement) {
+        const place = placement.get(index);
+        if (!place) continue;
+        row.group = place.group;
+        row.sources = place.sources;
+      }
       if (!Number.isInteger(row.group) || row.group < 0 || row.group >= manifest.info.entries || groups.has(row.group) ||
           !['candidate_applied','annotation_only_unsupported_forms'].includes(row.status) || !row.sources.length) throw new Error('Invalid reviewed group.');
       if (row.status === 'annotation_only_unsupported_forms' && JSON.stringify(row.baseline) !== JSON.stringify(row.selected)) throw new Error('Unsupported forms changed catalog categories.');

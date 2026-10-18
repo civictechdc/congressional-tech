@@ -36,6 +36,9 @@ spec.loader.exec_module(details)
 spec = importlib.util.spec_from_file_location('filename_navigation', Path(__file__).with_name('filename_navigation.py'))
 navigation = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(navigation)
+spec = importlib.util.spec_from_file_location('filename_review_binding', Path(__file__).with_name('filename_review_binding.py'))
+review_binding = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(review_binding)
 
 
 def digest(path):
@@ -95,7 +98,7 @@ def write_u32(path, values):
     path.write_bytes(data.tobytes())
 
 
-def publish(root, target, modified=None, *, validation=None):
+def publish(root, target, modified=None, *, validation=None, review_identities=review_binding.IDENTITIES):
     manifest = json.loads((root / 'indexes/catalog.json').read_text())
     verify(root, manifest, validation=validation)
     catalog = viewer.Catalog(root / manifest['files']['filenames']['key'])
@@ -161,6 +164,15 @@ def publish(root, target, modified=None, *, validation=None):
     path = output / 'flags.bin'
     path.write_bytes(flags)
     describe('flags', path)
+
+    # Reviews are published once; their positions are recomputed for every
+    # catalog version from stable identities, so they survive rebuilds.
+    if review_identities and (identities := review_binding.load_identities(review_identities)) is not None:
+        binding = review_binding.bind(catalog, identities)
+        path = output / 'review-binding.json'
+        path.write_text(json.dumps(binding, sort_keys=True, separators=(',', ':')) + '\n')
+        describe('review_binding', path)
+        print(f"Review binding: {len(binding['rows'])} bound, {len(binding['withdrawn'])} withdrawn", flush=True)
 
     # IDs are resolved when a row is opened; carrying both hashes on every
     # list row would duplicate tens of megabytes without displaying them.

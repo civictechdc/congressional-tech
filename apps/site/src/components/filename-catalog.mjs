@@ -98,7 +98,7 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
   const manifest = publication.manifest, { info, files } = manifest;
   if (![2, 5].includes(manifest.version)) throw new Error('Unsupported filename catalog version.');
   const recovery = await loadRecoveries(publication.recovery, info, fetcher);
-  const reviews = await loadReviews(reviewPublication, manifest, fetcher);
+  const reviews = await loadReviews(reviewPublication, manifest, fetcher, manifestUrl);
   Object.assign(info, reviews.info);
   const url = path => new URL(path, manifestUrl).href;
   async function binary(name) {

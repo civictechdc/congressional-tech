@@ -287,6 +287,36 @@ test('relative source aliases link through the verified body without changing so
   assert.deepEqual(record, before);
 });
 
+test('reviews exported from an older catalog apply to a newer one only through its published binding', async () => {
+  const folder=await mkdtemp(join(tmpdir(),'bound-catalog-'));
+  try {
+    execFileSync(process.env.PYTHON || 'python3',[fileURLToPath(new URL('../../scripts/filename-test-fixture.py',import.meta.url)),folder]);
+    const manifestPath=join(folder,'public/manifest.json'), manifest=JSON.parse(await readFile(manifestPath));
+    const rows=(await (await createFilenameCatalog(pathToFileURL(manifestPath),localFetch)).search({scope:'all'})).rows;
+    const a=rows.findIndex(row=>row.source_url==='https://committee.test/final');
+    const body='evidence/'+'a'.repeat(64)+'.pdf',page='evidence/'+'b'.repeat(64)+'.png';
+    const selected={document_kind:['letter'],document_family:['correspondence'],document_kind_source:['assistant_complete_body_review']};
+    // The review file names an older catalog: its id, pair hashes and positions are stale.
+    const data={version:1,catalog_id:'older',review_sha256:'pin',baseline:{filenames:'old',documents:'old'},files:{[body]:{},[page]:{}},rows:[
+      {review:{primary_forms:['letter'],component_forms:[],body_observation:{pages:1}},evidence:{body,pages:{1:page}},group:0,sources:[5],status:'candidate_applied',
+       baseline:{document_kind:['witness-statement'],document_family:['statement'],document_kind_source:null},selected}]};
+    const bytes=JSON.stringify(data),descriptor={url:'https://reviews.test/reviews.json',catalog_id:'older',review_sha256:'pin',bytes:Buffer.byteLength(bytes),sha256:createHash('sha256').update(bytes).digest('hex')};
+    const fetcher=(url,options)=>String(url)===descriptor.url?Promise.resolve(new Response(bytes)):localFetch(url,options);
+    const reviewed={classification:'reviewed',review:'pin'};
+    await assert.rejects((await createFilenameCatalog(pathToFileURL(manifestPath),fetcher,undefined,descriptor)).search(reviewed));
+    const binding=JSON.stringify({version:1,review_sha256:'pin',catalog_id:manifest.info.catalog_id,rows:[{index:0,group:a,sources:[0,1]}],withdrawn:[]});
+    const path=`${manifest.info.generation}/viewer-v2/review-binding.json`;
+    const handle=await open(join(folder,'public',path),'w');await handle.writeFile(binding);await handle.close();
+    manifest.files.review_binding={path,bytes:Buffer.byteLength(binding),sha256:createHash('sha256').update(binding).digest('hex')};
+    const written=await open(manifestPath,'w');await written.writeFile(JSON.stringify(manifest));await written.close();
+    const reader=await createFilenameCatalog(pathToFileURL(manifestPath),fetcher,undefined,descriptor);
+    assert.equal((await reader.search({...reviewed,q:'alias',document_kind:'letter'})).total,1);
+    assert.equal((await reader.search({...reviewed,q:'alias',document_kind:'witness-statement'})).total,0);
+  } finally {
+    await rm(folder,{recursive:true,force:true});
+  }
+});
+
 test('public reviewed search covers aliases, null filters, provenance, annotations and withdrawal', async () => {
   const folder=await mkdtemp(join(tmpdir(),'reviewed-catalog-'));
   try {

@@ -71,6 +71,19 @@ def test_generation_cannot_escape_the_selected_snapshot(catalog):
         publication.verify(catalog, manifest)
 
 
+def test_every_publication_binds_each_review_or_records_why_not(catalog, tmp_path):
+    published = publication.publish(catalog, tmp_path / 'public')
+    identities = json.loads((ROOT / 'apps/site/document-review-identities.json').read_text())
+    placed = json.loads((tmp_path / 'public' / published['files']['review_binding']['path']).read_text())
+    assert placed['review_sha256'] == identities['review_sha256']
+    assert placed['catalog_id'] == published['info']['catalog_id']
+    assert sorted(row['index'] for row in placed['rows'] + placed['withdrawn']) == list(range(len(identities['rows'])))
+    # The fixture catalog contains none of the reviewed documents.
+    assert {row['reason'] for row in placed['withdrawn']} == {'document_missing'}
+    # Publications that supply their own review data publish no binding.
+    assert 'review_binding' not in json.loads((catalog / 'public/manifest.json').read_text())['files']
+
+
 def test_compact_serving_tables_replace_redundant_summary_and_mapping(catalog):
     import pyarrow as pa
     import pyarrow.parquet as pq

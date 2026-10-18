@@ -39,3 +39,38 @@ test('wrong bytes, catalog pair, duplicate positions and missing pages refuse re
  const parameters=args(fixture());parameters[0].sha256='wrong';assert.match((await loadReviews(...parameters)).info.review_error,/failed verification/);
  parameters[0].catalog_id='other';assert.deepEqual((await loadReviews(...parameters)).info,{});
 });
+// A newer catalog version: the review file still names 'pair', the viewer
+// publication supplies a binding with this version's positions.
+function bound(binding,data=fixture()) {
+ const reviews=JSON.stringify(data),placed=JSON.stringify(binding);
+ const next={...manifest,info:{...manifest.info,catalog_id:'next'},source_manifest:{files:{filenames:{sha256:'new'},documents:{sha256:'new'}}},
+  files:{review_binding:{path:'gen/viewer-v2/review-binding.json',bytes:Buffer.byteLength(placed),sha256:createHash('sha256').update(placed).digest('hex')}}};
+ const bodies={'https://viewer.test/data/reviews.json':reviews,'https://data.test/releases/r/gen/viewer-v2/review-binding.json':placed};
+ return [{url:'https://viewer.test/data/reviews.json',catalog_id:'pair',review_sha256:'pin',bytes:Buffer.byteLength(reviews),sha256:createHash('sha256').update(reviews).digest('hex')},
+  next,async url=>new Response(bodies[url]),'https://data.test/releases/r/manifest.json'];
+}
+test('a review binding places reviews on a newer catalog version by stable identity',async()=>{
+ const result=await loadReviews(...bound({version:1,review_sha256:'pin',catalog_id:'next',rows:[{index:0,group:2,sources:[2,3]}],withdrawn:[]}));
+ assert.equal(result.info.reviewed_search,true);
+ assert.equal(result.info.reviewed_groups,1);
+ assert.deepEqual([...result.groups.keys()],[2]);
+ assert.equal(result.sources.get(2),result.sources.get(3));
+ assert.equal(result.sources.has(0),false);
+});
+test('a withdrawn review keeps the original categories while other reviews stay available',async()=>{
+ const result=await loadReviews(...bound({version:1,review_sha256:'pin',catalog_id:'next',rows:[],withdrawn:[{index:0,document_id:'d',reason:'body_changed'}]}));
+ assert.equal(result.info.reviewed_search,true);
+ assert.equal(result.groups.size,0);
+ assert.equal(result.info.reviewed_groups,0);
+});
+test('a binding for another review publication, another catalog or changed bytes refuses reviews',async()=>{
+ for(const binding of [{version:1,review_sha256:'old',catalog_id:'next',rows:[]},{version:1,review_sha256:'pin',catalog_id:'pair',rows:[]}]){
+  const result=await loadReviews(...bound(binding));
+  assert.equal(result.info.reviewed_search,false);assert.match(result.info.review_error,/different publication/);
+ }
+ const parameters=bound({version:1,review_sha256:'pin',catalog_id:'next',rows:[{index:0,group:2,sources:[2,3]}]});
+ parameters[1].files.review_binding.sha256='wrong';
+ assert.match((await loadReviews(...parameters)).info.review_error,/binding failed verification/);
+ const invalid=bound({version:1,review_sha256:'pin',catalog_id:'next',rows:[{index:0,group:9,sources:[2]}]});
+ assert.match((await loadReviews(...invalid)).info.review_error,/Invalid reviewed group/);
+});

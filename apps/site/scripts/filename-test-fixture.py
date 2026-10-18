@@ -52,7 +52,8 @@ for name, subset in [('filenames', rows), ('documents', [rows[i] for i in [1,2,3
     pq.write_table(pa.Table.from_pylist(subset, schema=schema), path, row_group_size=2, compression='zstd')
     files[name] = dict(key=str(path.relative_to(root)), bytes=path.stat().st_size, rows=len(subset), sha256=publisher.digest(path))
 (root / 'indexes/catalog.json').write_text(json.dumps(dict(version=1, generation=generation, catalog_id=catalog_id, files=files)))
-publisher.publish(root, root / 'public')
+# Fixture catalogs are not the reviewed catalog; tests supply their own review data.
+publisher.publish(root, root / 'public', review_identities=None)
 queries = [{}, {'scope':'all'}, {'retained':'no','scope':'all'}, {'q':'alias','retained':'no'}, {'q':'alias'},
            {'q':'ALIAS','document_kind':'__null__'}, {'document_kind':'__null__'}, {'scope':'capture-records','retained':'no'},
            {'q':'Witness name','field':'source_occurrences'}, {'scope':'all','q':'Recovered witness'}, {'congress':'117'}, {'q':'unfetched','format':'pdf'}, {'scope':'all','page':'99','limit':'2'}]
