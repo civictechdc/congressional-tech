@@ -34,7 +34,7 @@ manifest/lock match. The original npm still reports 10.9.7.
 The focused workflow/action matrix passed **48 Python tests**, and the maintained
 reader suite passed **152 Node tests** with zero skips. The first reader attempt
 omitted the Python environment supplied by the existing CI setup; its missing
-PyArrow failures are retained. Repeating with the existing project Python venv
+PyArrow/pytest prerequisite failures are retained. Repeating with the existing project Python venv
 and this worktree's source paths passed all reader tests. No application fix was
 needed for that local environment error.
 

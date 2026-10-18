@@ -34,7 +34,7 @@
   },
   "limitations": [
     "Local macOS ARM64 evidence; next hosted Linux action/build still pending.",
-    "First reader-suite attempt lacked the Python setup present in CI; all11 failures traced to missing pyarrow environment. Original failure log retained; with Python PATH setup all152 passed."
+    "First reader-suite attempt lacked the Python setup present in CI; its 11 failures traced to missing project Python prerequisites (PyArrow/pytest). Original failure log retained; with Python PATH setup all152 passed."
   ],
   "source_evidence_directory": "/Users/mikewolfd/Work/congressional-tech/output/publication-remediation-20261018/rollout/pages-npm-repair",
   "remote_mutations": false,
