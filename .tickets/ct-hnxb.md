@@ -1,6 +1,6 @@
 ---
 id: ct-hnxb
-status: closed
+status: in_progress
 deps: [ct-sv16]
 links: [ct-gubr, ct-gesp, ct-zika]
 created: 2026-10-18T19:21:16Z
@@ -53,3 +53,7 @@ Final integration correction: shared ArrowStager coalesces detail/repack output 
 **2026-10-18T21:01:54Z**
 
 Independent static review approved implementation a80ec34 and staging fix868e52a (preparation lane); no remaining blockers. Final receipts9ca9c7d: accepted RSS342327296B and refused205357056B under536870912B watchdog/high-water ceiling, source unchanged; full exact checks maintained. Detail coalescing resolves intermediate small-rowgroup regression (101groups237429B ->2groups21688B on same fixture, ordered Arrow equality); native128 and separate retained-buffer metrics preserved. Local acceptance complete; production/offline combined integration remains root-owned. Raw evidence output/decoded-memory-final8-20261018 must be transferred before archive.
+
+**2026-10-18T21:27:51Z**
+
+Release preflight found a real-input regression before merge: rebuilt documents row group 389 declares 163,912,431 uncompressed bytes, so the current whole-row-group 64 MiB check rejects it before bounded streaming. Small fixtures missed this. Repair admission without raising resource limits or weakening exact-value checks; verify the retained real footer and meaningful oversized-input refusals before closing.

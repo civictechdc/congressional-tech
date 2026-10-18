@@ -1,7 +1,7 @@
 ---
 id: ct-x7vx
 status: in_progress
-deps: [ct-zb9y]
+deps: [ct-zb9y, ct-hnxb]
 links: [ct-8uwj]
 created: 2026-10-18T20:54:36Z
 type: task
