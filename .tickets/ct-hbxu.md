@@ -1,6 +1,6 @@
 ---
 id: ct-hbxu
-status: closed
+status: in_progress
 deps: []
 links: [ct-dpks, ct-kde5]
 created: 2026-10-18T19:28:38Z
@@ -53,3 +53,6 @@ Repair implemented in f18288e with docs clarification2432891 and independently a
 **2026-10-18T22:05:34Z**
 
 Hosted Pages run 39169960167 on c326ce24 succeeded: frozen Node setup, 152 filename-reader/build-smoke checks and deployment completed 2026-10-18T21:58:45Z. https://github.com/civictechdc/congressional-tech/actions/runs/39169960167 . This is hosted Pages evidence; separate viewer-publication preparation remains unqualified until its own checks complete.
+**2026-10-18T22:19:32Z**
+
+Reopened for a separate hosted dispatch race: Explorer run39169129652 finished from dbfe and dispatched the current Pages workflow with the older code_revision. Run39170982908 failed because that checkout lacks the current setup-node-project action. Existing successful c326 deployment remains live. Gate dispatches before checkout so site code and workflow revision agree; retain mismatched inputs/reason. No retry or resource change.

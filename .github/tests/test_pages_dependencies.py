@@ -108,3 +108,33 @@ def test_failed_or_mismatched_bootstrap_never_activates_runtime(tmp_path, settin
     result, activated, _ = bootstrap(tmp_path, **settings)
     assert result.returncode != 0
     assert activated == ''
+
+
+def test_dispatched_site_revision_must_match_workflow_before_checkout(tmp_path):
+    workflow = yaml.load((ROOT / '.github/workflows/deploy-pages.yml').read_text(), Loader=yaml.BaseLoader)
+    jobs = workflow['jobs']
+    # Admission belongs on the job, before a mismatched checkout can execute
+    # local actions. Matching dispatches and main pushes use the workflow SHA.
+    assert jobs['build']['if'] == "github.event_name != 'workflow_dispatch' || inputs.code_revision == github.sha"
+    assert jobs['build']['steps'][0]['with']['ref'] == '${{ github.sha }}'
+    assert jobs['build']['steps'][1]['with']['ref'] == "${{ inputs.pipeline_revision || 'pipeline-data' }}"
+    assert jobs['deploy']['needs'] == 'build'
+    mismatch = jobs['revision-mismatch']
+    assert mismatch['if'] == "github.event_name == 'workflow_dispatch' && inputs.code_revision != github.sha"
+    assert len(mismatch['steps']) == 1 and 'uses' not in mismatch['steps'][0]
+    step = mismatch['steps'][0]
+    assert step['env'] == {'SITE_REVISION': '${{ inputs.code_revision }}',
+                           'WORKFLOW_REVISION': '${{ github.sha }}',
+                           'PIPELINE_REVISION': '${{ inputs.pipeline_revision }}'}
+    summary = tmp_path / 'summary.md'
+    env = dict(os.environ, SITE_REVISION='dbfe389bb7e68fca10b3ba8fd2f0f9a33a44f5f9',
+               WORKFLOW_REVISION='c326ce24c9b4f0f9ebc8deec6d5d16b9a42c350e',
+               PIPELINE_REVISION='a' * 40, GITHUB_STEP_SUMMARY=str(summary))
+    result = subprocess.run(['bash', '-c', step['run']], cwd=tmp_path, env=env,
+                            capture_output=True, text=True, timeout=10, check=True)
+    receipt = json.loads(result.stdout)
+    assert receipt == {'status': 'skipped', 'reason': 'site_and_workflow_revisions_differ',
+                       'site_revision': env['SITE_REVISION'], 'workflow_revision': env['WORKFLOW_REVISION'],
+                       'pipeline_revision': env['PIPELINE_REVISION']}
+    assert 'verified pipeline snapshot remains retained' in summary.read_text()
+    assert list(tmp_path.iterdir()) == [summary]
