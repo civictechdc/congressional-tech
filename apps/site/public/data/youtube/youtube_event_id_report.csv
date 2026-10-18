@@ -96,7 +96,7 @@ Armed Services,@armedservices8789,0,0,115,Republican,house,0
 Armed Services,@armedservices8789,0,0,116,Democratic,house,0
 Armed Services,@armedservices8789,0,0,117,Democratic,house,0
 Armed Services,@armedservices8789,2,0,118,Republican,house,1
-Armed Services,@armedservices8789,363,358,119,Republican,house,205
+Armed Services,@armedservices8789,364,359,119,Republican,house,206
 Armed Services,@armedservicesGOP,0,0,106,Republican,house,0
 Armed Services,@armedservicesGOP,0,0,107,Republican,house,0
 Armed Services,@armedservicesGOP,0,0,108,Republican,house,0
@@ -208,7 +208,7 @@ Energy & Commerce,@EnergyCommerce,208,208,115,Republican,house,0
 Energy & Commerce,@EnergyCommerce,166,159,116,Democratic,house,3
 Energy & Commerce,@EnergyCommerce,120,120,117,Democratic,house,3
 Energy & Commerce,@EnergyCommerce,192,192,118,Republican,house,0
-Energy & Commerce,@EnergyCommerce,143,143,119,Republican,house,0
+Energy & Commerce,@EnergyCommerce,144,144,119,Republican,house,0
 Financial Services,@USHouseFSC,0,0,106,Republican,house,0
 Financial Services,@USHouseFSC,0,0,107,Republican,house,0
 Financial Services,@USHouseFSC,0,0,108,Republican,house,0
@@ -292,7 +292,7 @@ Foreign Affairs,@houseforeign,275,275,115,Republican,house,69
 Foreign Affairs,@houseforeign,279,227,116,Democratic,house,27
 Foreign Affairs,@houseforeign,178,178,117,Democratic,house,5
 Foreign Affairs,@houseforeign,135,135,118,Republican,house,0
-Foreign Affairs,@houseforeign,185,185,119,Republican,house,1
+Foreign Affairs,@houseforeign,186,186,119,Republican,house,1
 Foreign Affairs,@HouseForeignGOP,0,0,106,Republican,house,0
 Foreign Affairs,@HouseForeignGOP,0,0,107,Republican,house,0
 Foreign Affairs,@HouseForeignGOP,0,0,108,Republican,house,0
@@ -334,7 +334,7 @@ Homeland Security,@HomelandDems,30,30,115,Republican,house,1
 Homeland Security,@HomelandDems,49,49,116,Democratic,house,1
 Homeland Security,@HomelandDems,15,15,117,Democratic,house,5
 Homeland Security,@HomelandDems,4,4,118,Republican,house,1
-Homeland Security,@HomelandDems,45,45,119,Republican,house,0
+Homeland Security,@HomelandDems,47,47,119,Republican,house,0
 Homeland Security,@HomelandSecurityCommitteeGOP,0,0,106,Republican,house,0
 Homeland Security,@HomelandSecurityCommitteeGOP,0,0,107,Republican,house,0
 Homeland Security,@HomelandSecurityCommitteeGOP,0,0,108,Republican,house,0
@@ -432,7 +432,7 @@ Judiciary,@JudiciaryDems,156,127,115,Republican,house,0
 Judiciary,@JudiciaryDems,138,20,116,Democratic,house,0
 Judiciary,@JudiciaryDems,131,27,117,Democratic,house,1
 Judiciary,@JudiciaryDems,215,92,118,Republican,house,28
-Judiciary,@JudiciaryDems,331,243,119,Republican,house,92
+Judiciary,@JudiciaryDems,334,246,119,Republican,house,92
 Judiciary,@housejudiciarydemocrats8939,0,0,106,Republican,house,0
 Judiciary,@housejudiciarydemocrats8939,0,0,107,Republican,house,0
 Judiciary,@housejudiciarydemocrats8939,0,0,108,Republican,house,0
@@ -530,7 +530,7 @@ Oversight and Government Reform,@OversightDems,54,54,115,Republican,house,0
 Oversight and Government Reform,@OversightDems,673,673,116,Democratic,house,1
 Oversight and Government Reform,@OversightDems,369,369,117,Democratic,house,0
 Oversight and Government Reform,@OversightDems,142,142,118,Republican,house,1
-Oversight and Government Reform,@OversightDems,405,405,119,Republican,house,5
+Oversight and Government Reform,@OversightDems,407,407,119,Republican,house,5
 Oversight and Government Reform,@COVIDOversight,0,0,106,Republican,house,0
 Oversight and Government Reform,@COVIDOversight,0,0,107,Republican,house,0
 Oversight and Government Reform,@COVIDOversight,0,0,108,Republican,house,0
@@ -782,7 +782,7 @@ Ways and Means,@waysmeanscmte,0,0,115,Republican,house,0
 Ways and Means,@waysmeanscmte,497,124,116,Democratic,house,0
 Ways and Means,@waysmeanscmte,326,260,117,Democratic,house,0
 Ways and Means,@waysmeanscmte,3,3,118,Republican,house,0
-Ways and Means,@waysmeanscmte,151,151,119,Republican,house,6
+Ways and Means,@waysmeanscmte,152,152,119,Republican,house,7
 Ways and Means,@waysandmeansdems,0,0,106,Republican,house,0
 Ways and Means,@waysandmeansdems,0,0,107,Republican,house,0
 Ways and Means,@waysandmeansdems,0,0,108,Republican,house,0
@@ -908,7 +908,7 @@ Select Committee on the CCP,@ChinaSelect,0,0,115,Republican,house,0
 Select Committee on the CCP,@ChinaSelect,0,0,116,Democratic,house,0
 Select Committee on the CCP,@ChinaSelect,0,0,117,Democratic,house,0
 Select Committee on the CCP,@ChinaSelect,304,303,118,Republican,house,0
-Select Committee on the CCP,@ChinaSelect,221,219,119,Republican,house,87
+Select Committee on the CCP,@ChinaSelect,222,220,119,Republican,house,87
 Select Committee on the CCP,@SelectCommitteeontheCCPDems,0,0,106,Republican,house,0
 Select Committee on the CCP,@SelectCommitteeontheCCPDems,0,0,107,Republican,house,0
 Select Committee on the CCP,@SelectCommitteeontheCCPDems,0,0,108,Republican,house,0
@@ -1048,7 +1048,7 @@ Tom Lantos Human Rights Commission,@TomLantosHumanRights,39,39,115,Republican,ho
 Tom Lantos Human Rights Commission,@TomLantosHumanRights,21,21,116,Democratic,house,0
 Tom Lantos Human Rights Commission,@TomLantosHumanRights,40,40,117,Democratic,house,0
 Tom Lantos Human Rights Commission,@TomLantosHumanRights,16,16,118,Republican,house,0
-Tom Lantos Human Rights Commission,@TomLantosHumanRights,22,22,119,Republican,house,0
+Tom Lantos Human Rights Commission,@TomLantosHumanRights,23,23,119,Republican,house,0
 Task Force on the Attempted Assassination of Donald J. Trump,@TFAADJT,0,0,106,Republican,house,0
 Task Force on the Attempted Assassination of Donald J. Trump,@TFAADJT,0,0,107,Republican,house,0
 Task Force on the Attempted Assassination of Donald J. Trump,@TFAADJT,0,0,108,Republican,house,0
