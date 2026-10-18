@@ -62,9 +62,34 @@ review approved exact commit `592480c`; the report is primary
 The original regression failure is retained in this worktree's
 `output/browser-metadata-reuse/baseline-regression.log`.
 
-These controlled checks do not establish actual-catalog browser latency or
-complete deployed behavior. A changed-frontend focused probe against the same
-closed backend files needs its own receipt. No backend rerun, full-data scan,
-network acquisition, public write, workflow dispatch, push or merge was performed.
+## Separate actual-catalog focused probe
+
+The authorized independent reviewer then ran one changed-frontend probe against
+the same closed backend, with identical cases, runtime, cache/heap settings,
+120 s case timeout and 7 GiB process-tree ceiling. The loader hash matches exact
+`592480c`. Both technical results preserve the original 352 fields, 10,257
+result bytes and SHA-256
+`be2e436ba97c92dc310a4fdcf945ee85450004e0cb6e1e21d5fb8bfedf21ff21`.
+
+| Operation | Original attempt | Changed frontend | Metadata parses |
+| --- | ---: | ---: | --- |
+| Technical cold | 19.086 s | 0.596 s | 45 → 1 |
+| Technical warm | 17.435 s | 0.459 s | 45 → 1 additional |
+| Source-URL search | Timed out at 120 s | 27.523 s | 2 for column load and selected browse rows |
+
+The search completed with 1,014,639 matches. The original timed-out search has
+no completed result hash or latency, so this does not establish search-result
+parity against a completed original run. Sampled process-tree peak was
+2,022,293,504 bytes versus 3,639,607,296 bytes before. These are single paired
+observations, not general latency or memory guarantees.
+
+Receipts remain at primary
+`output/publication-remediation-20261018/rollout/browser-layout-check/attempt-2-frontend/receipt.json`
+and `comparison.json`; the first failed attempt remains immutable. This probe
+reused the accepted backend and performed one source-column search, with no
+backend rerun. It is not exhaustive or deployed browser qualification.
+The implementation agent ran only controlled fixtures; the separate actual
+probe ran under root authorization. No network acquisition, public write,
+workflow dispatch, push or merge was performed by this implementation.
 Exact source references and local commands are in
 [evidence/browser-metadata-reuse.json](evidence/browser-metadata-reuse.json).

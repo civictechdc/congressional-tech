@@ -164,6 +164,168 @@
   "decode_chunk_size_changed": false,
   "backend_changed": false,
   "public_data_changed": false,
-  "changed_actual_browser_probe": "pending separate authorized receipt",
+  "changed_actual_browser_probe": {
+    "receipt_path": "/Users/mikewolfd/Work/congressional-tech/output/publication-remediation-20261018/rollout/browser-layout-check/attempt-2-frontend/receipt.json",
+    "receipt_sha256": "6f2e71519900ce480cf1cf12b4afafbe85c678e1fa5f9f4237267bdafcbe5413",
+    "comparison_path": "/Users/mikewolfd/Work/congressional-tech/output/publication-remediation-20261018/rollout/browser-layout-check/comparison.json",
+    "comparison_sha256": "1c845de52b83321b207380ed839e354c4b93b6b629e4443cdbf65b1273d9dc95",
+    "status": "complete",
+    "policy": {
+      "case_timeout_ms": 120000,
+      "sampled_process_tree_ceiling_bytes": 7516192768,
+      "sampling_ms": 100,
+      "reader_options": "maintained defaults: compressed48MiB/range-entry32MiB/decoded64MiB",
+      "chromium_heap": "default; no additional heap flags",
+      "context": "one fresh context; one shared reader for cold/warm technical then search",
+      "overlays": "direct completed manifest; reviews and recovery overlays excluded",
+      "retries": 0
+    },
+    "runtime": {
+      "node": "v22.22.2",
+      "playwright": "1.62.1",
+      "esbuild": "0.25.12",
+      "chromium": "148.0.7778.96"
+    },
+    "samples": [
+      {
+        "operation": "technical-cold",
+        "milliseconds": 596.2000000476837,
+        "requests": 4,
+        "bytes": 14408318,
+        "result_sha256": "be2e436ba97c92dc310a4fdcf945ee85450004e0cb6e1e21d5fb8bfedf21ff21",
+        "result_bytes": 10257,
+        "fields": 352,
+        "diagnostics": {
+          "sourceScanVisits": 0,
+          "groupScanVisits": 0,
+          "columnLoads": 0,
+          "tableLoads": 1,
+          "observationStoreLoads": 0,
+          "decodedRows": 44,
+          "normalizationValues": 352,
+          "rangeRequests": 4,
+          "rangeBytes": 14408318,
+          "rangeHits": 44,
+          "maxScalarRecordBytes": 24180,
+          "compressed": {
+            "bytes": 14409664,
+            "peak": 14409664,
+            "evictions": 0,
+            "entries": 4,
+            "maxBytes": 50331648,
+            "maxEntryBytes": 33554432
+          },
+          "decoded": {
+            "bytes": 0,
+            "peak": 0,
+            "evictions": 0,
+            "entries": 0,
+            "maxBytes": 67108864,
+            "maxEntryBytes": 67108864
+          }
+        },
+        "browser_heap": {
+          "used": 220071670,
+          "total": 266809646,
+          "limit": 4294967296
+        }
+      },
+      {
+        "operation": "technical-warm",
+        "milliseconds": 459,
+        "requests": 0,
+        "bytes": 0,
+        "result_sha256": "be2e436ba97c92dc310a4fdcf945ee85450004e0cb6e1e21d5fb8bfedf21ff21",
+        "result_bytes": 10257,
+        "fields": 352,
+        "diagnostics": {
+          "sourceScanVisits": 0,
+          "groupScanVisits": 0,
+          "columnLoads": 0,
+          "tableLoads": 2,
+          "observationStoreLoads": 0,
+          "decodedRows": 88,
+          "normalizationValues": 704,
+          "rangeRequests": 4,
+          "rangeBytes": 14408318,
+          "rangeHits": 92,
+          "maxScalarRecordBytes": 24180,
+          "compressed": {
+            "bytes": 14409664,
+            "peak": 14409664,
+            "evictions": 0,
+            "entries": 4,
+            "maxBytes": 50331648,
+            "maxEntryBytes": 33554432
+          },
+          "decoded": {
+            "bytes": 0,
+            "peak": 0,
+            "evictions": 0,
+            "entries": 0,
+            "maxBytes": 67108864,
+            "maxEntryBytes": 67108864
+          }
+        },
+        "browser_heap": {
+          "used": 397159128,
+          "total": 454660196,
+          "limit": 4294967296
+        }
+      },
+      {
+        "operation": "source-url-search",
+        "milliseconds": 27522.800000071526,
+        "requests": 254,
+        "bytes": 26093779,
+        "result_sha256": "65804ba825080d84a017e2554847ed389e9c1f618029be08d2f09acca8011d2e",
+        "result_bytes": 954,
+        "matches": 1014639,
+        "diagnostics": {
+          "sourceScanVisits": 1683430,
+          "groupScanVisits": 1241157,
+          "columnLoads": 1,
+          "tableLoads": 4,
+          "observationStoreLoads": 0,
+          "decodedRows": 1683519,
+          "normalizationValues": 1684157,
+          "rangeRequests": 255,
+          "rangeBytes": 27562592,
+          "rangeHits": 96,
+          "maxScalarRecordBytes": 24180,
+          "searchNormalizations": 1683430,
+          "scanYields": 5711,
+          "maxMatchedGroupsRetained": 2,
+          "physicalColumnValues": 23552,
+          "compressed": {
+            "bytes": 27649932,
+            "peak": 27649932,
+            "evictions": 0,
+            "entries": 255,
+            "maxBytes": 50331648,
+            "maxEntryBytes": 33554432
+          },
+          "decoded": {
+            "bytes": 0,
+            "peak": 0,
+            "evictions": 0,
+            "entries": 0,
+            "maxBytes": 67108864,
+            "maxEntryBytes": 67108864
+          }
+        },
+        "browser_heap": {
+          "used": 250845419,
+          "total": 323985879,
+          "limit": 4294967296
+        }
+      }
+    ],
+    "same_backend_cases_runtime_and_limits": true,
+    "technical_result_hash_parity": true,
+    "prior_search_has_completed_result": false,
+    "sampled_peak_process_tree_rss_bytes": 2022293504,
+    "qualification": "single authorized frontend-only local probe, not exhaustive or deployed performance"
+  },
   "raw_artifact_folder": "/Users/mikewolfd/.codex/worktrees/browser-metadata-reuse/congressional-tech/output/browser-metadata-reuse"
 }
