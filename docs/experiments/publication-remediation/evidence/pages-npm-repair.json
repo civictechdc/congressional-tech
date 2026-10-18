@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "scope": "local isolated npm failure reproduction and actual shared-action install; no hosted retry/deploy",
+  "failed_hosted_run": 39169129664,
+  "base_revision": "e91bab4e10608a748376d22fd6833dd177f0f0e5",
+  "node": "v22.22.2",
+  "bootstrap_npm": "10.9.7",
+  "selected_npm": "11.19.1",
+  "old_self_replacement": {
+    "isolated_copy_only": true,
+    "returncode": 1,
+    "error": "MODULE_NOT_FOUND: promise-retry",
+    "original_runtime_checked_unchanged": true
+  },
+  "fresh_prefix_install": {
+    "status": "passed",
+    "exact_runtime_activated": true,
+    "frozen_site_install": "passed",
+    "stale_lock_refusal": "EUSAGE; @astrojs/check manifest differs from frozen lock",
+    "stale_inputs_preserved": true,
+    "stale_node_modules_created": false
+  },
+  "protected_file_sha256_before_and_after": {
+    "bootstrap_package": "9845f841112330e2ac0b6714afd0bb488328ecb2631eda7bff73a2b222bfdd2b",
+    "bootstrap_arborist": "482821c5ce826cb6811e5039683606221e233cbf3f488e1c1ad94d588840613a",
+    "site_package": "1f36386c566c9c811d49aae98f9f2e1cb86d8c2cb258481bfe5658f85a125cf2",
+    "site_lock": "ef5529088d88e2b34298a2136f801cecfff88e2f39e5261202c92b4cb740ef27"
+  },
+  "tests": {
+    "python_workflow_tests": 48,
+    "reader_node_tests": 152,
+    "skipped": 0,
+    "reader_python_setup": "existing project Python venv on PATH; source PYTHONPATH points at this worktree"
+  },
+  "limitations": [
+    "Local macOS ARM64 evidence; next hosted Linux action/build still pending.",
+    "First reader-suite attempt lacked the Python setup present in CI; all11 failures traced to missing pyarrow environment. Original failure log retained; with Python PATH setup all152 passed."
+  ],
+  "source_evidence_directory": "/Users/mikewolfd/Work/congressional-tech/output/publication-remediation-20261018/rollout/pages-npm-repair",
+  "remote_mutations": false,
+  "workflow_dispatch_or_retry": false,
+  "dependency_or_lock_changes": false,
+  "action_sha256": "941bc3738397ce760de3f02ea8e63347d56e1bf3ed81463ac4599bca82ad347e"
+}
