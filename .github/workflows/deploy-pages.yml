@@ -19,7 +19,7 @@ on:
   workflow_dispatch:
     inputs:
       code_revision:
-        description: Site code commit verified by the publication workflow
+        description: Verified site commit; must match this workflow's main revision
         required: true
         type: string
       pipeline_revision:
@@ -37,12 +37,38 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  revision-mismatch:
+    if: github.event_name == 'workflow_dispatch' && inputs.code_revision != github.sha
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Record why this publication cannot deploy the current workflow
+        env:
+          SITE_REVISION: ${{ inputs.code_revision }}
+          WORKFLOW_REVISION: ${{ github.sha }}
+          PIPELINE_REVISION: ${{ inputs.pipeline_revision }}
+        run: |
+          python3 - <<'PYTHON'
+          import json, os
+          from pathlib import Path
+          receipt = {'status': 'skipped', 'reason': 'site_and_workflow_revisions_differ',
+                     'site_revision': os.environ['SITE_REVISION'],
+                     'workflow_revision': os.environ['WORKFLOW_REVISION'],
+                     'pipeline_revision': os.environ['PIPELINE_REVISION']}
+          print(json.dumps(receipt, sort_keys=True))
+          Path(os.environ['GITHUB_STEP_SUMMARY']).write_text(
+              'Pages deployment skipped because the producer selected a different site revision. '
+              'The verified pipeline snapshot remains retained. A current main push can deploy it.\n\n'
+              + '```json\n' + json.dumps(receipt, indent=2) + '\n```\n')
+          PYTHON
   build:
+    # An older exporter may finish after main advances. Its checkout must not
+    # run a newer workflow or replace an already deployed newer interface.
+    if: github.event_name != 'workflow_dispatch' || inputs.code_revision == github.sha
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: ${{ inputs.code_revision || github.sha }}
+          ref: ${{ github.sha }}
       - name: Check out the published browser snapshot
         uses: actions/checkout@v5
         with:
