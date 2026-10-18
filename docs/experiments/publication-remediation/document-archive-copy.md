@@ -65,4 +65,5 @@ references are in [evidence/document-archive-copy.json](evidence/document-archiv
 
 Real retained-file copying and any complete publication qualification require
 separate receipts. This implementation performed no real-catalog probe,
-acquisition, resource increase, workflow dispatch, publication, push or merge.
+acquisition, resource increase, workflow dispatch, publication, push or merge
+into main. The working branch includes the independently repaired Pages setup.
