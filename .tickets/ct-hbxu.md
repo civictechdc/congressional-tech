@@ -41,3 +41,7 @@ Implemented site lock/frozen install, exact Node/npm and shared locked Python se
 **2026-10-18T20:42:25Z**
 
 Final integration found publication tests depended on another test modifying sys.path. pytest.ini now declares scripts and apps/site/scripts explicitly; the continuation-state file passes independently without an ambient PYTHONPATH.
+
+**2026-10-18T22:05:34Z**
+
+Hosted Pages run 39169960167 on c326ce24 succeeded: frozen Node setup, 152 filename-reader/build-smoke checks and deployment completed 2026-10-18T21:58:45Z. https://github.com/civictechdc/congressional-tech/actions/runs/39169960167 . This is hosted Pages evidence; separate viewer-publication preparation remains unqualified until its own checks complete.

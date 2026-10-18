@@ -32,6 +32,11 @@ This correction does not establish that the complete rebuilt catalog passes
 those later stages. Native page/dictionary expansion and retained Arrow slices
 remain outside any universal process-memory guarantee.
 
+Subsequent retained-data qualification found a true 43,807,597-byte Arrow row
+in the documents archive, above its unchanged 16 MiB row limit. The archive now
+uses an always-copy route rather than repacking; that separate correction and
+its size tradeoff are recorded in [document-archive-copy.md](document-archive-copy.md).
+
 The regression writes one approximately 10 MiB Unicode Arrow row with nested
 nulls, empty values, duplicates, order and schema metadata. Default Python
 admission refuses its estimate above 128 MiB. Repacking succeeds while a patched

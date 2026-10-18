@@ -28,12 +28,14 @@ sizes and row skew can still expand before Arrow returns even one row. Actual
 returned Arrow bytes and the estimated Python working set are checked before
 `to_pylist`; true oversized rows still fail explicitly.
 
-Arrow-only repacking and its two ordered comparison streams explicitly pass
+Filename repacking and its two ordered comparison streams explicitly pass
 `python_values=False`. They retain native planning and actual Arrow admission,
 but do not estimate a Python conversion they never perform. Every observation,
 detail and alias consumer keeps the default Python checks. The hosted refusal
 that exposed this distinction and the local regression evidence are recorded in
 [stage-budget-correction.md](stage-budget-correction.md).
+The archive-only documents file instead preserves its exact verified source
+bytes through checked copying; see [document-archive-copy.md](document-archive-copy.md).
 
 Slices and zero-copy coalescing can retain larger underlying native buffers.
 Summed `nbytes` measures logical admitted data, not retained allocation. Metrics
