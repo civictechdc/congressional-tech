@@ -12,6 +12,7 @@ on:
       - "pyproject.toml"
       - "uv.lock"
       - ".github/actions/setup-python-project/**"
+      - ".github/actions/setup-node-project/**"
       - ".github/workflows/deploy-pages.yml"
       - "docs/youtube-coverage/research/filename-*"
       - "docs/youtube-coverage/research/scripts/view_document_filenames.py"
@@ -64,16 +65,7 @@ jobs:
               # First rollout can reuse the existing catalog without reassembly.
               migrate(source, target)
           PYTHON
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: ".node-version"
-          cache: npm
-          cache-dependency-path: apps/site/package-lock.json
-      - name: Use the declared npm runtime
-        run: npm install --global npm@11.19.1 --ignore-scripts --no-audit --no-fund
-      - name: Install dependencies
-        working-directory: apps/site
-        run: npm ci --workspaces=false --engine-strict --no-audit --no-fund
+      - uses: ./.github/actions/setup-node-project
       - name: Verify review controls and static reader
         working-directory: apps/site
         run: npm run test:explorer
