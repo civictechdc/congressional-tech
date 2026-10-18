@@ -383,6 +383,86 @@ test('concurrent column/table/store loads share work and wide columns use exact 
 });
 
 
+test('uncached metadata is reused across field chunks, selected groups and column workers',async()=>{
+ const folder=await mkdtemp(join(tmpdir(),'filename-metadata-'));
+ try {
+  execFileSync(process.env.PYTHON||'python3',[fileURLToPath(new URL('../../scripts/filename-test-fixture.py',import.meta.url)),folder]);
+  // Give every reader path multiple groups without changing any fixture values.
+  execFileSync(process.env.PYTHON||'python3',['-c',`
+import hashlib,json,sys
+from pathlib import Path
+import pyarrow.parquet as pq
+root=Path(sys.argv[1]); manifest_path=root/'public/manifest.json'
+manifest=json.loads(manifest_path.read_text())
+for name in ('filenames','browse','details'):
+    item=manifest['files'][name]; path=root/'public'/item['path']
+    table=pq.read_table(path); pq.write_table(table,path,row_group_size=2,compression='zstd')
+    item.update(bytes=path.stat().st_size,sha256=hashlib.sha256(path.read_bytes()).hexdigest())
+manifest_path.write_text(json.dumps(manifest))
+`,folder]);
+  const manifest=pathToFileURL(join(folder,'public/manifest.json'));
+  const sources=JSON.parse(await readFile(join(folder,'source-records.json')));
+  const expected=Object.fromEntries(Object.entries(sources[0]).filter(([name])=>name!=='source_occurrences'));
+  assert(Object.keys(expected).length>8,'technical record spans multiple eight-column reads');
+  const baseline=await createFilenameCatalog(manifest,localFetch);
+  const reader=await createFilenameCatalog(manifest,localFetch,undefined,undefined,{decodedBytes:1});
+  assert.deepEqual(await reader.technical('0'),expected);
+  const cold=reader.diagnostics();assert.equal(cold.tableLoads,1);
+  assert.deepEqual(await reader.technical('0'),expected);
+  const warm=reader.diagnostics();assert.equal(warm.tableLoads,2,'one new handle per operation, no permanent cache bypass');
+  assert.equal(warm.rangeRequests,cold.rangeRequests);
+  const all={scope:'all',limit:100};let before=reader.diagnostics();
+  assert.deepEqual(await reader.search(all),await baseline.search(all));
+  assert.equal(reader.diagnostics().tableLoads-before.tableLoads,1,'selected browse rows and prefetch share one handle across groups');
+  before=reader.diagnostics();
+  assert.deepEqual(await reader.technicalOrigin('2'),await baseline.technicalOrigin('2'));
+  assert.equal(reader.diagnostics().tableLoads-before.tableLoads,1,'read and its prefetch share one handle');
+  const query={scope:'all',q:'https://',field:'source_url',limit:100};before=reader.diagnostics();
+  const result=await reader.search(query);assert.deepEqual(result,await baseline.search(query));
+  const scanned=reader.diagnostics();
+  assert.equal(scanned.columnLoads-before.columnLoads,1);
+  assert.equal(scanned.tableLoads-before.tableLoads,2,'one metadata load for all column groups, one for selected browse rows');
+  assert.deepEqual(await reader.search(query),result);
+  const rescanned=reader.diagnostics();
+  assert.equal(rescanned.tableLoads-scanned.tableLoads,2);
+  assert.equal(rescanned.rangeRequests,scanned.rangeRequests);
+  assert.equal(rescanned.decoded.bytes,0);assert.equal(rescanned.decoded.peak,0);
+  assert(rescanned.compressed.peak<=rescanned.compressed.maxBytes);
+
+  // A failed metadata/column load must not leave a rejected operation handle.
+  let fail=true;
+  const retry=await createFilenameCatalog(manifest,(url,options)=>{
+   if(fail&&String(url).endsWith('/filenames.parquet')&&options?.headers?.Range){fail=false;return new Response('',{status:503});}
+   return localFetch(url,options);
+  },undefined,undefined,{decodedBytes:1});
+  await assert.rejects(retry.search(query),/valid Parquet byte range/);
+  assert.deepEqual(await retry.search(query),result);
+  assert.equal(retry.diagnostics().columnLoads,2);
+  assert.equal(retry.diagnostics().tableLoads,3,'failed filename metadata, retried filename metadata and browse metadata');
+
+  // Cancel only one waiter while shared metadata and column work are in flight.
+  for(const operation of ['technical','column']) {
+   let release,started,block=true;
+   const pending=new Promise(resolve=>{release=resolve;});
+   const loading=new Promise(resolve=>{started=resolve;});
+   const shared=await createFilenameCatalog(manifest,async(url,options)=>{
+    if(block&&String(url).endsWith('/filenames.parquet')&&options?.headers?.Range){block=false;started();await pending;}
+    return localFetch(url,options);
+   },undefined,undefined,{decodedBytes:1});
+   const run=signal=>operation==='technical'?shared.technical('0',undefined,signal):shared.search(query,signal);
+   const controller=new AbortController(),first=run(controller.signal);
+   const rejected=assert.rejects(first,{name:'AbortError'});
+   await loading;const second=run();controller.abort();release();
+   await rejected;assert.deepEqual(await second,operation==='technical'?expected:result);
+   assert.equal(shared.diagnostics().tableLoads,operation==='technical'?1:2);
+   if(operation==='column')assert.equal(shared.diagnostics().columnLoads,1);
+   assert.equal(shared.diagnostics().decoded.bytes,0);
+  }
+  console.log('uncached metadata operation metrics',JSON.stringify({fields:Object.keys(expected).length,cold,warm,scanned,rescanned}));
+ }finally{await rm(folder,{recursive:true,force:true});}
+});
+
+
 test('prefix shards share bounded reads and oversized prefetch does no unused transfer',async()=>{
  const folder=await mkdtemp(join(tmpdir(),'filename-reads-'));
  try {

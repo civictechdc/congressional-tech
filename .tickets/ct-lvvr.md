@@ -1,6 +1,6 @@
 ---
 id: ct-lvvr
-status: closed
+status: in_progress
 deps: []
 links: [ct-p6aq, ct-zika, ct-p6ns]
 created: 2026-10-18T19:25:28Z
@@ -37,3 +37,7 @@ Include concurrent ranges/table/columns/store, a monotonic row-group cursor, nor
 **2026-10-18T20:15:45Z**
 
 Implemented shared per-reader compressed/decoded byte budgets, shared in-flight ranges/tables/columns/observation stores, failed-load eviction and independent cancellation. Wide fixture exact fallback and cold/warm counters documented in docs/experiments/publication-remediation/browser.md; cache/catalog suite 16 passed.
+
+**2026-10-18T23:20:12Z**
+
+Reopened after exact closed-publication browser probe attempt-1: technical first-row cold19.086s/warm17.435s preserved352fields but reparsed metadata45times each (tableLoads45->90), despite warm0HTTPrequests. Parsed metadata exceeds64MiB decodedcache admission; source_url search timedout120s. Preserve existing cache budgets; reuse operation-owned table metadata across chunks/rowgroups without permanent retention. Receipt: primary output/publication-remediation-20261018/rollout/browser-layout-check/attempt-1/receipt.json. Frozen backend2feb8c7 complete qualification remains separate and intact.

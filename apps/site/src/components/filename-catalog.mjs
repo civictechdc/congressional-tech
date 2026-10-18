@@ -171,9 +171,9 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
     return { buffer, metadata, spans };
     }, signal);
   }
-  async function prefetchColumns(name, start, end, columns, signal) {
+  async function prefetchColumns(handle, start, end, columns, signal) {
     if (options.prefetch === false) return;
-    const { buffer, spans } = await table(name, signal);
+    const { buffer, spans } = handle;
     const ranges = [];
     for (const span of spans) if (span.end > start && span.start < end) {
       for (const chunk of span.chunks) if (!columns || columns.includes(chunk.path_in_schema[0])) {
@@ -195,9 +195,9 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
     }
     for (const [start, end] of merged) await buffer.slice(start, end, signal);
   }
-  async function read(name, start, end, columns, signal, prefetch = false) {
-    const { buffer, metadata } = await table(name, signal);
-    if (prefetch) await prefetchColumns(name, start, end, columns, signal);
+  async function read(handle, start, end, columns, signal, prefetch = false) {
+    const { buffer, metadata } = handle;
+    if (prefetch) await prefetchColumns(handle, start, end, columns, signal);
     const rows = await parquetReadObjects({ file: buffer.file(signal), metadata, compressors, columns, rowStart: start, rowEnd: end });
     signal?.throwIfAborted(); metrics.decodedRows += rows.length; metrics.normalizationValues += rows.length * (columns?.length ?? metadata.schema.length); return rows.map(normalized);
   }
@@ -215,12 +215,14 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
   }
   async function scalarRecord(row, signal) {
     const columns = info.fields.filter(name => name !== 'source_occurrences');
-    await prefetchColumns('filenames', row, row + 1, columns, signal);
+    // Keep one operation-owned handle even when metadata exceeds cache admission.
+    const handle = await table('filenames', signal);
+    await prefetchColumns(handle, row, row + 1, columns, signal);
     const record = {};
     // Wide reads allocate every physical column at once, even for one row.
     // Small batches bound that work without changing the downloadable schema.
     for (let start = 0; start < columns.length; start += 8) {
-      Object.assign(record, (await read('filenames', row, row + 1, columns.slice(start, start + 8), signal))[0]);
+      Object.assign(record, (await read(handle, row, row + 1, columns.slice(start, start + 8), signal))[0]);
     }
     metrics.maxScalarRecordBytes = Math.max(metrics.maxScalarRecordBytes || 0,retainedBytes(record));
     return record;
@@ -234,7 +236,7 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
     return output;
   }
   async function selected(name, positions, columns, signal) {
-    const {buffer, metadata, spans} = await table(name, signal), result = new Map();
+    const handle = await table(name, signal), {buffer, metadata, spans} = handle, result = new Map();
     const ordered = [...new Set(positions)].sort((a,b)=>a-b); let cursor = 0;
     for (const span of spans) {
       const wanted = [];
@@ -244,7 +246,7 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
         wanted.push(position); result.set(position, {});
       }
       if (!wanted.length) continue;
-      await prefetchColumns(name, span.start, span.end, columns, signal);
+      await prefetchColumns(handle, span.start, span.end, columns, signal);
       // Let the maintained reader assemble columns, then construct only selected
       // row objects. Physical column chunks still decode at row-group granularity.
       await parquetRead({file: buffer.file(signal), metadata, compressors, columns,
@@ -263,11 +265,11 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
   function column(name, signal) {
     return cached(`column:${name}`, async () => {
       metrics.columnLoads++;
-      const {spans} = await table('filenames'), output = new Array(info.rows);
+      const handle = await table('filenames'), {spans} = handle, output = new Array(info.rows);
       let nextSpan = 0;
       await Promise.all(Array.from({length: Math.min(6,spans.length)}, async () => {
         while (nextSpan < spans.length) {
-          const span = spans[nextSpan++], rows = await read('filenames',span.start,span.end,[name]);
+          const span = spans[nextSpan++], rows = await read(handle,span.start,span.end,[name]);
           for (let i=0;i<rows.length;i++) output[span.start+i] = rows[i][name];
         }
       }));
@@ -407,7 +409,7 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
       const record = await scalarRecord(row, signal);
       return {record, facts: null};
     }
-    const [data] = await read('details', row, row + 1, undefined, signal, true);
+    const [data] = await read(await table('details', signal), row, row + 1, undefined, signal, true);
     const {filename_readings, fact_alternatives, filename_field_count, ...record} = data;
     const facts = {};
     for (const name of ['http_status','response_usable','response_body_complete','record_role','state_checked_at','state_retrieved_at']) {
@@ -434,7 +436,7 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
   }
   async function technicalOrigin(identity, catalog, signal) {
     const row = await resolve(identity, catalog, signal);
-    return (await read(files.details ? 'details' : 'filenames', row, row + 1,
+    return (await read(await table(files.details ? 'details' : 'filenames', signal), row, row + 1,
       ['source_url','recovered_source_url', ...originColumns].filter(name => info.fields.includes(name)), signal, true))[0];
   }
   async function entry(identity, catalog, signal, options = {}) {
