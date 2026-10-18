@@ -1,6 +1,6 @@
 ---
 id: ct-hbxu
-status: in_progress
+status: closed
 deps: []
 links: [ct-dpks, ct-kde5]
 created: 2026-10-18T19:28:38Z
@@ -56,3 +56,7 @@ Hosted Pages run 39169960167 on c326ce24 succeeded: frozen Node setup, 152 filen
 **2026-10-18T22:19:32Z**
 
 Reopened for a separate hosted dispatch race: Explorer run39169129652 finished from dbfe and dispatched the current Pages workflow with the older code_revision. Run39170982908 failed because that checkout lacks the current setup-node-project action. Existing successful c326 deployment remains live. Gate dispatches before checkout so site code and workflow revision agree; retain mismatched inputs/reason. No retry or resource change.
+
+**2026-10-18T22:25:28Z**
+
+Revision guard independently reviewed in547a5ca and squash merged PR116 as2a065cd. All49 Pages dependency/raw-workflow checks pass; exact mismatched-revision receipt executes without checkout. Normal hosted run39171844028 on2a065cd then built and deployed successfully; mismatch-only job correctly skipped on the main push. No stale dispatch was manually retried. Earlier failure and successful deployment evidence retained in primary rollout/pages-{failure-39170982908,success-39171844028}.*.
