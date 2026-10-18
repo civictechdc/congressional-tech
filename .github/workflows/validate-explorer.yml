@@ -19,6 +19,7 @@ on:
       - ".github/workflows/**"
       - "package.json"
       - "pyproject.toml"
+      - ".node-version"
       - ".python-version"
       - "uv.lock"
       - "pytest.ini"
@@ -56,12 +57,7 @@ jobs:
         env:
           SOURCE_FETCH_BINARY: ${{ github.workspace }}/packages/source-fetch/target/release/source-fetch
         run: python scripts/dev.py test native-loopback
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-      - name: Install site dependencies
-        working-directory: apps/site
-        run: npm install --no-audit --no-fund
+      - uses: ./.github/actions/setup-node-project
       - name: Test browser data loading and model type generation
         working-directory: apps/site
         run: |

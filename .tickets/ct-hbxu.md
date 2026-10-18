@@ -1,6 +1,6 @@
 ---
 id: ct-hbxu
-status: closed
+status: in_progress
 deps: []
 links: [ct-dpks, ct-kde5]
 created: 2026-10-18T19:28:38Z
@@ -41,3 +41,11 @@ Implemented site lock/frozen install, exact Node/npm and shared locked Python se
 **2026-10-18T20:42:25Z**
 
 Final integration found publication tests depended on another test modifying sys.path. pytest.ini now declares scripts and apps/site/scripts explicitly; the continuation-state file passes independently without an ambient PYTHONPATH.
+
+**2026-10-18T21:48:15Z**
+
+Reopened after hosted Pages run 39169129664 failed before deployment: npm10.9.7 self-upgrade to11.19.1 removed promise-retry while the running old Arborist lazily required it during reify finish. Logs preserved under primary output/publication-remediation-20261018/rollout/pages-failure-39169129664.*. Repair isolated npm runtime installation and make validation exercise the same setup. No workflow retry or resource change.
+
+**2026-10-18T21:55:09Z**
+
+Repair implemented in f18288e with docs clarification2432891 and independently approved. Isolated old npm copy reproduces the hosted failure; fresh-prefix pinned npm installation, frozen install, unchanged lockfiles and stale-lock refusal pass. 48 workflow checks and 152 reader tests pass. Shared Node setup now used by Pages and PR validation. Keeping this ticket in progress until the normal changed-code Pages run confirms hosted setup and deployment.

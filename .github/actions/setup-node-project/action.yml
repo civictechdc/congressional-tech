@@ -1,0 +1,32 @@
+name: Set up the site Node workspace
+description: Use the declared Node/npm runtimes and install the frozen site dependency lock.
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version-file: .node-version
+        cache: npm
+        cache-dependency-path: apps/site/package-lock.json
+    - name: Install the declared npm into a fresh temporary prefix
+      shell: bash
+      run: |
+        set -euo pipefail
+        expected_node="$(tr -d '\r\n' < .node-version)"
+        test "$(node -p 'process.versions.node')" = "$expected_node"
+        npm_spec="$(node -p "require('./apps/site/package.json').packageManager")"
+        if [[ ! "$npm_spec" =~ ^npm@[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo 'The site packageManager must pin an exact npm version' >&2
+          exit 1
+        fi
+        npm_prefix="$(mktemp -d "${RUNNER_TEMP:?}/site-npm.XXXXXX")"
+        # Keep the running bootstrap npm intact, including its lazy dependencies.
+        npm install --global --prefix "$npm_prefix" "$npm_spec" --ignore-scripts --no-audit --no-fund
+        test "$("$npm_prefix/bin/npm" --version)" = "${npm_spec#npm@}"
+        echo "$npm_prefix/bin" >> "$GITHUB_PATH"
+        node --version
+        "$npm_prefix/bin/npm" --version
+    - name: Install the frozen site dependencies
+      shell: bash
+      working-directory: apps/site
+      run: npm ci --workspaces=false --engine-strict --no-audit --no-fund
