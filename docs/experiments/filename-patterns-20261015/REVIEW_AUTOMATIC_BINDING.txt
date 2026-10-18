@@ -50,3 +50,13 @@ changed review still needs a new review publication and a regenerated identity
 file. Document identities held across catalogs built with house-naming 3.0.0
 and 3.1.0; the 3.2.7 re-baseline is expected to keep them too, but no 3.2.7
 catalog has been observed yet. Check its binding counts in the publish log.
+
+Live result
+-----------
+2026-10-18: deployed in 43b6ce2. The daily capture (finished 11:11 UTC)
+selected catalog 90001c4ced354875b950e9b19051482b, replacing 76758ea7. The R2
+publisher logged "Review binding: 86 bound, 0 withdrawn"; the published
+review-binding.json matches its manifest sha256, the site's review pin and
+the live catalog. The site's own loadReviews against the live data reports
+reviewed search on with 81 applied groups and no error. Under the previous
+exact-catalog rule, reviewed search would have gone dark at this replacement.
