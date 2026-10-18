@@ -49,3 +49,7 @@ Reopened after hosted Pages run 39169129664 failed before deployment: npm10.9.7 
 **2026-10-18T21:55:09Z**
 
 Repair implemented in f18288e with docs clarification2432891 and independently approved. Isolated old npm copy reproduces the hosted failure; fresh-prefix pinned npm installation, frozen install, unchanged lockfiles and stale-lock refusal pass. 48 workflow checks and 152 reader tests pass. Shared Node setup now used by Pages and PR validation. Keeping this ticket in progress until the normal changed-code Pages run confirms hosted setup and deployment.
+
+**2026-10-18T22:19:32Z**
+
+Reopened for a separate hosted dispatch race: Explorer run39169129652 finished from dbfe and dispatched the current Pages workflow with the older code_revision. Run39170982908 failed because that checkout lacks the current setup-node-project action. Existing successful c326 deployment remains live. Gate dispatches before checkout so site code and workflow revision agree; retain mismatched inputs/reason. No retry or resource change.
