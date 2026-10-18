@@ -65,3 +65,7 @@ Corrected aggregate admission in reviewed commit 2829e2e: physical group bytes n
 **2026-10-18T21:50:25Z**
 
 Reopened after hosted viewer preparation 39169129734 failed in repack before accepting or publishing output: single-row Python/JSON estimate 167939288 B exceeded 134217728 B. Repack writes and compares Arrow values without converting them to Python, so stage admission currently charges an unused conversion. Preserve true Arrow limits and Python/JSON checks where conversion occurs. Failure ZIP12151991789 and logs preserved locally; no workflow retry or resource change. Also retain the memory failure receipt in the always-uploaded diagnostic artifact.
+
+**2026-10-18T22:16:26Z**
+
+Complete local retained-catalog trial at runtime c8dda5d passed exact document bytes and all 1,683,430 filename values, then refused aggregate observation-list Python estimate 376238952 > 134217728 bytes. Peak RSS 3788423168 bytes; sources unchanged, no manifest accepted. Filename layout regressed to 2673 groups / 777356470 bytes / 135166663-byte footer. PR115 held. Parallel fixes under this same ticket: convert one observation at a time with unchanged per-conversion limits; separate measured retained writer staging from decode batching. Evidence: primary output/publication-remediation-20261018/rollout/local-current-catalog/trial-c8dda5d/qualification-receipt.json.
