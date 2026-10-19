@@ -642,3 +642,77 @@ def test_catalog_constructor_failure_closes_first_reader(tmp_path, monkeypatch):
     with __import__('pytest').raises(OSError, match='injected second reader'):
         viewer.Catalog(source, search_indexes=False)
     assert acquired[0].closed
+
+
+@pytest.mark.parametrize('first_operation', ['entry', 'search'])
+def test_publication_projection_preserves_lazy_interactive_values(tmp_path, first_operation):
+    (tmp_path / 'indexes').mkdir()
+    index.write_filename_metadata(tmp_path, [
+        dict(filename='Probe José 雪.pdf', source_url='https://x.test/probe', body_key='body/probe',
+             media_type=['application/pdf'], http_status=['200'], recovered_filename=['Recovered Snow.pdf'],
+             source_occurrences=[dict(source_page_url=['https://x.test/hearing'], source_link_label=['雪'])]),
+        dict(filename='Failed.pdf', source_url='https://x.test/failed', body_key='body/failure',
+             http_status=['503'], response_usable=['false']),
+        dict(filename='Video', source_url='https://youtu.be/-oNSVIeynzI', body_key=None),
+    ], workers=1)
+    path = tmp_path / 'indexes/document-filenames.parquet'
+    with viewer.Catalog(path) as eager, viewer.Catalog(path, search_indexes=False) as minimal:
+        assert minimal.info == eager.info
+        assert minimal.saved_responses == eager.saved_responses
+        assert minimal.members == eager.members
+        assert minimal.table.nbytes < eager.table.nbytes
+        # Direct column searches can use either resident or Parquet columns.
+        for field in ('media_type', 'recovered_filename', 'source_occurrences'):
+            assert minimal.searchable(field).equals(eager.searchable(field))
+        if first_operation == 'entry':
+            assert minimal.entry(0) == eager.entry(0)
+        else:
+            assert minimal.search({'scope': 'all', 'field': 'media_type', 'q': 'pdf'}) == eager.search(
+                {'scope': 'all', 'field': 'media_type', 'q': 'pdf'})
+        assert minimal.table.equals(eager.table)
+        assert minimal.search({'scope': 'all', 'q': 'Snow'}) == eager.search({'scope': 'all', 'q': 'Snow'})
+        for row in range(len(minimal.entry_ids)):
+            assert minimal.entry(row) == eager.entry(row)
+    assert minimal.file.closed and minimal.document_file.closed
+
+
+def test_lazy_list_read_failure_keeps_original_state_and_readers_owned(tmp_path):
+    (tmp_path / 'indexes').mkdir()
+    index.write_filename_metadata(tmp_path, [dict(filename='probe.pdf', source_url='https://x.test/1', body_key=None)], workers=1)
+    with viewer.Catalog(tmp_path / 'indexes/document-filenames.parquet', search_indexes=False) as catalog:
+        original = catalog.file
+        table = catalog.table
+        class FailingRead:
+            def read(self, **kwargs):
+                raise OSError('injected list read failure')
+        catalog.file = FailingRead()
+        with pytest.raises(OSError, match='injected list read failure'):
+            catalog.search({})
+        assert catalog.table is table and catalog.filter_text == {}
+        catalog.file = original
+        assert catalog.search({})['total'] == 1
+    assert original.closed and catalog.document_file.closed
+
+
+def test_concurrent_search_and_entry_load_list_columns_once(tmp_path):
+    from concurrent.futures import ThreadPoolExecutor
+    from time import sleep
+    (tmp_path / 'indexes').mkdir()
+    index.write_filename_metadata(tmp_path, [dict(filename='probe.pdf', source_url='https://x.test/1', body_key=None)], workers=1)
+    with viewer.Catalog(tmp_path / 'indexes/document-filenames.parquet', search_indexes=False) as catalog:
+        original = catalog.file
+        calls = []
+        class CountReads:
+            def __getattr__(self, name):
+                return getattr(original, name)
+            def read(self, **kwargs):
+                calls.append(kwargs)
+                sleep(.02)
+                return original.read(**kwargs)
+        catalog.file = CountReads()
+        def request(number):
+            return catalog.entry(0)['filename'] if number % 2 else catalog.search({})['rows'][0]['filename']
+        with ThreadPoolExecutor(max_workers=6) as pool:
+            assert list(pool.map(request, range(12))) == ['probe.pdf'] * 12
+        assert len(calls) == 1
+    assert original.closed and catalog.document_file.closed
