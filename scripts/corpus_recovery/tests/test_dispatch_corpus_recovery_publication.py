@@ -79,6 +79,7 @@ class BuilderBoundaryTests(unittest.TestCase):
 class DispatcherContinuationTests(unittest.TestCase):
     setUp = CoverageTests.setUp
     def test_unchanged_catalog_and_failures_after_each_accepted_phase(self):
+        from contextlib import nullcontext
         import io
         import shutil
         import sys
@@ -114,11 +115,12 @@ class DispatcherContinuationTests(unittest.TestCase):
                     def head_object(self, **kwargs): return {'ETag': 'fixed'}
                     def put_object(self, **kwargs): raise AssertionError('Unexpected fixture mutation')
                 calls = dict(catalog=0, mappings=0, prepared=0, publication=0)
+                build_error = RuntimeError('Injected incomplete catalog failure')
                 def catalog(store, **kwargs):
                     calls['catalog'] += 1
                     if failed_phase == 'incomplete_catalog':
                         (kwargs['root']/'diagnostic.txt').write_text('Preserve incomplete build evidence')
-                        raise RuntimeError('Injected incomplete catalog failure')
+                        raise build_error
                     from congress_api.retention.catalog_publication import read_catalog
                     with read_catalog(store) as snapshot:
                         self.assertTrue(snapshot.filenames_path.is_file())
@@ -153,7 +155,16 @@ class DispatcherContinuationTests(unittest.TestCase):
                      patch('corpus_recovery.mappings.publish_mappings', side_effect=mapping), \
                      patch.dict(sys.modules, filename_recoveries=SimpleNamespace(accepted_rows=lambda rows: rows)):
                     with patch.object(Continuation, 'phase', fail_after_accept):
-                        with self.assertRaisesRegex(RuntimeError, 'Injected'): module.run(args)
+                        failed_diagnostic = (patch('corpus_recovery.diagnostics.catalog_build_observation',
+                            side_effect=PermissionError('private diagnostic transport detail'))
+                            if failed_phase == 'incomplete_catalog' else nullcontext())
+                        with failed_diagnostic, self.assertRaisesRegex(RuntimeError, 'Injected') as failure:
+                            module.run(args)
+                        if failed_phase == 'incomplete_catalog':
+                            self.assertIs(failure.exception, build_error)
+                            self.assertEqual(build_error.__notes__, ['Incomplete catalog diagnostic could not be saved: PermissionError'])
+                            events = [json.loads(line) for line in (args.destination/'events.jsonl').read_text().splitlines()]
+                            self.assertEqual(events[-1]['value']['error'], str(build_error))
                     pins = json.loads((args.destination/'pins.json').read_text())
                     import corpus_recovery.mappings as merge_module
                     self.assertIn(str(Path(merge_module.__file__).resolve()), pins)
