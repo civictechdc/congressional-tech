@@ -211,6 +211,50 @@ def test_explicit_youtube_id_unifies_native_link_and_cache_metadata(tmp_path):
     assert not any(r.kind == "data_issue" and r.category == "unlinked" and r.subject.id == materials[0].id for r in catalog.records)
 
 
+def test_youtube_cache_preserves_snapshot_channels_rows_and_export_limit(tmp_path):
+    folder = tmp_path / "youtube"
+    folder.mkdir()
+    channels = [{"handle": "@first", "channelId": "UC-first", "title": "Comité", "future": None},
+                {"handle": "@second", "channelId": "UC-second"}]
+    first = {"videoId": "zzzzzzzzzzz", "title": "Later ID", "future": {"keep": [None, 0]}}
+    second = {"videoId": "abcdefghijk", "title": "Earlier ID", "channelId": "UC-native"}
+    data = {"youtube_videos_@first": {"7": first}, "youtube_channels": {"3": channels[0], "1": channels[1]},
+            "youtube_videos_@second": {"9": second}}
+    body = json.dumps(data, ensure_ascii=False, indent=2).encode()
+    cache = folder / "youtube_02.json"
+    cache.write_bytes(body)
+    # Missing indexes are still skipped by the exporter; empty caches are retained.
+    empty = folder / "youtube_03.json"
+    empty.write_bytes(b"{}")
+    manifest, catalog = run(tmp_path, write_meetings(tmp_path, []), youtube_dir=folder, limit=1)
+    snapshots = [s for s in manifest.inputs if s.provider == "youtube"]
+    assert [s.artifact.sha256 for s in snapshots] == [sha256(body).hexdigest(), sha256(b"{}").hexdigest()]
+    sources = [s for s in catalog.sources if s.provider == "youtube"]
+    assert sorted((s.payload for s in sources), key=lambda p: json.dumps(p, sort_keys=True)) == sorted(
+        [*channels, second], key=lambda p: json.dumps(p, sort_keys=True))
+    assert {s.input_snapshot_id for s in sources} == {snapshots[0].id}
+    materials = [r for r in catalog.records if r.kind == "material"]
+    assert len(materials) == 1 and materials[0].title == "Earlier ID"
+    # Table handles are retained channel observations, never injected as row IDs.
+    assert next(r for r in catalog.records if r.kind == "channel").identifiers[0].value == "UC-native"
+    assert cache.read_bytes() == body
+    assert empty.read_bytes() == b"{}"
+
+
+@pytest.mark.parametrize("body,error", [(b"{not json}", json.JSONDecodeError), (b"[]", AttributeError),
+                                       (b'{"youtube_videos_x": []}', AttributeError),
+                                       (b'{"youtube_channels": null}', AttributeError)])
+def test_youtube_cache_export_keeps_malformed_input_failures(tmp_path, body, error):
+    folder = tmp_path / "youtube"
+    folder.mkdir()
+    cache = folder / "youtube_00.json"
+    cache.write_bytes(body)
+    with pytest.raises(error):
+        run(tmp_path, write_meetings(tmp_path, []), youtube_dir=folder)
+    assert cache.read_bytes() == body
+    assert not (tmp_path / "public/CURRENT.json").exists()
+
+
 def test_manifest_locations_resolve_every_record_and_source(tmp_path):
     import hashlib
     path = write_meetings(tmp_path, [native()])

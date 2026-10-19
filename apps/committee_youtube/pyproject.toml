@@ -11,6 +11,7 @@ readme = "README.md"
 dependencies = [
   "committee-meeting",
   "congress-api",
+  "congress-shared",
   "youtube-api",
   "tinydb",
   "pyarrow>=19,<26",

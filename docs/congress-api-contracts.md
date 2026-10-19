@@ -13,6 +13,12 @@ opens the URI. The exporter uses the same bytes for the input snapshot and the
 transcript representation. Invalid bodies still retain their digest, location
 and validation issue. Inventory matching accepts `(committee_code, video_row)`
 pairs; `read_youtube_videos` reads the generated channel caches separately.
+`congress_shared.youtube_cache.decode_cache` decodes their TinyDB table layout
+for inventory, GPO matching and Explorer. It preserves table/row order, literal
+table handles, channel metadata and unchanged video fields without file access.
+The callers keep file selection, missing-file behavior, original-byte snapshots,
+matching and export limits. This standard-library-only helper stays in the shared
+package so reading saved caches does not require the YouTube collector package.
 
 ## Meeting interpretation and matching
 
