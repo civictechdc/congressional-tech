@@ -13,7 +13,8 @@ from pathlib import Path
 from tinydb import TinyDB
 from youtube_api.interpretation import DATE_FIELDS, DateBasis, availability_facts, source_time
 
-from congress_shared.globals import add_global_args, add_youtube_args, CONGRESS_METADATA
+from congress_shared.cli import add_global_args, add_youtube_args, configure_logging
+from congress_shared.resources import CONGRESS_METADATA, DEFAULT_CHANNELS_CSV
 
 from youtube_api.tables import (
     get_all_commitee_names,
@@ -21,10 +22,9 @@ from youtube_api.tables import (
     map_system_code_committee_handles,
     open_tinydb_for_committee,
 )
-from congress_shared.globals import (
+from congress_shared.paths import (
     DEFAULT_YOUTUBE_REPORT_FILE,
     DEFAULT_TINYDB_DIR,
-    DEFAULT_CHANNELS_CSV,
 )
 
 EVENT_ID_REGEX = ".*(\\d{6}|eventid).*"
@@ -227,6 +227,7 @@ def write_to_csv(report: list[EventIdReport], output_path: Path):
 
 
 def parse_args_and_run():
+    configure_logging()
     parser = argparse.ArgumentParser(
         description="Generates report on committee videos with missing event ids"
     )

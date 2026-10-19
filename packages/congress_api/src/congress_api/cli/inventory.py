@@ -12,7 +12,8 @@ import later manual downloads without running a caption fetch or transcription.
 import argparse
 from pathlib import Path
 
-from congress_shared.globals import DEFAULT_CHANNELS_CSV
+from congress_shared.cli import configure_logging
+from congress_shared.resources import DEFAULT_CHANNELS_CSV
 
 from congress_api.acquisition import gaps as acquisition
 from congress_api.cli.common import source_args
@@ -80,6 +81,7 @@ def main(meetings, state_dir, output_dir, gpo_path, videos_path, tinydb_dir, rec
 
 
 def parse_args_and_run():
+    configure_logging()
     p = argparse.ArgumentParser(description=__doc__)
     source_args(p)
     p.add_argument("--gpo-path", type=Path, required=True)

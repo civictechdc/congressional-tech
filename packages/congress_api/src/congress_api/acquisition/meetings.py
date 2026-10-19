@@ -21,7 +21,8 @@ from pathlib import Path
 
 import requests
 from congress_shared.auth import load_congress_api_key
-from congress_shared.globals import CONGRESS_METADATA, DEFAULT_MEETINGS_FILE
+from congress_shared.resources import CONGRESS_METADATA
+from congress_shared.paths import DEFAULT_MEETINGS_FILE
 
 from congress_api.models.congress import CommitteeMeeting, MeetingSummary
 from congress_api.models.content import RawContent

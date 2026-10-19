@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 from congress_shared.auth import load_youtube_api_key
-from congress_shared.globals import add_global_args, add_youtube_args
+from congress_shared.cli import add_global_args, add_youtube_args, configure_logging
 from youtube_api.tables import (
     get_all_committee_handless,
     get_all_commitee_names,
@@ -86,6 +86,7 @@ def main(
 
 
 def parse_args_and_run():
+    configure_logging()
     parser = argparse.ArgumentParser(
         description="Fetch all YouTube videos from a channel and store them to record_path."
     )

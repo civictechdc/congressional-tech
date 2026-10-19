@@ -9,7 +9,8 @@ from tinydb import TinyDB
 from tinydb.storages import Storage
 from typing import TypedDict
 
-from congress_shared.globals import DEFAULT_CHANNELS_CSV, DEFAULT_TINYDB_DIR
+from congress_shared.resources import DEFAULT_CHANNELS_CSV
+from congress_shared.paths import DEFAULT_TINYDB_DIR
 
 
 class AtomicJSONStorage(Storage):

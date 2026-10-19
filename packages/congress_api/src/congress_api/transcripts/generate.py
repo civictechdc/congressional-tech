@@ -27,7 +27,7 @@ import re
 from pathlib import Path
 
 import requests
-from congress_shared.globals import DEFAULT_GPO_HEARINGS_FILE
+from congress_shared.paths import DEFAULT_GPO_HEARINGS_FILE
 
 from congress_api.matching import speaker_names as names
 from congress_api.matching.gpo_speakers import bind_gpo_transcript

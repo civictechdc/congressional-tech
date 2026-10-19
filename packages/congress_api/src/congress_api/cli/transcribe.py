@@ -28,7 +28,8 @@ import logging
 import sys
 from pathlib import Path
 
-from congress_shared.globals import DEFAULT_GPO_HEARINGS_FILE, DEFAULT_MEETINGS_FILE
+from congress_shared.cli import configure_logging
+from congress_shared.paths import DEFAULT_GPO_HEARINGS_FILE, DEFAULT_MEETINGS_FILE
 
 from congress_api.transcripts import context as metadata
 from congress_api.transcripts.context import context_for_event
@@ -54,6 +55,7 @@ def _atomic_write(path: Path, text: str) -> None:
 
 
 def parse_args_and_run():
+    configure_logging()
     p = argparse.ArgumentParser(description="Transcribe a committee proceeding into the shared transcript schema.")
     p.add_argument("--out-dir", required=True, type=Path)
     p.add_argument("--event-id", help="Congress.gov meeting event ID (gives the participants and, by default, the recording).")
@@ -65,7 +67,6 @@ def parse_args_and_run():
     p.add_argument("--meetings", type=Path, default=DEFAULT_MEETINGS_FILE, help="congress_meetings.jsonl.gz (see congress-meetings).")
     a = p.parse_args()
     metadata.set_paths(str(a.gpo_path), str(a.meetings))
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(asctime)s : %(message)s")
     logging.getLogger("google_genai").setLevel(logging.WARNING); logging.getLogger("httpx").setLevel(logging.WARNING)
     a.out_dir.mkdir(parents=True, exist_ok=True)
     if a.gpo_package and not (a.video_id or a.senate_url or a.audio or a.event_id):

@@ -35,7 +35,7 @@ uv pip install -e packages/committee_meeting -e packages/congress_shared \
 | `youtube-analyze` | `youtube_api.analyze.main` | `youtube_event_id_report.csv` |
 | `youtube-captions` | `youtube_api.captions.main` | `{videoId}.txt` and `captions_index.csv` |
 
-`congress_shared.globals.add_global_args` adds `--tinydb_dir`. `add_youtube_args` adds `--channels-csv-path`.
+`congress_shared.cli.add_global_args` adds `--tinydb_dir`. `add_youtube_args` adds `--channels-csv-path`.
 
 ### Channel and video metadata
 
@@ -109,7 +109,7 @@ Row order is the TinyDB index. `youtube_00.json` is the first data row.
 
 ## Default paths
 
-`congress_shared.globals` resolves these from the installed `congress_shared` package:
+`congress_shared.resources` locates the bundled channel CSV; `congress_shared.paths` defines the output defaults. All paths keep their existing locations under the installed `congress_shared` package:
 
 | Setting | Location under `congress_shared` |
 | --- | --- |
