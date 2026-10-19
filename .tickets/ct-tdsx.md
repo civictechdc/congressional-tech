@@ -1,6 +1,6 @@
 ---
 id: ct-tdsx
-status: open
+status: in_progress
 deps: [ct-2d3k]
 links: [ct-d3un]
 created: 2026-10-19T16:40:41Z
@@ -26,3 +26,7 @@ Recovery loading is intentionally fail-closed and verifies the complete sidecar,
 **2026-10-19T16:40:42Z**
 
 Review evidence: apps/site/src/components/filename-recoveries.mjs:2:loadRecoveries. See docs/package-overlap-rescore-20261019.md for the full grade map.
+
+**2026-10-19T19:29:25Z**
+
+Refreshed to merged3757f55. Implemented shared verified streaming JSON transport: mandatory recovery32MiB/30s; optional reviews retain16MiB/15s and optional failure. Saved retained-size/startup policy and bounded comparison under output/efficiency-debt-20261019/recovery. Overrun decoded delivery4MiB ->64KiB; excessive descriptor ->zero fetch; stalled read rejects/aborts/cancels under15ms test policy; valid/absent hashes equal.20 focused checks plus existing corruption test pass. No sources acquired/publication. Pending independent review; keep in_progress.
