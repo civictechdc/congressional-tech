@@ -1,0 +1,499 @@
+{
+  "scope": "One matched generated tiny fixture per arm, maintained six-worker uploader, modeled 1 ms SDK request latency; no network or acquisition.",
+  "baseline_revision": "ccd6c3607930f97e8c05593937ec0dc9ca49fb6c",
+  "candidate_revision": "2672fe9480769ba7d0847534720b6185cb444153",
+  "continuation_source_sha256": {
+    "before": "2e6efcce8ed0b19ede2d6988db82d0fd7fba9ce7f728212a05c262e8a842bff0",
+    "after": "bf32a64028050923e3b5ec4c2f101a55012c11c18ab68b476c5dbac216aba7f3"
+  },
+  "shared_inputs": {
+    "source_manifest_sha256": "b74045a6dbddaab6a3a53a75071d36c1098a1bacd3da26f3ea361709a89ba6d1",
+    "source_files": {
+      "expected.json": {
+        "bytes": 23056,
+        "sha256": "362ebb996ed48cdd85f309f779f75d6b47a9cf795efb41440b18d9e2d1f911f9"
+      },
+      "source-records.json": {
+        "bytes": 6210,
+        "sha256": "8715f725d1850ee92e2dbd2cd06f89ff3009834fc5fa8ff22e7a98956eaee17d"
+      },
+      "indexes/catalog.json": {
+        "bytes": 536,
+        "sha256": "b74045a6dbddaab6a3a53a75071d36c1098a1bacd3da26f3ea361709a89ba6d1"
+      },
+      "catalog-generations/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/documents.parquet": {
+        "bytes": 25339,
+        "sha256": "412d476561bd70d77058d439a3edb8578c9fc14e24d7c21c5a8ae1a737a58940"
+      },
+      "catalog-generations/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/document-filenames.parquet": {
+        "bytes": 31137,
+        "sha256": "add665a5eb6f06b09fe8c7ecea88e48590671b0e4a65dc05034468ea2cb8b4d7"
+      }
+    },
+    "python": "3.12.13 (main, Apr  7 2026, 21:09:58) [Clang 22.1.1 ]",
+    "executable": "/Users/mikewolfd/.codex/worktrees/remote-write-efficiency-next/venv/bin/python",
+    "maximum_source_bytes": 1048576,
+    "controlled_request_latency_ms": 1.0,
+    "measurement_sources": {
+      "publication_costs.py": "24d8d1efae858fb91daf21e43730b39910a8380afcc9e9d3c1d278430b93a16a",
+      "measure_publication_control.py": "9cb39c09ba403393ed45d7bbdd13c57279d5e88801580e63fdd1bf296dbdd633",
+      "process_rss.py": "d998bdfb02a3eed8491fe6a7203a3c1efdbf854fbc0f11b7c55592d1c5e079d5",
+      "benchmark_viewer_publication.py": "4a8b88c7cb5112e06875514b8c25fc6a98ccefa19fba9d0468a5343ebd9cbc93"
+    },
+    "command_process_model": "source identity cache starts cold for each timed command; interpreter/import startup excluded",
+    "runtime": {
+      "implementation": "CPython",
+      "platform": "macOS-26.6-arm64-arm-64bit",
+      "machine": "arm64",
+      "packages": {
+        "pyarrow": "25.0.1",
+        "boto3": "1.43.106",
+        "botocore": "1.43.106",
+        "lxml": "6.0.2",
+        "duckdb": null,
+        "zstandard": null,
+        "ijson": "3.6.0"
+      }
+    }
+  },
+  "source_identity": {
+    "before": {
+      "version": 1,
+      "implementation": "ff56823f4eaa67a78a9b65ae9cc9de3be54fdcf726184461c32e7f4f049c76e5",
+      "dependencies": "e269daaf14066eed0558fadc573c6d76e09d08ddffeb0c4f449adb22eb2bbd2d",
+      "publisher_version": 10
+    },
+    "after": {
+      "version": 1,
+      "implementation": "3a2b166eb1047b42a59ed38861ef5d72d9f1d5e72121d8e93ff6e74f9d03223d",
+      "dependencies": "e269daaf14066eed0558fadc573c6d76e09d08ddffeb0c4f449adb22eb2bbd2d",
+      "publisher_version": 10
+    }
+  },
+  "stages": {
+    "before": {
+      "accepted_preparation": {
+        "status": "complete",
+        "seconds_median": 0.5214652910362929,
+        "seconds_range": [
+          0.5214652910362929,
+          0.5214652910362929
+        ],
+        "maximum_sampled_process_tree_rss_bytes": 126287872,
+        "maximum_stage_end_scratch_bytes": 162438,
+        "median_counts": {
+          "decode_iterator_passes": 23,
+          "decode_read_passes": 2,
+          "decoded_batches": 23,
+          "decoded_rows": 56,
+          "download_bytes": 56476,
+          "download_requests": 2,
+          "fsync_calls": 8,
+          "fsync_seconds": 0.00023074890486896038,
+          "get_requests": 3,
+          "hash_helper_bytes": 2432806,
+          "hash_helper_passes": 234,
+          "json_dumps_calls": 25,
+          "json_serialization_seconds": 0.0016439540777355433,
+          "json_serialized_characters": 317381,
+          "largest_decoded_batch_bytes": 2131,
+          "remote_body_bytes_read": 536,
+          "sqlite_selects": 19,
+          "state_json_dump_calls": 2,
+          "state_json_serialization_seconds": 0.0002027079463005066,
+          "state_json_serialized_characters": 43429
+        }
+      },
+      "successful_publication": {
+        "status": "complete",
+        "seconds_median": 2.5581154581159353,
+        "seconds_range": [
+          2.5581154581159353,
+          2.5581154581159353
+        ],
+        "maximum_sampled_process_tree_rss_bytes": 129351680,
+        "maximum_stage_end_scratch_bytes": 745769,
+        "median_counts": {
+          "fsync_calls": 2191,
+          "fsync_seconds": 0.08948449697345495,
+          "get_requests": 833,
+          "hash_helper_bytes": 2376330,
+          "hash_helper_passes": 232,
+          "head_requests": 270,
+          "json_dumps_calls": 1117,
+          "json_serialization_seconds": 0.1561164720915258,
+          "json_serialized_characters": 54038526,
+          "put_body_bytes": 315587,
+          "put_requests": 821,
+          "remote_body_bytes_read": 319614,
+          "state_json_dump_calls": 547,
+          "state_json_serialization_seconds": 0.14678386528976262,
+          "state_json_serialized_characters": 53492220
+        }
+      },
+      "unchanged_poll": {
+        "status": "complete",
+        "seconds_median": 0.13755516707897186,
+        "seconds_range": [
+          0.13755516707897186,
+          0.13755516707897186
+        ],
+        "maximum_sampled_process_tree_rss_bytes": 126664704,
+        "maximum_stage_end_scratch_bytes": 745769,
+        "median_counts": {
+          "get_requests": 8,
+          "hash_helper_bytes": 2332422,
+          "hash_helper_passes": 231,
+          "json_dumps_calls": 3,
+          "json_serialization_seconds": 0.00017283321358263493,
+          "json_serialized_characters": 29958,
+          "remote_body_bytes_read": 9216
+        }
+      },
+      "explicit_resume_failure": {
+        "status": "failed",
+        "seconds_median": 1.7867105000186712,
+        "seconds_range": [
+          1.7867105000186712,
+          1.7867105000186712
+        ],
+        "maximum_sampled_process_tree_rss_bytes": 127696896,
+        "maximum_stage_end_scratch_bytes": 746879,
+        "median_counts": {
+          "fsync_calls": 6,
+          "fsync_seconds": 0.0002958753611892462,
+          "get_requests": 827,
+          "hash_helper_bytes": 2376330,
+          "hash_helper_passes": 232,
+          "head_requests": 541,
+          "json_dumps_calls": 868,
+          "json_serialization_seconds": 0.010322417132556438,
+          "json_serialized_characters": 1156086,
+          "put_body_bytes": 265,
+          "put_requests": 1,
+          "remote_body_bytes_read": 318807,
+          "state_json_dump_calls": 2,
+          "state_json_serialization_seconds": 0.001043458003550768,
+          "state_json_serialized_characters": 303306
+        }
+      },
+      "explicit_resume": {
+        "status": "complete",
+        "seconds_median": 2.1401050409767777,
+        "seconds_range": [
+          2.1401050409767777,
+          2.1401050409767777
+        ],
+        "maximum_sampled_process_tree_rss_bytes": 127500288,
+        "maximum_stage_end_scratch_bytes": 747589,
+        "median_counts": {
+          "fsync_calls": 7,
+          "fsync_seconds": 0.00035941507667303085,
+          "get_requests": 834,
+          "hash_helper_bytes": 2376330,
+          "hash_helper_passes": 232,
+          "head_requests": 543,
+          "json_dumps_calls": 871,
+          "json_serialization_seconds": 0.010647866874933243,
+          "json_serialized_characters": 1160107,
+          "put_body_bytes": 355,
+          "put_requests": 1,
+          "remote_body_bytes_read": 324000,
+          "state_json_dump_calls": 2,
+          "state_json_serialization_seconds": 0.0010997080244123936,
+          "state_json_serialized_characters": 303306
+        }
+      },
+      "complete_success_path": {
+        "seconds_median": 3.0795807491522282,
+        "seconds_range": [
+          3.0795807491522282,
+          3.0795807491522282
+        ],
+        "critical_path": [
+          "accepted_preparation",
+          "successful_publication"
+        ],
+        "maximum_sampled_process_tree_rss_bytes": 129351680,
+        "maximum_stage_end_scratch_bytes": 745769,
+        "median_total_counts": {
+          "decode_iterator_passes": 23,
+          "decode_read_passes": 2,
+          "decoded_batches": 23,
+          "decoded_rows": 56,
+          "download_bytes": 56476,
+          "download_requests": 2,
+          "fsync_calls": 2199,
+          "fsync_seconds": 0.08971524587832391,
+          "get_requests": 836,
+          "hash_helper_bytes": 4809136,
+          "hash_helper_passes": 466,
+          "head_requests": 270,
+          "json_dumps_calls": 1142,
+          "json_serialization_seconds": 0.15776042616926134,
+          "json_serialized_characters": 54355907,
+          "largest_decoded_batch_bytes": 2131,
+          "put_body_bytes": 315587,
+          "put_requests": 821,
+          "remote_body_bytes_read": 320150,
+          "sqlite_selects": 19,
+          "state_json_dump_calls": 549,
+          "state_json_serialization_seconds": 0.14698657323606312,
+          "state_json_serialized_characters": 53535649
+        }
+      }
+    },
+    "after": {
+      "accepted_preparation": {
+        "status": "complete",
+        "seconds_median": 0.5533829589840025,
+        "seconds_range": [
+          0.5533829589840025,
+          0.5533829589840025
+        ],
+        "maximum_sampled_process_tree_rss_bytes": 120356864,
+        "maximum_stage_end_scratch_bytes": 162438,
+        "median_counts": {
+          "decode_iterator_passes": 23,
+          "decode_read_passes": 2,
+          "decoded_batches": 23,
+          "decoded_rows": 56,
+          "download_bytes": 56476,
+          "download_requests": 2,
+          "fsync_calls": 8,
+          "fsync_seconds": 0.00027899909764528275,
+          "get_requests": 3,
+          "hash_helper_bytes": 2433806,
+          "hash_helper_passes": 234,
+          "json_dumps_calls": 25,
+          "json_serialization_seconds": 0.0015196646563708782,
+          "json_serialized_characters": 316841,
+          "largest_decoded_batch_bytes": 2131,
+          "remote_body_bytes_read": 536,
+          "sqlite_selects": 19,
+          "state_json_dump_calls": 2,
+          "state_json_serialization_seconds": 0.00021966593340039253,
+          "state_json_serialized_characters": 43429
+        }
+      },
+      "successful_publication": {
+        "status": "complete",
+        "seconds_median": 2.1543232498224825,
+        "seconds_range": [
+          2.1543232498224825,
+          2.1543232498224825
+        ],
+        "maximum_sampled_process_tree_rss_bytes": 123371520,
+        "maximum_stage_end_scratch_bytes": 707153,
+        "median_counts": {
+          "fsync_calls": 1973,
+          "fsync_seconds": 0.07138008065521717,
+          "get_requests": 724,
+          "hash_helper_bytes": 2377330,
+          "hash_helper_passes": 232,
+          "head_requests": 270,
+          "json_dumps_calls": 1008,
+          "json_serialization_seconds": 0.15149621665477753,
+          "json_serialized_characters": 54028341,
+          "put_body_bytes": 296284,
+          "put_requests": 712,
+          "remote_body_bytes_read": 300311,
+          "state_json_dump_calls": 547,
+          "state_json_serialization_seconds": 0.1461219065822661,
+          "state_json_serialized_characters": 53502148
+        }
+      },
+      "unchanged_poll": {
+        "status": "complete",
+        "seconds_median": 0.13523633405566216,
+        "seconds_range": [
+          0.13523633405566216,
+          0.13523633405566216
+        ],
+        "maximum_sampled_process_tree_rss_bytes": 123191296,
+        "maximum_stage_end_scratch_bytes": 707153,
+        "median_counts": {
+          "get_requests": 8,
+          "hash_helper_bytes": 2333422,
+          "hash_helper_passes": 231,
+          "json_dumps_calls": 3,
+          "json_serialization_seconds": 0.00016904203221201897,
+          "json_serialized_characters": 29958,
+          "remote_body_bytes_read": 9216
+        }
+      },
+      "explicit_resume_failure": {
+        "status": "failed",
+        "seconds_median": 1.5984212909825146,
+        "seconds_range": [
+          1.5984212909825146,
+          1.5984212909825146
+        ],
+        "maximum_sampled_process_tree_rss_bytes": 124338176,
+        "maximum_stage_end_scratch_bytes": 708263,
+        "median_counts": {
+          "fsync_calls": 6,
+          "fsync_seconds": 0.00035666697658598423,
+          "get_requests": 718,
+          "hash_helper_bytes": 2377330,
+          "hash_helper_passes": 232,
+          "head_requests": 541,
+          "json_dumps_calls": 868,
+          "json_serialization_seconds": 0.009379351744428277,
+          "json_serialized_characters": 1155256,
+          "put_body_bytes": 265,
+          "put_requests": 1,
+          "remote_body_bytes_read": 299504,
+          "state_json_dump_calls": 2,
+          "state_json_serialization_seconds": 0.001069790916517377,
+          "state_json_serialized_characters": 303286
+        }
+      },
+      "explicit_resume": {
+        "status": "complete",
+        "seconds_median": 1.6253813339862972,
+        "seconds_range": [
+          1.6253813339862972,
+          1.6253813339862972
+        ],
+        "maximum_sampled_process_tree_rss_bytes": 124452864,
+        "maximum_stage_end_scratch_bytes": 708973,
+        "median_counts": {
+          "fsync_calls": 7,
+          "fsync_seconds": 0.00037016579881310463,
+          "get_requests": 725,
+          "hash_helper_bytes": 2377330,
+          "hash_helper_passes": 232,
+          "head_requests": 543,
+          "json_dumps_calls": 871,
+          "json_serialization_seconds": 0.010020602028816938,
+          "json_serialized_characters": 1159277,
+          "put_body_bytes": 355,
+          "put_requests": 1,
+          "remote_body_bytes_read": 304697,
+          "state_json_dump_calls": 2,
+          "state_json_serialization_seconds": 0.001002417178824544,
+          "state_json_serialized_characters": 303286
+        }
+      },
+      "complete_success_path": {
+        "seconds_median": 2.707706208806485,
+        "seconds_range": [
+          2.707706208806485,
+          2.707706208806485
+        ],
+        "critical_path": [
+          "accepted_preparation",
+          "successful_publication"
+        ],
+        "maximum_sampled_process_tree_rss_bytes": 123371520,
+        "maximum_stage_end_scratch_bytes": 707153,
+        "median_total_counts": {
+          "decode_iterator_passes": 23,
+          "decode_read_passes": 2,
+          "decoded_batches": 23,
+          "decoded_rows": 56,
+          "download_bytes": 56476,
+          "download_requests": 2,
+          "fsync_calls": 1981,
+          "fsync_seconds": 0.07165907975286245,
+          "get_requests": 727,
+          "hash_helper_bytes": 4811136,
+          "hash_helper_passes": 466,
+          "head_requests": 270,
+          "json_dumps_calls": 1033,
+          "json_serialization_seconds": 0.1530158813111484,
+          "json_serialized_characters": 54345182,
+          "largest_decoded_batch_bytes": 2131,
+          "put_body_bytes": 296284,
+          "put_requests": 712,
+          "remote_body_bytes_read": 300847,
+          "sqlite_selects": 19,
+          "state_json_dump_calls": 549,
+          "state_json_serialization_seconds": 0.14634157251566648,
+          "state_json_serialized_characters": 53545577
+        }
+      }
+    }
+  },
+  "exact_output_check": {
+    "payload_files": 269,
+    "all_payload_files_byte_identical": true,
+    "prepared_recovery": {
+      "before": {
+        "sha256": "f21407d86ef595d79721e5e960631ca642d9088f3c510a3e920796d22845804e",
+        "bytes": 1182
+      },
+      "after": {
+        "sha256": "f21407d86ef595d79721e5e960631ca642d9088f3c510a3e920796d22845804e",
+        "bytes": 1182
+      },
+      "before_required": true,
+      "after_required": true,
+      "published_value_verified": true,
+      "exact_value_and_normalized_inputs": true
+    },
+    "published_recovery": {
+      "before": {
+        "sha256": "d0a71ed2cd9cfd4532f61cc3a42d8eef6b4cd4687227d7fd44eaa3f6b271f27e",
+        "bytes": 123,
+        "pointer_sha256": "41a8c1325b49efe1e24b2d789a37fa2b331baab6773c7bf5c844df8b9b86a9a0"
+      },
+      "after": {
+        "sha256": "d0a71ed2cd9cfd4532f61cc3a42d8eef6b4cd4687227d7fd44eaa3f6b271f27e",
+        "bytes": 123,
+        "pointer_sha256": "19f0ae1a9fc2f1db80c55fc1c261ea945e8917eb7294a69516a818a7c539fc61"
+      },
+      "byte_identical": true
+    },
+    "review_binding": {
+      "sha256": "2f5185e6de5983a0610eb7a171c56709011b327ba0fe4cafa3715a38c7e5b1d7",
+      "bound": 0,
+      "withdrawn": 86,
+      "withdrawn_reasons": {
+        "document_missing": 86
+      }
+    }
+  },
+  "tests": {
+    "baseline_exact_source": {
+      "passed": 74
+    },
+    "candidate": {
+      "passed": 87,
+      "unit_fault": 51,
+      "attempt_integration": 36
+    }
+  },
+  "primary_evidence_directory": "/Users/mikewolfd/Work/congressional-tech/output/efficiency-round-two-20261019/remote",
+  "raw_receipts": {
+    "proposal.json": {
+      "sha256": "ed9bfe854cd035a336143d82b130cdfd33c203ebeba3d4f6251cc26e7bcad1af",
+      "bytes": 453
+    },
+    "before/costs.json": {
+      "sha256": "e37d92230c50512b2a79f8b7592d6245ce5715adfef43229ab3e7be3745621ee",
+      "bytes": 8564
+    },
+    "after/costs.json": {
+      "sha256": "c0cf75b3f28673cb25650c1cdfaf9adc37171abcd39c0e0491943ff283036dd4",
+      "bytes": 8565
+    },
+    "comparison.json": {
+      "sha256": "51c7e078e7556b939ef28d08c8a30c7d409facd809716bac920736ca6efbd392",
+      "bytes": 104133
+    },
+    "baseline-tests.txt": {
+      "sha256": "ad658447a2b972a2ddc38d4715f0ecb010fc497eca79d93d22819ad0e8145976",
+      "bytes": 180
+    },
+    "candidate-unit-tests.txt": {
+      "sha256": "990a866cf0bcbe5bca5648e5a6295be245138af8b7bfd12f50edf0bbaf7c57ca",
+      "bytes": 99
+    },
+    "candidate-attempt-tests.txt": {
+      "sha256": "196eec921972b3315a67e870453ca06136ff2466bc5c2d6b4af5c8f88cac5e66",
+      "bytes": 100
+    }
+  }
+}
