@@ -147,7 +147,13 @@ class LocalContinuation(state.Continuation):
                 if size > state.MAX_STATE_BYTES:
                     raise ValueError('Publication continuation exceeds state byte limit')
             self._append(event, value)
-            # Preserve object identity: dispatcher guards hold the versions map.
-            self.value['writes'].clear(); self.value['writes'].update(candidate['writes'])
-            self.value['versions'].clear(); self.value['versions'].update(candidate['versions'])
+            if changed:
+                key = value['key']
+                if key in candidate['writes']:
+                    self.value['writes'][key] = candidate['writes'][key]
+                else:
+                    del self.value['writes'][key]
+                # Guards share this map; never expose an empty intermediate map.
+                if event == 'publication_write_verified' and key in self.value['versions']:
+                    self.value['versions'][key] = candidate['versions'][key]
             self._state_bytes = size

@@ -7,8 +7,10 @@ after complete readback. Phase and control boundaries append full state before
 replacing the derived `continuation.json`. The cloud journal does not change.
 
 The dispatcher no longer separately advances protected versions: the verified
-event advances both the write receipt and the existing versions map. Guards keep
-that map's object identity. Every explicit resume creates fresh readback proofs,
+event advances both the write receipt and the existing versions map. Guards retain
+the same map, and its contents remain visible: event application only
+changes the admitted write key and protected version, never clearing the shared
+map or copying unrelated entries back. Every explicit resume creates fresh readback proofs,
 checks accepted phase files, and reconciles current remote bytes before reuse.
 The local route requires no remote journal or artifact service.
 
@@ -78,3 +80,9 @@ in its parent. The compact tracked receipt pins their hashes and exact sources.
 The earlier `run-75820f3` is retained as preliminary evidence from before the
 shared status parser was extracted; the final comparison supersedes it.
 The ticket remains in progress pending independent review and merge.
+
+A follow-up no-clear observer regression passed with the affected dispatcher and
+status checks: **79 passed, 5 subtests passed in 0.98s**. It changes only in-memory
+delta application, preserving serialization, sync, and request boundaries. The
+measured timings above remain attributed to `0c2b782`; no new timing claim is made
+for the correction. Its exact source and test-log hashes are in the receipt.

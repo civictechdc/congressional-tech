@@ -213,3 +213,33 @@ def test_record_and_restore_enforce_event_and_history_byte_limits(tmp_path, monk
         patch.setattr(local, 'MAX_LOCAL_RECORD_BYTES', len(before) - 1)
         with pytest.raises(ValueError, match='oversized'):
             local.LocalContinuation(run.root, {}, resume=True)
+
+
+def test_event_application_never_clears_guard_versions_or_unrelated_writes(tmp_path):
+    run = local.LocalContinuation(tmp_path / 'attempt', {})
+    protected = intent()['key']
+    class ObservedVersions(dict):
+        assignments = []
+        def clear(self): pytest.fail('Shared guard versions were transiently cleared')
+        def update(self, *args, **kwargs): pytest.fail('Shared guard versions were repopulated')
+        def __setitem__(self, key, value):
+            assert protected in self and self[protected] == 'old'
+            self.assignments.append((key, value))
+            return super().__setitem__(key, value)
+    versions = ObservedVersions({protected: 'old'})
+    run.value['versions'] = versions
+    run.flush()
+    run.record('failed', {'error': 'retained'})
+    immutable = intent('viewer-publications/immutable')
+    run.record('publication_write_intent', immutable)
+    run.record('publication_write_verified', dict(immutable, etag='immutable'))
+    unchanged_write = run.value['writes'][immutable['key']]
+    detail = intent(); detail.pop('if_none_match'); detail['expected_etag'] = 'old'
+    run.record('publication_write_intent', detail)
+    assert versions.assignments == []
+    run.record('publication_write_verified', dict(detail, etag='new'))
+    assert versions.assignments == [(protected, 'new')]
+    assert run.value['versions'] is versions
+    assert run.value['writes'][immutable['key']] is unchanged_write
+    assert versions[protected] == 'new'
+    assert run._state_bytes == len(local.encoded(run.value)) + 1

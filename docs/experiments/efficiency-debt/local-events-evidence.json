@@ -73,5 +73,14 @@
     "Larger inventories may reach the explicit local 256 MiB history admission limit; histories are preserved and refused.",
     "No automatic migration of older runtime-pinned local attempts.",
     "run-75820f3 was preliminary before shared status parser extraction; run-final is the accepted exact-source comparison."
-  ]
+  ],
+  "followup": {
+    "change": "Apply only admitted write-key and protected-version deltas; never clear/repopulate guard versions or unrelated writes.",
+    "local_source_sha256": "cf4789c8c1b28833693ea8b50a421fdb30029321cfa47419c410f60f7e240efd",
+    "test_source_sha256": "892f9ae2eed88f7262fb58523858928b3ccf2fc05646be5e3325604eaa2a853d",
+    "test_log_sha256": "98cd43a3f55cfc2620776ee6df6a5c791e17cc1fee7b0f247f204555d08c409a",
+    "test_command": "PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 .venv-catalog/bin/python -m pytest -q packages/viewer_publication/tests/test_local_continuation.py scripts/corpus_recovery/tests/test_dispatch_corpus_recovery_publication.py scripts/publication/tests/test_pipeline_status.py",
+    "test_result": "79 passed, 5 subtests passed in 0.98s",
+    "measurement_scope": "No serialization/fsync/request boundary changes. Existing exact-source timings remain attributed to 0c2b782; no new timing claim for this in-memory delta application correction."
+  }
 }

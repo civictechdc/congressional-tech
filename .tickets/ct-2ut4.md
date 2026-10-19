@@ -38,3 +38,7 @@ Implemented LocalContinuation: synced events.jsonl owns local write and accepted
 **2026-10-19T19:52:47Z**
 
 Frozen implementation0c2b782; exact-source matched run-final shows 783→276 fsync, 5,493,025→511,187 serialized JSON chars, exact state/257 event facts/128 body hashes and PUT+GET counts in 3pairs. Retained scratch grows117,247→245,262B for authoritative phase snapshots; explicit256MiB history ceiling. Full affected package/dispatcher/status focused suite165 passed+7subtests33.20s. Tracked local-events report/receipt; independent review pending.
+
+**2026-10-19T19:54:08Z**
+
+Independent review follow-up: replace versions.clear/update with protected-key assignment only, and writes.clear/update with admitted-key delta. Regression forbids clearing/repopulating shared versions across informational/immutable/protected events and checks unrelated write identity.79passed+5subtests0.98s. Serialization/fsync/request boundaries unchanged; prior timing remains attributed to0c2b782, no rerun.
