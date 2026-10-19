@@ -2,10 +2,10 @@
 
 Import name: `viewer_publication`.
 
-This package holds the viewer publication code that runs after the workspace
-is installed: the guarded object client, publication continuation, attempt
-runner, and read-only verification. `scripts/viewer_release_identity.py` stays
-a standard-library module so publication preflight can run before `uv sync`.
+Upload a prepared filename viewer and resume a stopped upload from its saved record.
 
-The modules under `scripts/` with the same names re-export this package so
-existing `sys.path` imports keep working.
+Use this after the workspace is installed and a filename viewer is ready to publish. The library sends each write once, reads the uploaded bytes back, and keeps a record of each write. It checks the published viewer against the raw catalog.
+
+Run `python apps/site/scripts/publish-viewer-r2.py`. It calls `scripts/publication_cli.py` for `prepare`, `verify-prepared`, `publish`, and `describe-attempt`.
+
+`scripts/publication_cli.py` and `scripts/viewer_release_identity.py` live in `scripts/`. `scripts/publication_preflight.py` imports `scripts/viewer_release_identity.py` before the workspace is installed.
