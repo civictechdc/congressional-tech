@@ -34,6 +34,26 @@ def _stream_retry_delay(client, key, response, error, attempt):
     return delay
 
 
+def _read_stream(client, key, request, consume):
+    """Retry body consumption only; callers own requests and content checks."""
+    from botocore.exceptions import IncompleteReadError, ReadTimeoutError, ResponseStreamingError
+
+    for attempt in range(1, _stream_read_attempts(client) + 1):
+        response = request()  # SDK request failures do not enter body retries.
+        if response is None:
+            return None
+        try:
+            with closing(response['Body']) as stream:
+                result = consume(response, stream)
+        except (IncompleteReadError, ReadTimeoutError, ResponseStreamingError) as error:
+            delay = _stream_retry_delay(client, key, response, error, attempt)
+            if delay is None:
+                raise
+            time.sleep(delay)  # The failed body has already been closed.
+            continue
+        return result
+
+
 def _throttle_delay(headers, attempt, now):
     """Back off at least a second; refuse a server wait beyond one minute."""
     value = headers.get('retry-after', '')
@@ -162,39 +182,39 @@ class R2Store:
                 yield AsyncBodies(client, self.bucket)
 
     def read(self, key):
-        from botocore.exceptions import ClientError, IncompleteReadError, ReadTimeoutError, ResponseStreamingError
+        from botocore.exceptions import ClientError
 
-        for attempt in range(1, _stream_read_attempts(self.client) + 1):
+        def request():
             try:
-                response = self.client.get_object(Bucket=self.bucket, Key=key)
+                return self.client.get_object(Bucket=self.bucket, Key=key)
             except ClientError as error:
                 if error.response["Error"]["Code"] in {"NoSuchKey", "404"}:
                     if key.startswith("indexes/"):
                         self.index_etags[key] = None
                     return None
                 raise
-            try:
-                with closing(response["Body"]) as stream:
-                    if key == 'indexes/catalog.json':
-                        if response['ContentLength'] > 1024**2:
-                            raise ValueError('Catalog selector exceeds 1 MiB read budget')
-                        data = stream.read(1024**2 + 1)
-                        if len(data) > 1024**2:
-                            raise ValueError('Catalog selector exceeds 1 MiB read budget')
-                    else:
-                        data = stream.read()
-            except (ReadTimeoutError, ResponseStreamingError, IncompleteReadError) as error:
-                delay = _stream_retry_delay(self.client, key, response, error, attempt)
-                if delay is None:
-                    raise
-                time.sleep(delay)
-                continue
-            if len(data) != response["ContentLength"]:
-                raise ValueError(f"Incomplete stored object: {key}")
-            # Only a complete read can authorize a later conditional write.
-            if key.startswith("indexes/"):
-                self.index_etags[key] = response["ETag"]
-            return data
+
+        def consume(response, stream):
+            if key == 'indexes/catalog.json':
+                if response['ContentLength'] > 1024**2:
+                    raise ValueError('Catalog selector exceeds 1 MiB read budget')
+                data = stream.read(1024**2 + 1)
+                if len(data) > 1024**2:
+                    raise ValueError('Catalog selector exceeds 1 MiB read budget')
+            else:
+                data = stream.read()
+            return response, data
+
+        result = _read_stream(self.client, key, request, consume)
+        if result is None:
+            return None
+        response, data = result
+        if len(data) != response["ContentLength"]:
+            raise ValueError(f"Incomplete stored object: {key}")
+        # Only a complete read can authorize a later conditional write.
+        if key.startswith("indexes/"):
+            self.index_etags[key] = response["ETag"]
+        return data
 
     def put(self, key, body, *, immutable=False):
         from botocore.exceptions import ClientError
@@ -251,35 +271,33 @@ class R2Store:
     def read_file(self, key, path, *, max_bytes):
         """Read a bounded immutable body to disk; pin its version across retries."""
         from pathlib import Path
-        from botocore.exceptions import IncompleteReadError, ReadTimeoutError, ResponseStreamingError
         if not key.startswith('bodies/') or max_bytes < 0:
             raise ValueError('File read requires a body key and a nonnegative bound')
         etag = None
-        for attempt in range(1, _stream_read_attempts(self.client) + 1):
-            response = self.client.get_object(Bucket=self.bucket, Key=key,
-                                              **({'IfMatch': etag} if etag else {}))
-            try:
-                with closing(response['Body']) as source:
-                    if response['ContentLength'] > max_bytes:
+
+        def request():
+            return self.client.get_object(Bucket=self.bucket, Key=key,
+                                          **({'IfMatch': etag} if etag else {}))
+
+        def consume(response, source):
+            nonlocal etag
+            if response['ContentLength'] > max_bytes:
+                raise ValueError('Stored object exceeds file budget')
+            if etag is not None and response['ETag'] != etag:
+                raise ValueError('Stored object changed during file read')
+            etag = response['ETag']
+            count = 0
+            with Path(path).open('wb') as destination:
+                while chunk := source.read(1024**2):
+                    count += len(chunk)
+                    if count > max_bytes:
                         raise ValueError('Stored object exceeds file budget')
-                    if etag is not None and response['ETag'] != etag:
-                        raise ValueError('Stored object changed during file read')
-                    etag = response['ETag']
-                    count = 0
-                    with Path(path).open('wb') as destination:
-                        while chunk := source.read(1024**2):
-                            count += len(chunk)
-                            if count > max_bytes:
-                                raise ValueError('Stored object exceeds file budget')
-                            destination.write(chunk)
-                    if count != response['ContentLength']:
-                        raise ValueError('Incomplete stored object')
-                    return count
-            except (IncompleteReadError, ReadTimeoutError, ResponseStreamingError) as error:
-                delay = _stream_retry_delay(self.client, key, response, error, attempt)
-                if delay is None:
-                    raise
-                time.sleep(delay)
+                    destination.write(chunk)
+            if count != response['ContentLength']:
+                raise ValueError('Incomplete stored object')
+            return count
+
+        return _read_stream(self.client, key, request, consume)
 
     def put_catalog_manifest(self, data, *, expected_version):
         """Use the selector version captured before this catalog build."""
@@ -289,33 +307,32 @@ class R2Store:
 
     def read_derived_file(self, key, path, *, expected=None):
         """Stream only catalog tables, pinning the object version across retries."""
-        from botocore.exceptions import ClientError, IncompleteReadError, ReadTimeoutError, ResponseStreamingError
+        from botocore.exceptions import ClientError
         from congress_api.retention.derived_files import require_derived_key, copy_checked
         require_derived_key(key)
         etag = None
-        for attempt in range(1, _stream_read_attempts(self.client) + 1):
+
+        def request():
             try:
-                response = self.client.get_object(Bucket=self.bucket, Key=key,
+                return self.client.get_object(Bucket=self.bucket, Key=key,
                     **({'IfMatch': etag} if etag else {}))
             except ClientError as error:
                 if error.response['Error']['Code'] in {'NoSuchKey', '404'} and etag is None:
                     return None
                 raise
-            try:
-                with closing(response['Body']) as source:
-                    if etag is not None and response['ETag'] != etag:
-                        raise ValueError('Stored catalog changed during file read')
-                    etag = response['ETag']
-                    size = response['ContentLength']
-                    if expected is not None and size != expected['bytes']:
-                        raise ValueError(f'Selected catalog size mismatch: {key}')
-                    result = copy_checked(source, path, size=size, expected=expected, key=key)
-                    return {**result, 'version': etag}
-            except (IncompleteReadError, ReadTimeoutError, ResponseStreamingError) as error:
-                delay = _stream_retry_delay(self.client, key, response, error, attempt)
-                if delay is None:
-                    raise
-                time.sleep(delay)
+
+        def consume(response, source):
+            nonlocal etag
+            if etag is not None and response['ETag'] != etag:
+                raise ValueError('Stored catalog changed during file read')
+            etag = response['ETag']
+            size = response['ContentLength']
+            if expected is not None and size != expected['bytes']:
+                raise ValueError(f'Selected catalog size mismatch: {key}')
+            result = copy_checked(source, path, size=size, expected=expected, key=key)
+            return {**result, 'version': etag}
+
+        return _read_stream(self.client, key, request, consume)
 
     def put_derived_file(self, key, path, *, expected):
         """Upload an immutable catalog file with streamed checksum verification."""
