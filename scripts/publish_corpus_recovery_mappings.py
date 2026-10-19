@@ -45,19 +45,32 @@ def publish_mappings(client, *, bucket, baseline, prepared, validate,
     journal('mapping_write_intent', intent)
     guard()
 
-    def read_exact():
-        actual, _version = read()
-        return actual
+    def put():
+        return client.put_object(Bucket=bucket, Key=KEY, Body=payload,
+                                 ContentType='application/json', IfMatch=expected)
 
-    reconciled = reconcile_lost_acknowledgment(
-        lambda: client.put_object(Bucket=bucket, Key=KEY, Body=payload,
-                                  ContentType='application/json', IfMatch=expected),
-        read_exact, payload)
-    if reconciled:
-        journal('mapping_acknowledgment_reconciled', intent)
-    actual, version = read()
-    if actual != payload:
-        raise ValueError('Recovery mapping readback differs from proposed bytes')
+    # A guarded client already verified this PUT and returns a receipt. Consume
+    # that receipt instead of reading the body again. A plain client reconciles
+    # a lost acknowledgment from exact bytes and never sends a second PUT.
+    if callable(getattr(client, 'confirm_transfer', None)):
+        response = put()
+        receipt = response.get('_verified_transfer') if isinstance(response, dict) else None
+        if receipt is None or not client.confirm_transfer(
+                receipt, bucket=bucket, key=KEY, size=len(payload), sha256=intent['sha256']):
+            raise ValueError('Recovery mapping readback differs from proposed bytes')
+        version = receipt.etag
+        reconciled = False
+    else:
+        def read_exact():
+            actual, _version = read()
+            return actual
+
+        reconciled = reconcile_lost_acknowledgment(put, read_exact, payload)
+        if reconciled:
+            journal('mapping_acknowledgment_reconciled', intent)
+        actual, version = read()
+        if actual != payload:
+            raise ValueError('Recovery mapping readback differs from proposed bytes')
     result = dict(complete=True, wrote=True, etag=version,
                   sha256=intent['sha256'], acknowledgment_reconciled=reconciled,
                   rows=len(merged['recoveries']), viewer_pointer_advanced=False)

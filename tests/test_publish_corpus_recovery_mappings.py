@@ -1,4 +1,5 @@
 """Check conditional mapping writes, failures and acknowledgment loss."""
+import hashlib
 import io
 import json
 from pathlib import Path
@@ -6,7 +7,8 @@ import sys
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
-from publish_corpus_recovery_mappings import publish_mappings
+from guarded_recovery_publication_client import VerifiedTransfer
+from publish_corpus_recovery_mappings import KEY, publish_mappings
 
 
 def doc(body=None):
@@ -103,6 +105,53 @@ class PublishTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Invalid'):
             self.run_publish(client, validate=validate)
         self.assertFalse(client.writes)
+
+    def test_verified_transfer_is_consumed_without_another_body_read(self):
+        client = Client(doc())
+        body_reads = []
+        original = client.get_object
+        def track(**kwargs):
+            body_reads.append(kwargs['Key'])
+            return original(**kwargs)
+        client.get_object = track
+        def put_object(**kwargs):
+            client.writes.append(kwargs)
+            client.raw = kwargs['Body']
+            client.etag = 'new'
+            digest = hashlib.sha256(kwargs['Body']).hexdigest()
+            return {'_verified_transfer': VerifiedTransfer(
+                'test', KEY, len(kwargs['Body']), digest, 'new')}
+        client.put_object = put_object
+        confirmed = []
+        def confirm(receipt, *, bucket, key, size, sha256):
+            confirmed.append((receipt, bucket, key, size, sha256))
+            return True
+        client.confirm_transfer = confirm
+        result = self.run_publish(client)
+        self.assertEqual(body_reads, [KEY])
+        self.assertEqual(len(client.writes), 1)
+        self.assertEqual(len(confirmed), 1)
+        self.assertEqual(confirmed[0][1:], ('test', KEY, len(client.raw), hashlib.sha256(client.raw).hexdigest()))
+        self.assertEqual(result['etag'], 'new')
+        self.assertFalse(result['acknowledgment_reconciled'])
+
+    def test_rejected_transfer_does_not_reread_or_rewrite(self):
+        client = Client(doc())
+        body_reads = []
+        original = client.get_object
+        def track(**kwargs):
+            body_reads.append(kwargs['Key'])
+            return original(**kwargs)
+        client.get_object = track
+        def put_object(**kwargs):
+            client.writes.append(kwargs)
+            return {'_verified_transfer': VerifiedTransfer('test', KEY, 1, 'ab', 'new')}
+        client.put_object = put_object
+        client.confirm_transfer = lambda *args, **kwargs: False
+        with self.assertRaisesRegex(ValueError, 'readback'):
+            self.run_publish(client)
+        self.assertEqual(len(client.writes), 1)
+        self.assertEqual(body_reads, [KEY])
 
 
 if __name__ == '__main__':
