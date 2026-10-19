@@ -2,7 +2,7 @@
 id: ct-piku
 status: open
 deps: [ct-2d3k]
-links: [ct-d3un]
+links: [ct-d3un, ct-esm4]
 created: 2026-10-19T16:40:41Z
 type: task
 priority: 2
@@ -26,3 +26,7 @@ Dispatcher load 37-41 executes an explicit file, but sys.path mutation 103-105 a
 **2026-10-19T16:40:42Z**
 
 Review evidence: scripts/dispatch_corpus_recovery_publication.py:78:load. See docs/package-overlap-rescore-20261019.md for the full grade map.
+
+**2026-10-19T17:00:42Z**
+
+Related reshape ct-esm4 packages corpus recovery and pins the files that execute. Related only. It does not close this ticket.

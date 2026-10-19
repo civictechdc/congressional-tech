@@ -2,7 +2,7 @@
 id: ct-bpyj
 status: open
 deps: [ct-2d3k, ct-piku, ct-u7gg, ct-3g69, ct-du3e, ct-tenb]
-links: [ct-d3un]
+links: [ct-d3un, ct-esm4]
 created: 2026-10-19T16:40:41Z
 type: task
 priority: 2
@@ -28,3 +28,7 @@ Cloud attempts accept recovery-prepared.json and issued inventory, while local d
 **2026-10-19T16:40:42Z**
 
 Review evidence: apps/site/scripts/publish-viewer-r2.py:198:recovery_for_publication, apps/site/scripts/publish-viewer-r2.py:204:select_recoveries, apps/site/scripts/publish-viewer-r2.py:285:upload, scripts/dispatch_corpus_recovery_publication.py:94:run, scripts/dispatch_corpus_recovery_publication.py:267:run.prepared_phase, scripts/dispatch_corpus_recovery_publication.py:274:run.publication_phase, scripts/viewer_publication_attempt.py:153:publish. See docs/package-overlap-rescore-20261019.md for the full grade map.
+
+**2026-10-19T17:00:42Z**
+
+Related reshape ct-esm4 packages corpus recovery and pins the files that execute. Related only. It does not close this ticket.

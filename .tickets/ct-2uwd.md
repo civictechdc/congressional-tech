@@ -2,7 +2,7 @@
 id: ct-2uwd
 status: open
 deps: [ct-2d3k]
-links: [ct-d3un]
+links: [ct-d3un, ct-vxzu]
 created: 2026-10-19T16:40:41Z
 type: task
 priority: 2
@@ -27,3 +27,7 @@ publish_corpus_recovery_mappings.py:47-57 reconciles and reads complete mapping 
 **2026-10-19T16:40:42Z**
 
 Review evidence: scripts/dispatch_corpus_recovery_publication.py:259:run.mapping_phase, scripts/publish_corpus_recovery_mappings.py:14:publish_mappings. See docs/package-overlap-rescore-20261019.md for the full grade map.
+
+**2026-10-19T17:00:42Z**
+
+Related reshape ct-vxzu shares the plain exact-byte reconcile and consumes _verified_transfer. It does not close this ticket. publish_mappings still consumes the guarded readback here.
