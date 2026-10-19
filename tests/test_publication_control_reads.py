@@ -7,6 +7,38 @@ import pytest
 spec = importlib.util.spec_from_file_location('bounded_publisher', Path(__file__).resolve().parents[1] / 'apps/site/scripts/publish-viewer-r2.py')
 publisher = importlib.util.module_from_spec(spec); spec.loader.exec_module(publisher)
 
+
+@pytest.mark.parametrize('status,attempt_count', [(404, 1), (503, 4)])
+def test_terminal_public_http_errors_close_every_body_without_changing_retries(monkeypatch, status, attempt_count):
+    errors, sleeps = [], []
+    def fail(request, **kwargs):
+        error = publisher.urllib.error.HTTPError(request.full_url, status, 'Failed', {}, io.BytesIO(b'error'))
+        errors.append(error)
+        raise error
+    monkeypatch.setattr(publisher.urllib.request, 'urlopen', fail)
+    monkeypatch.setattr(publisher.time, 'sleep', sleeps.append)
+    with pytest.raises(publisher.urllib.error.HTTPError) as caught:
+        publisher.open_public(publisher.public_request('https://data.test/manifest.json'))
+    assert caught.value is errors[-1]
+    assert len(errors) == attempt_count and all(error.fp.closed for error in errors)
+    assert sleeps == ([1, 2, 4] if attempt_count == 4 else [])
+
+
+def test_public_body_failure_propagates_without_reopening_and_caller_closes(monkeypatch):
+    failure = OSError('body interrupted')
+    class Broken(io.BytesIO):
+        headers = {}
+        def read(self, *args):
+            raise failure
+    body = Broken(b'body')
+    opens = []
+    monkeypatch.setattr(publisher.urllib.request, 'urlopen', lambda *a, **kw: opens.append(True) or body)
+    monkeypatch.setattr(publisher.time, 'sleep', lambda *a: pytest.fail('Body failure retried'))
+    with pytest.raises(OSError) as caught:
+        with publisher.open_public(publisher.public_request('https://data.test/manifest.json')) as response:
+            publisher.public_control(response)
+    assert caught.value is failure and opens == [True] and body.closed
+
 @pytest.mark.parametrize('raw,declared,expected,match', [
     (b'123', 100, None, 'declared'), (b'123456789', None, None, 'Oversized'),
     (b'123', 4, None, 'Incomplete'), (b'1234', 3, None, 'Incomplete'),
