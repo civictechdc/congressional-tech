@@ -1,6 +1,6 @@
 ---
 id: ct-h73z
-status: in_progress
+status: closed
 deps: [ct-2d3k]
 links: [ct-d3un]
 created: 2026-10-19T16:40:42Z
@@ -30,3 +30,7 @@ Review evidence: .github/workflows/publish-filename-viewer.yml:62:publish (workf
 **2026-10-19T19:30:46Z**
 
 Implemented one validated resume record shared by workflow bootstrap and CLI. Exact revision/artifact,16KiB bound, duplicate/conflict/repository rejection, old/current selected test layouts and unchanged scheduled skip covered.117 local focused tests passed. Manual fields5 to1; stronger admission median13.14ms to21.67ms on5 local paired trials, not a speed claim. Awaiting independent review; docs/experiments/efficiency-debt/workflow-resume.md.
+
+**2026-10-19T19:39:00Z**
+
+Independent review approved the byte-preserving descriptor repair at cec95671. Final five-pair admission median: 12.15 ms before, 19.73 ms after; five manual fields become one. 117 initial and 41 repair-focused checks passed. No hosted workflow was run.

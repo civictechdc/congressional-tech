@@ -1,0 +1,55 @@
+{
+  "status": "locally reviewed; merge pending",
+  "base": "3757f55ed33ea390895c20a2007cb08eb39ce519",
+  "tickets": {
+    "ct-h73z": "Independent review approved the byte-preserving descriptor repair at cec95671. Final five-pair admission median: 12.15 ms before, 19.73 ms after; five manual fields become one. 117 initial and 41 repair-focused checks passed. No hosted workflow was run.",
+    "ct-tdsx": "Independent review approved 6ce85eb; 20 supported Node 22 loader/worker checks passed. The bounded synthetic overrun delivers 65,536 rather than 4,194,304 bytes; stalled reads terminate at the configured deadline. Valid/absent data behavior is preserved.",
+    "ct-4zer": "Independent review accepted the measured retain-current decision at 9918394. All 30 paired results match; cache candidate misses the latency target and increases memory. Production search remains unchanged; 104 retained checks pass.",
+    "ct-o6d1": "Independent review accepted 996ba97. Exact JSON export and visible failure/retry policy documented; 75 focused checks pass. Alternative full Blob staging misses the memory target, so the existing production path is retained.",
+    "ct-m9ry": "Independent review accepted 6855f37. All 269 payload hashes and manifest values except publication time match on the bounded historical projection. Packed membership savings do not justify added complexity; production Catalog remains unchanged. Supplemental 52 focused checks pass."
+  },
+  "evidence_root": "output/efficiency-debt-20261019",
+  "evidence": {
+    "workflow/review-repair.json": {
+      "bytes": 1752,
+      "sha256": "6e699ceaddc8805b77510a1e864fe26f2b0c590f35c3a94b4fe311a28742a56a",
+      "review": "APPROVE"
+    },
+    "workflow/measurement.json": {
+      "bytes": 1373,
+      "sha256": "5aafa27daa470fb831f9abb6ce4f160e79addf68e7f7820c3badc964eb48675f"
+    },
+    "recovery/review.json": {
+      "bytes": 2413,
+      "sha256": "f7362b6f541b4a78758ce21d3ee3e0a895bea1a5f336697e6541dee7bbda1d6d",
+      "review": "APPROVE"
+    },
+    "recovery/comparison.json": {
+      "bytes": 4010,
+      "sha256": "b88c05a0228b696f6bf1b5479162120287b2cdfbdb9b996b6430705c9b18cb20"
+    },
+    "search/review.json": {
+      "bytes": 1454,
+      "sha256": "3a3c89bb92547c1e93ac5f73b9f61a53d1b6a80a8ba1394f8e8fbaeefdbf467d",
+      "review": "APPROVE"
+    },
+    "search/comparison.json": {
+      "bytes": 18381,
+      "sha256": "ad891091e5a82f9aa9f27f64d2dafddb88062cd4142195416a47c1f82c127751"
+    },
+    "complete-export/review.json": {
+      "bytes": 1239,
+      "sha256": "7e46caba9a81207157af089016e8c7947a3e2eab7db23c08f2f11a455b9f5dd9",
+      "review": "APPROVE"
+    },
+    "catalog/review.json": {
+      "bytes": 5544,
+      "sha256": "e2727b778e4cd2662c8f2724e475da8eeecc8d4072bb74708df3f3d7ae07db3e",
+      "review": "APPROVE"
+    },
+    "catalog/review-validation.json": {
+      "bytes": 3434,
+      "sha256": "3855dc33a6930bc10313082158b9ce8721b34af4148af57b9c75182418eee710"
+    }
+  }
+}

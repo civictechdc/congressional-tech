@@ -70,4 +70,4 @@ Evidence is retained under
 `comparison.json`, the exact baseline loader and reproducible `compare.mjs`,
 `tests.log`, and `existing-recovery-regression.log`. Dependencies are pinned
 Hyparquet 1.31.2 / compressors 1.1.2 installed offline inside this worktree.
-Ticket remains in progress pending independent review. No publication or push.
+Independent review approved the frozen implementation. A separate supported Node 22 run passed all 20 loader/worker checks. This change does not publish catalog data.

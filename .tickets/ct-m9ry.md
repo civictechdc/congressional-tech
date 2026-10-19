@@ -1,6 +1,6 @@
 ---
 id: ct-m9ry
-status: in_progress
+status: closed
 deps: [ct-2d3k, ct-u7gg, ct-3g69]
 links: [ct-d3un]
 created: 2026-10-19T16:40:42Z
@@ -35,3 +35,7 @@ Prioritized for efficiency and architectural debt per user direction. Require me
 **2026-10-19T19:32:51Z**
 
 Completed bounded measurement on merged3757f55 using pinned surviving historical pair (distinct from removed complete-current rollout):30,906 documents/41,030 sources with closed LIST_COLUMNS projection and8 synthetic groups; nested observations typed null. Three fresh constructor samples per arm and actual publisher parity:269 payload hashes + all non-timestamp manifest values identical. Packed positions remove4,926,720 estimated Python bytes but constructor median highwater only249,692,160→246,267,904B; fixture publish361,119,744→349,683,712B,5.4058→5.4796s. Retain current production Catalog; no broad optimization justified by this fixture.52 focused viewer/review tests passed. docs/experiments/efficiency-debt/catalog.md plus exact receipts; leave in_progress for independent review.
+
+**2026-10-19T19:39:00Z**
+
+Independent review accepted 6855f37. All 269 payload hashes and manifest values except publication time match on the bounded historical projection. Packed membership savings do not justify added complexity; production Catalog remains unchanged. Supplemental 52 focused checks pass.

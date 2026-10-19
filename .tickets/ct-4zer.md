@@ -1,6 +1,6 @@
 ---
 id: ct-4zer
-status: in_progress
+status: closed
 deps: [ct-2d3k]
 links: [ct-d3un]
 created: 2026-10-19T16:40:41Z
@@ -34,3 +34,7 @@ Prioritized for efficiency and architectural debt per user direction. Require me
 **2026-10-19T19:30:36Z**
 
 Measured exact merged3757f55 against bounded row-group candidate on8192 synthetic sources/4096 groups,32 source groups,5 cases x cold/warm x3. All30 result hashes match; warm normalization8192→0 but wide warm latency32.24→32.27ms, cold wide+27%/AND+30.7%; decoded cache19.10→34.51MB and RSS171.62→179.62MB. Candidate misses unchanged target and is reverted; retain current exact scan.104 focused filename tests pass. docs/experiments/efficiency-debt/search.md and search-evidence.json bind receipts under primary output/efficiency-debt-20261019/search/. Remains in_progress pending independent review; no full catalog/live qualification.
+
+**2026-10-19T19:39:00Z**
+
+Independent review accepted the measured retain-current decision at 9918394. All 30 paired results match; cache candidate misses the latency target and increases memory. Production search remains unchanged; 104 retained checks pass.

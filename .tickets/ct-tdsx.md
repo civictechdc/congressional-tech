@@ -1,6 +1,6 @@
 ---
 id: ct-tdsx
-status: in_progress
+status: closed
 deps: [ct-2d3k]
 links: [ct-d3un]
 created: 2026-10-19T16:40:41Z
@@ -30,3 +30,7 @@ Review evidence: apps/site/src/components/filename-recoveries.mjs:2:loadRecoveri
 **2026-10-19T19:29:25Z**
 
 Refreshed to merged3757f55. Implemented shared verified streaming JSON transport: mandatory recovery32MiB/30s; optional reviews retain16MiB/15s and optional failure. Saved retained-size/startup policy and bounded comparison under output/efficiency-debt-20261019/recovery. Overrun decoded delivery4MiB ->64KiB; excessive descriptor ->zero fetch; stalled read rejects/aborts/cancels under15ms test policy; valid/absent hashes equal.20 focused checks plus existing corruption test pass. No sources acquired/publication. Pending independent review; keep in_progress.
+
+**2026-10-19T19:39:00Z**
+
+Independent review approved 6ce85eb; 20 supported Node 22 loader/worker checks passed. The bounded synthetic overrun delivers 65,536 rather than 4,194,304 bytes; stalled reads terminate at the configured deadline. Valid/absent data behavior is preserved.
