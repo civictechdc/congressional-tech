@@ -38,8 +38,10 @@ unknown origin, extended package search paths, missing selected recovery source,
 and escaping source symlinks. The candidate clean case loads the real builder,
 publisher and their children from the selected tree. Warm ownership checks took
 0.453 ms median and 0.623 ms maximum in this local sample. More complete source
-pins add 58 files and 330,101 bytes of hashing input per existing digest guard;
-this is a correctness cost, not an efficiency gain. Fresh-process elapsed samples
+pins add 58 files and 330,101 bytes to the initial pin/hash set. Later guard
+boundaries compare file custody metadata and reuse unchanged hashes; they do not
+rehash all of those bytes per payload. Runtime ownership checks also reuse
+unchanged module observations. This is a correctness cost, not an efficiency gain. Fresh-process elapsed samples
 were 0.701 s before and 0.632 s after, with host filesystem caches uncontrolled.
 These single samples establish no speed improvement or cold-I/O result.
 

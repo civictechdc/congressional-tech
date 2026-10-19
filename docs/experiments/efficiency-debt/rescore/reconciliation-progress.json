@@ -1,0 +1,269 @@
+{
+  "reviewed_revision": "014303ed0a292bc418e38070776734ce0feaae07",
+  "ticket": "ct-5jqd",
+  "method": "Independent read-only exact git-object source/caller/assertion and retained receipt review; no tests/benchmarks repeated; no closure-derived grades.",
+  "historical_assessment_sha256": "76fe0b92100e80c9b51fe21ebb10e9d681873b7b9e8a4d84ed5ae5b48ac144ae",
+  "historical_markdown_sha256": "307b8b54de18dd86c1d238ab5c607926a926540c4a0eb0dbdff6b4be48052611",
+  "summary": {
+    "affected_rows": 3,
+    "changed_rows": 2,
+    "retained_rows": 1,
+    "historical_rows": 168,
+    "historical_rows_modified": 0
+  },
+  "dimensions": [
+    "correctness",
+    "efficiency",
+    "dx",
+    "thoughtfulness",
+    "debt (higher means less debt)",
+    "overall (scoped judgment)"
+  ],
+  "entries": [
+    {
+      "historical_index": 110,
+      "entry_id": "scripts/recovery_publication_continuation.py:102:Continuation.reconcile",
+      "historical_grades": {
+        "correctness": "A-",
+        "efficiency": "B+",
+        "dx": "B",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "before_this_supplement": {
+        "correctness": "A-",
+        "efficiency": "B+",
+        "dx": "B",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "B+",
+        "dx": "A-",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "A-"
+      },
+      "changed_dimensions": {
+        "dx": {
+          "before": "B",
+          "after": "A-"
+        },
+        "overall": {
+          "before": "B+",
+          "after": "A-"
+        }
+      },
+      "current_locations": [
+        "packages/viewer_publication/src/viewer_publication/continuation.py:228:Continuation.read",
+        "packages/viewer_publication/src/viewer_publication/continuation.py:262:Continuation.reconcile",
+        "packages/viewer_publication/src/viewer_publication/reconciliation.py:70:ReconciliationProgress.__call__"
+      ],
+      "dimension_reasons": {
+        "correctness": "Retain A-: complete current body length/hash/ETag and original-condition semantics remain. Reconciled observation follows fresh client-bound proof; complete follows successful state checkpoint. Observer failure cannot change primary outcome. Progress is never restored as proof.",
+        "efficiency": "Retain B+: visibility adds work, not a speed optimization. Three GETs, nine reads/7,340,028 bytes, two fsyncs and zero PUTs remain; the fixture adds 17 atomic latest-file replacements, serialized characters 704 to 10,264, and 565 retained bytes. Median 0.060483 to 0.062430 seconds is a scoped added cost, not a production prediction.",
+        "dx": "B to A-: shared local/cloud reconciliation now reports object, current bytes/declared bytes, checked count, outcome and exact next check with binding, scan ID and timestamp. Successful local observations expose a previously silent scan; observer failures may leave missing or stale visibility.",
+        "thoughtfulness": "Retain A-: observation-only flags, bounded updates/file size, complete-after-checkpoint ordering, fixed diagnostics and exception isolation preserve authority boundaries. Thoroughness supports the existing grade without claiming A.",
+        "debt": "Retain B+: a named helper and shared validator/status reader isolate visibility from authority. It adds a latest-file observation route and does not replace retained recovery ownership; broader accepted-plan work is separate.",
+        "overall": "B+ to A- for this narrow reconcile function: the specific operating visibility gap is closed with bounded, tested observations and unchanged readback authority. This does not upgrade the entire dispatcher or prove public publication."
+      }
+    },
+    {
+      "historical_index": 100,
+      "entry_id": "scripts/pipeline_status.py:113:continuation",
+      "historical_grades": {
+        "correctness": "A-",
+        "efficiency": "B+",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "before_this_supplement": {
+        "correctness": "A-",
+        "efficiency": "B+",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "B+",
+        "dx": "A-",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "changed_dimensions": {
+        "dx": {
+          "before": "B+",
+          "after": "A-"
+        }
+      },
+      "current_locations": [
+        "scripts/publication/pipeline_status.py:113:continuation",
+        "scripts/publication/pipeline_status.py:246:format_status",
+        "packages/viewer_publication/src/viewer_publication/reconciliation.py:52:read_progress"
+      ],
+      "dimension_reasons": {
+        "correctness": "Retain A-: input-bound read-only observation validation marks malformed/foreign data unavailable; accepted outputs and public readback remain unchecked. The observer supplies no write authorization.",
+        "efficiency": "Retain B+: one at-most-16-KiB latest observation is read in addition to existing status evidence. No measured status speed or memory benefit.",
+        "dx": "B+ to A-: operators see the last recorded object/byte state and exact next check, or an explicit unavailable label, without mistaking it for completed public verification.",
+        "thoughtfulness": "Retain A-: separate observation/authority semantics and stale timestamps are deliberate; no additional grade from ticket status.",
+        "debt": "Retain B+: status reuses the maintained parser, does not create mutable Continuation and grants no acceptance. The broader status aggregation remains.",
+        "overall": "Retain B+: this wider status function aggregates independent GitHub, progress, phase and verification evidence. A narrow display improvement alone does not justify a global status-grade uplift."
+      }
+    },
+    {
+      "historical_index": 111,
+      "entry_id": "scripts/recovery_publication_continuation.py:124:Continuation.replay",
+      "historical_grades": {
+        "correctness": "A-",
+        "efficiency": "B+",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "before_this_supplement": {
+        "correctness": "A-",
+        "efficiency": "B+",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "B+",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "changed_dimensions": {},
+      "current_locations": [
+        "packages/viewer_publication/src/viewer_publication/continuation.py:314:Continuation.replay"
+      ],
+      "dimension_reasons": {
+        "correctness": "Retain all six replay grades: neither recorded complete progress nor validated status data is consulted. A fresh continuation/client performs a full-current-body fallback; ephemeral reuse remains issuing-client/key/version scoped.",
+        "efficiency": "Retain all six replay grades: neither recorded complete progress nor validated status data is consulted. A fresh continuation/client performs a full-current-body fallback; ephemeral reuse remains issuing-client/key/version scoped.",
+        "dx": "Retain all six replay grades: neither recorded complete progress nor validated status data is consulted. A fresh continuation/client performs a full-current-body fallback; ephemeral reuse remains issuing-client/key/version scoped.",
+        "thoughtfulness": "Retain all six replay grades: neither recorded complete progress nor validated status data is consulted. A fresh continuation/client performs a full-current-body fallback; ephemeral reuse remains issuing-client/key/version scoped.",
+        "debt": "Retain all six replay grades: neither recorded complete progress nor validated status data is consulted. A fresh continuation/client performs a full-current-body fallback; ephemeral reuse remains issuing-client/key/version scoped.",
+        "overall": "Retain all six replay grades: neither recorded complete progress nor validated status data is consulted. A fresh continuation/client performs a full-current-body fallback; ephemeral reuse remains issuing-client/key/version scoped."
+      }
+    }
+  ],
+  "function_traces": [
+    {
+      "location": "packages/viewer_publication/src/viewer_publication/continuation.py:228:Continuation.read",
+      "inputs": "client/bucket/key, optional observer",
+      "outputs": "full size/hash/ETag or original read failure",
+      "verified_behavior": "Reads 1-MiB chunks and requires exact complete length; no more than32 periodic updates plus initial/final read counts; observer errors isolated."
+    },
+    {
+      "location": "packages/viewer_publication/src/viewer_publication/continuation.py:262:Continuation.reconcile",
+      "inputs": "restored intents and fresh client",
+      "outputs": "current-body proofs/state checkpoint, observational progress",
+      "verified_behavior": "Fresh proof precedes reconciled; checkpoint precedes complete. Original missing/original/conflict semantics remain."
+    },
+    {
+      "location": "packages/viewer_publication/src/viewer_publication/reconciliation.py:70:ReconciliationProgress.__call__",
+      "inputs": "one observation and bound input identity",
+      "outputs": "at-most-16-KiB atomic latest file",
+      "verified_behavior": "Fixed flags deny resume/current/public proof. No fsync, journal event, published PUT or remote delivery."
+    },
+    {
+      "location": "packages/viewer_publication/src/viewer_publication/reconciliation.py:25:validate_progress",
+      "inputs": "complete observation object",
+      "outputs": "validated shape or refusal",
+      "verified_behavior": "Exact fields/states/next_check, strict integer counters, false authority flags and identity bounds."
+    },
+    {
+      "location": "packages/viewer_publication/src/viewer_publication/reconciliation.py:52:read_progress",
+      "inputs": "latest file and expected binding",
+      "outputs": "validated observation or refusal",
+      "verified_behavior": "Bounded read, exact binding digest; no authority or mutations."
+    },
+    {
+      "location": "packages/viewer_publication/src/viewer_publication/continuation.py:314:Continuation.replay",
+      "inputs": "actual client/key/body and ephemeral proof",
+      "outputs": "current receipt or full-read fallback",
+      "verified_behavior": "Never reads progress file; new client/continuation requires current bytes."
+    },
+    {
+      "location": "scripts/publication/pipeline_status.py:113:continuation",
+      "inputs": "state path and expected run identity",
+      "outputs": "read-only status with last observation",
+      "verified_behavior": "Malformed/foreign observations become unavailable; no accepted output/public readback proof."
+    }
+  ],
+  "test_assertions_read": [
+    "packages/viewer_publication/tests/test_reconciliation_progress.py:31:test_complete_follows_full_read_proof_and_checkpoint",
+    "packages/viewer_publication/tests/test_reconciliation_progress.py:55:test_partial_read_and_failures_never_report_success_or_error_transport_text",
+    "packages/viewer_publication/tests/test_reconciliation_progress.py:82:test_exact_outcomes_and_next_checks_remain_read_only",
+    "packages/viewer_publication/tests/test_reconciliation_progress.py:102:test_latest_file_is_bound_bounded_and_never_reused_as_proof",
+    "packages/viewer_publication/tests/test_reconciliation_progress.py:125:test_progress_failure_does_not_replace_read_result_or_original_exception",
+    "packages/viewer_publication/tests/test_reconciliation_progress.py:140:test_read_progress_is_bounded_even_if_declared_size_is_wrong",
+    "packages/viewer_publication/tests/test_reconciliation_progress.py:158:test_zero_object_scan_completes_only_after_checkpoint",
+    "packages/viewer_publication/tests/test_reconciliation_progress.py:166:test_invalid_content_length_closes_body_and_reports_failure",
+    "packages/viewer_publication/tests/test_reconciliation_progress.py:178:test_observation_file_failure_cannot_mask_current_read_or_checkpoint",
+    "scripts/publication/tests/test_pipeline_status.py:276:test_reconciliation_status_remains_observation_without_mutation_or_public_proof"
+  ],
+  "evidence_validation": {
+    "raw_receipt_hashes_verified": 9,
+    "all_measured_source_files_match_integrated_revision": true,
+    "baseline_source_hash_verified": true,
+    "retained_fixture": {
+      "objects": 3,
+      "body_bytes": 7340028,
+      "repeats_per_arm": 3,
+      "GETs": 3,
+      "PUTs": 0,
+      "read_calls": 9,
+      "fsyncs": 2,
+      "latest_replacements_before": 0,
+      "latest_replacements_after": 17
+    },
+    "proof_boundary": "Latest progress has observation_only=true,resume_authorized=false,current_readback_proof=false,public_readback=not_checked; neither restore nor replay reads this file."
+  },
+  "limits": [
+    "No experiments/tests repeated; retained measurement is at8219e186 and read-only source equality is checked at merged014303ed.",
+    "Observation is local, best-effort and potentially stale; no remote artifact custody/progress delivery, public verification or resume/write authority.",
+    "Bounded additional local I/O buys visibility; no speed or memory improvement, total-process memory bound or production latency prediction.",
+    "Original full-current-body SHA256/length/version/original-condition checks and fresh client proof remain mandatory.",
+    "Historical168rows and previous supplements remain unchanged; broader accepted-plan/architecture judgment waits for ct-bpyj."
+  ],
+  "findings": [],
+  "conclusion": {
+    "verdict": "Narrow reconciliation DX and overall improvement justified; retain efficiency and authority grades",
+    "confidence": "high for scoped static/evidence judgment"
+  },
+  "source_sha256": {
+    "packages/viewer_publication/src/viewer_publication/continuation.py": "2e6efcce8ed0b19ede2d6988db82d0fd7fba9ce7f728212a05c262e8a842bff0",
+    "packages/viewer_publication/src/viewer_publication/reconciliation.py": "9da2432a88b60fc62903bdd4d04f852c6db36f7267d74a43faa3992e22121de1",
+    "scripts/publication/pipeline_status.py": "6b0f9a02eb9272d5e844eb09cff91e082a93f3ad78498a5fab668f0e6a39c186",
+    "packages/viewer_publication/tests/test_reconciliation_progress.py": "4593fada4f43665b1aaa83fac3742c7baeb3a5ad5f43da6cf7fc7db2a7db5e0b",
+    "scripts/publication/tests/test_pipeline_status.py": "d79329c0815bade557e9f0a1044d5783486723ce97890ebee1046eafc1f7e75a",
+    "docs/experiments/efficiency-debt/reconciliation-measure.py": "4f09236f841545622650012fa84d65ba9618f87a7f0c4d6a4b2bc5813e245c1c"
+  },
+  "evidence_sha256": {
+    "docs/package-overlap-rescore-20261019.json": "76fe0b92100e80c9b51fe21ebb10e9d681873b7b9e8a4d84ed5ae5b48ac144ae",
+    "docs/package-overlap-rescore-20261019.md": "307b8b54de18dd86c1d238ab5c607926a926540c4a0eb0dbdff6b4be48052611",
+    "docs/experiments/efficiency-debt/reconciliation.md": "4de74c2eae4b5f88a0421c4600bc8f18d5a2c985f80888fd3235d63bfd5406e4",
+    "docs/experiments/efficiency-debt/reconciliation-evidence.json": "1633c54fb650a08072e32c5c5c29e5aec76b12ac4ab8a7f21a4c42ce0f151cd8"
+  },
+  "raw_evidence_sha256": {
+    "reconciliation/review.json": "a721a111c8c68255781a80546b5fde5c42eba18a61412e8220bef7e8716244d3",
+    "reconciliation/review.md": "ee74eb07a3ff146bbd7b2b97a2e463d76072fcfa435e3f1c77edbd04b790b7c0",
+    "reconciliation/run-final/comparison.json": "2efb702376bd6059d73206c6053635a788a029cf31216bae87d1ff5c7a6b37f6",
+    "reconciliation/focused-tests.log": "bdbfb14ea55f73b44b525cec1540056e82687dab6877d758a1e01a03c33614e6",
+    "reconciliation/integration-tests.log": "7643a4292d6f7d79a371de578a6f94ace4621bb5f570c60ac25ac5c86c528547",
+    "rescore/runtime-local-events.json": "0a89f6a319f32c64c1943328a4e7c00f6baf871b5c7624a3e779c308096be868"
+  }
+}

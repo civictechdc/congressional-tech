@@ -1,0 +1,16 @@
+{
+  "status": "four completed scoped supplements including final architecture assessment",
+  "historical_gradebook": "docs/package-overlap-rescore-20261019.json",
+  "historical_rows": 168,
+  "note": "Reports are pinned to their reviewed revisions and may cover overlapping functions. Do not add their row counts or infer a complete current system rescore.",
+  "files": {
+    "completed-eight.json": "1be0ede7c0f3ff0a892b1d2de70e615e02779cb30baf8e39ff04265cf8a1fe82",
+    "completed-eight.md": "ce735a3a6e69949966ea170ccb5687adf44f7fa4217541be1cf25ed22ab0ca69",
+    "runtime-local-events.json": "0a89f6a319f32c64c1943328a4e7c00f6baf871b5c7624a3e779c308096be868",
+    "runtime-local-events.md": "5a385f6c99be4e8fbba6c4e30496158db933ec395ee75609bf6448e32bf0840c",
+    "reconciliation-progress.json": "8af6610e6964b756ab4503037d01f4255afce8d580dc006730798f90fa239b47",
+    "reconciliation-progress.md": "a1d541bc674fb043207887853c0243735cb1ffd2484518960cff15783ed56041",
+    "accepted-plan-and-architecture.json": "76b4e304d67f32d04c86b897b90c8647a78f2a4e4902e6f51824c50516b11609",
+    "accepted-plan-and-architecture.md": "090e5494d9a9c7cc99032eaae7a202188743b84059f538b1452ee96cde4d78f7"
+  }
+}

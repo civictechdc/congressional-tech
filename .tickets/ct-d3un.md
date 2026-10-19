@@ -22,3 +22,7 @@ Selected cleanups are locally tested, independently reviewed, merged and cleaned
 **2026-10-19T16:57:13Z**
 
 Eight selected fixes merged in PRs 128-130 after independent exact-revision reviews. Integrated f438264 passed 9447 offline tests and 38 subtests; browser checks/build passed. All 168 entries rescored; twelve larger follow-ups remain open and prioritized for efficiency/debt. This evidence PR records closure; final archive/cleanup will be recorded in the primary output completion receipt after merge. Grok/Cursor /scripts work stays untouched.
+
+**2026-10-19T20:19:49Z**
+
+All twelve linked efficiency/debt follow-ups are now resolved after local tests, independent review and bounded measurements. Nine changes preserve behavior and data; search-cache, exact-export Blob and packed-Catalog proposals were rejected on measured tradeoffs. Historical low grades are not erased by ticket closure. Current rescore supplements and measured limits are preserved under docs/experiments/efficiency-debt/; the original 168-row assessment remains unchanged.

@@ -11,6 +11,7 @@ import tempfile
 import uuid
 from datetime import datetime, timezone
 
+from viewer_publication.plan import accept_viewer_plan
 from viewer_publication.resume import resume_descriptor, validate_resume_descriptor
 from viewer_publication.client import ContinuedPublicationClient
 from viewer_publication.continuation import Continuation, DurableJournal, MissingPublicationJournal, sha256
@@ -19,9 +20,10 @@ from congress_api.retention.viewer_inventory import verify_inventory, issue_inve
 
 
 class PreparedVerification(tuple):
-    def __new__(cls, receipt, manifest, result, validation):
+    def __new__(cls, receipt, manifest, result, validation, plan):
         value = super().__new__(cls, (receipt, manifest, result))
         value.validation = validation
+        value.plan = plan
         return value
 
 
@@ -154,8 +156,6 @@ def verify_prepared(publisher, root, *, validation=None):
         validation.require(root, receipt['files'], context=receipt['binding'])
     validation.file(root / 'publication/manifest.json', expected=dict(bytes=(root / 'publication/manifest.json').stat().st_size,
                     sha256=receipt['manifest_sha256']))
-    if receipt['binding']['mode'] == 'full':
-        publisher.prepared_files(root / 'publication', manifest, validation=validation)
     continuation = Continuation(root, receipt['binding'], resume=True)
     continuation.phase('prepared', lambda: (_ for _ in ()).throw(ValueError('Missing accepted preparation')),
                        files=lambda: [], inventory=lambda: validation)
@@ -168,7 +168,14 @@ def verify_prepared(publisher, root, *, validation=None):
                 'catalog_id': receipt['binding']['source']['value']['catalog_id']}
     if result != expected:
         raise ValueError('Prepared receipt digest or attempt identity differs')
-    return PreparedVerification(receipt, manifest, result, validation)
+    protected = {name: tuple(receipt['binding'][name][key] for key in ('value', 'etag', 'modified', 'sha256'))
+                 for name in ('source', 'accepted', 'viewer')}
+    plan = accept_viewer_plan(publisher, root / 'publication', manifest,
+        validation=validation, context=receipt['binding'], protected=protected,
+        source_pins=receipt['binding']['code_runtime'], release_plan=receipt['release_plan'],
+        conditions=dict(previous_etag=protected['viewer'][1], selected_etag=protected['source'][1]),
+        mode=receipt['binding']['mode'])
+    return PreparedVerification(receipt, manifest, result, validation, plan)
 
 
 def github_json(route):
@@ -314,12 +321,11 @@ def publish(publisher, client, root, *, artifact, public_url, resume=False, atte
                 raise ValueError('Prepared recovery release manifest changed')
             result = publisher.select_recoveries(guarded, root / 'publication', manifest, selected_record,
                 accepted_record, pointer_record, manifest_digest, public_url=public_url,
-                index=publisher.load_prepared_recovery(root / 'publication', manifest, accepted_record,
-                                                       validation=verified.validation))
+                index=verified.plan.require(root / 'publication', manifest).recovery)
         else:
             result = publisher.upload(guarded, root / 'publication', manifest,
                 previous_etag=binding['viewer']['etag'], selected_etag=binding['source']['etag'], public_url=public_url,
-                publication_plan=receipt['release_plan'], validation=verified.validation,
+                publication_plan=receipt['release_plan'], plan=verified.plan,
                 **({'probe': probe} if probe is not None else {}))
         journal.record('publication_completed', result)
         continuation.save('publication-result.json', publisher.encoded(result), replace=True)

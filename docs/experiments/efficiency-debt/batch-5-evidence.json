@@ -1,0 +1,16 @@
+{
+  "status": "final code independently reviewed; merge and cleanup pending",
+  "implementation_head": "075779041f2d56fcdf138ee44ba6fa1d2a153e4c",
+  "integration_revision": "e9b18a9699af34b52742c3e9ca3658cb71ab8f20",
+  "closed_ticket": "ct-bpyj",
+  "final_integration_tests": "251 passed, 7 subtests passed in 47.43s",
+  "sha256": {
+    "receipt.json": "92c26fa2550f5579161158c531409626bda47d04fe5ae14dd88b8ca464d9e1a9",
+    "catalog-review.json": "b2d8a1a588490bc147e18bb22e367445145be114a6405748d0af5ab88d49688d",
+    "root-evidence-review.json": "103242ac2f1924a14f6b6b26c054e4ab26bee69af382306aacdb4c1b2efe521d",
+    "final-integration-tests.log": "5802c12f982334bfe1d0cfa38c31dcaccdf277d07ac17794b825b0e16dd2eda5",
+    "measure.py": "a0fc7becd67599b90071b65892bea8ecca54298a49cce32f92ac0f8124d3dafa"
+  },
+  "measurement": "823 to 270 known complete output hash helper passes; 269 payloads and complete values match. Tiny candidate slower with added control reads/checkpoints; no speed or memory claim.",
+  "scope": "Local injected-client tests and measurements; no source acquisition, CI gate or full/live qualification repeated."
+}

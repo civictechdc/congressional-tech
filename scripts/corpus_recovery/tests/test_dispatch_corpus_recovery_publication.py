@@ -140,6 +140,16 @@ class DispatcherContinuationTests(unittest.TestCase):
                     calls['publication'] += 1
                     self.assertTrue(kwargs['publication_plan']['release'].startswith('releases/'))
                     return {'status': 'published'}
+                def accepted_plan(publisher, builder, client, continuation, source,
+                                  validate_pair, pair_proof, conditions):
+                    # This fixture tests phase acceptance/reuse only. Real builder,
+                    # inventory and upload integration has its own focused fixture.
+                    validate_pair(json.loads((source/'indexes/catalog.json').read_text()))
+                    continuation.value.setdefault('release_plan', dict(release='releases/'+'a'*32+'/', published_at='fixed'))
+                    manifest = continuation.phase('prepared', lambda: builder.publish(source, continuation.root/'prepared',
+                        validation=pair_proof()), files=lambda: [continuation.root/'prepared/manifest.json'])
+                    return SimpleNamespace(root=continuation.root/'prepared', manifest=manifest,
+                        conditions=conditions(continuation), release_plan=continuation.value['release_plan'])
                 def load(path, name):
                     from types import ModuleType
                     stub = ModuleType(name); stub.__file__ = str(path)
@@ -156,6 +166,7 @@ class DispatcherContinuationTests(unittest.TestCase):
                 with patch.object(module, 'ROOT', repo), patch.object(module, 'verify_import', return_value={'complete': True}), \
                      patch.object(module, 'cloud_clear'), patch('congress_api.retention.raw_catalog.rebuild_catalog_in_directory', side_effect=catalog), \
                      patch.object(module, 'load', side_effect=load), patch('boto3.client', return_value=Client()), \
+                     patch('corpus_recovery.publication.prepare_viewer', side_effect=accepted_plan), \
                      patch('congress_api.retention.r2._configure_retries'), \
                      patch('congress_api.retention.document_index.validate_document_indexes'), \
                      patch('corpus_recovery.mappings.publish_mappings', side_effect=mapping), \

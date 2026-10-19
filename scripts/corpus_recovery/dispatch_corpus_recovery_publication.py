@@ -5,7 +5,6 @@ The maintained catalog and viewer implementations are loaded from --runtime.
 """
 import argparse
 import configparser
-from datetime import datetime, timezone
 import fcntl
 import hashlib
 import importlib.util
@@ -153,6 +152,9 @@ def run(args):
         return dict(local_preflight=True, import_verified=True, writes=False)
     import boto3
     from botocore.config import Config
+    # Import the domain dependency closure before the pre-lock owner check.
+    # publish_imported binds these names per invocation so injected collaborators
+    # do not become cached globals; their source ownership is already checked.
     from congress_api.retention.r2 import R2Store
     from congress_api.retention.catalog_staging import WorkingCatalog
     from congress_api.cli.raw_progress import ProgressLog
@@ -165,6 +167,7 @@ def run(args):
     from viewer_publication.local import LocalContinuation as Continuation
     from corpus_recovery.guards import RecoveryGuard
     import viewer_release_identity
+    import corpus_recovery.publication as publication_module
     builder = load(runtime/'apps/site/scripts/publish-filename-viewer.py', 'recovery_viewer_builder')
     publisher = load(runtime/'apps/site/scripts/publish-viewer-r2.py', 'recovery_viewer_publisher')
     selected.check(builder, publisher)
@@ -196,6 +199,7 @@ def run(args):
               Path(publication_client.__file__).resolve(),
               Path(publication_continuation.__file__).resolve(),
               Path(publication_local.__file__).resolve(),
+              Path(publication_module.__file__).resolve(),
               Path(acknowledgment_module.__file__).resolve(),
               Path(recovery_guard_module.__file__).resolve(),
               Path(admission_module.__file__).resolve(),
@@ -252,107 +256,11 @@ def run(args):
                           protected_check=protected_check)
     proxy = ContinuedPublicationClient(client, continuation=continuation, guard=guard, journal=journal,
                                        after_write=lambda *args: None)
-    source = destination/'source'; expected = set(json.loads((batch/'bodies.json').read_text()))
-    pair_validation = None
-    content_validation = None
-    def validate_pair(manifest):
-        nonlocal pair_validation
-        if pair_validation is not None:
-            return pair_validation.require(source, manifest, validator=validate_document_indexes, expected_bodies=expected)
-        pair_validation = validate_catalog_pair(source, manifest, validator=validate_document_indexes,
-                                               expected_bodies=expected, references=content_validation)
-        return pair_validation.coverage
-    class Store(R2Store):
-        def accept_catalog_validation(self, validation):
-            nonlocal content_validation
-            content_validation = validation
-        def read(self, key):
-            body = super().read(key)
-            if body is not None and key == 'indexes/catalog.json':
-                save('source/'+key, body, replace=key == 'indexes/catalog.json')
-            return body
-        def put(self, key, body, *, immutable=False):
-            if key == 'indexes/catalog.json':
-                save('proposed/'+key, body, replace=True)
-            result = super().put(key, body, immutable=immutable)
-            if key == 'indexes/catalog.json':
-                save('source/'+key, body, replace=True)
-            return result
-        def save_derived(self, key, path, identity):
-            from congress_api.retention.derived_files import retain_verified_file
-            return retain_verified_file(path, source / key, expected=identity, key=key)
-        def read_derived_file(self, key, path, *, expected=None):
-            identity = super().read_derived_file(key, path, expected=expected)
-            if identity is not None:
-                self.save_derived(key, path, identity)
-            return identity
-        def put_derived_file(self, key, path, *, expected):
-            self.save_derived(key, path, expected)
-            return super().put_derived_file(key, path, expected=expected)
-        def put_catalog_manifest(self, data, *, expected_version):
-            manifest = json.loads(data)
-            coverage = validate_pair(manifest)
-            report('coverage.json', coverage)
-            return super().put_catalog_manifest(data, expected_version=expected_version)
     try:
-        guard.boundary()
-        def catalog_phase():
-            build = destination/'build'
-            # An unaccepted build may contain the only diagnostic SQLite state.
-            # Explicit continuation reuses accepted phases; it never deletes or
-            # silently restarts incomplete catalog work.
-            if build.exists():
-                raise RuntimeError('Incomplete catalog build retained; reconcile before continuation: '+str(build))
-            build.mkdir(); (build/'indexes').mkdir()
-            working = WorkingCatalog(build/'working.sqlite')
-            try:
-                with ProgressLog(destination/'catalog-progress.json'):
-                    catalog = rebuild_catalog_in_directory(Store(proxy,bucket), working=working, root=build)
-            finally: working.close()
-            manifest = json.loads((source/'indexes/catalog.json').read_text())
-            coverage = validate_pair(manifest)
-            report('coverage.json', coverage)
-            return catalog
-        catalog = continuation.phase('catalog', catalog_phase,
-            files=lambda: [*source.rglob('*parquet'), source/'indexes/catalog.json', destination/'coverage.json'])
-        report('catalog-result.json', catalog)
-        guard.boundary()
-        def mapping_phase():
-            mapping = publish_mappings(proxy, bucket=bucket,
-                baseline=json.loads(args.baseline.read_text()), prepared=json.loads((batch/'accepted.json').read_text()),
-                validate=accepted_rows, guard=guard.boundary, save_payload=save, journal=journal)
-            return mapping
-        mapping = continuation.phase('mappings', mapping_phase, files=lambda: [p for p in (destination/'accepted-proposed.json', destination/'accepted-before.json') if p.exists()])
-        report('mapping-result.json', mapping)
-        guard.boundary()
-        def prepared_phase():
-            validate_pair(json.loads((source/'indexes/catalog.json').read_text()))
-            selected_metadata = client.head_object(Bucket=bucket, Key='indexes/catalog.json')
-            if selected_metadata['ETag'] != versions['indexes/catalog.json']:
-                raise ValueError('Selected catalog changed before accepted viewer preparation')
-            modified = selected_metadata.get('LastModified')
-            return builder.publish(source, destination/'prepared', modified.isoformat() if modified else None, validation=pair_validation)
-        continuation.phase('prepared', prepared_phase,
-            files=lambda: [p for p in (destination/'prepared').rglob('*') if p.is_file()])
-        guard.boundary()
-        def publication_phase():
-            if 'release_plan' not in continuation.value:
-                import uuid
-                continuation.value['release_plan'] = dict(release='releases/'+uuid.uuid4().hex+'/',
-                    published_at=datetime.now(timezone.utc).isoformat())
-                continuation.flush()
-            prepared_root = destination/'prepared'
-            manifest = json.loads((prepared_root/'manifest.json').read_text())
-            publication = publisher.upload(proxy, prepared_root, manifest,
-                **publication_conditions(continuation), publication_plan=continuation.value['release_plan'])
-            if publication['status'] not in {'published', 'unchanged'}:
-                raise ValueError('Viewer was not published')
-            return publication
-        publication = continuation.phase('publication', publication_phase, files=lambda: [])
-        guard.boundary()
-        report('complete.json', dict(complete=True, catalog=catalog, mapping=mapping,
-                                    publication=publication, imported=result))
-        return publication
+        return publication_module.publish_imported(client=client, proxy=proxy, guard=guard,
+            continuation=continuation, destination=destination, batch=batch,
+            baseline=args.baseline, bucket=bucket, imported=result, builder=builder,
+            publisher=publisher, publication_conditions=publication_conditions)
     except BaseException as error:
         try:
             observation = diagnostics_module.catalog_build_observation(destination, continuation.value['phases'])
