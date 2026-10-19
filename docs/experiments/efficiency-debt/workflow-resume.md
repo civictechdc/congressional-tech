@@ -26,7 +26,7 @@ Baseline: `3757f55ed33ea390895c20a2007cb08eb39ce519`.
 
 - Workflow input count: **5 to 1**.
 - Five interleaved local admission subprocess trials on the same valid record:
-  median **13.14 ms before**, **21.67 ms after**. The earlier check only verified
+  median **12.15 ms before**, **19.73 ms after**. The earlier check only verified
   that all five fields were present; the new check validates their relationships,
   byte limit and repository. These measurements are not hosted-job timings.
 - **117 focused tests passed**, including isolated Python without site packages,
