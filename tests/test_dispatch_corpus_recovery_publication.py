@@ -7,7 +7,7 @@ import unittest
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-spec=importlib.util.spec_from_file_location('publication_dispatch',Path(__file__).resolve().parents[1]/'scripts/dispatch_corpus_recovery_publication.py')
+spec=importlib.util.spec_from_file_location('publication_dispatch',Path(__file__).resolve().parents[1]/'scripts/corpus_recovery/dispatch_corpus_recovery_publication.py')
 module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
 
 def verify_coverage(root,manifest,expected):
@@ -84,16 +84,14 @@ class DispatcherContinuationTests(unittest.TestCase):
         import sys
         from types import SimpleNamespace
         from unittest.mock import patch
-        from recovery_publication_continuation import Continuation
-        scripts = Path(__file__).resolve().parents[1]/'scripts'
-        sys.path.insert(0, str(scripts))
+        from viewer_publication.continuation import Continuation
+        scripts = Path(__file__).resolve().parents[1]/'scripts/corpus_recovery'
         for failed_phase in ('catalog', 'mappings', 'prepared', 'publication', 'incomplete_catalog'):
             with self.subTest(phase=failed_phase), tempfile.TemporaryDirectory() as folder:
                 root = Path(folder); repo = root/'repo'; (repo/'.cache').mkdir(parents=True)
-                (repo/'scripts').mkdir()
-                for name in ('dispatch_corpus_recovery_publication.py', 'guarded_recovery_publication_client.py',
-                             'recovery_publication_continuation.py', 'recovery_guards.py', 'publication_import_evidence.py'):
-                    shutil.copyfile(scripts/name, repo/'scripts'/name)
+                (repo/'scripts/corpus_recovery').mkdir(parents=True)
+                shutil.copyfile(scripts/'dispatch_corpus_recovery_publication.py',
+                                repo/'scripts/corpus_recovery'/'dispatch_corpus_recovery_publication.py')
                 batch = root/'batch'; batch.mkdir()
                 (batch/'bodies.json').write_text('["pdf", "zip-member"]')
                 (batch/'accepted.json').write_text('[]')
@@ -152,12 +150,12 @@ class DispatcherContinuationTests(unittest.TestCase):
                      patch.object(module, 'load', side_effect=load), patch('boto3.client', return_value=Client()), \
                      patch('congress_api.retention.r2._configure_retries'), \
                      patch('congress_api.retention.document_index.validate_document_indexes'), \
-                     patch('publish_corpus_recovery_mappings.publish_mappings', side_effect=mapping), \
+                     patch('corpus_recovery.mappings.publish_mappings', side_effect=mapping), \
                      patch.dict(sys.modules, filename_recoveries=SimpleNamespace(accepted_rows=lambda rows: rows)):
                     with patch.object(Continuation, 'phase', fail_after_accept):
                         with self.assertRaisesRegex(RuntimeError, 'Injected'): module.run(args)
                     pins = json.loads((args.destination/'pins.json').read_text())
-                    import corpus_recovery.merge_corpus_recovery_mappings as merge_module
+                    import corpus_recovery.mappings as merge_module
                     self.assertIn(str(Path(merge_module.__file__).resolve()), pins)
                     args.resume = True
                     if failed_phase == 'incomplete_catalog':
@@ -224,7 +222,7 @@ def sealed_import_fixture(tmp_path):
 
 
 def test_bounded_import_evidence_names_malformed_fields_and_keeps_primary_error(tmp_path, monkeypatch):
-    import publication_import_evidence as evidence
+    import corpus_recovery.admission as evidence
     import pytest
     batch, imported, _ = sealed_import_fixture(tmp_path)
     assert module.verify_import(batch, imported)['complete']
@@ -245,7 +243,7 @@ def test_bounded_import_evidence_names_malformed_fields_and_keeps_primary_error(
 
 @__import__('pytest').mark.parametrize('damage', ['duplicate', 'pins', 'wrong_batch', 'count', 'hash', 'event_size', 'event_count'])
 def test_import_evidence_rejects_wrong_or_unbounded_completion_before_dispatch(tmp_path, monkeypatch, damage):
-    import publication_import_evidence as evidence
+    import corpus_recovery.admission as evidence
     import pytest
     batch, imported, events = sealed_import_fixture(tmp_path)
     if damage == 'duplicate': events.append(events[-1])
@@ -263,7 +261,7 @@ def test_import_evidence_rejects_wrong_or_unbounded_completion_before_dispatch(t
 
 
 def test_local_publication_keeps_original_conditions_after_own_selector_advance(tmp_path):
-    from recovery_publication_continuation import Continuation
+    from viewer_publication.continuation import Continuation
     continuation=Continuation(tmp_path/'attempt',{})
     continuation.value['versions'].update({'viewer-publications/manifest.json':'before-viewer','indexes/catalog.json':'selected-source'})
     original=module.publication_conditions(continuation)
@@ -285,10 +283,9 @@ def test_local_selector_receipt_advances_only_after_guarded_verification(tmp_pat
     import congress_api.retention.r2 as storage
 
     control = tmp_path / 'control'; (control / '.cache').mkdir(parents=True)
-    (control / 'scripts').mkdir()
-    for name in ('dispatch_corpus_recovery_publication.py', 'guarded_recovery_publication_client.py',
-                 'recovery_publication_continuation.py', 'recovery_guards.py', 'publication_import_evidence.py'):
-        shutil.copyfile(module.ROOT / 'scripts' / name, control / 'scripts' / name)
+    (control / 'scripts/corpus_recovery').mkdir(parents=True)
+    shutil.copyfile(module.ROOT / 'scripts/corpus_recovery' / 'dispatch_corpus_recovery_publication.py',
+                    control / 'scripts/corpus_recovery' / 'dispatch_corpus_recovery_publication.py')
     batch = tmp_path / 'batch'; batch.mkdir(); (batch / 'bodies.json').write_text('[]')
     imported = tmp_path / 'imported'; (imported / 'payloads/indexes').mkdir(parents=True)
     for name in ('captures.parquet', 'download-state.parquet'):

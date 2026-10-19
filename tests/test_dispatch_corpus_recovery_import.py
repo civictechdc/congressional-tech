@@ -12,7 +12,7 @@ import unittest
 from unittest.mock import patch, Mock
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / 'scripts'))
+sys.path.insert(0, str(ROOT / 'scripts/corpus_recovery'))
 import dispatch_corpus_recovery_import as module
 import test_import_corpus_recovery_batch as fixtures
 from botocore.exceptions import ClientError
@@ -57,11 +57,10 @@ class DispatchTests(unittest.TestCase):
         self.addCleanup(fixture.doCleanups)
         root = Path(fixture.temp.name).resolve()
         (root / '.cache').mkdir()
-        (root / 'scripts').mkdir()
-        for name in ['dispatch_corpus_recovery_import.py', 'import_corpus_recovery_batch.py',
-                     'assemble_corpus_recovery_import.py', 'reconcile_corpus_recovery_bodies.py',
-                     'recovery_guards.py']:
-            shutil.copyfile(ROOT / 'scripts' / name, root / 'scripts' / name)
+        scripts = root / 'scripts/corpus_recovery'
+        scripts.mkdir(parents=True)
+        for name in ['dispatch_corpus_recovery_import.py', 'reconcile_corpus_recovery_bodies.py']:
+            shutil.copyfile(ROOT / 'scripts/corpus_recovery' / name, scripts / name)
         batch = root / 'batch'
         batch.mkdir()
         (batch / 'prepared-source-records.json').write_text('[]')
@@ -79,7 +78,7 @@ class DispatchTests(unittest.TestCase):
         self.destination = args.destination
         self.batch = batch
         if external:
-            import reconcile_corpus_recovery_bodies as reconciliation
+            import corpus_recovery.inventory as reconciliation
             reconcile_args = SimpleNamespace(batch=batch, destination=root/'reconciliation',
                 prior=None, prior_sha256=None, config=config)
             with patch('boto3.client', return_value=client):
@@ -108,7 +107,7 @@ class DispatchTests(unittest.TestCase):
         self.assertEqual(verified, result)
         events = [json.loads(row) for row in (self.destination/'events.jsonl').read_text().splitlines()]
         pins = next(row['value'] for row in events if row['event']=='pins')
-        import viewer_publication.lost_acknowledgment as acknowledgment
+        import corpus_recovery.acknowledge as acknowledgment
         self.assertIn(str(Path(acknowledgment.__file__).resolve()), pins)
         self.assertIn(str(self.readiness_path), pins)
         self.assertIn(str(self.readiness_path.with_name('remote-body-readback.json')), pins)

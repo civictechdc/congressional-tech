@@ -1,7 +1,4 @@
-from pathlib import Path
-import sys
-sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'scripts'))
-from classify_recovery_html_transcripts import classify
+from corpus_recovery.html import classify_transcripts as classify
 
 
 def transcript(text):

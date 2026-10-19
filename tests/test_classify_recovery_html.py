@@ -1,10 +1,6 @@
-import importlib.util
-from pathlib import Path
 import unittest
 
-spec = importlib.util.spec_from_file_location('recovery_html', Path(__file__).resolve().parents[1] / 'scripts/classify_recovery_html.py')
-module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(module)
+import corpus_recovery.html as module
 
 class HtmlClassificationTests(unittest.TestCase):
     def test_navigation_does_not_fill_empty_document(self):

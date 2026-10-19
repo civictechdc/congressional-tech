@@ -41,10 +41,7 @@ on:
       - '.python-version'
       - '.github/actions/setup-python-project/action.yml'
       - 'scripts/viewer_release_identity.py'
-      - 'scripts/publication_cli.py'
-      - 'scripts/viewer_publication_attempt.py'
-      - 'scripts/recovery_publication_continuation.py'
-      - 'scripts/guarded_recovery_publication_client.py'
+      - 'scripts/publication/**'
       - 'tests/test_viewer_publication_attempt.py'
       - 'tests/test_recovery_publication_continuation.py'
       - 'tests/test_guarded_recovery_publication_client.py'
@@ -123,7 +120,7 @@ jobs:
         if: github.event_name == 'push' || inputs.preparation_run_id || steps.preflight.outputs.status == 'preparation_required'
       - name: Verify publication fidelity and recovery mapping
         if: github.event_name == 'push' || inputs.preparation_run_id || steps.preflight.outputs.status == 'preparation_required'
-        run: PYTHONPATH=apps/site/scripts:scripts python -m pytest -q .github/tests/test_filename_publication.py .github/tests/test_viewer_r2.py tests/test_filename_recoveries.py tests/test_filename_observations.py tests/test_filename_details.py tests/test_viewer_publication_attempt.py tests/test_guarded_recovery_publication_client.py tests/test_recovery_publication_continuation.py tests/test_publication_preflight.py tests/test_publication_cli.py tests/test_publication_state_bounds.py tests/test_publication_control_reads.py
+        run: PYTHONPATH=apps/site/scripts:scripts/publication python -m pytest -q .github/tests/test_filename_publication.py .github/tests/test_viewer_r2.py tests/test_filename_recoveries.py tests/test_filename_observations.py tests/test_filename_details.py tests/test_viewer_publication_attempt.py tests/test_guarded_recovery_publication_client.py tests/test_recovery_publication_continuation.py tests/test_publication_preflight.py tests/test_publication_cli.py tests/test_publication_state_bounds.py tests/test_publication_control_reads.py
       - name: Prepare a changed catalog or recovery index
         id: prepare
         if: ${{ !inputs.preparation_run_id && steps.preflight.outputs.status == 'preparation_required' }}

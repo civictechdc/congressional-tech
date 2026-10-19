@@ -4,7 +4,7 @@ import io
 import json
 from pathlib import Path
 import pytest
-import recovery_publication_continuation as state
+import viewer_publication.continuation as state
 from botocore.exceptions import ClientError
 
 class Remote:

@@ -5,9 +5,9 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
-sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'scripts'))
-from coalesce_corpus_recovery_batches import coalesce, publication_due, coalesce_when_due
-from reconcile_corpus_recovery_bodies import digest, sealed_inputs
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts/corpus_recovery'))
+from coalesce_corpus_recovery_batches import coalesce, coalesce_when_due, publication_due
+from corpus_recovery.inventory import digest, sealed_inputs
 
 class CoalesceTests(unittest.TestCase):
     def setUp(self):

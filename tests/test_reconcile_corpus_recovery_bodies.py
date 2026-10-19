@@ -10,8 +10,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
-from reconcile_corpus_recovery_bodies import reconcile, sealed_inputs, run
+from corpus_recovery.inventory import reconcile, run, sealed_inputs
 
 
 class Client:
@@ -72,6 +71,6 @@ def test_pinned_prior_rejects_changed_file_before_network(tmp_path):
     prior = tmp_path / 'prior.json'
     prior.write_text('{}')
     args = SimpleNamespace(batch=tmp_path, prior=prior, prior_sha256='wrong')
-    with patch('reconcile_corpus_recovery_bodies.sealed_inputs', return_value=({}, {}, {})):
+    with patch('corpus_recovery.inventory.sealed_inputs', return_value=({}, {}, {})):
         with pytest.raises(ValueError, match='Prior evidence digest mismatch'):
             run(args)

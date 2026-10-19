@@ -7,7 +7,7 @@ import sys
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts/webharvest'))
 import webharvest_recovery as recovery
 
 
@@ -323,7 +323,7 @@ def test_new_classifier_source_invalidates_cache(tmp_path, monkeypatch):
     package = tmp_path / 'package'
     package.mkdir()
     real = validation.classifier_directory()
-    for name in ['classify_recovery_html.py', 'classify_recovery_html_transcripts.py']:
+    for name in ['html.py']:
         (package / name).write_bytes((real / name).read_bytes() + b'\n# newer classifier source\n')
     monkeypatch.setattr(validation, 'classifier_directory', lambda: package)
     second = validation.freeze(tmp_path / 'second', {})

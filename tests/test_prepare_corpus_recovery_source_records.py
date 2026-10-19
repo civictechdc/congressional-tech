@@ -9,7 +9,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'scripts'))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'scripts/corpus_recovery'))
 import prepare_corpus_recovery_source_records as module
 
 

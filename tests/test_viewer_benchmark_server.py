@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('viewer_benchmark_server', ROOT / 'scripts/viewer_benchmark_server.py')
+spec = importlib.util.spec_from_file_location('viewer_benchmark_server', ROOT / 'scripts/measure/viewer_benchmark_server.py')
 server = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(server)
 

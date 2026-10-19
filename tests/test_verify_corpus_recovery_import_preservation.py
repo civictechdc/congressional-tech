@@ -9,8 +9,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
-from verify_corpus_recovery_import_preservation import verify
+from corpus_recovery.preservation import verify
 
 
 def fixture(root, *, drift=False, missing=False):
@@ -64,7 +63,7 @@ def test_detects_missing_capture_despite_completion_marker(tmp_path):
 
 
 def test_streaming_prefix_checks_cross_different_row_groups(tmp_path):
-    from verify_corpus_recovery_import_preservation import compare_prefix
+    from corpus_recovery.preservation import compare_prefix
     rows = pa.table({'value': pa.array([None, 2**64-1, 7, 7] * 2500, type=pa.uint64()),
                      'nested': pa.array([[b'x', None]] * 10000)})
     pq.write_table(rows, tmp_path / 'old.parquet', row_group_size=1001)
@@ -76,7 +75,7 @@ def test_streaming_prefix_checks_cross_different_row_groups(tmp_path):
 
 
 def test_duplicate_state_urls_fail_even_when_prefix_is_unchanged(tmp_path):
-    from verify_corpus_recovery_import_preservation import unique_state_urls
+    from corpus_recovery.preservation import unique_state_urls
     for url in ('same', None):
         pq.write_table(pa.table({'url': pa.array([url, url], type=pa.string())}), tmp_path / 'states.parquet')
         with pytest.raises(ValueError, match='Duplicate'):

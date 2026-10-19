@@ -5,8 +5,8 @@ source heartbeat. This command does not write status, retry work, resume a run,
 acquire source documents or publish anything.
 
 ```bash
-.venv/bin/python scripts/pipeline_status.py --run RUN_ID
-.venv/bin/python scripts/pipeline_status.py --run RUN_ID --json
+.venv/bin/python scripts/publication/pipeline_status.py --run RUN_ID
+.venv/bin/python scripts/publication/pipeline_status.py --run RUN_ID --json
 ```
 
 The live command uses `gh api` for the GitHub run and reads the existing public
@@ -24,7 +24,7 @@ stage; no total percentage or estimated finish time is invented.
 For offline inspection, supply saved evidence:
 
 ```bash
-.venv/bin/python scripts/pipeline_status.py --run RUN_ID \
+.venv/bin/python scripts/publication/pipeline_status.py --run RUN_ID \
   --github-json saved-github-run.json --progress saved-progress.json \
   --previous-progress earlier-progress.json --json
 ```

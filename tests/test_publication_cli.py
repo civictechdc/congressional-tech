@@ -7,9 +7,9 @@ from types import SimpleNamespace
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path[:0] = [str(ROOT/'scripts'),str(ROOT/'apps/site/scripts')]
+sys.path[:0] = [str(ROOT/'scripts/publication'),str(ROOT/'apps/site/scripts')]
 import publication_cli as cli
-import viewer_publication_attempt as attempts
+import viewer_publication.attempt as attempts
 
 
 def descriptor():

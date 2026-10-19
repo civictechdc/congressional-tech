@@ -6,7 +6,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('core_benchmark', ROOT / 'scripts/benchmark_core_rebuild.py')
+spec = importlib.util.spec_from_file_location('core_benchmark', ROOT / 'scripts/measure/benchmark_core_rebuild.py')
 benchmark = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(benchmark)
 

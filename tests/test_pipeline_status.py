@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-SPEC = importlib.util.spec_from_file_location('pipeline_status', ROOT / 'scripts/pipeline_status.py')
+SPEC = importlib.util.spec_from_file_location('pipeline_status', ROOT / 'scripts/publication/pipeline_status.py')
 status = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(status)
 NOW = datetime(2026, 10, 18, 12, 0, tzinfo=timezone.utc)
@@ -198,7 +198,7 @@ def test_continuation_rejects_malformed_or_excessive_local_writes_before_attribu
 
 
 def test_read_only_publication_command_emits_durable_pending_receipt(tmp_path,monkeypatch,capsys):
-    import publication_verification
+    import viewer_publication.verify as publication_verification
     run_path=write(tmp_path/'run.json',github('success'))
     heartbeat_path=write(tmp_path/'heartbeat.json',progress())
     raw_path=write(tmp_path/'raw.json',{'catalog_id':'raw'})

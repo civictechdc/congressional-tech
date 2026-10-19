@@ -17,9 +17,9 @@ from botocore.exceptions import ClientError
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path[:0] = [str(ROOT / 'scripts'), str(ROOT / 'apps/site/scripts')]
-import viewer_publication_attempt as attempts
-from recovery_publication_continuation import Continuation, DurableJournal
+sys.path.insert(0, str(ROOT / 'apps/site/scripts'))
+import viewer_publication.attempt as attempts
+from viewer_publication.continuation import Continuation, DurableJournal
 
 spec = importlib.util.spec_from_file_location('attempt_publisher', ROOT / 'apps/site/scripts/publish-viewer-r2.py')
 publisher = importlib.util.module_from_spec(spec); spec.loader.exec_module(publisher)
@@ -398,7 +398,13 @@ def test_runtime_change_refuses_original_artifact_before_any_write(ready, monkey
 
 
 def test_bounded_fixture_complete_publication_cost_receipt(source, tmp_path, monkeypatch):
-    from publication_costs import PublicationCosts
+    measure = str(ROOT / 'scripts/measure')
+    if measure not in sys.path:
+        sys.path.insert(0, measure)
+    spec = importlib.util.spec_from_file_location('publication_costs', ROOT / 'scripts/measure/publication_costs.py')
+    publication_costs = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(publication_costs)
+    PublicationCosts = publication_costs.PublicationCosts
     remote = Remote(source)
     metrics = PublicationCosts(tmp_path)
     original_get, original_put, original_download = remote.get_object, remote.put_object, remote.download_file
@@ -443,7 +449,7 @@ def test_bounded_fixture_complete_publication_cost_receipt(source, tmp_path, mon
         metrics.save(destination, inputs={'source_manifest_sha256': publisher.digest(source / 'indexes/catalog.json'),
             'source_files': {str(p.relative_to(source)): publisher.digest(p) for p in source.rglob('*.parquet')},
             'runtime': publisher.full_release_identity(), 'python': sys.version, 'executable': sys.executable,
-            'measurement_source_sha256': publisher.digest(ROOT / 'scripts/publication_costs.py')}, outcomes=outcomes)
+            'measurement_source_sha256': publisher.digest(ROOT / 'scripts/measure/publication_costs.py')}, outcomes=outcomes)
 
 
 def test_each_restored_inventory_file_hashes_once_and_reuses_only_issued_proof(ready, monkeypatch):

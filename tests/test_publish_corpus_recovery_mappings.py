@@ -6,9 +6,8 @@ from pathlib import Path
 import sys
 import unittest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
-from guarded_recovery_publication_client import VerifiedTransfer
-from publish_corpus_recovery_mappings import KEY, publish_mappings
+from corpus_recovery.mappings import KEY, publish_mappings
+from viewer_publication.client import VerifiedTransfer
 
 
 def doc(body=None):

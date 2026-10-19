@@ -520,14 +520,10 @@ version = "0.1.0"
 source = { editable = "packages/corpus_recovery" }
 dependencies = [
     { name = "congress-api", extra = ["archive"] },
-    { name = "viewer-publication" },
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "congress-api", extras = ["archive"], editable = "packages/congress_api" },
-    { name = "viewer-publication", editable = "packages/viewer_publication" },
-]
+requires-dist = [{ name = "congress-api", extras = ["archive"], editable = "packages/congress_api" }]
 
 [[package]]
 name = "cryptography"

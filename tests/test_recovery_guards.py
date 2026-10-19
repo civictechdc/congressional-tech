@@ -6,8 +6,7 @@ import tempfile
 import unittest
 from unittest.mock import Mock
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
-from recovery_guards import RecoveryGuard, active_cloud_writers
+from corpus_recovery.guards import RecoveryGuard, active_cloud_writers
 
 
 class GuardTests(unittest.TestCase):
