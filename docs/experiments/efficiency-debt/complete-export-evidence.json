@@ -1,0 +1,131 @@
+{
+  "version": 1,
+  "head": "991839421bd7ca160d25feb0d373a8dff23b287b",
+  "node": "v22.22.2",
+  "sourceSha256": "8e8151334b80f9478cf80ebedc910aa67b6ef7e8134f3a5ee8839199917099fb",
+  "fixture": {
+    "serializedBytes": 16800163,
+    "observations": 4,
+    "sources": 3,
+    "selectedReferences": 5,
+    "expectedSha256": "38f809e5e880e396847f007037ed3c6c881222d5b6fc7ea29879238ad17b60ce"
+  },
+  "metrics": {
+    "logicalDecodeCalls": 3,
+    "maxDecodedPartBytes": 65537,
+    "maxLogicalDecodedBytes": 16800142,
+    "maxLogicalTextBytes": 21600274,
+    "joinedDecodedBytes": 0,
+    "maxParsedValueBytes": 21600758,
+    "scanYields": 128,
+    "oversizedLogicalDecodes": 2
+  },
+  "retainedCache": {
+    "bytes": 346,
+    "peak": 346,
+    "evictions": 0,
+    "entries": 1,
+    "maxBytes": 1048576,
+    "maxEntryBytes": 1048576
+  },
+  "stages": {
+    "fixture": {
+      "rss": 143294464,
+      "heapTotal": 14827520,
+      "heapUsed": 5400808,
+      "external": 2396412,
+      "arrayBuffers": 107978
+    },
+    "page": {
+      "rss": 264716288,
+      "heapTotal": 66060288,
+      "heapUsed": 26388168,
+      "external": 2539464,
+      "arrayBuffers": 230762
+    },
+    "full": {
+      "rss": 304300032,
+      "heapTotal": 83214336,
+      "heapUsed": 48016736,
+      "external": 2545798,
+      "arrayBuffers": 230762
+    },
+    "clone": {
+      "rss": 347619328,
+      "heapTotal": 104824832,
+      "heapUsed": 69635528,
+      "external": 2545798,
+      "arrayBuffers": 230762
+    },
+    "formatted": {
+      "rss": 390840320,
+      "heapTotal": 148045824,
+      "heapUsed": 112838384,
+      "external": 2545798,
+      "arrayBuffers": 230762
+    },
+    "blob": {
+      "rss": 402849792,
+      "heapTotal": 148307968,
+      "heapUsed": 112844472,
+      "external": 19346508,
+      "arrayBuffers": 17031472
+    }
+  },
+  "estimates": {
+    "restoredPage": 21600976,
+    "fullResult": 21601242,
+    "workerClone": 21601242,
+    "formattedUtf16": 21601400,
+    "formattedUtf8": 16800710,
+    "blobBytes": 16800710,
+    "baselineKnownBytes": 64803884,
+    "candidateKnownBytes": 81604594,
+    "candidateRatio": 1.2592546767721515
+  },
+  "elapsedMs": 1225.113,
+  "phaseStartMarkers": {
+    "page": 692.8272499999999,
+    "full": 876.516084,
+    "blob": 1186.7172090000001
+  },
+  "peakRssBytes": 412450816,
+  "checks": {
+    "exactValues": true,
+    "fieldOrder": true,
+    "nullEmptyNestedUnicode": true,
+    "duplicateReferences": true,
+    "over16MiBNotRejected": true,
+    "noJoinedDecodedBytes": true,
+    "blob_target_met": false,
+    "fixture_ceiling_met": true,
+    "action_deadline_met": true,
+    "sampled_rss_ceiling_met": true
+  },
+  "decision": "retain_exact_copy_and_existing_parquet_recovery",
+  "clipboardAllocation": "unknown; no clipboard API invoked",
+  "artifacts": {
+    "benchmark.json": "15bc1fe57283081b8d172e8b93cdce96fe3557e0814d78be56d59ee8fd82c8c7",
+    "benchmark.log": "020c54ec8ad51d87b6e967ffa132078b6397e8ba3f7517a813fba8ce8ac1c9b8",
+    "focused-tests.log": "15e55ae43484121d687fbfc99606bee31bccf20e7ace8729c7f2c13b7a85c437",
+    "plan.md": "de7a83028847f008d413f4470a77e60df529cfbc7e45e2d8f19797ce9abc35f9"
+  },
+  "raw_artifacts_root": "/Users/mikewolfd/Work/congressional-tech/output/efficiency-debt-20261019/complete-export",
+  "tests": "75 passed in4.81s; reader failure/retry, actual worker complete routes and UI reader/format/clipboard failure preservation",
+  "limitations": [
+    "Node Blob/structuredClone model, not hosted or full browser/clipboard qualification",
+    "Stage memory includes harness construction and exact-value assertion copies; GC and string layout remain engine-specific",
+    "Known value estimates are not peak heap; decoder categories can share data and must not be summed as RSS",
+    "No fixed product size rejection;16MiB remains diagnostic and experiment ceilings stay separate"
+  ],
+  "source_sha256": {
+    "apps/site/src/components/filename-observations.mjs": "8e8151334b80f9478cf80ebedc910aa67b6ef7e8134f3a5ee8839199917099fb",
+    "apps/site/src/components/filename-catalog.mjs": "e2adfaf0d0c618d61ca3d23e31f4d2143f53d383e049a589ed266e3f93aaafc3",
+    "apps/site/src/components/filename-worker.mjs": "0dffe834a5d307e4175c8039363d2ed3f16a277a75f0d942d95f55f9b4570773",
+    "apps/site/src/components/filename-client.mjs": "d16b494d2ab7dec44b60e6c4c13c4f7c8a0cda3249b64c4b1b2f39d61ba375b3",
+    "docs/youtube-coverage/research/filename-viewer.mjs": "cb22ef248316e22ac9ba19f7a731ac841d5fce6d9c53c5a6675b00d235f59a39",
+    "apps/site/src/components/filename-complete-export.test.mjs": "53809fd68c53cf96f7ef0cb31ade0471566b9e862a6d21785cf2b25ecc39adbc",
+    "apps/site/src/components/filename-viewer-ui.test.mjs": "fb76355419805c4e5f4fa80dfe0a8fe0b42b413fee190d664ea81a2ed145fe97",
+    "docs/experiments/efficiency-debt/complete-export-benchmark.mjs": "85ebdf25f798a47d4b1551033dd2ff40b0fe4f21b2e78407c8602d6b7141503f"
+  }
+}

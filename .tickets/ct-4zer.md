@@ -1,6 +1,6 @@
 ---
 id: ct-4zer
-status: open
+status: in_progress
 deps: [ct-2d3k]
 links: [ct-d3un]
 created: 2026-10-19T16:40:41Z
@@ -30,3 +30,7 @@ Review evidence: apps/site/src/components/filename-catalog.mjs:10:text, apps/sit
 **2026-10-19T16:56:07Z**
 
 Prioritized for efficiency and architectural debt per user direction. Require measured work/resource changes and simpler ownership; preserve behavior and data.
+
+**2026-10-19T19:30:36Z**
+
+Measured exact merged3757f55 against bounded row-group candidate on8192 synthetic sources/4096 groups,32 source groups,5 cases x cold/warm x3. All30 result hashes match; warm normalization8192→0 but wide warm latency32.24→32.27ms, cold wide+27%/AND+30.7%; decoded cache19.10→34.51MB and RSS171.62→179.62MB. Candidate misses unchanged target and is reverted; retain current exact scan.104 focused filename tests pass. docs/experiments/efficiency-debt/search.md and search-evidence.json bind receipts under primary output/efficiency-debt-20261019/search/. Remains in_progress pending independent review; no full catalog/live qualification.
