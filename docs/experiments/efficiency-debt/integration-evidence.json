@@ -1,0 +1,52 @@
+{
+  "code_revision": "1478865beea896e43b860972859f9a542cab03d5",
+  "original_grok_head": "5150f34fea16ffde48f024bad18fd84fd3bb57f5",
+  "previous_remote_main": "940007301c844ccc43d8d0573c8c6c2da79e2d54",
+  "evidence_root": "/Users/mikewolfd/Work/congressional-tech/output/efficiency-debt-20261019/integration",
+  "files": {
+    "catalog-review.json": {
+      "bytes": 1095,
+      "sha256": "36a636a53008f533c17f9b305fcad516855dffc8ef8a701211d6696fd5c46d4e"
+    },
+    "recovery-review.json": {
+      "bytes": 4065,
+      "sha256": "95bb0ac75c9876dae2842a7f4e9522d6b1982768c8e2d398518211093c554ab8"
+    },
+    "search-review.json": {
+      "bytes": 1247,
+      "sha256": "47b0024bf99ef613ddfa3aa54e2f82ee0fa1b7736e5a6f35770d3ab6a4351a97"
+    },
+    "catalog-fixes.json": {
+      "bytes": 1395,
+      "sha256": "d4ca8d0e68da5de9750ba86130dae4f59e6f67589ffe1ffacf561ade958404f2"
+    },
+    "recovery-repair.json": {
+      "bytes": 2204,
+      "sha256": "eda1168e30c3aef321260180da4a63c99e0711747e500f6bc9a6c937b4d7a01b"
+    },
+    "search-repairs.json": {
+      "bytes": 1057,
+      "sha256": "540fc23fa31ecd9b9edb91a931102b448deb5ca329f44f7bd57a05d9b44bd377"
+    },
+    "publication-cross-review.json": {
+      "bytes": 2192,
+      "sha256": "1ce173c1b084336843452b11c20b79276d4a6954d3f8d5755372be1b0d1f1a47"
+    },
+    "recovery-cross-review.json": {
+      "bytes": 2014,
+      "sha256": "4bb5ab32b0d623ae6d036fe90c1f2fe2a98c412f9bf27ea6be827593aa0105e4"
+    },
+    "search-cross-review.json": {
+      "bytes": 4898,
+      "sha256": "1775fac1232a30f951eebbe014ca590084a3c6228d837953e8feae2c3ebc0a47"
+    },
+    "production-offline-receipt.json": {
+      "bytes": 2448,
+      "sha256": "9837d18824413409434612ccce7b047ab72e890171d035eff7023acd2ba470be"
+    },
+    "production-offline.log": {
+      "bytes": 12743,
+      "sha256": "69e99e51cb32e1e2b0bcc9287bbe883532705d6f9ec56c4416d29dafd32a9667"
+    }
+  }
+}
