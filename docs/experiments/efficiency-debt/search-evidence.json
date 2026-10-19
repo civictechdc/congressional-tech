@@ -1,0 +1,154 @@
+{
+  "version": 1,
+  "base": "3757f55ed33ea390895c20a2007cb08eb39ce519",
+  "retained_reader_sha256": "e2adfaf0d0c618d61ca3d23e31f4d2143f53d383e049a589ed266e3f93aaafc3",
+  "candidate_reader_sha256": "341c9ca9bf8ee3e438d06957a286ffded8cc9b1a8f6b114c7ccccc9becda05b6",
+  "node": "v22.22.2",
+  "fixture": {
+    "rows": 8192,
+    "row_group_size": 256,
+    "seed": "deterministic-row-number",
+    "source_url_chars": 925,
+    "wide_chars": 1058
+  },
+  "decision": "retain_current_exact_scan",
+  "targets": {
+    "warm_wide_ratio_max": 0.75,
+    "all_case_ratio_max": 1.2,
+    "repeated_normalization_reduction_min": 0.9,
+    "rss_ceiling_bytes": 1073741824,
+    "arm_deadline_seconds": 90
+  },
+  "all_hashes_equal": true,
+  "work_count_assertions_passed": true,
+  "targets_met": false,
+  "resources": {
+    "baseline": {
+      "peak_rss_bytes": 171622400,
+      "max_decoded_cache_bytes": 19101790,
+      "max_compressed_cache_bytes": 635674
+    },
+    "candidate": {
+      "peak_rss_bytes": 179617792,
+      "max_decoded_cache_bytes": 34512864,
+      "max_compressed_cache_bytes": 635674
+    }
+  },
+  "baseline_active_whole_column_estimates": {
+    "source_url": 15398764,
+    "content_document_kind": 14273380,
+    "congress": 507928
+  },
+  "candidate_max_active_column_estimate": 481304,
+  "candidate_max_active_search_batch_estimate": 962616,
+  "artifacts": {
+    "baseline-3757f55-v4.json": "888a29aac709d152196c33e570db9aa4d663fe15556efa3aa99746c86c3490b8",
+    "baseline-3757f55-v4.log": "439647b0b490a1634f10ba9bf2fc6037d232201df50e1f520ef0175c3e095b50",
+    "candidate-v1.json": "9261d3e96023057f36498555e6567fb49d0be5b452a7fc647cc233e355489877",
+    "candidate-v1.log": "1f79bcd1b3732c00bc0d6cf92ea680752f4844b8b1b2c2f09a06577e1d69c983",
+    "candidate-v1.patch": "ae1af152492afca70d83b74e1b1b7a7863ea59838e80949ba83e0733987bcd8f",
+    "candidate-v1-filename-catalog.mjs": "341c9ca9bf8ee3e438d06957a286ffded8cc9b1a8f6b114c7ccccc9becda05b6",
+    "candidate-catalog-tests.log": "915895eec7d3d2342e797109ad127162d54ffb3c64cb4fa58c760a5c53eecafb",
+    "retained-filename-tests.log": "e79d2f6a15dbbf43e52b150ae98ca950611afd84166e098ca5df7b1b552cd7b2",
+    "fixture-v4/public/manifest.json": "4e2445381697748389bed072b58452c4da1bece59dfd6bb4b51bdbc394df8c5d"
+  },
+  "limitations": [
+    "Local Node/file ranges, not hosted transfer or browser/full-catalog qualification",
+    "Whole-case time and transfer timing; metadata/decode/normalization/scans separated by counters, not isolated phase CPU times",
+    "Active value estimates exclude native decoder/object layout and GC; RSS is process high-water",
+    "Candidate source reverted; its old columnLoads assertion failed4vs1, other17 catalog tests passed; retained suite104passed"
+  ],
+  "results": [
+    {
+      "name": "source-url",
+      "temperature": "cold",
+      "baseline_median_ms": 62.78262500000005,
+      "candidate_median_ms": 68.8749580000001,
+      "ratio": 1.0970385198134045,
+      "total": 4096,
+      "result_sha256": "6ffe97161fe75b35651b1ad9d32cc3be480edb5cdefcc2b7e17b9da54d200177"
+    },
+    {
+      "name": "source-url",
+      "temperature": "warm",
+      "baseline_median_ms": 36.721833999999944,
+      "candidate_median_ms": 37.54170799999997,
+      "ratio": 1.022326608197184,
+      "total": 4096,
+      "result_sha256": "6ffe97161fe75b35651b1ad9d32cc3be480edb5cdefcc2b7e17b9da54d200177"
+    },
+    {
+      "name": "wide-arbitrary",
+      "temperature": "cold",
+      "baseline_median_ms": 49.727916999999934,
+      "candidate_median_ms": 63.13362499999994,
+      "ratio": 1.2695811288455943,
+      "total": 65,
+      "result_sha256": "eea6f55a3f06e8c569b8114fe56edffee5721f83a2d0c258359c6987d5aac667"
+    },
+    {
+      "name": "wide-arbitrary",
+      "temperature": "warm",
+      "baseline_median_ms": 32.23679200000004,
+      "candidate_median_ms": 32.27350000000001,
+      "ratio": 1.0011386989127198,
+      "total": 65,
+      "result_sha256": "eea6f55a3f06e8c569b8114fe56edffee5721f83a2d0c258359c6987d5aac667"
+    },
+    {
+      "name": "same-source-and",
+      "temperature": "cold",
+      "baseline_median_ms": 60.125584,
+      "candidate_median_ms": 78.60141599999997,
+      "ratio": 1.307287360402187,
+      "total": 33,
+      "result_sha256": "cfef9e9abd14fff4fe00e1b86fec5d28daec304f27e56270da32e07f8c5e8a05"
+    },
+    {
+      "name": "same-source-and",
+      "temperature": "warm",
+      "baseline_median_ms": 36.25179200000002,
+      "candidate_median_ms": 34.197,
+      "ratio": 0.9433188847602342,
+      "total": 33,
+      "result_sha256": "cfef9e9abd14fff4fe00e1b86fec5d28daec304f27e56270da32e07f8c5e8a05"
+    },
+    {
+      "name": "observation-unicode",
+      "temperature": "cold",
+      "baseline_median_ms": 65.5405830000002,
+      "candidate_median_ms": 75.17366700000002,
+      "ratio": 1.146978918390149,
+      "total": 4096,
+      "result_sha256": "6ffe97161fe75b35651b1ad9d32cc3be480edb5cdefcc2b7e17b9da54d200177"
+    },
+    {
+      "name": "observation-unicode",
+      "temperature": "warm",
+      "baseline_median_ms": 45.133749999999964,
+      "candidate_median_ms": 47.71845899999994,
+      "ratio": 1.0572677652532745,
+      "total": 4096,
+      "result_sha256": "6ffe97161fe75b35651b1ad9d32cc3be480edb5cdefcc2b7e17b9da54d200177"
+    },
+    {
+      "name": "observation-null-json",
+      "temperature": "cold",
+      "baseline_median_ms": 63.13337499999989,
+      "candidate_median_ms": 65.93170800000007,
+      "ratio": 1.0443241470933589,
+      "total": 4096,
+      "result_sha256": "6ffe97161fe75b35651b1ad9d32cc3be480edb5cdefcc2b7e17b9da54d200177"
+    },
+    {
+      "name": "observation-null-json",
+      "temperature": "warm",
+      "baseline_median_ms": 45.03679199999999,
+      "candidate_median_ms": 47.189792000000125,
+      "ratio": 1.0478053587831064,
+      "total": 4096,
+      "result_sha256": "6ffe97161fe75b35651b1ad9d32cc3be480edb5cdefcc2b7e17b9da54d200177"
+    }
+  ],
+  "raw_artifacts_root": "/Users/mikewolfd/Work/congressional-tech/output/efficiency-debt-20261019/search"
+}
