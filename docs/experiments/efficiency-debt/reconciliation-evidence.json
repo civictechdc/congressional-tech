@@ -1,0 +1,81 @@
+{
+  "baseline_revision": "1e572d028a53ee104c31a4ba4eeded530e34ec51",
+  "baseline_source_sha256": "dedaa27833a8bd39c483d1242f66c7207ddd181e09677911b683099f0cd7003c",
+  "candidate_revision": "8219e1863bfce5b3acd4037415ae77844df3e2ac",
+  "candidate_files": {
+    "packages/viewer_publication/src/viewer_publication/continuation.py": "2e6efcce8ed0b19ede2d6988db82d0fd7fba9ce7f728212a05c262e8a842bff0",
+    "packages/viewer_publication/src/viewer_publication/reconciliation.py": "9da2432a88b60fc62903bdd4d04f852c6db36f7267d74a43faa3992e22121de1",
+    "scripts/publication/pipeline_status.py": "6b0f9a02eb9272d5e844eb09cff91e082a93f3ad78498a5fab668f0e6a39c186",
+    "scripts/measure/publication_costs.py": "24d8d1efae858fb91daf21e43730b39910a8380afcc9e9d3c1d278430b93a16a",
+    "scripts/measure/process_rss.py": "d998bdfb02a3eed8491fe6a7203a3c1efdbf854fbc0f11b7c55592d1c5e079d5"
+  },
+  "candidate_tracked_changes": "",
+  "measurement_sha256": "4f09236f841545622650012fa84d65ba9618f87a7f0c4d6a4b2bc5813e245c1c",
+  "python": "3.12.13 (main, Apr  7 2026, 21:09:58) [Clang 22.1.1 ]",
+  "executable": "/Users/mikewolfd/.codex/worktrees/efficiency-catalog/congressional-tech/.venv-catalog/bin/python",
+  "limits": {
+    "objects": 3,
+    "body_bytes": 7340028,
+    "repeats_per_arm": 3,
+    "remote_network": false,
+    "seconds_per_arm": 120,
+    "scratch_bytes": 67108864,
+    "sampled_rss_bytes": 268435456,
+    "max_observations_per_object": 36,
+    "max_latest_observation_bytes": 16384
+  },
+  "fixture_sha256": {
+    "current": "3d0d6f06c74e1db8e35c42fc36dffd0adea1cda26c3c146718fa399368c2a4cb",
+    "original": "7993f364fe2498f0ea9f2b0fcd9d9357e73fa8fbaf4b223f1f34895754b635fa"
+  },
+  "medians": {
+    "baseline": {
+      "seconds": 0.06048320792615414,
+      "serialized_characters": 704,
+      "fsync_calls": 2,
+      "observation_replacements": 0
+    },
+    "candidate": {
+      "seconds": 0.06243037502281368,
+      "serialized_characters": 10264,
+      "fsync_calls": 2,
+      "observation_replacements": 17
+    }
+  },
+  "parity": {
+    "outcome_sha256": "c98dc485d2b5ec0548e42361526c7b6e514d7ed0f5d5fc8a47169bf82aa19b3d",
+    "arms_and_repeats": 6,
+    "GET_requests": 3,
+    "PUT_requests": 0,
+    "body_read_calls": 9,
+    "body_read_bytes": 7340028,
+    "fsync_calls": 2,
+    "exact_equal": [
+      "complete authority state",
+      "fresh client-bound current-body proof values",
+      "GET and body-read counts/bytes"
+    ]
+  },
+  "raw_files": {
+    "run-final/comparison.json": "2efb702376bd6059d73206c6053635a788a029cf31216bae87d1ff5c7a6b37f6",
+    "run-final/proposal.json": "607282e8f6f95956611a087300977c732e9286827ce05397445a7a49b0cb1cbd",
+    "run-final/baseline-0.json": "14ed7fd5b9c01fbc78b5994613ad54d192e2a221ef12e3b83ef582d25559621b",
+    "run-final/baseline-1.json": "8c20bd5865b582690afcf4cc039bc9c61b6b35d56185965d8c296d7e4bf94015",
+    "run-final/baseline-2.json": "7003e989f12f825add8697d19e5b50bef7d0d5880550346ddbb6dec8dcbdaf7e",
+    "run-final/candidate-0.json": "7479529a3e287befb1ab103538f8467be3618aacc3dc4611fd5cd078e858a00b",
+    "run-final/candidate-1.json": "b9266ab73b0747a4c8829a116d57f89f5548f94686cda933f2a17e9f74e25643",
+    "run-final/candidate-2.json": "60e7c924ddc63785e6ab113ea85e4087385b11a6257930da649e837b0607a82a",
+    "focused-tests.log": "bdbfb14ea55f73b44b525cec1540056e82687dab6877d758a1e01a03c33614e6"
+  },
+  "tests": {
+    "revision": "8219e1863bfce5b3acd4037415ae77844df3e2ac",
+    "command": "PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 .venv-catalog/bin/python -m pytest -q packages/viewer_publication/tests scripts/corpus_recovery/tests/test_dispatch_corpus_recovery_publication.py scripts/publication/tests/test_pipeline_status.py",
+    "result": "185 passed, 7 subtests passed in 31.91s"
+  },
+  "limits_of_evidence": [
+    "Generated local mock store only, not production or public readback qualification.",
+    "Adds bounded observation I/O, not a performance optimization; no speed or memory improvement claim.",
+    "Latest observation may be stale after producer failure and never supplies proof or write authority.",
+    "Progress is a local observation; no remote progress delivery or artifact custody claim."
+  ]
+}
