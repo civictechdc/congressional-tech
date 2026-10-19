@@ -1,6 +1,6 @@
 ---
 id: ct-tenb
-status: open
+status: in_progress
 deps: [ct-2d3k]
 links: []
 created: 2026-10-19T16:38:43Z
@@ -17,3 +17,9 @@ Restored non-inventory phases hash saved paths without the confinement check use
 ## Acceptance Criteria
 
 Reject file and parent symlink escapes before hashing or accepting restored outputs. Preserve matching owned files, issued inventory reuse and existing digest checks.
+
+## Notes
+
+**2026-10-19T16:43:22Z**
+
+Restored non-inventory phase files now repeat file-symlink/resolved-root confinement before hashing. Matching owned files and digest refusal remain covered; file/parent symlink escapes refuse before hashing or checkpoint changes. State/continuation/attempt regression suite: 60 passed. Awaiting independent review; ticket remains in progress.

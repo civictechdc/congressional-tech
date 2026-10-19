@@ -178,7 +178,10 @@ class Continuation:
                     raise ValueError('Accepted publication phase inventory differs: ' + name)
                 return saved['result']
             for relative, expected in saved['files'].items():
-                if sha256(self.root / relative) != expected:
+                path = self.root / relative
+                if path.is_symlink() or not path.resolve().is_relative_to(self.root.resolve()):
+                    raise ValueError('Accepted publication phase path escapes root')
+                if sha256(path) != expected:
                     raise ValueError('Accepted publication phase changed: ' + name)
             return saved['result']
         if len(self.value['phases']) >= MAX_PHASES:
