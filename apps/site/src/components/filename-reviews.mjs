@@ -1,31 +1,6 @@
-export const reviewStartupPolicy = Object.freeze({deadlineMs: 15_000, maxBytes: 16 * 1024 * 1024});
+import {withVerifiedJson} from './filename-startup.mjs';
 
-async function verifiedJson(fetcher, url, sha256, length, label, signal, policy) {
-  if (!Number.isSafeInteger(length) || length < 1 || length > policy.maxBytes) throw new Error(`${label} exceeds the review startup byte limit.`);
-  const response = await fetcher(url, {signal});
-  if (!response.ok) throw new Error(`Could not load the ${label}.`);
-  const declared = response.headers.get('Content-Length');
-  // Fetch exposes decoded bytes; an encoded or CORS-hidden Content-Length
-  // may describe the compressed transfer, so only identity responses can use it.
-  const encoding=response.headers.get('Content-Encoding');
-  if (declared !== null && response.type !== 'cors' && (!encoding || encoding.toLowerCase()==='identity') && Number(declared) !== length) { await response.body?.cancel(); throw new Error(`${label} has an unexpected response length.`); }
-  const reader = response.body?.getReader();
-  if (!reader) throw new Error(`Could not read the ${label}.`);
-  const bytes = new Uint8Array(length); let offset = 0;
-  try {
-    while (true) {
-      signal.throwIfAborted();
-      const {value, done} = await reader.read();
-      if (done) break;
-      if (offset + value.byteLength > length) throw new Error(`${label} exceeds its expected response length.`);
-      bytes.set(value, offset); offset += value.byteLength;
-    }
-  } catch (error) { await reader.cancel().catch(() => {}); throw error; }
-  finally { reader.releaseLock(); }
-  const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(v => v.toString(16).padStart(2, '0')).join('');
-  if (hash !== sha256 || offset !== length) throw new Error(`${label[0].toUpperCase()}${label.slice(1)} failed verification.`);
-  return JSON.parse(new TextDecoder().decode(bytes));
-}
+export const reviewStartupPolicy = Object.freeze({deadlineMs: 15_000, maxBytes: 16 * 1024 * 1024});
 
 /**
  * Assistant findings, published once, placed on the current catalog version.
@@ -39,64 +14,58 @@ export async function loadReviews(descriptor, manifest, fetcher, manifestUrl, co
   const bound = manifest.files?.review_binding;
   if (!descriptor || (!bound && descriptor.catalog_id !== manifest.info.catalog_id)) return empty;
   const policy = {...reviewStartupPolicy, ...configuredPolicy};
-  const controller = new AbortController();
-  let timer;
-  // The race also settles a fetch implementation that fails to honor abort.
-  const deadline = new Promise((_, reject) => {
-    timer = setTimeout(() => { const error = new Error('Document reviews exceeded the startup deadline.'); controller.abort(error); reject(error); }, policy.deadlineMs);
-  });
-  const verified = (...args) => Promise.race([verifiedJson(...args, controller.signal, policy), deadline]);
   try {
-    if (!Number.isFinite(policy.deadlineMs) || policy.deadlineMs <= 0 || !Number.isSafeInteger(policy.maxBytes) || policy.maxBytes < 1) throw new Error('Invalid review startup policy.');
-    let placement = null;
-    if (bound) {
-      const binding = await verified(fetcher, new URL(bound.path, manifestUrl).href, bound.sha256, bound.bytes, 'document review binding');
-      if (binding.version !== 1 || binding.review_sha256 !== descriptor.review_sha256 || binding.catalog_id !== manifest.info.catalog_id) {
-        throw new Error('Document review binding belongs to a different publication.');
+    return await withVerifiedJson(policy, 'Document reviews', async verified => {
+      let placement = null;
+      if (bound) {
+        const binding = await verified(fetcher, new URL(bound.path, manifestUrl).href, bound.sha256, bound.bytes, 'document review binding');
+        if (binding.version !== 1 || binding.review_sha256 !== descriptor.review_sha256 || binding.catalog_id !== manifest.info.catalog_id) {
+          throw new Error('Document review binding belongs to a different publication.');
+        }
+        placement = new Map(binding.rows.map(row => [row.index, row]));
       }
-      placement = new Map(binding.rows.map(row => [row.index, row]));
-    }
-    const data = await verified(fetcher, descriptor.url, descriptor.sha256, descriptor.bytes, 'document review publication');
-    if (data.version !== 1 || data.review_sha256 !== descriptor.review_sha256 || (!placement && (data.catalog_id !== manifest.info.catalog_id ||
-        ['filenames','documents'].some(name => data.baseline[name] !== manifest.source_manifest?.files[name]?.sha256)))) {
-      throw new Error('Document reviews belong to a different catalog pair.');
-    }
-    const groups = new Map(), sources = new Map(), facets = {};
-    for (const [index, row] of data.rows.entries()) {
-      if (placement) {
-        const place = placement.get(index);
-        if (!place) continue;
-        row.group = place.group;
-        row.sources = place.sources;
+      const data = await verified(fetcher, descriptor.url, descriptor.sha256, descriptor.bytes, 'document review publication');
+      if (data.version !== 1 || data.review_sha256 !== descriptor.review_sha256 || (!placement && (data.catalog_id !== manifest.info.catalog_id ||
+          ['filenames','documents'].some(name => data.baseline[name] !== manifest.source_manifest?.files[name]?.sha256)))) {
+        throw new Error('Document reviews belong to a different catalog pair.');
       }
-      if (!Number.isInteger(row.group) || row.group < 0 || row.group >= manifest.info.entries || groups.has(row.group) ||
-          !['candidate_applied','annotation_only_unsupported_forms'].includes(row.status) || !row.sources.length) throw new Error('Invalid reviewed group.');
-      if (row.status === 'annotation_only_unsupported_forms' && JSON.stringify(row.baseline) !== JSON.stringify(row.selected)) throw new Error('Unsupported forms changed catalog categories.');
-      for (const field of ['document_kind','document_family','document_kind_source']) {
-        for (const value of [row.baseline[field], row.selected[field]]) if (value != null && (!Array.isArray(value) || value.some(item => typeof item !== 'string'))) throw new Error('Invalid reviewed classification.');
+      const groups = new Map(), sources = new Map(), facets = {};
+      for (const [index, row] of data.rows.entries()) {
+        if (placement) {
+          const place = placement.get(index);
+          if (!place) continue;
+          row.group = place.group;
+          row.sources = place.sources;
+        }
+        if (!Number.isInteger(row.group) || row.group < 0 || row.group >= manifest.info.entries || groups.has(row.group) ||
+            !['candidate_applied','annotation_only_unsupported_forms'].includes(row.status) || !row.sources.length) throw new Error('Invalid reviewed group.');
+        if (row.status === 'annotation_only_unsupported_forms' && JSON.stringify(row.baseline) !== JSON.stringify(row.selected)) throw new Error('Unsupported forms changed catalog categories.');
+        for (const field of ['document_kind','document_family','document_kind_source']) {
+          for (const value of [row.baseline[field], row.selected[field]]) if (value != null && (!Array.isArray(value) || value.some(item => typeof item !== 'string'))) throw new Error('Invalid reviewed classification.');
+        }
+        for (const source of row.sources) {
+          if (!Number.isInteger(source) || source < 0 || source >= manifest.info.rows || sources.has(source)) throw new Error('Invalid reviewed source.');
+          sources.set(source, row);
+        }
+        const links = {...row.evidence, pages: {...row.evidence.pages}};
+        const evidenceUrl = path => {
+          if (!/^evidence\/[a-f0-9]{64}\.(pdf|png|txt)$/.test(path) || !data.files[path]) throw new Error('Invalid review evidence link.');
+          return new URL(path, descriptor.url).href;
+        };
+        for (const key of Object.keys(links)) if (key !== 'pages') links[key] = evidenceUrl(links[key]);
+        if (Object.keys(links.pages).length !== row.review.body_observation.pages) throw new Error('Incomplete reviewed pages.');
+        for (let page = 1; page <= row.review.body_observation.pages; page++) links.pages[page] = evidenceUrl(links.pages[page]);
+        row.evidence = links;
+        groups.set(row.group, row);
       }
-      for (const source of row.sources) {
-        if (!Number.isInteger(source) || source < 0 || source >= manifest.info.rows || sources.has(source)) throw new Error('Invalid reviewed source.');
-        sources.set(source, row);
-      }
-      const links = {...row.evidence, pages: {...row.evidence.pages}};
-      const evidenceUrl = path => {
-        if (!/^evidence\/[a-f0-9]{64}\.(pdf|png|txt)$/.test(path) || !data.files[path]) throw new Error('Invalid review evidence link.');
-        return new URL(path, descriptor.url).href;
-      };
-      for (const key of Object.keys(links)) if (key !== 'pages') links[key] = evidenceUrl(links[key]);
-      if (Object.keys(links.pages).length !== row.review.body_observation.pages) throw new Error('Incomplete reviewed pages.');
-      for (let page = 1; page <= row.review.body_observation.pages; page++) links.pages[page] = evidenceUrl(links.pages[page]);
-      row.evidence = links;
-      groups.set(row.group, row);
-    }
-    for (const field of ['document_kind','document_family']) facets[field] = [...new Set([
-      ...manifest.info.facets[field], ...[...groups.values()].filter(row => row.status === 'candidate_applied').flatMap(row => row.selected[field] || [])])].sort();
-    return {groups, sources, info: {complete_body_reviews: true, reviewed_search: true, review_sha256: data.review_sha256,
-      reviewed_groups: [...groups.values()].filter(row => row.status === 'candidate_applied').length, review_facets: facets}};
+      for (const field of ['document_kind','document_family']) facets[field] = [...new Set([
+        ...manifest.info.facets[field], ...[...groups.values()].filter(row => row.status === 'candidate_applied').flatMap(row => row.selected[field] || [])])].sort();
+      return {groups, sources, info: {complete_body_reviews: true, reviewed_search: true, review_sha256: data.review_sha256,
+        reviewed_groups: [...groups.values()].filter(row => row.status === 'candidate_applied').length, review_facets: facets}};
+    }, configuredPolicy.signal);
   } catch (error) {
     return {...empty, info: {complete_body_reviews: true, reviewed_search: false, review_error: error.message}};
-  } finally { clearTimeout(timer); controller.abort(); }
+  }
 }
 
 export function reviewedMode(query, info) {

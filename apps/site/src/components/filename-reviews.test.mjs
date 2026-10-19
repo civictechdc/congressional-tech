@@ -100,3 +100,21 @@ test('decoded gzip and CORS responses verify actual bytes rather than encoded Co
   assert.equal((await loadReviews(...parameters)).info.reviewed_search,true);
  }
 });
+
+test('shared startup reader retains optional failure behavior and cleans stalled streams', async () => {
+ const parameters=args(fixture()); let cancels=0,signal;
+ const response=new Response(new ReadableStream({cancel(){cancels++;return new Promise(()=>{});}}));
+ parameters[2]=(_url,options)=>{signal=options.signal;return response;};
+ const result=await loadReviews(...parameters,undefined,{deadlineMs:15});
+ assert.equal(result.groups.size,0);assert.equal(result.info.reviewed_search,false);
+ assert.match(result.info.review_error,/startup deadline/);assert.equal(signal.aborted,true);
+ assert.equal(cancels,1);assert.equal(response.body.locked,false);
+});
+
+test('review binding and publication share one total deadline', async () => {
+ const parameters=bound({version:1,review_sha256:'pin',catalog_id:'next',rows:[]});
+ const fetcher=parameters[2];let requests=0;
+ parameters[2]=async(...args)=>{requests++;if(requests===1)return fetcher(...args);return new Promise(()=>{});};
+ const result=await loadReviews(...parameters,{deadlineMs:15});
+ assert.equal(requests,2);assert.equal(result.info.reviewed_search,false);assert.match(result.info.review_error,/startup deadline/);
+});

@@ -1,6 +1,6 @@
 ---
 id: ct-o6d1
-status: open
+status: closed
 deps: [ct-2d3k]
 links: [ct-d3un]
 created: 2026-10-19T16:40:41Z
@@ -26,3 +26,11 @@ The 16MiB observation threshold records oversized work rather than admitting it.
 **2026-10-19T16:40:42Z**
 
 Review evidence: apps/site/src/components/filename-catalog.mjs:225:sourceRecord, apps/site/src/components/filename-observations.mjs:16:decode, apps/site/src/components/filename-observations.mjs:63:read, docs/youtube-coverage/research/filename-viewer.mjs:654:(closure). See docs/package-overlap-rescore-20261019.md for the full grade map.
+
+**2026-10-19T19:34:32Z**
+
+Defined exact best-effort allocation/string-limit rule: lazy detail and20/default100max observation items are not byte bounds; complete JSON copy remains explicit;16MiB logical counter remains diagnostic. Bounded16.8MB serialized adversarial fixture crosses counter without rejection, preserves field order/null/empty/nested/Unicode/duplicates; logicalpart65537B, joined0, cache346B, peakRSS412.45MB/action1.225s. Ordinary complete-JSON Blob adds16.80MB (+25.9% known result/clone/format model), misses25% reduction target; retain current exact route and source-Parquet recovery, no new format/threshold.75 focused reader/worker/UI tests pass including resource failure/retry and visible reader/format/clipboard failure without partial copy. docs/experiments/efficiency-debt/complete-export.md/evidence.json; raw receipts primary output/efficiency-debt-20261019/complete-export/. Pending independent review; no browser/fullcatalog or realclipboard qualification.
+
+**2026-10-19T19:39:00Z**
+
+Independent review accepted 996ba97. Exact JSON export and visible failure/retry policy documented; 75 focused checks pass. Alternative full Blob staging misses the memory target, so the existing production path is retained.

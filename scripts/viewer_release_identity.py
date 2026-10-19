@@ -35,6 +35,8 @@ def source_files(root):
         'packages/viewer_publication/src/viewer_publication/client.py',
         'packages/viewer_publication/src/viewer_publication/continuation.py',
         'packages/viewer_publication/src/viewer_publication/attempt.py',
+        'packages/viewer_publication/src/viewer_publication/resume.py',
+        'scripts/publication/prepare_workflow_resume.py',
         'packages/viewer_publication/src/viewer_publication/verify.py',
         'apps/site/document-review-identities.json','apps/site/document-review-publication.json',
         '.python-version','pyproject.toml','uv.lock','.github/actions/setup-python-project/action.yml'))
