@@ -284,10 +284,6 @@ def publish(publisher, client, root, *, artifact, public_url, resume=False, atte
         return {'status': 'superseded', 'reason': str(error), 'attempt': prepared['attempt']}
     if journal is None:
         journal = DurableJournal(client, publisher.BUCKET, continuation, prepared['attempt'], journal_binding)
-    def after_write(key, version):
-        if key in versions:
-            versions[key] = version
-            continuation.flush()
     class PublicationGuard:
         def check(self):
             # Immutable, conditional writes may leave unselected files if inputs
@@ -296,7 +292,8 @@ def publish(publisher, client, root, *, artifact, public_url, resume=False, atte
             return None
         def shared_commit(self):
             guard()
-    guarded = ContinuedPublicationClient(client, continuation=continuation, guard=PublicationGuard(), journal=journal.record, after_write=after_write)
+    guarded = ContinuedPublicationClient(client, continuation=continuation, guard=PublicationGuard(), journal=journal.record,
+                                         after_write=lambda *args: None)
     try:
         if binding['mode'] == 'recovery' and continuation.value['writes'].get(publisher.PREFIX + 'manifest.json', {}).get('verified'):
             pointer = publisher.read_json(client, publisher.PREFIX + 'manifest.json')[0]

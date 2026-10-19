@@ -138,13 +138,12 @@ class Continuation:
 
     def flush(self):
         with self.lock:
-            temporary = self.path.with_suffix('.tmp')
-            with temporary.open('w') as stream:
-                json.dump(self.value, stream, sort_keys=True, indent=2)
-                stream.write('\n'); stream.flush(); os.fsync(stream.fileno())
-            if temporary.stat().st_size > MAX_STATE_BYTES:
-                temporary.unlink()
+            raw = (json.dumps(self.value, sort_keys=True, separators=(',', ':')) + '\n').encode()
+            if len(raw) > MAX_STATE_BYTES:
                 raise ValueError('Publication continuation exceeds state byte limit')
+            temporary = self.path.with_suffix('.tmp')
+            with temporary.open('wb') as stream:
+                stream.write(raw); stream.flush(); os.fsync(stream.fileno())
             temporary.replace(self.path)
             descriptor = os.open(self.root, os.O_RDONLY)
             try: os.fsync(descriptor)
@@ -217,6 +216,9 @@ class Continuation:
     def record(self, event, value):
         with self.lock:
             if apply_event(self.value, event, value):
+                if event == 'publication_write_verified' and value['key'] in self.value['versions']:
+                    # Current readback and protected version share one checkpoint.
+                    self.value['versions'][value['key']] = value['etag']
                 self.flush()
 
     @staticmethod
