@@ -10,8 +10,6 @@ import hashlib
 from pathlib import Path
 import threading
 
-from viewer_publication.lost_acknowledgment import reconcile_lost_acknowledgment
-
 
 @dataclass(frozen=True)
 class VerifiedTransfer:

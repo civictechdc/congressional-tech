@@ -156,6 +156,9 @@ class DispatcherContinuationTests(unittest.TestCase):
                      patch.dict(sys.modules, filename_recoveries=SimpleNamespace(accepted_rows=lambda rows: rows)):
                     with patch.object(Continuation, 'phase', fail_after_accept):
                         with self.assertRaisesRegex(RuntimeError, 'Injected'): module.run(args)
+                    pins = json.loads((args.destination/'pins.json').read_text())
+                    import corpus_recovery.merge_corpus_recovery_mappings as merge_module
+                    self.assertIn(str(Path(merge_module.__file__).resolve()), pins)
                     args.resume = True
                     if failed_phase == 'incomplete_catalog':
                         with self.assertRaisesRegex(RuntimeError, 'Incomplete catalog build retained'):

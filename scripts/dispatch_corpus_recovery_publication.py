@@ -90,6 +90,7 @@ def run(args):
     import corpus_recovery.recovery_guards as recovery_guard_module
     import corpus_recovery.publication_import_evidence as evidence_module
     import corpus_recovery.publish_corpus_recovery_mappings as mapping_module
+    import corpus_recovery.merge_corpus_recovery_mappings as merge_module
     paths += [ROOT/'scripts/guarded_recovery_publication_client.py',
               ROOT/'scripts/recovery_publication_continuation.py', ROOT/'scripts/recovery_guards.py',
               ROOT/'scripts/publication_import_evidence.py',
@@ -99,6 +100,7 @@ def run(args):
               Path(recovery_guard_module.__file__).resolve(),
               Path(evidence_module.__file__).resolve(),
               Path(mapping_module.__file__).resolve(),
+              Path(merge_module.__file__).resolve(),
               args.baseline.resolve(), args.config.resolve(),
               imported/'payloads/import-complete.json', imported/'events.jsonl']
     paths += [imported/'payloads'/key for key in ('indexes/captures.parquet', 'indexes/download-state.parquet')]

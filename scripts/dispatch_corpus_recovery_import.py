@@ -110,7 +110,9 @@ def run(args):
     import corpus_recovery.reconcile_corpus_recovery_bodies as reconcile_module
     import corpus_recovery.recovery_guards as guards_module
     import corpus_recovery.publication_import_evidence as evidence_module
-    for executing in (import_batch_module, assemble_module, reconcile_module, guards_module, evidence_module):
+    import viewer_publication.lost_acknowledgment as acknowledgment_module
+    for executing in (import_batch_module, assemble_module, reconcile_module, guards_module,
+                      evidence_module, acknowledgment_module):
         path = Path(executing.__file__).resolve()
         code[path] = digest(path)
     inputs = {batch / name: value for name, value in expected.items()}
