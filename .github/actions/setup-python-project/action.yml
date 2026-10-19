@@ -1,5 +1,5 @@
 name: Set up the Python workspace
-description: Install native PDF tools and the locked six-member Python environment.
+description: Install native PDF tools and the locked seven-member Python environment.
 runs:
   using: composite
   steps:

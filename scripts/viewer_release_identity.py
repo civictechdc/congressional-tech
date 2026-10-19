@@ -32,7 +32,12 @@ def source_files(root):
         'apps/site/scripts/publish-filename-viewer.py','apps/site/scripts/publish-viewer-r2.py',
         'scripts/viewer_publication_attempt.py','scripts/publication_cli.py',
         'scripts/recovery_publication_continuation.py','scripts/guarded_recovery_publication_client.py',
-        'scripts/viewer_release_identity.py','scripts/publication_preflight.py',
+        'scripts/publication_verification.py','scripts/viewer_release_identity.py','scripts/publication_preflight.py',
+        'packages/viewer_publication/src/viewer_publication/__init__.py',
+        'packages/viewer_publication/src/viewer_publication/guarded_recovery_publication_client.py',
+        'packages/viewer_publication/src/viewer_publication/recovery_publication_continuation.py',
+        'packages/viewer_publication/src/viewer_publication/viewer_publication_attempt.py',
+        'packages/viewer_publication/src/viewer_publication/publication_verification.py',
         'apps/site/document-review-identities.json','apps/site/document-review-publication.json',
         '.python-version','pyproject.toml','uv.lock','.github/actions/setup-python-project/action.yml'))
     paths=sorted(path for path in paths if path.is_file())

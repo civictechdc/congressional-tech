@@ -282,7 +282,8 @@ def main(argv=None):
         try:
             raw_bytes = control(args.raw_manifest)
             raw_manifest = json.loads(raw_bytes)
-            observed = live_observation(args.viewer_pointer, args.pages_url, args.review_descriptor)
+            observed = live_observation(args.viewer_pointer, args.pages_url, args.review_descriptor,
+                                        root=Path(__file__).resolve().parents[1])
             verification = verify(raw_manifest, observed, current_raw=str(args.raw_manifest).startswith(('http://','https://')),
                 raw_digest=sha256(raw_bytes).hexdigest(), expected_raw_digest=args.expected_raw_manifest_sha256)
         except (OSError, ValueError, KeyError, subprocess.SubprocessError) as error:

@@ -84,9 +84,13 @@ def run(args):
                 'apps/site/scripts', 'docs/youtube-coverage/research/scripts']
              for p in (runtime / folder).rglob('*') if p.is_file() and '__pycache__' not in str(p)]
     paths += list(batch.glob('*.json')) + list((ROOT/'scripts').glob('*corpus_recovery*.py'))
+    import viewer_publication.guarded_recovery_publication_client as publication_client
+    import viewer_publication.recovery_publication_continuation as publication_continuation
     paths += [ROOT/'scripts/guarded_recovery_publication_client.py',
               ROOT/'scripts/recovery_publication_continuation.py', ROOT/'scripts/recovery_guards.py',
               ROOT/'scripts/publication_import_evidence.py',
+              Path(publication_client.__file__).resolve(),
+              Path(publication_continuation.__file__).resolve(),
               args.baseline.resolve(), args.config.resolve(),
               imported/'payloads/import-complete.json', imported/'events.jsonl']
     paths += [imported/'payloads'/key for key in ('indexes/captures.parquet', 'indexes/download-state.parquet')]

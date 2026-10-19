@@ -56,7 +56,7 @@ def validate(args, attempts):
                 if ('--' + name.replace('_','-')) in args.explicit_options and existing is not None and str(existing) != descriptor[field]:
                     raise ValueError('Resume descriptor conflicts with --' + name.replace('_','-'))
                 setattr(args, name, descriptor[field])
-            revision = subprocess.check_output(['git','rev-parse','HEAD'], cwd=Path(attempts.__file__).resolve().parents[1], text=True, timeout=10).strip()
+            revision = subprocess.check_output(['git','rev-parse','HEAD'], cwd=Path(__file__).resolve().parents[1], text=True, timeout=10).strip()
             if revision != descriptor['revision']:
                 raise ValueError('Check out the resume descriptor original revision before publishing')
         if bool(args.resume) != bool(args.attempt):

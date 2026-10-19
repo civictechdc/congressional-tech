@@ -24,6 +24,7 @@ committee_meeting = "packages/committee_meeting/src"
 congress_shared = "packages/congress_shared/src"
 youtube_api = "packages/youtube_api/src"
 congress_api = "packages/congress_api/src"
+viewer_publication = "packages/viewer_publication/src"
 committee_explorer = "apps/committee_youtube/src"
 
 [baseline]
