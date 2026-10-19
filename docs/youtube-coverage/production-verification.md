@@ -83,13 +83,13 @@ Run from the worktree using its environment. `STATE` and `OUT` below must be dis
 
 ```bash
 .venv/bin/python -m pytest -q
-.venv/bin/python tests/compare_meeting_inventory.py \
+.venv/bin/python docs/youtube-coverage/research/scripts/compare_meeting_inventory.py \
   --output-dir apps/committee_youtube/data --report .cache/equivalence.json
-.venv/bin/python tests/replay_meeting_inventory.py \
+.venv/bin/python docs/youtube-coverage/research/scripts/replay_meeting_inventory.py \
   --seed-cache ~/hearing-text --state-dir "$STATE" \
   --meetings "$COPY/congress_meetings.jsonl.gz" \
   --gpo-path apps/committee_youtube/data/gpo_hearings.csv --output-dir "$OUT"
-.venv/bin/python tests/replay_weekly_pipeline.py "$REHEARSAL"
+.venv/bin/python docs/youtube-coverage/research/scripts/replay_weekly_pipeline.py "$REHEARSAL"
 ```
 
 `$REHEARSAL` contains `pipeline-data/` and `outputs/` copies; the first includes the parsed meeting state. The app README gives the three standalone production commands, including a full backfill with empty state and an optional read-only research import.

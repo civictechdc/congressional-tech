@@ -33,12 +33,33 @@ def test_source_archive_contains_a_working_development_tree(tmp_path, source_tre
     root, = unpacked.iterdir()
     for path in ['tests/records.json', 'tests/fixtures/verified_local_conventions.json',
                  'examples/witness.json', 'tools/build.py',
-                 'tools/check_ecmascript.mjs', 'FILENAME_PATTERNS.md']:
+                 'tools/check_ecmascript.mjs', 'FILENAME_PATTERNS.md',
+                 'tests/compare_filename_extraction.py', 'tests/audit_filename_extraction.py',
+                 'tests/audit_filename_token_boundaries.py', 'tools/compare_filename_families.py',
+                 'notes/house-naming-extraction.md', 'notes/filename-engine-comparison.md']:
         assert (root / path).is_file(), path
-    env = dict(os.environ, PYTHONPATH=str(root / 'src'))
+    env = dict(os.environ, PYTHONPATH=str(root / 'src'), PYTEST_DISABLE_PLUGIN_AUTOLOAD='1')
+    pytest_probe = r'''
+import importlib.abc
+from pathlib import Path
+import sys
+
+class RejectApplicationImports(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname == 'congress_api' or fullname.startswith('congress_api.'):
+            raise AssertionError('Standalone naming development imported application code: ' + fullname)
+sys.meta_path.insert(0, RejectApplicationImports())
+import house_naming
+assert Path(house_naming.__file__).resolve().is_relative_to(Path.cwd() / 'src')
+import pytest
+raise SystemExit(pytest.main(sys.argv[1:]))
+'''
     for args in [
         ['tools/build.py', '--check'],
-        ['-m', 'pytest', '--collect-only', '-q', 'tests'],
+        ['-c', pytest_probe, '--collect-only', '-q', 'tests'],
+        ['-c', pytest_probe, '-q', 'tests/test_research_note_paths.py',
+         'tests/test_filename_extraction_comparison.py', 'tests/test_filename_native_audit.py',
+         'tests/test_filename_token_boundaries.py'],
         ['-m', 'house_naming', 'render', 'examples/witness.json', '--plain'],
     ]:
         run = subprocess.run([sys.executable, *args], cwd=root, env=env,

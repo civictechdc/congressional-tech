@@ -36,6 +36,9 @@ not the held-out sample.
 and untracked nonignored `test_*.py` files throughout the checkout and fails for
 unassigned files or missing declared roots. Shared directory roots intentionally
 cover new production tests; each experiment test file must be assigned explicitly.
+A test lives next to the package, app, or command it checks. `tests/` keeps the
+shared capture, catalog, and meeting-inventory suite, plus the fixtures those
+tests read.
 
 | Lane | Checks | Boundary |
 | --- | --- | --- |

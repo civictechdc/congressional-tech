@@ -37,15 +37,15 @@ on:
       - 'uv.lock'
       - 'apps/site/scripts/filename*.py'
       - 'scripts/publication_preflight.py'
-      - 'tests/test_publication_preflight.py'
+      - 'scripts/tests/test_publication_preflight.py'
       - '.python-version'
       - '.github/actions/setup-python-project/action.yml'
       - 'scripts/viewer_release_identity.py'
       - 'scripts/publication/**'
-      - 'tests/test_viewer_publication_attempt.py'
-      - 'tests/test_recovery_publication_continuation.py'
-      - 'tests/test_guarded_recovery_publication_client.py'
-      - 'tests/test_recovery_viewer_transfers.py'
+      - 'packages/viewer_publication/tests/test_viewer_publication_attempt.py'
+      - 'packages/viewer_publication/tests/test_recovery_publication_continuation.py'
+      - 'packages/viewer_publication/tests/test_guarded_recovery_publication_client.py'
+      - 'packages/viewer_publication/tests/test_recovery_viewer_transfers.py'
       - 'apps/site/scripts/publish-viewer-r2.py'
       - 'apps/site/scripts/publish-filename-viewer.py'
       - 'apps/site/scripts/filename-test-fixture.py'
@@ -53,9 +53,9 @@ on:
       - 'apps/site/scripts/filename_details.py'
       - 'apps/site/scripts/filename_navigation.py'
       - 'apps/site/scripts/filename_recoveries.py'
-      - 'tests/test_filename_recoveries.py'
-      - 'tests/test_filename_observations.py'
-      - 'tests/test_filename_details.py'
+      - 'apps/site/tests/test_filename_recoveries.py'
+      - 'apps/site/tests/test_filename_observations.py'
+      - 'apps/site/tests/test_filename_details.py'
       - '.github/tests/test_filename_publication.py'
       - '.github/tests/test_viewer_r2.py'
       - '.github/workflows/publish-filename-viewer.yml'
@@ -120,7 +120,7 @@ jobs:
         if: github.event_name == 'push' || inputs.preparation_run_id || steps.preflight.outputs.status == 'preparation_required'
       - name: Verify publication fidelity and recovery mapping
         if: github.event_name == 'push' || inputs.preparation_run_id || steps.preflight.outputs.status == 'preparation_required'
-        run: PYTHONPATH=apps/site/scripts:scripts/publication python -m pytest -q .github/tests/test_filename_publication.py .github/tests/test_viewer_r2.py tests/test_filename_recoveries.py tests/test_filename_observations.py tests/test_filename_details.py tests/test_viewer_publication_attempt.py tests/test_guarded_recovery_publication_client.py tests/test_recovery_publication_continuation.py tests/test_publication_preflight.py tests/test_publication_cli.py tests/test_publication_state_bounds.py tests/test_publication_control_reads.py
+        run: PYTHONPATH=apps/site/scripts:scripts/publication python -m pytest -q .github/tests/test_filename_publication.py .github/tests/test_viewer_r2.py apps/site/tests/test_filename_recoveries.py apps/site/tests/test_filename_observations.py apps/site/tests/test_filename_details.py packages/viewer_publication/tests/test_viewer_publication_attempt.py packages/viewer_publication/tests/test_guarded_recovery_publication_client.py packages/viewer_publication/tests/test_recovery_publication_continuation.py scripts/tests/test_publication_preflight.py scripts/publication/tests/test_publication_cli.py packages/viewer_publication/tests/test_publication_state_bounds.py apps/site/tests/test_publication_control_reads.py
       - name: Prepare a changed catalog or recovery index
         id: prepare
         if: ${{ !inputs.preparation_run_id && steps.preflight.outputs.status == 'preparation_required' }}

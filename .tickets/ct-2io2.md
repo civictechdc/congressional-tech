@@ -23,3 +23,7 @@ Preserve both sets of ticket notes and priorities. Fix confirmed moved-path, cla
 **2026-10-19T18:59:16Z**
 
 Independent repair cross-reviews approved. Local production-offline passed 9459 tests and 38 subtests (50 excluded), exact code1478865. Evidence in docs/experiments/efficiency-debt/integration.md. Merge and worktree refresh remain pending.
+
+**2026-10-19T19:22:05Z**
+
+External test-relocation commits 6016ca1 and d0386c7 integrated with PR132. Inventories preserve 335 Python test files, 644 moved test functions and 1433 assertions. Full local run: 9457 passed, 38 subtests, 50 excluded; two relocation failures repaired and targeted checks passed. Review also fixed moved notes and historical fixture ownership. Exact receipts: docs/experiments/efficiency-debt/test-relocation-evidence.json. Worktree refresh remains pending.
