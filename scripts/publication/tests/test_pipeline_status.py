@@ -233,3 +233,41 @@ def test_read_only_publication_command_emits_durable_pending_receipt(tmp_path,mo
     durable=json.loads(receipt_path.read_text())
     assert durable['status']=='pending' and durable['read_only'] is True
     assert json.loads(capsys.readouterr().out)['publication_verification']['status']=='pending'
+
+
+def test_local_event_status_reads_new_intent_without_mutation_or_checkpoint(tmp_path, monkeypatch):
+    from viewer_publication.local import LocalContinuation
+    run = LocalContinuation(tmp_path / 'attempt', {'batch': 'local'})
+    key = 'viewer-publications/manifest.json'
+    run.record('publication_write_intent', dict(key=key, bytes=3, sha256='a' * 64, if_none_match='*'))
+    assert json.loads(run.path.read_bytes())['writes'] == {}
+    before = {str(p): p.read_bytes() for p in run.root.iterdir()}
+    monkeypatch.setattr(LocalContinuation, '__init__', lambda *args, **kwargs: pytest.fail('Status constructed mutable continuation'))
+    observed = status.continuation(run.path, ('123', '2', REVISION))
+    local = observed['local_phase_observation']
+    assert local['uncertain_writes'] == [key] and local['recorded_writes'] == 1
+    assert local['write_observation']['source'] == 'validated_local_events'
+    assert local['write_observation']['recorded_events'] == 2
+    assert local['remote_reconciliation'] == 'not_performed'
+    assert observed['public_readback'] == 'not_checked' and observed['accepted_outputs'] == []
+    assert before == {str(p): p.read_bytes() for p in run.root.iterdir()}
+    run.path.unlink()
+    assert status.continuation(run.path, ('123', '2', REVISION)) == observed
+    with run.journal_path.open('ab') as stream: stream.write(b'partial')
+    with pytest.raises(ValueError, match='Incomplete'):
+        status.continuation(run.path, ('123', '2', REVISION))
+
+
+@pytest.mark.parametrize('legacy_events', [False, True])
+def test_local_checkpoint_status_explicitly_marks_latest_event_state_unknown(tmp_path, legacy_events):
+    path = receipt(tmp_path); value = json.loads(path.read_text())
+    value['binding'] = {'batch': 'local'}
+    write(path, value)
+    if legacy_events:
+        (tmp_path / 'events.jsonl').write_text(json.dumps({'event': 'failed', 'value': {}}) + '\n')
+    observed = status.continuation(path, ('123', '2', REVISION))
+    source = observed['local_phase_observation']['write_observation']
+    assert source['source'] == 'checkpoint_only'
+    assert 'unknown' in source['latest_event_state'] and 'stale' in source['latest_event_state']
+    summary = status.summarize('123', github('failure'), progress(), now=NOW, receipt=path)
+    assert 'checkpoint write counts may be stale' in status.format_status(summary)

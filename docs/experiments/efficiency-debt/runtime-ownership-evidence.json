@@ -1,0 +1,68 @@
+{
+  "ticket": "ct-piku",
+  "base": "b879ba642f4e8b2abdb21640dcf22c5442b186fc",
+  "driver_sha256": "c6edda3462d9c3246023b1e407ba1a0f3b97d1fab69c199dda8ef7bafdddcc7b",
+  "baseline_driver_sha256": "435e94ceb5e2d856d9ffeacee1309eb0ef00a6cf5feda396cc62ea93dc54c3d7",
+  "probe_sha256": "aeff3e31c6a53ad0b75003cca95255370fd1c6f41de4831e2e7ce6445226cee4",
+  "raw_directory": "/Users/mikewolfd/Work/congressional-tech/output/efficiency-debt-20261019/runtime-ownership",
+  "raw_sha256": {
+    "plan.md": "9f5a789cc593e886cc6e0f1997bbd423208798357b490b10d9024f97aebb559f",
+    "before.json": "ecd9d20e5ffaec6d02bc4045029a0a9bb6e9b8ccece384fb78d417becc913f89",
+    "after.json": "7d5cb10ff00325f04e3ca93f50c3659b1f93c4714ebf999bc219920802727c54",
+    "fixture/fixture.json": "0424e17449df2686ada4d1630ecf97e3c8f81a8c59ab170d5a3fcd780f2bfe41",
+    "focused-tests-exact.log": "c762ffa34358ee625f22801b45cc53131392b461f5bfbd6227365e964eddc4cb",
+    "recovery-publication-tests-final.log": "799218fba664504875ad11b3822c90c0fcbc57bbdb74c2e4816842d0dedf40f8"
+  },
+  "fixture": {
+    "files_per_complete_runtime": 319,
+    "bytes_per_complete_runtime": 3559245,
+    "all_selected_files_match_base": true,
+    "total_owned_fixture_source_bytes": 10581435,
+    "ceiling_bytes": 16777216,
+    "case_timeout_seconds": 30
+  },
+  "results": {
+    "cases": 9,
+    "baseline_unsafe_cases_reach_client": 8,
+    "candidate_unsafe_cases_refused_before_admission_and_client": 8,
+    "clean_loaded_project_modules": 77,
+    "clean_explicit_file_modules": 7,
+    "clean_process_seconds_single_sample": {
+      "before": 0.701380749931559,
+      "after": 0.6317078750580549
+    },
+    "warm_boundary": {
+      "checks": 25,
+      "path_resolves": 0,
+      "median_ms": 0.452833017334342,
+      "max_ms": 0.6225418765097857
+    },
+    "pin_work": {
+      "before": {
+        "files": 279,
+        "bytes": 3293779
+      },
+      "after": {
+        "files": 337,
+        "bytes": 3623880
+      }
+    }
+  },
+  "tests": [
+    {
+      "command": "PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 output/efficiency-search-runtime/venv/bin/python -m pytest -q scripts/corpus_recovery/tests/test_runtime_ownership.py scripts/corpus_recovery/tests/test_dispatch_corpus_recovery_publication.py",
+      "result": "38 passed, 5 subtests passed in 4.49s"
+    },
+    {
+      "command": "PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 output/efficiency-search-runtime/venv/bin/python -m pytest -q scripts/corpus_recovery/tests packages/corpus_recovery/tests packages/viewer_publication/tests",
+      "result": "246 passed, 7 subtests passed in 41.79s"
+    }
+  ],
+  "limits": [
+    "Fresh interpreter, host filesystem cache uncontrolled; single elapsed sample is not a speed claim.",
+    "Real admission and builder imports stop at sentinel before any real client or remote operation; phase/resume behavior uses local stub fixtures.",
+    "Third-party dependencies remain in the isolated interpreter environment; this checks project source ownership, not hostile Python isolation.",
+    "Complete maintained package source layout is required; incomplete or escaping historical layouts refuse before admission.",
+    "Earlier baseline/candidate draft receipts are superseded by before.json and after.json; one parallel draft contended on the shared fixture lock."
+  ]
+}

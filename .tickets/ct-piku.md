@@ -1,6 +1,6 @@
 ---
 id: ct-piku
-status: open
+status: closed
 deps: [ct-2d3k]
 links: [ct-d3un, ct-esm4]
 created: 2026-10-19T16:40:41Z
@@ -34,3 +34,11 @@ Prioritized for efficiency and architectural debt per user direction. Require me
 **2026-10-19T17:00:42Z**
 
 Related reshape ct-esm4 packages corpus recovery and pins the files that execute. Related only. It does not close this ticket.
+
+**2026-10-19T19:55:00Z**
+
+Implemented selected source ownership admission before execute-mode imports, full package source existence/containment checks, foreign/unknown cached module refusal, real builder/publisher and explicit-file child checks before lock/client, and cached boundary observations. Exact baseline b879ba6 and same 319-file/3,559,245-byte fixture: all 8 unsafe baseline cases reached client/admission; candidate refuses all 8 before both. 25 warm checks issue zero path resolutions (0.453 ms median observed); complete pins add 58 files/330,101 bytes per existing digest guard. Focused 38 passed + 5 subtests; affected suites 246 passed + 7 subtests. docs/experiments/efficiency-debt/runtime-ownership.md and evidence JSON bind primary runtime-ownership/before.json + after.json. Local-only sentinel tests; no real client/remote operation or speed claim. Keep in_progress pending independent review/integration.
+
+**2026-10-19T19:58:38Z**
+
+Independent review approved 0affd10. Integrated selected runtime ownership with local event owner at fd8eb4d; 92 local integration tests and 5 subtests passed. All 8 unsafe runtime cases refuse before admission/client creation; added pins are a correctness cost, not a speed claim. Evidence: docs/experiments/efficiency-debt/runtime-ownership.md.

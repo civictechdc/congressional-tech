@@ -128,13 +128,16 @@ class Continuation:
         # client object alive also prevents object-id reuse from transferring proof.
         self._reconciled = {}
         if resume:
-            self.value = validate_state(bounded_json(self.path))
+            self.value = self._restore()
             if self.value['binding'] != binding:
                 raise ValueError('Publication continuation inputs changed')
         else:
             self.root.mkdir(parents=True, exist_ok=False)
             self.value = dict(version=1, binding=binding, phases={}, writes={}, versions={})
             self.flush()
+
+    def _restore(self):
+        return validate_state(bounded_json(self.path))
 
     def flush(self):
         with self.lock:
