@@ -29,6 +29,32 @@ class CallbackPublicationGuard:
     shared_commit = check
 
 
+_DIFFERENT_BODY = object()
+
+
+def reconcile_lost_acknowledgment(put, read, payload):
+    """Send one PUT. A lost acknowledgment is reconciled only by exact bytes.
+
+    ``put`` and ``read`` take no arguments. ``read`` returns the object body.
+    Returns True when ``put`` fails and that body equals ``payload``. Returns
+    False when ``put`` completes. A different body re-raises the original error.
+    This function does not send a second PUT.
+    """
+    try:
+        put()
+    except Exception:
+        if read() != payload:
+            raise
+        return True
+    return False
+
+
+def _precondition_failed(error):
+    from botocore.exceptions import ClientError
+    return (isinstance(error, ClientError)
+            and error.response['Error']['Code'] in {'PreconditionFailed', '412'})
+
+
 def require_publication_client(client):
     if not all(callable(getattr(client, name, None)) for name in ('get_object', 'put_object')):
         raise TypeError('Publication client requires complete reads and conditional put_object')
@@ -168,28 +194,51 @@ class GuardedPublicationClient:
             self.journal('publication_write_intent', dict(key=key, bytes=size,
                 sha256=digest, expected_etag=kwargs.get('IfMatch'),
                 if_none_match=kwargs.get('IfNoneMatch')))
-            uncertain = False
-            request_error = None
+            # Streamed hashing, strict 412 refusals, and the uncertain-write
+            # error stay here. The shared function only accepts one matching
+            # readback or re-raises the original PUT error.
+            state = {'result': None, 'request_error': None, 'etag': None,
+                     'definite': False, 'mismatch': None}
+
+            def put():
+                try:
+                    state['result'] = self.client.put_object(**kwargs)
+                except Exception as error:
+                    state['request_error'] = error
+                    raise
+
+            def read_exact():
+                error = state['request_error']
+                if self.strict_conditions and _precondition_failed(error):
+                    state['definite'] = True
+                    raise error
+                try:
+                    state['etag'] = verify()
+                except ValueError as mismatch:
+                    state['mismatch'] = mismatch
+                    return _DIFFERENT_BODY
+                return digest
+
+            reconciled = False
             try:
-                result = self.client.put_object(**kwargs)
-            except Exception as error:
-                request_error = error
-                if self.strict_conditions:
-                    from botocore.exceptions import ClientError
-                    if isinstance(error, ClientError) and error.response['Error']['Code'] in {'PreconditionFailed', '412'}:
-                        raise
-                # Verify the possible commit once; never resend this request.
-                uncertain, result = True, {}
-            try:
-                version = verify()
+                reconciled = reconcile_lost_acknowledgment(put, read_exact, digest)
+                if reconciled:
+                    version = state['etag']
+                    result = {'ETag': version}
+                else:
+                    version = verify()
+                    result = state['result']
             except Exception as reconciliation_error:
                 # Preserve a definite condition refusal for maintained callers
                 # that deliberately keep an existing immutable catalog locator.
-                from botocore.exceptions import ClientError
-                if (isinstance(request_error, ClientError)
-                        and request_error.response['Error']['Code'] in {'PreconditionFailed', '412'}):
+                request_error = state['request_error']
+                if state['definite']:
+                    raise request_error
+                if _precondition_failed(request_error):
                     self.journal('publication_write_refused', dict(key=key, reason='condition_failed'))
                     raise request_error
+                if state['mismatch'] is not None and reconciliation_error is request_error:
+                    reconciliation_error = state['mismatch']
                 if request_error is not None:
                     failure = RuntimeError('Publication write and reconciliation failed for ' + key
                         + '; upload outcome is uncertain; no request was resent')
@@ -201,8 +250,7 @@ class GuardedPublicationClient:
                     failure.reconciliation_error = reconciliation_error
                     raise failure from request_error
                 raise
-            if uncertain:
-                result = {'ETag': version}
+            if reconciled:
                 self.journal('publication_acknowledgment_reconciled', dict(key=key))
             self.after_write(key, version)
             self.journal('publication_write_verified', dict(key=key, etag=version,

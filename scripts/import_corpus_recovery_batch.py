@@ -17,6 +17,7 @@ from congress_api.retention.catalog_cache import capture_digest
 from congress_api.retention.raw_archive import (
     CAPTURE_SCHEMA, CAPTURES_KEY, STATE_KEY, body_payload, encode_table,
 )
+from guarded_recovery_publication_client import reconcile_lost_acknowledgment
 from reconcile_corpus_recovery_bodies import reusable_result, head_body
 
 
@@ -24,12 +25,16 @@ def checked_put(store, key, payload, *, immutable, guard, journal):
     """Do not repeat an uncertain PUT; reconcile its exact bytes read-only."""
     guard()
     journal('write_intent', dict(key=key, sha256=hashlib.sha256(payload).hexdigest()))
-    try:
-        store.put(key, payload, immutable=immutable)
-    except Exception:
+    remote = None
+
+    def read():
+        nonlocal remote
         remote = store.read(key)
-        if remote != payload:
-            raise
+        return remote
+
+    reconciled = reconcile_lost_acknowledgment(
+        lambda: store.put(key, payload, immutable=immutable), read, payload)
+    if reconciled:
         journal('acknowledgment_reconciled', dict(key=key))
     else:
         remote = store.read(key)

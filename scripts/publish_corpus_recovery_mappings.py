@@ -6,6 +6,7 @@ write retries disabled. This does not advance the public viewer pointer.
 import hashlib
 import json
 
+from guarded_recovery_publication_client import reconcile_lost_acknowledgment
 from merge_corpus_recovery_mappings import merge_mappings
 
 KEY = 'viewer-publications/recoveries/accepted.json'
@@ -43,15 +44,16 @@ def publish_mappings(client, *, bucket, baseline, prepared, validate,
                   sha256=hashlib.sha256(payload).hexdigest())
     journal('mapping_write_intent', intent)
     guard()
-    reconciled = False
-    try:
-        client.put_object(Bucket=bucket, Key=KEY, Body=payload,
-                          ContentType='application/json', IfMatch=expected)
-    except Exception:
-        actual, _ = read()
-        if actual != payload:
-            raise
-        reconciled = True
+
+    def read_exact():
+        actual, _version = read()
+        return actual
+
+    reconciled = reconcile_lost_acknowledgment(
+        lambda: client.put_object(Bucket=bucket, Key=KEY, Body=payload,
+                                  ContentType='application/json', IfMatch=expected),
+        read_exact, payload)
+    if reconciled:
         journal('mapping_acknowledgment_reconciled', intent)
     actual, version = read()
     if actual != payload:
