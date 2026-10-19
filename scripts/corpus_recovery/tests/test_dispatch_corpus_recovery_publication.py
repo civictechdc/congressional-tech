@@ -9,6 +9,7 @@ import pyarrow.parquet as pq
 
 spec=importlib.util.spec_from_file_location('publication_dispatch',Path(__file__).resolve().parents[3]/'scripts/corpus_recovery/dispatch_corpus_recovery_publication.py')
 module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+RUNTIME = Path(__file__).resolve().parents[3]
 
 def verify_coverage(root,manifest,expected):
     from congress_api.retention.catalog_validation import validate_catalog_pair
@@ -51,7 +52,7 @@ class SharedControlTests(unittest.TestCase):
         from unittest.mock import patch
         with tempfile.TemporaryDirectory() as folder:
             root=Path(folder).resolve(); (root/'.cache').mkdir()
-            args=SimpleNamespace(batch=root, imported=root, runtime=root, execute=True, control_root=root)
+            args=SimpleNamespace(batch=root, imported=root, runtime=RUNTIME, execute=True, control_root=root)
             with (root/'.cache/local-recovery.lock').open('a') as lock:
                 fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 with patch.object(module,'verify_import',return_value={}),patch.object(module,'cloud_clear'):
@@ -85,6 +86,7 @@ class DispatcherContinuationTests(unittest.TestCase):
         from types import SimpleNamespace
         from unittest.mock import patch
         from viewer_publication.continuation import Continuation
+        sys.path.insert(0, str(RUNTIME/'apps/site/scripts'))
         scripts = Path(__file__).resolve().parents[3]/'scripts/corpus_recovery'
         for failed_phase in ('catalog', 'mappings', 'prepared', 'publication', 'incomplete_catalog'):
             with self.subTest(phase=failed_phase), tempfile.TemporaryDirectory() as folder:
@@ -137,13 +139,17 @@ class DispatcherContinuationTests(unittest.TestCase):
                     self.assertTrue(kwargs['publication_plan']['release'].startswith('releases/'))
                     return {'status': 'published'}
                 def load(path, name):
-                    return SimpleNamespace(publish=prepare) if 'builder' in name else SimpleNamespace(upload=publish)
+                    from types import ModuleType
+                    stub = ModuleType(name); stub.__file__ = str(path)
+                    if 'builder' in name: stub.publish = prepare
+                    else: stub.upload = publish
+                    return stub
                 original = Continuation.phase
                 def fail_after_accept(continuation, name, *args, **kwargs):
                     result = original(continuation, name, *args, **kwargs)
                     if name == failed_phase: raise RuntimeError('Injected after accepted phase')
                     return result
-                args = SimpleNamespace(batch=batch, imported=imported, runtime=root/'runtime', baseline=baseline,
+                args = SimpleNamespace(batch=batch, imported=imported, runtime=RUNTIME, baseline=baseline,
                                        config=config, destination=root/'publication', execute=True, resume=False)
                 with patch.object(module, 'ROOT', repo), patch.object(module, 'verify_import', return_value={'complete': True}), \
                      patch.object(module, 'cloud_clear'), patch('congress_api.retention.raw_catalog.rebuild_catalog_in_directory', side_effect=catalog), \
@@ -151,7 +157,7 @@ class DispatcherContinuationTests(unittest.TestCase):
                      patch('congress_api.retention.r2._configure_retries'), \
                      patch('congress_api.retention.document_index.validate_document_indexes'), \
                      patch('corpus_recovery.mappings.publish_mappings', side_effect=mapping), \
-                     patch.dict(sys.modules, filename_recoveries=SimpleNamespace(accepted_rows=lambda rows: rows)):
+                     patch('filename_recoveries.accepted_rows', side_effect=lambda rows: rows):
                     with patch.object(Continuation, 'phase', fail_after_accept):
                         with self.assertRaisesRegex(RuntimeError, 'Injected'): module.run(args)
                     pins = json.loads((args.destination/'pins.json').read_text())
@@ -348,7 +354,7 @@ def test_local_selector_receipt_advances_only_after_guarded_verification(tmp_pat
     monkeypatch.setattr(storage, '_configure_retries', lambda *_: None)
     monkeypatch.setattr(catalog_module, 'rebuild_catalog_in_directory', build)
     monkeypatch.setattr('boto3.client', lambda *a, **kw: client)
-    args = SimpleNamespace(batch=batch, imported=imported, runtime=tmp_path / 'runtime', execute=True,
+    args = SimpleNamespace(batch=batch, imported=imported, runtime=RUNTIME, execute=True,
         destination=destination, baseline=baseline, config=config, resume=False)
     if outcome in ('success', 'lost_ack'):
         with pytest.raises(StoppedAfterSelection):
