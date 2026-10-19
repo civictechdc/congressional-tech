@@ -20,9 +20,9 @@ from committee_meeting.meetings import (
 from committee_meeting.provenance import FieldEvidence
 
 from congress_api.adapters.common import digest, material_records, observed_time, ref, reported_time, web_url
+from congress_api.adapters.documents import DOCUMENT_CATEGORIES, category
 from congress_api.matching.meetings import meeting_access, meeting_type
 from congress_api.parsers import media
-from congress_api.parsers.document_types import document_type
 from congress_api.adapters.recordings import normalized_reference
 
 
@@ -67,42 +67,6 @@ def document_title(row):
 def event_page(url):
     parsed = urlsplit(url or "")
     return parsed.hostname in ("congress.gov", "www.congress.gov") and parsed.path.startswith("/event/")
-
-
-# The normalized meeting schema intentionally groups several native document types.
-DOCUMENT_CATEGORIES = {
-    "witness-statement": "statement", "member-statement": "statement",
-    "testimony-disclosure": "disclosure", "witness-biography": "biography",
-    "witness-support": "supporting", "support-document": "supporting", "summary": "supporting",
-    "committee-amendment": "amendment", "interchamber-amendment": "amendment", "floor-amendment": "amendment",
-    "committee-vote": "vote", "committee-report": "report", "conference-report": "report",
-    "legislative-text": "bill_text", "transcript": "transcript", "witness-list": "witness_list",
-    "questions-for-record": "questions_for_record", "member-roster": "hearing_record",
-    "cover-page": "hearing_record", "table-of-contents": "hearing_record",
-}
-
-
-def category(row):
-    native = str(row.get("documentType") or row.get("kind") or "").strip().lower()
-    # These labels describe the document itself; a title mentioning a bill or
-    # witness must not replace the publisher's more specific classification.
-    # Preserve this consumer's existing priority: these specific literal labels
-    # outrank titles; generic types still permit its historical title fallback.
-    explicit_labels = {
-        "hearing: questions for the record", "committee report", "conference report",
-        "hearing: member roster", "hearing: cover page", "hearing: table of contents",
-        "legislative text", "committee amendment", "summary",
-    }
-    meaning = document_type(native)
-    if native in explicit_labels and meaning in DOCUMENT_CATEGORIES:
-        return DOCUMENT_CATEGORIES[meaning]
-    text = f"{row.get('documentType', '')} {row.get('kind', '')} {row.get('name', '')}".lower()
-    for needle, value in (("truth in testimony", "disclosure"), ("transcript", "transcript"), ("witness list", "witness_list"), ("statement", "statement"),
-                          ("testimony", "statement"), ("biograph", "biography"), ("disclosure", "disclosure"),
-                          ("amendment", "amendment"), ("vote", "vote"), ("bill", "bill_text")):
-        if needle in text:
-            return value
-    return "supporting" if native == "support document" else "unknown"
 
 
 def related_item_identity(family, item, congress):

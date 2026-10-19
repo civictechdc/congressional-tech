@@ -18,7 +18,7 @@ from committee_meeting.meetings import (
 from committee_meeting.provenance import AlternativeValue, FieldEvidence, Method
 
 from congress_api.adapters.common import digest, material_records, observed_time, ref, reported_time, web_url, witness_roles
-from congress_api.adapters.meetings import category
+from congress_api.adapters.documents import category
 from congress_api.adapters.recordings import recording_reference
 from congress_api.matching.meetings import meeting_access, meeting_type
 from congress_api.matching.senate_corrections import DATE_CORRECTIONS, selected_date
