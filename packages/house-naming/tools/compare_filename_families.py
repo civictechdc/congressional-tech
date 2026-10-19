@@ -16,8 +16,6 @@ from pathlib import Path
 from time import perf_counter
 
 import pyarrow.parquet as pq
-from congress_api.models.legislators import member_surnames_by_congress
-from congress_api.parsers.legislators import parse_legislators
 from house_naming import filenames as current
 from house_naming.filename_corpus import file_hashes, parser_source_paths
 
@@ -103,6 +101,8 @@ def main():
     shutil.copy2(source, out / 'filenames.py')
     shutil.copy2(__file__, out / 'compare_filename_families.py')
     baseline = load_baseline(root)
+    from congress_api.models.legislators import member_surnames_by_congress
+    from congress_api.parsers.legislators import parse_legislators
     context = member_surnames_by_congress(parse_legislators(ref.read_bytes()))
     gaps = {r['filename']: r['group'] for r in json.loads((root / 'baseline-remaining-legislative-payloads.json').read_text())}
     expected_changes = json.loads(args.expected_changes.read_text()) if args.expected_changes else {}

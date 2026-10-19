@@ -106,7 +106,7 @@ def main():
     # Read the actual accepted column, not a reconstruction of old grammar.
     accepted_key = 'b_valid'
     old_names = {r['filename'] for r in previous_rows if r[accepted_key]}
-    note = Path(__file__).with_name('filename-metadata-recomparison.md')
+    note = Path(__file__).resolve().parents[1] / 'notes/filename-metadata-recomparison.md'
     dependencies = [raw, args.run / 'summary.json', previous, note, Path(__file__),
                     Path(__file__).with_name('compare_filename_metadata.py'),
                     Path(__file__).with_name('compare_filename_engines.py')]

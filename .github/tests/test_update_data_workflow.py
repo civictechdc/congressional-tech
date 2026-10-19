@@ -40,7 +40,8 @@ def test_meeting_validation_runs_declared_offline_suite(tmp_path, monkeypatch, c
     monkeypatch.setattr(dev, 'doctor', lambda *args: None)
     monkeypatch.setenv('PYTEST_ADDOPTS', '')
     assert dev.test(config, 'production-offline', [], []) == 0
-    assert '4 passed' in capfd.readouterr().out
+    expected = len(config['lanes']['production-offline']['roots'])
+    assert f'{expected} passed' in capfd.readouterr().out
 
 
 def test_meeting_validation_uses_shared_locked_setup():

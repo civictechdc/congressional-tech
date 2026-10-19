@@ -1,0 +1,64 @@
+{
+  "external_revision": "d0386c7a07f86fc94297e265ef3819908bc62268",
+  "integration_base": "f409f670a9ce650837c2cb10cf77f29ecad4bb4a",
+  "evidence_root": "/Users/mikewolfd/Work/congressional-tech/output/efficiency-debt-20261019/test-relocation",
+  "qualification": "9457 full-run cases and38subtests passed;2 failures fixed and qualified with targeted tests; final narrow repair tests59+87+3 passed. The full suite is not an unchanged-final-tree pass.",
+  "files": {
+    "catalog-review.json": {
+      "sha256": "6a639e3f9af4d8fa3212cbd4e0a2c1344db2fe7c544e1e0b9c9bce3dfb10991a",
+      "bytes": 2371
+    },
+    "catalog-test-inventory.json": {
+      "sha256": "054a70dae1ea163dcd087d8c692ea14e7c178a8210d7d33a4094c610d49aec87",
+      "bytes": 18464
+    },
+    "search-inventory.json": {
+      "sha256": "cf8a3c12d73c563ccd6cefc3470eae017c1b1a02c03f15a068b51f0a5f3a2a5d",
+      "bytes": 120244
+    },
+    "search-review.json": {
+      "sha256": "b4782527337366c50e993d0921a4a281f0dc21119b0be82484364bb8f6d70021",
+      "bytes": 846
+    },
+    "recovery-review.json": {
+      "sha256": "cc190e7f26ce9a4bc9ff8a88fccb69788f5579344983421389c53c36c0070303",
+      "bytes": 17559
+    },
+    "production-offline-receipt.json": {
+      "sha256": "ac7a4f032449a4c05289ba4f83808f07249a6534f8cbca6bc4c32a70e9555d7b",
+      "bytes": 931
+    },
+    "production-offline.log": {
+      "sha256": "9e133f0d067adb053325dd5abe0fc3277364e35e4b9b9db5c0f2a6622e4c625b",
+      "bytes": 834165
+    },
+    "search-repair.json": {
+      "sha256": "7d79ff03046ddb4cb14c0703223cdff77755e8290235b5d769a1c110f3b394ac",
+      "bytes": 847
+    },
+    "search-repair-tests.log": {
+      "sha256": "8e806a8c9fc90005dc92b071843b937dbd67eca97cf961ef691c3487076c5f5e",
+      "bytes": 99
+    },
+    "catalog-distribution-repair.json": {
+      "sha256": "cbe0c09a41c60f3638327dfab1fac87898f46d83db4c75c022ae481c1c297ddf",
+      "bytes": 5085
+    },
+    "workflow-repair.json": {
+      "sha256": "f819f8b562184f8ac257b2c38a1e9d71f76d489b1e4483977e16b4907fe3dca5",
+      "bytes": 364
+    },
+    "final-cross-review.json": {
+      "sha256": "1012925bf8e35041f4f330bbc4d71ddbdc8373ace4530b8ca38bf76a75955b6c",
+      "bytes": 6419
+    },
+    "archive-cross-review.json": {
+      "sha256": "7f6d06020eaf1543ec61165776ffeea72c3fb86182488d989871151f3fa2bea6",
+      "bytes": 6678
+    },
+    "workflow-cross-review.json": {
+      "sha256": "de19f95ece27cdc595eaf8ac7d045a67f4b859a46413db4463cc3c14296db15b",
+      "bytes": 2776
+    }
+  }
+}

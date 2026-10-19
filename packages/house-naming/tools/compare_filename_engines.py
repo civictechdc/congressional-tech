@@ -119,7 +119,7 @@ def main():
     ap.add_argument('--inventory', type=Path, default=Path('output/filename-clustering/filenames.parquet'))
     args = ap.parse_args()
     args.output.mkdir(parents=True, exist_ok=False)
-    inputs = [args.inventory, Path(__file__), Path(__file__).with_name('filename-engine-comparison.md'), *parser_source_paths()]
+    inputs = [args.inventory, Path(__file__), Path(__file__).resolve().parents[1] / 'notes/filename-engine-comparison.md', *parser_source_paths()]
     for sidecar in ('inventory-recovery.json', 'rebuild_inventory.py'):
         if (path := args.inventory.parent / sidecar).exists():
             inputs.append(path)

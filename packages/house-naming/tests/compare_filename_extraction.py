@@ -64,7 +64,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('baseline', type=Path)
     ap.add_argument('output', type=Path)
-    ap.add_argument('--experiment', type=Path, default=Path(__file__).with_name('house-naming-extraction.md'),
+    ap.add_argument('--experiment', type=Path, default=Path(__file__).resolve().parents[1] / 'notes/house-naming-extraction.md',
                     help='Predeclared experiment to retain with the source snapshot')
     ap.add_argument('--source', type=Path, action='append', default=[],
                     help='Additional test or validation source to snapshot (repeatable)')

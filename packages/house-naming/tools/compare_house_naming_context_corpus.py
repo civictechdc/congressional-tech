@@ -10,8 +10,6 @@ from itertools import zip_longest
 from pathlib import Path
 from time import perf_counter
 
-from congress_api.models.legislators import member_surnames_by_congress
-from congress_api.parsers.legislators import parse_legislators
 from house_naming import Engine
 from house_naming.corpus import DESCRIPTIVE_FIELDS, filename_tokens, residual_fields, shared_token_pattern
 from house_naming.filename_corpus import parser_source_paths
@@ -40,12 +38,14 @@ def main():
     for path, digest in previous['hashes'].items():
         if '/congress_api/' in path:
             assert sha(Path(path)) == digest, ('Native comparator changed', path)
-    sources = [*parser_source_paths(), Path(__file__), Path(__file__).with_name('house-naming-context-corpus.md'), args.reference]
+    sources = [*parser_source_paths(), Path(__file__), Path(__file__).resolve().parents[1] / 'notes/house-naming-context-corpus.md', args.reference]
     hashes = {str(p.resolve()): sha(p) for p in sources}
     for path in sources:
         dst = args.output/'source'/path.resolve().relative_to(Path.cwd())
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(path, dst)
+    from congress_api.models.legislators import member_surnames_by_congress
+    from congress_api.parsers.legislators import parse_legislators
     context = member_surnames_by_congress(parse_legislators(args.reference.read_bytes()))
     (args.output/'member-surnames.json').write_text(json.dumps(context, indent=2)+'\n')
     counts = Counter(); stats = {}; residual_groups = {}; engine = Engine(); started = perf_counter()

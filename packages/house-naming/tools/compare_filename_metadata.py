@@ -47,7 +47,7 @@ def main():
     args.output.mkdir(parents=True, exist_ok=False)
     raw_path = args.run / 'paired-outputs.jsonl.gz'
     inputs = [raw_path, args.run / 'summary.json', Path(__file__),
-              Path(__file__).with_name('filename-metadata-comparison.md')]
+              Path(__file__).resolve().parents[1] / 'notes/filename-metadata-comparison.md']
     hashes = {str(path.resolve()): digest(path) for path in inputs}
     counts = Counter()
     patterns = Counter()

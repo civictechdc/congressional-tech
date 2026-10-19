@@ -46,6 +46,19 @@ def save_published_controls(remote, publisher, output):
     (output / 'published-recovery.json').write_bytes(recovery)
 
 
+def publication_fixture(checkout):
+    """Find the retained attempt fixture within the selected checkout only."""
+    checkout = checkout.resolve()
+    for relative in ('packages/viewer_publication/tests/test_viewer_publication_attempt.py',
+                     'tests/test_viewer_publication_attempt.py'):
+        path = checkout / relative
+        if path.is_file():
+            if not path.resolve().is_relative_to(checkout):
+                raise ValueError('Publication measurement fixture escapes the selected checkout')
+            return path
+    raise FileNotFoundError(f'No publication attempt fixture in selected checkout: {checkout}')
+
+
 def run(checkout, source, output, source_manifest_sha256, *, maximum_source_bytes=1024**2, request_latency_ms=0):
     if not 0 <= request_latency_ms <= 10:
         raise ValueError('Fixture request latency must be between0 and10ms')
@@ -74,7 +87,7 @@ def run(checkout, source, output, source_manifest_sha256, *, maximum_source_byte
                     for path in paths}
     output.mkdir(parents=True, exist_ok=False)
     sys.path[:0] = [str(checkout / p) for p in ('scripts', 'apps/site/scripts', 'packages/congress_api/src', 'packages/house-naming/src')]
-    spec = importlib.util.spec_from_file_location('control_cost_fixture', checkout / 'packages/viewer_publication/tests/test_viewer_publication_attempt.py')
+    spec = importlib.util.spec_from_file_location('control_cost_fixture', publication_fixture(checkout))
     fixture = importlib.util.module_from_spec(spec); spec.loader.exec_module(fixture)
     publisher, attempts, remote = fixture.publisher, fixture.attempts, fixture.Remote(source)
     metrics = PublicationCosts(output)

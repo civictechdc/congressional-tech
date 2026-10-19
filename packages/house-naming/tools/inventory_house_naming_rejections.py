@@ -124,6 +124,8 @@ def main():
     parser.add_argument('--run', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
+    note = Path(__file__).resolve().parents[1] / 'notes/filename-engine-comparison.md'
+    note_sha256 = hashlib.sha256(note.read_bytes()).hexdigest()
     args.output.mkdir(parents=True, exist_ok=False)
     primary = json.loads((args.run/'summary.json').read_text())
     for p, digest in primary['hashes'].items():
@@ -207,7 +209,7 @@ def main():
                'source_hashes': {p: d for p, d in primary['hashes'].items() if '/packages/' in p},
                'primary_outputs_sha256': hashlib.sha256((args.run/'paired-outputs.jsonl.gz').read_bytes()).hexdigest(),
                'script_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
-               'note_sha256': hashlib.sha256(Path(__file__).with_name('filename-engine-comparison.md').read_bytes()).hexdigest(),
+               'note_sha256': note_sha256,
                'all_rejections_processed': True}
     (args.output/'summary.json').write_text(json.dumps(summary, indent=2)+'\n')
     print(json.dumps({k:v for k,v in summary.items() if not k.endswith('hashes')}, indent=2))
