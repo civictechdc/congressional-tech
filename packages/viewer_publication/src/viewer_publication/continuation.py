@@ -364,6 +364,7 @@ class DurableJournal:
         self.sequence = 0
         self.previous = None
         self.total_bytes = 0
+        self.pending_verified = None
         self.lock = threading.RLock()
         self.writer = GuardedPublicationClient(client, guard=lambda: None,
                                                journal=lambda *args: None, after_write=lambda *args: None, strict_conditions=True)
@@ -426,6 +427,8 @@ class DurableJournal:
                 raise ValueError('Malformed publication event value')
             if index == 0 and (event.get('event') != 'attempt_started' or event.get('value', {}).get('binding') != self.binding):
                 raise ValueError('Publication attempt preparation binding differs')
+            if 'verified_write' in event:
+                apply_event(restored, 'publication_write_verified', event['verified_write'])
             apply_event(restored, event.get('event'), event.get('value'))
             accepted.append(raw)
             previous = hashlib.sha256(raw).hexdigest()
@@ -440,29 +443,45 @@ class DurableJournal:
 
     def record(self, event, value):
         with self.lock:
-            if self.sequence >= MAX_EVENTS:
-                raise ValueError('Publication journal exceeds event count limit')
             candidate = {'writes': dict(self.continuation.value['writes'])}
             if isinstance(value, dict) and value.get('key') in candidate['writes']:
                 candidate['writes'][value['key']] = dict(candidate['writes'][value['key']])
             apply_event(candidate, event, value)
-            nonce = uuid.uuid4().hex
-            item = {'version': 1, 'sequence': self.sequence, 'previous': self.previous,
-                    'nonce': nonce, 'event': event, 'value': value}
-            raw = json.dumps(item, sort_keys=True, separators=(',', ':')).encode()
-            if len(raw) > MAX_EVENT_BYTES or self.total_bytes + len(raw) > MAX_JOURNAL_BYTES:
-                raise ValueError('Publication journal exceeds event/total byte limit')
-            key = self.prefix + f'{self.sequence:08d}.json'
-            # Keep this writer's exact payload before attempting the remote PUT.
-            # A unique nonce prevents an ambiguous acknowledgment from mistaking
-            # another runner's otherwise identical event for this write.
-            self.continuation.save(f'journal-intents/{self.sequence:08d}-{nonce}.json', raw)
-            # Conditional creation is also a fence against two runners trying to
-            # use the same explicit attempt concurrently.
-            self.writer.put_object(Bucket=self.bucket, Key=key, Body=raw, ContentLength=len(raw),
-                                   ContentType='application/json', IfNoneMatch='*')
-            self.continuation.save(f'journal/{self.sequence:08d}.json', raw)
-            self.sequence += 1
-            self.total_bytes += len(raw)
-            self.previous = hashlib.sha256(raw).hexdigest()
-            self.continuation.record(event, value)
+            if event == 'publication_write_verified':
+                # Keep one fact until the next append. Its original durable intent
+                # already supports full-body reconciliation after runner loss.
+                # Consecutive verifications flush the older fact, bounding memory
+                # even when payload transfers finish in parallel.
+                if self.pending_verified is not None:
+                    self._append('publication_write_verified', self.pending_verified)
+                    self.pending_verified = None
+                self.continuation.record(event, value)
+                self.pending_verified = dict(value)
+            else:
+                self._append(event, value, verified_write=self.pending_verified)
+                self.pending_verified = None
+                self.continuation.record(event, value)
+
+    def _append(self, event, value, *, verified_write=None):
+        # Called only while record owns the journal lock. Advance nothing until
+        # conditional creation and complete journal readback both succeed.
+        if self.sequence >= MAX_EVENTS:
+            raise ValueError('Publication journal exceeds event count limit')
+        nonce = uuid.uuid4().hex
+        item = {'version': 1, 'sequence': self.sequence, 'previous': self.previous,
+                'nonce': nonce, 'event': event, 'value': value}
+        if verified_write is not None:
+            item['verified_write'] = verified_write
+        raw = json.dumps(item, sort_keys=True, separators=(',', ':')).encode()
+        if len(raw) > MAX_EVENT_BYTES or self.total_bytes + len(raw) > MAX_JOURNAL_BYTES:
+            raise ValueError('Publication journal exceeds event/total byte limit')
+        key = self.prefix + f'{self.sequence:08d}.json'
+        # Retain the exact nonce-bound request before mutation. Conditional
+        # creation fences competing runners at every pre-mutation intent.
+        self.continuation.save(f'journal-intents/{self.sequence:08d}-{nonce}.json', raw)
+        self.writer.put_object(Bucket=self.bucket, Key=key, Body=raw, ContentLength=len(raw),
+                               ContentType='application/json', IfNoneMatch='*')
+        self.continuation.save(f'journal/{self.sequence:08d}.json', raw)
+        self.sequence += 1
+        self.total_bytes += len(raw)
+        self.previous = hashlib.sha256(raw).hexdigest()
