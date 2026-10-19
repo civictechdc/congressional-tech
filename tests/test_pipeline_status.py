@@ -168,10 +168,33 @@ def test_current_provenance_revision_and_incomplete_reconciliation_are_visible(t
 def test_unbound_local_recovery_phases_are_inspectable_without_run_attribution(tmp_path):
     path=receipt(tmp_path);value=json.loads(path.read_text())
     value['binding']={'batch':'local'};value['phases']={'catalog':{'files':{},'result':{}}}
+    value['writes'] = {'viewer-publications/manifest.json': {'verified': False},
+                       'viewer-publications/releases/x/file': {'verified': True}}
     write(path,value)
     observed=status.continuation(path,('123','2',REVISION))
     assert observed['state']=='unbound' and observed['accepted_outputs']==[]
     assert observed['local_phase_observation']['next_incomplete_phase']=='mappings'
+    local = observed['local_phase_observation']
+    assert local['recorded_writes'] == 2 and local['recorded_verified_writes'] == 1
+    assert local['uncertain_writes'] == ['viewer-publications/manifest.json']
+    assert local['remote_reconciliation'] == 'not_performed' and not local['integrity_rechecked']
+    assert observed['public_readback'] == 'not_checked'
+
+
+@pytest.mark.parametrize('bound', [False, True])
+@pytest.mark.parametrize('writes', [[], {'key': None}, {'key': {}}, {'key': {'verified': 'false'}},
+    {'key': {'verified': 0}}, {'': {'verified': False}}, {'x' * 2049: {'verified': False}},
+    {str(index): {'verified': False} for index in range(8193)}])
+def test_continuation_rejects_malformed_or_excessive_local_writes_before_attribution(tmp_path, bound, writes):
+    path = receipt(tmp_path); value = json.loads(path.read_text())
+    if not bound:
+        value['binding'] = {'batch': 'local'}
+    value['writes'] = writes
+    write(path, value)
+    before = path.read_bytes()
+    with pytest.raises(ValueError, match='writes malformed or exceeds inspection limit'):
+        status.continuation(path, ('123', '2', REVISION))
+    assert path.read_bytes() == before
 
 
 def test_read_only_publication_command_emits_durable_pending_receipt(tmp_path,monkeypatch,capsys):

@@ -37,9 +37,9 @@ def open_public(request, *, timeout=60):
         try:
             return urllib.request.urlopen(request, timeout=timeout)
         except urllib.error.HTTPError as error:
+            error.close()
             if error.code not in (429, 500, 502, 503, 504) or attempt == 3:
                 raise
-            error.close()
         except urllib.error.URLError:
             if attempt == 3:
                 raise

@@ -131,3 +131,36 @@ def test_new_phase_rejects_symlink_escape_without_accepting_state(tmp_path):
     with pytest.raises(ValueError, match='escapes'):
         c.phase('prepared', lambda: {}, files=lambda: [link])
     assert c.value['phases'] == {} and c.path.read_bytes() == before
+
+
+@pytest.mark.parametrize('escape', ['file', 'parent'])
+def test_restored_phase_refuses_same_byte_symlink_escape_before_hashing(tmp_path, monkeypatch, escape):
+    c = state.Continuation(tmp_path / 'attempt', {})
+    path = c.root / 'prepared' / 'file'
+    path.parent.mkdir(); path.write_bytes(b'accepted')
+    c.phase('prepared', lambda: {'accepted': True}, files=lambda: [path])
+    outside = tmp_path / 'outside'; outside.mkdir()
+    (outside / 'file').write_bytes(b'accepted')
+    path.unlink()
+    if escape == 'file':
+        path.symlink_to(outside / 'file')
+    else:
+        path.parent.rmdir(); path.parent.symlink_to(outside, target_is_directory=True)
+    restored = state.Continuation(c.root, {}, resume=True)
+    before = restored.path.read_bytes()
+    monkeypatch.setattr(state, 'sha256', lambda *_: pytest.fail('Escaping saved file was hashed'))
+    with pytest.raises(ValueError, match='phase path escapes root'):
+        restored.phase('prepared', lambda: pytest.fail('Accepted phase rebuilt'), files=lambda: [])
+    assert restored.path.read_bytes() == before
+    assert (outside / 'file').read_bytes() == b'accepted'
+
+
+def test_restored_phase_accepts_matching_owned_file_and_still_checks_digest(tmp_path):
+    c = state.Continuation(tmp_path / 'attempt', {})
+    path = c.root / 'file'; path.write_bytes(b'accepted')
+    result = c.phase('prepared', lambda: {'accepted': True}, files=lambda: [path])
+    restored = state.Continuation(c.root, {}, resume=True)
+    assert restored.phase('prepared', lambda: pytest.fail('Accepted phase rebuilt'), files=lambda: []) == result
+    path.write_bytes(b'different')
+    with pytest.raises(ValueError, match='phase changed'):
+        restored.phase('prepared', lambda: pytest.fail('Accepted phase rebuilt'), files=lambda: [])

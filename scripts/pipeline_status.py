@@ -124,6 +124,14 @@ def continuation(path, expected):
     order = ('catalog', 'mappings', 'prepared', 'publication') if any(name in phases for name in ('catalog','mappings')) else ('prepared','publication')
     local_state = {'recorded_phases': list(phases), 'next_incomplete_phase': next((name for name in order if name not in phases), None),
                    'integrity_rechecked': False, 'remote_reconciliation': 'not_performed'}
+    writes = value.get('writes', {})
+    if (not isinstance(writes, dict) or len(writes) > 8192
+            or any(not isinstance(key, str) or not key or len(key) > 2048
+                   or not isinstance(item, dict) or type(item.get('verified')) is not bool
+                   for key, item in writes.items())):
+        raise ValueError('Continuation writes malformed or exceeds inspection limit')
+    local_state.update(recorded_writes=len(writes), uncertain_writes=[key for key, item in writes.items() if not item['verified']],
+                       recorded_verified_writes=sum(item['verified'] for item in writes.values()))
     if observed != expected:
         return {'state': 'unbound', 'local_phase_observation': local_state, 'issues': ['Continuation lacks matching run, attempt and revision'],
                 'accepted_outputs': [], 'public_readback': 'not_checked'}
@@ -163,11 +171,6 @@ def continuation(path, expected):
             elif event.get('event') == 'publication_failed':
                 publication = 'failed'
             digest = sha256(event_raw).hexdigest()
-    writes = value.get('writes', {})
-    if not isinstance(writes, dict) or len(writes) > 8192 or any(not isinstance(item,dict) for item in writes.values()):
-        raise ValueError('Continuation writes malformed or exceeds inspection limit')
-    local_state.update(recorded_writes=len(writes), uncertain_writes=[key for key, item in writes.items() if not item.get('verified')],
-                       recorded_verified_writes=sum(bool(item.get('verified')) for item in writes.values()))
     if publication in ('published', 'recovery_updated'):
         local_state['next_incomplete_phase'] = None
     return {'state': 'bound', 'accepted_outputs': outputs, 'local_phase_observation': local_state, 'recorded_publication_status': publication,

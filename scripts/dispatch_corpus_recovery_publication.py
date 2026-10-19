@@ -173,8 +173,11 @@ def run(args):
             return body
         def put(self, key, body, *, immutable=False):
             if key == 'indexes/catalog.json':
-                save('source/'+key, body, replace=key == 'indexes/catalog.json')
-            return super().put(key, body, immutable=immutable)
+                save('proposed/'+key, body, replace=True)
+            result = super().put(key, body, immutable=immutable)
+            if key == 'indexes/catalog.json':
+                save('source/'+key, body, replace=True)
+            return result
         def save_derived(self, key, path, identity):
             from congress_api.retention.derived_files import retain_verified_file
             return retain_verified_file(path, source / key, expected=identity, key=key)
