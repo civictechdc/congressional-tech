@@ -98,3 +98,17 @@ Row order is the TinyDB index. The first data row is `youtube_00.json`. Append n
 
 - `src/congress_shared/data/congress_metadata.json` is the congress table described above.
 - `src/congress_shared/youtube/youtube-accounts.csv` is the channel list described above.
+
+## Retained YouTube cache format
+
+`congress_shared.youtube_cache.decode_cache` reads the TinyDB table layout shared
+by inventory, GPO matching and Explorer. It accepts JSON bytes/text or decoded
+tables. `videos()` yields `(literal_table_handle, unchanged_video_row)` pairs;
+`channels()` yields unchanged channel metadata. Both preserve insertion order,
+including repeated video IDs. Video-only readers do not inspect channel tables.
+
+The module uses only the standard library. It performs no file or network access,
+does not load configuration or collectors, and does not repair malformed inputs.
+Callers retain file selection, missing-file behavior, byte snapshots and matching
+or export policies. Both source packages already depend on `congress-shared`;
+the decoder adds no installation dependencies.

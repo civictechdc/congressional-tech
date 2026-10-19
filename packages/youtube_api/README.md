@@ -56,6 +56,16 @@ Each committee lands in `{tinydb_dir}/youtube_{index:02d}.json`. The default dir
 
 The handle in the table name is the literal CSV string, including `@`.
 
+`congress_shared.youtube_cache.decode_cache` is the shared reader for these saved
+tables. It accepts retained JSON bytes/text or already decoded data and returns
+`videos()` as `(literal_table_handle, unchanged_video_row)` pairs and `channels()`
+as unchanged channel metadata. Both keep insertion order; repeated video IDs stay
+repeated. Inventory, GPO matching and Explorer use this reader while retaining
+their own file access, byte snapshots, selection and matching rules. The decoder
+uses only the standard library and never imports TinyDB, collectors or adapters.
+Malformed JSON and table shapes still raise errors; unrelated tables are ignored.
+`congress-shared` is already a declared dependency of both source packages.
+
 The fetch walks three YouTube Data API v3 calls:
 
 1. `channels.list` with `forHandle`, parts `snippet` and `contentDetails`

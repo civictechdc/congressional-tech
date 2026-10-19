@@ -7,6 +7,8 @@ import gzip
 import json
 from pathlib import Path
 
+from congress_shared.youtube_cache import decode_cache
+
 from congress_api.matching.meetings import in_inventory_scope
 from congress_api.retention.meetings import read_meetings as read_meeting_rows
 
@@ -28,10 +30,8 @@ def read_youtube_videos(directory, channels):
             continue
         with path.open(encoding="utf-8") as stream:
             tables = json.load(stream)
-        for name, rows in tables.items():
-            if name.startswith("youtube_videos_"):
-                for row in rows.values():
-                    yield channel["systemCode"], row
+        for _, row in decode_cache(tables).videos():
+            yield channel["systemCode"], row
 
 
 def write_csv(path, rows, fields):

@@ -1,0 +1,439 @@
+{
+  "baseline_commit": "b191fc8",
+  "publisher_meanings": {
+    "witness statement": "witness-statement",
+    "ws": "witness-statement",
+    "witness truth in testimony": "testimony-disclosure",
+    "truth in testimony": "testimony-disclosure",
+    "wt": "testimony-disclosure",
+    "witness biography": "witness-biography",
+    "wb": "witness-biography",
+    "witness support document": "witness-support",
+    "wd": "witness-support",
+    "member statement": "member-statement",
+    "member statements": "member-statement",
+    "ms": "member-statement",
+    "committee amendment": "committee-amendment",
+    "ca": "committee-amendment",
+    "house or senate amendment": "interchamber-amendment",
+    "ha": "interchamber-amendment",
+    "floor amendment": "floor-amendment",
+    "fa": "floor-amendment",
+    "committee recorded vote": "committee-vote",
+    "cv": "committee-vote",
+    "committee report": "committee-report",
+    "cr": "committee-report",
+    "conference report": "conference-report",
+    "fr": "conference-report",
+    "bills and resolutions": "legislative-text",
+    "br": "legislative-text",
+    "legislative text": "legislative-text",
+    "summary": "summary",
+    "support document": "support-document",
+    "sd": "support-document",
+    "hearing: transcript": "transcript",
+    "transcript": "transcript",
+    "ht": "transcript",
+    "hearing: witness list": "witness-list",
+    "witness list": "witness-list",
+    "hw": "witness-list",
+    "hearing: questions for the record": "questions-for-record",
+    "questions for the record": "questions-for-record",
+    "hq": "questions-for-record",
+    "hearing: member roster": "member-roster",
+    "hm": "member-roster",
+    "hearing: cover page": "cover-page",
+    "hc": "cover-page",
+    "hearing: table of contents": "table-of-contents",
+    "tc": "table-of-contents",
+    "questionnaire": "questionnaire"
+  },
+  "collector_kinds": {
+    "witness-statement": "witness statement",
+    "testimony-disclosure": "truth in testimony",
+    "witness-biography": "witness biography",
+    "witness-support": "witness support document",
+    "member-statement": "member statement",
+    "transcript": "transcript",
+    "witness-list": "witness list",
+    "questions-for-record": "questions for the record",
+    "committee-vote": "recorded vote",
+    "committee-report": "report",
+    "conference-report": "report",
+    "legislative-text": "bill or amendment",
+    "committee-amendment": "bill or amendment",
+    "interchamber-amendment": "bill or amendment",
+    "floor-amendment": "bill or amendment",
+    "member-roster": "hearing record",
+    "cover-page": "hearing record",
+    "table-of-contents": "hearing record",
+    "support-document": "support document"
+  },
+  "collector_xml_kinds": {
+    "WS": "witness statement",
+    "WT": "truth in testimony",
+    "WB": "witness biography",
+    "WD": "witness support document",
+    "MS": "member statement",
+    "CA": "bill or amendment",
+    "HA": "bill or amendment",
+    "FA": "bill or amendment",
+    "CV": "recorded vote",
+    "CR": "report",
+    "FR": "report",
+    "BR": "bill or amendment",
+    "SD": "support document",
+    "HT": "transcript",
+    "HW": "witness list",
+    "HQ": "questions for the record",
+    "HM": "hearing record",
+    "HC": "hearing record",
+    "TC": "hearing record"
+  },
+  "explorer_categories": {
+    "witness-statement": "statement",
+    "member-statement": "statement",
+    "testimony-disclosure": "disclosure",
+    "witness-biography": "biography",
+    "witness-support": "supporting",
+    "support-document": "supporting",
+    "summary": "supporting",
+    "committee-amendment": "amendment",
+    "interchamber-amendment": "amendment",
+    "floor-amendment": "amendment",
+    "committee-vote": "vote",
+    "committee-report": "report",
+    "conference-report": "report",
+    "legislative-text": "bill_text",
+    "transcript": "transcript",
+    "witness-list": "witness_list",
+    "questions-for-record": "questions_for_record",
+    "member-roster": "hearing_record",
+    "cover-page": "hearing_record",
+    "table-of-contents": "hearing_record"
+  },
+  "house_xml_categories": {
+    "WS": "statement",
+    "WT": "disclosure",
+    "WB": "biography",
+    "WD": "supporting",
+    "MS": "statement",
+    "CA": "amendment",
+    "HA": "amendment",
+    "FA": "amendment",
+    "CV": "vote",
+    "CR": "report",
+    "FR": "report",
+    "BR": "bill_text",
+    "HT": "transcript",
+    "HW": "witness_list",
+    "HQ": "questions_for_record",
+    "HM": "hearing_record",
+    "HC": "hearing_record",
+    "TC": "hearing_record"
+  },
+  "filename_family_members": {
+    "letter": [
+      "letter-of-support"
+    ],
+    "statement": [
+      "opening-statement",
+      "member-statement",
+      "witness-statement",
+      "testimony",
+      "explanatory-statement"
+    ],
+    "remarks": [
+      "opening-remarks"
+    ],
+    "transcript": [
+      "committee-transcript"
+    ],
+    "report": [
+      "committee-report",
+      "committee-report-part",
+      "committee-report-unnumbered",
+      "conference-report",
+      "conference-unnumbered",
+      "published-report"
+    ],
+    "legislation": [
+      "public-law",
+      "legislative-text",
+      "bill-named-draft",
+      "bill-numbered",
+      "bill-numbered-described",
+      "bill-preintroduced",
+      "bill-suspension-numbered",
+      "bill-titled-draft",
+      "bill-unnumbered",
+      "bill-untyped-draft",
+      "bill-untyped-numbered",
+      "appropriation-described",
+      "appropriation-routed",
+      "conference-legislation-part"
+    ],
+    "amendment": [
+      "amendment-collection",
+      "bill-house-amendment",
+      "committee-amendment",
+      "committee-amendment-described",
+      "committee-enbloc-described",
+      "committee-enbloc-numbered",
+      "floor-amendment",
+      "interchamber-amendment",
+      "managers-package",
+      "mark-modification"
+    ],
+    "print": [
+      "committee-print",
+      "published-print"
+    ],
+    "list": [
+      "amendment-list",
+      "exhibit-list",
+      "bill-measure-list",
+      "member-roster",
+      "witness-list",
+      "panelist-list",
+      "participant-list"
+    ],
+    "biography": [
+      "witness-biography"
+    ],
+    "memorandum": [
+      "committee-memorandum",
+      "rules-memorandum"
+    ],
+    "notice": [
+      "meeting-notice"
+    ],
+    "vote-record": [
+      "committee-vote",
+      "tally-sheet"
+    ],
+    "exhibit": [
+      "exhibit-collection"
+    ],
+    "supporting-material": [
+      "support-document",
+      "meeting-support",
+      "witness-support"
+    ],
+    "questions-and-answers": [
+      "questionnaire",
+      "questions-for-record",
+      "questions-for-record-response"
+    ],
+    "disclosure": [
+      "testimony-disclosure"
+    ]
+  },
+  "model_categories": [
+    "transcript",
+    "statement",
+    "biography",
+    "disclosure",
+    "questions_for_record",
+    "responses_for_record",
+    "notice",
+    "agenda",
+    "amendment",
+    "vote",
+    "report",
+    "bill_text",
+    "witness_list",
+    "hearing_record",
+    "committee_print",
+    "supporting",
+    "errata",
+    "other",
+    "unknown"
+  ],
+  "alias_category_outputs": {
+    "witness statement": [
+      "statement",
+      "disclosure"
+    ],
+    "ws": [
+      "unknown",
+      "disclosure"
+    ],
+    "witness truth in testimony": [
+      "disclosure",
+      "disclosure"
+    ],
+    "truth in testimony": [
+      "disclosure",
+      "disclosure"
+    ],
+    "wt": [
+      "unknown",
+      "disclosure"
+    ],
+    "witness biography": [
+      "biography",
+      "disclosure"
+    ],
+    "wb": [
+      "unknown",
+      "disclosure"
+    ],
+    "witness support document": [
+      "unknown",
+      "disclosure"
+    ],
+    "wd": [
+      "unknown",
+      "disclosure"
+    ],
+    "member statement": [
+      "statement",
+      "disclosure"
+    ],
+    "member statements": [
+      "statement",
+      "disclosure"
+    ],
+    "ms": [
+      "unknown",
+      "disclosure"
+    ],
+    "committee amendment": [
+      "amendment",
+      "amendment"
+    ],
+    "ca": [
+      "unknown",
+      "disclosure"
+    ],
+    "house or senate amendment": [
+      "amendment",
+      "disclosure"
+    ],
+    "ha": [
+      "unknown",
+      "disclosure"
+    ],
+    "floor amendment": [
+      "amendment",
+      "disclosure"
+    ],
+    "fa": [
+      "unknown",
+      "disclosure"
+    ],
+    "committee recorded vote": [
+      "vote",
+      "disclosure"
+    ],
+    "cv": [
+      "unknown",
+      "disclosure"
+    ],
+    "committee report": [
+      "report",
+      "report"
+    ],
+    "cr": [
+      "unknown",
+      "disclosure"
+    ],
+    "conference report": [
+      "report",
+      "report"
+    ],
+    "fr": [
+      "unknown",
+      "disclosure"
+    ],
+    "bills and resolutions": [
+      "bill_text",
+      "disclosure"
+    ],
+    "br": [
+      "unknown",
+      "disclosure"
+    ],
+    "legislative text": [
+      "bill_text",
+      "bill_text"
+    ],
+    "summary": [
+      "supporting",
+      "supporting"
+    ],
+    "support document": [
+      "supporting",
+      "disclosure"
+    ],
+    "sd": [
+      "unknown",
+      "disclosure"
+    ],
+    "hearing: transcript": [
+      "transcript",
+      "disclosure"
+    ],
+    "transcript": [
+      "transcript",
+      "disclosure"
+    ],
+    "ht": [
+      "unknown",
+      "disclosure"
+    ],
+    "hearing: witness list": [
+      "witness_list",
+      "disclosure"
+    ],
+    "witness list": [
+      "witness_list",
+      "disclosure"
+    ],
+    "hw": [
+      "unknown",
+      "disclosure"
+    ],
+    "hearing: questions for the record": [
+      "questions_for_record",
+      "questions_for_record"
+    ],
+    "questions for the record": [
+      "unknown",
+      "disclosure"
+    ],
+    "hq": [
+      "unknown",
+      "disclosure"
+    ],
+    "hearing: member roster": [
+      "hearing_record",
+      "hearing_record"
+    ],
+    "hm": [
+      "unknown",
+      "disclosure"
+    ],
+    "hearing: cover page": [
+      "hearing_record",
+      "hearing_record"
+    ],
+    "hc": [
+      "unknown",
+      "disclosure"
+    ],
+    "hearing: table of contents": [
+      "hearing_record",
+      "hearing_record"
+    ],
+    "tc": [
+      "unknown",
+      "disclosure"
+    ],
+    "questionnaire": [
+      "unknown",
+      "disclosure"
+    ]
+  }
+}

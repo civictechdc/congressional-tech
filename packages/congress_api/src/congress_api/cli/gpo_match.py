@@ -7,6 +7,7 @@ import json
 import logging
 from pathlib import Path
 
+from congress_shared.youtube_cache import decode_cache
 from congress_shared.cli import add_global_args, configure_logging
 from congress_shared.resources import DEFAULT_CHANNELS_CSV
 from congress_shared.paths import (
@@ -33,17 +34,14 @@ def load_videos(tinydb_dir, channels):
             continue
         with path.open() as stream:
             tables = json.load(stream)
-        for table, rows in tables.items():
-            if not table.startswith("youtube_videos_"):
-                continue
-            for video in rows.values():
-                text = f"{video['title']} {video['description']}"
-                by_code[row["systemCode"]].append({
-                    "videoId": video["videoId"], "channel": table[len("youtube_videos_"):],
-                    "published": video["publishedAt"][:10], "title": video["title"], "words": words(video["title"]),
-                    "dates": dates_in_text(text), "event_ids": {a or b for a, b in EVENT_ID.findall(text)},
-                    "duration": video.get("duration"), "audio_only": "audio recording" in text.lower() or "audio only" in text.lower(),
-                })
+        for handle, video in decode_cache(tables).videos():
+            text = f"{video['title']} {video['description']}"
+            by_code[row["systemCode"]].append({
+                "videoId": video["videoId"], "channel": handle,
+                "published": video["publishedAt"][:10], "title": video["title"], "words": words(video["title"]),
+                "dates": dates_in_text(text), "event_ids": {a or b for a, b in EVENT_ID.findall(text)},
+                "duration": video.get("duration"), "audio_only": "audio recording" in text.lower() or "audio only" in text.lower(),
+            })
     return by_code
 
 
