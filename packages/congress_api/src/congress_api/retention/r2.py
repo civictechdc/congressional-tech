@@ -330,7 +330,8 @@ class R2Store:
             if expected is not None and size != expected['bytes']:
                 raise ValueError(f'Selected catalog size mismatch: {key}')
             result = copy_checked(source, path, size=size, expected=expected, key=key)
-            return {**result, 'version': etag}
+            result['version'] = etag
+            return result
 
         return _read_stream(self.client, key, request, consume)
 

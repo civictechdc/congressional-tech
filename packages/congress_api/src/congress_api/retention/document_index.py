@@ -682,35 +682,46 @@ def validate_document_indexes(source_path, document_path, *, source_rows=None, d
     """Validate the actual paired files before either destination is replaced."""
     from tempfile import TemporaryDirectory
     import sqlite3
-    source_file, document_file = pq.ParquetFile(source_path), pq.ParquetFile(document_path)
-    source_meta, document_meta = source_file.schema_arrow.metadata or {}, document_file.schema_arrow.metadata or {}
-    if not source_meta.get(b"catalog_id") or source_meta[b"catalog_id"] != document_meta.get(b"catalog_id"):
-        raise ValueError("Document/source catalog_id values do not match")
-    if (source_rows is not None and source_file.metadata.num_rows != source_rows
-            or document_rows is not None and document_file.metadata.num_rows != document_rows):
-        raise ValueError("Document/source index references do not match")
-    with TemporaryDirectory(prefix="validate-catalog-") as directory:
-        db = sqlite3.connect(Path(directory) / "references.sqlite")
+    readers = ExitStack()
+    try:
+        source_file = readers.enter_context(pq.ParquetFile(source_path))
+        document_file = readers.enter_context(pq.ParquetFile(document_path))
+        source_meta, document_meta = source_file.schema_arrow.metadata or {}, document_file.schema_arrow.metadata or {}
+        if not source_meta.get(b"catalog_id") or source_meta[b"catalog_id"] != document_meta.get(b"catalog_id"):
+            raise ValueError("Document/source catalog_id values do not match")
+        if (source_rows is not None and source_file.metadata.num_rows != source_rows
+                or document_rows is not None and document_file.metadata.num_rows != document_rows):
+            raise ValueError("Document/source index references do not match")
+        with TemporaryDirectory(prefix="validate-catalog-") as directory:
+            db = sqlite3.connect(Path(directory) / "references.sqlite")
+            try:
+                db.executescript('PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA cache_size=-8192; '
+                                 'CREATE TABLE sources(source_id TEXT PRIMARY KEY NOT NULL,document_id TEXT NOT NULL); '
+                                 'CREATE INDEX source_groups ON sources(document_id); '
+                                 'CREATE TABLE documents(document_id TEXT PRIMARY KEY NOT NULL,source_id TEXT NOT NULL);')
+                for file, table in ((source_file, "sources"), (document_file, "documents")):
+                    for batch in file.iter_batches(columns=["source_id", "document_id"], batch_size=4096):
+                        records = batch.to_pylist()
+                        if table == "sources":
+                            db.executemany('INSERT INTO sources VALUES (?,?)', ((row['source_id'],row['document_id']) for row in records))
+                        else:
+                            db.executemany('INSERT INTO documents VALUES (?,?)', ((row['document_id'],row['source_id']) for row in records))
+                invalid = (db.execute('SELECT 1 FROM sources s LEFT JOIN documents d ON s.document_id=d.document_id WHERE d.document_id IS NULL LIMIT 1').fetchone()
+                           or db.execute('SELECT 1 FROM documents d LEFT JOIN sources s ON d.source_id=s.source_id AND d.document_id=s.document_id WHERE s.source_id IS NULL LIMIT 1').fetchone())
+                if invalid:
+                    raise ValueError("Document/source index references do not match")
+            except sqlite3.IntegrityError as error:
+                raise ValueError("Document/source index references do not match") from error
+            finally:
+                db.close()
+    except BaseException as error:
         try:
-            db.executescript('PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA cache_size=-8192; '
-                             'CREATE TABLE sources(source_id TEXT PRIMARY KEY NOT NULL,document_id TEXT NOT NULL); '
-                             'CREATE INDEX source_groups ON sources(document_id); '
-                             'CREATE TABLE documents(document_id TEXT PRIMARY KEY NOT NULL,source_id TEXT NOT NULL);')
-            for file, table in ((source_file, "sources"), (document_file, "documents")):
-                for batch in file.iter_batches(columns=["source_id", "document_id"], batch_size=4096):
-                    records = batch.to_pylist()
-                    if table == "sources":
-                        db.executemany('INSERT INTO sources VALUES (?,?)', ((row['source_id'],row['document_id']) for row in records))
-                    else:
-                        db.executemany('INSERT INTO documents VALUES (?,?)', ((row['document_id'],row['source_id']) for row in records))
-            invalid = (db.execute('SELECT 1 FROM sources s LEFT JOIN documents d ON s.document_id=d.document_id WHERE d.document_id IS NULL LIMIT 1').fetchone()
-                       or db.execute('SELECT 1 FROM documents d LEFT JOIN sources s ON d.source_id=s.source_id AND d.document_id=s.document_id WHERE s.source_id IS NULL LIMIT 1').fetchone())
-            if invalid:
-                raise ValueError("Document/source index references do not match")
-        except sqlite3.IntegrityError as error:
-            raise ValueError("Document/source index references do not match") from error
-        finally:
-            db.close()
+            readers.close()
+        except BaseException as cleanup:
+            error.add_note(f'Catalog validation reader cleanup also failed: {cleanup}')
+        raise
+    else:
+        readers.close()
 
 
 def compact(value):
@@ -2653,12 +2664,7 @@ def publish_local_result(root, filename_path, result, snapshot):
     """Select staged files and return durable selected paths, preserving legacy roots."""
     from congress_api.retention.catalog_cache import LocalStore
     from congress_api.retention.catalog_publication import publish_catalog
-    selected = publish_catalog(LocalStore(root),filename_path,filename_path.with_name("documents.parquet"),previous=snapshot)
+    selected = publish_catalog(LocalStore(root), filename_path, filename_path.with_name("documents.parquet"),
+                               previous=snapshot, validation=getattr(result, 'validation', None))
     return {**result, **selected, "output":str(root / selected['filenames_key']),
             "documents_output":str(root / selected['documents_key'])}
-
-
-def selected_filename_path(root):
-    """Read the selected generation; retain filename-only legacy refresh input."""
-    from congress_api.retention.catalog_publication import MANIFEST_KEY, local_catalog_paths
-    return local_catalog_paths(root)[0] if (root / MANIFEST_KEY).is_file() else root / "indexes/document-filenames.parquet"

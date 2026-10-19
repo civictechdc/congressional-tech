@@ -117,6 +117,54 @@ def test_normal_catalog_rebuild_checks_references_once_and_fresh_process_has_no_
     assert __import__('json').loads(__import__('json').dumps(result))['catalog_id'] == result['catalog_id']
 
 
+def test_direct_local_catalog_build_carries_its_reference_proof_to_selection(tmp_path, monkeypatch):
+    from congress_api.retention import document_index as index
+    from congress_api.retention.catalog_publication import local_catalog_paths
+    calls = []
+    original = index.validate_document_indexes
+    def counted(*args, **kwargs):
+        calls.append(args)
+        return original(*args, **kwargs)
+    monkeypatch.setattr(index, 'validate_document_indexes', counted)
+    result = index.write_filename_metadata(tmp_path, [dict(filename='probe.pdf',
+        source_url='https://example.test/probe.pdf', body_key=None)], workers=1)
+    assert len(calls) == 1
+    assert result['rows'] == result['document_rows'] == 1
+    paths = local_catalog_paths(tmp_path)
+    assert (result['output'], result['documents_output']) == tuple(str(path) for path in paths)
+
+
+@__import__('pytest').mark.parametrize('proof_kind', ['serialized', 'changed'])
+def test_local_catalog_handoff_does_not_trust_restored_or_changed_proofs(tmp_path, monkeypatch, proof_kind):
+    from congress_api.retention import document_index as index
+    from congress_api.retention.catalog_cache import LocalStore
+    from congress_api.retention.catalog_publication import read_catalog
+    from congress_api.retention.catalog_validation import CatalogBuildResult, validate_references
+    from test_catalog_publication import pair
+    import pytest
+    paths = pair(tmp_path / 'build')
+    calls = []
+    original = index.validate_document_indexes
+    def counted(*args, **kwargs):
+        calls.append(args)
+        return original(*args, **kwargs)
+    monkeypatch.setattr(index, 'validate_document_indexes', counted)
+    proof = validate_references(*paths, validator=counted)
+    result = CatalogBuildResult(rows=1, document_rows=1, validation=proof)
+    if proof_kind == 'serialized':
+        result = __import__('json').loads(__import__('json').dumps(result))
+    else:
+        paths[0].write_bytes(paths[0].read_bytes())
+    with read_catalog(LocalStore(tmp_path)) as snapshot:
+        if proof_kind == 'changed':
+            with pytest.raises(ValueError, match='no longer applies'):
+                index.publish_local_result(tmp_path, paths[0], result, snapshot)
+            assert not (tmp_path / 'indexes/catalog.json').exists()
+        else:
+            assert index.publish_local_result(tmp_path, paths[0], result, snapshot)['rows'] == 1
+    assert len(calls) == (2 if proof_kind == 'serialized' else 1)
+
+
 def test_reference_content_proof_reuses_one_scan_across_owned_copy_and_rejects_forgery(tmp_path):
     from congress_api.retention.catalog_validation import validate_references, validate_catalog_pair
     from congress_api.retention.catalog_publication import _properties
