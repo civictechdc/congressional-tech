@@ -1,6 +1,6 @@
 ---
 id: ct-d8z3
-status: open
+status: closed
 deps: [ct-x7vx]
 links: []
 created: 2026-10-18T19:21:16Z
@@ -37,3 +37,7 @@ Below-B+ follow-up complete: all 168 qualifying function/helper entries reviewed
 **2026-10-18T21:20:33Z**
 
 All 42 original remediation tickets are closed after implementation in dependency order, independent review, and combined verification. No tickets remain in progress. This epic stays open for ct-x7vx, which requires an ordinary unchanged job after a separately authorized deployment. The report records faster polls and resume, plus a 7.5% increase in fresh-publication time on the small fixture. Local merges only; no rollout.
+
+**2026-10-19T02:22:40Z**
+
+All remaining hosted, live and scheduled-cost qualification passed at 744edd6. ct-hnxb and ct-x7vx now closed after dependency checks. Fresh complete hosted job 9,732 s, ordinary unchanged job 20 s; retained local fixture comparisons describe unchanged/resume/fresh operations separately. Preserve measured tradeoffs and prior failed evidence. Final evidence PR records 44 closed tickets and no in-progress work; original rebuild and unrelated pipeline-data worktree remain untouched.

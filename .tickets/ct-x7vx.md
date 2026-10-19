@@ -1,6 +1,6 @@
 ---
 id: ct-x7vx
-status: in_progress
+status: closed
 deps: [ct-zb9y, ct-hnxb, ct-hbxu]
 links: [ct-8uwj]
 created: 2026-10-18T20:54:36Z
@@ -32,3 +32,7 @@ The current goal explicitly requests testing, review, squash and merge through a
 **2026-10-19T01:49:33Z**
 
 Ordinary scheduled run 39179688133 is naturally queued behind publisher run 39176607378 at deployed revision 744edd6. Preparing bounded artifact inspection and exact unchanged-run receipt validation locally in parallel. No hosted cost result yet; older 76/69-second recovery_updated runs have no download counters. Keep in_progress until the actual scheduled unchanged receipt passes.
+
+**2026-10-19T02:22:40Z**
+
+Ordinary schedule 39179688133 passed at deployed 744edd6: unchanged preflight, zero table reads/writes, write_authority false, seven heavy steps skipped. Job 20.00s; measured cost interval 14.34s; preflight 4.54 s / 10 requests/44,422,480 response bytes; host received 350,881,760 bytes including background traffic. Small diagnostic ZIP (926 bytes) matches GitHub run/revision/digest; approved validator accepted. Prior 69/76 s recovery_updated jobs are not equivalent and their byte counters are unavailable; no percentage savings claimed. Evidence: docs/experiments/publication-remediation/hosted-qualification.md.
