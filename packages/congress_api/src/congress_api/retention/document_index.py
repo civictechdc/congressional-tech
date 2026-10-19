@@ -2653,7 +2653,8 @@ def publish_local_result(root, filename_path, result, snapshot):
     """Select staged files and return durable selected paths, preserving legacy roots."""
     from congress_api.retention.catalog_cache import LocalStore
     from congress_api.retention.catalog_publication import publish_catalog
-    selected = publish_catalog(LocalStore(root),filename_path,filename_path.with_name("documents.parquet"),previous=snapshot)
+    selected = publish_catalog(LocalStore(root), filename_path, filename_path.with_name("documents.parquet"),
+                               previous=snapshot, validation=getattr(result, 'validation', None))
     return {**result, **selected, "output":str(root / selected['filenames_key']),
             "documents_output":str(root / selected['documents_key'])}
 

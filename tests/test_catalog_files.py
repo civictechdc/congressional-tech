@@ -276,3 +276,51 @@ def test_file_proof_does_not_survive_an_inherited_process_registry(tmp_path, mon
     monkeypatch.setattr(os, 'getpid', lambda: process + 1)
     with pytest.raises(ValueError, match='custody'):
         proof.require(path)
+
+
+@pytest.mark.parametrize('handoff', ['issued', 'serialized', 'changed', 'serialized_changed'])
+def test_remote_snapshot_history_handoff_preserves_proof_and_rechecks_restored_facts(tmp_path, monkeypatch, handoff):
+    import json
+    from congress_api.retention.derived_files import VerifiedFile
+
+    paths = pair(tmp_path / 'build')
+    generation = 'a' * 32
+    manifest = dict(version=1, generation=generation, catalog_id='one', files={})
+    payloads = []
+    for label, path in zip(('filenames', 'documents'), paths):
+        data = path.read_bytes()
+        manifest['files'][label] = dict(key=f'catalog-generations/{generation}/{path.name}',
+                                      rows=1, **identity(data))
+        payloads.append(data)
+    client = Client()
+    responses = [dict(Body=io.BytesIO(data), ContentLength=len(data), ETag=version)
+                 for data, version in [(json.dumps(manifest).encode(), 'selector'),
+                                       (payloads[0], 'filenames-v1'), (payloads[1], 'documents-v1')]]
+    client.responses = list(responses)
+    store = R2Store(client, 'bucket')
+    with read_catalog(store) as snapshot:
+        path, proof = snapshot.filenames_path, snapshot.files['filenames']
+        assert isinstance(proof, VerifiedFile)
+        assert proof.require(path) is proof
+        assert proof == dict(manifest['files']['filenames'], version='filenames-v1', catalog_id='one')
+        expected = json.loads(json.dumps(proof)) if handoff.startswith('serialized') else proof
+        if handoff.endswith('changed'):
+            path.write_bytes(payloads[0][:-1] + bytes([payloads[0][-1] ^ 1]))
+        hashed_bytes = []
+        original = hashlib.sha256
+        class Counted:
+            def __init__(self): self.digest = original()
+            def update(self, data):
+                hashed_bytes.append(len(data)); self.digest.update(data)
+            def hexdigest(self): return self.digest.hexdigest()
+        monkeypatch.setattr(hashlib, 'sha256', Counted)
+        key = f"catalog-history/sha256/{proof['sha256']}/document-filenames.parquet"
+        if handoff.endswith('changed'):
+            with pytest.raises(ValueError, match='checksum' if handoff == 'serialized_changed' else 'custody'):
+                store.put_derived_file(key, path, expected=expected)
+            assert not client.puts
+        else:
+            assert store.put_derived_file(key, path, expected=expected)
+            assert client.data == payloads[0]
+        assert sum(hashed_bytes) == (len(payloads[0]) if handoff.startswith('serialized') else 0)
+    assert not client.responses and all(response['Body'].closed for response in responses)
