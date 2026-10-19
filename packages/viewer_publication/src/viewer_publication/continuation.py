@@ -225,7 +225,8 @@ class Continuation:
                 self.flush()
 
     @staticmethod
-    def read(client, bucket, key):
+    def read(client, bucket, key, *, progress=None):
+        from .reconciliation import MAX_READ_UPDATES
         from botocore.exceptions import ClientError
         try:
             response = client.get_object(Bucket=bucket, Key=key)
@@ -234,34 +235,81 @@ class Continuation:
                 return None
             raise
         digest, size = hashlib.sha256(), 0
-        with response['Body'] as stream:
-            while chunk := stream.read(1024 * 1024):
-                size += len(chunk); digest.update(chunk)
+        total, updates, last_reported = response.get('ContentLength'), 0, -1
+        def report():
+            nonlocal last_reported
+            if progress is not None and last_reported != size:
+                try: progress(size, total)
+                except Exception: pass
+                last_reported = size
+        try:
+            with response['Body'] as stream:
+                if type(total) is not int or total < 0:
+                    raise ValueError('Invalid reconciliation ContentLength')
+                step = max(1024 * 1024, (total + MAX_READ_UPDATES - 1) // MAX_READ_UPDATES)
+                next_report = step
+                report()
+                while chunk := stream.read(1024 * 1024):
+                    size += len(chunk); digest.update(chunk)
+                    if updates < MAX_READ_UPDATES and size >= next_report:
+                        report(); updates += 1; next_report = size + step
+        finally:
+            report()
         if size != response['ContentLength']:
             raise ValueError('Incomplete reconciliation read: ' + key)
         return dict(bytes=size, sha256=digest.hexdigest(), etag=response['ETag'])
 
-    def reconcile(self, client, bucket):
+    def reconcile(self, client, bucket, *, progress=None):
         """Read only: resolve uncertain requests before the first guard or write."""
-        for key, intent in self.value['writes'].items():
-            self._reconciled.pop((id(client), bucket, key), None)
-            current = self.read(client, bucket, key)
-            matches = current and all(current[name] == intent[name] for name in ('bytes', 'sha256'))
-            if matches:
-                if intent['verified'] and current['etag'] != intent['etag']:
-                    raise ValueError('Verified publication version changed: ' + key)
-                intent.update(current, verified=True)
-                self._reconciled[(id(client), bucket, key)] = (client, dict(current))
-                if key in self.value['versions']:
-                    self.value['versions'][key] = current['etag']
-            elif intent['verified']:
-                raise ValueError('Verified publication bytes changed: ' + key)
-            elif ((current is None and intent.get('if_none_match') == '*')
-                  or (current and current['etag'] == intent.get('expected_etag'))):
-                continue  # A later explicitly requested write can use its original condition.
-            else:
-                raise ValueError('Uncertain publication conflicts with current object: ' + key)
-        self.flush()
+        from .reconciliation import NEXT_CHECK, ReconciliationProgress
+        observer = progress if progress is not None else ReconciliationProgress(self.root, self.value['binding'])
+        observed = dict(key=None, object_index=0, total_objects=len(self.value['writes']),
+                        checked_objects=0, bytes_read=0, declared_bytes=None, observation_only=True,
+                        resume_authorized=False, current_readback_proof=False, public_readback='not_checked')
+        def report(state):
+            try:
+                observer(dict(observed, state=state, next_check=NEXT_CHECK[state]))
+            except Exception:
+                # Observation failures cannot replace the original read/checkpoint
+                # outcome, confer proof, or change write conditions.
+                pass
+        report('starting')
+        conflict = False
+        try:
+            for index, (key, intent) in enumerate(self.value['writes'].items(), 1):
+                observed.update(key=key, object_index=index, bytes_read=0, declared_bytes=None)
+                self._reconciled.pop((id(client), bucket, key), None)
+                report('reading')
+                def reading(size, total):
+                    observed.update(bytes_read=size, declared_bytes=total if type(total) is int and total >= 0 else None)
+                    report('reading')
+                current = self.read(client, bucket, key, progress=reading)
+                matches = current and all(current[name] == intent[name] for name in ('bytes', 'sha256'))
+                if matches:
+                    if intent['verified'] and current['etag'] != intent['etag']:
+                        conflict = True
+                        raise ValueError('Verified publication version changed: ' + key)
+                    intent.update(current, verified=True)
+                    self._reconciled[(id(client), bucket, key)] = (client, dict(current))
+                    if key in self.value['versions']:
+                        self.value['versions'][key] = current['etag']
+                    outcome = 'reconciled'
+                elif intent['verified']:
+                    conflict = True
+                    raise ValueError('Verified publication bytes changed: ' + key)
+                elif ((current is None and intent.get('if_none_match') == '*')
+                      or (current and current['etag'] == intent.get('expected_etag'))):
+                    outcome = 'uncommitted'  # A later write must retain its original condition.
+                else:
+                    conflict = True
+                    raise ValueError('Uncertain publication conflicts with current object: ' + key)
+                observed['checked_objects'] = index
+                report(outcome)
+            self.flush()
+        except BaseException:
+            report('conflict' if conflict else 'failed')
+            raise
+        report('complete')
 
     def replay(self, client, bucket, key, body, *, validation=None):
         """Return a current receipt for the same write, or require a normal write."""

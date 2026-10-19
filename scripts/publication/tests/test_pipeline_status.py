@@ -271,3 +271,28 @@ def test_local_checkpoint_status_explicitly_marks_latest_event_state_unknown(tmp
     assert 'unknown' in source['latest_event_state'] and 'stale' in source['latest_event_state']
     summary = status.summarize('123', github('failure'), progress(), now=NOW, receipt=path)
     assert 'checkpoint write counts may be stale' in status.format_status(summary)
+
+
+def test_reconciliation_status_remains_observation_without_mutation_or_public_proof(tmp_path):
+    from viewer_publication.continuation import Continuation
+    from viewer_publication.reconciliation import ReconciliationProgress, NEXT_CHECK
+    run = Continuation(tmp_path / 'attempt', {'batch': 'local'})
+    observer = ReconciliationProgress(run.root, run.value['binding'])
+    observer(dict(state='reading', next_check=NEXT_CHECK['reading'], key='viewer-publications/object',
+        object_index=1, total_objects=2, checked_objects=0, bytes_read=4, declared_bytes=8))
+    before = {str(p): p.read_bytes() for p in run.root.iterdir()}
+    result = status.continuation(run.path, ('123', '2', REVISION))
+    last = result['local_phase_observation']['last_reconciliation_observation']
+    assert last['state'] == 'reading' and last['bytes_read'] == 4
+    assert not last['resume_authorized'] and not last['current_readback_proof']
+    assert result['public_readback'] == 'not_checked' and result['accepted_outputs'] == []
+    summary = status.summarize('123', github('failure'), progress(), now=NOW, receipt=run.path)
+    assert 'Last recorded reconciliation observation: reading' in status.format_status(summary)
+    assert NEXT_CHECK['reading'] in status.format_status(summary)
+    assert before == {str(p): p.read_bytes() for p in run.root.iterdir()}
+    path = run.root / 'reconciliation-progress.json'
+    value = json.loads(path.read_bytes()); value['binding_sha256'] = '0' * 64
+    path.write_text(json.dumps(value))
+    invalid = status.continuation(run.path, ('123', '2', REVISION))
+    assert invalid['local_phase_observation']['last_reconciliation_observation']['state'] == 'unavailable'
+    assert invalid['public_readback'] == 'not_checked'

@@ -140,6 +140,14 @@ def continuation(path, expected):
         local_state['write_observation'] = event_source or dict(source='checkpoint_only', path=str(path),
             latest_event_state='unknown; checkpoint write counts may be stale',
             next_check='Inspect the retained local events.jsonl before any explicit reconciliation')
+    progress_path = path.parent / 'reconciliation-progress.json'
+    if progress_path.exists():
+        from viewer_publication.reconciliation import read_progress
+        try:
+            local_state['last_reconciliation_observation'] = read_progress(progress_path, binding=binding)
+        except (OSError, ValueError, KeyError, TypeError):
+            local_state['last_reconciliation_observation'] = dict(state='unavailable', observation_only=True,
+                next_check='Inspect the retained observation file; it is invalid, unreadable or belongs to different inputs.')
     if local_recovery:
         from corpus_recovery.diagnostics import catalog_build_observation
         if observation := catalog_build_observation(path.parent, phases):
@@ -255,6 +263,11 @@ def format_status(value):
         lines.append('Local write observation: ' + observation['source'] + ': ' + observation['path'])
         if observation.get('latest_event_state'):
             lines.append('Local write state: ' + observation['latest_event_state'])
+    if reconciliation := value.get('continuation', {}).get('local_phase_observation', {}).get('last_reconciliation_observation'):
+        lines.append('Last recorded reconciliation observation: ' + reconciliation['state'] + ' at ' + reconciliation.get('updated_at', 'unknown'))
+        if reconciliation.get('key'):
+            lines.append('Object: ' + json.dumps(reconciliation['key']) + '; bytes read: ' + str(reconciliation['bytes_read']))
+        lines.append('Next read-only check: ' + reconciliation['next_check'])
     if build := value.get('continuation', {}).get('local_phase_observation', {}).get('catalog_build'):
         lines.append('Retained catalog build: ' + build['retained_build_path'])
         lines.append('Last recorded accepted phase: ' + (build['last_recorded_accepted_phase'] or 'none'))
