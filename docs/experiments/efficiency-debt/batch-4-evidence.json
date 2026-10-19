@@ -1,0 +1,10 @@
+{
+  "status": "independently reviewed; merge pending",
+  "ticket": "ct-5jqd",
+  "implementation_head": "f4638d6fc9c9c8a70164d4c25294f40c472e4530",
+  "integration_revision": "2607cfa5459965aab2e9a0033eee3b4aa31833fc",
+  "review_sha256": "a721a111c8c68255781a80546b5fde5c42eba18a61412e8220bef7e8716244d3",
+  "integration_tests": "111 passed, 5 subtests passed in 3.71s",
+  "integration_log_sha256": "7643a4292d6f7d79a371de578a6f94ace4621bb5f570c60ac25ac5c86c528547",
+  "limits": "Bounded local visibility with added I/O; no speed claim, live qualification or workflow operation."
+}
