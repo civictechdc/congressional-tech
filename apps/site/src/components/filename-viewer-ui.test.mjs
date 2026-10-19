@@ -997,3 +997,29 @@ test('published mode uses only the worker and ignores local comparison payloads'
   assert(!requests.some(url=>url.startsWith('/api/evidence/')||url.startsWith('/review-evidence/')));
  } finally {dom.window.close();}
 });
+
+for (const stage of ['reader', 'format', 'clipboard']) test('complete-copy '+stage+' allocation failure stays visible and preserves detail', async()=>{
+  const initial={...structuredClone(entry),record_complete:false,published_only:true,reading:null};
+  const full={...record,source_occurrences:[null,{}, {label:['José 🏛️']}, {label:['José 🏛️']}]};
+  const downloads={documents:'https://data.test/documents.parquet',filenames:'https://data.test/filenames.parquet'};
+  const reason=stage==='reader'?'This exact observation exceeds available browser memory. Download the source Parquet for complete values.':stage+' allocation failed';
+  const {dom,w,get,requests}=await app(async url=>{
+    if(url.startsWith('/api/full/'))return {ok:stage!=='reader',json:async()=>stage==='reader'?{error:reason}:full};
+    return {ok:true,json:async()=>initial};
+  },{downloads},undefined,'published');
+  let clipboardCalls=0;
+  const stringify=w.JSON.stringify;
+  if(stage==='format')w.JSON.stringify=(value,replacer,space)=>{if(value===full&&space===2)throw new w.RangeError(reason);return stringify(value,replacer,space);};
+  Object.defineProperty(w.navigator,'clipboard',{value:{writeText:async value=>{clipboardCalls++;assert.deepEqual(JSON.parse(value),full);throw new w.RangeError(reason);}}});
+  try {
+    assert(!requests.some(url=>url.startsWith('/api/full/')),'ordinary detail never requests complete values');
+    const selected=get('detail').dataset.row;
+    get('copy').click();await flush();await flush();
+    assert.match(get('copy-status').textContent,/Could not copy complete metadata:/);
+    assert(get('copy-status').textContent.includes(reason));
+    assert.equal(get('copy').disabled,false);
+    assert.equal(get('detail').open,true);assert.equal(get('detail').dataset.row,selected);
+    assert.equal(clipboardCalls,stage==='clipboard'?1:0,'failed preparation never writes partial clipboard text');
+    assert.equal(w.document.querySelector('.downloads a[href="'+downloads.filenames+'"]').href,downloads.filenames);
+  } finally {w.JSON.stringify=stringify;dom.window.close();}
+});
