@@ -2,6 +2,7 @@
 export function createFilenameClient({createWorker, context, onResult = () => {}, onError = () => {}}) {
   const pending = new Map();
   let worker, sequence = 0, disposed = false;
+  let snapshot = context.snapshot || null;
   const unavailable = () => new Error('The catalog reader stopped. Retry the request or reload this page.');
   function fail(current) {
     if (current !== worker) return;
@@ -16,7 +17,14 @@ export function createFilenameClient({createWorker, context, onResult = () => {}
       if (current !== worker) return;
       const call = pending.get(data.id);
       if (!call) return;
-      if (data.error) { call.settle(new Error(data.error)); onError(data.error); }
+      let error = data.error;
+      if (!error && call.catalogResult) {
+        const identity = data.result?.catalog_id;
+        if (typeof identity !== 'string' || !/^[a-f0-9]{32}$/.test(identity)) error = 'The catalog reader returned an invalid catalog identity.';
+        else if (snapshot && identity !== snapshot) error = 'The catalog reader returned a different catalog snapshot. Retry the request or reload this page.';
+        else snapshot = identity;
+      }
+      if (error) { call.settle(new Error(error)); onError(error); }
       else { call.settle(null, data.result); onResult(data.result); }
     };
     current.onerror = current.onmessageerror = () => fail(current);
@@ -35,9 +43,9 @@ export function createFilenameClient({createWorker, context, onResult = () => {}
         settle(signal.reason || new DOMException('Aborted', 'AbortError'));
         try { current.postMessage({cancel: id}); } catch { fail(current); }
       };
-      pending.set(id, {settle});
+      pending.set(id, {settle, catalogResult: url === '/api/info' || url.startsWith('/api/entry/')});
       signal?.addEventListener('abort', abort, {once: true});
-      try { current.postMessage({id, url, ...context}); }
+      try { current.postMessage({id, url, ...context, snapshot}); }
       catch (error) { settle(error); fail(current); }
     });
   }

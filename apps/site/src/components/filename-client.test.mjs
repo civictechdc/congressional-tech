@@ -3,9 +3,9 @@ import {test} from 'node:test';
 import {createFilenameClient, publicationLifecycle} from './filename-client.mjs';
 import {positiveInteger, filenameDate} from '../../../../docs/youtube-coverage/research/filename-rules.mjs';
 
-function harness() {
+function harness(context = {snapshot: 'pinned'}, onResult = () => {}) {
   const workers = [];
-  const client = createFilenameClient({context: {snapshot: 'pinned'}, createWorker() {
+  const client = createFilenameClient({context, onResult, createWorker() {
     const worker = {messages: [], postMessage(value) { this.messages.push(value); }, terminate() { this.dead = true; }};
     workers.push(worker); return worker;
   }});
@@ -22,6 +22,69 @@ test('worker failure settles pending calls and retries on a fresh worker', async
   workers[1].onmessage({data:{id:3,result:'success'}});
   assert.equal(await retry,'success'); assert.equal(client.pendingCount,0);
   client.dispose(); await assert.rejects(client.request('/api/info'),/reader stopped/);
+});
+test('ordinary accepted catalog survives pointer advancement and worker recreation', async () => {
+  const accepted = 'a'.repeat(32), latest = 'b'.repeat(32), results = [];
+  const context = {snapshot: null};
+  const {client, workers} = harness(context, result => results.push(result));
+  let pointer = accepted;
+  const info = client.request('/api/info');
+  workers[0].onmessage({data:{id:1,result:{catalog_id:pointer}}});
+  assert.equal((await info).catalog_id,accepted);
+  pointer = latest;
+  workers[0].onerror();
+  const retry = client.request('/api/rows');
+  const selected = workers[1].messages[0].snapshot || pointer;
+  assert.equal(selected,accepted);
+  assert.equal(context.snapshot,null,'the caller context remains unchanged');
+  workers[0].onmessage({data:{id:2,result:{catalog_id:latest}}});
+  workers[1].onmessage({data:{id:2,result:{rows:[selected]}}});
+  assert.deepEqual(await retry,{rows:[accepted]});
+  const conflict = client.request('/api/info');
+  const rejected = assert.rejects(conflict,/different catalog/);
+  workers[1].onmessage({data:{id:3,result:{catalog_id:latest}}});
+  await rejected;
+  assert.equal(results.length,2,'conflicting results never reach the UI');
+  const same = client.request('/api/info');
+  assert.equal(workers[1].messages.at(-1).snapshot,accepted);
+  workers[1].onmessage({data:{id:4,result:{catalog_id:accepted}}});
+  await same; client.dispose();
+});
+test('aborted, stale, missing and malformed catalog replies cannot establish a pin', async () => {
+  const accepted='a'.repeat(32), ignored='b'.repeat(32);
+  const {client,workers}=harness({snapshot:null});
+  const controller=new AbortController(),aborted=client.request('/api/info',controller.signal);
+  controller.abort();await assert.rejects(aborted,{name:'AbortError'});
+  workers[0].onmessage({data:{id:1,result:{catalog_id:ignored}}});
+  for(const identity of [undefined,123,'',ignored.toUpperCase(),'not-a-catalog']) {
+    const call=client.request('/api/info');
+    const request=workers[0].messages.at(-1);
+    assert.equal(request.snapshot,null);
+    const rejected=assert.rejects(call,/invalid catalog/);
+    workers[0].onmessage({data:{id:request.id,result:{catalog_id:identity}}});
+    await rejected;
+  }
+  workers[0].onerror();
+  const info=client.request('/api/info'),request=workers[1].messages[0];
+  workers[0].onmessage({data:{id:request.id,result:{catalog_id:ignored}}});
+  assert.equal(request.snapshot,null);
+  workers[1].onmessage({data:{id:request.id,result:{catalog_id:accepted}}});
+  await info;
+  const rows=client.request('/api/rows');
+  assert.equal(workers[1].messages.at(-1).snapshot,accepted);
+  workers[1].onmessage({data:{id:workers[1].messages.at(-1).id,result:{rows:[]}}});
+  await rows;client.dispose();
+});
+test('an explicit catalog remains fixed when a current worker replies with a conflicting identity', async () => {
+  const explicit='a'.repeat(32),other='b'.repeat(32);
+  const {client,workers}=harness({snapshot:explicit});
+  const info=client.request('/api/info'),rejected=assert.rejects(info,/different catalog/);
+  workers[0].onmessage({data:{id:1,result:{catalog_id:other}}});
+  await rejected;workers[0].onerror();
+  const retry=client.request('/api/info');
+  assert.equal(workers[1].messages[0].snapshot,explicit);
+  workers[1].onmessage({data:{id:2,result:{catalog_id:explicit}}});
+  await retry;client.dispose();
 });
 test('cancel, late replies and throwing postMessage release requests exactly once', async () => {
   const {client,workers} = harness(); const controller = new AbortController();

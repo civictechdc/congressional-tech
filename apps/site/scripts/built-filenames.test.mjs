@@ -27,7 +27,7 @@ for (const pinned of [false,true]) test(`built filename page runs its real boots
       if (request.cancel) return;
       requests.push(request);
       const result = request.url === '/api/info'
-        ? {catalog_id: pinned ? catalog : 'smoke', rows: 0, documents: 0, capture_records: 0, fields: ['filename','source_url','source_id'],
+        ? {catalog_id: catalog, rows: 0, documents: 0, capture_records: 0, fields: ['filename','source_url','source_id'],
           facets: {congress: [], document_kind: [], document_family: [], format: []}}
         : request.url.startsWith('/api/entry/') ? {record,document:record,filename:record.filename,catalog_id:catalog,published_only:true,record_complete:false,sources:[record],origin,document_origin:origin,saved_file_available:false}
         : {rows: [], total: 0, page: 1, pages: 1, limit: 100};
@@ -69,7 +69,8 @@ for (const pinned of [false,true]) test(`built filename page runs its real boots
     assert.ok(requests.every(r => r.reviewPublication.url.startsWith(base + 'data/document-reviews/')));
     assert.equal(typeof window.filenameViewerApi, 'function');
     assert.equal(window.document.body.dataset.filenameMode,'published');
-    assert.ok(requests.every(request=>request.snapshot===(pinned?catalog:null)));
+    assert.equal(requests[0].snapshot,pinned?catalog:null);
+    assert.ok(requests.slice(1).every(request=>request.snapshot===catalog),'accepted info pins all later requests');
     if(pinned) {
       assert.ok(requests.some(request=>request.url==='/api/entry/deep-source?catalog='+catalog));
       assert.equal(window.document.getElementById('detail').dataset.row,'deep-source');

@@ -1,6 +1,6 @@
 ---
 id: ct-9a6x
-status: open
+status: closed
 deps: [ct-2d3k]
 links: []
 created: 2026-10-19T16:35:49Z
@@ -17,3 +17,13 @@ GPO retention repeats retention.tables.write_csv temporary-file and CSV mechanic
 ## Acceptance Criteria
 
 GPO retains its public function and sorted package order, delegates atomic CSV writing to retention.tables, and matches baseline bytes and failure cleanup including Unicode, quotes and embedded newlines.
+
+## Notes
+
+**2026-10-19T16:44:52Z**
+
+GPO now delegates CSV mechanics to retention.tables.write_csv, retaining its public wrapper, dataclass field order and sorted package IDs. Sorting stays lazy inside the shared temporary-file cleanup boundary. Exact baseline bytes match empty and Unicode/quote/newline fixtures; injected replacement, invalid-field and sort failures preserve the destination and remove temporary files. All 25 focused CSV/GPO source-fidelity checks passed. Primary log: output/package-overlap-rescore-20261019/browser-package-gpo-csv.log. Awaiting independent review.
+
+**2026-10-19T16:49:05Z**
+
+Independent review approved 0a9d0d5. Passed 104 JS, 88 body-key/evidence, 25 CSV/GPO checks, frozen Node/npm install, 29-page build and 2 emitted-bootstrap scenarios. Integrated offline verification follows in ct-us67.

@@ -2277,6 +2277,7 @@ def validated_body_readings(readings):
     overrides. Normal updates never select a newer reading automatically.
     """
     from congress_api.retention.capture_metadata import RESULT_COLUMNS
+    from congress_api.retention.body_keys import body_key_digest
     selected = {}
     for row in readings:
         if not isinstance(row, Mapping):
@@ -2285,8 +2286,7 @@ def validated_body_readings(readings):
         fingerprint = row.get('parser_fingerprint')
         if not isinstance(key, str) or not isinstance(fingerprint, str):
             raise ValueError('Expected body identity and parser fingerprint strings')
-        match = re.fullmatch(r'bodies/sha256/([a-f0-9]{2})/([a-f0-9]{64})\.gz', key)
-        if (match is None or match[1] != match[2][:2] or key in selected
+        if (body_key_digest(key) is None or key in selected
                 or row.get('status') != 'completed' or row.get('error_type') is not None
                 or row.get('body_format') != ['pdf']
                 or not re.fullmatch(r'[a-f0-9]{64}', fingerprint)
